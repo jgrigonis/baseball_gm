@@ -1,9 +1,14 @@
 A Python 3 project
 
-Goals:
-Simulate a baseball game
+### Goals:
+* Create a random player
+* Create a custom player
+* Edit an existing player
 
-Create a random player
+* Create a random team
+* Create a custom team
+* Edit an existing team
 
-Create a random team
+* Simulate a baseball game
+
 
