@@ -1,8 +1,12 @@
 class Player(object):
     """A Baseball Player class."""
-    def __init__(self, name=(None, None)):
+    def __init__(self, first_name=None, last_name=None):
         """Setup the player."""
-        if name == (None, None):
-
+        if first_name is None:
+            self.first_name = "Random"
         else:
-            self.name = name
+            self.first_name = first_name
+        if last_name is None:
+            self.last_name = "Name"
+        else:
+            self.last_name = last_name
