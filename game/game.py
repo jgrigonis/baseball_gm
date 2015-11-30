@@ -11,3 +11,4 @@ class Game(object):
     The number of outs. The inning. The score.
     The batter. The pitcher. The fielders.
     """
+    pass
