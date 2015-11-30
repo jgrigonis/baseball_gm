@@ -1,4 +1,7 @@
 """
+TODO:
+Handle game state
+
 Event generator.  The idea here is to return random events based
 on the state of the game, including batter/pitcher abilities as
 well as other pieces of information in the game state.

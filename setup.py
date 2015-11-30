@@ -16,7 +16,9 @@ setup(
     author_email='josh.grigonis@gmail.com',
     packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
     include_package_data=True,
-    description=('A baseball simulator'),
-    install_requires=[],
+    description='A baseball simulator',
+    install_requires=[
+        'names',
+    ],
     zip_safe=False,
     )

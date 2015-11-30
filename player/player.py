@@ -1,3 +1,6 @@
+import names
+
+
 class Player(object):
     """A Baseball Player class."""
     def __init__(self, first_name, last_name):
@@ -16,3 +19,4 @@ class Player(object):
             'base_running': 50,  # Base-running skill
             'bunting': 50,       # Bunting
         }
+
