@@ -40,7 +40,10 @@ class Event(object):
 
     @staticmethod
     def random_event(probs):
-        """Use a weighted probability."""
+        """Use a weighted probability.  probs is a dictionary of events
+        and their probability as an integer.
+
+        """
         rand_num = random.random() * sum(probs.values())
         for index, offset in enumerate(probs.values()):
             rand_num -= offset
@@ -49,6 +52,8 @@ class Event(object):
 
     def set_probs(self, my_game):
         """Change the probs based on game state
+
+        my_game is a game object and has the state of the game
 
         TODO: change state based on player skills
 
@@ -63,16 +68,16 @@ class Event(object):
         """
         self.probs = {
             'ball': 10800,
-            'single': 1350,
-            'double': 360,
-            'triple': 45,
-            'homer': 280,
-            'error': 10,
-            'fly_out': 2050,
-            'ground_out': 2050,
-            'hit_by_pitch': 60,
             'strike': 7100,
             'foul_ball': 5100,
+            'fly_out': 2050,
+            'ground_out': 2050,
+            'single': 1350,
+            'double': 360,
+            'homer': 280,
+            'hit_by_pitch': 60,
+            'triple': 45,
+            'error': 10,
             'balk': 0,
             'caught_stealing': 0,
             'double_play': 0,

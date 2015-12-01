@@ -1,22 +1,20 @@
-import names
-
-
 class Player(object):
     """A Baseball Player class."""
     def __init__(self, first_name, last_name):
         """Setup the player."""
         self.first_name = first_name
         self.last_name = last_name
+        # May be desirable to split skills between pitching and batting
         self.skills = {
-            'accuracy': 50,      # Pitching accuracy
-            'stamina': 50,       # Pitching stamina
-            'recovery': 50,      # Pitching stamina recovery speed with rest
-            'clutch': 50,        # Clutch
-            'power': 50,         # Hitting power
-            'eye': 50,           # Eye
-            'contact': 50,       # Batting contact
-            'speed': 50,         # Running speed
-            'base_running': 50,  # Base-running skill
-            'bunting': 50,       # Bunting
+            'accuracy': 0,      # Pitching accuracy
+            'stamina': 0,       # Pitching stamina
+            'recovery': 0,      # Pitching stamina recovery speed with rest
+            'clutch': 0,        # Clutch
+            'power': 0,         # Hitting power
+            'eye': 0,           # Eye
+            'contact': 0,       # Batting contact
+            'speed': 0,         # Running speed
+            'base_running': 0,  # Base-running skill
+            'bunting': 0,       # Bunting
         }
 
