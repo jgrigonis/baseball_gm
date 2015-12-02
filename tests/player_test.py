@@ -9,4 +9,3 @@ class TestPlayer(TestCase):
         my_player = Player("Willie", "Mays")
         self.assertEqual(my_player.first_name, "Willie")
         self.assertEqual(my_player.last_name, "Mays")
-

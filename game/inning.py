@@ -3,21 +3,19 @@ import game_exceptions
 
 class Inning(object):
     """Keep track of inning related information."""
-    def __init__(self, number=1, top=True, outs=0):
+    def __init__(self):
         """Set up a new inning.  Start in the top of the 1st with no outs."""
-        self.number = number
-        self.top = top
-        self.outs = outs
-        self.home_score = 0
-        self.away_score = 0
+        self.number = 1
+        self.top = True
+        self.outs = 0
 
-    def __str__(self):
-        """Output the inning information as a string."""
-        if self.top:
-            half = "top"
-        else:
-            half = "bottom"
-        return "It's the %s of %s." % (half, self.number)
+    # def __str__(self):
+    #     """Output the inning information as a string."""
+    #     if self.top:
+    #         half = "top"
+    #     else:
+    #         half = "bottom"
+    #     return "It's the %s of %s." % (half, self.number)
 
     def increment(self):
         """Move to the next half inning."""
@@ -26,8 +24,6 @@ class Inning(object):
         else:
             self.top = True
             self.number += 1
-            self.home_score = 0
-            self.away_score = 0
         self.reset_outs()
 
     def out(self):

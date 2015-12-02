@@ -1,0 +1,34 @@
+from unittest import TestCase
+
+from game.game_exceptions import TooManyOuts
+from game.inning import Inning
+__author__ = 'josh'
+
+
+class TestInning(TestCase):
+    def setUp(self):
+        self.my_inning = Inning()
+
+    def test_new_inning(self):
+        self.assertEqual(self.my_inning.number, 1)
+        self.assertTrue(self.my_inning.top)
+        self.assertEqual(self.my_inning.outs, 0)
+
+    def test_increments(self):
+        self.my_inning.increment()
+        self.assertEqual(self.my_inning.number, 1)
+        self.assertFalse(self.my_inning.top)
+        self.assertEqual(self.my_inning.outs, 0)
+        self.my_inning.increment()
+        self.assertEqual(self.my_inning.number, 2)
+        self.assertTrue(self.my_inning.top)
+        self.assertEqual(self.my_inning.outs, 0)
+
+    def test_outs(self):
+        self.my_inning.out()
+        self.assertEqual(self.my_inning.outs, 1)
+        self.my_inning.out()
+        self.assertEqual(self.my_inning.outs, 2)
+        self.assertRaises(TooManyOuts, self.my_inning.out)
+        self.my_inning.reset_outs()
+        self.assertEqual(self.my_inning.outs, 0)

@@ -64,6 +64,8 @@ class Bases(object):
     def advance(self, fro, dest=None):
         """Advance a runner from fro to dest. If no dest specified just
         advance one base.
+        :param fro: the base to advance from
+        :param dest: the base to advance to
         """
         if dest == 0:
             raise game_exceptions.InvalidAdvance()
@@ -88,13 +90,13 @@ class Bases(object):
     def advance_many(self, advance_list):
         """Advance base runners for each tuple in the advance_list.
 
-        Takes a list of tuples.  Each tuple needs to be sent to advance.
-        It will return a list of scorers, if there are any, otherwise it
-        will return an empty list.
+        :param advance_list: list of tuples.  Each tuple needs to be sent
+        to advance.  It will return a list of scorers, if there are any,
+        otherwise it will return an empty list.
 
         """
         if isinstance(advance_list, tuple):
-            adv_list = [advance_list]
+            advance_list = [advance_list]
         scorers = []
         for adv in advance_list:
             if adv[0] == 2:
@@ -124,7 +126,7 @@ class Bases(object):
     def clear(self, to_clear=(0, 1, 2)):
         """Clear bases. to_clear is a list of bases to clear.
         Alternatively, it could be a single integer.
-
+        :param to_clear: a list of bases to clear, or a single base
         """
         if isinstance(to_clear, int):
             to_clear = [to_clear]
@@ -144,6 +146,8 @@ class Bases(object):
 
         Returns True if the base is empty, false otherwise.
         Special case for home.
+
+        :param base: the base to test
 
         """
         if self.bases[base] == 0:
