@@ -92,7 +92,7 @@ class TestInitAnd26Balls(unittest.TestCase):
         """6 walks should have been issued, leading to 3 scores."""
         # pylint: disable=C0103
         # pylint: disable=W0612
-        for x in range(26):
+        for _ in range(26):
             self.my_game.ball()
         self.assertEqual(self.my_game.score.away, 3)
 
@@ -112,297 +112,173 @@ class TestInitAnd26Balls(unittest.TestCase):
             self.my_game.ball()
         self.assertEqual(self.my_game.inning.outs, 0)
 
-#
-# class TestTeamCycles(unittest.TestCase):
-#     """Test what happens if the team leads off with a single, double,
-#     triple and home run in order.
-#
-#     """
-#     def setUp(self):
-#         """Setup instance of Game and have 4 hits in a row."""
-#         con = init_db(":memory:")
-#         self.pla0 = Player("Sandy", "Koufax", 32, league=con)
-#         self.pla1 = Player("Willie", "Mays", 24, league=con)
-#         self.pla2 = Player("Jackie", "Robinson", 42, league=con)
-#         self.pla3 = Player("Ted", "Williams", 9, league=con)
-#         self.pla4 = Player("Lou", "Gehrig", 4, league=con)
-#         self.pla5 = Player("Honus", "Wagner", 33, league=con)
-#         self.pla6 = Player("Hank", "Aaron", 44, league=con)
-#         self.pla7 = Player("Mike", "Schmidt", 20, league=con)
-#         self.pla8 = Player("Babe", "Ruth", 3, league=con)
-#         self.pla9 = Player("Johnny", "Bench", 5, league=con)
-#         self.pla10 = Player("Jeff", "Kent", 21, league=con)
-#
-#         self.team_a = Team("team1", league=con)
-#
-#         self.pla0.set_team_id(self.team_a.team_id)
-#         self.pla1.set_team_id(self.team_a.team_id)
-#         self.pla2.set_team_id(self.team_a.team_id)
-#         self.pla3.set_team_id(self.team_a.team_id)
-#         self.pla4.set_team_id(self.team_a.team_id)
-#         self.pla5.set_team_id(self.team_a.team_id)
-#         self.pla6.set_team_id(self.team_a.team_id)
-#         self.pla7.set_team_id(self.team_a.team_id)
-#         self.pla8.set_team_id(self.team_a.team_id)
-#         self.pla9.set_team_id(self.team_a.team_id)
-#         self.pla10.set_team_id(self.team_a.team_id)
-#
-#         self.plb0 = Player("Nolan", "Ryan", 34, league=con)
-#         self.plb1 = Player("Ricky", "Henderson", 24, league=con)
-#         self.plb2 = Player("Ryne", "Sandberg", 23, league=con)
-#         self.plb3 = Player("Joe", "DiMaggio", 5, league=con)
-#         self.plb4 = Player("Jimmie", "Foxx", 3, league=con)
-#         self.plb5 = Player("Robin", "Yount", 19, league=con)
-#         self.plb6 = Player("Roberto", "Clemente", 21, league=con)
-#         self.plb7 = Player("George", "Brett", 6, league=con)
-#         self.plb8 = Player("Frank", "Robinson", 20, league=con)
-#         self.plb9 = Player("Yogi", "Berra", 8, league=con)
-#         self.plb10 = Player("Mickey", "Mantle", 7, league=con)
-#
-#         self.team_b = Team("team2", league=con)
-#
-#         self.plb0.set_team_id(self.team_b.team_id)
-#         self.plb1.set_team_id(self.team_b.team_id)
-#         self.plb2.set_team_id(self.team_b.team_id)
-#         self.plb3.set_team_id(self.team_b.team_id)
-#         self.plb4.set_team_id(self.team_b.team_id)
-#         self.plb5.set_team_id(self.team_b.team_id)
-#         self.plb6.set_team_id(self.team_b.team_id)
-#         self.plb7.set_team_id(self.team_b.team_id)
-#         self.plb8.set_team_id(self.team_b.team_id)
-#         self.plb9.set_team_id(self.team_b.team_id)
-#         self.plb10.set_team_id(self.team_b.team_id)
-#
-#         self.my_game = Game(self.team_a.team_id, self.team_b.team_id, con)
-#         self.my_game.hit(1)
-#         self.my_game.hit(2)
-#         self.my_game.hit(3)
-#         self.my_game.hit(4)
-#
-#     def test_score(self):
-#         """First four batters have all scored."""
-#         self.assertEqual(self.my_game.away.score, 4)
-#
-#     def test_batting_order(self):
-#         """Home team hasn't batted yet, should still be on 1.
-#         Away team shold be on 5th batter.
-#
-#         """
-#         self.assertEqual(self.my_game.home.batter, 1)
-#         self.assertEqual(self.my_game.away.batter, 5)
-#
-#     def test_outs(self):
-#         """No outs yet."""
-#         self.assertEqual(self.my_game.inning.outs, 0)
-#
-#     def test_pitcher_stats(self):
-#         """Test Stats for pitching."""
-#         self.assertEqual(self.my_game.current_pitcher.stats['h'], 4)
-#         self.assertNotEqual(self.my_game.current_pitcher.era(), "0.00")
-#         self.assertEqual(self.my_game.current_pitcher.stats['r'], 4)
-#         self.assertEqual(self.my_game.current_pitcher.stats['er'], 4)
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['bb'], 0)
-#         self.assertNotEqual(self.my_game.pitch_team_stats.era(), "0.00")
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['r'], 4)
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['er'], 4)
-#
-#     def test_batting_stats(self):
-#         """Test Batting Stats."""
-#         self.assertEqual(self.my_game.bat_team_stats.stats['bb'], 0)
-#         self.assertEqual(self.my_game.bat_team_stats.stats['r'], 4)
-#         self.assertEqual(self.my_game.bat_team_stats.batting_average(),
-#                          "1.000")
-#         self.assertEqual(self.my_game.bat_team_stats.obp(), "1.000")
-#         self.assertEqual(
-#             self.my_game.bat_team.player(1).stats.batting.stats['h'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(2).stats.batting.stats['h'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(2).stats.batting.stats['doubles'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(3).stats.batting.stats['h'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(3).stats.batting.stats['triples'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(3).stats.batting.stats['rbi'], 2)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(4).stats.batting.stats['h'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(4).stats.batting.stats['rbi'], 2)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(4).stats.batting.stats['hr'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(5).stats.batting.stats['h'], 0)
-#
-#     def tearDown(self):
-#         self.team_a.delete()
-#         self.pla0.delete()
-#         self.pla1.delete()
-#         self.pla2.delete()
-#         self.pla3.delete()
-#         self.pla4.delete()
-#         self.pla5.delete()
-#         self.pla6.delete()
-#         self.pla7.delete()
-#         self.pla8.delete()
-#         self.pla9.delete()
-#         self.pla10.delete()
-#         self.team_b.delete()
-#         self.plb0.delete()
-#         self.plb1.delete()
-#         self.plb2.delete()
-#         self.plb3.delete()
-#         self.plb4.delete()
-#         self.plb5.delete()
-#         self.plb6.delete()
-#         self.plb7.delete()
-#         self.plb8.delete()
-#         self.plb9.delete()
-#         self.plb10.delete()
-#
-#
-# class TestSingleDoublePlayHitByPitch(unittest.TestCase):
-#     """Test what happens if the team leads off with a single, followed
-#     by a double play, and then a hit batter.
-#
-#     """
-#     def setUp(self):
-#         """Setup instance of Game and have 4 hits in a row."""
-#         con = init_db(":memory:")
-#         self.pla0 = Player("Sandy", "Koufax", 32, league=con)
-#         self.pla1 = Player("Willie", "Mays", 24, league=con)
-#         self.pla2 = Player("Jackie", "Robinson", 42, league=con)
-#         self.pla3 = Player("Ted", "Williams", 9, league=con)
-#         self.pla4 = Player("Lou", "Gehrig", 4, league=con)
-#         self.pla5 = Player("Honus", "Wagner", 33, league=con)
-#         self.pla6 = Player("Hank", "Aaron", 44, league=con)
-#         self.pla7 = Player("Mike", "Schmidt", 20, league=con)
-#         self.pla8 = Player("Babe", "Ruth", 3, league=con)
-#         self.pla9 = Player("Johnny", "Bench", 5, league=con)
-#         self.pla10 = Player("Jeff", "Kent", 21, league=con)
-#
-#         self.team_a = Team("team1", league=con)
-#
-#         self.pla0.set_team_id(self.team_a.team_id)
-#         self.pla1.set_team_id(self.team_a.team_id)
-#         self.pla2.set_team_id(self.team_a.team_id)
-#         self.pla3.set_team_id(self.team_a.team_id)
-#         self.pla4.set_team_id(self.team_a.team_id)
-#         self.pla5.set_team_id(self.team_a.team_id)
-#         self.pla6.set_team_id(self.team_a.team_id)
-#         self.pla7.set_team_id(self.team_a.team_id)
-#         self.pla8.set_team_id(self.team_a.team_id)
-#         self.pla9.set_team_id(self.team_a.team_id)
-#         self.pla10.set_team_id(self.team_a.team_id)
-#
-#         self.plb0 = Player("Nolan", "Ryan", 34, league=con)
-#         self.plb1 = Player("Ricky", "Henderson", 24, league=con)
-#         self.plb2 = Player("Ryne", "Sandberg", 23, league=con)
-#         self.plb3 = Player("Joe", "DiMaggio", 5, league=con)
-#         self.plb4 = Player("Jimmie", "Foxx", 3, league=con)
-#         self.plb5 = Player("Robin", "Yount", 19, league=con)
-#         self.plb6 = Player("Roberto", "Clemente", 21, league=con)
-#         self.plb7 = Player("George", "Brett", 6, league=con)
-#         self.plb8 = Player("Frank", "Robinson", 20, league=con)
-#         self.plb9 = Player("Yogi", "Berra", 8, league=con)
-#         self.plb10 = Player("Mickey", "Mantle", 7, league=con)
-#
-#         self.team_b = Team("team2", league=con)
-#
-#         self.plb0.set_team_id(self.team_b.team_id)
-#         self.plb1.set_team_id(self.team_b.team_id)
-#         self.plb2.set_team_id(self.team_b.team_id)
-#         self.plb3.set_team_id(self.team_b.team_id)
-#         self.plb4.set_team_id(self.team_b.team_id)
-#         self.plb5.set_team_id(self.team_b.team_id)
-#         self.plb6.set_team_id(self.team_b.team_id)
-#         self.plb7.set_team_id(self.team_b.team_id)
-#         self.plb8.set_team_id(self.team_b.team_id)
-#         self.plb9.set_team_id(self.team_b.team_id)
-#         self.plb10.set_team_id(self.team_b.team_id)
-#
-#         self.my_game = Game(self.team_a.team_id, self.team_b.team_id, con)
-#         self.my_game.hit(1)
-#         self.my_game.double_play("second", "first")
-#         self.my_game.hit_by_pitch()
-#
-#     def test_score(self):
-#         """No score."""
-#         self.assertEqual(self.my_game.away.score, 0)
-#
-#     def test_batting_order(self):
-#         """Home team hasn't batted yet, should still be on 1.
-#         Away team shold be on 4th batter.
-#
-#         """
-#         self.assertEqual(self.my_game.home.batter, 1)
-#         self.assertEqual(self.my_game.away.batter, 4)
-#
-#     def test_outs(self):
-#         """Two outs."""
-#         self.assertEqual(self.my_game.inning.outs, 2)
-#
-#     def test_bases(self):
-#         """Hit batter on first."""
-#         self.assertNotEqual(self.my_game.bases["first"], 0)
-#         self.assertEqual(self.my_game.bases["second"], 0)
-#         self.assertEqual(self.my_game.bases["third"], 0)
-#
-#     def test_pitcher_stats(self):
-#         """Test Stats for pitching."""
-#         self.assertEqual(self.my_game.current_pitcher.stats['h'], 1)
-#         self.assertEqual(self.my_game.current_pitcher.era(), "0.00")
-#         self.assertEqual(self.my_game.current_pitcher.stats['r'], 0)
-#         self.assertEqual(self.my_game.current_pitcher.stats['er'], 0)
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['bb'], 0)
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['hb'], 1)
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['h'], 1)
-#         self.assertEqual(self.my_game.pitch_team_stats.era(), "0.00")
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['r'], 0)
-#         self.assertEqual(self.my_game.pitch_team_stats.stats['er'], 0)
-#
-#     def test_batting_stats(self):
-#         """Test Batting Stats."""
-#         self.assertEqual(self.my_game.bat_team_stats.stats['bb'], 0)
-#         self.assertEqual(self.my_game.bat_team_stats.stats['r'], 0)
-#         self.assertEqual(self.my_game.bat_team_stats.batting_average(),
-#                          ".500")
-#         self.assertEqual(self.my_game.bat_team_stats.obp(), ".667")
-#         self.assertEqual(
-#             self.my_game.bat_team.player(1).stats.batting.stats['h'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(2).stats.batting.stats['h'], 0)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(2).stats.batting.stats['gdp'], 1)
-#         self.assertEqual(
-#             self.my_game.bat_team.player(3).stats.batting.stats['hbp'], 1)
-#
-#     def tearDown(self):
-#         self.team_a.delete()
-#         self.pla0.delete()
-#         self.pla1.delete()
-#         self.pla2.delete()
-#         self.pla3.delete()
-#         self.pla4.delete()
-#         self.pla5.delete()
-#         self.pla6.delete()
-#         self.pla7.delete()
-#         self.pla8.delete()
-#         self.pla9.delete()
-#         self.pla10.delete()
-#         self.team_b.delete()
-#         self.plb0.delete()
-#         self.plb1.delete()
-#         self.plb2.delete()
-#         self.plb3.delete()
-#         self.plb4.delete()
-#         self.plb5.delete()
-#         self.plb6.delete()
-#         self.plb7.delete()
-#         self.plb8.delete()
-#         self.plb9.delete()
-#         self.plb10.delete()
-#
+
+class TestTeamCycles(unittest.TestCase):
+    """Test what happens if the team leads off with a single, double,
+    triple and home run in order.
+
+    """
+    def setUp(self):
+        """Setup instance of Game and have 4 hits in a row."""
+        self.pla0 = Player("Sandy", "Koufax")
+        self.pla1 = Player("Willie", "Mays")
+        self.pla2 = Player("Jackie", "Robinson")
+        self.pla3 = Player("Ted", "Williams")
+        self.pla4 = Player("Lou", "Gehrig")
+        self.pla5 = Player("Honus", "Wagner")
+        self.pla6 = Player("Hank", "Aaron")
+        self.pla7 = Player("Mike", "Schmidt")
+        self.pla8 = Player("Babe", "Ruth")
+        self.pla9 = Player("Johnny", "Bench")
+        self.pla10 = Player("Jeff", "Kent")
+
+        self.plb0 = Player("Nolan", "Ryan")
+        self.plb1 = Player("Ricky", "Henderson")
+        self.plb2 = Player("Ryne", "Sandberg")
+        self.plb3 = Player("Joe", "DiMaggio")
+        self.plb4 = Player("Jimmie", "Foxx")
+        self.plb5 = Player("Robin", "Yount")
+        self.plb6 = Player("Roberto", "Clemente")
+        self.plb7 = Player("George", "Brett")
+        self.plb8 = Player("Frank", "Robinson")
+        self.plb9 = Player("Yogi", "Berra")
+        self.plb10 = Player("Mickey", "Mantle")
+
+        self.my_game = Game()
+        self.my_game.hit(1)
+        self.my_game.hit(2)
+        self.my_game.hit(3)
+        self.my_game.hit(4)
+
+    def test_score(self):
+        """First four batters have all scored."""
+        self.assertEqual(self.my_game.score.away, 4)
+
+    # def test_batting_order(self):
+    #     """Home team hasn't batted yet, should still be on 1.
+    #     Away team shold be on 5th batter.
+    #
+    #     """
+    #     self.assertEqual(self.my_game.home.batter, 1)
+    #     self.assertEqual(self.my_game.away.batter, 5)
+
+    def test_outs(self):
+        """No outs yet."""
+        self.assertEqual(self.my_game.inning.outs, 0)
+
+    # def test_pitcher_stats(self):
+    #     """Test Stats for pitching."""
+    #     self.assertEqual(self.my_game.current_pitcher.stats['h'], 4)
+    #     self.assertNotEqual(self.my_game.current_pitcher.era(), "0.00")
+    #     self.assertEqual(self.my_game.current_pitcher.stats['r'], 4)
+    #     self.assertEqual(self.my_game.current_pitcher.stats['er'], 4)
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['bb'], 0)
+    #     self.assertNotEqual(self.my_game.pitch_team_stats.era(), "0.00")
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['r'], 4)
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['er'], 4)
+
+    # def test_batting_stats(self):
+    #     """Test Batting Stats."""
+    #     self.assertEqual(self.my_game.bat_team_stats.stats['bb'], 0)
+    #     self.assertEqual(self.my_game.bat_team_stats.stats['r'], 4)
+    #     self.assertEqual(self.my_game.bat_team_stats.batting_average(),
+    #                      "1.000")
+    #     self.assertEqual(self.my_game.bat_team_stats.obp(), "1.000")
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(1).stats.batting.stats['h'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(2).stats.batting.stats['h'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(2).stats.batting.stats['doubles'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(3).stats.batting.stats['h'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(3).stats.batting.stats['triples'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(3).stats.batting.stats['rbi'], 2)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(4).stats.batting.stats['h'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(4).stats.batting.stats['rbi'], 2)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(4).stats.batting.stats['hr'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(5).stats.batting.stats['h'], 0)
+
+
+class TestSingleDoublePlayHitByPitch(unittest.TestCase):
+    """Test what happens if the team leads off with a single, followed
+    by a double play, and then a hit batter.
+
+    """
+    def setUp(self):
+        """Setup instance of Game and have 4 hits in a row."""
+        self.pla0 = Player("Sandy", "Koufax")
+        self.pla1 = Player("Willie", "Mays")
+        self.pla2 = Player("Jackie", "Robinson")
+        self.pla3 = Player("Ted", "Williams")
+        self.pla4 = Player("Lou", "Gehrig")
+        self.pla5 = Player("Honus", "Wagner")
+        self.pla6 = Player("Hank", "Aaron")
+        self.pla7 = Player("Mike", "Schmidt")
+
+        self.my_game = Game()
+        self.my_game.hit(1)
+        self.my_game.double_play("second", "first")
+        self.my_game.hit_by_pitch()
+
+    def test_score(self):
+        """No score."""
+        self.assertEqual(self.my_game.score.away, 0)
+
+    # def test_batting_order(self):
+    #     """Home team hasn't batted yet, should still be on 1.
+    #     Away team shold be on 4th batter.
+    #
+    #     """
+    #     self.assertEqual(self.my_game.home.batter, 1)
+    #     self.assertEqual(self.my_game.away.batter, 4)
+
+    def test_outs(self):
+        """Two outs."""
+        self.assertEqual(self.my_game.inning.outs, 2)
+
+    def test_bases(self):
+        """Hit batter on first."""
+        self.assertNotEqual(self.my_game.bases["first"], 0)
+        self.assertEqual(self.my_game.bases["second"], 0)
+        self.assertEqual(self.my_game.bases["third"], 0)
+
+    # def test_pitcher_stats(self):
+    #     """Test Stats for pitching."""
+    #     self.assertEqual(self.my_game.current_pitcher.stats['h'], 1)
+    #     self.assertEqual(self.my_game.current_pitcher.era(), "0.00")
+    #     self.assertEqual(self.my_game.current_pitcher.stats['r'], 0)
+    #     self.assertEqual(self.my_game.current_pitcher.stats['er'], 0)
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['bb'], 0)
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['hb'], 1)
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['h'], 1)
+    #     self.assertEqual(self.my_game.pitch_team_stats.era(), "0.00")
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['r'], 0)
+    #     self.assertEqual(self.my_game.pitch_team_stats.stats['er'], 0)
+    #
+    # def test_batting_stats(self):
+    #     """Test Batting Stats."""
+    #     self.assertEqual(self.my_game.bat_team_stats.stats['bb'], 0)
+    #     self.assertEqual(self.my_game.bat_team_stats.stats['r'], 0)
+    #     self.assertEqual(self.my_game.bat_team_stats.batting_average(),
+    #                      ".500")
+    #     self.assertEqual(self.my_game.bat_team_stats.obp(), ".667")
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(1).stats.batting.stats['h'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(2).stats.batting.stats['h'], 0)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(2).stats.batting.stats['gdp'], 1)
+    #     self.assertEqual(
+    #         self.my_game.bat_team.player(3).stats.batting.stats['hbp'], 1)
+
+
 #
 # class TestMiraclePitching(unittest.TestCase):
 #     """Test what happens if the pitchers combine to throw 162
