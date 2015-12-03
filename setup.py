@@ -18,7 +18,6 @@ setup(
     include_package_data=True,
     description='A baseball simulator',
     install_requires=[
-        'names',
     ],
     zip_safe=False,
     )

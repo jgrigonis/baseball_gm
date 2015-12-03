@@ -1,11 +1,11 @@
-from unittest import TestCase
+import unittest
 
 from game.game_exceptions import TooManyOuts
 from game.inning import Inning
 __author__ = 'josh'
 
 
-class TestInning(TestCase):
+class TestInning(unittest.TestCase):
     def setUp(self):
         self.my_inning = Inning()
 
@@ -32,3 +32,6 @@ class TestInning(TestCase):
         self.assertRaises(TooManyOuts, self.my_inning.out)
         self.my_inning.reset_outs()
         self.assertEqual(self.my_inning.outs, 0)
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,8 +1,8 @@
-import bases
-import count
-import game_exceptions
-import inning
-import score
+import game.bases as bases
+import game.count as count
+import game.game_exceptions as game_exceptions
+import game.inning as inning
+import game.score as score
 from stats import stats
 __author__ = 'josh'
 

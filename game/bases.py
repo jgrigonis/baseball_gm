@@ -1,4 +1,4 @@
-import game_exceptions
+import game.game_exceptions as game_exceptions
 """The Bases class."""
 
 

@@ -1,4 +1,4 @@
-import game_exceptions
+import game.game_exceptions as game_exceptions
 
 
 class Inning(object):
@@ -8,14 +8,6 @@ class Inning(object):
         self.number = 1
         self.top = True
         self.outs = 0
-
-    # def __str__(self):
-    #     """Output the inning information as a string."""
-    #     if self.top:
-    #         half = "top"
-    #     else:
-    #         half = "bottom"
-    #     return "It's the %s of %s." % (half, self.number)
 
     def increment(self):
         """Move to the next half inning."""
