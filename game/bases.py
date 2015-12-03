@@ -21,11 +21,13 @@ class Bases(object):
         if self.men_on() == 1:
             if self.bases[0] != 0:
                 base = "first"
-            if self.bases[1] != 0:
+            elif self.bases[1] != 0:
                 base = "second"
-            if self.bases[2] != 0:
+            elif self.bases[2] != 0:
                 base = "third"
-            return "Runner on %s." % (base)
+            else:
+                return ""
+            return "Runner on %s." % base
         elif self.men_on() == 2:
             if self.bases[0] == 0:
                 return "Runners on second and third."

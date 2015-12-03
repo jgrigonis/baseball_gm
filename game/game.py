@@ -422,13 +422,9 @@ class Game(object):
             if self.inning.top:
                 if self.score.home > self.score.away:
                     self._end_game()
-                    self._new_inning()
-                    return
             else:  # top
                 if self.score.home != self.score.away:
                     self._end_game()
-                    self._new_inning()
-                    return
         self._new_inning()
 
     def _score_run(self, scorer):
