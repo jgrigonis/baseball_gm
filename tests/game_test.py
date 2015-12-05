@@ -3,7 +3,7 @@
 """Unit Tests for the Game class."""
 import unittest
 
-from game.game import Game
+from game.main import Game
 import game.game_exceptions as game_exceptions
 from player.player import Player
 
@@ -598,7 +598,7 @@ class TestBalks(unittest.TestCase):
 class TestFieldersChoiceRetiresSide(unittest.TestCase):
     """Test what happens when runner gets forced out for third out."""
     def setUp(self):
-        """Runner hits for single, then pitcher balks 3 straight times."""
+        """Runner hits for single, two fly outs then fielders choice."""
         self.my_game = Game()
         self.my_game.hit(1)
         self.my_game.fly_out()

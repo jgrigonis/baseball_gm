@@ -288,7 +288,8 @@ class Game(object):
         """
         self.stats.at_bat()
         self._next_batter()
-        self.bases[base] = 0
+        self.bases[base] = 0  # clear the base
+        # TODO: first base needs to get the batter
         self._put_out()
     
     def error(self, batter_on_base=False, advances=None):

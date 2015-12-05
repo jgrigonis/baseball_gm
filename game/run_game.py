@@ -35,6 +35,8 @@ def handle_event(event, game, debug):
     elif event == 'homer':
         display_text = "Homer"
         game.hit(4)
+    # TODO We need multiple cases of errors
+    # errors should be able to move players anywhere, not just to first.
     elif event == 'error':
         try:
             # it's possible that first is occupied, and we'd get a
@@ -76,6 +78,8 @@ def handle_event(event, game, debug):
             display_text = "Fielder's choice"
         except GameException:
             return None
+    # TODO there should be a ball or strike also
+    # You can't get caught stealing without a pitch
     elif event == 'caught_stealing':
         try:
             # we only get caught_stealing if the runner was on first
@@ -98,6 +102,8 @@ def handle_event(event, game, debug):
             display_text = "Runner picked off first"
         except GameException:
             return None
+    # TODO there should be a ball or strike also
+    # You can't steal without a pitch
     elif event == 'steal':
         try:
             # we only get steal if a runner was on first

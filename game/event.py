@@ -1,7 +1,4 @@
 """
-TODO:
-Handle game state
-
 Event generator.  The idea here is to return random events based
 on the state of the game, including batter/pitcher abilities as
 well as other pieces of information in the game state.
@@ -56,6 +53,9 @@ class Event(object):
         my_game is a game object and has the state of the game
 
         TODO: change state based on player skills
+
+        TODO: errors can happen in concert with any play, one example is
+            extending a double to a three base hit with the error.
 
         Pitching:
             # Nasty Factor should change per pitch, not per pitcher.
