@@ -50,7 +50,7 @@ class Event(object):
     def set_probs(self, my_game):
         """Change the probs based on game state
 
-        my_game is a game object and has the state of the game
+        :param my_game: is a game object and has the state of the game
 
         TODO: change state based on player skills
 
@@ -86,6 +86,8 @@ class Event(object):
             'sacrifice': 0,
             'steal': 0,
             'triple_play': 0,
+            'wild_pitch': 0,
+            'passed_ball': 0,
         }
         # If a runner on first
         # TODO adjust for base running skill and speed
@@ -237,6 +239,8 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 1.18)
             self.probs['triple'] = int(self.probs['triple'] * 1.18)
             self.probs['homer'] = int(self.probs['homer'] * 1.18)
+            # self.probs['wild_pitch'] = 100  # TODO adjust for pitcher accuracy
+            # self.probs['passed_ball'] = 100  # TODO adjust for catcher skill
 
         # power = my_game.bat_team.current_batter().batting.skills['POW']
         # self.probs['fly_out'] -= 4 * (power - 50)
