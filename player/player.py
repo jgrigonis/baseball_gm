@@ -1,3 +1,18 @@
+"""The player class.
+
+To add: position skills, throwing arm, batting side
+Different position players should have different mean values for
+different skills, e.g. 1st and 3rd should have more power
+middle infielders less
+outfielders should be faster
+etc.
+
+player should also get stats.
+
+Calculate an overall value based on weighted combination of skills.
+e.g. bunting is worth less than power.
+
+"""
 import random
 
 
@@ -20,11 +35,12 @@ class Player(object):
             'base_running': 0,  # Base-running skill
             'bunting': 0,       # Bunting
         }
-        
-    def generate_stat(self, min=0, max=100, mean=50, sigma=None):
+
+    @staticmethod
+    def generate_stat(minimum=0, maximum=100, mean=50, sigma=None):
         """
-        :param min: minimum allowable value for stat.
-        :param max: maximum allowable value for stat.
+        :param minimum: minimum allowable value for stat.
+        :param maximum: maximum allowable value for stat.
         :param mean: the mean value for the stat to be generated.
         :param sigma: standard deviation. If unspecified, will vary
             based on min, max and mean.
@@ -39,12 +55,12 @@ class Player(object):
         """
         if sigma is None:
             if mean >= 50:
-                sigma = (max - mean) / 3.0
+                sigma = (maximum - mean) / 3.0
             else:
-                sigma = (mean - min) / 3.0
+                sigma = (mean - minimum) / 3.0
         stat = random.gauss(mean, sigma)
-        if stat > max:
-            return max
-        elif stat < min:
-            return min
+        if stat > maximum:
+            return maximum
+        elif stat < minimum:
+            return minimum
         return int(stat)
