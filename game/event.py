@@ -39,7 +39,7 @@ class Event(object):
     def random_event(probs):
         """Use a weighted probability.  probs is a dictionary of events
         and their probability as an integer.
-
+        :param probs: a dict of events as keys and probabilities as values
         """
         rand_num = random.random() * sum(probs.values())
         for index, offset in enumerate(probs.values()):

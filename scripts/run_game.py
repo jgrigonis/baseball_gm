@@ -3,12 +3,15 @@ from game.event import Event
 from game.main import Game
 
 
-def handle_event(event, game, debug):
+def handle_event(event, game, debug=False):
     """Get and handle one event.
 
     We have try catch blocks around certain events so that they aren't
     invoked at the wrong time.
 
+    :param event: one event from the game, as a string.
+    :param game: the game object, with the game state.
+    :param debug: a flag for setting debug on or off.
     """
     display_text = ""
     if event == 'ball':
@@ -44,7 +47,6 @@ def handle_event(event, game, debug):
             game.error(True)
             display_text = "Error"
         except GameException:
-            print("HI")
             return None
     elif event == 'fly_out':
         display_text = "Fly out"
