@@ -93,3 +93,10 @@ class NoJerseyException(GameException):
     def __init__(self, msg=None):
         if msg:
             print(msg)
+
+
+class BadPositionException(GameException):
+    """Player generated with bad position."""
+    def __init__(self, msg=None):
+        if msg:
+            print(msg)
