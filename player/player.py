@@ -19,12 +19,14 @@ import random
 
 class Player(object):
     """A Baseball Player class."""
-    def __init__(self, first_name, last_name, throws=None, bats=None):
+    def __init__(self, first_name, last_name, throws=None, bats=None,
+                 position=None):
         """Setup the player."""
         self.first_name = first_name
         self.last_name = last_name
-        self.throws = throws    # right or left or None
-        self.bats = bats        # right, left or switch or None
+        self.throws = throws        # right or left or None
+        self.bats = bats            # right, left or switch or None
+        self.position = position    # Just used for setting skills
         self.skills = {
             # pitching
             'accuracy': 0,      # Pitching accuracy
@@ -45,10 +47,172 @@ class Player(object):
             'outfield': 0,      # Fly-ball catching
             'arm': 0,           # Arm strength
         }
+        self.template = {
+            'sp': {
+                'throws_left': 0.25,
+                'switch_hitter': 0.01,
+                'bats_left': 0.01,
+                'accuracy': 60,
+                'stamina': 70,
+                'recovery': 60,
+                'power': 20,
+                'eye': 30,
+                'contact': 30,
+                'base_running': 40,
+                'catching': 20,
+                'outfield': 40,
+                'arm': 60
+            },
+            'rp': {
+                'throws_left': 0.35,
+                'switch_hitter': 0.01,
+                'bats_left': 0.01,
+                'accuracy': 60,
+                'recovery': 60,
+                'power': 20,
+                'eye': 30,
+                'contact': 30,
+                'base_running': 40,
+                'catching': 20,
+                'outfield': 40,
+                'arm': 60
+            },
+            'c': {
+                'throws_left': 0.001,
+                'switch_hitter': 0.16,
+                'bats_left': 0.12,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'base_running': 40,
+                'catching': 70,
+                'outfield': 40,
+                'arm': 60
+            },
+            '1b': {
+                'throws_left': 0.33,
+                'switch_hitter': 0.12,
+                'bats_left': 0.12,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'speed': 30,
+                'power': 60,
+                'base_running': 40,
+                'outfield': 40,
+            },
+            'ss': {
+                'throws_left': 0.001,
+                'switch_hitter': 0.25,
+                'bats_left': 0.05,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'speed': 60,
+                'power': 35,
+                'infield': 70,
+            },
+            '2b': {
+                'throws_left': 0.001,
+                'switch_hitter': 0.25,
+                'bats_left': 0.15,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'speed': 60,
+                'power': 35,
+                'infield': 70,
+            },
+            '3b': {
+                'throws_left': 0.001,
+                'switch_hitter': 0.15,
+                'bats_left': 0.05,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'infield': 60,
+            },
+            'lf': {
+                'throws_left': 0.25,
+                'switch_hitter': 0.10,
+                'bats_left': 0.15,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'speed': 60,
+                'power': 60,
+                'catching': 40,
+                'infield': 40,
+                'outfield': 60,
+            },
+            'cf': {
+                'throws_left': 0.33,
+                'switch_hitter': 0.16,
+                'bats_left': 0.15,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'speed': 65,
+                'catching': 40,
+                'infield': 40,
+                'outfield': 65,
+                'arm': 60,
+            },
+            'rf': {
+                'throws_left': 0.25,
+                'switch_hitter': 0.1,
+                'bats_left': 0.15,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'speed': 60,
+                'power': 60,
+                'catching': 40,
+                'infield': 40,
+                'outfield': 60,
+                'arm': 60,
+            },
+            'if': {
+                'throws_left': 0.001,
+                'switch_hitter': 0.25,
+                'bats_left': 0.15,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'infield': 60,
+            },
+            'of': {
+                'throws_left': 0.3,
+                'switch_hitter': 0.2,
+                'bats_left': 0.15,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'speed': 55,
+                'catching': 40,
+                'infield': 40,
+                'outfield': 60,
+            },
+            'dh': {
+                'throws_left': 0.33,
+                'switch_hitter': 0.15,
+                'bats_left': 0.2,
+                'accuracy': 10,
+                'stamina': 10,
+                'recovery': 10,
+                'power': 65,
+                'catching': 40,
+                'infield': 40,
+                'outfield': 40,
+                'arm': 40,
+            },
+        }
 
     def __str__(self):
         """Output the player name as a string."""
         output = str(self.first_name + ' ' + self.last_name) + "\n"
+        if self.position is not None:
+            output += "position: {0:>{1}}\n".format(self.position, 17)
         if self.throws is not None:
             output += "throws: {0:>{1}}\n".format(self.throws, 19)
         if self.bats is not None:
@@ -92,7 +256,35 @@ class Player(object):
             return minimum
         return int(stat)
 
-    def generate(self, position=None):
+    def apply_position_template(self):
+        """Based on the position, set stats and characteristics
+        according to the template.
+        """
+        if self.throws is None:
+            # chance of throwing lefty
+            if random.random() > \
+                    self.template[self.position].get('throws_left', 0.21):
+                self.throws = 'right'
+            else:
+                self.throws = 'left'
+        if self.bats is None:
+            # chance of being a switch hitter.
+            if random.random() < \
+                    self.template[self.position].get('switch_hitter', 0.09):
+                self.bats = 'switch'
+            # chance of batting opposite
+            elif random.random() > \
+                    self.template[self.position].get('bats_left', 0.1):
+                self.bats = self.throws
+            else:
+                self.bats = 'left'
+        for skill in self.skills:
+            self.skills[skill] = self.generate_stat(
+                mean=self.template[self.position].get(skill, 50))
+        if self.throws == 'left':
+            self.skills['catching'] = self.generate_stat(mean=10)
+
+    def generate(self):
         """Generate random stats, and characteristics, based on a
         position type.
 
@@ -111,493 +303,8 @@ class Player(object):
                      'of',  # outfielder
                      'dh',  # designated hitter
                      ]
-        if position is None:
-            position = random.choice(positions)
-        elif position not in positions:
+        if self.position is None:
+            self.position = random.choice(positions)
+        elif self.position not in positions:
             raise game_exceptions.BadPositionException()
-        # remove repetition, this needs to be a function
-        if position == 'sp':
-            if self.throws is None:
-                # 25% chance of starting pitcher being lefty
-                if random.random() > 0.25:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 99% chance of not being a switch hitter.
-                if random.random() > 0.99:
-                    self.bats = 'switch'
-                else:
-                    # 1% chance of batting opposite
-                    if random.random() > 0.01:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        else:
-                            self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=60)
-            self.skills['stamina'] = self.generate_stat(mean=70)
-            self.skills['recovery'] = self.generate_stat(mean=60)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat()
-            self.skills['power'] = self.generate_stat(mean=20)
-            self.skills['eye'] = self.generate_stat(mean=30)
-            self.skills['contact'] = self.generate_stat(mean=30)
-            self.skills['base_running'] = self.generate_stat(mean=40)
-            self.skills['bunting'] = self.generate_stat()
-            self.skills['catching'] = self.generate_stat(mean=20)
-            self.skills['infield'] = self.generate_stat()
-            self.skills['outfield'] = self.generate_stat(mean=40)
-            self.skills['arm'] = self.generate_stat()
-
-        if position == 'rp':
-            if self.throws is None:
-                # 35% chance of relief pitcher being lefty
-                if random.random() > 0.35:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 99% chance of not being a switch hitter.
-                if random.random() > 0.99:
-                    self.bats = 'switch'
-                else:
-                    # 1% chance of batting opposite
-                    if random.random() > 0.01:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        else:
-                            self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=60)
-            self.skills['stamina'] = self.generate_stat()
-            self.skills['recovery'] = self.generate_stat(mean=60)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat()
-            self.skills['power'] = self.generate_stat(mean=20)
-            self.skills['eye'] = self.generate_stat(mean=30)
-            self.skills['contact'] = self.generate_stat(mean=30)
-            self.skills['base_running'] = self.generate_stat(mean=40)
-            self.skills['bunting'] = self.generate_stat()
-            self.skills['catching'] = self.generate_stat(mean=20)
-            self.skills['infield'] = self.generate_stat()
-            self.skills['outfield'] = self.generate_stat(mean=40)
-            self.skills['arm'] = self.generate_stat()
-
-        if position == 'c':
-            if self.throws is None:
-                # 0.1% chance of catcher being lefty
-                if random.random() > 0.001:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 84% chance of not being a switch hitter.
-                if random.random() > 0.84:
-                    self.bats = 'switch'
-                else:
-                    # 12% chance of batting opposite
-                    if random.random() > 0.12:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefty catchers don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=30)
-            self.skills['power'] = self.generate_stat()
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat(mean=40)
-            self.skills['bunting'] = self.generate_stat()
-            self.skills['catching'] = self.generate_stat(mean=70)
-            self.skills['infield'] = self.generate_stat()
-            self.skills['outfield'] = self.generate_stat(mean=40)
-            self.skills['arm'] = self.generate_stat()
-
-        if position == '1b':
-            if self.throws is None:
-                # 33% chance of being lefty
-                if random.random() > 0.33:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 88% chance of not being a switch hitter.
-                if random.random() > 0.88:
-                    self.bats = 'switch'
-                else:
-                    # 12% chance of batting opposite
-                    if random.random() > 0.12:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=30)
-            self.skills['power'] = self.generate_stat(mean=60)
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat(mean=40)
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat()
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat()
-            self.skills['outfield'] = self.generate_stat(mean=40)
-            self.skills['arm'] = self.generate_stat()
-
-        if position == '2b':
-            if self.throws is None:
-                # 0.01% chance of being lefty
-                if random.random() > 0.001:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 75% chance of not being a switch hitter.
-                if random.random() > 0.75:
-                    self.bats = 'switch'
-                else:
-                    # 15% chance of batting opposite
-                    if random.random() > 0.15:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=60)
-            self.skills['power'] = self.generate_stat(mean=30)
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat()
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=70)
-            self.skills['outfield'] = self.generate_stat()
-            self.skills['arm'] = self.generate_stat()
-
-        if position == 'ss':
-            if self.throws is None:
-                # 0.01% chance of being lefty
-                if random.random() > 0.001:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 75% chance of not being a switch hitter.
-                if random.random() > 0.75:
-                    self.bats = 'switch'
-                else:
-                    # 5% chance of batting opposite
-                    if random.random() > 0.5:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=60)
-            self.skills['power'] = self.generate_stat(mean=30)
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat()
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=70)
-            self.skills['outfield'] = self.generate_stat()
-            self.skills['arm'] = self.generate_stat()
-
-        if position == '3b':
-            if self.throws is None:
-                # 0.01% chance of being lefty
-                if random.random() > 0.001:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 85% chance of not being a switch hitter.
-                if random.random() > 0.85:
-                    self.bats = 'switch'
-                else:
-                    # 15% chance of batting opposite
-                    if random.random() > 0.15:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat()
-            self.skills['power'] = self.generate_stat()
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat()
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=60)
-            self.skills['outfield'] = self.generate_stat()
-            self.skills['arm'] = self.generate_stat()
-
-        if position == 'lf':
-            if self.throws is None:
-                # 25% chance of being lefty
-                if random.random() > 0.25:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 90% chance of not being a switch hitter.
-                if random.random() > 0.90:
-                    self.bats = 'switch'
-                else:
-                    # 15% chance of batting opposite
-                    if random.random() > 0.15:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        # Unless they are Rickey
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=60)
-            self.skills['power'] = self.generate_stat(mean=60)
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat(mean=40)
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=40)
-            self.skills['outfield'] = self.generate_stat(mean=60)
-            self.skills['arm'] = self.generate_stat()
-
-        if position == 'cf':
-            if self.throws is None:
-                # 33% chance of being lefty
-                if random.random() > 0.33:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 84% chance of not being a switch hitter.
-                if random.random() > 0.84:
-                    self.bats = 'switch'
-                else:
-                    # 15% chance of batting opposite
-                    if random.random() > 0.15:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=65)
-            self.skills['power'] = self.generate_stat()
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat(mean=40)
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=40)
-            self.skills['outfield'] = self.generate_stat(mean=65)
-            self.skills['arm'] = self.generate_stat(mean=60)
-
-        if position == 'rf':
-            if self.throws is None:
-                # 25% chance of being lefty
-                if random.random() > 0.25:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 90% chance of not being a switch hitter.
-                if random.random() > 0.90:
-                    self.bats = 'switch'
-                else:
-                    # 15% chance of batting opposite
-                    if random.random() > 0.15:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=60)
-            self.skills['power'] = self.generate_stat(mean=60)
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat(mean=40)
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=40)
-            self.skills['outfield'] = self.generate_stat(mean=60)
-            self.skills['arm'] = self.generate_stat(mean=60)
-
-        if position == 'if':
-            if self.throws is None:
-                # 0.01% chance of being lefty
-                if random.random() > 0.001:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 75% chance of not being a switch hitter.
-                if random.random() > 0.75:
-                    self.bats = 'switch'
-                else:
-                    # 15% chance of batting opposite
-                    if random.random() > 0.15:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat()
-            self.skills['power'] = self.generate_stat()
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat()
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=60)
-            self.skills['outfield'] = self.generate_stat()
-            self.skills['arm'] = self.generate_stat()
-
-        if position == 'of':
-            if self.throws is None:
-                # 30% chance of being lefty
-                if random.random() > 0.30:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 88% chance of not being a switch hitter.
-                if random.random() > 0.88:
-                    self.bats = 'switch'
-                else:
-                    # 15% chance of batting opposite
-                    if random.random() > 0.15:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat(mean=55)
-            self.skills['power'] = self.generate_stat()
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat(mean=40)
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=40)
-            self.skills['outfield'] = self.generate_stat(mean=60)
-            self.skills['arm'] = self.generate_stat()
-
-        if position == 'dh':
-            if self.throws is None:
-                # 33% chance of being lefty
-                if random.random() > 0.33:
-                    self.throws = 'right'
-                else:
-                    self.throws = 'left'
-            if self.bats is None:
-                # 85% chance of not being a switch hitter.
-                if random.random() > 0.85:
-                    self.bats = 'switch'
-                else:
-                    # 20% chance of batting opposite
-                    if random.random() > 0.20:
-                        self.bats = self.throws
-                    else:
-                        if self.throws == 'right':
-                            self.bats = 'left'
-                        # else: lefties don't bat right
-                        #     self.bats = 'right'
-            self.skills['accuracy'] = self.generate_stat(mean=10)
-            self.skills['stamina'] = self.generate_stat(mean=10)
-            self.skills['recovery'] = self.generate_stat(mean=10)
-            self.skills['clutch'] = self.generate_stat()
-            self.skills['speed'] = self.generate_stat()
-            self.skills['power'] = self.generate_stat(mean=65)
-            self.skills['eye'] = self.generate_stat()
-            self.skills['contact'] = self.generate_stat()
-            self.skills['base_running'] = self.generate_stat()
-            self.skills['bunting'] = self.generate_stat()
-            if self.throws == 'right':
-                self.skills['catching'] = self.generate_stat(mean=40)
-            else:
-                self.skills['catching'] = self.generate_stat(mean=10)
-            self.skills['infield'] = self.generate_stat(mean=40)
-            self.skills['outfield'] = self.generate_stat(mean=40)
-            self.skills['arm'] = self.generate_stat(mean=40)
+        self.apply_position_template()
