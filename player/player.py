@@ -15,6 +15,7 @@ e.g. bunting is worth less than power.
 """
 import game.game_exceptions as game_exceptions
 import random
+from player import positions
 
 
 class Player(object):
@@ -209,7 +210,7 @@ class Player(object):
         }
 
     def __str__(self):
-        """Output the player name as a string."""
+        """Output the player name as a multi-line string."""
         output = str(self.first_name + ' ' + self.last_name) + "\n"
         if self.position is not None:
             output += "position: {0:>{1}}\n".format(self.position, 17)
@@ -223,6 +224,61 @@ class Player(object):
                                                   25 - len(key))
             output += "\n"
         return output
+
+    def horizontal(self):
+        """Output the player and stats as a single line."""
+        name = self.first_name + ' ' + self.last_name
+        output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
+        output += "{:>{}}".format(self.position, 3)
+        output += "{:>{}}".format(self.abbreviate(self.throws), 2)
+        output += "{:>{}}".format(self.abbreviate(self.bats), 2)
+        output += "{:>{}}".format(self.skills["clutch"], 3)
+        output += "{:>{}}".format(self.skills["speed"], 3)
+        output += "{:>{}}".format(self.skills["power"], 3)
+        output += "{:>{}}".format(self.skills["eye"], 3)
+        output += "{:>{}}".format(self.skills["contact"], 3)
+        output += "{:>{}}".format(self.skills["base_running"], 3)
+        output += "{:>{}}".format(self.skills["bunting"], 3)
+        output += "{:>{}}".format(self.skills["catching"], 3)
+        output += "{:>{}}".format(self.skills["infield"], 3)
+        output += "{:>{}}".format(self.skills["outfield"], 3)
+        output += "{:>{}}".format(self.skills["arm"], 3)
+        output += "{:>{}}".format(self.skills["accuracy"], 3)
+        output += "{:>{}}".format(self.skills["stamina"], 3)
+        output += "{:>{}}".format(self.skills["recovery"], 3)
+        return output
+
+    @staticmethod
+    def header():
+        """Return the header as a single line."""
+        output = str("{:<{}} ".format("Name", 30))  # 30 is the longest name
+        output += "{:>{}}".format("PS", 3)
+        output += "{:>{}}".format("T", 2)
+        output += "{:>{}}".format("B", 2)
+        output += "{:>{}}".format("CL", 3)
+        output += "{:>{}}".format("SP", 3)
+        output += "{:>{}}".format("PO", 3)
+        output += "{:>{}}".format("EY", 3)
+        output += "{:>{}}".format("CT", 3)
+        output += "{:>{}}".format("BR", 3)
+        output += "{:>{}}".format("BU", 3)
+        output += "{:>{}}".format("CA", 3)
+        output += "{:>{}}".format("IF", 3)
+        output += "{:>{}}".format("OF", 3)
+        output += "{:>{}}".format("AR", 3)
+        output += "{:>{}}".format("AC", 3)
+        output += "{:>{}}".format("ST", 3)
+        output += "{:>{}}".format("RE", 3)
+        return output
+
+    @staticmethod
+    def abbreviate(value):
+        if value == 'right':
+            return 'r'
+        if value == 'left':
+            return 'l'
+        if value == 'switch':
+            return 's'
 
     @staticmethod
     def generate_stat(minimum=1, maximum=100, mean=50, sigma=None):
@@ -289,20 +345,6 @@ class Player(object):
         position type.
 
         """
-        positions = ['sp',  # starting pitcher
-                     'rp',  # relief pitcher
-                     'c',   # catcher
-                     '1b',  # first baseman
-                     '2b',  # second baseman
-                     'ss',  # shortstop
-                     '3b',  # third baseman
-                     'lf',  # left fielder
-                     'cf',  # center fielder
-                     'rf',  # right fielder
-                     'if',  # utility infielder
-                     'of',  # outfielder
-                     'dh',  # designated hitter
-                     ]
         if self.position is None:
             self.position = random.choice(positions)
         elif self.position not in positions:

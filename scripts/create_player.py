@@ -1,10 +1,12 @@
 """Create a player."""
 from player.player import Player
+from name_generator.names import NameGenerator
 
 
 def main():
     debug = True
-    my_player = Player("first", "last")
+    ng = NameGenerator()
+    my_player = Player(ng.first(), ng.last())
     my_player.generate()
     if debug:
         print(my_player)
