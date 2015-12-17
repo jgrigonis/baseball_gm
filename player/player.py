@@ -28,11 +28,14 @@ class Player(object):
         self.throws = throws        # right or left or None
         self.bats = bats            # right, left or switch or None
         self.position = position    # Just used for setting skills
+        self.ratings = dict()       # Will be populated based on skills
         self.skills = {
             # pitching
             'accuracy': 0,      # Pitching accuracy
             'stamina': 0,       # Pitching stamina
             'recovery': 0,      # Pitching stamina recovery speed with rest
+            'ground_balls': 0,  # Ground ball pitcher
+            'strikes': 0,       # Pitcher ability to get strikes
             # general
             'clutch': 0,        # Clutch
             'speed': 0,         # Running speed
@@ -85,6 +88,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'base_running': 40,
                 'catching': 70,
                 'outfield': 40,
@@ -97,6 +102,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'speed': 30,
                 'power': 60,
                 'base_running': 40,
@@ -109,6 +116,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'speed': 60,
                 'power': 35,
                 'infield': 70,
@@ -120,6 +129,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'speed': 60,
                 'power': 35,
                 'infield': 70,
@@ -131,6 +142,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'infield': 60,
             },
             'lf': {
@@ -140,6 +153,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'speed': 60,
                 'power': 60,
                 'catching': 40,
@@ -153,6 +168,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'speed': 65,
                 'catching': 40,
                 'infield': 40,
@@ -166,6 +183,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'speed': 60,
                 'power': 60,
                 'catching': 40,
@@ -180,6 +199,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'infield': 60,
             },
             'of': {
@@ -189,6 +210,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'speed': 55,
                 'catching': 40,
                 'infield': 40,
@@ -201,6 +224,8 @@ class Player(object):
                 'accuracy': 10,
                 'stamina': 10,
                 'recovery': 10,
+                'ground_balls': 10,
+                'strikes': 10,
                 'power': 65,
                 'catching': 40,
                 'infield': 40,
@@ -221,6 +246,12 @@ class Player(object):
         for key in self.skills.keys():
             output += str("{0}: {1:>{2}}").format(key,
                                                   self.skills[key],
+                                                  25 - len(key))
+            output += "\n"
+        output += "\n"
+        for key in self.ratings.keys():
+            output += str("{0}: {1:>{2}}").format(key,
+                                                  self.ratings[key],
                                                   25 - len(key))
             output += "\n"
         return output
@@ -246,6 +277,22 @@ class Player(object):
         output += "{:>{}}".format(self.skills["accuracy"], 3)
         output += "{:>{}}".format(self.skills["stamina"], 3)
         output += "{:>{}}".format(self.skills["recovery"], 3)
+        output += "{:>{}}".format(self.skills["ground_balls"], 3)
+        output += "{:>{}}".format(self.skills["strikes"], 3)
+        output += "  "
+        output += "{:>{}}".format(self.ratings["p"], 3)
+        output += "{:>{}}".format(self.ratings["c"], 3)
+        output += "{:>{}}".format(self.ratings["1b"], 3)
+        output += "{:>{}}".format(self.ratings["2b"], 3)
+        output += "{:>{}}".format(self.ratings["3b"], 3)
+        output += "{:>{}}".format(self.ratings["ss"], 3)
+        output += "{:>{}}".format(self.ratings["lf"], 3)
+        output += "{:>{}}".format(self.ratings["cf"], 3)
+        output += "{:>{}}".format(self.ratings["rf"], 3)
+        output += " "
+        output += "{:>{}}".format(self.ratings["lead_off"], 3)
+        output += "{:>{}}".format(self.ratings["contact_hitter"], 3)
+        output += "{:>{}}".format(self.ratings["power_hitter"], 3)
         return output
 
     @staticmethod
@@ -269,6 +316,22 @@ class Player(object):
         output += "{:>{}}".format("AC", 3)
         output += "{:>{}}".format("ST", 3)
         output += "{:>{}}".format("RE", 3)
+        output += "{:>{}}".format("GB", 3)
+        output += "{:>{}}".format("KK", 3)
+        output += "  "
+        output += "{:>{}}".format("P", 3)
+        output += "{:>{}}".format("C", 3)
+        output += "{:>{}}".format("1B", 3)
+        output += "{:>{}}".format("2B", 3)
+        output += "{:>{}}".format("3B", 3)
+        output += "{:>{}}".format("SS", 3)
+        output += "{:>{}}".format("LF", 3)
+        output += "{:>{}}".format("CF", 3)
+        output += "{:>{}}".format("RF", 3)
+        output += " "
+        output += "{:>{}}".format("LO", 3)
+        output += "{:>{}}".format("CH", 3)
+        output += "{:>{}}".format("PH", 3)
         return output
 
     @staticmethod
@@ -333,10 +396,12 @@ class Player(object):
                     self.template[self.position].get('bats_left', 0.1):
                 self.bats = self.throws
             else:
+                # No bats right, throws left, except Rickey
                 self.bats = 'left'
         for skill in self.skills:
             self.skills[skill] = self.generate_stat(
                 mean=self.template[self.position].get(skill, 50))
+        # No left handed catchers, please
         if self.throws == 'left':
             self.skills['catching'] = self.generate_stat(mean=10)
 
@@ -350,3 +415,73 @@ class Player(object):
         elif self.position not in positions:
             raise game_exceptions.BadPositionException()
         self.apply_position_template()
+        self.rate_player()
+
+    def rate_player(self):
+        """Based on the player skills, rate the player at various
+        positions and hitting styles. For instance, an outfielder's
+        skill in the outfield is not just their 'outfield' rating,
+        their speed, arm and clutch skill also come into play.
+
+        Their speed will increase their range, their arm will increase
+        the chance of putting out runners stretching hits, and clutch
+        will increase the chances of them making a game changing play
+        in the clutch.
+        """
+        self.ratings["cf"] = int(round(
+            (self.skills.get("outfield") * 5 +
+             self.skills.get("arm") * 2 +
+             self.skills.get("speed") * 3 +
+             self.skills.get("clutch")) / 11.0))
+        self.ratings["rf"] = int(round(
+            (self.skills.get("outfield") * 5 +
+             self.skills.get("arm") * 2 +
+             self.skills.get("speed") +
+             self.skills.get("clutch")) / 9.0))
+        self.ratings["lf"] = int(round(
+            (self.skills.get("outfield") * 5 +
+             self.skills.get("arm") +
+             self.skills.get("speed") +
+             self.skills.get("clutch")) / 8.0))
+        self.ratings["c"] = int(round(
+            (self.skills.get("catching") * 5 +
+             self.skills.get("arm") +
+             self.skills.get("clutch")) / 7.0))
+        self.ratings["1b"] = int(round(
+            (self.skills.get("infield") * 5 +
+             self.skills.get("clutch")) / 6.0))
+        self.ratings["2b"] = int(round(
+            (self.skills.get("infield") * 5 +
+             self.skills.get("speed") +
+             self.skills.get("clutch")) / 7.0))
+        self.ratings["ss"] = int(round(
+            (self.skills.get("infield") * 5 +
+             self.skills.get("speed") +
+             self.skills.get("arm") +
+             self.skills.get("clutch")) / 8.0))
+        self.ratings["3b"] = int(round(
+            (self.skills.get("infield") * 5 +
+             self.skills.get("arm") +
+             self.skills.get("clutch")) / 7.0))
+        self.ratings["p"] = int(round(
+            (self.skills.get("accuracy") +
+             self.skills.get("stamina") +
+             self.skills.get("recovery") +
+             self.skills.get("ground_balls") +
+             self.skills.get("strikes") +
+             self.skills.get("clutch")) / 6.0))
+        self.ratings["lead_off"] = int(round(
+            (self.skills.get("speed") +
+             self.skills.get("eye") * 2 +
+             self.skills.get("contact") * 2 +
+             self.skills.get("base_running") +
+             self.skills.get("clutch")) / 7.0))
+        self.ratings["contact_hitter"] = int(round(
+            (self.skills.get("eye") * 2 +
+             self.skills.get("contact") * 4 +
+             self.skills.get("clutch")) / 7.0))
+        self.ratings["power_hitter"] = int(round(
+            (self.skills.get("power") * 4 +
+             self.skills.get("eye") +
+             self.skills.get("contact") +
+             self.skills.get("clutch")) / 7.0))
