@@ -16,50 +16,39 @@ Need to do something about setting the lineup.
 """
 import random
 
-from name_generator.names import NameGenerator
+from scripts.create_player import create
+import game.game_exceptions as game_exceptions
 from player.player import Player
 from player import positions
 from team.team import Team
 __author__ = 'jgrigonis'
 
 
+def create_players(position=None, num=1):
+    players = []
+    for _ in range(num):
+        if position is None:
+            pos = random.choice(positions)
+        elif isinstance(position, list):
+            pos = random.choice(position)
+        else:
+            pos = position
+        if pos not in positions:
+            raise game_exceptions.BadPositionException()
+        players.append(create(pos))
+    return players
+
+
 def main():
     debug = False
-    ng = NameGenerator()
     team = Team("Foo", "Bars")
-    # These loops could be made into a function
-    for _ in range(2):
-        my_player = Player(ng.first(), ng.last(), position='c')
-        my_player.generate()
-        team.players.append(my_player)
-    for _ in range(5):
-        position=random.choice(['of', 'cf', 'lf', 'rf'])
-        my_player = Player(ng.first(), ng.last(), position=position)
-        my_player.generate()
-        team.players.append(my_player)
-    for _ in range(6):
-        position = random.choice(['if', '2b', '3b', 'ss', '1b'])
-        my_player = Player(ng.first(), ng.last(), position=position)
-        my_player.generate()
-        team.players.append(my_player)
-    for _ in range(5):
-        my_player = Player(ng.first(), ng.last(), position='sp')
-        my_player.generate()
-        team.players.append(my_player)
-    for _ in range(7):
-        my_player = Player(ng.first(), ng.last(), position='rp')
-        my_player.generate()
-        team.players.append(my_player)
-    for _ in range(4):
-        position = random.choice(['sp', 'rp'])
-        my_player = Player(ng.first(), ng.last(), position=position)
-        my_player.generate()
-        team.players.append(my_player)
-    for _ in range(11):
-        position = random.choice(positions)
-        my_player = Player(ng.first(), ng.last(), position=position)
-        my_player.generate()
-        team.players.append(my_player)
+    team.players.extend(create_players('c', 2))
+    team.players.extend(create_players(['of', 'cf', 'lf', 'rf'], 5))
+    team.players.extend(create_players(['if', '2b', '3b', 'ss', '1b'], 6))
+    team.players.extend(create_players('sp', 5))
+    team.players.extend(create_players('rp', 7))
+    team.players.extend(create_players(['sp', 'rp'], 4))
+    team.players.extend(create_players(num=11))
     if debug:
         for player in team.players:
             print(player)

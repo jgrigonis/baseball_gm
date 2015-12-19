@@ -1,14 +1,18 @@
-"""Create a player."""
+"""Create a randomly named player."""
 from player.player import Player
 from name_generator.names import NameGenerator
 
 
+def create(position=None):
+    ng = NameGenerator()
+    my_player = Player(ng.first(), ng.last(), position=position)
+    my_player.generate()
+    return my_player
+
+
 def main():
     debug = True
-    ng = NameGenerator()
-    my_player = Player(ng.first(), ng.last())
-    my_player.generate()
-    my_player.rate_player()
+    my_player = create()
     if debug:
         print(my_player)
     print(my_player.header())
