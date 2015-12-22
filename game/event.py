@@ -8,14 +8,19 @@ play won't happen with only 1 runner on, and so on.
 
 """
 import random
+from game.game_exceptions import GameException
 __author__ = 'josh'
 
 
 class Event(object):
     """Determine upcoming events based on game state."""
-    def __init__(self, game):
+    def __init__(self, game, debug=False):
         """Use the game state found in game."""
-        self.probs = self.set_probs(game)
+        self.debug = debug
+        self.game = game
+        self.probs = None
+        self.set_probs()
+        self.event = None
 
     def __str__(self):
         """Just print the probs.  We print out the key, colon, one space
@@ -31,26 +36,33 @@ class Event(object):
             output += "\n"
         return output
 
-    def get_event(self):
-        """Generate one random event."""
-        return self.random_event(self.probs)
+    def do_event(self):
+        """Generate one random event, and do it"""
+        self.set_probs()
+        self.event = self.random_event()
+        self.handle_event()
 
-    @staticmethod
-    def random_event(probs):
+        # TODO: handle_event needs to apply defensive filter
+
+    def random_event(self):
         """Use a weighted probability.  probs is a dictionary of events
         and their probability as an integer.
-        :param probs: a dict of events as keys and probabilities as values
+
+        algorithm: sum up all the integer probabilities. Generate a
+        random number between 0 and that sum. Step through the
+        dictionary of probabilities subtracting its value from the
+        random number until you get it lower than 0. This is guaranteed
+        to happen.
+
         """
-        rand_num = random.random() * sum(probs.values())
-        for index, offset in enumerate(probs.values()):
-            rand_num -= offset
+        rand_num = random.random() * sum(self.probs.values())
+        for index, value in enumerate(self.probs.values()):
+            rand_num -= value
             if rand_num < 0:
-                return list(probs)[index]
+                return list(self.probs)[index]
 
-    def set_probs(self, my_game):
+    def set_probs(self):
         """Change the probs based on game state
-
-        :param my_game: is a game object and has the state of the game
 
         TODO: change state based on player skills
 
@@ -91,9 +103,9 @@ class Event(object):
         }
         # If a runner on first
         # TODO adjust for base running skill and speed
-        if my_game.bases[0] != 0 and \
-                my_game.bases[1] == 0 and \
-                my_game.bases[2] == 0:
+        if self.game.bases[0] != 0 and \
+                self.game.bases[1] == 0 and \
+                self.game.bases[2] == 0:
             self.probs['steal'] = 600
             self.probs['double_play'] = 400
             self.probs['caught_stealing'] = 200
@@ -102,13 +114,13 @@ class Event(object):
             self.probs['picked_off'] = 50
             self.probs['sacrifice'] = 250
         # Runner on first and second.  Non-specific on 3rd.
-        if my_game.bases[0] != 0 and my_game.bases[1] != 0:
+        if self.game.bases[0] != 0 and self.game.bases[1] != 0:
             self.probs['double_play'] = 400
             self.probs['triple_play'] = 40
             self.probs['balk'] = 10
         # TODO add case for runner on second and third base open
         # Count variation
-        if my_game.count.balls == 0 and my_game.count.strikes == 0:
+        if self.game.count.balls == 0 and self.game.count.strikes == 0:
             self.probs['ball'] = int(self.probs['ball'] * 1.15)
             self.probs['strike'] = int(self.probs['strike'] * 1.33)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.66)
@@ -118,7 +130,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 0.61)
             self.probs['triple'] = int(self.probs['triple'] * 0.61)
             self.probs['homer'] = int(self.probs['homer'] * 0.61)
-        elif my_game.count.balls == 1 and my_game.count.strikes == 0:
+        elif self.game.count.balls == 1 and self.game.count.strikes == 0:
             self.probs['ball'] = int(self.probs['ball'] * 0.92)
             self.probs['strike'] = int(self.probs['strike'] * 1.12)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.94)
@@ -128,7 +140,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 1.1)
             self.probs['triple'] = int(self.probs['triple'] * 1.1)
             self.probs['homer'] = int(self.probs['homer'] * 1.1)
-        elif my_game.count.balls == 0 and my_game.count.strikes == 1:
+        elif self.game.count.balls == 0 and self.game.count.strikes == 1:
             self.probs['ball'] = int(self.probs['ball'] * 1.13)
             self.probs['strike'] = int(self.probs['strike'] * 0.74)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.11)
@@ -138,7 +150,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 0.78)
             self.probs['triple'] = int(self.probs['triple'] * 0.78)
             self.probs['homer'] = int(self.probs['homer'] * 0.78)
-        elif my_game.count.balls == 2 and my_game.count.strikes == 0:
+        elif self.game.count.balls == 2 and self.game.count.strikes == 0:
             self.probs['ball'] = int(self.probs['ball'] * 1.08)
             self.probs['strike'] = int(self.probs['strike'] * 1.44)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.57)
@@ -148,7 +160,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 0.69)
             self.probs['triple'] = int(self.probs['triple'] * 0.69)
             self.probs['homer'] = int(self.probs['homer'] * 0.69)
-        elif my_game.count.balls == 1 and my_game.count.strikes == 1:
+        elif self.game.count.balls == 1 and self.game.count.strikes == 1:
             self.probs['ball'] = int(self.probs['ball'] * 0.96)
             self.probs['strike'] = int(self.probs['strike'] * 0.78)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.34)
@@ -158,7 +170,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 1.15)
             self.probs['triple'] = int(self.probs['triple'] * 1.15)
             self.probs['homer'] = int(self.probs['homer'] * 1.15)
-        elif my_game.count.balls == 0 and my_game.count.strikes == 2:
+        elif self.game.count.balls == 0 and self.game.count.strikes == 2:
             self.probs['ball'] = int(self.probs['ball'] * 1.37)
             self.probs['strike'] = int(self.probs['strike'] * 0.6)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.02)
@@ -168,7 +180,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 0.74)
             self.probs['triple'] = int(self.probs['triple'] * 0.74)
             self.probs['homer'] = int(self.probs['homer'] * 0.74)
-        elif my_game.count.balls == 3 and my_game.count.strikes == 0:
+        elif self.game.count.balls == 3 and self.game.count.strikes == 0:
             self.probs['ball'] = int(self.probs['ball'] * 0.89)
             self.probs['strike'] = int(self.probs['strike'] * 2.56)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.08)
@@ -178,7 +190,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 0.21)
             self.probs['triple'] = int(self.probs['triple'] * 0.21)
             self.probs['homer'] = int(self.probs['homer'] * 0.21)
-        elif my_game.count.balls == 2 and my_game.count.strikes == 1:
+        elif self.game.count.balls == 2 and self.game.count.strikes == 1:
             self.probs['ball'] = int(self.probs['ball'] * 0.69)
             self.probs['strike'] = int(self.probs['strike'] * 0.89)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.19)
@@ -188,7 +200,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 1.71)
             self.probs['triple'] = int(self.probs['triple'] * 1.71)
             self.probs['homer'] = int(self.probs['homer'] * 1.71)
-        elif my_game.count.balls == 1 and my_game.count.strikes == 2:
+        elif self.game.count.balls == 1 and self.game.count.strikes == 2:
             self.probs['ball'] = int(self.probs['ball'] * 0.97)
             self.probs['strike'] = int(self.probs['strike'] * 0.71)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.26)
@@ -198,7 +210,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 1.16)
             self.probs['triple'] = int(self.probs['triple'] * 1.16)
             self.probs['homer'] = int(self.probs['homer'] * 1.16)
-        elif my_game.count.balls == 3 and my_game.count.strikes == 1:
+        elif self.game.count.balls == 3 and self.game.count.strikes == 1:
             self.probs['ball'] = int(self.probs['ball'] * 0.95)
             self.probs['strike'] = int(self.probs['strike'] * 0.76)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.79)
@@ -208,7 +220,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 1.57)
             self.probs['triple'] = int(self.probs['triple'] * 1.57)
             self.probs['homer'] = int(self.probs['homer'] * 1.57)
-        elif my_game.count.balls == 2 and my_game.count.strikes == 2:
+        elif self.game.count.balls == 2 and self.game.count.strikes == 2:
             self.probs['ball'] = int(self.probs['ball'] * 0.65)
             self.probs['strike'] = int(self.probs['strike'] * 0.76)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.54)
@@ -218,7 +230,7 @@ class Event(object):
             self.probs['double'] = int(self.probs['double'] * 1.63)
             self.probs['triple'] = int(self.probs['triple'] * 1.63)
             self.probs['homer'] = int(self.probs['homer'] * 1.63)
-        elif my_game.count.balls == 3 and my_game.count.strikes == 2:
+        elif self.game.count.balls == 3 and self.game.count.strikes == 2:
             self.probs['ball'] = int(self.probs['ball'] * 0.62)
             self.probs['strike'] = int(self.probs['strike'] * 0.65)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.36)
@@ -229,9 +241,9 @@ class Event(object):
             self.probs['triple'] = int(self.probs['triple'] * 1.66)
             self.probs['homer'] = int(self.probs['homer'] * 1.66)
         # Men on base
-        if my_game.bases[0] != 0 or \
-                my_game.bases[1] != 0 or \
-                my_game.bases[2] != 0:
+        if self.game.bases[0] != 0 or \
+                self.game.bases[1] != 0 or \
+                self.game.bases[2] != 0:
             self.probs['ball'] = int(self.probs['ball'] * 1.03)
             self.probs['strike'] = int(self.probs['strike'] * 0.97)
             self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.94)
@@ -242,21 +254,21 @@ class Event(object):
             # self.probs['wild_pitch'] = 100  # TODO adjust for pitcher accuracy
             # self.probs['passed_ball'] = 100  # TODO adjust for catcher skill
 
-        # power = my_game.bat_team.current_batter().batting.skills['POW']
+        # power = self.game.bat_team.current_batter().batting.skills['POW']
         # self.probs['fly_out'] -= 4 * (power - 50)
         # self.probs['homer'] = int(self.probs['homer'] * (power / 100.0))
         # #  self.probs['homer'] += 4 * (power - 70)  # +120 to -280
         # self.probs['single'] -= 1 * (power - 50)
         # self.probs['double'] += 1 * (power - 50)
-        # eye = my_game.bat_team.current_batter().batting.skills['EYE']
+        # eye = self.game.bat_team.current_batter().batting.skills['EYE']
         # self.probs['strike'] -= 8 * (eye - 50)
         # self.probs['foul_ball'] += 4 * (eye - 50)
         # self.probs['ball'] += 4 * (eye - 50)
-        # contact = my_game.bat_team.current_batter().batting.skills['CON']
+        # contact = self.game.bat_team.current_batter().batting.skills['CON']
         # self.probs['strike'] -= 4 * (contact - 50)
         # self.probs['single'] += 2 * (contact - 50)
         # self.probs['ground_out'] += 1 * (contact - 50)
-        # speed = my_game.bat_team.current_batter().batting.skills['SPD']
+        # speed = self.game.bat_team.current_batter().batting.skills['SPD']
         # self.probs['ground_out'] -= (speed - 50)
         # self.probs['single'] += .9 * (speed - 50)
         # self.probs['double'] += .1 * (speed - 50)
@@ -265,4 +277,121 @@ class Event(object):
         #     self.probs['double_play'] -= (speed - 50)
         #     self.probs['fielders_choice'] += (speed - 50)
 
-        return self.probs
+    def handle_event(self):
+        """Get and handle one event.
+
+        We have try catch blocks around certain events so that they aren't
+        invoked at the wrong time.
+        """
+        display_text = ""
+        if self.event == 'ball':
+            if self.game.count.balls == 3:
+                display_text = "Walk"
+            else:
+                display_text = "Ball {0}".format(self.game.count.balls + 1)
+            self.game.ball()
+        elif self.event == 'strike':
+            if self.game.count.strikes == 2:
+                display_text = "Strike out"
+            else:
+                display_text = "Strike {0}".format(self.game.count.strikes + 1)
+            self.game.strike()
+        elif self.event == 'single':
+            display_text = "Single"
+            self.game.hit(1)
+        elif self.event == 'double':
+            display_text = "Double"
+            self.game.hit(2)
+        elif self.event == 'triple':
+            display_text = "Triple"
+            self.game.hit(3)
+        elif self.event == 'homer':
+            display_text = "Homer"
+            self.game.hit(4)
+        # TODO We need multiple cases of errors
+        # errors should be able to move players anywhere, not just to first.
+        elif self.event == 'error':
+            try:
+                # it's possible that first is occupied, and we'd get a
+                # problem here.
+                self.game.error(True)
+                display_text = "Error"
+            except GameException:
+                return None
+        elif self.event == 'fly_out':
+            display_text = "Fly out"
+            self.game.fly_out()
+        elif self.event == 'ground_out':
+            display_text = "Ground out"
+            self.game.ground_out()
+        elif self.event == 'hit_by_pitch':
+            display_text = "Hit by pitch"
+            self.game.hit_by_pitch()
+        elif self.event == 'foul_ball':
+            if self.game.count.strikes == 2:
+                display_text = "Foul ball, still 2 strikes"
+            else:
+                display_text = "Foul ball, strike {0}".format(
+                                        self.game.count.strikes + 1)
+            self.game.foul_ball()
+        elif self.event == 'balk':
+            display_text = "Balk"
+            self.game.balk()
+        elif self.event == 'sacrifice':
+            if self.game.inning.outs != 2:
+                display_text = "Sacrifice"
+                self.game.sacrifice()
+            else:
+                return None
+        elif self.event == 'fielders_choice':
+            try:
+                # we only get fielders_choice if the runner was on first
+                self.game.fielders_choice()
+                display_text = "Fielder's choice"
+            except GameException:
+                return None
+        # TODO there should be a ball or strike also
+        # You can't get caught stealing without a pitch
+        elif self.event == 'caught_stealing':
+            try:
+                # we only get caught_stealing if the runner was on first
+                # and second is vacant
+                self.game.caught_stealing("second")
+                display_text = "Runner caught stealing second"
+            except GameException:
+                return None
+        elif self.event == 'double_play':
+            try:
+                # we only get double_play if a runner was on first
+                self.game.double_play()
+                display_text = "Double play"
+            except GameException:
+                return None
+        elif self.event == 'picked_off':
+            try:
+                # we only get picked_off if a runner was on first
+                self.game.picked_off("first")
+                display_text = "Runner picked off first"
+            except GameException:
+                return None
+        # TODO there should be a ball or strike also
+        # TODO should be able to steal third
+        # You can't steal without a pitch
+        elif self.event == 'steal':
+            try:
+                # we only get steal if a runner was on first
+                # and second is vacant
+                self.game.steal("second")
+                display_text = "Runner stole second"
+            except GameException:
+                return None
+        elif self.event == 'triple_play':
+            try:
+                # we only get triple_play if at least 2 runners
+                # are on base
+                self.game.triple_play()
+                display_text = "Triple play"
+            except GameException:
+                return None
+        if display_text != "" and self.debug:
+            print(display_text)
