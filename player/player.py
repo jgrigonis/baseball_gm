@@ -295,6 +295,80 @@ class Player(object):
         output += "{:>{}}".format(self.ratings["power_hitter"], 3)
         return output
 
+    def csv(self):
+        """Output the player and stats as a single csv line."""
+        name = self.first_name + ' ' + self.last_name
+        output = str("{},".format(name))
+        output += "{},".format(self.position)
+        output += "{},".format(self.abbreviate(self.throws))
+        output += "{},".format(self.abbreviate(self.bats))
+        output += "{},".format(self.skills["clutch"])
+        output += "{},".format(self.skills["speed"])
+        output += "{},".format(self.skills["power"])
+        output += "{},".format(self.skills["eye"])
+        output += "{},".format(self.skills["contact"])
+        output += "{},".format(self.skills["base_running"])
+        output += "{},".format(self.skills["bunting"])
+        output += "{},".format(self.skills["catching"])
+        output += "{},".format(self.skills["infield"])
+        output += "{},".format(self.skills["outfield"])
+        output += "{},".format(self.skills["arm"])
+        output += "{},".format(self.skills["accuracy"])
+        output += "{},".format(self.skills["stamina"])
+        output += "{},".format(self.skills["recovery"])
+        output += "{},".format(self.skills["ground_balls"])
+        output += "{},".format(self.skills["strikes"])
+        output += "{},".format(self.ratings["p"])
+        output += "{},".format(self.ratings["c"])
+        output += "{},".format(self.ratings["1b"])
+        output += "{},".format(self.ratings["2b"])
+        output += "{},".format(self.ratings["3b"])
+        output += "{},".format(self.ratings["ss"])
+        output += "{},".format(self.ratings["lf"])
+        output += "{},".format(self.ratings["cf"])
+        output += "{},".format(self.ratings["rf"])
+        output += "{},".format(self.ratings["lead_off"])
+        output += "{},".format(self.ratings["contact_hitter"])
+        output += "{}\n".format(self.ratings["power_hitter"])
+        return output
+
+    @staticmethod
+    def csv_header():
+        """Return the header as a single csv line."""
+        output = str("{},".format("Name"))  # 30 is the longest name
+        output += "{},".format("PS")
+        output += "{},".format("T")
+        output += "{},".format("B")
+        output += "{},".format("CL")
+        output += "{},".format("SP")
+        output += "{},".format("PO")
+        output += "{},".format("EY")
+        output += "{},".format("CT")
+        output += "{},".format("BR")
+        output += "{},".format("BU")
+        output += "{},".format("CA")
+        output += "{},".format("IF")
+        output += "{},".format("OF")
+        output += "{},".format("AR")
+        output += "{},".format("AC")
+        output += "{},".format("ST")
+        output += "{},".format("RE")
+        output += "{},".format("GB")
+        output += "{},".format("KK")
+        output += "{},".format("P")
+        output += "{},".format("C")
+        output += "{},".format("1B")
+        output += "{},".format("2B")
+        output += "{},".format("3B")
+        output += "{},".format("SS")
+        output += "{},".format("LF")
+        output += "{},".format("CF")
+        output += "{},".format("RF")
+        output += "{},".format("LO")
+        output += "{},".format("CH")
+        output += "{}\n".format("PH")
+        return output
+
     @staticmethod
     def header():
         """Return the header as a single line."""

@@ -55,6 +55,10 @@ def main():
     print(Player.header())
     for player in team.players:
         print(player.horizontal())
+    with open('FooBars.csv', 'w') as csv:
+        csv.writelines(Player.csv_header())
+        for player in team.players:
+            csv.writelines(player.csv())
 
 if __name__ == "__main__":
     main()
