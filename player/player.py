@@ -15,7 +15,7 @@ e.g. bunting is worth less than power.
 """
 import game.game_exceptions as game_exceptions
 import random
-from player import positions
+from player import positions, template
 
 
 class Player(object):
@@ -51,188 +51,6 @@ class Player(object):
             'outfield': 0,      # Fly-ball catching
             'arm': 0,           # Arm strength
         }
-        self.template = {
-            'sp': {
-                'throws_left': 0.25,
-                'switch_hitter': 0.01,
-                'bats_left': 0.01,
-                'accuracy': 60,
-                'stamina': 70,
-                'recovery': 60,
-                'power': 20,
-                'eye': 30,
-                'contact': 30,
-                'base_running': 40,
-                'catching': 20,
-                'outfield': 40,
-                'arm': 60
-            },
-            'rp': {
-                'throws_left': 0.35,
-                'switch_hitter': 0.01,
-                'bats_left': 0.01,
-                'accuracy': 60,
-                'recovery': 60,
-                'power': 20,
-                'eye': 30,
-                'contact': 30,
-                'base_running': 40,
-                'catching': 20,
-                'outfield': 40,
-                'arm': 60
-            },
-            'c': {
-                'throws_left': 0.001,
-                'switch_hitter': 0.16,
-                'bats_left': 0.12,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'base_running': 40,
-                'catching': 70,
-                'outfield': 40,
-                'arm': 60
-            },
-            '1b': {
-                'throws_left': 0.33,
-                'switch_hitter': 0.12,
-                'bats_left': 0.12,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'speed': 30,
-                'power': 60,
-                'base_running': 40,
-                'outfield': 40,
-            },
-            'ss': {
-                'throws_left': 0.001,
-                'switch_hitter': 0.25,
-                'bats_left': 0.05,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'speed': 60,
-                'power': 35,
-                'infield': 70,
-            },
-            '2b': {
-                'throws_left': 0.001,
-                'switch_hitter': 0.25,
-                'bats_left': 0.15,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'speed': 60,
-                'power': 35,
-                'infield': 70,
-            },
-            '3b': {
-                'throws_left': 0.001,
-                'switch_hitter': 0.15,
-                'bats_left': 0.05,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'infield': 60,
-            },
-            'lf': {
-                'throws_left': 0.25,
-                'switch_hitter': 0.10,
-                'bats_left': 0.15,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'speed': 60,
-                'power': 60,
-                'catching': 40,
-                'infield': 40,
-                'outfield': 60,
-            },
-            'cf': {
-                'throws_left': 0.33,
-                'switch_hitter': 0.16,
-                'bats_left': 0.15,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'speed': 65,
-                'catching': 40,
-                'infield': 40,
-                'outfield': 65,
-                'arm': 60,
-            },
-            'rf': {
-                'throws_left': 0.25,
-                'switch_hitter': 0.1,
-                'bats_left': 0.15,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'speed': 60,
-                'power': 60,
-                'catching': 40,
-                'infield': 40,
-                'outfield': 60,
-                'arm': 60,
-            },
-            'if': {
-                'throws_left': 0.001,
-                'switch_hitter': 0.25,
-                'bats_left': 0.15,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'infield': 60,
-            },
-            'of': {
-                'throws_left': 0.3,
-                'switch_hitter': 0.2,
-                'bats_left': 0.15,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'speed': 55,
-                'catching': 40,
-                'infield': 40,
-                'outfield': 60,
-            },
-            'dh': {
-                'throws_left': 0.33,
-                'switch_hitter': 0.15,
-                'bats_left': 0.2,
-                'accuracy': 10,
-                'stamina': 10,
-                'recovery': 10,
-                'ground_balls': 10,
-                'strikes': 10,
-                'power': 65,
-                'catching': 40,
-                'infield': 40,
-                'outfield': 40,
-                'arm': 40,
-            },
-        }
 
     def __str__(self):
         """Output the player name as a multi-line string."""
@@ -263,110 +81,64 @@ class Player(object):
         output += "{:>{}}".format(self.position, 3)
         output += "{:>{}}".format(self.abbreviate(self.throws), 2)
         output += "{:>{}}".format(self.abbreviate(self.bats), 2)
-        output += "{:>{}}".format(self.skills["clutch"], 3)
-        output += "{:>{}}".format(self.skills["speed"], 3)
-        output += "{:>{}}".format(self.skills["power"], 3)
-        output += "{:>{}}".format(self.skills["eye"], 3)
-        output += "{:>{}}".format(self.skills["contact"], 3)
-        output += "{:>{}}".format(self.skills["base_running"], 3)
-        output += "{:>{}}".format(self.skills["bunting"], 3)
-        output += "{:>{}}".format(self.skills["catching"], 3)
-        output += "{:>{}}".format(self.skills["infield"], 3)
-        output += "{:>{}}".format(self.skills["outfield"], 3)
-        output += "{:>{}}".format(self.skills["arm"], 3)
-        output += "{:>{}}".format(self.skills["accuracy"], 3)
-        output += "{:>{}}".format(self.skills["stamina"], 3)
-        output += "{:>{}}".format(self.skills["recovery"], 3)
-        output += "{:>{}}".format(self.skills["ground_balls"], 3)
-        output += "{:>{}}".format(self.skills["strikes"], 3)
+        for item in [self.skills["clutch"], self.skills["speed"],
+                     self.skills["power"], self.skills["eye"],
+                     self.skills["contact"], self.skills["base_running"],
+                     self.skills["bunting"], self.skills["catching"],
+                     self.skills["infield"], self.skills["outfield"],
+                     self.skills["arm"], self.skills["accuracy"],
+                     self.skills["stamina"], self.skills["recovery"],
+                     self.skills["ground_balls"], self.skills["strikes"],
+                     ]:
+            output += "{:>{}}".format(item, 3)
         output += "  "
-        output += "{:>{}}".format(self.ratings["p"], 3)
-        output += "{:>{}}".format(self.ratings["c"], 3)
-        output += "{:>{}}".format(self.ratings["1b"], 3)
-        output += "{:>{}}".format(self.ratings["2b"], 3)
-        output += "{:>{}}".format(self.ratings["3b"], 3)
-        output += "{:>{}}".format(self.ratings["ss"], 3)
-        output += "{:>{}}".format(self.ratings["lf"], 3)
-        output += "{:>{}}".format(self.ratings["cf"], 3)
-        output += "{:>{}}".format(self.ratings["rf"], 3)
-        output += " "
-        output += "{:>{}}".format(self.ratings["lead_off"], 3)
-        output += "{:>{}}".format(self.ratings["contact_hitter"], 3)
-        output += "{:>{}}".format(self.ratings["power_hitter"], 3)
+        for item in [self.ratings["p"], self.ratings["c"], self.ratings["1b"],
+                     self.ratings["2b"], self.ratings["3b"],
+                     self.ratings["ss"], self.ratings["lf"],
+                     self.ratings["cf"], self.ratings["rf"],
+                     ]:
+            output += "{:>{}}".format(item, 3)
+        output += "  "
+        for item in [self.ratings["lead_off"], self.ratings["contact_hitter"],
+                     self.ratings["power_hitter"],
+                     ]:
+            output += "{:>{}}".format(item, 3)
         return output
 
     def csv(self):
         """Output the player and stats as a single csv line."""
         name = self.first_name + ' ' + self.last_name
         output = str("{},".format(name))
-        output += "{},".format(self.position)
-        output += "{},".format(self.abbreviate(self.throws))
-        output += "{},".format(self.abbreviate(self.bats))
-        output += "{},".format(self.skills["clutch"])
-        output += "{},".format(self.skills["speed"])
-        output += "{},".format(self.skills["power"])
-        output += "{},".format(self.skills["eye"])
-        output += "{},".format(self.skills["contact"])
-        output += "{},".format(self.skills["base_running"])
-        output += "{},".format(self.skills["bunting"])
-        output += "{},".format(self.skills["catching"])
-        output += "{},".format(self.skills["infield"])
-        output += "{},".format(self.skills["outfield"])
-        output += "{},".format(self.skills["arm"])
-        output += "{},".format(self.skills["accuracy"])
-        output += "{},".format(self.skills["stamina"])
-        output += "{},".format(self.skills["recovery"])
-        output += "{},".format(self.skills["ground_balls"])
-        output += "{},".format(self.skills["strikes"])
-        output += "{},".format(self.ratings["p"])
-        output += "{},".format(self.ratings["c"])
-        output += "{},".format(self.ratings["1b"])
-        output += "{},".format(self.ratings["2b"])
-        output += "{},".format(self.ratings["3b"])
-        output += "{},".format(self.ratings["ss"])
-        output += "{},".format(self.ratings["lf"])
-        output += "{},".format(self.ratings["cf"])
-        output += "{},".format(self.ratings["rf"])
-        output += "{},".format(self.ratings["lead_off"])
-        output += "{},".format(self.ratings["contact_hitter"])
-        output += "{}\n".format(self.ratings["power_hitter"])
+        for item in [self.position, self.abbreviate(self.throws),
+                     self.abbreviate(self.bats), self.skills["clutch"],
+                     self.skills["speed"], self.skills["power"],
+                     self.skills["eye"], self.skills["contact"],
+                     self.skills["base_running"], self.skills["bunting"],
+                     self.skills["catching"], self.skills["infield"],
+                     self.skills["outfield"], self.skills["arm"],
+                     self.skills["accuracy"], self.skills["stamina"],
+                     self.skills["recovery"], self.skills["ground_balls"],
+                     self.skills["strikes"], self.ratings["p"],
+                     self.ratings["c"], self.ratings["1b"],
+                     self.ratings["2b"], self.ratings["3b"],
+                     self.ratings["ss"], self.ratings["lf"],
+                     self.ratings["cf"], self.ratings["rf"],
+                     self.ratings["lead_off"], self.ratings["contact_hitter"],
+                     self.ratings["power_hitter"]]:
+            output += "{},".format(item)
+        output += "\n"
         return output
 
     @staticmethod
     def csv_header():
         """Return the header as a single csv line."""
         output = str("{},".format("Name"))  # 30 is the longest name
-        output += "{},".format("PS")
-        output += "{},".format("T")
-        output += "{},".format("B")
-        output += "{},".format("CL")
-        output += "{},".format("SP")
-        output += "{},".format("PO")
-        output += "{},".format("EY")
-        output += "{},".format("CT")
-        output += "{},".format("BR")
-        output += "{},".format("BU")
-        output += "{},".format("CA")
-        output += "{},".format("IF")
-        output += "{},".format("OF")
-        output += "{},".format("AR")
-        output += "{},".format("AC")
-        output += "{},".format("ST")
-        output += "{},".format("RE")
-        output += "{},".format("GB")
-        output += "{},".format("KK")
-        output += "{},".format("P")
-        output += "{},".format("C")
-        output += "{},".format("1B")
-        output += "{},".format("2B")
-        output += "{},".format("3B")
-        output += "{},".format("SS")
-        output += "{},".format("LF")
-        output += "{},".format("CF")
-        output += "{},".format("RF")
-        output += "{},".format("LO")
-        output += "{},".format("CH")
-        output += "{}\n".format("PH")
+        for item in ["PS", "T", "B", "CL", "SP", "PO", "EY", "CT", "BR",
+                     "BU", "CA", "IF", "OF", "AR", "AC", "ST", "RE", "GB",
+                     "KK", "P", "C", "1B", "2B", "3B", "SS", "LF", "CF",
+                     "RF", "LO", "CH", "PH"]:
+            output += "{},".format(item)
+        output += "\n"
         return output
 
     @staticmethod
@@ -376,36 +148,15 @@ class Player(object):
         output += "{:>{}}".format("PS", 3)
         output += "{:>{}}".format("T", 2)
         output += "{:>{}}".format("B", 2)
-        output += "{:>{}}".format("CL", 3)
-        output += "{:>{}}".format("SP", 3)
-        output += "{:>{}}".format("PO", 3)
-        output += "{:>{}}".format("EY", 3)
-        output += "{:>{}}".format("CT", 3)
-        output += "{:>{}}".format("BR", 3)
-        output += "{:>{}}".format("BU", 3)
-        output += "{:>{}}".format("CA", 3)
-        output += "{:>{}}".format("IF", 3)
-        output += "{:>{}}".format("OF", 3)
-        output += "{:>{}}".format("AR", 3)
-        output += "{:>{}}".format("AC", 3)
-        output += "{:>{}}".format("ST", 3)
-        output += "{:>{}}".format("RE", 3)
-        output += "{:>{}}".format("GB", 3)
-        output += "{:>{}}".format("KK", 3)
+        for item in ["CL", "SP", "PO", "EY", "CT", "BR", "BU", "CA", "IF",
+                     "OF", "AR", "AC", "ST", "RE", "GB", "KK"]:
+            output += "{:>{}}".format(item, 3)
         output += "  "
-        output += "{:>{}}".format("P", 3)
-        output += "{:>{}}".format("C", 3)
-        output += "{:>{}}".format("1B", 3)
-        output += "{:>{}}".format("2B", 3)
-        output += "{:>{}}".format("3B", 3)
-        output += "{:>{}}".format("SS", 3)
-        output += "{:>{}}".format("LF", 3)
-        output += "{:>{}}".format("CF", 3)
-        output += "{:>{}}".format("RF", 3)
-        output += " "
-        output += "{:>{}}".format("LO", 3)
-        output += "{:>{}}".format("CH", 3)
-        output += "{:>{}}".format("PH", 3)
+        for item in ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]:
+            output += "{:>{}}".format(item, 3)
+        output += "  "
+        for item in ["LO", "CH", "PH"]:
+            output += "{:>{}}".format(item, 3)
         return output
 
     @staticmethod
@@ -416,6 +167,7 @@ class Player(object):
             return 'l'
         if value == 'switch':
             return 's'
+        return value
 
     @staticmethod
     def generate_stat(minimum=1, maximum=100, mean=50, sigma=None):
@@ -456,25 +208,25 @@ class Player(object):
         if self.throws is None:
             # chance of throwing lefty
             if random.random() > \
-                    self.template[self.position].get('throws_left', 0.21):
+                    template[self.position].get('throws_left', 0.21):
                 self.throws = 'right'
             else:
                 self.throws = 'left'
         if self.bats is None:
             # chance of being a switch hitter.
             if random.random() < \
-                    self.template[self.position].get('switch_hitter', 0.09):
+                    template[self.position].get('switch_hitter', 0.09):
                 self.bats = 'switch'
             # chance of batting opposite
             elif random.random() > \
-                    self.template[self.position].get('bats_left', 0.1):
+                    template[self.position].get('bats_left', 0.1):
                 self.bats = self.throws
             else:
                 # No bats right, throws left, except Rickey
                 self.bats = 'left'
         for skill in self.skills:
             self.skills[skill] = self.generate_stat(
-                mean=self.template[self.position].get(skill, 50))
+                mean=template[self.position].get(skill, 50))
         # No left handed catchers, please
         if self.throws == 'left':
             self.skills['catching'] = self.generate_stat(mean=10)
