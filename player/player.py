@@ -15,7 +15,7 @@ e.g. bunting is worth less than power.
 """
 import game.game_exceptions as game_exceptions
 import random
-from player import positions, template
+from player import positions, template, skill_template
 
 
 class Player(object):
@@ -202,7 +202,7 @@ class Player(object):
         return int(stat)
 
     def apply_position_template(self):
-        """Based on the position, set stats and characteristics
+        """Based on the position, set characteristics
         according to the template.
         """
         if self.throws is None:
@@ -224,9 +224,14 @@ class Player(object):
             else:
                 # No bats right, throws left, except Rickey
                 self.bats = 'left'
+
+    def apply_skill_template(self):
+        """Based on the position, set stats
+        according to the skill_template.
+        """
         for skill in self.skills:
             self.skills[skill] = self.generate_stat(
-                mean=template[self.position].get(skill, 50))
+                mean=skill_template[self.position].get(skill, 50))
         # No left handed catchers, please
         if self.throws == 'left':
             self.skills['catching'] = self.generate_stat(mean=10)
@@ -241,6 +246,7 @@ class Player(object):
         elif self.position not in positions:
             raise game_exceptions.BadPositionException()
         self.apply_position_template()
+        self.apply_skill_template()
         self.rate_player()
 
     def rate_player(self):
