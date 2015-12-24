@@ -6,13 +6,26 @@ For now, we'll just create a random 40 man roster.
 16 pitchers - 5 starters, 7 relief, 4 random
 11 other randoms
 
-Might be useful to write this out to files soon. The data would be much
-easier to visualize in a spreadsheet.
-
-Need to move the loops into the Team class, so we just tell it a number
-for each position, and then it generates the team.
+Need to move the create_players into the Team class.
 
 Need to do something about setting the lineup.
+
+If we let users create a team in "competition" mode we probably want to
+limit the number of center fielders as it is objectively better than
+the other outfield positions. Same with ss, 2b, etc.
+
+Perhaps something like this:
+
+2 cf
+2 lf
+2 rf
+2 ss
+2 2b
+2 1b
+2 3b
+8 sp
+
+remaining players must be: if, of, rp or c
 """
 import random
 
