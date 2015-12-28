@@ -90,6 +90,7 @@ skill_template = {
         'contact': 30,
         'base_running': 40,
         'catching': 20,
+        'infield': 40,
         'outfield': 40,
         'arm': 60
     },
@@ -101,6 +102,7 @@ skill_template = {
         'contact': 30,
         'base_running': 40,
         'catching': 20,
+        'infield': 40,
         'outfield': 40,
         'arm': 60
     },
