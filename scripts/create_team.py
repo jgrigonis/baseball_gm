@@ -34,7 +34,7 @@ import game.game_exceptions as game_exceptions
 from player.player import Player
 from player import positions
 from team.team import Team
-__author__ = 'jgrigonis'
+__author__ = 'josh'
 
 
 def create_players(position=None, num=1):

@@ -2,7 +2,7 @@
 from collections import namedtuple
 import random
 from os.path import abspath, join, dirname
-__author__ = 'jgrigonis'
+__author__ = 'josh'
 
 
 class SimpleNameGenerator(object):

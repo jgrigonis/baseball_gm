@@ -1,7 +1,7 @@
 import unittest
 
 from player.player import Player
-__author__ = 'jgrigonis'
+__author__ = 'josh'
 
 
 class TestPlayer(unittest.TestCase):

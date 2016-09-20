@@ -1,6 +1,6 @@
 from player.player import Player
 from player import positions, skill_template
-__author__ = 'jgrigonis'
+__author__ = 'josh'
 
 
 def main():

@@ -3,7 +3,7 @@
 Basically, a city, a mascot and a list of players.
 
 """
-__author__ = 'jgrigonis'
+__author__ = 'josh'
 
 
 class Team(object):
