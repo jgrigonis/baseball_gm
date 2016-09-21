@@ -1,4 +1,5 @@
-"""Create a randomly named player."""
+"""Create a randomly named player. Give him random skills.
+Determine his best position."""
 from player.player import Player
 from name_generator.names import NameGenerator
 

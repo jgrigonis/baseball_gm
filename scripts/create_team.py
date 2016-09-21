@@ -26,6 +26,9 @@ Perhaps something like this:
 8 sp
 
 remaining players must be: if, of, rp or c
+
+This will also write out a csv file called FooBars.csv that represents the
+team and has all its stats.
 """
 import random
 
