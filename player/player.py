@@ -130,6 +130,44 @@ class Player(object):
         return output
 
     @staticmethod
+    def legend():
+        """return the legend as a string"""
+        output = str("\nLegend:\n")
+        output += str("---------------------------\n")
+        output += str("PS = position\n")
+        output += str("T  = throws\n")
+        output += str("B  = bats\n")
+        output += str("CL = clutch\n")
+        output += str("SP = run speed\n")
+        output += str("PO = batting power\n")
+        output += str("EY = eye\n")
+        output += str("CT = contact hitting\n")
+        output += str("BR = base running\n")
+        output += str("BU = bunting\n")
+        output += str("CA = catching\n")
+        output += str("IF = infield skills\n")
+        output += str("OF = outfield skills\n")
+        output += str("AR = throwing arm\n")
+        output += str("AC = pitching accuracy\n")
+        output += str("ST = pitching stamina\n")
+        output += str("RE = pitching recovery\n")
+        output += str("GB = pitching ground balls\n")
+        output += str("PS = pitching strikes\n")
+        output += str("\nP  = Pitcher rating\n")
+        output += str("C  = Catcher rating\n")
+        output += str("1B = First baseman rating\n")
+        output += str("2B = Second baseman rating\n")
+        output += str("3B = Third baseman rating\n")
+        output += str("SS = Short stop rating\n")
+        output += str("LF = Left field rating\n")
+        output += str("CF = Center field rating\n")
+        output += str("RF = Right field rating\n")
+        output += str("\nLO = Lead off hitter rating\n")
+        output += str("CH = Contact hitter rating\n")
+        output += str("PH = Power hitter rating\n")
+        return output
+
+    @staticmethod
     def csv_header():
         """Return the header as a single csv line."""
         output = str("{},".format("Name"))  # 30 is the longest name

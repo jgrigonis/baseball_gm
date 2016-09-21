@@ -13,6 +13,20 @@ positions = ['sp',  # starting pitcher
              'of',  # outfielder
              'dh',  # designated hitter
              ]
+position_name = ['starting pitcher',
+                 'relief pitcher',
+                 'catcher',
+                 'first baseman',
+                 'second baseman',
+                 'shortstop',
+                 'third baseman',
+                 'left fielder',
+                 'center fielder',
+                 'right fielder',
+                 'utility infielder',
+                 'outfielder',
+                 'designated hitter',
+                 ]
 template = {
     'sp': {
         'throws_left': 0.25,
