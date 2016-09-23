@@ -15,7 +15,7 @@ e.g. bunting is worth less than power.
 """
 import game.game_exceptions as game_exceptions
 import random
-from player import positions, template, skill_template
+from player import positions, template, skill_template, skills
 
 
 class Player(object):
@@ -29,28 +29,7 @@ class Player(object):
         self.bats = bats            # right, left or switch or None
         self.position = position    # Just used for setting skills
         self.ratings = dict()       # Will be populated based on skills
-        self.skills = {
-            # pitching
-            'accuracy': 0,      # Pitching accuracy
-            'stamina': 0,       # Pitching stamina
-            'recovery': 0,      # Pitching stamina recovery speed with rest
-            'ground_balls': 0,  # Ground ball pitcher
-            'strikes': 0,       # Pitcher ability to get strikes
-            # general
-            'clutch': 0,        # Clutch
-            'speed': 0,         # Running speed
-            # hitting
-            'power': 0,         # Hitting power
-            'eye': 0,           # Eye
-            'contact': 0,       # Batting contact
-            'base_running': 0,  # Base-running skill
-            'bunting': 0,       # Bunting
-            # defensive
-            'catching': 0,      # Skill as a catcher
-            'infield': 0,       # In-fielding skill
-            'outfield': 0,      # Fly-ball catching
-            'arm': 0,           # Arm strength
-        }
+        self.skills = skills        # All the general baseball skills
 
     def __str__(self):
         """Output the player name as a multi-line string."""

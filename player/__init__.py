@@ -1,4 +1,5 @@
 __author__ = 'josh'
+
 positions = ['sp',  # starting pitcher
              'rp',  # relief pitcher
              'c',   # catcher
@@ -13,6 +14,7 @@ positions = ['sp',  # starting pitcher
              'of',  # outfielder
              'dh',  # designated hitter
              ]
+
 position_name = ['starting pitcher',
                  'relief pitcher',
                  'catcher',
@@ -27,6 +29,21 @@ position_name = ['starting pitcher',
                  'outfielder',
                  'designated hitter',
                  ]
+
+rated_positions = ['p',               # pitcher
+                   'c',               # catcher
+                   '1b',              # first baseman
+                   '2b',              # second baseman
+                   'ss',              # shortstop
+                   '3b',              # third baseman
+                   'lf',              # left fielder
+                   'cf',              # center fielder
+                   'rf',              # right fielder
+                   'lead_off',        # lead off hitter
+                   'contact_hitter',  # contact hitter
+                   'power_hitter'     # power hitter
+                   ]
+
 template = {
     'sp': {
         'throws_left': 0.25,
@@ -94,6 +111,7 @@ template = {
         'bats_left': 0.2,
     }
 }
+
 skill_template = {
     'sp': {
         'accuracy': 60,
@@ -238,4 +256,27 @@ skill_template = {
         'outfield': 40,
         'arm': 40,
     }
+}
+
+skills = {
+    # pitching
+    'accuracy': 0,      # Pitching accuracy
+    'stamina': 0,       # Pitching stamina
+    'recovery': 0,      # Pitching stamina recovery speed with rest
+    'ground_balls': 0,  # Ground ball pitcher
+    'strikes': 0,       # Pitcher ability to get strikes
+    # general
+    'clutch': 0,        # Clutch
+    'speed': 0,         # Running speed
+    # hitting
+    'power': 0,         # Hitting power
+    'eye': 0,           # Eye
+    'contact': 0,       # Batting contact
+    'base_running': 0,  # Base-running skill
+    'bunting': 0,       # Bunting
+    # defensive
+    'catching': 0,      # Skill as a catcher
+    'infield': 0,       # In-fielding skill
+    'outfield': 0,      # Fly-ball catching
+    'arm': 0,           # Arm strength
 }
