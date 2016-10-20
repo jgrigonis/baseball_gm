@@ -15,7 +15,7 @@ e.g. bunting is worth less than power.
 """
 import game.game_exceptions as game_exceptions
 import random
-from player import positions, template, skill_template, skills
+from . import positions, template, skill_template, skills
 
 
 class Player(object):

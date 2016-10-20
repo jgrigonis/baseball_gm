@@ -112,7 +112,7 @@ class TestScoring(unittest.TestCase):
         self.assertEqual(self.my_bases.bases[2], "al")
 
     def test_advance_many_reversed(self):
-        """TEst the advance_many method with tuples in reverse order."""
+        """Test the advance_many method with tuples in reverse order."""
         scored = self.my_bases.advance_many([(0, 2), (1, 3), (2, 3)])
         self.assertEqual(["carl", "bob"], scored)
         self.assertEqual(self.my_bases.bases[2], "al")
