@@ -1,4 +1,5 @@
-"""The player class.
+"""
+The player class.
 
 To add:
 Different position players should have different mean values for
@@ -20,8 +21,14 @@ from . import positions, template, skill_template, skills
 
 class Player(object):
     """A Baseball Player class."""
-    def __init__(self, first_name, last_name, throws=None, bats=None,
-                 position=None):
+    def __init__(
+            self, 
+            first_name, 
+            last_name, 
+            throws=None, 
+            bats=None,
+            position=None
+        ):
         """Setup the player."""
         self.first_name = first_name
         self.last_name = last_name
@@ -41,9 +48,11 @@ class Player(object):
         if self.bats is not None:
             output += "bats: {0:>{1}}\n".format(self.bats, 21)
         for key in self.skills.keys():
-            output += str("{0}: {1:>{2}}").format(key,
-                                                  self.skills[key],
-                                                  25 - len(key))
+            output += str("{0}: {1:>{2}}").format(
+                key,
+                self.skills[key],
+                25 - len(key)
+            )
             output += "\n"
         output += "\n"
         for key in self.ratings.keys():

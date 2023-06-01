@@ -1,12 +1,15 @@
-"""Create a randomly named player. Give him random skills.
-Determine his best position."""
+"""
+Create a randomly named player. Give him random skills.
+Determine his best position.
+
+"""
 from player.player import Player
 from name_generator.names import NameGenerator
 
 
 def create(position=None):
     ng = NameGenerator()
-    my_player = Player(ng.first(), ng.last(), position=position)
+    my_player = Player(ng.first("male"), ng.last(), position=position)
     my_player.generate()
     return my_player
 

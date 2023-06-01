@@ -1,4 +1,5 @@
-"""Create a team.
+"""
+Create a team.
 For now, we'll just create a random 40 man roster.
 2 catchers
 5 outfielders - random selection

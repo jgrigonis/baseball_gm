@@ -8,6 +8,7 @@ the templates and the ratings.
 
 The thing that will vary is the handedness and batting side of
 the players
+
 """
 from player.player import Player
 from player import positions, position_name, skill_template
