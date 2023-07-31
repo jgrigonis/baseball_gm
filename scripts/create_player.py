@@ -3,8 +3,8 @@ Create a randomly named player. Give him random skills.
 Determine his best position.
 
 """
-from player.player import Player
-from name_generator.names import NameGenerator
+from src.player.player import Player
+from src.name_generator.names import NameGenerator
 
 
 def create(position=None):
@@ -15,8 +15,9 @@ def create(position=None):
 
 
 def main():
-    debug = True
+    debug = False
     my_player = create()
+    # Print the player
     if debug:
         print(my_player)
     print(my_player.header())

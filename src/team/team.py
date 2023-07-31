@@ -12,7 +12,7 @@ class Team(object):
         self.city = city
         self.mascot = mascot
         self.players = []
-        self.batting_order = []
+        self.batting_order = [None for _ in range(9)]
         self.positions = {
             'pitcher': None,
             'catcher': None,
@@ -24,6 +24,12 @@ class Team(object):
             'center': None,
             'right': None,
         }
+        self.subs = []
+        self.unavailable = []
+
+    def load_team(self):
+        """Load a team from a csv file."""
+        pass
 
     def set_lineup(self):
         """Set the lineup."""
@@ -32,8 +38,17 @@ class Team(object):
     def verify_lineup(self):
         if len(self.batting_order) != 9:
             return False
-        if len(self.batting_order) != len(set(self.lineup.batting_order)):
-            return False
+        for position in self.positions:
+            if position is None:
+                return False
         # Check for duplicates at position.
         # Check that each position player is in the batting_order
+        # check for None in batting order
+
         return True
+
+    def set_position(self, player, position):
+        pass
+
+    def set_batting_order(self, player, number):
+        pass

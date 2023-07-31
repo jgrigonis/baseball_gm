@@ -1,7 +1,7 @@
 """Unit Tests for the Count class."""
 import unittest
 
-from game.count import Count
+from src.game.count import Count
 
 
 # pylint: disable=R0904

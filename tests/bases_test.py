@@ -1,8 +1,8 @@
 """Unit Tests for the Bases class."""
 import unittest
 
-from game.bases import Bases
-import game.game_exceptions as game_exceptions
+from src.game.bases import Bases
+import src.game.game_exceptions as game_exceptions
 
 
 # pylint: disable=R0904

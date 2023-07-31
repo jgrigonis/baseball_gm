@@ -1,6 +1,5 @@
 class Stats(object):
-    """The statistics object
-    """
+    """The statistics object"""
     def __init__(self):
         pass
 

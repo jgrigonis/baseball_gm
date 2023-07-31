@@ -30,14 +30,15 @@ remaining players must be: if, of, rp or c
 
 This will also write out a csv file called FooBars.csv that represents the
 team and has all its stats.
+
 """
 import random
 
 from scripts.create_player import create
-import game.game_exceptions as game_exceptions
-from player.player import Player
-from player import positions
-from team.team import Team
+import src.game.game_exceptions as game_exceptions
+from src.player.player import Player
+from src.player import positions
+from src.team.team import Team
 __author__ = 'josh'
 
 
@@ -76,6 +77,7 @@ def main():
         csv.writelines(Player.csv_header())
         for player in team.players:
             csv.writelines(player.csv())
+    print(player.legend())
 
 if __name__ == "__main__":
     main()

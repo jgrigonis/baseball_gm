@@ -1,14 +1,15 @@
-import game.bases as bases
-import game.count as count
-import game.game_exceptions as game_exceptions
-import game.inning as inning
-import game.score as score
-from stats import stats
+import src.game.bases as bases
+import src.game.count as count
+import src.game.game_exceptions as game_exceptions
+import src.game.inning as inning
+import src.game.score as score
+from src.stats import stats
 __author__ = 'josh'
 
 
 class Game(object):
-    """Maintain the state of the game.
+    """
+    Maintain the state of the game.
 
     Includes methods to carry out various game
     related events.
@@ -18,6 +19,7 @@ class Game(object):
 
     TODO:
     The batter. The pitcher. The fielders.
+
     """
     def __init__(self, innings_per_game=9):
         """Set up a new game.
@@ -37,7 +39,8 @@ class Game(object):
         self.innings_per_game = innings_per_game
 
     def strike(self):
-        """Pitcher throws a strike.
+        """
+        Pitcher throws a strike.
 
         If there are 2 strikes, call the _strike_out method.
         Otherwise, just increment the strike count.
@@ -49,7 +52,8 @@ class Game(object):
             self.count.strike()
 
     def ball(self):
-        """Pitcher throws a ball.
+        """
+        Pitcher throws a ball.
 
         If there are 3 balls, call the _walk method, otherwise
         just increment the ball count.
@@ -61,7 +65,8 @@ class Game(object):
             self.count.ball()
             
     def foul_ball(self):
-        """Batter hits a foul.
+        """
+        Batter hits a foul.
 
         If there are less than 2 strikes, increment the strike count.
 
@@ -70,7 +75,8 @@ class Game(object):
             self.count.strike()
 
     def hit_by_pitch(self):
-        """Batter is hit by pitch.
+        """
+        Batter is hit by pitch.
 
         Call the stats.hbp method to update the stats.  Then call
         the _walk method with hbp set to True, so it knows not to
@@ -82,7 +88,8 @@ class Game(object):
         self._walk(hbp=True)
 
     def steal(self, base):
-        """Runner steals a base.
+        """
+        Runner steals a base.
         
         :param base: the base that is stolen (second, third, home)
         
@@ -105,7 +112,8 @@ class Game(object):
         raise game_exceptions.InvalidSteal()
 
     def caught_stealing(self, base):
-        """Runner caught stealing a base.
+        """
+        Runner caught stealing a base.
         
         :param base: the base that is attempted to be stolen 
         (second, third, home)
@@ -134,7 +142,8 @@ class Game(object):
             raise game_exceptions.InvalidSteal()
         
     def picked_off(self, base):
-        """Runner picked off from a base.
+        """
+        Runner picked off from a base.
         
         :param base: the base that the runner was on 
         (first, second, third) or (0, 1, 2)
@@ -167,7 +176,8 @@ class Game(object):
         self._put_out()
 
     def balk(self):
-        """Pitcher performs a balk.
+        """
+        Pitcher performs a balk.
 
         If no base runners are on, a balk has no effect.  If runners
         are on base, they will all be advanced one base, and possibly
@@ -181,7 +191,8 @@ class Game(object):
             self._score_run(scorer)
     
     def hit(self, num=1, advances="default"):
-        """Batter gets a base hit.
+        """
+        Batter gets a base hit.
         
         :param num:
         1 = single
@@ -235,7 +246,8 @@ class Game(object):
         self._next_batter()
 
     def double_play(self, base1="second", base2="first", gdp=True):
-        """Batter hits into a double play.
+        """
+        Batter hits into a double play.
         
         :param base1: base where first out is made, assume force out.
         :param base2: base where second out is made.
@@ -256,7 +268,8 @@ class Game(object):
         self._put_out()
 
     def triple_play(self, gtp=True):
-        """Batter hits into a triple play.
+        """
+        Batter hits into a triple play.
 
         :param gtp: should be set to True if it was a grounder into a triple
         play.
@@ -275,7 +288,8 @@ class Game(object):
         self._side_retired()
 
     def fielders_choice(self, base="second"):
-        """Batter hits into a fielder's choice.
+        """
+        Batter hits into a fielder's choice.
         
         A fielder's choice is when a runner is on base, the
         batter hits the ball such that the runner is put out,
@@ -293,7 +307,8 @@ class Game(object):
         self._put_out()
     
     def error(self, batter_on_base=False, advances=None):
-        """Fielder makes an error.  By default nothing happens
+        """
+        Fielder makes an error.  By default nothing happens
         other than to take note of the error.
         
         :param batter_on_base: determines if the batter got on base during
@@ -327,7 +342,8 @@ class Game(object):
             self._next_batter()
                             
     def sacrifice(self, advances=None):
-        """Batter performs a sacrifice bunt or fly out.  By 
+        """
+        Batter performs a sacrifice bunt or fly out.  By 
         default all base runners advance one base.  It wouldn't
         make sense to have a sacrifice and have no one advance.
         
@@ -368,7 +384,8 @@ class Game(object):
         self._put_out()
 
     def _walk(self, hbp=False):
-        """Walk the batter.
+        """
+        Walk the batter.
 
         If hbp is True, the batter was hit by pitch, so we don't
         call the stats.walk method.
@@ -429,7 +446,8 @@ class Game(object):
         self._new_inning()
 
     def _score_run(self, scorer):
-        """Score a run.
+        """
+        Score a run.
 
         TODO: We currently count all runs as earned.  Needs to be fixed.
         TODO: We should add to the inning scores for home or away.
@@ -446,7 +464,8 @@ class Game(object):
                     self._end_game()
 
     def _new_inning(self):
-        """Start a fresh inning.
+        """
+        Start a fresh inning.
 
         Clear the bases, reset the count, change sides.
 
@@ -470,7 +489,8 @@ class Game(object):
         # self.current_pitcher = self.pitch_team.pitcher().stats.pitching
 
     def _end_game(self):
-        """Game is over, winner is declared, unless tied.
+        """
+        Game is over, winner is declared, unless tied.
 
         When would we ever have a tie?
 

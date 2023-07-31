@@ -4,20 +4,22 @@
 from setuptools import setup, find_packages
 import os
 
-version = '0.1'
-here = os.path.abspath(os.path.dirname(__file__))
-README = open(os.path.join(here, 'README.md')).read()
-CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
 
+# To install in development mode in virtualenv
+# pip install -e .
 setup(
-    name='baseball_gm',
-    version='0.1',
+    name='baseball_manager',
+    version='0.3.3',
     author='Joshua Grigonis',
     author_email='josh.grigonis@gmail.com',
-    packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
+    packages=find_packages(),
     include_package_data=True,
     description='A baseball simulator',
+    scripts=[
+        'scripts/compare_positions.py', 
+        'scripts/create_many_players.py',
+    ],
     install_requires=[
     ],
     zip_safe=False,
-    )
+)

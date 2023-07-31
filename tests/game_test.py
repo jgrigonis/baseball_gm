@@ -3,9 +3,9 @@
 """Unit Tests for the Game class."""
 import unittest
 
-from game.main import Game
-import game.game_exceptions as game_exceptions
-from player.player import Player
+from src.game.main import Game
+import src.game.game_exceptions as game_exceptions
+from src.player.player import Player
 
 # pylint: disable=R0904
 # pylint complains about the number of public methods.

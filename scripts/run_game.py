@@ -1,5 +1,5 @@
-from game.event import Event
-from game.main import Game
+from src.game.event import Event
+from src.game.main import Game
 
 
 def main():

@@ -71,7 +71,8 @@ class InvalidPickOff(GameException):
 
 
 class TooManyOuts(GameException):
-    """User called double_play or triple_play with too many outs.
+    """
+    User called double_play or triple_play with too many outs.
     Or they called inning.out and ended up with 3 outs, which should
     never happen.
 

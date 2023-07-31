@@ -18,7 +18,8 @@ class Count(object):
         self.strikes = 0
 
     def strike(self):
-        """Get a strike.
+        """
+        Get a strike.
 
         Increment the strike count if it's less than 2.  Otherwise,
         reset the count.
@@ -30,7 +31,8 @@ class Count(object):
             self.reset_count()
 
     def ball(self):
-        """Get a ball.
+        """
+        Get a ball.
 
         Increment the ball count if it's less than 3.  Otherwise,
         reset the count.

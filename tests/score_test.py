@@ -1,6 +1,6 @@
 import unittest
 
-from game.score import Score
+from src.game.score import Score
 __author__ = 'josh'
 
 

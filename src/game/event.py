@@ -8,7 +8,7 @@ play won't happen with only 1 runner on, and so on.
 
 """
 import random
-from game.game_exceptions import GameException
+from src.game.game_exceptions import GameException
 __author__ = 'josh'
 
 
@@ -23,7 +23,8 @@ class Event(object):
         self.event = None
 
     def __str__(self):
-        """Just print the probs.  We print out the key, colon, one space
+        """
+        Just print the probs.  We print out the key, colon, one space
         then the value.  We right justify it so the whole string is just
         over 25 chars wide.
 
@@ -45,7 +46,8 @@ class Event(object):
         # TODO: handle_event needs to apply defensive filter
 
     def random_event(self):
-        """Use a weighted probability.  probs is a dictionary of events
+        """
+        Use a weighted probability.  probs is a dictionary of events
         and their probability as an integer.
 
         algorithm: sum up all the integer probabilities. Generate a
@@ -53,6 +55,8 @@ class Event(object):
         dictionary of probabilities subtracting its value from the
         random number until you get it lower than 0. This is guaranteed
         to happen.
+
+        Whichever probability it ends on, return that event.
 
         """
         rand_num = random.random() * sum(self.probs.values())
@@ -62,7 +66,8 @@ class Event(object):
                 return list(self.probs)[index]
 
     def set_probs(self):
-        """Change the probs based on game state
+        """
+        Change the probs based on game state
 
         TODO: change state based on player skills
 
@@ -102,7 +107,7 @@ class Event(object):
             'passed_ball': 0,
         }
         # If a runner on first
-        # TODO adjust for base running skill and speed
+        # TODO adjust for base running skill and run speed
         if self.game.bases[0] != 0 and \
                 self.game.bases[1] == 0 and \
                 self.game.bases[2] == 0:
@@ -278,10 +283,12 @@ class Event(object):
         #     self.probs['fielders_choice'] += (speed - 50)
 
     def handle_event(self):
-        """Get and handle one event.
+        """
+        Get and handle one event.
 
         We have try catch blocks around certain events so that they aren't
         invoked at the wrong time.
+
         """
         display_text = ""
         if self.event == 'ball':

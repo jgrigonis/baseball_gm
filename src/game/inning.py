@@ -1,4 +1,4 @@
-import game.game_exceptions as game_exceptions
+import src.game.game_exceptions as game_exceptions
 
 
 class Inning(object):

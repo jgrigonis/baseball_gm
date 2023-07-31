@@ -1,7 +1,7 @@
 import unittest
 
-from game.game_exceptions import TooManyOuts
-from game.inning import Inning
+from src.game.game_exceptions import TooManyOuts
+from src.game.inning import Inning
 __author__ = 'josh'
 
 
