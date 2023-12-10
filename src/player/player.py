@@ -1,13 +1,7 @@
 """
 The player class.
 
-To add:
-Different position players should have different mean values for
-different skills, e.g. 1st and 3rd should have more power
-middle infielders less
-outfielders should be faster
-etc.
-
+TODO:
 player should also get stats.
 
 Calculate an overall value based on weighted combination of skills.

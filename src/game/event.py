@@ -31,9 +31,10 @@ class Event(object):
         """
         output = "\n"
         for key in self.probs.keys():
-            output += str("{0}: {1:>{2}}").format(key,
-                                                  self.probs[key],
-                                                  25 - len(key))
+            output += str("{0}: {1:>{2}}").format(
+                key,
+                self.probs[key],
+                25 - len(key))
             output += "\n"
         return output
 
