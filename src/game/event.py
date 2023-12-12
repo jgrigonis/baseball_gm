@@ -82,7 +82,7 @@ class Event(object):
         """
         Adjust probabilities for runners on first and second base.
 
-        TODO: Steal should be possible
+        TODO: Steal should be possible if third base empty
         """
         self.probs['double_play'] = 400
         self.probs['triple_play'] = 40
@@ -268,7 +268,6 @@ class Event(object):
             'passed_ball': 0,
         }
         # If a runner on first
-        # TODO adjust for base running skill and run speed
         if self.game.bases[0] != 0 and \
                 self.game.bases[1] == 0 and \
                 self.game.bases[2] == 0:
