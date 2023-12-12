@@ -29,7 +29,7 @@ Perhaps something like this:
 remaining players must be: if, of, rp or c
 
 This will also write out a csv file called FooBars.csv that represents the
-team and has all its stats.
+team and has all its ratings.
 
 """
 import random

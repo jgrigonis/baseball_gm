@@ -1,5 +1,9 @@
 A Python 3 project
 
+Create a virtual environment
+pip install -r requirements.txt
+pip install -e .
+
 ### Goals:
 * Create a random player (done)
 * Create a custom player

@@ -49,14 +49,14 @@ rated_positions = [
 
 template = {
     'sp': {
-        # 25% of startig pitchers are left handed
+        # 25% of starting pitchers are left handed
         'throws_left': 0.25,
         'switch_hitter': 0.01,
         # bats_left really means bats opposite
         'bats_left': 0.01,
     },
     'rp': {
-        # 35% of startig pitchers are left handed
+        # 35% of relief pitchers are left handed
         'throws_left': 0.35,
         'switch_hitter': 0.01,
         'bats_left': 0.01,
@@ -123,6 +123,7 @@ template = {
     }
 }
 
+# If not specified, 50 is implied
 skill_template = {
     'sp': {
         'accuracy': 60,

@@ -1,3 +1,3 @@
-pip install nose
+pip install nose3
 nosetests -v
-pip uninstall nose -y
+pip uninstall nose3 -y

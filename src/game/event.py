@@ -66,6 +66,168 @@ class Event(object):
             if rand_num < 0:
                 return list(self.probs)[index]
 
+    def set_probs_runner_on_first(self):
+        """
+        Adjust probabilities for a single runner on first base.
+        """
+        self.probs['steal'] = 600
+        self.probs['double_play'] = 400
+        self.probs['caught_stealing'] = 200
+        self.probs['balk'] = 10
+        self.probs['fielders_choice'] = 100
+        self.probs['picked_off'] = 50
+        self.probs['sacrifice'] = 250
+    
+    def set_probs_runner_on_first_and_second(self):
+        """
+        Adjust probabilities for runners on first and second base.
+
+        TODO: Steal should be possible
+        """
+        self.probs['double_play'] = 400
+        self.probs['triple_play'] = 40
+        self.probs['balk'] = 10
+    
+    def adjust_probs_men_on_base(self):
+        """
+        Adjust probabilities for any men on base at all.
+        """
+        self.probs['ball'] = int(self.probs['ball'] * 1.03)
+        self.probs['strike'] = int(self.probs['strike'] * 0.97)
+        self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.94)
+        self.probs['single'] = int(self.probs['single'] * 1.18)
+        self.probs['double'] = int(self.probs['double'] * 1.18)
+        self.probs['triple'] = int(self.probs['triple'] * 1.18)
+        self.probs['homer'] = int(self.probs['homer'] * 1.18)
+        # TODO: These aren't actual events yet
+        # self.probs['wild_pitch'] = 100  # TODO adjust for pitcher accuracy
+        # self.probs['passed_ball'] = 100  # TODO adjust for catcher skill
+
+    def adjust_probs_based_on_count(self, balls=0, strikes=0):
+        """
+        Adjust probabilities based on the count.
+        """
+        if balls == 0 and strikes == 0:
+            self.probs['ball'] = int(self.probs['ball'] * 1.15)
+            self.probs['strike'] = int(self.probs['strike'] * 1.33)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.66)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.66)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.66)
+            self.probs['single'] = int(self.probs['single'] * 0.61)
+            self.probs['double'] = int(self.probs['double'] * 0.61)
+            self.probs['triple'] = int(self.probs['triple'] * 0.61)
+            self.probs['homer'] = int(self.probs['homer'] * 0.61)
+        elif balls == 1 and strikes == 0:
+            self.probs['ball'] = int(self.probs['ball'] * 0.92)
+            self.probs['strike'] = int(self.probs['strike'] * 1.12)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.94)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.01)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.01)
+            self.probs['single'] = int(self.probs['single'] * 1.1)
+            self.probs['double'] = int(self.probs['double'] * 1.1)
+            self.probs['triple'] = int(self.probs['triple'] * 1.1)
+            self.probs['homer'] = int(self.probs['homer'] * 1.1)
+        elif balls == 0 and strikes == 1:
+            self.probs['ball'] = int(self.probs['ball'] * 1.13)
+            self.probs['strike'] = int(self.probs['strike'] * 0.74)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.11)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.08)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.08)
+            self.probs['single'] = int(self.probs['single'] * 0.78)
+            self.probs['double'] = int(self.probs['double'] * 0.78)
+            self.probs['triple'] = int(self.probs['triple'] * 0.78)
+            self.probs['homer'] = int(self.probs['homer'] * 0.78)
+        elif balls == 2 and strikes == 0:
+            self.probs['ball'] = int(self.probs['ball'] * 1.08)
+            self.probs['strike'] = int(self.probs['strike'] * 1.44)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.57)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.72)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.72)
+            self.probs['single'] = int(self.probs['single'] * 0.69)
+            self.probs['double'] = int(self.probs['double'] * 0.69)
+            self.probs['triple'] = int(self.probs['triple'] * 0.69)
+            self.probs['homer'] = int(self.probs['homer'] * 0.69)
+        elif balls == 1 and strikes == 1:
+            self.probs['ball'] = int(self.probs['ball'] * 0.96)
+            self.probs['strike'] = int(self.probs['strike'] * 0.78)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.34)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.01)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.01)
+            self.probs['single'] = int(self.probs['single'] * 1.15)
+            self.probs['double'] = int(self.probs['double'] * 1.15)
+            self.probs['triple'] = int(self.probs['triple'] * 1.15)
+            self.probs['homer'] = int(self.probs['homer'] * 1.15)
+        elif balls == 0 and strikes == 2:
+            self.probs['ball'] = int(self.probs['ball'] * 1.37)
+            self.probs['strike'] = int(self.probs['strike'] * 0.6)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.02)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.82)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.82)
+            self.probs['single'] = int(self.probs['single'] * 0.74)
+            self.probs['double'] = int(self.probs['double'] * 0.74)
+            self.probs['triple'] = int(self.probs['triple'] * 0.74)
+            self.probs['homer'] = int(self.probs['homer'] * 0.74)
+        elif balls == 3 and strikes == 0:
+            self.probs['ball'] = int(self.probs['ball'] * 0.89)
+            self.probs['strike'] = int(self.probs['strike'] * 2.56)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.08)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.09)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.09)
+            self.probs['single'] = int(self.probs['single'] * 0.21)
+            self.probs['double'] = int(self.probs['double'] * 0.21)
+            self.probs['triple'] = int(self.probs['triple'] * 0.21)
+            self.probs['homer'] = int(self.probs['homer'] * 0.21)
+        elif balls == 2 and strikes == 1:
+            self.probs['ball'] = int(self.probs['ball'] * 0.69)
+            self.probs['strike'] = int(self.probs['strike'] * 0.89)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.19)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.47)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.47)
+            self.probs['single'] = int(self.probs['single'] * 1.71)
+            self.probs['double'] = int(self.probs['double'] * 1.71)
+            self.probs['triple'] = int(self.probs['triple'] * 1.71)
+            self.probs['homer'] = int(self.probs['homer'] * 1.71)
+        elif balls == 1 and strikes == 2:
+            self.probs['ball'] = int(self.probs['ball'] * 0.97)
+            self.probs['strike'] = int(self.probs['strike'] * 0.71)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.26)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.2)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.2)
+            self.probs['single'] = int(self.probs['single'] * 1.16)
+            self.probs['double'] = int(self.probs['double'] * 1.16)
+            self.probs['triple'] = int(self.probs['triple'] * 1.16)
+            self.probs['homer'] = int(self.probs['homer'] * 1.16)
+        elif balls == 3 and strikes == 1:
+            self.probs['ball'] = int(self.probs['ball'] * 0.95)
+            self.probs['strike'] = int(self.probs['strike'] * 0.76)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.79)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.56)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.56)
+            self.probs['single'] = int(self.probs['single'] * 1.57)
+            self.probs['double'] = int(self.probs['double'] * 1.57)
+            self.probs['triple'] = int(self.probs['triple'] * 1.57)
+            self.probs['homer'] = int(self.probs['homer'] * 1.57)
+        elif balls == 2 and strikes == 2:
+            self.probs['ball'] = int(self.probs['ball'] * 0.65)
+            self.probs['strike'] = int(self.probs['strike'] * 0.76)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.54)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.39)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.39)
+            self.probs['single'] = int(self.probs['single'] * 1.63)
+            self.probs['double'] = int(self.probs['double'] * 1.63)
+            self.probs['triple'] = int(self.probs['triple'] * 1.63)
+            self.probs['homer'] = int(self.probs['homer'] * 1.63)
+        elif balls == 3 and strikes == 2:
+            self.probs['ball'] = int(self.probs['ball'] * 0.62)
+            self.probs['strike'] = int(self.probs['strike'] * 0.65)
+            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.36)
+            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.88)
+            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.88)
+            self.probs['single'] = int(self.probs['single'] * 1.66)
+            self.probs['double'] = int(self.probs['double'] * 1.66)
+            self.probs['triple'] = int(self.probs['triple'] * 1.66)
+            self.probs['homer'] = int(self.probs['homer'] * 1.66)
+
     def set_probs(self):
         """
         Change the probs based on game state
@@ -76,8 +238,6 @@ class Event(object):
             extending a double to a three base hit with the error.
 
         Pitching:
-            # Nasty Factor should change per pitch, not per pitcher.
-            'NF': 0, # Nasty Factor (Increases strikes, increases foul_ball)
             'ACC': 0, # Accuracy (Reduces balls)
             'STA': 0, # Stamina (Nothing yet)
             'REC': 0, # Recovery speed with rest (Nothing yet)
@@ -112,153 +272,21 @@ class Event(object):
         if self.game.bases[0] != 0 and \
                 self.game.bases[1] == 0 and \
                 self.game.bases[2] == 0:
-            self.probs['steal'] = 600
-            self.probs['double_play'] = 400
-            self.probs['caught_stealing'] = 200
-            self.probs['balk'] = 10
-            self.probs['fielders_choice'] = 100
-            self.probs['picked_off'] = 50
-            self.probs['sacrifice'] = 250
+            self.set_probs_runner_on_first()
         # Runner on first and second.  Non-specific on 3rd.
         if self.game.bases[0] != 0 and self.game.bases[1] != 0:
-            self.probs['double_play'] = 400
-            self.probs['triple_play'] = 40
-            self.probs['balk'] = 10
+            self.set_probs_runner_on_first_and_second()
         # TODO add case for runner on second and third base open
         # Count variation
-        if self.game.count.balls == 0 and self.game.count.strikes == 0:
-            self.probs['ball'] = int(self.probs['ball'] * 1.15)
-            self.probs['strike'] = int(self.probs['strike'] * 1.33)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.66)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.66)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.66)
-            self.probs['single'] = int(self.probs['single'] * 0.61)
-            self.probs['double'] = int(self.probs['double'] * 0.61)
-            self.probs['triple'] = int(self.probs['triple'] * 0.61)
-            self.probs['homer'] = int(self.probs['homer'] * 0.61)
-        elif self.game.count.balls == 1 and self.game.count.strikes == 0:
-            self.probs['ball'] = int(self.probs['ball'] * 0.92)
-            self.probs['strike'] = int(self.probs['strike'] * 1.12)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.94)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.01)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.01)
-            self.probs['single'] = int(self.probs['single'] * 1.1)
-            self.probs['double'] = int(self.probs['double'] * 1.1)
-            self.probs['triple'] = int(self.probs['triple'] * 1.1)
-            self.probs['homer'] = int(self.probs['homer'] * 1.1)
-        elif self.game.count.balls == 0 and self.game.count.strikes == 1:
-            self.probs['ball'] = int(self.probs['ball'] * 1.13)
-            self.probs['strike'] = int(self.probs['strike'] * 0.74)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.11)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.08)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.08)
-            self.probs['single'] = int(self.probs['single'] * 0.78)
-            self.probs['double'] = int(self.probs['double'] * 0.78)
-            self.probs['triple'] = int(self.probs['triple'] * 0.78)
-            self.probs['homer'] = int(self.probs['homer'] * 0.78)
-        elif self.game.count.balls == 2 and self.game.count.strikes == 0:
-            self.probs['ball'] = int(self.probs['ball'] * 1.08)
-            self.probs['strike'] = int(self.probs['strike'] * 1.44)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.57)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.72)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.72)
-            self.probs['single'] = int(self.probs['single'] * 0.69)
-            self.probs['double'] = int(self.probs['double'] * 0.69)
-            self.probs['triple'] = int(self.probs['triple'] * 0.69)
-            self.probs['homer'] = int(self.probs['homer'] * 0.69)
-        elif self.game.count.balls == 1 and self.game.count.strikes == 1:
-            self.probs['ball'] = int(self.probs['ball'] * 0.96)
-            self.probs['strike'] = int(self.probs['strike'] * 0.78)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.34)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.01)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.01)
-            self.probs['single'] = int(self.probs['single'] * 1.15)
-            self.probs['double'] = int(self.probs['double'] * 1.15)
-            self.probs['triple'] = int(self.probs['triple'] * 1.15)
-            self.probs['homer'] = int(self.probs['homer'] * 1.15)
-        elif self.game.count.balls == 0 and self.game.count.strikes == 2:
-            self.probs['ball'] = int(self.probs['ball'] * 1.37)
-            self.probs['strike'] = int(self.probs['strike'] * 0.6)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.02)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.82)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.82)
-            self.probs['single'] = int(self.probs['single'] * 0.74)
-            self.probs['double'] = int(self.probs['double'] * 0.74)
-            self.probs['triple'] = int(self.probs['triple'] * 0.74)
-            self.probs['homer'] = int(self.probs['homer'] * 0.74)
-        elif self.game.count.balls == 3 and self.game.count.strikes == 0:
-            self.probs['ball'] = int(self.probs['ball'] * 0.89)
-            self.probs['strike'] = int(self.probs['strike'] * 2.56)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.08)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 0.09)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 0.09)
-            self.probs['single'] = int(self.probs['single'] * 0.21)
-            self.probs['double'] = int(self.probs['double'] * 0.21)
-            self.probs['triple'] = int(self.probs['triple'] * 0.21)
-            self.probs['homer'] = int(self.probs['homer'] * 0.21)
-        elif self.game.count.balls == 2 and self.game.count.strikes == 1:
-            self.probs['ball'] = int(self.probs['ball'] * 0.69)
-            self.probs['strike'] = int(self.probs['strike'] * 0.89)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.19)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.47)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.47)
-            self.probs['single'] = int(self.probs['single'] * 1.71)
-            self.probs['double'] = int(self.probs['double'] * 1.71)
-            self.probs['triple'] = int(self.probs['triple'] * 1.71)
-            self.probs['homer'] = int(self.probs['homer'] * 1.71)
-        elif self.game.count.balls == 1 and self.game.count.strikes == 2:
-            self.probs['ball'] = int(self.probs['ball'] * 0.97)
-            self.probs['strike'] = int(self.probs['strike'] * 0.71)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.26)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.2)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.2)
-            self.probs['single'] = int(self.probs['single'] * 1.16)
-            self.probs['double'] = int(self.probs['double'] * 1.16)
-            self.probs['triple'] = int(self.probs['triple'] * 1.16)
-            self.probs['homer'] = int(self.probs['homer'] * 1.16)
-        elif self.game.count.balls == 3 and self.game.count.strikes == 1:
-            self.probs['ball'] = int(self.probs['ball'] * 0.95)
-            self.probs['strike'] = int(self.probs['strike'] * 0.76)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.79)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.56)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.56)
-            self.probs['single'] = int(self.probs['single'] * 1.57)
-            self.probs['double'] = int(self.probs['double'] * 1.57)
-            self.probs['triple'] = int(self.probs['triple'] * 1.57)
-            self.probs['homer'] = int(self.probs['homer'] * 1.57)
-        elif self.game.count.balls == 2 and self.game.count.strikes == 2:
-            self.probs['ball'] = int(self.probs['ball'] * 0.65)
-            self.probs['strike'] = int(self.probs['strike'] * 0.76)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.54)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.39)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.39)
-            self.probs['single'] = int(self.probs['single'] * 1.63)
-            self.probs['double'] = int(self.probs['double'] * 1.63)
-            self.probs['triple'] = int(self.probs['triple'] * 1.63)
-            self.probs['homer'] = int(self.probs['homer'] * 1.63)
-        elif self.game.count.balls == 3 and self.game.count.strikes == 2:
-            self.probs['ball'] = int(self.probs['ball'] * 0.62)
-            self.probs['strike'] = int(self.probs['strike'] * 0.65)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 1.36)
-            self.probs['fly_out'] = int(self.probs['fly_out'] * 1.88)
-            self.probs['ground_out'] = int(self.probs['ground_out'] * 1.88)
-            self.probs['single'] = int(self.probs['single'] * 1.66)
-            self.probs['double'] = int(self.probs['double'] * 1.66)
-            self.probs['triple'] = int(self.probs['triple'] * 1.66)
-            self.probs['homer'] = int(self.probs['homer'] * 1.66)
+        self.adjust_probs_based_on_count(
+                self.game.count.balls, 
+                self.game.count.strikes
+            )
         # Men on base
         if self.game.bases[0] != 0 or \
                 self.game.bases[1] != 0 or \
                 self.game.bases[2] != 0:
-            self.probs['ball'] = int(self.probs['ball'] * 1.03)
-            self.probs['strike'] = int(self.probs['strike'] * 0.97)
-            self.probs['foul_ball'] = int(self.probs['foul_ball'] * 0.94)
-            self.probs['single'] = int(self.probs['single'] * 1.18)
-            self.probs['double'] = int(self.probs['double'] * 1.18)
-            self.probs['triple'] = int(self.probs['triple'] * 1.18)
-            self.probs['homer'] = int(self.probs['homer'] * 1.18)
-            # self.probs['wild_pitch'] = 100  # TODO adjust for pitcher accuracy
-            # self.probs['passed_ball'] = 100  # TODO adjust for catcher skill
+            self.adjust_probs_men_on_base()
 
         # power = self.game.bat_team.current_batter().batting.skills['POW']
         # self.probs['fly_out'] -= 4 * (power - 50)
