@@ -8,6 +8,16 @@ class Inning(object):
         self.number = 1
         self.top = True
         self.outs = 0
+    
+    def __str__(self):
+        """Return an inning string."""
+        output = "\n"
+        if self.top:
+            output += "Top of "
+        else:
+            output += "Bottom of "
+        output += str(self.number)
+        return output
 
     def increment(self):
         """Move to the next half inning."""

@@ -21,7 +21,7 @@ class Game(object):
     The batter. The pitcher. The fielders.
 
     """
-    def __init__(self, innings_per_game=9):
+    def __init__(self, debug=False, pauses=False, innings_per_game=9):
         """Set up a new game.
 
         innings_per_game defaults to the number of innings in a
@@ -29,6 +29,8 @@ class Game(object):
         little league game, or some type of exhibition game.
 
         """
+        self.debug = debug
+        self.pauses = pauses
         self.count = count.Count()
         self.bases = bases.Bases()
         self.stats = stats.Stats()
@@ -37,6 +39,9 @@ class Game(object):
         self.game_over = False
         self.inning = inning.Inning()
         self.innings_per_game = innings_per_game
+        if debug:
+            print(self.inning)
+            print("------------")
 
     def strike(self):
         """
@@ -189,6 +194,26 @@ class Game(object):
         scorer = self.bases.advance_all()
         if scorer:
             self._score_run(scorer)
+    
+    def wild_pitch(self):
+        """
+        Call a ball, and also allow the runners to advance.
+        """
+        self.ball()
+        if self.bases.men_on():
+            scorer = self.bases.advance_all()
+            if scorer:
+                self._score_run(scorer)
+    
+    def passed_ball(self):
+        """
+        Call a ball, and also allow the runners to advance.
+        """
+        self.ball()
+        if self.bases.men_on():
+            scorer = self.bases.advance_all()
+            if scorer:
+                self._score_run(scorer)
     
     def hit(self, num=1, advances="default"):
         """
@@ -462,6 +487,8 @@ class Game(object):
             if not self.inning.top:
                 if self.score.home > self.score.away:
                     self._end_game()
+        if self.debug:
+            print(self.score)
 
     def _new_inning(self):
         """
@@ -477,6 +504,11 @@ class Game(object):
         self.inning.increment()
         self.bases.clear()
         self.count.reset_count()
+        if self.debug and not self.game_over:
+            print(self.inning)
+            print("------------")
+        if self.pauses:
+            input("")
         # if self.bat_team == self.away:
         #     self.bat_team = self.home
         #     self.pitch_team = self.away
