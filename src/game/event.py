@@ -165,6 +165,25 @@ class Event(object):
                 self.display_text("Runner caught stealing second")
             except GameException:
                 return None
+        elif self.event == 'caught_stealing_third':
+            try:
+                # only get caught_stealing_third if the runner was on second
+                # and third is vacant
+                self.game.caught_stealing("third")
+                self.event = self.ball_or_strike()
+                self.handle_event()
+                self.display_text("Runner caught stealing third")
+            except GameException:
+                return None
+        elif self.event == 'caught_stealing_home':
+            try:
+                # we only get caught_stealing_home if the runner was on third
+                self.game.caught_stealing("home")
+                self.event = self.ball_or_strike()
+                self.handle_event()
+                self.display_text("Runner caught stealing home")
+            except GameException:
+                return None
         elif self.event == 'double_play':
             try:
                 # we only get double_play if a runner was on first
@@ -179,7 +198,20 @@ class Event(object):
                 self.game.picked_off("first")
             except GameException:
                 return None
-        # TODO should be able to steal third
+        elif self.event == 'picked_off_second':
+            try:
+                # we only get picked_off_second if a runner was on second
+                self.display_text("Runner picked off second")
+                self.game.picked_off("second")
+            except GameException:
+                return None
+        elif self.event == 'picked_off_third':
+            try:
+                # we only get picked_off_third if a runner was on third
+                self.display_text("Runner picked off third")
+                self.game.picked_off("third")
+            except GameException:
+                return None
         elif self.event == 'steal':
             try:
                 # we only get steal if a runner was on first
@@ -188,6 +220,25 @@ class Event(object):
                 self.event = self.ball_or_strike()
                 self.handle_event()
                 self.display_text("Runner stole second")
+            except GameException:
+                return None
+        elif self.event == 'steal_third':
+            try:
+                # we only get steal_third if a runner was on second
+                # and third is vacant
+                self.game.steal("third")
+                self.event = self.ball_or_strike()
+                self.handle_event()
+                self.display_text("Runner stole third")
+            except GameException:
+                return None
+        elif self.event == 'steal_home':
+            try:
+                # we only get steal_home if a runner was on third
+                self.game.steal("home")
+                self.event = self.ball_or_strike()
+                self.handle_event()
+                self.display_text("Runner stole home")
             except GameException:
                 return None
         elif self.event == 'triple_play':
@@ -250,11 +301,17 @@ class Event(object):
             'error': 10,
             'balk': 0,
             'caught_stealing': 0,
+            'caught_stealing_third': 0,
+            'caught_stealing_home': 0,
             'double_play': 0,
             'fielders_choice': 0,
             'picked_off': 0,
+            'picked_off_second': 0,
+            'picked_off_third': 0,
             'sacrifice': 0,
             'steal': 0,
+            'steal_third': 0,
+            'steal_home': 0,
             'triple_play': 0,
             'wild_pitch': 0,
             'passed_ball': 0,
@@ -331,8 +388,11 @@ class Event(object):
         self.probs['triple_play'] = 40
         self.probs['balk'] = 10
         self.probs['fielders_choice'] = 100
-        self.probs['picked_off'] = 20
-        self.probs['sacrifice'] = 250 # TODO needs adjustment
+        self.probs['picked_off'] = 10
+        self.probs['picked_off_second'] = 20
+        self.probs['sacrifice'] = 250
+        self.probs['steal_third'] = 100
+        self.probs['caught_stealing_third'] = 100
 
     def set_probs_bases_loaded(self):
         """
@@ -341,31 +401,43 @@ class Event(object):
         self.probs['double_play'] = 400
         self.probs['triple_play'] = 40
         self.probs['balk'] = 10
+        self.probs['steal_home'] = 10
+        self.probs['caught_stealing_home'] = 20
+        self.probs['picked_off'] = 5
+        self.probs['picked_off_second'] = 5
+        self.probs['picked_off_third'] = 10
 
     def set_probs_runner_on_second(self):
         """
         Adjust probabilities for runner on second only.
         """
-        self.probs['steal'] = 100 # TODO will steal work 2nd to third?
+        self.probs['steal_third'] = 100
+        self.probs['caught_stealing_third'] = 100
         self.probs['double_play'] = 100
         self.probs['balk'] = 10
+        self.probs['picked_off_second'] = 20
 
     def set_probs_runner_on_third(self):
         """
         Adjust probabilities for runner on third only.
         """
-        self.probs['steal'] = 10 # TODO will stealing home work?
+        self.probs['steal_home'] = 10
+        self.probs['caught_stealing_home'] = 20
         self.probs['double_play'] = 80
         self.probs['balk'] = 10
+        self.probs['picked_off_third'] = 20
 
     def set_probs_runner_on_second_and_third(self):
         """
         Adjust probabilities for runner on second and third.
         """
-        self.probs['steal'] = 10 # TODO will stealing home work?
+        self.probs['steal_home'] = 10
+        self.probs['caught_stealing_home'] = 20
         self.probs['double_play'] = 90
         self.probs['triple_play'] = 10
         self.probs['balk'] = 10
+        self.probs['picked_off_second'] = 5
+        self.probs['picked_off_third'] = 15
     
     def set_probs_one_out(self):
         """
@@ -399,6 +471,7 @@ class Event(object):
         """
         Adjust the probabilities based on the batter abilities
         """
+        # TODO this isn't actually loading batter abilities
         # power
         power = self.game.bat_team.current_batter().batting.skills['POW']
         self.probs['fly_out'] -= 4 * (power - 50)
@@ -429,6 +502,7 @@ class Event(object):
         """
         Adjust the probabilities based on the pitcher abilities
         """
+        # TODO this does nothing
         pass
 
     def adjust_probs_based_on_count(self, balls=0, strikes=0):

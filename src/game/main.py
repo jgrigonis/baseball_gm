@@ -129,7 +129,7 @@ class Game(object):
         
         """
         b_num = self._base_number(base)
-        if b_num == "home":
+        if b_num == "home" or b_num == 3:
             if self.bases[2] != 0:
                 self.stats.caught_stealing(self.bases[2])
                 self.bases.clear([2])
@@ -441,6 +441,8 @@ class Game(object):
             return 1
         if base == "third":
             return 2
+        if base == "home":
+            return 3
         return base
     
     def _next_batter(self):

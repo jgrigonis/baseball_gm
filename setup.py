@@ -9,15 +9,17 @@ import os
 # pip install -e .
 setup(
     name='baseball_manager',
-    version='0.3.3',
+    version='0.3.4',
     author='Joshua Grigonis',
     author_email='josh.grigonis@gmail.com',
     packages=find_packages(),
     include_package_data=True,
     description='A baseball simulator',
+    # TODO: these scripts don't work like I want
     scripts=[
         'scripts/compare_positions.py', 
         'scripts/create_many_players.py',
+        'scripts/run_game.py',
     ],
     install_requires=[
     ],
