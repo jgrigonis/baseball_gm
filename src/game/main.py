@@ -18,7 +18,7 @@ class Game(object):
     The number of outs. The inning.
 
     TODO:
-    The batter. The pitcher. The fielders.
+    The lineups for both teams.
 
     """
     def __init__(self, debug=False, pauses=False, innings_per_game=9):

@@ -1,0 +1,68 @@
+# Get some average ratings
+import argparse
+
+from src.player.player import Player
+from src.player import positions
+from src.player import rated_positions
+from src.name_generator.names import NameGenerator
+from scripts.create_player import create
+
+
+def get_args():
+    """
+    Get arguments from the command line.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--debug", "-d",
+        action='store_true',
+        help="Set the debug flag."
+    )
+    parser.add_argument(
+        "--rating", "-r",
+        required=True,
+        choices=rated_positions,
+        help="The position to rate."
+    )
+    parser.add_argument(
+        "--position", "-p",
+        required=True,
+        choices=positions,
+        help="The position of the player to create."
+    )
+    parser.add_argument(
+        "--iterations", "-i",
+        type=int,
+        default=100,
+        help="The nubmer of iterations to run."
+    )
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = get_args()
+    min = 100
+    max = 0
+    total = 0
+    count = args.iterations
+    if args.debug:
+        my_player = create()
+        print(my_player.header())
+    for _ in range(count):
+        my_player = create(args.position)
+        p_rating = my_player.ratings[args.rating]
+        total += p_rating
+        if p_rating < min:
+            min = p_rating
+        if p_rating > max:
+            max = p_rating
+            if args.debug:
+                print(my_player.horizontal())
+    average = total / count
+    print("min = {}".format(min))
+    print("max = {}".format(max))
+    print("avg = {}".format(average))
+
+if __name__ == "__main__":
+    main()
