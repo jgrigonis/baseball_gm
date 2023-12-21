@@ -44,8 +44,6 @@ class Event(object):
         self.event = self.random_event()
         self.handle_event()
 
-        # TODO: handle_event needs to apply defensive filter
-
     def random_event(self):
         """
         Use a weighted probability.  probs is a dictionary of events
@@ -268,6 +266,7 @@ class Event(object):
 
     def display_text(self, text):
         """
+        Print a text messge for the event.
         """
         if text != "" and self.debug:
             print(text)
@@ -362,6 +361,7 @@ class Event(object):
             self.adjust_probs_men_on_base()
         #self.adjust_probs_batter()
         #self.adjust_probs_pitcher()
+
         # This is very noisy
         # if self.debug:
         #     print(self)

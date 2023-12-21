@@ -158,6 +158,7 @@ skill_template = {
         'strikes': 10,
         'base_running': 40,
         'catching': 70,
+        'infield': 40,
         'outfield': 40,
         'arm': 60
     },
@@ -244,6 +245,7 @@ skill_template = {
         'ground_balls': 10,
         'strikes': 10,
         'infield': 60,
+        'power': 35,
     },
     'of': {
         'accuracy': 10,
