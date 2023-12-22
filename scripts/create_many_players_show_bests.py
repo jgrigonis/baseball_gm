@@ -16,7 +16,7 @@ max_ratings = {}
 for item in rated_positions:
     max_ratings[item] = 0
 best_players = {}
-debug = True
+debug = False
 print(Player.header())
 for x in range(players_to_create):
     player = create()
