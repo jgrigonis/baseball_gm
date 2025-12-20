@@ -170,7 +170,7 @@ class Player(object):
         output += str("ST = pitching stamina\n")
         output += str("RE = pitching recovery\n")
         output += str("GB = pitching ground balls\n")
-        output += str("PS = pitching strikes\n")
+        output += str("KK = pitching strikes\n")
         output += str("\nP  = Pitcher rating\n")
         output += str("C  = Catcher rating\n")
         output += str("1B = First baseman rating\n")

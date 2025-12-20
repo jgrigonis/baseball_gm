@@ -141,7 +141,7 @@ class Bases(object):
             self.bases[base] = 0
 
     def men_on(self):
-        """Return the number of runner on base."""
+        """Return the number of runner(s) on base."""
         on_base = 0
         for index in self.bases:
             if index != 0:
