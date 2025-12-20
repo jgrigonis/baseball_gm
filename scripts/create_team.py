@@ -32,6 +32,7 @@ This will also write out a csv file called FooBars.csv that represents the
 team and has all its ratings.
 
 """
+import argparse
 import random
 
 from scripts.create_player import create
@@ -56,9 +57,22 @@ def create_players(position=None, num=1):
         players.append(create(pos))
     return players
 
+def get_args():
+    """
+    Get arguments from the command line.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--debug", "-d",
+        action='store_true',
+        help="Set the debug flag."
+    )
+    args = parser.parse_args()
+    return args
 
 def main():
-    debug = False
+    args = get_args()
+    debug = args.debug
     team = Team("Foo", "Bars")
     team.players.extend(create_players('c', 2))
     team.players.extend(create_players(['of', 'cf', 'lf', 'rf'], 5))
@@ -77,7 +91,7 @@ def main():
         csv.writelines(Player.csv_header())
         for player in team.players:
             csv.writelines(player.csv())
-    print(player.legend())
+    #print(player.legend())
 
 if __name__ == "__main__":
     main()

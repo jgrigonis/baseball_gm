@@ -1,4 +1,18 @@
-# Get some average ratings
+"""
+This script will create many players of the given position.
+You specify the position to create with the -p flag
+It will then rate the players at a given position, showing
+the min rating, the max rating, and the average rating.
+You specify the postion to rate with the -r flag.
+
+So, if you wanted to create outfielders, and rate them at
+shortstop, you would do:
+
+python ratings_average.py -p of -r ss
+
+The -i flag allows you set the number of iterations to run,
+the default is 100.
+"""
 import argparse
 
 from src.player.player import Player
@@ -34,7 +48,7 @@ def get_args():
         "--iterations", "-i",
         type=int,
         default=100,
-        help="The nubmer of iterations to run."
+        help="The nubmer of iterations to run. (default = 100)"
     )
     args = parser.parse_args()
     return args
