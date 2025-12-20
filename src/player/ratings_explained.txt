@@ -1,0 +1,99 @@
+Name - Self Explanatory, the name of the player
+
+In the __init__ file of the player class, all the templates are stored
+for each position. These are used to create a random player based on 
+the specified postion.
+
+PS - This is just a position that the player was created with. Any player
+can play any position, some won't even be best suited for the position
+they were created with.
+
+** Attributes **
+T - Throws. This is the hand the player throws with (r, l)
+
+B - Bats. This is the side of the plate the player bats from, right, 
+left or switch (r, l, s)
+
+CL - Clutch. Barely implemented yet, but this is intended to determine 
+how "clutch" a player is 
+
+SP - Running Speed. Very useful for running bases, outfielder range, 
+and infield range as well.
+
+PO - Power Hitting. How hard can the player hit the ball.
+
+EY - Batting Eye. How selective can the player be in terms of taking 
+bad pitches.
+
+CT - Contact Hitting. How effective is the player at making contact 
+with pitches.
+
+BR - Base Running. How smart is the player on the bases. Smarter base 
+runners can steal easier, and won't get picked off as easily. Also, they
+won't make base running mistakes like trying to overextend.
+
+BU - Bunting Skill. How well can the player can lay down a bunt 
+
+CA - Specific Catcher skills, like blocking wild pitches, and throwing out 
+base stealers. 
+
+IF - Infield specific skills, cleanly fielding ground balls, etc.
+
+OF - Outfield skills, such as tracking fly balls, playing hops and caroms
+
+AR - Throwing Arm strength. Determines accuracy and speed of throwing the
+ball.
+
+** Pitching Attributes **
+AC - Pitching Accuracy. How accurately can a pitcher hit a spot. Will reduce
+balls and wild pitches.
+
+ST - Pitching Stamina. A pitcher's energy will go down slower with higher 
+stamina rating.
+
+RE - Pitching Recovery. A pitcher's energy will recover faster with rest with
+a higher recovery rating.
+
+GB - Ground Ball Pitching. How effective a pitcher is at getting ground balls
+intead of flies.
+
+KK - Pitching Strikes. How effective the pitcher is at making batters miss their
+pitches.
+
+** Positional Ratings **
+P - Pitching Rating. Overall pitching rating, based on pitching attributes.
+Average of Accuracy, Stamina, Recovery, Ground Balls, Strikes and Clutch
+
+C - Catcher Rating. Positional rating based on catching skills and some others.
+Average of 5 x Catching, Arm and Clutch
+
+1B - First Baseman Rating. Positional rating based on relevant skills.
+Average of 5 x Infielding and Clutch
+
+2B - Second Baseman Rating. Positional rating based on relevant skills.
+Average of 5 x Infielding, Running Speed and Clutch
+
+3B - Third Baseman Rating. Positional rating based on relevant skills.
+Average of 5 x Infielding, Arm and Clutch
+
+SS - Short Stop Rating. Positional rating based on relevant skills.
+Average of 5 x Infielding, Running Speed, Arm and Clutch
+
+LF - Left Field Rating. Positional rating based on relevant skills.
+Average of 5 x Outfielding, Arm, Speed, and Clutch
+
+CF - Center Field Rating. Positional rating based on relevant skills.
+Average of 5 x Outfielding, 2 x Arm, 3 x Speed, and Clutch
+
+RF - Right Field Rating. Positional rating based on relevant skills.  
+Average of 5 x Outfielding, 2 x Arm, Speed, and Clutch
+
+** Hitting Ratings **
+LO - Lead Off Hitter Rating. Relevant hitting skills for a lead off hitter.
+Average of Running Speed, Eye x 2, Contact x 2, Base Running and Clutch
+
+CH - Contact Hitter Rating. Relevant hitting skills for a contact hitter.
+Average of Eye x 2, Contact x 4, and Clutch
+
+PH - Power Hitter Rating. Relevant hitting skills for a power hitter.
+Average of Power x 4, Eye, Contact and Clutch
