@@ -157,7 +157,7 @@ class Event(object):
             try:
                 # we only get caught_stealing if the runner was on first
                 # and second is vacant
-                self.game.caught_stealing("second")
+                self.game.caught_stealing(1)
                 self.event = self.ball_or_strike()
                 self.handle_event()
                 self.display_text("Runner caught stealing second")
@@ -167,7 +167,8 @@ class Event(object):
             try:
                 # only get caught_stealing_third if the runner was on second
                 # and third is vacant
-                self.game.caught_stealing("third")
+                #self.game.caught_stealing("third")
+                self.game.caught_stealing(2)
                 self.event = self.ball_or_strike()
                 self.handle_event()
                 self.display_text("Runner caught stealing third")
@@ -176,7 +177,7 @@ class Event(object):
         elif self.event == 'caught_stealing_home':
             try:
                 # we only get caught_stealing_home if the runner was on third
-                self.game.caught_stealing("home")
+                self.game.caught_stealing(3)
                 self.event = self.ball_or_strike()
                 self.handle_event()
                 self.display_text("Runner caught stealing home")
@@ -214,7 +215,7 @@ class Event(object):
             try:
                 # we only get steal if a runner was on first
                 # and second is vacant
-                self.game.steal("second")
+                self.game.steal(1)
                 self.event = self.ball_or_strike()
                 self.handle_event()
                 self.display_text("Runner stole second")
@@ -224,7 +225,7 @@ class Event(object):
             try:
                 # we only get steal_third if a runner was on second
                 # and third is vacant
-                self.game.steal("third")
+                self.game.steal(2)
                 self.event = self.ball_or_strike()
                 self.handle_event()
                 self.display_text("Runner stole third")
@@ -233,7 +234,7 @@ class Event(object):
         elif self.event == 'steal_home':
             try:
                 # we only get steal_home if a runner was on third
-                self.game.steal("home")
+                self.game.steal(3)
                 self.event = self.ball_or_strike()
                 self.handle_event()
                 self.display_text("Runner stole home")

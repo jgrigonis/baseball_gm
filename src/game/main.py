@@ -3,7 +3,8 @@ import src.game.count as count
 import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
 import src.game.score as score
-from src.stats import stats
+from src.team.team import Team
+# from src.stats import stats
 __author__ = 'josh'
 
 
@@ -21,7 +22,7 @@ class Game(object):
     The lineups for both teams.
 
     """
-    def __init__(self, debug=False, pauses=False, innings_per_game=9):
+    def __init__(self, home, away, debug=False, pauses=False, innings_per_game=9):
         """Set up a new game.
 
         innings_per_game defaults to the number of innings in a
@@ -29,19 +30,32 @@ class Game(object):
         little league game, or some type of exhibition game.
 
         """
+        self.home = home
+        self.away = away
+        self.bat_team = away     # away bats first
+        self.pitch_team = home
         self.debug = debug
         self.pauses = pauses
         self.count = count.Count()
         self.bases = bases.Bases()
-        self.stats = stats.Stats()
+        #self.stats = stats.Stats()
         self.score = score.Score()
         self.winner = None
         self.game_over = False
         self.inning = inning.Inning()
         self.innings_per_game = innings_per_game
+
+        self._sync_players()
+
         if debug:
             print(self.inning)
             print("------------")
+            print(self.current_batter)
+            print(self.current_pitcher)
+
+    def _sync_players(self):
+        self.current_batter = self.bat_team.current_batter()
+        self.current_pitcher = self.pitch_team.current_pitcher()
 
     def strike(self):
         """
@@ -83,13 +97,17 @@ class Game(object):
         """
         Batter is hit by pitch.
 
-        Call the stats.hbp method to update the stats.  Then call
+        Call the hit_batter method to update the stats.  Then call
         the _walk method with hbp set to True, so it knows not to
-        also call the stats.walk method.  We don't want to track it
-        as a walk, we just want to perform the same game functions.
+        also call the stats.batting.walk method.  We don't want to 
+        track it as a walk, we just want to perform the same game 
+        functions.
 
         """
-        self.stats.hbp()
+        batter = self.current_batter
+        pitcher = self.current_pitcher
+        batter.stats.batting.hit_batter()
+        pitcher.stats.pitching.hit_batter()
         self._walk(hbp=True)
 
     def steal(self, base):
@@ -103,16 +121,23 @@ class Game(object):
         assumed to have occurred, and an exception will raise.
         
         """
-        if base == "home":
+        b_num = self._base_number(base)
+        runner = self.bases[b_num - 1]
+        #pitcher = self.current_pitcher
+        if self.debug:
+            print("base to steal = " + str(b_num))
+        if b_num == 3:
             if self.bases[2] != 0:
                 self._score_run(self.bases[2])
-                self.stats.steal(self.bases[2])
+                #self.stats.steal(self.bases[2])
+                runner.stats.batting.steal()
                 self.bases.clear(2) 
                 return
-        base_num = self._base_number(base)
-        if self.bases[base_num - 1] != 0 and self.bases[base_num] == 0:
-            self.stats.steal(self.bases[base_num - 1])
-            self.bases.advance(base_num - 1)
+        # If a steal is possible
+        if self.bases[b_num - 1] != 0 and self.bases[b_num] == 0:
+            runner.stats.batting.steal()
+            #self.stats.steal(self.bases[b_num - 1])
+            self.bases.advance(b_num - 1)
             return
         raise game_exceptions.InvalidSteal()
 
@@ -128,17 +153,21 @@ class Game(object):
         assumed to have occurred, and an exception will raise.
         
         """
+        # TODO add a stat for catchers
         b_num = self._base_number(base)
-        if b_num == "home" or b_num == 3:
+        runner = self.bases[b_num - 1]
+        if b_num == 3:
             if self.bases[2] != 0:
-                self.stats.caught_stealing(self.bases[2])
+                runner.stats.batting.caught_stealing()
+                #self.stats.caught_stealing(self.bases[2])
                 self.bases.clear([2])
                 self._put_out()
             else:
                 raise game_exceptions.InvalidSteal()
-        elif b_num in [0, 1, 2]:
+        elif b_num in [1, 2]:
             if self.bases[b_num - 1] != 0 and self.bases[b_num] == 0:
-                self.stats.caught_stealing(self.bases[b_num - 1])
+                runner.stats.batting.caught_stealing()
+                #self.stats.caught_stealing(self.bases[b_num - 1])
                 self.bases.clear([b_num - 1])
                 self._put_out()
             else:
@@ -160,23 +189,28 @@ class Game(object):
         and an exception will raise.
         
         """
-        base_number = self._base_number(base)
-        if self.bases[base_number] != 0:
-            self.bases.clear([0])
-            self.stats.pick_off()
+        # TODO add a stat for pitcher
+        b_num = self._base_number(base)
+        runner = self.bases[b_num]
+        pitcher = self.current_pitcher
+        if self.bases[b_num] != 0:
+            self.bases.clear([b_num])
+            #self.stats.pick_off()
+            runner.stats.batting.pick_off()
+
             self._put_out()
         else:
             raise game_exceptions.InvalidPickOff()
                 
     def ground_out(self):
         """Batter grounds out."""
-        self.stats.at_bat()
+        self.current_batter.stats.batting.at_bat()
         self._next_batter()
         self._put_out()
         
     def fly_out(self):
         """Batter flies out."""
-        self.stats.at_bat()
+        self.current_batter.stats.batting.at_bat()
         self._next_batter()
         self._put_out()
 
@@ -243,32 +277,46 @@ class Game(object):
         
         """
         scorers = []
+        to = 0
+        batter = self.current_batter
         if advances == "default":
             advances = []
             for abase in range(3):
                 if not self.bases.empty_base(abase):
-                    advances.append((abase, abase + num))
+                    if abase + num > 3:
+                        to = 3
+                    else:
+                        to = abase + num
+                    advances.append((abase, to))
         if advances:
             if self.bases.men_on():
                 scorers = self.bases.advance_many(advances)
         for scorer in scorers:
-            self.stats.rbi()
+            #self.stats.rbi()
+            batter.stats.batting.hit_rbi()
             self._score_run(scorer)
         if num == 4:
-            self.stats.rbi()
-            self.stats.home_run()
-            # TODO: This 1 should represent the batter
-            self._score_run(1)
+            #self.stats.rbi()
+            batter.stats.batting.hit_rbi()
+            #self.stats.home_run()
+            batter.stats.batting.home_run()
+            self._score_run(batter)
         else:
             if num == 2:
-                self.stats.double()
+                #self.stats.double()
+                batter.stats.batting.double()
             elif num == 3:
-                self.stats.triple()
-            # TODO: This 1 should represent the batter
-            self.bases[num - 1] = 1  # put the batter on base.
-        self.stats.at_bat()
-        self.stats.hit()
+                #self.stats.triple()
+                batter.stats.batting.triple()
+            self.bases[num - 1] = batter  # put the batter on base.
+        #self.stats.at_bat()
+        batter.stats.batting.at_bat()
+        #self.stats.hit()
+        batter.stats.batting.hit()
         self._next_batter()
+        if self.debug:
+            print("DEBUG:")
+            print("1st base has " + str(self.bases[0]))
 
     def double_play(self, base1="second", base2="first", gdp=True):
         """
@@ -278,18 +326,26 @@ class Game(object):
         :param base2: base where second out is made.
         :param gdp: True if it was a grounder into a double.
 
+        #TODO can we get other types of double plays?
+        # Need to be line out double plays
+
         """
+        b1 = self._base_number(base1)
+        b2 = self._base_number(base2)
+        batter = self.current_batter
         if self.bases.men_on() == 0:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
             raise game_exceptions.TooManyOuts()
-        self.stats.at_bat()
+        #self.stats.at_bat()
+        batter.stats.batting.at_bat()
         if gdp:
-            self.stats.gdp()
+            batter.stats.batting.ground_double_play()
+            #self.stats.gdp()
         self._next_batter()
-        self.bases[base1] = 0
+        self.bases[b1] = 0
         self._put_out()
-        self.bases[base2] = 0
+        self.bases[b2] = 0
         self._put_out()
 
     def triple_play(self, gtp=True):
@@ -300,13 +356,16 @@ class Game(object):
         play.
 
         """
+        batter = self.current_batter
         if self.bases.men_on() < 2:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs != 0:
             raise game_exceptions.TooManyOuts()
-        self.stats.at_bat()
+        #self.stats.at_bat()
+        batter.stats.batting.at_bat()
         if gtp:
-            self.stats.gtp()
+            #self.stats.gtp()
+            batter.stats.batting.ground_triple_play()
         # self.pitch_team_stats.out(3)
         # self.current_pitcher.out(3)
         self._next_batter()
@@ -325,10 +384,13 @@ class Game(object):
         choice.
         
         """
-        self.stats.at_bat()
+        b_num = self._base_number(base)
+        batter = self.current_batter
+        #self.stats.at_bat()
+        batter.stats.batting.at_bat()
         self._next_batter()
-        self.bases[base] = 0  # clear the base
-        # TODO: first base needs to get the batter
+        self.bases[b_num] = 0  # clear the base
+        self.bases[0] = batter
         self._put_out()
     
     def error(self, batter_on_base=False, advances=None):
@@ -346,6 +408,7 @@ class Game(object):
         :param advances: is a list of tuples to advance runners from and to.  
         
         """
+        batter = self.current_batter
         scorers = []
         if advances:
             if self.bases.men_on():
@@ -361,9 +424,9 @@ class Game(object):
                 batter_base = self._base_number(batter_on_base)
             if not self.bases.empty_base(batter_base):
                 raise game_exceptions.InvalidAdvance()
-            # TODO: This 1 should represent the batter
-            self.bases[batter_base] = 1
-            self.stats.at_bat()
+            self.bases[batter_base] = batter
+            batter.stats.batting.at_bat()
+            #self.stats.at_bat()
             self._next_batter()
                             
     def sacrifice(self, advances=None):
@@ -376,6 +439,7 @@ class Game(object):
         and to.
         
         """
+        batter = self.current_batter
         if self.bases.men_on() == 0:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
@@ -383,7 +447,8 @@ class Game(object):
         if not advances:
             scored = self.bases.advance_all()
             if scored:
-                self.stats.rbi()
+                batter.stats.batting.hit_rbi()
+                #self.stats.rbi()
                 self._score_run(scored)
         else:
             if isinstance(advances, tuple):
@@ -393,9 +458,11 @@ class Game(object):
                     raise game_exceptions.NoRunnerToAdvance()
             scorers = self.bases.advance_many(advances)
             for scorer in scorers:
-                self.stats.rbi()
+                batter.stats.batting.hit_rbi()
+                #self.stats.rbi()
                 self._score_run(scorer)
-        self.stats.sacrifice()
+        batter.stats.batting.sacrifice()        
+        #self.stats.sacrifice()
         # self.pitch_team_stats.out()
         # self.current_pitcher.out()
         self.inning.out()
@@ -403,8 +470,13 @@ class Game(object):
 
     def _strike_out(self):
         """Batter strikes out."""
-        self.stats.at_bat()
-        self.stats.strike_out()
+        batter = self.current_batter
+        pitcher = self.current_pitcher
+
+        batter.stats.batting.at_bat()
+        batter.stats.batting.strike_out()
+        pitcher.stats.pitching.strike_out()
+
         self._next_batter()
         self._put_out()
 
@@ -416,40 +488,47 @@ class Game(object):
         call the stats.walk method.
 
         """
+        batter = self.current_batter
+        pitcher = self.current_pitcher
         if not hbp:
-            self.stats.walk()
+            batter.stats.batting.walk()
+            #self.stats.walk()
         if self.bases[0] != 0:
             if self.bases[1] != 0:
                 if self.bases[2] != 0:
                     self._score_run(self.bases[2])
-                    self.stats.rbi()
+                    batter.stats.batting.hit_rbi()
                 else:
                     self.bases[2] = self.bases[1]
             else:
                 self.bases[1] = self.bases[0]
         else:
-            # TODO: This is just a 1, but should represent the actual batter
-            self.bases[0] = 1
+            self.bases[0] = batter
         self._next_batter()
 
     @staticmethod
     def _base_number(base):
         """Returns the base number, which is an index to the bases list."""
-        if base == "first":
-            return 0
-        if base == "second":
-            return 1
-        if base == "third":
-            return 2
-        if base == "home":
-            return 3
-        return base
+        mapping = {
+            "first": 0,
+            "second": 1,
+            "third": 2,
+            "home": 3,
+        }
+        if isinstance(base, str):
+            if base not in mapping:
+                raise game_exceptions.InvalidBase(f"Invalid base: {base}")
+            return mapping[base]
+        if isinstance(base, int) and 0 <= base <= 3:
+            return base
+        raise game_exceptions.InvalidBase(f"Invalid base: {base}")
     
     def _next_batter(self):
         """Next batter is up in the lineup."""
-        # self.bat_team.next_batter()
-        # self.current_batter = \
-        #     self.bat_team.current_batter().stats.batting
+        if self.debug:
+            print(self.current_batter.horizontal())
+        self.bat_team.next_batter()
+        self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
 
     def _put_out(self):
@@ -480,7 +559,8 @@ class Game(object):
         TODO: We should add to the inning scores for home or away.
 
         """
-        self.stats.run(scorer)
+        # need to update this
+#        self.stats.run(scorer)
         self.score.score_run()
         # self.current_pitcher.earned_run()
         # self.pitch_team_stats.earned_run()
@@ -504,6 +584,9 @@ class Game(object):
         """
         self.score.new_inning()
         self.inning.increment()
+        # if self.debug:
+        #     self.current_batter.rate_player()
+        #     print(self.current_batter.horizontal())
         self.bases.clear()
         self.count.reset_count()
         if self.debug and not self.game_over:
@@ -548,4 +631,7 @@ class Game(object):
         self.game_over = True
         # self.home.save()
         # self.away.save()
+        # if self.debug:
+        #     print(self.current_batter.first_name)
+        #     print(self.current_batter.stats.batting.rbi)
         return

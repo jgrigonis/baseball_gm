@@ -6,6 +6,7 @@ import unittest
 from src.game.main import Game
 import src.game.game_exceptions as game_exceptions
 from src.player.player import Player
+from src.team.team import Team
 
 # pylint: disable=R0904
 # pylint complains about the number of public methods.
@@ -15,10 +16,21 @@ from src.player.player import Player
 # pylint complains about the number of statements.
 
 
-class TestInitAnd26Balls(unittest.TestCase):
+class GameTestBase(unittest.TestCase):
+    def setUp(self):
+        home = Team('home', 'team')
+        home.load_team()
+        home.set_lineup()
+        away = Team('away', 'team')
+        away.load_team()
+        away.set_lineup()
+        self.my_game = Game(home, away)
+
+
+class TestInitAnd26Balls(GameTestBase):
     """Fairly boring, just testing the init."""
     def setUp(self):
-        self.my_game = Game()
+        super().setUp()
         self.pla0 = Player("Sandy", "Koufax")
         self.pla1 = Player("Willie", "Mays")
         self.pla2 = Player("Jackie", "Robinson")
@@ -42,6 +54,7 @@ class TestInitAnd26Balls(unittest.TestCase):
         self.plb8 = Player("Frank", "Robinson")
         self.plb9 = Player("Yogi", "Berra")
         self.plb10 = Player("Mickey", "Mantle")
+        
 
     def test_count(self):
         """Count should be empty."""
@@ -60,9 +73,9 @@ class TestInitAnd26Balls(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_winner_game_over(self):
         """No one has won, and the game is not over."""
@@ -84,9 +97,9 @@ class TestInitAnd26Balls(unittest.TestCase):
         # pylint: disable=W0612
         for x in range(26):
             self.my_game.ball()
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
     def test_score_three(self):
         """6 walks should have been issued, leading to 3 scores."""
@@ -113,18 +126,19 @@ class TestInitAnd26Balls(unittest.TestCase):
         self.assertEqual(self.my_game.inning.outs, 0)
 
 
-class TestTeamCycles(unittest.TestCase):
+class TestTeamCycles(GameTestBase):
     """Test what happens if the team leads off with a single, double,
     triple and home run in order.
 
     """
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
-        self.my_game = Game()
-        self.my_game.hit(1)
-        self.my_game.hit(2)
-        self.my_game.hit(3)
-        self.my_game.hit(4)
+        super().setUp()
+        game = self.my_game
+        game.hit(1)
+        game.hit(2)
+        game.hit(3)
+        game.hit(4)
 
     def test_score(self):
         """First four batters have all scored."""
@@ -135,14 +149,14 @@ class TestTeamCycles(unittest.TestCase):
         self.assertEqual(self.my_game.inning.outs, 0)
 
 
-class TestSingleDoublePlayHitByPitch(unittest.TestCase):
+class TestSingleDoublePlayHitByPitch(GameTestBase):
     """Test what happens if the team leads off with a single, followed
     by a double play, and then a hit batter.
 
     """
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.double_play("second", "first")
         self.my_game.hit_by_pitch()
@@ -157,12 +171,12 @@ class TestSingleDoublePlayHitByPitch(unittest.TestCase):
 
     def test_bases(self):
         """Hit batter on first."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestMiraclePitching(unittest.TestCase):
+class TestMiraclePitching(GameTestBase):
     """Test what happens if the pitchers combine to throw 162
     straight strikes.  2 perfect games should leave us in the
     top of the 10th.
@@ -170,7 +184,7 @@ class TestMiraclePitching(unittest.TestCase):
     """
     def setUp(self):
         """Setup instance of Game and have 162 strikes in a row."""
-        self.my_game = Game()
+        super().setUp()
         # pylint: disable=C0103
         # pylint: disable=W0612
         for _ in range(162):
@@ -187,9 +201,9 @@ class TestMiraclePitching(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Start of the top of the tenth."""
@@ -197,14 +211,14 @@ class TestMiraclePitching(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, True)
 
 
-class TestAway3Up3DownHomeHomerStrikeOutGroundOut(unittest.TestCase):
+class TestAway3Up3DownHomeHomerStrikeOutGroundOut(GameTestBase):
     """Test what happens if the away team goes three up, three down.
     Then the home team hits homer, then strikes out, then grounds out.
 
     """
     def setUp(self):
         """Setup the described scenario."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.strike()
         self.my_game.strike()
         self.my_game.strike()
@@ -227,9 +241,9 @@ class TestAway3Up3DownHomeHomerStrikeOutGroundOut(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Bottom of the first."""
@@ -245,14 +259,14 @@ class TestAway3Up3DownHomeHomerStrikeOutGroundOut(unittest.TestCase):
         self.assertEqual(self.my_game.game_over, False)
 
 
-class TestBottom9thHomeWin(unittest.TestCase):
+class TestBottom9thHomeWin(GameTestBase):
     """Test what happens if the bottom of the 9th comes and the
     home team is already winning.
 
     """
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
-        self.my_game = Game()
+        super().setUp()
 
         # 7 1/2 inning scoreless
         # pylint: disable=C0103
@@ -278,9 +292,9 @@ class TestBottom9thHomeWin(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Bottom of the ninth, game is now over."""
@@ -293,13 +307,13 @@ class TestBottom9thHomeWin(unittest.TestCase):
         self.assertEqual(self.my_game.game_over, True)
 
 
-class TestLeadOffHomer(unittest.TestCase):
+class TestLeadOffHomer(GameTestBase):
     """Test what happens if the lead off hitter hits a homer.
 
     """
     def setUp(self):
         """Setup Game with leadoff homer with the count of 1-1."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.strike()
         self.my_game.ball()
         self.my_game.hit(4)
@@ -315,9 +329,9 @@ class TestLeadOffHomer(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Top of the first."""
@@ -333,14 +347,14 @@ class TestLeadOffHomer(unittest.TestCase):
         self.assertEqual(self.my_game.game_over, False)
 
 
-class TestLeadOffHomerHomeTeam(unittest.TestCase):
+class TestLeadOffHomerHomeTeam(GameTestBase):
     """Test what happens if the lead off hitter hits a homer
     for the home team.
 
     """
     def setUp(self):
         """Setup Game with leadoff homer with the count of 1-1."""
-        self.my_game = Game()
+        super().setUp()
         # Away Team 3 up 3 down
         self.my_game.fly_out()
         self.my_game.fly_out()
@@ -362,9 +376,9 @@ class TestLeadOffHomerHomeTeam(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Bottom of the first."""
@@ -380,11 +394,11 @@ class TestLeadOffHomerHomeTeam(unittest.TestCase):
         self.assertEqual(self.my_game.game_over, False)
 
 
-class TestFoulBalls(unittest.TestCase):
+class TestFoulBalls(GameTestBase):
     """Test what happens when hitter start fouling balls off."""
     def setUp(self):
         """Setup Game with strikes and foul balls and balls."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.strike()  # 0-1
         self.my_game.foul_ball()  # 0-2
         self.my_game.foul_ball()  # 0-2 still
@@ -404,9 +418,9 @@ class TestFoulBalls(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Top of the first."""
@@ -414,7 +428,7 @@ class TestFoulBalls(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, True)
 
 
-class TestStealingBases(unittest.TestCase):
+class TestStealingBases(GameTestBase):
     """Test what happens when runners start stealing."""
     def setUp(self):
         """Setup Game with strikes and foul balls and balls.
@@ -422,18 +436,18 @@ class TestStealingBases(unittest.TestCase):
         I put some asserts in this one, for fun.
 
         """
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.steal("second")
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
         self.my_game.strike()
         self.my_game.steal("third")
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.my_game.strike()
         self.my_game.steal("home")
         self.my_game.ball()
@@ -449,9 +463,9 @@ class TestStealingBases(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Top of the first."""
@@ -468,19 +482,19 @@ class TestStealingBases(unittest.TestCase):
         self.assertRaises(game_exceptions.InvalidSteal, self.my_game.steal, 1)
 
 
-class TestCaughtStealingBases(unittest.TestCase):
+class TestCaughtStealingBases(GameTestBase):
     """Test what happens when runners get caught stealing."""
     def setUp(self):
         """Runner hits for single, steals second, caught at third."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.strike()
         self.my_game.ball()
         self.my_game.foul_ball()
         self.my_game.ball()
         self.my_game.hit(1)
-        self.assertNotEqual(self.my_game.bases["first"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
         self.my_game.steal("second")
-        self.assertNotEqual(self.my_game.bases["second"], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
         self.my_game.strike()
         self.assertEqual(self.my_game.inning.outs, 0)
         self.my_game.caught_stealing("third")
@@ -497,9 +511,9 @@ class TestCaughtStealingBases(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_invalid_cs(self):
         """Test an invalid caught stealing."""
@@ -513,27 +527,27 @@ class TestCaughtStealingBases(unittest.TestCase):
 
     def test_invalid_base(self):
         """Test another invalid stealing."""
-        self.assertRaises(game_exceptions.InvalidSteal,
+        self.assertRaises(game_exceptions.InvalidBase,
                           self.my_game.caught_stealing, 4)
 
 
-class TestCaughtStealingSecondAndHome(unittest.TestCase):
+class TestCaughtStealingSecondAndHome(GameTestBase):
     """Test what happens when runners get caught stealing."""
     def setUp(self):
         """Runner hits for single, caught stealing second, next batter
         triples, but caught stealing home.
 
         """
-        self.my_game = Game()
+        super().setUp()
         self.my_game.strike()
         self.my_game.ball()
         self.my_game.foul_ball()
         self.my_game.ball()
         self.my_game.hit(1)
-        self.assertNotEqual(self.my_game.bases["first"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
         self.my_game.caught_stealing("second")
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
         self.my_game.strike()
         self.assertEqual(self.my_game.inning.outs, 1)
         self.my_game.ball()
@@ -552,16 +566,16 @@ class TestCaughtStealingSecondAndHome(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestBalks(unittest.TestCase):
+class TestBalks(GameTestBase):
     """Test what happens when runners gets balked around the bases."""
     def setUp(self):
         """Runner hits for single, then pitcher balks 3 straight times."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.balk()
         self.my_game.balk()
@@ -578,9 +592,9 @@ class TestBalks(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_score(self):
         """1-0 Away."""
@@ -590,16 +604,16 @@ class TestBalks(unittest.TestCase):
     def test_bases_empty(self):
         """Test a balk with bases empty."""
         self.my_game.balk()
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestFieldersChoiceRetiresSide(unittest.TestCase):
+class TestFieldersChoiceRetiresSide(GameTestBase):
     """Test what happens when runner gets forced out for third out."""
     def setUp(self):
         """Runner hits for single, two fly outs then fielders choice."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.fly_out()
         self.my_game.fly_out()
@@ -615,11 +629,11 @@ class TestFieldersChoiceRetiresSide(unittest.TestCase):
         self.assertEqual(self.my_game.inning.outs, 0)
 
 
-class TestDoublePlayToEndInning(unittest.TestCase):
+class TestDoublePlayToEndInning(GameTestBase):
     """Test what happens when batter hits into double play with one out."""
     def setUp(self):
         """Runner hits for single, next batter strikes out, then DP."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.strike()
         self.my_game.strike()
@@ -637,9 +651,9 @@ class TestDoublePlayToEndInning(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Bottom of the first."""
@@ -647,11 +661,11 @@ class TestDoublePlayToEndInning(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, False)
 
 
-class TestFieldersChoiceNoOuts(unittest.TestCase):
+class TestFieldersChoiceNoOuts(GameTestBase):
     """Test what happens when batter hits into fielder's choice with no outs."""
     def setUp(self):
         """Runner hits for single, next batter hits into fielder's choice."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.fielders_choice("second")
 
@@ -666,9 +680,9 @@ class TestFieldersChoiceNoOuts(unittest.TestCase):
 
     def test_bases(self):
         """Man on first."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
         """Top of the first."""
@@ -676,11 +690,11 @@ class TestFieldersChoiceNoOuts(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, True)
 
 
-class TestAwayTeamWins(unittest.TestCase):
+class TestAwayTeamWins(GameTestBase):
     """Test what happens when away team wins."""
     def setUp(self):
         """Away team wins with grand slam home run in second inning."""
-        self.my_game = Game()
+        super().setUp()
         # top of first
         self.my_game.strike()
         self.my_game.strike()
@@ -701,16 +715,16 @@ class TestAwayTeamWins(unittest.TestCase):
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.assertNotEqual(self.my_game.bases["first"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
         self.my_game.hit(1)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
         self.my_game.strike()
         self.my_game.strike()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.my_game.strike()
         self.my_game.strike()
         self.my_game.ball()
@@ -825,11 +839,11 @@ class TestAwayTeamWins(unittest.TestCase):
         self.assertEqual(self.my_game.score.away, 4)
 
 
-class TestTriplePlay(unittest.TestCase):
+class TestTriplePlay(GameTestBase):
     """Test what happens when batter hits into triple play."""
     def setUp(self):
         """Setup for a triple play."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
@@ -865,11 +879,11 @@ class TestTriplePlay(unittest.TestCase):
                           self.my_game.triple_play)
 
 
-class TestCaughtStealingToEndInning(unittest.TestCase):
+class TestCaughtStealingToEndInning(GameTestBase):
     """Test what happens when runner caught stealing to end inning."""
     def setUp(self):
         """Get caught stealing to end inning."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
@@ -889,11 +903,11 @@ class TestCaughtStealingToEndInning(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, False)
 
 
-class TestLotsOfScoring(unittest.TestCase):
+class TestLotsOfScoring(GameTestBase):
     """Test what happens when we score lots of runs."""
     def setUp(self):
         """Setup lots of scoring."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
@@ -943,14 +957,14 @@ class TestLotsOfScoring(unittest.TestCase):
         self.assertEqual(self.my_game.score.away, 2)
 
 
-class TestTriplePlayWithoutEnoughRunners(unittest.TestCase):
+class TestTriplePlayWithoutEnoughRunners(GameTestBase):
     """Test what happens when batter hits into triple play in an
     impossible scenario.
 
     """
     def setUp(self):
         """BStart the game, put one runner on."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
 
     def test_bad_triple_play(self):
@@ -968,14 +982,14 @@ class TestTriplePlayWithoutEnoughRunners(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, True)
 
 
-class TestDoublePlayWithoutEnoughRunners(unittest.TestCase):
+class TestDoublePlayWithoutEnoughRunners(GameTestBase):
     """Test what happens when batter hits into double play in an
     impossible scenario.
 
     """
     def setUp(self):
         """Start the game."""
-        self.my_game = Game()
+        super().setUp()
 
     def test_bad_double_play(self):
         """Bad double play."""
@@ -992,11 +1006,11 @@ class TestDoublePlayWithoutEnoughRunners(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, True)
 
 
-class TestSacrificeNoOneOn(unittest.TestCase):
+class TestSacrificeNoOneOn(GameTestBase):
     """Test what happens when batter does a sacrifice for no one."""
     def setUp(self):
         """Bad sacrifice."""
-        self.my_game = Game()
+        super().setUp()
         self.assertRaises(game_exceptions.NotEnoughRunnersOnBase,
                           self.my_game.sacrifice)
 
@@ -1010,11 +1024,11 @@ class TestSacrificeNoOneOn(unittest.TestCase):
         self.assertEqual(self.my_game.inning.top, True)
 
 
-class TestSacBuntSingleton(unittest.TestCase):
+class TestSacBuntSingleton(GameTestBase):
     """Test what happens when batter does a sac bunt."""
     def setUp(self):
         """Sac Bunt to second."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
@@ -1032,16 +1046,16 @@ class TestSacBuntSingleton(unittest.TestCase):
 
     def test_bases(self):
         """Man on first."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestSeveralBadSacrifices(unittest.TestCase):
+class TestSeveralBadSacrifices(GameTestBase):
     """Test several impossible sac bunts."""
     def setUp(self):
         """Bad Sac Bunts."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
@@ -1065,16 +1079,16 @@ class TestSeveralBadSacrifices(unittest.TestCase):
 
     def test_bases(self):
         """Man on first."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestSacWithTwoOuts(unittest.TestCase):
+class TestSacWithTwoOuts(GameTestBase):
     """Test another impossible sac bunt."""
     def setUp(self):
         """Bad Sac Bunts."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.strike()
         self.my_game.strike()
         self.my_game.strike()
@@ -1097,16 +1111,16 @@ class TestSacWithTwoOuts(unittest.TestCase):
 
     def test_bases(self):
         """Man on first."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestGoodSac(unittest.TestCase):
+class TestGoodSac(GameTestBase):
     """Test a good sacrifice."""
     def setUp(self):
         """Good Sacrifice."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.sacrifice()
 
@@ -1121,16 +1135,16 @@ class TestGoodSac(unittest.TestCase):
 
     def test_bases(self):
         """Man on second."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestGoodSacToThird(unittest.TestCase):
+class TestGoodSacToThird(GameTestBase):
     """Test a good sacrifice."""
     def setUp(self):
         """Good Sacrifice."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(2)
         self.my_game.sacrifice()
 
@@ -1145,16 +1159,16 @@ class TestGoodSacToThird(unittest.TestCase):
 
     def test_bases(self):
         """Man on third."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
 
-class TestGoodSacToThirdSpecific(unittest.TestCase):
+class TestGoodSacToThirdSpecific(GameTestBase):
     """Test a good sacrifice."""
     def setUp(self):
         """Good Sacrifice."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(2)
         self.my_game.sacrifice((1, 2))
 
@@ -1169,16 +1183,16 @@ class TestGoodSacToThirdSpecific(unittest.TestCase):
 
     def test_bases(self):
         """Man on third."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
 
-class TestSqueeze(unittest.TestCase):
+class TestSqueeze(GameTestBase):
     """Test a squeeze.  Same as tag up on deep fly."""
     def setUp(self):
         """Squeeze play."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(3)
         self.my_game.sacrifice()
 
@@ -1193,9 +1207,9 @@ class TestSqueeze(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_score(self):
         """Score should be 1 nil."""
@@ -1203,11 +1217,11 @@ class TestSqueeze(unittest.TestCase):
         self.assertEqual(self.my_game.score.away, 1)
 
 
-class TestSqueezeSpecific(unittest.TestCase):
+class TestSqueezeSpecific(GameTestBase):
     """Test a squeeze.  Same as tag up on deep fly."""
     def setUp(self):
         """Squeeze play."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(3)
         self.my_game.sacrifice((2, 3))
 
@@ -1222,9 +1236,9 @@ class TestSqueezeSpecific(unittest.TestCase):
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_score(self):
         """Score should be 1 nil."""
@@ -1232,25 +1246,25 @@ class TestSqueezeSpecific(unittest.TestCase):
         self.assertEqual(self.my_game.score.away, 1)
 
 
-class TestError(unittest.TestCase):
+class TestError(GameTestBase):
     """Test a fielder error."""
     def setUp(self):
         """Setup an error."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.error(True)
 
     def test_bases(self):
         """Man on first."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
 
-class TestErrorMultipleRunners(unittest.TestCase):
+class TestErrorMultipleRunners(GameTestBase):
     """Test a fielder error."""
     def setUp(self):
         """Setup an error."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.hit(1)
         self.my_game.hit(1)
@@ -1258,24 +1272,24 @@ class TestErrorMultipleRunners(unittest.TestCase):
 
     def test_bases(self):
         """Bases loaded."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
     def test_bad_error(self):
         """Batter goes to second, others score."""
         self.my_game.error("second", [(0, 2), (1, 3), (2, 3)])
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.assertEqual(self.my_game.score.away, 3)
 
 
-class TestInvalidError(unittest.TestCase):
+class TestInvalidError(GameTestBase):
     """Test an invalid error, trying to advance runners that don't exist."""
     def setUp(self):
         """Setup bad advancing."""
-        self.my_game = Game()
+        super().setUp()
         self.assertRaises(game_exceptions.NoRunnerToAdvance,
                           self.my_game.error,
                           True,
@@ -1288,23 +1302,23 @@ class TestInvalidError(unittest.TestCase):
                           advances=[(0, 1)])
 
 
-class TestPickOff(unittest.TestCase):
+class TestPickOff(GameTestBase):
     """Test a pickoff."""
     def setUp(self):
         """Setup the pickoff."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.assertNotEqual(self.my_game.bases["first"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
         self.my_game.picked_off("first")
 
     def test_bases(self):
         """Bases empty."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_outs(self):
         """One out."""
@@ -1316,44 +1330,44 @@ class TestPickOff(unittest.TestCase):
                           self.my_game.picked_off, "first")
 
 
-class TestRunnerAdvancesExtra(unittest.TestCase):
+class TestRunnerAdvancesExtra(GameTestBase):
     """Test case where runner goes more bases than batter."""
     def setUp(self):
         """Test runner advancing more than batter."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.my_game.hit(1, (0, 2))
+        self.my_game.hit(1, [(0, 2)])
 
     def test_bases(self):
         """First and third."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
     def test_outs(self):
         """No outs."""
         self.assertEqual(self.my_game.inning.outs, 0)
 
 
-class TestRunnerAdvancesExtraOnDouble(unittest.TestCase):
+class TestRunnerAdvancesExtraOnDouble(GameTestBase):
     """Test case where runner goes more bases than batter."""
     def setUp(self):
         """Test runner advancing more than batter."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.my_game.hit(2, (0, 3))
+        self.my_game.hit(2, [(0, 3)])
 
     def test_bases(self):
         """Man on second."""
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_outs(self):
         """No outs."""
@@ -1365,22 +1379,22 @@ class TestRunnerAdvancesExtraOnDouble(unittest.TestCase):
         self.assertEqual(self.my_game.score.away, 1)
 
 
-class TestRunnerScoresFromFirstOnSingle(unittest.TestCase):
+class TestRunnerScoresFromFirstOnSingle(GameTestBase):
     """Test case where runner goes more bases than batter."""
     def setUp(self):
         """Test runner advancing more than batter."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.my_game.hit(1, (0, 3))
+        self.my_game.hit(1, [(0, 3)])
 
     def test_bases(self):
         """Man on first."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_outs(self):
         """No outs."""
@@ -1392,23 +1406,23 @@ class TestRunnerScoresFromFirstOnSingle(unittest.TestCase):
         self.assertEqual(self.my_game.score.away, 1)
 
 
-class TestRunnerScoresFromSecondOnSingle(unittest.TestCase):
+class TestRunnerScoresFromSecondOnSingle(GameTestBase):
     """Test case where runner goes more bases than batter."""
     def setUp(self):
         """Test runner advancing more than batter."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.steal("second")
-        self.my_game.hit(1, (1, 3))
+        self.my_game.hit(1, [(1, 3)])
 
     def test_bases(self):
         """Man on first."""
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_outs(self):
         """No outs."""
@@ -1420,11 +1434,11 @@ class TestRunnerScoresFromSecondOnSingle(unittest.TestCase):
         self.assertEqual(self.my_game.score.away, 1)
 
 
-class TestGameEndsInTie(unittest.TestCase):
+class TestGameEndsInTie(GameTestBase):
     """Test what happens in case game ends in tie."""
     def setUp(self):
         """Strike out everyone."""
-        self.my_game = Game()
+        super().setUp()
         # Strike out EVERYONE!
         # pylint: disable=C0103
         # pylint: disable=W0612
@@ -1447,14 +1461,14 @@ class TestGameEndsInTie(unittest.TestCase):
         self.assertEqual(self.my_game.game_over, True)
 
 
-class TestErrorsCalledWrong(unittest.TestCase):
+class TestErrorsCalledWrong(GameTestBase):
     """Test what happens when you call error method with both
     advance_from and advance_from_to set.
 
     """
     def setUp(self):
         """Simple setup."""
-        self.my_game = Game()
+        super().setUp()
 
     def test_no_runner(self):
         """Test calling the error advancing non-existent runner."""
@@ -1472,27 +1486,27 @@ class TestErrorsCalledWrong(unittest.TestCase):
         self.my_game.hit(3)
         self.my_game.error(advances=[(2, 3)])
         self.assertEqual(self.my_game.score.away, 1)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_good_advance_from_second(self):
         """Test calling the error advancing right way."""
         self.my_game.hit(2)
         self.my_game.error(advances=[(1, 2)])
         self.assertEqual(self.my_game.score.away, 0)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
     def test_advance_second_to_home(self):
         """Test calling the error advancing right way."""
         self.my_game.hit(2)
         self.my_game.error(advances=[(1, 3)])
         self.assertEqual(self.my_game.score.away, 1)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_bad_advance_from_second(self):
         """Test calling the error advancing wrong way."""
@@ -1505,27 +1519,27 @@ class TestErrorsCalledWrong(unittest.TestCase):
         self.my_game.hit(1)
         self.my_game.error(advances=[(0, 1)])
         self.assertEqual(self.my_game.score.away, 0)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_adv_first2third_home2first(self):
         """Test calling the error advancing right way."""
         self.my_game.hit(1)
         self.my_game.error(True, advances=[(0, 2)])
         self.assertEqual(self.my_game.score.away, 0)
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
     def test_monster_error(self):
         """Test calling the error advancing right way."""
         self.my_game.hit(1)
         self.my_game.error(True, advances=[(0, 3)])
         self.assertEqual(self.my_game.score.away, 1)
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_bad_advance_from_first(self):
         """Test calling the error advancing wrong way."""
@@ -1540,75 +1554,75 @@ class TestErrorsCalledWrong(unittest.TestCase):
                           self.my_game.error, True)
 
 
-class TestHits(unittest.TestCase):
+class TestHits(GameTestBase):
     """Test the hit method."""
     def setUp(self):
         """Simple setup."""
-        self.my_game = Game()
+        super().setUp()
 
     def test_lead_off_single(self):
         """Test single."""
         self.my_game.hit()
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_single_double_triple(self):
         """Test a single followed by a double."""
         self.my_game.hit(1)
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
         self.my_game.hit(2)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.my_game.hit(3)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.assertEqual(self.my_game.score.away, 2)
 
     def test_single_first_to_third(self):
         """Single, then a single and runner advances first to third."""
         self.my_game.hit(1)
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
-        self.my_game.hit(1, (0, 2))
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
+        self.my_game.hit(1, [(0, 2)])
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.my_game.hit(1, [(2, 3), (0, 2)])
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.assertEqual(self.my_game.score.away, 1)
 
 
-class TestDoublePlays(unittest.TestCase):
+class TestDoublePlays(GameTestBase):
     """Test various double plays."""
     def setUp(self):
         """Simple setup."""
-        self.my_game = Game()
+        super().setUp()
 
     def test_643(self):
         """Test common double play."""
         self.my_game.hit()
         self.my_game.double_play()
         self.assertEqual(self.my_game.inning.outs, 2)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_34_double_play(self):
         """Out at first, throw out at second."""
         self.my_game.hit()
         self.my_game.double_play("first", "second")
         self.assertEqual(self.my_game.inning.outs, 2)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertEqual(self.my_game.bases["second"], 0)
-        self.assertEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertEqual(self.my_game.bases[1], 0)
+        self.assertEqual(self.my_game.bases[2], 0)
 
     def test_double_play_two_outs(self):
         """Two outs then double play."""
@@ -1619,24 +1633,24 @@ class TestDoublePlays(unittest.TestCase):
                           self.my_game.double_play)
 
 
-class TestSingleNoAdvance(unittest.TestCase):
+class TestSingleNoAdvance(GameTestBase):
     """Test a single with runners on second and third, no advances."""
     def setUp(self):
         """Simple setup."""
-        self.my_game = Game()
+        super().setUp()
         self.my_game.hit(1)
         self.my_game.hit(2)
-        self.assertEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
         self.my_game.hit(1, advances=None)
 
     def test_bases(self):
         """Test for bases loaded."""
         self.assertEqual(self.my_game.inning.outs, 0)
-        self.assertNotEqual(self.my_game.bases["first"], 0)
-        self.assertNotEqual(self.my_game.bases["second"], 0)
-        self.assertNotEqual(self.my_game.bases["third"], 0)
+        self.assertNotEqual(self.my_game.bases[0], 0)
+        self.assertNotEqual(self.my_game.bases[1], 0)
+        self.assertNotEqual(self.my_game.bases[2], 0)
 
     def test_score(self):
         """Score should be nil nil."""

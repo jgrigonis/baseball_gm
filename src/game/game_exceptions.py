@@ -101,3 +101,9 @@ class BadPositionException(GameException):
     def __init__(self, msg=None):
         if msg:
             print(msg)
+
+class InvalidBase(GameException):
+    """Tried to convert a base with an invalid string."""
+    def __init__(self, msg=None):
+        if msg:
+            print(msg)

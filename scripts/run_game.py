@@ -6,6 +6,7 @@ import argparse
 
 from src.game.event import Event
 from src.game.main import Game
+from src.team.team import Team
 
 
 def get_args():
@@ -37,7 +38,13 @@ def get_args():
 
 def main():
     args = get_args()
-    my_game = Game(args.debug, args.pauses, args.innings)
+    home_team = Team("Portland", "Beavers")
+    away_team = Team("Portland", "Beavers")
+    home_team.load_team()
+    home_team.set_lineup()
+    away_team.load_team()
+    away_team.set_lineup()
+    my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
     my_event = Event(my_game, args.debug)
 
     while my_game.game_over is False:

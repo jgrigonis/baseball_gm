@@ -1,15 +1,15 @@
 """
 The player class.
 
-TODO:
-player should also get stats.
-
 Calculate an overall value based on weighted combination of skills.
 e.g. bunting is worth less than power.
 
 """
-import src.game.game_exceptions as game_exceptions
 import random
+
+import src.game.game_exceptions as game_exceptions
+
+from src.stats.stats import Stats
 from . import positions, template, skill_template, skills
 
 
@@ -31,6 +31,7 @@ class Player(object):
         self.position = position    # Just used for setting skills
         self.ratings = dict()       # Will be populated based on skills
         self.skills = dict(skills)  # All the general baseball skills
+        self.stats = Stats()
 
     def __str__(self):
         """Output the player name as a multi-line string."""
@@ -60,6 +61,8 @@ class Player(object):
 
     def horizontal(self):
         """Output the player and stats as a single line."""
+        if self.ratings == {}:
+            self.rate_player()
         name = self.first_name + ' ' + self.last_name
         output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
         output += "{:>{}}".format(self.position, 3)

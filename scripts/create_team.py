@@ -73,6 +73,7 @@ def get_args():
 def main():
     args = get_args()
     debug = args.debug
+    team_file = "FooBars.csv",
     team = Team("Foo", "Bars")
     team.players.extend(create_players('c', 2))
     team.players.extend(create_players(['of', 'cf', 'lf', 'rf'], 5))
