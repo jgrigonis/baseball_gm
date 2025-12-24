@@ -39,7 +39,7 @@ class Bases:
             return "Runners at first and second."
         elif self.men_on() == 3:
             return "Bases loaded."
-        
+
     # ---------- Internal helpers ----------
 
     @staticmethod

@@ -1,4 +1,5 @@
 """Unit Tests for the Count class."""
+
 import unittest
 
 from src.game.count import Count
@@ -8,6 +9,7 @@ from src.game.count import Count
 # pylint complains about the number of public methods.
 class TestInit(unittest.TestCase):
     """Fairly boring, just testing the init."""
+
     def setUp(self):
         """Initialize the count."""
         self.my_count = Count()
@@ -20,6 +22,7 @@ class TestInit(unittest.TestCase):
 
 class TestStr(unittest.TestCase):
     """Test printing of the class."""
+
     def setUp(self):
         """Initialize the count."""
         self.my_count = Count()
@@ -32,6 +35,7 @@ class TestStr(unittest.TestCase):
 
 class TestReset(unittest.TestCase):
     """Test resetting the count."""
+
     def setUp(self):
         """Initialize the count."""
         self.my_count = Count()
@@ -48,6 +52,7 @@ class TestReset(unittest.TestCase):
 
 class TestStrikeOut(unittest.TestCase):
     """Test resetting the count on strike out."""
+
     def setUp(self):
         """Initialize the count."""
         self.my_count = Count()
@@ -64,6 +69,7 @@ class TestStrikeOut(unittest.TestCase):
 
 class TestWalk(unittest.TestCase):
     """Test resetting the count on a walk."""
+
     def setUp(self):
         """Initialize the count."""
         self.my_count = Count()
@@ -79,5 +85,6 @@ class TestWalk(unittest.TestCase):
         self.assertEqual(self.my_count.balls, 0)
         self.assertEqual(self.my_count.strikes, 0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

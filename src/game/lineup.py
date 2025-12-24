@@ -3,20 +3,21 @@ class Lineup(object):
     """
     The lineup for a team.
     """
+
     def __init__(self, dh=False, home=True):
         self.dh = dh
-        self.home = home # Home or Visitor
+        self.home = home  # Home or Visitor
         self.batting_order = [None for _ in range(9)]
         self.positions = {
-            'pitcher': None,
-            'catcher': None,
-            'first': None,
-            'second': None,
-            'third': None,
-            'short': None,
-            'left': None,
-            'center': None,
-            'right': None,
+            "pitcher": None,
+            "catcher": None,
+            "first": None,
+            "second": None,
+            "third": None,
+            "short": None,
+            "left": None,
+            "center": None,
+            "right": None,
         }
         self.subs = []
         self.unavailable = []

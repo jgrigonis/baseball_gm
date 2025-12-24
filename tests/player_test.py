@@ -1,7 +1,8 @@
 import unittest
 
 from src.player.player import Player
-__author__ = 'josh'
+
+__author__ = "josh"
 
 
 class TestPlayer(unittest.TestCase):
@@ -10,5 +11,6 @@ class TestPlayer(unittest.TestCase):
         self.assertEqual(my_player.first_name, "Willie")
         self.assertEqual(my_player.last_name, "Mays")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

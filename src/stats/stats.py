@@ -1,5 +1,6 @@
 class Stats(object):
     """Root statistics object"""
+
     def __init__(self):
         self.batting = BattingStats()
         self.pitching = PitchingStats()
@@ -7,6 +8,7 @@ class Stats(object):
 
 class BattingStats(object):
     """The statistics object"""
+
     def __init__(self):
         self.rbi = 0
         self.hbp = 0
@@ -73,6 +75,7 @@ class BattingStats(object):
     def walk(self):
         self.walks += 1
 
+
 class PitchingStats(object):
     def __init__(self):
         self.hb = 0
@@ -84,13 +87,13 @@ class PitchingStats(object):
         self.strike_outs = 0
         self.runs = 0
         self.pickoffs = 0
-    
+
     def strike_out(self):
         self.strike_outs += 1
 
     def hit_batter(self):
         self.hb += 1
-    
+
 
 class TeamStats(object):
     pass

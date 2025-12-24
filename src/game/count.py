@@ -3,6 +3,7 @@
 
 class Count(object):
     """Keep track of the count."""
+
     def __init__(self):
         """Initialize balls and strikes to 0."""
         self.balls = 0

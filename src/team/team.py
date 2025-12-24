@@ -3,30 +3,36 @@
 Basically, a city, a mascot and a list of players.
 
 """
+
 import csv
 
 from src.stats import stats
 from src.player.player import Player
 from . import SKILL_MAP
-__author__ = 'josh'
+
+__author__ = "josh"
 
 
 class Team(object):
     """A Baseball Team class."""
+
     def __init__(self, city, mascot):
-        #self.players = self.load_team()
+        # self.players = self.load_team()
         self.city = city
         self.mascot = mascot
 
-        self.batter_index = 0             # index on the lineup
-        self.current_pitcher_index = 0    # index on the roster (players)
+        self.batter_index = 0  # index on the lineup
+        self.current_pitcher_index = 0  # index on the roster (players)
         self.stats = stats.TeamStats()
         self.score = 0
         self.players = []
         # TODO this isn't right
         self.lineup = self.players
 
-    def load_team(self, path="FooBars.csv", ):
+    def load_team(
+        self,
+        path="FooBars.csv",
+    ):
         """Load a team from a csv file."""
         self.team_file = path
         players = []
@@ -55,10 +61,9 @@ class Team(object):
     def set_lineup(self):
         """Set the batting lineup and positions."""
 
-        
         # TODO this isn't right
         self.lineup = self.players
-        
+
     def current_batter(self):
         return self.lineup[self.batter_index]
 

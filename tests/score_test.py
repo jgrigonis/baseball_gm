@@ -1,7 +1,8 @@
 import unittest
 
 from src.game.score import Score
-__author__ = 'josh'
+
+__author__ = "josh"
 
 
 class TestScore(unittest.TestCase):
@@ -33,5 +34,6 @@ class TestScore(unittest.TestCase):
         self.assertEqual(self.my_score.away, 1)
         self.my_score.new_inning()  # bottom of first now
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

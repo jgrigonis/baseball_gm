@@ -2,6 +2,7 @@
 Run one game.
 
 """
+
 import argparse
 
 from src.game.event import Event
@@ -15,19 +16,17 @@ def get_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--debug", "-d",
-        action='store_true',
+        "--debug", "-d", action="store_true", 
         help="Set the debug flag."
     )
     parser.add_argument(
-        "--pauses", "-p",
-        action='store_true',
-        help="Set the pauses flag. Implies debug."
+        "--pauses",
+        "-p",
+        action="store_true",
+        help="Set the pauses flag. Implies debug.",
     )
     parser.add_argument(
-        "--innings", "-i",
-        type=int,
-        default=9,
+        "--innings", "-i", type=int, default=9, 
         help="Set the number of innings."
     )
     args = parser.parse_args()
@@ -49,9 +48,10 @@ def main():
 
     while my_game.game_over is False:
         my_event.do_event()
-    
+
     print("Home:    " + str(my_game.score.home))
     print("Visitor: " + str(my_game.score.away))
+
 
 if __name__ == "__main__":
     main()

@@ -13,6 +13,7 @@ python ratings_average.py -p of -r ss
 The -i flag allows you set the number of iterations to run,
 the default is 100.
 """
+
 import argparse
 
 from src.player.player import Player
@@ -28,27 +29,29 @@ def get_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--debug", "-d",
-        action='store_true',
+        "--debug", "-d", action="store_true", 
         help="Set the debug flag."
     )
     parser.add_argument(
-        "--rating", "-r",
+        "--rating",
+        "-r",
         required=True,
         choices=rated_positions,
-        help="The position to rate."
+        help="The position to rate.",
     )
     parser.add_argument(
-        "--position", "-p",
+        "--position",
+        "-p",
         required=True,
         choices=positions,
-        help="The position of the player to create."
+        help="The position of the player to create.",
     )
     parser.add_argument(
-        "--iterations", "-i",
+        "--iterations",
+        "-i",
         type=int,
         default=100,
-        help="The nubmer of iterations to run. (default = 100)"
+        help="The nubmer of iterations to run. (default = 100)",
     )
     args = parser.parse_args()
     return args
@@ -77,6 +80,7 @@ def main():
     print("min = {}".format(min))
     print("max = {}".format(max))
     print("avg = {}".format(average))
+
 
 if __name__ == "__main__":
     main()

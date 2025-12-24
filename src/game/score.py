@@ -1,9 +1,10 @@
 class Score(object):
     """Keep track of the score."""
+
     def __init__(self):
         self.away_innings = [0]
         self.home_innings = []
-    
+
     def __str__(self):
         """Return the score as a string."""
         output = "\n"

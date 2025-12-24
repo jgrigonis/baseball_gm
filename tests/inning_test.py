@@ -2,7 +2,8 @@ import unittest
 
 from src.game.game_exceptions import TooManyOuts
 from src.game.inning import Inning
-__author__ = 'josh'
+
+__author__ = "josh"
 
 
 class TestInning(unittest.TestCase):
@@ -33,5 +34,6 @@ class TestInning(unittest.TestCase):
         self.my_inning.reset_outs()
         self.assertEqual(self.my_inning.outs, 0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

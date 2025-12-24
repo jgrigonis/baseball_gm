@@ -3,12 +3,13 @@ import src.game.game_exceptions as game_exceptions
 
 class Inning(object):
     """Keep track of inning related information."""
+
     def __init__(self):
         """Set up a new inning.  Start in the top of the 1st with no outs."""
         self.number = 1
         self.top = True
         self.outs = 0
-    
+
     def __str__(self):
         """Return an inning string."""
         output = "\n"

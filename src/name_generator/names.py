@@ -1,8 +1,10 @@
 """Generate Random name combinations."""
+
 from collections import namedtuple
 import random
 from os.path import abspath, join, dirname
-__author__ = 'josh'
+
+__author__ = "josh"
 
 MALE_GENDER = ["m", "male", "M", "Male", "MALE"]
 FEMALE_GENDER = ["f", "female", "F", "Female", "FEMALE"]
@@ -21,6 +23,7 @@ class SimpleNameGenerator(object):
     the gender, you could use the same file for male and female first names.
 
     """
+
     def __init__(self):
         """
         Create the object using the 3 external files.
@@ -29,9 +32,9 @@ class SimpleNameGenerator(object):
         three text files, and another to make the name lists.
 
         """
-        self.female_name_file = self.full_path('names.female.first.txt')
-        self.male_name_file = self.full_path('names.male.first.txt')
-        self.last_name_file = self.full_path('names.last.txt')
+        self.female_name_file = self.full_path("names.female.first.txt")
+        self.male_name_file = self.full_path("names.male.first.txt")
+        self.last_name_file = self.full_path("names.last.txt")
         self.male_names = []
         self.female_names = []
         self.last_names = []
@@ -59,7 +62,7 @@ class SimpleNameGenerator(object):
         """
         Create lists of names based on the data members.
 
-        The default assumption is that the lines may contain multiple strings, 
+        The default assumption is that the lines may contain multiple strings,
         but that the name is the first string.
 
         """
@@ -106,6 +109,7 @@ class NameGenerator(SimpleNameGenerator):
     based on actual frequency.
 
     """
+
     def make_name_lists(self):
         """Create a name_frequency tuple for each name in each list."""
         self.male_names = []
@@ -124,15 +128,11 @@ class NameGenerator(SimpleNameGenerator):
         frequency value needs to be in the third.
 
         """
-        name_frequency = namedtuple('name_frequency', 'name start end')
+        name_frequency = namedtuple("name_frequency", "name start end")
         start_range = 0.0
         for line in data_list:
             end_range = float(line.split()[2])
-            name_list.append(name_frequency(
-                    line.split()[0],
-                    start_range, end_range
-                    )
-                )
+            name_list.append(name_frequency(line.split()[0], start_range, end_range))
             start_range = end_range
 
     def first(self, gender="either"):

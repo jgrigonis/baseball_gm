@@ -10,9 +10,11 @@ The thing that will vary is the handedness and batting side of
 the players
 
 """
+
 from src.player.player import Player
 from src.player import positions, position_name, skill_template
-__author__ = 'josh'
+
+__author__ = "josh"
 
 
 def main():
@@ -27,11 +29,12 @@ def main():
             if player.skills[skill] == 0:
                 player.skills[skill] = 50
         player.rate_player()
-        
+
     print(Player.header())
     for player in team:
         print(player.horizontal())
     print(player.legend())
+
 
 if __name__ == "__main__":
     main()

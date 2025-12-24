@@ -28,5 +28,5 @@ TEAMS2023 = [
     ("Tampa Bay", "Rays"),
     ("Texas", "Rangers"),
     ("Toronto", "Blue Jays"),
-    ("Washington", "Nationals")
+    ("Washington", "Nationals"),
 ]

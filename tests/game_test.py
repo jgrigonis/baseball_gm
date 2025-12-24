@@ -18,10 +18,10 @@ from src.team.team import Team
 
 class GameTestBase(unittest.TestCase):
     def setUp(self):
-        home = Team('home', 'team')
+        home = Team("home", "team")
         home.load_team()
         home.set_lineup()
-        away = Team('away', 'team')
+        away = Team("away", "team")
         away.load_team()
         away.set_lineup()
         self.my_game = Game(home, away)
@@ -29,6 +29,7 @@ class GameTestBase(unittest.TestCase):
 
 class TestInitAnd26Balls(GameTestBase):
     """Fairly boring, just testing the init."""
+
     def setUp(self):
         super().setUp()
         self.pla0 = Player("Sandy", "Koufax")
@@ -54,7 +55,6 @@ class TestInitAnd26Balls(GameTestBase):
         self.plb8 = Player("Frank", "Robinson")
         self.plb9 = Player("Yogi", "Berra")
         self.plb10 = Player("Mickey", "Mantle")
-        
 
     def test_count(self):
         """Count should be empty."""
@@ -131,6 +131,7 @@ class TestTeamCycles(GameTestBase):
     triple and home run in order.
 
     """
+
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
         super().setUp()
@@ -154,6 +155,7 @@ class TestSingleDoublePlayHitByPitch(GameTestBase):
     by a double play, and then a hit batter.
 
     """
+
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
         super().setUp()
@@ -182,6 +184,7 @@ class TestMiraclePitching(GameTestBase):
     top of the 10th.
 
     """
+
     def setUp(self):
         """Setup instance of Game and have 162 strikes in a row."""
         super().setUp()
@@ -216,6 +219,7 @@ class TestAway3Up3DownHomeHomerStrikeOutGroundOut(GameTestBase):
     Then the home team hits homer, then strikes out, then grounds out.
 
     """
+
     def setUp(self):
         """Setup the described scenario."""
         super().setUp()
@@ -264,6 +268,7 @@ class TestBottom9thHomeWin(GameTestBase):
     home team is already winning.
 
     """
+
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
         super().setUp()
@@ -308,9 +313,8 @@ class TestBottom9thHomeWin(GameTestBase):
 
 
 class TestLeadOffHomer(GameTestBase):
-    """Test what happens if the lead off hitter hits a homer.
+    """Test what happens if the lead off hitter hits a homer."""
 
-    """
     def setUp(self):
         """Setup Game with leadoff homer with the count of 1-1."""
         super().setUp()
@@ -352,6 +356,7 @@ class TestLeadOffHomerHomeTeam(GameTestBase):
     for the home team.
 
     """
+
     def setUp(self):
         """Setup Game with leadoff homer with the count of 1-1."""
         super().setUp()
@@ -396,6 +401,7 @@ class TestLeadOffHomerHomeTeam(GameTestBase):
 
 class TestFoulBalls(GameTestBase):
     """Test what happens when hitter start fouling balls off."""
+
     def setUp(self):
         """Setup Game with strikes and foul balls and balls."""
         super().setUp()
@@ -430,6 +436,7 @@ class TestFoulBalls(GameTestBase):
 
 class TestStealingBases(GameTestBase):
     """Test what happens when runners start stealing."""
+
     def setUp(self):
         """Setup Game with strikes and foul balls and balls.
 
@@ -484,6 +491,7 @@ class TestStealingBases(GameTestBase):
 
 class TestCaughtStealingBases(GameTestBase):
     """Test what happens when runners get caught stealing."""
+
     def setUp(self):
         """Runner hits for single, steals second, caught at third."""
         super().setUp()
@@ -517,22 +525,24 @@ class TestCaughtStealingBases(GameTestBase):
 
     def test_invalid_cs(self):
         """Test an invalid caught stealing."""
-        self.assertRaises(game_exceptions.InvalidSteal,
-                          self.my_game.caught_stealing, "home")
+        self.assertRaises(
+            game_exceptions.InvalidSteal, self.my_game.caught_stealing, "home"
+        )
 
     def test_another_invalid(self):
         """Test another invalid stealing."""
-        self.assertRaises(game_exceptions.InvalidSteal,
-                          self.my_game.caught_stealing, "second")
+        self.assertRaises(
+            game_exceptions.InvalidSteal, self.my_game.caught_stealing, "second"
+        )
 
     def test_invalid_base(self):
         """Test another invalid stealing."""
-        self.assertRaises(game_exceptions.InvalidBase,
-                          self.my_game.caught_stealing, 4)
+        self.assertRaises(game_exceptions.InvalidBase, self.my_game.caught_stealing, 4)
 
 
 class TestCaughtStealingSecondAndHome(GameTestBase):
     """Test what happens when runners get caught stealing."""
+
     def setUp(self):
         """Runner hits for single, caught stealing second, next batter
         triples, but caught stealing home.
@@ -573,6 +583,7 @@ class TestCaughtStealingSecondAndHome(GameTestBase):
 
 class TestBalks(GameTestBase):
     """Test what happens when runners gets balked around the bases."""
+
     def setUp(self):
         """Runner hits for single, then pitcher balks 3 straight times."""
         super().setUp()
@@ -611,6 +622,7 @@ class TestBalks(GameTestBase):
 
 class TestFieldersChoiceRetiresSide(GameTestBase):
     """Test what happens when runner gets forced out for third out."""
+
     def setUp(self):
         """Runner hits for single, two fly outs then fielders choice."""
         super().setUp()
@@ -631,6 +643,7 @@ class TestFieldersChoiceRetiresSide(GameTestBase):
 
 class TestDoublePlayToEndInning(GameTestBase):
     """Test what happens when batter hits into double play with one out."""
+
     def setUp(self):
         """Runner hits for single, next batter strikes out, then DP."""
         super().setUp()
@@ -663,6 +676,7 @@ class TestDoublePlayToEndInning(GameTestBase):
 
 class TestFieldersChoiceNoOuts(GameTestBase):
     """Test what happens when batter hits into fielder's choice with no outs."""
+
     def setUp(self):
         """Runner hits for single, next batter hits into fielder's choice."""
         super().setUp()
@@ -692,6 +706,7 @@ class TestFieldersChoiceNoOuts(GameTestBase):
 
 class TestAwayTeamWins(GameTestBase):
     """Test what happens when away team wins."""
+
     def setUp(self):
         """Away team wins with grand slam home run in second inning."""
         super().setUp()
@@ -841,6 +856,7 @@ class TestAwayTeamWins(GameTestBase):
 
 class TestTriplePlay(GameTestBase):
     """Test what happens when batter hits into triple play."""
+
     def setUp(self):
         """Setup for a triple play."""
         super().setUp()
@@ -875,12 +891,12 @@ class TestTriplePlay(GameTestBase):
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.assertRaises(game_exceptions.TooManyOuts,
-                          self.my_game.triple_play)
+        self.assertRaises(game_exceptions.TooManyOuts, self.my_game.triple_play)
 
 
 class TestCaughtStealingToEndInning(GameTestBase):
     """Test what happens when runner caught stealing to end inning."""
+
     def setUp(self):
         """Get caught stealing to end inning."""
         super().setUp()
@@ -905,6 +921,7 @@ class TestCaughtStealingToEndInning(GameTestBase):
 
 class TestLotsOfScoring(GameTestBase):
     """Test what happens when we score lots of runs."""
+
     def setUp(self):
         """Setup lots of scoring."""
         super().setUp()
@@ -962,6 +979,7 @@ class TestTriplePlayWithoutEnoughRunners(GameTestBase):
     impossible scenario.
 
     """
+
     def setUp(self):
         """BStart the game, put one runner on."""
         super().setUp()
@@ -969,8 +987,9 @@ class TestTriplePlayWithoutEnoughRunners(GameTestBase):
 
     def test_bad_triple_play(self):
         """Bad triple play."""
-        self.assertRaises(game_exceptions.NotEnoughRunnersOnBase,
-                          self.my_game.triple_play)
+        self.assertRaises(
+            game_exceptions.NotEnoughRunnersOnBase, self.my_game.triple_play
+        )
 
     def test_outs(self):
         """No outs."""
@@ -987,14 +1006,16 @@ class TestDoublePlayWithoutEnoughRunners(GameTestBase):
     impossible scenario.
 
     """
+
     def setUp(self):
         """Start the game."""
         super().setUp()
 
     def test_bad_double_play(self):
         """Bad double play."""
-        self.assertRaises(game_exceptions.NotEnoughRunnersOnBase,
-                          self.my_game.double_play)
+        self.assertRaises(
+            game_exceptions.NotEnoughRunnersOnBase, self.my_game.double_play
+        )
 
     def test_outs(self):
         """No outs."""
@@ -1008,11 +1029,13 @@ class TestDoublePlayWithoutEnoughRunners(GameTestBase):
 
 class TestSacrificeNoOneOn(GameTestBase):
     """Test what happens when batter does a sacrifice for no one."""
+
     def setUp(self):
         """Bad sacrifice."""
         super().setUp()
-        self.assertRaises(game_exceptions.NotEnoughRunnersOnBase,
-                          self.my_game.sacrifice)
+        self.assertRaises(
+            game_exceptions.NotEnoughRunnersOnBase, self.my_game.sacrifice
+        )
 
     def test_outs(self):
         """No outs."""
@@ -1026,6 +1049,7 @@ class TestSacrificeNoOneOn(GameTestBase):
 
 class TestSacBuntSingleton(GameTestBase):
     """Test what happens when batter does a sac bunt."""
+
     def setUp(self):
         """Sac Bunt to second."""
         super().setUp()
@@ -1053,6 +1077,7 @@ class TestSacBuntSingleton(GameTestBase):
 
 class TestSeveralBadSacrifices(GameTestBase):
     """Test several impossible sac bunts."""
+
     def setUp(self):
         """Bad Sac Bunts."""
         super().setUp()
@@ -1060,13 +1085,16 @@ class TestSeveralBadSacrifices(GameTestBase):
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_game.sacrifice, (2, 3))
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_game.sacrifice, [(1, 2)])
+        self.assertRaises(
+            game_exceptions.NoRunnerToAdvance, self.my_game.sacrifice, (2, 3)
+        )
+        self.assertRaises(
+            game_exceptions.NoRunnerToAdvance, self.my_game.sacrifice, [(1, 2)]
+        )
         self.my_game.steal("second")
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_game.sacrifice, [(0, 1)])
+        self.assertRaises(
+            game_exceptions.NoRunnerToAdvance, self.my_game.sacrifice, [(0, 1)]
+        )
 
     def test_outs(self):
         """No outs."""
@@ -1086,6 +1114,7 @@ class TestSeveralBadSacrifices(GameTestBase):
 
 class TestSacWithTwoOuts(GameTestBase):
     """Test another impossible sac bunt."""
+
     def setUp(self):
         """Bad Sac Bunts."""
         super().setUp()
@@ -1097,8 +1126,7 @@ class TestSacWithTwoOuts(GameTestBase):
         self.my_game.strike()
         self.my_game.hit(1)
         # two outs
-        self.assertRaises(game_exceptions.BadSacrifice,
-                          self.my_game.sacrifice, "first")
+        self.assertRaises(game_exceptions.BadSacrifice, self.my_game.sacrifice, "first")
 
     def test_outs(self):
         """No outs."""
@@ -1118,6 +1146,7 @@ class TestSacWithTwoOuts(GameTestBase):
 
 class TestGoodSac(GameTestBase):
     """Test a good sacrifice."""
+
     def setUp(self):
         """Good Sacrifice."""
         super().setUp()
@@ -1142,6 +1171,7 @@ class TestGoodSac(GameTestBase):
 
 class TestGoodSacToThird(GameTestBase):
     """Test a good sacrifice."""
+
     def setUp(self):
         """Good Sacrifice."""
         super().setUp()
@@ -1166,6 +1196,7 @@ class TestGoodSacToThird(GameTestBase):
 
 class TestGoodSacToThirdSpecific(GameTestBase):
     """Test a good sacrifice."""
+
     def setUp(self):
         """Good Sacrifice."""
         super().setUp()
@@ -1190,6 +1221,7 @@ class TestGoodSacToThirdSpecific(GameTestBase):
 
 class TestSqueeze(GameTestBase):
     """Test a squeeze.  Same as tag up on deep fly."""
+
     def setUp(self):
         """Squeeze play."""
         super().setUp()
@@ -1219,6 +1251,7 @@ class TestSqueeze(GameTestBase):
 
 class TestSqueezeSpecific(GameTestBase):
     """Test a squeeze.  Same as tag up on deep fly."""
+
     def setUp(self):
         """Squeeze play."""
         super().setUp()
@@ -1248,6 +1281,7 @@ class TestSqueezeSpecific(GameTestBase):
 
 class TestError(GameTestBase):
     """Test a fielder error."""
+
     def setUp(self):
         """Setup an error."""
         super().setUp()
@@ -1262,6 +1296,7 @@ class TestError(GameTestBase):
 
 class TestErrorMultipleRunners(GameTestBase):
     """Test a fielder error."""
+
     def setUp(self):
         """Setup an error."""
         super().setUp()
@@ -1287,23 +1322,29 @@ class TestErrorMultipleRunners(GameTestBase):
 
 class TestInvalidError(GameTestBase):
     """Test an invalid error, trying to advance runners that don't exist."""
+
     def setUp(self):
         """Setup bad advancing."""
         super().setUp()
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_game.error,
-                          True,
-                          advances=[(0, 1), (1, 2), (2, 3)])
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_game.error,
-                          advances=[(1, 2), (0, 1)])
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_game.error,
-                          advances=[(0, 1)])
+        self.assertRaises(
+            game_exceptions.NoRunnerToAdvance,
+            self.my_game.error,
+            True,
+            advances=[(0, 1), (1, 2), (2, 3)],
+        )
+        self.assertRaises(
+            game_exceptions.NoRunnerToAdvance,
+            self.my_game.error,
+            advances=[(1, 2), (0, 1)],
+        )
+        self.assertRaises(
+            game_exceptions.NoRunnerToAdvance, self.my_game.error, advances=[(0, 1)]
+        )
 
 
 class TestPickOff(GameTestBase):
     """Test a pickoff."""
+
     def setUp(self):
         """Setup the pickoff."""
         super().setUp()
@@ -1326,12 +1367,14 @@ class TestPickOff(GameTestBase):
 
     def test_invalid_pickoff(self):
         """Test an invalid pickoff."""
-        self.assertRaises(game_exceptions.InvalidPickOff,
-                          self.my_game.picked_off, "first")
+        self.assertRaises(
+            game_exceptions.InvalidPickOff, self.my_game.picked_off, "first"
+        )
 
 
 class TestRunnerAdvancesExtra(GameTestBase):
     """Test case where runner goes more bases than batter."""
+
     def setUp(self):
         """Test runner advancing more than batter."""
         super().setUp()
@@ -1354,6 +1397,7 @@ class TestRunnerAdvancesExtra(GameTestBase):
 
 class TestRunnerAdvancesExtraOnDouble(GameTestBase):
     """Test case where runner goes more bases than batter."""
+
     def setUp(self):
         """Test runner advancing more than batter."""
         super().setUp()
@@ -1381,6 +1425,7 @@ class TestRunnerAdvancesExtraOnDouble(GameTestBase):
 
 class TestRunnerScoresFromFirstOnSingle(GameTestBase):
     """Test case where runner goes more bases than batter."""
+
     def setUp(self):
         """Test runner advancing more than batter."""
         super().setUp()
@@ -1408,6 +1453,7 @@ class TestRunnerScoresFromFirstOnSingle(GameTestBase):
 
 class TestRunnerScoresFromSecondOnSingle(GameTestBase):
     """Test case where runner goes more bases than batter."""
+
     def setUp(self):
         """Test runner advancing more than batter."""
         super().setUp()
@@ -1436,6 +1482,7 @@ class TestRunnerScoresFromSecondOnSingle(GameTestBase):
 
 class TestGameEndsInTie(GameTestBase):
     """Test what happens in case game ends in tie."""
+
     def setUp(self):
         """Strike out everyone."""
         super().setUp()
@@ -1466,20 +1513,23 @@ class TestErrorsCalledWrong(GameTestBase):
     advance_from and advance_from_to set.
 
     """
+
     def setUp(self):
         """Simple setup."""
         super().setUp()
 
     def test_no_runner(self):
         """Test calling the error advancing non-existent runner."""
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_game.error, advances=[(0, 2)])
+        self.assertRaises(
+            game_exceptions.NoRunnerToAdvance, self.my_game.error, advances=[(0, 2)]
+        )
 
     def test_bad_advance_from_third(self):
         """Test calling the error advancing wrong way."""
         self.my_game.hit(3)
-        self.assertRaises(game_exceptions.InvalidAdvance,
-                          self.my_game.error, advances=[(2, 1)])
+        self.assertRaises(
+            game_exceptions.InvalidAdvance, self.my_game.error, advances=[(2, 1)]
+        )
 
     def test_good_advance_from_third(self):
         """Test calling the error advancing right way."""
@@ -1511,8 +1561,9 @@ class TestErrorsCalledWrong(GameTestBase):
     def test_bad_advance_from_second(self):
         """Test calling the error advancing wrong way."""
         self.my_game.hit(2)
-        self.assertRaises(game_exceptions.InvalidAdvance,
-                          self.my_game.error, advances=[(1, 1)])
+        self.assertRaises(
+            game_exceptions.InvalidAdvance, self.my_game.error, advances=[(1, 1)]
+        )
 
     def test_advance_first_to_second(self):
         """Test calling the error advancing right way."""
@@ -1544,18 +1595,19 @@ class TestErrorsCalledWrong(GameTestBase):
     def test_bad_advance_from_first(self):
         """Test calling the error advancing wrong way."""
         self.my_game.hit(1)
-        self.assertRaises(game_exceptions.InvalidAdvance,
-                          self.my_game.error, advances=[(0, 0)])
+        self.assertRaises(
+            game_exceptions.InvalidAdvance, self.my_game.error, advances=[(0, 0)]
+        )
 
     def test_bad_adv_home_to_second(self):
         """Test calling the error advancing wrong way."""
         self.my_game.hit(1)
-        self.assertRaises(game_exceptions.InvalidAdvance,
-                          self.my_game.error, True)
+        self.assertRaises(game_exceptions.InvalidAdvance, self.my_game.error, True)
 
 
 class TestHits(GameTestBase):
     """Test the hit method."""
+
     def setUp(self):
         """Simple setup."""
         super().setUp()
@@ -1602,6 +1654,7 @@ class TestHits(GameTestBase):
 
 class TestDoublePlays(GameTestBase):
     """Test various double plays."""
+
     def setUp(self):
         """Simple setup."""
         super().setUp()
@@ -1629,12 +1682,12 @@ class TestDoublePlays(GameTestBase):
         self.my_game.ground_out()
         self.my_game.ground_out()
         self.my_game.hit()
-        self.assertRaises(game_exceptions.TooManyOuts,
-                          self.my_game.double_play)
+        self.assertRaises(game_exceptions.TooManyOuts, self.my_game.double_play)
 
 
 class TestSingleNoAdvance(GameTestBase):
     """Test a single with runners on second and third, no advances."""
+
     def setUp(self):
         """Simple setup."""
         super().setUp()
@@ -1658,5 +1711,5 @@ class TestSingleNoAdvance(GameTestBase):
         self.assertEqual(self.my_game.score.away, 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,5 @@
 """Unit Tests for the Bases class."""
+
 import unittest
 
 from src.game.bases import Bases
@@ -9,6 +10,7 @@ import src.game.game_exceptions as game_exceptions
 # pylint complains about too many public methods, but I don't see it.
 class TestBases(unittest.TestCase):
     """Test clearing the bases."""
+
     def setUp(self):
         """Simple setup."""
         self.my_bases = Bases()
@@ -68,25 +70,27 @@ class TestBases(unittest.TestCase):
     def test_advance_to_occupied(self):
         """Test advance to third."""
         self.my_bases._bases = [0, "bob", "carl"]
-        self.assertRaises(game_exceptions.AdvanceToOccupiedBase,
-                          self.my_bases.advance, 1)
+        self.assertRaises(
+            game_exceptions.AdvanceToOccupiedBase, self.my_bases.advance, 1
+        )
 
     def test_advance_no_one(self):
         """Test advance to third."""
         self.my_bases._bases = [0, 0, 0]
-        self.assertRaises(game_exceptions.NoRunnerToAdvance,
-                          self.my_bases.advance, 1)
+        self.assertRaises(game_exceptions.NoRunnerToAdvance, self.my_bases.advance, 1)
+
 
 # TODO may need to consider this one again
-    # def test_advance_past_occupied(self):
-    #     """Test advance to third."""
-    #     self.my_bases._bases = ["al", "bob", 0]
-    #     self.assertRaises(game_exceptions.AdvancePastOccupiedBase,
-    #                       self.my_bases.advance_many, [(0, 2)])
+# def test_advance_past_occupied(self):
+#     """Test advance to third."""
+#     self.my_bases._bases = ["al", "bob", 0]
+#     self.assertRaises(game_exceptions.AdvancePastOccupiedBase,
+#                       self.my_bases.advance_many, [(0, 2)])
 
 
 class TestScoring(unittest.TestCase):
     """Test more scoring scenarios."""
+
     def setUp(self):
         """Simple setup."""
         self.my_bases = Bases()
@@ -126,6 +130,7 @@ class TestScoring(unittest.TestCase):
 
 class TestStrings(unittest.TestCase):
     """Test the __str__ function."""
+
     def setUp(self):
         """Simple setup."""
         self.my_bases = Bases()
@@ -160,6 +165,7 @@ class TestStrings(unittest.TestCase):
 
 class TestIteration(unittest.TestCase):
     """Test iterating through bases."""
+
     def setUp(self):
         """Simple setup."""
         self.my_bases = Bases()
@@ -197,15 +203,16 @@ class TestIteration(unittest.TestCase):
 #         self.assertRaises(game_exceptions.InvalidAdvance,
 #                           self.my_bases.advance, 1, 0)
 
-    # def test_backwards_advance(self):
-    #     """Test a backwards base runner advance."""
-    #     self.my_bases.bases = [3, 6, 7]
-    #     self.assertRaises(game_exceptions.InvalidAdvance,
-    #                       self.my_bases.advance, 2, 1)
+# def test_backwards_advance(self):
+#     """Test a backwards base runner advance."""
+#     self.my_bases.bases = [3, 6, 7]
+#     self.assertRaises(game_exceptions.InvalidAdvance,
+#                       self.my_bases.advance, 2, 1)
 
 
 class TestTupleToList(unittest.TestCase):
     """Test converting the tuple to list of tuples."""
+
     def setUp(self):
         """Simple setup."""
         self.my_bases = Bases()
@@ -219,6 +226,7 @@ class TestTupleToList(unittest.TestCase):
 
 class TestBasesEmpty(unittest.TestCase):
     """Test empty_base method."""
+
     def setUp(self):
         """Simple setup."""
         self.my_bases = Bases()
@@ -232,5 +240,6 @@ class TestBasesEmpty(unittest.TestCase):
         self.my_bases._bases = [0, 0, 3]
         self.assertEqual(self.my_bases.empty_base(2), False)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
