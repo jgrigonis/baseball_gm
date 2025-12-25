@@ -37,12 +37,38 @@ def get_args():
 
 def main():
     args = get_args()
-    home_team = Team("Portland", "Beavers")
-    away_team = Team("Portland", "Beavers")
-    home_team.load_team()
-    home_team.set_lineup()
-    away_team.load_team()
+    # Set up Home Team
+    home_team = Team("Team", "80s")
+    home_team.load_team(path="Team80s.csv")
+    # print("Home Team Auto")
+    # home_team.set_lineup()
+    # home_team.display_lineup()
+    # print("Home Team defensive lineup")
+    # home_team.set_lineup("defensive")
+    # home_team.display_lineup()
+    # print("Home Team offensive lineup")
+    # home_team.set_lineup("offensive")
+    # home_team.display_lineup()
+    print("Home Team prioritized positions offensive lineup")
+    home_team.set_lineup("prioritized")
+    home_team.display_lineup()
+    
+    # Set up Away Team
+    away_team = Team("Team", "40s")
+    away_team.load_team(path="Team40s.csv")
+    print("Away Team Auto Set")
     away_team.set_lineup()
+    away_team.display_lineup()
+    print("Away Team defensive lineup")
+    away_team.set_lineup("defensive")
+    away_team.display_lineup()
+    print("Away Team offensive lineup")
+    away_team.set_lineup("offensive")
+    away_team.display_lineup()
+    print("Away Team prioritized positions offensive lineup")
+    away_team.set_lineup("prioritized")
+    away_team.display_lineup()
+    
     my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
     my_event = Event(my_game, args.debug)
 

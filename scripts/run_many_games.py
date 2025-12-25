@@ -41,13 +41,19 @@ def get_args():
 
 def main():
     args = get_args()
+    home_wins = 0
+    away_wins = 0
     for _ in range(args.games):
-        home_team = Team("Portland", "Beavers")
-        away_team = Team("Portland", "Beavers")
-        home_team.load_team()
-        home_team.set_lineup()
-        away_team.load_team()
-        away_team.set_lineup()
+        home_team = Team("Team", "50s")
+        home_team.load_team(path="Team50s.csv")
+        home_team.set_lineup("prioritized")
+        #home_team.display_lineup()
+
+        #print("Away Team")
+        away_team = Team("Team", "40s")
+        away_team.load_team(path="Team40s.csv")
+        away_team.set_lineup("prioritized")
+        #away_team.display_lineup()
 
         my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
         my_event = Event(my_game, args.debug)
@@ -58,6 +64,13 @@ def main():
         print("Home:    " + str(my_game.score.home))
         print("Visitor: " + str(my_game.score.away))
         print("-" * 20)
+        
+        if my_game.winner == my_game.home:
+            home_wins += 1
+        if my_game.winner == my_game.away:
+            away_wins += 1
+    print("Home wins:" + str(home_wins))
+    print("Away wins:" + str(away_wins))
 
 
 if __name__ == "__main__":

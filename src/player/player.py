@@ -21,6 +21,7 @@ class Player(object):
         """Setup the player."""
         self.first_name = first_name
         self.last_name = last_name
+        self.name = first_name + " " + last_name
         self.throws = throws  # right or left or None
         self.bats = bats  # right, left or switch or None
         self.position = position  # Just used for setting skills
@@ -47,7 +48,7 @@ class Player(object):
         return output
 
     def horizontal(self):
-        """Output the player and stats as a single line."""
+        """Output the player and skills/ratings as a single line."""
         if self.ratings == {}:
             self.rate_player()
         name = self.first_name + " " + self.last_name
@@ -97,7 +98,7 @@ class Player(object):
         return output
 
     def csv(self):
-        """Output the player and stats as a single csv line."""
+        """Output the player and skills/ratings as a single csv line."""
         name = self.first_name + " " + self.last_name
         output = str("{},".format(name))
         for item in [
@@ -120,18 +121,18 @@ class Player(object):
             self.skills["recovery"],
             self.skills["ground_balls"],
             self.skills["strikes"],
-            self.ratings["p"],
-            self.ratings["c"],
-            self.ratings["1b"],
-            self.ratings["2b"],
-            self.ratings["3b"],
-            self.ratings["ss"],
-            self.ratings["lf"],
-            self.ratings["cf"],
-            self.ratings["rf"],
-            self.ratings["lead_off"],
-            self.ratings["contact_hitter"],
-            self.ratings["power_hitter"],
+            # self.ratings["p"],
+            # self.ratings["c"],
+            # self.ratings["1b"],
+            # self.ratings["2b"],
+            # self.ratings["3b"],
+            # self.ratings["ss"],
+            # self.ratings["lf"],
+            # self.ratings["cf"],
+            # self.ratings["rf"],
+            # self.ratings["lead_off"],
+            # self.ratings["contact_hitter"],
+            # self.ratings["power_hitter"],
         ]:
             output += "{},".format(item)
         output += "\n"
@@ -199,18 +200,18 @@ class Player(object):
             "RE",
             "GB",
             "KK",
-            "P",
-            "C",
-            "1B",
-            "2B",
-            "3B",
-            "SS",
-            "LF",
-            "CF",
-            "RF",
-            "LO",
-            "CH",
-            "PH",
+            # "P", # These are calculated values and don't need to be in the csv
+            # "C",
+            # "1B",
+            # "2B",
+            # "3B",
+            # "SS",
+            # "LF",
+            # "CF",
+            # "RF",
+            # "LO",
+            # "CH",
+            # "PH",
         ]:
             output += "{},".format(item)
         output += "\n"
@@ -272,7 +273,7 @@ class Player(object):
         :param sigma: standard deviation. If unspecified, will vary
             based on min, max and mean.
 
-        Generate one stat.  Generally, stats will have a mean
+        Generate one stat.  Generally, skills will have a mean
         value of 50.  The standard deviation, or sigma defaults to
         16.6667.  If you use a different mean, the sigma will shrink
         such that the 3rd standard deviation is the closer of max or
@@ -317,7 +318,7 @@ class Player(object):
 
     def apply_skill_template(self):
         """
-        Based on the position, set stats
+        Based on the position, set skills
         according to the skill_template.
 
         """
@@ -331,7 +332,7 @@ class Player(object):
 
     def generate(self):
         """
-        Generate random stats, and characteristics, based on a
+        Generate random skills, and characteristics, based on a
         position type.
 
         """

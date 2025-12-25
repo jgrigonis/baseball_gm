@@ -371,9 +371,10 @@ class Event(object):
             or self.game.bases[2] != 0
         ):
             self.adjust_probs_men_on_base()
-        # self.adjust_probs_batter()
-        # self.adjust_probs_pitcher()
-
+        self.adjust_probs_batter()
+        self.adjust_probs_pitcher()
+        if self.debug:
+            print(self.probs)
         # This is very noisy
         # if self.debug:
         #     print(self)
@@ -476,32 +477,32 @@ class Event(object):
         self.probs["double"] = int(self.probs["double"] * 1.18)
         self.probs["triple"] = int(self.probs["triple"] * 1.18)
         self.probs["homer"] = int(self.probs["homer"] * 1.18)
-        self.probs["wild_pitch"] = 100  # TODO adjust for pitcher accuracy
+        self.probs["wild_pitch"] = 100
         self.probs["passed_ball"] = 100  # TODO adjust for catcher skill
 
     def adjust_probs_batter(self):
         """
         Adjust the probabilities based on the batter abilities
         """
-        # TODO this isn't actually loading batter abilities
+        batter = self.game.current_batter
         # power
-        power = self.game.bat_team.current_batter().batting.skills["POW"]
-        self.probs["fly_out"] -= 4 * (power - 50)
+        power = batter.skills["power"]
+        self.probs["fly_out"] -= 4 * (power - 50) # +/- 200
         self.probs["homer"] = int(self.probs["homer"] * (power / 100.0))
-        self.probs["single"] -= 1 * (power - 50)
-        self.probs["double"] += 1 * (power - 50)
+        self.probs["single"] -= 1 * (power - 50) # +/- 50
+        self.probs["double"] += 1 * (power - 50) # +/- 50
         # eye
-        eye = self.game.bat_team.current_batter().batting.skills["EYE"]
+        eye = batter.skills["eye"]
         self.probs["strike"] -= 8 * (eye - 50)
         self.probs["foul_ball"] += 4 * (eye - 50)
         self.probs["ball"] += 4 * (eye - 50)
         # contact
-        contact = self.game.bat_team.current_batter().batting.skills["CON"]
+        contact = batter.skills["contact"]
         self.probs["strike"] -= 4 * (contact - 50)
         self.probs["single"] += 2 * (contact - 50)
         self.probs["ground_out"] += 1 * (contact - 50)
         # speed
-        speed = self.game.bat_team.current_batter().batting.skills["SPD"]
+        speed = batter.skills["speed"]
         self.probs["ground_out"] -= speed - 50
         self.probs["single"] += 0.9 * (speed - 50)
         self.probs["double"] += 0.1 * (speed - 50)
@@ -514,8 +515,53 @@ class Event(object):
         """
         Adjust the probabilities based on the pitcher abilities
         """
-        # TODO this does nothing
-        pass
+        pitcher = self.game.current_pitcher
+        # accuracy
+        accuracy = pitcher.skills["accuracy"]
+        # changes ball, strike, hit_by_pitch, wild_pitch, passed_ball
+        self.probs["ball"] -= 20 * (accuracy - 50) # +/- 1000
+        self.probs["strike"] += 15 * (accuracy - 50) # +/- 750
+        self.probs["hit_by_pitch"] -= (accuracy - 50) # +/- 50
+        if self.probs["wild_pitch"] != 0:
+            self.probs["wild_pitch"] -= (accuracy - 50) # +/- 50
+        if self.probs["passed_ball"] != 0:
+            self.probs["passed_ball"] -= 0.5 * (accuracy - 50) # +/- 25
+
+        # stamina
+        stamina = pitcher.skills["stamina"]
+        # no real effect until we have pitch counts, etc.
+
+        # recovery
+        recovery = pitcher.skills["recovery"]
+        # no in game effect
+
+        # ground_balls
+        ground_balls = pitcher.skills["ground_balls"]
+        # changes ground_out, homer, double_play, fielders_choice, sacrifice, triple_play
+        self.probs["ground_out"] += 4 * (ground_balls) # +0-200
+        self.probs["homer"] -= (ground_balls - 40) # -60 to +40
+        if self.probs["double_play"] != 0:
+            self.probs["double_play"] += 0.8 * (ground_balls) # +0-80
+        if self.probs["fielders_choice"] != 0:
+            self.probs["fielders_choice"] += 0.5 * (ground_balls) # +0-50
+        if self.probs["sacrifice"] != 0:
+            self.probs["sacrifice"] -= 0.5 * (ground_balls - 50) # +/- 25
+        if self.probs["triple_play"] != 0:
+            self.probs["triple_play"] += 0.1 * (ground_balls) # +0-10
+
+
+        # strikes
+        strikes = pitcher.skills["strikes"]
+        # changes ball, strike, foul_ball
+        self.probs["ball"] -= 10 * (strikes - 50) # +/- 500
+        self.probs["strike"] += 20 * (strikes - 50) # +/- 1000
+        self.probs["foul_ball"] += 2 * (strikes - 50) # +/- 100
+
+        # clutch
+        clutch = pitcher.skills["clutch"]
+        # TODO effects things based on situations
+
+
 
     def adjust_probs_based_on_count(self, balls=0, strikes=0):
         """

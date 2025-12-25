@@ -3,12 +3,14 @@ import src.game.count as count
 import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
 import src.game.score as score
-from src.team.team import Team
+# from src.team.team import Team
 
 # from src.stats import stats
 __author__ = "josh"
 
-
+# TODO pitchers are just set to the first person in the team file
+# they should be assigned
+# TODO need to properly handle dh/pitcher position
 class Game(object):
     """
     Maintain the state of the game.
@@ -18,10 +20,6 @@ class Game(object):
 
     At any given point we should know the count.
     The number of outs. The inning.
-
-    TODO:
-    The lineups for both teams.
-
     """
 
     def __init__(self, home, away, debug=False, pauses=False, innings_per_game=9):
@@ -46,18 +44,20 @@ class Game(object):
         self.game_over = False
         self.inning = inning.Inning()
         self.innings_per_game = innings_per_game
-
-        self._sync_players()
-
         if debug:
             print(self.inning)
             print("------------")
-            print(self.current_batter)
-            print(self.current_pitcher)
+            # print(self.current_batter)
+            # print(self.current_pitcher)
+        
+        self._sync_players()
 
     def _sync_players(self):
         self.current_batter = self.bat_team.current_batter()
         self.current_pitcher = self.pitch_team.current_pitcher()
+        if self.debug:
+            print("Next Up: " + self.current_batter.horizontal())
+
 
     def strike(self):
         """
@@ -316,9 +316,9 @@ class Game(object):
         # self.stats.hit()
         batter.stats.batting.hit()
         self._next_batter()
-        if self.debug:
-            print("DEBUG:")
-            print("1st base has " + str(self.bases[0]))
+        # if self.debug:
+        #     print("DEBUG:")
+        #     print("1st base has " + str(self.bases[0]))
 
     def double_play(self, base1="second", base2="first", gdp=True):
         """
@@ -527,11 +527,11 @@ class Game(object):
 
     def _next_batter(self):
         """Next batter is up in the lineup."""
-        if self.debug:
-            print(self.current_batter.horizontal())
         self.bat_team.next_batter()
         self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
+        if self.debug:
+            print("Next Up: " + self.current_batter.horizontal())
 
     def _put_out(self):
         """Runner or batter is put out."""
@@ -561,12 +561,9 @@ class Game(object):
         TODO: We should add to the inning scores for home or away.
 
         """
-        # need to update this
-        #        self.stats.run(scorer)
+        scorer.stats.batting.run(scorer)
         self.score.score_run()
-        # self.current_pitcher.earned_run()
-        # self.pitch_team_stats.earned_run()
-        # self.bat_team.score_run()
+        self.current_pitcher.stats.pitching.run()
         if self.inning.number >= self.innings_per_game:
             if not self.inning.top:
                 if self.score.home > self.score.away:
@@ -586,9 +583,6 @@ class Game(object):
         """
         self.score.new_inning()
         self.inning.increment()
-        # if self.debug:
-        #     self.current_batter.rate_player()
-        #     print(self.current_batter.horizontal())
         self.bases.clear()
         self.count.reset_count()
         if self.debug and not self.game_over:
@@ -596,16 +590,14 @@ class Game(object):
             print("------------")
         if self.pauses:
             input("")
-        # if self.bat_team == self.away:
-        #     self.bat_team = self.home
-        #     self.pitch_team = self.away
-        # else:
-        #     self.bat_team = self.away
-        #     self.pitch_team = self.home
-        # self.bat_team_stats = self.bat_team.stats.batting
-        # self.current_batter = self.bat_team.current_batter().stats.batting
-        # self.pitch_team_stats = self.pitch_team.stats.pitching
-        # self.current_pitcher = self.pitch_team.pitcher().stats.pitching
+        if self.bat_team == self.away:
+            self.bat_team = self.home
+            self.pitch_team = self.away
+        else:
+            self.bat_team = self.away
+            self.pitch_team = self.home
+        self._sync_players()
+
 
     def _end_game(self):
         """
@@ -618,11 +610,11 @@ class Game(object):
 
         """
         if self.score.home > self.score.away:
-            self.winner = "home"
+            self.winner = self.home
             # self.home.wins += 1
             # self.away.losses += 1
         elif self.score.away > self.score.home:
-            self.winner = "away"
+            self.winner = self.away
             # self.away.wins += 1
             # self.home.losses += 1
         else:
@@ -633,7 +625,19 @@ class Game(object):
         self.game_over = True
         # self.home.save()
         # self.away.save()
-        # if self.debug:
-        #     print(self.current_batter.first_name)
-        #     print(self.current_batter.stats.batting.rbi)
+        if self.debug:
+            for player in self.home.players:
+                if self.current_pitcher == player:
+                    print(player.name)
+                    print(player.stats)
+            for player in self.away.players:
+                if self.current_pitcher == player:
+                    print(player.name)
+                    print(player.stats)
+            for player in self.home.lineup:
+                print(player.name)
+                print(player.stats)
+            for player in self.away.lineup:
+                print(player.name)
+                print(player.stats)
         return

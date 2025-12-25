@@ -81,6 +81,8 @@ class TestBases(unittest.TestCase):
 
 
 # TODO may need to consider this one again
+# It could be that you advance a runner past another runner. Checking for that with multiple
+# advance_many tuples will be challenging.
 # def test_advance_past_occupied(self):
 #     """Test advance to third."""
 #     self.my_bases._bases = ["al", "bob", 0]
