@@ -44,16 +44,29 @@ def main():
     home_wins = 0
     away_wins = 0
     for _ in range(args.games):
-        home_team = Team("Team", "50s")
-        home_team.load_team(path="Team50s.csv")
-        home_team.set_lineup("prioritized")
-        #home_team.display_lineup()
+        home_team = Team("Team", "1")
+        home_team.load_team(path="Team1.csv")
+        print("Home Team prioritized")
+        home_team.set_lineup(style="prioritized")
+        home_team.display_lineup()
 
-        #print("Away Team")
+        print("Home Team auto")
+        home_team.set_lineup("auto")
+        home_team.display_lineup()
+
+        print("Home Team defensive")
+        home_team.set_lineup("defensive")
+        home_team.display_lineup()
+
+        print("Home Team offensive")
+        home_team.set_lineup("offensive")
+        home_team.display_lineup()
+
+        print("Away Team")
         away_team = Team("Team", "40s")
         away_team.load_team(path="Team40s.csv")
-        away_team.set_lineup("prioritized")
-        #away_team.display_lineup()
+        away_team.set_lineup(style="prioritized")
+        away_team.display_lineup()
 
         my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
         my_event = Event(my_game, args.debug)

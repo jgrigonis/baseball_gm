@@ -66,10 +66,11 @@ class Team(object):
                 players.append(player)
         self.players = players
 
-    def set_lineup(self, style="auto"):
+    def set_lineup(self, style="auto", dh=True):
         """
         Set the lineup and validate it.
         """
+        # TODO need to deal with dh and pitcher position
         styles = [
             "auto",
             "defensive",
@@ -79,23 +80,23 @@ class Team(object):
         if style not in styles:
             raise ValueError("Setting lineup with invalid style: " + style)
         if style == "auto":
-            self.auto_set_lineup()
+            self.auto_set_lineup(dh)
         elif style == "defensive":
-            self.select_defensive_lineup()
+            self.select_defensive_lineup(dh)
         elif style == "offensive":
-            self.select_offensive_lineup()
+            self.select_offensive_lineup(dh)
         elif style == "prioritized":
-            self.select_offensive_lineup(prioritized_positions=True)
+            self.select_offensive_lineup(dh, prioritized_positions=True)
 
         if len(self.lineup) != 9:
             raise ValueError("Lineup must have exactly 9 players")
 
-        if validate_lineup_slots(self.lineup):
+        if validate_lineup_slots(self.lineup, dh):
             # debug
             #print("Lineup looks good")
             pass
 
-    def auto_set_lineup(self):
+    def auto_set_lineup(self, dh):
         """
         This will automatically set the lineup using the first 9 
         players in the csv file and setting their positions in a
@@ -115,7 +116,7 @@ class Team(object):
     def position_score(self, player, position):
         return player.ratings.get(position, 0)
 
-    def select_defensive_lineup(self):
+    def select_defensive_lineup(self, dh):
         """
         This will automatically put together a defensive lineup, but
         it will greedily pick the best player aavailable at each
@@ -144,14 +145,12 @@ class Team(object):
                 lineup[position] = best
                 used_players.add(best)
 
-    def select_offensive_lineup(self, prioritized_positions=False):
+    def select_offensive_lineup(self, dh, prioritized_positions=False):
         """
         Create an offensive lineup.
         This won't properly assign the players to positions.
         """
-        lineup = {}
         self.lineup = []
-        used_players = set()
         for player in self.players:
             player.rate_player()
         self.set_hitters()
@@ -185,12 +184,12 @@ class Team(object):
             nine_hitter,
         ]
         if prioritized_positions:
-            self.assign_priority_positions()
+            self.assign_priority_positions(dh)
         else:
-            self.assign_positions()
+            self.assign_positions(dh)
 
     
-    def assign_positions(self):
+    def assign_positions(self, dh):
         """
         Greedily assign defensive positions to the 9 hitters.
         One player will become DH.
@@ -227,7 +226,7 @@ class Team(object):
             for player in self.lineup
         ]
 
-    def assign_priority_positions(self):
+    def assign_priority_positions(self, dh):
         """
         Assign defensive positions without changing batting order.
         Uses position priority, then best available player for each position.
@@ -313,7 +312,7 @@ def offensive_profile(player):
         )
     }
 
-def validate_lineup_slots(lineup):
+def validate_lineup_slots(lineup, dh):
     required = set(LINEUP_SLOTS) - {"p"}  # ignore pitcher
     used = []
 
