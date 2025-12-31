@@ -20,12 +20,13 @@ __author__ = "josh"
 # TODO track stats across many games
 # TODO implement defensive stats
 # TODO Calculate other stats, ERA, WHIP, W/L/S
-# TODO other stats; Batting Average, Slugging, OPS, OBP, Total bases, IBB
+# TODO print batting derived stats
 # TODO the last event of a game might not be getting captured in game stats
 # TODO Track Games played
 # TODO Games Started for pitcher
 # TODO Track wins, loss, saves for pitchers
 # TODO Track complete games, shutouts
+# TODO handle intentional walk as a play and a stat
 
 
 class Game(object):

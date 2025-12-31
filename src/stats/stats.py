@@ -66,6 +66,32 @@ class BattingStats(object):
         for attr in vars(self):
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
+    @property
+    def batting_average(self):
+        return self.hits / self.at_bats
+
+    @property
+    def singles(self):
+        return self.hits - self.home_runs - self.triples - self.doubles
+
+    @property
+    def total_bases(self):
+        return self.triples * 3 + self.doubles * 2 + self.home_runs * 4 + self.singles
+
+    @property
+    def slugging(self):
+        return self.total_bases / self.at_bats
+
+    @property
+    def obp(self):
+        return (self.hits + self.walks + self.hbp) / (
+            self.at_bats + self.walks + self.hbp + self.sacrifices
+        )
+
+    @property
+    def ops(self):
+        return self.obp + self.slugging
+
     def hit_rbi(self):
         self.rbi += 1
 
