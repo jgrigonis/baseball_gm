@@ -27,6 +27,7 @@ __author__ = "josh"
 # TODO Track wins, loss, saves for pitchers
 # TODO Track complete games, shutouts
 
+
 class Game(object):
     """
     Maintain the state of the game.
@@ -639,14 +640,18 @@ class Game(object):
             self.logger.info(player.horizontal_stats())
         self.logger.info("-" * 100)
         self.logger.info(
-            Player.horizontal_pitching_stat_header(self.home.city + " " + self.home.mascot)
+            Player.horizontal_pitching_stat_header(
+                self.home.city + " " + self.home.mascot
+            )
         )
         for player in self.home.players:
             if player.stats.pitching.ip_float > 0:
                 self.logger.info(player.horizontal_pitching_stats())
 
         self.logger.info(
-            Player.horizontal_pitching_stat_header(self.away.city + " " + self.away.mascot)
+            Player.horizontal_pitching_stat_header(
+                self.away.city + " " + self.away.mascot
+            )
         )
         for player in self.away.players:
             if player.stats.pitching.ip_float > 0:
@@ -654,5 +659,3 @@ class Game(object):
         self.logger.info("-" * 100)
         self._aggregate_stats()
         return
-    
-    

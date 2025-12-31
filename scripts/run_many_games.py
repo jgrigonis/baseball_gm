@@ -50,7 +50,7 @@ def main():
     logger = logging.getLogger("details")
     home_wins = 0
     away_wins = 0
-    
+
     home_team = Team("Team", "2")
     home_team.load_team(path="Team2.csv")
 
@@ -113,15 +113,11 @@ def main():
             home_wins += 1
         if my_game.winner == my_game.away:
             away_wins += 1
-    logger.info(
-        Player.horizontal_stat_header(home_team.city + " " + home_team.mascot)
-    )
+    logger.info(Player.horizontal_stat_header(home_team.city + " " + home_team.mascot))
     for player in home_team.lineup:
         logger.info(player.horizontal_stats("season"))
 
-    logger.info(
-        Player.horizontal_stat_header(away_team.city + " " + away_team.mascot)
-    )
+    logger.info(Player.horizontal_stat_header(away_team.city + " " + away_team.mascot))
     for player in away_team.lineup:
         logger.info(player.horizontal_stats("season"))
     logger.info("-" * 100)

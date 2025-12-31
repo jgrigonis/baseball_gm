@@ -68,7 +68,7 @@ class Player(object):
     def aggregate_game(self):
         self.season_stats.add_game(self.stats)
         self.stats = stats.Stats()
-    
+
     def horizontal(self):
         """Output the player and skills/ratings as a single line."""
         if self.ratings == {}:
@@ -172,7 +172,7 @@ class Player(object):
             output += "{:>{}}".format(item, 4)
         output += "  "
         return output
-    
+
     @staticmethod
     def horizontal_pitching_stat_header(team_name="Name"):
         """Return the pitching stat header as a single line."""
@@ -220,7 +220,7 @@ class Player(object):
         output += "{:>{}}".format(stats.batting.hbp, 4)
         output += "{:>{}}".format(stats.batting.sacrifices, 4)
         return output
-    
+
     def horizontal_pitching_stats(self, stat_type="game"):
         """Output the player stats on a single line."""
         if stat_type == "game":
