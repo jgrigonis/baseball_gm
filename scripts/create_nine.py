@@ -42,5 +42,6 @@ def main():
         for player in team.players:
             csv.writelines(player.csv())
 
+
 if __name__ == "__main__":
     main()

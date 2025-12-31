@@ -94,7 +94,6 @@ def main():
         csv.writelines(Player.csv_header())
         for player in team.players:
             csv.writelines(player.csv())
-    # print(player.legend())
 
 
 if __name__ == "__main__":

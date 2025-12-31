@@ -30,20 +30,15 @@ class Team(object):
     """A Baseball Team class."""
 
     def __init__(self, city, mascot):
-        # self.players = self.load_team()
         self.city = city
         self.mascot = mascot
         self.lineup = None
         self.pitcher = None
         self.batter_index = 0  # index on the lineup
-        self.stats = stats.TeamStats()
         self.players = []
         self.logger = logging.getLogger("details")
 
-    def load_team(
-        self,
-        path="FooBars.csv",
-    ):
+    def load_team(self, path="FooBars.csv"):
         """Load a team from a csv file."""
         self.team_file = path
         players = []
@@ -129,8 +124,6 @@ class Team(object):
         the batting lineup or not. If dh is true, the pitcher doesn't
         need to bat.
         """
-        # TODO we can't just start the same pitcher every time once we
-        # are simming for real.
         best = 0
         pitcher = None
         for player in self.players:

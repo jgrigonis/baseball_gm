@@ -308,7 +308,7 @@ class TestBottom9thHomeWin(GameTestBase):
 
     def test_game_over(self):
         """Test that the game is over, and that home team won."""
-        self.assertEqual(self.my_game.winner, "home")
+        self.assertEqual(self.my_game.winner, self.my_game.home)
         self.assertEqual(self.my_game.game_over, True)
 
 
@@ -845,7 +845,7 @@ class TestAwayTeamWins(GameTestBase):
         self.my_game.fly_out()
         self.my_game.ground_out()
         self.my_game.fly_out()
-        self.assertEqual(self.my_game.winner, "away")
+        self.assertEqual(self.my_game.winner, self.my_game.away)
         self.assertEqual(self.my_game.game_over, True)
 
     def test_score(self):

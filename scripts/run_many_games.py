@@ -41,7 +41,7 @@ def get_args():
 
 def main():
     args = get_args()
-    
+
     if args.debug:
         levl = logging.DEBUG
     else:
@@ -108,23 +108,27 @@ def main():
 
         logger.info("Home:    " + str(my_game.score.home))
         logger.info("Visitor: " + str(my_game.score.away))
-        
 
-        logger.info(Player.horizontal_stat_header(home_team.city + " " + home_team.mascot))
+        logger.info(
+            Player.horizontal_stat_header(home_team.city + " " + home_team.mascot)
+        )
         for player in home_team.lineup:
             logger.info(player.horizontal_stats())
 
-        logger.info(Player.horizontal_stat_header(away_team.city + " " + away_team.mascot))
+        logger.info(
+            Player.horizontal_stat_header(away_team.city + " " + away_team.mascot)
+        )
         for player in away_team.lineup:
             logger.info(player.horizontal_stats())
         logger.info("-" * 80)
-    
+
         if my_game.winner == my_game.home:
             home_wins += 1
         if my_game.winner == my_game.away:
             away_wins += 1
     logger.info("Home wins:" + str(home_wins))
     logger.info("Away wins:" + str(away_wins))
+
 
 if __name__ == "__main__":
     main()

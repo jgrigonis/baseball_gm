@@ -121,18 +121,6 @@ class Player(object):
             self.skills["recovery"],
             self.skills["ground_balls"],
             self.skills["strikes"],
-            # self.ratings["p"],
-            # self.ratings["c"],
-            # self.ratings["1b"],
-            # self.ratings["2b"],
-            # self.ratings["3b"],
-            # self.ratings["ss"],
-            # self.ratings["lf"],
-            # self.ratings["cf"],
-            # self.ratings["rf"],
-            # self.ratings["lead_off"],
-            # self.ratings["contact_hitter"],
-            # self.ratings["power_hitter"],
         ]:
             output += "{},".format(item)
         output += "\n"

@@ -191,7 +191,3 @@ class PitchingStats(object):
 
     def wild_pitch(self):
         self.wild_pitches += 1
-
-
-class TeamStats(object):
-    pass

@@ -7,6 +7,7 @@ For instance, a steal will not occur with no one on base.  A triple
 play won't happen with only 1 runner on, and so on.
 
 """
+
 import logging
 import random
 

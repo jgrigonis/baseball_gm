@@ -13,7 +13,7 @@ __author__ = "josh"
 # TODO changes to event probs based on defensive stats
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
-# TODO implement clutch or remove it
+# TODO implement clutch
 # TODO can runners advance more with more speed, not currently
 # TODO do steals work properly, speed and baserunning don't effect probs
 # TODO track stats across many games
@@ -67,7 +67,8 @@ class Game(object):
     def _sync_players(self):
         self.current_batter = self.bat_team.current_batter()
         self.current_pitcher = self.pitch_team.current_pitcher()
-        self.logger.info("Next Up: " + self.current_batter.horizontal())
+        if not self.game_over:
+            self.logger.info("Next Up: " + self.current_batter.horizontal())
 
     def strike(self):
         """
@@ -203,7 +204,6 @@ class Game(object):
         pitcher = self.current_pitcher
         if self.bases[b_num] != 0:
             self.bases.clear([b_num])
-            # self.stats.pick_off()
             runner.stats.batting.pick_off()
             pitcher.stats.pitching.pick_off()
 
@@ -367,15 +367,16 @@ class Game(object):
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs != 0:
             raise game_exceptions.TooManyOuts()
-        # self.stats.at_bat()
         batter.stats.batting.at_bat()
         if gtp:
-            # self.stats.gtp()
             batter.stats.batting.ground_triple_play()
-        # self.pitch_team_stats.out(3)
-        # self.current_pitcher.out(3)
+        self._put_out()
+        self._put_out()
+        self._put_out()
+        # do we need this?
         self._next_batter()
-        self._side_retired()
+        # side gets retired by the third put_out
+        #self._side_retired()
 
     def fielders_choice(self, base="second"):
         """
@@ -392,7 +393,6 @@ class Game(object):
         """
         b_num = self._base_number(base)
         batter = self.current_batter
-        # self.stats.at_bat()
         batter.stats.batting.at_bat()
         self._next_batter()
         self.bases[b_num] = 0  # clear the base
@@ -432,7 +432,6 @@ class Game(object):
                 raise game_exceptions.InvalidAdvance()
             self.bases[batter_base] = batter
             batter.stats.batting.at_bat()
-            # self.stats.at_bat()
             self._next_batter()
 
     def sacrifice(self, advances=None):
@@ -454,7 +453,6 @@ class Game(object):
             scored = self.bases.advance_all()
             if scored:
                 batter.stats.batting.hit_rbi()
-                # self.stats.rbi()
                 self._score_run(scored)
         else:
             if isinstance(advances, tuple):
@@ -465,12 +463,8 @@ class Game(object):
             scorers = self.bases.advance_many(advances)
             for scorer in scorers:
                 batter.stats.batting.hit_rbi()
-                # self.stats.rbi()
                 self._score_run(scorer)
         batter.stats.batting.sacrifice()
-        # self.stats.sacrifice()
-        # self.pitch_team_stats.out()
-        # self.current_pitcher.out()
         self.inning.out()
         self._next_batter()
 
@@ -498,7 +492,6 @@ class Game(object):
         pitcher = self.current_pitcher
         if not hbp:
             batter.stats.batting.walk()
-            # self.stats.walk()
         if self.bases[0] != 0:
             if self.bases[1] != 0:
                 if self.bases[2] != 0:
@@ -534,12 +527,12 @@ class Game(object):
         self.bat_team.next_batter()
         self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
-        self.logger.info("Next Up: " + self.current_batter.horizontal())
+        if not self.game_over:
+            self.logger.info("Next Up: " + self.current_batter.horizontal())
 
     def _put_out(self):
         """Runner or batter is put out."""
         self.current_pitcher.stats.pitching.out()
-        # self.pitch_team_stats.out()
         if self.inning.outs == 2:
             self._side_retired()
         else:
@@ -554,7 +547,8 @@ class Game(object):
             else:  # top
                 if self.score.home != self.score.away:
                     self._end_game()
-        self.logger.info("Side Retired")
+        if not self.game_over:
+            self.logger.info("Side Retired")
         self._new_inning()
 
     def _score_run(self, scorer):
@@ -625,21 +619,5 @@ class Game(object):
             # self.home.ties += 1
             # self.away.ties += 1
         self.game_over = True
-        # self.home.save()
-        # self.away.save()
-        # if self.debug:
-        #     for player in self.home.players:
-        #         if self.current_pitcher == player:
-        #             print(player.name)
-        #             print(player.stats)
-        #     for player in self.away.players:
-        #         if self.current_pitcher == player:
-        #             print(player.name)
-        #             print(player.stats)
-        #     for player in self.home.lineup:
-        #         print(player.name)
-        #         print(player.stats)
-        #     for player in self.away.lineup:
-        #         print(player.name)
-        #         print(player.stats)
+        self.logger.info("Game Over")
         return

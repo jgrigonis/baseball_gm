@@ -1,0 +1,23 @@
+MLB's average runs per game fluctuates yearly but generally hovers 
+around 4.3 to 4.6 runs per team, with recent years showing around 
+4.39 (2024) to 4.62 (2023) runs per team, reflecting trends in 
+offense and pitching. 
+
+Recent Trends (Runs Per Game per Team) 
+2024: ~4.39
+2023: ~4.62
+2022: ~4.28
+2021: ~4.53
+
+Key Factors Influencing Runs Per Game
+
+Offense vs. Pitching: Higher run totals often correlate with more 
+home runs, while lower totals can indicate dominant pitching or 
+larger ballparks. 
+
+Rule Changes: Adjustments like the pitch clock can speed up games 
+and sometimes affect run scoring. 
+
+Era Differences: The game's scoring has changed dramatically; the 
+high-scoring 1990s saw nearly 5 runs per game, while the "Year of 
+the Pitcher" in 1968 dropped to under 3.5. 

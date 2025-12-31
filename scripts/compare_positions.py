@@ -18,6 +18,7 @@ __author__ = "josh"
 
 
 def main():
+    print(Player.legend())
     team = []
     for position, name in zip(positions, position_name):
         team.append(Player("a", name, position=position))
@@ -33,7 +34,6 @@ def main():
     print(Player.header())
     for player in team:
         print(player.horizontal())
-    print(player.legend())
 
 
 if __name__ == "__main__":

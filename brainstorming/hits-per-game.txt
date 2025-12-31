@@ -1,0 +1,12 @@
+The average number of hits in an MLB game has hovered around 8.2 
+to 8.4 per team in recent seasons (2022-2025), meaning a typical 
+game sees about 16-17 total hits between both teams, though it 
+fluctuates slightly yearly, with slightly fewer hits in 2024 (8.20) 
+than 2023 (8.40). This reflects the overall offensive environment, 
+where hits are generally plentiful, though strikeouts have increased 
+in recent years, making the hit-to-strikeout ratio a notable trend.  
+
+Key Figures: 
+2025: ~8.26 hits per team (total ~16.5).
+2024: ~8.20 hits per team (total ~16.4).
+2023: ~8.40 hits per team (total ~16.8).

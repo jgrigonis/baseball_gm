@@ -1,0 +1,112 @@
+What happens to skills over time?
+
+Traits are basically in 3 categories:
+
+Physical / genetic (hard to train, age-sensitive)
+Cognitive / decision-making (trainable, slower decline)
+Technical / mechanical (highly trainable, little decline)
+
+Physical skills peak early and decline; mental and technical 
+skills grow with experience and coaching.
+
+CL = clutch
+
+Clutch rating should vary only slightly from season to season
+Slight upward drift for veterans
+Temporary boosts after playoff success
+Small regression after repeated failures
+
+SP = run speed
+
+Rn speed can't really be coached. It should vary small amounts
+until the age starts to get up there, then it should decline
+Peak early (22–26)
+Plateau
+Sharp decline after 30–32
+Speed can decline with injuries
+
+PO = batting power
+
+Power can't really be coached. It should increase while young
+until the age starts to get up there, then it should decline
+Slow rise > long plateau > late decline
+
+EY = eye
+
+Eye can be trained. It should increase while young
+until the age starts to get up there, then it should decline
+Coaching should affect it
+Eye often peaks later than physical skills
+Decline should be gentle
+
+CT = contact hitting
+
+Contact can be trained. It should increase while young
+Coaching should affect it
+Reaction time declines with age, so elite contact hitters do fade
+Decline should be very slow
+Slight decline after mid-30s, very gradual
+
+BR = base running
+
+Base running is different from speed, it is decidion making.
+It should trend up for the entire career.
+Coaching should affect it
+Caps earlier for low-IQ players
+Slight late-career plateau (not decline)
+
+BU = bunting
+
+Bunting can be trained. It should always trend up
+It doesn't really need to decline with age
+Coaching should affect it
+
+CA = catching
+IF = infield skills
+OF = outfield skills
+
+Positional skills can be trained. They should always trend up
+It doesn't really need to decline with age
+Coaching should affect it
+
+AR = throwing arm
+
+Arm can't really be coached. It should increase while young
+until the age starts to get up there, then it should decline
+Arm declines faster for pitchers than position players
+Injuries matter a lot here
+
+Pitching skills
+Pitching skills that begin to decline with age will typically
+start declining later.
+AC = pitching accuracy
+
+Accuracy can be trained. It should always trend up
+Coaching should affect it
+Accuracy plateaus at a player-specific ceiling
+
+ST = pitching stamina
+
+Stamina can be trained. It should increase while young
+until the age starts to get up there, then it should decline
+Coaching should affect it
+Injuries hit this hard
+
+RE = pitching recovery
+
+Recovery can be trained. It should increase while young
+until the age starts to get up there, then it should decline
+Coaching should affect it
+Injuries hit this hard
+Recovery is one of the most coaching-sensitive pitching stats
+
+GB = pitching ground balls
+
+Ground ball pitching can be trained. It should always trend up
+Coaching should affect it
+
+KK = pitching strikes
+
+Strike out pitching can not be trained. It should increase while young
+until the age starts to get up there, then it should decline
+Coaching does not affect it

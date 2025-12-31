@@ -4,10 +4,12 @@ Run one game.
 """
 
 import argparse
+import logging
 
 from src.game.event import Event
 from src.game.main import Game
 from src.team.team import Team
+from src.util.logger import setup_logger
 
 
 def get_args():
@@ -35,6 +37,12 @@ def get_args():
 
 def main():
     args = get_args()
+    if args.debug:
+        levl = logging.DEBUG
+    else:
+        levl = logging.INFO
+    logger = setup_logger(name="details", level=levl)
+    logger = logging.getLogger("details")
     # Set up Home Team
     home_team = Team("Team", "80s")
     home_team.load_team(path="Team80s.csv")
@@ -47,34 +55,34 @@ def main():
     # print("Home Team offensive lineup")
     # home_team.set_lineup("offensive")
     # home_team.display_lineup()
-    print("Home Team prioritized positions offensive lineup")
+    logger.debug("Home Team prioritized positions offensive lineup")
     home_team.set_lineup("prioritized")
     home_team.display_lineup()
 
     # Set up Away Team
     away_team = Team("Team", "40s")
     away_team.load_team(path="Team40s.csv")
-    print("Away Team Auto Set")
+    logger.debug("Away Team Auto Set")
     away_team.set_lineup()
     away_team.display_lineup()
-    print("Away Team defensive lineup")
+    logger.debug("Away Team defensive lineup")
     away_team.set_lineup("defensive")
     away_team.display_lineup()
-    print("Away Team offensive lineup")
+    logger.debug("Away Team offensive lineup")
     away_team.set_lineup("offensive")
     away_team.display_lineup()
-    print("Away Team prioritized positions offensive lineup")
+    logger.debug("Away Team prioritized positions offensive lineup")
     away_team.set_lineup("prioritized")
     away_team.display_lineup()
 
     my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
-    my_event = Event(my_game, args.debug)
+    my_event = Event(my_game)
 
     while my_game.game_over is False:
         my_event.do_event()
 
-    print("Home:    " + str(my_game.score.home))
-    print("Visitor: " + str(my_game.score.away))
+    logger.info("Home:    " + str(my_game.score.home))
+    logger.info("Visitor: " + str(my_game.score.away))
 
 
 if __name__ == "__main__":

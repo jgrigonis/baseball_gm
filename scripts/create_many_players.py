@@ -2,6 +2,8 @@
 Create a bunch of players (default=40), print out the best players in each
 skill category or position rating.
 
+They aren't saved anywhere
+
 """
 
 import argparse

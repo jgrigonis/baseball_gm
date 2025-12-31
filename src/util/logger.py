@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime
 
+
 def setup_logger(
     name: str,
     log_dir: str = "logs",
@@ -19,8 +20,7 @@ def setup_logger(
     if logger.handlers:
         return logger
 
-
-    #formatter = logging.Formatter(LOG_FORMAT)
+    # formatter = logging.Formatter(LOG_FORMAT)
     formatter = logging.Formatter("[%(levelname)s] %(name)s: %(message)s")
 
     fh = logging.FileHandler(log_file)
