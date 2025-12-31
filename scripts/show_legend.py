@@ -9,8 +9,7 @@ __author__ = "josh"
 
 
 def main():
-    player = Player("Foo", "Bar")
-    print(player.legend())
+    print(Player.legend())
 
 
 if __name__ == "__main__":

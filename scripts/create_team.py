@@ -66,8 +66,7 @@ def get_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--debug", "-d", action="store_true", 
-        help="Set the debug flag."
+        "--debug", "-d", action="store_true", help="Set the debug flag."
     )
     args = parser.parse_args()
     return args

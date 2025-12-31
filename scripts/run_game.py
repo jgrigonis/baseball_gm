@@ -16,8 +16,7 @@ def get_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--debug", "-d", action="store_true", 
-        help="Set the debug flag."
+        "--debug", "-d", action="store_true", help="Set the debug flag."
     )
     parser.add_argument(
         "--pauses",
@@ -26,8 +25,7 @@ def get_args():
         help="Set the pauses flag. Implies debug.",
     )
     parser.add_argument(
-        "--innings", "-i", type=int, default=9, 
-        help="Set the number of innings."
+        "--innings", "-i", type=int, default=9, help="Set the number of innings."
     )
     args = parser.parse_args()
     if args.pauses:
@@ -52,7 +50,7 @@ def main():
     print("Home Team prioritized positions offensive lineup")
     home_team.set_lineup("prioritized")
     home_team.display_lineup()
-    
+
     # Set up Away Team
     away_team = Team("Team", "40s")
     away_team.load_team(path="Team40s.csv")
@@ -68,7 +66,7 @@ def main():
     print("Away Team prioritized positions offensive lineup")
     away_team.set_lineup("prioritized")
     away_team.display_lineup()
-    
+
     my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
     my_event = Event(my_game, args.debug)
 

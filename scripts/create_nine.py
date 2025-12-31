@@ -2,8 +2,6 @@
 Create a team of 9 players.
 1 of each position
 
-Need to do something about setting the lineup.
-
 This will also write out a csv file called TeamNine.csv that represents the
 team and has all its ratings.
 
@@ -32,6 +30,7 @@ def main():
     team.players.append(create("3b"))
     team.players.append(create("1b"))
     team.players.append(create("sp"))
+    print(Player.legend())
     if debug:
         for player in team.players:
             print(player)
@@ -42,8 +41,6 @@ def main():
         csv.writelines(Player.csv_header())
         for player in team.players:
             csv.writelines(player.csv())
-    print(player.legend())
-
 
 if __name__ == "__main__":
     main()

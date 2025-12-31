@@ -12,7 +12,7 @@ class Inning(object):
 
     def __str__(self):
         """Return an inning string."""
-        output = "\n"
+        output = ""
         if self.top:
             output += "Top of "
         else:

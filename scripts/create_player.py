@@ -24,12 +24,10 @@ def get_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--debug", "-d", action="store_true", 
-        help="Set the debug flag."
+        "--debug", "-d", action="store_true", help="Set the debug flag."
     )
     parser.add_argument(
-        "--position", "-p", default=None, choices=positions, 
-        help="The player position."
+        "--position", "-p", default=None, choices=positions, help="The player position."
     )
     args = parser.parse_args()
     return args

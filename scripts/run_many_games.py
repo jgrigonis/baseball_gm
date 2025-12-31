@@ -4,10 +4,13 @@ Run many games.
 """
 
 import argparse
+import logging
 
 from src.game.event import Event
 from src.game.main import Game
 from src.team.team import Team
+from src.player.player import Player
+from src.util.logger import setup_logger
 
 
 def get_args():
@@ -16,8 +19,7 @@ def get_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--debug", "-d", action="store_true", 
-        help="Set the debug flag."
+        "--debug", "-d", action="store_true", help="Set the debug flag."
     )
     parser.add_argument(
         "--pauses",
@@ -26,12 +28,10 @@ def get_args():
         help="Set the pauses flag. Implies debug.",
     )
     parser.add_argument(
-        "--innings", "-i", type=int, default=9, 
-        help="Set the number of innings."
+        "--innings", "-i", type=int, default=9, help="Set the number of innings."
     )
     parser.add_argument(
-        "--games", "-g", type=int, default=2, 
-        help="Set the number of games to run."
+        "--games", "-g", type=int, default=2, help="Set the number of games to run."
     )
     args = parser.parse_args()
     if args.pauses:
@@ -41,50 +41,90 @@ def get_args():
 
 def main():
     args = get_args()
+    
+    if args.debug:
+        levl = logging.DEBUG
+    else:
+        levl = logging.INFO
+    logger = setup_logger(name="details", level=levl)
+    logger = logging.getLogger("details")
     home_wins = 0
     away_wins = 0
     for _ in range(args.games):
-        home_team = Team("Team", "1")
-        home_team.load_team(path="Team1.csv")
-        print("Home Team prioritized")
-        home_team.set_lineup(style="prioritized")
+        home_team = Team("Team", "3")
+        home_team.load_team(path="Team3.csv")
+
+        # print("Home Team auto no dh")
+        # home_team.set_lineup("auto", False)
+        # home_team.display_lineup()
+
+        # print("Home Team auto with dh")
+        # home_team.set_lineup("auto", True)
+        # home_team.display_lineup()
+
+        # print("Home Team prioritized no dh")
+        # home_team.set_lineup(style="prioritized", dh=False)
+        # home_team.display_lineup()
+
+        logger.debug("Home Team prioritized with dh")
+        home_team.set_lineup(style="prioritized", dh=True)
         home_team.display_lineup()
 
-        print("Home Team auto")
-        home_team.set_lineup("auto")
-        home_team.display_lineup()
+        # print("Home Team defensive no dh")
+        # home_team.set_lineup("defensive", False)
+        # home_team.display_lineup()
 
-        print("Home Team defensive")
-        home_team.set_lineup("defensive")
-        home_team.display_lineup()
+        # print("Home Team defensive with dh")
+        # home_team.set_lineup("defensive", True)
+        # home_team.display_lineup()
 
-        print("Home Team offensive")
-        home_team.set_lineup("offensive")
-        home_team.display_lineup()
+        # print("Home Team offensive no dh")
+        # home_team.set_lineup("offensive", False)
+        # home_team.display_lineup()
 
-        print("Away Team")
-        away_team = Team("Team", "40s")
-        away_team.load_team(path="Team40s.csv")
-        away_team.set_lineup(style="prioritized")
+        # print("Home Team offensive with dh")
+        # home_team.set_lineup("offensive", True)
+        # home_team.display_lineup()
+
+        away_team = Team("Team", "4")
+        away_team.load_team(path="Team4.csv")
+        # print("Away Team auto, no dh")
+        # away_team.set_lineup(style="auto")
+        # away_team.display_lineup()
+
+        # print("Away Team prioritized no dh")
+        # away_team.set_lineup(style="prioritized", dh=False)
+        # away_team.display_lineup()
+
+        logger.debug("Home Team prioritized with dh")
+        away_team.set_lineup(style="prioritized", dh=True)
         away_team.display_lineup()
 
         my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
-        my_event = Event(my_game, args.debug)
+        my_event = Event(my_game)
 
         while my_game.game_over is False:
             my_event.do_event()
 
-        print("Home:    " + str(my_game.score.home))
-        print("Visitor: " + str(my_game.score.away))
-        print("-" * 20)
+        logger.info("Home:    " + str(my_game.score.home))
+        logger.info("Visitor: " + str(my_game.score.away))
         
+
+        logger.info(Player.horizontal_stat_header(home_team.city + " " + home_team.mascot))
+        for player in home_team.lineup:
+            logger.info(player.horizontal_stats())
+
+        logger.info(Player.horizontal_stat_header(away_team.city + " " + away_team.mascot))
+        for player in away_team.lineup:
+            logger.info(player.horizontal_stats())
+        logger.info("-" * 80)
+    
         if my_game.winner == my_game.home:
             home_wins += 1
         if my_game.winner == my_game.away:
             away_wins += 1
-    print("Home wins:" + str(home_wins))
-    print("Away wins:" + str(away_wins))
-
+    logger.info("Home wins:" + str(home_wins))
+    logger.info("Away wins:" + str(away_wins))
 
 if __name__ == "__main__":
     main()

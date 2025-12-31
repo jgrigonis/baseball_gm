@@ -8,6 +8,7 @@ __pycache__
 *.numbers
 *.csv
 
+logs/*
 .venv
 
 temp_files

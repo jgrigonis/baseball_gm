@@ -139,6 +139,50 @@ class Player(object):
         return output
 
     @staticmethod
+    def horizontal_stat_header(team_name="Name"):
+        """Return the stat header as a single line."""
+        output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
+        for item in [
+            " AB",
+            "  R",
+            "  H",
+            " 2B",
+            " 3B",
+            " HR",
+            "RBI",
+            " SB",
+            " CS",
+            " BB",
+            " SO",
+            "GDP",
+            "HBP",
+            "SAC",
+        ]:
+            output += "{:>{}}".format(item, 4)
+        output += "  "
+        return output
+
+    def horizontal_stats(self):
+        """Output the player stats on a single line."""
+        name = self.first_name + " " + self.last_name
+        output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
+        output += "{:>{}}".format(self.stats.batting.at_bats, 4)
+        output += "{:>{}}".format(self.stats.batting.runs, 4)
+        output += "{:>{}}".format(self.stats.batting.hits, 4)
+        output += "{:>{}}".format(self.stats.batting.doubles, 4)
+        output += "{:>{}}".format(self.stats.batting.triples, 4)
+        output += "{:>{}}".format(self.stats.batting.home_runs, 4)
+        output += "{:>{}}".format(self.stats.batting.rbi, 4)
+        output += "{:>{}}".format(self.stats.batting.sb, 4)
+        output += "{:>{}}".format(self.stats.batting.cs, 4)
+        output += "{:>{}}".format(self.stats.batting.walks, 4)
+        output += "{:>{}}".format(self.stats.batting.strike_outs, 4)
+        output += "{:>{}}".format(self.stats.batting.gdp, 4)
+        output += "{:>{}}".format(self.stats.batting.hbp, 4)
+        output += "{:>{}}".format(self.stats.batting.sacrifices, 4)
+        return output
+
+    @staticmethod
     def legend():
         """return the legend as a string"""
         output = str("\nLegend:\n")

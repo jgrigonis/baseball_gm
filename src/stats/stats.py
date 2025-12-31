@@ -6,14 +6,12 @@ class Stats(object):
         self.pitching = PitchingStats()
 
     def __str__(self):
-        return (
-            f"{self.batting}\n\n"
-            f"{self.pitching}"
-        )
+        return f"{self.batting}\n\n" f"{self.pitching}"
 
 
 class BattingStats(object):
     """The statistics object"""
+
     def __init__(self):
         self.rbi = 0
         self.hbp = 0
@@ -38,7 +36,7 @@ class BattingStats(object):
             f"H={self.hits} HR={self.home_runs} "
             f"RBI={self.rbi}>"
         )
-    
+
     def __str__(self):
         return (
             "Batting Stats:\n"
@@ -59,7 +57,7 @@ class BattingStats(object):
             f"  GDP: {self.gdp}\n"
             f"  GTP: {self.gtp}"
         )
-    
+
     def hit_rbi(self):
         self.rbi += 1
 
@@ -120,6 +118,18 @@ class PitchingStats(object):
         self.strike_outs = 0
         self.runs = 0
         self.pickoffs = 0
+        self.outs = 0
+        self.balks = 0
+        self.wild_pitches = 0
+
+    @property
+    def ip_float(self):
+        return self.outs / 3.0
+
+    def ip_str(self):
+        innings = self.outs // 3
+        remainder = self.outs % 3
+        return f"{innings}.{remainder}"
 
     def __str__(self):
         return (
@@ -133,6 +143,9 @@ class PitchingStats(object):
             f"  K: {self.strike_outs}\n"
             f"  HBP: {self.hb}\n"
             f"  PO: {self.pickoffs}\n"
+            f"  IP: {self.ip_str()}\n"
+            f"  Balk: {self.balks}\n"
+            f"  Balk: {self.wild_pitches}\n"
         )
 
     def __repr__(self):
@@ -142,7 +155,7 @@ class PitchingStats(object):
             f"R={self.runs} BB={self.walks} "
             f"K={self.strike_outs}>"
         )
-    
+
     def hit_batter(self):
         self.hb += 1
 
@@ -167,8 +180,17 @@ class PitchingStats(object):
     def run(self):
         self.runs += 1
 
-    def pickoff(self):
+    def pick_off(self):
         self.pickoffs += 1
+
+    def out(self):
+        self.outs += 1
+
+    def balk(self):
+        self.balks += 1
+
+    def wild_pitch(self):
+        self.wild_pitches += 1
 
 
 class TeamStats(object):

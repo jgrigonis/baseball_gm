@@ -2,6 +2,8 @@
 Create a bunch of players, print out the best players in each
 skill category or position rating.
 
+Doesn't save the players anywhere
+
 """
 
 import argparse
@@ -18,12 +20,10 @@ def get_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--debug", "-d", action="store_true", 
-        help="Set the debug flag."
+        "--debug", "-d", action="store_true", help="Set the debug flag."
     )
     parser.add_argument(
-        "--number", "-n", type=int, default=40, 
-        help="The number of players to create."
+        "--number", "-n", type=int, default=40, help="The number of players to create."
     )
     args = parser.parse_args()
     return args
