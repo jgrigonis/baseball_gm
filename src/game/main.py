@@ -136,7 +136,6 @@ class Game(object):
         """
         b_num = self._base_number(base)
         runner = self.bases[b_num - 1]
-        # pitcher = self.current_pitcher
         self.logger.debug("base to steal = " + str(b_num))
         if b_num == 3:
             if self.bases[2] != 0:
@@ -198,7 +197,6 @@ class Game(object):
         and an exception will raise.
 
         """
-        # TODO add a stat for pitcher
         b_num = self._base_number(base)
         runner = self.bases[b_num]
         pitcher = self.current_pitcher
@@ -373,10 +371,7 @@ class Game(object):
         self._put_out()
         self._put_out()
         self._put_out()
-        # do we need this?
         self._next_batter()
-        # side gets retired by the third put_out
-        #self._side_retired()
 
     def fielders_choice(self, base="second"):
         """
