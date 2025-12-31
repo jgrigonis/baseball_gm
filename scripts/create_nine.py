@@ -9,7 +9,7 @@ team and has all its ratings.
 
 import random
 
-from scripts.create_player import create
+from src.player.create import create
 import src.game.game_exceptions as game_exceptions
 from src.player.player import Player
 from src.player import positions

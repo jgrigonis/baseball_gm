@@ -5,6 +5,7 @@ import src.game.count as count
 import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
 import src.game.score as score
+from src.player.player import Player
 from src.util.logger import setup_logger
 
 __author__ = "josh"
@@ -20,8 +21,11 @@ __author__ = "josh"
 # TODO implement defensive stats
 # TODO Calculate other stats, ERA, WHIP, W/L/S
 # TODO other stats; Batting Average, Slugging, OPS, OBP, Total bases, IBB
-# TODO print a team full of stats, more condensed
-
+# TODO the last event of a game might not be getting captured in game stats
+# TODO Track Games played
+# TODO Games Started for pitcher
+# TODO Track wins, loss, saves for pitchers
+# TODO Track complete games, shutouts
 
 class Game(object):
     """
@@ -590,6 +594,13 @@ class Game(object):
             self.pitch_team = self.home
         self._sync_players()
 
+    def _aggregate_stats(self):
+        self.logger.debug("Aggregating game stats to season total.")
+        for player in self.home.players:
+            player.aggregate_game()
+        for player in self.away.players:
+            player.aggregate_game()
+
     def _end_game(self):
         """
         Game is over, winner is declared, unless tied.
@@ -615,4 +626,33 @@ class Game(object):
             # self.away.ties += 1
         self.game_over = True
         self.logger.info("Game Over")
+        self.logger.info(
+            Player.horizontal_stat_header(self.home.city + " " + self.home.mascot)
+        )
+        for player in self.home.lineup:
+            self.logger.info(player.horizontal_stats())
+
+        self.logger.info(
+            Player.horizontal_stat_header(self.away.city + " " + self.away.mascot)
+        )
+        for player in self.away.lineup:
+            self.logger.info(player.horizontal_stats())
+        self.logger.info("-" * 100)
+        self.logger.info(
+            Player.horizontal_pitching_stat_header(self.home.city + " " + self.home.mascot)
+        )
+        for player in self.home.players:
+            if player.stats.pitching.ip_float > 0:
+                self.logger.info(player.horizontal_pitching_stats())
+
+        self.logger.info(
+            Player.horizontal_pitching_stat_header(self.away.city + " " + self.away.mascot)
+        )
+        for player in self.away.players:
+            if player.stats.pitching.ip_float > 0:
+                self.logger.info(player.horizontal_pitching_stats())
+        self.logger.info("-" * 100)
+        self._aggregate_stats()
         return
+    
+    

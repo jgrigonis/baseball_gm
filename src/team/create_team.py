@@ -34,30 +34,12 @@ team and has all its ratings.
 """
 
 import argparse
-import random
 
-from scripts.create_player import create
-import src.game.game_exceptions as game_exceptions
+from src.player.create import create_players
 from src.player.player import Player
-from src.player import positions
 from src.team.team import Team
 
 __author__ = "josh"
-
-
-def create_players(position=None, num=1):
-    players = []
-    for _ in range(num):
-        if position is None:
-            pos = random.choice(positions)
-        elif isinstance(position, list):
-            pos = random.choice(position)
-        else:
-            pos = position
-        if pos not in positions:
-            raise game_exceptions.BadPositionException()
-        players.append(create(pos))
-    return players
 
 
 def get_args():
@@ -68,15 +50,21 @@ def get_args():
     parser.add_argument(
         "--debug", "-d", action="store_true", help="Set the debug flag."
     )
+    parser.add_argument(
+        "--file", "-f", default="FooBars.csv", help="Set the team csv file."
+    )
+    parser.add_argument("--city", "-c", default="Foo", help="Set the team city.")
+    parser.add_argument("--mascot", "-m", default="Bars", help="Set the team mascot.")
     args = parser.parse_args()
     return args
 
 
-def main():
+def create_team():
     args = get_args()
     debug = args.debug
-    team_file = ("FooBars.csv",)
-    team = Team("Foo", "Bars")
+
+    team = Team(args.city, args.mascot)
+
     team.players.extend(create_players("c", 2))
     team.players.extend(create_players(["of", "cf", "lf", "rf"], 5))
     team.players.extend(create_players(["if", "2b", "3b", "ss", "1b"], 6))
@@ -85,15 +73,18 @@ def main():
     team.players.extend(create_players(["sp", "rp"], 4))
     team.players.extend(create_players(num=11))
     if debug:
+        print(Player.header())
         for player in team.players:
-            print(player)
-    print(Player.header())
-    for player in team.players:
-        print(player.horizontal())
-    with open("FooBars.csv", "w") as csv:
+            print(player.horizontal())
+
+    with open(args.file, "w") as csv:
         csv.writelines(Player.csv_header())
         for player in team.players:
             csv.writelines(player.csv())
+
+
+def main():
+    create_team()
 
 
 if __name__ == "__main__":

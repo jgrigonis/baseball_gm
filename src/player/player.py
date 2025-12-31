@@ -7,27 +7,45 @@ e.g. bunting is worth less than power.
 """
 
 import random
+import uuid
 
 import src.game.game_exceptions as game_exceptions
+import src.stats.stats as stats
 
-from src.stats.stats import Stats
+
 from . import positions, template, skill_template, skills
 
 
 class Player(object):
     """A Baseball Player class."""
 
-    def __init__(self, first_name, last_name, throws=None, bats=None, position=None):
+    def __init__(
+        self,
+        first_name: str,
+        last_name: str,
+        throws: str | None = None,
+        bats: str | None = None,
+        position: str | None = None,
+        id: str | None = None,
+    ):
         """Setup the player."""
         self.first_name = first_name
         self.last_name = last_name
-        self.name = first_name + " " + last_name
         self.throws = throws  # right or left or None
         self.bats = bats  # right, left or switch or None
-        self.position = position  # Just used for setting skills
-        self.ratings = dict()  # Will be populated based on skills
+        self.position = position  # Just used for setting skills,
+        # players can play any position during the game, they may just be bad at it
+        self.id = id or uuid.uuid4().hex
+
+        self.ratings = {}  # Will be populated based on skills
         self.skills = dict(skills)  # All the general baseball skills
-        self.stats = Stats()
+        self.stats = stats.Stats()
+        self.season_stats = stats.SeasonStats()
+        self.career_stats = stats.CareerStats()
+
+    @property
+    def name(self):
+        return f"{self.first_name} {self.last_name}"
 
     def __str__(self):
         """Output the player name as a multi-line string."""
@@ -47,6 +65,10 @@ class Player(object):
             output += "\n"
         return output
 
+    def aggregate_game(self):
+        self.season_stats.add_game(self.stats)
+        self.stats = stats.Stats()
+    
     def horizontal(self):
         """Output the player and skills/ratings as a single line."""
         if self.ratings == {}:
@@ -123,6 +145,7 @@ class Player(object):
             self.skills["strikes"],
         ]:
             output += "{},".format(item)
+        output += self.id
         output += "\n"
         return output
 
@@ -149,25 +172,77 @@ class Player(object):
             output += "{:>{}}".format(item, 4)
         output += "  "
         return output
+    
+    @staticmethod
+    def horizontal_pitching_stat_header(team_name="Name"):
+        """Return the pitching stat header as a single line."""
+        output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
+        for item in [
+            "   IP",
+            "  H",
+            "  R",
+            " HR",
+            "HBP",
+            " BB",
+            " SO",
+            " 2B",
+            " 3B",
+            " PO",
+            "BLK",
+            " WP",
+        ]:
+            output += "{:>{}}".format(item, 4)
+        output += "  "
+        return output
 
-    def horizontal_stats(self):
+    def horizontal_stats(self, stat_type="game"):
         """Output the player stats on a single line."""
+        if stat_type == "game":
+            stats = self.stats
+        elif stat_type == "season":
+            stats = self.season_stats.stats
+        elif stat_type == "career":
+            stats = self.career_stats.stats
         name = self.first_name + " " + self.last_name
         output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
-        output += "{:>{}}".format(self.stats.batting.at_bats, 4)
-        output += "{:>{}}".format(self.stats.batting.runs, 4)
-        output += "{:>{}}".format(self.stats.batting.hits, 4)
-        output += "{:>{}}".format(self.stats.batting.doubles, 4)
-        output += "{:>{}}".format(self.stats.batting.triples, 4)
-        output += "{:>{}}".format(self.stats.batting.home_runs, 4)
-        output += "{:>{}}".format(self.stats.batting.rbi, 4)
-        output += "{:>{}}".format(self.stats.batting.sb, 4)
-        output += "{:>{}}".format(self.stats.batting.cs, 4)
-        output += "{:>{}}".format(self.stats.batting.walks, 4)
-        output += "{:>{}}".format(self.stats.batting.strike_outs, 4)
-        output += "{:>{}}".format(self.stats.batting.gdp, 4)
-        output += "{:>{}}".format(self.stats.batting.hbp, 4)
-        output += "{:>{}}".format(self.stats.batting.sacrifices, 4)
+        output += "{:>{}}".format(stats.batting.at_bats, 4)
+        output += "{:>{}}".format(stats.batting.runs, 4)
+        output += "{:>{}}".format(stats.batting.hits, 4)
+        output += "{:>{}}".format(stats.batting.doubles, 4)
+        output += "{:>{}}".format(stats.batting.triples, 4)
+        output += "{:>{}}".format(stats.batting.home_runs, 4)
+        output += "{:>{}}".format(stats.batting.rbi, 4)
+        output += "{:>{}}".format(stats.batting.sb, 4)
+        output += "{:>{}}".format(stats.batting.cs, 4)
+        output += "{:>{}}".format(stats.batting.walks, 4)
+        output += "{:>{}}".format(stats.batting.strike_outs, 4)
+        output += "{:>{}}".format(stats.batting.gdp, 4)
+        output += "{:>{}}".format(stats.batting.hbp, 4)
+        output += "{:>{}}".format(stats.batting.sacrifices, 4)
+        return output
+    
+    def horizontal_pitching_stats(self, stat_type="game"):
+        """Output the player stats on a single line."""
+        if stat_type == "game":
+            stats = self.stats
+        elif stat_type == "season":
+            stats = self.season_stats.stats
+        elif stat_type == "career":
+            stats = self.career_stats.stats
+        name = self.first_name + " " + self.last_name
+        output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
+        output += "{:>{}}".format(stats.pitching.ip_str, 5)
+        output += "{:>{}}".format(stats.pitching.hits, 4)
+        output += "{:>{}}".format(stats.pitching.runs, 4)
+        output += "{:>{}}".format(stats.pitching.home_runs, 4)
+        output += "{:>{}}".format(stats.pitching.hb, 4)
+        output += "{:>{}}".format(stats.pitching.walks, 4)
+        output += "{:>{}}".format(stats.pitching.strike_outs, 4)
+        output += "{:>{}}".format(stats.pitching.doubles, 4)
+        output += "{:>{}}".format(stats.pitching.triples, 4)
+        output += "{:>{}}".format(stats.pitching.pickoffs, 4)
+        output += "{:>{}}".format(stats.pitching.balks, 4)
+        output += "{:>{}}".format(stats.pitching.wild_pitches, 4)
         return output
 
     @staticmethod
@@ -232,18 +307,7 @@ class Player(object):
             "RE",
             "GB",
             "KK",
-            # "P", # These are calculated values and don't need to be in the csv
-            # "C",
-            # "1B",
-            # "2B",
-            # "3B",
-            # "SS",
-            # "LF",
-            # "CF",
-            # "RF",
-            # "LO",
-            # "CH",
-            # "PH",
+            "ID",
         ]:
             output += "{},".format(item)
         output += "\n"

@@ -10,7 +10,7 @@ import argparse
 
 from src.player.player import Player, skills
 from src.player.__init__ import rated_positions
-from scripts.create_player import create
+from src.player.create import create
 from copy import deepcopy
 
 

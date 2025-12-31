@@ -8,6 +8,10 @@ class Stats(object):
     def __str__(self):
         return f"{self.batting}\n\n" f"{self.pitching}"
 
+    def add(self, other):
+        self.batting.add(other.batting)
+        self.pitching.add(other.pitching)
+
 
 class BattingStats(object):
     """The statistics object"""
@@ -57,6 +61,10 @@ class BattingStats(object):
             f"  GDP: {self.gdp}\n"
             f"  GTP: {self.gtp}"
         )
+
+    def add(self, other):
+        for attr in vars(self):
+            setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
     def hit_rbi(self):
         self.rbi += 1
@@ -126,6 +134,7 @@ class PitchingStats(object):
     def ip_float(self):
         return self.outs / 3.0
 
+    @property
     def ip_str(self):
         innings = self.outs // 3
         remainder = self.outs % 3
@@ -134,18 +143,18 @@ class PitchingStats(object):
     def __str__(self):
         return (
             "Pitching Stats:\n"
+            f"  IP: {self.ip_str()}\n"
             f"  H: {self.hits}\n"
-            f"  2B: {self.doubles}\n"
-            f"  3B: {self.triples}\n"
-            f"  HR: {self.home_runs}\n"
             f"  R: {self.runs}\n"
+            f"  HR: {self.home_runs}\n"
+            f"  HBP: {self.hb}\n"
             f"  BB: {self.walks}\n"
             f"  K: {self.strike_outs}\n"
-            f"  HBP: {self.hb}\n"
+            f"  2B: {self.doubles}\n"
+            f"  3B: {self.triples}\n"
             f"  PO: {self.pickoffs}\n"
-            f"  IP: {self.ip_str()}\n"
             f"  Balk: {self.balks}\n"
-            f"  Balk: {self.wild_pitches}\n"
+            f"  WP: {self.wild_pitches}\n"
         )
 
     def __repr__(self):
@@ -155,6 +164,10 @@ class PitchingStats(object):
             f"R={self.runs} BB={self.walks} "
             f"K={self.strike_outs}>"
         )
+
+    def add(self, other):
+        for attr in vars(self):
+            setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
     def hit_batter(self):
         self.hb += 1
@@ -191,3 +204,23 @@ class PitchingStats(object):
 
     def wild_pitch(self):
         self.wild_pitches += 1
+
+
+class SeasonStats(object):
+    def __init__(self):
+        self.stats = Stats()
+        self.games_played = 0
+
+    def add_game(self, game_stats):
+        self.stats.add(game_stats)
+        self.games_played += 1
+
+
+class CareerStats(object):
+    def __init__(self):
+        self.stats = Stats()
+        self.seasons_played = 0
+
+    def add_season(self, season_stats):
+        self.stats.add(season_stats.stats)
+        self.seasons_played += 1

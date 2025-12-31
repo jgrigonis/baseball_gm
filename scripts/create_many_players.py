@@ -10,7 +10,7 @@ import argparse
 
 from src.player.player import Player
 from src.name_generator.names import NameGenerator
-from scripts.create_player import create
+from src.player.create import create
 
 
 def get_args():

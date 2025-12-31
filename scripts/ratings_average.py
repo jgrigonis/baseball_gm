@@ -20,7 +20,7 @@ from src.player.player import Player
 from src.player import positions
 from src.player import rated_positions
 from src.name_generator.names import NameGenerator
-from scripts.create_player import create
+from src.player.create import create
 
 
 def get_args():

@@ -29,7 +29,7 @@ LINEUP_SLOTS = [
 class Team(object):
     """A Baseball Team class."""
 
-    def __init__(self, city, mascot):
+    def __init__(self, city=None, mascot=None):
         self.city = city
         self.mascot = mascot
         self.lineup = None
@@ -314,7 +314,8 @@ class Team(object):
         return self.pitcher
 
     def display_lineup(self):
-        self.logger.info("{} {}".format(self.city, self.mascot))
+        if self.city or self.mascot:
+            self.logger.info("{} {}".format(self.city, self.mascot))
         for slot in self.lineup:
             self.logger.info(f"{slot.position:<2}" + "  " + slot.horizontal())
         self.display_pitcher()

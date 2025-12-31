@@ -50,56 +50,56 @@ def main():
     logger = logging.getLogger("details")
     home_wins = 0
     away_wins = 0
+    
+    home_team = Team("Team", "2")
+    home_team.load_team(path="Team2.csv")
+
+    # print("Home Team auto no dh")
+    # home_team.set_lineup("auto", False)
+    # home_team.display_lineup()
+
+    # print("Home Team auto with dh")
+    # home_team.set_lineup("auto", True)
+    # home_team.display_lineup()
+
+    # print("Home Team prioritized no dh")
+    # home_team.set_lineup(style="prioritized", dh=False)
+    # home_team.display_lineup()
+
+    logger.debug("Home Team prioritized with dh")
+    home_team.set_lineup(style="prioritized", dh=True)
+    home_team.display_lineup()
+
+    # print("Home Team defensive no dh")
+    # home_team.set_lineup("defensive", False)
+    # home_team.display_lineup()
+
+    # print("Home Team defensive with dh")
+    # home_team.set_lineup("defensive", True)
+    # home_team.display_lineup()
+
+    # print("Home Team offensive no dh")
+    # home_team.set_lineup("offensive", False)
+    # home_team.display_lineup()
+
+    # print("Home Team offensive with dh")
+    # home_team.set_lineup("offensive", True)
+    # home_team.display_lineup()
+
+    away_team = Team("Team", "4")
+    away_team.load_team(path="Team4.csv")
+    # print("Away Team auto, no dh")
+    # away_team.set_lineup(style="auto")
+    # away_team.display_lineup()
+
+    # print("Away Team prioritized no dh")
+    # away_team.set_lineup(style="prioritized", dh=False)
+    # away_team.display_lineup()
+
+    logger.debug("Home Team prioritized with dh")
+    away_team.set_lineup(style="prioritized", dh=True)
+    away_team.display_lineup()
     for _ in range(args.games):
-        home_team = Team("Team", "3")
-        home_team.load_team(path="Team3.csv")
-
-        # print("Home Team auto no dh")
-        # home_team.set_lineup("auto", False)
-        # home_team.display_lineup()
-
-        # print("Home Team auto with dh")
-        # home_team.set_lineup("auto", True)
-        # home_team.display_lineup()
-
-        # print("Home Team prioritized no dh")
-        # home_team.set_lineup(style="prioritized", dh=False)
-        # home_team.display_lineup()
-
-        logger.debug("Home Team prioritized with dh")
-        home_team.set_lineup(style="prioritized", dh=True)
-        home_team.display_lineup()
-
-        # print("Home Team defensive no dh")
-        # home_team.set_lineup("defensive", False)
-        # home_team.display_lineup()
-
-        # print("Home Team defensive with dh")
-        # home_team.set_lineup("defensive", True)
-        # home_team.display_lineup()
-
-        # print("Home Team offensive no dh")
-        # home_team.set_lineup("offensive", False)
-        # home_team.display_lineup()
-
-        # print("Home Team offensive with dh")
-        # home_team.set_lineup("offensive", True)
-        # home_team.display_lineup()
-
-        away_team = Team("Team", "4")
-        away_team.load_team(path="Team4.csv")
-        # print("Away Team auto, no dh")
-        # away_team.set_lineup(style="auto")
-        # away_team.display_lineup()
-
-        # print("Away Team prioritized no dh")
-        # away_team.set_lineup(style="prioritized", dh=False)
-        # away_team.display_lineup()
-
-        logger.debug("Home Team prioritized with dh")
-        away_team.set_lineup(style="prioritized", dh=True)
-        away_team.display_lineup()
-
         my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
         my_event = Event(my_game)
 
@@ -109,23 +109,36 @@ def main():
         logger.info("Home:    " + str(my_game.score.home))
         logger.info("Visitor: " + str(my_game.score.away))
 
-        logger.info(
-            Player.horizontal_stat_header(home_team.city + " " + home_team.mascot)
-        )
-        for player in home_team.lineup:
-            logger.info(player.horizontal_stats())
-
-        logger.info(
-            Player.horizontal_stat_header(away_team.city + " " + away_team.mascot)
-        )
-        for player in away_team.lineup:
-            logger.info(player.horizontal_stats())
-        logger.info("-" * 80)
-
         if my_game.winner == my_game.home:
             home_wins += 1
         if my_game.winner == my_game.away:
             away_wins += 1
+    logger.info(
+        Player.horizontal_stat_header(home_team.city + " " + home_team.mascot)
+    )
+    for player in home_team.lineup:
+        logger.info(player.horizontal_stats("season"))
+
+    logger.info(
+        Player.horizontal_stat_header(away_team.city + " " + away_team.mascot)
+    )
+    for player in away_team.lineup:
+        logger.info(player.horizontal_stats("season"))
+    logger.info("-" * 100)
+    logger.info(
+        Player.horizontal_pitching_stat_header(home_team.city + " " + home_team.mascot)
+    )
+    for player in home_team.players:
+        if player.season_stats.stats.pitching.outs > 0:
+            logger.info(player.horizontal_pitching_stats("season"))
+
+    logger.info(
+        Player.horizontal_pitching_stat_header(away_team.city + " " + away_team.mascot)
+    )
+    for player in away_team.players:
+        if player.season_stats.stats.pitching.outs > 0:
+            logger.info(player.horizontal_pitching_stats("season"))
+    logger.info("-" * 100)
     logger.info("Home wins:" + str(home_wins))
     logger.info("Away wins:" + str(away_wins))
 
