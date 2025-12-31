@@ -1028,14 +1028,12 @@ class TestDoublePlayWithoutEnoughRunners(GameTestBase):
 
 
 class TestSacrificeNoOneOn(GameTestBase):
-    """Test what happens when batter does a sacrifice for no one."""
+    """Test what happens when batter does a sac_fly for no one."""
 
     def setUp(self):
-        """Bad sacrifice."""
+        """Bad sac_fly."""
         super().setUp()
-        self.assertRaises(
-            game_exceptions.NotEnoughRunnersOnBase, self.my_game.sacrifice
-        )
+        self.assertRaises(game_exceptions.NotEnoughRunnersOnBase, self.my_game.sac_fly)
 
     def test_outs(self):
         """No outs."""
@@ -1048,16 +1046,16 @@ class TestSacrificeNoOneOn(GameTestBase):
 
 
 class TestSacBuntSingleton(GameTestBase):
-    """Test what happens when batter does a sac bunt."""
+    """Test what happens when batter does a sac_fly."""
 
     def setUp(self):
-        """Sac Bunt to second."""
+        """Sac Fly to second."""
         super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
-        self.my_game.sacrifice((0, 1))
+        self.my_game.sac_fly((0, 1))
 
     def test_outs(self):
         """One out."""
@@ -1076,24 +1074,24 @@ class TestSacBuntSingleton(GameTestBase):
 
 
 class TestSeveralBadSacrifices(GameTestBase):
-    """Test several impossible sac bunts."""
+    """Test several impossible sac_flys"""
 
     def setUp(self):
-        """Bad Sac Bunts."""
+        """Bad Sac Fly."""
         super().setUp()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
         self.assertRaises(
-            game_exceptions.NoRunnerToAdvance, self.my_game.sacrifice, (2, 3)
+            game_exceptions.NoRunnerToAdvance, self.my_game.sac_fly, (2, 3)
         )
         self.assertRaises(
-            game_exceptions.NoRunnerToAdvance, self.my_game.sacrifice, [(1, 2)]
+            game_exceptions.NoRunnerToAdvance, self.my_game.sac_fly, [(1, 2)]
         )
         self.my_game.steal("second")
         self.assertRaises(
-            game_exceptions.NoRunnerToAdvance, self.my_game.sacrifice, [(0, 1)]
+            game_exceptions.NoRunnerToAdvance, self.my_game.sac_fly, [(0, 1)]
         )
 
     def test_outs(self):
@@ -1113,10 +1111,10 @@ class TestSeveralBadSacrifices(GameTestBase):
 
 
 class TestSacWithTwoOuts(GameTestBase):
-    """Test another impossible sac bunt."""
+    """Test another impossible sac_fly."""
 
     def setUp(self):
-        """Bad Sac Bunts."""
+        """Bad Sac Flies."""
         super().setUp()
         self.my_game.strike()
         self.my_game.strike()
@@ -1126,7 +1124,7 @@ class TestSacWithTwoOuts(GameTestBase):
         self.my_game.strike()
         self.my_game.hit(1)
         # two outs
-        self.assertRaises(game_exceptions.BadSacrifice, self.my_game.sacrifice, "first")
+        self.assertRaises(game_exceptions.BadSacrifice, self.my_game.sac_fly, "first")
 
     def test_outs(self):
         """No outs."""
@@ -1145,13 +1143,13 @@ class TestSacWithTwoOuts(GameTestBase):
 
 
 class TestGoodSac(GameTestBase):
-    """Test a good sacrifice."""
+    """Test a good sac_fly."""
 
     def setUp(self):
         """Good Sacrifice."""
         super().setUp()
         self.my_game.hit(1)
-        self.my_game.sacrifice()
+        self.my_game.sac_fly()
 
     def test_outs(self):
         """One out."""
@@ -1170,13 +1168,13 @@ class TestGoodSac(GameTestBase):
 
 
 class TestGoodSacToThird(GameTestBase):
-    """Test a good sacrifice."""
+    """Test a good sac_fly."""
 
     def setUp(self):
         """Good Sacrifice."""
         super().setUp()
         self.my_game.hit(2)
-        self.my_game.sacrifice()
+        self.my_game.sac_fly()
 
     def test_outs(self):
         """One out."""
@@ -1195,13 +1193,13 @@ class TestGoodSacToThird(GameTestBase):
 
 
 class TestGoodSacToThirdSpecific(GameTestBase):
-    """Test a good sacrifice."""
+    """Test a good sac_fly."""
 
     def setUp(self):
         """Good Sacrifice."""
         super().setUp()
         self.my_game.hit(2)
-        self.my_game.sacrifice((1, 2))
+        self.my_game.sac_fly((1, 2))
 
     def test_outs(self):
         """One out."""
@@ -1226,7 +1224,7 @@ class TestSqueeze(GameTestBase):
         """Squeeze play."""
         super().setUp()
         self.my_game.hit(3)
-        self.my_game.sacrifice()
+        self.my_game.sac_fly()
 
     def test_outs(self):
         """One out."""
@@ -1256,7 +1254,7 @@ class TestSqueezeSpecific(GameTestBase):
         """Squeeze play."""
         super().setUp()
         self.my_game.hit(3)
-        self.my_game.sacrifice((2, 3))
+        self.my_game.sac_fly((2, 3))
 
     def test_outs(self):
         """One out."""

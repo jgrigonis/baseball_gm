@@ -41,7 +41,7 @@ class AdvancePastOccupiedBase(GameException):
 
 
 class BadSacrifice(GameException):
-    """User tried to call sacrifice method with 2 outs."""
+    """User tried to call sac_fly method with 2 outs."""
 
     def __init__(self, msg=None):
         if msg:

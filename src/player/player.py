@@ -152,8 +152,8 @@ class Player(object):
     @staticmethod
     def horizontal_stat_header(team_name="Name"):
         """Return the stat header as a single line."""
-        output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
-        for item in [
+        stat_list = [
+            "  G",
             " AB",
             "  R",
             "  H",
@@ -168,7 +168,9 @@ class Player(object):
             "GDP",
             "HBP",
             "SAC",
-        ]:
+        ]
+        output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
+        for item in stat_list:
             output += "{:>{}}".format(item, 4)
         output += "  "
         return output
@@ -205,6 +207,12 @@ class Player(object):
             stats = self.career_stats.stats
         name = self.first_name + " " + self.last_name
         output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
+        if stat_type == "season":
+            output += "{:>{}}".format(self.season_stats.games_played, 4)
+        elif stat_type == "career":
+            output += "{:>{}}".format(self.career_stats.career_games, 4)
+        else:
+            output += "{:>{}}".format(1, 4)
         output += "{:>{}}".format(stats.batting.at_bats, 4)
         output += "{:>{}}".format(stats.batting.runs, 4)
         output += "{:>{}}".format(stats.batting.hits, 4)
@@ -218,7 +226,7 @@ class Player(object):
         output += "{:>{}}".format(stats.batting.strike_outs, 4)
         output += "{:>{}}".format(stats.batting.gdp, 4)
         output += "{:>{}}".format(stats.batting.hbp, 4)
-        output += "{:>{}}".format(stats.batting.sacrifices, 4)
+        output += "{:>{}}".format(stats.batting.sac_flys, 4)
         return output
 
     def horizontal_pitching_stats(self, stat_type="game"):

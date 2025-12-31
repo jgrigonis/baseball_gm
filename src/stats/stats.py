@@ -14,7 +14,7 @@ class Stats(object):
 
 
 class BattingStats(object):
-    """The statistics object"""
+    """The batting statistics object"""
 
     def __init__(self):
         self.rbi = 0
@@ -26,7 +26,7 @@ class BattingStats(object):
         self.home_runs = 0
         self.walks = 0
         self.strike_outs = 0
-        self.sacrifices = 0
+        self.sac_flys = 0
         self.gdp = 0
         self.gtp = 0
         self.runs = 0
@@ -54,7 +54,7 @@ class BattingStats(object):
             f"  BB: {self.walks}\n"
             f"  K: {self.strike_outs}\n"
             f"  HBP: {self.hbp}\n"
-            f"  SAC: {self.sacrifices}\n"
+            f"  SAC: {self.sac_flys}\n"
             f"  SB: {self.sb}\n"
             f"  CS: {self.cs}\n"
             f"  PO: {self.pickoffs}\n"
@@ -63,6 +63,9 @@ class BattingStats(object):
         )
 
     def add(self, other):
+        """Used for aggregating stats, or adding an entire stat instance to
+        another.
+        """
         for attr in vars(self):
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
@@ -80,17 +83,33 @@ class BattingStats(object):
 
     @property
     def slugging(self):
+        """The rate of total bases per at bat."""
         return self.total_bases / self.at_bats
 
     @property
     def obp(self):
+        """On Base Percentage. The rate at which a batter reached base
+        in his plate appearances.
+        """
         return (self.hits + self.walks + self.hbp) / (
-            self.at_bats + self.walks + self.hbp + self.sacrifices
+            self.at_bats + self.walks + self.hbp + self.sac_flys
         )
 
     @property
     def ops(self):
+        """The sum of On Base Percentage and Slugging."""
         return self.obp + self.slugging
+
+    @property
+    def babip(self):
+        """Batting average on Balls in Play.
+        A measure of a player's batting average exclusively on balls
+        hit into the field of play, removing outcomes not affected
+        by the opposing defense (namely home runs and streikeouts)
+        """
+        return (self.hits - self.home_runs) / (
+            self.at_bats - self.strike_outs - self.home_runs + self.sac_flys
+        )
 
     def hit_rbi(self):
         self.rbi += 1
@@ -131,8 +150,8 @@ class BattingStats(object):
     def strike_out(self):
         self.strike_outs += 1
 
-    def sacrifice(self):
-        self.sacrifices += 1
+    def sac_fly(self):
+        self.sac_flys += 1
 
     def run(self, runner):
         self.runs += 1
@@ -142,6 +161,8 @@ class BattingStats(object):
 
 
 class PitchingStats(object):
+    """The pitching statistics object."""
+
     def __init__(self):
         self.hb = 0
         self.hits = 0
@@ -246,7 +267,9 @@ class CareerStats(object):
     def __init__(self):
         self.stats = Stats()
         self.seasons_played = 0
+        self.career_games = 0
 
     def add_season(self, season_stats):
+        self.career_games += season_stats.games_played
         self.stats.add(season_stats.stats)
         self.seasons_played += 1

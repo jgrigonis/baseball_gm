@@ -10,6 +10,7 @@ from src.util.logger import setup_logger
 
 __author__ = "josh"
 # TODO implement bunting
+# TODO split sac flies and sac bunts
 # TODO implement defensive stats
 # TODO changes to event probs based on defensive stats
 # TODO implement handedness p vs batter
@@ -27,6 +28,12 @@ __author__ = "josh"
 # TODO Track wins, loss, saves for pitchers
 # TODO Track complete games, shutouts
 # TODO handle intentional walk as a play and a stat
+# TODO the range of abilities is probably too low.
+# TODO more accurately match stats from MLB teams
+# TODO many more unit tests
+# TODO unit test for walk off home run, vs driving in multiple
+# home run should score all runs, driving in on a triple for example
+# should stop scoring once the winning run crosses the plate.
 
 
 class Game(object):
@@ -310,12 +317,16 @@ class Game(object):
                 scorers = self.bases.advance_many(advances)
         for scorer in scorers:
             batter.stats.batting.hit_rbi()
-            self._score_run(scorer)
+            if num == 4:
+                self._score_run(scorer, score_all=True)
+            else:
+                self._score_run(scorer)
         if num == 4:
             batter.stats.batting.hit_rbi()
             batter.stats.batting.home_run()
             pitcher.stats.pitching.home_run()
-            self._score_run(batter)
+            # We are done scoring the homer so set score_all to False
+            self._score_run(batter, score_all=False)
         else:
             if num == 2:
                 batter.stats.batting.double()
@@ -435,11 +446,11 @@ class Game(object):
             batter.stats.batting.at_bat()
             self._next_batter()
 
-    def sacrifice(self, advances=None):
+    def sac_fly(self, advances=None):
         """
-        Batter performs a sacrifice bunt or fly out.  By
+        Batter performs a sac_fly fly out.  By
         default all base runners advance one base.  It wouldn't
-        make sense to have a sacrifice and have no one advance.
+        make sense to have a sac_fly and have no one advance.
 
         :param advances: is a list of tuples to advance runners from
         and to.
@@ -465,7 +476,7 @@ class Game(object):
             for scorer in scorers:
                 batter.stats.batting.hit_rbi()
                 self._score_run(scorer)
-        batter.stats.batting.sacrifice()
+        batter.stats.batting.sac_fly()
         self.inning.out()
         self._next_batter()
 
@@ -544,15 +555,21 @@ class Game(object):
         if self.inning.number >= self.innings_per_game:
             if self.inning.top:
                 if self.score.home > self.score.away:
+                    self.logger.debug(
+                        "Side retired in top of inning home in lead, END GAME"
+                    )
                     self._end_game()
             else:  # top
                 if self.score.home != self.score.away:
+                    self.logger.debug(
+                        "Side retired in bottom of inning scores differ, END GAME"
+                    )
                     self._end_game()
         if not self.game_over:
             self.logger.info("Side Retired")
-        self._new_inning()
+            self._new_inning()
 
-    def _score_run(self, scorer):
+    def _score_run(self, scorer, score_all=False):
         """
         Score a run.
 
@@ -560,6 +577,8 @@ class Game(object):
         TODO: We should add to the inning scores for home or away.
 
         """
+        if self.game_over and not score_all:
+            return
         pitcher = self.current_pitcher
         pitcher.stats.pitching.run()
         scorer.stats.batting.run(scorer)
@@ -567,7 +586,16 @@ class Game(object):
         if self.inning.number >= self.innings_per_game:
             if not self.inning.top:
                 if self.score.home > self.score.away:
-                    self._end_game()
+                    self.logger.debug(
+                        "_score_run in end of game, walk off scenario, END GAME"
+                    )
+                    self.logger.debug(
+                        "score_all was set to {} and game_over was {}".format(
+                            score_all, self.game_over
+                        )
+                    )
+                    if not score_all:
+                        self._end_game()
         self.logger.info(self.score)
 
     def _new_inning(self):
@@ -628,6 +656,10 @@ class Game(object):
             # self.away.ties += 1
         self.game_over = True
         self.logger.info("Game Over")
+        self._handle_stats()
+        return
+
+    def _handle_stats(self):
         self.logger.info(
             Player.horizontal_stat_header(self.home.city + " " + self.home.mascot)
         )
@@ -659,4 +691,3 @@ class Game(object):
                 self.logger.info(player.horizontal_pitching_stats())
         self.logger.info("-" * 100)
         self._aggregate_stats()
-        return

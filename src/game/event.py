@@ -142,10 +142,10 @@ class Event(object):
         elif self.event == "balk":
             self.display_text("Balk")
             self.game.balk()
-        elif self.event == "sacrifice":
+        elif self.event == "sac_fly":
             if self.game.inning.outs != 2:
                 self.display_text("Sacrifice")
-                self.game.sacrifice()
+                self.game.sac_fly()
             else:
                 return None
         elif self.event == "fielders_choice":
@@ -310,7 +310,7 @@ class Event(object):
             "picked_off": 0,
             "picked_off_second": 0,
             "picked_off_third": 0,
-            "sacrifice": 0,
+            "sac_fly": 0,
             "steal": 0,
             "steal_third": 0,
             "steal_home": 0,
@@ -387,7 +387,7 @@ class Event(object):
         self.probs["balk"] = 10
         self.probs["fielders_choice"] = 100
         self.probs["picked_off"] = 50
-        self.probs["sacrifice"] = 250
+        self.probs["sac_fly"] = 250
 
     def set_probs_runner_on_first_and_second(self):
         """
@@ -400,7 +400,7 @@ class Event(object):
         self.probs["fielders_choice"] = 100
         self.probs["picked_off"] = 10
         self.probs["picked_off_second"] = 20
-        self.probs["sacrifice"] = 250
+        self.probs["sac_fly"] = 250
         self.probs["steal_third"] = 100
         self.probs["caught_stealing_third"] = 100
 
@@ -460,7 +460,7 @@ class Event(object):
         Adjust probabilities for 2 outs.
         """
         self.probs["fielders_choice"] = 0
-        self.probs["sacrifice"] = 0
+        self.probs["sac_fly"] = 0
         self.probs["double_play"] = 0
         self.probs["triple_play"] = 0
 
@@ -535,15 +535,15 @@ class Event(object):
 
         # ground_balls
         ground_balls = pitcher.skills["ground_balls"]
-        # changes ground_out, homer, double_play, fielders_choice, sacrifice, triple_play
+        # changes ground_out, homer, double_play, fielders_choice, sac_fly, triple_play
         self.probs["ground_out"] += 4 * (ground_balls)  # +0-200
         self.probs["homer"] -= ground_balls - 40  # -60 to +40
         if self.probs["double_play"] != 0:
             self.probs["double_play"] += 0.8 * (ground_balls)  # +0-80
         if self.probs["fielders_choice"] != 0:
             self.probs["fielders_choice"] += 0.5 * (ground_balls)  # +0-50
-        if self.probs["sacrifice"] != 0:
-            self.probs["sacrifice"] -= 0.5 * (ground_balls - 50)  # +/- 25
+        if self.probs["sac_fly"] != 0:
+            self.probs["sac_fly"] -= 0.5 * (ground_balls - 50)  # +/- 25
         if self.probs["triple_play"] != 0:
             self.probs["triple_play"] += 0.1 * (ground_balls)  # +0-10
 
