@@ -10,11 +10,12 @@ from src.util.logger import setup_logger
 
 __author__ = "josh"
 # TODO implement bunting
-# TODO split sac flies and sac bunts
+# TODO implement sac bunts
 # TODO implement defensive stats
 # TODO changes to event probs based on defensive stats
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
+# TODO track pitch counts
 # TODO implement clutch
 # TODO can runners advance more with more speed, not currently
 # TODO do steals work properly, speed and baserunning don't effect probs
@@ -23,7 +24,6 @@ __author__ = "josh"
 # TODO Calculate other stats, ERA, WHIP, W/L/S
 # TODO print batting derived stats
 # TODO the last event of a game might not be getting captured in game stats
-# TODO Track Games played
 # TODO Games Started for pitcher
 # TODO Track wins, loss, saves for pitchers
 # TODO Track complete games, shutouts

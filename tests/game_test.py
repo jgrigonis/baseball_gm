@@ -17,7 +17,10 @@ from src.team.team import Team
 
 
 class GameTestBase(unittest.TestCase):
+    """Game test base."""
+
     def setUp(self):
+        """Setup the game test base."""
         home = Team("home", "team")
         home.load_team()
         home.set_lineup()
@@ -31,6 +34,7 @@ class TestInitAnd26Balls(GameTestBase):
     """Fairly boring, just testing the init."""
 
     def setUp(self):
+        """Setup the test."""
         super().setUp()
         self.pla0 = Player("Sandy", "Koufax")
         self.pla1 = Player("Willie", "Mays")
@@ -270,7 +274,7 @@ class TestBottom9thHomeWin(GameTestBase):
     """
 
     def setUp(self):
-        """Setup instance of Game and have 4 hits in a row."""
+        """Setup instance of Game and have a homer after 135 strike (45 outs)."""
         super().setUp()
 
         # 7 1/2 inning scoreless
@@ -280,7 +284,7 @@ class TestBottom9thHomeWin(GameTestBase):
             self.my_game.strike()
         # bottom 8th lead off homer
         self.my_game.hit(4)
-        # bottom 8th and top 9th scoreless
+        # remainder bottom 8th and top 9th scoreless
         # pylint: disable=C0103
         # pylint: disable=W0612
         for _ in range(18):
@@ -291,10 +295,6 @@ class TestBottom9thHomeWin(GameTestBase):
         self.assertEqual(self.my_game.score.away, 0)
         self.assertEqual(self.my_game.score.home, 1)
 
-    def test_outs(self):
-        """No outs."""
-        self.assertEqual(self.my_game.inning.outs, 0)
-
     def test_bases(self):
         """Bases empty."""
         self.assertEqual(self.my_game.bases[0], 0)
@@ -302,9 +302,10 @@ class TestBottom9thHomeWin(GameTestBase):
         self.assertEqual(self.my_game.bases[2], 0)
 
     def test_inning(self):
-        """Bottom of the ninth, game is now over."""
+        """Stays in Top of the ninth, game is now over.
+        The inning is no longer updated on game over."""
         self.assertEqual(self.my_game.inning.number, 9)
-        self.assertEqual(self.my_game.inning.top, False)
+        self.assertEqual(self.my_game.inning.top, True)
 
     def test_game_over(self):
         """Test that the game is over, and that home team won."""

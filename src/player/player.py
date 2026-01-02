@@ -12,8 +12,7 @@ import uuid
 import src.game.game_exceptions as game_exceptions
 import src.stats.stats as stats
 
-
-from . import positions, template, skill_template, skills
+from src.player.positions import positions, template, skill_template, skills
 
 
 class Player(object):
@@ -45,6 +44,7 @@ class Player(object):
 
     @property
     def name(self):
+        """Return the player name."""
         return f"{self.first_name} {self.last_name}"
 
     def __str__(self):
@@ -66,12 +66,13 @@ class Player(object):
         return output
 
     def aggregate_game(self):
+        """Aggregate the game stats."""
         self.season_stats.add_game(self.stats)
         self.stats = stats.Stats()
 
     def horizontal(self):
         """Output the player and skills/ratings as a single line."""
-        if self.ratings == {}:
+        if not self.ratings:
             self.rate_player()
         name = self.first_name + " " + self.last_name
         output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
@@ -357,6 +358,7 @@ class Player(object):
 
     @staticmethod
     def abbreviate(value):
+        """Abbreviate the value."""
         if value == "right":
             return "r"
         if value == "left":

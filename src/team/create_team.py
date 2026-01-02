@@ -60,6 +60,7 @@ def get_args():
 
 
 def create_team():
+    """Create a team."""
     args = get_args()
     debug = args.debug
 
@@ -84,6 +85,7 @@ def create_team():
 
 
 def main():
+    """Main function."""
     create_team()
 
 

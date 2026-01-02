@@ -10,7 +10,7 @@ import logging
 
 from src.stats import stats
 from src.player.player import Player
-from . import SKILL_MAP
+from src.player.skill_map import SKILL_MAP
 
 __author__ = "josh"
 
@@ -30,6 +30,7 @@ class Team(object):
     """A Baseball Team class."""
 
     def __init__(self, city=None, mascot=None):
+        """Initialize the team."""
         self.city = city
         self.mascot = mascot
         self.lineup = None
@@ -41,7 +42,7 @@ class Team(object):
     def load_team(self, path="FooBars.csv"):
         """Load a team from a csv file."""
         self.team_file = path
-        players = []
+        players: list[Player] = []
 
         with open(path, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
@@ -135,6 +136,7 @@ class Team(object):
             self.lineup.append(LineupSlot(pitcher, "p"))
 
     def position_score(self, player, position):
+        """Return the position score for a player."""
         return player.ratings.get(position, 0)
 
     def select_defensive_lineup(self, dh):
@@ -143,7 +145,7 @@ class Team(object):
         it will greedily pick the best player aavailable at each
         position, in the order of priority set in the LINEUP_SLOTS.
         """
-        lineup = {}
+        lineup: dict[str, Player] = {}
         self.lineup = []
         used_players = set()
 
@@ -158,7 +160,7 @@ class Team(object):
             slots.append("dh")
 
         for position in slots:
-            candidates = [
+            candidates: list[Player] = [
                 p
                 for p in self.players
                 if p not in used_players and position in p.ratings

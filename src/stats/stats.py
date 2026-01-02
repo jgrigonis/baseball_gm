@@ -2,13 +2,16 @@ class Stats(object):
     """Root statistics object"""
 
     def __init__(self):
+        """Initialize the statistics."""
         self.batting = BattingStats()
         self.pitching = PitchingStats()
 
     def __str__(self):
+        """Return the string representation of the statistics."""
         return f"{self.batting}\n\n" f"{self.pitching}"
 
     def add(self, other):
+        """Add the statistics from another object."""
         self.batting.add(other.batting)
         self.pitching.add(other.pitching)
 
@@ -17,6 +20,7 @@ class BattingStats(object):
     """The batting statistics object"""
 
     def __init__(self):
+        """Initialize the batting statistics."""
         self.rbi = 0
         self.hbp = 0
         self.at_bats = 0
@@ -35,6 +39,7 @@ class BattingStats(object):
         self.pickoffs = 0
 
     def __repr__(self):
+        """Return the representation of the batting statistics."""
         return (
             f"<BattingStats AB={self.at_bats} "
             f"H={self.hits} HR={self.home_runs} "
@@ -42,6 +47,7 @@ class BattingStats(object):
         )
 
     def __str__(self):
+        """Return the string representation of the batting statistics."""
         return (
             "Batting Stats:\n"
             f"  AB: {self.at_bats}\n"
@@ -71,14 +77,17 @@ class BattingStats(object):
 
     @property
     def batting_average(self):
+        """Return the batting average."""
         return self.hits / self.at_bats
 
     @property
     def singles(self):
+        """Return the number of singles."""
         return self.hits - self.home_runs - self.triples - self.doubles
 
     @property
     def total_bases(self):
+        """Return the total number of bases."""
         return self.triples * 3 + self.doubles * 2 + self.home_runs * 4 + self.singles
 
     @property
@@ -112,51 +121,67 @@ class BattingStats(object):
         )
 
     def hit_rbi(self):
+        """Add a run to the RBI."""
         self.rbi += 1
 
     def hit_batter(self):
+        """Add a hit to the batter."""
         self.hbp += 1
 
     def steal(self):
+        """Add a stolen base."""
         self.sb += 1
 
     def caught_stealing(self):
+        """Add a caught stealing."""
         self.cs += 1
 
     def pick_off(self):
+        """Add a pick off."""
         self.pickoffs += 1
 
     def at_bat(self):
+        """Add an at bat."""
         self.at_bats += 1
 
     def home_run(self):
+        """Add a home run."""
         self.home_runs += 1
 
     def double(self):
+        """Add a double."""
         self.doubles += 1
 
     def triple(self):
+        """Add a triple."""
         self.triples += 1
 
     def hit(self):
+        """Add a hit."""
         self.hits += 1
 
     def ground_double_play(self):
+        """Add a ground double play."""
         self.gdp += 1
 
     def ground_triple_play(self):
+        """Add a ground triple play."""
         self.gtp += 1
 
     def strike_out(self):
+        """Add a strike out."""
         self.strike_outs += 1
 
     def sac_fly(self):
+        """Add a sac fly."""
         self.sac_flys += 1
 
     def run(self, runner):
+        """Add a run."""
         self.runs += 1
 
     def walk(self):
+        """Add a walk."""
         self.walks += 1
 
 
@@ -164,6 +189,7 @@ class PitchingStats(object):
     """The pitching statistics object."""
 
     def __init__(self):
+        """Initialize the pitching statistics."""
         self.hb = 0
         self.hits = 0
         self.doubles = 0
@@ -179,15 +205,18 @@ class PitchingStats(object):
 
     @property
     def ip_float(self):
+        """Return the innings pitched as a float."""
         return self.outs / 3.0
 
     @property
     def ip_str(self):
+        """Return the innings pitched as a string."""
         innings = self.outs // 3
         remainder = self.outs % 3
         return f"{innings}.{remainder}"
 
     def __str__(self):
+        """Return the string representation of the pitching statistics."""
         return (
             "Pitching Stats:\n"
             f"  IP: {self.ip_str()}\n"
@@ -205,6 +234,7 @@ class PitchingStats(object):
         )
 
     def __repr__(self):
+        """Return the representation of the pitching statistics."""
         return (
             f"<PitchingStats "
             f"H={self.hits} HR={self.home_runs} "
@@ -213,63 +243,84 @@ class PitchingStats(object):
         )
 
     def add(self, other):
+        """Add the pitching statistics from another object."""
         for attr in vars(self):
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
     def hit_batter(self):
+        """Add a hit to the batter."""
         self.hb += 1
 
     def hit(self):
+        """Add a hit."""
         self.hits += 1
 
     def double(self):
+        """Add a double."""
         self.doubles += 1
 
     def triple(self):
+        """Add a triple."""
         self.triples += 1
 
     def home_run(self):
+        """Add a home run."""
         self.home_runs += 1
 
     def walk(self):
+        """Add a walk."""
         self.walks += 1
 
     def strike_out(self):
+        """Add a strike out."""
         self.strike_outs += 1
 
     def run(self):
+        """Add a run."""
         self.runs += 1
 
     def pick_off(self):
+        """Add a pick off."""
         self.pickoffs += 1
 
     def out(self):
+        """Add an out."""
         self.outs += 1
 
     def balk(self):
+        """Add a balk."""
         self.balks += 1
 
     def wild_pitch(self):
+        """Add a wild pitch."""
         self.wild_pitches += 1
 
 
 class SeasonStats(object):
+    """The season statistics object."""
+
     def __init__(self):
+        """Initialize the season statistics."""
         self.stats = Stats()
         self.games_played = 0
 
     def add_game(self, game_stats):
+        """Add a game to the season statistics."""
         self.stats.add(game_stats)
         self.games_played += 1
 
 
 class CareerStats(object):
+    """The career statistics object."""
+
     def __init__(self):
+        """Initialize the career statistics."""
         self.stats = Stats()
         self.seasons_played = 0
         self.career_games = 0
 
     def add_season(self, season_stats):
+        """Add a season to the career statistics."""
         self.career_games += season_stats.games_played
         self.stats.add(season_stats.stats)
         self.seasons_played += 1

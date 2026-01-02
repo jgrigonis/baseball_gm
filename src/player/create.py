@@ -1,3 +1,5 @@
+"""Create players."""
+
 import random
 import uuid
 
@@ -8,14 +10,16 @@ from src.name_generator.names import NameGenerator
 
 
 def create(pos=None):
-    id = uuid.uuid4().hex
+    """Create a player."""
+    player_id = uuid.uuid4().hex
     ng = NameGenerator()
-    my_player = Player(ng.first("male"), ng.last(), position=pos, id=id)
+    my_player = Player(ng.first("male"), ng.last(), position=pos, id=player_id)
     my_player.generate()
     return my_player
 
 
 def create_players(position=None, num=1):
+    """Create multiple players."""
     players = []
     for _ in range(num):
         if position is None:

@@ -41,14 +41,14 @@ class Event(object):
         return output
 
     def do_event(self):
-        """Generate one random event, and do it"""
+        """Generate one random event, and do it."""
         self.set_probs()
         self.event = self.random_event()
         self.handle_event()
 
     def random_event(self):
         """
-        Use a weighted probability.  probs is a dictionary of events
+        Use a weighted probability. `probs` is a dictionary of events
         and their probability as an integer.
 
         algorithm: sum up all the integer probabilities. Generate a
@@ -68,7 +68,7 @@ class Event(object):
 
     def ball_or_strike(self):
         """
-        In some cases we want a ball or strike to accompany another event
+        In some cases, we want a ball or strike to accompany another event
         such as a stolen base, or caught stealing.
 
         """
@@ -84,7 +84,7 @@ class Event(object):
         """
         Get and handle one event.
 
-        We have try catch blocks around certain events so that they aren't
+        We have try-catch blocks around certain events so that they aren't
         invoked at the wrong time.
 
         """
@@ -112,11 +112,11 @@ class Event(object):
         elif self.event == "homer":
             self.display_text("Homer")
             self.game.hit(4)
-        # TODO We need multiple cases of errors
+        # TODO: We need multiple cases of errors
         # errors should be able to move players anywhere, not just to first.
         elif self.event == "error":
             try:
-                # it's possible that first is occupied, and we'd get a
+                # It's possible that first is occupied, and we'd get a
                 # problem here.
                 self.game.error(True)
                 self.display_text("Error")
@@ -150,14 +150,14 @@ class Event(object):
                 return None
         elif self.event == "fielders_choice":
             try:
-                # we only get fielders_choice if the runner was on first
+                # We only get fielders_choice if the runner was on first
                 self.game.fielders_choice()
                 self.display_text("Fielder's choice")
             except GameException:
                 return None
         elif self.event == "caught_stealing":
             try:
-                # we only get caught_stealing if the runner was on first
+                # We only get caught_stealing if the runner was on first
                 # and second is vacant
                 self.game.caught_stealing(1)
                 self.event = self.ball_or_strike()
@@ -167,7 +167,7 @@ class Event(object):
                 return None
         elif self.event == "caught_stealing_third":
             try:
-                # only get caught_stealing_third if the runner was on second
+                # We only get caught_stealing_third if the runner was on second
                 # and third is vacant
                 # self.game.caught_stealing("third")
                 self.game.caught_stealing(2)
@@ -178,7 +178,7 @@ class Event(object):
                 return None
         elif self.event == "caught_stealing_home":
             try:
-                # we only get caught_stealing_home if the runner was on third
+                # We only get caught_stealing_home if the runner was on third
                 self.game.caught_stealing(3)
                 self.event = self.ball_or_strike()
                 self.handle_event()
@@ -187,35 +187,35 @@ class Event(object):
                 return None
         elif self.event == "double_play":
             try:
-                # we only get double_play if a runner was on first
+                # We only get double_play if a runner was on first
                 self.display_text("Double play")
                 self.game.double_play()
             except GameException:
                 return None
         elif self.event == "picked_off":
             try:
-                # we only get picked_off if a runner was on first
+                # We only get picked_off if a runner was on first
                 self.display_text("Runner picked off first")
                 self.game.picked_off("first")
             except GameException:
                 return None
         elif self.event == "picked_off_second":
             try:
-                # we only get picked_off_second if a runner was on second
+                # We only get picked_off_second if a runner was on second
                 self.display_text("Runner picked off second")
                 self.game.picked_off("second")
             except GameException:
                 return None
         elif self.event == "picked_off_third":
             try:
-                # we only get picked_off_third if a runner was on third
+                # We only get picked_off_third if a runner was on third
                 self.display_text("Runner picked off third")
                 self.game.picked_off("third")
             except GameException:
                 return None
         elif self.event == "steal":
             try:
-                # we only get steal if a runner was on first
+                # We only get steal if a runner was on first
                 # and second is vacant
                 self.game.steal(1)
                 self.event = self.ball_or_strike()
@@ -225,7 +225,7 @@ class Event(object):
                 return None
         elif self.event == "steal_third":
             try:
-                # we only get steal_third if a runner was on second
+                # We only get steal_third if a runner was on second
                 # and third is vacant
                 self.game.steal(2)
                 self.event = self.ball_or_strike()
@@ -235,7 +235,7 @@ class Event(object):
                 return None
         elif self.event == "steal_home":
             try:
-                # we only get steal_home if a runner was on third
+                # We only get steal_home if a runner was on third
                 self.game.steal(3)
                 self.event = self.ball_or_strike()
                 self.handle_event()
@@ -244,7 +244,7 @@ class Event(object):
                 return None
         elif self.event == "triple_play":
             try:
-                # we only get triple_play if at least 2 runners
+                # We only get triple_play if at least 2 runners
                 # are on base
                 self.game.triple_play()
                 self.display_text("Triple play")
@@ -269,14 +269,14 @@ class Event(object):
 
     def display_text(self, text):
         """
-        Print a text messge for the event.
+        Print a text message for the event.
         """
         if text != "":
             self.logger.info(text)
 
     def set_probs(self):
         """
-        Change the probs based on game state
+        Change the probs based on game state.
 
         TODO: errors should be able to happen in concert with any play,
             one example is extending a double to a three base hit with

@@ -14,6 +14,7 @@ class Bases:
     """
 
     def __init__(self):
+        """Initialize the bases."""
         # Only first, second, third are stored
         self._bases = [0, 0, 0]
 
@@ -44,6 +45,7 @@ class Bases:
 
     @staticmethod
     def _validate_base(base):
+        """Validate the base."""
         if not isinstance(base, int):
             raise TypeError(f"Base must be int, got {type(base).__name__}")
         if base < 0 or base > 3:
@@ -53,12 +55,14 @@ class Bases:
     # ---------- Python container protocol ----------
 
     def __getitem__(self, base):
+        """Get the runner on the base."""
         base = self._validate_base(base)
         if base == 3:
             raise IndexError("Home plate is not a valid base index")
         return self._bases[base]
 
     def __setitem__(self, base, value):
+        """Set the runner on the base."""
         base = self._validate_base(base)
         if base == 3:
             raise IndexError("Cannot assign a runner to home plate")
@@ -86,12 +90,14 @@ class Bases:
             self._bases[base] = 0
 
     def empty_base(self, base):
+        """Check if the base is empty."""
         base = self._validate_base(base)
         if base == 3:
             return True
         return self._bases[base] == 0
 
     def men_on(self):
+        """Return the number of runners on base."""
         return sum(1 for b in self._bases if b != 0)
 
     def advance(self, base):

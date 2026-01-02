@@ -24,10 +24,8 @@ class Score(object):
 
     @property
     def top(self):
-        if len(self.away_innings) == len(self.home_innings):
-            return False
-        else:
-            return True
+        """Return True if the current inning is the top of the inning."""
+        return len(self.away_innings) != len(self.home_innings)
 
     def score_run(self):
         """Add a run to the last inning in list."""
