@@ -34,6 +34,13 @@ __author__ = "josh"
 # TODO unit test for walk off home run, vs driving in multiple
 # home run should score all runs, driving in on a triple for example
 # should stop scoring once the winning run crosses the plate.
+# TODO add a stat for catcher picking off runners.
+# TODO add a stat for catcher having a passed ball.
+# TODO: We currently count all runs as earned.  Needs to be fixed.
+# TODO: We should add to the inning scores for home or away.
+# TODO can we get other types of double plays?
+# Need to be line out double plays
+# TODO: Append to the inning scores list.  So we can track runs by inning.
 
 
 class Game(object):
@@ -176,7 +183,6 @@ class Game(object):
         assumed to have occurred, and an exception will raise.
 
         """
-        # TODO add a defensive stat for catchers
         b_num = self._base_number(base)
         runner = self.bases[b_num - 1]
         if b_num == 3:
@@ -267,7 +273,6 @@ class Game(object):
         """
         self.ball()
         if self.bases.men_on():
-            # TODO add a stat for catcher
             scorer = self.bases.advance_all()
             if scorer:
                 self._score_run(scorer)
@@ -347,9 +352,6 @@ class Game(object):
         :param base1: base where first out is made, assume force out.
         :param base2: base where second out is made.
         :param gdp: True if it was a grounder into a double.
-
-        #TODO can we get other types of double plays?
-        # Need to be line out double plays
 
         """
         b1 = self._base_number(base1)
@@ -572,10 +574,6 @@ class Game(object):
     def _score_run(self, scorer, score_all=False):
         """
         Score a run.
-
-        TODO: We currently count all runs as earned.  Needs to be fixed.
-        TODO: We should add to the inning scores for home or away.
-
         """
         if self.game_over and not score_all:
             return
@@ -603,9 +601,6 @@ class Game(object):
         Start a fresh inning.
 
         Clear the bases, reset the count, change sides.
-
-        TODO: Append to the inning scores list.  So we can track runs by
-        inning.
 
         """
         self.score.new_inning()
