@@ -19,7 +19,7 @@ __author__ = "josh"
 # TODO implement clutch
 # TODO can runners advance more with more speed, not currently
 # TODO implement defensive stats
-# TODO Calculate other stats, ERA, WHIP, W/L/S
+# TODO Calculate W/L/S for pitchers
 # TODO print batting derived stats
 # TODO Games Started for pitcher
 # TODO Track wins, loss, saves for pitchers
