@@ -8,6 +8,7 @@ __author__ = "josh"
 
 class TestInning(unittest.TestCase):
     """Test the inning."""
+
     def setUp(self):
         """Setup the test."""
         self.my_inning = Inning()

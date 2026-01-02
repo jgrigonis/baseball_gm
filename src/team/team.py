@@ -125,7 +125,7 @@ class Team(object):
         the batting lineup or not. If dh is true, the pitcher doesn't
         need to bat.
         """
-        best = 0
+        best: int = 0
         pitcher = None
         for player in self.players:
             if player.ratings["p"] > best:
@@ -245,7 +245,7 @@ class Team(object):
         else:
             slots.append("p")
         remaining_positions = set(slots)
-        assignments = {}  # player -> position
+        assignments: dict[Player, str] = {}  # player -> position
 
         # Greedy assignment of positions
         while remaining_players and remaining_positions:
@@ -282,7 +282,7 @@ class Team(object):
         if not dh:
             position_priority = ["p"] + position_priority
         remaining_players = set(self.lineup)
-        assignments = {}  # player -> position
+        assignments: dict[Player, str] = {}  # player -> position
 
         # Assign positions by priority
         for pos in position_priority:
@@ -306,16 +306,20 @@ class Team(object):
         ]
 
     def current_batter(self):
+        """Return the current batter."""
         return self.lineup[self.batter_index]
 
     def next_batter(self):
+        """Return the next batter."""
         self.batter_index = (self.batter_index + 1) % len(self.lineup)
         return self.current_batter()
 
     def current_pitcher(self):
+        """Return the current pitcher."""
         return self.pitcher
 
     def display_lineup(self):
+        """Display the lineup."""
         if self.city or self.mascot:
             self.logger.info("{} {}".format(self.city, self.mascot))
         for slot in self.lineup:
@@ -323,6 +327,7 @@ class Team(object):
         self.display_pitcher()
 
     def display_pitcher(self):
+        """Display the pitcher."""
         pitcher_hitting = False
         if self.pitcher:
             for slot in self.lineup:
@@ -333,6 +338,7 @@ class Team(object):
                 self.logger.info(f"p   " + self.pitcher.horizontal())
 
     def set_hitters(self):
+        """Set the hitters."""
         self.hitters = [p for p in self.players if p.position not in ("sp", "rp")]
         self.profiles = {p: offensive_profile(p) for p in self.hitters}
         for p in self.players:
@@ -341,15 +347,17 @@ class Team(object):
 
 class LineupSlot(object):
     def __init__(self, player, position):
+        """Initialize the lineup slot."""
         self.player = player  # Player object
         self.position = position  # '1B', 'CF', 'SP', etc.
 
     def __getattr__(self, name):
-        # Forward unknown attributes to Player
+        """Forward unknown attributes to Player."""
         return getattr(self.player, name)
 
 
 def offensive_profile(player):
+    """Return the offensive profile for a player."""
     s = player.skills
     return {
         "on_base": 0.5 * s["contact"] + 0.4 * s["eye"] + 0.1 * s["clutch"],
@@ -368,8 +376,9 @@ def offensive_profile(player):
 
 
 def validate_lineup_slots(lineup, pitcher, dh):
+    """Validate the lineup slots."""
     required = set(LINEUP_SLOTS)
-    used = []
+    used: list[str] = []
 
     for slot in lineup:
         pos = slot.position.lower()

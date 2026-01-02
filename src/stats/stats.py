@@ -215,6 +215,16 @@ class PitchingStats(object):
         remainder = self.outs % 3
         return f"{innings}.{remainder}"
 
+    @property
+    def era(self):
+        """Return the earned run average."""
+        return self.runs / self.ip_float * 9 if self.ip_float > 0 else 0
+
+    @property
+    def whip(self):
+        """Return the walks plus hits per inning pitched."""
+        return (self.walks + self.hits) / self.ip_float if self.ip_float > 0 else 0
+
     def __str__(self):
         """Return the string representation of the pitching statistics."""
         return (

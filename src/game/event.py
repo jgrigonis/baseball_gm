@@ -373,6 +373,7 @@ class Event(object):
             or self.game.bases[2] != 0
         ):
             self.adjust_probs_men_on_base()
+            self.adjust_probs_runner()
         self.adjust_probs_batter()
         self.adjust_probs_pitcher()
         self.logger.debug(self.probs)
@@ -557,6 +558,84 @@ class Event(object):
         # clutch
         clutch = pitcher.skills["clutch"]
         # TODO effects things based on situations
+
+    def adjust_probs_runner(self):
+        """
+        Adjust the probabilities based on the runner abilities
+        """
+        # Iterate through all runners on base
+        for base in range(3):
+            runner = self.game.bases[base]
+            if runner:
+                # speed
+                speed = runner.skills["speed"]
+                base_running = runner.skills["base_running"]
+
+                # Map base to corresponding steal/caught_stealing/pickoff events
+                if base == 0:  # First base
+                    steal_key = "steal"
+                    caught_key = "caught_stealing"
+                    pickoff_key = "picked_off"
+                elif base == 1:  # Second base
+                    steal_key = "steal_third"
+                    caught_key = "caught_stealing_third"
+                    pickoff_key = "picked_off_second"
+                else:  # Third base
+                    steal_key = "steal_home"
+                    caught_key = "caught_stealing_home"
+                    pickoff_key = "picked_off_third"
+
+                # Adjust steal probability based on speed
+                # Runners below 60 speed should very rarely steal
+                if self.probs.get(steal_key, 0) > 0:
+                    if speed < 60:
+                        # Dramatically reduce steal probability for slow runners
+                        self.probs[steal_key] = int(self.probs[steal_key] * 0.1)
+                    else:
+                        # Increase steal probability for faster runners
+                        # Speed 60-100: scale from 1.0x to 2.0x
+                        speed_multiplier = 1.0 + ((speed - 60) / 40.0)
+                        self.probs[steal_key] = int(
+                            self.probs[steal_key] * speed_multiplier
+                        )
+                        # Base running also helps with steal success
+                        base_running_multiplier = 1.0 + ((base_running - 50) / 100.0)
+                        self.probs[steal_key] = int(
+                            self.probs[steal_key] * base_running_multiplier
+                        )
+
+                # Adjust caught_stealing probability (inverse relationship with speed/base_running)
+                if self.probs.get(caught_key, 0) > 0:
+                    if speed < 60:
+                        # Dramatically reduce caught stealing probability for slow runners
+                        self.probs[caught_key] = int(self.probs[caught_key] * 0.1)
+                    else:
+                        # Better runners get caught less often
+                        # Speed effect: faster = less caught
+                        speed_reduction = (speed - 50) * 2  # +/- 100 at extremes
+                        self.probs[caught_key] = max(
+                            0, int(self.probs[caught_key] - speed_reduction)
+                        )
+                        # Base running effect: better base running = less caught
+                        base_running_reduction = (
+                            base_running - 50
+                        ) * 1.5  # +/- 75 at extremes
+                        self.probs[caught_key] = max(
+                            0, int(self.probs[caught_key] - base_running_reduction)
+                        )
+
+                # Adjust pickoff probability (better base running = less likely to be picked off)
+                if self.probs.get(pickoff_key, 0) > 0:
+                    # Base running is key for avoiding pickoffs
+                    pickoff_reduction = (base_running - 50) * 2  # +/- 100 at extremes
+                    self.probs[pickoff_key] = max(
+                        0, int(self.probs[pickoff_key] - pickoff_reduction)
+                    )
+                    # Speed also helps avoid pickoffs slightly
+                    speed_pickoff_reduction = (speed - 50) * 0.5  # +/- 25 at extremes
+                    self.probs[pickoff_key] = max(
+                        0, int(self.probs[pickoff_key] - speed_pickoff_reduction)
+                    )
 
     def adjust_probs_based_on_count(self, balls=0, strikes=0):
         """

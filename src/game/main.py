@@ -18,12 +18,9 @@ __author__ = "josh"
 # TODO track pitch counts
 # TODO implement clutch
 # TODO can runners advance more with more speed, not currently
-# TODO do steals work properly, speed and baserunning don't effect probs
-# TODO track stats across many games
 # TODO implement defensive stats
 # TODO Calculate other stats, ERA, WHIP, W/L/S
 # TODO print batting derived stats
-# TODO the last event of a game might not be getting captured in game stats
 # TODO Games Started for pitcher
 # TODO Track wins, loss, saves for pitchers
 # TODO Track complete games, shutouts
@@ -610,7 +607,7 @@ class Game(object):
         if not self.game_over:
             self.logger.info(self.inning)
         if self.pauses:
-            input("")
+            input("Press enter to continue")
         if self.bat_team == self.away:
             self.bat_team = self.home
             self.pitch_team = self.away
