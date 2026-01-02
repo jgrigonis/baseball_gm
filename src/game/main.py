@@ -9,35 +9,31 @@ from src.player.player import Player
 from src.util.logger import setup_logger
 
 __author__ = "josh"
-# TODO implement bunting
-# TODO implement sac bunts
 # TODO implement defensive stats
 # TODO changes to event probs based on defensive stats
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
 # TODO track pitch counts
 # TODO implement clutch
-# TODO can runners advance more with more speed, not currently
-# TODO implement defensive stats
 # TODO Calculate W/L/S for pitchers
-# TODO print batting derived stats
-# TODO Games Started for pitcher
-# TODO Track wins, loss, saves for pitchers
 # TODO Track complete games, shutouts
-# TODO handle intentional walk as a play and a stat
-# TODO the range of abilities is probably too low.
-# TODO more accurately match stats from MLB teams
+# TODO print batting and pitching derived stats
+# TODO We currently count all runs as earned.  Needs to be fixed.
+# TODO Games Started for pitcher
+# TODO can runners advance more with more speed, not currently
 # TODO many more unit tests
 # TODO unit test for walk off home run, vs driving in multiple
 # home run should score all runs, driving in on a triple for example
 # should stop scoring once the winning run crosses the plate.
+# TODO Append to the inning scores list.  So we can track runs by inning.
+# TODO handle intentional walk as a play and a stat
 # TODO add a stat for catcher picking off runners.
 # TODO add a stat for catcher having a passed ball.
-# TODO: We currently count all runs as earned.  Needs to be fixed.
-# TODO: We should add to the inning scores for home or away.
+# TODO We should add to the inning scores for home or away.
 # TODO can we get other types of double plays?
+# TODO the range of abilities is probably too low.
+# TODO more accurately match stats from MLB teams
 # Need to be line out double plays
-# TODO: Append to the inning scores list.  So we can track runs by inning.
 
 
 class Game(object):
@@ -476,6 +472,36 @@ class Game(object):
                 batter.stats.batting.hit_rbi()
                 self._score_run(scorer)
         batter.stats.batting.sac_fly()
+        self.inning.out()
+        self._next_batter()
+
+    def sac_bunt(self, advances=None):
+        """
+        Batter performs a sac_bunt bunt.  By
+        default all base runners advance one base.  It wouldn't
+        make sense to have a sac_bunt and have no one advance.
+        """
+        batter = self.current_batter
+        if self.bases.men_on() == 0:
+            raise game_exceptions.NotEnoughRunnersOnBase()
+        if self.inning.outs == 2:
+            raise game_exceptions.BadSacrifice()
+        if not advances:
+            scored = self.bases.advance_all()
+            if scored:
+                batter.stats.batting.hit_rbi()
+                self._score_run(scored)
+        else:
+            if isinstance(advances, tuple):
+                advances = [advances]
+            for adv in advances:
+                if self.bases[adv[0]] == 0:
+                    raise game_exceptions.NoRunnerToAdvance()
+            scorers = self.bases.advance_many(advances)
+            for scorer in scorers:
+                batter.stats.batting.hit_rbi()
+                self._score_run(scorer)
+        batter.stats.batting.sac_bunt()
         self.inning.out()
         self._next_batter()
 

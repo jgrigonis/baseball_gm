@@ -144,8 +144,14 @@ class Event(object):
             self.game.balk()
         elif self.event == "sac_fly":
             if self.game.inning.outs != 2:
-                self.display_text("Sacrifice")
+                self.display_text("Sacrifice fly")
                 self.game.sac_fly()
+            else:
+                return None
+        elif self.event == "sac_bunt":
+            if self.game.inning.outs != 2:
+                self.display_text("Sacrifice bunt")
+                self.game.sac_bunt()
             else:
                 return None
         elif self.event == "fielders_choice":
@@ -311,6 +317,7 @@ class Event(object):
             "picked_off_second": 0,
             "picked_off_third": 0,
             "sac_fly": 0,
+            "sac_bunt": 0,
             "steal": 0,
             "steal_third": 0,
             "steal_home": 0,
@@ -389,6 +396,7 @@ class Event(object):
         self.probs["fielders_choice"] = 100
         self.probs["picked_off"] = 50
         self.probs["sac_fly"] = 250
+        self.probs["sac_bunt"] = 150
 
     def set_probs_runner_on_first_and_second(self):
         """
@@ -402,6 +410,7 @@ class Event(object):
         self.probs["picked_off"] = 10
         self.probs["picked_off_second"] = 20
         self.probs["sac_fly"] = 250
+        self.probs["sac_bunt"] = 150
         self.probs["steal_third"] = 100
         self.probs["caught_stealing_third"] = 100
 
@@ -427,6 +436,7 @@ class Event(object):
         self.probs["double_play"] = 100
         self.probs["balk"] = 10
         self.probs["picked_off_second"] = 20
+        self.probs["sac_bunt"] = 150
 
     def set_probs_runner_on_third(self):
         """
@@ -464,6 +474,7 @@ class Event(object):
         self.probs["sac_fly"] = 0
         self.probs["double_play"] = 0
         self.probs["triple_play"] = 0
+        self.probs["sac_bunt"] = 0
 
     def adjust_probs_men_on_base(self):
         """
@@ -490,6 +501,12 @@ class Event(object):
         self.probs["homer"] = int(self.probs["homer"] * (power / 100.0))
         self.probs["single"] -= 1 * (power - 50)  # +/- 50
         self.probs["double"] += 1 * (power - 50)  # +/- 50
+        # bunting
+        bunting = batter.skills["bunting"]
+        if self.probs["sac_bunt"] > 0:
+            self.probs["sac_bunt"] += 10 * (bunting - 50)
+        elif self.probs["sac_bunt"] <= 0:
+            self.probs["sac_bunt"] = 0
         # eye
         eye = batter.skills["eye"]
         self.probs["strike"] -= 8 * (eye - 50)
@@ -701,6 +718,7 @@ class Event(object):
             self.probs["double"] = int(self.probs["double"] * 0.74)
             self.probs["triple"] = int(self.probs["triple"] * 0.74)
             self.probs["homer"] = int(self.probs["homer"] * 0.74)
+            self.probs["sac_bunt"] = 0
         elif balls == 3 and strikes == 0:
             self.probs["ball"] = int(self.probs["ball"] * 0.89)
             self.probs["strike"] = int(self.probs["strike"] * 2.56)
@@ -731,6 +749,7 @@ class Event(object):
             self.probs["double"] = int(self.probs["double"] * 1.16)
             self.probs["triple"] = int(self.probs["triple"] * 1.16)
             self.probs["homer"] = int(self.probs["homer"] * 1.16)
+            self.probs["sac_bunt"] = 0
         elif balls == 3 and strikes == 1:
             self.probs["ball"] = int(self.probs["ball"] * 0.95)
             self.probs["strike"] = int(self.probs["strike"] * 0.76)
@@ -751,6 +770,7 @@ class Event(object):
             self.probs["double"] = int(self.probs["double"] * 1.63)
             self.probs["triple"] = int(self.probs["triple"] * 1.63)
             self.probs["homer"] = int(self.probs["homer"] * 1.63)
+            self.probs["sac_bunt"] = 0
         elif balls == 3 and strikes == 2:
             self.probs["ball"] = int(self.probs["ball"] * 0.62)
             self.probs["strike"] = int(self.probs["strike"] * 0.65)
@@ -761,3 +781,4 @@ class Event(object):
             self.probs["double"] = int(self.probs["double"] * 1.66)
             self.probs["triple"] = int(self.probs["triple"] * 1.66)
             self.probs["homer"] = int(self.probs["homer"] * 1.66)
+            self.probs["sac_bunt"] = 0

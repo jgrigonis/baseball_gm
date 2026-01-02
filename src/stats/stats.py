@@ -31,6 +31,7 @@ class BattingStats(object):
         self.walks = 0
         self.strike_outs = 0
         self.sac_flys = 0
+        self.sac_bunts = 0
         self.gdp = 0
         self.gtp = 0
         self.runs = 0
@@ -61,6 +62,7 @@ class BattingStats(object):
             f"  K: {self.strike_outs}\n"
             f"  HBP: {self.hbp}\n"
             f"  SAC: {self.sac_flys}\n"
+            f"  SAB: {self.sac_bunts}\n"
             f"  SB: {self.sb}\n"
             f"  CS: {self.cs}\n"
             f"  PO: {self.pickoffs}\n"
@@ -175,6 +177,10 @@ class BattingStats(object):
     def sac_fly(self):
         """Add a sac fly."""
         self.sac_flys += 1
+
+    def sac_bunt(self):
+        """Add a sac bunt."""
+        self.sac_bunts += 1
 
     def run(self, runner):
         """Add a run."""

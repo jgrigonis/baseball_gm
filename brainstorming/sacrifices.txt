@@ -1,0 +1,5 @@
+Neither sacrifice flies nor sac bunts are counted as an at-bat, so the batter 
+is not charged with the out on their batting average, although the out from 
+a sac fly (but not a bunt) is counted against the player's OBP.
+
+https://www.reddit.com/r/Dodgers/comments/1i008cj/newbie_question_how_are_sacrifice_flys_and_bunts/
