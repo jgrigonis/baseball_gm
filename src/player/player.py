@@ -169,10 +169,19 @@ class Player(object):
             "GDP",
             "HBP",
             "SAC",
+
         ]
         output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
         for item in stat_list:
             output += "{:>{}}".format(item, 4)
+
+        for item in [
+            "AVG",
+            "OBP",
+            "SLG",
+            "OPS",
+        ]:
+            output += "{:>{}}".format(item, 6)
         output += "  "
         return output
 
@@ -237,6 +246,31 @@ class Player(object):
         output += "{:>{}}".format(stats.batting.gdp, 4)
         output += "{:>{}}".format(stats.batting.hbp, 4)
         output += "{:>{}}".format(stats.batting.sac_flys, 4)
+
+        # Derived stats
+        batting_average = stats.batting.batting_average
+        formatted_average = f"{batting_average:.3f}"
+
+        # Remove the leading '0' if it is present
+        if formatted_average.startswith('0'):
+            formatted_average = " " + formatted_average[1:]
+        obp = stats.batting.obp
+        formatted_obp = f"{obp:.3f}"
+        if formatted_obp.startswith('0'):
+            formatted_obp = " " + formatted_obp[1:]
+        slugging = stats.batting.slugging
+        formatted_slugging = f"{slugging:.3f}"
+        if formatted_slugging.startswith('0'):
+            formatted_slugging = " " + formatted_slugging[1:]
+        ops = stats.batting.ops
+        formatted_ops = f"{ops:.3f}"
+        if formatted_ops.startswith('0'):
+            formatted_ops = " " + formatted_ops[1:]
+        output += " {}".format(formatted_average)
+        output += " {}".format(formatted_obp)
+        output += " {}".format(formatted_slugging)
+        output += " {}".format(formatted_ops)
+
         return output
 
     def horizontal_pitching_stats(self, stat_type="game"):

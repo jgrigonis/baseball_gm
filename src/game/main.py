@@ -943,6 +943,7 @@ class Game(object):
         return
 
     def _handle_stats(self):
+        """Handle the stats for the game."""
         self.logger.info(
             Player.horizontal_stat_header(self.home.city + " " + self.home.mascot)
         )

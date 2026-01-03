@@ -82,7 +82,7 @@ class BattingStats(object):
     @property
     def batting_average(self):
         """Return the batting average."""
-        return self.hits / self.at_bats
+        return self.hits / self.at_bats if self.at_bats > 0 else 0.0
 
     @property
     def singles(self):
