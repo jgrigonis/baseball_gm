@@ -169,7 +169,6 @@ class Player(object):
             "GDP",
             "HBP",
             "SAC",
-
         ]
         output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
         for item in stat_list:
@@ -252,19 +251,19 @@ class Player(object):
         formatted_average = f"{batting_average:.3f}"
 
         # Remove the leading '0' if it is present
-        if formatted_average.startswith('0'):
+        if formatted_average.startswith("0"):
             formatted_average = " " + formatted_average[1:]
         obp = stats.batting.obp
         formatted_obp = f"{obp:.3f}"
-        if formatted_obp.startswith('0'):
+        if formatted_obp.startswith("0"):
             formatted_obp = " " + formatted_obp[1:]
         slugging = stats.batting.slugging
         formatted_slugging = f"{slugging:.3f}"
-        if formatted_slugging.startswith('0'):
+        if formatted_slugging.startswith("0"):
             formatted_slugging = " " + formatted_slugging[1:]
         ops = stats.batting.ops
         formatted_ops = f"{ops:.3f}"
-        if formatted_ops.startswith('0'):
+        if formatted_ops.startswith("0"):
             formatted_ops = " " + formatted_ops[1:]
         output += " {}".format(formatted_average)
         output += " {}".format(formatted_obp)
@@ -309,18 +308,18 @@ class Player(object):
         output += "{:>{}}".format(stats.pitching.pickoffs, 4)
         output += "{:>{}}".format(stats.pitching.balks, 4)
         output += "{:>{}}".format(stats.pitching.wild_pitches, 4)
-        
+
         # Derived stats
         era = stats.pitching.era
         whip = stats.pitching.whip
         ip_float = stats.pitching.ip_float
-        
+
         # K/9 (strikeouts per 9 innings)
         k_per_9 = (stats.pitching.strike_outs / ip_float * 9) if ip_float > 0 else 0.0
-        
+
         # BB/9 (walks per 9 innings)
         bb_per_9 = (stats.pitching.walks / ip_float * 9) if ip_float > 0 else 0.0
-        
+
         output += "{:>5.2f}".format(era)
         output += "{:>5.2f}".format(whip)
         output += "{:>5.2f}".format(k_per_9)

@@ -128,7 +128,7 @@ def main():
     for player in home_team.players:
         if player.season_stats.stats.pitching.outs > 0:
             logger.info(player.horizontal_pitching_stats("season"))
-    
+
     logger.info(
         Player.horizontal_pitching_stat_header(away_team.city + " " + away_team.mascot)
     )

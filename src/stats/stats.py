@@ -104,9 +104,12 @@ class BattingStats(object):
         """On Base Percentage. The rate at which a batter reached base
         in his plate appearances.
         """
-        return (self.hits + self.walks + self.hbp) / (
-            self.at_bats + self.walks + self.hbp + self.sac_flys
-        ) if self.at_bats + self.walks + self.hbp + self.sac_flys > 0 else 0.0
+        return (
+            (self.hits + self.walks + self.hbp)
+            / (self.at_bats + self.walks + self.hbp + self.sac_flys)
+            if self.at_bats + self.walks + self.hbp + self.sac_flys > 0
+            else 0.0
+        )
 
     @property
     def ops(self):
@@ -120,9 +123,12 @@ class BattingStats(object):
         hit into the field of play, removing outcomes not affected
         by the opposing defense (namely home runs and streikeouts)
         """
-        return (self.hits - self.home_runs) / (
-            self.at_bats - self.strike_outs - self.home_runs + self.sac_flys
-        ) if self.at_bats - self.strike_outs - self.home_runs + self.sac_flys > 0 else 0.0
+        return (
+            (self.hits - self.home_runs)
+            / (self.at_bats - self.strike_outs - self.home_runs + self.sac_flys)
+            if self.at_bats - self.strike_outs - self.home_runs + self.sac_flys > 0
+            else 0.0
+        )
 
     def hit_rbi(self):
         """Add a run to the RBI."""
@@ -340,10 +346,7 @@ class FieldingStats(object):
 
     def __repr__(self):
         """Return the representation of the fielding statistics."""
-        return (
-            f"<FieldingStats PO={self.putouts} "
-            f"A={self.assists} E={self.errors}>"
-        )
+        return f"<FieldingStats PO={self.putouts} " f"A={self.assists} E={self.errors}>"
 
     def __str__(self):
         """Return the string representation of the fielding statistics."""
