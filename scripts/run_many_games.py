@@ -113,28 +113,29 @@ def main():
             home_wins += 1
         if my_game.winner == my_game.away:
             away_wins += 1
+    logger.info("-" * 120)
     logger.info(Player.horizontal_stat_header(home_team.city + " " + home_team.mascot))
     for player in home_team.lineup:
         logger.info(player.horizontal_stats("season"))
-
+    logger.info("-" * 120)
     logger.info(Player.horizontal_stat_header(away_team.city + " " + away_team.mascot))
     for player in away_team.lineup:
         logger.info(player.horizontal_stats("season"))
-    logger.info("-" * 100)
+    logger.info("-" * 120)
     logger.info(
         Player.horizontal_pitching_stat_header(home_team.city + " " + home_team.mascot)
     )
     for player in home_team.players:
         if player.season_stats.stats.pitching.outs > 0:
             logger.info(player.horizontal_pitching_stats("season"))
-
+    
     logger.info(
         Player.horizontal_pitching_stat_header(away_team.city + " " + away_team.mascot)
     )
     for player in away_team.players:
         if player.season_stats.stats.pitching.outs > 0:
             logger.info(player.horizontal_pitching_stats("season"))
-    logger.info("-" * 100)
+    logger.info("-" * 120)
     logger.info("Home wins:" + str(home_wins))
     logger.info("Away wins:" + str(away_wins))
 

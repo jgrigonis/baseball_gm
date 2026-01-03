@@ -310,7 +310,7 @@ class Team(object):
         return self.lineup[self.batter_index]
 
     def next_batter(self):
-        """Return the next batter."""
+        """Increment the batter index and return the next batter."""
         self.batter_index = (self.batter_index + 1) % len(self.lineup)
         return self.current_batter()
 

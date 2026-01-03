@@ -97,7 +97,7 @@ class BattingStats(object):
     @property
     def slugging(self):
         """The rate of total bases per at bat."""
-        return self.total_bases / self.at_bats
+        return self.total_bases / self.at_bats if self.at_bats > 0 else 0.0
 
     @property
     def obp(self):
@@ -106,12 +106,12 @@ class BattingStats(object):
         """
         return (self.hits + self.walks + self.hbp) / (
             self.at_bats + self.walks + self.hbp + self.sac_flys
-        )
+        ) if self.at_bats + self.walks + self.hbp + self.sac_flys > 0 else 0.0
 
     @property
     def ops(self):
         """The sum of On Base Percentage and Slugging."""
-        return self.obp + self.slugging
+        return self.obp + self.slugging if self.obp + self.slugging > 0 else 0.0
 
     @property
     def babip(self):
@@ -122,7 +122,7 @@ class BattingStats(object):
         """
         return (self.hits - self.home_runs) / (
             self.at_bats - self.strike_outs - self.home_runs + self.sac_flys
-        )
+        ) if self.at_bats - self.strike_outs - self.home_runs + self.sac_flys > 0 else 0.0
 
     def hit_rbi(self):
         """Add a run to the RBI."""

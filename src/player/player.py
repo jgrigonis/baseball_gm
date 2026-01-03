@@ -273,6 +273,20 @@ class Player(object):
 
         return output
 
+    def short_batting_stats(self):
+        """Output the player stats on a single line."""
+        stats = self.stats
+        name = self.first_name + " " + self.last_name
+        output = str("{:<{}} ".format(name, 30))  # 30 is the longest name
+
+        output += "AB: {} ".format(stats.batting.at_bats)
+        output += "R: {} ".format(stats.batting.runs)
+        output += "H: {} ".format(stats.batting.hits)
+        output += "BB: {} ".format(stats.batting.walks)
+        output += "HBP: {} ".format(stats.batting.hbp)
+        output += "SAC: {} ".format(stats.batting.sac_flys)
+        return output
+
     def horizontal_pitching_stats(self, stat_type="game"):
         """Output the player stats on a single line."""
         if stat_type == "game":

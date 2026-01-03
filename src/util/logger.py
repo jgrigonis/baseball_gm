@@ -2,6 +2,14 @@ import logging
 import os
 from datetime import datetime
 
+TRACE_LEVEL_NUM = 5
+logging.addLevelName(TRACE_LEVEL_NUM, "TRACE")
+logging.TRACE = TRACE_LEVEL_NUM
+
+def trace(self, message, *args, **kwargs):
+    self.log(logging.TRACE, message, *args, **kwargs)
+logging.Logger.trace = trace
+
 
 def setup_logger(
     name: str,

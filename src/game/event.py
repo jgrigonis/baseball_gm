@@ -88,6 +88,7 @@ class Event(object):
         invoked at the wrong time.
 
         """
+        self.logger.trace("Handling event")
         batter = self.game.current_batter
         if self.event == "ball":
             if self.game.count.balls == 3:
@@ -384,7 +385,7 @@ class Event(object):
             self.adjust_probs_runner()
         self.adjust_probs_batter()
         self.adjust_probs_pitcher()
-        self.logger.debug(self.probs)
+        self.logger.trace(self.probs)
 
     def set_probs_runner_on_first(self):
         """
