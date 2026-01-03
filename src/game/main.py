@@ -1,4 +1,5 @@
 import logging
+import random
 
 import src.game.bases as bases
 import src.game.count as count
@@ -82,6 +83,86 @@ class Game(object):
         self.current_pitcher = self.pitch_team.current_pitcher()
         if not self.game_over:
             self.logger.info("Next Up: " + self.current_batter.horizontal())
+
+    def get_defender(self, position):
+        """
+        Get the defender at a specific position from the pitching team.
+        
+        :param position: The defensive position (e.g., 'ss', '2b', '1b', 'cf', etc.)
+        :return: The Player object at that position, or None if not found
+        """
+        position = position.lower()
+        for slot in self.pitch_team.lineup:
+            if slot.position.lower() == position:
+                return slot.player
+        return None
+
+    def check_defensive_play(self, defender, play_type="fielding", position=None):
+        """
+        Check if a defender successfully makes a defensive play.
+        
+        :param defender: The Player object making the play
+        :param play_type: Type of play - 'fielding' (error chance), 'speed' (too slow), or 'both'
+        :param position: Optional position being played (e.g., 'ss', 'cf', '1b'). 
+                         If None, tries to determine from defender's position rating.
+        :return: Tuple of (success, error_type)
+            - success: True if play is successful, False if error or too slow
+            - error_type: 'error' if fielding error, 'slow' if too slow, None if success
+        """
+        if defender is None:
+            # No defender at position - assume error
+            return (False, 'error')
+        
+        # Determine which defensive skill to use based on position
+        if position:
+            pos = position.lower()
+        else:
+            # Try to determine from defender's best position rating
+            # This is a fallback - ideally position should be passed
+            pos = None
+        
+        # Base error rate depends on defensive skills
+        # Use position-specific rating if available, otherwise use general skills
+        if pos in ['c']:
+            defensive_skill = defender.skills.get('catching', 50)
+        elif pos in ['1b', '2b', '3b', 'ss']:
+            defensive_skill = defender.skills.get('infield', 50)
+        elif pos in ['lf', 'cf', 'rf']:
+            defensive_skill = defender.skills.get('outfield', 50)
+        else:
+            # Fallback: use position rating if available, otherwise use infield skill
+            if pos and pos in defender.ratings:
+                # Use position rating as a proxy for skill
+                defensive_skill = defender.ratings.get(pos, 50)
+            else:
+                # Default to infield skill
+                defensive_skill = defender.skills.get('infield', 50)
+        
+        # Calculate error probability based on skill
+        # Skill 100 = ~0.5% error rate, Skill 50 = ~5% error rate, Skill 0 = ~15% error rate
+        base_error_rate = max(0.005, 0.15 - (defensive_skill / 100.0) * 0.145)
+        
+        # Add some randomness
+        error_roll = random.random()
+        
+        if play_type in ['fielding', 'both']:
+            if error_roll < base_error_rate:
+                defender.stats.fielding.error()
+                return (False, 'error')
+        
+        # Check for being too slow (for double plays, etc.)
+        if play_type in ['speed', 'both']:
+            # Speed check - slower players more likely to be too slow
+            speed = defender.skills.get('speed', 50)
+            # Speed 100 = ~1% too slow, Speed 50 = ~5% too slow, Speed 0 = ~15% too slow
+            slow_rate = max(0.01, 0.15 - (speed / 100.0) * 0.14)
+            slow_roll = random.random()
+            
+            if slow_roll < slow_rate:
+                return (False, 'slow')
+        
+        # Successful play
+        return (True, None)
 
     def strike(self):
         """
@@ -221,15 +302,90 @@ class Game(object):
         else:
             raise game_exceptions.InvalidPickOff()
 
-    def ground_out(self):
-        """Batter grounds out."""
-        self.current_batter.stats.batting.at_bat()
+    def ground_out(self, position=None):
+        """
+        Batter grounds out.
+        
+        :param position: Optional position where the ball is hit ('ss', '2b', '3b', '1b', etc.)
+                         If None, randomly selects an infield position.
+        """
+        batter = self.current_batter
+        
+        # Determine which defender should field the ball
+        if position is None:
+            # Randomly pick an infield position (excluding pitcher)
+            infield_positions = ['ss', '2b', '3b', '1b']
+            position = random.choice(infield_positions)
+        
+        defender = self.get_defender(position)
+        
+        # Check if defender makes an error
+        if defender:
+            success, error_type = self.check_defensive_play(defender, play_type='fielding', position=position)
+            
+            if not success and error_type == 'error':
+                # Error on ground ball - batter safe, no at-bat
+                self.logger.info(f"Error by {defender.name} at {position.upper()}")
+                # Batter reaches on error
+                if self.bases.empty_base(0):
+                    self.bases[0] = batter
+                    self._next_batter()
+                else:
+                    # First base occupied - could advance runners or just record error
+                    # For simplicity, just record error and batter is out
+                    self._next_batter()
+                    self._put_out()
+                return
+            elif success:
+                # Successful fielding - record assist and putout
+                defender.stats.fielding.assist()
+                defender.stats.fielding.putout()
+        
+        # Normal ground out - counts as at-bat
+        batter.stats.batting.at_bat()
         self._next_batter()
         self._put_out()
 
-    def fly_out(self):
-        """Batter flies out."""
-        self.current_batter.stats.batting.at_bat()
+    def fly_out(self, position=None):
+        """
+        Batter flies out.
+        
+        :param position: Optional position where the ball is hit ('lf', 'cf', 'rf', etc.)
+                         If None, randomly selects an outfield position.
+        """
+        batter = self.current_batter
+        
+        # Determine which defender should catch the ball
+        if position is None:
+            # Randomly pick an outfield position
+            outfield_positions = ['lf', 'cf', 'rf']
+            position = random.choice(outfield_positions)
+        
+        defender = self.get_defender(position)
+        
+        # Check if defender drops the ball (error)
+        if defender:
+            success, error_type = self.check_defensive_play(defender, play_type='fielding', position=position)
+            
+            if not success and error_type == 'error':
+                # Dropped fly ball - batter safe, no at-bat
+                self.logger.info(f"{defender.name} dropped the fly ball in {position.upper()}")
+                # Batter reaches on error
+                if self.bases.empty_base(0):
+                    self.bases[0] = batter
+                    self._next_batter()
+                else:
+                    # First base occupied - could advance runners or just record error
+                    # For simplicity, just record error and batter is out
+                    self._next_batter()
+                    self._put_out()
+                return
+            elif success:
+                # Successful catch - record putout
+                defender.stats.fielding.putout()
+        
+        # Normal fly out - counts as at-bat
+        batter.stats.batting.at_bat()
         self._next_batter()
         self._put_out()
 
@@ -354,7 +510,85 @@ class Game(object):
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
             raise game_exceptions.TooManyOuts()
-
+        
+        # Determine which defenders are involved based on bases
+        # Common double play: 6-4-3 (SS to 2B to 1B)
+        # Or 4-6-3 (2B to SS to 1B)
+        # For simplicity, we'll test SS, 2B, and 1B in sequence
+        ss = self.get_defender('ss')
+        second_baseman = self.get_defender('2b')
+        first_baseman = self.get_defender('1b')
+        
+        # Determine who fields the ball at second base (SS or 2B)
+        # Randomly pick based on who's available, or prefer SS for 6-4-3
+        first_defender = None
+        first_pos = None
+        if ss and second_baseman:
+            # Randomly pick SS or 2B to field it
+            if random.random() < 0.6:  # 60% chance SS fields it (6-4-3)
+                first_defender = ss
+                first_pos = 'ss'
+            else:  # 40% chance 2B fields it (4-6-3)
+                first_defender = second_baseman
+                first_pos = '2b'
+        elif ss:
+            first_defender = ss
+            first_pos = 'ss'
+        elif second_baseman:
+            first_defender = second_baseman
+            first_pos = '2b'
+        
+        # Test first defender (SS or 2B) - check for error or being too slow
+        if first_defender:
+            success, error_type = self.check_defensive_play(first_defender, play_type='both', position=first_pos)
+            
+            if not success:
+                if error_type == 'error':
+                    # Error on first defender - batter safe, runner out, no at-bat
+                    self.logger.info(f"Error by {first_defender.name} at {first_pos.upper()}")
+                    self.bases[b1] = 0
+                    self._put_out()
+                    # Batter reaches on error
+                    if self.bases.empty_base(0):
+                        self.bases[0] = batter
+                    self._next_batter()
+                    return
+                elif error_type == 'slow':
+                    # Too slow - only get lead runner, batter gets at-bat
+                    self.logger.info(f"{first_defender.name} at {first_pos.upper()} too slow, only lead runner out")
+                    batter.stats.batting.at_bat()
+                    if gdp:
+                        batter.stats.batting.ground_double_play()
+                    self.bases[b1] = 0
+                    self._put_out()
+                    # Batter safe at first
+                    if self.bases.empty_base(0):
+                        self.bases[0] = batter
+                    self._next_batter()
+                    return
+            else:
+                # Successful first play - record assist
+                first_defender.stats.fielding.assist()
+        
+        # Test second defender (1B) - check for error
+        if first_baseman:
+            success, error_type = self.check_defensive_play(first_baseman, play_type='fielding', position='1b')
+            
+            if not success and error_type == 'error':
+                # Error on second defender - batter safe, no at-bat
+                self.logger.info(f"Error by {first_baseman.name} at 1B")
+                self.bases[b1] = 0
+                self._put_out()
+                # Batter reaches on error
+                if self.bases.empty_base(0):
+                    self.bases[0] = batter
+                self._next_batter()
+                return
+            elif success:
+                # Successful second play - record putout
+                first_baseman.stats.fielding.putout()
+        
+        # Both plays successful - complete double play
         batter.stats.batting.at_bat()
         if gdp:
             batter.stats.batting.ground_double_play()
