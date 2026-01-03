@@ -7,12 +7,10 @@ team and has all its ratings.
 
 """
 
-import random
-
 from src.player.create import create
-import src.game.game_exceptions as game_exceptions
+
 from src.player.player import Player
-from src.player import positions
+from src.player.player_formatters import PlayerTableFormatter
 from src.team.team import Team
 
 __author__ = "josh"
@@ -36,7 +34,7 @@ def main():
             print(player)
     print(Player.header())
     for player in team.players:
-        print(player.horizontal())
+        print(PlayerTableFormatter.horizontal(player))
     with open("TeamNine.csv", "w") as csv:
         csv.writelines(Player.csv_header())
         for player in team.players:

@@ -10,7 +10,6 @@ from src.player.player import Player
 from src.util.logger import setup_logger
 
 __author__ = "josh"
-# TODO possible bug with some outs not getting attributed to the pitcher.
 # TODO verify defensive stats and event probs
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery

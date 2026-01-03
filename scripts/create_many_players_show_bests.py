@@ -9,7 +9,7 @@ Doesn't save the players anywhere
 import argparse
 
 from src.player.player import Player, skills
-from src.player.__init__ import rated_positions
+from src.player.positions import rated_positions
 from src.player.create import create
 from copy import deepcopy
 

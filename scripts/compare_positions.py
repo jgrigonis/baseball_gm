@@ -12,7 +12,7 @@ the players
 """
 
 from src.player.player import Player
-from src.player import positions, position_name, skill_template
+from src.player.positions import positions, position_name, skill_template
 
 __author__ = "josh"
 
