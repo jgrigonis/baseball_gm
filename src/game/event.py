@@ -123,10 +123,10 @@ class Event(object):
             except GameException:
                 return None
         elif self.event == "fly_out":
-            self.display_text("Fly out")
+            # Logging is handled in game.fly_out() method with defender info
             self.game.fly_out()
         elif self.event == "ground_out":
-            self.display_text("Ground out")
+            # Logging is handled in game.ground_out() method with defender info
             self.game.ground_out()
         elif self.event == "hit_by_pitch":
             self.display_text("Hit by pitch")
@@ -226,7 +226,7 @@ class Event(object):
                 self.game.steal(1)
                 self.event = self.ball_or_strike()
                 self.handle_event()
-                self.display_text("Runner stole second")
+                # Logging is handled in game.steal() method
             except GameException:
                 return None
         elif self.event == "steal_third":
@@ -236,7 +236,7 @@ class Event(object):
                 self.game.steal(2)
                 self.event = self.ball_or_strike()
                 self.handle_event()
-                self.display_text("Runner stole third")
+                # Logging is handled in game.steal() method
             except GameException:
                 return None
         elif self.event == "steal_home":
@@ -245,7 +245,7 @@ class Event(object):
                 self.game.steal(3)
                 self.event = self.ball_or_strike()
                 self.handle_event()
-                self.display_text("Runner stole home")
+                # Logging is handled in game.steal() method
             except GameException:
                 return None
         elif self.event == "triple_play":

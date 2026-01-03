@@ -1,0 +1,14 @@
+[INFO] game: Next Up: Leo Walter                      of r r 78 62 84 67 35 48 38 57 46 46 35 13  9 13  9  5   21 57 51 53 49 51 51 51 49   56 50 74
+[INFO] game: Bases: Ed Walker on first, Ralph Espinosa on second.
+[INFO] game: Pitching: Joseph Russell
+[DEBUG] game: {'ball': 12789, 'strike': 9173, 'foul_ball': 3238, 'fly_out': 1217, 'ground_out': 1538, 'single': 917.8, 'double': 293.2, 'homer': 155, 'hit_by_pitch': 58, 'triple': 32.2, 'error': 10, 'balk': 10, 'caught_stealing': 0, 'caught_stealing_third': 10, 'caught_stealing_home': 20, 'double_play': 0, 'fielders_choice': 0, 'picked_off': 27, 'picked_off_second': 62, 'picked_off_third': 10, 'sac_fly': 0, 'sac_bunt': 0, 'steal': 0, 'steal_third': 10, 'steal_home': 10, 'triple_play': 0, 'wild_pitch': 98, 'passed_ball': 99.0}
+[INFO] game:   Ball 1
+[DEBUG] game: {'ball': 10232, 'strike': 7727, 'foul_ball': 4580, 'fly_out': 1934, 'ground_out': 2255, 'single': 1698.8, 'double': 502.2, 'homer': 291, 'hit_by_pitch': 58, 'triple': 58.2, 'error': 10, 'balk': 10, 'caught_stealing': 0, 'caught_stealing_third': 10, 'caught_stealing_home': 20, 'double_play': 0, 'fielders_choice': 0, 'picked_off': 27, 'picked_off_second': 62, 'picked_off_third': 10, 'sac_fly': 0, 'sac_bunt': 0, 'steal': 0, 'steal_third': 10, 'steal_home': 10, 'triple_play': 0, 'wild_pitch': 98, 'passed_ball': 99.0}
+[INFO] game: Ground out to Michael Webster at 3B
+[INFO] game: Next Up: Frank Stanley                   cf l l 50 58 41 48 88 64 44 12 59 62 40  4 13 11 11 10   16 21 58 58 55 55 57 56 55   63 71 50
+[INFO] game: Bases: Ed Walker on first, Ralph Espinosa on second.
+
+The problem here is that the batter is grounding out, but in a weird way. 
+The default should not be that the batter gets thrown out and no batters move.
+
+Lead off runner getting put out, or another runner getting put out, but others advancing should be more common.

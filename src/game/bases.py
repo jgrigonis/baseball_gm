@@ -19,27 +19,32 @@ class Bases:
         self._bases = [0, 0, 0]
 
     def __str__(self):
-        """Output as a string."""
+        """Output as a string with runner names."""
         if self._bases == [0, 0, 0]:
             return "Bases empty."
         if self.men_on() == 1:
             if self._bases[0] != 0:
-                base = "first"
+                runner = self._bases[0]
+                return f"{runner.name} on first."
             elif self._bases[1] != 0:
-                base = "second"
+                runner = self._bases[1]
+                return f"{runner.name} on second."
             elif self._bases[2] != 0:
-                base = "third"
+                runner = self._bases[2]
+                return f"{runner.name} on third."
             else:
                 return ""
-            return "Runner on %s." % base
         elif self.men_on() == 2:
-            if self._bases[0] == 0:
-                return "Runners on second and third."
-            if self._bases[1] == 0:
-                return "Runners at first and third."
-            return "Runners at first and second."
+            runners = []
+            if self._bases[0] != 0:
+                runners.append(f"{self._bases[0].name} on first")
+            if self._bases[1] != 0:
+                runners.append(f"{self._bases[1].name} on second")
+            if self._bases[2] != 0:
+                runners.append(f"{self._bases[2].name} on third")
+            return ", ".join(runners) + "."
         elif self.men_on() == 3:
-            return "Bases loaded."
+            return f"Bases loaded: {self._bases[0].name} on first, {self._bases[1].name} on second, {self._bases[2].name} on third."
 
     # ---------- Internal helpers ----------
 

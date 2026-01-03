@@ -78,11 +78,23 @@ class Game(object):
         self.logger.info(self.inning)
         self._sync_players()
 
+    def _format_outs(self):
+        """Format the number of outs as a string."""
+        outs = self.inning.outs
+        if outs == 0:
+            return "No outs."
+        elif outs == 1:
+            return "One out."
+        else:
+            return "Two outs."
+
     def _sync_players(self):
         self.current_batter = self.bat_team.current_batter()
         self.current_pitcher = self.pitch_team.current_pitcher()
         if not self.game_over:
             self.logger.info("Next Up: " + self.current_batter.horizontal())
+            self.logger.info(f"Bases: {self.bases} {self._format_outs()}")
+            self.logger.info(f"Pitching: {self.current_pitcher.name}")
 
     def get_defender(self, position):
         """
@@ -236,12 +248,16 @@ class Game(object):
                 self._score_run(self.bases[2])
                 runner.stats.batting.steal()
                 self.bases.clear(2)
-                self.logger.info("{} stole home".format(runner))
+                self.logger.info("{} stole home".format(runner.name))
                 return
         # If a steal is possible
         if self.bases[b_num - 1] != 0 and self.bases[b_num] == 0:
             runner.stats.batting.steal()
             self.bases.advance(b_num - 1)
+            # Log the steal with runner name
+            base_names = {1: "second", 2: "third"}
+            base_name = base_names.get(b_num, "base")
+            self.logger.info("{} stole {}".format(runner.name, base_name))
             return
         raise game_exceptions.InvalidSteal()
 
@@ -340,11 +356,16 @@ class Game(object):
                 # Successful fielding - record assist and putout
                 defender.stats.fielding.assist()
                 defender.stats.fielding.putout()
+                # Log the successful play
+                self.logger.info(f"Ground out to {defender.name} at {position.upper()}")
+        else:
+            # No defender found at position - still log the out
+            self.logger.info(f"Ground out to {position.upper()}")
         
         # Normal ground out - counts as at-bat
         batter.stats.batting.at_bat()
-        self._next_batter()
         self._put_out()
+        self._next_batter()
 
     def fly_out(self, position=None):
         """
@@ -383,11 +404,16 @@ class Game(object):
             elif success:
                 # Successful catch - record putout
                 defender.stats.fielding.putout()
+                # Log the successful play
+                self.logger.info(f"Fly out to {defender.name} in {position.upper()}")
+        else:
+            # No defender found at position - still log the out
+            self.logger.info(f"Fly out to {position.upper()}")
         
         # Normal fly out - counts as at-bat
         batter.stats.batting.at_bat()
-        self._next_batter()
         self._put_out()
+        self._next_batter()
 
     def balk(self):
         """
@@ -592,11 +618,11 @@ class Game(object):
         batter.stats.batting.at_bat()
         if gdp:
             batter.stats.batting.ground_double_play()
-        self._next_batter()
         self.bases[b1] = 0
         self._put_out()
         self.bases[b2] = 0
         self._put_out()
+        self._next_batter()
 
     def triple_play(self, gtp=True):
         """
@@ -748,8 +774,8 @@ class Game(object):
         batter.stats.batting.strike_out()
         pitcher.stats.pitching.strike_out()
 
-        self._next_batter()
         self._put_out()
+        self._next_batter()
 
     def _walk(self, hbp=False):
         """
@@ -800,14 +826,19 @@ class Game(object):
         self.count.reset_count()
         if not self.game_over:
             self.logger.info("Next Up: " + self.current_batter.horizontal())
+            self.logger.info(f"Bases: {self.bases} {self._format_outs()}")
+            self.logger.debug(f"Pitching: {self.current_pitcher.name}")
 
     def _put_out(self):
         """Runner or batter is put out."""
         self.current_pitcher.stats.pitching.out()
-        if self.inning.outs == 2:
+        was_two_outs = self.inning.outs == 2
+        
+        if was_two_outs:
+            # This was the third out - side is retired
             self._side_retired()
         else:
-            self.inning.out()
+            self.inning.out()  # Increment the outs
 
     def _side_retired(self):
         """Three outs, time to switch sides, or end the game."""
