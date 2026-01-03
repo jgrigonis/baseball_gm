@@ -18,7 +18,7 @@ def setup_logger(
     name: str,
     log_dir: str = "logs",
     level=logging.INFO,
-    console_level=logging.ERROR,
+    console_level=logging.TRACE,
 ):
     os.makedirs(log_dir, exist_ok=True)
 

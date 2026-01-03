@@ -45,7 +45,7 @@ class Game(object):
     The number of outs. The inning.
     """
 
-    def __init__(self, home, away, debug=False, pauses=False, innings_per_game=9):
+    def __init__(self, home, away, debug=False, pauses=False, innings_per_game=9, rng=None):
         """Set up a new game.
 
         innings_per_game defaults to the number of innings in a
@@ -63,6 +63,7 @@ class Game(object):
             levl = logging.INFO
         levl = logging.TRACE  # uncomment this to see all the trace messages
         self.pauses = pauses
+        self.rng = rng or random.Random()
         self.count = count.Count()
         self.bases = bases.Bases()
         self.score = score.Score()
@@ -110,6 +111,7 @@ class Game(object):
 
     def check_defensive_play(self, defender, play_type="fielding", position=None):
         """
+        TODO AI Slop here, fix it.
         Check if a defender successfully makes a defensive play.
 
         :param defender: The Player object making the play
@@ -154,7 +156,8 @@ class Game(object):
         base_error_rate = max(0.005, 0.15 - (defensive_skill / 100.0) * 0.145)
 
         # Add some randomness
-        error_roll = random.random()
+        error_roll = self.rng.random()
+        self.logger.debug(error_roll)
 
         if play_type in ["fielding", "both"]:
             if error_roll < base_error_rate:
@@ -167,7 +170,7 @@ class Game(object):
             speed = defender.skills.get("speed", 50)
             # Speed 100 = ~1% too slow, Speed 50 = ~5% too slow, Speed 0 = ~15% too slow
             slow_rate = max(0.01, 0.15 - (speed / 100.0) * 0.14)
-            slow_roll = random.random()
+            slow_roll = self.rng.random()
 
             if slow_roll < slow_rate:
                 return (False, "slow")
@@ -320,6 +323,7 @@ class Game(object):
 
     def ground_out(self, position=None):
         """
+        TODO this needs some updating.
         Batter grounds out.
 
         :param position: Optional position where the ball is hit ('ss', '2b', '3b', '1b', etc.)
@@ -341,12 +345,35 @@ class Game(object):
             success, error_type = self.check_defensive_play(
                 defender, play_type="fielding", position=position
             )
-
-            if not success and error_type == "error":
-                # Error on ground ball - batter safe, no at-bat
-                self.logger.info(f"Error by {defender.name} at {position.upper()}")
+            if success:
+                # Successful fielding - record assist and putout
+                defender.stats.fielding.assist()
+                defender.stats.fielding.putout()
+                # Log the successful play
+                self.logger.info(f"Ground out to {defender.name} at {position.upper()}")
+            elif error_type == "error":
                 # Batter reaches on error
                 if self.bases.empty_base(0):
+                    # Error on ground ball - batter safe, no at-bat
+                    self.logger.info(f"Error by {defender.name} at {position.upper()}")
+                    self.bases[0] = batter
+                    self._next_batter(
+                        put_out=False,
+                        log="Ground out converted to error, batter reaches on error",
+                    )
+                else:
+                    # TODO First base occupied - could advance runners or just record error
+                    # For simplicity, just record error and batter is out
+                    self._put_out(
+                        next=True,
+                        log="Ground out converted to error, but batter is out",
+                    )
+                return
+            elif error_type == "slow":
+                 # Batter reaches on error
+                if self.bases.empty_base(0):
+                    # Error on ground ball - batter safe, no at-bat
+                    self.logger.info(f"Error by {defender.name} at {position.upper()}, he was too slow")
                     self.bases[0] = batter
                     self._next_batter(
                         put_out=False,
@@ -360,12 +387,7 @@ class Game(object):
                         log="Ground out converted to error, but batter is out",
                     )
                 return
-            elif success:
-                # Successful fielding - record assist and putout
-                defender.stats.fielding.assist()
-                defender.stats.fielding.putout()
-                # Log the successful play
-                self.logger.info(f"Ground out to {defender.name} at {position.upper()}")
+                
         else:
             # No defender found at position - still log the out
             self.logger.info(f"Ground out to {position.upper()}")

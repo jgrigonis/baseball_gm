@@ -4,6 +4,7 @@ import unittest
 
 from src.game.bases import Bases
 import src.game.game_exceptions as game_exceptions
+from src.player.player import Player
 
 
 # pylint: disable=R0904
@@ -107,9 +108,9 @@ class TestScoring(unittest.TestCase):
         """Test several scores."""
         scored = self.my_bases.advance(2)
         self.assertEqual("carl", scored)
-        print(self.my_bases)
+        #print(self.my_bases)
         scored = self.my_bases.advance(2)
-        print(self.my_bases)
+        #print(self.my_bases)
         # scored = self.my_bases.advance(1)
         # self.assertEqual("bob", scored)
         # scored = self.my_bases.advance(2)
@@ -136,6 +137,9 @@ class TestStrings(unittest.TestCase):
     def setUp(self):
         """Simple setup."""
         self.my_bases = Bases()
+        self.player1 = Player("Willie", "Mays")
+        self.player2 = Player("Billie", "Hays")
+        self.player3 = Player("Sillie", "Ways")
 
     def test_bases_empty(self):
         """Test that it says bases empty."""
@@ -143,26 +147,26 @@ class TestStrings(unittest.TestCase):
 
     def test_one_on(self):
         """Test that there is one runner on."""
-        self.my_bases._bases = [7, 0, 0]
-        self.assertEqual(str(self.my_bases), "Runner on first.")
+        self.my_bases._bases = [self.player1, 0, 0]
+        self.assertEqual(str(self.my_bases), "Willie Mays on first.")
         self.my_bases.advance_all()
-        self.assertEqual(str(self.my_bases), "Runner on second.")
+        self.assertEqual(str(self.my_bases), "Willie Mays on second.")
         self.my_bases.advance_many([(1, 2)])
-        self.assertEqual(str(self.my_bases), "Runner on third.")
+        self.assertEqual(str(self.my_bases), "Willie Mays on third.")
 
     def test_two_on(self):
         """Test that there are two runners on."""
-        self.my_bases._bases = [3, 5, 0]
-        self.assertEqual(str(self.my_bases), "Runners at first and second.")
+        self.my_bases._bases = [self.player1, self.player2, 0]
+        self.assertEqual(str(self.my_bases), "Willie Mays on first, Billie Hays on second.")
         self.my_bases.advance_many([(1, 2)])
-        self.assertEqual(str(self.my_bases), "Runners at first and third.")
+        self.assertEqual(str(self.my_bases), "Willie Mays on first, Billie Hays on third.")
         self.my_bases.advance_many([(0, 1)])
-        self.assertEqual(str(self.my_bases), "Runners on second and third.")
+        self.assertEqual(str(self.my_bases), "Willie Mays on second, Billie Hays on third.")
 
     def test_bases_loaded(self):
         """Test bases loaded."""
-        self.my_bases._bases = [3, 5, 6]
-        self.assertEqual(str(self.my_bases), "Bases loaded.")
+        self.my_bases._bases = [self.player1, self.player2, self.player3]
+        self.assertIn("Bases loaded", str(self.my_bases))
 
 
 class TestIteration(unittest.TestCase):

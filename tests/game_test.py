@@ -30,6 +30,58 @@ class GameTestBase(unittest.TestCase):
         self.my_game = Game(home, away)
 
 
+class FakeRNG:
+    def __init__(self, values):
+        self.values = iter(values)
+
+    def random(self):
+        return next(self.values)
+    
+class TestDefense(GameTestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.simple_player = Player("Willie", "Mays")
+
+
+    def test_defensive_play_success(self):
+        self.my_game.rng = FakeRNG([0.99])  # no error
+
+        success, error = self.my_game.check_defensive_play(
+            defender=self.simple_player,
+            play_type="fielding",
+            position="ss",
+        )
+
+        assert success is True
+        assert error is None
+    
+    def test_defensive_play_error(self):
+        self.my_game.rng = FakeRNG([0.001])  # guaranteed error
+
+        success, error = self.my_game.check_defensive_play(
+            defender=self.simple_player,
+            play_type="fielding",
+            position="ss",
+        )
+
+        assert success is False
+        assert error == "error"
+        assert self.simple_player.stats.fielding.errors == 1
+
+    def test_defensive_play_too_slow(self):
+        self.my_game.rng = FakeRNG([0.99, 0.001])  # no error, but slow
+
+        success, error = self.my_game.check_defensive_play(
+            defender=self.simple_player,
+            play_type="both",
+            position="ss",
+        )
+
+        assert success is False
+        assert error == "slow"
+
+
 class TestInitAnd26Balls(GameTestBase):
     """Fairly boring, just testing the init."""
 
@@ -162,7 +214,8 @@ class TestSingleDoublePlayHitByPitch(GameTestBase):
 
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
-        super().setUp()
+        super().setUp()        
+        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
         self.my_game.hit(1)
         self.my_game.double_play("second", "first")
         self.my_game.hit_by_pitch()
@@ -227,6 +280,7 @@ class TestAway3Up3DownHomeHomerStrikeOutGroundOut(GameTestBase):
     def setUp(self):
         """Setup the described scenario."""
         super().setUp()
+        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no error
         self.my_game.strike()
         self.my_game.strike()
         self.my_game.strike()
@@ -362,9 +416,9 @@ class TestLeadOffHomerHomeTeam(GameTestBase):
         """Setup Game with leadoff homer with the count of 1-1."""
         super().setUp()
         # Away Team 3 up 3 down
-        self.my_game.fly_out()
-        self.my_game.fly_out()
-        self.my_game.fly_out()
+        self.my_game._put_out(next=True)
+        self.my_game._put_out(next=True)
+        self.my_game._put_out(next=True)
         # get the count to 1-1
         self.my_game.strike()
         self.my_game.ball()
@@ -648,6 +702,7 @@ class TestDoublePlayToEndInning(GameTestBase):
     def setUp(self):
         """Runner hits for single, next batter strikes out, then DP."""
         super().setUp()
+        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
         self.my_game.hit(1)
         self.my_game.strike()
         self.my_game.strike()
@@ -711,6 +766,7 @@ class TestAwayTeamWins(GameTestBase):
     def setUp(self):
         """Away team wins with grand slam home run in second inning."""
         super().setUp()
+        self.my_game.rng = FakeRNG([0.99] * 50)  # no errors
         # top of first
         self.my_game.strike()
         self.my_game.strike()
@@ -926,6 +982,7 @@ class TestLotsOfScoring(GameTestBase):
     def setUp(self):
         """Setup lots of scoring."""
         super().setUp()
+        self.my_game.rng = FakeRNG([0.99] * 50)  # no errors
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
@@ -1657,6 +1714,7 @@ class TestDoublePlays(GameTestBase):
     def setUp(self):
         """Simple setup."""
         super().setUp()
+        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
 
     def test_643(self):
         """Test common double play."""
