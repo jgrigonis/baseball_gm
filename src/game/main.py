@@ -735,6 +735,7 @@ class Game(object):
 
         """
         batter = self.current_batter
+        pitcher = self.current_pitcher
         if self.bases.men_on() == 0:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
@@ -755,8 +756,9 @@ class Game(object):
                 batter.stats.batting.hit_rbi()
                 self._score_run(scorer)
         batter.stats.batting.sac_fly()
-        self.inning.out()
+        pitcher.stats.pitching.out()
         self._next_batter(put_out=True, log="Sac fly, batter is put out")
+        self.inning.out()
 
     def sac_bunt(self, advances=None):
         """
@@ -765,6 +767,7 @@ class Game(object):
         make sense to have a sac_bunt and have no one advance.
         """
         batter = self.current_batter
+        pitcher = self.current_pitcher
         if self.bases.men_on() == 0:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
@@ -785,8 +788,9 @@ class Game(object):
                 batter.stats.batting.hit_rbi()
                 self._score_run(scorer)
         batter.stats.batting.sac_bunt()
-        self.inning.out()
+        pitcher.stats.pitching.out()
         self._next_batter(put_out=True, log="Sac bunt, batter is put out")
+        self.inning.out()
 
     def _strike_out(self):
         """Batter strikes out."""
