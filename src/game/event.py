@@ -88,9 +88,10 @@ class Event(object):
         invoked at the wrong time.
 
         """
+        batter = self.game.current_batter
         if self.event == "ball":
             if self.game.count.balls == 3:
-                self.display_text("Walk")
+                self.display_text(f"Walk - {batter.name}")
             else:
                 self.display_text("  Ball {0}".format(self.game.count.balls + 1))
             self.game.ball()
@@ -129,7 +130,7 @@ class Event(object):
             # Logging is handled in game.ground_out() method with defender info
             self.game.ground_out()
         elif self.event == "hit_by_pitch":
-            self.display_text("Hit by pitch")
+            self.display_text("Hit by pitch - {batter.name}")
             self.game.hit_by_pitch()
         elif self.event == "foul_ball":
             if self.game.count.strikes == 2:

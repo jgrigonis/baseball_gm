@@ -10,8 +10,7 @@ from src.player.player import Player
 from src.util.logger import setup_logger
 
 __author__ = "josh"
-# TODO implement defensive stats
-# TODO changes to event probs based on defensive stats
+# TODO verify defensive stats and event probs
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
 # TODO track pitch counts
@@ -789,6 +788,7 @@ class Game(object):
         pitcher = self.current_pitcher
         if not hbp:
             batter.stats.batting.walk()
+            pitcher.stats.pitching.walk()
         if self.bases[0] != 0:
             if self.bases[1] != 0:
                 if self.bases[2] != 0:

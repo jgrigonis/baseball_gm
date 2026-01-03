@@ -180,6 +180,7 @@ class Player(object):
     def horizontal_pitching_stat_header(team_name="Name"):
         """Return the pitching stat header as a single line."""
         output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
+        # Original stats (width 4)
         for item in [
             "   IP",
             "  H",
@@ -195,6 +196,14 @@ class Player(object):
             " WP",
         ]:
             output += "{:>{}}".format(item, 4)
+        # Derived stats (width 5 for decimals)
+        for item in [
+            " ERA",
+            " WHIP",
+            " K/9",
+            "BB/9",
+        ]:
+            output += "{:>{}}".format(item, 5)
         output += "  "
         return output
 
@@ -252,6 +261,22 @@ class Player(object):
         output += "{:>{}}".format(stats.pitching.pickoffs, 4)
         output += "{:>{}}".format(stats.pitching.balks, 4)
         output += "{:>{}}".format(stats.pitching.wild_pitches, 4)
+        
+        # Derived stats
+        era = stats.pitching.era
+        whip = stats.pitching.whip
+        ip_float = stats.pitching.ip_float
+        
+        # K/9 (strikeouts per 9 innings)
+        k_per_9 = (stats.pitching.strike_outs / ip_float * 9) if ip_float > 0 else 0.0
+        
+        # BB/9 (walks per 9 innings)
+        bb_per_9 = (stats.pitching.walks / ip_float * 9) if ip_float > 0 else 0.0
+        
+        output += "{:>5.2f}".format(era)
+        output += "{:>5.2f}".format(whip)
+        output += "{:>5.2f}".format(k_per_9)
+        output += "{:>5.2f}".format(bb_per_9)
         return output
 
     @staticmethod
