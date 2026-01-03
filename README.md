@@ -1,7 +1,9 @@
 A Python 3 project
 
 Create a virtual environment
+Recommend .venv
 pip install -r requirements.txt
+Currently, no requirements, perhaps pytest will be useful
 pip install -e .
 
 ### Goals:
