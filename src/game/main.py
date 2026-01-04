@@ -6,6 +6,7 @@ import src.game.count as count
 import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
 import src.game.score as score
+from src.game.score_formatter import ScoreFormatter
 from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
@@ -26,7 +27,6 @@ __author__ = "josh"
 # TODO unit test for walk off home run, vs driving in multiple
 # home run should score all runs, driving in on a triple for example
 # should stop scoring once the winning run crosses the plate.
-# TODO Append to the inning scores list.  So we can track runs by inning.
 # TODO handle intentional walk as a play and a stat
 # TODO add a stat for catcher picking off runners.
 # TODO add a stat for catcher having a passed ball.
@@ -34,6 +34,7 @@ __author__ = "josh"
 # Need to be line out double plays
 # TODO the range of abilities is probably too low.
 # TODO more accurately match stats from MLB teams
+# TODO follow extra innings rules with runner on second.
 
 
 class Game(object):
@@ -43,8 +44,6 @@ class Game(object):
     Includes methods to carry out various game
     related events.
 
-    At any given point we should know the count.
-    The number of outs. The inning.
     """
 
     def __init__(
@@ -968,6 +967,9 @@ class Game(object):
 
         """
         self.logger.debug("New inning")
+        self.logger.debug(
+            ScoreFormatter.inning_score_str(self.score, self.home, self.away)
+        )
         self.score.new_inning()
         self.inning.increment()
         self.bases.clear()
@@ -1017,6 +1019,9 @@ class Game(object):
             # self.away.ties += 1
         self.game_over = True
         self.logger.info("Game Over")
+        self.logger.debug(
+            ScoreFormatter.inning_score_str(self.score, self.home, self.away)
+        )
         self._handle_stats()
         return
 

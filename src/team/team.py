@@ -8,7 +8,7 @@ import csv
 import copy
 import logging
 
-from src.stats import stats
+# from src.stats import stats
 from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
 from src.player.skill_map import SKILL_MAP
