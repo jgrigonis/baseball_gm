@@ -323,7 +323,7 @@ class Team(object):
         if self.city or self.mascot:
             self.logger.info("{} {}".format(self.city, self.mascot))
         for slot in self.lineup:
-            self.logger.info(f"{slot.position:<2}" + "  " + slot.horizontal())
+            self.logger.info(f"{slot.position:<2}" + "  " + Player.horizontal(slot))
         self.display_pitcher()
 
     def display_pitcher(self):
@@ -335,7 +335,7 @@ class Team(object):
                     pitcher_hitting = True
             if not pitcher_hitting:
                 self.logger.info("Starting Pitcher")
-                self.logger.info(f"p   " + self.pitcher.horizontal())
+                self.logger.info(f"p   " + Player.horizontal(self.pitcher))
 
     def set_hitters(self):
         """Set the hitters."""

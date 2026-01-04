@@ -81,7 +81,7 @@ def create_team():
     with open(args.file, "w") as csv:
         csv.writelines(Player.csv_header())
         for player in team.players:
-            csv.writelines(player.csv())
+            csv.writelines(Player.csv(player))
 
 
 def main():

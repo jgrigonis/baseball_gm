@@ -57,14 +57,15 @@ class Player(object):
         self.stats = stats.Stats()
 
     # deprecated("This function is deprecated, use PlayerTableFormatter instead.")
-    def horizontal(self):
+    @staticmethod
+    def horizontal(player):
         """Call the horizontal function in player_formatters."""
-        return PlayerTableFormatter.horizontal(self)
+        return PlayerTableFormatter.horizontal(player)
 
     @staticmethod
-    def csv(self):
+    def csv(player):
         """Call the csv function in player_formatters."""
-        return PlayerTableFormatter.csv(self)
+        return PlayerTableFormatter.csv(player)
 
     @staticmethod
     def horizontal_stat_header(team_name="Name"):

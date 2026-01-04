@@ -4,7 +4,7 @@ import random
 import uuid
 
 import src.game.game_exceptions as game_exceptions
-from src.player import positions
+from src.player.positions import positions
 from src.player.player import Player
 from src.name_generator.names import NameGenerator
 

@@ -1,6 +1,11 @@
 """
 Run many games.
 
+python ./src/team/create_team.py -f Team2.csv
+python ./src/team/create_team.py -f Team4.csv
+
+To create the teams.
+
 """
 
 import argparse
