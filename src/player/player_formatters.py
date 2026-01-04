@@ -169,7 +169,7 @@ class PlayerTableFormatter:
             " PO",
             "  A",
             "  E",
-            " TC", # total chances = putouts + assists + errors
+            " TC",  # total chances = putouts + assists + errors
         ]:
             output += "{:>{}}".format(item, 4)
         # Derived stats (width 6 for decimals)
