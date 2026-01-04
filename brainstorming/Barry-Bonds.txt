@@ -1,0 +1,38 @@
+Name,                               PS,T,B,CL,SP,PO,EY,CT,BR,BU,CA,IF,OF,AR,AC,ST,RE,GB,KK
+cf  Barry Bonds                     cf l l 87 82 97 91 88 88 78 16 39 82 64 10  6  4 12  5   21 33 47 52 49 54 80 79 79   88 89 93
+
+INSANO PERFECTO,                    lf,r,r,100,100,100,100,100,100,100,35,18,100,100,6,6,10,5,10
+
+San Francisco Giants              G  AB   R   H  2B  3B  HR RBI  SB  CS  BB  SO GDP HBP SAC   AVG   OBP   SLG   OPS
+Barry Bonds                     162 613  75 186  32   4  26  81  26   1  51 112   8   4   3  .303  .359  .496  .855
+Barry Bonds                     162 634  73 187  37   4  25  80  28   1  41 108   3   2   1  .295  .339  .484  .823
+Barry Bonds                     162 630  58 190  40   4  24  77  17   2  48  91   6   3   7  .302  .350  .492  .842
+Barry Bonds                     162 640  62 182  38   3  22  79  17   0  41 120   8   0   1  .284  .327  .456  .783
+Barry Bonds                     162 619  64 204  41   4  19  71  24   4  41 107   7   0   1  .330  .371  .501  .871
+Barry Bonds                     162 630  73 187  35   9  21  81  23   1  46 123   6   2   2  .297  .346  .481  .827
+Barry Bonds                     163 619  81 168  33   6  26  73  24   2  46 113   6   2   2  .271  .323  .470  .793
+
+Now add a 100 guy
+San Francisco Giants              G  AB   R   H  2B  3B  HR RBI  SB  CS  BB  SO GDP HBP SAC   AVG   OBP   SLG   OPS
+Insano Perfecto                 162 632  75 207  46   3  24  74  40   2  51  96   6   1   3  .328  .377  .524  .901
+Barry Bonds                     162 648  70 192  38   5  25  86  24   3  36 103   3   2   1  .296  .335  .486  .821
+Insano Perfecto                 162 628  73 186  43   0  19  66  31   0  48 103   3   1   4  .296  .345  .455  .800
+Barry Bonds                     162 624  78 193  46   3  24  78  23   2  61 102   6   5   3  .309  .374  .508  .882
+Insano Perfecto                 162 607  67 179  33   8  16  52  29   1  47 100   4   5   3  .295  .349  .455  .804
+Barry Bonds                     162 615  65 177  35   4  17  63  23   1  41 100   6   3   3  .288  .334  .441  .774
+
+
+This is the pitcher:
+
+Name,         PS,T,B,CL,SP,PO,EY,CT,BR,BU,CA,IF,OF,AR,AC,ST,RE,GB,KK
+JEREMY WINGER,sp,l,l,57,76,18,33,40,41,39, 9,67,31,78,86,86,60,70,60,ec3e1d88081b45c49ced748c124d87ba
+
+Now with new pitcher:
+Name,           PS,T,B,CL,SP,PO,EY,CT,BR,BU,CA,IF,OF,AR,AC,ST,RE,GB,KK
+BRANDON BRISENO,sp,r,r,65,51,21,24,23,14,54,21,24,10,62,47,62,55,55,78,aeb752f353aa49858c7a56bc91716f54
+
+San Francisco Giants              G  AB   R   H  2B  3B  HR RBI  SB  CS  BB  SO GDP HBP SAC   AVG   OBP   SLG   OPS
+Insano Perfecto                 162 616  70 171  30   3  19  63  24   0  50 104   6   2   5  .278  .331  .429  .760
+Barry Bonds                     162 609  75 188  34   3  18  68  22   0  62 122   7   4   4  .309  .374  .463  .837
+Insano Perfecto                 162 610  87 200  33   4  24  79  29   1  48  94   3   4   6  .328  .377  .513  .890
+Barry Bonds                     162 630  84 183  39   5  24  89  21   0  53 101   3   4   2  .290  .348  .483  .831

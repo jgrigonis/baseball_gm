@@ -37,6 +37,7 @@ import argparse
 
 from src.player.create import create_players
 from src.player.player import Player
+from src.player.player_formatters import PlayerTableFormatter
 from src.team.team import Team
 
 __author__ = "josh"
@@ -79,9 +80,9 @@ def create_team():
             print(player.horizontal())
 
     with open(args.file, "w") as csv:
-        csv.writelines(Player.csv_header())
+        csv.writelines(PlayerTableFormatter.csv_header())
         for player in team.players:
-            csv.writelines(Player.csv(player))
+            csv.writelines(PlayerTableFormatter.csv(player))
 
 
 def main():

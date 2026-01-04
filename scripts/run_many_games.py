@@ -57,8 +57,8 @@ def main():
     home_wins = 0
     away_wins = 0
 
-    home_team = Team("Team", "2")
-    home_team.load_team(path="Team2.csv")
+    home_team = Team("San Francisco", "Giants")
+    home_team.load_team(path="Giants.csv")
 
     # print("Home Team auto no dh")
     # home_team.set_lineup("auto", False)
@@ -92,8 +92,8 @@ def main():
     # home_team.set_lineup("offensive", True)
     # home_team.display_lineup()
 
-    away_team = Team("Team", "4")
-    away_team.load_team(path="Team4.csv")
+    away_team = Team("Team", "1")
+    away_team.load_team(path="Team1.csv")
     # print("Away Team auto, no dh")
     # away_team.set_lineup(style="auto")
     # away_team.display_lineup()
