@@ -36,13 +36,13 @@ class FakeRNG:
 
     def random(self):
         return next(self.values)
-    
+
+
 class TestDefense(GameTestBase):
 
     def setUp(self):
         super().setUp()
         self.simple_player = Player("Willie", "Mays")
-
 
     def test_defensive_play_success(self):
         self.my_game.rng = FakeRNG([0.99])  # no error
@@ -55,7 +55,7 @@ class TestDefense(GameTestBase):
 
         assert success is True
         assert error is None
-    
+
     def test_defensive_play_error(self):
         self.my_game.rng = FakeRNG([0.001])  # guaranteed error
 
@@ -214,7 +214,7 @@ class TestSingleDoublePlayHitByPitch(GameTestBase):
 
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
-        super().setUp()        
+        super().setUp()
         self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
         self.my_game.hit(1)
         self.my_game.double_play("second", "first")

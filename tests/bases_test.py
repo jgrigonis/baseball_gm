@@ -108,9 +108,9 @@ class TestScoring(unittest.TestCase):
         """Test several scores."""
         scored = self.my_bases.advance(2)
         self.assertEqual("carl", scored)
-        #print(self.my_bases)
+        # print(self.my_bases)
         scored = self.my_bases.advance(2)
-        #print(self.my_bases)
+        # print(self.my_bases)
         # scored = self.my_bases.advance(1)
         # self.assertEqual("bob", scored)
         # scored = self.my_bases.advance(2)
@@ -157,11 +157,17 @@ class TestStrings(unittest.TestCase):
     def test_two_on(self):
         """Test that there are two runners on."""
         self.my_bases._bases = [self.player1, self.player2, 0]
-        self.assertEqual(str(self.my_bases), "Willie Mays on first, Billie Hays on second.")
+        self.assertEqual(
+            str(self.my_bases), "Willie Mays on first, Billie Hays on second."
+        )
         self.my_bases.advance_many([(1, 2)])
-        self.assertEqual(str(self.my_bases), "Willie Mays on first, Billie Hays on third.")
+        self.assertEqual(
+            str(self.my_bases), "Willie Mays on first, Billie Hays on third."
+        )
         self.my_bases.advance_many([(0, 1)])
-        self.assertEqual(str(self.my_bases), "Willie Mays on second, Billie Hays on third.")
+        self.assertEqual(
+            str(self.my_bases), "Willie Mays on second, Billie Hays on third."
+        )
 
     def test_bases_loaded(self):
         """Test bases loaded."""

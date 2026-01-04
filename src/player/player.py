@@ -46,11 +46,11 @@ class Player(object):
 
     def __str__(self):
         return f"<Player {self.name}>"
-    
+
     @property
     def name(player):
         return f"{player.first_name} {player.last_name}"
-    
+
     def aggregate_game(self):
         """Aggregate the game stats."""
         self.season_stats.add_game(self.stats)
@@ -71,7 +71,7 @@ class Player(object):
     def horizontal_stat_header(team_name="Name"):
         """Call the horizontal_stat_header function in player_formatters."""
         return PlayerTableFormatter.horizontal_stat_header(team_name)
-    
+
     @staticmethod
     def horizontal_pitching_stat_header(team_name="Name"):
         """Call the horizontal_pitching_stat_header function in player_formatters."""

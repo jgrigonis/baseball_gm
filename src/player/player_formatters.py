@@ -1,5 +1,6 @@
 # src/player/player_formatters.py
 
+
 class PlayerFormatter(object):
     @staticmethod
     def abbreviate(value):
@@ -10,6 +11,7 @@ class PlayerFormatter(object):
         if value == "switch":
             return "s"
         return value
+
 
 class PlayerTableFormatter:
     @staticmethod
@@ -62,7 +64,7 @@ class PlayerTableFormatter:
         ]:
             output += "{:>{}}".format(item, 3)
         return output
-    
+
     @staticmethod
     def csv(player):
         """Output the player and skills/ratings as a single csv line."""
@@ -216,7 +218,7 @@ class PlayerTableFormatter:
         output += " {}".format(formatted_ops)
 
         return output
-    
+
     @staticmethod
     def short_batting_stats(player):
         """Output the player stats on a single line."""
@@ -231,7 +233,7 @@ class PlayerTableFormatter:
         output += "HBP: {} ".format(stats.batting.hbp)
         output += "SAC: {} ".format(stats.batting.sac_flys)
         return output
-    
+
     @staticmethod
     def horizontal_pitching_stats(player, stat_type="game"):
         """Output the player stats on a single line."""

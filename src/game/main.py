@@ -45,7 +45,9 @@ class Game(object):
     The number of outs. The inning.
     """
 
-    def __init__(self, home, away, debug=False, pauses=False, innings_per_game=9, rng=None):
+    def __init__(
+        self, home, away, debug=False, pauses=False, innings_per_game=9, rng=None
+    ):
         """Set up a new game.
 
         innings_per_game defaults to the number of innings in a
@@ -370,10 +372,12 @@ class Game(object):
                     )
                 return
             elif error_type == "slow":
-                 # Batter reaches on error
+                # Batter reaches on error
                 if self.bases.empty_base(0):
                     # Error on ground ball - batter safe, no at-bat
-                    self.logger.info(f"Error by {defender.name} at {position.upper()}, he was too slow")
+                    self.logger.info(
+                        f"Error by {defender.name} at {position.upper()}, he was too slow"
+                    )
                     self.bases[0] = batter
                     self._next_batter(
                         put_out=False,
@@ -387,7 +391,7 @@ class Game(object):
                         log="Ground out converted to error, but batter is out",
                     )
                 return
-                
+
         else:
             # No defender found at position - still log the out
             self.logger.info(f"Ground out to {position.upper()}")
