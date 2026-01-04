@@ -939,6 +939,7 @@ class TestTriplePlay(GameTestBase):
 
     def test_too_many_outs(self):
         """Test triple play called with too many outs."""
+        self.my_game.rng = FakeRNG([0.99])  # no error
         self.my_game.ground_out()
         self.my_game.ball()
         self.my_game.ball()

@@ -45,6 +45,11 @@ class Event(object):
         self.set_probs()
         self.event = self.random_event()
         self.handle_event()
+        self.logger.debug(
+            "Pitch count = {}".format(
+                self.game.current_pitcher.stats.pitching.pitch_count
+            )
+        )
 
     def random_event(self):
         """
@@ -72,6 +77,8 @@ class Event(object):
         such as a stolen base, or caught stealing.
 
         """
+        pitcher = self.game.current_pitcher
+        pitcher.stats.pitching.pitch()
         ball = self.probs.get("ball")
         strike = self.probs.get("strike")
         rand_num = random.randint(0, ball + strike)

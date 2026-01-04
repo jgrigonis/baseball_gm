@@ -216,6 +216,7 @@ class PitchingStats(object):
         self.outs = 0
         self.balks = 0
         self.wild_pitches = 0
+        self.pitch_count = 0
 
     @property
     def ip_float(self):
@@ -318,6 +319,10 @@ class PitchingStats(object):
     def wild_pitch(self):
         """Add a wild pitch."""
         self.wild_pitches += 1
+
+    def pitch(self):
+        """Add one to pitch count."""
+        self.pitch_count += 1
 
 
 class SeasonStats(object):

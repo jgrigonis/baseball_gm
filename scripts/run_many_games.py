@@ -1,8 +1,10 @@
 """
 Run many games.
 
+python ./src/team/create_team.py -f Team1.csv
 python ./src/team/create_team.py -f Team2.csv
 python ./src/team/create_team.py -f Team4.csv
+python ./src/team/create_team.py -f Giants.csv
 
 To create the teams.
 
