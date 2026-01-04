@@ -12,6 +12,7 @@ from src.util.logger import setup_logger
 
 __author__ = "josh"
 # TODO verify defensive stats and event probs
+# TODO defensive plays are very static.
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
 # TODO track pitch counts
@@ -163,7 +164,7 @@ class Game(object):
 
         # Add some randomness
         error_roll = self.rng.random()
-        self.logger.debug(error_roll)
+        self.logger.trace(error_roll)
 
         if play_type in ["fielding", "both"]:
             if error_roll < base_error_rate:

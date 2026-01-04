@@ -158,6 +158,30 @@ def main():
                 PlayerTableFormatter.horizontal_pitching_stats(player, "season")
             )
     logger.info("-" * 120)
+    logger.info(
+        PlayerTableFormatter.horizontal_defensive_stat_header(
+            home_team.city + " " + home_team.mascot
+        )
+    )
+    # home teamdefensive stats here
+    for player in home_team.players:
+        if player.season_stats.stats.fielding.chances > 0:
+            logger.info(
+                PlayerTableFormatter.horizontal_defensive_stats(player, "season")
+            )
+    logger.info("-" * 120)
+    logger.info(
+        PlayerTableFormatter.horizontal_defensive_stat_header(
+            away_team.city + " " + away_team.mascot
+        )
+    )
+    # away team defensive stats here
+    for player in away_team.players:
+        if player.season_stats.stats.fielding.chances > 0:
+            logger.info(
+                PlayerTableFormatter.horizontal_defensive_stats(player, "season")
+            )
+    logger.info("-" * 120)
     logger.info("Home wins:" + str(home_wins))
     logger.info("Away wins:" + str(away_wins))
 
