@@ -120,27 +120,43 @@ def main():
         if my_game.winner == my_game.away:
             away_wins += 1
     logger.info("-" * 120)
-    logger.info(PlayerTableFormatter.horizontal_stat_header(home_team.city + " " + home_team.mascot))
+    logger.info(
+        PlayerTableFormatter.horizontal_stat_header(
+            home_team.city + " " + home_team.mascot
+        )
+    )
     for player in home_team.lineup:
         logger.info(PlayerTableFormatter.horizontal_stats(player, "season"))
     logger.info("-" * 120)
-    logger.info(PlayerTableFormatter.horizontal_stat_header(away_team.city + " " + away_team.mascot))
+    logger.info(
+        PlayerTableFormatter.horizontal_stat_header(
+            away_team.city + " " + away_team.mascot
+        )
+    )
     for player in away_team.lineup:
         logger.info(PlayerTableFormatter.horizontal_stats(player, "season"))
     logger.info("-" * 120)
     logger.info(
-        PlayerTableFormatter.horizontal_pitching_stat_header(home_team.city + " " + home_team.mascot)
+        PlayerTableFormatter.horizontal_pitching_stat_header(
+            home_team.city + " " + home_team.mascot
+        )
     )
     for player in home_team.players:
         if player.season_stats.stats.pitching.outs > 0:
-            logger.info(PlayerTableFormatter.horizontal_pitching_stats(player, "season"))
+            logger.info(
+                PlayerTableFormatter.horizontal_pitching_stats(player, "season")
+            )
 
     logger.info(
-        PlayerTableFormatter.horizontal_pitching_stat_header(away_team.city + " " + away_team.mascot)
+        PlayerTableFormatter.horizontal_pitching_stat_header(
+            away_team.city + " " + away_team.mascot
+        )
     )
     for player in away_team.players:
         if player.season_stats.stats.pitching.outs > 0:
-            logger.info(PlayerTableFormatter.horizontal_pitching_stats(player, "season"))
+            logger.info(
+                PlayerTableFormatter.horizontal_pitching_stats(player, "season")
+            )
     logger.info("-" * 120)
     logger.info("Home wins:" + str(home_wins))
     logger.info("Away wins:" + str(away_wins))

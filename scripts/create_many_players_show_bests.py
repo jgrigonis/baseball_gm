@@ -15,7 +15,6 @@ from src.player.create import create
 from src.player.player_formatters import PlayerTableFormatter
 
 
-
 def get_args():
     """
     Get arguments from the command line.

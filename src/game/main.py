@@ -96,7 +96,10 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.current_pitcher = self.pitch_team.current_pitcher()
         if not self.game_over:
-            self.logger.info("Next Up: " + PlayerTableFormatter.short_batting_stats(self.current_batter))
+            self.logger.info(
+                "Next Up: "
+                + PlayerTableFormatter.short_batting_stats(self.current_batter)
+            )
             self.logger.info(f"Pitching: {self.current_pitcher.name}")
 
     def get_defender(self, position):
@@ -884,7 +887,10 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
         if not self.game_over and outs < 3:
-            self.logger.info("Next Up: " + PlayerTableFormatter.short_batting_stats(self.current_batter))
+            self.logger.info(
+                "Next Up: "
+                + PlayerTableFormatter.short_batting_stats(self.current_batter)
+            )
             self.logger.debug(f"Pitching: {self.current_pitcher.name}")
 
     def _put_out(self, next=False, log=""):
@@ -1016,13 +1022,17 @@ class Game(object):
     def _handle_stats(self):
         """Handle the stats for the game."""
         self.logger.info(
-            PlayerTableFormatter.horizontal_stat_header(self.home.city + " " + self.home.mascot)
+            PlayerTableFormatter.horizontal_stat_header(
+                self.home.city + " " + self.home.mascot
+            )
         )
         for player in self.home.lineup:
             self.logger.info(PlayerTableFormatter.horizontal_stats(player))
 
         self.logger.info(
-            PlayerTableFormatter.horizontal_stat_header(self.away.city + " " + self.away.mascot)
+            PlayerTableFormatter.horizontal_stat_header(
+                self.away.city + " " + self.away.mascot
+            )
         )
         for player in self.away.lineup:
             self.logger.info(PlayerTableFormatter.horizontal_stats(player))
