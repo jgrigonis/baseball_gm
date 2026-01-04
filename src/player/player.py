@@ -56,54 +56,6 @@ class Player(object):
         self.season_stats.add_game(self.stats)
         self.stats = stats.Stats()
 
-    # deprecated("This function is deprecated, use PlayerTableFormatter instead.")
-    @staticmethod
-    def horizontal(player):
-        """Call the horizontal function in player_formatters."""
-        return PlayerTableFormatter.horizontal(player)
-
-    @staticmethod
-    def csv(player):
-        """Call the csv function in player_formatters."""
-        return PlayerTableFormatter.csv(player)
-
-    @staticmethod
-    def horizontal_stat_header(team_name="Name"):
-        """Call the horizontal_stat_header function in player_formatters."""
-        return PlayerTableFormatter.horizontal_stat_header(team_name)
-
-    @staticmethod
-    def horizontal_pitching_stat_header(team_name="Name"):
-        """Call the horizontal_pitching_stat_header function in player_formatters."""
-        return PlayerTableFormatter.horizontal_pitching_stat_header(team_name)
-
-    def horizontal_stats(self, stat_type="game"):
-        """Call the horizontal_stats function in player_formatters."""
-        return PlayerTableFormatter.horizontal_stats(self, stat_type)
-
-    def short_batting_stats(self):
-        """Call the short_batting_stats function in player_formatters."""
-        return PlayerTableFormatter.short_batting_stats(self)
-
-    def horizontal_pitching_stats(self, stat_type="game"):
-        """Call the horizontal_pitching_stats function in player_formatters."""
-        return PlayerTableFormatter.horizontal_pitching_stats(self, stat_type)
-
-    @staticmethod
-    def legend():
-        """Call the legend function in player_formatters."""
-        return PlayerTableFormatter.legend()
-
-    @staticmethod
-    def csv_header():
-        """Call the csv_header function in player_formatters."""
-        return PlayerTableFormatter.csv_header()
-
-    @staticmethod
-    def header():
-        """Call the header function in player_formatters."""
-        return PlayerTableFormatter.header()
-
     @staticmethod
     def generate_stat(minimum=1, maximum=100, mean=50, sigma=None):
         """

@@ -1,6 +1,9 @@
 """
 Run one game.
 
+python ./src/team/create_team.py -f Team1.csv
+python ./src/team/create_team.py -f Team2.csv
+
 """
 
 import argparse
@@ -44,8 +47,8 @@ def main():
     logger = setup_logger(name="details", level=levl)
     logger = logging.getLogger("details")
     # Set up Home Team
-    home_team = Team("Team", "80s")
-    home_team.load_team(path="Team80s.csv")
+    home_team = Team("Team", "One")
+    home_team.load_team(path="Team1.csv")
     # print("Home Team Auto")
     # home_team.set_lineup()
     # home_team.display_lineup()
@@ -60,8 +63,8 @@ def main():
     home_team.display_lineup()
 
     # Set up Away Team
-    away_team = Team("Team", "40s")
-    away_team.load_team(path="Team40s.csv")
+    away_team = Team("Team", "Two")
+    away_team.load_team(path="Team2.csv")
     logger.debug("Away Team Auto Set")
     away_team.set_lineup()
     away_team.display_lineup()

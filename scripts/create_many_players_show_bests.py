@@ -7,11 +7,13 @@ Doesn't save the players anywhere
 """
 
 import argparse
+from copy import deepcopy
 
 from src.player.player import Player, skills
 from src.player.positions import rated_positions
 from src.player.create import create
-from copy import deepcopy
+from src.player.player_formatters import PlayerTableFormatter
+
 
 
 def get_args():
@@ -51,15 +53,15 @@ def main():
                 max_ratings[key] = player.ratings[key]
                 best_players[key] = deepcopy(player)
         if debug:
-            print(player.horizontal())
+            print(PlayerTableFormatter.horizontal(player))
 
     for key in best_players:
         if key in rated_positions:
             print(key + " (" + str(best_players[key].ratings[key]) + ")" + ": ")
-            print(best_players[key].horizontal())
+            print(PlayerTableFormatter.horizontal(best_players[key]))
         else:
             print(key + " (" + str(best_players[key].skills[key]) + ")" + ": ")
-            print(best_players[key].horizontal())
+            print(PlayerTableFormatter.horizontal(best_players[key]))
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ import argparse
 from src.player.player import Player
 from src.name_generator.names import NameGenerator
 from src.player.create import create
+from src.player.player_formatters import PlayerTableFormatter
 
 
 def get_args():
@@ -40,7 +41,7 @@ def main():
         if debug:
             print(my_player)
             print(my_player.header())
-        print(my_player.horizontal())
+        print(PlayerTableFormatter.horizontal(my_player))
 
 
 if __name__ == "__main__":

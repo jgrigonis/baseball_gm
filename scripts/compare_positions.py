@@ -13,12 +13,13 @@ the players
 
 from src.player.player import Player
 from src.player.positions import positions, position_name, skill_template
+from src.player.player_formatters import PlayerTableFormatter
 
 __author__ = "josh"
 
 
 def main():
-    print(Player.legend())
+    print(PlayerTableFormatter.legend())
     team = []
     for position, name in zip(positions, position_name):
         team.append(Player("a", name, position=position))
@@ -31,9 +32,9 @@ def main():
                 player.skills[skill] = 50
         player.rate_player()
 
-    print(Player.header())
+    print(PlayerTableFormatter.header())
     for player in team:
-        print(player.horizontal())
+        print(PlayerTableFormatter.horizontal(player))
 
 
 if __name__ == "__main__":

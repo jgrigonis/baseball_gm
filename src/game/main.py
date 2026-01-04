@@ -7,6 +7,7 @@ import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
 import src.game.score as score
 from src.player.player import Player
+from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
 
 __author__ = "josh"
@@ -95,7 +96,7 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.current_pitcher = self.pitch_team.current_pitcher()
         if not self.game_over:
-            self.logger.info("Next Up: " + self.current_batter.short_batting_stats())
+            self.logger.info("Next Up: " + PlayerTableFormatter.short_batting_stats(self.current_batter))
             self.logger.info(f"Pitching: {self.current_pitcher.name}")
 
     def get_defender(self, position):
@@ -883,7 +884,7 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
         if not self.game_over and outs < 3:
-            self.logger.info("Next Up: " + self.current_batter.short_batting_stats())
+            self.logger.info("Next Up: " + PlayerTableFormatter.short_batting_stats(self.current_batter))
             self.logger.debug(f"Pitching: {self.current_pitcher.name}")
 
     def _put_out(self, next=False, log=""):
@@ -1015,33 +1016,33 @@ class Game(object):
     def _handle_stats(self):
         """Handle the stats for the game."""
         self.logger.info(
-            Player.horizontal_stat_header(self.home.city + " " + self.home.mascot)
+            PlayerTableFormatter.horizontal_stat_header(self.home.city + " " + self.home.mascot)
         )
         for player in self.home.lineup:
-            self.logger.info(player.horizontal_stats())
+            self.logger.info(PlayerTableFormatter.horizontal_stats(player))
 
         self.logger.info(
-            Player.horizontal_stat_header(self.away.city + " " + self.away.mascot)
+            PlayerTableFormatter.horizontal_stat_header(self.away.city + " " + self.away.mascot)
         )
         for player in self.away.lineup:
-            self.logger.info(player.horizontal_stats())
+            self.logger.info(PlayerTableFormatter.horizontal_stats(player))
         self.logger.info("-" * 100)
         self.logger.info(
-            Player.horizontal_pitching_stat_header(
+            PlayerTableFormatter.horizontal_pitching_stat_header(
                 self.home.city + " " + self.home.mascot
             )
         )
         for player in self.home.players:
             if player.stats.pitching.ip_float > 0:
-                self.logger.info(player.horizontal_pitching_stats())
+                self.logger.info(PlayerTableFormatter.horizontal_pitching_stats(player))
 
         self.logger.info(
-            Player.horizontal_pitching_stat_header(
+            PlayerTableFormatter.horizontal_pitching_stat_header(
                 self.away.city + " " + self.away.mascot
             )
         )
         for player in self.away.players:
             if player.stats.pitching.ip_float > 0:
-                self.logger.info(player.horizontal_pitching_stats())
+                self.logger.info(PlayerTableFormatter.horizontal_pitching_stats(player))
         self.logger.info("-" * 100)
         self._aggregate_stats()

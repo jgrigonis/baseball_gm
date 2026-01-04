@@ -36,9 +36,9 @@ def main():
     for player in team.players:
         print(PlayerTableFormatter.horizontal(player))
     with open("TeamNine.csv", "w") as csv:
-        csv.writelines(Player.csv_header())
+        csv.writelines(PlayerTableFormatter.csv_header())
         for player in team.players:
-            csv.writelines(player.csv())
+            csv.writelines(PlayerTableFormatter.csv(player))
 
 
 if __name__ == "__main__":
