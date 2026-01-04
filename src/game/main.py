@@ -13,11 +13,11 @@ from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
 
 __author__ = "josh"
+# TODO persist stats
 # TODO verify defensive stats and event probs
 # TODO defensive plays are very static.
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
-# TODO track pitch counts
 # TODO implement clutch
 # TODO Calculate W/L/S for pitchers
 # TODO Track complete games, shutouts
@@ -36,6 +36,12 @@ __author__ = "josh"
 # TODO the range of abilities is probably too low.
 # TODO more accurately match stats from MLB teams
 # TODO follow extra innings rules with runner on second.
+# STRATEGY THINGS
+# TODO Pitching changes
+# TODO Mound visits
+# TODO Pinch hitters
+# TODO Pinch runners
+# TODO Fielding Substitutions
 
 
 class Game(object):

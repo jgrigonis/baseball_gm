@@ -1,0 +1,31 @@
+We should be able to see a player's stats for:
+The current game
+The current series
+The playoffs
+The regular season
+Their whole career
+
+If we store 1 entry per game for a player, then we can get the rest by aggregating.
+
+Information that should be included in a game line for a player:
+All their pitching, batting and fielding stats
+The date of the game
+The season the game is in
+The team they played for
+The team they played against
+If it's part of a series, the name of the series:
+e.g. Season1ALCS
+
+The things we won't get with the current stats and game models are:
+
+Stats on a batter vs pitcher basis
+
+If we stored a more thorough game log for each game, we could do stuff like that.
+
+We will need sql to store the stats, game logs could go in text files though.
+
+Other information we want to store:
+
+Wins and losses by team, team stats
+
+If pitcher energy is going to drop and then recover on rest days, we need somewhere to track that, outside of the game
