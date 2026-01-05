@@ -42,10 +42,6 @@ class PlayerGameRepository:
         b = stats.batting
         p = stats.pitching
         f = stats.fielding
-        if b.at_bats:
-            print(b.at_bats)
-            print(game_id)
-            print(player_id)
         self.conn.execute(
             """
             INSERT OR REPLACE INTO player_game_stats (

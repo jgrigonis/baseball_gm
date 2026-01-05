@@ -7,6 +7,7 @@ import src.game.bases as bases
 import src.game.count as count
 import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
+from src.game.rules.common import pitch, batting_at_bat
 import src.game.score as score
 from src.game.score_formatter import ScoreFormatter
 
@@ -15,7 +16,12 @@ from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
 
 __author__ = "josh"
-# TODO Some stats not captured in db, verify all
+# TODO Remove formatting from logging events
+# instead log events and format elsewhere
+# TODO Get defensive logic out of here
+# build a new module
+# TODO Fix up base advances, so they are not so static
+# TODO no longer need to aggregate here, do it with the DB
 # TODO verify defensive stats and event probs
 # TODO defensive plays are very static.
 # TODO implement handedness p vs batter
@@ -208,7 +214,7 @@ class Game(object):
         Otherwise, just increment the strike count.
 
         """
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         if self.count.strikes == 2:
             self._strike_out()
         else:
@@ -222,7 +228,7 @@ class Game(object):
         just increment the ball count.
 
         """
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         if self.count.balls == 3:
             self._walk()
         else:
@@ -235,7 +241,7 @@ class Game(object):
         If there are less than 2 strikes, increment the strike count.
 
         """
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         if self.count.strikes != 2:
             self.count.strike()
 
@@ -252,7 +258,7 @@ class Game(object):
         """
         batter = self.current_batter
         pitcher = self.current_pitcher
-        pitcher.stats.pitching.pitch()
+        pitch(self)
         batter.stats.batting.hit_batter()
         pitcher.stats.pitching.hit_batter()
         self._walk(hbp=True)
@@ -357,7 +363,7 @@ class Game(object):
         """
         self.logger.debug("Ground out")
         batter = self.current_batter
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
 
         # Determine which defender should field the ball
         if position is None:
@@ -422,7 +428,7 @@ class Game(object):
             self.logger.info(f"Ground out to {position.upper()}")
 
         # Normal ground out - counts as at-bat
-        batter.stats.batting.at_bat()
+        batting_at_bat(batter)
         self._put_out(next=True, log="Normal ground out, batter out")
 
     def fly_out(self, position=None):
@@ -434,7 +440,7 @@ class Game(object):
         """
         self.logger.debug("Fly out")
         batter = self.current_batter
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
 
         # Determine which defender should catch the ball
         if position is None:
@@ -479,7 +485,7 @@ class Game(object):
             self.logger.info(f"Fly out to {position.upper()}")
 
         # Normal fly out - counts as at-bat
-        batter.stats.batting.at_bat()
+        batting_at_bat(batter)
         self._put_out(next=True, log="Normal fly out, batter out")
 
     def balk(self):
@@ -502,7 +508,7 @@ class Game(object):
         """
         Call a ball, and also allow the runners to advance.
         """
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         self.ball()
         if self.bases.men_on():
             self.current_pitcher.stats.pitching.wild_pitch()
@@ -514,7 +520,7 @@ class Game(object):
         """
         Call a ball, and also allow the runners to advance.
         """
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         self.ball()
         if self.bases.men_on():
             scorer = self.bases.advance_all()
@@ -553,7 +559,7 @@ class Game(object):
         to = 0
         batter = self.current_batter
         pitcher = self.current_pitcher
-        pitcher.stats.pitching.pitch()
+        pitch(self)
         if advances == "default":
             advances = []
             for abase in range(3):
@@ -586,7 +592,7 @@ class Game(object):
                 batter.stats.batting.triple()
                 pitcher.stats.pitching.triple()
             self.bases[num - 1] = batter  # put the batter on base.
-        batter.stats.batting.at_bat()
+        batting_at_bat(batter)
         batter.stats.batting.hit()
         pitcher.stats.pitching.hit()
         self._next_batter(put_out=False, log="Hit, batter reaches on hit")
@@ -603,7 +609,7 @@ class Game(object):
         b1 = self._base_number(base1)
         b2 = self._base_number(base2)
         batter = self.current_batter
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         if self.bases.men_on() == 0:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
@@ -659,7 +665,7 @@ class Game(object):
                     self.logger.info(
                         f"{first_defender.name} at {first_pos.upper()} too slow, only lead runner out"
                     )
-                    batter.stats.batting.at_bat()
+                    batting_at_bat(batter)
                     if gdp:
                         batter.stats.batting.ground_double_play()
                     self.bases[b1] = 0
@@ -692,7 +698,7 @@ class Game(object):
                 first_baseman.stats.fielding.putout()
 
         # Both plays successful - complete double play
-        batter.stats.batting.at_bat()
+        batting_at_bat(batter)
         if gdp:
             batter.stats.batting.ground_double_play()
         self.bases[b1] = 0
@@ -709,12 +715,12 @@ class Game(object):
 
         """
         batter = self.current_batter
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         if self.bases.men_on() < 2:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs != 0:
             raise game_exceptions.TooManyOuts()
-        batter.stats.batting.at_bat()
+        batting_at_bat(batter)
         if gtp:
             batter.stats.batting.ground_triple_play()
         self._put_out(next=False, log="Triple play first out")
@@ -736,8 +742,8 @@ class Game(object):
         """
         b_num = self._base_number(base)
         batter = self.current_batter
-        batter.stats.batting.at_bat()
-        self.current_pitcher.stats.pitching.pitch()
+        batting_at_bat(batter)
+        pitch(self)
         self._next_batter(
             put_out=True, log="Fielder's choice, batter reaches on fielder's choice"
         )
@@ -762,7 +768,7 @@ class Game(object):
         """
         self.logger.debug("Error")
         batter = self.current_batter
-        self.current_pitcher.stats.pitching.pitch()
+        pitch(self)
         scorers = []
         if advances:
             if self.bases.men_on():
@@ -779,7 +785,7 @@ class Game(object):
             if not self.bases.empty_base(batter_base):
                 raise game_exceptions.InvalidAdvance()
             self.bases[batter_base] = batter
-            batter.stats.batting.at_bat()
+            batting_at_bat(batter)
             self._next_batter(log="Error")
 
     def sac_fly(self, advances=None):
@@ -794,7 +800,7 @@ class Game(object):
         """
         batter = self.current_batter
         pitcher = self.current_pitcher
-        pitcher.stats.pitching.pitch()
+        pitch(self)
         if self.bases.men_on() == 0:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
@@ -827,7 +833,7 @@ class Game(object):
         """
         batter = self.current_batter
         pitcher = self.current_pitcher
-        pitcher.stats.pitching.pitch()
+        pitch(self)
         if self.bases.men_on() == 0:
             raise game_exceptions.NotEnoughRunnersOnBase()
         if self.inning.outs == 2:
@@ -857,7 +863,7 @@ class Game(object):
         batter = self.current_batter
         pitcher = self.current_pitcher
 
-        batter.stats.batting.at_bat()
+        batting_at_bat(batter)
         batter.stats.batting.strike_out()
         pitcher.stats.pitching.strike_out()
 
@@ -1018,12 +1024,12 @@ class Game(object):
             self.pitch_team = self.home
         self._sync_players()
 
-    def _aggregate_stats(self):
-        self.logger.debug("Aggregating game stats to season total.")
-        for player in self.home.players:
-            player.aggregate_game()
-        for player in self.away.players:
-            player.aggregate_game()
+    # def _aggregate_stats(self):
+    #     self.logger.debug("Aggregating game stats to season total.")
+    #     for player in self.home.players:
+    #         player.aggregate_game()
+    #     for player in self.away.players:
+    #         player.aggregate_game()
 
     def _end_game(self):
         """
@@ -1092,4 +1098,4 @@ class Game(object):
             if player.stats.pitching.ip_float > 0:
                 self.logger.info(PlayerTableFormatter.horizontal_pitching_stats(player))
         self.logger.info("-" * 100)
-        self._aggregate_stats()
+        # self._aggregate_stats()
