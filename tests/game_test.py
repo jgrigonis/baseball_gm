@@ -1,5 +1,3 @@
-# pylint: disable=C0302
-# pylint complains about the number of lines in the method.
 """Unit Tests for the Game class."""
 import unittest
 
@@ -7,13 +5,6 @@ from src.game.main import Game
 import src.game.game_exceptions as game_exceptions
 from src.player.player import Player
 from src.team.team import Team
-
-# pylint: disable=R0904
-# pylint complains about the number of public methods.
-# pylint: disable=R0902
-# pylint complains about the number of instance attributes.
-# pylint: disable=R0915
-# pylint complains about the number of statements.
 
 
 class GameTestBase(unittest.TestCase):
@@ -45,9 +36,10 @@ class TestDefense(GameTestBase):
         self.simple_player = Player("Willie", "Mays")
 
     def test_defensive_play_success(self):
-        self.my_game.rng = FakeRNG([0.99])  # no error
+        fake_rng = FakeRNG([0.99])  # no error
+        self.my_game.defense.rng = fake_rng
 
-        success, error = self.my_game.check_defensive_play(
+        success, error = self.my_game.defense.check_play(
             defender=self.simple_player,
             play_type="fielding",
             position="ss",
@@ -57,9 +49,10 @@ class TestDefense(GameTestBase):
         assert error is None
 
     def test_defensive_play_error(self):
-        self.my_game.rng = FakeRNG([0.001])  # guaranteed error
+        fake_rng = FakeRNG([0.001])  # guaranteed error
+        self.my_game.defense.rng = fake_rng
 
-        success, error = self.my_game.check_defensive_play(
+        success, error = self.my_game.defense.check_play(
             defender=self.simple_player,
             play_type="fielding",
             position="ss",
@@ -70,9 +63,10 @@ class TestDefense(GameTestBase):
         assert self.simple_player.stats.fielding.errors == 1
 
     def test_defensive_play_too_slow(self):
-        self.my_game.rng = FakeRNG([0.99, 0.001])  # no error, but slow
+        fake_rng = FakeRNG([0.99, 0.001])  # no error, but slow
+        self.my_game.defense.rng = fake_rng
 
-        success, error = self.my_game.check_defensive_play(
+        success, error = self.my_game.defense.check_play(
             defender=self.simple_player,
             play_type="both",
             position="ss",
@@ -149,8 +143,6 @@ class TestInitAnd26Balls(GameTestBase):
         bases may hold actual baserunners instead of digits.
 
         """
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for x in range(26):
             self.my_game.ball()
         self.assertNotEqual(self.my_game.bases[0], 0)
@@ -159,24 +151,18 @@ class TestInitAnd26Balls(GameTestBase):
 
     def test_score_three(self):
         """6 walks should have been issued, leading to 3 scores."""
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for _ in range(26):
             self.my_game.ball()
         self.assertEqual(self.my_game.score.away, 3)
 
     def test_count_0_2(self):
         """There were 6 walks, plus 2 more balls."""
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for x in range(26):
             self.my_game.ball()
         self.assertEqual(self.my_game.count.balls, 2)
 
     def test_outs_none(self):
         """No outs yet."""
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for x in range(26):
             self.my_game.ball()
         self.assertEqual(self.my_game.inning.outs, 0)
@@ -215,7 +201,8 @@ class TestSingleDoublePlayHitByPitch(GameTestBase):
     def setUp(self):
         """Setup instance of Game and have 4 hits in a row."""
         super().setUp()
-        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
+        fake_rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
+        self.my_game.defense.rng = fake_rng
         self.my_game.hit(1)
         self.my_game.double_play("second", "first")
         self.my_game.hit_by_pitch()
@@ -245,8 +232,6 @@ class TestMiraclePitching(GameTestBase):
     def setUp(self):
         """Setup instance of Game and have 162 strikes in a row."""
         super().setUp()
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for _ in range(162):
             self.my_game.strike()
 
@@ -280,7 +265,8 @@ class TestAway3Up3DownHomeHomerStrikeOutGroundOut(GameTestBase):
     def setUp(self):
         """Setup the described scenario."""
         super().setUp()
-        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no error
+        fake_rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
+        self.my_game.defense.rng = fake_rng
         self.my_game.strike()
         self.my_game.strike()
         self.my_game.strike()
@@ -332,15 +318,11 @@ class TestBottom9thHomeWin(GameTestBase):
         super().setUp()
 
         # 7 1/2 inning scoreless
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for _ in range(135):
             self.my_game.strike()
         # bottom 8th lead off homer
         self.my_game.hit(4)
         # remainder bottom 8th and top 9th scoreless
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for _ in range(18):
             self.my_game.strike()
 
@@ -702,7 +684,8 @@ class TestDoublePlayToEndInning(GameTestBase):
     def setUp(self):
         """Runner hits for single, next batter strikes out, then DP."""
         super().setUp()
-        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
+        fake_rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
+        self.my_game.defense.rng = fake_rng
         self.my_game.hit(1)
         self.my_game.strike()
         self.my_game.strike()
@@ -766,7 +749,8 @@ class TestAwayTeamWins(GameTestBase):
     def setUp(self):
         """Away team wins with grand slam home run in second inning."""
         super().setUp()
-        self.my_game.rng = FakeRNG([0.99] * 50)  # no errors
+        fake_rng = FakeRNG([0.99] * 50)  # no errors
+        self.my_game.defense.rng = fake_rng
         # top of first
         self.my_game.strike()
         self.my_game.strike()
@@ -939,7 +923,8 @@ class TestTriplePlay(GameTestBase):
 
     def test_too_many_outs(self):
         """Test triple play called with too many outs."""
-        self.my_game.rng = FakeRNG([0.99])  # no error
+        fake_rng = FakeRNG([0.99])  # no error
+        self.my_game.defense.rng = fake_rng
         self.my_game.ground_out()
         self.my_game.ball()
         self.my_game.ball()
@@ -983,7 +968,8 @@ class TestLotsOfScoring(GameTestBase):
     def setUp(self):
         """Setup lots of scoring."""
         super().setUp()
-        self.my_game.rng = FakeRNG([0.99] * 50)  # no errors
+        fake_rng = FakeRNG([0.99] * 50)  # no errors
+        self.my_game.defense.rng = fake_rng
         self.my_game.ball()
         self.my_game.ball()
         self.my_game.ball()
@@ -1544,8 +1530,6 @@ class TestGameEndsInTie(GameTestBase):
         """Strike out everyone."""
         super().setUp()
         # Strike out EVERYONE!
-        # pylint: disable=C0103
-        # pylint: disable=W0612
         for _ in range(162):
             self.my_game.strike()
         self.my_game._end_game()
@@ -1715,7 +1699,8 @@ class TestDoublePlays(GameTestBase):
     def setUp(self):
         """Simple setup."""
         super().setUp()
-        self.my_game.rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
+        fake_rng = FakeRNG([0.99, 0.99, 0.99])  # no errors
+        self.my_game.defense.rng = fake_rng
 
     def test_643(self):
         """Test common double play."""

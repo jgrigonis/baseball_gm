@@ -7,8 +7,6 @@ import src.game.game_exceptions as game_exceptions
 from src.player.player import Player
 
 
-# pylint: disable=R0904
-# pylint complains about too many public methods, but I don't see it.
 class TestBases(unittest.TestCase):
     """Test clearing the bases."""
 

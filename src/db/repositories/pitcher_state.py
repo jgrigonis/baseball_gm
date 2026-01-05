@@ -11,4 +11,4 @@ That’s a separate repository, even though it’s “just one table”.
 
 """
 
-pitcher_state
+# pitcher_state

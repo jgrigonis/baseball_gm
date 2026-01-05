@@ -553,11 +553,11 @@ class Event(object):
             self.probs["passed_ball"] -= 0.5 * (accuracy - 50)  # +/- 25
 
         # stamina
-        stamina = pitcher.skills["stamina"]
+        # stamina = pitcher.skills["stamina"]
         # no real effect until we have pitch counts, etc.
 
         # recovery
-        recovery = pitcher.skills["recovery"]
+        # recovery = pitcher.skills["recovery"]
         # no in game effect
 
         # ground_balls
@@ -582,7 +582,7 @@ class Event(object):
         self.probs["foul_ball"] += 2 * (strikes - 50)  # +/- 100
 
         # clutch
-        clutch = pitcher.skills["clutch"]
+        # clutch = pitcher.skills["clutch"]
         # TODO effects things based on situations
 
     def adjust_probs_runner(self):

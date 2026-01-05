@@ -5,8 +5,6 @@ import unittest
 from src.game.count import Count
 
 
-# pylint: disable=R0904
-# pylint complains about the number of public methods.
 class TestInit(unittest.TestCase):
     """Fairly boring, just testing the init."""
 

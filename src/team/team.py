@@ -343,7 +343,7 @@ class Team(object):
             if not pitcher_hitting:
                 self.logger.info("Starting Pitcher")
                 self.logger.info(
-                    f"p   " + PlayerTableFormatter.horizontal(self.pitcher)
+                    f"p   {PlayerTableFormatter.horizontal(self.pitcher)}"
                 )
 
     def set_hitters(self):
@@ -412,6 +412,6 @@ def validate_lineup_slots(lineup, pitcher, dh):
         if "p" not in used:
             raise ValueError(f"Missing lineup positions: {'p'}")
     if pitcher is None:
-        raise ValueError(f"Pitcher is not set.")
+        raise ValueError("Pitcher is not set.")
 
     return True

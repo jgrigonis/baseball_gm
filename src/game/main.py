@@ -1,10 +1,9 @@
 import logging
 import random
-import sqlite3
 
-from src.db.init import init_db
 import src.game.bases as bases
 import src.game.count as count
+from src.game.defense.resolver import DefensiveResolver
 import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
 from src.game.rules.common import pitch, batting_at_bat
@@ -93,6 +92,7 @@ class Game(object):
         self.logger.game = self
         self.logger.debug("Game initialized")
         self.logger.info(self.inning)
+        self.defense = DefensiveResolver(self.rng, self.logger)
         self._sync_players()
         self.init_stats()
 
@@ -375,7 +375,7 @@ class Game(object):
 
         # Check if defender makes an error
         if defender:
-            success, error_type = self.check_defensive_play(
+            success, error_type = self.defense.check_play(
                 defender, play_type="fielding", position=position
             )
             if success:
@@ -452,7 +452,7 @@ class Game(object):
 
         # Check if defender drops the ball (error)
         if defender:
-            success, error_type = self.check_defensive_play(
+            success, error_type = self.defense.check_play(
                 defender, play_type="fielding", position=position
             )
 
@@ -644,7 +644,7 @@ class Game(object):
 
         # Test first defender (SS or 2B) - check for error or being too slow
         if first_defender:
-            success, error_type = self.check_defensive_play(
+            success, error_type = self.defense.check_play(
                 first_defender, play_type="both", position=first_pos
             )
 
@@ -680,7 +680,7 @@ class Game(object):
 
         # Test second defender (1B) - check for error
         if first_baseman:
-            success, error_type = self.check_defensive_play(
+            success, error_type = self.defense.check_play(
                 first_baseman, play_type="fielding", position="1b"
             )
 
