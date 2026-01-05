@@ -63,6 +63,10 @@ class Team(object):
                         player.skills[skill_name] = int(value)
                     else:
                         player.skills[skill_name] = 0
+                try:
+                    player.id = row["ID"]
+                except:
+                    pass
                 players.append(player)
         self.players = players
 

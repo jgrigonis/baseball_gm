@@ -12,8 +12,8 @@ import uuid
 import src.game.game_exceptions as game_exceptions
 import src.stats.stats as stats
 
-from src.player.player_formatters import PlayerFormatter
-from src.player.player_formatters import PlayerTableFormatter
+# from src.player.player_formatters import PlayerFormatter
+# from src.player.player_formatters import PlayerTableFormatter
 from src.player.positions import positions, template, skill_template, skills
 
 
@@ -54,6 +54,8 @@ class Player(object):
     def aggregate_game(self):
         """Aggregate the game stats."""
         self.season_stats.add_game(self.stats)
+
+    def init_stats(self):
         self.stats = stats.Stats()
 
     @staticmethod

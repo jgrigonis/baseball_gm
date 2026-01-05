@@ -1,6 +1,8 @@
 import logging
 import random
+import sqlite3
 
+from src.db.init import init_db
 import src.game.bases as bases
 import src.game.count as count
 import src.game.game_exceptions as game_exceptions
@@ -13,7 +15,7 @@ from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
 
 __author__ = "josh"
-# TODO persist stats
+# TODO Some stats not captured in db, verify all
 # TODO verify defensive stats and event probs
 # TODO defensive plays are very static.
 # TODO implement handedness p vs batter
@@ -86,6 +88,13 @@ class Game(object):
         self.logger.debug("Game initialized")
         self.logger.info(self.inning)
         self._sync_players()
+        self.init_stats()
+
+    def init_stats(self):
+        for player in self.away.players:
+            player.init_stats()
+        for player in self.home.players:
+            player.init_stats()
 
     def _format_outs(self):
         """Format the number of outs as a string."""
@@ -331,8 +340,8 @@ class Game(object):
         pitcher = self.current_pitcher
         if self.bases[b_num] != 0:
             self.bases.clear([b_num])
-            runner.stats.batting.pick_off()
-            pitcher.stats.pitching.pick_off()
+            runner.stats.batting.pickoff()
+            pitcher.stats.pitching.pickoff()
 
             self._put_out(next=False, log="Runner picked off from base")
         else:

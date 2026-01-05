@@ -146,7 +146,7 @@ class BattingStats(object):
         """Add a caught stealing."""
         self.cs += 1
 
-    def pick_off(self):
+    def pickoff(self):
         """Add a pick off."""
         self.pickoffs += 1
 
@@ -244,7 +244,7 @@ class PitchingStats(object):
         """Return the string representation of the pitching statistics."""
         return (
             "Pitching Stats:\n"
-            f"  IP: {self.ip_str()}\n"
+            f"  IP: {self.ip_str}\n"
             f"  H: {self.hits}\n"
             f"  R: {self.runs}\n"
             f"  HR: {self.home_runs}\n"
@@ -304,7 +304,7 @@ class PitchingStats(object):
         """Add a run."""
         self.runs += 1
 
-    def pick_off(self):
+    def pickoff(self):
         """Add a pick off."""
         self.pickoffs += 1
 

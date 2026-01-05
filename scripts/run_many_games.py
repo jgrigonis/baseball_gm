@@ -12,7 +12,11 @@ To create the teams.
 
 import argparse
 import logging
+import sqlite3
+import uuid
 
+from src.db.init import init_db
+from src.db.repositories.player_games import PlayerGameRepository
 from src.game.event import Event
 from src.game.main import Game
 from src.team.team import Team
@@ -41,6 +45,13 @@ def get_args():
     parser.add_argument(
         "--games", "-g", type=int, default=2, help="Set the number of games to run."
     )
+    parser.add_argument(
+        "--league",
+        "-l",
+        default="league.db",
+        help="Set the league database file.",
+    )
+
     args = parser.parse_args()
     if args.pauses:
         args.debug = True
@@ -58,6 +69,12 @@ def main():
     logger = logging.getLogger("details")
     home_wins = 0
     away_wins = 0
+
+    conn = sqlite3.connect(args.league)
+    conn.row_factory = sqlite3.Row
+    init_db(conn)
+
+    player_games_repo = PlayerGameRepository(conn)
 
     home_team = Team("San Francisco", "Giants")
     home_team.load_team(path="Giants.csv")
@@ -110,6 +127,8 @@ def main():
     for _ in range(args.games):
         my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
         my_event = Event(my_game)
+        game_id = uuid.uuid4().hex
+        logger.info("Game ID = {}".format(game_id))
 
         while my_game.game_over is False:
             my_event.do_event()
@@ -121,6 +140,24 @@ def main():
             home_wins += 1
         if my_game.winner == my_game.away:
             away_wins += 1
+
+        for player in away_team.players:
+            player_games_repo.insert(
+                game_id=game_id,
+                player_id=player.id,
+                team_id=1,
+                opponent_team_id=2,
+                stats=player.stats,
+            )
+        for player in home_team.players:
+            player_games_repo.insert(
+                game_id=game_id,
+                player_id=player.id,
+                team_id=2,
+                opponent_team_id=1,
+                stats=player.stats,
+            )
+
     logger.info("-" * 120)
     logger.info(
         PlayerTableFormatter.horizontal_stat_header(
@@ -186,6 +223,21 @@ def main():
     logger.info("-" * 120)
     logger.info("Home wins:" + str(home_wins))
     logger.info("Away wins:" + str(away_wins))
+
+    # debugging
+    # s = player_games_repo.get_all_for_player(
+    #     player_id="c1b68307003f4745b18c1f562773c3ba"
+    # )
+    # for _ in s:
+    #     print(_)
+    # t = player_games_repo.get_for_game(
+    #     game_id=game_id, player_id="c1b68307003f4745b18c1f562773c3ba"
+    # )
+    # print(t)
+    # u = player_games_repo.dump_one()
+    # print(u)
+    # for player in home_team.players:
+    #     print(player.id)
 
 
 if __name__ == "__main__":
