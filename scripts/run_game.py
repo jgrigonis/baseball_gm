@@ -49,15 +49,7 @@ def main():
     # Set up Home Team
     home_team = Team("Team", "One")
     home_team.load_team(path="Team1.csv")
-    # print("Home Team Auto")
-    # home_team.set_lineup()
-    # home_team.display_lineup()
-    # print("Home Team defensive lineup")
-    # home_team.set_lineup("defensive")
-    # home_team.display_lineup()
-    # print("Home Team offensive lineup")
-    # home_team.set_lineup("offensive")
-    # home_team.display_lineup()
+
     logger.debug("Home Team prioritized positions offensive lineup")
     home_team.set_lineup("prioritized")
     home_team.display_lineup()

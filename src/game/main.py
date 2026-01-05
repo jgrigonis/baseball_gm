@@ -59,7 +59,7 @@ class Game(object):
     """
 
     def __init__(
-        self, home, away, debug=False, pauses=False, innings_per_game=9, rng=None
+        self, home, away, debug=logging.INFO, pauses=False, innings_per_game=9, rng=None
     ):
         """Set up a new game.
 
@@ -72,11 +72,6 @@ class Game(object):
         self.away = away
         self.bat_team = away  # away bats first
         self.pitch_team = home
-        if debug:
-            levl = logging.DEBUG
-        else:
-            levl = logging.INFO
-        levl = logging.TRACE  # uncomment this to see all the trace messages
         self.pauses = pauses
         self.rng = rng or random.Random()
         self.count = count.Count()
@@ -86,7 +81,7 @@ class Game(object):
         self.game_over = False
         self.inning = inning.Inning()
         self.innings_per_game = innings_per_game
-        self.logger = setup_logger(name="game", level=levl)
+        self.logger = setup_logger(name="game", level=debug, console_level=debug)
         self.logger.game = self
         self.logger.debug("Game initialized")
         self.logger.info(self.inning)

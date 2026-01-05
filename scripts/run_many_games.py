@@ -1,6 +1,7 @@
 """
 Run many games.
 
+Create Team(s) you are going to use
 python ./src/team/create_team.py -f Team1.csv
 python ./src/team/create_team.py -f Team2.csv
 python ./src/team/create_team.py -f Team4.csv
@@ -33,6 +34,9 @@ def get_args():
         "--debug", "-d", action="store_true", help="Set the debug flag."
     )
     parser.add_argument(
+        "--trace", "-t", action="store_true", help="Higher level of debugging."
+    )
+    parser.add_argument(
         "--pauses",
         "-p",
         action="store_true",
@@ -42,7 +46,7 @@ def get_args():
         "--innings", "-i", type=int, default=9, help="Set the number of innings."
     )
     parser.add_argument(
-        "--games", "-g", type=int, default=2, help="Set the number of games to run."
+        "--games", "-g", type=int, default=1, help="Set the number of games to run."
     )
     parser.add_argument(
         "--league",
@@ -59,12 +63,13 @@ def get_args():
 
 def main():
     args = get_args()
-
     if args.debug:
         levl = logging.DEBUG
+    elif args.trace:
+        levl = logging.TRACE
     else:
         levl = logging.INFO
-    logger = setup_logger(name="details", level=levl)
+    logger = setup_logger(name="details", level=levl, console_level=levl)
     logger = logging.getLogger("details")
     home_wins = 0
     away_wins = 0
@@ -77,54 +82,19 @@ def main():
 
     home_team = Team("San Francisco", "Giants")
     home_team.load_team(path="Giants.csv")
-
-    # print("Home Team auto no dh")
-    # home_team.set_lineup("auto", False)
-    # home_team.display_lineup()
-
-    # print("Home Team auto with dh")
-    # home_team.set_lineup("auto", True)
-    # home_team.display_lineup()
-
-    # print("Home Team prioritized no dh")
-    # home_team.set_lineup(style="prioritized", dh=False)
-    # home_team.display_lineup()
-
     logger.debug("Home Team prioritized with dh")
     home_team.set_lineup(style="prioritized", dh=True)
     home_team.display_lineup()
 
-    # print("Home Team defensive no dh")
-    # home_team.set_lineup("defensive", False)
-    # home_team.display_lineup()
-
-    # print("Home Team defensive with dh")
-    # home_team.set_lineup("defensive", True)
-    # home_team.display_lineup()
-
-    # print("Home Team offensive no dh")
-    # home_team.set_lineup("offensive", False)
-    # home_team.display_lineup()
-
-    # print("Home Team offensive with dh")
-    # home_team.set_lineup("offensive", True)
-    # home_team.display_lineup()
-
+    
     away_team = Team("Team", "1")
     away_team.load_team(path="Team1.csv")
-    # print("Away Team auto, no dh")
-    # away_team.set_lineup(style="auto")
-    # away_team.display_lineup()
-
-    # print("Away Team prioritized no dh")
-    # away_team.set_lineup(style="prioritized", dh=False)
-    # away_team.display_lineup()
-
-    logger.debug("Home Team prioritized with dh")
+    logger.debug("Away Team prioritized with dh")
     away_team.set_lineup(style="prioritized", dh=True)
     away_team.display_lineup()
+
     for _ in range(args.games):
-        my_game = Game(home_team, away_team, args.debug, args.pauses, args.innings)
+        my_game = Game(home_team, away_team, levl, args.pauses, args.innings)
         my_event = Event(my_game)
         game_id = uuid.uuid4().hex
         logger.info("Game ID = {}".format(game_id))
@@ -140,7 +110,7 @@ def main():
         if my_game.winner == my_game.away:
             away_wins += 1
 
-        for player in away_team.players:
+        for player in away_team.players + home_team.players:
             player_games_repo.insert(
                 game_id=game_id,
                 player_id=player.id,
@@ -148,14 +118,14 @@ def main():
                 opponent_team_id=2,
                 stats=player.stats,
             )
-        for player in home_team.players:
-            player_games_repo.insert(
-                game_id=game_id,
-                player_id=player.id,
-                team_id=2,
-                opponent_team_id=1,
-                stats=player.stats,
-            )
+        # for player in home_team.players:
+        #     player_games_repo.insert(
+        #         game_id=game_id,
+        #         player_id=player.id,
+        #         team_id=2,
+        #         opponent_team_id=1,
+        #         stats=player.stats,
+        #     )
 
     logger.info("-" * 120)
     logger.info(
@@ -222,21 +192,6 @@ def main():
     logger.info("-" * 120)
     logger.info("Home wins:" + str(home_wins))
     logger.info("Away wins:" + str(away_wins))
-
-    # debugging
-    # s = player_games_repo.get_all_for_player(
-    #     player_id="c1b68307003f4745b18c1f562773c3ba"
-    # )
-    # for _ in s:
-    #     print(_)
-    # t = player_games_repo.get_for_game(
-    #     game_id=game_id, player_id="c1b68307003f4745b18c1f562773c3ba"
-    # )
-    # print(t)
-    # u = player_games_repo.dump_one()
-    # print(u)
-    # for player in home_team.players:
-    #     print(player.id)
 
 
 if __name__ == "__main__":
