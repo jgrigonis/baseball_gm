@@ -1,3 +1,5 @@
+I created a Barry Bonds player as an experiment
+
 Name,                               PS,T,B,CL,SP,PO,EY,CT,BR,BU,CA,IF,OF,AR,AC,ST,RE,GB,KK
 cf  Barry Bonds                     cf l l 87 82 97 91 88 88 78 16 39 82 64 10  6  4 12  5   21 33 47 52 49 54 80 79 79   88 89 93
 

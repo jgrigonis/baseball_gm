@@ -2,6 +2,23 @@ https://www.espn.com/mlb/story/_/id/24365450/from-6-4-3-1-2-3-ranking-17-types-d
 
 https://grokipedia.com/page/Double_play
 
+6-4-3 (Shortstop to Second to First): This is the most common double play, typically 
+accounting for approximately 40% to 45% of all double plays turned.
+
+4-6-3 (Second to Shortstop to First): The second most frequent type, comprising 
+roughly 20% to 25% of double plays.
+
+5-4-3 (Third to Second to First): This "around the horn" play accounts for 
+about 10% to 15% of double plays.
+
+Others: The remaining 15% to 30% include a wide variety of less common sequences such as:
+3-6-3: Initiated by the first baseman.
+1-6-3: Initiated by the pitcher.
+Strikeout-Caught Stealing: A "strike-em-out, throw-em-out" double play.
+Lineouts: Where a runner is doubled off a base after a catch.
+Unassisted: Where a single fielder records both outs.
+
+
 There are 17 types of double plays.
 
 1-2-3 Pitcher, Catcher to First

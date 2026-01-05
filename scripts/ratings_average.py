@@ -16,10 +16,8 @@ the default is 100.
 
 import argparse
 
-from src.player.player import Player
 from src.player.positions import positions
 from src.player.positions import rated_positions
-from src.name_generator.names import NameGenerator
 from src.player.create import create
 
 

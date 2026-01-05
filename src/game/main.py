@@ -17,8 +17,6 @@ from src.util.logger import setup_logger
 __author__ = "josh"
 # TODO Remove formatting from logging events
 # instead log events and format elsewhere
-# TODO Get defensive logic out of here
-# build a new module
 # TODO Fix up base advances, so they are not so static
 # TODO no longer need to aggregate here, do it with the DB
 # TODO verify defensive stats and event probs
@@ -136,75 +134,6 @@ class Game(object):
             if slot.position.lower() == position:
                 return slot.player
         return None
-
-    def check_defensive_play(self, defender, play_type="fielding", position=None):
-        """
-        TODO AI Slop here, fix it.
-        Check if a defender successfully makes a defensive play.
-
-        :param defender: The Player object making the play
-        :param play_type: Type of play - 'fielding' (error chance), 'speed' (too slow), or 'both'
-        :param position: Optional position being played (e.g., 'ss', 'cf', '1b').
-                         If None, tries to determine from defender's position rating.
-        :return: Tuple of (success, error_type)
-            - success: True if play is successful, False if error or too slow
-            - error_type: 'error' if fielding error, 'slow' if too slow, None if success
-        """
-        if defender is None:
-            # No defender at position - assume error
-            return (False, "error")
-
-        # Determine which defensive skill to use based on position
-        if position:
-            pos = position.lower()
-        else:
-            # Try to determine from defender's best position rating
-            # This is a fallback - ideally position should be passed
-            pos = None
-
-        # Base error rate depends on defensive skills
-        # Use position-specific rating if available, otherwise use general skills
-        if pos in ["c"]:
-            defensive_skill = defender.skills.get("catching", 50)
-        elif pos in ["1b", "2b", "3b", "ss"]:
-            defensive_skill = defender.skills.get("infield", 50)
-        elif pos in ["lf", "cf", "rf"]:
-            defensive_skill = defender.skills.get("outfield", 50)
-        else:
-            # Fallback: use position rating if available, otherwise use infield skill
-            if pos and pos in defender.ratings:
-                # Use position rating as a proxy for skill
-                defensive_skill = defender.ratings.get(pos, 50)
-            else:
-                # Default to infield skill
-                defensive_skill = defender.skills.get("infield", 50)
-
-        # Calculate error probability based on skill
-        # Skill 100 = ~0.5% error rate, Skill 50 = ~5% error rate, Skill 0 = ~15% error rate
-        base_error_rate = max(0.005, 0.15 - (defensive_skill / 100.0) * 0.145)
-
-        # Add some randomness
-        error_roll = self.rng.random()
-        self.logger.trace(error_roll)
-
-        if play_type in ["fielding", "both"]:
-            if error_roll < base_error_rate:
-                defender.stats.fielding.error()
-                return (False, "error")
-
-        # Check for being too slow (for double plays, etc.)
-        if play_type in ["speed", "both"]:
-            # Speed check - slower players more likely to be too slow
-            speed = defender.skills.get("speed", 50)
-            # Speed 100 = ~1% too slow, Speed 50 = ~5% too slow, Speed 0 = ~15% too slow
-            slow_rate = max(0.01, 0.15 - (speed / 100.0) * 0.14)
-            slow_roll = self.rng.random()
-
-            if slow_roll < slow_rate:
-                return (False, "slow")
-
-        # Successful play
-        return (True, None)
 
     def strike(self):
         """

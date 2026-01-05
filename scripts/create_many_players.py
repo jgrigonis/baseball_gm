@@ -8,8 +8,6 @@ They aren't saved anywhere
 
 import argparse
 
-from src.player.player import Player
-from src.name_generator.names import NameGenerator
 from src.player.create import create
 from src.player.player_formatters import PlayerTableFormatter
 

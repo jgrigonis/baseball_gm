@@ -20,7 +20,6 @@ from src.db.repositories.player_games import PlayerGameRepository
 from src.game.event import Event
 from src.game.main import Game
 from src.team.team import Team
-from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
 
