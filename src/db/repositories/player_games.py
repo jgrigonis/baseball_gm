@@ -58,11 +58,12 @@ class PlayerGameRepository:
 
                 pitch_outs, pitch_hits, pitch_runs,
                 pitch_home_runs, pitch_walks, pitch_strike_outs,
-                pitch_hit_batters, pitch_count,
+                pitch_hit_batters, pitch_doubles, pitch_triples, pitch_pickoffs, 
+                pitch_balks, pitch_wild_pitches, pitch_count,
 
                 field_putouts, field_assists, field_errors
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 game_id,
@@ -93,6 +94,11 @@ class PlayerGameRepository:
                 p.walks,
                 p.strike_outs,
                 p.hb,
+                p.doubles,
+                p.triples,
+                p.pickoffs,
+                p.balks,
+                p.wild_pitches,
                 p.pitch_count,
                 f.putouts,
                 f.assists,

@@ -1,4 +1,11 @@
+# SCHEMA_SQL always represents the final schema
+
 SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS players (
     id TEXT PRIMARY KEY,
     first_name TEXT NOT NULL,
@@ -73,11 +80,11 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     pitch_walks INTEGER,
     pitch_strike_outs INTEGER,
     pitch_hit_batters INTEGER,
-    -- pitch_doubles INTEGER,
-    -- pitch_triples INTEGER,
-    -- pitch_pickoffs INTEGER,
-    -- pitch_balks INTEGER,
-    -- pitch_wild_pitches INTEGER,
+    pitch_doubles INTEGER DEFAULT 0,
+    pitch_triples INTEGER DEFAULT 0,
+    pitch_pickoffs INTEGER DEFAULT 0,
+    pitch_balks INTEGER DEFAULT 0,
+    pitch_wild_pitches INTEGER DEFAULT 0,
     pitch_count INTEGER,
 
     -- Fielding
