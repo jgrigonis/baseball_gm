@@ -342,9 +342,7 @@ class Team(object):
                     pitcher_hitting = True
             if not pitcher_hitting:
                 self.logger.info("Starting Pitcher")
-                self.logger.info(
-                    f"p   {PlayerTableFormatter.horizontal(self.pitcher)}"
-                )
+                self.logger.info(f"p   {PlayerTableFormatter.horizontal(self.pitcher)}")
 
     def set_hitters(self):
         """Set the hitters."""

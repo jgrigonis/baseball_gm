@@ -1,4 +1,5 @@
 """Unit Tests for the Game class."""
+
 import unittest
 
 from src.game.main import Game

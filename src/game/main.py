@@ -282,7 +282,7 @@ class Game(object):
                 self._score_run(self.bases[2])
                 runner.stats.batting.steal()
                 self.bases.clear(2)
-                self.logger.info("{} stole home".format(runner.name))
+                self.logger.info(f"{runner.name} stole home")
                 return
         # If a steal is possible
         if self.bases[b_num - 1] != 0 and self.bases[b_num] == 0:
@@ -291,7 +291,7 @@ class Game(object):
             # Log the steal with runner name
             base_names = {1: "second", 2: "third"}
             base_name = base_names.get(b_num, "base")
-            self.logger.info("{} stole {}".format(runner.name, base_name))
+            self.logger.info(f"{runner.name} stole {base_name}")
             return
         raise game_exceptions.InvalidSteal()
 
@@ -919,7 +919,7 @@ class Game(object):
         outs = self.inning.outs
         if put_out:
             outs += 1
-        self.logger.trace("{} outs".format(outs))
+        self.logger.trace(f"{outs} outs")
         self.bat_team.next_batter()
         self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
@@ -988,9 +988,7 @@ class Game(object):
                         "_score_run in end of game, walk off scenario, END GAME"
                     )
                     self.logger.debug(
-                        "score_all was set to {} and game_over was {}".format(
-                            score_all, self.game_over
-                        )
+                        f"score_all was set to {score_all} and game_over was {self.game_over}"
                     )
                     if not score_all:
                         self._end_game()

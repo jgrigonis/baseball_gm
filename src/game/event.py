@@ -583,7 +583,7 @@ class Event(object):
 
         # clutch
         # clutch = pitcher.skills["clutch"]
-        # TODO effects things based on situations
+        # does nothing yet
 
     def adjust_probs_runner(self):
         """
