@@ -63,12 +63,11 @@ def get_args():
 
 def main():
     args = get_args()
+    levl = logging.INFO
     if args.debug:
         levl = logging.DEBUG
-    elif args.trace:
+    if args.trace:
         levl = logging.TRACE
-    else:
-        levl = logging.INFO
     logger = setup_logger(name="details", level=levl, console_level=levl)
     logger = logging.getLogger("details")
     home_wins = 0
