@@ -4,10 +4,12 @@ class Team:
         return self.players
 
     def pitchers_used(self):
-        return [p for p in self.players if p.season_stats.stats.pitching.outs > 0]
+        return [p for p in self.players if p.season_stats.game_stats.pitching.outs > 0]
 
     def batters_used(self):
-        return [p for p in self.players if p.season_stats.stats.batting.at_bats > 0]
+        return [
+            p for p in self.players if p.season_stats.game_stats.batting.at_bats > 0
+        ]
 
 
 # Then we can avoid an earlier bug:

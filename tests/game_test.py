@@ -55,7 +55,7 @@ class TestDefense(GameTestBase):
 
         assert outcome.success is False
         assert outcome.error is True
-        assert self.simple_player.stats.fielding.errors == 1
+        assert self.simple_player.game_stats.fielding.errors == 1
 
     def test_defensive_play_too_slow(self):
         fake_rng = FakeRNG([0.99, 0.001])  # no error, but slow

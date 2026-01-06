@@ -19,3 +19,9 @@ Query-driven design
 Game logs are facts.
 Stats objects are views.
 Repositories are translators.
+
+The database is now the source of truth.
+Stats, SeasonStats, and CareerStats are projections.
+
+Domain objects should not fetch themselves.
+Repositories fetch. Domain objects aggregate.

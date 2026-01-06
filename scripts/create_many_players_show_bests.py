@@ -39,7 +39,7 @@ def main():
     for item in rated_positions:
         max_ratings[item] = 0
     best_players = {}
-    print(Player.header())
+    print(PlayerTableFormatter.header())
     for x in range(players_to_create):
         player = create()
 

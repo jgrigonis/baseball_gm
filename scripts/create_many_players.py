@@ -32,13 +32,13 @@ def main():
     debug = args.debug
     if not debug:
         my_player = create()
-        print(my_player.header())
+        print(PlayerTableFormatter.header())
     for _ in range(args.number):
         my_player = create()
         # Print the player
         if debug:
             print(my_player)
-            print(my_player.header())
+            print(PlayerTableFormatter.header())
         print(PlayerTableFormatter.horizontal(my_player))
 
 

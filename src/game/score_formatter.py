@@ -7,13 +7,13 @@ class ScoreFormatter(object):
         home_hits = 0
         home_errors = 0
         for player in home.players:
-            home_hits += player.stats.batting.hits
-            home_errors += player.stats.fielding.errors
+            home_hits += player.game_stats.batting.hits
+            home_errors += player.game_stats.fielding.errors
         away_hits = 0
         away_errors = 0
         for player in away.players:
-            away_hits += player.stats.batting.hits
-            away_errors += player.stats.fielding.errors
+            away_hits += player.game_stats.batting.hits
+            away_errors += player.game_stats.fielding.errors
 
         output = "\n"
         inn_number = max(len(score.away_innings), 9)

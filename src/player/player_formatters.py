@@ -184,7 +184,7 @@ class PlayerTableFormatter:
     def horizontal_defensive_stats(player, stat_type="game"):
         """Output the player fielding stats on a single line."""
         if stat_type == "game":
-            stats = player.stats
+            stats = player.game_stats
         elif stat_type == "season":
             stats = player.season_stats.stats
         elif stat_type == "career":
@@ -208,7 +208,7 @@ class PlayerTableFormatter:
     def horizontal_stats(player, stat_type="game"):
         """Output the player stats on a single line."""
         if stat_type == "game":
-            stats = player.stats
+            stats = player.game_stats
         elif stat_type == "season":
             stats = player.season_stats.stats
         elif stat_type == "career":
@@ -264,7 +264,7 @@ class PlayerTableFormatter:
     @staticmethod
     def short_batting_stats(player):
         """Output the player stats on a single line."""
-        stats = player.stats
+        stats = player.game_stats
         output = str("{:<{}} ".format(player.name, 30))  # 30 is the longest name
 
         output += "AB: {} ".format(stats.batting.at_bats)
@@ -279,7 +279,7 @@ class PlayerTableFormatter:
     def horizontal_pitching_stats(player, stat_type="game"):
         """Output the player stats on a single line."""
         if stat_type == "game":
-            stats = player.stats
+            stats = player.game_stats
         elif stat_type == "season":
             stats = player.season_stats.stats
         elif stat_type == "career":

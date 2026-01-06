@@ -43,7 +43,7 @@ class DefensiveResolver:
         # ----- Fielding check -----
         if play_type in ("fielding", "both"):
             if self.rng.random() < self._error_rate(skill):
-                defender.stats.fielding.error()
+                defender.game_stats.fielding.error()
                 return DefenseOutcome.fielding_error()
 
         # ----- Speed check -----

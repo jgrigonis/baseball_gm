@@ -15,7 +15,11 @@ teams
 """
 # src/db/repositories/player_games.py
 
-from src.stats.stats import Stats, BattingStats, PitchingStats, FieldingStats
+from src.stats.stats import Stats
+from src.stats.stats import SeasonStats
+from src.stats.batting_stats import BattingStats
+from src.stats.pitching_stats import PitchingStats
+from src.stats.fielding_stats import FieldingStats
 
 
 class PlayerGameRepository:
@@ -123,7 +127,7 @@ class PlayerGameRepository:
 
         return self._row_to_stats(row)
 
-    def get_all_for_player(self, player_id: int) -> list[Stats]:
+    def fetch_player_games(self, player_id: int) -> list[Stats]:
         """
         Fetch all games for a player (career / season aggregation)
         """
@@ -195,6 +199,15 @@ class PlayerGameRepository:
             return None
 
         return self._row_to_stats(row)
+
+    def load_season_stats(self, player_id, season):
+        rows = self.conn.fetch_player_games(player_id, season)
+
+        stats = Stats()
+        for row in rows:
+            stats.add(row.to_stats())
+
+        return SeasonStats(stats, games_played=len(rows))
 
 
 # Season stats:

@@ -105,44 +105,7 @@ CREATE TABLE player_game_stats (
     opponent_team_id TEXT NOT NULL,
 
     -- Batting
-    ab INTEGER,
-    hits INTEGER,
-    doubles INTEGER,
-    triples INTEGER,
-    home_runs INTEGER,
-    rbi INTEGER,
-    runs INTEGER,
-    walks INTEGER,
-    strike_outs INTEGER,
-    hbp INTEGER,
-    sac_flys INTEGER,
-    sac_bunts INTEGER,
-    gdp INTEGER,
-    gtp INTEGER,
-    sb INTEGER,
-    cs INTEGER,
-    pickoffs INTEGER,
-
-    -- Pitching
-    pitching_outs INTEGER,
-    pitching_hits INTEGER,
-    pitching_runs INTEGER,
-    pitching_home_runs INTEGER,
-    pitching_walks INTEGER,
-    pitching_strike_outs INTEGER,
-    pitching_hbp INTEGER,
-    pitching_doubles INTEGER,
-    pitching_triples INTEGER,
-    pitching_pickoffs INTEGER,
-    pitching_balks INTEGER,
-    pitching_wild_pitches INTEGER,
-    pitch_count INTEGER,
-
-    -- Fielding
-    putouts INTEGER,
-    assists INTEGER,
-    errors INTEGER,
-    chances INTEGER,
+    ...
 
     PRIMARY KEY (game_id, player_id),
     FOREIGN KEY (game_id) REFERENCES games(id),

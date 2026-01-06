@@ -47,7 +47,7 @@ class Event(object):
         self.handle_event()
         self.logger.debug(
             "Pitch count = {}".format(
-                self.game.current_pitcher.stats.pitching.pitch_count
+                self.game.current_pitcher.game_stats.pitching.pitch_count
             )
         )
 
@@ -78,7 +78,7 @@ class Event(object):
 
         """
         pitcher = self.game.current_pitcher
-        pitcher.stats.pitching.pitch()
+        pitcher.game_stats.pitching.pitch()
         ball = self.probs.get("ball")
         strike = self.probs.get("strike")
         rand_num = random.randint(0, ball + strike)

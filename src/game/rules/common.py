@@ -2,8 +2,8 @@
 
 
 def pitch(game):
-    game.current_pitcher.stats.pitching.pitch()
+    game.current_pitcher.game_stats.pitching.pitch()
 
 
 def batting_at_bat(batter):
-    batter.stats.batting.at_bat()
+    batter.game_stats.batting.at_bat()

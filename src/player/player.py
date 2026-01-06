@@ -40,23 +40,25 @@ class Player(object):
 
         self.ratings = {}  # Will be populated based on skills
         self.skills = dict(skills)  # All the general baseball skills
-        self.stats = stats.Stats()
-        self.season_stats = stats.SeasonStats()
-        self.career_stats = stats.CareerStats()
+        self.game_stats = stats.GameStats()
+        # self.career_stats = stats.CareerStats()
 
     def __str__(self):
         return f"<Player {self.name}>"
 
     @property
-    def name(player):
-        return f"{player.first_name} {player.last_name}"
+    def name(self):
+        return f"{self.first_name} {self.last_name}"
 
-    def aggregate_game(self):
-        """Aggregate the game stats."""
-        self.season_stats.add_game(self.stats)
+    # def aggregate_game(self):
+    #     """Aggregate the game stats."""
+    #     self.season_stats.add_game(self.game_stats)
 
-    def init_stats(self):
-        self.stats = stats.Stats()
+    def init_game_stats(self):
+        """
+        Reset the stats.
+        """
+        self.game_stats = stats.GameStats()
 
     @staticmethod
     def generate_stat(minimum=1, maximum=100, mean=50, sigma=None):

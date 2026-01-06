@@ -28,11 +28,11 @@ def main():
     team.players.append(create("3b"))
     team.players.append(create("1b"))
     team.players.append(create("sp"))
-    print(Player.legend())
+    print(PlayerTableFormatter.legend())
     if debug:
         for player in team.players:
             print(player)
-    print(Player.header())
+    print(PlayerTableFormatter.header())
     for player in team.players:
         print(PlayerTableFormatter.horizontal(player))
     with open("TeamNine.csv", "w") as csv:

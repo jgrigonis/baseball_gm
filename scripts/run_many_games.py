@@ -20,6 +20,8 @@ from src.db.init import init_db
 from src.db.repositories.player_games import PlayerGameRepository
 from src.game.event import Event
 from src.game.main import Game
+from src.stats.stats import Stats
+from src.stats.stats import SeasonStats
 from src.team.team import Team
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
@@ -108,14 +110,16 @@ def main():
         if my_game.winner == my_game.away:
             away_wins += 1
 
+        # Insert game data for each player into repo
         for player in away_team.players + home_team.players:
             player_games_repo.insert(
                 game_id=game_id,
                 player_id=player.id,
                 team_id=1,
                 opponent_team_id=2,
-                stats=player.stats,
+                stats=player.game_stats,
             )
+
         # for player in home_team.players:
         #     player_games_repo.insert(
         #         game_id=game_id,
@@ -124,6 +128,29 @@ def main():
         #         opponent_team_id=1,
         #         stats=player.stats,
         #     )
+
+    # for player in home_team.players + away_team.players:
+    #     rows = player_games_repo.fetch_player_games(player_id=player.id)
+    #     game_stats = []
+    #     for row in rows:
+    #         game_stats.append(row)
+    #     stats = Stats()
+    #     for gs in game_stats:
+    #         stats.add(gs)
+
+    #     player.season_stats = SeasonStats(
+    #         stats=stats,
+    #         games_played=len(game_stats)
+    #     )
+
+    for player in home_team.players + away_team.players:
+        rows = player_games_repo.fetch_player_games(player_id=player.id)
+
+        stats = Stats()
+        for row in rows:
+            stats.add(row)
+
+        player.season_stats = SeasonStats(stats=stats, games_played=len(rows))
 
     logger.info("-" * 120)
     logger.info(
