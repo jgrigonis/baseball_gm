@@ -67,13 +67,20 @@ def create_team():
 
     team = Team(args.city, args.mascot)
 
-    team.players.extend(create_players("c", 2))
-    team.players.extend(create_players(["of", "cf", "lf", "rf"], 5))
-    team.players.extend(create_players(["if", "2b", "3b", "ss", "1b"], 6))
-    team.players.extend(create_players("sp", 5))
-    team.players.extend(create_players("rp", 7))
-    team.players.extend(create_players(["sp", "rp"], 4))
-    team.players.extend(create_players(num=11))
+    team.players.extend(create_players("c", 2)) # 2 catchers
+    team.players.extend(create_players("cf"))
+    team.players.extend(create_players("rf"))
+    team.players.extend(create_players("lf"))
+    team.players.extend(create_players(["of", "cf", "lf", "rf"], 2)) # 2 more random outfielders
+    team.players.extend(create_players("2b"))
+    team.players.extend(create_players("3b"))
+    team.players.extend(create_players("ss"))
+    team.players.extend(create_players("1b"))
+    team.players.extend(create_players(["if", "2b", "3b", "ss", "1b"], 2)) # 2 more random infielders
+    team.players.extend(create_players("sp", 5)) # 5 starting pitchers
+    team.players.extend(create_players("rp", 7)) # 7 relief pitchers
+    team.players.extend(create_players(["sp", "rp"], 4)) # 4 more pitchers
+    team.players.extend(create_players(num=11)) # 11 more random players
     if debug:
         print(Player.header())
         for player in team.players:
