@@ -21,6 +21,10 @@ __author__ = "josh"
 # TODO no longer need to aggregate here, do it with the DB
 # TODO verify defensive stats and event probs
 # TODO defensive plays are very static.
+# TODO pitchers probably should field bunts, and some batted balls
+# TODO chance for dropped 3rd strike.
+# TODO Steals, caught stealing, pickoffs all could result in errors
+# Make sure they are counted in fielding stats
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
 # TODO implement clutch
@@ -292,6 +296,7 @@ class Game(object):
         # Determine which defender should field the ball
         if position is None:
             # Randomly pick an infield position (excluding pitcher)
+            # pitchers probably should field bunts, and some batted balls
             infield_positions = ["ss", "2b", "3b", "1b"]
             position = random.choice(infield_positions)
 
@@ -299,16 +304,9 @@ class Game(object):
 
         # Check if defender makes an error
         if defender:
-            success, error_type = self.defense.check_play(
-                defender, play_type="fielding", position=position
-            )
-            if success:
-                # Successful fielding - record assist and putout
-                defender.stats.fielding.assist()
-                defender.stats.fielding.putout()
-                # Log the successful play
-                self.logger.info(f"Ground out to {defender.name} at {position.upper()}")
-            elif error_type == "error":
+            outcome = self.defense.check_play(defender, "fielding", position)
+            if outcome.error:
+                #self._handle_error(defender)
                 # Batter reaches on error
                 if self.bases.empty_base(0):
                     # Error on ground ball - batter safe, no at-bat
@@ -326,7 +324,8 @@ class Game(object):
                         log="Ground out converted to error, but batter is out",
                     )
                 return
-            elif error_type == "slow":
+            elif outcome.slow:
+                #self._handle_infield_hit()
                 # Batter reaches on error
                 if self.bases.empty_base(0):
                     # Error on ground ball - batter safe, no at-bat
@@ -346,7 +345,12 @@ class Game(object):
                         log="Ground out converted to error, but batter is out",
                     )
                 return
-
+            else:
+                # Successful fielding - record assist and putout
+                defender.stats.fielding.assist()
+                defender.stats.fielding.putout()
+                # Log the successful play
+                self.logger.info(f"Ground out to {defender.name} at {position.upper()}")
         else:
             # No defender found at position - still log the out
             self.logger.info(f"Ground out to {position.upper()}")
@@ -376,11 +380,8 @@ class Game(object):
 
         # Check if defender drops the ball (error)
         if defender:
-            success, error_type = self.defense.check_play(
-                defender, play_type="fielding", position=position
-            )
-
-            if not success and error_type == "error":
+            outcome = self.defense.check_play(defender, "fielding", position)
+            if outcome.error:
                 # Dropped fly ball - batter safe, no at-bat
                 self.logger.info(
                     f"{defender.name} dropped the fly ball in {position.upper()}"
@@ -399,7 +400,7 @@ class Game(object):
                         next=True, log="Fly out converted to error, batter out"
                     )
                 return
-            elif success:
+            else:
                 # Successful catch - record putout
                 defender.stats.fielding.putout()
                 # Log the successful play
@@ -568,47 +569,50 @@ class Game(object):
 
         # Test first defender (SS or 2B) - check for error or being too slow
         if first_defender:
-            success, error_type = self.defense.check_play(
-                first_defender, play_type="both", position=first_pos
-            )
-
-            if not success:
-                if error_type == "error":
-                    # Error on first defender - batter safe, runner out, no at-bat
-                    self.logger.info(
-                        f"Error by {first_defender.name} at {first_pos.upper()}"
-                    )
-                    self.bases[b1] = 0
-                    self._put_out(next=True, log="Error, double play failed")
-                    # Batter reaches on error
-                    if self.bases.empty_base(0):
-                        self.bases[0] = batter
-                    return
-                elif error_type == "slow":
-                    # Too slow - only get lead runner, batter gets at-bat
-                    self.logger.info(
-                        f"{first_defender.name} at {first_pos.upper()} too slow, only lead runner out"
-                    )
-                    batting_at_bat(batter)
-                    if gdp:
-                        batter.stats.batting.ground_double_play()
-                    self.bases[b1] = 0
-                    self._put_out(next=True, log="Slow, double play failed")
-                    # Batter safe at first
-                    if self.bases.empty_base(0):
-                        self.bases[0] = batter
-                    return
+            # success, error_type = self.defense.check_play(
+            #     first_defender, play_type="both", position=first_pos
+            # )
+            outcome = self.defense.check_play(first_defender, "both", first_pos)
+            if outcome.error:
+                #if error_type == "error":
+                # Error on first defender - batter safe, runner out, no at-bat
+                self.logger.info(
+                    f"Error by {first_defender.name} at {first_pos.upper()}"
+                )
+                self.bases[b1] = 0
+                self._put_out(next=True, log="Error, double play failed")
+                # Batter reaches on error
+                if self.bases.empty_base(0):
+                    self.bases[0] = batter
+                return
+            if outcome.slow:
+                #elif error_type == "slow":
+                # Too slow - only get lead runner, batter gets at-bat
+                self.logger.info(
+                    f"{first_defender.name} at {first_pos.upper()} too slow, only lead runner out"
+                )
+                batting_at_bat(batter)
+                if gdp:
+                    batter.stats.batting.ground_double_play()
+                self.bases[b1] = 0
+                self._put_out(next=True, log="Slow, double play failed")
+                # Batter safe at first
+                if self.bases.empty_base(0):
+                    self.bases[0] = batter
+                return
             else:
                 # Successful first play - record assist
                 first_defender.stats.fielding.assist()
 
         # Test second defender (1B) - check for error
         if first_baseman:
-            success, error_type = self.defense.check_play(
-                first_baseman, play_type="fielding", position="1b"
-            )
+            outcome = self.defense.check_play(first_baseman, "fielding", position="1b")
+            # success, error_type = self.defense.check_play(
+            #     first_baseman, play_type="fielding", position="1b"
+            # )
 
-            if not success and error_type == "error":
+            # if not success and error_type == "error":
+            if outcome.error:
                 # Error on second defender - batter safe, no at-bat
                 self.logger.info(f"Error by {first_baseman.name} at 1B")
                 self.bases[b1] = 0
@@ -617,7 +621,7 @@ class Game(object):
                 if self.bases.empty_base(0):
                     self.bases[0] = batter
                 return
-            elif success:
+            else:
                 # Successful second play - record putout
                 first_baseman.stats.fielding.putout()
 

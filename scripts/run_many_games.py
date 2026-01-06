@@ -84,7 +84,6 @@ def main():
     logger.debug("Home Team prioritized with dh")
     home_team.set_lineup(style="prioritized", dh=True)
     home_team.display_lineup()
-
     
     away_team = Team("Team", "1")
     away_team.load_team(path="Team1.csv")

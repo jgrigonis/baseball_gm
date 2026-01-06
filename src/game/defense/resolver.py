@@ -12,6 +12,8 @@ All live naturally in this class.
 
 from typing import Optional, Tuple
 
+from src.game.defense.outcome import DefenseOutcome
+
 
 class DefensiveResolver:
     """
@@ -26,48 +28,31 @@ class DefensiveResolver:
         self.rng = rng
         self.logger = logger
 
-    def check_play(
-        self,
-        defender,
-        play_type: str = "fielding",
-        position: Optional[str] = None,
-    ) -> Tuple[bool, Optional[str]]:
+    def check_play(self, defender, play_type="fielding", position=None):
         """
-        Resolve a defensive play.
-
         :param defender: Player making the play (may be None)
         :param play_type: "fielding", "speed", or "both" (could add arm here)
         :param position: "ss", "2b", "cf", etc.
         """
         if defender is None:
-            # No defender = automatic error
-            return False, "error"
+            return DefenseOutcome.fielding_error()
 
         pos = position.lower() if position else None
+        skill = self._resolve_defensive_skill(defender, pos)
 
-        defensive_skill = self._resolve_defensive_skill(defender, pos)
-
-        # -------- Fielding check (errors) --------
+        # ----- Fielding check -----
         if play_type in ("fielding", "both"):
-            error_rate = self._error_rate(defensive_skill)
-            roll = self.rng.random()
-            self.logger.trace(f"Defensive error roll={roll:.3f} rate={error_rate:.3f}")
-
-            if roll < error_rate:
+            if self.rng.random() < self._error_rate(skill):
                 defender.stats.fielding.error()
-                return False, "error"
+                return DefenseOutcome.fielding_error()
 
-        # -------- Speed check (too slow) --------
+        # ----- Speed check -----
         if play_type in ("speed", "both"):
             speed = defender.skills.get("speed", 50)
-            slow_rate = self._slow_rate(speed)
-            roll = self.rng.random()
-            self.logger.trace(f"Defensive slow roll={roll:.3f} rate={slow_rate:.3f}")
+            if self.rng.random() < self._slow_rate(speed):
+                return DefenseOutcome.too_slow()
 
-            if roll < slow_rate:
-                return False, "slow"
-
-        return True, None
+        return DefenseOutcome.clean_play()
 
     # ----------------------------
     # Skill resolution helpers
@@ -119,3 +104,6 @@ class DefensiveResolver:
         0   → ~15%
         """
         return max(0.01, 0.15 - (speed / 100.0) * 0.14)
+
+
+
