@@ -1,0 +1,7 @@
+Teams have a 40 man roster
+
+For an actual game they have a 26 man roster (verify this)
+
+There is a maximum number of pitchers, which starts at 13
+It moves to 14 later in the season.
+

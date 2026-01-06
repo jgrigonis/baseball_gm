@@ -43,10 +43,12 @@ class PlayerTableFormatter:
         """Output the player and skills/ratings as a single line."""
         if not player.ratings:
             player.rate_player()
-        output = str("{:<{}} ".format(player.name, 30))  # 30 is the longest name
-        output += "{:>{}}".format(player.position, 3)
-        output += "{:>{}}".format(PlayerFormatter.abbreviate(player.throws), 2)
-        output += "{:>{}}".format(PlayerFormatter.abbreviate(player.bats), 2)
+        output = f"{player.name:<30}"  # 30 is the longest name
+        output += f"{player.position:>3}"
+        # output += "{:>{}}".format(PlayerFormatter.abbreviate(player.throws), 2)
+        output += f"{PlayerFormatter.abbreviate(player.throws):>2}"
+        # output += "{:>{}}".format(PlayerFormatter.abbreviate(player.bats), 2)
+        output += f"{PlayerFormatter.abbreviate(player.bats):>2}"
         for item in [
             player.skills["clutch"],
             player.skills["speed"],
@@ -65,7 +67,7 @@ class PlayerTableFormatter:
             player.skills["ground_balls"],
             player.skills["strikes"],
         ]:
-            output += "{:>{}}".format(item, 3)
+            output += f"{item:>3}"
         output += "  "
         for item in [
             player.ratings["p"],
@@ -78,20 +80,21 @@ class PlayerTableFormatter:
             player.ratings["cf"],
             player.ratings["rf"],
         ]:
-            output += "{:>{}}".format(item, 3)
+            output += f"{item:>3}"
         output += "  "
         for item in [
             player.ratings["lead_off"],
             player.ratings["contact_hitter"],
             player.ratings["power_hitter"],
         ]:
-            output += "{:>{}}".format(item, 3)
+            output += f"{item:>3}"
         return output
 
     @staticmethod
     def csv(player):
         """Output the player and skills/ratings as a single csv line."""
         output = str("{},".format(player.name))
+        # TODO use a join here
         for item in [
             player.position,
             PlayerFormatter.abbreviate(player.throws),
@@ -140,7 +143,7 @@ class PlayerTableFormatter:
         ]
         output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
         for item in stat_list:
-            output += "{:>{}}".format(item, 4)
+            output += f"{item:>4}"
 
         for item in [
             "AVG",
@@ -148,7 +151,7 @@ class PlayerTableFormatter:
             "SLG",
             "OPS",
         ]:
-            output += "{:>{}}".format(item, 6)
+            output += f"{item:>6}"
         output += "  "
         return output
 
@@ -171,7 +174,7 @@ class PlayerTableFormatter:
             "BLK",
             " WP",
         ]:
-            output += "{:>{}}".format(item, 4)
+            output += f"{item:>4}"
         # Derived stats (width 5 for decimals)
         for item in [
             " ERA",
@@ -179,7 +182,7 @@ class PlayerTableFormatter:
             " K/9",
             "BB/9",
         ]:
-            output += "{:>{}}".format(item, 5)
+            output += f"{item:>5}"
         output += "  "
         return output
 
@@ -195,12 +198,12 @@ class PlayerTableFormatter:
             "  E",
             " TC",  # total chances = putouts + assists + errors
         ]:
-            output += "{:>{}}".format(item, 4)
+            output += f"{item:>4}"
         # Derived stats (width 6 for decimals)
         for item in [
             " FPCT",
         ]:
-            output += "{:>{}}".format(item, 6)
+            output += f"{item:>6}"
         output += "  "
         return output
 

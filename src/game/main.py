@@ -49,7 +49,7 @@ __author__ = "josh"
 # TODO add a stat for catcher picking off runners.
 # TODO add a stat for catcher having a passed ball.
 # TODO can we get other types of double plays?
-# Need to be line out double plays
+#      Need to be line out double plays
 # TODO the range of abilities is probably too low.
 # TODO more accurately match stats from MLB teams
 # TODO follow extra innings rules with runner on second.
