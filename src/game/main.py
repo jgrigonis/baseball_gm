@@ -14,26 +14,39 @@ from src.util.logger import setup_logger
 
 __author__ = "josh"
 # TODO populate the other tables with info
-# players - should populate this when we create a team
-# also can be done one off
-# teams - populate this when you create a team
-# seasons - insert new record once a season
-# series - insert new record once a series
-# games - insert record for each game
-# team_game_stats - insert record for each game
-# pitcher_state - at least at the end of each game
-# might update locally in Game. Also need to recover
-# energy as "time" passes.
-# plate_appearances - Can populated every plate appearance, someday
+#   When creating a team
+#      players - should populate this when we create a team
+#      also can be done one off
+#      teams - populate this when you create a team
+# In teams:
+# What is league?
+# Should league file be the sqlite file?
+# Should we store the team file location
+# 
+#   When creating a new season
+#      seasons - insert new record once a season
+#   When creting a series
+#      series - insert new record once a series
+#   Each game
+#      games - insert record for each game
+#      team_game_stats - insert record for each game
+#      pitcher_state - at least at the end of each game
+#      might update locally in Game. Also need to recover
+#      energy as "time" passes.
+#      plate_appearances - Can populated every plate appearance, someday
 #
 # TODO May not want to overwrite existing team csv files
 # TODO Fix up base advances, so they are not so static
 # TODO verify defensive stats and event probs
+#      For instance outfielders almost never get assists
+#      Catchers and pitchers never get any stats
 # TODO defensive plays are very static.
 # TODO pitchers probably should field bunts, and some batted balls
 # TODO chance for dropped 3rd strike.
 # TODO Steals, caught stealing, pickoffs all could result in errors
 #      Make sure they are counted in fielding stats
+# TODO we have just a basic raw error event that isn't super useful
+#      We also can trigger errors on batted balls. Need to consolidate
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
 # TODO implement clutch
@@ -58,6 +71,10 @@ __author__ = "josh"
 # def generate_stat(self, rng, ...):
 #    stat = rng.gauss(mean, sigma)
 # TODO in player move the ratings into a RatingModel
+# TODO bug if you do create_players.py -f ./FooBars.csv
+#      You can overwrite FooBars.csv
+#      Also foobars.csv will be allowed and overwrite
+#      Should be a way to check on open() call
 # STRATEGY THINGS
 # TODO Pitching changes
 # TODO Mound visits
@@ -267,7 +284,7 @@ class Game(object):
             if self.bases[b_num - 1] != 0 and self.bases[b_num] == 0:
                 runner.game_stats.batting.caught_stealing()
                 self.bases.clear([b_num - 1])
-                self._put_out(next=False, log="Runner caught stealing from base")
+                self._put_out(next=False, log=f"{runner.name} caught stealing from {base}")
             else:
                 raise game_exceptions.InvalidSteal()
         else:

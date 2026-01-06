@@ -1,15 +1,6 @@
 """
 Create a team.
 For now, we'll just create a random 40 man roster.
-2 catchers
-5 outfielders - random selection
-6 infielders - random selection
-16 pitchers - 5 starters, 7 relief, 4 random
-11 other randoms
-
-Need to move the create_players into the Team class.
-
-Need to do something about setting the lineup.
 
 If we let users create a team in "competition" mode we probably want to
 limit the number of center fielders as it is objectively better than
@@ -28,20 +19,21 @@ Perhaps something like this:
 
 remaining players must be: if, of, rp or c
 
-This will also write out a csv file called FooBars.csv that represents the
+This will also write out a csv file that represents the
 team and has all its ratings.
 
 """
 
 import argparse
+import os
 
 from src.player.create import create_players
-from src.player.player import Player
+# from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
 from src.team.team import Team
+from src.util.locations import TEAM_FILES_DIR
 
 __author__ = "josh"
-
 
 def get_args():
     """
@@ -52,7 +44,7 @@ def get_args():
         "--debug", "-d", action="store_true", help="Set the debug flag."
     )
     parser.add_argument(
-        "--file", "-f", default="FooBars.csv", help="Set the team csv file."
+        "--file", "-f", default=None, required=True, help="Set the team csv file."
     )
     parser.add_argument("--city", "-c", default="Foo", help="Set the team city.")
     parser.add_argument("--mascot", "-m", default="Bars", help="Set the team mascot.")
@@ -64,6 +56,11 @@ def create_team():
     """Create a team."""
     args = get_args()
     debug = args.debug
+
+    files = os.listdir(TEAM_FILES_DIR)
+    if args.file in files:
+        print(f"ERROR: {args.file} already exists.")
+        quit()
 
     team = Team(args.city, args.mascot)
 
@@ -90,7 +87,7 @@ def create_team():
         for player in team.players:
             print(PlayerTableFormatter.horizontal(player))
 
-    with open(args.file, "w") as csv:
+    with open(TEAM_FILES_DIR + os.sep + args.file, "w") as csv:
         csv.writelines(PlayerTableFormatter.csv_header())
         for player in team.players:
             csv.writelines(PlayerTableFormatter.csv(player))

@@ -7,11 +7,14 @@ team and has all its ratings.
 
 """
 
+import os
+
 from src.player.create import create
 
 from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
 from src.team.team import Team
+from src.util.locations import TEAM_FILES_DIR
 
 __author__ = "josh"
 
@@ -35,11 +38,10 @@ def main():
     print(PlayerTableFormatter.header())
     for player in team.players:
         print(PlayerTableFormatter.horizontal(player))
-    with open("TeamNine.csv", "w") as csv:
+    with open(TEAM_FILES_DIR + os.sep + "TeamNine.csv", "w") as csv:
         csv.writelines(PlayerTableFormatter.csv_header())
         for player in team.players:
             csv.writelines(PlayerTableFormatter.csv(player))
-
 
 if __name__ == "__main__":
     main()

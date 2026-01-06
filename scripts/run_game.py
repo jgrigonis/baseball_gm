@@ -10,11 +10,16 @@ python ./src/team/create_team.py -f Team2.csv
 
 import argparse
 import logging
+import os
 
 from src.game.event import Event
 from src.game.main import Game
 from src.team.team import Team
+from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
+
+HOME_FILE = TEAM_FILES_DIR + os.sep + "Team1.csv"
+AWAY_FILE = TEAM_FILES_DIR + os.sep + "Giants.csv"
 
 
 def get_args():
@@ -54,7 +59,7 @@ def main():
     logger = logging.getLogger("details")
     # Set up Home Team
     home_team = Team("Team", "One")
-    home_team.load_team(path="Team1.csv")
+    home_team.load_team(path=HOME_FILE)
 
     logger.debug("Home Team prioritized positions offensive lineup")
     home_team.set_lineup("prioritized")
@@ -62,7 +67,7 @@ def main():
 
     # Set up Away Team
     away_team = Team("Team", "Two")
-    away_team.load_team(path="Team2.csv")
+    away_team.load_team(path=AWAY_FILE)
 
     logger.debug("Away Team Auto Set")
     away_team.set_lineup()

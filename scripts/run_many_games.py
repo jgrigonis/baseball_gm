@@ -13,6 +13,7 @@ To create the teams.
 
 import argparse
 import logging
+import os
 import sqlite3
 import uuid
 
@@ -24,8 +25,12 @@ from src.stats.stats import Stats
 from src.stats.stats import SeasonStats
 from src.team.team import Team
 from src.player.player_formatters import PlayerTableFormatter
+from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
 
+HOME_FILE = TEAM_FILES_DIR + os.sep + "Team1.csv"
+AWAY_FILE = TEAM_FILES_DIR + os.sep + "Giants.csv"
+LEAGUE_DIR = "leagues"
 
 def get_args():
     """
@@ -75,20 +80,20 @@ def main():
     home_wins = 0
     away_wins = 0
 
-    conn = sqlite3.connect(args.league)
+    conn = sqlite3.connect(LEAGUE_DIR + os.sep + args.league)
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
     player_games_repo = PlayerGameRepository(conn)
 
     home_team = Team("San Francisco", "Giants")
-    home_team.load_team(path="Giants.csv")
+    home_team.load_team(path=HOME_FILE)
     logger.debug("Home Team prioritized with dh")
     home_team.set_lineup(style="prioritized", dh=True)
     home_team.display_lineup()
 
     away_team = Team("Team", "1")
-    away_team.load_team(path="Team1.csv")
+    away_team.load_team(path=AWAY_FILE)
     logger.debug("Away Team prioritized with dh")
     away_team.set_lineup(style="prioritized", dh=True)
     away_team.display_lineup()

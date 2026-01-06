@@ -130,6 +130,7 @@ class Event(object):
                 self.game.error(True)
                 self.display_text("Error")
             except GameException:
+                self.logger.debug("Error didn't happen")
                 return None
         elif self.event == "fly_out":
             # Logging is handled in game.fly_out() method with defender info
@@ -169,6 +170,7 @@ class Event(object):
                 self.game.fielders_choice()
                 self.display_text("Fielder's choice")
             except GameException:
+                self.logger.debug("Fielder's Choice didn't happen")
                 return None
         elif self.event == "caught_stealing":
             try:
@@ -179,6 +181,7 @@ class Event(object):
                 self.handle_event()
                 self.display_text("Runner caught stealing second")
             except GameException:
+                self.logger.debug("Caught Stealing second didn't happen")
                 return None
         elif self.event == "caught_stealing_third":
             try:
@@ -190,6 +193,7 @@ class Event(object):
                 self.handle_event()
                 self.display_text("Runner caught stealing third")
             except GameException:
+                self.logger.debug("Caught Stealing third didn't happen")
                 return None
         elif self.event == "caught_stealing_home":
             try:
@@ -199,6 +203,7 @@ class Event(object):
                 self.handle_event()
                 self.display_text("Runner caught stealing home")
             except GameException:
+                self.logger.debug("Caught Stealing home didn't happen")
                 return None
         elif self.event == "double_play":
             try:
@@ -206,6 +211,7 @@ class Event(object):
                 self.display_text("Double play")
                 self.game.double_play()
             except GameException:
+                self.logger.debug("Double play didn't happen")
                 return None
         elif self.event == "picked_off":
             try:
@@ -220,6 +226,7 @@ class Event(object):
                 self.display_text("Runner picked off second")
                 self.game.picked_off("second")
             except GameException:
+                self.logger.debug("Pick off second didn't happen")
                 return None
         elif self.event == "picked_off_third":
             try:
@@ -237,6 +244,7 @@ class Event(object):
                 self.handle_event()
                 # Logging is handled in game.steal() method
             except GameException:
+                self.logger.debug("Steal didn't happen")
                 return None
         elif self.event == "steal_third":
             try:
@@ -256,6 +264,7 @@ class Event(object):
                 self.handle_event()
                 # Logging is handled in game.steal() method
             except GameException:
+                self.logger.debug("Stealing home didn't happen")
                 return None
         elif self.event == "triple_play":
             try:
@@ -270,12 +279,14 @@ class Event(object):
                 self.display_text("Wild Pitch, runners advance")
                 self.game.wild_pitch()
             except GameException:
+                self.logger.debug("Wild Pitch didn't happen")
                 return None
         elif self.event == "passed_ball":
             try:
                 self.display_text("Passed Ball, runners advance")
                 self.game.passed_ball()
             except GameException:
+                self.logger.debug("Passed Ball didn't happen")
                 return None
         else:
             print(self.event)
@@ -639,10 +650,14 @@ class Event(object):
                         # Better runners get caught less often
                         # Speed effect: faster = less caught
                         speed_reduction = (speed - 50) * 2  # +/- 100 at extremes
+                        # Here we can change a 0 caught to a positive number
+                        # TODO fix this
                         self.probs[caught_key] = max(
                             0, int(self.probs[caught_key] - speed_reduction)
                         )
                         # Base running effect: better base running = less caught
+                        # Here we can change a 0 caught to a positive number
+                        # TODO fix this
                         base_running_reduction = (
                             base_running - 50
                         ) * 1.5  # +/- 75 at extremes

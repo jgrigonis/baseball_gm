@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS players (
 
 CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
+    city TEXT NOT NULL,
+    mascot TEXT NOT NULL,
     league TEXT
 );
 
