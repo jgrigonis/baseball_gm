@@ -14,5 +14,5 @@ class Team:
 
 # Then we can avoid an earlier bug:
 
-for player in away_team.pitchers_used():
-    logger.info(player.horizontal_pitching_stats("season"))
+# for player in away_team.pitchers_used():
+#     logger.info(player.horizontal_pitching_stats("season"))

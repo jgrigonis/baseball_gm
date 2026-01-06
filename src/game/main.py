@@ -16,6 +16,17 @@ from src.util.logger import setup_logger
 
 __author__ = "josh"
 # TODO populate the other tables with info
+# players - should populate this when we create a team
+# also can be done one off
+# teams - populate this when you create a team
+# seasons - insert new record once a season
+# series - insert new record once a series
+# games - insert record for each game
+# team_game_stats - insert record for each game
+# pitcher_state - at least at the end of each game
+# might update locally in Game. Also need to recover
+# energy as "time" passes.
+# plate_appearances - Can populated every plate appearance, someday
 # TODO Remove formatting from logging events
 # instead log events and format elsewhere
 # TODO Fix up base advances, so they are not so static
