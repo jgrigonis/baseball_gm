@@ -93,7 +93,7 @@ class PlayerTableFormatter:
     @staticmethod
     def csv(player):
         """Output the player and skills/ratings as a single csv line."""
-        output = str("{},".format(player.name))
+        output = str(f"{player.name},")
         # TODO use a join here
         for item in [
             player.position,
@@ -141,7 +141,7 @@ class PlayerTableFormatter:
             "HBP",
             "SAC",
         ]
-        output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
+        output = f"{team_name:<31}"  # 31 is the longest team name
         for item in stat_list:
             output += f"{item:>4}"
 
@@ -158,28 +158,28 @@ class PlayerTableFormatter:
     @staticmethod
     def horizontal_pitching_stat_header(team_name="Name"):
         """Return the pitching stat header as a single line."""
-        output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
+        output = f"{team_name:<31}"  # 31 is the longest name
+        output += f"{"IP":>5}"
         # Original stats (width 4)
         for item in [
-            "   IP",
-            "  H",
-            "  R",
-            " HR",
+            "H",
+            "R",
+            "HR",
             "HBP",
-            " BB",
-            " SO",
-            " 2B",
-            " 3B",
-            " PO",
+            "BB",
+            "SO",
+            "2B",
+            "3B",
+            "PO",
             "BLK",
-            " WP",
+            "WP",
         ]:
             output += f"{item:>4}"
         # Derived stats (width 5 for decimals)
         for item in [
-            " ERA",
-            " WHIP",
-            " K/9",
+            "ERA",
+            "WHIP",
+            "K/9",
             "BB/9",
         ]:
             output += f"{item:>5}"
@@ -189,14 +189,14 @@ class PlayerTableFormatter:
     @staticmethod
     def horizontal_defensive_stat_header(team_name="Name"):
         """Return the pitching stat header as a single line."""
-        output = str("{:<{}} ".format(team_name, 30))  # 30 is the longest name
+        output = f"{team_name:<31}"  # 31 is the longest name allowed
         # Original stats (width 4)
         for item in [
-            "  G",
-            " PO",
-            "  A",
-            "  E",
-            " TC",  # total chances = putouts + assists + errors
+            "G",
+            "PO",
+            "A",
+            "E",
+            "TC",  # total chances = putouts + assists + errors
         ]:
             output += f"{item:>4}"
         # Derived stats (width 6 for decimals)
@@ -216,19 +216,19 @@ class PlayerTableFormatter:
             stats = player.season_stats.stats
         elif stat_type == "career":
             stats = player.career_stats.stats
-        output = str("{:<{}} ".format(player.name, 30))  # 30 is the longest name
+        output = f"{player.name:<31}"  # 31 is the longest name
         if stat_type == "season":
-            output += "{:>{}}".format(player.season_stats.games_played, 4)
+            output += f"{player.season_stats.games_played:>4}"
         elif stat_type == "career":
-            output += "{:>{}}".format(player.career_stats.career_games, 4)
+            output += f"{player.career_stats.career_games:>4}"
         else:
-            output += "{:>{}}".format(1, 4)
-        output += "{:>{}}".format(stats.fielding.putouts, 4)
-        output += "{:>{}}".format(stats.fielding.assists, 4)
-        output += "{:>{}}".format(stats.fielding.errors, 4)
-        output += "{:>{}}".format(stats.fielding.chances, 4)
+            output += f"{1:>4}"
+        output += f"{stats.fielding.putouts:>4}"
+        output += f"{stats.fielding.assists:>4}"
+        output += f"{stats.fielding.errors:>4}"
+        output += f"{stats.fielding.chances:>4}"
         formatted_fpct = f"{stats.fielding.fielding_percentage:.3f}"
-        output += "{:>{}}".format(formatted_fpct, 6)
+        output += f"{formatted_fpct:>6}"
         return output
 
     @staticmethod
@@ -240,27 +240,27 @@ class PlayerTableFormatter:
             stats = player.season_stats.stats
         elif stat_type == "career":
             stats = player.career_stats.stats
-        output = str("{:<{}} ".format(player.name, 30))  # 30 is the longest name
+        output = f"{player.name:<31}" # 31 is the longest name
         if stat_type == "season":
-            output += "{:>{}}".format(player.season_stats.games_played, 4)
+            output += f"{player.season_stats.games_played:>4}"
         elif stat_type == "career":
-            output += "{:>{}}".format(player.career_stats.career_games, 4)
+            output += f"{player.career_stats.career_games:>4}"
         else:
-            output += "{:>{}}".format(1, 4)
-        output += "{:>{}}".format(stats.batting.at_bats, 4)
-        output += "{:>{}}".format(stats.batting.runs, 4)
-        output += "{:>{}}".format(stats.batting.hits, 4)
-        output += "{:>{}}".format(stats.batting.doubles, 4)
-        output += "{:>{}}".format(stats.batting.triples, 4)
-        output += "{:>{}}".format(stats.batting.home_runs, 4)
-        output += "{:>{}}".format(stats.batting.rbi, 4)
-        output += "{:>{}}".format(stats.batting.sb, 4)
-        output += "{:>{}}".format(stats.batting.cs, 4)
-        output += "{:>{}}".format(stats.batting.walks, 4)
-        output += "{:>{}}".format(stats.batting.strike_outs, 4)
-        output += "{:>{}}".format(stats.batting.gdp, 4)
-        output += "{:>{}}".format(stats.batting.hbp, 4)
-        output += "{:>{}}".format(stats.batting.sac_flys, 4)
+            output += f"{1:>4}"
+        output += f"{stats.batting.at_bats:>4}"
+        output += f"{stats.batting.runs:>4}"
+        output += f"{stats.batting.hits:>4}"
+        output += f"{stats.batting.doubles:>4}"
+        output += f"{stats.batting.triples:>4}"
+        output += f"{stats.batting.home_runs:>4}"
+        output += f"{stats.batting.rbi:>4}"
+        output += f"{stats.batting.sb:>4}"
+        output += f"{stats.batting.cs:>4}"
+        output += f"{stats.batting.walks:>4}"
+        output += f"{stats.batting.strike_outs:>4}"
+        output += f"{stats.batting.gdp:>4}"
+        output += f"{stats.batting.hbp:>4}"
+        output += f"{stats.batting.sac_flys:>4}"
 
         # Derived stats
         batting_average = stats.batting.batting_average
@@ -281,10 +281,10 @@ class PlayerTableFormatter:
         formatted_ops = f"{ops:.3f}"
         if formatted_ops.startswith("0"):
             formatted_ops = " " + formatted_ops[1:]
-        output += " {}".format(formatted_average)
-        output += " {}".format(formatted_obp)
-        output += " {}".format(formatted_slugging)
-        output += " {}".format(formatted_ops)
+        output += f"{formatted_average:>6}"
+        output += f"{formatted_obp:>6}"
+        output += f"{formatted_slugging:>6}"
+        output += f"{formatted_ops:>6}"
 
         return output
 
@@ -292,14 +292,14 @@ class PlayerTableFormatter:
     def short_batting_stats(player):
         """Output the player stats on a single line."""
         stats = player.game_stats
-        output = str("{:<{}} ".format(player.name, 30))  # 30 is the longest name
+        output = f"{player.name:<31}"  # 31 is the longest name
 
-        output += "AB: {} ".format(stats.batting.at_bats)
-        output += "R: {} ".format(stats.batting.runs)
-        output += "H: {} ".format(stats.batting.hits)
-        output += "BB: {} ".format(stats.batting.walks)
-        output += "HBP: {} ".format(stats.batting.hbp)
-        output += "SAC: {} ".format(stats.batting.sac_flys)
+        output += f"AB: {stats.batting.at_bats} "
+        output += f"R: {stats.batting.runs} "
+        output += f"H: {stats.batting.hits} "
+        output += f"BB: {stats.batting.walks} "
+        output += f"HBP: {stats.batting.hbp} "
+        output += f"SAC: {stats.batting.sac_flys} "
         return output
 
     @staticmethod
@@ -386,10 +386,10 @@ class PlayerTableFormatter:
     @staticmethod
     def header():
         """Return the header as a single line."""
-        output = str("{:<{}} ".format("Name", 30))  # 30 is the longest name
-        output += "{:>{}}".format("PS", 3)
-        output += "{:>{}}".format("T", 2)
-        output += "{:>{}}".format("B", 2)
+        output = f"{"Name":<30}"  # 30 is the longest name
+        output += f"{"PS":>3}"
+        output += f"{"T":>2}"
+        output += f"{"B":>2}"
         for item in [
             "CL",
             "SP",
@@ -408,11 +408,11 @@ class PlayerTableFormatter:
             "GB",
             "KK",
         ]:
-            output += "{:>{}}".format(item, 3)
+            output += f"{item:>3}"
         output += "  "
         for item in ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]:
-            output += "{:>{}}".format(item, 3)
+            output += f"{item:>3}"
         output += "  "
         for item in ["LO", "CH", "PH"]:
-            output += "{:>{}}".format(item, 3)
+            output += f"{item:>3}"
         return output

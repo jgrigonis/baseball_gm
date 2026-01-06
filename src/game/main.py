@@ -26,6 +26,7 @@ __author__ = "josh"
 # energy as "time" passes.
 # plate_appearances - Can populated every plate appearance, someday
 #
+# TODO May not want to overwrite existing team csv files
 # TODO Fix up base advances, so they are not so static
 # TODO verify defensive stats and event probs
 # TODO defensive plays are very static.
@@ -128,12 +129,14 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.current_pitcher = self.pitch_team.current_pitcher()
         if not self.game_over:
-            self.logger.info({
-                "event": "next_batter",
-                "player": self.current_batter.name,
-                #"player": self.current_batter,
-                # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
-            })
+            self.logger.info(
+                {
+                    "event": "next_batter",
+                    "player": self.current_batter.name,
+                    # "player": self.current_batter,
+                    # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
+                }
+            )
             self.logger.info(f"Pitching: {self.current_pitcher.name}")
 
     def get_defender(self, position):
@@ -219,7 +222,7 @@ class Game(object):
         """
         b_num = self._base_number(base)
         runner = self.bases[b_num - 1]
-        self.logger.trace("base to steal = " + str(b_num))
+        self.logger.trace(f"base to steal = {b_num}")
         if b_num == 3:
             if self.bases[2] != 0:
                 self._score_run(self.bases[2])
@@ -867,12 +870,14 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
         if not self.game_over and outs < 3:
-            self.logger.info({
-                "event": "next_batter",
-                "player": self.current_batter.name,
-                #"player": self.current_batter,
-                # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
-            })
+            self.logger.info(
+                {
+                    "event": "next_batter",
+                    "player": self.current_batter.name,
+                    # "player": self.current_batter,
+                    # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
+                }
+            )
             # self.logger.info(
             #     "Next Up: "
             #     + PlayerTableFormatter.short_batting_stats(self.current_batter)
@@ -1001,5 +1006,3 @@ class Game(object):
         )
         output_stats(self)
         return
-
-    

@@ -11,9 +11,6 @@ import uuid
 
 import src.game.game_exceptions as game_exceptions
 import src.stats.stats as stats
-
-# from src.player.player_formatters import PlayerFormatter
-# from src.player.player_formatters import PlayerTableFormatter
 from src.player.positions import positions, template, skill_template, skills
 
 

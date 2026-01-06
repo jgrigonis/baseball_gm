@@ -67,24 +67,28 @@ def create_team():
 
     team = Team(args.city, args.mascot)
 
-    team.players.extend(create_players("c", 2)) # 2 catchers
+    team.players.extend(create_players("c", 2))  # 2 catchers
     team.players.extend(create_players("cf"))
     team.players.extend(create_players("rf"))
     team.players.extend(create_players("lf"))
-    team.players.extend(create_players(["of", "cf", "lf", "rf"], 2)) # 2 more random outfielders
+    team.players.extend(
+        create_players(["of", "cf", "lf", "rf"], 2)
+    )  # 2 more random outfielders
     team.players.extend(create_players("2b"))
     team.players.extend(create_players("3b"))
     team.players.extend(create_players("ss"))
     team.players.extend(create_players("1b"))
-    team.players.extend(create_players(["if", "2b", "3b", "ss", "1b"], 2)) # 2 more random infielders
-    team.players.extend(create_players("sp", 5)) # 5 starting pitchers
-    team.players.extend(create_players("rp", 7)) # 7 relief pitchers
-    team.players.extend(create_players(["sp", "rp"], 4)) # 4 more pitchers
-    team.players.extend(create_players(num=11)) # 11 more random players
+    team.players.extend(
+        create_players(["if", "2b", "3b", "ss", "1b"], 2)
+    )  # 2 more random infielders
+    team.players.extend(create_players("sp", 5))  # 5 starting pitchers
+    team.players.extend(create_players("rp", 7))  # 7 relief pitchers
+    team.players.extend(create_players(["sp", "rp"], 4))  # 4 more pitchers
+    team.players.extend(create_players(num=11))  # 11 more random players
     if debug:
-        print(Player.header())
+        print(PlayerTableFormatter.header())
         for player in team.players:
-            print(player.horizontal())
+            print(PlayerTableFormatter.horizontal(player))
 
     with open(args.file, "w") as csv:
         csv.writelines(PlayerTableFormatter.csv_header())
