@@ -306,7 +306,7 @@ class Game(object):
         if defender:
             outcome = self.defense.check_play(defender, "fielding", position)
             if outcome.error:
-                #self._handle_error(defender)
+                # self._handle_error(defender)
                 # Batter reaches on error
                 if self.bases.empty_base(0):
                     # Error on ground ball - batter safe, no at-bat
@@ -325,7 +325,7 @@ class Game(object):
                     )
                 return
             elif outcome.slow:
-                #self._handle_infield_hit()
+                # self._handle_infield_hit()
                 # Batter reaches on error
                 if self.bases.empty_base(0):
                     # Error on ground ball - batter safe, no at-bat
@@ -574,7 +574,7 @@ class Game(object):
             # )
             outcome = self.defense.check_play(first_defender, "both", first_pos)
             if outcome.error:
-                #if error_type == "error":
+                # if error_type == "error":
                 # Error on first defender - batter safe, runner out, no at-bat
                 self.logger.info(
                     f"Error by {first_defender.name} at {first_pos.upper()}"
@@ -586,7 +586,7 @@ class Game(object):
                     self.bases[0] = batter
                 return
             if outcome.slow:
-                #elif error_type == "slow":
+                # elif error_type == "slow":
                 # Too slow - only get lead runner, batter gets at-bat
                 self.logger.info(
                     f"{first_defender.name} at {first_pos.upper()} too slow, only lead runner out"

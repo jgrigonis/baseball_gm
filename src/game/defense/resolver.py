@@ -104,6 +104,3 @@ class DefensiveResolver:
         0   → ~15%
         """
         return max(0.01, 0.15 - (speed / 100.0) * 0.14)
-
-
-

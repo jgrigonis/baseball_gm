@@ -7,6 +7,8 @@ import src.game.game_exceptions as game_exceptions
 from src.player.player import Player
 from src.team.team import Team
 
+from tests.utils import FakeRNG
+
 
 class GameTestBase(unittest.TestCase):
     """Game test base."""
@@ -22,14 +24,6 @@ class GameTestBase(unittest.TestCase):
         self.my_game = Game(home, away)
 
 
-class FakeRNG:
-    def __init__(self, values):
-        self.values = iter(values)
-
-    def random(self):
-        return next(self.values)
-
-
 class TestDefense(GameTestBase):
 
     def setUp(self):
@@ -40,41 +34,41 @@ class TestDefense(GameTestBase):
         fake_rng = FakeRNG([0.99])  # no error
         self.my_game.defense.rng = fake_rng
 
-        success, error = self.my_game.defense.check_play(
+        outcome = self.my_game.defense.check_play(
             defender=self.simple_player,
             play_type="fielding",
             position="ss",
         )
 
-        assert success is True
-        assert error is None
+        assert outcome.success
+        assert not outcome.error
 
     def test_defensive_play_error(self):
         fake_rng = FakeRNG([0.001])  # guaranteed error
         self.my_game.defense.rng = fake_rng
 
-        success, error = self.my_game.defense.check_play(
+        outcome = self.my_game.defense.check_play(
             defender=self.simple_player,
             play_type="fielding",
             position="ss",
         )
 
-        assert success is False
-        assert error == "error"
+        assert outcome.success is False
+        assert outcome.error is True
         assert self.simple_player.stats.fielding.errors == 1
 
     def test_defensive_play_too_slow(self):
         fake_rng = FakeRNG([0.99, 0.001])  # no error, but slow
         self.my_game.defense.rng = fake_rng
 
-        success, error = self.my_game.defense.check_play(
+        outcome = self.my_game.defense.check_play(
             defender=self.simple_player,
             play_type="both",
             position="ss",
         )
 
-        assert success is False
-        assert error == "slow"
+        assert outcome.success is False
+        assert outcome.slow is True
 
 
 class TestInitAnd26Balls(GameTestBase):
