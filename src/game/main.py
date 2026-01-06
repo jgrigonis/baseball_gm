@@ -9,9 +9,7 @@ import src.game.inning as inning
 from src.game.rules.common import pitch, batting_at_bat
 import src.game.score as score
 from src.game.score_formatter import ScoreFormatter
-
-# from src.player.player import Player
-from src.player.player_formatters import PlayerTableFormatter
+from src.game.stat_printer import output_stats
 from src.util.logger import setup_logger
 
 __author__ = "josh"
@@ -27,17 +25,14 @@ __author__ = "josh"
 # might update locally in Game. Also need to recover
 # energy as "time" passes.
 # plate_appearances - Can populated every plate appearance, someday
-# TODO Remove formatting from logging events
-# instead log events and format elsewhere
-# Get PlayerTableFormatter out of main.py
+#
 # TODO Fix up base advances, so they are not so static
-# TODO no longer need to aggregate here, do it with the DB
 # TODO verify defensive stats and event probs
 # TODO defensive plays are very static.
 # TODO pitchers probably should field bunts, and some batted balls
 # TODO chance for dropped 3rd strike.
 # TODO Steals, caught stealing, pickoffs all could result in errors
-# Make sure they are counted in fielding stats
+#      Make sure they are counted in fielding stats
 # TODO implement handedness p vs batter
 # TODO pitcher energy and recovery
 # TODO implement clutch
@@ -48,8 +43,8 @@ __author__ = "josh"
 # TODO can runners advance more with more speed, not currently
 # TODO many more unit tests
 # TODO unit test for walk off home run, vs driving in multiple
-# home run should score all runs, driving in on a triple for example
-# should stop scoring once the winning run crosses the plate.
+#      home run should score all runs, driving in on a triple for example
+#      should stop scoring once the winning run crosses the plate.
 # TODO handle intentional walk as a play and a stat
 # TODO add a stat for catcher picking off runners.
 # TODO add a stat for catcher having a passed ball.
@@ -133,10 +128,12 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.current_pitcher = self.pitch_team.current_pitcher()
         if not self.game_over:
-            self.logger.info(
-                "Next Up: "
-                + PlayerTableFormatter.short_batting_stats(self.current_batter)
-            )
+            self.logger.info({
+                "event": "next_batter",
+                "player": self.current_batter.name,
+                #"player": self.current_batter,
+                # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
+            })
             self.logger.info(f"Pitching: {self.current_pitcher.name}")
 
     def get_defender(self, position):
@@ -870,10 +867,16 @@ class Game(object):
         self.current_batter = self.bat_team.current_batter()
         self.count.reset_count()
         if not self.game_over and outs < 3:
-            self.logger.info(
-                "Next Up: "
-                + PlayerTableFormatter.short_batting_stats(self.current_batter)
-            )
+            self.logger.info({
+                "event": "next_batter",
+                "player": self.current_batter.name,
+                #"player": self.current_batter,
+                # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
+            })
+            # self.logger.info(
+            #     "Next Up: "
+            #     + PlayerTableFormatter.short_batting_stats(self.current_batter)
+            # )
             self.logger.debug(f"Pitching: {self.current_pitcher.name}")
 
     def _put_out(self, next=False, log=""):
@@ -996,45 +999,7 @@ class Game(object):
         self.logger.debug(
             ScoreFormatter.inning_score_str(self.score, self.home, self.away)
         )
-        self._handle_stats()
+        output_stats(self)
         return
 
-    def _handle_stats(self):
-        """Handle the stats for the game.
-
-        This function should live elsewhere
-        """
-        self.logger.info(
-            PlayerTableFormatter.horizontal_stat_header(
-                self.home.city + " " + self.home.mascot
-            )
-        )
-        for player in self.home.lineup:
-            self.logger.info(PlayerTableFormatter.horizontal_stats(player))
-
-        self.logger.info(
-            PlayerTableFormatter.horizontal_stat_header(
-                self.away.city + " " + self.away.mascot
-            )
-        )
-        for player in self.away.lineup:
-            self.logger.info(PlayerTableFormatter.horizontal_stats(player))
-        self.logger.info("-" * 100)
-        self.logger.info(
-            PlayerTableFormatter.horizontal_pitching_stat_header(
-                self.home.city + " " + self.home.mascot
-            )
-        )
-        for player in self.home.players:
-            if player.game_stats.pitching.ip_float > 0:
-                self.logger.info(PlayerTableFormatter.horizontal_pitching_stats(player))
-
-        self.logger.info(
-            PlayerTableFormatter.horizontal_pitching_stat_header(
-                self.away.city + " " + self.away.mascot
-            )
-        )
-        for player in self.away.players:
-            if player.game_stats.pitching.ip_float > 0:
-                self.logger.info(PlayerTableFormatter.horizontal_pitching_stats(player))
-        self.logger.info("-" * 100)
+    
