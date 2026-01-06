@@ -29,6 +29,7 @@ __author__ = "josh"
 # plate_appearances - Can populated every plate appearance, someday
 # TODO Remove formatting from logging events
 # instead log events and format elsewhere
+# Get PlayerTableFormatter out of main.py
 # TODO Fix up base advances, so they are not so static
 # TODO no longer need to aggregate here, do it with the DB
 # TODO verify defensive stats and event probs
@@ -966,13 +967,6 @@ class Game(object):
             self.bat_team = self.away
             self.pitch_team = self.home
         self._sync_players()
-
-    # def _aggregate_stats(self):
-    #     self.logger.debug("Aggregating game stats to season total.")
-    #     for player in self.home.players:
-    #         player.aggregate_game()
-    #     for player in self.away.players:
-    #         player.aggregate_game()
 
     def _end_game(self):
         """

@@ -46,12 +46,13 @@ class Team(object):
             rows = []
         self.team_file = path
         self.players: list[Player] = []
-        
+
         if path:
             with open(path, newline="", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
 
                 for row in reader:
+                    self.logger.trace(row)
                     self._add_player(row)
 
         for row in rows:

@@ -1,5 +1,29 @@
 # src/player/player_formatters.py
 
+CSV_FIELDS = [
+    "Name",
+    "PS",
+    "T",
+    "B",
+    "CL",
+    "SP",
+    "PO",
+    "EY",
+    "CT",
+    "BR",
+    "BU",
+    "CA",
+    "IF",
+    "OF",
+    "AR",
+    "AC",
+    "ST",
+    "RE",
+    "GB",
+    "KK",
+    "ID",
+]
+
 
 class PlayerFormatter(object):
     @staticmethod
@@ -353,35 +377,8 @@ class PlayerTableFormatter:
         output += str("PH = Power hitter rating\n")
         return output
 
-    @staticmethod
     def csv_header():
-        """Return the header as a single csv line."""
-        output = str("{},".format("Name"))  # 30 is the longest name
-        for item in [
-            "PS",
-            "T",
-            "B",
-            "CL",
-            "SP",
-            "PO",
-            "EY",
-            "CT",
-            "BR",
-            "BU",
-            "CA",
-            "IF",
-            "OF",
-            "AR",
-            "AC",
-            "ST",
-            "RE",
-            "GB",
-            "KK",
-            "ID",
-        ]:
-            output += "{},".format(item)
-        output += "\n"
-        return output
+        return ",".join(CSV_FIELDS) + "\n"
 
     @staticmethod
     def header():

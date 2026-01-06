@@ -8,6 +8,7 @@ from src.player.player import Player
 from src.team.team import Team
 
 from tests.utils import FakeRNG
+from tests.data.team_data import TEAM1ROWS, TEAM2ROWS
 
 
 class GameTestBase(unittest.TestCase):
@@ -16,10 +17,10 @@ class GameTestBase(unittest.TestCase):
     def setUp(self):
         """Setup the game test base."""
         home = Team("home", "team")
-        home.load_team()
+        home.load_team(rows=TEAM1ROWS)
         home.set_lineup()
         away = Team("away", "team")
-        away.load_team()
+        away.load_team(rows=TEAM2ROWS)
         away.set_lineup()
         self.my_game = Game(home, away)
 
