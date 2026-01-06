@@ -40,35 +40,43 @@ class Team(object):
         self.players = []
         self.logger = logging.getLogger("details")
 
-    def load_team(self, path="FooBars.csv"):
+    def load_team(self, path=None, rows=None):
         """Load a team from a csv file."""
+        if rows is None:
+            rows = []
         self.team_file = path
-        players: list[Player] = []
+        self.players: list[Player] = []
+        
+        if path:
+            with open(path, newline="", encoding="utf-8") as csvfile:
+                reader = csv.DictReader(csvfile)
 
-        with open(path, newline="", encoding="utf-8") as csvfile:
-            reader = csv.DictReader(csvfile)
+                for row in reader:
+                    self._add_player(row)
 
-            for row in reader:
-                first_name, last_name = row["Name"].split(" ", 1)
-                player = Player(
-                    first_name=first_name.title(),
-                    last_name=last_name.title(),
-                    throws=row["T"] or None,
-                    bats=row["B"] or None,
-                    position=row["PS"] or None,
-                )
-                for csv_key, skill_name in SKILL_MAP.items():
-                    value = row.get(csv_key)
-                    if value:
-                        player.skills[skill_name] = int(value)
-                    else:
-                        player.skills[skill_name] = 0
-                try:
-                    player.id = row["ID"]
-                except:
-                    pass
-                players.append(player)
-        self.players = players
+        for row in rows:
+            self._add_player(row)
+
+    def _add_player(self, row):
+        first_name, last_name = row["Name"].split(" ", 1)
+        player = Player(
+            first_name=first_name.title(),
+            last_name=last_name.title(),
+            throws=row["T"] or None,
+            bats=row["B"] or None,
+            position=row["PS"] or None,
+        )
+        for csv_key, skill_name in SKILL_MAP.items():
+            value = row.get(csv_key)
+            if value:
+                player.skills[skill_name] = int(value)
+            else:
+                player.skills[skill_name] = 0
+        try:
+            player.id = row["ID"]
+        except:
+            pass
+        self.players.append(player)
 
     def set_lineup(self, style="auto", dh=True):
         """
