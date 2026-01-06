@@ -143,6 +143,7 @@ def main():
     #         games_played=len(game_stats)
     #     )
 
+    # Eventually: player.season_stats = season_stats_loader.load_for_player(player.id)
     for player in home_team.players + away_team.players:
         rows = player_games_repo.fetch_player_games(player_id=player.id)
 
