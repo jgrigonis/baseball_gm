@@ -52,27 +52,3 @@ print(f"{"G":>4}")
 # Go see in schema
 
 
-Can you turn this into a join:
-
-for item in [
-            player.position,
-            PlayerFormatter.abbreviate(player.throws),
-            PlayerFormatter.abbreviate(player.bats),
-            player.skills["clutch"],
-            player.skills["speed"],
-            player.skills["power"],
-            player.skills["eye"],
-            player.skills["contact"],
-            player.skills["base_running"],
-            player.skills["bunting"],
-            player.skills["catching"],
-            player.skills["infield"],
-            player.skills["outfield"],
-            player.skills["arm"],
-            player.skills["accuracy"],
-            player.skills["stamina"],
-            player.skills["recovery"],
-            player.skills["ground_balls"],
-            player.skills["strikes"],
-        ]:
-            output += "{},".format(item)

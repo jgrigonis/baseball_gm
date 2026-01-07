@@ -38,10 +38,10 @@ def main():
     print(PlayerTableFormatter.header())
     for player in team.players:
         print(PlayerTableFormatter.horizontal(player))
-    with open(TEAM_FILES_DIR + os.sep + "TeamNine.csv", "w") as csv:
-        csv.writelines(PlayerTableFormatter.csv_header())
+    with open(TEAM_FILES_DIR + os.sep + "TeamNine.csv", "w") as csv_output:
+        csv_output.writelines(PlayerTableFormatter.csv_header())
         for player in team.players:
-            csv.writelines(PlayerTableFormatter.csv(player))
+            csv_output.writelines(PlayerTableFormatter.csv(player))
 
 
 if __name__ == "__main__":

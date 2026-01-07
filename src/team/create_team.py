@@ -25,11 +25,13 @@ team and has all its ratings.
 """
 
 import argparse
+import csv
 import os
 
 from src.player.create import create_players
 
 # from src.player.player import Player
+from src.player.player_formatters import CSV_FIELDS
 from src.player.player_formatters import PlayerTableFormatter
 from src.team.team import Team
 from src.util.locations import TEAM_FILES_DIR
@@ -89,10 +91,11 @@ def create_team():
         for player in team.players:
             print(PlayerTableFormatter.horizontal(player))
 
-    with open(TEAM_FILES_DIR + os.sep + args.file, "w") as csv:
-        csv.writelines(PlayerTableFormatter.csv_header())
+    with open(TEAM_FILES_DIR + os.sep + args.file, "w", newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(CSV_FIELDS)
         for player in team.players:
-            csv.writelines(PlayerTableFormatter.csv(player))
+            writer.writerow(PlayerTableFormatter.csv_row(player))
 
 
 def main():
