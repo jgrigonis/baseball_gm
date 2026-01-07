@@ -35,3 +35,13 @@ class LeagueRepository:
         )
         self.conn.commit()
         return league_id
+
+    def assign_to_league(self, league_id: str, team_id: str):
+        self.conn.execute(
+            """
+            INSERT OR IGNORE INTO league_teams (league_id, team_id)
+            VALUES (?, ?)
+            """,
+            (league_id, team_id),
+        )
+        self.conn.commit()

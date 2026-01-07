@@ -25,34 +25,6 @@ class TeamRepository:
     # WRITE
     # ------------------------------------------------------------
 
-    def insert(
-        self,
-        id: int,
-        city: int,
-        mascot: int,
-        league: int,
-    ):
-        """
-        Create a team record.
-        Idempotent per (id).
-        """
-        self.conn.execute(
-            """
-            INSERT OR REPLACE INTO team (
-                id, city, mascot, league
-            )
-            VALUES (?, ?, ?, ?)
-            """,
-            (
-                id,
-                city,
-                mascot,
-                league,
-            ),
-        )
-
-        self.conn.commit()
-
     def add_player(self, team_id: str, player_id: str):
         """
         Add player to team roster.
@@ -67,12 +39,21 @@ class TeamRepository:
         )
         self.conn.commit()
 
-    # ------------------------------------------------------------
-    # READ
-    # ------------------------------------------------------------
-
     def get_or_create(self, city: int, mascot: int) -> str | None:
-        """ """
+        """
+        Inputs:
+        city and mascot
+
+        It will return the id for the team if that combo exists.
+
+        Otherwise it will create the id, insert that combo and
+        then return the team id
+
+        Outputs:
+        team_id
+
+        Notably, this doesn't set the league.
+        """
         row = self.conn.execute(
             """
             SELECT *
@@ -83,6 +64,7 @@ class TeamRepository:
         ).fetchone()
         if row:
             return row["id"]
+        # Create a new ID if that city/mascot combo doesn't exist
         team_id = uuid.uuid4().hex
         self.conn.execute(
             """
@@ -100,14 +82,18 @@ class TeamRepository:
         self.conn.commit()
         return team_id
 
+    # ------------------------------------------------------------
+    # READ
+    # ------------------------------------------------------------
+
     def look_up(self, team_id: int) -> Team | None:
         """
-        Fetch a team
+        Fetch a team based on id
         """
         row = self.conn.execute(
             """
             SELECT *
-            FROM team
+            FROM teams
             WHERE id = ?
             """,
             (team_id,),

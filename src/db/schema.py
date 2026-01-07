@@ -17,8 +17,7 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
     city TEXT NOT NULL,
-    mascot TEXT NOT NULL,
-    league TEXT
+    mascot TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS team_players (
@@ -29,6 +28,16 @@ CREATE TABLE IF NOT EXISTS team_players (
 
     FOREIGN KEY (team_id) REFERENCES teams(id),
     FOREIGN KEY (player_id) REFERENCES players(id)
+);
+
+CREATE TABLE IF NOT EXISTS league_teams (
+    league_id TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+
+    PRIMARY KEY (league_id, team_id),
+
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (league_id) REFERENCES leagues(league_id)    
 );
 
 CREATE TABLE IF NOT EXISTS seasons (
