@@ -21,3 +21,5 @@ league.db
 
 leagues/*
 team_files/*
+
+.coverage

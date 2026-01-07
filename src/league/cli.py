@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 
@@ -20,11 +19,11 @@ def main():
     print(f"League created: {league_id}")
     print(f"Teams imported: {len(team_ids)}")
 
+
 if __name__ == "__main__":
     main()
 
 
-    
 # league_id = create_league("My League")
 # season_id = create_season(league_id, year=2025)
 

@@ -1,6 +1,7 @@
 from src.db.repositories.league_repo import LeagueRepository
 from src.team.team_importer import TeamImporter
 
+
 class LeagueBootstrapper:
     def __init__(self, conn):
         self.conn = conn

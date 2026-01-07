@@ -6,15 +6,16 @@
 
 import uuid
 
+
 class SeasonRepository:
     def __init__(self, conn):
         self.conn = conn
-    
+
     def create_season(self, league_id: int, year: int):
         """
         Create The Season
 
-        If you try to create an existing year seaons in the 
+        If you try to create an existing year seaons in the
         same league, it will just
         return the id of that existing season.
         """
@@ -25,7 +26,7 @@ class SeasonRepository:
 
         if row:
             return row["id"]
-            
+
         season_id = uuid.uuid4().hex
         self.conn.execute(
             """

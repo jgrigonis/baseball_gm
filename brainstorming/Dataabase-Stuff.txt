@@ -279,3 +279,8 @@ Headless simulations
 In-memory testing
 Future UI without refactors
 Easy save/load
+
+
+The line of code assigning sqlite3.Row to the row_factory of connection 
+creates what some people call a 'dictionary cursor', - instead of tuples 
+it starts returning 'dictionary' rows after fetchall or fetchone

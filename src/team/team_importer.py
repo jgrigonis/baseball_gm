@@ -7,6 +7,7 @@ from src.player.player import Player
 from src.team.team import Team
 from src.util.locations import TEAM_FILES_DIR
 
+
 class TeamImporter:
     """
     Imports a team from a CSV into the League DB
@@ -17,6 +18,7 @@ class TeamImporter:
     Associate players with the team
     Return a fully populated Team object
     """
+
     def __init__(self, conn):
         self.conn = conn
         self.player_repo = PlayerRepository(conn)
@@ -26,12 +28,12 @@ class TeamImporter:
         team = Team(city, mascot)
 
         team_id = self.team_repo.get_or_create(city, mascot)
-        with open(TEAM_FILES_DIR + os.sep + path, newline="", encoding="utf-8") as csvfile:
+        with open(
+            TEAM_FILES_DIR + os.sep + path, newline="", encoding="utf-8"
+        ) as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                print(row)
                 player = Player.from_row(row)
-
                 self.player_repo.insert(
                     id=player.id,
                     first_name=player.first_name,

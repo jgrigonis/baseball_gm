@@ -11,6 +11,7 @@ Not stats.
 
 Insert player information
 """
+
 import uuid
 
 from src.team.team import Team
@@ -65,15 +66,13 @@ class TeamRepository:
             (team_id, player_id),
         )
         self.conn.commit()
-    
+
     # ------------------------------------------------------------
     # READ
     # ------------------------------------------------------------
 
     def get_or_create(self, city: int, mascot: int) -> str | None:
-        """
-        
-        """
+        """ """
         row = self.conn.execute(
             """
             SELECT *
@@ -100,7 +99,6 @@ class TeamRepository:
         )
         self.conn.commit()
         return team_id
-    
 
     def look_up(self, team_id: int) -> Team | None:
         """

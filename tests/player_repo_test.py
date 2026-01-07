@@ -25,7 +25,7 @@ class TestRepo(unittest.TestCase):
 
     def test_read_player(self):
         row = self.players_repo.look_up(self.player_id)
-        #print(row)
+        # print(row)
 
 
 if __name__ == "__main__":

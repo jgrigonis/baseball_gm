@@ -655,7 +655,7 @@ class Event(object):
                             speed_reduction = (speed - 50) * 2  # +/- 100 at extremes
                             self.probs[caught_key] = max(
                                 0, int(self.probs[caught_key] - speed_reduction)
-                        )
+                            )
                         # Base running effect: better base running = less caught
                         if self.probs[caught_key] > 0:
 

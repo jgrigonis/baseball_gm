@@ -54,7 +54,7 @@ class Player(object):
 
     @staticmethod
     def from_row(row):
-        #print(row)
+        # print(row)
         first_name, last_name = row["Name"].split(" ", 1)
         player = Player(
             first_name=first_name.title(),

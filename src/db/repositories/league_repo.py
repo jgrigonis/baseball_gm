@@ -1,10 +1,10 @@
-
 import uuid
+
 
 class LeagueRepository:
     def __init__(self, conn):
         self.conn = conn
-    
+
     def create_league(self, league_name: int):
         """
         Create The League
