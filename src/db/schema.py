@@ -21,10 +21,25 @@ CREATE TABLE IF NOT EXISTS teams (
     league TEXT
 );
 
+CREATE TABLE IF NOT EXISTS team_players (
+    team_id   TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+
+    PRIMARY KEY (team_id, player_id),
+
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (player_id) REFERENCES players(id)
+);
+
 CREATE TABLE IF NOT EXISTS seasons (
     id TEXT PRIMARY KEY,
     year INTEGER,
     name TEXT      -- e.g. "Season1"
+);
+
+CREATE TABLE IF NOT EXISTS leagues (
+    league_id TEXT PRIMARY KEY,
+    league_name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS series (

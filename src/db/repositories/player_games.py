@@ -144,7 +144,7 @@ class PlayerGameRepository:
         return [self._row_to_stats(r) for r in rows]
 
     # ------------------------------------------------------------
-    # MAPPING TODO fix names
+    # MAPPING
     # ------------------------------------------------------------
 
     def _row_to_stats(self, row) -> Stats:
@@ -189,6 +189,9 @@ class PlayerGameRepository:
         return s
 
     def dump_one(self):
+        """
+        Just a testing function, not used
+        """
         row = self.conn.execute(
             """
             SELECT *
@@ -201,6 +204,11 @@ class PlayerGameRepository:
         return self._row_to_stats(row)
 
     def load_season_stats(self, player_id, season):
+        """
+        Load a season worth of stats
+
+        Currently wouldn't really work, with season parameter
+        """
         rows = self.conn.fetch_player_games(player_id, season)
 
         stats = Stats()

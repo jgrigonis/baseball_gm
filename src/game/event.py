@@ -289,6 +289,8 @@ class Event(object):
                 self.logger.debug("Passed Ball didn't happen")
                 return None
         else:
+            # This should never happen, but...
+            # TODO remove or refactor
             print(self.event)
             print("ERROR: We got a bad event.")
             quit()
@@ -649,21 +651,20 @@ class Event(object):
                     else:
                         # Better runners get caught less often
                         # Speed effect: faster = less caught
-                        speed_reduction = (speed - 50) * 2  # +/- 100 at extremes
-                        # Here we can change a 0 caught to a positive number
-                        # TODO fix this
-                        self.probs[caught_key] = max(
-                            0, int(self.probs[caught_key] - speed_reduction)
+                        if self.probs[caught_key] > 0:
+                            speed_reduction = (speed - 50) * 2  # +/- 100 at extremes
+                            self.probs[caught_key] = max(
+                                0, int(self.probs[caught_key] - speed_reduction)
                         )
                         # Base running effect: better base running = less caught
-                        # Here we can change a 0 caught to a positive number
-                        # TODO fix this
-                        base_running_reduction = (
-                            base_running - 50
-                        ) * 1.5  # +/- 75 at extremes
-                        self.probs[caught_key] = max(
-                            0, int(self.probs[caught_key] - base_running_reduction)
-                        )
+                        if self.probs[caught_key] > 0:
+
+                            base_running_reduction = (
+                                base_running - 50
+                            ) * 1.5  # +/- 75 at extremes
+                            self.probs[caught_key] = max(
+                                0, int(self.probs[caught_key] - base_running_reduction)
+                            )
 
                 # Adjust pickoff probability (better base running = less likely to be picked off)
                 if self.probs.get(pickoff_key, 0) > 0:

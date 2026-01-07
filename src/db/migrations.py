@@ -21,6 +21,7 @@
 # src/db/migrations.py
 
 from datetime import datetime
+from datetime import UTC
 from src.db.migration_files.runner import load_migrations
 
 
@@ -58,5 +59,5 @@ def _applied_versions(conn):
 def _record_migration(conn, version):
     conn.execute(
         "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)",
-        (version, datetime.utcnow().isoformat()),
+        (version, datetime.now(UTC).isoformat()),
     )

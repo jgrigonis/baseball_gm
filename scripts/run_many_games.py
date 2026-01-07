@@ -32,6 +32,7 @@ HOME_FILE = TEAM_FILES_DIR + os.sep + "Team1.csv"
 AWAY_FILE = TEAM_FILES_DIR + os.sep + "Giants.csv"
 LEAGUE_DIR = "leagues"
 
+
 def get_args():
     """
     Get arguments from the command line.

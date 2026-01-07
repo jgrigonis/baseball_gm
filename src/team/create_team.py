@@ -28,12 +28,14 @@ import argparse
 import os
 
 from src.player.create import create_players
+
 # from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
 from src.team.team import Team
 from src.util.locations import TEAM_FILES_DIR
 
 __author__ = "josh"
+
 
 def get_args():
     """

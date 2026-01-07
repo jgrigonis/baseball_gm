@@ -12,6 +12,7 @@ import uuid
 import src.game.game_exceptions as game_exceptions
 import src.stats.stats as stats
 from src.player.positions import positions, template, skill_template, skills
+from src.player.skill_map import SKILL_MAP
 
 
 class Player(object):
@@ -50,6 +51,29 @@ class Player(object):
     # def aggregate_game(self):
     #     """Aggregate the game stats."""
     #     self.season_stats.add_game(self.game_stats)
+
+    @staticmethod
+    def from_row(row):
+        #print(row)
+        first_name, last_name = row["Name"].split(" ", 1)
+        player = Player(
+            first_name=first_name.title(),
+            last_name=last_name.title(),
+            throws=row["T"] or None,
+            bats=row["B"] or None,
+            position=row["PS"] or None,
+        )
+        for csv_key, skill_name in SKILL_MAP.items():
+            value = row.get(csv_key)
+            if value:
+                player.skills[skill_name] = int(value)
+            else:
+                player.skills[skill_name] = 0
+        try:
+            player.id = row["ID"]
+        except:
+            pass
+        return player
 
     def init_game_stats(self):
         """

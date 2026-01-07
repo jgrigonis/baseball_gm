@@ -18,11 +18,12 @@ __author__ = "josh"
 #      players - should populate this when we create a team
 #      also can be done one off
 #      teams - populate this when you create a team
+#      Insert players when a team is loaded into a league
 # In teams:
 # What is league?
 # Should league file be the sqlite file?
 # Should we store the team file location
-# 
+#
 #   When creating a new season
 #      seasons - insert new record once a season
 #   When creting a series
@@ -284,7 +285,9 @@ class Game(object):
             if self.bases[b_num - 1] != 0 and self.bases[b_num] == 0:
                 runner.game_stats.batting.caught_stealing()
                 self.bases.clear([b_num - 1])
-                self._put_out(next=False, log=f"{runner.name} caught stealing from {base}")
+                self._put_out(
+                    next=False, log=f"{runner.name} caught stealing from {base}"
+                )
             else:
                 raise game_exceptions.InvalidSteal()
         else:

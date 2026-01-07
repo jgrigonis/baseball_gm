@@ -240,7 +240,7 @@ class PlayerTableFormatter:
             stats = player.season_stats.stats
         elif stat_type == "career":
             stats = player.career_stats.stats
-        output = f"{player.name:<31}" # 31 is the longest name
+        output = f"{player.name:<31}"  # 31 is the longest name
         if stat_type == "season":
             output += f"{player.season_stats.games_played:>4}"
         elif stat_type == "career":

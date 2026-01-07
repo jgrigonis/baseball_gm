@@ -1,0 +1,14 @@
+A TeamImporter should:
+
+Read a team CSV
+Create Player objects
+Insert players into players table (idempotent)
+Create or lookup team record
+Associate players with the team
+Return a fully populated Team object
+
+It should not:
+
+Simulate games
+Generate skills
+Aggregate stats

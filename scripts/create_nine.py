@@ -43,5 +43,6 @@ def main():
         for player in team.players:
             csv.writelines(PlayerTableFormatter.csv(player))
 
+
 if __name__ == "__main__":
     main()

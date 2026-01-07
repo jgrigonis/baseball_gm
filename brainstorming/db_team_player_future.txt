@@ -1,0 +1,35 @@
+
+CREATE TABLE IF NOT EXISTS team_players (
+    team_id   TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    season_id TEXT NOT NULL,
+
+    roster_role TEXT,       -- active, injured, minors, etc
+    jersey_number INTEGER,
+
+    PRIMARY KEY (team_id, player_id, season_id),
+
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (player_id) REFERENCES players(id),
+    FOREIGN KEY (season_id) REFERENCES seasons(id)
+);
+
+
+This lets you answer:
+
+“Who was on the 2025 Giants?”
+“When did this player join?”
+“Did this player switch teams mid-season?”
+
+
+Original team_players
+
+CREATE TABLE IF NOT EXISTS team_players (
+    team_id   TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+
+    PRIMARY KEY (team_id, player_id),
+
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (player_id) REFERENCES players(id)
+);
