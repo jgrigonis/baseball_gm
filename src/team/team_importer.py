@@ -1,5 +1,5 @@
 import csv
-import os
+from pathlib import Path
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -25,12 +25,9 @@ class TeamImporter:
         self.team_repo = TeamRepository(conn)
 
     def import_csv(self, path: str, city: str, mascot: str) -> Team:
-        team = Team(city, mascot)
-
         team_id = self.team_repo.get_or_create(city, mascot)
-        with open(
-            TEAM_FILES_DIR + os.sep + path, newline="", encoding="utf-8"
-        ) as csvfile:
+        team = Team(city, mascot, team_id)
+        with open(Path(TEAM_FILES_DIR) / path, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 player = Player.from_row(row)
@@ -46,5 +43,4 @@ class TeamImporter:
 
                 self.team_repo.add_player(team_id, player.id)
 
-        team.id = team_id
         return team

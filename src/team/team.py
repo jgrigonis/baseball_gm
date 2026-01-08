@@ -31,10 +31,11 @@ LINEUP_SLOTS = [
 class Team(object):
     """A Baseball Team class."""
 
-    def __init__(self, city=None, mascot=None):
+    def __init__(self, city=None, mascot=None, id=None):
         """Initialize the team."""
         self.city = city
         self.mascot = mascot
+        self.id = id
         self.lineup = None
         self.pitcher = None
         self.batter_index = 0  # index on the lineup

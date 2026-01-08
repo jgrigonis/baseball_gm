@@ -56,10 +56,10 @@ def main():
         for miss in missing:
             print(f"The csv file for {miss} is missing.")
         quit(1)
-    league_id, team_ids = boot.bootstrap_from_manifest(manifest)
+    league_id, teams = boot.bootstrap_from_manifest(manifest)
 
     print(f"League created: {league_id}")
-    print(f"Teams imported: {len(team_ids)}")
+    print(f"Teams imported: {len(teams)}")
 
 
 if __name__ == "__main__":

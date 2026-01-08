@@ -11,17 +11,14 @@ class LeagueBootstrapper:
     def bootstrap_from_manifest(self, manifest):
         league_id = self.league_repo.create_league(manifest["league_name"])
 
-        team_ids = []
+        teams = []
         for team_def in manifest["teams"]:
-            team_id = self.team_importer.import_csv(
+            team = self.team_importer.import_csv(
                 path=team_def["csv"],
                 city=team_def["city"],
                 mascot=team_def["mascot"],
-                # league_id=league_id,
-                # csv_file=team_def["csv"],
-                # city=team_def["city"],
-                # mascot=team_def["mascot"],
             )
-            team_ids.append(team_id)
+            self.league_repo.assign_to_league(league_id, team.id)
+            teams.append(team)
 
-        return league_id, team_ids
+        return league_id, teams
