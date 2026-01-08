@@ -3,7 +3,7 @@ import sqlite3
 
 from src.db.init import init_db
 from src.league.bootstrap import LeagueBootstrapper
-from manifest import load_manifest
+from manifest import load_manifest, validate_manifest
 from src.util.locations import LEAGUE_FILES_DIR
 
 
@@ -14,6 +14,7 @@ def main():
 
     boot = LeagueBootstrapper(conn)
     manifest = load_manifest(LEAGUE_FILES_DIR + os.sep + "league_teams.json")
+    validate_manifest(manifest)
     league_id, team_ids = boot.bootstrap_from_manifest(manifest)
 
     print(f"League created: {league_id}")

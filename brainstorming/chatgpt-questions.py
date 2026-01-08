@@ -50,5 +50,3 @@ print(f"{"G":>4}")
 
 # What does it look like?
 # Go see in schema
-
-

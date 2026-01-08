@@ -91,7 +91,7 @@ def create_team():
         for player in team.players:
             print(PlayerTableFormatter.horizontal(player))
 
-    with open(TEAM_FILES_DIR + os.sep + args.file, "w", newline='') as csvfile:
+    with open(TEAM_FILES_DIR + os.sep + args.file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(CSV_FIELDS)
         for player in team.players:
