@@ -1,20 +1,61 @@
-import os
+import argparse
+from pathlib import Path
 import sqlite3
+import sys
 
 from src.db.init import init_db
 from src.league.bootstrap import LeagueBootstrapper
-from manifest import load_manifest, validate_manifest
+from src.league.manifest_helper import (
+    load_manifest,
+    validate_manifest_structure,
+    validate_manifest_uniqueness,
+    find_missing_team_files,
+    create_team_files,
+)
 from src.util.locations import LEAGUE_FILES_DIR
 
 
+def get_args():
+    """
+    Get arguments from the command line.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--create",
+        "-c",
+        default=False,
+        action="store_true",
+        help="Create missing csv files.",
+    )
+    parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
+    parser.add_argument(
+        "--manifest", "-m", default="league_teams.json", help="Set the manifest file."
+    )
+    args = parser.parse_args()
+    return args
+
+
 def main():
-    conn = sqlite3.connect(LEAGUE_FILES_DIR + os.sep + "league.db")
+    args = get_args()
+    conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
     boot = LeagueBootstrapper(conn)
-    manifest = load_manifest(LEAGUE_FILES_DIR + os.sep + "league_teams.json")
-    validate_manifest(manifest)
+    manifest = load_manifest(Path(LEAGUE_FILES_DIR) / args.manifest)
+    try:
+        validate_manifest_structure(manifest)
+        validate_manifest_uniqueness(manifest)
+    except ValueError as e:
+        print(e)
+        sys.exit(1)
+    missing = find_missing_team_files(manifest)
+    if missing and args.create:
+        create_team_files(missing)
+    elif missing:
+        for miss in missing:
+            print(f"The csv file for {miss} is missing.")
+        quit(1)
     league_id, team_ids = boot.bootstrap_from_manifest(manifest)
 
     print(f"League created: {league_id}")
@@ -23,20 +64,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# league_id = create_league("My League")
-# season_id = create_season(league_id, year=2025)
-
-# team_importer = TeamImporter(conn)
-
-# # 2 teams!
-# # When we expand we'll probably want to iterate a list or json.
-# teams = []
-# home = team_importer.import_csv("Giants.csv", "San Francisco", "Giants")
-# away = team_importer.import_csv("Team1.csv", "Team", "1")
-
-# schedule = Schedule(home, away)
-
-# for game in schedule.games:
-#     GameRunner.play(game, season_id)

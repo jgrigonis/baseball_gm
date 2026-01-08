@@ -56,9 +56,8 @@ def get_args():
     return args
 
 
-def create_team():
+def create_team(args):
     """Create a team."""
-    args = get_args()
     debug = args.debug
 
     files = os.listdir(TEAM_FILES_DIR)
@@ -100,7 +99,8 @@ def create_team():
 
 def main():
     """Main function."""
-    create_team()
+    args = get_args()
+    create_team(args)
 
 
 if __name__ == "__main__":
