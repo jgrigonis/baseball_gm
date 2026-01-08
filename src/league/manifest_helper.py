@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 from pathlib import Path
 
 from src.team.create_team import create_team

@@ -15,8 +15,9 @@ from src.util.logger import setup_logger
 __author__ = "josh"
 # TODO plate_appearances - Can populated every plate appearance, someday
 #
-# TODO League import should check for duplicate city/mascot combo
-#      duplicate csv files, duplicate cities can be allowed
+# TODO csv files should be treated as immutable records
+# TODO if a csv file changes, you have to treat it as a new
+#      team. team.source_hash = sha256(csv)
 # TODO Fix up base advances, so they are not so static
 # TODO verify defensive stats and event probs
 #      For instance outfielders almost never get assists

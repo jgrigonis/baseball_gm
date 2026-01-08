@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
     city TEXT NOT NULL,
-    mascot TEXT NOT NULL
+    mascot TEXT NOT NULL,
+    source_csv TEXT,
+    source_hash TEXT
 );
 
 CREATE TABLE IF NOT EXISTS team_players (

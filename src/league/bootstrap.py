@@ -14,6 +14,7 @@ class LeagueBootstrapper:
         teams = []
         for team_def in manifest["teams"]:
             team = self.team_importer.import_csv(
+                league_id=league_id,
                 path=team_def["csv"],
                 city=team_def["city"],
                 mascot=team_def["mascot"],

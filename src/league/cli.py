@@ -55,8 +55,12 @@ def main():
     elif missing:
         for miss in missing:
             print(f"The csv file for {miss} is missing.")
-        quit(1)
-    league_id, teams = boot.bootstrap_from_manifest(manifest)
+        sys, exit(1)
+    try:
+        league_id, teams = boot.bootstrap_from_manifest(manifest)
+    except RuntimeError as e:
+        print(e)
+        sys.exit(1)
 
     print(f"League created: {league_id}")
     print(f"Teams imported: {len(teams)}")

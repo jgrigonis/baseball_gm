@@ -1,4 +1,4 @@
-pip install pyflakes
+# pip install pyflakes
 pyflakes src
 if [ $? -eq 0 ]; then
   echo "No issues found"
