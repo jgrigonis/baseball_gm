@@ -13,30 +13,10 @@ from src.game.stat_printer import output_stats
 from src.util.logger import setup_logger
 
 __author__ = "josh"
-# TODO populate the other tables with info
-#   When creating a team
-#      players - should populate this when we create a team
-#      also can be done one off
-#      teams - populate this when you create a team
-#      Insert players when a team is loaded into a league
-# In teams:
-# What is league?
-# Should league file be the sqlite file?
-# Should we store the team file location
+# TODO plate_appearances - Can populated every plate appearance, someday
 #
-#   When creating a new season
-#      seasons - insert new record once a season
-#   When creting a series
-#      series - insert new record once a series
-#   Each game
-#      games - insert record for each game
-#      team_game_stats - insert record for each game
-#      pitcher_state - at least at the end of each game
-#      might update locally in Game. Also need to recover
-#      energy as "time" passes.
-#      plate_appearances - Can populated every plate appearance, someday
-#
-# TODO May not want to overwrite existing team csv files
+# TODO League import should check for duplicate city/mascot combo
+#      duplicate csv files, duplicate cities can be allowed
 # TODO Fix up base advances, so they are not so static
 # TODO verify defensive stats and event probs
 #      For instance outfielders almost never get assists

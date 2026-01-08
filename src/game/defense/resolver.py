@@ -10,7 +10,7 @@ Catcher framing / passed balls
 All live naturally in this class.
 """
 
-from typing import Optional, Tuple
+from typing import Optional
 
 from src.game.defense.outcome import DefenseOutcome
 

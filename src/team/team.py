@@ -11,7 +11,7 @@ import logging
 # from src.stats import stats
 from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
-from src.player.skill_map import SKILL_MAP
+# from src.player.skill_map import SKILL_MAP
 
 __author__ = "josh"
 
