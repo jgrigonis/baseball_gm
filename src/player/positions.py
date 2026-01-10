@@ -1,6 +1,6 @@
 __author__ = "josh"
 
-positions = [
+POSITIONS = [
     "sp",  # starting pitcher
     "rp",  # relief pitcher
     "c",  # catcher
@@ -16,7 +16,7 @@ positions = [
     "dh",  # designated hitter
 ]
 
-position_name = [
+POSITION_NAME = [
     "starting pitcher",
     "relief pitcher",
     "catcher",
@@ -32,22 +32,7 @@ position_name = [
     "designated hitter",
 ]
 
-rated_positions = [
-    "p",  # pitcher
-    "c",  # catcher
-    "1b",  # first baseman
-    "2b",  # second baseman
-    "ss",  # shortstop
-    "3b",  # third baseman
-    "lf",  # left fielder
-    "cf",  # center fielder
-    "rf",  # right fielder
-    "lead_off",  # lead off hitter
-    "contact_hitter",  # contact hitter
-    "power_hitter",  # power hitter
-]
-
-template = {
+POSITION_TEMPLATES = {
     "sp": {
         # 25% of starting pitchers are left handed
         "throws_left": 0.25,
@@ -124,7 +109,7 @@ template = {
 }
 
 # If not specified, 50 is implied
-skill_template = {
+SKILL_TEMPLATE = {
     "sp": {
         "accuracy": 60,
         "stamina": 70,
@@ -272,37 +257,54 @@ skill_template = {
     },
 }
 
-skills = {
+SKILLS = {
     # pitching
-    "accuracy": 0,  # Pitching accuracy
-    "stamina": 0,  # Pitching stamina, think of this as the size
+    "accuracy": 50,  # Pitching accuracy, ability to hit the zone
+    # or exactly where they want it.
+    "stamina": 50,  # Pitching stamina, think of this as the size
     # of the tank. A 50 stamina pitcher is expected
     # to be completely gassed after 100 pitches.
     # 1 point of stamina is worth about 2 pitches
-    "recovery": 0,  # Pitching stamina recovery speed with rest
+    "recovery": 50,  # Pitching stamina recovery speed with rest
     # A 50 recovery pitcher is expected to recover
     # from completely gassed to full stamina in 5
     # days. Each point of recovery makes 1% diff.
     # So a 60 recovery pitcher would recover from
     # 0 to 100 in 4.5 days. A 100 recovery pitcher
     # could recover in 2.5 days.
-    "ground_balls": 0,  # Ground ball pitcher
-    "strikes": 0,  # Pitcher ability to get strikes
+    "ground_balls": 50,  # Ground ball pitcher
+    "strikes": 50,  # Pitcher ability to make the batter miss.
+    # How good is their stuff?
     # general
-    "clutch": 0,  # Clutch
-    "speed": 0,  # Running speed
+    "clutch": 50,  # Clutch
+    "speed": 50,  # Running speed
     # hitting
-    "power": 0,  # Hitting power
-    "eye": 0,  # Eye
-    "contact": 0,  # Batting contact
-    "base_running": 0,  # Base-running skill
-    "bunting": 0,  # Bunting
+    "power": 50,  # Hitting power
+    "eye": 50,  # Eye
+    "contact": 50,  # Batting contact
+    "base_running": 50,  # Base-running skill
+    "bunting": 50,  # Bunting
     # defensive
-    "catching": 0,  # Skill as a catcher
-    "infield": 0,  # In-fielding skill
-    "outfield": 0,  # Fly-ball catching
-    "arm": 0,  # Arm strength
+    "catching": 50,  # Skill as a catcher
+    "infield": 50,  # In-fielding skill
+    "outfield": 50,  # Fly-ball catching
+    "arm": 50,  # Arm strength
 }
+
+# rated_positions = [
+#     "p",  # pitcher
+#     "c",  # catcher
+#     "1b",  # first baseman
+#     "2b",  # second baseman
+#     "ss",  # shortstop
+#     "3b",  # third baseman
+#     "lf",  # left fielder
+#     "cf",  # center fielder
+#     "rf",  # right fielder
+#     "lead_off",  # lead off hitter
+#     "contact_hitter",  # contact hitter
+#     "power_hitter",  # power hitter
+# ]
 
 # These are unused, just the skills broken out into types
 # pitching_skills = {
