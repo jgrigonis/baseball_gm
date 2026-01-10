@@ -5,7 +5,7 @@ PlayerFactory  →  PlayerRecord  →  PlayerInGame
         │               │               │
         │        persistent data   volatile state
         └──── RNG & rules
-        
+
 PlayerRecord  ── snapshot ──▶  PlayerInGame
       ▲                              │
       └────── apply results ◀────────┘
