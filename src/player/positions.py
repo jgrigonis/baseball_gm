@@ -1,38 +1,45 @@
 __author__ = "josh"
 
-POSITIONS = [
-    "sp",  # starting pitcher
-    "rp",  # relief pitcher
-    "c",  # catcher
-    "1b",  # first baseman
-    "2b",  # second baseman
-    "ss",  # shortstop
-    "3b",  # third baseman
-    "lf",  # left fielder
-    "cf",  # center fielder
-    "rf",  # right fielder
-    "if",  # utility infielder
-    "of",  # outfielder
-    "dh",  # designated hitter
+from types import MappingProxyType
+
+# POSITIONS	            Enumeration / identity
+# POSITION_TEMPLATES	Handedness + batting probabilities
+# SKILL_TEMPLATE	    Positional means
+# SKILLS	            Global skill universe + defaults
+
+POSITIONS = [ 
+    "sp", # starting pitcher 
+    "rp", # relief pitcher 
+    "c", # catcher 
+    "1b", # first baseman 
+    "2b", # second baseman 
+    "ss", # shortstop 
+    "3b", # third baseman 
+    "lf", # left fielder 
+    "cf", # center fielder 
+    "rf", # right fielder 
+    "if", # utility infielder 
+    "of", # outfielder 
+    "dh", # designated hitter 
 ]
 
-POSITION_NAME = [
-    "starting pitcher",
-    "relief pitcher",
-    "catcher",
-    "first baseman",
-    "second baseman",
-    "shortstop",
-    "third baseman",
-    "left fielder",
-    "center fielder",
-    "right fielder",
-    "utility infielder",
-    "outfielder",
-    "designated hitter",
-]
+POSITION_NAME = {
+    "sp": "starting pitcher",
+    "rp": "relief pitcher",
+    "c": "catcher",
+    "1b": "first baseman",
+    "2b": "second baseman",
+    "ss": "shortstop",
+    "3b": "third baseman",
+    "lf": "left fielder",
+    "cf": "center fielder",
+    "rf": "right fielder",
+    "if": "utility infielder",
+    "of": "outfielder",
+    "dh": "designated hitter",
+}
 
-POSITION_TEMPLATES = {
+POSITION_TEMPLATES = MappingProxyType({
     "sp": {
         # 25% of starting pitchers are left handed
         "throws_left": 0.25,
@@ -106,7 +113,7 @@ POSITION_TEMPLATES = {
         "switch_hitter": 0.15,
         "bats_left": 0.2,
     },
-}
+})
 
 # If not specified, 50 is implied
 SKILL_TEMPLATE = {
@@ -257,10 +264,11 @@ SKILL_TEMPLATE = {
     },
 }
 
-SKILLS = {
+SKILLS = MappingProxyType({
     # pitching
     "accuracy": 50,  # Pitching accuracy, ability to hit the zone
     # or exactly where they want it.
+    # Maybe rename to control
     "stamina": 50,  # Pitching stamina, think of this as the size
     # of the tank. A 50 stamina pitcher is expected
     # to be completely gassed after 100 pitches.
@@ -274,7 +282,7 @@ SKILLS = {
     # could recover in 2.5 days.
     "ground_balls": 50,  # Ground ball pitcher
     "strikes": 50,  # Pitcher ability to make the batter miss.
-    # How good is their stuff?
+    # How good is their stuff? Maybe rename to stuff
     # general
     "clutch": 50,  # Clutch
     "speed": 50,  # Running speed
@@ -289,7 +297,7 @@ SKILLS = {
     "infield": 50,  # In-fielding skill
     "outfield": 50,  # Fly-ball catching
     "arm": 50,  # Arm strength
-}
+})
 
 # rated_positions = [
 #     "p",  # pitcher
@@ -305,36 +313,3 @@ SKILLS = {
 #     "contact_hitter",  # contact hitter
 #     "power_hitter",  # power hitter
 # ]
-
-# These are unused, just the skills broken out into types
-# pitching_skills = {
-#     # pitching
-#     'accuracy': 0,      # Pitching accuracy
-#     'stamina': 0,       # Pitching stamina
-#     'recovery': 0,      # Pitching stamina recovery speed with rest
-#     'ground_balls': 0,  # Ground ball pitcher
-#     'strikes': 0,       # Pitcher ability to get strikes
-# }
-
-# general_skills = {
-#     # general
-#     'clutch': 0,        # Clutch
-#     'speed': 0,         # Running speed
-# }
-
-# hitting_skills = {
-#     # hitting
-#     'power': 0,         # Hitting power
-#     'eye': 0,           # Eye
-#     'contact': 0,       # Batting contact
-#     'base_running': 0,  # Base-running skill
-#     'bunting': 0,       # Bunting
-# }
-
-# defensive_skills = {
-#     # defensive
-#     'catching': 0,      # Skill as a catcher
-#     'infield': 0,       # In-fielding skill
-#     'outfield': 0,      # Fly-ball catching
-#     'arm': 0,           # Arm strength
-# }
