@@ -1,0 +1,16 @@
+┌────────────────────────────┐
+│        DOMAIN (logic)      │
+├────────────────────────────┤
+│        GAME RUNTIME        │
+├────────────────────────────┤
+│        AGGREGATION         │
+├────────────────────────────┤
+│        PERSISTENCE         │
+├────────────────────────────┤
+│        IMPORT / SETUP      │
+└────────────────────────────┘
+
+
+Records persist.
+In-game objects simulate.
+Stats derive.

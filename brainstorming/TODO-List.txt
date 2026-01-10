@@ -1,0 +1,83 @@
+# TODO plate_appearances - Can populated every plate appearance, someday
+#
+# TODO csv files should be treated as immutable records
+# TODO if a csv file changes, you have to treat it as a new
+#      team. team.source_hash = sha256(csv)
+# TODO Fix up base advances, so they are not so static
+# TODO verify defensive stats and event probs
+#      For instance outfielders almost never get assists
+#      Catchers and pitchers never get any stats
+# TODO defensive plays are very static.
+# TODO pitchers probably should field bunts, and some batted balls
+# TODO chance for dropped 3rd strike.
+# TODO Steals, caught stealing, pickoffs all could result in errors
+#      Make sure they are counted in fielding stats
+# TODO we have just a basic raw error event that isn't super useful
+#      We also can trigger errors on batted balls. Need to consolidate
+# TODO implement handedness p vs batter
+# TODO pitcher energy and recovery
+# TODO implement clutch
+# TODO Calculate W/L/S for pitchers
+# TODO Track complete games, shutouts
+# TODO We currently count all runs as earned.  Needs to be fixed.
+# TODO Games Started for pitcher
+# TODO can runners advance more with more speed, not currently
+# TODO many more unit tests
+# TODO unit test for walk off home run, vs driving in multiple
+#      home run should score all runs, driving in on a triple for example
+#      should stop scoring once the winning run crosses the plate.
+# TODO handle intentional walk as a play and a stat
+# TODO add a stat for catcher picking off runners.
+# TODO add a stat for catcher having a passed ball.
+# TODO can we get other types of double plays?
+#      Need to be line out double plays
+# TODO the range of abilities is probably too low.
+# TODO more accurately match stats from MLB teams
+# TODO follow extra innings rules with runner on second.
+# TODO In player replace rng.gauss with
+# def generate_stat(self, rng, ...):
+#    stat = rng.gauss(mean, sigma)
+# TODO in player move the ratings into a RatingModel
+# TODO bug if you do create_players.py -f ./FooBars.csv
+#      You can overwrite FooBars.csv
+#      Also foobars.csv will be allowed and overwrite
+#      Should be a way to check on open() call
+# TODO
+# Calculate an overall player value based on weighted combination 
+# of skills.
+# e.g. bunting is worth less than power.
+# TODO deal with age and aging, this will be useful
+class PlayerInitializer:
+    def age_player(self, player: PlayerRecord):
+        player.age = ...
+        player.experience = ...
+# TODO Another useful aging one:
+def _initial_age(self) -> int:
+    # Peak around 26–28
+    age = int(self.rng.gauss(mu=27, sigma=4))
+    return max(18, min(40, age))
+# TODO for creating a fresh league we'll want something like:
+class LeagueBootstrapper:
+    def seed_players(self, num_players: int) -> list[PlayerRecord]:
+        players = [self.player_factory.create() for _ in range(num_players)]
+
+        for p in players:
+            p.age = self._initial_age()
+            p.experience = max(0, p.age - 18)
+
+        return players
+
+# Future updates for name generator
+Binary search instead of linear scan (perf)
+League-specific name pools
+Era-weighted names (optional, very cool)
+
+
+
+# STRATEGY THINGS
+# TODO Pitching changes
+# TODO Mound visits
+# TODO Pinch hitters
+# TODO Pinch runners
+# TODO Fielding Substitutions
+# TODO Scouting

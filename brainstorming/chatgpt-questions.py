@@ -50,3 +50,46 @@ print(f"{"G":>4}")
 
 # What does it look like?
 # Go see in schema
+
+
+# Sketch the exact BallInPlayResolver
+
+# Show how to migrate ground_out() safely
+
+# Help you deprecate game.hit(n)
+
+# Design unit tests for base advancement realism
+
+# Sketch the new Game.step() in concrete code
+
+# Show how to migrate Event.do_event() incrementally
+
+# Help you rename and deprecate safely
+
+# Show how to test a single pitch deterministically
+
+# Design TeamInGame vs TeamRecord
+
+# Define exactly what gets snapshotted
+
+# Decide what never persists
+
+# Add save/replay support cleanly
+
+# Refactor TeamImporter into pure bootstrap-only code
+
+# Show how to snapshot cleanly
+
+# Design a GameContext
+
+# Define a clean post-game writeback pipeline
+
+# Help you avoid stat drift bugs
+
+# Show a minimal migration diff
+
+# Help you refactor without breaking tests
+
+# Design a clean from_record() pattern
+
+# Help name things so they don’t suck

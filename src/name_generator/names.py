@@ -1,16 +1,18 @@
 """Generate Random name combinations."""
 
-from collections import namedtuple
+# from collections import namedtuple
+from dataclasses import dataclass
 import random
 from os.path import abspath, join, dirname
 
 __author__ = "josh"
 
-MALE_GENDER = ["m", "male", "M", "Male", "MALE"]
-FEMALE_GENDER = ["f", "female", "F", "Female", "FEMALE"]
-MALE_TOTAL_PROB = 90.04
-FEMALE_TOTAL_PROB = 90.024
-LAST_TOTAL_PROB = 90.483
+
+@dataclass(frozen=True)
+class NameFrequency:
+    name: str
+    start: float
+    end: float
 
 
 class SimpleNameGenerator(object):
@@ -24,7 +26,7 @@ class SimpleNameGenerator(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, rng: random.Random | None = None):
         """
         Create the object using the 3 external files.
 
@@ -32,6 +34,7 @@ class SimpleNameGenerator(object):
         three text files, and another to make the name lists.
 
         """
+        self.rng = rng or random.Random()
         self.female_name_file = self.full_path("names.female.first.txt")
         self.male_name_file = self.full_path("names.male.first.txt")
         self.last_name_file = self.full_path("names.last.txt")
@@ -48,6 +51,14 @@ class SimpleNameGenerator(object):
     def full_path(filename):
         """Returns the full path to a filename."""
         return abspath(join(dirname(__file__), filename))
+
+    def _normalize_gender(self, gender: str) -> str:
+        g = gender.lower()
+        if g in {"m", "male"}:
+            return "male"
+        if g in {"f", "female"}:
+            return "female"
+        return "either"
 
     def read_data(self):
         """Read in the data from each of the 3 files."""
@@ -75,17 +86,20 @@ class SimpleNameGenerator(object):
 
     def first(self, gender="either"):
         """Return a first name."""
-        if gender in MALE_GENDER:
-            return random.choice(self.male_names)
-        elif gender in FEMALE_GENDER:
-            return random.choice(self.female_names)
+        gender = self._normalize_gender(gender)
+        if gender == "male":
+            return self.rng.choice(self.male_names)
+        elif gender == "female":
+            return self.rng.choice(self.female_names)
         else:
             either = [self.male_names, self.female_names]
-            return random.choice(random.choices(either, weights=map(len, either))[0])
+            return self.rng.choice(
+                self.rng.choices(either, weights=map(len, either))[0]
+            )
 
     def last(self):
         """Return a last name."""
-        return random.choice(self.last_names)
+        return self.rng.choice(self.last_names)
 
     def full(self, gender="either"):
         """
@@ -95,9 +109,11 @@ class SimpleNameGenerator(object):
         tuple it together with a random choice from the last names list.
 
         """
-        if gender in MALE_GENDER:
+        gender = self._normalize_gender(gender)
+
+        if gender == "male":
             return self.first(gender), self.last()
-        elif gender in FEMALE_GENDER:
+        elif gender == "female":
             return self.first("f"), self.last()
         else:
             return self.first("either"), self.last()
@@ -109,6 +125,9 @@ class NameGenerator(SimpleNameGenerator):
     based on actual frequency.
 
     """
+
+    def _max_range(self, names):
+        return names[-1].end
 
     def make_name_lists(self):
         """Create a name_frequency tuple for each name in each list."""
@@ -128,45 +147,56 @@ class NameGenerator(SimpleNameGenerator):
         frequency value needs to be in the third.
 
         """
-        name_frequency = namedtuple("name_frequency", "name start end")
         start_range = 0.0
         for line in data_list:
-            end_range = float(line.split()[2])
-            name_list.append(name_frequency(line.split()[0], start_range, end_range))
+            parts = line.split()
+            end_range = float(parts[2])
+            name_list.append(
+                NameFrequency(
+                    name=parts[0],
+                    start=start_range,
+                    end=end_range,
+                )
+            )
             start_range = end_range
 
     def first(self, gender="either"):
         """Return a first name."""
+        gender = self._normalize_gender(gender)
+
         matching_names = []
-        if gender in MALE_GENDER:
-            first = random.uniform(0.0, MALE_TOTAL_PROB)
+        if gender == "male":
+            first = self.rng.uniform(0.0, self._max_range(self.male_names))
             for name in self.male_names:
                 if name.start <= first and name.end >= first - 0.001:
                     matching_names.append(name)
-        elif gender in FEMALE_GENDER:
-            first = random.uniform(0.0, FEMALE_TOTAL_PROB)
+        elif gender == "female":
+            first = self.rng.uniform(0.0, self._max_range(self.female_names))
             for name in self.female_names:
                 if name.start <= first and name.end >= first - 0.001:
                     matching_names.append(name)
         else:
-            first = random.uniform(0.0, MALE_TOTAL_PROB)
+            first = self.rng.uniform(0.0, self._max_range(self.male_names))
             for name in self.male_names:
                 if name.start <= first and name.end >= first - 0.001:
                     matching_names.append(name)
-            first = random.uniform(0.0, FEMALE_TOTAL_PROB)
+            first = self.rng.uniform(0.0, self._max_range(self.female_names))
             for name in self.female_names:
                 if name.start <= first and name.end >= first - 0.001:
                     matching_names.append(name)
-        return random.choice(matching_names).name
+        if not matching_names:
+            fallback = self.male_names if gender != "female" else self.female_names
+            return self.rng.choice(fallback).name
+        return self.rng.choice(matching_names).name
 
     def last(self):
         """Return a last name."""
         matching_last_names = []
-        last = random.uniform(0.0, LAST_TOTAL_PROB)
+        last = self.rng.uniform(0.0, self._max_range(self.last_names))
         for name in self.last_names:
             if name.start <= last and name.end >= last - 0.001:
                 matching_last_names.append(name)
-        return random.choice(matching_last_names).name
+        return self.rng.choice(matching_last_names).name
 
     def full(self, gender="male"):
         """
@@ -184,9 +214,11 @@ class NameGenerator(SimpleNameGenerator):
         pick a random choice from that list.
 
         """
-        if gender in MALE_GENDER:
+        gender = self._normalize_gender(gender)
+
+        if gender == "male":
             return self.first("m"), self.last()
-        elif gender in FEMALE_GENDER:
+        elif gender == "female":
             return self.first("f"), self.last()
         else:
             return self.first(), self.last()

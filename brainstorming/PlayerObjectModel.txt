@@ -1,0 +1,22 @@
+PlayerRecord
+ ├─ identity (name, bats, throws)
+ ├─ attributes (skills)
+ └─ career metadata
+
+PlayerInGame
+ ├─ record (reference)
+ ├─ game_stats (resets every game)
+ ├─ fatigue
+ └─ temporary modifiers
+
+SeasonStats (DB)
+ ├─ player_id
+ ├─ season_id
+ └─ aggregates
+
+GameStats (runtime)
+ ├─ hits
+ ├─ walks
+ ├─ strikeouts
+ ├─ pitch_count
+ └─ etc
