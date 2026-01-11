@@ -1,0 +1,7 @@
+TeamFactory
+   ↓
+TeamRecord (immutable, persistent)
+   ↓
+TeamInGame (mutable, sim state)
+   ↓
+LineupOptimizer / GameEngine

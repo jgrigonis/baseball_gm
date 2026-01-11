@@ -4,7 +4,7 @@ import unittest
 
 from src.game.bases import Bases
 import src.game.game_exceptions as game_exceptions
-from src.player.player import Player
+from src.player.player_factory import Player
 
 
 class TestBases(unittest.TestCase):

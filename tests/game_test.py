@@ -2,10 +2,10 @@
 
 import unittest
 
-from src.game.main import Game
+from src.game.game import Game
 import src.game.game_exceptions as game_exceptions
-from src.player.player import Player
-from src.team.team import Team
+from src.player.player_factory import Player
+from src.team.team_factory import Team
 
 from tests.utils import FakeRNG
 from tests.data.team_data import TEAM1ROWS, TEAM2ROWS

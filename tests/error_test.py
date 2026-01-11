@@ -3,7 +3,7 @@
 import unittest
 
 from src.game.defense.resolver import DefensiveResolver
-from src.player.player import Player
+from src.player.player_factory import Player
 
 from tests.utils import FakeRNG
 from tests.utils import NullLogger

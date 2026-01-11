@@ -6,7 +6,7 @@ import uuid
 
 from src.db.init import init_db
 from src.db.repositories.player_repo import PlayerRepository
-from src.player.player import Player
+from src.player.player_factory import Player
 
 
 class TestRepo(unittest.TestCase):

@@ -16,6 +16,7 @@ PlayerInGame = ephemeral, mutable, game-specific
 
 import src.stats.stats as stats
 
+from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 
 
@@ -25,7 +26,9 @@ class PlayerInGame(object):
     def __init__(self, record: PlayerRecord):
         self.record = record  # reference, not copied
         self.id = record.id  # convenience
-        self.name = record.name
+        # self.name = record.name
+        self.first_name = record.first_name
+        self.last_name = record.last_name
 
         # immutable traits for this game
         self.bats = record.bats
@@ -45,6 +48,9 @@ class PlayerInGame(object):
     @property
     def name(self):
         return f"{self.first_name} {self.last_name}"
+
+    def rate_player(self):
+        self.ratings = PlayerEvaluator.rate_player(self.record.skills)
 
     def init_game_stats(self):
         """

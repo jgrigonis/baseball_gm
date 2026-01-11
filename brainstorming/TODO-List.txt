@@ -72,7 +72,18 @@ Binary search instead of linear scan (perf)
 League-specific name pools
 Era-weighted names (optional, very cool)
 
+# For PlayerEvaluator future:
+handedness modifiers (without hard-coding penalties)
+position suitability tiers (elite / serviceable / liability)
+AI lineup selection using these ratings
 
+Long term may want
+TeamFactory
+ ├── GeneratedTeamFactory
+ └── CsvTeamFactory
+
+LineupOptimizer design (roles vs positions vs batting order)
+PlayerInGame lifecycle (fatigue, injuries, confidence)
 
 # STRATEGY THINGS
 # TODO Pitching changes
@@ -81,3 +92,7 @@ Era-weighted names (optional, very cool)
 # TODO Pinch runners
 # TODO Fielding Substitutions
 # TODO Scouting
+Game-state hooks (substitutions, pinch hitters)
+Later you could add to LineupOptimizer:
+balanced_defensive_weight = 0.3
+balanced_offensive_weight = 0.7

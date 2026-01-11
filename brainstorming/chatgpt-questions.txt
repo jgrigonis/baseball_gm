@@ -3,19 +3,19 @@
 # Can you convert this to an fstring?
 
 
-output = "{:>{}}".format("65", 4)
-output2 = f"{"65":>4}"
-output3 = f"{65:>4}"
+# output = "{:>{}}".format("65", 4)
+# output2 = f"{"65":>4}"
+# output3 = f"{65:>4}"
 
-print(output)
-print(output2)
-print(output3)
+# print(output)
+# print(output2)
+# print(output3)
 
 # is "   G" functionally the same as f"{"G":>4}"
 
-if "   G" == f"{"G":>4}":
-    print("yes")
-print(f"{"G":>4}")
+# if "   G" == f"{"G":>4}":
+#    print("yes")
+# print(f"{"G":>4}")
 
 
 #     def look_up(self, player_id: int) -> Player | None:
@@ -30,7 +30,8 @@ print(f"{"G":>4}")
 #             """,
 #             (player_id),
 #         ).fetchall()
-# E       sqlite3.ProgrammingError: Incorrect number of bindings supplied. The current statement uses 1, and there are 32 supplied.
+# E       sqlite3.ProgrammingError: Incorrect number of bindings supplied. The current statement uses 1, 
+#         and there are 32 supplied.
 #
 # Solution: missing comma
 
@@ -53,43 +54,33 @@ print(f"{"G":>4}")
 
 
 # Sketch the exact BallInPlayResolver
-
 # Show how to migrate ground_out() safely
-
 # Help you deprecate game.hit(n)
-
 # Design unit tests for base advancement realism
-
 # Sketch the new Game.step() in concrete code
-
 # Show how to migrate Event.do_event() incrementally
-
-# Help you rename and deprecate safely
-
 # Show how to test a single pitch deterministically
-
-# Design TeamInGame vs TeamRecord
-
 # Define exactly what gets snapshotted
-
 # Decide what never persists
-
 # Add save/replay support cleanly
-
 # Refactor TeamImporter into pure bootstrap-only code
-
 # Show how to snapshot cleanly
-
 # Design a GameContext
-
 # Define a clean post-game writeback pipeline
-
 # Help you avoid stat drift bugs
-
 # Show a minimal migration diff
-
-# Help you refactor without breaking tests
-
 # Design a clean from_record() pattern
-
 # Help name things so they don’t suck
+Explain this:
+
+If you later want DB-normalization:
+players: list[str] (player IDs)
+roster loaded separately
+# Eventually, this is lighter, and relies more on db
+
+design LineupOptimizer
+normalize pitcher vs hitter roles
+or wire this cleanly into your Game class
+refactor batting-order logic into a LineupBuilder
+add platoon splits (L/R)
+or unit-test the evaluator + lineup selection deterministically
