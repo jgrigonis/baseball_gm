@@ -1,4 +1,4 @@
-# tests/test_positions.py
+# tests/player/test_positions.py
 """
 positions.py is mostly declarative data, not behavior. Do not unit
 test the contents (those are design choices), but do test the

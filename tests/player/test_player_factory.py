@@ -1,4 +1,4 @@
-# tests/test_player_factory.py
+# tests/player/test_player_factory.py
 """
 The tests explicitly lock down that PlayerFactory:
 

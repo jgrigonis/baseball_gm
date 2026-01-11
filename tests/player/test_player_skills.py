@@ -1,4 +1,4 @@
-# tests/test_player_skills.py
+# tests/player/test_player_skills.py
 """
 What we are testing (by design)
 

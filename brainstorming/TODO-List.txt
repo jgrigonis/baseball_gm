@@ -96,3 +96,7 @@ Game-state hooks (substitutions, pinch hitters)
 Later you could add to LineupOptimizer:
 balanced_defensive_weight = 0.3
 balanced_offensive_weight = 0.7
+
+
+# TESTING
+Add TeamRecord → TeamInGame contracts

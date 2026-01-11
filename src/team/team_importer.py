@@ -1,11 +1,13 @@
+# This code is all borken
+
 import csv
 import hashlib
 from pathlib import Path
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.player.player import Player
-from src.team.team import Team
+from src.player.player_factory import PlayerFactory
+from src.team.team_factory import TeamFactory
 from src.util.locations import TEAM_FILES_DIR
 
 
@@ -70,7 +72,7 @@ class TeamImporter:
             # --------------------------------------------------
             # Import players
             # --------------------------------------------------
-            team = Team(city, mascot)
+            team = TeamFactory()
             team.id = team_id
 
             with open(full_path, newline="", encoding="utf-8") as csvfile:

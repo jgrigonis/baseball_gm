@@ -1,4 +1,4 @@
-# tests/test_team_record.py
+# tests/team/test_team_record.py
 """
 What we are testing (and why)
 

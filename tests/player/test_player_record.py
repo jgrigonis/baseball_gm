@@ -1,4 +1,4 @@
-# tests/test_player_record.py
+# tests/player/test_player_record.py
 """
 What we want to guarantee
 

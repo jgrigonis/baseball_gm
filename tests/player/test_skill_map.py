@@ -1,4 +1,4 @@
-# tests/test_skill_map.py
+# tests/player/test_skill_map.py
 """
 Tests here are mapping integrity tests, not value tests.
 """

@@ -1,4 +1,4 @@
-# tests/test_player_evaluator.py
+# tests/player/test_player_evaluator.py
 """
 ✔ Evaluator is pure, deterministic, mapping-only
 ✔ Skills normalization happens once, at creation

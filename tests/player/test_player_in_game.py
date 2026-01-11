@@ -1,4 +1,4 @@
-# tests/test_player_in_game.py
+# tests/player/test_player_in_game.py
 """
 We want to enforce that PlayerInGame:
 

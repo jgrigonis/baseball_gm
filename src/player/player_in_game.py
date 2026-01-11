@@ -12,6 +12,10 @@ PlayerRecord  ── snapshot ──▶  PlayerInGame
 PlayerRecord = immutable, authoritative, season-persistent
 PlayerInGame = ephemeral, mutable, game-specific
 
+✅ Valid states for PlayerInGame.ratings
+State	= Representation
+Unrated	= ratings attribute does not exist
+Rated	= ratings is a dict
 """
 
 import src.stats.stats as stats
@@ -49,6 +53,9 @@ class PlayerInGame(object):
     def name(self):
         return f"{self.first_name} {self.last_name}"
 
+    def is_rated(self) -> bool:
+        return hasattr(self, "ratings")
+    
     def rate_player(self):
         self.ratings = PlayerEvaluator.rate_player(self.record.skills)
 
