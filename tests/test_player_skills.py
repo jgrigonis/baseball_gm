@@ -19,12 +19,14 @@ import pytest
 from src.player.player_skills import PlayerSkills
 from src.player.positions import SKILLS
 
+
 def test_player_skills_basic_access():
     """Construction & mapping behavior"""
     skills = PlayerSkills({"power": 50, "speed": 60})
 
     assert skills["power"] == 50
     assert skills["speed"] == 60
+
 
 def test_player_skills_no_attribute_access():
     """
@@ -37,6 +39,7 @@ def test_player_skills_no_attribute_access():
     with pytest.raises(AttributeError):
         _ = skills.power
 
+
 def test_player_skills_contains():
     """in operator support"""
     skills = PlayerSkills({"power": 50})
@@ -44,12 +47,14 @@ def test_player_skills_contains():
     assert "power" in skills
     assert "speed" not in skills
 
+
 def test_player_skills_items():
     """.items() behaves like a dict view"""
     data = {"power": 50, "speed": 60}
     skills = PlayerSkills(data)
 
     assert dict(skills.items()) == data
+
 
 def test_player_skills_as_dict_returns_copy():
     """.as_dict() returns a copy"""
@@ -60,12 +65,14 @@ def test_player_skills_as_dict_returns_copy():
 
     assert skills["power"] == 50
 
+
 def test_player_skills_is_immutable():
     """Immutability is enforced"""
     skills = PlayerSkills({"power": 50})
 
     with pytest.raises(TypeError):
         skills._skills["power"] = 99
+
 
 def test_player_skills_repr():
     """__repr__ is stable and informative"""
@@ -74,6 +81,7 @@ def test_player_skills_repr():
     rep = repr(skills)
     assert rep.startswith("PlayerSkills(")
     assert "power" in rep
+
 
 def test_player_skills_from_row_fills_missing():
     """
@@ -90,6 +98,7 @@ def test_player_skills_from_row_fills_missing():
 
     assert skills["power"] == 80
 
+
 def test_generate_stat_clamps_bounds():
     """
     generate_stat clamps to bounds
@@ -103,6 +112,7 @@ def test_generate_stat_clamps_bounds():
 
     assert 1 <= high <= 100
     assert 1 <= low <= 100
+
 
 def test_generate_is_deterministic_with_seed():
     """
@@ -118,6 +128,7 @@ def test_generate_is_deterministic_with_seed():
 
     assert s1.as_dict() == s2.as_dict()
 
+
 def test_left_handed_catcher_rule():
     """
     Left-handed catcher rule is enforced
@@ -127,4 +138,3 @@ def test_left_handed_catcher_rule():
     skills = PlayerSkills.generate(rng, position="c", throws="left")
 
     assert skills["catching"] <= 20  # mean forced to 10
-

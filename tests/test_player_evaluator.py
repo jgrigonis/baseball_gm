@@ -13,7 +13,6 @@ from src.player.player_skills import PlayerSkills
 from src.player.positions import SKILLS
 
 
-
 def skills(**overrides):
     """
     Create a PlayerSkills object with sane defaults,
@@ -22,6 +21,7 @@ def skills(**overrides):
     base = {k: 50 for k in SKILLS}
     base.update(overrides)
     return PlayerSkills(base)
+
 
 def test_rate_player_is_deterministic():
     """Determinism & purity"""
@@ -41,15 +41,29 @@ def test_rate_player_does_not_mutate_skills():
     PlayerEvaluator.rate_player(s)
 
     assert s.as_dict() == before
+
+
 def test_all_expected_roles_are_present():
     """Ratings existence & bounds"""
     s = skills()
     ratings = PlayerEvaluator.rate_player(s)
 
     expected = {
-        "cf", "rf", "lf", "c", "1b", "2b", "ss", "3b", "p",
-        "lead_off", "contact_hitter", "power_hitter",
-        "speed_runner", "overall_offense", "overall_player",
+        "cf",
+        "rf",
+        "lf",
+        "c",
+        "1b",
+        "2b",
+        "ss",
+        "3b",
+        "p",
+        "lead_off",
+        "contact_hitter",
+        "power_hitter",
+        "speed_runner",
+        "overall_offense",
+        "overall_player",
     }
 
     assert expected.issubset(ratings.keys())
@@ -62,6 +76,7 @@ def test_all_ratings_are_clamped_to_0_100():
 
     for value in ratings.values():
         assert 0 <= value <= 100
+
 
 def test_speed_impacts_cf_more_than_1b():
     """
@@ -77,6 +92,7 @@ def test_speed_impacts_cf_more_than_1b():
     assert r_fast["cf"] > r_slow["cf"]
     assert (r_fast["cf"] - r_slow["cf"]) > (r_fast["1b"] - r_slow["1b"])
 
+
 def test_power_vs_contact_hitters():
     """Power vs contact roles"""
     contact_guy = skills(power=30, contact=90)
@@ -88,6 +104,7 @@ def test_power_vs_contact_hitters():
     assert r_slugger["power_hitter"] > r_contact["power_hitter"]
     assert r_contact["contact_hitter"] > r_slugger["contact_hitter"]
 
+
 def test_power_hitter_emphasizes_power():
     """Power vs contact roles"""
     weak = skills(power=30, contact=70)
@@ -98,6 +115,7 @@ def test_power_hitter_emphasizes_power():
 
     assert r_slugger["power_hitter"] > r_weak["power_hitter"]
     assert r_weak["contact_hitter"] > r_slugger["contact_hitter"]
+
 
 def test_overall_player_uses_best_defensive_skill_only():
     """Critical test: overall_player uses max(IF, OF, C)"""
@@ -125,23 +143,19 @@ def test_arm_contributes_to_overall_player():
 
 def test_overall_player_rewards_well_rounded_players():
     """Well-rounded players beat specialists"""
-    specialist = skills(
-        power=95, speed=20, infield=20, outfield=20, catching=20
-    )
-    all_around = skills(
-        power=70, speed=70, infield=70, outfield=70, catching=70
-    )
+    specialist = skills(power=95, speed=20, infield=20, outfield=20, catching=20)
+    all_around = skills(power=70, speed=70, infield=70, outfield=70, catching=70)
 
     r_spec = PlayerEvaluator.rate_player(specialist)["overall_player"]
     r_all = PlayerEvaluator.rate_player(all_around)["overall_player"]
 
     assert r_all > r_spec
 
+
 def test_player_evaluator_uses_mapping_access_only():
     """
     The One-Line Guard Test
-    Use PlayerSkills.from_row({}), which guarantees all keys exist 
+    Use PlayerSkills.from_row({}), which guarantees all keys exist
     with zero values
     """
     PlayerEvaluator.rate_player(PlayerSkills.from_row({}))
-

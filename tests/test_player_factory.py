@@ -21,6 +21,7 @@ from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.positions import POSITIONS
 
+
 def test_player_factory_is_deterministic_with_seed():
     """Deterministic creation (seeded RNG)"""
     rng1 = random.Random(123)
@@ -39,6 +40,7 @@ def test_player_factory_is_deterministic_with_seed():
     assert p1.throws == p2.throws
     assert p1.skills.as_dict() == p2.skills.as_dict()
 
+
 def test_player_factory_creates_player_record():
     """Creates a valid PlayerRecord"""
     factory = PlayerFactory(random.Random(1))
@@ -50,12 +52,14 @@ def test_player_factory_creates_player_record():
     assert isinstance(player.last_name, str)
     assert isinstance(player.skills, PlayerSkills)
 
+
 def test_explicit_position_is_used():
     """Explicit position is honored"""
     factory = PlayerFactory(random.Random(1))
 
     player = factory.create(position="ss")
     assert player.skills["infield"] > 0  # sanity check
+
 
 def test_invalid_position_raises():
     """Invalid position raises"""
@@ -64,12 +68,14 @@ def test_invalid_position_raises():
     with pytest.raises(game_exceptions.BadPositionException):
         factory.create(position="qb")
 
+
 def test_explicit_throws_is_used():
     """Explicit handedness is honored"""
     factory = PlayerFactory(random.Random(1))
     player = factory.create(throws="left")
 
     assert player.throws == "left"
+
 
 def test_invalid_throws_raises():
     """Invalid throws raises"""
@@ -78,12 +84,14 @@ def test_invalid_throws_raises():
     with pytest.raises(game_exceptions.BadHandednessException):
         factory.create(throws="ambidextrous")
 
+
 def test_explicit_bats_is_used():
     """Explicit batting side is honored"""
     factory = PlayerFactory(random.Random(1))
     player = factory.create(bats="switch")
 
     assert player.bats == "switch"
+
 
 def test_invalid_bats_raises():
     """Invalid bats raises"""
@@ -92,12 +100,14 @@ def test_invalid_bats_raises():
     with pytest.raises(game_exceptions.BadHandednessException):
         factory.create(bats="both")
 
+
 def test_position_is_randomized_when_not_provided():
     """Position is randomly selected when omitted"""
     factory = PlayerFactory(random.Random(42))
     player = factory.create()
 
     assert player.skills is not None
+
 
 def test_generated_id_is_hex_uuid():
     """ID generation is stable + UUID-shaped"""
@@ -106,6 +116,7 @@ def test_generated_id_is_hex_uuid():
 
     assert len(player.id) == 32
     int(player.id, 16)  # should not raise
+
 
 def test_factory_does_not_use_global_rng():
     """Factory does not mutate RNG externally"""
@@ -116,6 +127,7 @@ def test_factory_does_not_use_global_rng():
     p2 = f.create()
 
     assert p1.id != p2.id
+
 
 def test_switch_hitter_probability(monkeypatch):
     """

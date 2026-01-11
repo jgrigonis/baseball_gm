@@ -16,6 +16,7 @@ import pytest
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
+
 def test_player_record_fields_are_set():
     """Construction & attribute access"""
     skills = PlayerSkills({"power": 50})
@@ -36,6 +37,7 @@ def test_player_record_fields_are_set():
     assert record.throws == "left"
     assert record.skills is skills
 
+
 def test_player_record_name_property():
     """Name property"""
     record = PlayerRecord(
@@ -49,6 +51,7 @@ def test_player_record_name_property():
 
     assert record.name == "Mike Trout"
 
+
 def test_player_record_str():
     """String representation"""
     record = PlayerRecord(
@@ -61,6 +64,7 @@ def test_player_record_str():
     )
 
     assert str(record) == "<Player Shohei Ohtani>"
+
 
 def test_player_record_is_immutable():
     """
@@ -79,6 +83,7 @@ def test_player_record_is_immutable():
     # optionally tighten this to FrozenInstanceError
     with pytest.raises(Exception):
         record.first_name = "Changed"
+
 
 def test_player_record_from_row():
     """from_row builds correctly"""
@@ -106,6 +111,7 @@ def test_player_record_from_row():
     assert record.skills["contact"] == 75
     assert record.skills["speed"] == 60
 
+
 def test_player_record_does_not_allow_skill_mutation():
     """
     Guard: record never mutates skills
@@ -125,6 +131,7 @@ def test_player_record_does_not_allow_skill_mutation():
     with pytest.raises(TypeError):
         record.skills._skills["power"] = 99
 
+
 def test_player_record_equality():
     """
     Equality is structural (dataclass behavior)
@@ -135,4 +142,3 @@ def test_player_record_equality():
     b = PlayerRecord("1", "A", "B", "right", "right", skills)
 
     assert a == b
-
