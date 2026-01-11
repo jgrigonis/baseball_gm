@@ -128,7 +128,6 @@ class PlayerEvaluator:
             skills.as_dict().get("catching", 0),
         )
 
-
         overall_player_score = (
             skills["power"] * 3
             + skills["eye"] * 1
