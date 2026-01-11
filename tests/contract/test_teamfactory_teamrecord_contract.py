@@ -20,6 +20,7 @@ from src.team.team_factory import TeamFactory
 from src.team.team_record import TeamRecord
 from src.player.player_record import PlayerRecord
 
+
 def assert_valid_teamrecord(team: TeamRecord):
     """
     Shared assertion helper
@@ -40,6 +41,7 @@ def assert_valid_teamrecord(team: TeamRecord):
     for p in team.players:
         assert isinstance(p, PlayerRecord)
 
+
 @patch("src.team.team_factory.open", create=True)
 @patch("src.team.team_factory.PlayerRecord.from_row")
 def test_from_csv_produces_valid_teamrecord(
@@ -47,12 +49,8 @@ def test_from_csv_produces_valid_teamrecord(
     mock_open,
 ):
     """from_csv satisfies the TeamRecord contract"""
-    csv_data = (
-        "id,first_name,last_name,bats,throws\n"
-        + "\n".join(
-            f"{i},First{i},Last{i},R,R"
-            for i in range(1, 10)
-        )
+    csv_data = "id,first_name,last_name,bats,throws\n" + "\n".join(
+        f"{i},First{i},Last{i},R,R" for i in range(1, 10)
     )
     mock_open.return_value.__enter__.return_value = io.StringIO(csv_data)
 
@@ -68,11 +66,10 @@ def test_from_csv_produces_valid_teamrecord(
 
     assert_valid_teamrecord(team)
 
+
 def test_generate_team_produces_valid_teamrecord():
     factory = TeamFactory()
-    factory.player_factory.create = MagicMock(
-        return_value=MagicMock(spec=PlayerRecord)
-    )
+    factory.player_factory.create = MagicMock(return_value=MagicMock(spec=PlayerRecord))
 
     team = factory.generate_team(
         city="Houston",
@@ -82,17 +79,16 @@ def test_generate_team_produces_valid_teamrecord():
 
     assert_valid_teamrecord(team)
 
+
 def test_teamrecord_is_immutable():
     """
     TeamRecord immutability holds
 
-    This explicitly checks that TeamFactory doesn't sneak mutable 
+    This explicitly checks that TeamFactory doesn't sneak mutable
     data through.
     """
     factory = TeamFactory()
-    factory.player_factory.create = MagicMock(
-        return_value=MagicMock(spec=PlayerRecord)
-    )
+    factory.player_factory.create = MagicMock(return_value=MagicMock(spec=PlayerRecord))
 
     team = factory.generate_team(
         city="Atlanta",
@@ -106,6 +102,7 @@ def test_teamrecord_is_immutable():
     with pytest.raises(Exception):
         team.players += ()
 
+
 def test_teamfactory_always_returns_tuple_players():
     """
     players tuple identity is preserved
@@ -113,9 +110,7 @@ def test_teamfactory_always_returns_tuple_players():
     This catches a subtle bug where a list might slip through.
     """
     factory = TeamFactory()
-    factory.player_factory.create = MagicMock(
-        return_value=MagicMock(spec=PlayerRecord)
-    )
+    factory.player_factory.create = MagicMock(return_value=MagicMock(spec=PlayerRecord))
 
     team = factory.generate_team(
         city="Miami",

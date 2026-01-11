@@ -22,6 +22,7 @@ def test_lineup_slot_stores_player_and_position():
     assert slot.player is player
     assert slot.position == "cf"
 
+
 def test_lineup_slot_is_slotted():
     """This catches accidental attribute creep."""
     slot = LineupSlot(
@@ -32,8 +33,10 @@ def test_lineup_slot_is_slotted():
     with pytest.raises(AttributeError):
         slot.foo = "bar"
 
+
 def test_lineup_slots_are_unique():
     assert len(LINEUP_SLOTS) == len(set(LINEUP_SLOTS))
+
 
 def test_position_priority_is_subset_of_lineup_slots():
     """
@@ -43,6 +46,6 @@ def test_position_priority_is_subset_of_lineup_slots():
     for pos in POSITION_PRIORITY:
         assert pos in LINEUP_SLOTS
 
+
 def test_position_priority_has_no_duplicates():
     assert len(POSITION_PRIORITY) == len(set(POSITION_PRIORITY))
-

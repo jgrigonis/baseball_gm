@@ -20,14 +20,13 @@ from src.team.team_factory import TeamFactory
 from src.team.team_record import TeamRecord
 from src.player.player_record import PlayerRecord
 
+
 @pytest.fixture
 def valid_csv():
     header = "id,first_name,last_name,bats,throws\n"
-    rows = [
-        f"{i},First{i},Last{i},R,R\n"
-        for i in range(1, 10)
-    ]
+    rows = [f"{i},First{i},Last{i},R,R\n" for i in range(1, 10)]
     return header + "".join(rows)
+
 
 @patch("src.team.team_factory.open", create=True)
 @patch("src.team.team_factory.PlayerRecord.from_row")
@@ -79,7 +78,6 @@ def test_from_csv_invalid_row_reports_row_number(
         )
 
 
-
 @patch("src.team.team_factory.open", create=True)
 @patch("src.team.team_factory.PlayerRecord.from_row")
 def test_from_csv_requires_minimum_players(
@@ -87,11 +85,7 @@ def test_from_csv_requires_minimum_players(
     mock_open,
 ):
     """Fewer than 9 players is rejected"""
-    csv_data = (
-        "id,first_name,last_name,bats,throws\n"
-        "1,A,B,R,R\n"
-        "2,C,D,R,R\n"
-    )
+    csv_data = "id,first_name,last_name,bats,throws\n" "1,A,B,R,R\n" "2,C,D,R,R\n"
     mock_open.return_value.__enter__.return_value = io.StringIO(csv_data)
     mock_from_row.return_value = MagicMock(spec=PlayerRecord)
 
@@ -103,6 +97,7 @@ def test_from_csv_requires_minimum_players(
             city="LA",
             mascot="Dodgers",
         )
+
 
 def test_generate_team_creates_requested_size():
     factory = TeamFactory()
@@ -121,11 +116,10 @@ def test_generate_team_creates_requested_size():
     assert len(team.players) == 15
     factory.player_factory.create.assert_called()
 
+
 def test_generate_team_players_are_tuple():
     factory = TeamFactory()
-    factory.player_factory.create = MagicMock(
-        return_value=MagicMock(spec=PlayerRecord)
-    )
+    factory.player_factory.create = MagicMock(return_value=MagicMock(spec=PlayerRecord))
 
     team = factory.generate_team(
         city="SF",

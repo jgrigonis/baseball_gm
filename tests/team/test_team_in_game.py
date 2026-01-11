@@ -29,8 +29,10 @@ from src.player.player_in_game import PlayerInGame
 from src.team.lineup_slot import LineupSlot
 from src.player.positions import SKILLS
 
+
 def full_skills(value=50):
     return PlayerSkills.from_row({k: value for k in SKILLS})
+
 
 @pytest.fixture
 def player_record():
@@ -58,6 +60,7 @@ def team_record(player_record):
 def team_in_game(team_record):
     return TeamInGame(team_record)
 
+
 def test_team_in_game_initial_state(team_in_game):
     assert team_in_game.players
     assert isinstance(team_in_game.players[0], PlayerInGame)
@@ -66,6 +69,7 @@ def test_team_in_game_initial_state(team_in_game):
     assert team_in_game.pitcher is None
     assert team_in_game.batter_index == 0
 
+
 def test_players_wrapped_from_record(team_record):
     """PlayerRecords are wrapped, not mutated"""
     tig = TeamInGame(team_record)
@@ -73,10 +77,12 @@ def test_players_wrapped_from_record(team_record):
     assert len(tig.players) == len(team_record.players)
     assert tig.players[0].record is team_record.players[0]
 
+
 def test_current_batter_raises_if_lineup_not_set(team_in_game):
     """Cannot access batter before lineup is set"""
     with pytest.raises(RuntimeError):
         team_in_game.current_batter()
+
 
 def test_set_lineup_assigns_lineup_and_pitcher(team_in_game):
     """
@@ -103,8 +109,8 @@ def test_set_lineup_assigns_lineup_and_pitcher(team_in_game):
 
 def test_next_batter_cycles():
     """Batter iteration wraps correctly
-    
-    Using __new__ avoids needing full setup — intentional for tight 
+
+    Using __new__ avoids needing full setup — intentional for tight
     unit tests.
     """
     tig = TeamInGame.__new__(TeamInGame)
@@ -117,12 +123,14 @@ def test_next_batter_cycles():
     assert tig.next_batter() == "c"
     assert tig.next_batter() == "a"  # wrap
 
+
 def test_current_pitcher_returns_pitcher(team_in_game):
     """current_pitcher() passthrough"""
     pitcher = MagicMock(spec=PlayerInGame)
     team_in_game.pitcher = pitcher
 
     assert team_in_game.current_pitcher() is pitcher
+
 
 def test_set_lineup_rates_unrated_players(team_in_game):
     mock_optimize = MagicMock(return_value=([], None))

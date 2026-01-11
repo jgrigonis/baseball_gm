@@ -55,7 +55,7 @@ class PlayerInGame(object):
 
     def is_rated(self) -> bool:
         return hasattr(self, "ratings")
-    
+
     def rate_player(self):
         self.ratings = PlayerEvaluator.rate_player(self.record.skills)
 
