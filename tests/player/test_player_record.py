@@ -27,6 +27,7 @@ def test_player_record_fields_are_set():
         last_name="Doe",
         bats="right",
         throws="left",
+        position="cf",
         skills=skills,
     )
 
@@ -46,6 +47,7 @@ def test_player_record_name_property():
         last_name="Trout",
         bats="right",
         throws="right",
+        position="3b",
         skills=PlayerSkills({}),
     )
 
@@ -60,6 +62,7 @@ def test_player_record_str():
         last_name="Ohtani",
         bats="left",
         throws="right",
+        position="p",
         skills=PlayerSkills({}),
     )
 
@@ -78,6 +81,7 @@ def test_player_record_is_immutable():
         last_name="Soto",
         bats="left",
         throws="right",
+        position="rf",
         skills=PlayerSkills({}),
     )
     # optionally tighten this to FrozenInstanceError
@@ -96,6 +100,7 @@ def test_player_record_from_row():
         "power": 90,
         "contact": 75,
         "speed": 60,
+        "position": "rf",
     }
 
     record = PlayerRecord.from_row(row)
@@ -105,6 +110,7 @@ def test_player_record_from_row():
     assert record.last_name == "Judge"
     assert record.bats == "right"
     assert record.throws == "right"
+    assert record.position == "rf"
 
     assert isinstance(record.skills, PlayerSkills)
     assert record.skills["power"] == 90
@@ -125,6 +131,7 @@ def test_player_record_does_not_allow_skill_mutation():
         last_name="Player",
         bats="right",
         throws="right",
+        position="lf",
         skills=skills,
     )
 
@@ -138,7 +145,7 @@ def test_player_record_equality():
     """
     skills = PlayerSkills({"power": 50})
 
-    a = PlayerRecord("1", "A", "B", "right", "right", skills)
-    b = PlayerRecord("1", "A", "B", "right", "right", skills)
+    a = PlayerRecord("1", "A", "B", "right", "right", "rf", skills)
+    b = PlayerRecord("1", "A", "B", "right", "right", "rf", skills)
 
     assert a == b

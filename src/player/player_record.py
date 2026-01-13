@@ -30,6 +30,7 @@ class PlayerRecord:
     last_name: str
     bats: str
     throws: str
+    position: str
     skills: PlayerSkills
 
     @property
@@ -48,4 +49,5 @@ class PlayerRecord:
             bats=row["bats"],
             throws=row["throws"],
             skills=PlayerSkills.from_row(row),
+            position=row["position"]
         )

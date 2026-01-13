@@ -40,22 +40,6 @@ def test_player_skills_no_attribute_access():
         _ = skills.power
 
 
-def test_player_skills_contains():
-    """in operator support"""
-    skills = PlayerSkills({"power": 50})
-
-    assert "power" in skills
-    assert "speed" not in skills
-
-
-def test_player_skills_items():
-    """.items() behaves like a dict view"""
-    data = {"power": 50, "speed": 60}
-    skills = PlayerSkills(data)
-
-    assert dict(skills.items()) == data
-
-
 def test_player_skills_as_dict_returns_copy():
     """.as_dict() returns a copy"""
     skills = PlayerSkills({"power": 50})

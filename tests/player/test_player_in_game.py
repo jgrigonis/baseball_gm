@@ -43,6 +43,7 @@ def player_record():
         last_name="Doe",
         bats="right",
         throws="right",
+        position="cf",
         skills=skills,
     )
 

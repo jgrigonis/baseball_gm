@@ -302,18 +302,3 @@ SKILLS = MappingProxyType(
         "arm": 50,  # Arm strength
     }
 )
-
-# rated_positions = [
-#     "p",  # pitcher
-#     "c",  # catcher
-#     "1b",  # first baseman
-#     "2b",  # second baseman
-#     "ss",  # shortstop
-#     "3b",  # third baseman
-#     "lf",  # left fielder
-#     "cf",  # center fielder
-#     "rf",  # right fielder
-#     "lead_off",  # lead off hitter
-#     "contact_hitter",  # contact hitter
-#     "power_hitter",  # power hitter
-# ]

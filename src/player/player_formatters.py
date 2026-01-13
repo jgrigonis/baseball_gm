@@ -39,15 +39,14 @@ class PlayerFormatter(object):
 
 class PlayerTableFormatter:
     @staticmethod
-    def horizontal(player):
-        """Output the player and skills/ratings as a single line."""
-        if not player.ratings:
-            player.rate_player()
+    def hor_skills(player):
+        """Output the player and skills as a single line."""
         output = f"{player.name:<30}"  # 30 is the longest name
-        output += f"{player.position:>3}"
-        # output += "{:>{}}".format(PlayerFormatter.abbreviate(player.throws), 2)
+        try:
+            output += f"{player.position:>3}"
+        except AttributeError:
+            output += f"{player.record.position:>3}"
         output += f"{PlayerFormatter.abbreviate(player.throws):>2}"
-        # output += "{:>{}}".format(PlayerFormatter.abbreviate(player.bats), 2)
         output += f"{PlayerFormatter.abbreviate(player.bats):>2}"
         for item in [
             player.skills["clutch"],
@@ -69,6 +68,11 @@ class PlayerTableFormatter:
         ]:
             output += f"{item:>3}"
         output += "  "
+        return output
+
+    @staticmethod
+    def hor_ratings(player):
+        output = f"{player.name:<30}"  # 30 is the longest name
         for item in [
             player.ratings["p"],
             player.ratings["c"],
@@ -86,6 +90,9 @@ class PlayerTableFormatter:
             player.ratings["lead_off"],
             player.ratings["contact_hitter"],
             player.ratings["power_hitter"],
+            player.ratings["speed_runner"],
+            player.ratings["overall_offense"],
+            player.ratings["overall_player"],
         ]:
             output += f"{item:>3}"
         return output
@@ -381,6 +388,7 @@ class PlayerTableFormatter:
         """return the legend as a string"""
         output = str("\nLegend:\n")
         output += str("---------------------------\n")
+        output += str("SKILLS:\n")
         output += str("PS = position\n")
         output += str("T  = throws\n")
         output += str("B  = bats\n")
@@ -399,8 +407,9 @@ class PlayerTableFormatter:
         output += str("ST = pitching stamina\n")
         output += str("RE = pitching recovery\n")
         output += str("GB = pitching ground balls\n")
-        output += str("KK = pitching strikes\n")
-        output += str("\nP  = Pitcher rating\n")
+        output += str("KK = pitching strikes\n\n")
+        output += str("POSITIONAL RATINGS:\n")
+        output += str("P  = Pitcher rating\n")
         output += str("C  = Catcher rating\n")
         output += str("1B = First baseman rating\n")
         output += str("2B = Second baseman rating\n")
@@ -408,18 +417,22 @@ class PlayerTableFormatter:
         output += str("SS = Short stop rating\n")
         output += str("LF = Left field rating\n")
         output += str("CF = Center field rating\n")
-        output += str("RF = Right field rating\n")
-        output += str("\nLO = Lead off hitter rating\n")
+        output += str("RF = Right field rating\n\n")
+        output += str("ROLE RATINGS:\n")
+        output += str("LO = Lead off hitter rating\n")
         output += str("CH = Contact hitter rating\n")
         output += str("PH = Power hitter rating\n")
+        output += str("SR = Speed runner rating\n")
+        output += str("OO = Overall offensive rating\n")
+        output += str("OP = Overall player rating\n")
         return output
 
     def csv_header():
         return ",".join(CSV_FIELDS) + "\n"
 
     @staticmethod
-    def header():
-        """Return the header as a single line."""
+    def header_skills():
+        """Return the header for skills as a single line."""
         output = f"{"Name":<30}"  # 30 is the longest name
         output += f"{"PS":>3}"
         output += f"{"T":>2}"
@@ -444,9 +457,15 @@ class PlayerTableFormatter:
         ]:
             output += f"{item:>3}"
         output += "  "
+        return output
+
+    @staticmethod
+    def rating_skills():
+        """Return the header for ratings as a single line."""
+        output = f"{"Name":<30}"  # 30 is the longest name
         for item in ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]:
             output += f"{item:>3}"
         output += "  "
-        for item in ["LO", "CH", "PH"]:
+        for item in ["LO", "CH", "PH", "SR", "OO", "OP"]:
             output += f"{item:>3}"
         return output

@@ -13,7 +13,9 @@ class PlayerSkills(object):
     """
 
     def __init__(self, skills: dict[str, int]):
-        self._skills = MappingProxyType(skills)
+        normalized = {k: int(skills.get(k, 0)) for k in SKILLS}
+        self._skills = MappingProxyType(normalized)
+        # self._skills = MappingProxyType(skills)
 
     def __getitem__(self, key: str) -> int:
         return self._skills[key]

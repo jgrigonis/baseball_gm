@@ -19,6 +19,7 @@ import pytest
 from src.team.team_record import TeamRecord
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
+from src.player.positions import SKILLS
 
 
 @pytest.fixture
@@ -29,7 +30,8 @@ def player_record():
         last_name="Doe",
         bats="right",
         throws="right",
-        skills=PlayerSkills({"power": 50}),
+        position="cf",
+        skills=PlayerSkills(SKILLS),
     )
 
 

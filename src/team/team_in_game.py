@@ -54,7 +54,7 @@ class TeamInGame:
     def has_lineup(self) -> bool:
         return bool(self.lineup)
 
-    def set_lineup(self, style: str = "prioritized", dh: bool = True) -> None:
+    def set_lineup(self, *, style: str = "prioritized", dh: bool = True) -> None:
         self._ensure_players_rated()
 
         self.lineup, self.pitcher = self._optimizer(

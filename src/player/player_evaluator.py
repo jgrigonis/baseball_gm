@@ -1,5 +1,11 @@
 from src.player.player_skills import PlayerSkills
 
+EXPECTED_RATINGS = {
+    "cf", "rf", "lf", "c", "1b", "2b", "ss", "3b", "p",
+    "lead_off", "contact_hitter", "power_hitter", "speed_runner",
+    "overall_offense", "overall_player"
+}
+
 ROLE_WEIGHTS = {
     "cf": {
         "outfield": 5,

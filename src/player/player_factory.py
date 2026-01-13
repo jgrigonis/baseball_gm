@@ -1,7 +1,8 @@
+# src/player/player_factory.py
 """
 The PlayerFactory class.
 
-Create a PlayerRecord, their stats, attributes, skills, etc.
+Create a PlayerRecord, their attributes, skills, etc.
 
 CSV / Random / Import
         ↓
@@ -84,6 +85,7 @@ class PlayerFactory(object):
             last_name=last_name,
             bats=bats,
             throws=throws,
+            position=position,
             skills=skills,
         )
 

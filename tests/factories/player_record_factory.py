@@ -40,5 +40,6 @@ def make_player_record(
         last_name=last_name or f"Player{n}",
         bats=bats,
         throws=throws,
+        position=position,
         skills=skills,
     )

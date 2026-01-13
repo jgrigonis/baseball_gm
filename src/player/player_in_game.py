@@ -45,6 +45,7 @@ class PlayerInGame(object):
         self.in_lineup = False
         self.current_position = None
         self.is_injured = False
+        self.rate_player()
 
     def __str__(self):
         return f"<Player {self.name}>"
@@ -52,7 +53,7 @@ class PlayerInGame(object):
     @property
     def name(self):
         return f"{self.first_name} {self.last_name}"
-
+    
     def is_rated(self) -> bool:
         return hasattr(self, "ratings")
 
@@ -64,3 +65,9 @@ class PlayerInGame(object):
         Reset the stats.
         """
         self.game_stats = stats.GameStats()
+
+    @classmethod
+    def from_record(cls, record: PlayerRecord):
+        p = cls(record)
+        p.rate_player()
+        return p
