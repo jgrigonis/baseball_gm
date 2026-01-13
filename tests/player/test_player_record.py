@@ -8,7 +8,7 @@ PlayerRecord must be:
 ✅ Correctly expose name
 ✅ Have a stable string representation
 ✅ Correctly construct from a CSV/db row
-✅ Correctly delegate skills loading to PlayerSkills.from_row
+✅ Correctly delegate skills loading to PlayerSkills.from_db_row
 """
 
 import pytest
@@ -103,7 +103,7 @@ def test_player_record_from_row():
         "position": "rf",
     }
 
-    record = PlayerRecord.from_row(row)
+    record = PlayerRecord.from_db_row(row)
 
     assert record.id == "abc123"
     assert record.first_name == "Aaron"

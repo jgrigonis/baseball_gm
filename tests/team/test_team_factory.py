@@ -29,9 +29,9 @@ def valid_csv():
 
 
 @patch("src.team.team_factory.open", create=True)
-@patch("src.team.team_factory.PlayerRecord.from_row")
+@patch("src.team.team_factory.PlayerRecord.from_csv_row")
 def test_from_csv_creates_team_record(
-    mock_from_row,
+    mock_from_csv_row,
     mock_open,
     valid_csv,
 ):
@@ -39,7 +39,7 @@ def test_from_csv_creates_team_record(
     mock_open.return_value.__enter__.return_value = io.StringIO(valid_csv)
 
     fake_player = MagicMock(spec=PlayerRecord)
-    mock_from_row.return_value = fake_player
+    mock_from_csv_row.return_value = fake_player
 
     factory = TeamFactory()
 
@@ -57,16 +57,16 @@ def test_from_csv_creates_team_record(
 
 
 @patch("src.team.team_factory.open", create=True)
-@patch("src.team.team_factory.PlayerRecord.from_row")
+@patch("src.team.team_factory.PlayerRecord.from_csv_row")
 def test_from_csv_invalid_row_reports_row_number(
-    mock_from_row,
+    mock_from_csv_row,
     mock_open,
     valid_csv,
 ):
     """Invalid row includes row number in error"""
     mock_open.return_value.__enter__.return_value = io.StringIO(valid_csv)
 
-    mock_from_row.side_effect = ValueError("bad data")
+    mock_from_csv_row.side_effect = ValueError("bad data")
 
     factory = TeamFactory()
 
@@ -79,15 +79,15 @@ def test_from_csv_invalid_row_reports_row_number(
 
 
 @patch("src.team.team_factory.open", create=True)
-@patch("src.team.team_factory.PlayerRecord.from_row")
+@patch("src.team.team_factory.PlayerRecord.from_csv_row")
 def test_from_csv_requires_minimum_players(
-    mock_from_row,
+    mock_from_csv_row,
     mock_open,
 ):
     """Fewer than 9 players is rejected"""
-    csv_data = "id,first_name,last_name,bats,throws\n" "1,A,B,R,R\n" "2,C,D,R,R\n"
+    csv_data = "ID,Name,B,T\n" "1,A,R,R\n" "2,C,R,R\n"
     mock_open.return_value.__enter__.return_value = io.StringIO(csv_data)
-    mock_from_row.return_value = MagicMock(spec=PlayerRecord)
+    mock_from_csv_row.return_value = MagicMock(spec=PlayerRecord)
 
     factory = TeamFactory()
 

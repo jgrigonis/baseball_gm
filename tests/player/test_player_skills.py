@@ -69,13 +69,13 @@ def test_player_skills_repr():
 
 def test_player_skills_from_row_fills_missing():
     """
-    from_row fills missing skills with zero
+    from_db_row fills missing skills with zero
 
     This is critical for CSV/db safety.
     """
     row = {"power": 80}
 
-    skills = PlayerSkills.from_row(row)
+    skills = PlayerSkills.from_db_row(row)
 
     for skill in SKILLS:
         assert skill in skills

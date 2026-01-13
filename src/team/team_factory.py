@@ -22,7 +22,7 @@ class TeamFactory:
             reader = csv.DictReader(csvfile)
             for i, row in enumerate(reader, start=1):
                 try:
-                    players.append(PlayerRecord.from_row(row))
+                    players.append(PlayerRecord.from_csv_row(row))
                 except Exception as e:
                     raise ValueError(f"Invalid player row {i} in {path}: {row}") from e
         if len(players) < 9:

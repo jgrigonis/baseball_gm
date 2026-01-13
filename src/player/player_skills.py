@@ -6,6 +6,7 @@ from typing import Iterable
 
 
 from src.player.positions import SKILLS, SKILL_TEMPLATE
+from src.player.skill_map import SKILL_MAP
 
 
 class PlayerSkills(object):
@@ -34,13 +35,21 @@ class PlayerSkills(object):
         return dict(self._skills)
 
     @classmethod
-    def from_row(cls, row: dict[str, int]) -> PlayerSkills:
+    def from_db_row(cls, row: dict[str, int]) -> PlayerSkills:
         # This guards against missing rows
         # We could enforce strictness later
         skills = {k: row.get(k, 0) for k in SKILLS}
         # skills = {k: row[k] for k in SKILLS.keys()}
         return cls(skills)
 
+    @classmethod
+    def from_csv_row(cls, row: dict) -> "PlayerSkills":
+        skills = {
+            domain_key: int(row[csv_key])
+            for csv_key, domain_key in SKILL_MAP.items()
+        }
+        return cls(skills)
+    
     @classmethod
     def generate(cls, rng: random.Random, position: str, throws: str) -> PlayerSkills:
         """

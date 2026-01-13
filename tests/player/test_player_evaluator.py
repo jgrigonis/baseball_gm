@@ -155,7 +155,7 @@ def test_overall_player_rewards_well_rounded_players():
 def test_player_evaluator_uses_mapping_access_only():
     """
     The One-Line Guard Test
-    Use PlayerSkills.from_row({}), which guarantees all keys exist
+    Use PlayerSkills.from_db_row({}), which guarantees all keys exist
     with zero values
     """
-    PlayerEvaluator.rate_player(PlayerSkills.from_row({}))
+    PlayerEvaluator.rate_player(PlayerSkills.from_db_row({}))

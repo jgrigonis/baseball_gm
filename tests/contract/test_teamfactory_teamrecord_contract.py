@@ -43,9 +43,9 @@ def assert_valid_teamrecord(team: TeamRecord):
 
 
 @patch("src.team.team_factory.open", create=True)
-@patch("src.team.team_factory.PlayerRecord.from_row")
+@patch("src.team.team_factory.PlayerRecord.from_csv_row")
 def test_from_csv_produces_valid_teamrecord(
-    mock_from_row,
+    mock_from_csv_row,
     mock_open,
 ):
     """from_csv satisfies the TeamRecord contract"""
@@ -54,7 +54,7 @@ def test_from_csv_produces_valid_teamrecord(
     )
     mock_open.return_value.__enter__.return_value = io.StringIO(csv_data)
 
-    mock_from_row.return_value = MagicMock(spec=PlayerRecord)
+    mock_from_csv_row.return_value = MagicMock(spec=PlayerRecord)
 
     factory = TeamFactory()
 

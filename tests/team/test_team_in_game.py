@@ -31,7 +31,7 @@ from src.player.positions import SKILLS
 
 
 def full_skills(value=50):
-    return PlayerSkills.from_row({k: value for k in SKILLS})
+    return PlayerSkills.from_db_row({k: value for k in SKILLS})
 
 
 @pytest.fixture
