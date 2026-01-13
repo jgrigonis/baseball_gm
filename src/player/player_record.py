@@ -16,7 +16,10 @@ it does not belong here.
 """
 
 from dataclasses import dataclass
+from typing import Any
+
 from src.player.player_skills import PlayerSkills
+from src.types.rows import CsvRow, DbRow
 
 
 @dataclass(slots=True, frozen=True)
@@ -42,7 +45,7 @@ class PlayerRecord:
         return f"<Player {self.name}>"
 
     @classmethod
-    def from_csv_row(cls, row) -> "PlayerRecord":
+    def from_csv_row(cls, row: CsvRow) -> "PlayerRecord":
         first, last = row["Name"].split(" ", 1)
         return cls(
             id=row["ID"],
@@ -55,7 +58,7 @@ class PlayerRecord:
         )
 
     @classmethod
-    def from_db_row(cls, row) -> "PlayerRecord":
+    def from_db_row(cls, row: DbRow) -> "PlayerRecord":
         return cls(
             id=row["id"],
             first_name=row["first_name"],
