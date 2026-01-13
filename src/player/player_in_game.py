@@ -1,3 +1,4 @@
+# src/player/player_in_game.py
 """
 The PlayerInGame class.
 

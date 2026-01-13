@@ -1,3 +1,5 @@
+# src/player/skill_map.py
+
 __author__ = "josh"
 
 SKILL_MAP = {
