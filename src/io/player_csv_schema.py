@@ -1,0 +1,31 @@
+# src/io/player_csv_schema.py
+
+PLAYER_CSV_HEADER = [
+    "Name",
+    "PS",
+    "T",
+    "B",
+    "CL",
+    "SP",
+    "PO",
+    "EY",
+    "CT",
+    "BR",
+    "BU",
+    "CA",
+    "IF",
+    "OF",
+    "AR",
+    "AC",
+    "ST",
+    "RE",
+    "GB",
+    "KK",
+    "ID",
+]
+
+# mapping from CSV column → PlayerSkills field
+PLAYER_SKILL_COLUMNS = [
+    "CL", "SP", "PO", "EY", "CT", "BR", "BU", "CA",
+    "IF", "OF", "AR", "AC", "ST", "RE", "GB", "KK",
+]
