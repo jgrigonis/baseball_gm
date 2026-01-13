@@ -9,11 +9,9 @@ team and has all its ratings.
 
 import os
 
-from src.player.create import create
-
-from src.player.player import Player
 from src.player.player_formatters import PlayerTableFormatter
-from src.team.team import Team
+from src.team.team_factory import TeamFactory
+from src.team.team_in_game_factory import TeamInGameFactory
 from src.util.locations import TEAM_FILES_DIR
 
 __author__ = "josh"
@@ -21,27 +19,26 @@ __author__ = "josh"
 
 def main():
     debug = False
-    team = Team("Team", "Nine")
-    team.players.append(create("c"))
-    team.players.append(create("cf"))
-    team.players.append(create("lf"))
-    team.players.append(create("rf"))
-    team.players.append(create("ss"))
-    team.players.append(create("2b"))
-    team.players.append(create("3b"))
-    team.players.append(create("1b"))
-    team.players.append(create("sp"))
+    tf = TeamFactory()
+    team_record = tf.generate_team(city="Team", mascot="Nine", size=9)
+ 
+    
     print(PlayerTableFormatter.legend())
-    if debug:
-        for player in team.players:
-            print(player)
-    print(PlayerTableFormatter.header())
-    for player in team.players:
-        print(PlayerTableFormatter.horizontal(player))
-    with open(TEAM_FILES_DIR + os.sep + "TeamNine.csv", "w") as csv_output:
-        csv_output.writelines(PlayerTableFormatter.csv_header())
-        for player in team.players:
-            csv_output.writelines(PlayerTableFormatter.csv(player))
+    print(PlayerTableFormatter.header_skills())
+    for player in team_record.players:
+        print(PlayerTableFormatter.hor_skills(player))
+    
+    team_in_game = TeamInGameFactory.from_record(team_record)
+
+    # This works, you can verify the skills don't change:
+    # for player in team_in_game.players:
+    #     print(PlayerTableFormatter.hor_skills(player))
+
+    print()
+    print(PlayerTableFormatter.rating_skills())
+    for player in team_in_game.players:
+        print(PlayerTableFormatter.hor_ratings(player))
+
 
 
 if __name__ == "__main__":

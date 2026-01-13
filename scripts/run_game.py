@@ -12,9 +12,9 @@ import argparse
 import logging
 import os
 
-from src.game.event import Event
-from src.game.main import Game
-from src.team.team import Team
+from src.game.event_generator import Event
+from src.game.game import Game
+from src.team.team_factory import Team
 from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
 

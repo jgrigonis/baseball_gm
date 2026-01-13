@@ -19,11 +19,11 @@ import uuid
 
 from src.db.init import init_db
 from src.db.repositories.player_games import PlayerGameRepository
-from src.game.event import Event
-from src.game.main import Game
+from src.game.event_generator import Event
+from src.game.game import Game
 from src.stats.stats import Stats
 from src.stats.stats import SeasonStats
-from src.team.team import Team
+from src.team.team_factory import Team
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger

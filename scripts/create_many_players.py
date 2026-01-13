@@ -8,8 +8,10 @@ They aren't saved anywhere
 
 import argparse
 
-from src.player.create import create
+from src.player.player_factory import PlayerFactory
 from src.player.player_formatters import PlayerTableFormatter
+
+
 
 
 def get_args():
@@ -30,16 +32,12 @@ def get_args():
 def main():
     args = get_args()
     debug = args.debug
-    if not debug:
-        my_player = create()
-        print(PlayerTableFormatter.header())
+    pf = PlayerFactory()
+
+    print(PlayerTableFormatter.header_skills())
     for _ in range(args.number):
-        my_player = create()
-        # Print the player
-        if debug:
-            print(my_player)
-            print(PlayerTableFormatter.header())
-        print(PlayerTableFormatter.horizontal(my_player))
+        my_player = pf.create()
+        print(PlayerTableFormatter.hor_skills(my_player))
 
 
 if __name__ == "__main__":

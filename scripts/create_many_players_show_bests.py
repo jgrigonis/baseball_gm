@@ -1,5 +1,5 @@
 """
-Create a bunch of players, print out the best players in each
+Create a bunch of players, print out the best ratings in each
 skill category or position rating.
 
 Doesn't save the players anywhere
@@ -9,10 +9,10 @@ Doesn't save the players anywhere
 import argparse
 from copy import deepcopy
 
-from src.player.player import Player, skills
-from src.player.positions import rated_positions
-from src.player.create import create
-from src.player.player_formatters import PlayerTableFormatter
+from src.player.player_evaluator import EXPECTED_RATINGS
+from src.player.player_factory import PlayerFactory
+from src.player.player_in_game import PlayerInGame
+from src.player.positions import SKILLS
 
 
 def get_args():
@@ -34,33 +34,27 @@ def main():
     args = get_args()
     debug = args.debug
     players_to_create = args.number
-    maxes = deepcopy(skills)
+    maxes = deepcopy(dict(SKILLS))
     max_ratings = {}
-    for item in rated_positions:
+    for item in EXPECTED_RATINGS:
         max_ratings[item] = 0
-    best_players = {}
-    print(PlayerTableFormatter.header())
-    for x in range(players_to_create):
-        player = create()
-
-        for key in player.skills:
-            if player.skills[key] > maxes[key]:
-                maxes[key] = player.skills[key]
-                best_players[key] = deepcopy(player)
+    best_skills = []
+    best_ratings = []
+    pf = PlayerFactory()
+    for _ in range(players_to_create):
+        pr = pf.create()
+        pig = PlayerInGame(pr)
+        for key in pr.skills.as_dict():
+            if pr.skills[key] > maxes[key]:
+                maxes[key] = pr.skills[key]
+                best_skills.append(pr)
         for key in max_ratings:
-            if player.ratings[key] > max_ratings[key]:
-                max_ratings[key] = player.ratings[key]
-                best_players[key] = deepcopy(player)
-        if debug:
-            print(PlayerTableFormatter.horizontal(player))
+            if pig.ratings[key] > max_ratings[key]:
+                max_ratings[key] = pig.ratings[key]
+                best_ratings.append(pig)
 
-    for key in best_players:
-        if key in rated_positions:
-            print(key + " (" + str(best_players[key].ratings[key]) + ")" + ": ")
-            print(PlayerTableFormatter.horizontal(best_players[key]))
-        else:
-            print(key + " (" + str(best_players[key].skills[key]) + ")" + ": ")
-            print(PlayerTableFormatter.horizontal(best_players[key]))
+    print(f"Maxes = {maxes}")
+
 
 
 if __name__ == "__main__":
