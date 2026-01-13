@@ -25,9 +25,12 @@ def main():
         players.append(pr)
         pig = PlayerInGame(pr)
         pigs.append(pig)
-    print(PlayerTableFormatter.header())
+    print(PlayerTableFormatter.header_skills())
     for pig in pigs:
-        print(PlayerTableFormatter.horizontal(pig))
+        print(PlayerTableFormatter.hor_skills(pig))
+    print(PlayerTableFormatter.header_ratings())
+    for pig in pigs:
+        print(PlayerTableFormatter.hor_ratings(pig))
 
 
 if __name__ == "__main__":

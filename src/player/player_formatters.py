@@ -460,7 +460,7 @@ class PlayerTableFormatter:
         return output
 
     @staticmethod
-    def rating_skills():
+    def header_ratings():
         """Return the header for ratings as a single line."""
         output = f"{"Name":<30}"  # 30 is the longest name
         for item in ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]:

@@ -34,7 +34,7 @@ def main():
     #     print(PlayerTableFormatter.hor_skills(player))
 
     print()
-    print(PlayerTableFormatter.rating_skills())
+    print(PlayerTableFormatter.header_ratings())
     for player in team_in_game.players:
         print(PlayerTableFormatter.hor_ratings(player))
 
