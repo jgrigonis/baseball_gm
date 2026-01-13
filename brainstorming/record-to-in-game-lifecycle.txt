@@ -1,0 +1,88 @@
+1. PlayerRecord (Persistent / DB Layer)
+
+Purpose: Canonical, immutable player data.
+Where it lives: DB, CSV, or fixtures.
+
+Key properties:
+id: str
+first_name: str
+last_name: str
+bats: str
+throws: str
+skills: PlayerSkills (never ratings)
+
+Invariants:
+Skills must be complete and valid.
+No ratings here; this class is purely authoritative record.
+
+2. TeamRecord (Persistent / DB Layer)
+
+Purpose: Canonical team data.
+
+Key properties:
+id: str
+city: str
+mascot: str
+players: tuple[PlayerRecord, ...]
+
+Invariants:
+Tuple of PlayerRecords (immutable)
+
+PlayerRecords must be valid
+
+3. PlayerInGame (Ephemeral / Game Layer)
+
+Purpose: Represents a player during a game. Holds derived data like ratings, stats, etc.
+
+Key properties:
+record: PlayerRecord (link to the canonical record)
+ratings: dict[str, int] (calculated from record.skills)
+
+Invariants:
+Must be initialized from a valid PlayerRecord
+Ratings are a complete snapshot (cannot be None)
+Mutations only affect in-game ratings/stats; original PlayerRecord is untouched
+
+4. TeamInGame (Ephemeral / Game Layer)
+
+Purpose: Represents a team during a game. Owns in-game players, lineup, pitcher, etc.
+
+Key properties:
+record: TeamRecord (link to canonical team)
+players: list[PlayerInGame] (derived from record.players)
+lineup: list[LineupSlot]
+pitcher: PlayerInGame | None
+batter_index: int
+
+Invariants:
+players are fully built from record.players
+lineup is assigned separately via LineupOptimizer
+Game mutations never touch TeamRecord or PlayerRecord
+
+5. Flow Diagram
+
+CSV / DB → PlayerRecord (immutable, skills only)
+          └─> TeamRecord (immutable, tuple of PlayerRecords)
+
+TeamRecord ──(TeamInGameFactory)──▶ TeamInGame (mutable for game)
+                                       ├─ players: list[PlayerInGame]
+                                       │   └─ ratings: dict (derived from skills)
+                                       ├─ lineup: list[LineupSlot]
+                                       ├─ pitcher
+                                       └─ batter_index
+
+Key Principles / Rules
+
+Separation of layers: Persistent vs. ephemeral.
+No cross-contamination: Never put ratings in PlayerRecord, never put skills in PlayerInGame.
+Snapshots only: PlayerInGame.ratings is a derived snapshot of PlayerRecord.skills.
+Factories enforce invariants:
+PlayerInGame.from_record ensures ratings exist.
+TeamInGameFactory.from_record ensures players are wrapped in-game.
+
+
+Factories create domain objects.
+Records represent domain state.
+Serialization belongs elsewhere.
+
+CSV is an I/O format, not a domain concept.

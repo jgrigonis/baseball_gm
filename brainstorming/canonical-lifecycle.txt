@@ -1,0 +1,64 @@
+CSV / RNG / Import
+        ↓
+   PlayerFactory
+        ↓
+   PlayerRecord        (persistent, frozen, authoritative)
+        ↓
+   TeamRecord          (persistent roster snapshot)
+        ↓
+   TeamInGameFactory
+        ↓
+   TeamInGame          (volatile, per-game state)
+        ↓
+   Game
+        ↓
+   Results / Stats
+        ↓
+   Repositories write back
+
+
+Key invariants (these matter later):
+
+    PlayerRecord
+
+        has skills
+
+        never has ratings
+
+        never mutates
+
+    PlayerInGame
+
+        has ratings
+
+        never has skills
+
+        ratings are derived once per game
+
+        ratings may mutate during a game (fatigue, confidence, etc.)
+
+    TeamRecord
+
+        immutable roster definition
+
+    TeamInGame
+
+        owns:
+
+            players (PlayerInGame)
+
+            lineup
+
+            pitcher
+
+            in-game state
+
+
+GameRunner is NOT:
+    A scheduler
+    A league simulator
+    A stats aggregator
+    A DB migrator
+It is:
+    “The thinnest possible orchestration layer that:
+    loads two teams → builds in-game objects → runs one game → returns results.”

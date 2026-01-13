@@ -1,0 +1,5 @@
+TeamRecord
+   ↓ (pure mapping)
+TeamInGame
+   ↓ (optimizer)
+LineupSlot[]
