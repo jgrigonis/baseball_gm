@@ -8,10 +8,13 @@ from src.player.skill_map import SKILL_MAP
 from src.team.team_record import TeamRecord
 from src.util.locations import TEAM_FILES_DIR
 
+
 class PlayerCSVExporter:
     @staticmethod
     def write(team: TeamRecord, filename):
-        with open(Path(TEAM_FILES_DIR) / filename, "w", newline="", encoding="utf-8") as f:
+        with open(
+            Path(TEAM_FILES_DIR) / filename, "w", newline="", encoding="utf-8"
+        ) as f:
             writer = csv.writer(f)
             writer.writerow(PLAYER_CSV_HEADER)
 
@@ -22,7 +25,7 @@ class PlayerCSVExporter:
                     player.name,
                     player.position,
                     player.throws[0].lower(),  # "right" -> "r"
-                    player.bats[0].lower(),    # "right" -> "r", "switch" -> "s"
+                    player.bats[0].lower(),  # "right" -> "r", "switch" -> "s"
                 ]
 
                 for csv_key in PLAYER_SKILL_COLUMNS:

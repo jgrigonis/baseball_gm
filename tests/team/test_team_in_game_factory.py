@@ -49,4 +49,6 @@ def test_team_in_game_players_are_independent_from_record():
 
     # Original PlayerRecord skills must remain unchanged
     for k, v in p_ingame.record.skills.items():
-        assert v == original[k] - 10 if k in original else v  # unchanged canonical skills
+        assert (
+            v == original[k] - 10 if k in original else v
+        )  # unchanged canonical skills

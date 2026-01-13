@@ -2,6 +2,7 @@
 from src.player.player_in_game import PlayerInGame
 from tests.factories.player_record_factory import make_player_record
 
+
 def make_player_in_game(
     *,
     id: str,

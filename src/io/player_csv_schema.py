@@ -26,6 +26,20 @@ PLAYER_CSV_HEADER = [
 
 # mapping from CSV column → PlayerSkills field
 PLAYER_SKILL_COLUMNS = [
-    "CL", "SP", "PO", "EY", "CT", "BR", "BU", "CA",
-    "IF", "OF", "AR", "AC", "ST", "RE", "GB", "KK",
+    "CL",
+    "SP",
+    "PO",
+    "EY",
+    "CT",
+    "BR",
+    "BU",
+    "CA",
+    "IF",
+    "OF",
+    "AR",
+    "AC",
+    "ST",
+    "RE",
+    "GB",
+    "KK",
 ]

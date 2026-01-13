@@ -10,12 +10,14 @@ import src.game.game_exceptions as game_exceptions
 
 _counter = itertools.count()
 
+
 def _resolve_position(rng, position: str | None) -> str:
     if position is None:
         return rng.choice(POSITIONS)
     if position not in POSITIONS:
         raise game_exceptions.BadPositionException()
     return position
+
 
 def make_player_record(
     *,

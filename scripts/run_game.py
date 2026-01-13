@@ -1,10 +1,11 @@
 """
 Run one game.
 
-This won't persist results in the DB
+Create 2 random teams
 
-python ./src/team/create_team.py -f Team1.csv
-python ./src/team/create_team.py -f Team2.csv
+Make them play.
+
+We can discard the results.
 
 """
 
@@ -12,14 +13,15 @@ import argparse
 import logging
 import os
 
-from src.game.event_generator import Event
-from src.game.game import Game
-from src.team.team_factory import Team
-from src.util.locations import TEAM_FILES_DIR
+# from src.game.event_generator import Event
+# from src.game.game import Game
+from src.team.team_factory import TeamFactory
+
+# from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
 
-HOME_FILE = TEAM_FILES_DIR + os.sep + "Team1.csv"
-AWAY_FILE = TEAM_FILES_DIR + os.sep + "Giants.csv"
+# HOME_FILE = TEAM_FILES_DIR + os.sep + "Team1.csv"
+# AWAY_FILE = TEAM_FILES_DIR + os.sep + "Giants.csv"
 
 
 def get_args():
@@ -57,33 +59,13 @@ def main():
         levl = logging.TRACE
     logger = setup_logger(name="details", level=levl, console_level=levl)
     logger = logging.getLogger("details")
+    tf = TeamFactory()
     # Set up Home Team
-    home_team = Team("Team", "One")
-    home_team.load_team(path=HOME_FILE)
-
-    logger.debug("Home Team prioritized positions offensive lineup")
-    home_team.set_lineup("prioritized")
-    home_team.display_lineup()
+    home_team = tf.generate_team(city="Team", mascot="One")
 
     # Set up Away Team
-    away_team = Team("Team", "Two")
-    away_team.load_team(path=AWAY_FILE)
-
-    logger.debug("Away Team Auto Set")
-    away_team.set_lineup()
-    away_team.display_lineup()
-
-    logger.debug("Away Team defensive lineup")
-    away_team.set_lineup("defensive")
-    away_team.display_lineup()
-
-    logger.debug("Away Team offensive lineup")
-    away_team.set_lineup("offensive")
-    away_team.display_lineup()
-
-    logger.debug("Away Team prioritized positions offensive lineup")
-    away_team.set_lineup("prioritized")
-    away_team.display_lineup()
+    away_team = tf.generate_team(city="Team", mascot="Two")
+    quit()
 
     my_game = Game(home_team, away_team, levl, args.pauses, args.innings)
     my_event = Event(my_game)

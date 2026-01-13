@@ -56,6 +56,5 @@ def main():
     print(f"Maxes = {maxes}")
 
 
-
 if __name__ == "__main__":
     main()

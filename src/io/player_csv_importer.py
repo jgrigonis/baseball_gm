@@ -40,9 +40,8 @@ class PlayerCSVImporter:
                         first_name=first,
                         last_name=last,
                         position=row["PS"],
-                        throws = CSV_TO_THROWS[row["T"].lower()],
-                        bats = CSV_TO_BATS[row["B"].lower()],
-
+                        throws=CSV_TO_THROWS[row["T"].lower()],
+                        bats=CSV_TO_BATS[row["B"].lower()],
                         # bats={"r": "right", "l": "left", "s": "switch"}[row["B"]],
                         skills=PlayerSkills(skills),
                     )

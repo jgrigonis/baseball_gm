@@ -22,7 +22,7 @@ class TeamCSVExporter:
                     "position",
                     # skill fields expanded below
                 ]
-                + list(team.players[0].skills.keys())
+                + list(team.players[0].skills.keys()),
             )
             writer.writeheader()
 

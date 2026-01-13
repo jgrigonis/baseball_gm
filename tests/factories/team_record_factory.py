@@ -5,6 +5,7 @@ from tests.factories.player_record_factory import make_player_record
 
 _counter = itertools.count()
 
+
 def make_team_record(
     *,
     id: str | None = None,

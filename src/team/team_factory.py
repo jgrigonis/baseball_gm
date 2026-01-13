@@ -34,7 +34,13 @@ class TeamFactory:
             players=tuple(players),
         )
 
-    def generate_team(self, *, city: str, mascot: str, size=26) -> TeamRecord:
+    def generate_team(self, *, city: str, mascot: str, size=40) -> TeamRecord:
+        # if size < 9:
+        #     raise ValueError("Team must have at least 9 players")
+        # If the size of the team is over 26, there should be:
+        # 7 starting pitchers, 6 rp
+        # 2 c, 1 ss, 1 2b, 1 3b, 1 1b, 1 lf, 1 cf, 1 rf, 2 if, 2 of
+        # rest random
         players = tuple(self.player_factory.create() for _ in range(size))
         return TeamRecord(
             id=uuid.uuid4().hex,

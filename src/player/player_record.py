@@ -50,5 +50,5 @@ class PlayerRecord:
             bats=row["bats"],
             throws=row["throws"],
             skills=PlayerSkills.from_row(row),
-            position=row["position"]
+            position=row["position"],
         )

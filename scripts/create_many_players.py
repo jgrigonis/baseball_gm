@@ -12,8 +12,6 @@ from src.player.player_factory import PlayerFactory
 from src.player.player_formatters import PlayerTableFormatter
 
 
-
-
 def get_args():
     """
     Get arguments from the command line.

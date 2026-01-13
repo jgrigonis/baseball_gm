@@ -22,7 +22,6 @@ from src.player.player_factory import PlayerFactory
 from src.player.player_in_game import PlayerInGame
 
 
-
 def get_args():
     """
     Get arguments from the command line.

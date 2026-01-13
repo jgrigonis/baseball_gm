@@ -54,7 +54,7 @@ class PlayerInGame(object):
     @property
     def name(self):
         return f"{self.first_name} {self.last_name}"
-    
+
     def is_rated(self) -> bool:
         return hasattr(self, "ratings")
 
