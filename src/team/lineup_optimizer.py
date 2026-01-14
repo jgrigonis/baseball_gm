@@ -194,7 +194,7 @@ class LineupOptimizer:
     @staticmethod
     def offensive_batting_order(hitters, *, dh):
         if len(hitters) < (9 if dh else 8):
-            raise ValueError("Not enough hitters to build lineup")
+            raise ValueError(f"Not enough hitters to build lineup: {len(hitters)}")
         hitters = hitters.copy()
 
         leadoff = max(
