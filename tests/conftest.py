@@ -3,6 +3,7 @@ import pytest
 from tests.utils import FakeTeam, FakeRNG
 from src.game.game import Game
 
+
 @pytest.fixture
 def home_team():
     return FakeTeam(name="Home")
@@ -33,8 +34,8 @@ def game_no_rng(home_team, away_team):
     game._sync_players()
     return game
 
+
 # @pytest.fixture
 # def game_with_loaded_bases(game):
 #     game.bases.load([1, 2]) # WRONG
 #     return game
-

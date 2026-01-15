@@ -16,6 +16,7 @@ class CountSnapshot:
     balls: int
     strikes: int
 
+
 class Count:
     """
     Tracks balls and strikes for the current plate appearance.

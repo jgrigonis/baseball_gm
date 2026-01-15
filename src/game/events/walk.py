@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from src.game.event import GameEvent
 
+
 @dataclass(frozen=True)
 class WalkEvent(GameEvent):
     def apply(self, game):

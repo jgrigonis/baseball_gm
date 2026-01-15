@@ -7,6 +7,7 @@ from src.game.bases import Bases
 from src.game.inning import Inning
 from src.game.score import Score
 
+
 class FakeRNG:
     def __init__(self, values):
         self.values = iter(values)
@@ -34,6 +35,7 @@ class NullLogger:
     def critical(self, msg, *args, **kwargs):
         pass
 
+
 class FakePlayer:
     def __init__(self, player_id, name=None):
         self.id = player_id
@@ -47,13 +49,13 @@ class FakeLineupSlot:
     def __init__(self, player):
         self.player = player
 
+
 class FakeTeam:
     def __init__(self, name="FakeTeam"):
         self.name = name
 
         self.players = [
-            FakePlayer(f"{name}-p{i}", f"{name} Player {i}")
-            for i in range(1, 10)
+            FakePlayer(f"{name}-p{i}", f"{name} Player {i}") for i in range(1, 10)
         ]
 
         self.lineup = [FakeLineupSlot(p) for p in self.players]
@@ -138,7 +140,3 @@ def fake_game_with_batter_cycle():
     game._post_event = _post_event
 
     return game
-
-
-
-

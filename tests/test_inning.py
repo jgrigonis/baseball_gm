@@ -9,7 +9,6 @@ from tests.utils import FakeRNG, FakeTeam
 #     return FakeTeam()
 
 
-
 # @pytest.fixture
 # def game(fake_team):
 #     game = Game(
@@ -32,7 +31,7 @@ def test_half_inning_reset_clears_bases_and_count(game):
     game.bases.advance(runner_id="p1", from_base=None, to_base=1)
     # print(game.bases._bases)
     game.count.balls = 2
-    assert game.bases.occupied_bases() == {1: 'p1'}
+    assert game.bases.occupied_bases() == {1: "p1"}
     game._end_half_inning()
 
     assert game.bases.occupied_bases() == {}

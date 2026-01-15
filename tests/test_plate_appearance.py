@@ -12,7 +12,6 @@ import pytest
 #     return FakeTeam()
 
 
-
 # @pytest.fixture
 # def game(fake_team):
 #     game = Game(
@@ -24,7 +23,6 @@ import pytest
 #     return game
 
 
-
 def test_pa_starts_incomplete(game):
     assert not game._plate_appearance_over()
 
@@ -32,6 +30,7 @@ def test_pa_starts_incomplete(game):
 def test_pa_end_event_marks_pa_complete(game):
     PlateAppearanceEndEvent("walk").apply(game)
     assert game._plate_appearance_over()
+
 
 def test_pa_end_advances_batter_and_resets_count(game):
     old = game.current_batter
@@ -44,5 +43,3 @@ def test_pa_end_advances_batter_and_resets_count(game):
     assert game.current_batter is not old
     assert game.count.balls == 0
     assert game.count.strikes == 0
-
-

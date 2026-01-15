@@ -41,12 +41,12 @@ class Score:
 #         self.away_innings = [0]
 #         self.home_innings = []
 
-    # def __str__(self):
-    #     """Return the score as a string."""
-    #     output = "\n"
-    #     output += "Home:    " + str(self.home) + "\n"
-    #     output += "Visitor: " + str(self.away) + "\n"
-    #     return output
+# def __str__(self):
+#     """Return the score as a string."""
+#     output = "\n"
+#     output += "Home:    " + str(self.home) + "\n"
+#     output += "Visitor: " + str(self.away) + "\n"
+#     return output
 
 #     @property
 #     def away(self):

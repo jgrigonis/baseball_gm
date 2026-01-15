@@ -23,8 +23,8 @@ Decide outcomes (safe/out)
 Know why runners move
 Handle scoring logic (that's ScoreEvent)
 
-Events describe reality. 
-Bases enforces physics. 
+Events describe reality.
+Bases enforces physics.
 Resolver enforces baseball.
 
 """
@@ -92,9 +92,7 @@ class Bases:
                 raise RuntimeError(f"Runner {runner_id} already on base")
         else:
             if self._bases.get(from_base) != runner_id:
-                raise RuntimeError(
-                    f"Runner {runner_id} not on base {from_base}"
-                )
+                raise RuntimeError(f"Runner {runner_id} not on base {from_base}")
             del self._bases[from_base]
 
         # --- Handle scoring ---
@@ -120,14 +118,10 @@ class Bases:
         """
 
         if from_base is None:
-            raise RuntimeError(
-                f"Cannot remove runner {runner_id} without base"
-            )
+            raise RuntimeError(f"Cannot remove runner {runner_id} without base")
 
         if self._bases.get(from_base) != runner_id:
-            raise RuntimeError(
-                f"Runner {runner_id} not on base {from_base}"
-            )
+            raise RuntimeError(f"Runner {runner_id} not on base {from_base}")
 
         del self._bases[from_base]
 

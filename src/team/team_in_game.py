@@ -69,6 +69,7 @@ class TeamInGame:
         for p in self.players:
             if not p.is_rated():
                 p.rate_player()
+
     @property
     def current_batter(self) -> LineupSlot:
         """Return the current batter."""

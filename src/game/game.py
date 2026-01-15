@@ -44,7 +44,6 @@ class Game:
         self.away = away_team
         self.bat_team = self.away
         self.pitch_team = self.home
-        
 
         # Core state
         self.inning = Inning()
@@ -65,7 +64,7 @@ class Game:
 
         # plate appearance info
         self._pa_complete = False
-        self._pa_end_reason = None  
+        self._pa_end_reason = None
 
         # Logging
         self.dbg = logging.TRACE
@@ -73,8 +72,6 @@ class Game:
 
         # Stat setup
         self._init_game_stats()
-
-
 
     # ------------------------------------------------------------------
     # Public API
@@ -148,7 +145,6 @@ class Game:
         if self._half_inning_over():
             self._end_half_inning()
 
-
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -159,8 +155,6 @@ class Game:
         """
         return self._pa_complete
 
-
-
     def _half_inning_over(self) -> bool:
         return self._would_end_half_inning()
 
@@ -169,7 +163,6 @@ class Game:
         self.current_batter = self._next_batter()
         self._pa_complete = False
         self._pa_end_reason = None
-
 
     def _end_half_inning(self):
         self.logger.debug("End half inning")
@@ -188,15 +181,21 @@ class Game:
         if self.inning.number == 9:
             if self.inning.bottom:
                 if self.score.home > self.score.away:
-                    self.logger.trace("Game ends because home team is winning in the bottom of the 9th")
+                    self.logger.trace(
+                        "Game ends because home team is winning in the bottom of the 9th"
+                    )
                     return True
         if self.inning.number > 9:
             if self.inning.bottom:
                 if self.score.home > self.score.away:
-                    self.logger.trace("Game ends because home team is winning in the bottom of extra innings")
+                    self.logger.trace(
+                        "Game ends because home team is winning in the bottom of extra innings"
+                    )
                     return True
             if self.score.home != self.score.away:
-                self.logger.trace("Game ends because the score is not tied and 9 or more innings complete")
+                self.logger.trace(
+                    "Game ends because the score is not tied and 9 or more innings complete"
+                )
                 return True
         return False
         # raise NotImplementedError

@@ -6,6 +6,7 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Optional
 
+
 # kw_only solves non-default argument follows default argument error
 @dataclass(frozen=True, kw_only=True)
 class GameIntent(ABC):

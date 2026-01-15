@@ -12,7 +12,6 @@ from src.game.events.ball import BallEvent
 #     return FakeTeam()
 
 
-
 # @pytest.fixture
 # def game(fake_team):
 #     game = Game(
@@ -23,6 +22,7 @@ from src.game.events.ball import BallEvent
 #     game._sync_players()
 #     return game
 
+
 def test_ball_increments_balls(game):
     BallEvent().apply(game)
     assert game.count.balls == 1
@@ -31,4 +31,3 @@ def test_ball_increments_balls(game):
 def test_strike_increments_strikes(game):
     StrikeEvent().apply(game)
     assert game.count.strikes == 1
-

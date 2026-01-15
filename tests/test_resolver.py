@@ -9,12 +9,14 @@ from src.game.events.pitch import PitchThrownEvent
 from src.game.intents.pitch import PitchIntent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 
+
 @pytest.fixture
 def pitch_intent():
     return PitchIntent(
         pitcher_id="p1",
         batter_id="b1",
     )
+
 
 @pytest.fixture
 def resolver():
@@ -32,6 +34,7 @@ def test_one_pitch_thrown_event(resolver, pitch_intent):
 
     pitches = [e for e in events if isinstance(e, PitchThrownEvent)]
     assert len(pitches) == 1
+
 
 def test_pitch_intent_emits_exactly_one_pitch_thrown_event(resolver, pitch_intent):
     events = resolver.resolve(pitch_intent, fake_game())
@@ -51,6 +54,7 @@ def test_pitch_thrown_event_captures_count_snapshot(resolver, pitch_intent):
     assert pitch.count.balls == 2
     assert pitch.count.strikes == 1
 
+
 def test_pitch_can_result_in_ball(resolver, pitch_intent):
     resolver.rng = FakeRNG([0.1])  # whatever threshold you defined
 
@@ -66,6 +70,7 @@ def test_one_pitch_thrown_event(resolver, pitch_intent):
     pitches = [e for e in events if isinstance(e, PitchThrownEvent)]
     assert len(pitches) == 1
 
+
 def test_plate_appearance_ends_once(resolver, pitch_intent):
     """
     The resolver may emit at most ONE PlateAppearanceEndEvent.
@@ -76,11 +81,13 @@ def test_plate_appearance_ends_once(resolver, pitch_intent):
     pa_end = [e for e in events if isinstance(e, PlateAppearanceEndEvent)]
     assert len(pa_end) <= 1
 
+
 def test_out_does_not_end_pa_by_itself():
     game = fake_game_with_batter_cycle()
     out = OutRecordedEvent("out")
     out.apply(game)
     assert not game._plate_appearance_over()
+
 
 def test_pa_end_advances_batter():
     game = fake_game_with_batter_cycle()
@@ -89,7 +96,6 @@ def test_pa_end_advances_batter():
     pae.apply(game)
     game._post_event()
     assert game.current_batter is not old_batter
-
 
 
 # # Layer 2
@@ -148,4 +154,3 @@ def test_pa_end_advances_batter():
 
 # def assert_event_types(events, types):
 #     assert [type(e) for e in events] == types
-

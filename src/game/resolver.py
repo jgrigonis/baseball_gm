@@ -16,11 +16,12 @@ from src.game.events.out import OutRecordedEvent
 from src.game.events.run import RunScoredEvent
 from src.game.events.bases import RunnerAdvancedEvent, RunnerRemovedEvent
 
+
 class Resolver:
     """
     Converts GameIntents into ordered GameEvents.
 
-    Resolver must guarantee base availability before 
+    Resolver must guarantee base availability before
     emitting events.
 
     Resolver:
@@ -47,7 +48,7 @@ class Resolver:
             return self._resolve_pitch(intent, game)
 
         # Unknown intent: advance nothing but keep clock moving
-        #return [NoOpEvent()]
+        # return [NoOpEvent()]
         # for now this is an error
         raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
 
@@ -119,7 +120,6 @@ class Resolver:
             return "walk"
         return "ball_in_play"
 
-
     def _determine_pitch_outcome(self, intent, game) -> str:
         """
         Decide the immediate result of a pitch.
@@ -177,12 +177,8 @@ class Resolver:
         # ------------------------------------------------------------
         if r < 0.70:
             # Batter is out
-            events.append(
-                PlateAppearanceEndEvent("out")
-            )
-            events.append(
-                OutRecordedEvent(reason="ball_in_play")
-            )
+            events.append(PlateAppearanceEndEvent("out"))
+            events.append(OutRecordedEvent(reason="ball_in_play"))
 
             return events
 
@@ -190,8 +186,6 @@ class Resolver:
         # SINGLE
         # ------------------------------------------------------------
         return self._resolve_single(intent, game)
-
-
 
     def _force_advance_chain(self, game, starting_base: int):
         """
@@ -211,10 +205,7 @@ class Resolver:
             to_base = base + 1
             events.append(
                 RunnerAdvancedEvent(
-                    runner_id=runner,
-                    from_base=base,
-                    to_base=to_base,
-                    reason="force"
+                    runner_id=runner, from_base=base, to_base=to_base, reason="force"
                 )
             )
 
@@ -229,19 +220,13 @@ class Resolver:
         # Batter to first
         events.append(
             RunnerAdvancedEvent(
-                runner_id=intent.batter_id,
-                from_base=None,
-                to_base=1,
-                reason="walk"
+                runner_id=intent.batter_id, from_base=None, to_base=1, reason="walk"
             )
         )
 
-        events.append(
-            PlateAppearanceEndEvent("walk")
-        )
+        events.append(PlateAppearanceEndEvent("walk"))
 
         return events
-
 
     def _resolve_single(self, intent, game):
         events = []
@@ -282,9 +267,7 @@ class Resolver:
             )
         )
 
-        events.append(
-            PlateAppearanceEndEvent("single")
-        )
+        events.append(PlateAppearanceEndEvent("single"))
 
         return events
 

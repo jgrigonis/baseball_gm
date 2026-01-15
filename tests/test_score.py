@@ -3,6 +3,7 @@ from tests.utils import fake_game
 
 from src.game.events.run import RunScoredEvent
 
+
 def test_score_uses_inning_state():
     game = fake_game()
     game.inning.number = 3

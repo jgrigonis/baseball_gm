@@ -16,7 +16,7 @@ class PitchThrownEvent(GameEvent):
     pitcher_id: str
     batter_id: str
     count: CountSnapshot
-    pitch_type: Optional[str] = None # fastball, curve, etc. (optional for now)
+    pitch_type: Optional[str] = None  # fastball, curve, etc. (optional for now)
 
     def apply(self, game):
         game.logger.debug("Pitch thrown")

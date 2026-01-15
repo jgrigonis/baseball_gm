@@ -23,7 +23,7 @@ class OutRecordedEvent(GameEvent):
 #     """
 #     A runner has been put out.
 
-#     Plate appearances end when the batter is retired or 
+#     Plate appearances end when the batter is retired or
 #     reaches base — never because an out occurred elsewhere.
 #     """
 

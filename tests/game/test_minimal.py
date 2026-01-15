@@ -6,4 +6,3 @@ def test_game_can_play_minimal_steps(game):
             break
 
     assert game.inning.number >= 1
-

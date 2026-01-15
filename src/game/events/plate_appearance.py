@@ -13,6 +13,7 @@ class PlateAppearanceEndEvent(GameEvent):
     Game logic must react to it via _post_event().
 
     """
+
     reason: str
 
     def apply(self, game):

@@ -14,19 +14,19 @@ class Inning(object):
     @property
     def bottom(self):
         return not self.top
-        
+
     def __str__(self):
         """Return an inning string."""
         output = ""
         if self.top:
-            return(f"Top of {self.number}")
+            return f"Top of {self.number}"
             # output += "Top of "
         else:
-            return(f"Bottom of {self.number}")
+            return f"Bottom of {self.number}"
             # output += "Bottom of "
         # output += str(self.number)
         # return output
-    
+
     def increment(self):
         """Move to the next half inning."""
         if self.top:
@@ -35,7 +35,7 @@ class Inning(object):
             self.top = True
             self.number += 1
         self.reset_outs()
-        
+
     def record_out(self, n: int = 1):
         self.outs += n
 

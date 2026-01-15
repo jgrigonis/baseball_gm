@@ -10,4 +10,3 @@ class StrikeOutEvent(GameEvent):
     def apply(self, game):
         game.inning.record_out()
         # game._mark_plate_appearance_complete("strikeout")
-

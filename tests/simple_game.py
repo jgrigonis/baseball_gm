@@ -37,5 +37,3 @@ game.dbg = logging.DEBUG
 game.home.set_lineup()
 game.away.set_lineup()
 game.play()
-
-
