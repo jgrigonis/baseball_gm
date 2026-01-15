@@ -23,7 +23,7 @@ NOT create domain Team objects
 import uuid
 import sqlite3
 
-from src.team.team_in_game import TeamInGame
+from src.team.team_record import TeamRecord
 
 
 class TeamRepository:
@@ -90,7 +90,7 @@ class TeamRepository:
             (team_id, player_id),
         )
 
-    def get(self, team_id: str) -> Team | None:
+    def get(self, team_id: str) -> TeamRecord | None:
         """
         Fetch a team by ID.
         """
@@ -141,8 +141,8 @@ class TeamRepository:
 
         return row is not None
 
-    def load_for_game(self, team_id) -> TeamInGame:
+    def load_for_game(self, team_id) -> TeamRecord:
         team_row = self.get_team(team_id)
         players = self.get_roster(team_id)
 
-        return TeamInGame.from_records(team_row, players)
+        return TeamRecord.from_records(team_row, players)
