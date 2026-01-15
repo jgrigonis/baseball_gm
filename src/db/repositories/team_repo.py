@@ -23,7 +23,7 @@ NOT create domain Team objects
 import uuid
 import sqlite3
 
-from src.team.team_factory import Team
+from src.team.team_in_game import TeamInGame
 
 
 class TeamRepository:

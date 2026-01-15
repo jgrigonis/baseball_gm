@@ -16,7 +16,6 @@ it does not belong here.
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 from src.player.player_skills import PlayerSkills
 from src.types.rows import CsvRow, DbRow

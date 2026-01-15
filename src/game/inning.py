@@ -19,7 +19,6 @@ class Inning(object):
         else:
             return f"Bottom of {self.number}"
 
-
     def increment(self):
         """Move to the next half inning."""
         if self.top:
