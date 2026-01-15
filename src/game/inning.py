@@ -1,7 +1,4 @@
 # src/game/inning.py
-import src.game.game_exceptions as game_exceptions
-
-
 class Inning(object):
     """Keep track of inning related information."""
 
@@ -17,15 +14,11 @@ class Inning(object):
 
     def __str__(self):
         """Return an inning string."""
-        output = ""
         if self.top:
             return f"Top of {self.number}"
-            # output += "Top of "
         else:
             return f"Bottom of {self.number}"
-            # output += "Bottom of "
-        # output += str(self.number)
-        # return output
+
 
     def increment(self):
         """Move to the next half inning."""
@@ -38,12 +31,6 @@ class Inning(object):
 
     def record_out(self, n: int = 1):
         self.outs += n
-
-    # def out(self):
-    #     """Get an out."""
-    #     self.outs += 1
-    #     if self.outs >= 3:
-    #         raise game_exceptions.TooManyOuts()
 
     def reset_outs(self):
         """Set the outs to zero."""

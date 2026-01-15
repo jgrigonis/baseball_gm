@@ -1,18 +1,4 @@
 # src/game/events/bases.py
-# from dataclasses import dataclass
-# from src.game.event import GameEvent
-
-
-# class RunnerAdvancedEvent(GameEvent):
-#     def __init__(self, reason: str): ...
-
-# class RunnerRemovedEvent(GameEvent):
-#     def __init__(self, reason: str):
-
-#         runner_id: str,
-#         from_base: int,
-#         to_base: int,
-
 from dataclasses import dataclass
 from typing import Optional
 

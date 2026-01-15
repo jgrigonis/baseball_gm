@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 

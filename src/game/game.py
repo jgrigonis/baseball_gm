@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import List
 import logging
 
-from src.game import inning
 from src.game.inning import Inning
 from src.game.count import Count
 from src.game.bases import Bases

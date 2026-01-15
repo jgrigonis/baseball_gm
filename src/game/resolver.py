@@ -14,7 +14,7 @@ from src.game.events.strike import StrikeEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import OutRecordedEvent
 from src.game.events.run import RunScoredEvent
-from src.game.events.bases import RunnerAdvancedEvent, RunnerRemovedEvent
+from src.game.events.bases import RunnerAdvancedEvent
 
 
 class Resolver:
@@ -136,7 +136,7 @@ class Resolver:
         # Base probabilities
         ball_chance = 0.25
         strike_chance = 0.65
-        in_play_chance = 0.40
+        # in_play_chance = 0.40 # whatever is left out of 1.0
 
         r = self.rng.random()
 
@@ -170,7 +170,7 @@ class Resolver:
 
         r = self.rng.random()
 
-        batter_id = intent.batter_id
+        # batter_id = intent.batter_id
 
         # ------------------------------------------------------------
         # OUT

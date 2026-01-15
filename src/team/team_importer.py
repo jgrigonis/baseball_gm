@@ -6,8 +6,10 @@ from pathlib import Path
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.player.player_factory import PlayerFactory
+# from src.player.player_factory import PlayerFactory
+from src.player.player_record import PlayerRecord
 from src.team.team_factory import TeamFactory
+from src.team.team_record import TeamRecord
 from src.util.locations import TEAM_FILES_DIR
 
 
@@ -29,7 +31,7 @@ class TeamImporter:
 
     def import_csv(
         self, league_id: str, path: str, city: str, mascot: str, *, allow_existing=False
-    ) -> Team:
+    ) -> TeamRecord:
         full_path = Path(TEAM_FILES_DIR) / path
         if not full_path.exists():
             raise FileNotFoundError(full_path)
@@ -78,7 +80,7 @@ class TeamImporter:
             with open(full_path, newline="", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
-                    player = Player.from_row(row)
+                    player = PlayerRecord.from_csv_row(row)
 
                     self.player_repo.insert(
                         id=player.id,
@@ -103,23 +105,3 @@ class TeamImporter:
             for chunk in iter(lambda: f.read(8192), b""):
                 h.update(chunk)
         return h.hexdigest()
-
-        # team_id = self.team_repo.get_or_create(city, mascot)
-        # team = Team(city, mascot, team_id)
-        # with open(full_path, newline="", encoding="utf-8") as csvfile:
-        #     reader = csv.DictReader(csvfile)
-        #     for row in reader:
-        #         player = Player.from_row(row)
-        #         self.player_repo.insert(
-        #             id=player.id,
-        #             first_name=player.first_name,
-        #             last_name=player.last_name,
-        #             bats=player.bats,
-        #             throws=player.throws,
-        #         )
-
-        #         team.players.append(player)
-
-        #         self.team_repo.add_player(team_id, player.id)
-
-        # return team
