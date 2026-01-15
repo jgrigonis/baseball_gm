@@ -123,3 +123,11 @@ class InvalidBase(GameException):
     def __init__(self, msg=None):
         if msg:
             print(msg)
+
+
+class BadHandednessException(GameException):
+    """Tried to make a Player with an invalid throws or bats value."""
+
+    def __init__(self, msg=None):
+        if msg:
+            print(msg)

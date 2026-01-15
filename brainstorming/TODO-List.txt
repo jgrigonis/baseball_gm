@@ -156,3 +156,24 @@ What can be reconstructed?
 
 Most “game” objects should never be persisted.
 
+
+Next to write:
+
+PitchIntent
+
+PitchResolver
+
+Core GameEvent types
+
+A single happy-path test: strikeout → out → inning advance
+
+
+1️⃣ Rewrite Game class skeleton with stubs
+2️⃣ Define GameEvent base + 5 core events
+3️⃣ Implement PitchIntentGenerator
+4️⃣ Refactor one real play end-to-end (walk or strikeout)
+
+1️⃣ Resolver logic for pitch → ball/strike
+2️⃣ IntentGenerator that produces a pitch intent
+3️⃣ Count refactor to support pitch counts
+4️⃣ OutEvent and RunEvent (for balls in play)

@@ -84,3 +84,9 @@ or wire this cleanly into your Game class
 refactor batting-order logic into a LineupBuilder
 add platoon splits (L/R)
 or unit-test the evaluator + lineup selection deterministically
+
+
+Extract this into a shared WeightedChoice utility
+Normalize probs for debugging
+Add assertions that total weight > 0
+Make event generation replayable from a seed + log

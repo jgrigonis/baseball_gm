@@ -12,7 +12,7 @@ Not stats.
 Insert player information
 """
 
-from src.player.player import Player
+from src.player.player_factory import Player
 
 
 class PlayerRepository:

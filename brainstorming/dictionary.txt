@@ -1,0 +1,94 @@
+
+An intent is a question.
+A resolver is the answer.
+An event is the record.
+
+Intent
+
+    An intent is a request to advance the game.
+    An Intent represents an attempted action, not an outcome.
+
+    1. Intent design rules (lock these)
+
+A GameIntent
+
+    Describes what is being attempted
+    Is not an outcome
+    Has no side effects
+    Contains no randomness
+    Is valid even if it results in a no-op
+    Is cheap to construct and serialize
+
+    An intent must not:
+
+        Inspect game state
+        Mutate game state
+        Encode rules (“this ends the inning”)
+        Throw for normal flow
+
+IntentGenerator:
+
+    Chooses what intent to issue next
+    Reads current Game state
+    Has access to RNG
+    Does not decide outcomes
+    Does not end plate appearances or innings
+    Emits exactly one intent per call
+
+    Think of it as:
+        “Who tries to do what next?”
+    Not:
+        “What happens?”
+
+Resolver
+
+    Reads current GameState
+    Applies rules + randomness
+    Emits one or more GameEvents
+
+    Consumes (intent, read-only game state)
+    Uses RNG
+    Returns a ResolvedAction
+
+    It does not:
+        mutate game
+        enqueue events
+        inspect hypothetical state
+
+        call helper “would_*” functions
+
+Events
+
+    Immutable
+    Timestamped / sequenced
+    Applied strictly in order
+    The only thing that mutates state
+    Events may mutate state, but may not make decisions.
+
+    Events are facts.
+    Facts must not change.
+    Events NEVER mutate game state
+    Events NEVER create other events
+    Events NEVER contain branching logic
+
+
+If you ever feel tempted to RNG in Game…
+
+    That’s your architectural alarm bell 🚨
+    It means:
+        an event is underspecified
+        or you need a new intent boundary
+
+
+Resolvers produce history.
+Game replays history.
+History must not change.
+
+Game observes.
+Game advances structure.
+
+Game never switches on Event types.
+Resolver may switch on Intent types.
+
+Application Layer (Game.step())
+    This is the only place state mutates.

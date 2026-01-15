@@ -1,0 +1,27 @@
+IntentGenerator → Resolver → Game (Application Layer) → Events (Audit Log)
+
+| Layer    | Responsibility                    |
+| -------- | --------------------------------- |
+| Intent   | “What is the actor trying to do?” |
+| Resolver | “What happens because of that?”   |
+| Game     | “Apply results to state”          |
+| Events   | “Record what occurred”            |
+
+
+Core Principle: Authority
+    Only the Resolver decides baseball outcomes.
+        Resolver is pure logic + RNG
+        Game applies results verbatim
+        Events never contain logic
+        Game never infers outcomes
+    If something happened, the resolver said so.
+
+Game State (owned by Game)
+    The Game owns all mutable state:
+        Inning (number, half, outs)
+        Count (balls, strikes)
+        Bases (runners)
+        Score
+        Batting order cursor
+        Current batter / pitcher
+    Other layers may read state, never mutate it.

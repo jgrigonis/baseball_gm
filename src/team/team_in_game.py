@@ -69,7 +69,7 @@ class TeamInGame:
         for p in self.players:
             if not p.is_rated():
                 p.rate_player()
-
+    @property
     def current_batter(self) -> LineupSlot:
         """Return the current batter."""
         if not self.lineup:
@@ -79,7 +79,7 @@ class TeamInGame:
     def next_batter(self) -> LineupSlot:
         """Increment the batter index and return the next batter."""
         self.batter_index = (self.batter_index + 1) % len(self.lineup)
-        return self.current_batter()
+        return self.current_batter
 
     def current_pitcher(self):
         """Return the current pitcher."""

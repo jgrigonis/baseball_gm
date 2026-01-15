@@ -119,7 +119,7 @@ def test_next_batter_cycles():
     tig.lineup = ["a", "b", "c"]
     tig.batter_index = 0
 
-    assert tig.current_batter() == "a"
+    assert tig.current_batter == "a"
     assert tig.next_batter() == "b"
     assert tig.next_batter() == "c"
     assert tig.next_batter() == "a"  # wrap

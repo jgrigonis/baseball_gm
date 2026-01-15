@@ -100,7 +100,7 @@ Instead of a flat list, consider tagging events:
 event = {
     "name": "wild_pitch",
     "ends_at_bat": False,
-    "ball_in_play": False,
+    "in_play": False,
     "can_advance_runners": True,
     "records_out": False
 }

@@ -23,7 +23,7 @@ NOT create domain Team objects
 import uuid
 import sqlite3
 
-from src.team.team import Team
+from src.team.team_factory import Team
 
 
 class TeamRepository:
@@ -150,7 +150,7 @@ class TeamRepository:
     # READ
     # ------------------------------------------------------------
 
-    def get(self, team_id: str):
+    def get(self, team_id: str) -> Team | None:
         """
         Fetch a team by ID.
         """
@@ -163,23 +163,23 @@ class TeamRepository:
             (team_id,),
         ).fetchone()
 
-    def look_up(self, team_id: int) -> Team | None:
-        """
-        Fetch a team based on id
-        """
-        row = self.conn.execute(
-            """
-            SELECT *
-            FROM teams
-            WHERE id = ?
-            """,
-            (team_id,),
-        ).fetchall()
+    # def look_up(self, team_id: int) -> Team | None:
+    #     """
+    #     Fetch a team based on id
+    #     """
+    #     row = self.conn.execute(
+    #         """
+    #         SELECT *
+    #         FROM teams
+    #         WHERE id = ?
+    #         """,
+    #         (team_id,),
+    #     ).fetchone()
 
-        if row is None:
-            return None
+    #     if row is None:
+    #         return None
 
-        return row
+    #     return row
 
     def find_by_city_mascot(self, city: str, mascot: str):
         """
@@ -218,3 +218,9 @@ class TeamRepository:
         ).fetchone()
 
         return row is not None
+
+    def load_for_game(self, team_id) -> TeamInGame:
+        team_row = self.get_team(team_id)
+        players = self.get_roster(team_id)
+
+        return TeamInGame.from_records(team_row, players)

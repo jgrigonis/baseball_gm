@@ -1,68 +1,31 @@
+# src/game/game.py
+from dataclasses import dataclass
 import logging
 import random
 
 import src.game.bases as bases
 import src.game.count as count
 from src.game.defense.resolver import DefensiveResolver
+from src.game.play_resolver import BallInPlayResolver
+from src.game.event_generator import EventGenerator
+from src.game.event_outcome import EventOutcome
 import src.game.game_exceptions as game_exceptions
 import src.game.inning as inning
+from src.game.play_resolver import ResolvedPlay
 from src.game.rules.common import pitch, batting_at_bat
 import src.game.score as score
 from src.game.score_formatter import ScoreFormatter
 from src.game.stat_printer import output_stats
+from src.team.team_in_game import TeamInGame
 from src.util.logger import setup_logger
 
 __author__ = "josh"
-# TODO plate_appearances - Can populated every plate appearance, someday
-#
-# TODO csv files should be treated as immutable records
-# TODO if a csv file changes, you have to treat it as a new
-#      team. team.source_hash = sha256(csv)
-# TODO Fix up base advances, so they are not so static
-# TODO verify defensive stats and event probs
-#      For instance outfielders almost never get assists
-#      Catchers and pitchers never get any stats
-# TODO defensive plays are very static.
-# TODO pitchers probably should field bunts, and some batted balls
-# TODO chance for dropped 3rd strike.
-# TODO Steals, caught stealing, pickoffs all could result in errors
-#      Make sure they are counted in fielding stats
-# TODO we have just a basic raw error event that isn't super useful
-#      We also can trigger errors on batted balls. Need to consolidate
-# TODO implement handedness p vs batter
-# TODO pitcher energy and recovery
-# TODO implement clutch
-# TODO Calculate W/L/S for pitchers
-# TODO Track complete games, shutouts
-# TODO We currently count all runs as earned.  Needs to be fixed.
-# TODO Games Started for pitcher
-# TODO can runners advance more with more speed, not currently
-# TODO many more unit tests
-# TODO unit test for walk off home run, vs driving in multiple
-#      home run should score all runs, driving in on a triple for example
-#      should stop scoring once the winning run crosses the plate.
-# TODO handle intentional walk as a play and a stat
-# TODO add a stat for catcher picking off runners.
-# TODO add a stat for catcher having a passed ball.
-# TODO can we get other types of double plays?
-#      Need to be line out double plays
-# TODO the range of abilities is probably too low.
-# TODO more accurately match stats from MLB teams
-# TODO follow extra innings rules with runner on second.
-# TODO In player replace rng.gauss with
-# def generate_stat(self, rng, ...):
-#    stat = rng.gauss(mean, sigma)
-# TODO in player move the ratings into a RatingModel
-# TODO bug if you do create_players.py -f ./FooBars.csv
-#      You can overwrite FooBars.csv
-#      Also foobars.csv will be allowed and overwrite
-#      Should be a way to check on open() call
-# STRATEGY THINGS
-# TODO Pitching changes
-# TODO Mound visits
-# TODO Pinch hitters
-# TODO Pinch runners
-# TODO Fielding Substitutions
+
+
+@dataclass
+class GameContext:
+    rng: random.Random
+    logger: logging.Logger
 
 
 class Game(object):
@@ -72,10 +35,26 @@ class Game(object):
     Includes methods to carry out various game
     related events.
 
+    Game is a stateful orchestrator.
+
+    It should:
+        Hold mutable game state
+        Sequence events
+        Delegate rules and resolution
+        Never construct domain objects
+        Never derive ratings, skills, or persistence data
+
+    Keep Game dumb about players and teams.
     """
 
     def __init__(
-        self, home, away, debug=logging.INFO, pauses=False, innings_per_game=9, rng=None
+        self,
+        home: TeamInGame,
+        away: TeamInGame,
+        debug=logging.INFO,
+        pauses=False,
+        innings_per_game=9,
+        rng=None,
     ):
         """Set up a new game.
 
@@ -95,6 +74,8 @@ class Game(object):
         self.score = score.Score()
         self.winner = None
         self.game_over = False
+        self.event_generator = EventGenerator()
+        self.resolver = BallInPlayResolver()
         self.inning = inning.Inning()
         self.innings_per_game = innings_per_game
         self.logger = setup_logger(name="game", level=debug, console_level=debug)
@@ -102,7 +83,7 @@ class Game(object):
         self.logger.debug("Game initialized")
         self.logger.info(self.inning)
         self.defense = DefensiveResolver(self.rng, self.logger)
-        self._sync_players()
+        # self._sync_players()
         self.init_game_stats()
 
     def init_game_stats(self):
@@ -111,6 +92,163 @@ class Game(object):
         """
         for player in self.away.players + self.home.players:
             player.init_game_stats()
+
+    def play(self):
+        """
+        Play the game
+        """
+        if not self.home.has_lineup or not self.away.has_lineup:
+            raise RuntimeError("Both teams must have lineups before play()")
+        self._sync_players()
+        while not self.game_over:
+            self.step()
+
+    def step(self):
+        outcome = self.event_generator.next_event(self)
+
+        # Pitch did not end the plate appearance
+        if outcome is None:
+            return
+
+        # Ball put into play → resolve
+        if outcome.type == "in_play":
+            assert outcome.contact is not None
+            resolved = self.resolver.resolve(outcome, self)
+            self.logger.debug(f"outcome.type = {outcome.type}")
+            self.apply(resolved)
+            return
+
+        # Terminal plate-appearance outcome (walk, K, HBP, etc.)
+        self.logger.debug(f"outcome.type = {outcome.type}")
+        self.apply(outcome)
+
+    # def step(self):
+    #     outcome = self.event_generator.next_event(self)
+    #     if outcome is None:
+    #         return
+
+    #     assert outcome.type != "in_play" or outcome.contact is not None
+    #     resolved = self.resolver.resolve(outcome, self)
+    #     print("We did it")
+    #     self.apply(resolved)
+
+    # def step(self):
+    #     outcome = self.event_generator.next_event(self)
+
+    #     # Pitch-only result → nothing else happens this step
+    #     if outcome is None:
+    #         return
+
+    #     # Safety check: in_play must always have contact
+    #     assert outcome.type != "in_play" or outcome.contact is not None
+
+    #     resolved = self.resolver.resolve(outcome, self)
+    #     self.apply(resolved)
+
+    # def step(self):
+    #     outcome = self.event_generator.next_event(self)
+    #     print("Some debugging")
+    #     print(f"outcome = {outcome}")
+    #     assert outcome is None or outcome.type != "in_play" or outcome.contact is not None
+    #     if outcome is None:
+    #         print("This seems bad!")
+    #     resolved = self.resolver.resolve(outcome, self)
+    #     print("We made it!")
+    #     self.apply(resolved)
+
+    def apply(self, resolved: ResolvedPlay):
+        # 1. Record outs
+        for _ in range(resolved.outs):
+            if self.inning.outs < 3:
+                self.inning.out()
+        if self.inning.outs == 3:
+            self._side_retired()
+
+        # 2. Advance existing runners
+        if resolved.runner_advances:
+            scorers = self.bases.advance_many(resolved.runner_advances.items())
+            self.score.add(len(scorers))
+
+        # 3. Place batter
+        if resolved.batter_to is not None:
+            if resolved.batter_to >= 3:
+                self.score.add(1)
+            else:
+                self.bases[resolved.batter_to] = self.current_batter
+
+    # def apply(self, outcome: EventOutcome):
+    #     """
+    #     Apply a resolved outcome to game state.
+    #     """
+    #     self.logger.debug(outcome.description)
+
+    #     if outcome.outs:
+    #         self._apply_outs(outcome)
+
+    #     if outcome.bases is not None:
+    #         self._apply_advancement(outcome)
+
+    #     self._finalize_play(outcome)
+
+    def _apply_outs(self, outcome: EventOutcome):
+        for _ in range(outcome.outs):
+            self.inning.out()
+
+            if self.inning.outs >= 3:
+                self._end_half_inning()
+                return
+
+    def _apply_advancement(self, outcome: EventOutcome):
+        """
+        Advance runners and batter based on bases awarded.
+        """
+        bases = outcome.bases
+
+        # Advance existing runners first (backwards!)
+        for base in (3, 2, 1):
+            runner = self.bases.get_runner(base)
+            if not runner:
+                continue
+
+            new_base = base + bases
+            self.bases.clear(base)
+
+            if new_base >= 4:
+                self.score.run()
+            else:
+                self.bases.set_runner(new_base, runner)
+
+        # Place batter
+        if bases < 4:
+            self.bases.set_runner(bases, self.current_batter)
+        else:
+            self.score.run()
+
+    def _finalize_play(self, outcome: EventOutcome):
+        """
+        Cleanup after a completed plate appearance.
+        """
+        self.count.reset_count()
+        self._advance_lineup()
+
+    def _advance_lineup(self):
+        self.current_batter = self.bat_team.next_batter()
+
+    def _end_half_inning(self):
+        self.logger.info("End Half inning")
+        self.inning.increment()
+        self.count.reset_count()
+        self.bases.clear()
+        self._swap_batting_teams()
+
+        # self.outs = 0
+        # self.bases.clear()
+        # self.count.reset_count()
+
+        # self.inning.advance_half()
+
+        # self._swap_teams()
+        # self.current_batter = self.bat_team.current_batter()
 
     def _format_outs(self):
         """Format the number of outs as a string."""
@@ -131,7 +269,7 @@ class Game(object):
             self.logger.info(
                 {
                     "event": "next_batter",
-                    "player": self.current_batter.name,
+                    "player": self.current_batter.player.name,
                     # "player": self.current_batter,
                     # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
                 }
@@ -541,269 +679,269 @@ class Game(object):
         pitcher.game_stats.pitching.hit()
         self._next_batter(put_out=False, log="Hit, batter reaches on hit")
 
-    def double_play(self, base1="second", base2="first", gdp=True):
-        """
-        Batter hits into a double play.
+    # def double_play(self, base1="second", base2="first", gdp=True):
+    #     """
+    #     Batter hits into a double play.
 
-        :param base1: base where first out is made, assume force out.
-        :param base2: base where second out is made.
-        :param gdp: True if it was a grounder into a double.
+    #     :param base1: base where first out is made, assume force out.
+    #     :param base2: base where second out is made.
+    #     :param gdp: True if it was a grounder into a double.
 
-        """
-        b1 = self._base_number(base1)
-        b2 = self._base_number(base2)
-        batter = self.current_batter
-        pitch(self)
-        if self.bases.men_on() == 0:
-            raise game_exceptions.NotEnoughRunnersOnBase()
-        if self.inning.outs == 2:
-            raise game_exceptions.TooManyOuts()
+    #     """
+    #     b1 = self._base_number(base1)
+    #     b2 = self._base_number(base2)
+    #     batter = self.current_batter
+    #     pitch(self)
+    #     if self.bases.men_on() == 0:
+    #         raise game_exceptions.NotEnoughRunnersOnBase()
+    #     if self.inning.outs == 2:
+    #         raise game_exceptions.TooManyOuts()
 
-        # Determine which defenders are involved based on bases
-        # Common double play: 6-4-3 (SS to 2B to 1B)
-        # Or 4-6-3 (2B to SS to 1B)
-        # For simplicity, we'll test SS, 2B, and 1B in sequence
-        ss = self.get_defender("ss")
-        second_baseman = self.get_defender("2b")
-        first_baseman = self.get_defender("1b")
+    #     # Determine which defenders are involved based on bases
+    #     # Common double play: 6-4-3 (SS to 2B to 1B)
+    #     # Or 4-6-3 (2B to SS to 1B)
+    #     # For simplicity, we'll test SS, 2B, and 1B in sequence
+    #     ss = self.get_defender("ss")
+    #     second_baseman = self.get_defender("2b")
+    #     first_baseman = self.get_defender("1b")
 
-        # Determine who fields the ball at second base (SS or 2B)
-        # Randomly pick based on who's available, or prefer SS for 6-4-3
-        first_defender = None
-        first_pos = None
-        if ss and second_baseman:
-            # Randomly pick SS or 2B to field it
-            if random.random() < 0.6:  # 60% chance SS fields it (6-4-3)
-                first_defender = ss
-                first_pos = "ss"
-            else:  # 40% chance 2B fields it (4-6-3)
-                first_defender = second_baseman
-                first_pos = "2b"
-        elif ss:
-            first_defender = ss
-            first_pos = "ss"
-        elif second_baseman:
-            first_defender = second_baseman
-            first_pos = "2b"
+    #     # Determine who fields the ball at second base (SS or 2B)
+    #     # Randomly pick based on who's available, or prefer SS for 6-4-3
+    #     first_defender = None
+    #     first_pos = None
+    #     if ss and second_baseman:
+    #         # Randomly pick SS or 2B to field it
+    #         if random.random() < 0.6:  # 60% chance SS fields it (6-4-3)
+    #             first_defender = ss
+    #             first_pos = "ss"
+    #         else:  # 40% chance 2B fields it (4-6-3)
+    #             first_defender = second_baseman
+    #             first_pos = "2b"
+    #     elif ss:
+    #         first_defender = ss
+    #         first_pos = "ss"
+    #     elif second_baseman:
+    #         first_defender = second_baseman
+    #         first_pos = "2b"
 
-        # Test first defender (SS or 2B) - check for error or being too slow
-        if first_defender:
-            # success, error_type = self.defense.check_play(
-            #     first_defender, play_type="both", position=first_pos
-            # )
-            outcome = self.defense.check_play(first_defender, "both", first_pos)
-            if outcome.error:
-                # if error_type == "error":
-                # Error on first defender - batter safe, runner out, no at-bat
-                self.logger.info(
-                    f"Error by {first_defender.name} at {first_pos.upper()}"
-                )
-                self.bases[b1] = 0
-                self._put_out(next=True, log="Error, double play failed")
-                # Batter reaches on error
-                if self.bases.empty_base(0):
-                    self.bases[0] = batter
-                return
-            if outcome.slow:
-                # elif error_type == "slow":
-                # Too slow - only get lead runner, batter gets at-bat
-                self.logger.info(
-                    f"{first_defender.name} at {first_pos.upper()} too slow, only lead runner out"
-                )
-                batting_at_bat(batter)
-                if gdp:
-                    batter.game_stats.batting.ground_double_play()
-                self.bases[b1] = 0
-                self._put_out(next=True, log="Slow, double play failed")
-                # Batter safe at first
-                if self.bases.empty_base(0):
-                    self.bases[0] = batter
-                return
-            else:
-                # Successful first play - record assist
-                first_defender.game_stats.fielding.assist()
+    #     # Test first defender (SS or 2B) - check for error or being too slow
+    #     if first_defender:
+    #         # success, error_type = self.defense.check_play(
+    #         #     first_defender, play_type="both", position=first_pos
+    #         # )
+    #         outcome = self.defense.check_play(first_defender, "both", first_pos)
+    #         if outcome.error:
+    #             # if error_type == "error":
+    #             # Error on first defender - batter safe, runner out, no at-bat
+    #             self.logger.info(
+    #                 f"Error by {first_defender.name} at {first_pos.upper()}"
+    #             )
+    #             self.bases[b1] = 0
+    #             self._put_out(next=True, log="Error, double play failed")
+    #             # Batter reaches on error
+    #             if self.bases.empty_base(0):
+    #                 self.bases[0] = batter
+    #             return
+    #         if outcome.slow:
+    #             # elif error_type == "slow":
+    #             # Too slow - only get lead runner, batter gets at-bat
+    #             self.logger.info(
+    #                 f"{first_defender.name} at {first_pos.upper()} too slow, only lead runner out"
+    #             )
+    #             batting_at_bat(batter)
+    #             if gdp:
+    #                 batter.game_stats.batting.ground_double_play()
+    #             self.bases[b1] = 0
+    #             self._put_out(next=True, log="Slow, double play failed")
+    #             # Batter safe at first
+    #             if self.bases.empty_base(0):
+    #                 self.bases[0] = batter
+    #             return
+    #         else:
+    #             # Successful first play - record assist
+    #             first_defender.game_stats.fielding.assist()
 
-        # Test second defender (1B) - check for error
-        if first_baseman:
-            outcome = self.defense.check_play(first_baseman, "fielding", position="1b")
-            # success, error_type = self.defense.check_play(
-            #     first_baseman, play_type="fielding", position="1b"
-            # )
+    #     # Test second defender (1B) - check for error
+    #     if first_baseman:
+    #         outcome = self.defense.check_play(first_baseman, "fielding", position="1b")
+    #         # success, error_type = self.defense.check_play(
+    #         #     first_baseman, play_type="fielding", position="1b"
+    #         # )
 
-            # if not success and error_type == "error":
-            if outcome.error:
-                # Error on second defender - batter safe, no at-bat
-                self.logger.info(f"Error by {first_baseman.name} at 1B")
-                self.bases[b1] = 0
-                self._put_out(next=True, log="Error")
-                # Batter reaches on error
-                if self.bases.empty_base(0):
-                    self.bases[0] = batter
-                return
-            else:
-                # Successful second play - record putout
-                first_baseman.game_stats.fielding.putout()
+    #         # if not success and error_type == "error":
+    #         if outcome.error:
+    #             # Error on second defender - batter safe, no at-bat
+    #             self.logger.info(f"Error by {first_baseman.name} at 1B")
+    #             self.bases[b1] = 0
+    #             self._put_out(next=True, log="Error")
+    #             # Batter reaches on error
+    #             if self.bases.empty_base(0):
+    #                 self.bases[0] = batter
+    #             return
+    #         else:
+    #             # Successful second play - record putout
+    #             first_baseman.game_stats.fielding.putout()
 
-        # Both plays successful - complete double play
-        batting_at_bat(batter)
-        if gdp:
-            batter.game_stats.batting.ground_double_play()
-        self.bases[b1] = 0
-        self._put_out(next=False, log="Double play first out")
-        self.bases[b2] = 0
-        self._put_out(next=True, log="Double play")
+    # # Both plays successful - complete double play
+    # batting_at_bat(batter)
+    # if gdp:
+    #     batter.game_stats.batting.ground_double_play()
+    # self.bases[b1] = 0
+    # self._put_out(next=False, log="Double play first out")
+    # self.bases[b2] = 0
+    # self._put_out(next=True, log="Double play")
 
-    def triple_play(self, gtp=True):
-        """
-        Batter hits into a triple play.
+    # def triple_play(self, gtp=True):
+    #     """
+    #     Batter hits into a triple play.
 
-        :param gtp: should be set to True if it was a grounder into a triple
-        play.
+    #     :param gtp: should be set to True if it was a grounder into a triple
+    #     play.
 
-        """
-        batter = self.current_batter
-        pitch(self)
-        if self.bases.men_on() < 2:
-            raise game_exceptions.NotEnoughRunnersOnBase()
-        if self.inning.outs != 0:
-            raise game_exceptions.TooManyOuts()
-        batting_at_bat(batter)
-        if gtp:
-            batter.game_stats.batting.ground_triple_play()
-        self._put_out(next=False, log="Triple play first out")
-        self._put_out(next=False, log="Triple play second out")
-        self._put_out(next=True, log="Triple play")
+    #     """
+    #     batter = self.current_batter
+    #     pitch(self)
+    #     if self.bases.men_on() < 2:
+    #         raise game_exceptions.NotEnoughRunnersOnBase()
+    #     if self.inning.outs != 0:
+    #         raise game_exceptions.TooManyOuts()
+    #     batting_at_bat(batter)
+    #     if gtp:
+    #         batter.game_stats.batting.ground_triple_play()
+    #     self._put_out(next=False, log="Triple play first out")
+    #     self._put_out(next=False, log="Triple play second out")
+    #     self._put_out(next=True, log="Triple play")
 
-    def fielders_choice(self, base="second"):
-        """
-        Batter hits into a fielder's choice.
+    # def fielders_choice(self, base="second"):
+    #     """
+    #     Batter hits into a fielder's choice.
 
-        A fielder's choice is when a runner is on base, the
-        batter hits the ball such that the runner is put out,
-        but the batter is then able to get on base.
+    #     A fielder's choice is when a runner is on base, the
+    #     batter hits the ball such that the runner is put out,
+    #     but the batter is then able to get on base.
 
-        :param base: base where the out is made, assume force out.
-        It defaults to second, as that is the most common fielder's
-        choice.
+    #     :param base: base where the out is made, assume force out.
+    #     It defaults to second, as that is the most common fielder's
+    #     choice.
 
-        """
-        b_num = self._base_number(base)
-        batter = self.current_batter
-        batting_at_bat(batter)
-        pitch(self)
-        self._next_batter(
-            put_out=True, log="Fielder's choice, batter reaches on fielder's choice"
-        )
-        self.bases[b_num] = 0  # clear the base
-        self.bases[0] = batter
-        self._put_out(next=True, log="Fielder's choice")
+    #     """
+    #     b_num = self._base_number(base)
+    #     batter = self.current_batter
+    #     batting_at_bat(batter)
+    #     pitch(self)
+    #     self._next_batter(
+    #         put_out=True, log="Fielder's choice, batter reaches on fielder's choice"
+    #     )
+    #     self.bases[b_num] = 0  # clear the base
+    #     self.bases[0] = batter
+    #     self._put_out(next=True, log="Fielder's choice")
 
-    def error(self, batter_on_base=False, advances=None):
-        """
-        Fielder makes an error.  By default nothing happens
-        other than to take note of the error.
+    # def error(self, batter_on_base=False, advances=None):
+    #     """
+    #     Fielder makes an error.  By default nothing happens
+    #     other than to take note of the error.
 
-        :param batter_on_base: determines if the batter got on base during
-        this error.  If True, the batter will occupy first base.
+    #     :param batter_on_base: determines if the batter got on base during
+    #     this error.  If True, the batter will occupy first base.
 
-        If the batter were to get multiple bases, the batter_on_base can
-        be set to 1 for "second", 2 for "third", and in some really weird
-        circumstances, 3 for "home" for an error based home run.
+    #     If the batter were to get multiple bases, the batter_on_base can
+    #     be set to 1 for "second", 2 for "third", and in some really weird
+    #     circumstances, 3 for "home" for an error based home run.
 
-        :param advances: is a list of tuples to advance runners from and to.
+    #     :param advances: is a list of tuples to advance runners from and to.
 
-        """
-        self.logger.debug("Error")
-        batter = self.current_batter
-        pitch(self)
-        scorers = []
-        if advances:
-            if self.bases.men_on():
-                scorers = self.bases.advance_many(advances)
-            else:
-                raise game_exceptions.NoRunnerToAdvance()
-        for scorer in scorers:
-            self._score_run(scorer)
-        if batter_on_base:
-            if batter_on_base is True:
-                batter_base = 0
-            else:
-                batter_base = self._base_number(batter_on_base)
-            if not self.bases.empty_base(batter_base):
-                raise game_exceptions.InvalidAdvance()
-            self.bases[batter_base] = batter
-            batting_at_bat(batter)
-            self._next_batter(log="Error")
+    #     """
+    #     self.logger.debug("Error")
+    #     batter = self.current_batter
+    #     pitch(self)
+    #     scorers = []
+    #     if advances:
+    #         if self.bases.men_on():
+    #             scorers = self.bases.advance_many(advances)
+    #         else:
+    #             raise game_exceptions.NoRunnerToAdvance()
+    #     for scorer in scorers:
+    #         self._score_run(scorer)
+    #     if batter_on_base:
+    #         if batter_on_base is True:
+    #             batter_base = 0
+    #         else:
+    #             batter_base = self._base_number(batter_on_base)
+    #         if not self.bases.empty_base(batter_base):
+    #             raise game_exceptions.InvalidAdvance()
+    #         self.bases[batter_base] = batter
+    #         batting_at_bat(batter)
+    #         self._next_batter(log="Error")
 
-    def sac_fly(self, advances=None):
-        """
-        Batter performs a sac_fly fly out.  By
-        default all base runners advance one base.  It wouldn't
-        make sense to have a sac_fly and have no one advance.
+    # def sac_fly(self, advances=None):
+    #     """
+    #     Batter performs a sac_fly fly out.  By
+    #     default all base runners advance one base.  It wouldn't
+    #     make sense to have a sac_fly and have no one advance.
 
-        :param advances: is a list of tuples to advance runners from
-        and to.
+    #     :param advances: is a list of tuples to advance runners from
+    #     and to.
 
-        """
-        batter = self.current_batter
-        pitcher = self.current_pitcher
-        pitch(self)
-        if self.bases.men_on() == 0:
-            raise game_exceptions.NotEnoughRunnersOnBase()
-        if self.inning.outs == 2:
-            raise game_exceptions.BadSacrifice()
-        if not advances:
-            scored = self.bases.advance_all()
-            if scored:
-                batter.game_stats.batting.hit_rbi()
-                self._score_run(scored)
-        else:
-            if isinstance(advances, tuple):
-                advances = [advances]
-            for adv in advances:
-                if self.bases[adv[0]] == 0:
-                    raise game_exceptions.NoRunnerToAdvance()
-            scorers = self.bases.advance_many(advances)
-            for scorer in scorers:
-                batter.game_stats.batting.hit_rbi()
-                self._score_run(scorer)
-        batter.game_stats.batting.sac_fly()
-        pitcher.game_stats.pitching.out()
-        self._next_batter(put_out=True, log="Sac fly, batter is put out")
-        self.inning.out()
+    #     """
+    #     batter = self.current_batter
+    #     pitcher = self.current_pitcher
+    #     pitch(self)
+    #     if self.bases.men_on() == 0:
+    #         raise game_exceptions.NotEnoughRunnersOnBase()
+    #     if self.inning.outs == 2:
+    #         raise game_exceptions.BadSacrifice()
+    #     if not advances:
+    #         scored = self.bases.advance_all()
+    #         if scored:
+    #             batter.game_stats.batting.hit_rbi()
+    #             self._score_run(scored)
+    #     else:
+    #         if isinstance(advances, tuple):
+    #             advances = [advances]
+    #         for adv in advances:
+    #             if self.bases[adv[0]] == 0:
+    #                 raise game_exceptions.NoRunnerToAdvance()
+    #         scorers = self.bases.advance_many(advances)
+    #         for scorer in scorers:
+    #             batter.game_stats.batting.hit_rbi()
+    #             self._score_run(scorer)
+    #     batter.game_stats.batting.sac_fly()
+    #     pitcher.game_stats.pitching.out()
+    #     self._next_batter(put_out=True, log="Sac fly, batter is put out")
+    #     self.inning.out()
 
-    def sac_bunt(self, advances=None):
-        """
-        Batter performs a sac_bunt bunt.  By
-        default all base runners advance one base.  It wouldn't
-        make sense to have a sac_bunt and have no one advance.
-        """
-        batter = self.current_batter
-        pitcher = self.current_pitcher
-        pitch(self)
-        if self.bases.men_on() == 0:
-            raise game_exceptions.NotEnoughRunnersOnBase()
-        if self.inning.outs == 2:
-            raise game_exceptions.BadSacrifice()
-        if not advances:
-            scored = self.bases.advance_all()
-            if scored:
-                batter.game_stats.batting.hit_rbi()
-                self._score_run(scored)
-        else:
-            if isinstance(advances, tuple):
-                advances = [advances]
-            for adv in advances:
-                if self.bases[adv[0]] == 0:
-                    raise game_exceptions.NoRunnerToAdvance()
-            scorers = self.bases.advance_many(advances)
-            for scorer in scorers:
-                batter.game_stats.batting.hit_rbi()
-                self._score_run(scorer)
-        batter.game_stats.batting.sac_bunt()
-        pitcher.game_stats.pitching.out()
-        self._next_batter(put_out=True, log="Sac bunt, batter is put out")
-        self.inning.out()
+    # def sac_bunt(self, advances=None):
+    #     """
+    #     Batter performs a sac_bunt bunt.  By
+    #     default all base runners advance one base.  It wouldn't
+    #     make sense to have a sac_bunt and have no one advance.
+    #     """
+    #     batter = self.current_batter
+    #     pitcher = self.current_pitcher
+    #     pitch(self)
+    #     if self.bases.men_on() == 0:
+    #         raise game_exceptions.NotEnoughRunnersOnBase()
+    #     if self.inning.outs == 2:
+    #         raise game_exceptions.BadSacrifice()
+    #     if not advances:
+    #         scored = self.bases.advance_all()
+    #         if scored:
+    #             batter.game_stats.batting.hit_rbi()
+    #             self._score_run(scored)
+    #     else:
+    #         if isinstance(advances, tuple):
+    #             advances = [advances]
+    #         for adv in advances:
+    #             if self.bases[adv[0]] == 0:
+    #                 raise game_exceptions.NoRunnerToAdvance()
+    #         scorers = self.bases.advance_many(advances)
+    #         for scorer in scorers:
+    #             batter.game_stats.batting.hit_rbi()
+    #             self._score_run(scorer)
+    #     batter.game_stats.batting.sac_bunt()
+    #     pitcher.game_stats.pitching.out()
+    #     self._next_batter(put_out=True, log="Sac bunt, batter is put out")
+    #     self.inning.out()
 
     def _strike_out(self):
         """Batter strikes out."""

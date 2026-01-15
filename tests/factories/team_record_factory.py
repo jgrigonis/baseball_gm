@@ -11,7 +11,7 @@ def make_team_record(
     id: str | None = None,
     city="Testville",
     mascot="Tests",
-    size=9,
+    size=26,
     players=None,
 ):
     n = next(_counter)
