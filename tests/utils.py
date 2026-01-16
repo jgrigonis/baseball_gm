@@ -91,6 +91,7 @@ def fake_game():
     game.count = Count()
     game.bases = Bases()
     game.score = Score()
+    game.logger = NullLogger()
 
     # Plate appearance state
     game._pa_complete = False

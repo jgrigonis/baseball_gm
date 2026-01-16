@@ -220,7 +220,6 @@ class Game:
         self.current_pitcher = self.pitch_team.current_pitcher()
         self.logger.info(f"Pitching: {self.current_pitcher.name}")
 
-
     def _would_end_half_inning(self) -> bool:
         """
         Determine whether the current half-inning should end.

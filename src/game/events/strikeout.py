@@ -8,5 +8,6 @@ class StrikeOutEvent(GameEvent):
     swinging: bool = False
 
     def apply(self, game):
-        game.inning.record_out()
+        pass  # this does nothing
+        # game.inning.record_out()
         # game._mark_plate_appearance_complete("strikeout")

@@ -11,6 +11,7 @@ from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 
 from src.game.events.strike import StrikeEvent
+from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import OutRecordedEvent
 from src.game.events.run import RunScoredEvent
@@ -82,6 +83,11 @@ class Resolver:
 
         elif outcome == "strike":
             events.append(StrikeEvent())
+            if game.count.strikes + 1 >= 3:
+                self.logger.debug("strike out ending pa")
+                # events.append(StrikeOutEvent()) # so far it's useless
+                events.append(OutRecordedEvent(reason="strikeout"))
+                events.append(PlateAppearanceEndEvent(reason="strikeout"))
 
         elif outcome == "in_play":
             events.extend(self._resolve_ball_in_play(intent, game))
@@ -90,28 +96,7 @@ class Resolver:
             # self.logger.debug("NoOp triggered")
             return [NoOpEvent()]
 
-        # # ------------------------------------------------------------
-        # # 3. Terminal checks (using PRE-event state + hypothetical event)
-        # # ------------------------------------------------------------
-        # if self._would_end_plate_appearance(outcome, game):
-        #     result = self._derive_plate_appearance_result(outcome, game)
-        #     self.logger.trace(f"result = {result}")
-        #     events.append(PlateAppearanceEndEvent(result))
-
-        #     if result in ("strikeout", "out"):
-        #         events.append(OutRecordedEvent(result))
-
         return events
-
-    # Never called
-    # def _would_end_plate_appearance(self, outcome: str, game) -> bool:
-    #     if outcome == "strike" and game.count.strikes == 2:
-    #         return True
-    #     if outcome == "ball" and game.count.balls == 3:
-    #         return True
-    #     if outcome == "in_play":
-    #         return True
-    #     return False
 
     def _derive_plate_appearance_result(self, outcome: str, game) -> str:
         if outcome == "strike":
@@ -146,16 +131,6 @@ class Resolver:
             return "strike"
         else:
             return "in_play"
-
-    # def _resolve_ball_in_play(self, intent, game):
-    #     outcome = self._determine_contact_outcome(...)
-
-    #     if outcome == "single":
-    #         return self._resolve_single(intent, game)
-    #     if outcome == "out":
-    #         return self._resolve_out(intent, game)
-
-    #     raise RuntimeError("Unhandled ball-in-play outcome")
 
     def _resolve_ball_in_play(self, intent, game) -> list[GameEvent]:
         """
@@ -270,45 +245,3 @@ class Resolver:
         events.append(PlateAppearanceEndEvent("single"))
 
         return events
-
-    # This one was missing scoring
-    # def _resolve_single(self, intent, game):
-    #     """
-    #     Resolve a single:
-    #     - All runners advance one base
-    #     - Batter to first
-    #     - Plate appearance ends
-    #     """
-    #     events = []
-
-    #     # Advance existing runners (3 -> home, 2 -> 3, 1 -> 2)
-    #     for base in (3, 2, 1):
-    #         runner = game.bases.runner_on(base)
-    #         if not runner:
-    #             continue
-
-    #         events.append(
-    #             RunnerAdvancedEvent(
-    #                 runner_id=runner,
-    #                 from_base=base,
-    #                 to_base=base + 1,
-    #                 reason="single",
-    #             )
-    #         )
-
-    #     # Batter to first
-    #     events.append(
-    #         RunnerAdvancedEvent(
-    #             runner_id=intent.batter_id,
-    #             from_base=None,
-    #             to_base=1,
-    #             reason="single",
-    #         )
-    #     )
-
-    #     # End the plate appearance
-    #     events.append(
-    #         PlateAppearanceEndEvent("single")
-    #     )
-
-    #     return events

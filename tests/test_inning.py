@@ -4,21 +4,6 @@ import pytest
 from src.game.game import Game
 from tests.utils import FakeRNG, FakeTeam
 
-# @pytest.fixture
-# def fake_team():
-#     return FakeTeam()
-
-
-# @pytest.fixture
-# def game(fake_team):
-#     game = Game(
-#         home_team=fake_team,
-#         away_team=fake_team,
-#         rng=FakeRNG([0.5] * 100),
-#     )
-#     game._sync_players()
-#     return game
-
 
 def test_three_outs_end_half_inning(game):
     game.inning.outs = 3

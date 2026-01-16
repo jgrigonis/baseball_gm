@@ -35,6 +35,7 @@ def game_no_rng(home_team, away_team):
     return game
 
 
+# This is not accurate
 # @pytest.fixture
 # def game_with_loaded_bases(game):
 #     game.bases.load([1, 2]) # WRONG

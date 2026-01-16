@@ -1,13 +1,15 @@
 # tests/test_resolver.py
 import pytest
 
-from tests.utils import FakeRNG
-from tests.utils import fake_game, fake_game_with_batter_cycle
-from src.game.resolver import Resolver
+
 from src.game.events.out import OutRecordedEvent
 from src.game.events.pitch import PitchThrownEvent
+from tests.utils import FakeRNG, fake_game, fake_game_with_batter_cycle
+from src.game.resolver import Resolver
 from src.game.intents.pitch import PitchIntent
+from src.game.events.strike import StrikeEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
+from src.game.events.out import OutRecordedEvent
 
 
 @pytest.fixture
@@ -96,6 +98,48 @@ def test_pa_end_advances_batter():
     pae.apply(game)
     game._post_event()
     assert game.current_batter is not old_batter
+
+
+def test_three_strikes_ends_plate_appearance_with_strikeout():
+    """
+    Given three strike outcomes in a row,
+    resolver must end the plate appearance exactly once.
+    """
+    # Assume 0.5 is a strike
+    rng = FakeRNG([0.5] * 10)  # give it 10 because too many are being consumed
+    # rng = FakeRNG([
+    #     0.5,  # pitch 1 -> strike
+    #     0.5,  # pitch 2 -> strike
+    #     0.5,  # pitch 3 -> strike
+    # ])
+    resolver = Resolver(rng=rng)
+    game = fake_game()
+
+    intent = PitchIntent(
+        pitcher_id="p1",
+        batter_id="b1",
+    )
+
+    all_events = []
+
+    # Act: resolve three pitches
+    for _ in range(3):
+        events = resolver.resolve(intent, game)
+        all_events.extend(events)
+
+        # Apply events to mutate count
+        for e in events:
+            e.apply(game)
+
+    # Assert
+    strikes = [e for e in all_events if isinstance(e, StrikeEvent)]
+    pa_end = [e for e in all_events if isinstance(e, PlateAppearanceEndEvent)]
+    outs = [e for e in all_events if isinstance(e, OutRecordedEvent)]
+
+    assert len(strikes) == 3
+    assert len(pa_end) == 1
+    assert pa_end[0].reason == "strikeout"
+    assert len(outs) == 1
 
 
 # # Layer 2

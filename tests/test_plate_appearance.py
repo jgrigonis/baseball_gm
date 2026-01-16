@@ -7,21 +7,6 @@ from src.game.events.plate_appearance import PlateAppearanceEndEvent
 
 import pytest
 
-# @pytest.fixture
-# def fake_team():
-#     return FakeTeam()
-
-
-# @pytest.fixture
-# def game(fake_team):
-#     game = Game(
-#         home_team=fake_team,
-#         away_team=fake_team,
-#         rng=FakeRNG([0.5] * 100),
-#     )
-#     game._sync_players()
-#     return game
-
 
 def test_pa_starts_incomplete(game):
     assert not game._plate_appearance_over()
