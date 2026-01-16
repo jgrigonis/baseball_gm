@@ -175,7 +175,7 @@ class Resolver:
         # ------------------------------------------------------------
         # OUT
         # ------------------------------------------------------------
-        if r < 0.70:
+        if r < 0.60:
             # Batter is out
             events.append(PlateAppearanceEndEvent("out"))
             events.append(OutRecordedEvent(reason="ball_in_play"))

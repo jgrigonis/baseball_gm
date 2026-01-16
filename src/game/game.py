@@ -66,7 +66,7 @@ class Game:
         self._pa_end_reason = None
 
         # Logging
-        self.dbg = logging.TRACE
+        self.dbg = logging.DEBUG
         self.logger = setup_logger(name="game", level=self.dbg, console_level=self.dbg)
 
         # Stat setup
@@ -94,12 +94,12 @@ class Game:
             intent = self._next_intent()
             self.logger.trace(f"intenet = {intent}")
             events = self._resolve_intent(intent)
-            for event in events:
-                self.logger.trace(f"event = {event}")
+            # for event in events:
+            #     self.logger.trace(f"event = {event}")
             self._enqueue(events)
 
         event = self._dequeue()
-        self.logger.trace(event)
+        self.logger.debug(event)
         # assert not self._pa_complete, f"Event after PA end: {event}"
         event.apply(self)
         # No branching based on game rules inside apply
@@ -216,19 +216,10 @@ class Game:
         """Sync the current batter and pitcher."""
         self.logger.debug("Syncing players")
         self.current_batter = self.bat_team.current_batter
-        self.logger.info(f"Batting: {self.current_batter}")
+        self.logger.info(f"Batting: {self.current_batter.player.name}")
         self.current_pitcher = self.pitch_team.current_pitcher()
         self.logger.info(f"Pitching: {self.current_pitcher.name}")
-        if not self.is_over():
-            self.logger.info(
-                {
-                    "event": "next_batter",
-                    "player": self.current_batter,
-                    # "player": self.current_batter,
-                    # "stats": f"AB: {self.current_batter.game_stats.batting.at_bats}"
-                }
-            )
-            self.logger.info(f"Pitching: {self.current_pitcher.name}")
+
 
     def _would_end_half_inning(self) -> bool:
         """

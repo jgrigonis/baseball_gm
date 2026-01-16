@@ -19,4 +19,4 @@ class PitchThrownEvent(GameEvent):
     pitch_type: Optional[str] = None  # fastball, curve, etc. (optional for now)
 
     def apply(self, game):
-        game.logger.debug("Pitch thrown")
+        game.logger.trace("Pitch thrown")
