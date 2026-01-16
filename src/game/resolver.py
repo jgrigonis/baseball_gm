@@ -11,7 +11,8 @@ from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 
 from src.game.events.strike import StrikeEvent
-from src.game.events.strikeout import StrikeOutEvent
+
+# from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import OutRecordedEvent
 from src.game.events.run import RunScoredEvent
@@ -80,6 +81,8 @@ class Resolver:
         # self.logger.debug(f"outcome = {outcome}")
         if outcome == "ball":
             events.append(BallEvent())
+            if game.count.balls + 1 >= 4:
+                events.extend(self._resolve_walk(intent, game))
 
         elif outcome == "strike":
             events.append(StrikeEvent())

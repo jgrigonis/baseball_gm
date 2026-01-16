@@ -10,6 +10,8 @@ from src.game.intents.pitch import PitchIntent
 from src.game.events.strike import StrikeEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import OutRecordedEvent
+from src.game.events.ball import BallEvent
+from src.game.events.bases import RunnerAdvancedEvent
 
 
 @pytest.fixture
@@ -106,12 +108,14 @@ def test_three_strikes_ends_plate_appearance_with_strikeout():
     resolver must end the plate appearance exactly once.
     """
     # Assume 0.5 is a strike
-    rng = FakeRNG([0.5] * 10)  # give it 10 because too many are being consumed
-    # rng = FakeRNG([
-    #     0.5,  # pitch 1 -> strike
-    #     0.5,  # pitch 2 -> strike
-    #     0.5,  # pitch 3 -> strike
-    # ])
+    # rng = FakeRNG([0.5] * 10)  # give it 10 because too many are being consumed
+    rng = FakeRNG(
+        [
+            0.5,  # pitch 1 -> strike
+            0.5,  # pitch 2 -> strike
+            0.5,  # pitch 3 -> strike
+        ]
+    )
     resolver = Resolver(rng=rng)
     game = fake_game()
 
@@ -143,32 +147,53 @@ def test_three_strikes_ends_plate_appearance_with_strikeout():
 
 
 # # Layer 2
-# def test_pitch_thrown_is_first_event():
-#     events = resolver.resolve(intent, fake_game())
-#     assert isinstance(events[0], PitchThrownEvent)
+def test_pitch_thrown_is_first_event(resolver, pitch_intent):
+    events = resolver.resolve(pitch_intent, fake_game())
+    assert isinstance(events[0], PitchThrownEvent)
 
-# def test_pa_end_is_last_if_present():
-#     events = resolver.resolve(intent, fake_game())
-#     pa_end = [e for e in events if isinstance(e, PlateAppearanceEndEvent)]
 
-#     if pa_end:
-#         assert events[-1] is pa_end[0]
+def test_pa_end_is_last_if_present(resolver, pitch_intent):
+    events = resolver.resolve(pitch_intent, fake_game())
+    pa_end = [e for e in events if isinstance(e, PlateAppearanceEndEvent)]
+
+    if pa_end:
+        assert events[-1] is pa_end[0]
+
 
 # # layer 3
 
-# def test_walk_events():
-#     rng = FakeRNG(outcome="ball", balls=4)
-#     events = resolver.resolve(intent, fake_game(count="3-0"))
 
-#     assert_event_types(
-#         events,
-#         [
-#             PitchThrownEvent,
-#             BallEvent,
-#             RunnerAdvancedEvent,
-#             PlateAppearanceEndEvent,
-#         ],
-#     )
+def test_walk_events():
+    rng = FakeRNG([0.1] * 4)  # 0.1 is assumed to be a ball
+    game = fake_game()
+    resolver = Resolver(rng=rng)
+    # events = resolver.resolve(pitch_intent, game)
+
+    intent = PitchIntent(
+        pitcher_id="p1",
+        batter_id="b1",
+    )
+
+    all_events = []
+
+    for _ in range(4):
+        events = resolver.resolve(intent, game)
+        all_events.extend(events)
+
+        # Apply events to mutate count
+        for e in events:
+            e.apply(game)
+
+    # Assert
+    balls = [e for e in all_events if isinstance(e, BallEvent)]
+    pa_end = [e for e in all_events if isinstance(e, PlateAppearanceEndEvent)]
+    outs = [e for e in all_events if isinstance(e, OutRecordedEvent)]
+
+    assert len(balls) == 4
+    assert len(pa_end) == 1
+    assert pa_end[0].reason == "walk"
+    assert len(outs) == 0
+
 
 # def test_strikeout_events():
 #     rng = FakeRNG(outcome="strike", strikes=3)
@@ -196,5 +221,6 @@ def test_three_strikes_ends_plate_appearance_with_strikeout():
 #     game.step()
 #     assert game.lineup.position == 1
 
-# def assert_event_types(events, types):
-#     assert [type(e) for e in events] == types
+
+def assert_event_types(events, types):
+    assert [type(e) for e in events] == types
