@@ -65,7 +65,7 @@ class Resolver:
                 pitcher_id=intent.pitcher_id,
                 batter_id=intent.batter_id,
                 count=game.count.snapshot(),
-                # pitch_type=intent.pitch_type, # might break
+                pitch_type=intent.pitch_type,
             )
         )
 
@@ -93,6 +93,7 @@ class Resolver:
                 events.append(PlateAppearanceEndEvent(reason="strikeout"))
 
         elif outcome == "in_play":
+            self.logger.trace("outcome is in_play")
             events.extend(self._resolve_ball_in_play(intent, game))
 
         else:
@@ -101,12 +102,12 @@ class Resolver:
 
         return events
 
-    def _derive_plate_appearance_result(self, outcome: str, game) -> str:
-        if outcome == "strike":
-            return "strikeout"
-        if outcome == "ball":
-            return "walk"
-        return "ball_in_play"
+    # def _derive_plate_appearance_result(self, outcome: str, game) -> str:
+    #     if outcome == "strike":
+    #         return "strikeout"
+    #     if outcome == "ball":
+    #         return "walk"
+    #     return "ball_in_play"
 
     def _determine_pitch_outcome(self, intent, game) -> str:
         """
@@ -121,6 +122,7 @@ class Resolver:
 
         This will be replaced later with real models.
         """
+        # TODO set probs here
         # Base probabilities
         ball_chance = 0.25
         strike_chance = 0.65
@@ -144,6 +146,7 @@ class Resolver:
         - not mutate game
         - return concrete events
         """
+        # TODO set probs here
         events: list[GameEvent] = []
 
         r = self.rng.random()
@@ -207,6 +210,7 @@ class Resolver:
         return events
 
     def _resolve_single(self, intent, game):
+        # TODO Add Baserunner moving logic here
         events = []
 
         # Advance existing runners

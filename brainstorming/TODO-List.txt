@@ -1,6 +1,5 @@
 # TODO plate_appearances - Can populated every plate appearance, someday
 #
-# TODO csv files should be treated as immutable records
 # TODO if a csv file changes, you have to treat it as a new
 #      team. team.source_hash = sha256(csv)
 # TODO Fix up base advances, so they are not so static
@@ -46,26 +45,6 @@
 # Calculate an overall player value based on weighted combination 
 # of skills.
 # e.g. bunting is worth less than power.
-# TODO deal with age and aging, this will be useful
-class PlayerInitializer:
-    def age_player(self, player: PlayerRecord):
-        player.age = ...
-        player.experience = ...
-# TODO Another useful aging one:
-def _initial_age(self) -> int:
-    # Peak around 26–28
-    age = int(self.rng.gauss(mu=27, sigma=4))
-    return max(18, min(40, age))
-# TODO for creating a fresh league we'll want something like:
-class LeagueBootstrapper:
-    def seed_players(self, num_players: int) -> list[PlayerRecord]:
-        players = [self.player_factory.create() for _ in range(num_players)]
-
-        for p in players:
-            p.age = self._initial_age()
-            p.experience = max(0, p.age - 18)
-
-        return players
 
 # Future updates for name generator
 Binary search instead of linear scan (perf)
@@ -115,17 +94,18 @@ Set batting order
 Set defensive positions
 Select pitcher
 
-Run a full inning
-Pitch → swing → result
-Base advancement
-Stats update
+Done:
+    Run a full inning
+    Pitch → swing → result
+    Base advancement
+    Stats update
 
-Run a full game
-9 innings
-Win/loss recorded
-No crashes
+    Run a full game
+    9 innings
+    Win/loss recorded
+    No crashes
+Done:
 
-If you can do this, your architecture is real.
 
 Phase 2 — Identify friction points (write them down)
 
