@@ -145,22 +145,23 @@ def test_switch_hitter_probability(monkeypatch):
     player = factory.create(position="ss")
     assert player.bats == "switch"
 
+
 # Claude generated test below
 
 
 class TestPlayerFactoryInitialization:
     """Test PlayerFactory initialization."""
-    
+
     def test_init_with_default_rng(self):
         factory = PlayerFactory()
         assert factory.rng is not None
         assert isinstance(factory.rng, random.Random)
-    
+
     def test_init_with_custom_rng(self):
         rng = random.Random(42)
         factory = PlayerFactory(rng=rng)
         assert factory.rng is rng
-    
+
     def test_init_creates_name_generator(self):
         factory = PlayerFactory()
         assert factory.name_gen is not None
@@ -168,59 +169,59 @@ class TestPlayerFactoryInitialization:
 
 class TestGenerateId:
     """Test player ID generation."""
-    
+
     def test_generate_id_returns_string(self):
         factory = PlayerFactory()
         player_id = factory._generate_id()
         assert isinstance(player_id, str)
-    
+
     def test_generate_id_returns_hex_string(self):
         factory = PlayerFactory()
         player_id = factory._generate_id()
         # Should be 32 hex characters (128 bits)
         assert len(player_id) == 32
-        assert all(c in '0123456789abcdef' for c in player_id)
-    
+        assert all(c in "0123456789abcdef" for c in player_id)
+
     def test_generate_id_unique(self):
         factory = PlayerFactory()
         ids = [factory._generate_id() for _ in range(100)]
         # All IDs should be unique
         assert len(set(ids)) == 100
-    
+
     def test_generate_id_deterministic_with_seed(self):
         factory1 = PlayerFactory(rng=random.Random(123))
         factory2 = PlayerFactory(rng=random.Random(123))
-        
+
         id1 = factory1._generate_id()
         id2 = factory2._generate_id()
-        
+
         assert id1 == id2
 
 
 class TestResolvePosition:
     """Test position resolution."""
-    
+
     def test_resolve_position_with_valid_position(self):
         factory = PlayerFactory()
         position = factory._resolve_position("ss")
         assert position == "ss"
-    
+
     def test_resolve_position_with_all_valid_positions(self):
         factory = PlayerFactory()
         for pos in POSITIONS:
             result = factory._resolve_position(pos)
             assert result == pos
-    
+
     def test_resolve_position_with_none_returns_random(self):
         factory = PlayerFactory(rng=random.Random(42))
         position = factory._resolve_position(None)
         assert position in POSITIONS
-    
+
     def test_resolve_position_with_invalid_raises(self):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadPositionException):
             factory._resolve_position("quarterback")
-    
+
     def test_resolve_position_none_is_random(self):
         factory = PlayerFactory()
         positions = [factory._resolve_position(None) for _ in range(20)]
@@ -230,7 +231,7 @@ class TestResolvePosition:
 
 class TestResolveHandedness:
     """Test handedness resolution."""
-    
+
     @pytest.fixture
     def template(self):
         return {
@@ -238,43 +239,54 @@ class TestResolveHandedness:
             "switch_hitter": 0.10,
             "bats_left": 0.15,
         }
-    
+
     def test_resolve_handedness_left_specified(self, template):
         factory = PlayerFactory()
-        result = factory._resolve_handedness(throws="left", template=template, position="ss")
+        result = factory._resolve_handedness(
+            throws="left", template=template, position="ss"
+        )
         assert result == "left"
-    
+
     def test_resolve_handedness_right_specified(self, template):
         factory = PlayerFactory()
-        result = factory._resolve_handedness(throws="right", template=template, position="ss")
+        result = factory._resolve_handedness(
+            throws="right", template=template, position="ss"
+        )
         assert result == "right"
-    
+
     def test_resolve_handedness_invalid_raises(self, template):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadHandednessException):
-            factory._resolve_handedness(throws="ambidextrous", template=template, position="ss")
-    
+            factory._resolve_handedness(
+                throws="ambidextrous", template=template, position="ss"
+            )
+
     def test_resolve_handedness_none_uses_template(self, template):
         factory = PlayerFactory(rng=random.Random(42))
-        result = factory._resolve_handedness(throws=None, template=template, position="ss")
+        result = factory._resolve_handedness(
+            throws=None, template=template, position="ss"
+        )
         assert result in VALID_THROWS
-    
+
     def test_resolve_handedness_distribution(self):
         """Test that distribution roughly matches template probability."""
         template = {"throws_left": 0.30}
         factory = PlayerFactory(rng=random.Random(42))
-        
-        results = [factory._resolve_handedness(throws=None, template=template, position="of") for _ in range(1000)]
+
+        results = [
+            factory._resolve_handedness(throws=None, template=template, position="of")
+            for _ in range(1000)
+        ]
         left_count = results.count("left")
         left_ratio = left_count / len(results)
-        
+
         # Should be roughly 30% (allow 10% margin)
         assert 0.20 < left_ratio < 0.40
 
 
 class TestResolveBattingSide:
     """Test batting side resolution."""
-    
+
     @pytest.fixture
     def template(self):
         return {
@@ -282,51 +294,52 @@ class TestResolveBattingSide:
             "switch_hitter": 0.10,
             "bats_left": 0.15,
         }
-    
+
     def test_resolve_batting_side_left_specified(self, template):
         factory = PlayerFactory()
         result = factory._resolve_batting_side("left", "right", template)
         assert result == "left"
-    
+
     def test_resolve_batting_side_right_specified(self, template):
         factory = PlayerFactory()
         result = factory._resolve_batting_side("right", "right", template)
         assert result == "right"
-    
+
     def test_resolve_batting_side_switch_specified(self, template):
         factory = PlayerFactory()
         result = factory._resolve_batting_side("switch", "right", template)
         assert result == "switch"
-    
+
     def test_resolve_batting_side_invalid_raises(self, template):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadHandednessException):
             factory._resolve_batting_side("both", "right", template)
-    
+
     def test_resolve_batting_side_none_uses_template(self, template):
         factory = PlayerFactory(rng=random.Random(42))
         result = factory._resolve_batting_side(None, "right", template)
         assert result in VALID_BATS
-    
+
     def test_resolve_batting_side_can_be_switch(self, template):
         """Test that switch hitters can be generated."""
         factory = PlayerFactory(rng=random.Random(42))
-        
-        results = [factory._resolve_batting_side(None, "right", template) 
-                   for _ in range(1000)]
-        
+
+        results = [
+            factory._resolve_batting_side(None, "right", template) for _ in range(1000)
+        ]
+
         # Should have some switch hitters
         assert "switch" in results
-    
+
     def test_resolve_batting_side_defaults_to_throwing_hand(self):
         """Test that most batters bat same as throwing hand."""
         template = {"switch_hitter": 0.0, "bats_left": 0.0}
         factory = PlayerFactory(rng=random.Random(42))
-        
+
         # Right-handed thrower should bat right
         result = factory._resolve_batting_side(None, "right", template)
         assert result == "right"
-        
+
         # Left-handed thrower should bat left
         result = factory._resolve_batting_side(None, "left", template)
         assert result == "left"
@@ -334,21 +347,21 @@ class TestResolveBattingSide:
 
 class TestGetPositionTemplate:
     """Test getting position templates."""
-    
+
     def test_get_position_template_valid_position(self):
         factory = PlayerFactory()
         template = factory._get_position_template("ss")
         assert "throws_left" in template
         assert "switch_hitter" in template
         assert "bats_left" in template
-    
+
     def test_get_position_template_all_positions(self):
         factory = PlayerFactory()
         for position in POSITIONS:
             template = factory._get_position_template(position)
             assert isinstance(template, dict)
             assert "throws_left" in template
-    
+
     def test_get_position_template_invalid_raises(self):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadPositionException):
@@ -357,11 +370,11 @@ class TestGetPositionTemplate:
 
 class TestCreate:
     """Test creating PlayerRecords."""
-    
+
     def test_create_with_all_defaults(self):
         factory = PlayerFactory(rng=random.Random(42))
         player = factory.create()
-        
+
         assert isinstance(player, PlayerRecord)
         assert player.id is not None
         assert player.first_name is not None
@@ -370,70 +383,70 @@ class TestCreate:
         assert player.throws in VALID_THROWS
         assert player.bats in VALID_BATS
         assert isinstance(player.skills, PlayerSkills)
-    
+
     def test_create_with_specified_position(self):
         factory = PlayerFactory()
         player = factory.create(position="ss")
         assert player.position == "ss"
-    
+
     def test_create_with_specified_throws(self):
         factory = PlayerFactory()
         player = factory.create(throws="left")
         assert player.throws == "left"
-    
+
     def test_create_with_specified_bats(self):
         factory = PlayerFactory()
         player = factory.create(bats="switch")
         assert player.bats == "switch"
-    
+
     def test_create_with_all_specified(self):
         factory = PlayerFactory()
         player = factory.create(position="cf", throws="left", bats="left")
-        
+
         assert player.position == "cf"
         assert player.throws == "left"
         assert player.bats == "left"
-    
+
     def test_create_generates_unique_ids(self):
         factory = PlayerFactory()
         players = [factory.create() for _ in range(10)]
         ids = [p.id for p in players]
-        
+
         # All IDs should be unique
         assert len(set(ids)) == 10
-    
+
     def test_create_generates_skills(self):
         factory = PlayerFactory()
         player = factory.create(position="ss")
-        
+
         # Should have all skills
         assert len(player.skills) > 0
         # Shortstops should have good infield skills
         assert player.skills["infield"] > 50
-    
+
     def test_create_with_invalid_position_raises(self):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadPositionException):
             factory.create(position="invalid")
-    
+
     def test_create_with_invalid_throws_raises(self):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadHandednessException):
             factory.create(throws="invalid")
-    
+
     def test_create_with_invalid_bats_raises(self):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadHandednessException):
             factory.create(bats="invalid")
-    
+
     def test_create_is_deterministic_with_seed(self):
         """Same seed should produce same player."""
         factory1 = PlayerFactory(rng=random.Random(12345))
         factory2 = PlayerFactory(rng=random.Random(12345))
-        
+
         player1 = factory1.create()
         player2 = factory2.create()
-        
+
         assert player1.id == player2.id
         assert player1.first_name == player2.first_name
         assert player1.last_name == player2.last_name
@@ -445,45 +458,45 @@ class TestCreate:
 
 class TestCreatePositionSpecificBehavior:
     """Test position-specific player creation."""
-    
+
     def test_create_pitcher_has_good_pitching_skills(self):
         factory = PlayerFactory(rng=random.Random(42))
         pitcher = factory.create(position="sp")
-        
+
         # Starting pitchers should have good stamina
         assert pitcher.skills["stamina"] > 50
-    
+
     def test_create_shortstop_has_good_defense(self):
         factory = PlayerFactory(rng=random.Random(42))
         shortstop = factory.create(position="ss")
-        
+
         # Shortstops should have good infield defense
         assert shortstop.skills["infield"] > 50
-    
+
     def test_create_first_baseman_has_good_power(self):
         factory = PlayerFactory(rng=random.Random(42))
         first_baseman = factory.create(position="1b")
-        
+
         # 1B should have above average power
         assert first_baseman.skills["power"] > 50
-    
+
     def test_create_catcher_left_handed_rare(self):
         """Left-handed catchers should be very rare."""
         factory = PlayerFactory(rng=random.Random(42))
-        
+
         catchers = [factory.create(position="c") for _ in range(100)]
         left_catchers = [c for c in catchers if c.throws == "left"]
-        
+
         # Should be very few left-handed catchers
         assert len(left_catchers) < 5
 
 
 class TestCreateAllPositions:
     """Test creating players for all positions."""
-    
+
     def test_create_all_positions(self):
         factory = PlayerFactory(rng=random.Random(42))
-        
+
         for position in POSITIONS:
             player = factory.create(position=position)
             assert player.position == position
@@ -492,23 +505,23 @@ class TestCreateAllPositions:
 
 class TestNameGeneration:
     """Test name generation integration."""
-    
+
     def test_create_generates_first_name(self):
         factory = PlayerFactory()
         player = factory.create()
         assert player.first_name is not None
         assert len(player.first_name) > 0
-    
+
     def test_create_generates_last_name(self):
         factory = PlayerFactory()
         player = factory.create()
         assert player.last_name is not None
         assert len(player.last_name) > 0
-    
+
     def test_create_generates_different_names(self):
         factory = PlayerFactory()
         players = [factory.create() for _ in range(10)]
-        
+
         first_names = [p.first_name for p in players]
         # Should have some variety (unlikely all same)
         assert len(set(first_names)) > 1
@@ -516,46 +529,46 @@ class TestNameGeneration:
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
-    
+
     def test_create_with_none_values(self):
         factory = PlayerFactory()
         player = factory.create(position=None, throws=None, bats=None)
-        
+
         assert player.position in POSITIONS
         assert player.throws in VALID_THROWS
         assert player.bats in VALID_BATS
-    
+
     def test_create_multiple_players_no_conflicts(self):
         """Creating many players should not cause issues."""
         factory = PlayerFactory()
         players = [factory.create() for _ in range(100)]
-        
+
         # All should be valid PlayerRecords
         assert all(isinstance(p, PlayerRecord) for p in players)
         # All should have unique IDs
         ids = [p.id for p in players]
         assert len(set(ids)) == 100
-    
+
     def test_factory_reuse(self):
         """Same factory can create multiple players."""
         factory = PlayerFactory(rng=random.Random(42))
-        
+
         player1 = factory.create()
         player2 = factory.create()
-        
+
         # Should be different players
         assert player1.id != player2.id
 
 
 class TestConstants:
     """Test module constants."""
-    
+
     def test_valid_bats_constant(self):
         assert "left" in VALID_BATS
         assert "right" in VALID_BATS
         assert "switch" in VALID_BATS
         assert len(VALID_BATS) == 3
-    
+
     def test_valid_throws_constant(self):
         assert "left" in VALID_THROWS
         assert "right" in VALID_THROWS
@@ -564,83 +577,84 @@ class TestConstants:
 
 class TestIntegration:
     """Integration tests combining multiple features."""
-    
+
     def test_create_full_roster(self):
         """Create a full baseball roster."""
         factory = PlayerFactory(rng=random.Random(42))
-        
+
         roster = {
-            "sp": 5,   # 5 starting pitchers
-            "rp": 7,   # 7 relief pitchers
-            "c": 2,    # 2 catchers
-            "1b": 1,   # 1 first baseman
-            "2b": 1,   # etc.
+            "sp": 5,  # 5 starting pitchers
+            "rp": 7,  # 7 relief pitchers
+            "c": 2,  # 2 catchers
+            "1b": 1,  # 1 first baseman
+            "2b": 1,  # etc.
             "ss": 1,
             "3b": 1,
             "lf": 1,
             "cf": 1,
             "rf": 1,
-            "if": 2,   # 2 utility infielders
-            "of": 2,   # 2 outfielders
+            "if": 2,  # 2 utility infielders
+            "of": 2,  # 2 outfielders
         }
-        
+
         players = []
         for position, count in roster.items():
             for _ in range(count):
                 players.append(factory.create(position=position))
-        
+
         # Should have 25 players
         assert len(players) == 25
-        
+
         # All should have unique IDs
         ids = [p.id for p in players]
         assert len(set(ids)) == 25
-        
+
         # All should be valid
         assert all(isinstance(p, PlayerRecord) for p in players)
-    
+
     def test_create_with_reproducible_roster(self):
         """Same seed creates same roster."""
+
         def create_roster(seed):
             factory = PlayerFactory(rng=random.Random(seed))
             return [factory.create() for _ in range(5)]
-        
+
         roster1 = create_roster(999)
         roster2 = create_roster(999)
-        
+
         for p1, p2 in zip(roster1, roster2):
             assert p1.id == p2.id
             assert p1.first_name == p2.first_name
             assert p1.last_name == p2.last_name
             assert p1.position == p2.position
-    
+
     def test_create_balanced_handedness_distribution(self):
         """Over many players, handedness should match MLB-ish distribution."""
         factory = PlayerFactory(rng=random.Random(42))
-        
+
         # Create 100 random players
         players = [factory.create() for _ in range(100)]
-        
+
         # Count left-handed throwers
         left_throwers = [p for p in players if p.throws == "left"]
         left_ratio = len(left_throwers) / len(players)
-        
+
         # Should be roughly 20-30% left-handed (MLB is ~25%)
         assert 0.10 < left_ratio < 0.40
-    
+
     def test_skills_match_position_expectations(self):
         """Skills should make sense for each position."""
         factory = PlayerFactory(rng=random.Random(42))
-        
+
         # Pitchers should have better pitching skills than hitting
         pitcher = factory.create(position="sp")
         assert pitcher.skills["accuracy"] > pitcher.skills["power"]
-        
+
         # Shortstops should have good speed and defense
         shortstop = factory.create(position="ss")
         assert shortstop.skills["speed"] >= 40  # Changed from > to >=
         assert shortstop.skills["infield"] > 50
-        
+
         # First basemen should have good power
         first_baseman = factory.create(position="1b")
         assert first_baseman.skills["power"] > 50

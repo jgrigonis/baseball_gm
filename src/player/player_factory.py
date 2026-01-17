@@ -50,14 +50,18 @@ DEFAULT_LEFT_HANDED_PROB = 0.21  # Much higher than general population
 class PlayerFactory(object):
     """Factory for creating persistent PlayerRecord instances."""
 
-    def __init__(self, rng: random.Random | None = None, log_level: int | None = None) -> None:
+    def __init__(
+        self, rng: random.Random | None = None, log_level: int | None = None
+    ) -> None:
         self.rng = rng or random.Random()
         self.name_gen = NameGenerator(rng=self.rng)
 
         # Logging
         self.log_level = log_level or logging.INFO
         self.logger = logging.getLogger("pfactory")
-        self.logger = setup_logger(name="pfactory", level=self.log_level, console_level=self.log_level)
+        self.logger = setup_logger(
+            name="pfactory", level=self.log_level, console_level=self.log_level
+        )
 
     def _generate_id(self) -> str:
         return uuid.UUID(int=self.rng.getrandbits(128)).hex
@@ -78,7 +82,9 @@ class PlayerFactory(object):
         # -------------------------
         # Resolve core attributes
         # -------------------------
-        self.logger.trace(f"Creating player: position={position}, throws={throws}, bats={bats}")
+        self.logger.trace(
+            f"Creating player: position={position}, throws={throws}, bats={bats}"
+        )
         position = self._resolve_position(position)
         template = self._get_position_template(position)
 
@@ -95,7 +101,9 @@ class PlayerFactory(object):
         # Skill generation
         # -------------------------
         skills = PlayerSkills.generate(self.rng, position, throws)
-        self.logger.trace(f"Created player: first_name={first_name}, last_name={last_name}, position={position}, throws={throws}, bats={bats}")
+        self.logger.trace(
+            f"Created player: first_name={first_name}, last_name={last_name}, position={position}, throws={throws}, bats={bats}"
+        )
         return PlayerRecord(
             id=self._generate_id(),
             first_name=first_name,
@@ -130,7 +138,7 @@ class PlayerFactory(object):
         """
         Resolve throwing handedness to a valid value.
 
-        If throws is None, randomly select one. We use 
+        If throws is None, randomly select one. We use
         the player position to give variable probabilities
         for throwing handedness.
 
@@ -157,7 +165,7 @@ class PlayerFactory(object):
         """
         Resolve batting handedness to a valid value.
 
-        If bats is None, randomly select one. We use 
+        If bats is None, randomly select one. We use
         the player's throwing handedness to give variable probabilities
         for batting handedness.
 
@@ -185,7 +193,7 @@ class PlayerFactory(object):
         """
         This retrieves the position specific template from positions.py
 
-        It includes:   
+        It includes:
         throws_left: float
         switch_hitter: float
         bats_left: float

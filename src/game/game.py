@@ -73,7 +73,9 @@ class Game:
 
         # Logging
         self.log_level = log_level or logging.INFO
-        self.logger = setup_logger(name="game", level=self.log_level, console_level=self.log_level)
+        self.logger = setup_logger(
+            name="game", level=self.log_level, console_level=self.log_level
+        )
         self.logger.setLevel(self.log_level)
         self.pauses = False
 
