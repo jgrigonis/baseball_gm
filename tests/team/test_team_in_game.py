@@ -130,7 +130,7 @@ def test_current_pitcher_returns_pitcher(team_in_game):
     pitcher = MagicMock(spec=PlayerInGame)
     team_in_game.pitcher = pitcher
 
-    assert team_in_game.current_pitcher() is pitcher
+    assert team_in_game.current_pitcher is pitcher
 
 
 def test_set_lineup_rates_unrated_players(team_in_game):
