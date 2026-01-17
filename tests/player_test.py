@@ -29,12 +29,12 @@ class TestPlayerFactory(unittest.TestCase):
         self.assertNotEqual(my_player2.name, None)
 
     def test_lefty_1b_probability(self):
-        rng = random.Random(42)
+        rng = random.Random(40)
         factory = PlayerFactory(rng)
-        players = [factory.create(position="1b") for _ in range(100)]
+        players = [factory.create(position="1b") for _ in range(1000)]
         lefties = sum(1 for p in players if p.throws == "left")
         print(lefties)
-        assert 25 < lefties < 40  # approx 33%
+        assert 250 < lefties < 400  # approx 33%
 
     def test_lefty_catcher_is_bad_at_catching(self):
         rng = random.Random(1)
