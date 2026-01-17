@@ -11,7 +11,7 @@ class Score:
         output += "Visitor: " + str(self.away) + "\n"
         return output
 
-    def ensure_inning(self, inning_number: int):
+    def ensure_inning(self, inning_number: int) -> None:
         while len(self.away_innings) < inning_number:
             self.away_innings.append(0)
         while len(self.home_innings) < inning_number:
@@ -34,6 +34,26 @@ class Score:
     def home(self):
         return sum(self.home_innings)
 
+    @property
+    def differential(self) -> int:
+        """Run differential (home - away)."""
+        return self.home - self.away
+
+    @property
+    def leader(self) -> str:
+        """Which team is leading: 'home', 'away', or 'tied'."""
+        if self.home > self.away:
+            return "home"
+        elif self.away > self.home:
+            return "away"
+        return "tied"
+
+    def runs_in_inning(self, inning_number: int, *, top: bool) -> int:
+        """Get runs scored in a specific inning."""
+        self.ensure_inning(inning_number)
+        if top:
+            return self.away_innings[inning_number - 1]
+        return self.home_innings[inning_number - 1]
 
 # # src/game/score.py
 # class Score(object):
