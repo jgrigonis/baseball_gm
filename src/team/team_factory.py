@@ -11,8 +11,8 @@ __author__ = "josh"
 
 
 class TeamFactory:
-    def __init__(self, rng=None, id_factory=None):
-        self.player_factory = PlayerFactory(rng)
+    def __init__(self, rng=None, id_factory=None, log_level: int | None = None):
+        self.player_factory = PlayerFactory(rng, log_level=log_level)
         self.id_factory = id_factory or (lambda: uuid.uuid4().hex)
 
     def from_csv(self, path: str, *, city: str, mascot: str) -> TeamRecord:

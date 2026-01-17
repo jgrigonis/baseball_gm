@@ -17,6 +17,7 @@ __author__ = "josh"
 
 from types import MappingProxyType
 from typing import Literal
+from typing import TypedDict
 
 # Import skill definitions for consistency
 # Note: Actual skills should be validated against SKILL_MAP from skill_map.py
@@ -75,6 +76,13 @@ Position = Literal[
 ]
 
 # ---------- Handedness Probabilities ----------
+
+
+class PositionTemplate(TypedDict):
+    throws_left: float
+    switch_hitter: float
+    bats_left: float
+
 
 POSITION_TEMPLATES: MappingProxyType[str, dict[str, float]] = MappingProxyType(
     {

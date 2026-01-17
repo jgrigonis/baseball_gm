@@ -61,7 +61,7 @@ def main():
         levl = logging.TRACE
     logger = setup_logger(name="details", level=levl, console_level=levl)
     logger = logging.getLogger("details")
-    tf = TeamFactory()
+    tf = TeamFactory(log_level=levl)
     # Set up Home Team Record
     home_team_record = tf.generate_team(city="Team", mascot="One")
 
@@ -76,7 +76,7 @@ def main():
     home_team.set_lineup()
     away_team.set_lineup()
 
-    my_game = Game(home_team=home_team, away_team=away_team)
+    my_game = Game(home_team=home_team, away_team=away_team, log_level=levl)
     my_game.play()
 
     logger.info("Home:    " + str(my_game.score.home))

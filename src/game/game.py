@@ -37,7 +37,8 @@ class Game:
         home_team,
         away_team,
         *,
-        rng=random.Random(),
+        rng: random.Random | None = None,
+        log_level: int | None = None,
         intent_generator: IntentGenerator | None = None,
         resolver: Resolver | None = None,
     ):
@@ -55,11 +56,12 @@ class Game:
 
         # Event pipeline
         self._queue: deque[GameEvent] = deque[GameEvent]()
-        # old self._queue: List[GameEvent] = []
 
+        # Random
+        self.rng = rng or random.Random()
         # Engine components
-        self.intent_generator = intent_generator or IntentGenerator(rng)
-        self.resolver = resolver or Resolver(rng)
+        self.intent_generator = intent_generator or IntentGenerator(self.rng)
+        self.resolver = resolver or Resolver(self.rng)
 
         # Cursor state
         self.current_batter = None
@@ -70,8 +72,9 @@ class Game:
         self._pa_end_reason = None
 
         # Logging
-        self.dbg = logging.TRACE
-        self.logger = setup_logger(name="game", level=self.dbg, console_level=self.dbg)
+        self.log_level = log_level or logging.INFO
+        self.logger = setup_logger(name="game", level=self.log_level, console_level=self.log_level)
+        self.logger.setLevel(self.log_level)
         self.pauses = False
 
         # Stat setup
