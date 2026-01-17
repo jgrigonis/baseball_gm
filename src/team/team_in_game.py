@@ -82,6 +82,7 @@ class TeamInGame:
         self.batter_index = (self.batter_index + 1) % len(self.lineup)
         return self.current_batter
 
+    @property
     def current_pitcher(self):
         """Return the current pitcher."""
         return self.pitcher
