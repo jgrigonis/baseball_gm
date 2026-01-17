@@ -76,11 +76,8 @@ def main():
     home_team.set_lineup()
     away_team.set_lineup()
 
-
     my_game = Game(home_team=home_team, away_team=away_team)
     my_game.play()
-
-
 
     logger.info("Home:    " + str(my_game.score.home))
     logger.info("Visitor: " + str(my_game.score.away))
