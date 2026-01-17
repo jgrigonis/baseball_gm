@@ -55,6 +55,7 @@ class Score:
             return self.away_innings[inning_number - 1]
         return self.home_innings[inning_number - 1]
 
+
 # # src/game/score.py
 # class Score(object):
 #     """Keep track of the score."""
