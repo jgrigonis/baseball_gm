@@ -17,7 +17,9 @@ class Score:
         while len(self.home_innings) < inning_number:
             self.home_innings.append(0)
 
-    def score_run(self, *, top: bool, inning_number: int):
+    def score_run(self, *, top: bool, inning_number: int) -> None:
+        if inning_number < 1:
+            raise ValueError(f"Inning number must be at least 1, got {inning_number}")
         self.ensure_inning(inning_number)
         if top:
             self.away_innings[inning_number - 1] += 1
