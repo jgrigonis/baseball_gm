@@ -1,0 +1,27 @@
+| Outcome                | Runner Effect                                              | Batter Effect                | PA End? | Notes                                                                           |
+| ---------------------- | ---------------------------------------------------------- | ---------------------------- | ------- | ------------------------------------------------------------------------------- |
+| **single**             | Lead runner(s) advance 1 base; runner on 1B may score      | Batter to 1B                 | Yes     | Most common simple hit; can be combined with errors for multi-base advancement. |
+| **double**             | Lead runner(s) advance 2 bases; runners on 2B/3B may score | Batter to 2B                 | Yes     |                                                                                 |
+| **triple**             | All lead runners score except possibly 3B runner?          | Batter to 3B                 | Yes     | Rare, clears bases.                                                             |
+| **home_run**           | All runners on bases score                                 | Batter scores                | Yes     | Clears bases; RBI credit for each runner.                                       |
+| **ground_out**         | Runners may advance 1 base                                 | Batter out                   | Yes     | May generate `OutRecordedEvent`.                                                |
+| **fly_out**            | Runners may tag and advance 1 base (sacrifice fly)         | Batter out                   | Yes     | Often 1 run scores from 3B.                                                     |
+| **line_out**           | Usually no advancement                                     | Batter out                   | Yes     | Could be modeled as force out or error variant.                                 |
+| **pop_out / foul_out** | Usually no advancement                                     | Batter out                   | Yes     |                                                                                 |
+| **error**              | Batter reaches base                                        | Lead runners may advance     | Yes     | Can be combined with a hit to make “single + error” etc.                        |
+| **double_play**        | Two outs recorded, some runners may advance                | Batter out                   | Yes     | Rare; counts as 2 outs.                                                         |
+| **triple_play**        | Three outs recorded, runners may advance                   | Batter out                   | Yes     | Very rare; clears inning if applicable.                                         |
+| **sacrifice_bunt**     | Runners advance 1 base                                     | Batter out                   | Yes     | Special case: batter intentionally out to advance runner.                       |
+| **sacrifice_fly**      | Runner on 3B may score                                     | Batter out                   | Yes     | Only scores if less than 2 outs typically.                                      |
+| **foul_ball_in_play**  | Usually no advancement                                     | Batter not out unless caught | Maybe   | Only ends PA if caught.                                                         |
+| **fielders_choice**    | Lead runner is put out                                     | Batter to 1B                 | Yes     | If multiple baserunners, any one could be put out, others move                  |
+
+Key Notes
+
+Out events (OutRecordedEvent) are always tied to BIP that produces an out.
+PA ends whenever the batter reaches base safely (single, double, triple, HR, walk, HBP) or is out (strikeout, ground_out, etc.).
+Runners advance according to simple rules:
+1B → 2B → 3B → home, with forced runners advancing if necessary.
+Extra logic for sacrifice_fly, double_play, triple_play.
+Errors and BIP outcomes may combine to allow “hit + error” or “single + runner scores”.
+This table basically maps onto _resolve_ball_in_play.

@@ -157,3 +157,11 @@ A single happy-path test: strikeout → out → inning advance
 2️⃣ IntentGenerator that produces a pitch intent
 3️⃣ Count refactor to support pitch counts
 4️⃣ OutEvent and RunEvent (for balls in play)
+
+
+Add a test asserting _enqueueleft([A, B]) executes A → B
+
+Add a guard to prevent resolver from calling _enqueueleft
+
+Make _queue private and never expose it
+

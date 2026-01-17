@@ -1,0 +1,58 @@
+ball
+    balls += 1
+    BallEvent
+    If balls == 4 → PlateAppearanceEndEvent(reason="walk"), optionally RunnerAdvancedEvent for batter.
+
+called_strike
+    strikes += 1
+    StrikeEvent
+    If strikes == 3 → OutRecordedEvent(reason="strikeout"), PlateAppearanceEndEvent(reason="strikeout")
+
+swinging_strike
+    Same as above
+
+foul
+    strikes += 1 only if strikes < 2
+    StrikeEvent (if strikes < 2)
+    Foul rarely causes strikeout on 3rd strike. Check for foul tip to catcher
+
+hit_by_pitch
+    Resets count
+    HitByPitchEvent, PlateAppearanceEndEvent(reason="hbp"), RunnerAdvancedEvent
+    Batter awarded 1st base; resets count.
+
+ball_in_play
+    Delegate to _resolve_ball_in_play()
+    Can generate: SingleEvent, DoubleEvent, TripleEvent, HomeRunEvent, OutRecordedEvent, RunnerAdvancedEvent, PlateAppearanceEndEvent(reason="hit"). MORE
+
+home_run
+    HomeRunEvent, PlateAppearanceEndEvent(reason="home_run"), plus RunnerAdvancedEvents for all scoring runners
+    
+
+intentional_walk
+    PlateAppearanceEndEvent(reason="walk"), RunnerAdvancedEvent
+    Treat like walk, but might special case to make it happen without pitches
+
+catcher_interference
+    PlateAppearanceEndEvent(reason="catcher_interference"), RunnerAdvancedEvent
+    Rare; batter awarded first base.
+
+balk
+    RunnerAdvancedEvent for runners on
+
+wild pitch
+    RunnerAdvancedEvent for runners on
+    BallEvent (almost certainly)
+
+passed ball
+    RunnerAdvancedEvent for runners on
+    BallEvent (almost certainly)
+
+
+Key Notes for _resolve_pitch
+
+_resolve_pitch should only mutate the count and generate PA-ending events if applicable.
+Anything that moves runners, scores, or changes field state goes to _resolve_ball_in_play.
+PlateAppearanceEndEvent is the sole mechanism for ending a plate appearance.
+_resolve_ball_in_play should consume RNG to determine hit type (single/double/etc.) and run advancement.
+Tests can now be deterministic by controlling RNG and counting events.
