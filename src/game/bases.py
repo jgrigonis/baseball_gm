@@ -30,6 +30,7 @@ Resolver enforces baseball.
 """
 
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 # Public API
@@ -39,6 +40,13 @@ THIRD = 3
 HOME = 4
 VALID_BASES = (FIRST, SECOND, THIRD)
 VALID_DESTINATIONS = (FIRST, SECOND, THIRD, HOME)
+
+
+@dataclass(frozen=True)
+class BasesSnapshot:
+    first: Optional[str] = None
+    second: Optional[str] = None
+    third: Optional[str] = None
 
 
 class Bases:
@@ -186,6 +194,16 @@ class Bases:
     def clear(self):
         """Clear all bases (inning end)."""
         self._bases.clear()
+
+    # ------------------------------------------------------------------
+    # Snapshotting
+    # ------------------------------------------------------------------
+    def snapshot(self) -> BasesSnapshot:
+        return BasesSnapshot(
+            first=self.runner_on(FIRST),
+            second=self.runner_on(SECOND),
+            third=self.runner_on(THIRD),
+        )
 
     # ------------------------------------------------------------------
     # Debug

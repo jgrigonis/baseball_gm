@@ -53,14 +53,16 @@ class Count:
 
     # ---------- Mutations ----------
 
-    def add_ball(self):
-        if self.balls < 4:
-            self.balls += 1
+    def add_ball(self) -> None:
+        if self.balls >= 4:
+            raise ValueError(f"Cannot add ball: already at {self.balls} balls")
+        self.balls += 1
 
-    def add_strike(self):
-        if self.strikes < 3:
-            self.strikes += 1
+    def add_strike(self) -> None:
+        if self.strikes >= 3:
+            raise ValueError(f"Cannot add strike: already at {self.strikes} strikes")
+        self.strikes += 1
 
-    def reset(self):
+    def reset(self) -> None:
         self.balls = 0
         self.strikes = 0
