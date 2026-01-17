@@ -5,9 +5,11 @@ from typing import List
 
 from src.game.event import GameEvent
 from src.game.events.ball import BallEvent
+
 # from src.game.events.hbp import HitByPitchEvent
 from src.game.events.noop import NoOpEvent
 from src.game.events.pitch import PitchThrownEvent
+
 # from src.game.events.walk import WalkEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
@@ -17,7 +19,7 @@ from src.game.events.strike import StrikeEvent
 # from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import OutRecordedEvent
-from src.game.bases import FIRST # SECOND, THIRD, HOME
+from src.game.bases import FIRST  # SECOND, THIRD, HOME
 
 from src.game.rules.force_advancement import force_advance_chain
 from src.game.events.runners import RunnerAdvancedEvent
