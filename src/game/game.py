@@ -1,8 +1,10 @@
 # src/game/game.py
 from __future__ import annotations
 
+from collections import deque
 from typing import List
 import logging
+import random
 
 from src.game.inning import Inning
 from src.game.count import Count
@@ -34,7 +36,7 @@ class Game:
         home_team,
         away_team,
         *,
-        rng,
+        rng=random.Random(),
         intent_generator: IntentGenerator | None = None,
         resolver: Resolver | None = None,
     ):
@@ -51,7 +53,8 @@ class Game:
         self.score = Score()
 
         # Event pipeline
-        self._queue: List[GameEvent] = []
+        self._queue: deque[GameEvent] = deque[GameEvent]()
+        # old self._queue: List[GameEvent] = []
 
         # Engine components
         self.intent_generator = intent_generator or IntentGenerator(rng)
@@ -62,12 +65,13 @@ class Game:
         self.current_pitcher = None
 
         # plate appearance info
-        self._pa_complete = False
+        self._plate_appearance_complete = False
         self._pa_end_reason = None
 
         # Logging
-        self.dbg = logging.DEBUG
+        self.dbg = logging.TRACE
         self.logger = setup_logger(name="game", level=self.dbg, console_level=self.dbg)
+        self.pauses = False
 
         # Stat setup
         self._init_game_stats()
@@ -83,28 +87,118 @@ class Game:
         self._sync_players()
         self.logger.info("Play Ball!")
         while not self.is_over():
+            if self.pauses:
+                input("Press enter to continue")
             self.step()
+            self._post_event()
+
+    # def step_pitch(self) -> list[GameEvent]:
+    #     """
+    #     Process exactly one pitch for the current batter.
+    #     Returns the list of events generated.
+    #     The plate appearance may or may not end.
+    #     """
+    #     if self.is_over():
+    #         return []
+
+    #     events: list[GameEvent] = []
+
+    #     intent = self._next_intent()
+
+    #     # # Get the next pitch intent for the current batter
+    #     # if not self._intent_queue:
+    #     #     # Optionally, generate the intent automatically (AI pitch)
+    #     #     self._intent_queue.append(self.current_batter_pitch_intent())
+
+    #     # intent = self._intent_queue.popleft()
+    #     new_events = self.resolver.resolve(intent, self) or []
+
+    #     for e in new_events:
+    #         e.apply(self)
+    #         events.append(e)
+
+    #     # Update plate appearance state if ended
+    #     if any(isinstance(e, PlateAppearanceEndEvent) for e in new_events):
+    #         self._plate_appearance_over = True
+
+    #     return events
+
+    """
+    Resolver produces initial events
+    Events may produce follow-up events
+    Follow-ups must execute before anything already queued
+    No game logic branches inside step()
+    PlateAppearanceEndEvent must be terminal
+
+    “Apply exactly one event, but allow that event to 
+    expand into more events that must happen now.”
+    """
 
     def step(self):
-        """
-        Execute exactly one atomic event.
-        """
-        # self.logger.trace("Step")
-        if not self._queue:
-            intent = self._next_intent()
-            self.logger.trace(f"intenet = {intent}")
-            events = self._resolve_intent(intent)
-            # for event in events:
-            #     self.logger.trace(f"event = {event}")
-            self._enqueue(events)
+        # 1. If there are events, apply exactly one
+        if self._queue:
+            event = self._dequeue()
+            self.logger.trace(f"[STEP] apply → {event}")
+            followups = event.apply(self) or []
+            if followups:
+                self._enqueueleft(followups)
+            # self._post_event()
+            return
 
-        event = self._dequeue()
-        self.logger.debug(event)
-        # assert not self._pa_complete, f"Event after PA end: {event}"
-        event.apply(self)
-        # No branching based on game rules inside apply
+        # This is dead code, never gets here
+        # # 2. No queued events → maybe create a new intent
+        # if self._plate_appearance_complete:
+        #     self.logger.info(f"_plate_appearance_complete")
+        #     return  # PA finished; wait for game-level transition
 
-        self._post_event()
+        intent = self._next_intent()
+        self.logger.trace(f"[STEP] intent → {intent}")
+        events = self._resolve_intent(intent)
+        self._enqueue(events)
+
+    # ------------------------------------------------------------------
+    # Post-event housekeeping
+    # ------------------------------------------------------------------
+
+    def _post_event(self):
+        """
+        Observe game state after each event and advance structure.
+        """
+        if self._plate_appearance_complete and self._queue:
+            raise RuntimeError("PlateAppearanceEndEvent fired with pending events")
+
+        if self._plate_appearance_complete:
+            # self.logger.trace("_plate_appearance_complete")
+            self._advance_batter()
+            self.count.reset()
+
+        if self._half_inning_over():
+            self._end_half_inning()
+
+    # def step(self):
+    #     """
+    #     Execute exactly one atomic event.
+    #     """
+
+    #     if not self._queue:
+    #         intent = self._next_intent()
+    #         self.logger.trace(f"[STEP] intent → {intent}")
+
+    #         events = self._resolve_intent(intent)
+    #         if not events:
+    #             raise RuntimeError("Resolver returned no events")
+
+    #         self._enqueue(events)
+
+    #     event = self._dequeue()
+    #     self.logger.trace(f"[STEP] apply → {event}")
+
+    #     followups = event.apply(self) or []
+
+    #     if followups:
+    #         self._enqueueleft(followups)
+
+    #     self._post_event()
 
     # ------------------------------------------------------------------
     # Intent / Resolution
@@ -120,39 +214,40 @@ class Game:
     # Event queue
     # ------------------------------------------------------------------
 
+    """
+    Event queue invariants:
+
+    - Queue is FIFO
+    - Resolver enqueues events to the BACK only
+    - Events may enqueue follow-up events to the FRONT
+    - step() executes exactly one event
+    """
+
     def _enqueue(self, events: list[GameEvent]):
         if not events:
             raise RuntimeError("Resolver returned no events")
         self._queue.extend(events)
 
     def _dequeue(self) -> GameEvent:
-        return self._queue.pop(0)
+        return self._queue.popleft()
 
-    # ------------------------------------------------------------------
-    # Post-event housekeeping
-    # ------------------------------------------------------------------
-
-    def _post_event(self):
+    def _enqueueleft(self, events):
         """
-        Observe game state after each event and advance structure.
+        Enqueue events to the front of the queue.
+        Preserves execution order.
         """
-        if self._plate_appearance_over():
-            self.logger.trace("_plate_appearance_over")
-            self._advance_batter()
-            self.count.reset()
+        if not events:
+            return
 
-        if self._half_inning_over():
-            self._end_half_inning()
+        if isinstance(events, list):
+            for event in reversed(events):
+                self._queue.appendleft(event)
+        else:
+            self._queue.appendleft(events)
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _plate_appearance_over(self) -> bool:
-        """
-        Has the current plate appearance completed?
-        """
-        return self._pa_complete
 
     def _half_inning_over(self) -> bool:
         return self._would_end_half_inning()
@@ -160,7 +255,7 @@ class Game:
     def _advance_batter(self):
         self.logger.trace("_advance_batter")
         self.current_batter = self._next_batter()
-        self._pa_complete = False
+        self._plate_appearance_complete = False
         self._pa_end_reason = None
 
     def _end_half_inning(self):
@@ -201,8 +296,8 @@ class Game:
         # return False  # stub
 
     def _mark_plate_appearance_complete(self, reason: str):
-        self.logger.trace("_mark_plate_appearance_complete")
-        self._pa_complete = True
+        # self.logger.trace("_mark_plate_appearance_complete")
+        self._plate_appearance_complete = True
         self._pa_end_reason = reason
 
     def _init_game_stats(self):
@@ -217,7 +312,7 @@ class Game:
         self.logger.debug("Syncing players")
         self.current_batter = self.bat_team.current_batter
         self.logger.info(f"Batting: {self.current_batter.player.name}")
-        self.current_pitcher = self.pitch_team.current_pitcher()
+        self.current_pitcher = self.pitch_team.current_pitcher
         self.logger.info(f"Pitching: {self.current_pitcher.name}")
 
     def _would_end_half_inning(self) -> bool:
@@ -236,3 +331,9 @@ class Game:
         next = self.bat_team.next_batter()
         self.logger.trace(f"next batter={next.player.name}")
         return next
+
+    def _debug_queue(self, prefix=""):
+        if not self.logger.isEnabledFor(logging.DEBUG):
+            return
+        contents = [e.label() for e in self._queue]
+        self.logger.debug(f"{prefix}QUEUE = {contents}")

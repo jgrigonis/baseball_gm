@@ -9,12 +9,12 @@ import pytest
 
 
 def test_pa_starts_incomplete(game):
-    assert not game._plate_appearance_over()
+    assert not game._plate_appearance_complete
 
 
-def test_pa_end_event_marks_pa_complete(game):
+def test_pa_end_event_marks_plate_appearance_complete(game):
     PlateAppearanceEndEvent("walk").apply(game)
-    assert game._plate_appearance_over()
+    assert game._plate_appearance_complete
 
 
 def test_pa_end_advances_batter_and_resets_count(game):

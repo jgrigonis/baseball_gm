@@ -12,10 +12,12 @@ We can discard the results.
 import argparse
 import logging
 import os
+from turtle import home
 
 # from src.game.event_generator import Event
-# from src.game.game import Game
+from src.game.game import Game
 from src.team.team_factory import TeamFactory
+from src.team.team_in_game_factory import TeamInGameFactory
 
 # from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
@@ -60,18 +62,25 @@ def main():
     logger = setup_logger(name="details", level=levl, console_level=levl)
     logger = logging.getLogger("details")
     tf = TeamFactory()
-    # Set up Home Team
-    home_team = tf.generate_team(city="Team", mascot="One")
+    # Set up Home Team Record
+    home_team_record = tf.generate_team(city="Team", mascot="One")
 
-    # Set up Away Team
-    away_team = tf.generate_team(city="Team", mascot="Two")
-    quit()
+    # Set up Away Team Record
+    away_team_record = tf.generate_team(city="Team", mascot="Two")
 
-    my_game = Game(home_team, away_team, levl, args.pauses, args.innings)
-    my_event = Event(my_game)
+    # setup TeamInGame objects
+    home_team = TeamInGameFactory.from_record(home_team_record)
+    away_team = TeamInGameFactory.from_record(away_team_record)
 
-    while my_game.game_over is False:
-        my_event.do_event()
+    # set lineups
+    home_team.set_lineup()
+    away_team.set_lineup()
+
+
+    my_game = Game(home_team=home_team, away_team=away_team)
+    my_game.play()
+
+
 
     logger.info("Home:    " + str(my_game.score.home))
     logger.info("Visitor: " + str(my_game.score.away))

@@ -12,6 +12,8 @@ class PlateAppearanceEndEvent(GameEvent):
     This is the ONLY event allowed to end a plate appearance.
     Game logic must react to it via _post_event().
 
+    PlateAppearanceEndEvent must be the last event of the plate appearance.
+    Nothing that mutates PA state may occur after it.
     """
 
     reason: str
