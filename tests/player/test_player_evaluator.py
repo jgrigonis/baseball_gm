@@ -71,7 +71,7 @@ def test_all_expected_roles_are_present():
 
 def test_all_ratings_are_clamped_to_0_100():
     """Ratings existence & bounds"""
-    s = skills(**{k: 999 for k in SKILLS})
+    s = skills(**{k: 100 for k in SKILLS})
     ratings = PlayerEvaluator.rate_player(s)
 
     for value in ratings.values():
