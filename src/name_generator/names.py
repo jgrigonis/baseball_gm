@@ -1,11 +1,15 @@
 """Generate Random name combinations."""
 
-# from collections import namedtuple
+import bisect
 from dataclasses import dataclass
 import random
 from os.path import abspath, join, dirname
 
 __author__ = "josh"
+
+FREQUENCY_TOLERANCE = (
+    0.001  # Accounts for floating point precision in cumulative frequencies
+)
 
 
 @dataclass(frozen=True)
@@ -62,12 +66,9 @@ class SimpleNameGenerator(object):
 
     def read_data(self):
         """Read in the data from each of the 3 files."""
-        with open(self.male_name_file) as mnf:
-            self.male_name_data = mnf.readlines()
-        with open(self.female_name_file) as fnf:
-            self.female_name_data = fnf.readlines()
-        with open(self.last_name_file) as lnf:
-            self.last_name_data = lnf.readlines()
+        self.male_name_data = self._read_name_file(self.male_name_file)
+        self.female_name_data = self._read_name_file(self.female_name_file)
+        self.last_name_data = self._read_name_file(self.last_name_file)
 
     def make_name_lists(self):
         """
@@ -83,8 +84,10 @@ class SimpleNameGenerator(object):
             self.female_names.append(line.split()[0])
         for line in self.last_name_data:
             self.last_names.append(line.split()[0])
+        if not self.male_names or not self.female_names or not self.last_names:
+            raise ValueError("One or more name files resulted in empty name lists")
 
-    def first(self, gender="either"):
+    def first(self, gender: str = "either") -> str:
         """Return a first name."""
         gender = self._normalize_gender(gender)
         if gender == "male":
@@ -92,16 +95,14 @@ class SimpleNameGenerator(object):
         elif gender == "female":
             return self.rng.choice(self.female_names)
         else:
-            either = [self.male_names, self.female_names]
-            return self.rng.choice(
-                self.rng.choices(either, weights=map(len, either))[0]
-            )
+            all_names = self.male_names + self.female_names
+            return self.rng.choice(all_names)
 
-    def last(self):
+    def last(self) -> str:
         """Return a last name."""
         return self.rng.choice(self.last_names)
 
-    def full(self, gender="either"):
+    def full(self, gender: str = "either") -> tuple[str, str]:
         """
         Generate a full name, based on the gender.
 
@@ -118,6 +119,14 @@ class SimpleNameGenerator(object):
         else:
             return self.first("either"), self.last()
 
+    def _read_name_file(self, filepath: str) -> list[str]:
+        """Read a name file and return its lines."""
+        try:
+            with open(filepath) as f:
+                return f.readlines()
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Required name file not found: {filepath}") from e
+
 
 class NameGenerator(SimpleNameGenerator):
     """
@@ -126,7 +135,7 @@ class NameGenerator(SimpleNameGenerator):
 
     """
 
-    def _max_range(self, names):
+    def _max_range(self, names: list[NameFrequency]) -> float:
         return names[-1].end
 
     def make_name_lists(self):
@@ -137,9 +146,11 @@ class NameGenerator(SimpleNameGenerator):
         self.make_names(self.male_name_data, self.male_names)
         self.make_names(self.female_name_data, self.female_names)
         self.make_names(self.last_name_data, self.last_names)
+        if not self.male_names or not self.female_names or not self.last_names:
+            raise ValueError("One or more name files resulted in empty name lists")
 
     @staticmethod
-    def make_names(data_list, name_list):
+    def make_names(data_list: list[str], name_list: list[NameFrequency]) -> None:
         """
         Actually create the name_frequency tuples here.
 
@@ -160,52 +171,39 @@ class NameGenerator(SimpleNameGenerator):
             )
             start_range = end_range
 
-    def first(self, gender="either"):
+    def first(self, gender: str = "either") -> str:
         """Return a first name."""
         gender = self._normalize_gender(gender)
 
-        matching_names = []
         if gender == "male":
-            first = self.rng.uniform(0.0, self._max_range(self.male_names))
-            for name in self.male_names:
-                if name.start <= first and name.end >= first - 0.001:
-                    matching_names.append(name)
+            name_list = self.male_names
         elif gender == "female":
-            first = self.rng.uniform(0.0, self._max_range(self.female_names))
-            for name in self.female_names:
-                if name.start <= first and name.end >= first - 0.001:
-                    matching_names.append(name)
+            name_list = self.female_names
         else:
-            first = self.rng.uniform(0.0, self._max_range(self.male_names))
-            for name in self.male_names:
-                if name.start <= first and name.end >= first - 0.001:
-                    matching_names.append(name)
-            first = self.rng.uniform(0.0, self._max_range(self.female_names))
-            for name in self.female_names:
-                if name.start <= first and name.end >= first - 0.001:
-                    matching_names.append(name)
-        if not matching_names:
-            fallback = self.male_names if gender != "female" else self.female_names
-            return self.rng.choice(fallback).name
-        return self.rng.choice(matching_names).name
+            # For "either", randomly pick a gender first
+            name_list = self.rng.choice([self.male_names, self.female_names])
 
-    def last(self):
+        value = self.rng.uniform(0.0, self._max_range(name_list))
+        # Binary search for the name
+        idx = bisect.bisect_right([n.end for n in name_list], value)
+        return name_list[min(idx, len(name_list) - 1)].name
+
+    def last(self) -> str:
         """Return a last name."""
         matching_last_names = []
         last = self.rng.uniform(0.0, self._max_range(self.last_names))
         for name in self.last_names:
-            if name.start <= last and name.end >= last - 0.001:
+            if name.start <= last and name.end + FREQUENCY_TOLERANCE >= last:
                 matching_last_names.append(name)
         return self.rng.choice(matching_last_names).name
 
-    def full(self, gender="male"):
+    def full(self, gender: str = "either") -> tuple[str, str]:
         """
         Generate a random name, based on frequency.
 
         We pick the correctly gendered name, and a last name from our lists.
-        The magic numbers, e.g. 90.483, 90.040, and 90.024 are picked
-        from the name list files by manual inspection.  We need to
-        subtract -0.001 from the rlast random number as the random float
+        We need to subtract FREQUENCY_TOLERANCE
+        from the rlast random number as the random float
         will always (?) have extra digits beyond the thousands place
         which we want to ignore.  Many of the names towards the end of
         last names list have less than 0.001 percent frequency, so their
