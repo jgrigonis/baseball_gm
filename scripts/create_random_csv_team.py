@@ -6,5 +6,6 @@ tf = TeamFactory()
 home_team = tf.generate_team(city="Team", mascot="One")
 
 exporter = PlayerCSVExporter()
-
-exporter.write(home_team, "team_one.csv")
+filename = "team_one.csv"
+exporter.write(home_team, filename)
+print(f"Created {filename}")
