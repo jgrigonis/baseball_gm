@@ -118,7 +118,7 @@ class PlayerFactory(object):
     def _resolve_position(self, position: str | None) -> str:
         """
         Resolve position to a valid affinity position.
-        
+
         Affinity positions are used for skill generation.
 
         Raises:
@@ -126,7 +126,7 @@ class PlayerFactory(object):
         """
         if position is None:
             return self.rng.choice(AFFINITY_POSITIONS)
-        
+
         if not is_valid_affinity_position(position):
             raise game_exceptions.BadPositionException(
                 f"Invalid affinity position '{position}'. "

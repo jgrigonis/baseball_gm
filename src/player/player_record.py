@@ -217,22 +217,22 @@ class PlayerRecord:
         """Validate player data after initialization."""
         from src.player.positions import ALL_POSITIONS
         from src.player.player_factory import VALID_BATS, VALID_THROWS
-        
+
         if self.position not in ALL_POSITIONS:
             raise ValueError(
                 f"Invalid position: {self.position}. "
                 f"Valid positions: {', '.join(sorted(ALL_POSITIONS))}"
             )
-        
+
         if self.bats not in VALID_BATS:
             raise ValueError(f"Invalid bats: {self.bats}")
-        
+
         if self.throws not in VALID_THROWS:
             raise ValueError(f"Invalid throws: {self.throws}")
-        
+
         if not self.first_name or not self.last_name:
             raise ValueError("Name cannot be empty")
-        
+
         if not self.id:
             raise ValueError("ID cannot be empty")
 

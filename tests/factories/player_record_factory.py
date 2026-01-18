@@ -24,8 +24,8 @@ def make_player_record(
     id: str | None = None,
     first_name="Test",
     last_name=None,
-    bats="right",      # Changed from "R" to "right"
-    throws="right",    # Changed from "R" to "right"
+    bats="right",  # Changed from "R" to "right"
+    throws="right",  # Changed from "R" to "right"
     position=None,
     skills: dict | None = None,
     rng=None,
@@ -45,6 +45,7 @@ def make_player_record(
         position=position,
         skills=skills,
     )
+
 
 # # tests/factories/player_record_factory.py
 # import itertools
