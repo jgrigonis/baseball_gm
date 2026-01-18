@@ -30,13 +30,14 @@ import random
 import uuid
 
 import src.game.game_exceptions as game_exceptions
+from src.player.positions import is_valid_affinity_position
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.positions import (
     POSITION_TEMPLATES,
-    POSITIONS,
+    AFFINITY_POSITIONS,
     PositionTemplate,
-    is_valid_position,
+    # is_valid_position,
     get_handedness_probabilities,
 )
 from src.name_generator.names import NameGenerator
@@ -116,19 +117,20 @@ class PlayerFactory(object):
 
     def _resolve_position(self, position: str | None) -> str:
         """
-        Resolve position to a valid value.
-
-        If position is None, randomly select one.
-        Otherwise validate the provided position.
+        Resolve position to a valid affinity position.
+        
+        Affinity positions are used for skill generation.
 
         Raises:
             BadPositionException: If position is invalid
         """
         if position is None:
-            return self.rng.choice(POSITIONS)
-        if not is_valid_position(position):
+            return self.rng.choice(AFFINITY_POSITIONS)
+        
+        if not is_valid_affinity_position(position):
             raise game_exceptions.BadPositionException(
-                f"Invalid position '{position}'. Valid: {', '.join(POSITIONS)}"
+                f"Invalid affinity position '{position}'. "
+                f"Valid: {', '.join(AFFINITY_POSITIONS)}"
             )
         return position
 

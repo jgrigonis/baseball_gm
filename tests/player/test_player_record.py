@@ -66,7 +66,7 @@ def test_player_record_str():
         skills=PlayerSkills({}),
     )
 
-    assert str(record) == "<Player Shohei Ohtani>"
+    assert str(record) == "Shohei Ohtani"
 
 
 def test_player_record_is_immutable():
