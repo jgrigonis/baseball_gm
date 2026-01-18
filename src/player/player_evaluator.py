@@ -20,7 +20,11 @@ EXPECTED_RATINGS = {
     "overall_player",
 }
 
-ROLE_WEIGHTS = {
+# Weight values:
+# - Higher weight = more important to the role
+# - Weights are relative within each role
+# - Final rating is weighted average, scaled 0-100
+ROLE_WEIGHTS: dict[str, dict[str, int]] = {
     "cf": {
         "outfield": 5,
         "arm": 2,
@@ -128,18 +132,16 @@ class PlayerEvaluator:
             deterministic
             pure (no mutation, no randomness)
             Accepts a domain object (PlayerSkills)
+        Args:
+            skills: Player's skills
+
         Returns a simple, serializable structure
 
         """
         ratings = {}
 
         for role, weights in ROLE_WEIGHTS.items():
-            total_weight = sum(weights.values())
-            # make this code defensive against missing skills
-            skills_map = skills.as_dict()
-            score = sum(skills_map.get(k, 0) * w for k, w in weights.items())
-            # score = sum(skills[k] * w for k, w in weights.items())
-            ratings[role] = max(0, min(100, int(round(score / total_weight))))
+            ratings[role] = PlayerEvaluator._calculate_weighted_rating(skills, weights)
 
         # --- Overall Player (offense + arm + speed + best defense) ---
         defensive_value = max(
@@ -148,17 +150,20 @@ class PlayerEvaluator:
             skills.as_dict().get("catching", 0),
         )
 
-        overall_player_score = (
-            skills["power"] * 3
-            + skills["eye"] * 1
-            + skills["contact"] * 2
-            + skills["base_running"] * 1
-            + skills["speed"] * 2
-            + skills["arm"] * 1
-            + defensive_value * 3
-        )
+        overall_weights = {
+            "power": 3,
+            "eye": 1,
+            "contact": 2,
+            "base_running": 1,
+            "speed": 2,
+            "arm": 1,
+        }
 
-        total_weight = 3 + 1 + 2 + 1 + 2 + 1 + 3
+        # overall_weights = ROLE_WEIGHTS["overall_player"]
+        overall_player_score = sum(skills[k] * w for k, w in overall_weights.items())
+        overall_player_score += defensive_value * 3
+
+        total_weight = sum(overall_weights.values()) + 3  # +3 for defensive_value
 
         ratings["overall_player"] = max(
             0, min(100, int(round(overall_player_score / total_weight)))
@@ -166,20 +171,65 @@ class PlayerEvaluator:
 
         return ratings
 
-    # def offensive_profile(player):
-    #     """Return the offensive profile for a player."""
-    #     s = player.skills
-    #     return {
-    #         "on_base": 0.5 * s["contact"] + 0.4 * s["eye"] + 0.1 * s["clutch"],
-    #         "power": s["power"],
-    #         "speed": 0.6 * s["speed"] + 0.4 * s["base_running"],
-    #         "bat_control": 0.7 * s["contact"] + 0.3 * s["bunting"],
-    #         "contact": s["contact"],
-    #         "overall": (
-    #             0.35 * s["contact"]
-    #             + 0.30 * s["power"]
-    #             + 0.20 * s["eye"]
-    #             + 0.10 * s["speed"]
-    #             + 0.05 * s["clutch"]
-    #         ),
-    #     }
+    @staticmethod
+    def _calculate_weighted_rating(
+        skills: PlayerSkills, weights: dict[str, int]
+    ) -> int:
+        """Calculate a weighted rating from skills."""
+        total_weight = sum(weights.values())
+        if total_weight == 0:
+            return 0
+        score = sum(skills[skill] * weight for skill, weight in weights.items())
+        return max(0, min(100, int(round(score / total_weight))))
+
+    @staticmethod
+    def validate_weights() -> None:
+        """Validate that all weights reference valid skills."""
+        from src.player.skill_map import ALL_SKILL_NAMES
+
+        for role, weights in ROLE_WEIGHTS.items():
+            for skill in weights.keys():
+                if skill not in ALL_SKILL_NAMES:
+                    raise ValueError(f"Invalid skill '{skill}' in role '{role}'")
+
+    @staticmethod
+    def get_best_position(ratings: RatingMap) -> str:
+        """Return the position where player rates highest."""
+        position_ratings = {
+            pos: rating
+            for pos, rating in ratings.items()
+            if pos in {"cf", "rf", "lf", "c", "1b", "2b", "ss", "3b", "p"}
+        }
+        return max(position_ratings, key=position_ratings.get)
+
+    @staticmethod
+    def get_best_batting_role(ratings: RatingMap) -> str:
+        """Return the best batting role for this player."""
+        batting_roles = {
+            role: rating
+            for role, rating in ratings.items()
+            if role in {"lead_off", "contact_hitter", "power_hitter"}
+        }
+        return max(batting_roles, key=batting_roles.get)
+
+    @staticmethod
+    def format_ratings(ratings: RatingMap) -> str:
+        """Format ratings for display."""
+        lines = []
+        lines.append("DEFENSIVE POSITIONS:")
+        for pos in ["c", "1b", "2b", "ss", "3b", "lf", "cf", "rf", "p"]:
+            lines.append(f"  {pos:3s}: {ratings.get(pos, 0):3d}")
+
+        lines.append("\nOFFENSIVE ROLES:")
+        for role in ["lead_off", "contact_hitter", "power_hitter"]:
+            lines.append(f"  {role:15s}: {ratings.get(role, 0):3d}")
+
+        lines.append("\nOVERALL:")
+        lines.append(f"  Offense: {ratings.get('overall_offense', 0):3d}")
+        lines.append(f"  Overall: {ratings.get('overall_player', 0):3d}")
+
+        return "\n".join(lines)
+
+
+# Call at module load time
+PlayerEvaluator.validate_weights()
