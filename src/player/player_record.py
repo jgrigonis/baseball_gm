@@ -89,118 +89,6 @@ class PlayerRecord:
         except KeyError as e:
             raise ValueError(f"Missing required CSV column: {e}") from e
 
-    # @classmethod
-    # def from_csv_row(cls, row: CsvRow) -> "PlayerRecord":
-    #     full_name = row["Name"]
-    #     parts = full_name.split(maxsplit=1)
-    #     first_name = parts[0]
-    #     last_name = parts[1] if len(parts) > 1 else ""
-
-    #     # Map single letters to full names
-    #     bats_map = {"l": "left", "r": "right", "s": "switch"}
-    #     throws_map = {"l": "left", "r": "right"}
-
-    #     bats_letter = row["B"].lower()
-    #     throws_letter = row["T"].lower()
-
-    #     return cls(
-    #         id=row["ID"],
-    #         first_name=first_name,
-    #         last_name=last_name,
-    #         bats=bats_map[bats_letter],
-    #         throws=throws_map[throws_letter],
-    #         position=row["PS"].lower(),
-    #         skills=PlayerSkills.from_csv_row(row),
-    #     )
-
-    # @classmethod
-    # def from_csv_row(cls, row: CsvRow) -> "PlayerRecord":
-    #     """
-    #     Create a PlayerRecord from a CSV row.
-
-    #     CSV format uses single-letter abbreviations:
-    #     - B: batting side (l/r/s)
-    #     - T: throwing hand (l/r)
-    #     - PS: position (lowercase)
-    #     """
-    #     try:
-    #         full_name = row["Name"]
-    #         parts = full_name.split(maxsplit=1)
-    #         first_name = parts[0]
-    #         last_name = parts[1] if len(parts) > 1 else ""
-
-    #         return cls(
-    #             id=row["ID"],
-    #             first_name=first_name,
-    #             last_name=last_name,
-    #             bats=row["B"].lower(),      # Normalize to lowercase
-    #             throws=row["T"].lower(),    # Normalize to lowercase
-    #             position=row["PS"].lower(), # Normalize to lowercase
-    #             skills=PlayerSkills.from_csv_row(row),
-    #         )
-    #     except KeyError as e:
-    #         raise ValueError(f"Missing required CSV column: {e}") from e
-    #     except Exception as e:
-    #         raise ValueError(f"Error creating PlayerRecord from CSV: {e}") from e
-
-    # @classmethod
-    # def from_csv_row(cls, row: CsvRow) -> "PlayerRecord":
-    #     try:
-    #         full_name = row["Name"]
-    #         # Handle names with multiple spaces or single names
-    #         parts = full_name.split(maxsplit=1)
-    #         first_name = parts[0]
-    #         last_name = parts[1] if len(parts) > 1 else ""
-
-    #         return cls(
-    #             id=row["ID"],
-    #             first_name=first_name,
-    #             last_name=last_name,
-    #             bats=row["B"],
-    #             throws=row["T"],
-    #             skills=PlayerSkills.from_csv_row(row),
-    #             position=row["PS"],
-    #         )
-    #     except KeyError as e:
-    #         raise ValueError(f"Missing required CSV column: {e}") from e
-    #     except Exception as e:
-    #         raise ValueError(f"Error creating PlayerRecord from CSV: {e}") from e
-
-    # @classmethod
-    # def from_csv_row(cls, row: CsvRow) -> "PlayerRecord":
-    #     full_name = row["Name"]
-
-    #     # Handle names with multiple spaces or single names
-    #     parts = full_name.split(maxsplit=1)
-    #     if len(parts) == 1:
-    #         first_name = parts[0]
-    #         last_name = ""
-    #     else:
-    #         first_name, last_name = parts
-
-    #     return cls(
-    #         id=row["ID"],
-    #         first_name=first_name,
-    #         last_name=last_name,
-    #         bats=row["B"],
-    #         throws=row["T"],
-    #         skills=PlayerSkills.from_csv_row(row),
-    #         position=row["PS"],
-    #     )
-
-    # @classmethod
-    # def from_csv_row(cls, row: CsvRow) -> "PlayerRecord":
-    #     first, last = row["Name"].split(" ", 1)
-    #     return cls(
-    #         id=row["ID"],
-    #         first_name=first,
-    #         last_name=last,
-    #         bats=row["B"],
-    #         throws=row["T"],
-    #         skills=PlayerSkills.from_csv_row(row),
-    #         position=row["PS"],
-    #     )
-
     @classmethod
     def from_db_row(cls, row: DbRow) -> "PlayerRecord":
         return cls(
@@ -301,15 +189,69 @@ class PlayerRecord:
         return (self.last_name, self.first_name) < (other.last_name, other.first_name)
 
     @property
+    def accuracy(self) -> int:
+        """Shortcut to accuracy skill."""
+        return self.skills["accuracy"]
+
+    @property
+    def stamina(self) -> int:
+        """Shortcut to stamina skill."""
+        return self.skills["stamina"]
+    @property
+    def recovery(self) -> int:
+        """Shortcut to recovery skill."""
+        return self.skills["recovery"]
+    @property
+    def ground_balls(self) -> int:
+        """Shortcut to ground_balls skill."""
+        return self.skills["ground_balls"]
+    @property
+    def strikes(self) -> int:
+        """Shortcut to strikes skill."""
+        return self.skills["strikes"]
+    @property
+    def clutch(self) -> int:
+        """Shortcut to clutch skill."""
+        return self.skills["clutch"]
+    @property
+    def speed(self) -> int:
+        """Shortcut to speed skill."""
+        return self.skills["speed"]
+    @property
     def power(self) -> int:
         """Shortcut to power skill."""
         return self.skills["power"]
 
     @property
-    def speed(self) -> int:
-        """Shortcut to speed skill."""
-        return self.skills["speed"]
+    def eye(self) -> int:
+        """Shortcut to eye skill."""
+        return self.skills["eye"]
+    @property
+    def contact(self) -> int:
+        """Shortcut to contact skill."""
+        return self.skills["contact"]
+    @property
+    def base_running(self) -> int:
+        """Shortcut to base_running skill."""
+        return self.skills["base_running"]
+    @property
+    def bunting(self) -> int:
+        """Shortcut to bunting skill."""
+        return self.skills["bunting"]
+    @property
+    def catching(self) -> int:
+        """Shortcut to catching skill."""
+        return self.skills["catching"]
+    @property
+    def infield(self) -> int:
+        """Shortcut to infield skill."""
+        return self.skills["infield"]
+    @property
+    def outfield(self) -> int:
+        """Shortcut to outfield skill."""
+        return self.skills["outfield"]
+    @property
+    def arm(self) -> int:
+        """Shortcut to arm skill."""
+        return self.skills["arm"]
 
-
-# etc. for commonly accessed skills
-# TODO add more shortcuts

@@ -504,8 +504,6 @@ class Game:
         if self.score.is_tied:
             return False  # Continue if tied
 
-        # winner = self.home.record.mascot if self.score.home > self.score.away else self.away.record.mascot
-        # self.logger.info(f"🏆 Extra innings complete - {winner} wins")
         return True
 
     # ------------------------------------------------------------------
