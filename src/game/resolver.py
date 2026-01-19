@@ -10,13 +10,13 @@ from src.game.events.ball import BallEvent
 from src.game.events.noop import NoOpEvent
 from src.game.events.pitch import PitchThrownEvent
 
-# from src.game.events.walk import WalkEvent
+from src.game.events.walk import WalkEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 
 from src.game.events.strike import StrikeEvent
 
-# from src.game.events.strikeout import StrikeOutEvent
+from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import OutRecordedEvent
 from src.game.bases import FIRST  # SECOND, THIRD, HOME
@@ -114,7 +114,7 @@ class Resolver:
                 events.append(StrikeEvent(swinging=True))
             if game.count.strikes + 1 >= 3:
                 self.logger.debug("strike out ending pa")
-                # events.append(StrikeOutEvent()) # so far it's useless
+                events.append(StrikeOutEvent())
                 events.append(OutRecordedEvent(reason="strikeout"))
                 events.append(PlateAppearanceEndEvent(reason="strikeout"))
 

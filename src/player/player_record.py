@@ -197,26 +197,32 @@ class PlayerRecord:
     def stamina(self) -> int:
         """Shortcut to stamina skill."""
         return self.skills["stamina"]
+
     @property
     def recovery(self) -> int:
         """Shortcut to recovery skill."""
         return self.skills["recovery"]
+
     @property
     def ground_balls(self) -> int:
         """Shortcut to ground_balls skill."""
         return self.skills["ground_balls"]
+
     @property
     def strikes(self) -> int:
         """Shortcut to strikes skill."""
         return self.skills["strikes"]
+
     @property
     def clutch(self) -> int:
         """Shortcut to clutch skill."""
         return self.skills["clutch"]
+
     @property
     def speed(self) -> int:
         """Shortcut to speed skill."""
         return self.skills["speed"]
+
     @property
     def power(self) -> int:
         """Shortcut to power skill."""
@@ -226,32 +232,38 @@ class PlayerRecord:
     def eye(self) -> int:
         """Shortcut to eye skill."""
         return self.skills["eye"]
+
     @property
     def contact(self) -> int:
         """Shortcut to contact skill."""
         return self.skills["contact"]
+
     @property
     def base_running(self) -> int:
         """Shortcut to base_running skill."""
         return self.skills["base_running"]
+
     @property
     def bunting(self) -> int:
         """Shortcut to bunting skill."""
         return self.skills["bunting"]
+
     @property
     def catching(self) -> int:
         """Shortcut to catching skill."""
         return self.skills["catching"]
+
     @property
     def infield(self) -> int:
         """Shortcut to infield skill."""
         return self.skills["infield"]
+
     @property
     def outfield(self) -> int:
         """Shortcut to outfield skill."""
         return self.skills["outfield"]
+
     @property
     def arm(self) -> int:
         """Shortcut to arm skill."""
         return self.skills["arm"]
-

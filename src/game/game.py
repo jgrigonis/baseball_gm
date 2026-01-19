@@ -227,6 +227,11 @@ class Game:
 
             followups = event.apply(self) or []
 
+            if event.should_log():
+                self.logger.info(event.describe(self))
+            else:
+                self.logger.trace(event.describe(self))
+
             if followups:
                 self.logger.trace(
                     f"[STEP] Follow-ups → {[e.label() for e in followups]}"
