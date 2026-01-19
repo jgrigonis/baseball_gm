@@ -261,8 +261,8 @@ class Game:
         if self.inning.number > 9 and self.inning.bottom and self.score.home > self.score.away:
             return True
         
-        # After 9+ complete innings, away leading - game over
-        if self.inning.number >= 9 and self.inning.top and self.score.away > self.score.home:
+        # After BOTTOM of 9th complete (top of 10th), away leading - game over
+        if self.inning.number > 9 and self.inning.top and self.score.away > self.score.home:  # Changed >= to >
             return True
         
         # Extra innings complete (full inning), not tied - game over
@@ -491,6 +491,7 @@ class Game:
         self.logger.trace(f"Previous batter: {self.current_batter.player.name if self.current_batter else 'None'}")
         
         self.current_batter = self._next_batter()
+        self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
         self._plate_appearance_complete = False
         self._pa_end_reason = None
         

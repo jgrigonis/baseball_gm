@@ -23,6 +23,10 @@ from src.util.logger import setup_logger
 
 HOME_FILE = Path(TEAM_FILES_DIR) / "Team1.csv"
 AWAY_FILE = Path(TEAM_FILES_DIR) / "Team2.csv"
+HOME_CITY = "Fakeville"
+HOME_MASCOT = "Fakes"
+AWAY_CITY = "Phoneyland"
+AWAY_MASCOT = "Frauds"
 
 
 def get_args():
@@ -62,10 +66,10 @@ def main():
     logger = logging.getLogger("details")
     tf = TeamFactory(log_level=levl)
     # Set up Home Team Record
-    home_team_record = tf.from_csv(path=HOME_FILE, city="Team", mascot="One")
+    home_team_record = tf.from_csv(path=HOME_FILE, city=HOME_CITY, mascot=HOME_MASCOT)
 
     # Set up Away Team Record
-    away_team_record = tf.from_csv(path=AWAY_FILE, city="Team", mascot="Two")
+    away_team_record = tf.from_csv(path=AWAY_FILE, city=AWAY_CITY, mascot=AWAY_MASCOT)
 
     # setup TeamInGame objects
     home_team = TeamInGameFactory.from_record(home_team_record)
