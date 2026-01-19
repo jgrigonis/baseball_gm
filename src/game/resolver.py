@@ -261,64 +261,6 @@ class Resolver:
         # ------------------------------------------------------------
         return self._resolve_single(intent, game)
 
-    # def _force_advance_chain(self, game, starting_base: int, rbi_batter=None):
-    #     """
-    #     Generate RunnerAdvancedEvents for *forced* runners only.
-
-    #     Definition of "forced":
-    #         A runner is forced if a new runner is awarded their current base
-    #         and the runner has no legal option to remain.
-
-    #     Properties:
-    #         - Forced movement is deterministic (no RNG)
-    #         - Forced runners advance exactly one base
-    #         - Forced runners form a contiguous chain
-    #         - The chain stops at the first empty base
-    #         - Event ordering MUST be highest base → lowest base to avoid collisions
-
-    #     Examples:
-    #         Walk / HBP:
-    #             starting_base = 1
-    #             1B occupied → force to 2B
-    #             2B occupied → force to 3B
-    #             3B occupied → force home
-
-    #         Single:
-    #             starting_base = 1
-    #             (Only forced if base is already occupied)
-
-    #     Non-goals:
-    #         - Does NOT decide voluntary advancement
-    #         - Does NOT apply scoring logic
-    #         - Does NOT end the plate appearance
-
-    #     Events are returned in SAFE application order:
-    #     highest base → lowest base.
-
-    #     starting_base: the base the batter will occupy (usually FIRST).
-    #     """
-    #     forward = []
-
-    #     base = starting_base
-    #     while base <= THIRD:
-    #         runner = game.bases.runner_on(base)
-    #         if not runner:
-    #             break
-
-    #         forward.append(
-    #             RunnerAdvancedEvent(
-    #                 runner_id=runner,
-    #                 from_base=base,
-    #                 to_base=base + 1,
-    #                 reason="force",
-    #                 rbi_batter_id=rbi_batter,
-    #             )
-    #         )
-    #         base += 1
-
-    #     # Apply highest base first to avoid collisions
-    #     return list(reversed(forward))
-
     def _resolve_walk(self, intent, game, hbp=False, intentional=False):
         self.logger.trace("Entering _resolve_walk")
         self.logger.debug(game.bases)
