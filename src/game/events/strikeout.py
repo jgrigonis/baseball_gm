@@ -9,5 +9,7 @@ class StrikeOutEvent(GameEvent):
 
     def apply(self, game):
         pass  # this does nothing
-        # game.inning.record_out()
-        # game._mark_plate_appearance_complete("strikeout")
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Strikeout"

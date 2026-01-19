@@ -6,15 +6,18 @@ from typing import List
 from src.game.event import GameEvent
 from src.game.events.ball import BallEvent
 
-# from src.game.events.hbp import HitByPitchEvent
+from src.game.events.hbp import HitByPitchEvent
 from src.game.events.noop import NoOpEvent
 from src.game.events.pitch import PitchThrownEvent
+from src.game.events.balk import BalkEvent
+from src.game.events.wild_pitch import WildPitchEvent
+from src.game.events.passed_ball import PassedBallEvent
 
-from src.game.events.walk import WalkEvent
+from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 
-from src.game.events.strike import StrikeEvent
+from src.game.events.strike import StrikeEvent, FoulStrikeEvent
 
 from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
@@ -99,7 +102,6 @@ class Resolver:
         # 3. Emit outcome specific events
         # ------------------------------------------------------------
         # TODO add cases for missing outcomes.
-        # self.logger.debug(f"outcome = {outcome}")
         if outcome == "ball":
             events.append(BallEvent())
             if game.count.balls + 1 >= 4:
@@ -119,38 +121,49 @@ class Resolver:
                 events.append(PlateAppearanceEndEvent(reason="strikeout"))
 
         elif outcome == "foul":
+
             if game.count.strikes + 1 >= 3:
                 pass  # TODO check for foul tip to catcher
-            else:
-                # TODO check for caught foul fly ball
-                events.append(
-                    StrikeEvent(swinging=True)
-                )  # TODO Change this for FoulStrikeEvent
+            else:  # less than 2 strikes
+                r = self.rng.random()
+                # TODO check for caught foul fly ball BETTER
+                if r < 0.05:
+                    pass
+                    # TODO event for caught foul fly ball
+                else:
+                    events.append(FoulStrikeEvent(swinging=True))
 
         elif outcome == "hit_by_pitch":
             events.extend(self._resolve_walk(intent, game, hbp=True))
-            # events.append(HitByPitchEvent())
 
         elif outcome == "intentional_walk":
             events.extend(self._resolve_walk(intent, game, intentional=True))
-            # events.append(WalkEvent()) # TODO Change this for IBBEvent or special case it
 
         elif outcome == "catcher_interference":
-            events.extend(self._resolve_walk(intent, game))  # TODO special case this
-            # events.append(WalkEvent()) # TODO Change this for CatcherInterferenceEvent or special case it
+            events.extend(self._resolve_walk(intent, game, catcher_interference=True))
 
         elif outcome == "balk":
-            # TODO add a BalkEvent
-
-            pass
+            if game.bases.is_empty:
+                # TODO perhaps we should add illegal pitch
+                self.logger.trace("Balk called with no runners on.")
+            else:
+                events.append(BalkEvent())
 
         elif outcome == "wild_pitch":
-            # TODO add a WildPitchEvent
-            pass
+            if game.bases.is_empty:
+                # This should never actually happen
+                self.logger.trace("Wild Pitch occured with no runners on.")
+            else:
+                events.append(WildPitchEvent())
 
         elif outcome == "passed_ball":
-            # TODO add a PassedBallEvent
-            pass
+            if game.bases.is_empty:
+                # This should never actually happen
+                # It would only matter on a third strike, and we have that
+                # covered elsewhere
+                self.logger.trace("Passed Ball occured with no runners on.")
+            else:
+                events.append(PassedBallEvent())
 
         elif outcome == "home_run":
             pass  # TODO
@@ -181,7 +194,7 @@ class Resolver:
         # TODO set probs here
         # Base probabilities FAKE
 
-        ball_chance = 0.80
+        # ball_chance = 0.80
 
         ball_chance = 0.20
         in_play_chance = 0.40
@@ -244,12 +257,10 @@ class Resolver:
 
         r = self.rng.random()
 
-        # batter_id = intent.batter_id
-
         # ------------------------------------------------------------
         # OUT
         # ------------------------------------------------------------
-        if r < 0.60:
+        if r < 0.60:  # TODO this is very fake
             # Batter is out
             events.append(OutRecordedEvent(reason="ball_in_play"))
             events.append(PlateAppearanceEndEvent("out"))
@@ -261,7 +272,9 @@ class Resolver:
         # ------------------------------------------------------------
         return self._resolve_single(intent, game)
 
-    def _resolve_walk(self, intent, game, hbp=False, intentional=False):
+    def _resolve_walk(
+        self, intent, game, hbp=False, intentional=False, catcher_interference=False
+    ):
         self.logger.trace("Entering _resolve_walk")
         self.logger.debug(game.bases)
 
@@ -269,8 +282,17 @@ class Resolver:
 
         if hbp:
             reason = "intentional_hit_by_pitch" if intentional else "hit_by_pitch"
+            events.append(HitByPitchEvent(batter_id=intent.batter_id))
         else:
-            reason = "intentional_walk" if intentional else "walk"
+            if intentional:
+                reason = "intentional_walk"
+                events.append(IBBEvent(batter_id=intent.batter_id))
+            elif catcher_interference:
+                reason = "catcher_interference"
+                events.append(CatcherInterferenceEvent(batter_id=intent.batter_id))
+            else:
+                reason = "walk"
+                events.append(WalkEvent(batter_id=intent.batter_id))
 
         # Force existing runners
         occupied = game.bases.occupied_map()

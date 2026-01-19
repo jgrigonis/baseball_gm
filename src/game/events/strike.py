@@ -9,3 +9,19 @@ class StrikeEvent(GameEvent):
 
     def apply(self, game):
         game.count.add_strike()
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Strike {game.count.strikes}"
+
+
+@dataclass(frozen=True)
+class FoulStrikeEvent(GameEvent):
+    swinging: bool = True
+
+    def apply(self, game):
+        game.count.add_strike()
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Foul ball, strike {game.count.strikes}"

@@ -11,8 +11,6 @@ We can discard the results.
 
 import argparse
 import logging
-import os
-from turtle import home
 
 # from src.game.event_generator import Event
 from src.game.game import Game
@@ -22,8 +20,10 @@ from src.team.team_in_game_factory import TeamInGameFactory
 # from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
 
-# HOME_FILE = TEAM_FILES_DIR + os.sep + "Team1.csv"
-# AWAY_FILE = TEAM_FILES_DIR + os.sep + "Giants.csv"
+HOME_CITY = "Louisiana"
+HOME_MASCOT = "Crabs"
+AWAY_CITY = "Rocky Mountain"
+AWAY_MASCOT = "Goats"
 
 
 def get_args():
@@ -52,8 +52,13 @@ def get_args():
     return args
 
 
-def main():
-    args = get_args()
+def cli():
+    return main(get_args())
+
+
+def main(args):
+    print(args)
+    # args = get_args()
     levl = logging.INFO
     if args.debug:
         levl = logging.DEBUG
@@ -63,10 +68,10 @@ def main():
     logger = logging.getLogger("details")
     tf = TeamFactory(log_level=levl)
     # Set up Home Team Record
-    home_team_record = tf.generate_team(city="Team", mascot="One")
+    home_team_record = tf.generate_team(city=HOME_CITY, mascot=HOME_MASCOT)
 
     # Set up Away Team Record
-    away_team_record = tf.generate_team(city="Team", mascot="Two")
+    away_team_record = tf.generate_team(city=AWAY_CITY, mascot=AWAY_MASCOT)
 
     # setup TeamInGame objects
     home_team = TeamInGameFactory.from_record(home_team_record)
@@ -84,4 +89,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli()

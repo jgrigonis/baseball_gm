@@ -18,3 +18,7 @@ class RunScoredEvent(GameEvent):
             top=game.inning.top,
             inning_number=game.inning.number,
         )
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Run scored. Score: {game.away.name} {game.score.away} - {game.home.name} {game.score.home}"

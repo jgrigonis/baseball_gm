@@ -7,3 +7,7 @@ from src.game.event import GameEvent
 class BallEvent(GameEvent):
     def apply(self, game):
         game.count.add_ball()
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Ball {game.count.balls}"

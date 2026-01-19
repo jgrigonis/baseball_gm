@@ -60,6 +60,10 @@ class RunnerAdvancedEvent(GameEvent):
 
         return []
 
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Runner(s) advanced. {game.bases}"
+
 
 @dataclass(frozen=True)
 class RunnerRemovedEvent(GameEvent):

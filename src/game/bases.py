@@ -61,11 +61,42 @@ class Bases:
         self._bases: Dict[int, str] = {}
 
     def __str__(self):
-        parts = []
-        for base in (THIRD, SECOND, FIRST):
-            if base in self._bases:
-                parts.append(f"{base}B={self._bases[base]}")
-        return "Bases: " + (" ".join(parts) if parts else "Empty")
+        """
+        Outputs the bases as a human-readable string.
+
+        Examples:
+        - "Bases empty"
+        - "Man on first"
+        - "Men on first and second"
+        - "Bases loaded"
+        """
+        occupied = []
+        if FIRST in self._bases:
+            occupied.append("first")
+        if SECOND in self._bases:
+            occupied.append("second")
+        if THIRD in self._bases:
+            occupied.append("third")
+
+        if not occupied:
+            return "Bases empty"
+
+        if len(occupied) == 3:
+            return "Bases loaded"
+
+        # Use "Man" for single runner, "Men" for multiple
+        prefix = "Man" if len(occupied) == 1 else "Men"
+
+        # Format the base list nicely
+        if len(occupied) == 1:
+            bases_str = occupied[0]
+        elif len(occupied) == 2:
+            bases_str = f"{occupied[0]} and {occupied[1]}"
+        else:
+            # This shouldn't happen since 3 is handled above, but just in case
+            bases_str = ", ".join(occupied[:-1]) + f" and {occupied[-1]}"
+
+        return f"{prefix} on {bases_str}"
 
     # ------------------------------------------------------------------
     # Queries
@@ -163,9 +194,6 @@ class Bases:
                 f"Base {to_base} already occupied by {self._bases[to_base]}. "
                 f"Cannot advance {runner_id}. Current state: {self}"
             )
-            # raise RuntimeError(
-            #     f"Base {to_base} already occupied by {self._bases[to_base]}"
-            # )
 
         self._bases[to_base] = runner_id
         # self._assert_consistent() # Use in debug mode
@@ -211,130 +239,3 @@ class Bases:
     def _assert_consistent(self):
         if len(set(self._bases.values())) != len(self._bases):
             raise RuntimeError("Runner appears on multiple bases")
-
-
-# from __future__ import annotations
-
-# from typing import Dict, Optional
-
-# # Public API
-# FIRST = 1
-# SECOND = 2
-# THIRD = 3
-
-# class Bases:
-#     """
-#     Tracks base occupancy.
-
-#     Internal representation:
-#         base_number (1-3) -> runner_id
-#     """
-
-#     def __init__(self):
-#         self._bases: Dict[int, str] = {}
-
-#     def __str__(self):
-#         output = "Bases: "
-#         try:
-#             output += f"3rd = {self._bases[3]} "
-#         except:
-#             pass
-#         try:
-#             output += f"2nd = {self._bases[2]} "
-#         except:
-#             pass
-#         try:
-#             output += f"1st = {self._bases[1]} "
-#         except:
-#             pass
-#         if output == "Bases: ":
-#             output += "Empty"
-#         return output
-
-#     # ------------------------------------------------------------------
-#     # Queries
-#     # ------------------------------------------------------------------
-
-#     def runner_on(self, base: int) -> Optional[str]:
-#         return self._bases.get(base)
-
-#     def base_of(self, runner_id: str) -> Optional[int]:
-#         for base, runner in self._bases.items():
-#             if runner == runner_id:
-#                 return base
-#         return None
-
-#     def occupied_bases(self) -> Dict[int, str]:
-#         return dict(self._bases)
-
-#     # ------------------------------------------------------------------
-#     # Mutations (event-driven)
-#     # ------------------------------------------------------------------
-
-#     def advance(
-#         self,
-#         runner_id: str,
-#         from_base: Optional[int],
-#         to_base: int,
-#     ):
-#         """
-#         Advance a runner from one base to another.
-
-#         from_base:
-#             None → batter entering bases
-#         to_base:
-#             1-3: occupy base
-#             4: score (remove runner)
-#         """
-
-#         # --- Validate destination ---
-#         if to_base not in (1, 2, 3, 4):
-#             raise ValueError(f"Invalid base: {to_base}")
-
-#         # --- Validate origin ---
-#         if from_base is None:
-#             # Batter entering bases
-#             if self.base_of(runner_id) is not None:
-#                 raise RuntimeError(f"Runner {runner_id} already on base")
-#         else:
-#             if self._bases.get(from_base) != runner_id:
-#                 raise RuntimeError(f"Runner {runner_id} not on base {from_base}")
-#             del self._bases[from_base]
-
-#         # --- Handle scoring ---
-#         if to_base == 4:
-#             # Runner scores → not stored on bases
-#             return
-
-#         # --- Destination must be empty ---
-#         if to_base in self._bases:
-#             raise RuntimeError(
-#                 f"Base {to_base} already occupied by {self._bases[to_base]}"
-#             )
-
-#         self._bases[to_base] = runner_id
-
-#     def remove(
-#         self,
-#         runner_id: str,
-#         from_base: Optional[int],
-#     ):
-#         """
-#         Remove a runner from the bases (out, caught stealing, etc.).
-#         """
-
-#         if from_base is None:
-#             raise RuntimeError(f"Cannot remove runner {runner_id} without base")
-
-#         if self._bases.get(from_base) != runner_id:
-#             raise RuntimeError(f"Runner {runner_id} not on base {from_base}")
-
-#         del self._bases[from_base]
-
-#     # ------------------------------------------------------------------
-#     # Reset
-#     # ------------------------------------------------------------------
-
-#     def clear(self):
-#         """Clear all bases (inning end)."""
-#         self._bases.clear()
