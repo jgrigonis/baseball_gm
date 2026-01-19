@@ -473,7 +473,7 @@ class Game:
             self.logger.trace(f"[QUEUE] Prepended {len(events)} follow-ups")
         else:
             self._queue.appendleft(events)
-            self.logger.trace(f"[QUEUE] Prepended 1 follow-up")
+            self.logger.trace("[QUEUE] Prepended 1 follow-up")
 
     # ------------------------------------------------------------------
     # Game State Queries
