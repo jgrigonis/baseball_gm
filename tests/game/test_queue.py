@@ -16,7 +16,7 @@ def test_enqueueleft_preserves_order():
         def apply(self, game):
             applied.append("B")
 
-    game._enqueueleft([EventA(), EventB()])
+    game._enqueue_left([EventA(), EventB()])
 
     game.step()
     game.step()

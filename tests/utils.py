@@ -133,6 +133,12 @@ class NullLogger:
 
 class FakeTeam:
     def __init__(self, name="FakeTeam"):
+        # Create a fake record to mimic TeamRecord
+        self.record = SimpleNamespace(
+            id=f"{name.lower()}-id",
+            city=f"{name} City",
+            mascot=f"{name}s",
+        )
         self.name = name
 
         self.players = [FakePlayer(f"{name}-p{i}") for i in range(1, 10)]
