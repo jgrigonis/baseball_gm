@@ -129,6 +129,10 @@ class Game:
         self.bat_team = self.away  # Away bats first
         self.pitch_team = self.home
 
+        # setup a name shortcut
+        self.home.name = self.home.record.mascot
+        self.away.name = self.away.record.mascot
+
         # Core game state
         self.inning = Inning()
         self.count = Count()
@@ -192,6 +196,7 @@ class Game:
             self.step()
         
         result = self.get_result()
+        self.logger.info(f"🏆 Game Over - {result.winner} wins {result.home_score}-{result.away_score}")
         self.logger.info(f"\n🏆 Final: {result}")
         return result
 
@@ -237,21 +242,30 @@ class Game:
         Check if the game is complete.
         
         Game ends when:
-        - Bottom 9th or later, home team leading
+        - After top of 9th, home team leading (no need to bat)
+        - Bottom 9th or later, home team takes the lead (walk-off)
         - After 9+ complete innings, score not tied
         
         Returns:
             True if game is over
         """
-        # Must play at least 9 innings
+        # Must play at least top of the 9th
         if self.inning.number < 9:
             return False
         
-        # Check for walk-off scenario
-        if self._is_walk_off():
+        # Top of 9th complete, home leading - game over (no need for bottom)
+        if self.inning.number == 9 and self.inning.bottom and self.score.home > self.score.away:
             return True
         
-        # Check if extra innings are complete
+        # Extra innings - if home is leading at start of bottom half, game over
+        if self.inning.number > 9 and self.inning.bottom and self.score.home > self.score.away:
+            return True
+        
+        # After 9+ complete innings, away leading - game over
+        if self.inning.number >= 9 and self.inning.top and self.score.away > self.score.home:
+            return True
+        
+        # Extra innings complete (full inning), not tied - game over
         if self._is_extra_innings_complete():
             return True
         
@@ -447,30 +461,11 @@ class Game:
         """
         return self.inning.outs >= 3
 
-    def _is_walk_off(self) -> bool:
-        """
-        Check for walk-off scenario.
-        
-        Walk-off occurs when home team takes lead in bottom 9th or later.
-        
-        Returns:
-            True if walk-off condition met
-        """
-        if not self.inning.bottom:
-            return False
-        if self.score.home <= self.score.away:
-            return False
-        if self.inning.number < 9:
-            return False
-        
-        self.logger.info(f"🎉 Walk-off win in bottom of inning {self.inning.number}!")
-        return True
-
     def _is_extra_innings_complete(self) -> bool:
         """
         Check if extra innings are complete.
         
-        Extra innings end after a full inning with score not tied.
+        Extra innings end after a full inning (top half) with score not tied.
         
         Returns:
             True if extra innings complete
@@ -478,11 +473,12 @@ class Game:
         if self.inning.number <= 9:
             return False
         if self.inning.bottom:
-            return False  # Wait for bottom half
+            return False  # Still in same inning
         if self.score.is_tied:
             return False  # Continue if tied
         
-        self.logger.info("Extra innings complete - game over")
+        # winner = self.home.record.mascot if self.score.home > self.score.away else self.away.record.mascot
+        # self.logger.info(f"🏆 Extra innings complete - {winner} wins")
         return True
 
     # ------------------------------------------------------------------
@@ -502,11 +498,14 @@ class Game:
 
     def _end_half_inning(self) -> None:
         """End the current half-inning and transition to next."""
+        
         self.logger.info(f"📊 End of {self.inning}")
         self.logger.info(f"Score: {self.away.record.mascot} {self.score.away} - {self.home.record.mascot} {self.score.home}")
         
         # Advance inning
         self.inning.increment()
+        if self.is_over():
+            return
         
         # Reset state
         self.bases.clear()
@@ -569,12 +568,12 @@ class Game:
     @property
     def batting_team_name(self) -> str:
         """Name of team currently batting."""
-        return self.bat_team.name
+        return self.bat_team.record.mascot
 
     @property
     def pitching_team_name(self) -> str:
         """Name of team currently pitching."""
-        return self.pitch_team.name
+        return self.pitch_team.record.mascot
 
     @property
     def inning_state(self) -> str:
