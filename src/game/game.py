@@ -37,12 +37,14 @@ if TYPE_CHECKING:
 
 class GameStateError(Exception):
     """Invalid game state detected."""
+
     pass
 
 
 @dataclass(frozen=True)
 class GameResult:
     """Final game result."""
+
     home_team: str
     away_team: str
     home_score: int
@@ -50,7 +52,7 @@ class GameResult:
     innings_played: int
     winner: str
     winning_margin: int
-    
+
     def __str__(self) -> str:
         return (
             f"{self.away_team} {self.away_score} @ "
@@ -63,6 +65,7 @@ class GameResult:
 @dataclass(frozen=True)
 class GameContext:
     """Immutable snapshot of current game context."""
+
     inning_number: int
     inning_top: bool
     balls: int
@@ -73,7 +76,7 @@ class GameContext:
     away_score: int
     current_batter: str
     current_pitcher: str
-    
+
     def __str__(self) -> str:
         half = "Top" if self.inning_top else "Bot"
         return (
@@ -87,7 +90,7 @@ class GameContext:
 class Game:
     """
     Orchestrates game flow and event processing.
-    
+
     The game loop processes events one at a time. Events can generate
     follow-up events that are processed immediately (prepended to queue).
     """
@@ -104,7 +107,7 @@ class Game:
     ) -> None:
         """
         Initialize a new game.
-        
+
         Args:
             home_team: Home team
             away_team: Away team
@@ -112,7 +115,7 @@ class Game:
             log_level: Logging level (default: INFO)
             intent_generator: Intent generator (default: new IntentGenerator)
             resolver: Event resolver (default: new Resolver)
-            
+
         Raises:
             ValueError: If teams are invalid/missing
         """
@@ -122,7 +125,7 @@ class Game:
         if home_team.record.id == away_team.record.id:
             self.logger.debug("Home and away teams are the same")
             # raise ValueError()
-        
+
         # Teams
         self.home = home_team
         self.away = away_team
@@ -144,7 +147,7 @@ class Game:
 
         # Random number generation
         self.rng = rng or random.Random()
-        
+
         # Engine components
         self.intent_generator = intent_generator or IntentGenerator(self.rng)
         self.resolver = resolver or Resolver(self.rng)
@@ -160,9 +163,7 @@ class Game:
         # Logging
         self.log_level = log_level or logging.INFO
         self.logger = setup_logger(
-            name="game", 
-            level=self.log_level, 
-            console_level=self.log_level
+            name="game", level=self.log_level, console_level=self.log_level
         )
         self.pauses = False
 
@@ -176,40 +177,44 @@ class Game:
     def play(self) -> GameResult:
         """
         Run the game until completion.
-        
+
         Returns:
             GameResult with final score and winner
-            
+
         Raises:
             RuntimeError: If lineups are not set
         """
         if not self.home.has_lineup or not self.away.has_lineup:
             raise RuntimeError("Both teams must have lineups before play()")
-        
+
         self._sync_players()
         self.logger.info("⚾ Play Ball!")
-        self.logger.info(f"{self.away.record.city} {self.away.record.mascot} @ {self.home.record.city} {self.home.record.mascot}")
-        
+        self.logger.info(
+            f"{self.away.record.city} {self.away.record.mascot} @ {self.home.record.city} {self.home.record.mascot}"
+        )
+
         while not self.is_over():
             if self.pauses:
                 input("Press Enter to continue...")
             self.step()
-        
+
         result = self.get_result()
-        self.logger.info(f"🏆 Game Over - {result.winner} wins {result.home_score}-{result.away_score}")
+        self.logger.info(
+            f"🏆 Game Over - {result.winner} wins {result.home_score}-{result.away_score}"
+        )
         self.logger.info(f"\n🏆 Final: {result}")
         return result
 
     def step(self) -> None:
         """
         Process one event from the queue, or generate a new intent.
-        
+
         Flow:
         1. If events queued → process one event
         2. Event may produce follow-up events (prepended to queue)
         3. Follow-ups are processed before pre-existing events
         4. If no events → generate new intent → resolve → enqueue
-        
+
         Invariants:
         - Exactly one event applied per step
         - Follow-ups execute before queued events (LIFO for follow-ups)
@@ -219,13 +224,15 @@ class Game:
         if self._queue:
             event = self._dequeue()
             self.logger.trace(f"[STEP] Applying → {event}")
-            
+
             followups = event.apply(self) or []
-            
+
             if followups:
-                self.logger.trace(f"[STEP] Follow-ups → {[e.label() for e in followups]}")
+                self.logger.trace(
+                    f"[STEP] Follow-ups → {[e.label() for e in followups]}"
+                )
                 self._enqueue_left(followups)
-            
+
             # Post-event housekeeping
             self._post_event()
             return
@@ -233,60 +240,76 @@ class Game:
         # No queued events → generate new intent
         intent = self._next_intent()
         self.logger.trace(f"[STEP] Intent → {intent}")
-        
+
         events = self._resolve_intent(intent)
         self._enqueue(events)
 
     def is_over(self) -> bool:
         """
         Check if the game is complete.
-        
+
         Game ends when:
         - After top of 9th, home team leading (no need to bat)
         - Bottom 9th or later, home team takes the lead (walk-off)
         - After 9+ complete innings, score not tied
-        
+
         Returns:
             True if game is over
         """
         # Must play at least top of the 9th
         if self.inning.number < 9:
             return False
-        
+
         # Top of 9th complete, home leading - game over (no need for bottom)
-        if self.inning.number == 9 and self.inning.bottom and self.score.home > self.score.away:
+        if (
+            self.inning.number == 9
+            and self.inning.bottom
+            and self.score.home > self.score.away
+        ):
             return True
-        
+
         # Extra innings - if home is leading at start of bottom half, game over
-        if self.inning.number > 9 and self.inning.bottom and self.score.home > self.score.away:
+        if (
+            self.inning.number > 9
+            and self.inning.bottom
+            and self.score.home > self.score.away
+        ):
             return True
-        
+
         # After BOTTOM of 9th complete (top of 10th), away leading - game over
-        if self.inning.number > 9 and self.inning.top and self.score.away > self.score.home:  # Changed >= to >
+        if (
+            self.inning.number > 9
+            and self.inning.top
+            and self.score.away > self.score.home
+        ):  # Changed >= to >
             return True
-        
+
         # Extra innings complete (full inning), not tied - game over
         if self._is_extra_innings_complete():
             return True
-        
+
         return False
 
     def get_result(self) -> GameResult:
         """
         Get final game result.
-        
+
         Returns:
             GameResult with scores and winner
-            
+
         Raises:
             RuntimeError: If game is not over
         """
         if not self.is_over():
             raise RuntimeError("Cannot get result - game not over")
-        
-        winner = self.home.record.mascot if self.score.home > self.score.away else self.away.record.mascot
+
+        winner = (
+            self.home.record.mascot
+            if self.score.home > self.score.away
+            else self.away.record.mascot
+        )
         margin = abs(self.score.home - self.score.away)
-        
+
         return GameResult(
             home_team=self.home.record.mascot,
             away_team=self.away.record.mascot,
@@ -300,7 +323,7 @@ class Game:
     def get_context(self) -> GameContext:
         """
         Get immutable snapshot of current game state.
-        
+
         Returns:
             GameContext with current game situation
         """
@@ -313,8 +336,12 @@ class Game:
             bases_occupied=self.bases.occupied_map(),
             home_score=self.score.home,
             away_score=self.score.away,
-            current_batter=self.current_batter.player.name if self.current_batter else "None",
-            current_pitcher=self.current_pitcher.name if self.current_pitcher else "None",
+            current_batter=(
+                self.current_batter.player.name if self.current_batter else "None"
+            ),
+            current_pitcher=(
+                self.current_pitcher.name if self.current_pitcher else "None"
+            ),
         )
 
     # ------------------------------------------------------------------
@@ -345,12 +372,12 @@ class Game:
     def _post_event(self) -> None:
         """
         Observe game state after each event and advance structure.
-        
+
         This is called after EVERY event, including follow-ups.
         Handles:
         - Advancing batter after PA complete
         - Ending half-inning when 3 outs
-        
+
         Raises:
             GameStateError: If PA complete but events still queued
         """
@@ -382,13 +409,13 @@ class Game:
     def _resolve_intent(self, intent: GameIntent) -> list[GameEvent]:
         """
         Resolve intent into events.
-        
+
         Args:
             intent: Game intent to resolve
-            
+
         Returns:
             List of events (always non-empty)
-            
+
         Raises:
             RuntimeError: If resolver returns no events
         """
@@ -404,23 +431,23 @@ class Game:
     def _enqueue(self, events: list[GameEvent]) -> None:
         """
         Enqueue events to the back of the queue (FIFO).
-        
+
         Args:
             events: Events to enqueue
-            
+
         Raises:
             RuntimeError: If events list is empty
         """
         if not events:
             raise RuntimeError("Cannot enqueue empty event list")
-        
+
         self._queue.extend(events)
         self.logger.trace(f"[QUEUE] Added {len(events)} events to back")
 
     def _dequeue(self) -> GameEvent:
         """
         Dequeue one event from the front (FIFO).
-        
+
         Returns:
             Next event to process
         """
@@ -429,10 +456,10 @@ class Game:
     def _enqueue_left(self, events: list[GameEvent] | GameEvent) -> None:
         """
         Enqueue events to the front of the queue (LIFO for follow-ups).
-        
+
         Follow-up events are processed before pre-existing events.
         Events are added in reverse order to preserve execution order.
-        
+
         Args:
             events: Single event or list of events
         """
@@ -455,7 +482,7 @@ class Game:
     def _half_inning_over(self) -> bool:
         """
         Check if current half-inning should end.
-        
+
         Returns:
             True if 3 outs recorded
         """
@@ -464,9 +491,9 @@ class Game:
     def _is_extra_innings_complete(self) -> bool:
         """
         Check if extra innings are complete.
-        
+
         Extra innings end after a full inning (top half) with score not tied.
-        
+
         Returns:
             True if extra innings complete
         """
@@ -476,7 +503,7 @@ class Game:
             return False  # Still in same inning
         if self.score.is_tied:
             return False  # Continue if tied
-        
+
         # winner = self.home.record.mascot if self.score.home > self.score.away else self.away.record.mascot
         # self.logger.info(f"🏆 Extra innings complete - {winner} wins")
         return True
@@ -488,35 +515,39 @@ class Game:
     def _advance_batter(self) -> None:
         """Advance to the next batter and reset PA state."""
         self.logger.trace("Advancing to next batter")
-        self.logger.trace(f"Previous batter: {self.current_batter.player.name if self.current_batter else 'None'}")
-        
+        self.logger.trace(
+            f"Previous batter: {self.current_batter.player.name if self.current_batter else 'None'}"
+        )
+
         self.current_batter = self._next_batter()
         self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
         self._plate_appearance_complete = False
         self._pa_end_reason = None
-        
+
         self.logger.trace(f"Next batter: {self.current_batter.player.name}")
 
     def _end_half_inning(self) -> None:
         """End the current half-inning and transition to next."""
-        
+
         self.logger.info(f"📊 End of {self.inning}")
-        self.logger.info(f"Score: {self.away.record.mascot} {self.score.away} - {self.home.record.mascot} {self.score.home}")
-        
+        self.logger.info(
+            f"Score: {self.away.record.mascot} {self.score.away} - {self.home.record.mascot} {self.score.home}"
+        )
+
         # Advance inning
         self.inning.increment()
         if self.is_over():
             return
-        
+
         # Reset state
         self.bases.clear()
         self.count.reset()
         self._queue.clear()
-        
+
         # Swap teams
         self._swap_teams()
         self._sync_players()
-        
+
         self.logger.info(f"⚾ {self.inning}")
 
     def _swap_teams(self) -> None:
@@ -527,7 +558,7 @@ class Game:
     def _next_batter(self) -> PlayerInGame:
         """
         Get the next batter from the lineup.
-        
+
         Returns:
             Next PlayerInGame to bat
         """
@@ -536,7 +567,7 @@ class Game:
     def _mark_plate_appearance_complete(self, reason: str) -> None:
         """
         Mark the current plate appearance as complete.
-        
+
         Args:
             reason: Why the PA ended (e.g., "strikeout", "walk", "hit")
         """
@@ -558,7 +589,7 @@ class Game:
         """Sync current batter and pitcher from lineups."""
         self.current_batter = self.bat_team.current_batter
         self.current_pitcher = self.pitch_team.current_pitcher
-        
+
         self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
         self.logger.info(f"⚾ Pitching: {self.current_pitcher.name}")
 
@@ -599,19 +630,19 @@ class Game:
     def _debug_queue(self, prefix: str = "") -> None:
         """
         Log current queue contents.
-        
+
         Args:
             prefix: Prefix for log message
         """
         if not self.logger.isEnabledFor(logging.DEBUG):
             return
-        
+
         contents = [e.label() for e in self._queue]
         self.logger.debug(f"{prefix}QUEUE = {contents}")
 
     def print_state(self) -> None:
         """Print current game state (for debugging)."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(f"Game State: {self.game_state_summary}")
         print(f"Context: {self.get_context()}")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")

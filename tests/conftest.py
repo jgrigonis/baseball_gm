@@ -5,7 +5,6 @@ from tests.utils import FakeTeam, FakeRNG
 from src.game.game import Game
 
 
-
 @pytest.fixture
 def home_team():
     return FakeTeam(name="Home")
@@ -36,6 +35,7 @@ def game_no_rng(home_team, away_team):
     game._sync_players()
     return game
 
+
 @pytest.fixture
 def mock_teams():
     """Create mock teams for testing."""
@@ -47,7 +47,7 @@ def mock_teams():
     home.name = "Home Team"
     home.has_lineup = True
     home.players = []
-    
+
     away = Mock()
     away.record = Mock()
     away.record.id = "away-456"
@@ -56,8 +56,9 @@ def mock_teams():
     away.name = "Away Team"
     away.has_lineup = True
     away.players = []
-    
+
     return home, away
+
 
 # This is not accurate
 # @pytest.fixture
