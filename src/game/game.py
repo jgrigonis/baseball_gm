@@ -600,12 +600,12 @@ class Game:
     @property
     def batting_team_name(self) -> str:
         """Name of team currently batting."""
-        return self.bat_team.record.mascot
+        return self.bat_team.record.city + " " + self.bat_team.record.mascot
 
     @property
     def pitching_team_name(self) -> str:
         """Name of team currently pitching."""
-        return self.pitch_team.record.mascot
+        return self.pitch_team.record.city + " " + self.pitch_team.record.mascot
 
     @property
     def inning_state(self) -> str:

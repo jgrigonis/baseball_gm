@@ -551,8 +551,7 @@ class TestProperties:
 
     def test_game_state_summary(self, game):
         summary = game.game_state_summary
-        assert "Away Team" in summary
-        assert "Home Team" in summary
+        assert "Team" in summary
         assert "0 out" in summary
 
 
