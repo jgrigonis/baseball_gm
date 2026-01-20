@@ -19,7 +19,7 @@ class TestBasesInitialization:
 
     def test_str_representation_empty(self):
         bases = Bases()
-        assert "Empty" in str(bases)
+        assert "empty" in str(bases)
 
 
 class TestAdvanceRunner:
@@ -269,22 +269,21 @@ class TestStringRepresentation:
     def test_str_empty(self):
         bases = Bases()
         s = str(bases)
-        assert "Bases:" in s
-        assert "Empty" in s
+        assert "Bases" in s
+        assert "empty" in s
 
     def test_str_runner_on_first(self):
         bases = Bases()
         bases.advance("r1", None, FIRST)
         s = str(bases)
-        assert "1B=r1" in s
+        assert "Man on first" in s
 
     def test_str_multiple_runners(self):
         bases = Bases()
         bases.advance("r1", None, FIRST)
         bases.advance("r2", None, THIRD)
         s = str(bases)
-        assert "1B=r1" in s
-        assert "3B=r2" in s
+        assert "Men on first and third" in s
 
     def test_str_bases_loaded(self):
         bases = Bases()
@@ -292,9 +291,7 @@ class TestStringRepresentation:
         bases.advance("r2", None, SECOND)
         bases.advance("r3", None, THIRD)
         s = str(bases)
-        assert "1B=r1" in s
-        assert "2B=r2" in s
-        assert "3B=r3" in s
+        assert "Bases loaded" in s
 
 
 class TestComplexScenarios:

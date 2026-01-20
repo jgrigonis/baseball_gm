@@ -229,8 +229,10 @@ class Game:
 
             if event.should_log():
                 level = event.log_level()
-                self.logger.log(level, event.describe(self))
-                # self.logger.info(event.describe(self))
+                if level:
+                    self.logger.log(level, event.describe(self))
+                else:
+                    self.logger.info(event.describe(self))
             else:
                 self.logger.trace(event.describe(self))
 
