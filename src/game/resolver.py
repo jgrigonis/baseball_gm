@@ -127,25 +127,7 @@ class Resolver:
                 events.append(PlateAppearanceEndEvent(reason="strikeout"))
 
         elif outcome == "foul":
-            # TODO add a _resolve_foul_ball
-            if game.count.strikes + 1 >= 3:
-                r = self.rng.random()  # TODO check for foul tip BETTER
-                if r < 0.05:  # 0.05
-                    self.logger.debug("foul tip strike out ending pa")
-                    events.append(FoulTipThirdStrikeEvent())
-                    events.append(StrikeOutEvent())
-                    events.append(OutRecordedEvent(reason="strikeout"))
-                    events.append(PlateAppearanceEndEvent(reason="strikeout"))
-                else:
-                    events.append(FoulThirdStrikeEvent())
-
-            else:  # less than 2 strikes
-                r = self.rng.random()
-                # TODO check for foul fly ball BETTER
-                if r < 0.05:
-                    events.extend(self._resolve_ball_in_play(intent, game, foul=True))
-                else:
-                    events.append(FoulStrikeEvent(swinging=True))
+            events.extend(self._resolve_foul(intent, game))
 
         elif outcome == "hit_by_pitch":
             events.extend(self._resolve_walk(intent, game, hbp=True))
@@ -305,6 +287,38 @@ class Resolver:
         # End the plate appearance
         events.append(PlateAppearanceEndEvent("home_run"))
 
+        return events
+
+    def _resolve_foul(self, intent, game) -> list[GameEvent]:
+        """
+        Resolve a foul ball.
+
+        Must:
+        - use rng
+        - not mutate game
+        - return concrete events
+        """
+        events: list[GameEvent] = []
+
+        if game.count.strikes + 1 >= 3:
+            r = self.rng.random()  # TODO check for foul tip BETTER
+            if r < 0.05:  # 0.05
+                self.logger.debug("foul tip strike out ending pa")
+                events.append(FoulTipThirdStrikeEvent())
+                events.append(StrikeOutEvent())
+                events.append(OutRecordedEvent(reason="strikeout"))
+                events.append(PlateAppearanceEndEvent(reason="strikeout"))
+            else:
+                events.append(FoulThirdStrikeEvent())
+
+        else:  # less than 2 strikes
+            r = self.rng.random()
+            # TODO check for foul fly ball BETTER
+            if r < 0.05:
+                events.extend(self._resolve_ball_in_play(intent, game, foul=True))
+            else:
+                events.append(FoulStrikeEvent(swinging=True))
+        
         return events
 
     def _resolve_ball_in_play(self, intent, game, foul=False) -> list[GameEvent]:
