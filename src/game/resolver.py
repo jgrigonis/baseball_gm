@@ -17,7 +17,7 @@ from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 
-from src.game.events.strike import StrikeEvent, FoulStrikeEvent
+from src.game.events.strike import StrikeEvent, FoulStrikeEvent, FoulThirdStrikeEvent
 
 from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
@@ -123,7 +123,12 @@ class Resolver:
         elif outcome == "foul":
 
             if game.count.strikes + 1 >= 3:
-                pass  # TODO check for foul tip to catcher
+                r = self.rng.random()  # TODO check for foul tip BETTER
+                if r < 0.05:
+                    pass  # handle tip to caught here
+                else:
+                    events.append(FoulThirdStrikeEvent())
+
             else:  # less than 2 strikes
                 r = self.rng.random()
                 # TODO check for caught foul fly ball BETTER
