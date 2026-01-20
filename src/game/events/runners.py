@@ -19,6 +19,7 @@ RunnerAdvancedEvent reason meanings:
         - May involve RNG, heuristics, or player attributes
 """
 from dataclasses import dataclass
+import logging
 from typing import Optional
 
 from src.game.event import GameEvent
@@ -59,6 +60,9 @@ class RunnerAdvancedEvent(GameEvent):
             ]
 
         return []
+
+    def log_level(self) -> int:
+        return logging.DEBUG  # Important!
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""

@@ -228,7 +228,9 @@ class Game:
             followups = event.apply(self) or []
 
             if event.should_log():
-                self.logger.info(event.describe(self))
+                level = event.log_level()
+                self.logger.log(level, event.describe(self))
+                # self.logger.info(event.describe(self))
             else:
                 self.logger.trace(event.describe(self))
 
@@ -653,15 +655,16 @@ class Game:
     # ------------------------------------------------------------------
     # Output Helpers
     # ------------------------------------------------------------------
-    def format_bases(self):
-        bases = []
-        if self.bases.third:
-            player = self.get_player(self.bases.third)
-            bases.append(f"3B={player.name if player else self.bases.third}")
-        if self.bases.second:
-            player = self.get_player(self.bases.second)
-            bases.append(f"2B={player.name if player else self.bases.second}")
-        if self.bases.first:
-            player = self.get_player(self.bases.first)
-            bases.append(f"1B={player.name if player else self.bases.first}")
-        return "Bases: " + " ".join(bases) if bases else "Bases empty"
+    # This is pseudocode
+    # def format_bases(self):
+    #     bases = []
+    #     if self.bases.third:
+    #         player = self.get_player(self.bases.third)
+    #         bases.append(f"3B={player.name if player else self.bases.third}")
+    #     if self.bases.second:
+    #         player = self.get_player(self.bases.second)
+    #         bases.append(f"2B={player.name if player else self.bases.second}")
+    #     if self.bases.first:
+    #         player = self.get_player(self.bases.first)
+    #         bases.append(f"1B={player.name if player else self.bases.first}")
+    #     return "Bases: " + " ".join(bases) if bases else "Bases empty"

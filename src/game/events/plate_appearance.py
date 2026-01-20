@@ -21,6 +21,10 @@ class PlateAppearanceEndEvent(GameEvent):
     def apply(self, game):
         game._mark_plate_appearance_complete(self.reason)
 
-    def should_log(self) -> bool:
-        """We don't need to log every plate appearnce end."""
-        return False
+    # def should_log(self) -> bool:
+    #     """We don't need to log every plate appearnce end."""
+    #     return False
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"{game.bases}"
