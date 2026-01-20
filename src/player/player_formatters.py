@@ -125,37 +125,6 @@ class PlayerTableFormatter:
         """
         return PlayerFormatter._build_player_fields(player)
 
-    # @staticmethod
-    # def csv_row(player):
-    #     """
-    #     Output the player and skills/ratings as a list.
-    #     Use writerow instead of writeline with it
-    #     """
-    #     playerlist = [
-    #         player.name,
-    #         player.position,
-    #         PlayerFormatter.abbreviate(player.throws),
-    #         PlayerFormatter.abbreviate(player.bats),
-    #         player.skills["clutch"],
-    #         player.skills["speed"],
-    #         player.skills["power"],
-    #         player.skills["eye"],
-    #         player.skills["contact"],
-    #         player.skills["base_running"],
-    #         player.skills["bunting"],
-    #         player.skills["catching"],
-    #         player.skills["infield"],
-    #         player.skills["outfield"],
-    #         player.skills["arm"],
-    #         player.skills["accuracy"],
-    #         player.skills["stamina"],
-    #         player.skills["recovery"],
-    #         player.skills["ground_balls"],
-    #         player.skills["strikes"],
-    #         player.id,
-    #     ]
-    #     return playerlist
-
     @staticmethod
     def csv(player):
         """
@@ -164,42 +133,6 @@ class PlayerTableFormatter:
         """
         fields = PlayerFormatter._build_player_fields(player)
         return ",".join(str(field) for field in fields) + "\n"
-
-    # @staticmethod
-    # def csv(player):
-    #     """
-    #     Output the player and skills/ratings as a single csv line.
-    #     This is a comma separated string all on one line.
-    #     """
-    #     skill_names = [
-    #         "clutch",
-    #         "speed",
-    #         "power",
-    #         "eye",
-    #         "contact",
-    #         "base_running",
-    #         "bunting",
-    #         "catching",
-    #         "infield",
-    #         "outfield",
-    #         "arm",
-    #         "accuracy",
-    #         "stamina",
-    #         "recovery",
-    #         "ground_balls",
-    #         "strikes",
-    #     ]
-
-    #     fields = [
-    #         player.name,
-    #         player.position,
-    #         PlayerFormatter.abbreviate(player.throws),
-    #         PlayerFormatter.abbreviate(player.bats),
-    #         *[player.skills[skill] for skill in skill_names],
-    #         player.id,
-    #     ]
-
-    #     return ",".join(str(field) for field in fields) + "\n"
 
     @staticmethod
     def horizontal_stat_header(team_name="Name"):
