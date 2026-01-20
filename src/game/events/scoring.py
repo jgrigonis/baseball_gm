@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from src.game.event import GameEvent
 
+# TODO in general, we'll want to check if game is over when a run scores
+
 
 @dataclass(frozen=True)
 class RunScoredEvent(GameEvent):

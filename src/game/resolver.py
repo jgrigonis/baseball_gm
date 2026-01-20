@@ -12,12 +12,18 @@ from src.game.events.pitch import PitchThrownEvent
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
+from src.game.events.hits import SingleEvent
 
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 
-from src.game.events.strike import StrikeEvent, FoulStrikeEvent, FoulThirdStrikeEvent
+from src.game.events.strike import (
+    StrikeEvent,
+    FoulStrikeEvent,
+    FoulThirdStrikeEvent,
+    FoulTipThirdStrikeEvent,
+)
 
 from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
@@ -121,20 +127,23 @@ class Resolver:
                 events.append(PlateAppearanceEndEvent(reason="strikeout"))
 
         elif outcome == "foul":
-
+            # TODO add a _resolve_foul_ball
             if game.count.strikes + 1 >= 3:
                 r = self.rng.random()  # TODO check for foul tip BETTER
-                if r < 0.05:
-                    pass  # handle tip to caught here
+                if r < 0.05:  # 0.05
+                    self.logger.debug("foul tip strike out ending pa")
+                    events.append(FoulTipThirdStrikeEvent())
+                    events.append(StrikeOutEvent())
+                    events.append(OutRecordedEvent(reason="strikeout"))
+                    events.append(PlateAppearanceEndEvent(reason="strikeout"))
                 else:
                     events.append(FoulThirdStrikeEvent())
 
             else:  # less than 2 strikes
                 r = self.rng.random()
-                # TODO check for caught foul fly ball BETTER
+                # TODO check for foul fly ball BETTER
                 if r < 0.05:
-                    pass
-                    # TODO event for caught foul fly ball
+                    events.extend(self._resolve_ball_in_play(intent, game, foul=True))
                 else:
                     events.append(FoulStrikeEvent(swinging=True))
 
@@ -171,7 +180,7 @@ class Resolver:
                 events.append(PassedBallEvent())
 
         elif outcome == "home_run":
-            pass  # TODO
+            pass  # TODO add a _resolve_home_run
 
         elif outcome == "in_play":
             self.logger.trace("outcome is in_play")
@@ -201,9 +210,9 @@ class Resolver:
 
         # ball_chance = 0.80
 
-        ball_chance = 0.20
-        in_play_chance = 0.40
-        foul_chance = 0.1
+        ball_chance = 0.20  # was 0.2
+        in_play_chance = 0.40  # was 0.4
+        foul_chance = 0.01  # was 0.01
         hbp_chance = 0.01
         ibb_chance = 0.00
         catcher_interference_chance = 0.001
@@ -248,7 +257,7 @@ class Resolver:
         if r > strike_chance:
             return "strike"
 
-    def _resolve_ball_in_play(self, intent, game) -> list[GameEvent]:
+    def _resolve_ball_in_play(self, intent, game, foul=False) -> list[GameEvent]:
         """
         Resolve a ball put into play.
 
@@ -265,6 +274,13 @@ class Resolver:
         # ------------------------------------------------------------
         # OUT
         # ------------------------------------------------------------
+        if foul:
+            # batter flew out with a foul ball.
+            events.append(OutRecordedEvent(reason="foul_fly_out"))
+            events.append(PlateAppearanceEndEvent("out"))
+
+            return events
+
         if r < 0.60:  # TODO this is very fake
             # Batter is out
             events.append(OutRecordedEvent(reason="ball_in_play"))
@@ -342,6 +358,7 @@ class Resolver:
         # TODO Add Baserunner moving logic here
         events = []
 
+        events.append(SingleEvent(batter_id=intent.batter_id))
         # Advance existing runners (3 -> home, 2 -> 3, 1 -> 2)
         for base in (3, 2, 1):
             runner = game.bases.runner_on(base)

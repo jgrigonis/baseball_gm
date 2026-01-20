@@ -35,3 +35,13 @@ class FoulThirdStrikeEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         return f"Foul ball, remains strike {game.count.strikes}"
+
+
+@dataclass(frozen=True)
+class FoulTipThirdStrikeEvent(GameEvent):
+    def apply(self, game):
+        pass  # nothing actually changes
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Foul ball tipped and caught"
