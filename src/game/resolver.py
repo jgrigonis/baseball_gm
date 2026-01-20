@@ -164,7 +164,6 @@ class Resolver:
 
         elif outcome == "balk":
             if game.bases.is_empty:
-                # TODO perhaps we should add illegal pitch
                 self.logger.trace("Balk called with no runners on.")
             else:
                 events.append(BalkEvent())
@@ -188,7 +187,6 @@ class Resolver:
         elif outcome == "home_run":
             self.logger.trace("home_run")
             events.extend(self._resolve_home_run(intent, game))
-            pass  # TODO add a _resolve_home_run
 
         elif outcome == "in_play":
             self.logger.trace("outcome is in_play")
@@ -213,7 +211,7 @@ class Resolver:
 
         This will be replaced later with real models.
         """
-        # TODO set probs here
+        # TODO set pitch outcome probs here
         # Base probabilities FAKE
 
         # ball_chance = 0.80
@@ -318,7 +316,7 @@ class Resolver:
         - not mutate game
         - return concrete events
         """
-        # TODO set probs here
+        # TODO set in play probs here
         events: list[GameEvent] = []
 
         r = self.rng.random()
