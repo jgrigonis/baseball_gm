@@ -4,7 +4,7 @@ import logging
 from typing import List
 
 from src.game.event import GameEvent
-from src.game.events.ball import BallEvent
+from src.game.events.ball import BallEvent, IllegalPitch
 
 from src.game.events.hbp import HitByPitchEvent
 from src.game.events.noop import NoOpEvent
@@ -12,7 +12,7 @@ from src.game.events.pitch import PitchThrownEvent
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
-from src.game.events.hits import SingleEvent
+from src.game.events.hits import SingleEvent, HomeRunEvent
 
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.intent import GameIntent
@@ -98,6 +98,7 @@ class Resolver:
             "hit_by_pitch",
             "intentional_walk",
             "catcher_interference",
+            "illegal_pitch",
             "balk",
             "wild_pitch",
             "passed_ball",
@@ -107,7 +108,6 @@ class Resolver:
         # ------------------------------------------------------------
         # 3. Emit outcome specific events
         # ------------------------------------------------------------
-        # TODO add cases for missing outcomes.
         if outcome == "ball":
             events.append(BallEvent())
             if game.count.balls + 1 >= 4:
@@ -156,6 +156,12 @@ class Resolver:
         elif outcome == "catcher_interference":
             events.extend(self._resolve_walk(intent, game, catcher_interference=True))
 
+        elif outcome == "illegal_pitch":
+            events.append(IllegalPitch())
+            events.append(BallEvent())
+            if game.count.balls + 1 >= 4:
+                events.extend(self._resolve_walk(intent, game))
+
         elif outcome == "balk":
             if game.bases.is_empty:
                 # TODO perhaps we should add illegal pitch
@@ -180,6 +186,8 @@ class Resolver:
                 events.append(PassedBallEvent())
 
         elif outcome == "home_run":
+            self.logger.trace("home_run")
+            events.extend(self._resolve_home_run(intent, game))
             pass  # TODO add a _resolve_home_run
 
         elif outcome == "in_play":
@@ -216,11 +224,12 @@ class Resolver:
         hbp_chance = 0.01
         ibb_chance = 0.00
         catcher_interference_chance = 0.001
+        illegal_pitch_chance = 0.001
         balk_chance = 0.01
         wild_pitch_chance = 0.01
         passed_ball_chance = 0.01
         home_run_chance = 0.05
-        strike_chance = 0.209
+        strike_chance = 0.208
 
         r = self.rng.random()
 
@@ -242,6 +251,9 @@ class Resolver:
         sum += catcher_interference_chance
         if r < sum:
             return "catcher_interference"
+        sum += illegal_pitch_chance
+        if r < sum:
+            return "illegal_pitch"
         sum += balk_chance
         if r < sum:
             return "balk"
@@ -256,6 +268,46 @@ class Resolver:
             return "home_run"
         if r > strike_chance:
             return "strike"
+
+    def _resolve_home_run(self, intent, game) -> list[GameEvent]:
+        """
+        Resolve a home run.
+
+        Score all the runners on base.
+        Score the batter.
+        """
+        events: list[GameEvent] = []
+
+        events.append(HomeRunEvent(batter_id=intent.batter_id))
+
+        for base in (3, 2, 1):
+            runner = game.bases.runner_on(base)
+            if not runner:
+                continue
+
+            events.append(
+                RunnerAdvancedEvent(
+                    runner_id=runner,
+                    from_base=base,
+                    to_base=4,
+                    reason="home_run",
+                    rbi_batter_id=intent.batter_id,
+                )
+            )
+        # Batter to home
+        events.append(
+            RunnerAdvancedEvent(
+                runner_id=intent.batter_id,
+                from_base=None,
+                to_base=4,
+                reason="home_run",
+            )
+        )
+
+        # End the plate appearance
+        events.append(PlateAppearanceEndEvent("home_run"))
+
+        return events
 
     def _resolve_ball_in_play(self, intent, game, foul=False) -> list[GameEvent]:
         """

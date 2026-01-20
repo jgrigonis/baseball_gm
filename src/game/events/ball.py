@@ -11,3 +11,13 @@ class BallEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         return f"Ball {game.count.balls}"
+
+
+@dataclass(frozen=True)
+class IllegalPitch(GameEvent):
+    def apply(self, game):
+        pass
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"Illegal pitch!"
