@@ -80,10 +80,9 @@ def main():
     away_team.set_lineup()
 
     my_game = Game(home_team=home_team, away_team=away_team, log_level=levl)
-    my_game.play()
+    result = my_game.play()
 
-    logger.info("Home:    " + str(my_game.score.home))
-    logger.info("Visitor: " + str(my_game.score.away))
+    return result
 
 
 if __name__ == "__main__":

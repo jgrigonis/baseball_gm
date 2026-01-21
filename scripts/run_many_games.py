@@ -35,8 +35,12 @@ def get_args():
 
 def main():
     args = get_args()
+    results = []
     for _ in range(args.number):
-        game_runner(args)
+        results.append(game_runner(args))
+
+    for result in results:
+        print(result)
 
 
 if __name__ == "__main__":
