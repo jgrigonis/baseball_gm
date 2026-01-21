@@ -57,7 +57,7 @@ def cli():
 
 
 def main(args):
-    print(args)
+    # print(args)
     # args = get_args()
     levl = logging.INFO
     if args.debug:

@@ -89,7 +89,7 @@ class Resolver:
         # ------------------------------------------------------------
         outcome = self._determine_pitch_outcome(intent, game)
         self.logger.trace(outcome)
-        print(outcome)
+        # print(outcome)
         # sanity check
         assert outcome in (
             "ball",
@@ -200,10 +200,9 @@ class Resolver:
         This will be replaced later with real models.
         """
         # self.logger.trace("_determine_pitch_outcome")
-        self.set_probs()
-        # adjust probs for player and situation
-        event = self.random_event()
-        return event
+        probs = self.set_probs()
+        # TODO adjust probs for player and situation
+        return self.random_event(probs)
 
         # TODO set pitch outcome probs here
         # Base probabilities FAKE
@@ -265,7 +264,7 @@ class Resolver:
         """
         Set the initial probs, for all possible pitch outcomes
         """
-        self.probs = {
+        probs = {
             "ball": 10800, # yes
             "foul": 5100, # yes
             "home_run": 280, # yes
@@ -281,32 +280,21 @@ class Resolver:
             # add called_strike
             # sdd swinging_strike
         }
+        return probs
 
+        # TODO figure out these:
+        # "caught_stealing": 0, # concurrent event
+        # "caught_stealing_third": 0, # concurrent event
+        # "caught_stealing_home": 0, # concurrent event
+        # "steal": 0, # concurrent event
+        # "steal_third": 0, # concurrent event
+        # "steal_home": 0, # concurrent event
 
-            # "caught_stealing": 0, # concurrent event
-            # "caught_stealing_third": 0, # concurrent event
-            # "caught_stealing_home": 0, # concurrent event
-            # "steal": 0, # concurrent event
-            # "steal_third": 0, # concurrent event
-            # "steal_home": 0, # concurrent event
+        # "picked_off": 0, # pre-pitch
+        # "picked_off_second": 0, # pre-pitch
+        # "picked_off_third": 0, # pre-pitch
 
-            # "picked_off": 0, # pre-pitch
-            # "picked_off_second": 0, # pre-pitch
-            # "picked_off_third": 0, # pre-pitch
-
-            # these are for in_play:
-            # "fly_out": 2050, # in_play_chance
-            # "ground_out": 2050, # in_play_chance
-            # "single": 1350, # in_play_chance
-            # "double": 360, # in_play_chance
-            # "triple": 45, # in_play_chance
-            # "double_play": 0, # in_play_chance
-            # "fielders_choice": 0, # in_play_chance
-            # "sac_fly": 0, # in_play_chance
-            # "sac_bunt": 0, # in_play_chance
-            # "triple_play": 0, # in_play_chance
-
-    def random_event(self):
+    def random_event(self, probs):
         """
         Use a weighted probability. `probs` is a dictionary of events
         and their probability as an integer.
@@ -320,22 +308,21 @@ class Resolver:
         Whichever probability it ends on, return that event.
 
         """
-        # TODO how is this returning None?
-        if self.probs is None or self.probs == {}:
-            raise ValueError(f"Probabilities not set: {self.probs}")
-        rand_num = self.rng.random() * sum(self.probs.values())
-        print(rand_num)
-        print(sum(self.probs.values()))
-        for index, value in enumerate(self.probs.values()):
+        if probs is None or probs == {}:
+            raise ValueError(f"Probabilities not set: {probs}")
+        rand_num = self.rng.random() * sum(probs.values())
+        # print(rand_num)
+        # print(sum(probs.values()))
+        for index, value in enumerate(probs.values()):
             rand_num -= value
             if rand_num <= 0:
-                return list(self.probs)[index]
+                return list(probs)[index]
 
     def set_in_play_probs(self):
         """
         Set the in play probs, for all possible outcomes
         """
-        self.probs = {
+        in_play_probs = {
             "fly_out": 2050, # in_play_chance
             "ground_out": 2050, # in_play_chance
             "single": 1350, # in_play_chance
@@ -347,6 +334,7 @@ class Resolver:
             "sac_bunt": 0, # in_play_chance
             "triple_play": 0, # in_play_chance
         }
+        return in_play_probs
 
     def _resolve_ball_in_play(self, intent, game, foul=False) -> list[GameEvent]:
         """
@@ -357,10 +345,26 @@ class Resolver:
         - not mutate game
         - return concrete events
         """
-        self.set_in_play_probs()
-        # adjust in play probs
-        # TODO set in play probs here
+        probs = self.set_in_play_probs()
+        # TODO adjust in play probs
+        outcome = self.random_event(probs)
+        # TODO handle the event here.
+
+        assert outcome in (
+            "fly_out",
+            "ground_out",
+            "single",
+            "double",
+            "triple",
+            "double_play",
+            "fielders_choice",
+            "sac_fly",
+            "sac_bunt",
+            "triple_play",
+        )
+
         events: list[GameEvent] = []
+
 
         r = self.rng.random()
 
