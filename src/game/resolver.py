@@ -21,8 +21,8 @@ from src.game.intents.pitch import PitchIntent
 from src.game.events.strike import (
     StrikeEvent,
     FoulStrikeEvent,
-    FoulThirdStrikeEvent,
-    FoulTipThirdStrikeEvent,
+    FouledOffThirdStrikeEvent,
+    FoulTipCaughtThirdStrikeEvent,
 )
 
 from src.game.events.strikeout import StrikeOutEvent
@@ -88,6 +88,8 @@ class Resolver:
         # 2. Determine outcome (pure decision)
         # ------------------------------------------------------------
         outcome = self._determine_pitch_outcome(intent, game)
+        self.logger.trace(outcome)
+        print(outcome)
         # sanity check
         assert outcome in (
             "ball",
@@ -155,6 +157,8 @@ class Resolver:
                 # This should never actually happen
                 self.logger.trace("Wild Pitch occured with no runners on.")
             else:
+                # TODO Are we properly calling a ball here?
+                # TODO if it walks, do we double advance runners?
                 events.append(WildPitchEvent())
 
         elif outcome == "passed_ball":
@@ -164,6 +168,8 @@ class Resolver:
                 # covered elsewhere
                 self.logger.trace("Passed Ball occured with no runners on.")
             else:
+                # TODO Are we properly calling a ball here?
+                # TODO if it walks, do we double advance runners?
                 events.append(PassedBallEvent())
 
         elif outcome == "home_run":
@@ -193,6 +199,12 @@ class Resolver:
 
         This will be replaced later with real models.
         """
+        # self.logger.trace("_determine_pitch_outcome")
+        self.set_probs()
+        # adjust probs for player and situation
+        event = self.random_event()
+        return event
+
         # TODO set pitch outcome probs here
         # Base probabilities FAKE
 
@@ -249,6 +261,131 @@ class Resolver:
         if r > strike_chance:
             return "strike"
 
+    def set_probs(self):
+        """
+        Set the initial probs, for all possible pitch outcomes
+        """
+        self.probs = {
+            "ball": 10800, # yes
+            "foul": 5100, # yes
+            "home_run": 280, # yes
+            "hit_by_pitch": 60, # yes
+            "balk": 0, # yes only with runners on base
+            "illegal_pitch": 0, # yes only with bases empty
+            "catcher_interference": 0, # yes
+            "intentional_walk": 0, # yes
+            "wild_pitch": 0, # yes
+            "passed_ball": 0, # yes
+            "in_play": 5855, # in play
+            "strike": 7100, # replace with the 2 below
+            # add called_strike
+            # sdd swinging_strike
+        }
+
+
+            # "caught_stealing": 0, # concurrent event
+            # "caught_stealing_third": 0, # concurrent event
+            # "caught_stealing_home": 0, # concurrent event
+            # "steal": 0, # concurrent event
+            # "steal_third": 0, # concurrent event
+            # "steal_home": 0, # concurrent event
+
+            # "picked_off": 0, # pre-pitch
+            # "picked_off_second": 0, # pre-pitch
+            # "picked_off_third": 0, # pre-pitch
+
+            # these are for in_play:
+            # "fly_out": 2050, # in_play_chance
+            # "ground_out": 2050, # in_play_chance
+            # "single": 1350, # in_play_chance
+            # "double": 360, # in_play_chance
+            # "triple": 45, # in_play_chance
+            # "double_play": 0, # in_play_chance
+            # "fielders_choice": 0, # in_play_chance
+            # "sac_fly": 0, # in_play_chance
+            # "sac_bunt": 0, # in_play_chance
+            # "triple_play": 0, # in_play_chance
+
+    def random_event(self):
+        """
+        Use a weighted probability. `probs` is a dictionary of events
+        and their probability as an integer.
+
+        algorithm: sum up all the integer probabilities. Generate a
+        random number between 0 and that sum. Step through the
+        dictionary of probabilities subtracting its value from the
+        random number until you get it lower than 0. This is guaranteed
+        to happen.
+
+        Whichever probability it ends on, return that event.
+
+        """
+        # TODO how is this returning None?
+        if self.probs is None or self.probs == {}:
+            raise ValueError(f"Probabilities not set: {self.probs}")
+        rand_num = self.rng.random() * sum(self.probs.values())
+        print(rand_num)
+        print(sum(self.probs.values()))
+        for index, value in enumerate(self.probs.values()):
+            rand_num -= value
+            if rand_num <= 0:
+                return list(self.probs)[index]
+
+    def set_in_play_probs(self):
+        """
+        Set the in play probs, for all possible outcomes
+        """
+        self.probs = {
+            "fly_out": 2050, # in_play_chance
+            "ground_out": 2050, # in_play_chance
+            "single": 1350, # in_play_chance
+            "double": 360, # in_play_chance
+            "triple": 45, # in_play_chance
+            "double_play": 0, # in_play_chance
+            "fielders_choice": 0, # in_play_chance
+            "sac_fly": 0, # in_play_chance
+            "sac_bunt": 0, # in_play_chance
+            "triple_play": 0, # in_play_chance
+        }
+
+    def _resolve_ball_in_play(self, intent, game, foul=False) -> list[GameEvent]:
+        """
+        Resolve a ball put into play.
+
+        Must:
+        - use rng
+        - not mutate game
+        - return concrete events
+        """
+        self.set_in_play_probs()
+        # adjust in play probs
+        # TODO set in play probs here
+        events: list[GameEvent] = []
+
+        r = self.rng.random()
+
+        # ------------------------------------------------------------
+        # OUT
+        # ------------------------------------------------------------
+        if foul:
+            # batter flew out with a foul ball.
+            events.append(OutRecordedEvent(reason="foul_fly_out"))
+            events.append(PlateAppearanceEndEvent("out"))
+
+            return events
+
+        if r < 0.60:  # TODO this is very fake
+            # Batter is out
+            events.append(OutRecordedEvent(reason="ball_in_play"))
+            events.append(PlateAppearanceEndEvent("out"))
+
+            return events
+
+        # ------------------------------------------------------------
+        # SINGLE
+        # ------------------------------------------------------------
+        return self._resolve_single(intent, game)
+
     def _resolve_home_run(self, intent, game) -> list[GameEvent]:
         """
         Resolve a home run.
@@ -304,12 +441,12 @@ class Resolver:
             r = self.rng.random()  # TODO check for foul tip BETTER
             if r < 0.05:  # 0.05
                 self.logger.debug("foul tip strike out ending pa")
-                events.append(FoulTipThirdStrikeEvent())
+                events.append(FoulTipCaughtThirdStrikeEvent())
                 events.append(StrikeOutEvent())
                 events.append(OutRecordedEvent(reason="strikeout"))
                 events.append(PlateAppearanceEndEvent(reason="strikeout"))
             else:
-                events.append(FoulThirdStrikeEvent())
+                events.append(FouledOffThirdStrikeEvent())
 
         else:  # less than 2 strikes
             r = self.rng.random()
@@ -320,42 +457,6 @@ class Resolver:
                 events.append(FoulStrikeEvent(swinging=True))
         
         return events
-
-    def _resolve_ball_in_play(self, intent, game, foul=False) -> list[GameEvent]:
-        """
-        Resolve a ball put into play.
-
-        Must:
-        - use rng
-        - not mutate game
-        - return concrete events
-        """
-        # TODO set in play probs here
-        events: list[GameEvent] = []
-
-        r = self.rng.random()
-
-        # ------------------------------------------------------------
-        # OUT
-        # ------------------------------------------------------------
-        if foul:
-            # batter flew out with a foul ball.
-            events.append(OutRecordedEvent(reason="foul_fly_out"))
-            events.append(PlateAppearanceEndEvent("out"))
-
-            return events
-
-        if r < 0.60:  # TODO this is very fake
-            # Batter is out
-            events.append(OutRecordedEvent(reason="ball_in_play"))
-            events.append(PlateAppearanceEndEvent("out"))
-
-            return events
-
-        # ------------------------------------------------------------
-        # SINGLE
-        # ------------------------------------------------------------
-        return self._resolve_single(intent, game)
 
     def _resolve_walk(
         self, intent, game, hbp=False, intentional=False, catcher_interference=False

@@ -28,7 +28,7 @@ class FoulStrikeEvent(GameEvent):
 
 
 @dataclass(frozen=True)
-class FoulThirdStrikeEvent(GameEvent):
+class FouledOffThirdStrikeEvent(GameEvent):
     def apply(self, game):
         pass  # nothing actually changes
 
@@ -38,7 +38,7 @@ class FoulThirdStrikeEvent(GameEvent):
 
 
 @dataclass(frozen=True)
-class FoulTipThirdStrikeEvent(GameEvent):
+class FoulTipCaughtThirdStrikeEvent(GameEvent):
     def apply(self, game):
         pass  # nothing actually changes
 
