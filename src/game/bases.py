@@ -124,7 +124,7 @@ class Bases:
         """
         occupied = {}
 
-        for base in (1, 2, 3):
+        for base in (FIRST, SECOND, THIRD):
             runner = self.runner_on(base)
             if runner is not None:
                 occupied[base] = runner

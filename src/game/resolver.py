@@ -17,7 +17,7 @@ from src.game.events.fielders_choice import FieldersChoiceEvent
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
-
+from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
 from src.game.events.strike import (
     StrikeEvent,
     FoulStrikeEvent,
@@ -349,7 +349,7 @@ class Resolver:
 
         events.append(HomeRunEvent(batter_id=intent.batter_id))
 
-        for base in (3, 2, 1):
+        for base in (THIRD, SECOND, FIRST):
             runner = game.bases.runner_on(base)
             if not runner:
                 continue
@@ -358,7 +358,7 @@ class Resolver:
                 RunnerAdvancedEvent(
                     runner_id=runner,
                     from_base=base,
-                    to_base=4,
+                    to_base=HOME,
                     reason="home_run",
                     rbi_batter_id=intent.batter_id,
                 )
@@ -368,7 +368,7 @@ class Resolver:
             RunnerAdvancedEvent(
                 runner_id=intent.batter_id,
                 from_base=None,
-                to_base=4,
+                to_base=HOME,
                 reason="home_run",
             )
         )
@@ -497,7 +497,7 @@ class Resolver:
 
         events.append(SingleEvent(batter_id=intent.batter_id))
         # Advance existing runners (3 -> home, 2 -> 3, 1 -> 2)
-        for base in (3, 2, 1):
+        for base in (THIRD, SECOND, FIRST):
             runner = game.bases.runner_on(base)
             if not runner:
                 continue
@@ -613,6 +613,8 @@ class Resolver:
 
     def _resolve_double_play(self, intent, game):
         """
+        Should raise an error if no runner on base.
+
         Resolve a double play:
         - Default runner on first is out via force
         - And batter/runner is out
@@ -646,7 +648,7 @@ class Resolver:
 
         # No runner was on first, but we still need a double play
         # try third next.
-        if game.bases.runner_on(THIRD):
+        elif game.bases.runner_on(THIRD):
             events.append(OutRecordedEvent(reason="double_play"))
             events.append(OutRecordedEvent(reason="double_play"))
             events.append(
@@ -657,18 +659,19 @@ class Resolver:
                 )
             )
             # TODO Check if other runners advanced, this assumes the double play put out the runner on third and the batter.
-
-        # must be a runner on second.
-        # No other runners
-        events.append(OutRecordedEvent(reason="double_play"))
-        events.append(OutRecordedEvent(reason="double_play"))
-        events.append(
-            RunnerRemovedEvent(
-                runner_id=game.bases.runner_on(SECOND),
-                from_base=SECOND,
-                reason="double_play",
+        
+        else:
+            # must be a runner on second.
+            # No other runners
+            events.append(OutRecordedEvent(reason="double_play"))
+            events.append(OutRecordedEvent(reason="double_play"))
+            events.append(
+                RunnerRemovedEvent(
+                    runner_id=game.bases.runner_on(SECOND),
+                    from_base=SECOND,
+                    reason="double_play",
+                )
             )
-        )
 
         # End the plate appearance
         events.append(PlateAppearanceEndEvent("double_play"))
@@ -693,7 +696,9 @@ class Resolver:
         another runner, and that play allows the run to cross the plate before
         the defense gets an out on the batter or another forced runner.
 
-        - The default is one out, but there doesn't need to be an out necessarily
+        The default is one out, but there doesn't need to be an out necessarily
+
+        There should be an error if no runners on
 
         algorithm:
         - pick one runner to put out, move all other runners forward one base.
@@ -761,10 +766,83 @@ class Resolver:
                 runner_id=intent.batter_id,
                 from_base=None,
                 to_base=FIRST,
-                reason="single",
+                reason="fielders_choice",
             )
         )
         events.append(PlateAppearanceEndEvent("fielders_choice"))
+        return events
+
+    def _resolve_sac_bunt(self, intent, game):
+        """
+        A sac bunt must be a bunt. There can't be 2 outs.
+        
+        Should return an error if called with 2 outs or with
+        no runner on
+
+        - move a runner from 1st to 2nd if no other runners
+        - move a runner from 2nd to third if no other runners
+        - score a runner from 3rd if no other runners
+        - all runners should advance if multiple.
+        - put out the batter
+        """
+        events: list[GameEvent] = []
+
+        events.append(SacBuntEvent(batter_id=intent.batter_id))
+        events.append(OutRecordedEvent(reason="sac_bunt"))
+
+        # Single base runner
+        for base in (THIRD, SECOND, FIRST):
+            runner = game.bases.runner_on(base)
+            if not runner:
+                continue
+
+            events.append(
+                RunnerAdvancedEvent(
+                    runner_id=runner,
+                    from_base=base,
+                    to_base=base + 1,
+                    reason="sac_bunt",
+                    rbi_batter_id=intent.batter_id,
+                )
+            )
+        
+        events.append(PlateAppearanceEndEvent("sac_bunt"))
+
+        return events
+
+    def _resolve_sac_fly(self, intent, game):
+        """
+        A sac fly must result in a score. There can't be 2 outs.
+
+        Should return an error if called with 2 outs or with
+        no runner on third
+
+        - score the runner on third
+        - put out the batter
+        - other runs could possibly advance (TODO)
+        """
+        events: list[GameEvent] = []
+        # TODO Other runners could also advance possibly
+
+        events.append(SacFlyEvent(batter_id=intent.batter_id))
+        events.append(OutRecordedEvent(reason="sac_fly"))
+
+        runner = game.bases.runner_on(THIRD)
+        if runner:
+            events.append(
+                RunnerAdvancedEvent(
+                    runner_id=runner,
+                    from_base=THIRD,
+                    to_base=HOME,
+                    reason="sac_fly",
+                    rbi_batter_id=intent.batter_id,
+                )
+            )
+        else:
+            raise RuntimeError("Sac Fly with no runner on third")
+        
+        events.append(PlateAppearanceEndEvent("sac_fly"))
+
         return events
 
     def _resolve_triple_play(self, intent, game):
