@@ -539,16 +539,16 @@ class Resolver:
 
         events.append(DoubleEvent(batter_id=intent.batter_id))
         # Advance existing runners (3 -> home, 2 -> 3, 1 -> 2)
-        for base in (3, 2, 1):
+        for base in (THIRD, SECOND, FIRST):
             runner = game.bases.runner_on(base)
             if not runner:
                 continue
-
+            
             events.append(
                 RunnerAdvancedEvent(
                     runner_id=runner,
                     from_base=base,
-                    to_base=base + 2,
+                    to_base=min(base + 2, HOME),
                     reason="double",
                     rbi_batter_id=intent.batter_id,
                 )
