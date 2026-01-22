@@ -629,7 +629,13 @@ class Resolver:
 
         - Plate appearance ends
         """
-        # TODO Add Baserunner moving logic here
+        # TODO Add Baserunner moving logic to this function
+        # Validate: cannot have 2 outs
+        if game.outs >= 2:
+            raise RuntimeError("Double play cannot occur with 2 outs")
+        # Validate: must have at least one runner on base
+        if game.bases.is_empty:
+            raise RuntimeError("Double play cannot occur with no runners on base")
         events: list[GameEvent] = []
 
         events.append(DoublePlayEvent(batter_id=intent.batter_id))
@@ -707,6 +713,13 @@ class Resolver:
         - Else the runner on second
         - Place the batter on first
         """
+        # Validate: cannot have 2 outs
+        if game.outs >= 2:
+            raise RuntimeError("Fielder's choice cannot occur with 2 outs")
+
+        # Validate: must have at least one runner on base
+        if game.bases.is_empty:
+            raise RuntimeError("Fielder's choice cannot occur with no runners on base")
         events: list[GameEvent] = []
 
         events.append(FieldersChoiceEvent(batter_id=intent.batter_id))
@@ -785,6 +798,14 @@ class Resolver:
         - all runners should advance if multiple.
         - put out the batter
         """
+        # Validate: cannot have 2 outs
+        if game.outs >= 2:
+            raise RuntimeError("Sacrifice bunt cannot occur with 2 outs")
+        
+        # Validate: must have at least one runner on base
+        if game.bases.is_empty:
+            raise RuntimeError("Sacrifice bunt cannot occur with no runners on base")
+
         events: list[GameEvent] = []
 
         events.append(SacBuntEvent(batter_id=intent.batter_id))
@@ -821,6 +842,15 @@ class Resolver:
         - put out the batter
         - other runs could possibly advance (TODO)
         """
+        # Validate: cannot have 2 outs
+        if game.outs >= 2:
+            raise RuntimeError("Sacrifice fly cannot occur with 2 outs")
+        
+        # Validate: must have runner on third (already present but move it up)
+        runner = game.bases.runner_on(THIRD)
+        if not runner:
+            raise RuntimeError("Sacrifice fly requires a runner on third base")
+
         events: list[GameEvent] = []
         # TODO Other runners could also advance possibly
 
@@ -828,18 +858,15 @@ class Resolver:
         events.append(OutRecordedEvent(reason="sac_fly"))
 
         runner = game.bases.runner_on(THIRD)
-        if runner:
-            events.append(
-                RunnerAdvancedEvent(
-                    runner_id=runner,
-                    from_base=THIRD,
-                    to_base=HOME,
-                    reason="sac_fly",
-                    rbi_batter_id=intent.batter_id,
-                )
+        events.append(
+            RunnerAdvancedEvent(
+                runner_id=runner,
+                from_base=THIRD,
+                to_base=HOME,
+                reason="sac_fly",
+                rbi_batter_id=intent.batter_id,
             )
-        else:
-            raise RuntimeError("Sac Fly with no runner on third")
+        )
         
         events.append(PlateAppearanceEndEvent("sac_fly"))
 
@@ -856,6 +883,10 @@ class Resolver:
 
         - Plate appearance ends
         """
+        if game.outs > 0:
+            raise RuntimeError("Triple play cannot occur with outs already in the inning.")
+        if len(game.bases.occupied_map()) < 2:
+            raise RuntimeError("Triple play cannot occur without at least 2 runners on base.")
         events: list[GameEvent] = []
 
         events.append(TriplePlayEvent(batter_id=intent.batter_id))

@@ -16,7 +16,7 @@ class BallEvent(GameEvent):
 @dataclass(frozen=True)
 class IllegalPitch(GameEvent):
     def apply(self, game):
-        pass
+        pass # ball is added separately
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
