@@ -12,8 +12,8 @@ from src.game.events.pitch import PitchThrownEvent
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
-from src.game.events.hits import SingleEvent, HomeRunEvent
-
+from src.game.events.hits import SingleEvent, DoubleEvent, TripleEvent, HomeRunEvent
+from src.game.events.fielders_choice import FieldersChoiceEvent
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
@@ -28,10 +28,12 @@ from src.game.events.strike import (
 from src.game.events.strikeout import StrikeOutEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import OutRecordedEvent
-from src.game.bases import FIRST  # SECOND, THIRD, HOME
+from src.game.events.double_play import DoublePlayEvent
+from src.game.events.triple_play import TriplePlayEvent
+from src.game.bases import FIRST, SECOND, THIRD, HOME
 
 from src.game.rules.force_advancement import force_advance_chain
-from src.game.events.runners import RunnerAdvancedEvent
+from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 
 
 class Resolver:
@@ -89,7 +91,6 @@ class Resolver:
         # ------------------------------------------------------------
         outcome = self._determine_pitch_outcome(intent, game)
         self.logger.trace(outcome)
-        # print(outcome)
         # sanity check
         assert outcome in (
             "ball",
@@ -199,84 +200,28 @@ class Resolver:
 
         This will be replaced later with real models.
         """
-        # self.logger.trace("_determine_pitch_outcome")
+        self.logger.trace("_determine_pitch_outcome")
         probs = self.set_probs()
         # TODO adjust probs for player and situation
         return self.random_event(probs)
-
-        # TODO set pitch outcome probs here
-        # Base probabilities FAKE
-
-        # ball_chance = 0.80
-
-        ball_chance = 0.20  # was 0.2
-        in_play_chance = 0.40  # was 0.4
-        foul_chance = 0.01  # was 0.01
-        hbp_chance = 0.01
-        ibb_chance = 0.00
-        catcher_interference_chance = 0.001
-        illegal_pitch_chance = 0.001
-        balk_chance = 0.01
-        wild_pitch_chance = 0.01
-        passed_ball_chance = 0.01
-        home_run_chance = 0.05
-        strike_chance = 0.208
-
-        r = self.rng.random()
-
-        sum = ball_chance
-        if r < sum:
-            return "ball"
-        sum += in_play_chance
-        if r < sum:
-            return "in_play"
-        sum += foul_chance
-        if r < sum:
-            return "foul"
-        sum += hbp_chance
-        if r < sum:
-            return "hit_by_pitch"
-        sum += ibb_chance
-        if r < sum:
-            return "intentional_walk"
-        sum += catcher_interference_chance
-        if r < sum:
-            return "catcher_interference"
-        sum += illegal_pitch_chance
-        if r < sum:
-            return "illegal_pitch"
-        sum += balk_chance
-        if r < sum:
-            return "balk"
-        sum += wild_pitch_chance
-        if r < sum:
-            return "wild_pitch"
-        sum += passed_ball_chance
-        if r < sum:
-            return "passed_ball"
-        sum += home_run_chance
-        if r < sum:
-            return "home_run"
-        if r > strike_chance:
-            return "strike"
 
     def set_probs(self):
         """
         Set the initial probs, for all possible pitch outcomes
         """
         probs = {
-            "ball": 10800, # yes
-            "foul": 5100, # yes
-            "home_run": 280, # yes
-            "hit_by_pitch": 60, # yes
-            "balk": 0, # yes only with runners on base
-            "illegal_pitch": 0, # yes only with bases empty
-            "catcher_interference": 0, # yes
-            "intentional_walk": 0, # yes
-            "wild_pitch": 0, # yes
-            "passed_ball": 0, # yes
-            "in_play": 5855, # in play
-            "strike": 7100, # replace with the 2 below
+            "ball": 10800,  # yes
+            "foul": 5100,  # yes
+            "home_run": 280,  # yes
+            "hit_by_pitch": 60,  # yes
+            "balk": 0,  # yes only with runners on base
+            "illegal_pitch": 0,  # yes only with bases empty
+            "catcher_interference": 0,  # yes
+            "intentional_walk": 0,  # yes
+            "wild_pitch": 0,  # yes
+            "passed_ball": 0,  # yes
+            "in_play": 5855,  # in play
+            "strike": 7100,  # replace with the 2 below
             # add called_strike
             # sdd swinging_strike
         }
@@ -323,16 +268,16 @@ class Resolver:
         Set the in play probs, for all possible outcomes
         """
         in_play_probs = {
-            "fly_out": 2050, # in_play_chance
-            "ground_out": 2050, # in_play_chance
-            "single": 1350, # in_play_chance
-            "double": 360, # in_play_chance
-            "triple": 45, # in_play_chance
-            "double_play": 0, # in_play_chance
-            "fielders_choice": 0, # in_play_chance
-            "sac_fly": 0, # in_play_chance
-            "sac_bunt": 0, # in_play_chance
-            "triple_play": 0, # in_play_chance
+            "fly_out": 2050,  # in_play_chance
+            "ground_out": 2050,  # in_play_chance
+            "single": 1350,  # in_play_chance
+            "double": 360,  # in_play_chance
+            "triple": 45,  # in_play_chance
+            "double_play": 0,  # in_play_chance
+            "fielders_choice": 0,  # in_play_chance
+            "sac_fly": 0,  # in_play_chance
+            "sac_bunt": 0,  # in_play_chance
+            "triple_play": 0,  # in_play_chance
         }
         return in_play_probs
 
@@ -348,7 +293,6 @@ class Resolver:
         probs = self.set_in_play_probs()
         # TODO adjust in play probs
         outcome = self.random_event(probs)
-        # TODO handle the event here.
 
         assert outcome in (
             "fly_out",
@@ -365,30 +309,34 @@ class Resolver:
 
         events: list[GameEvent] = []
 
-
-        r = self.rng.random()
-
         # ------------------------------------------------------------
-        # OUT
+        # FLY OUT
         # ------------------------------------------------------------
-        if foul:
-            # batter flew out with a foul ball.
-            events.append(OutRecordedEvent(reason="foul_fly_out"))
-            events.append(PlateAppearanceEndEvent("out"))
+        if outcome == "fly_out":
+            events.append(OutRecordedEvent(reason="fly_out"))
+            events.append(PlateAppearanceEndEvent("fly_out"))
+        if outcome == "ground_out":
+            # this should be extremely rare with a runner on first
+            events.append(OutRecordedEvent(reason="ground_out"))
+            events.append(PlateAppearanceEndEvent("ground_out"))
+        if outcome == "single":
+            return self._resolve_single(intent, game)
+        if outcome == "double":
+            return self._resolve_double(intent, game)
+        if outcome == "triple":
+            return self._resolve_triple(intent, game)
+        if outcome == "double_play":
+            return self._resolve_double_play(intent, game)
+        if outcome == "fielders_choice":
+            return self._resolve_fielders_choice(intent, game)
+        if outcome == "sac_fly":
+            return self._resolve_sac_fly(intent, game)
+        if outcome == "sac_bunt":
+            return self._resolve_sac_bunt(intent, game)
+        if outcome == "triple_play":
+            return self._resolve_triple_play(intent, game)
 
-            return events
-
-        if r < 0.60:  # TODO this is very fake
-            # Batter is out
-            events.append(OutRecordedEvent(reason="ball_in_play"))
-            events.append(PlateAppearanceEndEvent("out"))
-
-            return events
-
-        # ------------------------------------------------------------
-        # SINGLE
-        # ------------------------------------------------------------
-        return self._resolve_single(intent, game)
+        return events
 
     def _resolve_home_run(self, intent, game) -> list[GameEvent]:
         """
@@ -449,22 +397,41 @@ class Resolver:
                 events.append(StrikeOutEvent())
                 events.append(OutRecordedEvent(reason="strikeout"))
                 events.append(PlateAppearanceEndEvent(reason="strikeout"))
-            else:
+            elif r < 0.95:
                 events.append(FouledOffThirdStrikeEvent())
+            else:  # TODO check for fly out better
+                events.extend(self._resolve_fly_out_foul(intent, game))
 
         else:  # less than 2 strikes
             r = self.rng.random()
             # TODO check for foul fly ball BETTER
             if r < 0.05:
-                events.extend(self._resolve_ball_in_play(intent, game, foul=True))
+                events.extend(self._resolve_fly_out_foul(intent, game))
             else:
                 events.append(FoulStrikeEvent(swinging=True))
-        
+
+        return events
+
+    def _resolve_fly_out_foul(self, intent, game):
+        """
+        Simply resolves a fly out foul, can happen with 2 strikes or less.
+        """
+        # events = []
+        events: list[GameEvent] = []
+        events.append(OutRecordedEvent(reason="foul_fly_out"))
+        events.append(PlateAppearanceEndEvent("out"))
         return events
 
     def _resolve_walk(
         self, intent, game, hbp=False, intentional=False, catcher_interference=False
     ):
+        """
+        Reolves a walk. Will deal with hit py pitch, and intentional walks as well.
+
+        Also handles the catcher interference case.
+
+        It will force forward runners as necessary to make room for the batter on first.
+        """
         self.logger.trace("Entering _resolve_walk")
         self.logger.debug(game.bases)
 
@@ -525,7 +492,8 @@ class Resolver:
         - Plate appearance ends
         """
         # TODO Add Baserunner moving logic here
-        events = []
+        # events = []
+        events: list[GameEvent] = []
 
         events.append(SingleEvent(batter_id=intent.batter_id))
         # Advance existing runners (3 -> home, 2 -> 3, 1 -> 2)
@@ -549,12 +517,348 @@ class Resolver:
             RunnerAdvancedEvent(
                 runner_id=intent.batter_id,
                 from_base=None,
-                to_base=1,
+                to_base=FIRST,
                 reason="single",
             )
         )
 
         # End the plate appearance
         events.append(PlateAppearanceEndEvent("single"))
+
+        return events
+
+    def _resolve_double(self, intent, game):
+        """
+        Resolve a double:
+        - All runners advance two bases by default
+        - Batter to second
+        - Plate appearance ends
+        """
+        # TODO Add Baserunner moving logic here
+        events: list[GameEvent] = []
+
+        events.append(DoubleEvent(batter_id=intent.batter_id))
+        # Advance existing runners (3 -> home, 2 -> 3, 1 -> 2)
+        for base in (3, 2, 1):
+            runner = game.bases.runner_on(base)
+            if not runner:
+                continue
+
+            events.append(
+                RunnerAdvancedEvent(
+                    runner_id=runner,
+                    from_base=base,
+                    to_base=base + 2,
+                    reason="double",
+                    rbi_batter_id=intent.batter_id,
+                )
+            )
+
+        # Batter to second
+        events.append(
+            RunnerAdvancedEvent(
+                runner_id=intent.batter_id,
+                from_base=None,
+                to_base=SECOND,
+                reason="double",
+            )
+        )
+
+        # End the plate appearance
+        events.append(PlateAppearanceEndEvent("double"))
+
+        return events
+
+    def _resolve_triple(self, intent, game):
+        """
+        Resolve a triple:
+        - All runners score by default
+        - Batter to third
+        - Plate appearance ends
+        """
+        # TODO Add Baserunner moving logic here
+        events: list[GameEvent] = []
+
+        events.append(TripleEvent(batter_id=intent.batter_id))
+        # Advance existing runners (3 -> home, 2 -> 3, 1 -> 2)
+        for base in (THIRD, SECOND, FIRST):
+            runner = game.bases.runner_on(base)
+            if not runner:
+                continue
+
+            events.append(
+                RunnerAdvancedEvent(
+                    runner_id=runner,
+                    from_base=base,
+                    to_base=HOME,
+                    reason="triple",
+                    rbi_batter_id=intent.batter_id,
+                )
+            )
+
+        # Batter to second
+        events.append(
+            RunnerAdvancedEvent(
+                runner_id=intent.batter_id,
+                from_base=None,
+                to_base=THIRD,
+                reason="triple",
+            )
+        )
+
+        # End the plate appearance
+        events.append(PlateAppearanceEndEvent("triple"))
+
+        return events
+
+    def _resolve_double_play(self, intent, game):
+        """
+        Resolve a double play:
+        - Default runner on first is out via force
+        - And batter/runner is out
+
+        - Other runners could advance and potentially score
+        - If no outs
+
+        - If no runner on first, another runner must be put out
+        - plus the batter/runner or another runner
+
+        - There must be two outs.
+
+        - Plate appearance ends
+        """
+        # TODO Add Baserunner moving logic here
+        events: list[GameEvent] = []
+
+        events.append(DoublePlayEvent(batter_id=intent.batter_id))
+
+        if game.bases.runner_on(FIRST):
+            events.append(OutRecordedEvent(reason="double_play"))
+            events.append(OutRecordedEvent(reason="double_play"))
+            events.append(
+                RunnerRemovedEvent(
+                    runner_id=game.bases.runner_on(FIRST),
+                    from_base=FIRST,
+                    reason="double_play",
+                )
+            )
+            # TODO Check if other runners advanced
+
+        # No runner was on first, but we still need a double play
+        # try third next.
+        if game.bases.runner_on(THIRD):
+            events.append(OutRecordedEvent(reason="double_play"))
+            events.append(OutRecordedEvent(reason="double_play"))
+            events.append(
+                RunnerRemovedEvent(
+                    runner_id=game.bases.runner_on(THIRD),
+                    from_base=THIRD,
+                    reason="double_play",
+                )
+            )
+            # TODO Check if other runners advanced, this assumes the double play put out the runner on third and the batter.
+
+        # must be a runner on second.
+        # No other runners
+        events.append(OutRecordedEvent(reason="double_play"))
+        events.append(OutRecordedEvent(reason="double_play"))
+        events.append(
+            RunnerRemovedEvent(
+                runner_id=game.bases.runner_on(SECOND),
+                from_base=SECOND,
+                reason="double_play",
+            )
+        )
+
+        # End the plate appearance
+        events.append(PlateAppearanceEndEvent("double_play"))
+
+        return events
+
+    def _resolve_fielders_choice(self, intent, game):
+        """
+        Fielder's choice can result in no outs.
+
+        The official scorers must deem that had the fielder chosen to throw to
+        1B, that it would have been a routine play.
+
+        If they try to get the lead runner instead and fail, then it would be
+        a fielder's choice.
+
+        I see this more often at home. Fielder throws home to prevent the run,
+        but the runner is safe. The play at 2B is often just as routine, unless
+        it's a bunt.
+
+        A run scores on a fielder's choice when the defense prioritizes getting
+        another runner, and that play allows the run to cross the plate before
+        the defense gets an out on the batter or another forced runner.
+
+        - The default is one out, but there doesn't need to be an out necessarily
+
+        algorithm:
+        - pick one runner to put out, move all other runners forward one base.
+        - If there is a runner on third, pick that one
+        - Else pick the runner on first
+        - Else the runner on second
+        - Place the batter on first
+        """
+        events: list[GameEvent] = []
+
+        events.append(FieldersChoiceEvent(batter_id=intent.batter_id))
+        events.append(OutRecordedEvent(reason="fielders_choice"))
+
+        if game.bases.runner_on(THIRD):
+            events.append(
+                RunnerRemovedEvent(
+                    runner_id=game.bases.runner_on(THIRD),
+                    from_base=THIRD,
+                    reason="fielders_choice",
+                )
+            )
+            for base in (SECOND, FIRST):
+                runner = game.bases.runner_on(base)
+                if not runner:
+                    continue
+
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=base,
+                        to_base=base + 1,
+                        reason="fielders_choice",
+                    )
+                )
+        elif game.bases.runner_on(FIRST):
+            events.append(
+                RunnerRemovedEvent(
+                    runner_id=game.bases.runner_on(FIRST),
+                    from_base=FIRST,
+                    reason="fielders_choice",
+                )
+            )
+            runner = game.bases.runner_on(SECOND)
+            if runner:
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=SECOND,
+                        to_base=THIRD,
+                        reason="fielders_choice",
+                    )
+                )
+        else:
+            events.append(
+                RunnerRemovedEvent(
+                    runner_id=game.bases.runner_on(SECOND),
+                    from_base=SECOND,
+                    reason="fielders_choice",
+                )
+            )
+
+        # Batter to first
+        events.append(
+            RunnerAdvancedEvent(
+                runner_id=intent.batter_id,
+                from_base=None,
+                to_base=FIRST,
+                reason="single",
+            )
+        )
+        events.append(PlateAppearanceEndEvent("fielders_choice"))
+        return events
+
+    def _resolve_triple_play(self, intent, game):
+        """
+        Resolve a triple play:
+        - If bases are loaded, we pick 2 runners randomly to put out
+
+        - Otherwise, both runners are put out from whatever base they are on
+
+        - There must be three outs.
+
+        - Plate appearance ends
+        """
+        events: list[GameEvent] = []
+
+        events.append(TriplePlayEvent(batter_id=intent.batter_id))
+        events.append(OutRecordedEvent(reason="triple_play"))
+        events.append(OutRecordedEvent(reason="triple_play"))
+        events.append(OutRecordedEvent(reason="triple_play"))
+
+        if game.bases.is_loaded():
+            r = self.rng.random()
+            if r < 0.3333:
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(FIRST),
+                        from_base=FIRST,
+                        reason="triple_play",
+                    )
+                )
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(SECOND),
+                        from_base=SECOND,
+                        reason="triple_play",
+                    )
+                )
+            elif r < 0.6666:
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(FIRST),
+                        from_base=FIRST,
+                        reason="triple_play",
+                    )
+                )
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(THIRD),
+                        from_base=THIRD,
+                        reason="triple_play",
+                    )
+                )
+            else:
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(THIRD),
+                        from_base=THIRD,
+                        reason="triple_play",
+                    )
+                )
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(SECOND),
+                        from_base=SECOND,
+                        reason="triple_play",
+                    )
+                )
+        else:  # bases not loaded, must be two runners on, and both are out
+            if game.bases.runner_on(FIRST):
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(FIRST),
+                        from_base=FIRST,
+                        reason="triple_play",
+                    )
+                )
+            if game.bases.runner_on(SECOND):
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(SECOND),
+                        from_base=SECOND,
+                        reason="triple_play",
+                    )
+                )
+            if game.bases.runner_on(THIRD):
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=game.bases.runner_on(THIRD),
+                        from_base=THIRD,
+                        reason="triple_play",
+                    )
+                )
+
+        # End the plate appearance
+        events.append(PlateAppearanceEndEvent("triple_play"))
 
         return events

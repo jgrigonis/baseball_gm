@@ -35,6 +35,7 @@ class RunnerAdvancedEvent(GameEvent):
         None → runner came from batter's box
     to_base:
         1, 2, 3, or 4 (4 = home)
+        Treat anything over 4 as home
     """
 
     runner_id: str
@@ -50,7 +51,7 @@ class RunnerAdvancedEvent(GameEvent):
             to_base=self.to_base,
         )
 
-        if self.to_base == 4:
+        if self.to_base >= 4:
             return [
                 RunScoredEvent(
                     runner_id=self.runner_id,
