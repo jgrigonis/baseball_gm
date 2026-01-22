@@ -44,4 +44,4 @@ class FoulTipCaughtThirdStrikeEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"Foul ball tipped and caught"
+        return "Foul ball tipped and caught"

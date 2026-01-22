@@ -12,4 +12,4 @@ class StrikeOutEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"Strikeout"
+        return "Strikeout"

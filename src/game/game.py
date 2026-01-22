@@ -653,20 +653,3 @@ class Game:
         print(f"Game State: {self.game_state_summary}")
         print(f"Context: {self.get_context()}")
         print("=" * 60 + "\n")
-
-    # ------------------------------------------------------------------
-    # Output Helpers
-    # ------------------------------------------------------------------
-    # This is pseudocode
-    # def format_bases(self):
-    #     bases = []
-    #     if self.bases.third:
-    #         player = self.get_player(self.bases.third)
-    #         bases.append(f"3B={player.name if player else self.bases.third}")
-    #     if self.bases.second:
-    #         player = self.get_player(self.bases.second)
-    #         bases.append(f"2B={player.name if player else self.bases.second}")
-    #     if self.bases.first:
-    #         player = self.get_player(self.bases.first)
-    #         bases.append(f"1B={player.name if player else self.bases.first}")
-    #     return "Bases: " + " ".join(bases) if bases else "Bases empty"

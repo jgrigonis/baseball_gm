@@ -20,4 +20,4 @@ class IllegalPitch(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"Illegal pitch!"
+        return "Illegal pitch!"

@@ -26,4 +26,4 @@ class PassedBallEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"Passed Ball! Runners advance."
+        return "Passed Ball! Runners advance."

@@ -26,4 +26,4 @@ class WildPitchEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"Wild Pitch! Runners advance."
+        return "Wild Pitch! Runners advance."

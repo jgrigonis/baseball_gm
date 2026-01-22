@@ -23,4 +23,4 @@ class BalkEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"Balk! Runners advance."
+        return "Balk! Runners advance."
