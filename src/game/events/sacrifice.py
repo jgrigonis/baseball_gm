@@ -14,6 +14,7 @@ class SacBuntEvent(GameEvent):
         """Return human-readable description with game context."""
         return f"{game.current_batter.player.name} laid down a sacrifice bunt."
 
+
 @dataclass(frozen=True)
 class SacFlyEvent(GameEvent):
     batter_id: str
