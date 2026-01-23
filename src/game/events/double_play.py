@@ -5,7 +5,7 @@ from src.game.event import GameEvent
 
 @dataclass(frozen=True)
 class DoublePlayEvent(GameEvent):
-    reason: str
+    batter_id: str
 
     def apply(self, game):
         # game.inning.record_out()
