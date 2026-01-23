@@ -27,8 +27,10 @@ from src.game.score import Score
 from src.game.event import GameEvent
 from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
-from src.game.resolver import Resolver
+from src.game.resolver import EnhancedResolver
 from src.util.logger import setup_logger
+from src.game.intents.pick_off import PickOffIntent
+from src.game.bases import FIRST, SECOND, THIRD
 
 if TYPE_CHECKING:
     from src.team.team_in_game import TeamInGame
@@ -103,7 +105,7 @@ class Game:
         rng: random.Random | None = None,
         log_level: int | None = None,
         intent_generator: IntentGenerator | None = None,
-        resolver: Resolver | None = None,
+        resolver: EnhancedResolver | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -150,7 +152,7 @@ class Game:
 
         # Engine components
         self.intent_generator = intent_generator or IntentGenerator(self.rng)
-        self.resolver = resolver or Resolver(self.rng)
+        self.resolver = resolver or EnhancedResolver(self.rng)
 
         # Current player cursors
         self.current_batter: PlayerInGame | None = None
@@ -213,7 +215,7 @@ class Game:
         1. If events queued → process one event
         2. Event may produce follow-up events (prepended to queue)
         3. Follow-ups are processed before pre-existing events
-        4. If no events → generate new intent → resolve → enqueue
+        4. If no events → check for pickoff attempt → generate pitch intent → resolve → enqueue
 
         Invariants:
         - Exactly one event applied per step
@@ -246,7 +248,18 @@ class Game:
             self._post_event()
             return
 
-        # No queued events → generate new intent
+        # No queued events → check for pre-pitch plays, then generate pitch intent
+
+        # Check if pitcher should attempt pickoff (pre-pitch play)
+        if self._should_attempt_pickoff():
+            pickoff_intent = self._create_pickoff_intent()
+            self.logger.trace(f"[STEP] Pre-pitch Intent → {pickoff_intent}")
+
+            events = self._resolve_intent(pickoff_intent)
+            self._enqueue(events)
+            return
+
+        # Generate pitch intent
         intent = self._next_intent()
         self.logger.trace(f"[STEP] Intent → {intent}")
 
@@ -258,43 +271,44 @@ class Game:
         Check if the game is complete.
 
         Game ends when:
-        - After top of 9th, home team leading (no need to bat)
-        - Bottom 9th or later, home team takes the lead (walk-off)
-        - After 9+ complete innings, score not tied
+        - After top of 9th with 3 outs, home team already leading (no need for bottom)
+        - In the bottom of 9th or later, home team leading
+        - After bottom of 9 or extra inning(s) with 3 outs, away team leading
 
         Returns:
             True if game is over
         """
-        # Must play at least top of the 9th
+        # Must play at least through top of 9th
         if self.inning.number < 9:
             return False
 
-        # Top of 9th complete, home leading - game over (no need for bottom)
+        # Check if a half-inning just completed (3 outs)
+        half_inning_complete = self.inning.outs >= 3
+
+        # Top of 9th complete, home leading - no need for bottom 9th
         if (
             self.inning.number == 9
-            and self.inning.bottom
-            and self.score.home > self.score.away
-        ):
-            return True
-
-        # Extra innings - if home is leading at start of bottom half, game over
-        if (
-            self.inning.number > 9
-            and self.inning.bottom
-            and self.score.home > self.score.away
-        ):
-            return True
-
-        # After BOTTOM of 9th complete (top of 10th), away leading - game over
-        if (
-            self.inning.number > 9
             and self.inning.top
-            and self.score.away > self.score.home
-        ):  # Changed >= to >
+            and half_inning_complete
+            and self.score.home > self.score.away
+        ):
             return True
 
-        # Extra innings complete (full inning), not tied - game over
-        if self._is_extra_innings_complete():
+        # Bottom of 9th or later, home leading - game over
+        if (
+            self.inning.number >= 9
+            and self.inning.bottom
+            and self.score.home > self.score.away
+        ):
+            return True
+
+        # Bottom half complete, away leading
+        if (
+            self.inning.number >= 9
+            and self.inning.bottom
+            and half_inning_complete
+            and self.score.away > self.score.home
+        ):
             return True
 
         return False
@@ -433,6 +447,19 @@ class Game:
             raise RuntimeError("Resolver returned no events")
         return events
 
+    def _create_pickoff_intent(self) -> PickOffIntent:
+        """
+        Create a pickoff intent.
+
+        Returns a PickOffIntent targeting the selected base.
+        """
+        # Select which base to pick off
+        target_base = self._select_pickoff_target()
+
+        return PickOffIntent(
+            pitcher_id=self.current_pitcher.id, target_base=target_base
+        )
+
     # ------------------------------------------------------------------
     # Event Queue Management
     # ------------------------------------------------------------------
@@ -540,11 +567,11 @@ class Game:
         self.logger.info(
             f"Score: {self.away.record.mascot} {self.score.away} - {self.home.record.mascot} {self.score.home}"
         )
-
-        # Advance inning
-        self.inning.increment()
+        # Check if game is over BEFORE incrementing
         if self.is_over():
             return
+        # Advance inning
+        self.inning.increment()
 
         # Reset state
         self.bases.clear()
@@ -581,6 +608,39 @@ class Game:
         self._plate_appearance_complete = True
         self._pa_end_reason = reason
         self.logger.trace(f"PA complete: {reason}")
+
+    # ------------------------------------------------------------------
+    # Decision Helpers
+    # ------------------------------------------------------------------
+
+    def _should_attempt_pickoff(self) -> bool:
+        """Decide if pitcher should attempt pickoff before this pitch."""
+        if self.bases.is_empty:
+            return False
+
+        # Simple probability - 2% chance per pitch
+        # TODO: Make this smarter based on:
+        # - Runner speed/steal tendency
+        # - Game situation
+        # - Pitcher pickoff skill
+        return random.random() < 0.02
+
+    def _select_pickoff_target(self) -> int:
+        """Select which base to pick off."""
+        occupied = sorted(self.bases.occupied_map().keys())
+
+        # TODO some logic based on handedness of pitcher
+        # Prefer third base if it's occupied
+        if THIRD in occupied:
+            # If both third and second occupied, sometimes pick second
+            if SECOND in occupied:
+                return SECOND if random.random() < 0.1 else THIRD
+            return THIRD
+
+        if SECOND in occupied:
+            return SECOND
+
+        return FIRST
 
     # ------------------------------------------------------------------
     # Initialization

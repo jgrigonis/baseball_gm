@@ -154,8 +154,7 @@ class TestGameResult:
         game.score._away_innings = [0, 0, 0, 0, 0, 0, 0, 0, 7]
 
         # Make game over (away leading after 9)
-        game.inning.number = 10
-        game.inning.top = True
+        game.inning.outs = 3
 
         result = game.get_result()
 
@@ -233,7 +232,8 @@ class TestIsOver:
 
     def test_is_over_extra_innings_complete_not_tied(self, game):
         game.inning.number = 10
-        game.inning.top = True  # Top of 10th
+        game.inning.top = False  # Bottom of 10th
+        game.inning.outs = 3
         game.score._home_innings = [0] * 9 + [0]
         game.score._away_innings = [0] * 9 + [1]
 

@@ -13,6 +13,7 @@ Tests cover:
 """
 
 import pytest
+from types import SimpleNamespace
 from unittest.mock import Mock, MagicMock, patch
 from src.game.resolver import Resolver
 from src.game.intents.pitch import PitchIntent
@@ -38,6 +39,7 @@ from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
 from src.game.bases import FIRST, SECOND, THIRD, HOME
+from src.game.game import Game
 
 
 class MockRNG:
@@ -88,7 +90,11 @@ class MockBases:
         return {base: runner for base, runner in self._runners.items()}
 
     def is_loaded(self):
-        return FIRST in self._runners and SECOND in self._runners and THIRD in self._runners
+        return (
+            FIRST in self._runners
+            and SECOND in self._runners
+            and THIRD in self._runners
+        )
 
 
 class MockGame:
@@ -97,7 +103,7 @@ class MockGame:
     def __init__(self):
         self.count = MockCount()
         self.bases = MockBases()
-        self.outs = 0
+        self.inning = SimpleNamespace(outs=0)
 
 
 @pytest.fixture
@@ -360,7 +366,9 @@ class TestWalks:
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
-        with patch("src.game.rules.force_advancement.force_advance_chain") as mock_force:
+        with patch(
+            "src.game.rules.force_advancement.force_advance_chain"
+        ) as mock_force:
             # Mock the force advancement
             mock_force.return_value = [
                 Mock(
@@ -376,7 +384,9 @@ class TestWalks:
 
         # Should have runner advancement from first to second
         runner_advances = [
-            e for e in events if isinstance(e, RunnerAdvancedEvent) and e.runner_id == "runner_1"
+            e
+            for e in events
+            if isinstance(e, RunnerAdvancedEvent) and e.runner_id == "runner_1"
         ]
         assert len(runner_advances) == 1
         assert runner_advances[0].to_base == SECOND
@@ -399,9 +409,7 @@ class TestWalks:
         """Test catcher interference"""
         events = resolver._resolve_walk(pitch_intent, game, catcher_interference=True)
 
-        ci = next(
-            (e for e in events if isinstance(e, CatcherInterferenceEvent)), None
-        )
+        ci = next((e for e in events if isinstance(e, CatcherInterferenceEvent)), None)
         assert ci is not None
 
 
@@ -613,12 +621,15 @@ class TestDoublePlays:
 
     def test_double_play_requires_runners(self, resolver, game, pitch_intent):
         """Test double play fails with no runners"""
+        game.inning.outs = 0
         with pytest.raises(RuntimeError, match="no runners on base"):
             resolver._resolve_double_play(pitch_intent, game)
 
-    def test_double_play_requires_less_than_two_outs(self, resolver, game, pitch_intent):
+    def test_double_play_requires_less_than_two_outs(
+        self, resolver, game, pitch_intent
+    ):
         """Test double play fails with 2 outs"""
-        game.outs = 2
+        game.inning.outs = 2
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
@@ -685,7 +696,7 @@ class TestTriplePlays:
 
     def test_triple_play_requires_zero_outs(self, resolver, game, pitch_intent):
         """Test triple play requires 0 outs"""
-        game.outs = 1
+        game.inning.outs = 1
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.set_runner(SECOND, "runner_2")
         game.bases.is_empty = False
@@ -751,7 +762,7 @@ class TestFieldersChoice:
         self, resolver, game, pitch_intent
     ):
         """Test fielder's choice requires less than 2 outs"""
-        game.outs = 2
+        game.inning.outs = 2
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
@@ -811,11 +822,9 @@ class TestSacrifices:
         with pytest.raises(RuntimeError, match="no runners on base"):
             resolver._resolve_sac_bunt(pitch_intent, game)
 
-    def test_sac_bunt_requires_less_than_two_outs(
-        self, resolver, game, pitch_intent
-    ):
+    def test_sac_bunt_requires_less_than_two_outs(self, resolver, game, pitch_intent):
         """Test sacrifice bunt requires less than 2 outs"""
-        game.outs = 2
+        game.inning.outs = 2
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
@@ -852,7 +861,7 @@ class TestSacrifices:
 
     def test_sac_fly_requires_less_than_two_outs(self, resolver, game, pitch_intent):
         """Test sacrifice fly requires less than 2 outs"""
-        game.outs = 2
+        game.inning.outs = 2
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
@@ -948,7 +957,7 @@ class TestValidation:
 
     def test_validate_max_outs(self, resolver, game):
         """Test max_outs validation"""
-        game.outs = 2
+        game.inning.outs = 2
         with pytest.raises(RuntimeError, match="2 outs"):
             resolver._validate_game_state(game, max_outs=2)
 

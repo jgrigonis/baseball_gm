@@ -17,6 +17,12 @@ from src.game.events.fielders_choice import FieldersChoiceEvent
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
+from src.game.events.steal import (
+    StealAttemptEvent,
+    StolenBaseEvent,
+    CaughtStealingEvent,
+    DoubleStealtAttemptEvent,
+)
 from src.game.events.strike import (
     StrikeEvent,
     FoulStrikeEvent,
@@ -24,12 +30,19 @@ from src.game.events.strike import (
     FoulTipCaughtThirdStrikeEvent,
 )
 from src.game.events.strikeout import StrikeOutEvent
+from src.game.events.pick_off import (
+    PickoffAttemptEvent,
+    PickoffSuccessEvent,
+    PickoffFailedEvent,
+    PickoffErrorEvent,
+)
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
-from src.game.events.out import OutRecordedEvent
+from src.game.events.out import OutRecordedEvent, GroundOutEvent, FlyOutEvent
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
+from src.game.intents.pick_off import PickOffIntent
 from src.game.rules.force_advancement import force_advance_chain
 
 
@@ -247,9 +260,9 @@ class Resolver:
         self, game, require_runners=False, max_outs=None, require_runner_on=None
     ):
         """Validate game state before resolving plays"""
-        if max_outs is not None and game.outs >= max_outs:
+        if max_outs is not None and game.inning.outs >= max_outs:
             raise RuntimeError(
-                f"Play cannot occur with {game.outs} outs (max: {max_outs - 1})"
+                f"Play cannot occur with {game.inning.outs} outs (max: {max_outs - 1})"
             )
 
         if require_runners and game.bases.is_empty:
@@ -355,6 +368,76 @@ class Resolver:
         # TODO if it walks, do we double advance runners?
         return [PassedBallEvent()]
 
+    def _ball_in_play(self, events: List[GameEvent]) -> bool:
+        """
+        Check if the ball was put in play during this pitch.
+
+        A ball is "in play" if any of these events occurred:
+        - Hits (single, double, triple, home run)
+        - Outs (fly out, ground out, etc.)
+        - Fielder's choice
+        - Sacrifice plays
+        - Double/triple plays
+
+        Args:
+            events: List of events from the pitch resolution
+
+        Returns:
+            True if ball was put in play, False otherwise
+        """
+        # Events that indicate ball was put in play
+        in_play_event_types = (
+            # Hits
+            SingleEvent,
+            DoubleEvent,
+            TripleEvent,
+            HomeRunEvent,
+            # Outs
+            GroundOutEvent,
+            FlyOutEvent,
+            # Special plays
+            FieldersChoiceEvent,
+            SacBuntEvent,
+            SacFlyEvent,
+            DoublePlayEvent,
+            TriplePlayEvent,
+        )
+
+        return any(isinstance(event, in_play_event_types) for event in events)
+
+    def _find_pa_end_index(self, events: List[GameEvent]) -> int | None:
+        """
+        Find the index of the PlateAppearanceEndEvent in the events list.
+
+        Args:
+            events: List of events from the pitch resolution
+
+        Returns:
+            Index of PlateAppearanceEndEvent, or None if not found
+        """
+        for i, event in enumerate(events):
+            if isinstance(event, PlateAppearanceEndEvent):
+                return i
+        return None
+
+    def _inning_ended(self, events: List[GameEvent], game) -> bool:
+        """
+        Check if the inning ended based on the events that occurred.
+
+        An inning ends when 3 outs are recorded (cumulative from game state
+        plus new outs in these events).
+
+        Args:
+            events: List of events that occurred
+            game: Current game state
+
+        Returns:
+            True if inning has ended (3 outs), False otherwise
+        """
+        outs_in_events = sum(1 for e in events if isinstance(e, OutRecordedEvent))
+        total_outs = game.inning.outs + outs_in_events
+        return total_outs >= 3
+
     # ================================================================
     # BALL IN PLAY RESOLUTION
     # ================================================================
@@ -394,6 +477,7 @@ class Resolver:
     def _resolve_fly_out(self, intent, game) -> list[GameEvent]:
         """Resolve a fly out"""
         return [
+            FlyOutEvent(batter_id=intent.batter_id),
             OutRecordedEvent(reason="fly_out"),
             PlateAppearanceEndEvent("fly_out"),
         ]
@@ -401,6 +485,7 @@ class Resolver:
     def _resolve_ground_out(self, intent, game) -> list[GameEvent]:
         """Resolve a ground out"""
         return [
+            GroundOutEvent(batter_id=intent.batter_id),
             OutRecordedEvent(reason="ground_out"),
             PlateAppearanceEndEvent("ground_out"),
         ]
@@ -851,7 +936,7 @@ class Resolver:
         - Plate appearance ends
         """
         # Validation
-        if game.outs > 0:
+        if game.inning.outs > 0:
             raise RuntimeError(
                 "Triple play cannot occur with outs already in the inning."
             )
@@ -943,3 +1028,600 @@ class Resolver:
         events.append(PlateAppearanceEndEvent("triple_play"))
 
         return events
+
+
+class EnhancedResolver(Resolver):
+    """
+    Extended Resolver with pre-pitch and concurrent event support.
+    """
+
+    # Probability constants for new events
+    BASE_PICKOFF_ATTEMPT_PROB = 0.02  # 2% per pitch
+    BASE_STEAL_SECOND_PROB = 0.08  # 8% from first
+    BASE_STEAL_THIRD_PROB = 0.02  # 2% from second
+    BASE_STEAL_HOME_PROB = 0.001  # 0.1% from third
+
+    PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
+    PICKOFF_ERROR_PROB = 0.05  # 5% throwing error
+
+    STEAL_SECOND_SUCCESS_PROB = 0.75  # 75% success rate
+    STEAL_THIRD_SUCCESS_PROB = 0.80  # 80% success rate
+    STEAL_HOME_SUCCESS_PROB = 0.85  # 85% success rate
+
+    def resolve(self, intent: GameIntent, game) -> List[GameEvent]:
+        """
+        Resolve an intent into one or more GameEvents.
+
+        For PitchIntent, this happens in three phases:
+        1. Pre-pitch phase (pickoffs, etc.)
+        2. Pitch phase (pitch thrown + outcome)
+        3. Concurrent phase (steals - only if ball not in play)
+
+        Event ordering:
+        - Pre-pitch events
+        - Pitch thrown event
+        - Pitch outcome events (balls, strikes, hits, etc.)
+        - Concurrent events (steals) - BEFORE PlateAppearanceEndEvent
+        - PlateAppearanceEndEvent (if applicable)
+        """
+        if isinstance(intent, PickOffIntent):
+            return self._resolve_pickoff(intent, game)
+
+        if isinstance(intent, PitchIntent):
+            events = []
+
+            # ============================================================
+            # Phase 1: The pitch itself
+            # ============================================================
+            pitch_events = self._resolve_pitch(intent, game)
+
+            # ============================================================
+            # Phase 2: Concurrent events (steals)
+            # Only process if ball was NOT put in play
+            # ============================================================
+            if not self._ball_in_play(pitch_events) and not self._is_walk(pitch_events):
+                # Steals can happen on balls, strikes, fouls, but not walks or ball_in_play
+                concurrent_events = self._resolve_concurrent_events(intent, game)
+
+                # Find where the PlateAppearanceEndEvent is (if any)
+                pa_end_index = self._find_pa_end_index(pitch_events)
+
+                if pa_end_index is not None:
+                    # Insert concurrent events BEFORE the PA end
+                    events.extend(
+                        pitch_events[:pa_end_index]
+                    )  # Everything before PA end
+                    events.extend(concurrent_events)  # Steal events
+                    events.extend(pitch_events[pa_end_index:])  # PA end event
+                else:
+                    # No PA end yet (pitch didn't end PA)
+                    events.extend(pitch_events)
+                    events.extend(concurrent_events)
+            else:
+                # Ball in play - no concurrent steal events
+                events.extend(pitch_events)
+
+            return events
+
+        raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
+
+    def _resolve_pickoff(self, intent: PickOffIntent, game) -> List[GameEvent]:
+        """
+        Resolve a pickoff attempt.
+
+        Possible outcomes:
+        1. Successful pickoff (runner out)
+        2. Failed pickoff (runner safe, no advancement)
+        3. Throwing error (runner advances)
+        """
+        events = []
+        base = intent.target_base
+        runner = game.bases.runner_on(base)
+
+        if not runner:
+            return events
+
+        events.append(PickoffAttemptEvent(base=base, runner_id=runner))
+
+        # Determine outcome
+        r = self.rng.random()
+
+        if r < self.PICKOFF_SUCCESS_PROB:
+            # Successful pickoff - runner out
+            self.logger.debug(f"Successful pickoff at base {base}")
+            events.append(PickoffSuccessEvent(base=base, runner_id=runner))
+            events.append(OutRecordedEvent(reason="pickoff"))
+            events.append(
+                RunnerRemovedEvent(runner_id=runner, from_base=base, reason="pickoff")
+            )
+
+        elif r < self.PICKOFF_SUCCESS_PROB + self.PICKOFF_ERROR_PROB:
+            # Throwing error - runner advances
+            self.logger.debug(f"Pickoff throwing error at base {base}")
+            events.append(PickoffErrorEvent(base=base, runner_id=runner))
+            events.append(
+                RunnerAdvancedEvent(
+                    runner_id=runner,
+                    from_base=base,
+                    to_base=min(base + 1, HOME),
+                    reason="pickoff_error",
+                )
+            )
+
+        else:
+            # Runner safe, no advancement
+            self.logger.debug(f"Failed pickoff attempt at base {base}")
+            events.append(PickoffFailedEvent(base=base, runner_id=runner))
+
+        return events
+
+    # ================================================================
+    # CONCURRENT EVENT RESOLUTION (STEALS)
+    # ================================================================
+
+    def _resolve_concurrent_events(self, intent: PitchIntent, game) -> List[GameEvent]:
+        """
+        Resolve events that happen concurrently with the pitch.
+
+        NOTE: Steals should NOT happen on walks, as runners are
+        already being force-advanced.
+        """
+        events = []
+
+        if game.bases.is_empty:
+            return events
+
+        # Check for double steal scenarios
+        double_steal_bases = self._get_double_steal_candidates(game)
+
+        if double_steal_bases:
+            if self._should_attempt_double_steal(game):
+                return self._resolve_double_steal(double_steal_bases, game)
+
+        # Otherwise, check lead runner first (highest base)
+        occupied = sorted(game.bases.occupied_map().keys(), reverse=True)
+
+        for base in occupied:
+            next_base = base + 1
+
+            # Can't steal if next base occupied
+            if next_base <= THIRD and game.bases.runner_on(next_base):
+                continue
+
+            if self._should_attempt_steal(base, intent, game):
+                return self._resolve_steal_attempt(base, game)
+
+        return events
+
+    def _should_attempt_double_steal(self, game) -> bool:
+        """Decide if double steal should be attempted."""
+
+        # Check which scenario
+        if game.bases.runner_on(FIRST) and game.bases.runner_on(THIRD):
+            # 1st and 3rd is more common (strategic play)
+            prob = 0.03  # 3% chance
+        else:
+            # 1st/2nd or 2nd/3rd - standard double steal
+            prob = 0.01  # 1% chance
+
+        # Less likely with 2 outs
+        if game.inning.outs == 2:
+            prob *= 0.2
+
+        return self.rng.random() < prob
+
+    def _should_attempt_steal(self, from_base: int, intent: PitchIntent, game) -> bool:
+        """
+        Decide if runner attempts to steal.
+
+        Factors:
+        - Runner speed
+        - Pitcher delivery time
+        - Catcher arm strength
+        - Game situation
+        - Count
+        """
+        # Can't steal if next base is occupied (in most cases)
+        next_base = from_base + 1
+        if next_base <= THIRD and game.bases.runner_on(next_base):
+            # Exception: double steal
+            if from_base == FIRST and game.bases.runner_on(SECOND):
+                # Possible double steal - lower probability
+                return self.rng.random() < (self.BASE_STEAL_SECOND_PROB * 0.3)
+            return False
+
+        # Base probability by base
+        if from_base == FIRST:
+            prob = self.BASE_STEAL_SECOND_PROB
+        elif from_base == SECOND:
+            prob = self.BASE_STEAL_THIRD_PROB
+        elif from_base == THIRD:
+            prob = self.BASE_STEAL_HOME_PROB
+        else:
+            return False
+
+        # TODO: Adjust based on:
+        # - Runner speed rating
+        # - Pitcher delivery time
+        # - Catcher pop time/arm strength
+        # - Count (more on 3-2, less on 0-2)
+        # - Score (more when down, less when up)
+        # - Outs (rare with 2 outs)
+        # - Pitcher handedness vs runner
+
+        # Simple adjustment: less likely with 2 outs
+        if game.inning.outs == 2:
+            prob *= 0.5
+
+        return self.rng.random() < prob
+
+    def _resolve_steal_attempt(self, from_base: int, game) -> List[GameEvent]:
+        """
+        Resolve a single steal attempt.
+
+        Outcomes:
+        - Successful steal
+        - Caught stealing
+        """
+        events = []
+        runner = game.bases.runner_on(from_base)
+        to_base = from_base + 1
+
+        if not runner:
+            return events
+
+        events.append(
+            StealAttemptEvent(runner_id=runner, from_base=from_base, to_base=to_base)
+        )
+
+        # Determine success rate based on target base
+        if to_base == SECOND:
+            success_prob = self.STEAL_SECOND_SUCCESS_PROB
+        elif to_base == THIRD:
+            success_prob = self.STEAL_THIRD_SUCCESS_PROB
+        elif to_base == HOME:
+            success_prob = self.STEAL_HOME_SUCCESS_PROB
+        else:
+            success_prob = 0.50
+
+        # TODO: Adjust based on runner speed, catcher arm, pitcher delivery
+
+        if self.rng.random() < success_prob:
+            # Successful steal
+            self.logger.debug(f"Successful steal: {from_base} -> {to_base}")
+            events.append(
+                StolenBaseEvent(runner_id=runner, from_base=from_base, to_base=to_base)
+            )
+            events.append(
+                RunnerAdvancedEvent(
+                    runner_id=runner,
+                    from_base=from_base,
+                    to_base=to_base,
+                    reason="stolen_base",
+                )
+            )
+        else:
+            # Caught stealing
+            self.logger.debug(f"Caught stealing: {from_base} -> {to_base}")
+            events.append(
+                CaughtStealingEvent(
+                    runner_id=runner, from_base=from_base, to_base=to_base
+                )
+            )
+            events.append(OutRecordedEvent(reason="caught_stealing"))
+            events.append(
+                RunnerRemovedEvent(
+                    runner_id=runner, from_base=from_base, reason="caught_stealing"
+                )
+            )
+
+        return events
+
+    def _resolve_double_steal(self, from_bases: List[int], game) -> List[GameEvent]:
+        """
+        Resolve a double steal attempt.
+
+        Args:
+            from_bases: Bases runners are currently on (e.g., [1, 2])
+        """
+        events = []
+
+        # CRITICAL: Sort in reverse order (lead runner first)
+        # This ensures we advance 2nd→3rd BEFORE 1st→2nd
+        sorted_bases = sorted(from_bases, reverse=True)
+
+        # Build steal attempt info (in reverse order)
+        steal_attempts = [
+            (from_base, from_base + 1, game.bases.runner_on(from_base))
+            for from_base in sorted_bases
+        ]
+
+        # Record all attempts (order doesn't matter for logging)
+        for from_base, to_base, runner in steal_attempts:
+            events.append(
+                StealAttemptEvent(
+                    runner_id=runner, from_base=from_base, to_base=to_base
+                )
+            )
+
+        events.append(DoubleStealtAttemptEvent(bases=from_bases))
+
+        # Check if this is 1st and 3rd scenario
+        is_first_and_third = FIRST in from_bases and THIRD in from_bases
+
+        # Determine outcome
+        r = self.rng.random()
+
+        if is_first_and_third:
+            # 1st and 3rd special handling
+            first_attempt = next(a for a in steal_attempts if a[0] == FIRST)
+            third_attempt = next(a for a in steal_attempts if a[0] == THIRD)
+
+            if r < 0.70:
+                # Both safe - ADVANCE IN REVERSE ORDER
+                # Third → Home first, then First → Second
+                from_base, to_base, runner = third_attempt
+                events.append(
+                    StolenBaseEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        reason="stolen_base",
+                    )
+                )
+
+                from_base, to_base, runner = first_attempt
+                events.append(
+                    StolenBaseEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        reason="stolen_base",
+                    )
+                )
+
+            elif r < 0.85:
+                # Only runner on 1st steals (runner on 3rd holds)
+                from_base, to_base, runner = first_attempt
+                events.append(
+                    StolenBaseEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        reason="stolen_base",
+                    )
+                )
+
+            elif r < 0.95:
+                # Runner on 1st out, runner on 3rd scores
+                from_base, to_base, runner = third_attempt
+                events.append(
+                    StolenBaseEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        reason="stolen_base",
+                    )
+                )
+
+                from_base, to_base, runner = first_attempt
+                events.append(
+                    CaughtStealingEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                    )
+                )
+
+            elif r < 0.99:
+                # Runner on 3rd caught, runner on 1st safe
+                from_base, to_base, runner = third_attempt
+                events.append(
+                    CaughtStealingEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                    )
+                )
+
+                from_base, to_base, runner = first_attempt
+                events.append(
+                    StolenBaseEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        reason="stolen_base",
+                    )
+                )
+
+            else:
+                # Both out
+                for from_base, to_base, runner in steal_attempts:
+                    events.append(
+                        CaughtStealingEvent(
+                            runner_id=runner, from_base=from_base, to_base=to_base
+                        )
+                    )
+                    events.append(OutRecordedEvent(reason="caught_stealing"))
+                    events.append(
+                        RunnerRemovedEvent(
+                            runner_id=runner,
+                            from_base=from_base,
+                            reason="caught_stealing",
+                        )
+                    )
+
+        else:
+            # Standard double steal (1st/2nd or 2nd/3rd)
+            # steal_attempts is already sorted in reverse order (lead runner first)
+
+            if r < 0.65:
+                # Both safe - process in order (lead runner first)
+                for from_base, to_base, runner in steal_attempts:
+                    events.append(
+                        StolenBaseEvent(
+                            runner_id=runner, from_base=from_base, to_base=to_base
+                        )
+                    )
+                    events.append(
+                        RunnerAdvancedEvent(
+                            runner_id=runner,
+                            from_base=from_base,
+                            to_base=to_base,
+                            reason="stolen_base",
+                        )
+                    )
+
+            elif r < 0.90:
+                # Lead runner out, trail runner safe
+                lead_attempt = steal_attempts[0]  # First in list (highest base)
+                trail_attempt = steal_attempts[1]  # Second in list (lowest base)
+
+                from_base, to_base, runner = lead_attempt
+                events.append(
+                    CaughtStealingEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                    )
+                )
+
+                from_base, to_base, runner = trail_attempt
+                events.append(
+                    StolenBaseEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        reason="stolen_base",
+                    )
+                )
+
+            elif r < 0.98:
+                # Trail runner out, lead runner safe
+                lead_attempt = steal_attempts[0]
+                trail_attempt = steal_attempts[1]
+
+                # Lead runner advances first (to clear the base)
+                from_base, to_base, runner = lead_attempt
+                events.append(
+                    StolenBaseEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner_id=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        reason="stolen_base",
+                    )
+                )
+
+                from_base, to_base, runner = trail_attempt
+                events.append(
+                    CaughtStealingEvent(
+                        runner_id=runner, from_base=from_base, to_base=to_base
+                    )
+                )
+                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    RunnerRemovedEvent(
+                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                    )
+                )
+
+            else:
+                # Both out - order doesn't matter
+                for from_base, to_base, runner in steal_attempts:
+                    events.append(
+                        CaughtStealingEvent(
+                            runner_id=runner, from_base=from_base, to_base=to_base
+                        )
+                    )
+                    events.append(OutRecordedEvent(reason="caught_stealing"))
+                    events.append(
+                        RunnerRemovedEvent(
+                            runner_id=runner,
+                            from_base=from_base,
+                            reason="caught_stealing",
+                        )
+                    )
+
+        return events
+
+    def _get_double_steal_candidates(self, game) -> List[int] | None:
+        """
+        Get bases for potential double steal.
+
+        When multiple double steals are possible, prioritize:
+        1. 2nd and 3rd (most aggressive - runner scores)
+        2. 1st and 3rd (strategic play)
+        3. 1st and 2nd (most common)
+        """
+        # Priority 1: 2nd and 3rd (runner on 3rd can score)
+        if game.bases.runner_on(SECOND) and game.bases.runner_on(THIRD):
+            return [SECOND, THIRD]
+
+        # Priority 2: 1st and 3rd (strategic, only if 2nd empty)
+        if game.bases.runner_on(FIRST) and game.bases.runner_on(THIRD):
+            if not game.bases.runner_on(SECOND):
+                return [FIRST, THIRD]
+
+        # Priority 3: 1st and 2nd (only if 3rd empty)
+        if game.bases.runner_on(FIRST) and game.bases.runner_on(SECOND):
+            if not game.bases.runner_on(THIRD):
+                return [FIRST, SECOND]
+
+        return None
+
+    def _is_walk(self, events: List[GameEvent]) -> bool:
+        """Check if a walk occurred."""
+        walk_event_types = (
+            WalkEvent,
+            IBBEvent,
+            HitByPitchEvent,
+            CatcherInterferenceEvent,
+        )
+        return any(isinstance(event, walk_event_types) for event in events)
