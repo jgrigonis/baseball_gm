@@ -153,6 +153,7 @@ class PlayerTableFormatter:
             "GDP",
             "HBP",
             "SAC",
+            "SAB",
         ]
         output = f"{team_name:<31}"  # 31 is the longest team name
         for item in stat_list:
@@ -274,6 +275,7 @@ class PlayerTableFormatter:
         output += f"{stats.batting.gdp:>4}"
         output += f"{stats.batting.hbp:>4}"
         output += f"{stats.batting.sac_flys:>4}"
+        output += f"{stats.batting.sac_bunts:>4}"
 
         # Derived stats
         batting_average = stats.batting.batting_average
@@ -313,6 +315,7 @@ class PlayerTableFormatter:
         output += f"BB: {stats.batting.walks} "
         output += f"HBP: {stats.batting.hbp} "
         output += f"SAC: {stats.batting.sac_flys} "
+        output += f"SAB: {stats.batting.sac_bunts} "
         return output
 
     @staticmethod

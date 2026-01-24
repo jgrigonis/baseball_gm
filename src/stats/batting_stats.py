@@ -17,6 +17,7 @@ class BattingStats(object):
         self.gdp = 0
         self.gtp = 0
         self.runs = 0
+        self.plate_appearances = 0
         self.sb = 0
         self.cs = 0
         self.pickoffs = 0
@@ -39,6 +40,7 @@ class BattingStats(object):
             f"  3B: {self.triples}\n"
             f"  HR: {self.home_runs}\n"
             f"  R: {self.runs}\n"
+            f"  PA: {self.plate_appearances}\n"
             f"  RBI: {self.rbi}\n"
             f"  BB: {self.walks}\n"
             f"  K: {self.strike_outs}\n"
@@ -86,10 +88,16 @@ class BattingStats(object):
         """
         return (
             (self.hits + self.walks + self.hbp)
-            / (self.at_bats + self.walks + self.hbp + self.sac_flys)
-            if self.at_bats + self.walks + self.hbp + self.sac_flys > 0
+            / (self.plate_appearances)
+            if self.plate_appearances > 0
             else 0.0
         )
+        # return (
+        #     (self.hits + self.walks + self.hbp)
+        #     / (self.at_bats + self.walks + self.hbp + self.sac_flys)
+        #     if self.at_bats + self.walks + self.hbp + self.sac_flys > 0
+        #     else 0.0
+        # )
 
     @property
     def ops(self):
@@ -105,8 +113,8 @@ class BattingStats(object):
         """
         return (
             (self.hits - self.home_runs)
-            / (self.at_bats - self.strike_outs - self.home_runs + self.sac_flys)
-            if self.at_bats - self.strike_outs - self.home_runs + self.sac_flys > 0
+            / (self.at_bats - self.strike_outs - self.home_runs + self.sac_flys + self.sac_bunts)
+            if self.at_bats - self.strike_outs - self.home_runs + self.sac_flys + self.sac_bunts > 0
             else 0.0
         )
 

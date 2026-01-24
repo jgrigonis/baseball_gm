@@ -1139,11 +1139,12 @@ class EnhancedResolver(Resolver):
             # Throwing error - runner advances
             self.logger.debug(f"Pickoff throwing error at base {base}")
             events.append(PickoffErrorEvent(base=base, runner_id=runner))
-            events.append(
-                RunnerAdvancedEvent(
-                    runner_id=runner,
-                    from_base=base,
-                    to_base=min(base + 1, HOME),
+            # Advance all runners one base
+            events.extend(
+                self._advance_all_runners(
+                    game,
+                    (THIRD, SECOND, FIRST),
+                    advancement=1,
                     reason="pickoff_error",
                 )
             )

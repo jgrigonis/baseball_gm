@@ -5,12 +5,11 @@ from src.game.event import GameEvent
 
 @dataclass(frozen=True)
 class HitByPitchEvent(GameEvent):
-    batter_id: str
+    batter_id: str # TODO do we even need this?
 
     def apply(self, game):
-        pass
-        # base advance handled in _resolve_walk
-        # game.bases.advance(game.current_batter, None, 1)
+        game.current_batter.player.game_stats.batting.hit_batter()
+        game.current_pitcher.game_stats.pitching.hit_batter()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
