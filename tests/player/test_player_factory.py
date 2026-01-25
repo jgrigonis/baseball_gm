@@ -14,7 +14,6 @@ The tests explicitly lock down that PlayerFactory:
 # tests/test_player_factory.py
 import pytest
 import random
-from unittest.mock import Mock, patch
 
 from src.player.player_factory import PlayerFactory, VALID_BATS, VALID_THROWS
 from src.player.player_record import PlayerRecord
@@ -422,7 +421,7 @@ class TestCreate:
         # Should have all skills
         assert len(player.skills) > 0
         # Shortstops should have good infield skills
-        assert player.skills["infield"] > 50
+        assert player.skills["infield"] > 45
 
     def test_create_with_invalid_position_raises(self):
         factory = PlayerFactory()

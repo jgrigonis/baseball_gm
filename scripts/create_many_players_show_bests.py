@@ -32,7 +32,6 @@ def get_args():
 
 def main():
     args = get_args()
-    debug = args.debug
     players_to_create = args.number
     maxes = deepcopy(dict(SKILLS))
     max_ratings = {}

@@ -1,11 +1,7 @@
 # tests/test_plate_appearance.py
-import pytest
-
-from src.game.game import Game
-from tests.utils import FakeRNG, FakeTeam
+from tests.factories.player_record_factory import make_player_record
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
-
-import pytest
+from src.player.player_in_game import PlayerInGame
 
 
 def test_pa_starts_incomplete(game):
@@ -13,14 +9,18 @@ def test_pa_starts_incomplete(game):
 
 
 def test_pa_end_event_marks_plate_appearance_complete(game):
-    PlateAppearanceEndEvent("walk").apply(game)
+    PlateAppearanceEndEvent(
+        reason="walk", batter=PlayerInGame(make_player_record())
+    ).apply(game)
     assert game._plate_appearance_complete
 
 
 def test_pa_end_advances_batter_and_resets_count(game):
     old = game.current_batter
 
-    PlateAppearanceEndEvent("strikeout").apply(game)
+    PlateAppearanceEndEvent(
+        reason="strikeout", batter=PlayerInGame(make_player_record())
+    ).apply(game)
     game._post_event()
 
     assert game.away.players[0] is not game.away.players[1]

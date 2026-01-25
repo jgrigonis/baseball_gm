@@ -1,5 +1,5 @@
 # src/tests/game/test_queue.py
-from tests.utils import fake_game, real_game
+from tests.utils import real_game
 from src.game.game import GameEvent
 
 

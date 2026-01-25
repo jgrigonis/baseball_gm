@@ -7,7 +7,9 @@ from src.game.inning import Inning
 from src.game.score import Score
 from src.game.resolver import Resolver
 from src.game.game import Game
+from src.player.player_in_game import PlayerInGame
 from src.util.logger import setup_logger
+from tests.factories.player_record_factory import make_player_record
 import logging
 
 # from tests.utils import FakeTeam, FakeRNG, NullLogger
@@ -172,9 +174,10 @@ class FakeTeam:
 def fake_game_with_batter_cycle():
     game = fake_game()
 
-    batters = ["b1", "b2"]
+    batters = [PlayerInGame(make_player_record()), PlayerInGame(make_player_record())]
     game._batter_index = 0
     game.current_batter = batters[0]
+    game.current_pitcher = PlayerInGame(make_player_record())
 
     def _next_batter():
         game._batter_index = (game._batter_index + 1) % len(batters)

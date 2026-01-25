@@ -350,7 +350,7 @@ class Resolver:
         if game.bases.is_empty:
             self.logger.trace("Balk called with no runners on.")
             return []
-        return [BalkEvent()]
+        return [BalkEvent(pitcher=game.current_pitcher)]
 
     def _handle_wild_pitch(self, game) -> list[GameEvent]:
         """Handle a wild pitch"""
@@ -359,7 +359,7 @@ class Resolver:
             return []
         # TODO Are we properly calling a ball here?
         # TODO if it walks, do we double advance runners?
-        return [WildPitchEvent()]
+        return [WildPitchEvent(pitcher=game.current_pitcher)]
 
     def _handle_passed_ball(self, game) -> list[GameEvent]:
         """Handle a passed ball"""
@@ -596,10 +596,16 @@ class Resolver:
         else:
             if intentional:
                 reason = "intentional_walk"
-                events.append(IBBEvent(batter=intent.batter))
+                events.append(IBBEvent(batter=intent.batter, pitcher=intent.pitcher))
             elif catcher_interference:
                 reason = "catcher_interference"
-                events.append(CatcherInterferenceEvent(batter=intent.batter))
+                events.append(
+                    CatcherInterferenceEvent(
+                        batter=intent.batter,
+                        pitcher=intent.pitcher,
+                        catcher=game.pitch_team.current_catcher,
+                    )
+                )
             else:
                 reason = "walk"
                 events.append(WalkEvent(pitcher=intent.pitcher, batter=intent.batter))

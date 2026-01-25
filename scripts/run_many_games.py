@@ -1,5 +1,4 @@
 import argparse
-import logging
 
 from scripts.run_game import main as game_runner
 

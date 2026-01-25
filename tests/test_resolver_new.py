@@ -14,8 +14,8 @@ Tests cover:
 
 import pytest
 from types import SimpleNamespace
-from unittest.mock import Mock, MagicMock, patch
-from src.game.resolver import Resolver
+from unittest.mock import Mock, patch
+from src.game.resolver import EnhancedResolver
 from src.game.intents.pitch import PitchIntent
 from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.strike import (
@@ -29,7 +29,7 @@ from src.game.events.out import OutRecordedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.events.hbp import HitByPitchEvent
-from src.game.events.hits import SingleEvent, DoubleEvent, TripleEvent, HomeRunEvent
+from src.game.events.hits import SingleEvent, DoubleEvent, HomeRunEvent
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.events.fielders_choice import FieldersChoiceEvent
@@ -39,7 +39,11 @@ from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
 from src.game.bases import FIRST, SECOND, THIRD, HOME
-from src.game.game import Game
+from src.player.player_in_game import PlayerInGame
+from src.team.lineup_slot import LineupSlot
+from src.team.team_in_game_factory import TeamInGameFactory
+from tests.factories.player_record_factory import make_player_record
+from tests.factories.team_record_factory import make_team_record
 
 
 class MockRNG:
@@ -78,8 +82,8 @@ class MockBases:
     def runner_on(self, base):
         return self._runners.get(base)
 
-    def set_runner(self, base, runner_id):
-        self._runners[base] = runner_id
+    def set_runner(self, base, runner):
+        self._runners[base] = runner
         self.is_empty = len(self._runners) == 0
 
     def clear(self):
@@ -104,6 +108,14 @@ class MockGame:
         self.count = MockCount()
         self.bases = MockBases()
         self.inning = SimpleNamespace(outs=0)
+        self.pitch_team = TeamInGameFactory.from_record(make_team_record())
+        self.current_pitcher = PlayerInGame(make_player_record())
+
+        # Add a catcher to the lineup
+        mock_catcher = PlayerInGame(make_player_record())
+        catcher_slot = LineupSlot(player=mock_catcher, position="c")
+        self.pitch_team.lineup = [catcher_slot]
+        self.pitch_team._positions = {"c": mock_catcher}  # Set the positions dict
 
 
 @pytest.fixture
@@ -113,7 +125,7 @@ def rng():
 
 @pytest.fixture
 def resolver(rng):
-    return Resolver(rng)
+    return EnhancedResolver(rng)
 
 
 @pytest.fixture
@@ -123,9 +135,7 @@ def game():
 
 @pytest.fixture
 def pitch_intent():
-    return PitchIntent(
-        pitcher_id="pitcher_1", batter_id="batter_1", pitch_type="fastball"
-    )
+    return PitchIntent(pitcher="pitcher_1", batter="batter_1", pitch_type="fastball")
 
 
 # ================================================================
@@ -348,7 +358,7 @@ class TestWalks:
                 e
                 for e in events
                 if isinstance(e, RunnerAdvancedEvent)
-                and e.runner_id == "batter_1"
+                and e.runner == "batter_1"
                 and e.to_base == FIRST
             ),
             None,
@@ -372,11 +382,11 @@ class TestWalks:
             # Mock the force advancement
             mock_force.return_value = [
                 Mock(
-                    runner_id="runner_1",
+                    runner="runner_1",
                     from_base=FIRST,
                     to_base=SECOND,
                     reason="walk",
-                    rbi_batter_id="batter_1",
+                    rbi_batter="batter_1",
                 )
             ]
 
@@ -386,7 +396,7 @@ class TestWalks:
         runner_advances = [
             e
             for e in events
-            if isinstance(e, RunnerAdvancedEvent) and e.runner_id == "runner_1"
+            if isinstance(e, RunnerAdvancedEvent) and e.runner == "runner_1"
         ]
         assert len(runner_advances) == 1
         assert runner_advances[0].to_base == SECOND
@@ -431,7 +441,7 @@ class TestHits:
                 e
                 for e in events
                 if isinstance(e, RunnerAdvancedEvent)
-                and e.runner_id == "batter_1"
+                and e.runner == "batter_1"
                 and e.to_base == FIRST
             ),
             None,
@@ -457,7 +467,7 @@ class TestHits:
                 e
                 for e in events
                 if isinstance(e, RunnerAdvancedEvent)
-                and e.runner_id == "runner_3"
+                and e.runner == "runner_3"
                 and e.to_base == HOME
             ),
             None,
@@ -475,7 +485,7 @@ class TestHits:
                 e
                 for e in events
                 if isinstance(e, RunnerAdvancedEvent)
-                and e.runner_id == "batter_1"
+                and e.runner == "batter_1"
                 and e.to_base == SECOND
             ),
             None,
@@ -497,7 +507,7 @@ class TestHits:
                 e
                 for e in events
                 if isinstance(e, RunnerAdvancedEvent)
-                and e.runner_id == "runner_2"
+                and e.runner == "runner_2"
                 and e.to_base == HOME
             ),
             None,
@@ -516,7 +526,7 @@ class TestHits:
             (
                 e
                 for e in events
-                if isinstance(e, RunnerAdvancedEvent) and e.runner_id == "runner_3"
+                if isinstance(e, RunnerAdvancedEvent) and e.runner == "runner_3"
             ),
             None,
         )
@@ -538,7 +548,7 @@ class TestHits:
             e
             for e in events
             if isinstance(e, RunnerAdvancedEvent)
-            and e.runner_id in ["runner_1", "runner_2", "runner_3"]
+            and e.runner in ["runner_1", "runner_2", "runner_3"]
         ]
 
         assert len(runner_advances) == 3
@@ -554,7 +564,7 @@ class TestHits:
                 e
                 for e in events
                 if isinstance(e, RunnerAdvancedEvent)
-                and e.runner_id == "batter_1"
+                and e.runner == "batter_1"
                 and e.to_base == THIRD
             ),
             None,
@@ -653,7 +663,7 @@ class TestDoublePlays:
         assert dp is not None
         assert len(outs) == 2
         assert runner_removed is not None
-        assert runner_removed.runner_id == "runner_1"
+        assert runner_removed.runner == "runner_1"
 
     def test_double_play_no_runner_on_first_uses_third(
         self, resolver, game, pitch_intent
@@ -668,7 +678,7 @@ class TestDoublePlays:
             (e for e in events if isinstance(e, RunnerRemovedEvent)), None
         )
         assert runner_removed is not None
-        assert runner_removed.runner_id == "runner_3"
+        assert runner_removed.runner == "runner_3"
         assert runner_removed.from_base == THIRD
 
     def test_double_play_only_runner_on_second(self, resolver, game, pitch_intent):
@@ -682,7 +692,7 @@ class TestDoublePlays:
             (e for e in events if isinstance(e, RunnerRemovedEvent)), None
         )
         assert runner_removed is not None
-        assert runner_removed.runner_id == "runner_2"
+        assert runner_removed.runner == "runner_2"
         assert runner_removed.from_base == SECOND
 
 
@@ -784,14 +794,14 @@ class TestFieldersChoice:
             (
                 e
                 for e in events
-                if isinstance(e, RunnerAdvancedEvent) and e.runner_id == "batter_1"
+                if isinstance(e, RunnerAdvancedEvent) and e.runner == "batter_1"
             ),
             None,
         )
 
         assert fc is not None
         assert runner_removed is not None
-        assert runner_removed.runner_id == "runner_3"
+        assert runner_removed.runner == "runner_3"
         assert batter_advance is not None
         assert batter_advance.to_base == FIRST
 
@@ -806,7 +816,7 @@ class TestFieldersChoice:
             (e for e in events if isinstance(e, RunnerRemovedEvent)), None
         )
         assert runner_removed is not None
-        assert runner_removed.runner_id == "runner_1"
+        assert runner_removed.runner == "runner_1"
 
 
 # ================================================================
@@ -844,7 +854,7 @@ class TestSacrifices:
             (
                 e
                 for e in events
-                if isinstance(e, RunnerAdvancedEvent) and e.runner_id == "runner_1"
+                if isinstance(e, RunnerAdvancedEvent) and e.runner == "runner_1"
             ),
             None,
         )
@@ -882,7 +892,7 @@ class TestSacrifices:
                 e
                 for e in events
                 if isinstance(e, RunnerAdvancedEvent)
-                and e.runner_id == "runner_3"
+                and e.runner == "runner_3"
                 and e.to_base == HOME
             ),
             None,
@@ -1008,7 +1018,7 @@ class TestHelperMethods:
             (THIRD, SECOND, FIRST),
             advancement=1,
             reason="single",
-            rbi_batter_id="batter_1",
+            rbi_batter="batter_1",
         )
 
         assert len(events) == 2
@@ -1032,7 +1042,7 @@ class TestHelperMethods:
         event = resolver._advance_batter_to_base("batter_1", SECOND, "double")
 
         assert isinstance(event, RunnerAdvancedEvent)
-        assert event.runner_id == "batter_1"
+        assert event.runner == "batter_1"
         assert event.from_base is None
         assert event.to_base == SECOND
         assert event.reason == "double"
@@ -1051,12 +1061,12 @@ class TestIntegration:
         # Strike 1
         game.count.strikes = 0
         with patch.object(resolver, "_determine_pitch_outcome", return_value="strike"):
-            events1 = resolver._resolve_pitch(pitch_intent, game)
+            _ = resolver._resolve_pitch(pitch_intent, game)
         game.count.strikes = 1
 
         # Strike 2
         with patch.object(resolver, "_determine_pitch_outcome", return_value="strike"):
-            events2 = resolver._resolve_pitch(pitch_intent, game)
+            _ = resolver._resolve_pitch(pitch_intent, game)
         game.count.strikes = 2
 
         # Strike 3 - strikeout
@@ -1114,19 +1124,13 @@ class TestIntegration:
         assert len(advances) == 4
 
         # Check specific advances
-        runner_3_advance = next(
-            (e for e in advances if e.runner_id == "runner_3"), None
-        )
+        runner_3_advance = next((e for e in advances if e.runner == "runner_3"), None)
         assert runner_3_advance.to_base == HOME
 
-        runner_2_advance = next(
-            (e for e in advances if e.runner_id == "runner_2"), None
-        )
+        runner_2_advance = next((e for e in advances if e.runner == "runner_2"), None)
         assert runner_2_advance.to_base == HOME
 
-        runner_1_advance = next(
-            (e for e in advances if e.runner_id == "runner_1"), None
-        )
+        runner_1_advance = next((e for e in advances if e.runner == "runner_1"), None)
         assert runner_1_advance.to_base == THIRD
 
 

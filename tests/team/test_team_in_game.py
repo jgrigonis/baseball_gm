@@ -89,7 +89,10 @@ def test_set_lineup_assigns_lineup_and_pitcher(team_in_game):
     """
     set_lineup() delegates to the injected optimizer
     """
+    fake_player = MagicMock(spec=PlayerInGame)
     fake_batter = MagicMock(spec=LineupSlot)
+    fake_batter = LineupSlot(player=fake_player, position="c")  # Real position string
+
     fake_pitcher = MagicMock(spec=PlayerInGame)
 
     mock_optimize = MagicMock(return_value=([fake_batter], fake_pitcher))

@@ -14,7 +14,6 @@ PlayerSkills must:
 """
 import pytest
 import random
-from unittest.mock import Mock
 
 from src.player.player_skills import PlayerSkills, DEFAULT_SKILL_MEAN
 from src.player.positions import SKILLS
@@ -80,7 +79,7 @@ class TestPlayerSkillsInitialization:
         with pytest.raises(ValueError, match="invalid value"):
             ps = PlayerSkills({"power": "85.5"})
 
-    #    assert ps["power"] == 85  # Truncated to int
+            assert ps["power"] == 85  # Truncated to int
 
 
 class TestDictionaryInterface:

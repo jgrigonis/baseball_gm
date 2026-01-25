@@ -9,7 +9,7 @@ Not a very useful script.
 
 from src.player.player_factory import PlayerFactory
 from src.player.player_in_game import PlayerInGame
-from src.player.positions import POSITIONS, POSITION_NAME, SKILL_TEMPLATE
+from src.player.positions import POSITIONS
 from src.player.player_formatters import PlayerTableFormatter
 
 __author__ = "josh"

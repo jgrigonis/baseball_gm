@@ -29,7 +29,6 @@ def get_args():
 
 def main():
     args = get_args()
-    debug = args.debug
     pf = PlayerFactory()
 
     print(PlayerTableFormatter.header_skills())

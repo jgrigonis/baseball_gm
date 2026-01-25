@@ -18,7 +18,7 @@ from src.team.team_factory import TeamFactory
 from src.team.team_in_game_factory import TeamInGameFactory
 
 # from src.util.locations import TEAM_FILES_DIR
-from src.util.logger import setup_logger
+# from src.util.logger import setup_logger
 
 HOME_CITY = "Louisiana"
 HOME_MASCOT = "Crabs"
@@ -64,8 +64,8 @@ def main(args):
         levl = logging.DEBUG
     if args.trace:
         levl = logging.TRACE
-    logger = setup_logger(name="details", level=levl, console_level=levl)
-    logger = logging.getLogger("details")
+    # logger = setup_logger(name="details", level=levl, console_level=levl)
+    # logger = logging.getLogger("details")
     tf = TeamFactory(log_level=levl)
     # Set up Home Team Record
     home_team_record = tf.generate_team(city=HOME_CITY, mascot=HOME_MASCOT)

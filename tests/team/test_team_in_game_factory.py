@@ -1,6 +1,4 @@
 # tests/team/test_team_in_game_factory.py
-
-import pytest
 from src.team.team_in_game_factory import TeamInGameFactory
 from src.player.player_in_game import PlayerInGame
 from tests.factories.team_record_factory import make_team_record

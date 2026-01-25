@@ -2,7 +2,7 @@
 import pytest
 import logging
 import random
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 
 from src.game.game import Game, GameStateError, GameResult, GameContext
 from src.game.event import GameEvent

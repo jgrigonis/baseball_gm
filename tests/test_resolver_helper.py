@@ -1,6 +1,4 @@
 # tests/test_resolver_helper.py
-import pytest
-
 from src.game.resolver import EnhancedResolver
 from src.game.events.ball import BallEvent
 from src.game.events.pitch import PitchThrownEvent

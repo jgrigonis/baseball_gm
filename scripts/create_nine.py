@@ -7,18 +7,16 @@ team and has all its ratings.
 
 """
 
-import os
-
 from src.player.player_formatters import PlayerTableFormatter
 from src.team.team_factory import TeamFactory
 from src.team.team_in_game_factory import TeamInGameFactory
-from src.util.locations import TEAM_FILES_DIR
+
+# from src.util.locations import TEAM_FILES_DIR
 
 __author__ = "josh"
 
 
 def main():
-    debug = False
     tf = TeamFactory()
     team_record = tf.generate_team(city="Team", mascot="Nine", size=9)
 

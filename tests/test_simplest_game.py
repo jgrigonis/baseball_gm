@@ -1,5 +1,4 @@
 # tests/game/test_simplest_game.py
-import logging
 import pytest
 from random import Random
 

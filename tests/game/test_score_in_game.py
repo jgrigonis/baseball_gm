@@ -2,6 +2,8 @@
 from tests.utils import fake_game
 
 from src.game.events.scoring import RunScoredEvent
+from src.player.player_in_game import PlayerInGame
+from tests.factories.player_record_factory import make_player_record
 
 
 def test_score_uses_inning_state():
@@ -9,7 +11,7 @@ def test_score_uses_inning_state():
     game.inning.number = 3
     game.inning.top = False
 
-    RunScoredEvent("r1", None, "test").apply(game)
+    RunScoredEvent(PlayerInGame(make_player_record()), None, "test").apply(game)
 
     assert game.score.home == 1
     assert game.score.away == 0

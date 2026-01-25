@@ -2,6 +2,7 @@
 import pytest
 
 from src.game.bases import Bases, FIRST, SECOND, THIRD, HOME
+from tests.factories.player_in_game_factory import make_player_in_game
 
 
 class TestBasesInitialization:
@@ -87,27 +88,33 @@ class TestAdvanceErrors:
     """Test error conditions for advancing."""
 
     def test_cannot_double_occupy_base(self):
+        r1 = make_player_in_game(id="r1", ratings=dict())
+        r2 = make_player_in_game(id="r2", ratings=dict())
+
         bases = Bases()
-        bases.advance("r1", None, FIRST)
+        bases.advance(r1, None, FIRST)
         with pytest.raises(RuntimeError, match="already occupied"):
-            bases.advance("r2", None, FIRST)
+            bases.advance(r2, None, FIRST)
 
     def test_cannot_advance_nonexistent_runner(self):
+        r1 = make_player_in_game(id="r1", ratings=dict())
         bases = Bases()
         with pytest.raises(RuntimeError, match="not on base"):
-            bases.advance("r1", FIRST, SECOND)
+            bases.advance(r1, FIRST, SECOND)
 
     def test_cannot_advance_runner_from_wrong_base(self):
+        r1 = make_player_in_game(id="r1", ratings=dict())
         bases = Bases()
-        bases.advance("r1", None, FIRST)
+        bases.advance(r1, None, FIRST)
         with pytest.raises(RuntimeError, match="not on base"):
-            bases.advance("r1", SECOND, THIRD)
+            bases.advance(r1, SECOND, THIRD)
 
     def test_cannot_advance_runner_already_on_bases(self):
+        r1 = make_player_in_game(id="r1", ratings=dict())
         bases = Bases()
-        bases.advance("r1", None, FIRST)
+        bases.advance(r1, None, FIRST)
         with pytest.raises(RuntimeError, match="already on base"):
-            bases.advance("r1", None, SECOND)
+            bases.advance(r1, None, SECOND)
 
     def test_invalid_to_base(self):
         bases = Bases()
@@ -157,15 +164,17 @@ class TestRemoveRunner:
         assert bases.runner_on(SECOND) == "r2"
 
     def test_cannot_remove_nonexistent_runner(self):
+        r1 = make_player_in_game(id="r1", ratings=dict())
         bases = Bases()
         with pytest.raises(RuntimeError, match="not on base"):
-            bases.remove("r1", FIRST)
+            bases.remove(r1, FIRST)
 
     def test_cannot_remove_runner_from_wrong_base(self):
+        r1 = make_player_in_game(id="r1", ratings=dict())
         bases = Bases()
-        bases.advance("r1", None, FIRST)
+        bases.advance(r1, None, FIRST)
         with pytest.raises(RuntimeError, match="not on base"):
-            bases.remove("r1", SECOND)
+            bases.remove(r1, SECOND)
 
     def test_remove_invalid_base(self):
         bases = Bases()

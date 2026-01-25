@@ -58,10 +58,3 @@ def mock_teams():
     away.players = []
 
     return home, away
-
-
-# This is not accurate
-# @pytest.fixture
-# def game_with_loaded_bases(game):
-#     game.bases.load([1, 2]) # WRONG
-#     return game

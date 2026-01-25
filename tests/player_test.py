@@ -25,7 +25,6 @@ class TestPlayerFactory(unittest.TestCase):
         my_player2 = factory.create(position="1b", bats="left", throws="left")
         self.assertEqual(my_player2.bats, "left")
         self.assertEqual(my_player2.throws, "left")
-        my_player3 = factory.create()
         self.assertNotEqual(my_player2.name, None)
 
     def test_lefty_1b_probability(self):
