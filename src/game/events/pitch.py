@@ -4,6 +4,7 @@ from typing import Optional
 
 from src.game.count import CountSnapshot
 from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
@@ -13,13 +14,14 @@ class PitchThrownEvent(GameEvent):
     This is observational only.
     """
 
-    pitcher_id: str
-    batter_id: str
+    pitcher: PlayerInGame
+    batter: PlayerInGame
     count: CountSnapshot
     pitch_type: Optional[str] = None  # fastball, curve, etc. (optional for now)
 
     def apply(self, game):
         game.logger.trace("PitchThrownEvent applied")
+        self.pitcher.game_stats.pitching.pitch()
 
     def should_log(self) -> bool:
         """We don't need to log every pitch."""

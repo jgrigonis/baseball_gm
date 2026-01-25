@@ -1,40 +1,51 @@
 # src/game/events/walk.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
 class WalkEvent(GameEvent):
-    batter_id: str
+    batter: PlayerInGame
+    pitcher: PlayerInGame
 
     def apply(self, game):
-        pass
-        # base advance handled in _resolve_walk
+        self.batter.game_stats.batting.walk()
+        self.pitcher.game_stats.pitching.walk()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{game.current_batter.player.name} was issued a walk."
+        return f"{self.batter.name} was issued a walk."
 
 
 @dataclass(frozen=True)
 class IBBEvent(GameEvent):
-    batter_id: str
+    batter: PlayerInGame
+    pitcher: PlayerInGame
 
     def apply(self, game):
-        pass
+        # TODO track intentional walks separate
+        self.batter.game_stats.batting.walk()
+        self.pitcher.game_stats.pitching.walk()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{game.current_batter.player.name} was issued an intentional walk."
+        return f"{self.batter.name} was issued an intentional walk."
 
 
 @dataclass(frozen=True)
 class CatcherInterferenceEvent(GameEvent):
-    batter_id: str
+    batter: PlayerInGame
+    pitcher: PlayerInGame
+    catcher: PlayerInGame
 
     def apply(self, game):
-        pass
+        # TODO track catcher interference separately
+        # And add catcher stat
+        self.batter.game_stats.batting.walk()
+        self.pitcher.game_stats.pitching.walk()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{game.current_batter.player.name} was issued first base for catcher interference."
+        return f"{self.batter.name} was issued first base for catcher interference."

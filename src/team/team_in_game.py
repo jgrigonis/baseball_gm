@@ -16,6 +16,7 @@ generate randomness (except strategic decisions)
 """
 
 __author__ = "josh"
+from enum import Enum
 from typing import Callable
 
 from src.player.player_in_game import PlayerInGame
@@ -28,6 +29,19 @@ OptimizeFn = Callable[
     [list[PlayerInGame], str, bool],
     tuple[list[LineupSlot], PlayerInGame | None],
 ]
+
+
+class Position(str, Enum):
+    PITCHER = "p"
+    CATCHER = "c"
+    FIRST_BASE = "1b"
+    SECOND_BASE = "2b"
+    THIRD_BASE = "3b"
+    SHORTSTOP = "ss"
+    LEFT_FIELD = "lf"
+    CENTER_FIELD = "cf"
+    RIGHT_FIELD = "rf"
+    DESIGNATED_HITTER = "dh"
 
 
 class TeamInGame:
@@ -47,6 +61,7 @@ class TeamInGame:
         self._optimizer = optimizer
         self.lineup: list[LineupSlot] = []
         self.pitcher: PlayerInGame | None = None
+        self._positions: dict[Position, PlayerInGame] = {}
         self.batter_index: int = 0
         self.logger = logging.getLogger("details")
 
@@ -63,7 +78,13 @@ class TeamInGame:
             dh=dh,
         )
 
+        self._positions = {Position(slot.position): slot.player for slot in self.lineup}
+
         self.batter_index = 0
+
+    def get_fielder(self, position: Position) -> PlayerInGame | None:
+        """Get player at a position."""
+        return self._positions.get(position)
 
     def _ensure_players_rated(self) -> None:
         for p in self.players:
@@ -86,3 +107,11 @@ class TeamInGame:
     def current_pitcher(self):
         """Return the current pitcher."""
         return self.pitcher
+
+    @property
+    def current_catcher(self) -> PlayerInGame:
+        """Get the current catcher."""
+        catcher = self._positions.get(Position.CATCHER)
+        if catcher is None:
+            raise RuntimeError("No catcher in lineup")
+        return catcher

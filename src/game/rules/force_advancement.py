@@ -2,20 +2,22 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from src.player.player_in_game import PlayerInGame
+
 
 @dataclass(frozen=True)
 class ForcedAdvance:
-    runner_id: str
+    runner: str
     from_base: int
     to_base: int
     reason: str = "force"
-    rbi_batter_id: Optional[str] = None
+    rbi_batter: Optional[PlayerInGame] = None
 
 
 def force_advance_chain(
-    occupied_bases: Dict[int, str],
+    occupied_bases: Dict[int, PlayerInGame],
     start_base: int,
-    rbi_batter_id: Optional[str] = None,
+    rbi_batter: Optional[PlayerInGame] = None,
 ) -> List[ForcedAdvance]:
     """
     Compute forced runner movement as a pure function.
@@ -55,10 +57,10 @@ def force_advance_chain(
     for b in range(base - 1, start_base - 1, -1):
         advances.append(
             ForcedAdvance(
-                runner_id=occupied_bases[b],
+                runner=occupied_bases[b],
                 from_base=b,
                 to_base=b + 1,
-                rbi_batter_id=rbi_batter_id,
+                rbi_batter=rbi_batter,
             )
         )
 

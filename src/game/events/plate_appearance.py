@@ -1,6 +1,8 @@
 # src/game/events/plate_appearance.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
@@ -17,13 +19,11 @@ class PlateAppearanceEndEvent(GameEvent):
     """
 
     reason: str
+    batter: PlayerInGame
 
     def apply(self, game):
         game._mark_plate_appearance_complete(self.reason)
-
-    # def should_log(self) -> bool:
-    #     """We don't need to log every plate appearnce end."""
-    #     return False
+        self.batter.game_stats.batting.plate_appearance()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""

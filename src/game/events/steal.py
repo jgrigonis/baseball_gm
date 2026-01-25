@@ -1,15 +1,15 @@
 # src/game/events/steal.py
 from dataclasses import dataclass
-from src.game.event import GameEvent
 
-# TODO write describe methods
+from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass
 class StealAttemptEvent(GameEvent):
     """Runner attempts to steal a base"""
 
-    runner_id: str
+    runner: PlayerInGame
     from_base: int
     to_base: int
 
@@ -22,17 +22,22 @@ class StealAttemptEvent(GameEvent):
         """
         # Log or track steal attempts for statistics
         # No state mutation needed here - the outcome events handle that
+        # base_names = {1: "second", 2: "third", 3: "home"}
+        # game.logger.debug(
+        #     f"Steal attempt: {self.runner.name} attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
+        # )
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
         base_names = {1: "second", 2: "third", 3: "home"}
-        game.logger.debug(
-            f"Steal attempt: {self.runner_id} attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
-        )
+        return f"Steal attempt: {self.runner.name} attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
 
 
 @dataclass
 class StolenBaseEvent(GameEvent):
     """Successful stolen base"""
 
-    runner_id: str
+    runner: PlayerInGame
     from_base: int
     to_base: int
 
@@ -45,17 +50,23 @@ class StolenBaseEvent(GameEvent):
         """
         # The RunnerAdvancedEvent handles the state mutation
         # This event is for logging/statistics
-        base_names = {1: "first", 2: "second", 3: "third", 4: "home"}
-        game.logger.info(
-            f"Stolen base! Runner advanced to {base_names.get(self.to_base, str(self.to_base))}"
-        )
+        # base_names = {1: "first", 2: "second", 3: "third", 4: "home"}
+        # game.logger.info(
+        #     f"Stolen base! Runner advanced to {base_names.get(self.to_base, str(self.to_base))}"
+        # )
+        self.runner.game_stats.batting.steal()
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        base_names = {1: "second", 2: "third", 3: "home"}
+        return f"Stolen base! Runner advanced to {base_names.get(self.to_base, str(self.to_base))}"
 
 
 @dataclass
 class CaughtStealingEvent(GameEvent):
     """Runner caught stealing"""
 
-    runner_id: str
+    runner: PlayerInGame
     from_base: int
     to_base: int
 
@@ -68,10 +79,11 @@ class CaughtStealingEvent(GameEvent):
         """
         # The OutRecordedEvent and RunnerRemovedEvent handle the state mutation
         # This event is for logging/statistics
+        self.runner.game_stats.batting.caught_stealing()
+
+    def describe(self, game) -> str:
         base_names = {1: "first", 2: "second", 3: "third", 4: "home"}
-        game.logger.info(
-            f"Caught stealing! Runner thrown out attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
-        )
+        return f"Caught stealing! Runner thrown out attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
 
 
 @dataclass
@@ -86,8 +98,12 @@ class DoubleStealtAttemptEvent(GameEvent):
 
         This is primarily for statistics/logging.
         """
+        pass
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
         # Log the double steal attempt
-        game.logger.info(f"Double steal attempt on bases: {self.bases}")
+        return f"Double steal attempt on bases: {self.bases}"
 
 
 """

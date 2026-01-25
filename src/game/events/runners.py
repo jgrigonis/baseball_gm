@@ -24,6 +24,7 @@ from typing import Optional
 
 from src.game.event import GameEvent
 from src.game.events.scoring import RunScoredEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
@@ -38,15 +39,15 @@ class RunnerAdvancedEvent(GameEvent):
         Treat anything over 4 as home
     """
 
-    runner_id: str
+    runner: PlayerInGame
     from_base: Optional[int]
     to_base: int
     reason: Optional[str] = None
-    rbi_batter_id: str | None = None
+    rbi_batter: PlayerInGame | None = None
 
     def apply(self, game) -> list[GameEvent]:
         game.bases.advance(
-            runner_id=self.runner_id,
+            runner=self.runner,
             from_base=self.from_base,
             to_base=self.to_base,
         )
@@ -54,8 +55,8 @@ class RunnerAdvancedEvent(GameEvent):
         if self.to_base >= 4:
             return [
                 RunScoredEvent(
-                    runner_id=self.runner_id,
-                    rbi_batter_id=self.rbi_batter_id,
+                    runner=self.runner,
+                    rbi_batter=self.rbi_batter,
                     reason=self.reason or "run",
                 )
             ]
@@ -63,7 +64,7 @@ class RunnerAdvancedEvent(GameEvent):
         return []
 
     def log_level(self) -> int:
-        return logging.DEBUG  # Important!
+        return logging.DEBUG
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
@@ -76,12 +77,15 @@ class RunnerRemovedEvent(GameEvent):
     A runner is removed from the bases (out or scored).
     """
 
-    runner_id: str
+    runner: PlayerInGame
     from_base: Optional[int]
     reason: Optional[str] = None
 
     def apply(self, game):
         game.bases.remove(
-            runner_id=self.runner_id,
+            runner=self.runner,
             from_base=self.from_base,
         )
+
+    def log_level(self) -> int:
+        return logging.DEBUG

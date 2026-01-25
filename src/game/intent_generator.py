@@ -54,8 +54,8 @@ class IntentGenerator:
         Create a PitchIntent using current batter/pitcher.
         """
         return PitchIntent(
-            pitcher_id=game.current_pitcher.id,
-            batter_id=game.current_batter.player.id,
+            pitcher=game.current_pitcher,
+            batter=game.current_batter.player,
         )
 
     def _noop_intent(self) -> GameIntent:

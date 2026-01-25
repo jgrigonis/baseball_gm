@@ -33,6 +33,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Optional
 
+from src.player.player_in_game import PlayerInGame
+
 # Public API
 FIRST = 1
 SECOND = 2
@@ -44,9 +46,9 @@ VALID_DESTINATIONS = (FIRST, SECOND, THIRD, HOME)
 
 @dataclass(frozen=True)
 class BasesSnapshot:
-    first: Optional[str] = None
-    second: Optional[str] = None
-    third: Optional[str] = None
+    first: Optional[PlayerInGame] = None
+    second: Optional[PlayerInGame] = None
+    third: Optional[PlayerInGame] = None
 
 
 class Bases:
@@ -54,11 +56,11 @@ class Bases:
     Tracks base occupancy.
 
     Internal representation:
-        base_number (1-3) -> runner_id
+        base_number (1-3) -> runner
     """
 
     def __init__(self):
-        self._bases: Dict[int, str] = {}
+        self._bases: Dict[int, PlayerInGame] = {}
 
     def __str__(self):
         """
@@ -102,23 +104,23 @@ class Bases:
     # Queries
     # ------------------------------------------------------------------
 
-    def runner_on(self, base: int) -> Optional[str]:
+    def runner_on(self, base: int) -> Optional[PlayerInGame]:
         if base not in VALID_BASES:
             raise ValueError(f"Invalid base: {base}")
         return self._bases.get(base)
 
-    def base_of(self, runner_id: str) -> Optional[int]:
-        found = [b for b, r in self._bases.items() if r == runner_id]
+    def base_of(self, runner: PlayerInGame) -> Optional[int]:
+        found = [b for b, r in self._bases.items() if r == runner]
         if len(found) > 1:
-            raise RuntimeError(f"Runner {runner_id} on multiple bases: {found}")
+            raise RuntimeError(f"Runner {runner.name} on multiple bases: {found}")
         return found[0] if found else None
 
-    def occupied_map(self) -> dict[int, str]:
+    def occupied_map(self) -> dict[int, PlayerInGame]:
         """
         Returns a snapshot of occupied bases.
 
         Keys are base numbers (1, 2, 3),
-        values are runner_ids.
+        values are runners.
 
         Used by pure rule helpers (no mutation).
         """
@@ -131,13 +133,13 @@ class Bases:
 
         return occupied
 
-    def runners(self) -> list[str]:
-        """Return list of all runner IDs currently on base."""
+    def runners(self) -> list[PlayerInGame]:
+        """Return list of all runners currently on base."""
         return list(self._bases.values())
 
-    def has_runner(self, runner_id: str) -> bool:
+    def has_runner(self, runner: PlayerInGame) -> bool:
         """Check if a specific runner is on any base."""
-        return runner_id in self._bases.values()
+        return runner in self._bases.values()
 
     @property
     def is_empty(self) -> bool:
@@ -155,7 +157,7 @@ class Bases:
 
     def advance(
         self,
-        runner_id: str,
+        runner: PlayerInGame,
         from_base: Optional[int],
         to_base: int,
     ):
@@ -175,13 +177,13 @@ class Bases:
 
         # --- Validate origin ---
         if from_base is None:
-            if self.base_of(runner_id) is not None:
-                raise RuntimeError(f"Runner {runner_id} already on base")
+            if self.base_of(runner) is not None:
+                raise RuntimeError(f"Runner {runner.name} already on base")
         else:
             if from_base not in VALID_BASES:
                 raise ValueError(f"Invalid from_base: {from_base}")
-            if self._bases.get(from_base) != runner_id:
-                raise RuntimeError(f"Runner {runner_id} not on base {from_base}")
+            if self._bases.get(from_base) != runner:
+                raise RuntimeError(f"Runner {runner.name} not on base {from_base}")
             del self._bases[from_base]
 
         # --- Handle scoring ---
@@ -192,15 +194,15 @@ class Bases:
         if to_base in self._bases:
             raise RuntimeError(
                 f"Base {to_base} already occupied by {self._bases[to_base]}. "
-                f"Cannot advance {runner_id}. Current state: {self}"
+                f"Cannot advance {runner.name}. Current state: {self}"
             )
 
-        self._bases[to_base] = runner_id
+        self._bases[to_base] = runner
         # self._assert_consistent() # Use in debug mode
 
     def remove(
         self,
-        runner_id: str,
+        runner: PlayerInGame,
         from_base: int,
     ):
         """
@@ -210,8 +212,8 @@ class Bases:
         if from_base not in VALID_BASES:
             raise ValueError(f"Invalid from_base: {from_base}")
 
-        if self._bases.get(from_base) != runner_id:
-            raise RuntimeError(f"Runner {runner_id} not on base {from_base}")
+        if self._bases.get(from_base) != runner:
+            raise RuntimeError(f"Runner {runner.name} not on base {from_base}")
 
         del self._bases[from_base]
 

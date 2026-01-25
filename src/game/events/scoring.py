@@ -1,6 +1,8 @@
 # src/game/events/run.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 # TODO in general, we'll want to check if game is over when a run scores
 
@@ -11,8 +13,8 @@ class RunScoredEvent(GameEvent):
     A run has scored.
     """
 
-    runner_id: str
-    rbi_batter_id: str | None
+    runner: PlayerInGame
+    rbi_batter: PlayerInGame | None
     reason: str
 
     def apply(self, game):
@@ -20,6 +22,9 @@ class RunScoredEvent(GameEvent):
             top=game.inning.top,
             inning_number=game.inning.number,
         )
+        self.runner.game_stats.batting.run()
+        if self.rbi_batter:
+            self.rbi_batter.game_stats.batting.hit_rbi()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""

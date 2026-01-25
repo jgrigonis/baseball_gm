@@ -1,6 +1,8 @@
 # src/game/events/pick_off.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 
 # ================================================================
@@ -13,7 +15,8 @@ class PickoffAttemptEvent(GameEvent):
     """Pitcher attempts to pick off a runner"""
 
     base: int
-    runner_id: str
+    runner: PlayerInGame
+    pitcher: PlayerInGame
 
     def apply(self, game):
         """
@@ -29,7 +32,7 @@ class PickoffAttemptEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         return (
-            f"{game.current_pitcher.name} tried to pick off the runner on {self.base}."
+            f"{self.pitcher.name} tried to pick off {self.runner.name} on {self.base}."
         )
 
 
@@ -38,7 +41,8 @@ class PickoffSuccessEvent(GameEvent):
     """Successful pickoff - runner out"""
 
     base: int
-    runner_id: str
+    runner: PlayerInGame
+    pitcher: PlayerInGame
 
     def apply(self, game):
         """
@@ -47,13 +51,14 @@ class PickoffSuccessEvent(GameEvent):
         Note: The actual out recording and runner removal are handled by
         OutRecordedEvent and RunnerRemovedEvent that follow this event.
         """
+        self.pitcher.game_stats.pitching.pickoff()
         # The OutRecordedEvent and RunnerRemovedEvent handle the state mutation
         # This event is for logging/statistics
         game.logger.info(f"Runner picked off at base {self.base}")
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{game.current_pitcher.name} picked off the runner on {self.base}."
+        return f"{self.pitcher.name} picked off {self.runner.name} on {self.base}."
 
 
 @dataclass
@@ -61,7 +66,8 @@ class PickoffFailedEvent(GameEvent):
     """Failed pickoff attempt - runner safe"""
 
     base: int
-    runner_id: str
+    runner: PlayerInGame
+    pitcher: PlayerInGame
 
     def apply(self, game):
         """
@@ -82,7 +88,8 @@ class PickoffErrorEvent(GameEvent):
     """Throwing error on pickoff - runner advances"""
 
     base: int
-    runner_id: str
+    runner: PlayerInGame
+    pitcher: PlayerInGame
 
     def apply(self, game):
         """
@@ -91,6 +98,7 @@ class PickoffErrorEvent(GameEvent):
         Note: The actual runner advancement is handled by
         RunnerAdvancedEvent that follows this event.
         """
+        self.pitcher.game_stats.fielding.error()
         # The RunnerAdvancedEvent handles the state mutation
         # This event is for logging/statistics
         game.logger.info(f"Throwing error on pickoff at base {self.base}")

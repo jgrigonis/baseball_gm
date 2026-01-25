@@ -1,14 +1,18 @@
 # src/game/events/out.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
 class OutRecordedEvent(GameEvent):
     reason: str
+    pitcher: PlayerInGame
 
     def apply(self, game):
         game.inning.record_out()
+        self.pitcher.game_stats.pitching.out()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
@@ -20,23 +24,23 @@ class OutRecordedEvent(GameEvent):
 
 @dataclass(frozen=True)
 class GroundOutEvent(GameEvent):
-    batter_id: str
+    batter: PlayerInGame
 
     def apply(self, game):
-        pass
+        self.batter.game_stats.batting.at_bat()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{game.current_batter.player.name} grounded out."
+        return f"{self.batter.name} grounded out."
 
 
 @dataclass(frozen=True)
 class FlyOutEvent(GameEvent):
-    batter_id: str
+    batter: PlayerInGame
 
     def apply(self, game):
-        pass
+        self.batter.game_stats.batting.at_bat()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{game.current_batter.player.name} hit a fly out."
+        return f"{self.batter.name} hit a fly out."

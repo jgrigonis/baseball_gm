@@ -1,12 +1,18 @@
 # src/game/events/passed_ball.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
 from src.game.events.runners import RunnerAdvancedEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
 class PassedBallEvent(GameEvent):
+    catcher: PlayerInGame
+
     def apply(self, game):
+        # TODO catcher stats
+        # self.catcher.game_stats.fielding.passed_ball()
         followups = []
         # TODO Not all runners need to necessarily advance
         # A single runner advancing would be enough

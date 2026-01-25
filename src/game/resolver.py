@@ -96,8 +96,8 @@ class Resolver:
         # ------------------------------------------------------------
         events.append(
             PitchThrownEvent(
-                pitcher_id=intent.pitcher_id,
-                batter_id=intent.batter_id,
+                pitcher=intent.pitcher,
+                batter=intent.batter,
                 count=game.count.snapshot(),
                 pitch_type=intent.pitch_type,
             )
@@ -134,7 +134,7 @@ class Resolver:
             events.extend(self._handle_ball(intent, game))
 
         elif outcome in ("strike", "called_strike", "swinging_strike"):
-            events.extend(self._handle_strike_outcome(outcome, game))
+            events.extend(self._handle_strike_outcome(outcome, intent, game))
 
         elif outcome == "foul":
             events.extend(self._resolve_foul(intent, game))
@@ -277,7 +277,7 @@ class Resolver:
                 raise RuntimeError(f"Play requires a runner on {base_name} base")
 
     def _advance_all_runners(
-        self, game, bases: tuple, advancement: int, reason: str, rbi_batter_id=None
+        self, game, bases: tuple, advancement: int, reason: str, rbi_batter=None
     ) -> list[GameEvent]:
         """Advance runners on specified bases by advancement amount (capped at HOME)"""
         events = []
@@ -288,21 +288,21 @@ class Resolver:
 
             events.append(
                 RunnerAdvancedEvent(
-                    runner_id=runner,
+                    runner=runner,
                     from_base=base,
                     to_base=min(base + advancement, HOME),
                     reason=reason,
-                    rbi_batter_id=rbi_batter_id,
+                    rbi_batter=rbi_batter,
                 )
             )
         return events
 
     def _advance_batter_to_base(
-        self, batter_id: str, to_base: int, reason: str
+        self, batter: str, to_base: int, reason: str
     ) -> RunnerAdvancedEvent:
         """Create event for batter advancing to a base"""
         return RunnerAdvancedEvent(
-            runner_id=batter_id, from_base=None, to_base=to_base, reason=reason
+            runner=batter, from_base=None, to_base=to_base, reason=reason
         )
 
     def _handle_ball(self, intent, game) -> list[GameEvent]:
@@ -312,7 +312,9 @@ class Resolver:
             events.extend(self._resolve_walk(intent, game))
         return events
 
-    def _handle_strike_outcome(self, outcome: str, game) -> list[GameEvent]:
+    def _handle_strike_outcome(
+        self, outcome: str, intent: PitchIntent, game
+    ) -> list[GameEvent]:
         """Handle different types of strikes"""
         events = []
 
@@ -328,9 +330,9 @@ class Resolver:
             self.logger.debug("strike out ending pa")
             events.extend(
                 [
-                    StrikeOutEvent(),
-                    OutRecordedEvent(reason="strikeout"),
-                    PlateAppearanceEndEvent(reason="strikeout"),
+                    StrikeOutEvent(batter=intent.batter, pitcher=intent.pitcher),
+                    OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
+                    PlateAppearanceEndEvent(reason="strikeout", batter=intent.batter),
                 ]
             )
 
@@ -338,7 +340,7 @@ class Resolver:
 
     def _handle_illegal_pitch(self, intent, game) -> list[GameEvent]:
         """Handle an illegal pitch"""
-        events = [IllegalPitch(), BallEvent()]
+        events = [IllegalPitch(pitcher=intent.pitcher), BallEvent()]
         if game.count.balls + 1 >= 4:
             events.extend(self._resolve_walk(intent, game))
         return events
@@ -366,7 +368,7 @@ class Resolver:
             return []
         # TODO Are we properly calling a ball here?
         # TODO if it walks, do we double advance runners?
-        return [PassedBallEvent()]
+        return [PassedBallEvent(catcher=game.pitch_team.current_catcher)]
 
     def _ball_in_play(self, events: List[GameEvent]) -> bool:
         """
@@ -477,17 +479,17 @@ class Resolver:
     def _resolve_fly_out(self, intent, game) -> list[GameEvent]:
         """Resolve a fly out"""
         return [
-            FlyOutEvent(batter_id=intent.batter_id),
-            OutRecordedEvent(reason="fly_out"),
-            PlateAppearanceEndEvent("fly_out"),
+            FlyOutEvent(batter=intent.batter),
+            OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher),
+            PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter),
         ]
 
     def _resolve_ground_out(self, intent, game) -> list[GameEvent]:
         """Resolve a ground out"""
         return [
-            GroundOutEvent(batter_id=intent.batter_id),
-            OutRecordedEvent(reason="ground_out"),
-            PlateAppearanceEndEvent("ground_out"),
+            GroundOutEvent(batter=intent.batter),
+            OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher),
+            PlateAppearanceEndEvent(reason="ground_out", batter=intent.batter),
         ]
 
     def _resolve_home_run(self, intent, game) -> list[GameEvent]:
@@ -499,7 +501,7 @@ class Resolver:
         """
         events: list[GameEvent] = []
 
-        events.append(HomeRunEvent(batter_id=intent.batter_id))
+        events.append(HomeRunEvent(batter=intent.batter, pitcher=intent.pitcher))
 
         # Score all runners
         events.extend(
@@ -508,21 +510,22 @@ class Resolver:
                 (THIRD, SECOND, FIRST),
                 advancement=HOME,  # Will be capped at HOME
                 reason="home_run",
-                rbi_batter_id=intent.batter_id,
+                rbi_batter=intent.batter,
             )
         )
 
         # Batter scores
         events.append(
             RunnerAdvancedEvent(
-                runner_id=intent.batter_id,
+                runner=intent.batter,
                 from_base=None,
                 to_base=HOME,
                 reason="home_run",
+                rbi_batter=intent.batter,
             )
         )
 
-        events.append(PlateAppearanceEndEvent("home_run"))
+        events.append(PlateAppearanceEndEvent(reason="home_run", batter=intent.batter))
 
         return events
 
@@ -544,9 +547,11 @@ class Resolver:
                 events.extend(
                     [
                         FoulTipCaughtThirdStrikeEvent(),
-                        StrikeOutEvent(),
-                        OutRecordedEvent(reason="strikeout"),
-                        PlateAppearanceEndEvent(reason="strikeout"),
+                        StrikeOutEvent(batter=intent.batter, pitcher=intent.pitcher),
+                        OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
+                        PlateAppearanceEndEvent(
+                            reason="strikeout", batter=intent.batter
+                        ),
                     ]
                 )
             elif r < self.FOULED_OFF_THIRD_STRIKE_PROB:
@@ -566,8 +571,8 @@ class Resolver:
     def _resolve_fly_out_foul(self, intent, game) -> list[GameEvent]:
         """Simply resolves a fly out foul, can happen with 2 strikes or less."""
         return [
-            OutRecordedEvent(reason="foul_fly_out"),
-            PlateAppearanceEndEvent("out"),
+            OutRecordedEvent(reason="foul_fly_out", pitcher=intent.pitcher),
+            PlateAppearanceEndEvent(reason="out", batter=intent.batter),
         ]
 
     def _resolve_walk(
@@ -587,17 +592,17 @@ class Resolver:
 
         if hbp:
             reason = "intentional_hit_by_pitch" if intentional else "hit_by_pitch"
-            events.append(HitByPitchEvent(batter_id=intent.batter_id))
+            events.append(HitByPitchEvent(batter=intent.batter, pitcher=intent.pitcher))
         else:
             if intentional:
                 reason = "intentional_walk"
-                events.append(IBBEvent(batter_id=intent.batter_id))
+                events.append(IBBEvent(batter=intent.batter))
             elif catcher_interference:
                 reason = "catcher_interference"
-                events.append(CatcherInterferenceEvent(batter_id=intent.batter_id))
+                events.append(CatcherInterferenceEvent(batter=intent.batter))
             else:
                 reason = "walk"
-                events.append(WalkEvent(batter_id=intent.batter_id))
+                events.append(WalkEvent(pitcher=intent.pitcher, batter=intent.batter))
 
         # Force existing runners
         occupied = game.bases.occupied_map()
@@ -605,24 +610,24 @@ class Resolver:
         forced = force_advance_chain(
             occupied_bases=occupied,
             start_base=1,
-            rbi_batter_id=intent.batter_id,
+            rbi_batter=intent.batter,
         )
         for f in forced:
             events.append(
                 RunnerAdvancedEvent(
-                    runner_id=f.runner_id,
+                    runner=f.runner,
                     from_base=f.from_base,
                     to_base=f.to_base,
                     reason=f.reason,
-                    rbi_batter_id=f.rbi_batter_id,
+                    rbi_batter=f.rbi_batter,
                 )
             )
 
         # Award batter first base
-        events.append(self._advance_batter_to_base(intent.batter_id, FIRST, reason))
+        events.append(self._advance_batter_to_base(intent.batter, FIRST, reason))
 
         self.logger.trace("Ending PA in _resolve_walk")
-        events.append(PlateAppearanceEndEvent(reason))
+        events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
 
         return events
 
@@ -635,7 +640,7 @@ class Resolver:
         """
         events: list[GameEvent] = []
 
-        events.append(SingleEvent(batter_id=intent.batter_id))
+        events.append(SingleEvent(batter=intent.batter, pitcher=intent.pitcher))
 
         # Advance all runners one base
         events.extend(
@@ -644,14 +649,14 @@ class Resolver:
                 (THIRD, SECOND, FIRST),
                 advancement=1,
                 reason="single",
-                rbi_batter_id=intent.batter_id,
+                rbi_batter=intent.batter,
             )
         )
 
         # Batter to first
-        events.append(self._advance_batter_to_base(intent.batter_id, FIRST, "single"))
+        events.append(self._advance_batter_to_base(intent.batter, FIRST, "single"))
 
-        events.append(PlateAppearanceEndEvent("single"))
+        events.append(PlateAppearanceEndEvent(reason="single", batter=intent.batter))
 
         return events
 
@@ -664,7 +669,7 @@ class Resolver:
         """
         events: list[GameEvent] = []
 
-        events.append(DoubleEvent(batter_id=intent.batter_id))
+        events.append(DoubleEvent(batter=intent.batter, pitcher=intent.pitcher))
 
         # Advance all runners two bases
         events.extend(
@@ -673,14 +678,14 @@ class Resolver:
                 (THIRD, SECOND, FIRST),
                 advancement=2,
                 reason="double",
-                rbi_batter_id=intent.batter_id,
+                rbi_batter=intent.batter,
             )
         )
 
         # Batter to second
-        events.append(self._advance_batter_to_base(intent.batter_id, SECOND, "double"))
+        events.append(self._advance_batter_to_base(intent.batter, SECOND, "double"))
 
-        events.append(PlateAppearanceEndEvent("double"))
+        events.append(PlateAppearanceEndEvent(reason="double", batter=intent.batter))
 
         return events
 
@@ -693,7 +698,7 @@ class Resolver:
         """
         events: list[GameEvent] = []
 
-        events.append(TripleEvent(batter_id=intent.batter_id))
+        events.append(TripleEvent(batter=intent.batter, pitcher=intent.pitcher))
 
         # All runners score (advancement to HOME)
         events.extend(
@@ -702,14 +707,14 @@ class Resolver:
                 (THIRD, SECOND, FIRST),
                 advancement=HOME,  # Will be capped at HOME
                 reason="triple",
-                rbi_batter_id=intent.batter_id,
+                rbi_batter=intent.batter,
             )
         )
 
         # Batter to third
-        events.append(self._advance_batter_to_base(intent.batter_id, THIRD, "triple"))
+        events.append(self._advance_batter_to_base(intent.batter, THIRD, "triple"))
 
-        events.append(PlateAppearanceEndEvent("triple"))
+        events.append(PlateAppearanceEndEvent(reason="triple", batter=intent.batter))
 
         return events
 
@@ -733,14 +738,14 @@ class Resolver:
 
         events: list[GameEvent] = []
 
-        events.append(DoublePlayEvent(batter_id=intent.batter_id))
-        events.append(OutRecordedEvent(reason="double_play"))
-        events.append(OutRecordedEvent(reason="double_play"))
+        events.append(DoublePlayEvent(batter=intent.batter, pitcher=intent.pitcher))
+        events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
+        events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
 
         if game.bases.runner_on(FIRST):
             events.append(
                 RunnerRemovedEvent(
-                    runner_id=game.bases.runner_on(FIRST),
+                    runner=game.bases.runner_on(FIRST),
                     from_base=FIRST,
                     reason="double_play",
                 )
@@ -752,7 +757,7 @@ class Resolver:
         elif game.bases.runner_on(THIRD):
             events.append(
                 RunnerRemovedEvent(
-                    runner_id=game.bases.runner_on(THIRD),
+                    runner=game.bases.runner_on(THIRD),
                     from_base=THIRD,
                     reason="double_play",
                 )
@@ -763,13 +768,15 @@ class Resolver:
             # must be a runner on second.
             events.append(
                 RunnerRemovedEvent(
-                    runner_id=game.bases.runner_on(SECOND),
+                    runner=game.bases.runner_on(SECOND),
                     from_base=SECOND,
                     reason="double_play",
                 )
             )
 
-        events.append(PlateAppearanceEndEvent("double_play"))
+        events.append(
+            PlateAppearanceEndEvent(reason="double_play", batter=intent.batter)
+        )
 
         return events
 
@@ -801,13 +808,15 @@ class Resolver:
 
         events: list[GameEvent] = []
 
-        events.append(FieldersChoiceEvent(batter_id=intent.batter_id))
-        events.append(OutRecordedEvent(reason="fielders_choice"))
+        events.append(FieldersChoiceEvent(batter=intent.batter, pitcher=intent.pitcher))
+        events.append(
+            OutRecordedEvent(reason="fielders_choice", pitcher=intent.pitcher)
+        )
 
         if game.bases.runner_on(THIRD):
             events.append(
                 RunnerRemovedEvent(
-                    runner_id=game.bases.runner_on(THIRD),
+                    runner=game.bases.runner_on(THIRD),
                     from_base=THIRD,
                     reason="fielders_choice",
                 )
@@ -825,7 +834,7 @@ class Resolver:
         elif game.bases.runner_on(FIRST):
             events.append(
                 RunnerRemovedEvent(
-                    runner_id=game.bases.runner_on(FIRST),
+                    runner=game.bases.runner_on(FIRST),
                     from_base=FIRST,
                     reason="fielders_choice",
                 )
@@ -835,7 +844,7 @@ class Resolver:
             if runner:
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=SECOND,
                         to_base=THIRD,
                         reason="fielders_choice",
@@ -845,7 +854,7 @@ class Resolver:
         else:
             events.append(
                 RunnerRemovedEvent(
-                    runner_id=game.bases.runner_on(SECOND),
+                    runner=game.bases.runner_on(SECOND),
                     from_base=SECOND,
                     reason="fielders_choice",
                 )
@@ -853,9 +862,11 @@ class Resolver:
 
         # Batter to first
         events.append(
-            self._advance_batter_to_base(intent.batter_id, FIRST, "fielders_choice")
+            self._advance_batter_to_base(intent.batter, FIRST, "fielders_choice")
         )
-        events.append(PlateAppearanceEndEvent("fielders_choice"))
+        events.append(
+            PlateAppearanceEndEvent(reason="fielders_choice", batter=intent.batter)
+        )
 
         return events
 
@@ -874,8 +885,8 @@ class Resolver:
 
         events: list[GameEvent] = []
 
-        events.append(SacBuntEvent(batter_id=intent.batter_id))
-        events.append(OutRecordedEvent(reason="sac_bunt"))
+        events.append(SacBuntEvent(batter=intent.batter))
+        events.append(OutRecordedEvent(reason="sac_bunt", pitcher=intent.pitcher))
 
         # Advance all runners one base
         events.extend(
@@ -884,11 +895,11 @@ class Resolver:
                 (THIRD, SECOND, FIRST),
                 advancement=1,
                 reason="sac_bunt",
-                rbi_batter_id=intent.batter_id,
+                rbi_batter=intent.batter,
             )
         )
 
-        events.append(PlateAppearanceEndEvent("sac_bunt"))
+        events.append(PlateAppearanceEndEvent(reason="sac_bunt", batter=intent.batter))
 
         return events
 
@@ -906,21 +917,21 @@ class Resolver:
         events: list[GameEvent] = []
         # TODO Other runners could also advance possibly
 
-        events.append(SacFlyEvent(batter_id=intent.batter_id))
-        events.append(OutRecordedEvent(reason="sac_fly"))
+        events.append(SacFlyEvent(batter=intent.batter))
+        events.append(OutRecordedEvent(reason="sac_fly", pitcher=intent.pitcher))
 
         runner = game.bases.runner_on(THIRD)
         events.append(
             RunnerAdvancedEvent(
-                runner_id=runner,
+                runner=runner,
                 from_base=THIRD,
                 to_base=HOME,
                 reason="sac_fly",
-                rbi_batter_id=intent.batter_id,
+                rbi_batter=intent.batter,
             )
         )
 
-        events.append(PlateAppearanceEndEvent("sac_fly"))
+        events.append(PlateAppearanceEndEvent(reason="sac_fly", batter=intent.batter))
 
         return events
 
@@ -947,24 +958,24 @@ class Resolver:
 
         events: list[GameEvent] = []
 
-        events.append(TriplePlayEvent(batter_id=intent.batter_id))
-        events.append(OutRecordedEvent(reason="triple_play"))
-        events.append(OutRecordedEvent(reason="triple_play"))
-        events.append(OutRecordedEvent(reason="triple_play"))
+        events.append(TriplePlayEvent(batter=intent.batter))
+        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
+        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
+        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
 
         if game.bases.is_loaded():
             r = self.rng.random()
             if r < self.TRIPLE_PLAY_FIRST_SECOND_THRESHOLD:
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(FIRST),
+                        runner=game.bases.runner_on(FIRST),
                         from_base=FIRST,
                         reason="triple_play",
                     )
                 )
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(SECOND),
+                        runner=game.bases.runner_on(SECOND),
                         from_base=SECOND,
                         reason="triple_play",
                     )
@@ -972,14 +983,14 @@ class Resolver:
             elif r < self.TRIPLE_PLAY_FIRST_THIRD_THRESHOLD:
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(FIRST),
+                        runner=game.bases.runner_on(FIRST),
                         from_base=FIRST,
                         reason="triple_play",
                     )
                 )
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(THIRD),
+                        runner=game.bases.runner_on(THIRD),
                         from_base=THIRD,
                         reason="triple_play",
                     )
@@ -987,14 +998,14 @@ class Resolver:
             else:
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(THIRD),
+                        runner=game.bases.runner_on(THIRD),
                         from_base=THIRD,
                         reason="triple_play",
                     )
                 )
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(SECOND),
+                        runner=game.bases.runner_on(SECOND),
                         from_base=SECOND,
                         reason="triple_play",
                     )
@@ -1003,7 +1014,7 @@ class Resolver:
             if game.bases.runner_on(FIRST):
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(FIRST),
+                        runner=game.bases.runner_on(FIRST),
                         from_base=FIRST,
                         reason="triple_play",
                     )
@@ -1011,7 +1022,7 @@ class Resolver:
             if game.bases.runner_on(SECOND):
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(SECOND),
+                        runner=game.bases.runner_on(SECOND),
                         from_base=SECOND,
                         reason="triple_play",
                     )
@@ -1019,13 +1030,15 @@ class Resolver:
             if game.bases.runner_on(THIRD):
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=game.bases.runner_on(THIRD),
+                        runner=game.bases.runner_on(THIRD),
                         from_base=THIRD,
                         reason="triple_play",
                     )
                 )
 
-        events.append(PlateAppearanceEndEvent("triple_play"))
+        events.append(
+            PlateAppearanceEndEvent(reason="triple_play", batter=intent.batter)
+        )
 
         return events
 
@@ -1121,7 +1134,9 @@ class EnhancedResolver(Resolver):
         if not runner:
             return events
 
-        events.append(PickoffAttemptEvent(base=base, runner_id=runner))
+        events.append(
+            PickoffAttemptEvent(base=base, runner=runner, pitcher=intent.pitcher)
+        )
 
         # Determine outcome
         r = self.rng.random()
@@ -1129,16 +1144,20 @@ class EnhancedResolver(Resolver):
         if r < self.PICKOFF_SUCCESS_PROB:
             # Successful pickoff - runner out
             self.logger.debug(f"Successful pickoff at base {base}")
-            events.append(PickoffSuccessEvent(base=base, runner_id=runner))
-            events.append(OutRecordedEvent(reason="pickoff"))
             events.append(
-                RunnerRemovedEvent(runner_id=runner, from_base=base, reason="pickoff")
+                PickoffSuccessEvent(base=base, runner=runner, pitcher=intent.pitcher)
+            )
+            events.append(OutRecordedEvent(reason="pickoff", pitcher=intent.pitcher))
+            events.append(
+                RunnerRemovedEvent(runner=runner, from_base=base, reason="pickoff")
             )
 
         elif r < self.PICKOFF_SUCCESS_PROB + self.PICKOFF_ERROR_PROB:
             # Throwing error - runner advances
             self.logger.debug(f"Pickoff throwing error at base {base}")
-            events.append(PickoffErrorEvent(base=base, runner_id=runner))
+            events.append(
+                PickoffErrorEvent(base=base, runner=runner, pitcher=intent.pitcher)
+            )
             # Advance all runners one base
             events.extend(
                 self._advance_all_runners(
@@ -1152,7 +1171,9 @@ class EnhancedResolver(Resolver):
         else:
             # Runner safe, no advancement
             self.logger.debug(f"Failed pickoff attempt at base {base}")
-            events.append(PickoffFailedEvent(base=base, runner_id=runner))
+            events.append(
+                PickoffFailedEvent(base=base, runner=runner, pitcher=intent.pitcher)
+            )
 
         return events
 
@@ -1177,7 +1198,7 @@ class EnhancedResolver(Resolver):
 
         if double_steal_bases:
             if self._should_attempt_double_steal(game):
-                return self._resolve_double_steal(double_steal_bases, game)
+                return self._resolve_double_steal(double_steal_bases, intent, game)
 
         # Otherwise, check lead runner first (highest base)
         occupied = sorted(game.bases.occupied_map().keys(), reverse=True)
@@ -1190,7 +1211,7 @@ class EnhancedResolver(Resolver):
                 continue
 
             if self._should_attempt_steal(base, intent, game):
-                return self._resolve_steal_attempt(base, game)
+                return self._resolve_steal_attempt(base, intent, game)
 
         return events
 
@@ -1256,7 +1277,9 @@ class EnhancedResolver(Resolver):
 
         return self.rng.random() < prob
 
-    def _resolve_steal_attempt(self, from_base: int, game) -> List[GameEvent]:
+    def _resolve_steal_attempt(
+        self, from_base: int, intent: PitchIntent, game
+    ) -> List[GameEvent]:
         """
         Resolve a single steal attempt.
 
@@ -1272,7 +1295,7 @@ class EnhancedResolver(Resolver):
             return events
 
         events.append(
-            StealAttemptEvent(runner_id=runner, from_base=from_base, to_base=to_base)
+            StealAttemptEvent(runner=runner, from_base=from_base, to_base=to_base)
         )
 
         # Determine success rate based on target base
@@ -1291,11 +1314,11 @@ class EnhancedResolver(Resolver):
             # Successful steal
             self.logger.debug(f"Successful steal: {from_base} -> {to_base}")
             events.append(
-                StolenBaseEvent(runner_id=runner, from_base=from_base, to_base=to_base)
+                StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
             )
             events.append(
                 RunnerAdvancedEvent(
-                    runner_id=runner,
+                    runner=runner,
                     from_base=from_base,
                     to_base=to_base,
                     reason="stolen_base",
@@ -1305,20 +1328,22 @@ class EnhancedResolver(Resolver):
             # Caught stealing
             self.logger.debug(f"Caught stealing: {from_base} -> {to_base}")
             events.append(
-                CaughtStealingEvent(
-                    runner_id=runner, from_base=from_base, to_base=to_base
-                )
+                CaughtStealingEvent(runner=runner, from_base=from_base, to_base=to_base)
             )
-            events.append(OutRecordedEvent(reason="caught_stealing"))
+            events.append(
+                OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
+            )
             events.append(
                 RunnerRemovedEvent(
-                    runner_id=runner, from_base=from_base, reason="caught_stealing"
+                    runner=runner, from_base=from_base, reason="caught_stealing"
                 )
             )
 
         return events
 
-    def _resolve_double_steal(self, from_bases: List[int], game) -> List[GameEvent]:
+    def _resolve_double_steal(
+        self, from_bases: List[int], intent: PitchIntent, game
+    ) -> List[GameEvent]:
         """
         Resolve a double steal attempt.
 
@@ -1340,9 +1365,7 @@ class EnhancedResolver(Resolver):
         # Record all attempts (order doesn't matter for logging)
         for from_base, to_base, runner in steal_attempts:
             events.append(
-                StealAttemptEvent(
-                    runner_id=runner, from_base=from_base, to_base=to_base
-                )
+                StealAttemptEvent(runner=runner, from_base=from_base, to_base=to_base)
             )
 
         events.append(DoubleStealtAttemptEvent(bases=from_bases))
@@ -1363,13 +1386,11 @@ class EnhancedResolver(Resolver):
                 # Third → Home first, then First → Second
                 from_base, to_base, runner = third_attempt
                 events.append(
-                    StolenBaseEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
-                    )
+                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
                 )
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
@@ -1378,13 +1399,11 @@ class EnhancedResolver(Resolver):
 
                 from_base, to_base, runner = first_attempt
                 events.append(
-                    StolenBaseEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
-                    )
+                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
                 )
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
@@ -1395,13 +1414,11 @@ class EnhancedResolver(Resolver):
                 # Only runner on 1st steals (runner on 3rd holds)
                 from_base, to_base, runner = first_attempt
                 events.append(
-                    StolenBaseEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
-                    )
+                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
                 )
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
@@ -1412,13 +1429,11 @@ class EnhancedResolver(Resolver):
                 # Runner on 1st out, runner on 3rd scores
                 from_base, to_base, runner = third_attempt
                 events.append(
-                    StolenBaseEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
-                    )
+                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
                 )
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
@@ -1428,13 +1443,15 @@ class EnhancedResolver(Resolver):
                 from_base, to_base, runner = first_attempt
                 events.append(
                     CaughtStealingEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
+                        runner=runner, from_base=from_base, to_base=to_base
                     )
                 )
-                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
+                )
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                        runner=runner, from_base=from_base, reason="caught_stealing"
                     )
                 )
 
@@ -1443,25 +1460,25 @@ class EnhancedResolver(Resolver):
                 from_base, to_base, runner = third_attempt
                 events.append(
                     CaughtStealingEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
+                        runner=runner, from_base=from_base, to_base=to_base
                     )
                 )
-                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
+                )
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                        runner=runner, from_base=from_base, reason="caught_stealing"
                     )
                 )
 
                 from_base, to_base, runner = first_attempt
                 events.append(
-                    StolenBaseEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
-                    )
+                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
                 )
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
@@ -1473,13 +1490,17 @@ class EnhancedResolver(Resolver):
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
                         CaughtStealingEvent(
-                            runner_id=runner, from_base=from_base, to_base=to_base
+                            runner=runner, from_base=from_base, to_base=to_base
                         )
                     )
-                    events.append(OutRecordedEvent(reason="caught_stealing"))
+                    events.append(
+                        OutRecordedEvent(
+                            reason="caught_stealing", pitcher=intent.pitcher
+                        )
+                    )
                     events.append(
                         RunnerRemovedEvent(
-                            runner_id=runner,
+                            runner=runner,
                             from_base=from_base,
                             reason="caught_stealing",
                         )
@@ -1494,12 +1515,12 @@ class EnhancedResolver(Resolver):
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
                         StolenBaseEvent(
-                            runner_id=runner, from_base=from_base, to_base=to_base
+                            runner=runner, from_base=from_base, to_base=to_base
                         )
                     )
                     events.append(
                         RunnerAdvancedEvent(
-                            runner_id=runner,
+                            runner=runner,
                             from_base=from_base,
                             to_base=to_base,
                             reason="stolen_base",
@@ -1514,25 +1535,25 @@ class EnhancedResolver(Resolver):
                 from_base, to_base, runner = lead_attempt
                 events.append(
                     CaughtStealingEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
+                        runner=runner, from_base=from_base, to_base=to_base
                     )
                 )
-                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
+                )
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                        runner=runner, from_base=from_base, reason="caught_stealing"
                     )
                 )
 
                 from_base, to_base, runner = trail_attempt
                 events.append(
-                    StolenBaseEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
-                    )
+                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
                 )
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
@@ -1547,13 +1568,11 @@ class EnhancedResolver(Resolver):
                 # Lead runner advances first (to clear the base)
                 from_base, to_base, runner = lead_attempt
                 events.append(
-                    StolenBaseEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
-                    )
+                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
                 )
                 events.append(
                     RunnerAdvancedEvent(
-                        runner_id=runner,
+                        runner=runner,
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
@@ -1563,13 +1582,15 @@ class EnhancedResolver(Resolver):
                 from_base, to_base, runner = trail_attempt
                 events.append(
                     CaughtStealingEvent(
-                        runner_id=runner, from_base=from_base, to_base=to_base
+                        runner=runner, from_base=from_base, to_base=to_base
                     )
                 )
-                events.append(OutRecordedEvent(reason="caught_stealing"))
+                events.append(
+                    OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
+                )
                 events.append(
                     RunnerRemovedEvent(
-                        runner_id=runner, from_base=from_base, reason="caught_stealing"
+                        runner=runner, from_base=from_base, reason="caught_stealing"
                     )
                 )
 
@@ -1578,13 +1599,17 @@ class EnhancedResolver(Resolver):
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
                         CaughtStealingEvent(
-                            runner_id=runner, from_base=from_base, to_base=to_base
+                            runner=runner, from_base=from_base, to_base=to_base
                         )
                     )
-                    events.append(OutRecordedEvent(reason="caught_stealing"))
+                    events.append(
+                        OutRecordedEvent(
+                            reason="caught_stealing", pitcher=intent.pitcher
+                        )
+                    )
                     events.append(
                         RunnerRemovedEvent(
-                            runner_id=runner,
+                            runner=runner,
                             from_base=from_base,
                             reason="caught_stealing",
                         )

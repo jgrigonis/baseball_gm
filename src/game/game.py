@@ -456,9 +456,7 @@ class Game:
         # Select which base to pick off
         target_base = self._select_pickoff_target()
 
-        return PickOffIntent(
-            pitcher_id=self.current_pitcher.id, target_base=target_base
-        )
+        return PickOffIntent(pitcher=self.current_pitcher, target_base=target_base)
 
     # ------------------------------------------------------------------
     # Event Queue Management

@@ -1,12 +1,17 @@
 # src/game/events/wild_pitch.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
 from src.game.events.runners import RunnerAdvancedEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
 class WildPitchEvent(GameEvent):
+    pitcher: PlayerInGame
+
     def apply(self, game):
+        self.pitcher.game_stats.pitching.wild_pitch()
         followups = []
         # TODO Not all runners need to necessarily advance
         # A single runner advancing would be enough

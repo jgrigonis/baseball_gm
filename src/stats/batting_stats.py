@@ -87,17 +87,10 @@ class BattingStats(object):
         in his plate appearances.
         """
         return (
-            (self.hits + self.walks + self.hbp)
-            / (self.plate_appearances)
+            (self.hits + self.walks + self.hbp) / (self.plate_appearances)
             if self.plate_appearances > 0
             else 0.0
         )
-        # return (
-        #     (self.hits + self.walks + self.hbp)
-        #     / (self.at_bats + self.walks + self.hbp + self.sac_flys)
-        #     if self.at_bats + self.walks + self.hbp + self.sac_flys > 0
-        #     else 0.0
-        # )
 
     @property
     def ops(self):
@@ -113,8 +106,19 @@ class BattingStats(object):
         """
         return (
             (self.hits - self.home_runs)
-            / (self.at_bats - self.strike_outs - self.home_runs + self.sac_flys + self.sac_bunts)
-            if self.at_bats - self.strike_outs - self.home_runs + self.sac_flys + self.sac_bunts > 0
+            / (
+                self.at_bats
+                - self.strike_outs
+                - self.home_runs
+                + self.sac_flys
+                + self.sac_bunts
+            )
+            if self.at_bats
+            - self.strike_outs
+            - self.home_runs
+            + self.sac_flys
+            + self.sac_bunts
+            > 0
             else 0.0
         )
 
@@ -178,10 +182,14 @@ class BattingStats(object):
         """Add a sac bunt."""
         self.sac_bunts += 1
 
-    def run(self, runner):
+    def run(self):
         """Add a run."""
         self.runs += 1
 
     def walk(self):
         """Add a walk."""
         self.walks += 1
+
+    def plate_appearance(self):
+        """Add a plate appearance."""
+        self.plate_appearances += 1

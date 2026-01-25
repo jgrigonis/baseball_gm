@@ -1,16 +1,18 @@
 # src/game/events/triple_play.py
 from dataclasses import dataclass
+
 from src.game.event import GameEvent
+from src.player.player_in_game import PlayerInGame
 
 
 @dataclass(frozen=True)
 class TriplePlayEvent(GameEvent):
-    batter_id: str
+    batter: PlayerInGame
 
     def apply(self, game):
-        # game.inning.record_out()
-        pass  # outs are applied elsewhere
+        self.batter.game_stats.batting.ground_triple_play()
+        self.batter.game_stats.batting.at_bat()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{game.current_batter.player.name} hit into a triple play!"
+        return f"{self.batter.name} hit into a triple play!"
