@@ -22,6 +22,7 @@ class BalkEvent(GameEvent):
                         from_base=b,
                         to_base=b + 1,
                         reason="balk",
+                        pitcher=self.pitcher,
                     )
                 )
         return followups

@@ -40,6 +40,7 @@ class RunnerAdvancedEvent(GameEvent):
     """
 
     runner: PlayerInGame
+    pitcher: PlayerInGame
     from_base: Optional[int]
     to_base: int
     reason: Optional[str] = None
@@ -58,6 +59,7 @@ class RunnerAdvancedEvent(GameEvent):
                     runner=self.runner,
                     rbi_batter=self.rbi_batter,
                     reason=self.reason or "run",
+                    pitcher=self.pitcher,
                 )
             ]
 

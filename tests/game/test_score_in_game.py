@@ -11,7 +11,12 @@ def test_score_uses_inning_state():
     game.inning.number = 3
     game.inning.top = False
 
-    RunScoredEvent(PlayerInGame(make_player_record()), None, "test").apply(game)
+    RunScoredEvent(
+        runner=PlayerInGame(make_player_record()),
+        rbi_batter=PlayerInGame(make_player_record()),
+        reason="test",
+        pitcher=PlayerInGame(make_player_record()),
+    ).apply(game)
 
     assert game.score.home == 1
     assert game.score.away == 0

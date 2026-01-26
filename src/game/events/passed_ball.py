@@ -9,6 +9,7 @@ from src.player.player_in_game import PlayerInGame
 @dataclass(frozen=True)
 class PassedBallEvent(GameEvent):
     catcher: PlayerInGame
+    pitcher: PlayerInGame
 
     def apply(self, game):
         # TODO catcher stats
@@ -26,6 +27,7 @@ class PassedBallEvent(GameEvent):
                         from_base=b,
                         to_base=b + 1,
                         reason="passed_ball",
+                        pitcher=self.pitcher,
                     )
                 )
         return followups

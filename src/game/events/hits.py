@@ -30,6 +30,7 @@ class DoubleEvent(GameEvent):
         self.batter.game_stats.batting.double()
         self.batter.game_stats.batting.at_bat()
         self.pitcher.game_stats.pitching.hit()
+        self.pitcher.game_stats.pitching.double()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
@@ -46,6 +47,7 @@ class TripleEvent(GameEvent):
         self.batter.game_stats.batting.triple()
         self.batter.game_stats.batting.at_bat()
         self.pitcher.game_stats.pitching.hit()
+        self.pitcher.game_stats.pitching.triple()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
@@ -62,6 +64,7 @@ class HomeRunEvent(GameEvent):
         self.batter.game_stats.batting.home_run()
         self.batter.game_stats.batting.at_bat()
         self.pitcher.game_stats.pitching.hit()
+        self.pitcher.game_stats.pitching.home_run()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""

@@ -25,6 +25,7 @@ class WildPitchEvent(GameEvent):
                         from_base=b,
                         to_base=b + 1,
                         reason="wild_pitch",
+                        pitcher=self.pitcher,
                     )
                 )
         return followups

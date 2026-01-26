@@ -16,6 +16,7 @@ class RunScoredEvent(GameEvent):
     runner: PlayerInGame
     rbi_batter: PlayerInGame | None
     reason: str
+    pitcher: PlayerInGame
 
     def apply(self, game):
         game.score.score_run(
@@ -23,6 +24,7 @@ class RunScoredEvent(GameEvent):
             inning_number=game.inning.number,
         )
         self.runner.game_stats.batting.run()
+        self.pitcher.game_stats.pitching.run()
         if self.rbi_batter:
             self.rbi_batter.game_stats.batting.hit_rbi()
 

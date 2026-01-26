@@ -408,15 +408,19 @@ class Game:
         # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent
         if self._half_inning_over() and self._queue:
             # Keep only PlateAppearanceEndEvent for stat tracking
-            pa_events = [e for e in self._queue if isinstance(e, PlateAppearanceEndEvent)]
-            cleared_events = [e for e in self._queue if not isinstance(e, PlateAppearanceEndEvent)]
-    
+            pa_events = [
+                e for e in self._queue if isinstance(e, PlateAppearanceEndEvent)
+            ]
+            cleared_events = [
+                e for e in self._queue if not isinstance(e, PlateAppearanceEndEvent)
+            ]
+
             if cleared_events:
                 self.logger.debug(
                     f"Inning over - cleared {len(cleared_events)} events: "
                     f"{[e.label() for e in cleared_events]}"
                 )
-            
+
             self._queue.clear()
             self._queue.extend(pa_events)
 

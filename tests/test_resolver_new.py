@@ -1039,7 +1039,9 @@ class TestHelperMethods:
 
     def test_advance_batter_to_base(self, resolver):
         """Test batter advancement helper"""
-        event = resolver._advance_batter_to_base("batter_1", SECOND, "double")
+        event = resolver._advance_batter_to_base(
+            "batter_1", "pitcher_1", SECOND, "double"
+        )
 
         assert isinstance(event, RunnerAdvancedEvent)
         assert event.runner == "batter_1"

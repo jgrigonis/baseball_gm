@@ -298,16 +298,21 @@ class Resolver:
                     to_base=min(base + advancement, HOME),
                     reason=reason,
                     rbi_batter=rbi_batter,
+                    pitcher=game.current_pitcher,
                 )
             )
         return events
 
     def _advance_batter_to_base(
-        self, batter: str, to_base: int, reason: str
+        self, batter: str, pitcher: str, to_base: int, reason: str
     ) -> RunnerAdvancedEvent:
         """Create event for batter advancing to a base"""
         return RunnerAdvancedEvent(
-            runner=batter, from_base=None, to_base=to_base, reason=reason
+            runner=batter,
+            from_base=None,
+            to_base=to_base,
+            reason=reason,
+            pitcher=pitcher,
         )
 
     def _handle_ball(self, intent, game) -> list[GameEvent]:
@@ -373,7 +378,11 @@ class Resolver:
             return []
         # TODO Are we properly calling a ball here?
         # TODO if it walks, do we double advance runners?
-        return [PassedBallEvent(catcher=game.pitch_team.current_catcher)]
+        return [
+            PassedBallEvent(
+                catcher=game.pitch_team.current_catcher, pitcher=game.current_pitcher
+            )
+        ]
 
     def _ball_in_play(self, events: List[GameEvent]) -> bool:
         """
@@ -527,6 +536,7 @@ class Resolver:
                 to_base=HOME,
                 reason="home_run",
                 rbi_batter=intent.batter,
+                pitcher=intent.pitcher,
             )
         )
 
@@ -632,11 +642,14 @@ class Resolver:
                     to_base=f.to_base,
                     reason=f.reason,
                     rbi_batter=f.rbi_batter,
+                    pitcher=intent.pitcher,
                 )
             )
 
         # Award batter first base
-        events.append(self._advance_batter_to_base(intent.batter, FIRST, reason))
+        events.append(
+            self._advance_batter_to_base(intent.batter, intent.pitcher, FIRST, reason)
+        )
 
         self.logger.trace("Ending PA in _resolve_walk")
         events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
@@ -666,7 +679,9 @@ class Resolver:
         )
 
         # Batter to first
-        events.append(self._advance_batter_to_base(intent.batter, FIRST, "single"))
+        events.append(
+            self._advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "single")
+        )
 
         events.append(PlateAppearanceEndEvent(reason="single", batter=intent.batter))
 
@@ -695,7 +710,11 @@ class Resolver:
         )
 
         # Batter to second
-        events.append(self._advance_batter_to_base(intent.batter, SECOND, "double"))
+        events.append(
+            self._advance_batter_to_base(
+                intent.batter, intent.pitcher, SECOND, "double"
+            )
+        )
 
         events.append(PlateAppearanceEndEvent(reason="double", batter=intent.batter))
 
@@ -724,7 +743,9 @@ class Resolver:
         )
 
         # Batter to third
-        events.append(self._advance_batter_to_base(intent.batter, THIRD, "triple"))
+        events.append(
+            self._advance_batter_to_base(intent.batter, intent.pitcher, THIRD, "triple")
+        )
 
         events.append(PlateAppearanceEndEvent(reason="triple", batter=intent.batter))
 
@@ -860,6 +881,7 @@ class Resolver:
                         from_base=SECOND,
                         to_base=THIRD,
                         reason="fielders_choice",
+                        pitcher=intent.pitcher,
                     )
                 )
 
@@ -874,7 +896,9 @@ class Resolver:
 
         # Batter to first
         events.append(
-            self._advance_batter_to_base(intent.batter, FIRST, "fielders_choice")
+            self._advance_batter_to_base(
+                intent.batter, intent.pitcher, FIRST, "fielders_choice"
+            )
         )
         events.append(
             PlateAppearanceEndEvent(reason="fielders_choice", batter=intent.batter)
@@ -940,6 +964,7 @@ class Resolver:
                 to_base=HOME,
                 reason="sac_fly",
                 rbi_batter=intent.batter,
+                pitcher=intent.pitcher,
             )
         )
 
@@ -1334,6 +1359,7 @@ class EnhancedResolver(Resolver):
                     from_base=from_base,
                     to_base=to_base,
                     reason="stolen_base",
+                    pitcher=intent.pitcher,
                 )
             )
         else:
@@ -1406,6 +1432,7 @@ class EnhancedResolver(Resolver):
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
+                        pitcher=intent.pitcher,
                     )
                 )
 
@@ -1419,6 +1446,7 @@ class EnhancedResolver(Resolver):
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
+                        pitcher=intent.pitcher,
                     )
                 )
 
@@ -1434,6 +1462,7 @@ class EnhancedResolver(Resolver):
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
+                        pitcher=intent.pitcher,
                     )
                 )
 
@@ -1449,6 +1478,7 @@ class EnhancedResolver(Resolver):
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
+                        pitcher=intent.pitcher,
                     )
                 )
 
@@ -1494,6 +1524,7 @@ class EnhancedResolver(Resolver):
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
+                        pitcher=intent.pitcher,
                     )
                 )
 
@@ -1536,6 +1567,7 @@ class EnhancedResolver(Resolver):
                             from_base=from_base,
                             to_base=to_base,
                             reason="stolen_base",
+                            pitcher=intent.pitcher,
                         )
                     )
 
@@ -1569,6 +1601,7 @@ class EnhancedResolver(Resolver):
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
+                        pitcher=intent.pitcher,
                     )
                 )
 
@@ -1588,6 +1621,7 @@ class EnhancedResolver(Resolver):
                         from_base=from_base,
                         to_base=to_base,
                         reason="stolen_base",
+                        pitcher=intent.pitcher,
                     )
                 )
 
