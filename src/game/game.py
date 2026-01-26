@@ -28,6 +28,7 @@ from src.game.event import GameEvent
 from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
 from src.game.resolver import EnhancedResolver
+from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.util.logger import setup_logger
 from src.game.intents.pick_off import PickOffIntent
 from src.game.bases import FIRST, SECOND, THIRD
@@ -404,6 +405,21 @@ class Game:
         Raises:
             GameStateError: If PA complete but events still queued
         """
+        # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent
+        if self._half_inning_over() and self._queue:
+            # Keep only PlateAppearanceEndEvent for stat tracking
+            pa_events = [e for e in self._queue if isinstance(e, PlateAppearanceEndEvent)]
+            cleared_events = [e for e in self._queue if not isinstance(e, PlateAppearanceEndEvent)]
+    
+            if cleared_events:
+                self.logger.debug(
+                    f"Inning over - cleared {len(cleared_events)} events: "
+                    f"{[e.label() for e in cleared_events]}"
+                )
+            
+            self._queue.clear()
+            self._queue.extend(pa_events)
+
         # Validate invariant: PA complete → queue empty
         if self._plate_appearance_complete and self._queue:
             queue_contents = [e.label() for e in self._queue]
