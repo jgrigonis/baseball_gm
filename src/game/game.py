@@ -417,8 +417,9 @@ class Game:
             self._advance_batter()
             self.count.reset()
 
-        # End half-inning if 3 outs reached
-        if self._half_inning_over():
+        # End half-inning if 3 outs reached AND queue is empty
+        # This ensures all events (including PlateAppearanceEndEvent) are processed
+        if self._half_inning_over() and not self._queue:
             self._end_half_inning()
 
     # ------------------------------------------------------------------
@@ -574,7 +575,7 @@ class Game:
         # Reset state
         self.bases.clear()
         self.count.reset()
-        self._queue.clear()
+        # self._queue.clear()
 
         # Swap teams
         self._swap_teams()

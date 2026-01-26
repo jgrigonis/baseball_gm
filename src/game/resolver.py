@@ -37,7 +37,12 @@ from src.game.events.pick_off import (
     PickoffErrorEvent,
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
-from src.game.events.out import OutRecordedEvent, GroundOutEvent, FlyOutEvent
+from src.game.events.out import (
+    OutRecordedEvent,
+    GroundOutEvent,
+    FlyOutEvent,
+    FoulFlyOutEvent,
+)
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.intent import GameIntent
@@ -571,6 +576,7 @@ class Resolver:
     def _resolve_fly_out_foul(self, intent, game) -> list[GameEvent]:
         """Simply resolves a fly out foul, can happen with 2 strikes or less."""
         return [
+            FoulFlyOutEvent(batter=intent.batter),
             OutRecordedEvent(reason="foul_fly_out", pitcher=intent.pitcher),
             PlateAppearanceEndEvent(reason="out", batter=intent.batter),
         ]

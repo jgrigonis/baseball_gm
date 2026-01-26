@@ -1,3 +1,7 @@
+# src/stats/batting_stats.py
+import logging
+
+
 class BattingStats(object):
     """The batting statistics object"""
 
@@ -21,6 +25,7 @@ class BattingStats(object):
         self.sb = 0
         self.cs = 0
         self.pickoffs = 0
+        self.logger = logging.getLogger("game.stats")
 
     def __repr__(self):
         """Return the representation of the batting statistics."""
@@ -144,6 +149,7 @@ class BattingStats(object):
 
     def at_bat(self):
         """Add an at bat."""
+        self.logger.info("ATBAT")
         self.at_bats += 1
 
     def home_run(self):
@@ -192,4 +198,5 @@ class BattingStats(object):
 
     def plate_appearance(self):
         """Add a plate appearance."""
+        self.logger.info("PLATE_APPEARANCE")
         self.plate_appearances += 1

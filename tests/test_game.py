@@ -406,13 +406,13 @@ class TestEndHalfInning:
         assert game.count.balls == 0
         assert game.count.strikes == 0
 
-    def test_end_half_inning_clears_queue(self, game):
-        event = Mock(spec=GameEvent)
-        game._queue.append(event)
+    # def test_end_half_inning_clears_queue(self, game):
+    #     event = Mock(spec=GameEvent)
+    #     game._queue.append(event)
 
-        game._end_half_inning()
+    #     game._end_half_inning()
 
-        assert len(game._queue) == 0
+    #     assert len(game._queue) == 0
 
     def test_end_half_inning_swaps_teams(self, game):
         original_bat_team = game.bat_team

@@ -16,6 +16,7 @@ import logging
 from src.game.game import Game
 from src.team.team_factory import TeamFactory
 from src.team.team_in_game_factory import TeamInGameFactory
+from src.player.player_formatters import PlayerTableFormatter
 
 # from src.util.locations import TEAM_FILES_DIR
 # from src.util.logger import setup_logger
@@ -83,6 +84,12 @@ def main(args):
 
     my_game = Game(home_team=home_team, away_team=away_team, log_level=levl)
     result = my_game.play()
+
+    print(PlayerTableFormatter.horizontal_stat_header())
+
+    for player in home_team.players:
+        if player.game_stats.batting.plate_appearances > 0:
+            print(PlayerTableFormatter.horizontal_stats(player))
 
     return result
 

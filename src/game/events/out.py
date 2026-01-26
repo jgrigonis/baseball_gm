@@ -44,3 +44,15 @@ class FlyOutEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         return f"{self.batter.name} hit a fly out."
+
+
+@dataclass(frozen=True)
+class FoulFlyOutEvent(GameEvent):
+    batter: PlayerInGame
+
+    def apply(self, game):
+        self.batter.game_stats.batting.at_bat()
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        return f"{self.batter.name} hit a foul fly out."
