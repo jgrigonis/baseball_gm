@@ -7,6 +7,10 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class OutRecordedEvent(GameEvent):
+    """
+    Records an out in the game and as a pitcher stat.
+    """
+
     reason: str
     pitcher: PlayerInGame
 
@@ -24,6 +28,10 @@ class OutRecordedEvent(GameEvent):
 
 @dataclass(frozen=True)
 class GroundOutEvent(GameEvent):
+    """
+    Simply adds an at bat to the batter
+    """
+
     batter: PlayerInGame
 
     def apply(self, game):
@@ -36,6 +44,10 @@ class GroundOutEvent(GameEvent):
 
 @dataclass(frozen=True)
 class FlyOutEvent(GameEvent):
+    """
+    Simply adds an at bat to the batter
+    """
+
     batter: PlayerInGame
 
     def apply(self, game):
@@ -48,6 +60,10 @@ class FlyOutEvent(GameEvent):
 
 @dataclass(frozen=True)
 class FoulFlyOutEvent(GameEvent):
+    """
+    Simply adds an at bat to the batter
+    """
+
     batter: PlayerInGame
 
     def apply(self, game):

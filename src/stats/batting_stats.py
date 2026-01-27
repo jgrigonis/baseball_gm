@@ -25,6 +25,7 @@ class BattingStats(object):
         self.sb = 0
         self.cs = 0
         self.pickoffs = 0
+        self.intentional_walks = 0
         self.logger = logging.getLogger("game.stats")
 
     def __repr__(self):
@@ -200,3 +201,7 @@ class BattingStats(object):
         """Add a plate appearance."""
         self.logger.info("PLATE_APPEARANCE")
         self.plate_appearances += 1
+
+    def intentional_walk(self):
+        """Add an intentional walk."""
+        self.intentional_walks += 1

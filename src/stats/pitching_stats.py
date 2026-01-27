@@ -17,6 +17,8 @@ class PitchingStats(object):
         self.wild_pitches = 0
         self.illegal_pitches = 0
         self.pitch_count = 0
+        self.ground_double_plays = 0
+        self.intentional_walks = 0
 
     @property
     def ip_float(self):
@@ -127,3 +129,11 @@ class PitchingStats(object):
     def pitch(self):
         """Add one to pitch count."""
         self.pitch_count += 1
+
+    def ground_double_play(self):
+        """Add a ground double play."""
+        self.ground_double_play += 1
+
+    def intentional_walk(self):
+        """Add an intentional walk."""
+        self.intentional_walks += 1

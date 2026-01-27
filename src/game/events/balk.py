@@ -8,6 +8,15 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class BalkEvent(GameEvent):
+    """
+    This should only ever occur with runners on base.
+
+    Any balk action with no runners on would be an illegal pitch.
+    An illegal pitch results in a ball.
+
+    Every runner on base is awarded one base.
+    """
+
     pitcher: PlayerInGame
 
     def apply(self, game):

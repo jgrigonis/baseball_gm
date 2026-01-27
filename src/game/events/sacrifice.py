@@ -7,6 +7,8 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class SacBuntEvent(GameEvent):
+    """Adds to sac bunt stat for batter."""
+
     batter: PlayerInGame
 
     def apply(self, game):
@@ -19,6 +21,8 @@ class SacBuntEvent(GameEvent):
 
 @dataclass(frozen=True)
 class SacFlyEvent(GameEvent):
+    """Adds to sac fly stat for batter."""
+
     batter: PlayerInGame
 
     def apply(self, game):

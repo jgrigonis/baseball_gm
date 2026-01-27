@@ -12,6 +12,7 @@ class PitchThrownEvent(GameEvent):
     """
     A pitch has been thrown.
     This is observational only.
+    It does add to the pitch count.
     """
 
     pitcher: PlayerInGame

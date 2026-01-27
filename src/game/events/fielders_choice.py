@@ -7,6 +7,12 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class FieldersChoiceEvent(GameEvent):
+    """
+    Execute a fielder's choice event.
+
+    This only applies stats to the batter and pitcher.
+    """
+
     batter: PlayerInGame
     pitcher: PlayerInGame
 

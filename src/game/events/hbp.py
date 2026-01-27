@@ -7,6 +7,10 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class HitByPitchEvent(GameEvent):
+    """
+    Simply applies the stats to batter and pitcher.
+    """
+
     batter: PlayerInGame
     pitcher: PlayerInGame
 

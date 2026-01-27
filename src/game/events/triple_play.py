@@ -7,6 +7,10 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class TriplePlayEvent(GameEvent):
+    """
+    Adds a triple play stat for the batter and an atbat.
+    """
+
     batter: PlayerInGame
 
     def apply(self, game):

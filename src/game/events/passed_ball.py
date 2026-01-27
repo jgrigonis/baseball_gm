@@ -8,12 +8,16 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class PassedBallEvent(GameEvent):
+    """
+    This tracks the stats for the catcher, but it also
+    advances all runners one base.
+    """
+
     catcher: PlayerInGame
     pitcher: PlayerInGame
 
     def apply(self, game):
-        # TODO catcher stats
-        # self.catcher.game_stats.fielding.passed_ball()
+        self.catcher.game_stats.fielding.passed_ball()
         followups = []
         # TODO Not all runners need to necessarily advance
         # A single runner advancing would be enough

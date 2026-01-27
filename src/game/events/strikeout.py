@@ -7,6 +7,10 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class StrikeOutEvent(GameEvent):
+    """
+    Applies strike out stats and an atbat to pitcher and batter.
+    """
+
     batter: PlayerInGame
     pitcher: PlayerInGame
     swinging: bool = False

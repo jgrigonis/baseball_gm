@@ -8,6 +8,11 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class WildPitchEvent(GameEvent):
+    """
+    Pitcher throws a wild pitch. This advances all runners.
+    TODO is to do selective advancements.
+    """
+
     pitcher: PlayerInGame
 
     def apply(self, game):

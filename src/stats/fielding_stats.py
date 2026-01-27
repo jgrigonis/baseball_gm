@@ -7,6 +7,8 @@ class FieldingStats(object):
         self.assists = 0
         self.errors = 0
         self.chances = 0  # putouts + assists + errors
+        self.passed_balls = 0
+        self.catcher_interferences = 0
 
     def __repr__(self):
         """Return the representation of the fielding statistics."""
@@ -49,3 +51,13 @@ class FieldingStats(object):
         """Add an error."""
         self.errors += 1
         self.chances += 1
+
+    def passed_ball(self):
+        """Add an error."""
+        self.passed_balls += 1
+        self.chances += 1
+
+    def catcher_interference(self):
+        """Add a catcher interference."""
+        self.catcher_interferences += 1
+        self.error()

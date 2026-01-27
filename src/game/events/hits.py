@@ -7,6 +7,10 @@ from src.player.player_in_game import PlayerInGame
 
 @dataclass(frozen=True)
 class SingleEvent(GameEvent):
+    """
+    Single Event. This simply applies stats to pitcher and batter.
+    """
+
     batter: PlayerInGame
     pitcher: PlayerInGame
 
@@ -22,6 +26,10 @@ class SingleEvent(GameEvent):
 
 @dataclass(frozen=True)
 class DoubleEvent(GameEvent):
+    """
+    This simply applies stats to pitcher and batter.
+    """
+
     batter: PlayerInGame
     pitcher: PlayerInGame
 
@@ -39,6 +47,10 @@ class DoubleEvent(GameEvent):
 
 @dataclass(frozen=True)
 class TripleEvent(GameEvent):
+    """
+    This simply applies stats to pitcher and batter.
+    """
+
     batter: PlayerInGame
     pitcher: PlayerInGame
 
@@ -56,6 +68,10 @@ class TripleEvent(GameEvent):
 
 @dataclass(frozen=True)
 class HomeRunEvent(GameEvent):
+    """
+    This simply applies stats to pitcher and batter.
+    """
+
     batter: PlayerInGame
     pitcher: PlayerInGame
 
