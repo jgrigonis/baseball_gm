@@ -142,30 +142,3 @@ This separation allows for:
 3. Replay/animation systems
 4. Separation of concerns (logging vs state mutation)
 """
-"""
-Example in _resolve_pickoff_attempt:
-
-    if r < self.PICKOFF_SUCCESS_PROB:
-        # Successful pickoff - runner out
-        events.append(PickoffAttemptEvent(base=base, runner_id=runner))
-        events.append(PickoffSuccessEvent(base=base, runner_id=runner))
-        events.append(OutRecordedEvent(reason="pickoff"))
-        events.append(RunnerRemovedEvent(runner_id=runner, from_base=base, reason="pickoff"))
-        
-    elif r < self.PICKOFF_SUCCESS_PROB + self.PICKOFF_ERROR_PROB:
-        # Throwing error - runner advances
-        events.append(PickoffAttemptEvent(base=base, runner_id=runner))
-        events.append(PickoffErrorEvent(base=base, runner_id=runner))
-        events.append(RunnerAdvancedEvent(
-            runner_id=runner,
-            from_base=base,
-            to_base=min(base + 1, HOME),
-            reason="pickoff_error",
-        ))
-        
-    else:
-        # Runner safe, no advancement
-        events.append(PickoffAttemptEvent(base=base, runner_id=runner))
-        events.append(PickoffFailedEvent(base=base, runner_id=runner))
-
-"""

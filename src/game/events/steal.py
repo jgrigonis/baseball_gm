@@ -124,28 +124,3 @@ This separation allows for:
 3. Replay/animation systems
 4. Separation of concerns (logging vs state mutation)
 """
-"""
-Example in _resolve_steal_attempt:
-
-    if self.rng.random() < success_prob:
-        # Successful steal
-        events.append(StealAttemptEvent(runner_id=runner, from_base=from_base, to_base=to_base))
-        events.append(StolenBaseEvent(runner_id=runner, from_base=from_base, to_base=to_base))
-        events.append(RunnerAdvancedEvent(
-            runner_id=runner,
-            from_base=from_base,
-            to_base=to_base,
-            reason="stolen_base",
-        ))
-        
-    else:
-        # Caught stealing
-        events.append(StealAttemptEvent(runner_id=runner, from_base=from_base, to_base=to_base))
-        events.append(CaughtStealingEvent(runner_id=runner, from_base=from_base, to_base=to_base))
-        events.append(OutRecordedEvent(reason="caught_stealing"))
-        events.append(RunnerRemovedEvent(
-            runner_id=runner,
-            from_base=from_base,
-            reason="caught_stealing",
-        ))
-"""
