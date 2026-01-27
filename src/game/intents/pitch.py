@@ -24,6 +24,7 @@ class PitchIntent(GameIntent):
             "pitch_type": self.pitch_type,
         }
 
+    # TODO fix this up
     # @classmethod
     # def from_dict(cls, data, game):
     #     """Deserialize from storage."""

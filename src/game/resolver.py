@@ -160,10 +160,10 @@ class Resolver:
             events.extend(self._handle_balk(game))
 
         elif outcome == "wild_pitch":
-            events.extend(self._handle_wild_pitch(game))
+            events.extend(self._handle_wild_pitch(intent, game))
 
         elif outcome == "passed_ball":
-            events.extend(self._handle_passed_ball(game))
+            events.extend(self._handle_passed_ball(intent, game))
 
         elif outcome == "home_run":
             self.logger.trace("home_run")
@@ -362,27 +362,44 @@ class Resolver:
             return []
         return [BalkEvent(pitcher=game.current_pitcher)]
 
-    def _handle_wild_pitch(self, game) -> list[GameEvent]:
+    def _handle_wild_pitch(self, intent, game) -> list[GameEvent]:
         """Handle a wild pitch"""
-        if game.bases.is_empty:
-            self.logger.trace("Wild Pitch occurred with no runners on.")
-            return []
-        # TODO Are we properly calling a ball here?
-        # TODO if it walks, do we double advance runners?
-        return [WildPitchEvent(pitcher=game.current_pitcher)]
+        events = []
+        # Always add the ball
+        events.append(BallEvent())
 
-    def _handle_passed_ball(self, game) -> list[GameEvent]:
+        # Add wild pitch event if runners on (BEFORE walk logic)
+        if not game.bases.is_empty:
+            events.append(WildPitchEvent(pitcher=game.current_pitcher))
+        else:
+            self.logger.trace("Wild Pitch occurred with no runners on.")
+
+        # Check for walk
+        if game.count.balls + 1 >= 4:
+            events.extend(self._resolve_walk(intent, game, skip_force_advance=True))
+        return events
+
+    def _handle_passed_ball(self, intent, game) -> list[GameEvent]:
         """Handle a passed ball"""
-        if game.bases.is_empty:
-            self.logger.trace("Passed Ball occurred with no runners on.")
-            return []
-        # TODO Are we properly calling a ball here?
-        # TODO if it walks, do we double advance runners?
-        return [
-            PassedBallEvent(
-                catcher=game.pitch_team.current_catcher, pitcher=game.current_pitcher
+        events = []
+        # Always add the ball
+        events.append(BallEvent())
+
+        # Add passed ball event if runners on (BEFORE walk logic)
+        if not game.bases.is_empty:
+            events.append(
+                PassedBallEvent(
+                    catcher=game.pitch_team.current_catcher,
+                    pitcher=game.current_pitcher,
+                )
             )
-        ]
+        else:
+            self.logger.trace("Passed Ball occurred with no runners on.")
+
+        # Check for walk
+        if game.count.balls + 1 >= 4:
+            events.extend(self._resolve_walk(intent, game, skip_force_advance=True))
+        return events
 
     def _ball_in_play(self, events: List[GameEvent]) -> bool:
         """
@@ -592,7 +609,13 @@ class Resolver:
         ]
 
     def _resolve_walk(
-        self, intent, game, hbp=False, intentional=False, catcher_interference=False
+        self,
+        intent,
+        game,
+        hbp=False,
+        intentional=False,
+        catcher_interference=False,
+        skip_force_advance=False,
     ):
         """
         Resolves a walk. Will deal with hit by pitch, and intentional walks as well.
@@ -627,24 +650,25 @@ class Resolver:
                 events.append(WalkEvent(pitcher=intent.pitcher, batter=intent.batter))
 
         # Force existing runners
-        occupied = game.bases.occupied_map()
+        if not skip_force_advance:
+            occupied = game.bases.occupied_map()
 
-        forced = force_advance_chain(
-            occupied_bases=occupied,
-            start_base=1,
-            rbi_batter=intent.batter,
-        )
-        for f in forced:
-            events.append(
-                RunnerAdvancedEvent(
-                    runner=f.runner,
-                    from_base=f.from_base,
-                    to_base=f.to_base,
-                    reason=f.reason,
-                    rbi_batter=f.rbi_batter,
-                    pitcher=intent.pitcher,
-                )
+            forced = force_advance_chain(
+                occupied_bases=occupied,
+                start_base=1,
+                rbi_batter=intent.batter,
             )
+            for f in forced:
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=f.runner,
+                        from_base=f.from_base,
+                        to_base=f.to_base,
+                        reason=f.reason,
+                        rbi_batter=f.rbi_batter,
+                        pitcher=intent.pitcher,
+                    )
+                )
 
         # Award batter first base
         events.append(
@@ -1127,9 +1151,14 @@ class EnhancedResolver(Resolver):
 
             # ============================================================
             # Phase 2: Concurrent events (steals)
-            # Only process if ball was NOT put in play
+            # Only process if ball was NOT put in play AND no
+            # wild pitch/passed ball
             # ============================================================
-            if not self._ball_in_play(pitch_events) and not self._is_walk(pitch_events):
+            if (
+                not self._ball_in_play(pitch_events)
+                and not self._is_walk(pitch_events)
+                and not self._is_wild_pitch_or_passed_ball(pitch_events)
+            ):
                 # Steals can happen on balls, strikes, fouls, but not walks or ball_in_play
                 concurrent_events = self._resolve_concurrent_events(intent, game)
 
@@ -1224,6 +1253,9 @@ class EnhancedResolver(Resolver):
 
         NOTE: Steals should NOT happen on walks, as runners are
         already being force-advanced.
+
+        NOTE: Steals should NOT happen if runners are already being advanced
+        by a wild pitch or passed ball.
         """
         events = []
 
@@ -1697,3 +1729,9 @@ class EnhancedResolver(Resolver):
             CatcherInterferenceEvent,
         )
         return any(isinstance(event, walk_event_types) for event in events)
+
+    def _is_wild_pitch_or_passed_ball(self, events: List[GameEvent]) -> bool:
+        """Check if wild pitch or passed ball occurred."""
+        return any(
+            isinstance(event, (WildPitchEvent, PassedBallEvent)) for event in events
+        )

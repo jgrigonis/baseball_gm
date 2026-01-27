@@ -46,6 +46,7 @@ class Count:
         return self.strikes == 2
 
     def snapshot(self) -> CountSnapshot:
+        """Snapshot the count."""
         return CountSnapshot(
             balls=self.balls,
             strikes=self.strikes,
@@ -54,15 +55,18 @@ class Count:
     # ---------- Mutations ----------
 
     def add_ball(self) -> None:
+        """Add ball to count."""
         if self.balls >= 4:
             raise ValueError(f"Cannot add ball: already at {self.balls} balls")
         self.balls += 1
 
     def add_strike(self) -> None:
+        """Add strike to count."""
         if self.strikes >= 3:
             raise ValueError(f"Cannot add strike: already at {self.strikes} strikes")
         self.strikes += 1
 
     def reset(self) -> None:
+        """Reset the count."""
         self.balls = 0
         self.strikes = 0
