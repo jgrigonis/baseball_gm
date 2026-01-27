@@ -20,12 +20,7 @@ class StealAttemptEvent(GameEvent):
         This is primarily for statistics/logging.
         The actual outcome (success/caught) is handled by subsequent events.
         """
-        # Log or track steal attempts for statistics
-        # No state mutation needed here - the outcome events handle that
-        # base_names = {1: "second", 2: "third", 3: "home"}
-        # game.logger.debug(
-        #     f"Steal attempt: {self.runner.name} attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
-        # )
+        pass
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
@@ -48,12 +43,6 @@ class StolenBaseEvent(GameEvent):
         Note: The actual runner advancement is handled by
         RunnerAdvancedEvent that follows this event.
         """
-        # The RunnerAdvancedEvent handles the state mutation
-        # This event is for logging/statistics
-        # base_names = {1: "first", 2: "second", 3: "third", 4: "home"}
-        # game.logger.info(
-        #     f"Stolen base! Runner advanced to {base_names.get(self.to_base, str(self.to_base))}"
-        # )
         self.runner.game_stats.batting.steal()
 
     def describe(self, game) -> str:
@@ -78,7 +67,6 @@ class CaughtStealingEvent(GameEvent):
         OutRecordedEvent and RunnerRemovedEvent that follow this event.
         """
         # The OutRecordedEvent and RunnerRemovedEvent handle the state mutation
-        # This event is for logging/statistics
         self.runner.game_stats.batting.caught_stealing()
 
     def describe(self, game) -> str:
