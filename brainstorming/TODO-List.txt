@@ -39,13 +39,9 @@
 #      You can overwrite FooBars.csv
 #      Also foobars.csv will be allowed and overwrite
 #      Should be a way to check on open() call
-# TODO
-# Calculate an overall player value based on weighted combination 
-# of skills.
-# e.g. bunting is worth less than power.
+
 
 # Future updates for name generator
-Binary search instead of linear scan (perf)
 League-specific name pools
 Era-weighted names (optional, very cool)
 
