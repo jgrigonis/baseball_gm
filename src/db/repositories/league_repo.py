@@ -4,9 +4,10 @@ import uuid
 
 class LeagueRepository:
     """
-    Call create_league_season() before assign_to_league() to ensure 
+    Call create_league_season() before assign_to_league() to ensure
     the foreign key constraint is satisfied.
     """
+
     def __init__(self, conn):
         self.conn = conn
 
@@ -40,7 +41,7 @@ class LeagueRepository:
         )
         self.conn.commit()
         return id
-    
+
     def create_league_season(self, league_id: str, season_id: str):
         """Register that a league is active for a given season"""
         self.conn.execute(

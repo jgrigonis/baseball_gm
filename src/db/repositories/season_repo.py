@@ -16,7 +16,7 @@ class SeasonRepository:
         # Generate name if not provided
         if name is None:
             name = f"Season{year}"
-        
+
         row = self.conn.execute(
             "SELECT id FROM seasons WHERE year = ?",
             (year,),

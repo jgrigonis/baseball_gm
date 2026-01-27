@@ -28,24 +28,24 @@ class TeamImporter:
         self.team_repo = TeamRepository(conn)
 
     def import_csv(
-        self, 
-        league_id: str, 
+        self,
+        league_id: str,
         season_id: str,  # Added - needed for league_season_teams
-        path: str, 
-        city: str, 
-        mascot: str, 
-        *, 
-        allow_existing=False
+        path: str,
+        city: str,
+        mascot: str,
+        *,
+        allow_existing=False,
     ) -> TeamRecord:
         full_path = Path(TEAM_FILES_DIR) / path
         if not full_path.exists():
             raise FileNotFoundError(full_path)
         csv_hash = self.hash_file(full_path)
-        
+
         try:
             self.conn.execute("BEGIN")
             team_record = self.team_repo.find_by_city_mascot(city, mascot)
-            
+
             # --------------------------------------------------
             # Case 1: Team already exists
             # --------------------------------------------------
@@ -62,7 +62,9 @@ class TeamImporter:
                     )
 
                 if self.team_repo.is_in_league(team_id, league_id, season_id):
-                    raise RuntimeError(f"Team {city} {mascot} already in league for this season")
+                    raise RuntimeError(
+                        f"Team {city} {mascot} already in league for this season"
+                    )
             # --------------------------------------------------
             # Case 2: Create new team
             # --------------------------------------------------
@@ -73,7 +75,7 @@ class TeamImporter:
                     source_csv=path,
                     source_hash=csv_hash,
                 )
-            
+
             # --------------------------------------------------
             # Attach team to league for this season
             # --------------------------------------------------
@@ -99,16 +101,13 @@ class TeamImporter:
 
                     self.team_repo.add_player(team_id, player.id)
                     players.append(player)
-            
+
             self.conn.commit()
             # Build and return TeamRecord with all data
             return TeamRecord(
-                id=team_id,
-                city=city,
-                mascot=mascot,
-                players=tuple(players)
+                id=team_id, city=city, mascot=mascot, players=tuple(players)
             )
-            
+
         except Exception:
             self.conn.rollback()
             raise

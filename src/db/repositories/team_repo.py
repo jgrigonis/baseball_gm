@@ -17,7 +17,8 @@ NOT create domain Team objects
 import uuid
 import sqlite3
 
-from src.player.player_factory import Player
+from src.player.player_record import PlayerRecord
+from src.player.player_skills import PlayerSkills
 from src.team.team_record import TeamRecord
 
 
@@ -97,16 +98,16 @@ class TeamRepository:
             """,
             (team_id,),
         ).fetchone()
-        
+
         if row is None:
             return None
-            
+
         return TeamRecord(
             id=row["id"],
             city=row["city"],
             mascot=row["mascot"],
             source_csv=row["source_csv"],
-            source_hash=row["source_hash"]
+            source_hash=row["source_hash"],
         )
 
     def find_by_city_mascot(self, city: str, mascot: str) -> TeamRecord | None:
@@ -121,16 +122,16 @@ class TeamRepository:
             """,
             (city, mascot),
         ).fetchone()
-        
+
         if row is None:
             return None
-            
+
         return TeamRecord(
             id=row["id"],
             city=row["city"],
             mascot=row["mascot"],
             source_csv=row["source_csv"],
-            source_hash=row["source_hash"]
+            source_hash=row["source_hash"],
         )
 
     def is_in_league(self, team_id: str, league_id: str, season_id: str) -> bool:
@@ -166,30 +167,35 @@ class TeamRepository:
 
         return TeamRecord.from_records(team_row, players)
 
-    def get_roster(self, team_id: str) -> list[Player]:
+    def get_roster(self, team_id: str) -> list[PlayerRecord]:
         """
-        Get all players on a team's roster.
+        Get all players on a team's roster with current skills.
         Returns empty list if team has no players.
         """
         rows = self.conn.execute(
             """
-            SELECT p.*
+            SELECT 
+                p.id, p.first_name, p.last_name, p.bats, p.throws, p.position,
+                ps.clutch, ps.speed, ps.power, ps.eye, ps.contact,
+                ps.base_running, ps.bunting, ps.catching, ps.infield, ps.outfield,
+                ps.arm, ps.accuracy, ps.stamina, ps.recovery, ps.ground_balls, ps.strikes
             FROM players p
             JOIN team_players tp ON p.id = tp.player_id
+            JOIN player_skills ps ON p.id = ps.player_id
             WHERE tp.team_id = ?
             """,
             (team_id,),
         ).fetchall()
-        
-        from src.player.player_factory import Player
-        
+
         return [
-            Player(
+            PlayerRecord(
                 id=row["id"],
                 first_name=row["first_name"],
                 last_name=row["last_name"],
                 bats=row["bats"],
-                throws=row["throws"]
+                throws=row["throws"],
+                position=row["position"],
+                skills=PlayerSkills.from_db_row(row),
             )
             for row in rows
         ]
