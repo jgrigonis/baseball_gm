@@ -1394,7 +1394,7 @@ class Resolver:
         events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
         events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
 
-        if game.bases.is_loaded():
+        if game.bases.is_loaded:
             r = self.rng.random()
             if r < self.TRIPLE_PLAY_FIRST_SECOND_THRESHOLD:
                 events.append(

@@ -83,6 +83,12 @@ def main():
     my_game = Game(home_team=home_team, away_team=away_team, log_level=levl)
     result = my_game.play()
 
+    print(home_team.output_batting_stats())
+    print(away_team.output_batting_stats())
+
+    print(home_team.output_pitching_stats())
+    print(away_team.output_pitching_stats())
+
     return result
 
 

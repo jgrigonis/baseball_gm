@@ -19,6 +19,7 @@ __author__ = "josh"
 from enum import Enum
 from typing import Callable
 
+from src.player.player_formatters import PlayerTableFormatter
 from src.player.player_in_game import PlayerInGame
 from src.team.lineup_optimizer import LineupOptimizer
 from src.team.lineup_slot import LineupSlot
@@ -115,3 +116,27 @@ class TeamInGame:
         if catcher is None:
             raise RuntimeError("No catcher in lineup")
         return catcher
+
+    def output_batting_stats(self) -> str:
+        """Print the team's batting stats."""
+        # print(PlayerTableFormatter().horizontal_stat_header())
+        # ptf = PlayerTableFormatter()
+        output = ""
+        output += PlayerTableFormatter.horizontal_stat_header()
+        output += "\n"
+        for player in self.players:
+            if player.game_stats.batting.plate_appearances > 0:
+                output += PlayerTableFormatter.horizontal_stats(player)
+                output += "\n"
+        return output
+
+    def output_pitching_stats(self) -> str:
+        """Print the team's pitching stats."""
+        output = ""
+        output += PlayerTableFormatter.horizontal_pitching_stat_header()
+        output += "\n"
+        for player in self.players:
+            if player.game_stats.pitching.outs > 0:
+                output += PlayerTableFormatter.horizontal_pitching_stats(player)
+                output += "\n"
+        return output

@@ -1,0 +1,26 @@
+Todo list
+
+Team ratings
+Average of all defensive skills and starting 9 offensive skills and top 5 pitcher skills
+
+Aging.
+
+Scheduler
+Based on number of teams and number of games in season. Quickly complain if the numbers don’t make sense. Alternatively just have some fixed numbers
+
+League initiation
+Get all the teams in a league database
+
+Defensive skill proba adjustments
+
+Base running adjustments
+Steals, advancements, pickoffs, tag ups, etc
+
+Implement stamina and recovery
+Have long outings affect stamina more
+As energy decreases, impact pitching skills 
+
+Implement pitcher changes, bunts, steals, hit and run, IBB, taking pitches, eventually defensive shifts
+
+Handedness accounted for many places
+

@@ -85,35 +85,12 @@ def main(args):
     my_game = Game(home_team=home_team, away_team=away_team, log_level=levl)
     result = my_game.play()
 
-    print(PlayerTableFormatter.horizontal_stat_header())
+    print(home_team.output_batting_stats())
+    print(away_team.output_batting_stats())
 
-    for player in home_team.players:
-        if player.game_stats.batting.plate_appearances > 0:
-            print(PlayerTableFormatter.horizontal_stats(player))
+    print(home_team.output_pitching_stats())
+    print(away_team.output_pitching_stats())
 
-    print()
-
-    print(PlayerTableFormatter.horizontal_stat_header())
-
-    for player in away_team.players:
-        if player.game_stats.batting.plate_appearances > 0:
-            print(PlayerTableFormatter.horizontal_stats(player))
-
-    print()
-
-    print(PlayerTableFormatter.horizontal_pitching_stat_header())
-
-    for player in home_team.players:
-        if player.game_stats.pitching.outs > 0:
-            print(PlayerTableFormatter.horizontal_pitching_stats(player))
-
-    print()
-
-    print(PlayerTableFormatter.horizontal_pitching_stat_header())
-
-    for player in away_team.players:
-        if player.game_stats.pitching.outs > 0:
-            print(PlayerTableFormatter.horizontal_pitching_stats(player))
 
     return result
 
