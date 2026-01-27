@@ -43,8 +43,8 @@ class TeamCSVExporter:
                 row = {
                     "Name": player.name,
                     "PS": player.position,
-                    "T": player.throws[0],
-                    "B": player.bats[0],
+                    "T": player.throws[0].lower(),
+                    "B": player.bats[0].lower(),
                     "CL": player.clutch,
                     "SP": player.speed,
                     "PO": player.power,

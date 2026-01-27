@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS league_teams (
     PRIMARY KEY (league_id, team_id),
 
     FOREIGN KEY (team_id) REFERENCES teams(id),
-    FOREIGN KEY (league_id) REFERENCES leagues(league_id)    
+    FOREIGN KEY (league_id) REFERENCES leagues(id)    
 );
 
 CREATE TABLE IF NOT EXISTS seasons (
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS seasons (
 );
 
 CREATE TABLE IF NOT EXISTS leagues (
-    league_id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     league_name TEXT NOT NULL
 );
 
@@ -148,15 +148,4 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
 
     FOREIGN KEY (player_id) REFERENCES players(id)
 );
-
-CREATE TABLE IF NOT EXISTS plate_appearances (
-    id TEXT PRIMARY KEY,
-    game_id TEXT,
-    inning INTEGER,
-    batter_id TEXT,
-    pitcher_id TEXT,
-    result TEXT,
-    rbi INTEGER
-);
-
 """
