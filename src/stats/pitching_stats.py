@@ -132,7 +132,7 @@ class PitchingStats(object):
 
     def ground_double_play(self):
         """Add a ground double play."""
-        self.ground_double_play += 1
+        self.ground_double_plays += 1
 
     def intentional_walk(self):
         """Add an intentional walk."""

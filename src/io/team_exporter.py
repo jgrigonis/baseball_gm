@@ -1,5 +1,5 @@
 # src/team/team_exporter.py
-
+# this seems redundant to player_csv_exporter.py
 import csv
 from pathlib import Path
 from src.team.team_record import TeamRecord

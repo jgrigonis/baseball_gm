@@ -3,7 +3,9 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from src.game.bases import FIRST, SECOND, THIRD, HOME
+from src.game.bases import FIRST, SECOND, THIRD, HOME, Bases
+from src.game.count import Count
+from src.game.score import Score
 from src.game.event import GameEvent
 from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.hbp import HitByPitchEvent
@@ -49,6 +51,7 @@ from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 from src.game.intents.pick_off import PickOffIntent
 from src.game.rules.force_advancement import force_advance_chain
+from src.player.player_in_game import PlayerInGame
 
 
 class Resolver:
@@ -193,29 +196,60 @@ class Resolver:
         This will be replaced later with real models.
         """
         self.logger.trace("_determine_pitch_outcome")
-        probs = self.set_probs()
-        # TODO adjust probs for player and situation
-        return self.random_event(probs)
+        self.set_probs()
+        self.update_probs(game)
+        return self.random_event(self.probs)
 
     def set_probs(self):
         """
         Set the initial probs, for all possible pitch outcomes
         """
-        probs = {
+        self.probs = {
             "ball": 10800,
             "foul": 5100,
             "home_run": 280,
             "hit_by_pitch": 60,
             "balk": 0,  # only with runners on base
             "illegal_pitch": 0,  # only with bases empty
-            "catcher_interference": 0,
+            "catcher_interference": 10,
             "intentional_walk": 0,
-            "wild_pitch": 0,
-            "passed_ball": 0,
+            "wild_pitch": 10,
+            "passed_ball": 10,
             "in_play": 5855,
             "strike": 7100,  # replace with called_strike and swinging_strike
         }
-        return probs
+
+    def update_probs(self, game):
+        """
+        Update probs for players involved and game situation.
+        """
+        self.update_probs_for_bases(game.bases)
+        self.update_probs_for_count(game.count)
+        self.update_probs_for_score(game.score)
+        self.update_probs_for_batter(game.current_batter)
+        self.update_probs_for_pitcher(game.current_pitcher)
+
+    def update_probs_for_bases(self, bases: Bases):
+        # TODO add more
+        if bases.is_empty:
+            self.probs["illegal_pitch"] = 10
+        else:
+            self.probs["balk"] = 10
+
+        
+
+    def update_probs_for_count(self, count: Count):
+        pass # TODO
+
+    def update_probs_for_score(self, score: Score):
+        pass # TODO
+    
+    def update_probs_for_batter(self, batter: PlayerInGame):
+        pass # TODO
+    
+    def update_probs_for_pitcher(self, pitcher: PlayerInGame):
+        pass # TODO
+
 
     def random_event(self, probs):
         """
@@ -243,7 +277,7 @@ class Resolver:
         """
         Set the in play probs, for all possible outcomes
         """
-        in_play_probs = {
+        self.in_play_probs = {
             "fly_out": 2050,
             "ground_out": 2050,
             "single": 1350,
@@ -255,7 +289,31 @@ class Resolver:
             "sac_bunt": 0,
             "triple_play": 0,
         }
-        return in_play_probs
+
+    def update_in_play_probs(self, game):
+        """
+        Update probs for players involved and game situation.
+        """
+        pass
+        self.update_in_play_probs_for_bases_outs(game.bases, game.inning.outs)
+        # self.update_in_play_probs_for_count(game.count)
+        # self.update_in_play_probs_for_score(game.score)
+        # self.update_in_play_probs_for_batter(game.current_batter)
+        # self.update_in_play_probs_for_pitcher(game.current_pitcher)
+
+    def update_in_play_probs_for_bases_outs(self, bases: Bases, outs: int):
+        if bases.runner_on(THIRD) and outs < 2:
+            self.in_play_probs["sac_fly"] = 1000
+        if bases.runner_on(FIRST) and outs < 2:
+            self.in_play_probs["double_play"] = 300
+        if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
+            self.in_play_probs["triple_play"] = 10
+        if bases.runner_on(FIRST) and outs < 2:
+            self.in_play_probs["ground_out"] = 100
+            self.in_play_probs["fielders_choice"] = 1950
+            self.in_play_probs["sac_bunt"] = 100
+        if bases.runner_on(FIRST) and outs < 1:
+            self.in_play_probs["sac_bunt"] = 400
 
     # ================================================================
     # HELPER METHODS
@@ -484,9 +542,9 @@ class Resolver:
         - not mutate game
         - return concrete events
         """
-        probs = self.set_in_play_probs()
-        # TODO adjust in play probs
-        outcome = self.random_event(probs)
+        self.set_in_play_probs()
+        self.update_in_play_probs(game)
+        outcome = self.random_event(self.in_play_probs)
 
         # Mapping approach for cleaner dispatch
         outcome_handlers = {
