@@ -6,12 +6,67 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at TEXT NOT NULL
 );
 
+
 CREATE TABLE IF NOT EXISTS players (
     id TEXT PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
-    bats TEXT,
-    throws TEXT
+    bats TEXT NOT NULL,
+    throws TEXT NOT NULL,
+);
+
+CREATE TABLE IF NOT EXISTS player_skills (
+    player_id TEXT PRIMARY KEY,
+    
+    clutch INTEGER NOT NULL,
+    speed INTEGER NOT NULL,
+    power INTEGER NOT NULL,
+    eye INTEGER NOT NULL,
+    contact INTEGER NOT NULL,
+    base_running INTEGER NOT NULL,
+    bunting INTEGER NOT NULL,
+    catching INTEGER NOT NULL,
+    infield INTEGER NOT NULL,
+    outfield INTEGER NOT NULL,
+    arm INTEGER NOT NULL,
+    accuracy INTEGER NOT NULL,
+    stamina INTEGER NOT NULL,
+    recovery INTEGER NOT NULL,
+    ground_balls INTEGER NOT NULL,
+    strikes INTEGER NOT NULL,
+    
+    updated_at TEXT,
+    
+    FOREIGN KEY (player_id) REFERENCES players(id)
+);
+
+-- Track skill progression over time
+CREATE TABLE IF NOT EXISTS player_skills_history (
+    player_id TEXT NOT NULL,
+    season_id TEXT NOT NULL,
+    
+    clutch INTEGER NOT NULL,
+    speed INTEGER NOT NULL,
+    power INTEGER NOT NULL,
+    eye INTEGER NOT NULL,
+    contact INTEGER NOT NULL,
+    base_running INTEGER NOT NULL,
+    bunting INTEGER NOT NULL,
+    catching INTEGER NOT NULL,
+    infield INTEGER NOT NULL,
+    outfield INTEGER NOT NULL,
+    arm INTEGER NOT NULL,
+    accuracy INTEGER NOT NULL,
+    stamina INTEGER NOT NULL,
+    recovery INTEGER NOT NULL,
+    ground_balls INTEGER NOT NULL,
+    strikes INTEGER NOT NULL,
+    
+    recorded_at TEXT NOT NULL,
+    
+    PRIMARY KEY (player_id, season_id),
+    FOREIGN KEY (player_id) REFERENCES players(id),
+    FOREIGN KEY (season_id) REFERENCES seasons(id)
 );
 
 CREATE TABLE IF NOT EXISTS teams (
