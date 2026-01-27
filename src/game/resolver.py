@@ -1265,6 +1265,7 @@ class EnhancedResolver(Resolver):
         # Determine outcome
         r = self.rng.random()
 
+        # TODO adjust probs based on skills
         if r < self.PICKOFF_SUCCESS_PROB:
             # Successful pickoff - runner out
             self.logger.debug(f"Successful pickoff at base {base}")
@@ -1344,7 +1345,7 @@ class EnhancedResolver(Resolver):
 
     def _should_attempt_double_steal(self, game) -> bool:
         """Decide if double steal should be attempted."""
-
+        # TODO need to account for runner speeds, game scenario and base_running skills
         # Check which scenario
         if game.bases.runner_on(FIRST) and game.bases.runner_on(THIRD):
             # 1st and 3rd is more common (strategic play)
@@ -1425,6 +1426,7 @@ class EnhancedResolver(Resolver):
             StealAttemptEvent(runner=runner, from_base=from_base, to_base=to_base)
         )
 
+        # TODO adjust these probs based on skills
         # Determine success rate based on target base
         if to_base == SECOND:
             success_prob = self.STEAL_SECOND_SUCCESS_PROB
@@ -1509,7 +1511,7 @@ class EnhancedResolver(Resolver):
             first_attempt = next(a for a in steal_attempts if a[0] == FIRST)
             third_attempt = next(a for a in steal_attempts if a[0] == THIRD)
 
-            if r < 0.70:
+            if r < 0.70: # TODO adjust number for skills
                 # Both safe - ADVANCE IN REVERSE ORDER
                 # Third → Home first, then First → Second
                 from_base, to_base, runner = third_attempt
@@ -1540,7 +1542,7 @@ class EnhancedResolver(Resolver):
                     )
                 )
 
-            elif r < 0.85:
+            elif r < 0.85: # TODO adjust number for skills
                 # Only runner on 1st steals (runner on 3rd holds)
                 from_base, to_base, runner = first_attempt
                 events.append(
@@ -1556,7 +1558,7 @@ class EnhancedResolver(Resolver):
                     )
                 )
 
-            elif r < 0.95:
+            elif r < 0.95: # TODO adjust number for skills
                 # Runner on 1st out, runner on 3rd scores
                 from_base, to_base, runner = third_attempt
                 events.append(
@@ -1587,7 +1589,7 @@ class EnhancedResolver(Resolver):
                     )
                 )
 
-            elif r < 0.99:
+            elif r < 0.99: # TODO adjust number for skills
                 # Runner on 3rd caught, runner on 1st safe
                 from_base, to_base, runner = third_attempt
                 events.append(
@@ -1643,7 +1645,7 @@ class EnhancedResolver(Resolver):
             # Standard double steal (1st/2nd or 2nd/3rd)
             # steal_attempts is already sorted in reverse order (lead runner first)
 
-            if r < 0.65:
+            if r < 0.65: # TODO adjust number for skills
                 # Both safe - process in order (lead runner first)
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
@@ -1661,7 +1663,7 @@ class EnhancedResolver(Resolver):
                         )
                     )
 
-            elif r < 0.90:
+            elif r < 0.90: # TODO adjust number for skills
                 # Lead runner out, trail runner safe
                 lead_attempt = steal_attempts[0]  # First in list (highest base)
                 trail_attempt = steal_attempts[1]  # Second in list (lowest base)
@@ -1695,7 +1697,7 @@ class EnhancedResolver(Resolver):
                     )
                 )
 
-            elif r < 0.98:
+            elif r < 0.98: # TODO adjust number for skills
                 # Trail runner out, lead runner safe
                 lead_attempt = steal_attempts[0]
                 trail_attempt = steal_attempts[1]
