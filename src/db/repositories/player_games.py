@@ -1,4 +1,4 @@
-# src/db/repositories/player_game_stats.py
+# src/db/repositories/player_games.py
 """
 Insert per-game stats
 
@@ -13,8 +13,6 @@ player_game_stats
 games
 teams
 """
-# src/db/repositories/player_games.py
-
 from src.stats.stats import Stats
 from src.stats.stats import SeasonStats
 from src.stats.batting_stats import BattingStats
@@ -32,10 +30,10 @@ class PlayerGameRepository:
 
     def insert(
         self,
-        game_id: int,
-        player_id: int,
-        team_id: int,
-        opponent_team_id: int,
+        game_id: str,
+        player_id: str,
+        team_id: str,
+        opponent_team_id: str,
         stats: Stats,
     ):
         """
@@ -108,7 +106,7 @@ class PlayerGameRepository:
 
         self.conn.commit()
 
-    def get_for_game(self, game_id: int, player_id: int) -> Stats | None:
+    def get_for_game(self, game_id: str, player_id: str) -> Stats | None:
         """
         READ side (hydration)
         Fetch a player’s stats for a single game
@@ -127,7 +125,7 @@ class PlayerGameRepository:
 
         return self._row_to_stats(row)
 
-    def fetch_player_games(self, player_id: int) -> list[Stats]:
+    def fetch_player_games(self, player_id: str) -> list[Stats]:
         """
         Fetch all games for a player (career / season aggregation)
         """
@@ -165,12 +163,12 @@ class PlayerGameRepository:
         b.strike_outs = row["bat_strike_outs"]
         b.hbp = row["bat_hbp"]
         b.sac_flys = row["bat_sac_flys"]
-        b.sb = row["bat_sac_bunts"]
+        b.sac_bunts = row["bat_sac_bunts"]
         b.gdp = row["bat_gdp"]
         b.gtp = row["bat_gtp"]
-        b.cs = row["bat_stolen_bases"]
+        b.sb = row["bat_stolen_bases"]
         b.cs = row["bat_caught_stealing"]
-        b.cs = row["bat_pickoffs"]
+        b.pickoffs = row["bat_pickoffs"]
 
         p.outs = row["pitch_outs"]
         p.hits = row["pitch_hits"]
@@ -180,6 +178,11 @@ class PlayerGameRepository:
         p.strike_outs = row["pitch_strike_outs"]
         p.hb = row["pitch_hit_batters"]
         p.pitch_count = row["pitch_count"]
+        p.doubles = row["pitch_doubles"]
+        p.triples = row["pitch_triples"]
+        p.pickoffs = row["pitch_pickoffs"]
+        p.balks = row["pitch_balks"]
+        p.wild_pitches = row["pitch_wild_pitches"]
 
         f.putouts = row["field_putouts"]
         f.assists = row["field_assists"]
@@ -188,128 +191,39 @@ class PlayerGameRepository:
 
         return s
 
-    def dump_one(self):
-        """
-        Just a testing function, not used
-        """
-        row = self.conn.execute(
-            """
-            SELECT *
-            FROM player_game_stats
-            """
-        ).fetchone()
-        if row is None:
-            return None
+    # def dump_one(self) -> Stats | None:
+    #     """
+    #     Just a testing function, not used
+    #     """
+    #     row = self.conn.execute(
+    #         """
+    #         SELECT *
+    #         FROM player_game_stats
+    #         """
+    #     ).fetchone()
+    #     if row is None:
+    #         return None
 
-        return self._row_to_stats(row)
+    #     return self._row_to_stats(row)
 
-    def load_season_stats(self, player_id, season):
+    def load_season_stats(self, player_id: str, season_id: str) -> SeasonStats:
         """
         Load a season worth of stats
-
-        Currently wouldn't really work, with season parameter
         """
-        rows = self.conn.fetch_player_games(player_id, season)
+        rows = self.conn.execute(
+            """
+            SELECT pgs.*
+            FROM player_game_stats pgs
+            JOIN games g ON pgs.game_id = g.id
+            WHERE pgs.player_id = ? AND g.season_id = ?
+            ORDER BY g.date
+            """,
+            (player_id, season_id),
+        ).fetchall()
 
         stats = Stats()
         for row in rows:
-            stats.add(row.to_stats())
+            game_stats = self._row_to_stats(row)
+            stats.add(game_stats)  # Assuming Stats has an add method
 
         return SeasonStats(stats, games_played=len(rows))
-
-
-# Season stats:
-# season = Stats()
-# for game_stats in repo.get_all_for_player(player_id):
-#     season.add(game_stats)
-
-
-# Usage example
-# repo = PlayerGameStatsRepository(conn)
-
-# for player in team.players:
-#     if player.game_stats.at_bats > 0:
-#         repo.insert(
-#             game_id=game.id,
-#             player_id=player.id,
-#             team_id=team.id,
-#             stats=player.game_stats
-#         )
-
-
-# Unit test example
-# def test_insert_player_game_stats():
-#     conn = sqlite3.connect(":memory:")
-#     init_db(conn)
-
-#     repo = PlayerGameStatsRepository(conn)
-#     fake_stats = FakeStats(
-#         hits=2,
-#         at_bats=4,
-#         home_runs=1,
-#         walks=1,
-#         strikeouts=0,
-#         rbi=3,
-#         outs=2,
-#     )
-
-#     repo.insert(
-#         game_id=1,
-#         player_id=10,
-#         team_id=3,
-#         stats=fake_stats
-#     )
-
-#     row = conn.execute(
-#         "SELECT hits, at_bats FROM player_game_stats"
-#     ).fetchone()
-
-#     assert row == (2, 4)
-
-# You can make repositories stat-type aware:
-# BattingStatsRow.from_stats(stats)
-
-# Or add bulk inserts:
-# repo.insert_many(game_id, team)
-
-# finish up the code above for this
-# CREATE TABLE IF NOT EXISTS player_game_stats (
-#     game_id INTEGER NOT NULL,
-#     player_id INTEGER NOT NULL,
-#     team_id INTEGER NOT NULL,
-
-#     -- batting
-#     plate_appearances INTEGER,
-#     at_bats INTEGER,
-#     hits INTEGER,
-#     doubles INTEGER,
-#     triples INTEGER,
-#     home_runs INTEGER,
-#     walks INTEGER,
-#     strikeouts INTEGER,
-#     hbp INTEGER,
-#     sac_flies INTEGER,
-#     rbi INTEGER,
-#     runs INTEGER,
-
-#     -- baserunning
-#     stolen_bases INTEGER,
-#     caught_stealing INTEGER,
-
-#     -- fielding
-#     putouts INTEGER,
-#     assists INTEGER,
-#     errors INTEGER,
-
-#     -- pitching (only filled if applicable)
-#     batters_faced INTEGER,
-#     outs_pitched INTEGER,
-#     hits_allowed INTEGER,
-#     runs_allowed INTEGER,
-#     earned_runs INTEGER,
-#     walks_allowed INTEGER,
-#     strikeouts_pitched INTEGER,
-#     home_runs_allowed INTEGER,
-
-#     PRIMARY KEY (game_id, player_id)
-# );

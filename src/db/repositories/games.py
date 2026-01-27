@@ -1,4 +1,4 @@
-""" "
+"""
 Handles:
 
 Creating a game record

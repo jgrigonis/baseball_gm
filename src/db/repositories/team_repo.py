@@ -1,20 +1,14 @@
+# src/db/repositories/team_repo.py
 """
 Handles:
 
 Team identity
-
 Career metadata
-
 Lookups
-
 Not stats.
-
 Insert player information
-
 Know how to persist teams
-
 Know how to associate teams
-
 Know how to answer safety questions
 
 NOT create domain Team objects
@@ -23,6 +17,7 @@ NOT create domain Team objects
 import uuid
 import sqlite3
 
+from src.player.player_factory import Player
 from src.team.team_record import TeamRecord
 
 
@@ -60,17 +55,17 @@ class TeamRepository:
 
         return team_id
 
-    def add_to_league(self, league_id: str, team_id: str):
+    def add_to_league(self, league_id: str, season_id: str, team_id: str):
         """
-        Attach a team to a league.
+        Attach a team to a league for a specific season.
         Idempotent.
         """
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO league_teams (league_id, team_id)
-            VALUES (?, ?)
+            INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id)
+            VALUES (?, ?, ?)
             """,
-            (league_id, team_id),
+            (league_id, season_id, team_id),
         )
 
     # ------------------------------------------------------------
@@ -94,7 +89,7 @@ class TeamRepository:
         """
         Fetch a team by ID.
         """
-        return self.conn.execute(
+        row = self.conn.execute(
             """
             SELECT *
             FROM teams
@@ -102,12 +97,23 @@ class TeamRepository:
             """,
             (team_id,),
         ).fetchone()
+        
+        if row is None:
+            return None
+            
+        return TeamRecord(
+            id=row["id"],
+            city=row["city"],
+            mascot=row["mascot"],
+            source_csv=row["source_csv"],
+            source_hash=row["source_hash"]
+        )
 
-    def find_by_city_mascot(self, city: str, mascot: str):
+    def find_by_city_mascot(self, city: str, mascot: str) -> TeamRecord | None:
         """
         Fetch a team based on city and mascot
         """
-        return self.conn.execute(
+        row = self.conn.execute(
             """
             SELECT *
             FROM teams
@@ -115,15 +121,27 @@ class TeamRepository:
             """,
             (city, mascot),
         ).fetchone()
+        
+        if row is None:
+            return None
+            
+        return TeamRecord(
+            id=row["id"],
+            city=row["city"],
+            mascot=row["mascot"],
+            source_csv=row["source_csv"],
+            source_hash=row["source_hash"]
+        )
 
-    def is_in_league(self, team_id: str, league_id: str) -> bool:
+    def is_in_league(self, team_id: str, league_id: str, season_id: str) -> bool:
+        """Check if team is in a specific league for a specific season"""
         row = self.conn.execute(
             """
             SELECT 1
-            FROM league_teams
-            WHERE league_id = ? AND team_id = ?
+            FROM league_season_teams
+            WHERE league_id = ? AND season_id = ? AND team_id = ?
             """,
-            (league_id, team_id),
+            (league_id, season_id, team_id),
         ).fetchone()
 
         return row is not None
@@ -141,8 +159,37 @@ class TeamRepository:
 
         return row is not None
 
-    def load_for_game(self, team_id) -> TeamRecord:
-        team_row = self.get_team(team_id)
-        players = self.get_roster(team_id)
+    def load_for_game(self, team_id: str) -> TeamRecord:
+        # These methods don't exist - you need to implement them
+        team_row = self.get(team_id)
+        players = self.get_roster(team_id)  # This method doesn't exist yet
 
         return TeamRecord.from_records(team_row, players)
+
+    def get_roster(self, team_id: str) -> list[Player]:
+        """
+        Get all players on a team's roster.
+        Returns empty list if team has no players.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT p.*
+            FROM players p
+            JOIN team_players tp ON p.id = tp.player_id
+            WHERE tp.team_id = ?
+            """,
+            (team_id,),
+        ).fetchall()
+        
+        from src.player.player_factory import Player
+        
+        return [
+            Player(
+                id=row["id"],
+                first_name=row["first_name"],
+                last_name=row["last_name"],
+                bats=row["bats"],
+                throws=row["throws"]
+            )
+            for row in rows
+        ]

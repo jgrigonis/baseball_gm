@@ -50,7 +50,28 @@ CREATE TABLE IF NOT EXISTS seasons (
 
 CREATE TABLE IF NOT EXISTS leagues (
     id TEXT PRIMARY KEY,
-    league_name TEXT NOT NULL
+    name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS league_seasons (
+    league_id TEXT NOT NULL,
+    season_id TEXT NOT NULL,
+    
+    PRIMARY KEY (league_id, season_id),
+    
+    FOREIGN KEY (league_id) REFERENCES leagues(id),
+    FOREIGN KEY (season_id) REFERENCES seasons(id)
+);
+
+CREATE TABLE IF NOT EXISTS league_season_teams (
+    league_id TEXT NOT NULL,
+    season_id TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    
+    PRIMARY KEY (league_id, season_id, team_id),
+    
+    FOREIGN KEY (league_id, season_id) REFERENCES league_seasons(league_id, season_id),
+    FOREIGN KEY (team_id) REFERENCES teams(id)
 );
 
 CREATE TABLE IF NOT EXISTS series (

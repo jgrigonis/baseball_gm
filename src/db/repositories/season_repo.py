@@ -1,9 +1,4 @@
-# season_stats = season_repo.load_player_season_stats(
-#     player_id=player.id,
-#     season=current_season
-# )
-
-
+# src/db/repositories/season_repo.py
 import uuid
 
 
@@ -11,17 +6,20 @@ class SeasonRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def create_season(self, league_id: int, year: int):
+    def create_season(self, year: int, name: str = None) -> str:
         """
-        Create The Season
+        Create a season.
 
-        If you try to create an existing year seaons in the
-        same league, it will just
+        If you try to create an existing year, it will just
         return the id of that existing season.
         """
+        # Generate name if not provided
+        if name is None:
+            name = f"Season{year}"
+        
         row = self.conn.execute(
-            "SELECT id FROM seasons WHERE year = ? and league_id = ?",
-            (year, league_id),
+            "SELECT id FROM seasons WHERE year = ?",
+            (year,),
         ).fetchone()
 
         if row:
@@ -31,14 +29,14 @@ class SeasonRepository:
         self.conn.execute(
             """
             INSERT OR REPLACE INTO seasons (
-                season_id, league_id, year
+                id, year, name
             )
             VALUES(?, ?, ?)
             """,
             (
                 season_id,
-                league_id,
                 year,
+                name,
             ),
         )
         self.conn.commit()

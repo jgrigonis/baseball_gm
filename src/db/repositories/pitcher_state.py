@@ -1,3 +1,4 @@
+# src/db/repositories/pitcher_state.py
 """
 This table:
 
@@ -7,7 +8,7 @@ Is queried by rest logic
 
 Is affected by schedule
 
-That’s a separate repository, even though it’s “just one table”.
+That's a separate repository, even though it's “just one table”.
 
 """
 

@@ -1,14 +1,11 @@
+# src/db/repositories/player_repo.py
 """
 Handles:
 
 Player identity
-
 Career metadata
-
 Lookups
-
 Not stats.
-
 Insert player information
 """
 
@@ -25,11 +22,11 @@ class PlayerRepository:
 
     def insert(
         self,
-        id: int,
-        first_name: int,
-        last_name: int,
-        bats: int,
-        throws: int,
+        id: str,
+        first_name: str,
+        last_name: str,
+        bats: str,
+        throws: str,
     ):
         """
         Create a player record.
@@ -58,7 +55,7 @@ class PlayerRepository:
     # READ
     # ------------------------------------------------------------
 
-    def look_up(self, player_id: int) -> Player | None:
+    def look_up(self, player_id: str) -> Player | None:
         """
         Fetch a player
         """
@@ -74,4 +71,10 @@ class PlayerRepository:
         if row is None:
             return None
 
-        return row
+        return Player(
+            id=row["id"],
+            first_name=row["first_name"],
+            last_name=row["last_name"],
+            bats=row["bats"],
+            throws=row["throws"]
+        )
