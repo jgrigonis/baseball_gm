@@ -1,4 +1,3 @@
-# This code is all borken
 # src/team/team_importer.py
 
 import csv
@@ -7,10 +6,7 @@ from pathlib import Path
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_repo import TeamRepository
-
-# from src.player.player_factory import PlayerFactory
 from src.player.player_record import PlayerRecord
-from src.team.team_factory import TeamFactory
 from src.team.team_record import TeamRecord
 from src.util.locations import TEAM_FILES_DIR
 
@@ -32,32 +28,41 @@ class TeamImporter:
         self.team_repo = TeamRepository(conn)
 
     def import_csv(
-        self, league_id: str, path: str, city: str, mascot: str, *, allow_existing=False
+        self, 
+        league_id: str, 
+        season_id: str,  # Added - needed for league_season_teams
+        path: str, 
+        city: str, 
+        mascot: str, 
+        *, 
+        allow_existing=False
     ) -> TeamRecord:
         full_path = Path(TEAM_FILES_DIR) / path
         if not full_path.exists():
             raise FileNotFoundError(full_path)
         csv_hash = self.hash_file(full_path)
+        
         try:
             self.conn.execute("BEGIN")
-            team_row = self.team_repo.find_by_city_mascot(city, mascot)
+            team_record = self.team_repo.find_by_city_mascot(city, mascot)
+            
             # --------------------------------------------------
             # Case 1: Team already exists
             # --------------------------------------------------
-            if team_row:
-                team_id = team_row["id"]
+            if team_record:
+                team_id = team_record.id  # Access attribute, not dict key
 
                 if not allow_existing:
                     raise RuntimeError(f"Team {city} {mascot} already exists")
 
-                if team_row["source_hash"] != csv_hash:
+                if team_record.source_hash != csv_hash:  # Access attribute
                     raise RuntimeError(
                         f"CSV mismatch for team {city} {mascot} — "
                         f"refusing to import different roster"
                     )
 
-                if self.team_repo.is_in_league(team_id, league_id):
-                    raise RuntimeError(f"Team {city} {mascot} already in league")
+                if self.team_repo.is_in_league(team_id, league_id, season_id):
+                    raise RuntimeError(f"Team {city} {mascot} already in league for this season")
             # --------------------------------------------------
             # Case 2: Create new team
             # --------------------------------------------------
@@ -68,16 +73,16 @@ class TeamImporter:
                     source_csv=path,
                     source_hash=csv_hash,
                 )
+            
             # --------------------------------------------------
-            # Attach team to league
+            # Attach team to league for this season
             # --------------------------------------------------
-            self.team_repo.add_to_league(league_id, team_id)
+            self.team_repo.add_to_league(league_id, season_id, team_id)
 
             # --------------------------------------------------
             # Import players
             # --------------------------------------------------
-            team = TeamFactory()
-            team.id = team_id
+            players = []
 
             with open(full_path, newline="", encoding="utf-8") as csvfile:
                 reader = csv.DictReader(csvfile)
@@ -93,9 +98,17 @@ class TeamImporter:
                     )
 
                     self.team_repo.add_player(team_id, player.id)
-                    team.players.append(player)
+                    players.append(player)
+            
             self.conn.commit()
-            return team
+            # Build and return TeamRecord with all data
+            return TeamRecord(
+                id=team_id,
+                city=city,
+                mascot=mascot,
+                players=tuple(players)
+            )
+            
         except Exception:
             self.conn.rollback()
             raise

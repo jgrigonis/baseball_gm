@@ -1,5 +1,6 @@
 # A migration is:
-# “A small, one-way transformation that moves the database schema from version N to N+1.”
+# “A small, one-way transformation that moves the database schema from 
+# version N to N+1.”
 
 # Called once, versioned, explicit.
 
