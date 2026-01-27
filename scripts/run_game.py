@@ -21,10 +21,10 @@ from src.player.player_formatters import PlayerTableFormatter
 # from src.util.locations import TEAM_FILES_DIR
 # from src.util.logger import setup_logger
 
-HOME_CITY = "Louisiana"
-HOME_MASCOT = "Crabs"
-AWAY_CITY = "Rocky Mountain"
-AWAY_MASCOT = "Goats"
+HOME_CITY = "Huntsville"
+HOME_MASCOT = "Hornets"
+AWAY_CITY = "Athens"
+AWAY_MASCOT = "Aces"
 
 
 def get_args():

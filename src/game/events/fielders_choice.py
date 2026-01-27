@@ -18,7 +18,6 @@ class FieldersChoiceEvent(GameEvent):
 
     def apply(self, game):
         self.batter.game_stats.batting.at_bat()
-        self.pitcher.game_stats.pitching.out()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
