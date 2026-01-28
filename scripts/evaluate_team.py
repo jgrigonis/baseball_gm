@@ -13,7 +13,9 @@ def get_args():
     Get arguments from the command line.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--team", "-t", required=True, help="The team csv file to evaluate.")
+    parser.add_argument(
+        "--team", "-t", required=True, help="The team csv file to evaluate."
+    )
     args = parser.parse_args()
     return args
 

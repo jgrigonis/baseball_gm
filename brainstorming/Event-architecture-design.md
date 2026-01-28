@@ -58,7 +58,7 @@ def _resolve_pre_pitch_events(self, intent: PitchIntent, game) -> List[GameEvent
     # Only attempt pickoffs if runners are on base
     if game.bases.is_empty:
         return events
-    
+
     # Decide if pitcher attempts pickoff
     if self._should_attempt_pickoff(intent, game):
         base = self._select_pickoff_target(game)

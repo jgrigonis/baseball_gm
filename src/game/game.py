@@ -24,14 +24,15 @@ import random
 from src.game.inning import Inning
 from src.game.count import Count
 from src.game.bases import Bases
-from src.game.score import Score
 from src.game.event import GameEvent
+from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
-from src.game.resolver import EnhancedResolver
-from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.intents.pick_off import PickOffIntent
-from src.game.bases import FIRST, SECOND, THIRD
+from src.game.resolver import EnhancedResolver
+from src.game.score import Score
+from src.game.strategy import GameStrategy
+
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
 
@@ -259,13 +260,21 @@ class Game:
         # No queued events → check for pre-pitch plays, then generate pitch intent
 
         # Check if pitcher should attempt pickoff (pre-pitch play)
-        if self._should_attempt_pickoff():
+        if GameStrategy.should_attempt_pickoff(self.bases):
             pickoff_intent = self._create_pickoff_intent()
             self.logger.trace(f"[STEP] Pre-pitch Intent → {pickoff_intent}")
-
             events = self._resolve_intent(pickoff_intent)
             self._enqueue(events)
             return
+
+        # Check if pitcher should attempt pickoff (pre-pitch play)
+        # if self._should_attempt_pickoff():
+        #     pickoff_intent = self._create_pickoff_intent()
+        #     self.logger.trace(f"[STEP] Pre-pitch Intent → {pickoff_intent}")
+
+        #     events = self._resolve_intent(pickoff_intent)
+        #     self._enqueue(events)
+        #     return
 
         # Generate pitch intent
         intent = self._next_intent()
@@ -502,7 +511,7 @@ class Game:
         Returns a PickOffIntent targeting the selected base.
         """
         # Select which base to pick off
-        target_base = self._select_pickoff_target()
+        target_base = GameStrategy.select_pickoff_target(self.bases)
 
         return PickOffIntent(pitcher=self.current_pitcher, target_base=target_base)
 
@@ -660,34 +669,34 @@ class Game:
     # Decision Helpers
     # ------------------------------------------------------------------
 
-    def _should_attempt_pickoff(self) -> bool:
-        """Decide if pitcher should attempt pickoff before this pitch."""
-        if self.bases.is_empty:
-            return False
+    # def _should_attempt_pickoff(self) -> bool:
+    #     """Decide if pitcher should attempt pickoff before this pitch."""
+    #     if self.bases.is_empty:
+    #         return False
 
-        # Simple probability - 2% chance per pitch
-        # TODO: Make this smarter based on:
-        # - Runner speed/steal tendency
-        # - Game situation
-        # - Pitcher pickoff skill
-        return random.random() < 0.02
+    #     # Simple probability - 2% chance per pitch
+    #     # TODO: Make this smarter based on:
+    #     # - Runner speed/steal tendency
+    #     # - Game situation
+    #     # - Pitcher pickoff skill
+    #     return random.random() < 0.02
 
-    def _select_pickoff_target(self) -> int:
-        """Select which base to pick off."""
-        occupied = sorted(self.bases.occupied_map().keys())
+    # def _select_pickoff_target(self) -> int:
+    #     """Select which base to pick off."""
+    #     occupied = sorted(self.bases.occupied_map().keys())
 
-        # TODO some logic based on handedness of pitcher
-        # Prefer third base if it's occupied
-        if THIRD in occupied:
-            # If both third and second occupied, sometimes pick second
-            if SECOND in occupied:
-                return SECOND if random.random() < 0.1 else THIRD
-            return THIRD
+    #     # TODO some logic based on handedness of pitcher
+    #     # Prefer third base if it's occupied
+    #     if THIRD in occupied:
+    #         # If both third and second occupied, sometimes pick second
+    #         if SECOND in occupied:
+    #             return SECOND if random.random() < 0.1 else THIRD
+    #         return THIRD
 
-        if SECOND in occupied:
-            return SECOND
+    #     if SECOND in occupied:
+    #         return SECOND
 
-        return FIRST
+    #     return FIRST
 
     # ------------------------------------------------------------------
     # Initialization

@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 from src.io.player_csv_exporter import PlayerCSVExporter
-from src.io.team_exporter import TeamCSVExporter
 from src.team.team_factory import TeamFactory
 from src.util.locations import TEAM_FILES_DIR
 

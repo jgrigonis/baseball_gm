@@ -51,6 +51,7 @@ from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 from src.game.intents.pick_off import PickOffIntent
 from src.game.rules.force_advancement import force_advance_chain
+from src.game.strategy import GameStrategy
 from src.player.player_in_game import PlayerInGame
 
 
@@ -1637,7 +1638,12 @@ class EnhancedResolver(Resolver):
         double_steal_bases = self._get_double_steal_candidates(game)
 
         if double_steal_bases:
-            if self._should_attempt_double_steal(game):
+            runner_speeds = {}
+            for base in double_steal_bases:
+                runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
+            if GameStrategy.should_attempt_double_steal(
+                game.inning.outs, double_steal_bases, runner_speeds, self.rng
+            ):
                 return self._resolve_double_steal(double_steal_bases, intent, game)
 
         # Otherwise, check lead runner first (highest base)
@@ -1650,72 +1656,25 @@ class EnhancedResolver(Resolver):
             if next_base <= THIRD and game.bases.runner_on(next_base):
                 continue
 
-            if self._should_attempt_steal(base, intent, game):
+            runner = game.bases.runner_on(base)
+            speed = runner.skills["speed"]
+            br_skill = runner.skills["base_running"]
+            catcher = game.pitch_team.current_catcher
+            arm = catcher.skills["arm"]
+            if GameStrategy.should_attempt_steal(
+                base,
+                game.bases,
+                game.inning.outs,
+                game.count,
+                game.score,
+                speed,
+                br_skill,
+                arm,
+                self.rng,
+            ):
                 return self._resolve_steal_attempt(base, intent, game)
 
         return events
-
-    def _should_attempt_double_steal(self, game) -> bool:
-        """Decide if double steal should be attempted."""
-        # TODO need to account for runner speeds, game scenario and base_running skills
-        # Check which scenario
-        if game.bases.runner_on(FIRST) and game.bases.runner_on(THIRD):
-            # 1st and 3rd is more common (strategic play)
-            prob = 0.03  # 3% chance
-        else:
-            # 1st/2nd or 2nd/3rd - standard double steal
-            prob = 0.01  # 1% chance
-
-        # Less likely with 2 outs
-        if game.inning.outs == 2:
-            prob *= 0.2
-
-        return self.rng.random() < prob
-
-    def _should_attempt_steal(self, from_base: int, intent: PitchIntent, game) -> bool:
-        """
-        Decide if runner attempts to steal.
-
-        Factors:
-        - Runner speed
-        - Pitcher delivery time
-        - Catcher arm strength
-        - Game situation
-        - Count
-        """
-        # Can't steal if next base is occupied (in most cases)
-        next_base = from_base + 1
-        if next_base <= THIRD and game.bases.runner_on(next_base):
-            # Exception: double steal
-            if from_base == FIRST and game.bases.runner_on(SECOND):
-                # Possible double steal - lower probability
-                return self.rng.random() < (self.BASE_STEAL_SECOND_PROB * 0.3)
-            return False
-
-        # Base probability by base
-        if from_base == FIRST:
-            prob = self.BASE_STEAL_SECOND_PROB
-        elif from_base == SECOND:
-            prob = self.BASE_STEAL_THIRD_PROB
-        elif from_base == THIRD:
-            prob = self.BASE_STEAL_HOME_PROB
-        else:
-            return False
-
-        # TODO: Adjust based on:
-        # - Runner speed rating
-        # - Pitcher delivery time
-        # - Catcher pop time/arm strength
-        # - Count (more on 3-2, less on 0-2)
-        # - Score (more when down, less when up)
-        # - Outs (rare with 2 outs)
-        # - Pitcher handedness vs runner
-
-        # Simple adjustment: less likely with 2 outs
-        if game.inning.outs == 2:
-            prob *= 0.5
-
-        return self.rng.random() < prob
 
     def _resolve_steal_attempt(
         self, from_base: int, intent: PitchIntent, game
