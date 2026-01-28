@@ -240,7 +240,8 @@ class PlayerSkills:
         Note:
             Missing skills default to 50 (league average)
         """
-        skills = {k: row.get(k, DEFAULT_SKILL_MEAN) for k in SKILLS}
+        row_dict = dict(row)
+        skills = {k: row_dict.get(k, DEFAULT_SKILL_MEAN) for k in SKILLS}
         return cls(skills)
 
     @classmethod

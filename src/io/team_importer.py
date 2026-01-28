@@ -44,7 +44,8 @@ class TeamImporter:
 
         try:
             self.conn.execute("BEGIN")
-            team_record = self.team_repo.find_by_city_mascot(city, mascot)
+            team_id = self.team_repo.find_by_city_mascot(city, mascot)
+            team_record = self.team_repo.get(team_id)
 
             # --------------------------------------------------
             # Case 1: Team already exists
@@ -97,6 +98,8 @@ class TeamImporter:
                         last_name=player.last_name,
                         bats=player.bats,
                         throws=player.throws,
+                        position=player.position,
+                        skills=player.skills,
                     )
 
                     self.team_repo.add_player(team_id, player.id)
@@ -105,7 +108,12 @@ class TeamImporter:
             self.conn.commit()
             # Build and return TeamRecord with all data
             return TeamRecord(
-                id=team_id, city=city, mascot=mascot, players=tuple(players)
+                id=team_id,
+                city=city,
+                mascot=mascot,
+                players=tuple(players),
+                source_csv=path,
+                source_hash=csv_hash,
             )
 
         except Exception:

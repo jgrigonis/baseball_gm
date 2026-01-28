@@ -2,6 +2,8 @@
 # this seems redundant to player_csv_exporter.py
 import csv
 from pathlib import Path
+
+from src.io.player_csv_schema import PLAYER_CSV_HEADER
 from src.team.team_record import TeamRecord
 
 
@@ -11,32 +13,7 @@ class TeamCSVExporter:
         path = Path(path)
 
         with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(
-                f,
-                fieldnames=[
-                    "Name",
-                    "PS",
-                    "T",
-                    "B",
-                    "CL",
-                    "SP",
-                    "PO",
-                    "EY",
-                    "CT",
-                    "BR",
-                    "BU",
-                    "CA",
-                    "IF",
-                    "OF",
-                    "AR",
-                    "AC",
-                    "ST",
-                    "RE",
-                    "GB",
-                    "KK",
-                    "ID",
-                ],
-            )
+            writer = csv.DictWriter(f, fieldnames=PLAYER_CSV_HEADER)
             writer.writeheader()
 
             for player in team.players:

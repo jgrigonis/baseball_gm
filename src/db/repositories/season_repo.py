@@ -10,16 +10,16 @@ class SeasonRepository:
         """
         Create a season.
 
-        If you try to create an existing year, it will just
-        return the id of that existing season.
+        If you try to create an existing name/year combo, it will
+        just return the id of that existing season.
         """
         # Generate name if not provided
         if name is None:
             name = f"Season{year}"
 
         row = self.conn.execute(
-            "SELECT id FROM seasons WHERE year = ?",
-            (year,),
+            "SELECT id FROM seasons WHERE year = ? AND name = ?",
+            (year, name),
         ).fetchone()
 
         if row:

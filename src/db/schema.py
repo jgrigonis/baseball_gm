@@ -1,3 +1,4 @@
+# src/db/schema.py
 # SCHEMA_SQL always represents the final schema
 
 SCHEMA_SQL = """
@@ -13,6 +14,7 @@ CREATE TABLE IF NOT EXISTS players (
     last_name TEXT NOT NULL,
     bats TEXT NOT NULL,
     throws TEXT NOT NULL,
+    position TEXT
 );
 
 CREATE TABLE IF NOT EXISTS player_skills (

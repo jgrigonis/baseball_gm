@@ -102,17 +102,20 @@ class TeamRepository:
         if row is None:
             return None
 
+        players = self.get_roster(team_id)
+
         return TeamRecord(
             id=row["id"],
             city=row["city"],
             mascot=row["mascot"],
             source_csv=row["source_csv"],
             source_hash=row["source_hash"],
+            players=tuple(players),
         )
 
-    def find_by_city_mascot(self, city: str, mascot: str) -> TeamRecord | None:
+    def find_by_city_mascot(self, city: str, mascot: str) -> str | None:
         """
-        Fetch a team based on city and mascot
+        Fetch a team id based on city and mascot
         """
         row = self.conn.execute(
             """
@@ -126,13 +129,7 @@ class TeamRepository:
         if row is None:
             return None
 
-        return TeamRecord(
-            id=row["id"],
-            city=row["city"],
-            mascot=row["mascot"],
-            source_csv=row["source_csv"],
-            source_hash=row["source_hash"],
-        )
+        return row["id"]
 
     def is_in_league(self, team_id: str, league_id: str, season_id: str) -> bool:
         """Check if team is in a specific league for a specific season"""
@@ -161,9 +158,8 @@ class TeamRepository:
         return row is not None
 
     def load_for_game(self, team_id: str) -> TeamRecord:
-        # These methods don't exist - you need to implement them
         team_row = self.get(team_id)
-        players = self.get_roster(team_id)  # This method doesn't exist yet
+        players = self.get_roster(team_id)
 
         return TeamRecord.from_records(team_row, players)
 

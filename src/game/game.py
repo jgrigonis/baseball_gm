@@ -110,6 +110,7 @@ class Game:
         log_level: int | None = None,
         intent_generator: IntentGenerator | None = None,
         resolver: EnhancedResolver | None = None,
+        pauses: bool = False,
     ) -> None:
         """
         Initialize a new game.
@@ -171,7 +172,7 @@ class Game:
         self.logger = setup_logger(
             name="game", level=self.log_level, console_level=self.log_level
         )
-        self.pauses = False
+        self.pauses = pauses
 
         # Initialize player game stats
         self._init_game_stats()
@@ -201,7 +202,8 @@ class Game:
 
         while not self.is_over():
             if self.pauses:
-                input("Press Enter to continue...")
+                inpt = input("Press Enter to continue... ")
+                self.handle_input(inpt)
             self.step()
 
         result = self.get_result()
@@ -396,6 +398,13 @@ class Game:
             self.resume()
         else:
             self.pause()
+
+    def handle_input(self, inpt):
+        """
+        Handle input.
+        """
+        if inpt == "p":
+            self.toggle_pause()
 
     # ------------------------------------------------------------------
     # Post-event Housekeeping

@@ -42,7 +42,7 @@ class LeagueRepository:
         self.conn.commit()
         return id
 
-    def create_league_season(self, league_id: str, season_id: str):
+    def assign_season_to_league(self, league_id: str, season_id: str):
         """Register that a league is active for a given season"""
         self.conn.execute(
             """
@@ -62,3 +62,16 @@ class LeagueRepository:
             (league_id, season_id, team_id),
         )
         self.conn.commit()
+
+    def has_season(self, league_id: str, season_id: str) -> bool:
+        """Check if a season is already assigned to a league"""
+        row = self.conn.execute(
+            """
+            SELECT 1
+            FROM league_seasons
+            WHERE league_id = ? AND season_id = ?
+            """,
+            (league_id, season_id),
+        ).fetchone()
+
+        return row is not None

@@ -1,8 +1,10 @@
-import argparse
+# src/league/manifest_helper.py
 import json
 from pathlib import Path
 
-from src.team.create_team import create_team
+from src.io.player_csv_exporter import PlayerCSVExporter
+from src.io.team_exporter import TeamCSVExporter
+from src.team.team_factory import TeamFactory
 from src.util.locations import TEAM_FILES_DIR
 
 
@@ -50,9 +52,7 @@ def create_team_files(teams: list[dict]) -> None:
 
 
 def create_team_from_manifest(team):
-
-    create_team(
-        args=argparse.Namespace(
-            debug=False, file=team["csv"], city=team["city"], mascot=team["mascot"]
-        )
-    )
+    tf = TeamFactory()
+    tr = tf.generate_team(city=team["city"], mascot=team["mascot"])
+    PlayerCSVExporter.write(team=tr, filename=team["csv"])
+    TeamCSVExporter.write(team=tr, path="foo.csv")

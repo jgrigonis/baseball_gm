@@ -1,5 +1,5 @@
 # src/db/repositories/player_repo.py
-from datetime import datetime
+import datetime
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
@@ -48,7 +48,7 @@ class PlayerRepository:
         Used for training, aging, etc.
         """
         skill_dict = skills.to_db_dict()
-        now = datetime.utcnow().isoformat()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         self.conn.execute(
             """
@@ -89,7 +89,7 @@ class PlayerRepository:
         Save current skills to history for a season.
         Call this at the end of each season to track progression.
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         self.conn.execute(
             """
