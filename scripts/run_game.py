@@ -16,7 +16,6 @@ import logging
 from src.game.game import Game
 from src.team.team_factory import TeamFactory
 from src.team.team_in_game_factory import TeamInGameFactory
-from src.player.player_formatters import PlayerTableFormatter
 
 # from src.util.locations import TEAM_FILES_DIR
 # from src.util.logger import setup_logger
@@ -90,7 +89,6 @@ def main(args):
 
     print(home_team.output_pitching_stats())
     print(away_team.output_pitching_stats())
-
 
     return result
 

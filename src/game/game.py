@@ -20,6 +20,7 @@ from dataclasses import dataclass
 import logging
 import random
 
+
 from src.game.inning import Inning
 from src.game.count import Count
 from src.game.bases import Bases
@@ -29,9 +30,11 @@ from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
 from src.game.resolver import EnhancedResolver
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
-from src.util.logger import setup_logger
 from src.game.intents.pick_off import PickOffIntent
 from src.game.bases import FIRST, SECOND, THIRD
+from src.player.player_formatters import PlayerTableFormatter
+from src.util.logger import setup_logger
+
 
 if TYPE_CHECKING:
     from src.team.team_in_game import TeamInGame
@@ -206,6 +209,8 @@ class Game:
             f"🏆 Game Over - {result.winner} wins {result.home_score}-{result.away_score}"
         )
         self.logger.info(f"\n🏆 Final: {result}")
+        if self.log_level in (logging.DEBUG, logging.TRACE):
+            self.validate_stats()
         return result
 
     def step(self) -> None:
@@ -279,6 +284,9 @@ class Game:
         Returns:
             True if game is over
         """
+        # # Clear the whole queue before ending
+        if self._queue:
+            return False
         # Must play at least through top of 9th
         if self.inning.number < 9:
             return False
@@ -405,9 +413,11 @@ class Game:
         Raises:
             GameStateError: If PA complete but events still queued
         """
+        self.logger.trace("Entering _post_event")
         # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent
         if self._half_inning_over() and self._queue:
             # Keep only PlateAppearanceEndEvent for stat tracking
+            self.logger.trace("Keeping PlateAppearanceEndEvents")
             pa_events = [
                 e for e in self._queue if isinstance(e, PlateAppearanceEndEvent)
             ]
@@ -421,7 +431,13 @@ class Game:
                     f"{[e.label() for e in cleared_events]}"
                 )
 
+            self.logger.trace("Clearing queue")
             self._queue.clear()
+            if pa_events:
+                self.logger.debug(
+                    f"Inning over - extending {len(pa_events)} events: "
+                    f"{[e.label() for e in pa_events]}"
+                )
             self._queue.extend(pa_events)
 
         # Validate invariant: PA complete → queue empty
@@ -441,6 +457,8 @@ class Game:
         # This ensures all events (including PlateAppearanceEndEvent) are processed
         if self._half_inning_over() and not self._queue:
             self._end_half_inning()
+
+        self.logger.trace("Leaving _post_event")
 
     # ------------------------------------------------------------------
     # Intent / Resolution
@@ -573,7 +591,8 @@ class Game:
         )
 
         self.current_batter = self._next_batter()
-        self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
+        if self.inning.outs < 3:
+            self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
         self._plate_appearance_complete = False
         self._pa_end_reason = None
 
@@ -732,3 +751,19 @@ class Game:
         print(f"Game State: {self.game_state_summary}")
         print(f"Context: {self.get_context()}")
         print("=" * 60 + "\n")
+
+    def validate_stats(self):
+        """Validate stats."""
+        for player in self.home.players + self.away.players:
+            if (
+                player.game_stats.batting.at_bats
+                + player.game_stats.batting.walks
+                + player.game_stats.batting.hbp
+                + player.game_stats.batting.sac_bunts
+                + player.game_stats.batting.sac_flys
+                + player.game_stats.batting.catcher_interferences
+                != player.game_stats.batting.plate_appearances
+            ):
+                print(PlayerTableFormatter.horizontal_stat_header())
+                print(PlayerTableFormatter.horizontal_stats(player))
+                quit()

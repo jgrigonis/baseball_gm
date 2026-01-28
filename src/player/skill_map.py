@@ -320,29 +320,3 @@ BATTER_SKILLS: list[str] = SKILL_CATEGORIES["hitting"] + SKILL_CATEGORIES["gener
 PITCHER_SKILLS: list[str] = SKILL_CATEGORIES["pitching"] + SKILL_CATEGORIES["general"]
 
 FIELDER_SKILLS: list[str] = SKILL_CATEGORIES["defense"] + SKILL_CATEGORIES["general"]
-# # src/player/skill_map.py
-
-# __author__ = "josh"
-
-# SKILL_MAP = {
-#     # hitting
-#     "CL": "clutch",
-#     "PO": "power",
-#     "EY": "eye",
-#     "CT": "contact",
-#     "BR": "base_running",
-#     "BU": "bunting",
-#     # defense
-#     "CA": "catching",
-#     "IF": "infield",
-#     "OF": "outfield",
-#     "AR": "arm",
-#     # pitching
-#     "AC": "accuracy",
-#     "ST": "stamina",
-#     "RE": "recovery",
-#     "GB": "ground_balls",
-#     "KK": "strikes",
-#     # general
-#     "SP": "speed",
-# }

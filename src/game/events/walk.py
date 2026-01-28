@@ -59,6 +59,7 @@ class CatcherInterferenceEvent(GameEvent):
 
     def apply(self, game):
         self.catcher.game_stats.fielding.catcher_interference()
+        self.batter.game_stats.batting.catcher_interference()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""

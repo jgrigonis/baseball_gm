@@ -1,4 +1,6 @@
 # tests/utils.py
+from copy import deepcopy
+import logging
 from types import SimpleNamespace
 
 from src.game.count import Count
@@ -8,11 +10,10 @@ from src.game.score import Score
 from src.game.resolver import Resolver
 from src.game.game import Game
 from src.player.player_in_game import PlayerInGame
+from src.player.player_skills import PlayerSkills
+from src.player.positions import SKILLS
 from src.util.logger import setup_logger
 from tests.factories.player_record_factory import make_player_record
-import logging
-
-# from tests.utils import FakeTeam, FakeRNG, NullLogger
 
 
 class FakePlayer:
@@ -30,7 +31,8 @@ class FakePlayerInGame:
         self.name = id
 
         # optional placeholders for future stats
-        self.stats = None
+        # self.stats = None
+        self.skills = PlayerSkills(deepcopy(dict(SKILLS)))
 
 
 class FakeLineupSlot:
