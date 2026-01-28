@@ -55,4 +55,3 @@ def create_team_from_manifest(team):
     tf = TeamFactory()
     tr = tf.generate_team(city=team["city"], mascot=team["mascot"])
     PlayerCSVExporter.write(team=tr, filename=team["csv"])
-    TeamCSVExporter.write(team=tr, path="foo.csv")

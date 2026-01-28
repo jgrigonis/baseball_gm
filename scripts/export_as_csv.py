@@ -4,7 +4,7 @@ from pathlib import Path
 
 from src.util.locations import TEAM_FILES_DIR
 from src.team.team_factory import TeamFactory
-from src.team.team_exporter import TeamCSVExporter
+from src.io.team_exporter import TeamCSVExporter
 
 
 def get_args():
