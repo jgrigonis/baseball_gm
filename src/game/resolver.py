@@ -23,7 +23,7 @@ from src.game.events.steal import (
     StealAttemptEvent,
     StolenBaseEvent,
     CaughtStealingEvent,
-    DoubleStealtAttemptEvent,
+    DoubleStealAttemptEvent,
 )
 from src.game.events.strike import (
     StrikeEvent,
@@ -1792,7 +1792,7 @@ class EnhancedResolver(Resolver):
                 StealAttemptEvent(runner=runner, from_base=from_base, to_base=to_base)
             )
 
-        events.append(DoubleStealtAttemptEvent(bases=from_bases))
+        events.append(DoubleStealAttemptEvent(bases=from_bases))
 
         # Check if this is 1st and 3rd scenario
         is_first_and_third = FIRST in from_bases and THIRD in from_bases

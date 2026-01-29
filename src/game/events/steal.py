@@ -5,7 +5,7 @@ from src.game.event import GameEvent
 from src.player.player_in_game import PlayerInGame
 
 
-@dataclass
+@dataclass(frozen=True)
 class StealAttemptEvent(GameEvent):
     """Runner attempts to steal a base"""
 
@@ -28,7 +28,7 @@ class StealAttemptEvent(GameEvent):
         return f"Steal attempt: {self.runner.name} attempting to steal {base_names.get(self.from_base, str(self.from_base))}"
 
 
-@dataclass
+@dataclass(frozen=True)
 class StolenBaseEvent(GameEvent):
     """Successful stolen base"""
 
@@ -47,11 +47,11 @@ class StolenBaseEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        base_names = {1: "second", 2: "third", 3: "home"}
-        return f"Stolen base! Runner advanced to {base_names.get(self.from_base, str(self.from_base))}"
+        base_names = {2: "second", 3: "third", 4: "home"}
+        return f"Stolen base! Runner advanced to {base_names.get(self.to_base, str(self.to_base))}"
 
 
-@dataclass
+@dataclass(frozen=True)
 class CaughtStealingEvent(GameEvent):
     """Runner caught stealing"""
 
@@ -70,12 +70,12 @@ class CaughtStealingEvent(GameEvent):
         self.runner.game_stats.batting.caught_stealing()
 
     def describe(self, game) -> str:
-        base_names = {1: "first", 2: "second", 3: "third", 4: "home"}
-        return f"Caught stealing! Runner thrown out attempting to steal {base_names.get(self.from_base, str(self.from_base))}"
+        base_names = {2: "second", 3: "third", 4: "home"}
+        return f"Caught stealing! Runner thrown out attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
 
 
-@dataclass
-class DoubleStealtAttemptEvent(GameEvent):
+@dataclass(frozen=True)
+class DoubleStealAttemptEvent(GameEvent):
     """Multiple runners attempting to steal simultaneously"""
 
     bases: list[int]
@@ -96,7 +96,7 @@ class DoubleStealtAttemptEvent(GameEvent):
 
 """
 DOUBLE STEAL SEQUENCE:
-1. DoubleStealtAttemptEvent  - Log double steal attempt
+1. DoubleStealAttemptEvent  - Log double steal attempt
 2. StealAttemptEvent (runner 1)
 3. StealAttemptEvent (runner 2)
 4. Outcome events for each runner (stolen base or caught stealing)

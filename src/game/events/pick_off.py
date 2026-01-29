@@ -10,7 +10,7 @@ from src.player.player_in_game import PlayerInGame
 # ================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class PickoffAttemptEvent(GameEvent):
     """Pitcher attempts to pick off a runner"""
 
@@ -36,7 +36,7 @@ class PickoffAttemptEvent(GameEvent):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class PickoffSuccessEvent(GameEvent):
     """Successful pickoff - runner out"""
 
@@ -61,7 +61,7 @@ class PickoffSuccessEvent(GameEvent):
         return f"{self.pitcher.name} picked off {self.runner.name} on {self.base}."
 
 
-@dataclass
+@dataclass(frozen=True)
 class PickoffFailedEvent(GameEvent):
     """Failed pickoff attempt - runner safe"""
 
@@ -83,7 +83,7 @@ class PickoffFailedEvent(GameEvent):
         return "Pickoff failed."
 
 
-@dataclass
+@dataclass(frozen=True)
 class PickoffErrorEvent(GameEvent):
     """Throwing error on pickoff - runner advances"""
 

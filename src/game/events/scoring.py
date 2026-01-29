@@ -1,4 +1,4 @@
-# src/game/events/run.py
+# src/game/events/scoring.py
 from dataclasses import dataclass
 
 from src.game.event import GameEvent
