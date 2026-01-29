@@ -28,3 +28,13 @@ class PlateAppearanceEndEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         return f"{game.bases}"
+
+    def should_log(self, game) -> bool:
+        """
+        We don't need to print bases at the end of the inning,
+        and it's often wrong.
+        """
+        if game.inning.outs >= 3:
+            return False
+        else:
+            return True

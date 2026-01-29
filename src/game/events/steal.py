@@ -25,7 +25,7 @@ class StealAttemptEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         base_names = {1: "second", 2: "third", 3: "home"}
-        return f"Steal attempt: {self.runner.name} attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
+        return f"Steal attempt: {self.runner.name} attempting to steal {base_names.get(self.from_base, str(self.from_base))}"
 
 
 @dataclass
@@ -48,7 +48,7 @@ class StolenBaseEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         base_names = {1: "second", 2: "third", 3: "home"}
-        return f"Stolen base! Runner advanced to {base_names.get(self.to_base, str(self.to_base))}"
+        return f"Stolen base! Runner advanced to {base_names.get(self.from_base, str(self.from_base))}"
 
 
 @dataclass
@@ -71,7 +71,7 @@ class CaughtStealingEvent(GameEvent):
 
     def describe(self, game) -> str:
         base_names = {1: "first", 2: "second", 3: "third", 4: "home"}
-        return f"Caught stealing! Runner thrown out attempting to steal {base_names.get(self.to_base, str(self.to_base))}"
+        return f"Caught stealing! Runner thrown out attempting to steal {base_names.get(self.from_base, str(self.from_base))}"
 
 
 @dataclass

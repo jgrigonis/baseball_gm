@@ -8,7 +8,7 @@ from src.player.player_in_game import PlayerInGame
 from tests.factories.player_record_factory import make_player_record
 from tests.utils import FakeRNG, fake_game, fake_game_with_batter_cycle
 from src.game.resolver import Resolver
-from src.game.intents.pitch import PitchIntent
+from src.game.intents.pitch import PitchIntent, PrePitchSituation
 from src.game.events.strike import StrikeEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.ball import BallEvent
@@ -18,10 +18,7 @@ from src.game.events.ball import BallEvent
 
 @pytest.fixture
 def pitch_intent():
-    return PitchIntent(
-        pitcher="p1",
-        batter="b1",
-    )
+    return PitchIntent(pitcher="p1", batter="b1", pre_pitch_situation=PrePitchSituation)
 
 
 @pytest.fixture
@@ -167,6 +164,7 @@ def test_walk_events():
     intent = PitchIntent(
         pitcher=PlayerInGame(make_player_record()),
         batter=PlayerInGame(make_player_record()),
+        pre_pitch_situation=PrePitchSituation,
     )
 
     all_events = []

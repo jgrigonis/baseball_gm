@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from src.game.count import Count
 from src.game.bases import Bases
 from src.game.inning import Inning
+from src.game.intents.pitch import PrePitchSituation
 from src.game.score import Score
 from src.game.resolver import Resolver
 from src.game.game import Game
@@ -87,6 +88,7 @@ def fake_game():
         bases=Bases(),
         inning=Inning(),
         score=Score(),
+        situation=PrePitchSituation(),
         # logger
         logger=NullLogger(),
         # cursors

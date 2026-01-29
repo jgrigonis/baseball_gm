@@ -241,3 +241,11 @@ class Bases:
     def _assert_consistent(self):
         if len(set(self._bases.values())) != len(self._bases):
             raise RuntimeError("Runner appears on multiple bases")
+
+    # ------------------------------------------------------------------
+    # Testing
+    # ------------------------------------------------------------------
+    def place_runner(self, base: int, runner: PlayerInGame):
+        if base not in VALID_BASES:
+            raise ValueError(f"Invalid base: {base}")
+        self._bases[base] = runner

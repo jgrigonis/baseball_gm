@@ -13,7 +13,7 @@ class GameEvent:
         """Return logging level for this event."""
         return logging.INFO  # Default
 
-    def should_log(self) -> bool:
+    def should_log(self, game) -> bool:
         """Whether this event should be logged at INFO level."""
         return True  # Default: log most events
 

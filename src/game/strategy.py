@@ -1,8 +1,10 @@
 # src/game/strategy.py
 import random
+from typing import List
 
 from src.game.bases import Bases, FIRST, SECOND, THIRD
 from src.game.count import Count
+from src.game.intents.pitch import PrePitchSituation
 from src.game.score import Score
 
 # Probability constants for new events
@@ -29,6 +31,71 @@ class GameStrategy:
     Handles tactical decisions during gameplay.
     Stateless - all decisions based on current game state.
     """
+
+    @staticmethod
+    def plan_pre_pitch(game, rng) -> PrePitchSituation:
+        """
+        Set all these variables:
+
+        steal_attempt: Optional[int] = None
+        double_steal_attempt: Optional[list[int]] = None
+        bunt_attempt: bool = False # TODO
+        hit_and_run: bool = False # TODO
+
+        # Defense
+        pitch_out: bool = False # TODO
+        intentional_walk: bool = False # TODO
+        pickoff_attempt: Optional[int] = None  # Which base?
+        """
+        rng = _get_rng(rng)
+        steal_attempt = None
+        double_steal_attempt = None
+        pickoff_attempt = None
+        if not game.bases.is_empty:
+            double_steal_bases = GameStrategy.get_double_steal_candidates(game)
+
+            if double_steal_bases:
+                runner_speeds = {}
+                for base in double_steal_bases:
+                    runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
+                if GameStrategy.should_attempt_double_steal(
+                    game.inning.outs, double_steal_bases, runner_speeds, rng
+                ):
+                    double_steal_attempt = double_steal_bases
+            if double_steal_attempt is None:
+                # check lead runner first (highest base)
+                occupied = sorted(game.bases.occupied_map().keys(), reverse=True)
+                for base in occupied:
+                    next_base = base + 1
+                    # Can't steal if next base occupied
+                    if next_base <= THIRD and game.bases.runner_on(next_base):
+                        continue
+                    runner = game.bases.runner_on(base)
+                    speed = runner.skills["speed"]
+                    br_skill = runner.skills["base_running"]
+                    catcher = game.pitch_team.current_catcher
+                    arm = catcher.skills["arm"]
+                    if GameStrategy.should_attempt_steal(
+                        base,
+                        game.bases,
+                        game.inning.outs,
+                        game.count,
+                        game.score,
+                        speed,
+                        br_skill,
+                        arm,
+                        rng,
+                    ):
+                        steal_attempt = base
+        if GameStrategy.should_attempt_pickoff(game.bases):
+            target_base = GameStrategy.select_pickoff_target(game.bases)
+            pickoff_attempt = target_base
+
+        return PrePitchSituation(
+            steal_attempt=steal_attempt,
+            double_steal_attempt=double_steal_attempt,
+            pickoff_attempt=pickoff_attempt,
+        )
 
     @staticmethod
     def should_attempt_pickoff(bases: Bases, rng: random.Random | None = None) -> bool:
@@ -64,77 +131,6 @@ class GameStrategy:
             return SECOND
 
         return FIRST
-
-    # @staticmethod
-    # def should_attempt_double_steal(
-    #     bases: Bases, outs: int, rng: random.Random | None = None
-    # ) -> bool:
-    #     """Decide if double steal should be attempted."""
-    #     rng = _get_rng(rng)
-    #     # TODO need to account for runner speeds, game scenario and base_running skills
-    #     # Check which scenario
-    #     if bases.runner_on(FIRST) and bases.runner_on(THIRD):
-    #         # 1st and 3rd is more common (strategic play)
-    #         prob = 0.03  # 3% chance
-    #     else:
-    #         # 1st/2nd or 2nd/3rd - standard double steal
-    #         prob = 0.01  # 1% chance
-
-    #     # Less likely with 2 outs
-    #     if outs == 2:
-    #         prob *= 0.2
-
-    #     return rng.random() < prob
-
-    # @staticmethod
-    # def should_attempt_steal(
-    #     from_base: int, bases: Bases, outs: int, rng: random.Random | None = None
-    # ) -> bool:
-    #     # from_base: int, game
-    #     """
-    #     Decide if runner attempts to steal.
-
-    #     Factors:
-    #     - Runner speed
-    #     - Pitcher delivery time
-    #     - Catcher arm strength
-    #     - Game situation
-    #     - Count
-    #     """
-    #     rng = _get_rng(rng)
-    #     # Can't steal if next base is occupied (in most cases)
-    #     next_base = from_base + 1
-    #     if next_base <= THIRD and bases.runner_on(next_base):
-    #         # Exception: double steal
-    #         if from_base == FIRST and bases.runner_on(SECOND):
-    #             # Possible double steal - lower probability
-    #             return rng.random() < (BASE_STEAL_SECOND_PROB * 0.3)
-    #         return False
-
-    #     # Base probability by base
-    #     if from_base == FIRST:
-    #         prob = BASE_STEAL_SECOND_PROB
-    #     elif from_base == SECOND:
-    #         prob = BASE_STEAL_THIRD_PROB
-    #     elif from_base == THIRD:
-    #         prob = BASE_STEAL_HOME_PROB
-    #     else:
-    #         return False
-
-    #     # TODO: Adjust based on:
-    #     # - Runner speed rating
-    #     # - Pitcher delivery time
-    #     # - Catcher pop time/arm strength
-    #     # - Count (more on 3-2, less on 0-2)
-    #     # - Score (more when down, less when up)
-    #     # - Outs (rare with 2 outs)
-    #     # - Pitcher handedness vs runner
-
-    #     # Simple adjustment: less likely with 2 outs
-    #     if outs == 2:
-    #         prob *= 0.5
-
-    #     return rng.random() < prob
 
     @staticmethod
     def should_attempt_steal(
@@ -426,3 +422,29 @@ class GameStrategy:
             prob *= 1.3
 
         return rng.random() < prob
+
+    @staticmethod
+    def get_double_steal_candidates(game) -> List[int] | None:
+        """
+        Get bases for potential double steal.
+
+        When multiple double steals are possible, prioritize:
+        1. 2nd and 3rd (most aggressive - runner scores)
+        2. 1st and 3rd (strategic play)
+        3. 1st and 2nd (most common)
+        """
+        # Priority 1: 2nd and 3rd (runner on 3rd can score)
+        if game.bases.runner_on(SECOND) and game.bases.runner_on(THIRD):
+            return [SECOND, THIRD]
+
+        # Priority 2: 1st and 3rd (strategic, only if 2nd empty)
+        if game.bases.runner_on(FIRST) and game.bases.runner_on(THIRD):
+            if not game.bases.runner_on(SECOND):
+                return [FIRST, THIRD]
+
+        # Priority 3: 1st and 2nd (only if 3rd empty)
+        if game.bases.runner_on(FIRST) and game.bases.runner_on(SECOND):
+            if not game.bases.runner_on(THIRD):
+                return [FIRST, SECOND]
+
+        return None

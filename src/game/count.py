@@ -23,10 +23,10 @@ class Count:
     No game logic. No automatic resets.
     """
 
-    def __init__(self):
+    def __init__(self, balls=0, strikes=0):
         """Initialize balls and strikes to 0."""
-        self.balls = 0
-        self.strikes = 0
+        self.balls = balls
+        self.strikes = strikes
 
     def __str__(self):
         return f"{self.balls}-{self.strikes}"

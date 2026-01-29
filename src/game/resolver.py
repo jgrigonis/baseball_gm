@@ -48,10 +48,9 @@ from src.game.events.out import (
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.intent import GameIntent
-from src.game.intents.pitch import PitchIntent
+from src.game.intents.pitch import PitchIntent, PrePitchSituation
 from src.game.intents.pick_off import PickOffIntent
 from src.game.rules.force_advancement import force_advance_chain
-from src.game.strategy import GameStrategy
 from src.player.player_in_game import PlayerInGame
 
 
@@ -108,7 +107,7 @@ class Resolver:
                 pitcher=intent.pitcher,
                 batter=intent.batter,
                 count=game.count.snapshot(),
-                pitch_type=intent.pitch_type,
+                # pitch_type=intent.pitch_type,
             )
         )
 
@@ -126,7 +125,7 @@ class Resolver:
             "swinging_strike",
             "foul",
             "hit_by_pitch",
-            "intentional_walk",
+            # "intentional_walk",
             "catcher_interference",
             "illegal_pitch",
             "balk",
@@ -139,7 +138,11 @@ class Resolver:
         # ------------------------------------------------------------
         # 3. Emit outcome specific events
         # ------------------------------------------------------------
-        if outcome == "ball":
+        if outcome == "in_play":
+            self.logger.trace("outcome is in_play")
+            events.extend(self._resolve_ball_in_play(intent, game))
+
+        elif outcome == "ball":
             events.extend(self._handle_ball(intent, game))
 
         elif outcome in ("strike", "called_strike", "swinging_strike"):
@@ -151,8 +154,8 @@ class Resolver:
         elif outcome == "hit_by_pitch":
             events.extend(self._resolve_walk(intent, game, hbp=True))
 
-        elif outcome == "intentional_walk":
-            events.extend(self._resolve_walk(intent, game, intentional=True))
+        # elif outcome == "intentional_walk":
+        #     events.extend(self._resolve_walk(intent, game, intentional=True))
 
         elif outcome == "catcher_interference":
             events.extend(self._resolve_walk(intent, game, catcher_interference=True))
@@ -172,10 +175,6 @@ class Resolver:
         elif outcome == "home_run":
             self.logger.trace("home_run")
             events.extend(self._resolve_home_run(intent, game))
-
-        elif outcome == "in_play":
-            self.logger.trace("outcome is in_play")
-            events.extend(self._resolve_ball_in_play(intent, game))
 
         else:
             return [NoOpEvent()]
@@ -213,7 +212,6 @@ class Resolver:
             "balk": 0,  # only with runners on base
             "illegal_pitch": 0,  # only with bases empty
             "catcher_interference": 10,
-            "intentional_walk": 0,
             "wild_pitch": 10,
             "passed_ball": 10,
             "in_play": 5855,
@@ -225,6 +223,7 @@ class Resolver:
         Update probs for players involved and game situation.
         """
         self.update_probs_for_bases(game.bases)
+        self.update_probs_for_situation(game.situation)
         self.update_probs_for_count(game.count)
         self.update_probs_for_batter(game.current_batter.player)
         self.update_probs_for_pitcher(game.current_pitcher)
@@ -239,6 +238,10 @@ class Resolver:
             self.probs["foul"] = int(self.probs["foul"] * 0.94)
             self.probs["in_play"] = int(self.probs["in_play"] * 1.18)
             self.probs["home_run"] = int(self.probs["home_run"] * 1.18)
+
+    def update_probs_for_situation(self, situation: PrePitchSituation):
+        # TODO
+        pass
 
     def update_probs_for_count(self, count: Count):
         if count.balls == 0 and count.strikes == 0:
@@ -393,6 +396,7 @@ class Resolver:
         Update probs for players involved and game situation.
         """
         self.update_in_play_probs_for_bases_outs(game.bases, game.inning.outs)
+        self.update_in_play_probs_for_situation(game.situation)
         self.update_in_play_probs_for_count(game.count)
         self.update_in_play_probs_for_batter(game.current_batter.player, game.score)
         self.update_in_play_probs_for_pitcher(game.current_pitcher, game.score)
@@ -413,6 +417,10 @@ class Resolver:
             self.in_play_probs["sac_bunt"] = 100
         if bases.runner_on(FIRST) and outs < 1:
             self.in_play_probs["sac_bunt"] = 400
+
+    def update_in_play_probs_for_situation(self, situation: PrePitchSituation):
+        # TODO
+        pass
 
     def update_in_play_probs_for_count(self, count: Count):
         if count.balls == 0 and count.strikes == 0:
@@ -1514,6 +1522,12 @@ class EnhancedResolver(Resolver):
 
         if isinstance(intent, PitchIntent):
             events = []
+            situation = intent.pre_pitch_situation
+
+            # Special case: intentional walk skips pitch
+            if situation.intentional_walk:
+                events.extend(self._resolve_walk(intent, game, intentional=True))
+                return events
 
             # ============================================================
             # Phase 1: The pitch itself
@@ -1529,6 +1543,7 @@ class EnhancedResolver(Resolver):
                 not self._ball_in_play(pitch_events)
                 and not self._is_walk(pitch_events)
                 and not self._is_wild_pitch_or_passed_ball(pitch_events)
+                and not self._is_balk(pitch_events)
             ):
                 # Steals can happen on balls, strikes, fouls, but not walks or ball_in_play
                 concurrent_events = self._resolve_concurrent_events(intent, game)
@@ -1623,11 +1638,16 @@ class EnhancedResolver(Resolver):
         """
         Resolve events that happen concurrently with the pitch.
 
-        NOTE: Steals should NOT happen on walks, as runners are
-        already being force-advanced.
+        NOTE: Steals currently do NOT happen on walks, as runners are
+        already being force-advanced. This is slightly broken, as a steal
+        could happen by an unforced runner. We just don't currently allow it.
 
         NOTE: Steals should NOT happen if runners are already being advanced
-        by a wild pitch or passed ball.
+        by a wild pitch or passed ball. We should adjust so that runner
+        advancement isn't 100% but steal makes it even more likely
+
+        NOTE: Steals won't happen on a ball_in_play, as they are handled
+        in _resolve_ball_in_play
         """
         events = []
 
@@ -1635,44 +1655,47 @@ class EnhancedResolver(Resolver):
             return events
 
         # Check for double steal scenarios
-        double_steal_bases = self._get_double_steal_candidates(game)
+        # double_steal_bases = self._get_double_steal_candidates(game)
+        double_steal_bases = intent.pre_pitch_situation.double_steal_attempt
 
         if double_steal_bases:
-            runner_speeds = {}
-            for base in double_steal_bases:
-                runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
-            if GameStrategy.should_attempt_double_steal(
-                game.inning.outs, double_steal_bases, runner_speeds, self.rng
-            ):
-                return self._resolve_double_steal(double_steal_bases, intent, game)
+            # runner_speeds = {}
+            # for base in double_steal_bases:
+            #     runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
+            # if GameStrategy.should_attempt_double_steal(
+            #     game.inning.outs, double_steal_bases, runner_speeds, self.rng
+            # ):
+            return self._resolve_double_steal(double_steal_bases, intent, game)
+        from_base = intent.pre_pitch_situation.steal_attempt
+        if from_base:
+            return self._resolve_steal_attempt(from_base, intent, game)
+        # # Otherwise, check lead runner first (highest base)
+        # occupied = sorted(game.bases.occupied_map().keys(), reverse=True)
 
-        # Otherwise, check lead runner first (highest base)
-        occupied = sorted(game.bases.occupied_map().keys(), reverse=True)
+        # for base in occupied:
+        #     next_base = base + 1
 
-        for base in occupied:
-            next_base = base + 1
+        #     # Can't steal if next base occupied
+        #     if next_base <= THIRD and game.bases.runner_on(next_base):
+        #         continue
 
-            # Can't steal if next base occupied
-            if next_base <= THIRD and game.bases.runner_on(next_base):
-                continue
-
-            runner = game.bases.runner_on(base)
-            speed = runner.skills["speed"]
-            br_skill = runner.skills["base_running"]
-            catcher = game.pitch_team.current_catcher
-            arm = catcher.skills["arm"]
-            if GameStrategy.should_attempt_steal(
-                base,
-                game.bases,
-                game.inning.outs,
-                game.count,
-                game.score,
-                speed,
-                br_skill,
-                arm,
-                self.rng,
-            ):
-                return self._resolve_steal_attempt(base, intent, game)
+        #     runner = game.bases.runner_on(base)
+        #     speed = runner.skills["speed"]
+        #     br_skill = runner.skills["base_running"]
+        #     catcher = game.pitch_team.current_catcher
+        #     arm = catcher.skills["arm"]
+        #     if GameStrategy.should_attempt_steal(
+        #         base,
+        #         game.bases,
+        #         game.inning.outs,
+        #         game.count,
+        #         game.score,
+        #         speed,
+        #         br_skill,
+        #         arm,
+        #         self.rng,
+        #     ):
+        #         return self._resolve_steal_attempt(base, intent, game)
 
         return events
 
@@ -2050,6 +2073,11 @@ class EnhancedResolver(Resolver):
                 return [FIRST, SECOND]
 
         return None
+
+    def _is_balk(self, events: List[GameEvent]) -> bool:
+        """Check if a balk occurred."""
+        balk_event_types = (BalkEvent,)
+        return any(isinstance(event, balk_event_types) for event in events)
 
     def _is_walk(self, events: List[GameEvent]) -> bool:
         """Check if a walk occurred."""

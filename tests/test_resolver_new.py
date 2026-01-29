@@ -135,7 +135,7 @@ def game():
 
 @pytest.fixture
 def pitch_intent():
-    return PitchIntent(pitcher="pitcher_1", batter="batter_1", pitch_type="fastball")
+    return PitchIntent(pitcher="pitcher_1", batter="batter_1")
 
 
 # ================================================================

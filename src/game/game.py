@@ -29,6 +29,7 @@ from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
 from src.game.intents.pick_off import PickOffIntent
+from src.game.intents.pitch import PrePitchSituation
 from src.game.resolver import EnhancedResolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
@@ -159,6 +160,7 @@ class Game:
         # Engine components
         self.intent_generator = intent_generator or IntentGenerator(self.rng)
         self.resolver = resolver or EnhancedResolver(self.rng)
+        self.situation = PrePitchSituation
 
         # Current player cursors
         self.current_batter: PlayerInGame | None = None
@@ -239,7 +241,7 @@ class Game:
             # apply the event and possibly return a list of followups
             followups = event.apply(self) or []
 
-            if event.should_log():
+            if event.should_log(self):
                 # set level to the specific level for this event
                 level = event.log_level()
                 if level:
@@ -261,15 +263,20 @@ class Game:
             return
 
         # No queued events → check for pre-pitch plays, then generate pitch intent
+        self.situation = GameStrategy.plan_pre_pitch(self, self.rng)
 
         # Check if pitcher should attempt pickoff (pre-pitch play)
-        if GameStrategy.should_attempt_pickoff(self.bases):
-            pickoff_intent = self._create_pickoff_intent()
+        if self.situation.pickoff_attempt:
+            pickoff_intent = PickOffIntent(
+                pitcher=self.current_pitcher, target_base=self.situation.pickoff_attempt
+            )
             self.logger.trace(f"[STEP] Pre-pitch Intent → {pickoff_intent}")
             events = self._resolve_intent(pickoff_intent)
             self._enqueue(events)
             return
 
+        # TODO Remove debugging here, set to trace
+        self.logger.info(self.situation)
         # Generate pitch intent
         intent = self._next_intent()
         self.logger.trace(f"[STEP] Intent → {intent}")
