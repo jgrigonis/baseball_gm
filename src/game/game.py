@@ -236,15 +236,18 @@ class Game:
             event = self._dequeue()
             self.logger.trace(f"[STEP] Applying → {event}")
 
+            # apply the event and possibly return a list of followups
             followups = event.apply(self) or []
 
             if event.should_log():
+                # set level to the specific level for this event
                 level = event.log_level()
                 if level:
                     self.logger.log(level, event.describe(self))
                 else:
                     self.logger.info(event.describe(self))
             else:
+                # We still log it in trace level if it doesn't log.
                 self.logger.trace(event.describe(self))
 
             if followups:
@@ -266,15 +269,6 @@ class Game:
             events = self._resolve_intent(pickoff_intent)
             self._enqueue(events)
             return
-
-        # Check if pitcher should attempt pickoff (pre-pitch play)
-        # if self._should_attempt_pickoff():
-        #     pickoff_intent = self._create_pickoff_intent()
-        #     self.logger.trace(f"[STEP] Pre-pitch Intent → {pickoff_intent}")
-
-        #     events = self._resolve_intent(pickoff_intent)
-        #     self._enqueue(events)
-        #     return
 
         # Generate pitch intent
         intent = self._next_intent()
