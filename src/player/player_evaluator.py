@@ -100,13 +100,13 @@ ROLE_WEIGHTS: dict[str, dict[str, int]] = {
     },
     # This one is most likely subject to change
     "overall_offense": {
-        # "clutch": 0,
-        "power": 3,
-        "eye": 1,
-        "contact": 2,
-        "base_running": 1,
-        # "bunting": 0,
-        "speed": 2,
+        # "clutch": 1,
+        "power": 4,
+        "eye": 2,
+        "contact": 3,
+        "base_running": 2,
+        # "bunting": 1,
+        "speed": 3,
     },
 }
 
@@ -150,16 +150,9 @@ class PlayerEvaluator:
             skills.as_dict().get("catching", 0),
         )
 
-        overall_weights = {
-            "power": 3,
-            "eye": 1,
-            "contact": 2,
-            "base_running": 1,
-            "speed": 2,
-            "arm": 1,
-        }
+        overall_weights = ROLE_WEIGHTS["overall_offense"].copy()
+        overall_weights["arm"] = 1  # Add arm to the offense weights
 
-        # overall_weights = ROLE_WEIGHTS["overall_player"]
         overall_player_score = sum(skills[k] * w for k, w in overall_weights.items())
         overall_player_score += defensive_value * 3
 
