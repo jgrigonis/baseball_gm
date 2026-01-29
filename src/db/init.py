@@ -16,6 +16,8 @@ def init_db(conn):
         sqlite3.Error: If schema creation or migrations fail
     """
     try:
+        # CRITICAL: Enable foreign key enforcement
+        conn.execute("PRAGMA foreign_keys = ON")
         # Create schema (CREATE TABLE IF NOT EXISTS makes this idempotent)
         conn.executescript(SCHEMA_SQL)
 
