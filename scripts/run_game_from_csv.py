@@ -1,3 +1,5 @@
+# scripts/run_game_from_csv.py
+
 """
 Run one game.
 

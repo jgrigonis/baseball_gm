@@ -246,6 +246,7 @@ class Bases:
     # Testing
     # ------------------------------------------------------------------
     def place_runner(self, base: int, runner: PlayerInGame):
+        """Place a runner on base."""
         if base not in VALID_BASES:
             raise ValueError(f"Invalid base: {base}")
         self._bases[base] = runner

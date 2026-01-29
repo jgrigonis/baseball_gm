@@ -1,3 +1,5 @@
+# scripts/run_many_games.py
+
 import argparse
 
 from scripts.run_game import main as game_runner

@@ -1,3 +1,5 @@
+# scripts/ratings_average.py
+
 """
 This script will create many players of the given position.
 You specify the position to create with the -p flag

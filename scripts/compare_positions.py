@@ -1,3 +1,5 @@
+# scripts/compare_positions.py
+
 """
 This script just creates a random player of every position type.
 Useful for comparing the strengths and weaknesses of each

@@ -1,3 +1,5 @@
+# scripts/run_game.py
+
 """
 Run one game.
 

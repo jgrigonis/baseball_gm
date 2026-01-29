@@ -1,3 +1,5 @@
+# scripts/create_many_players_show_bests.py
+
 """
 Create a bunch of players, print out the best ratings in each
 skill category or position rating.

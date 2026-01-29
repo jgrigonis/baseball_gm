@@ -1,3 +1,5 @@
+# scripts/creat_many_players.py
+
 """
 Create a bunch of players (default=40), print out the best players in each
 skill category or position rating.

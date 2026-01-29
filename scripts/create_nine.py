@@ -1,3 +1,5 @@
+# scripts/create_nine.py
+
 """
 Create a team of 9 players.
 1 of each position
