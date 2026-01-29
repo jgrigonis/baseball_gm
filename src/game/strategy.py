@@ -13,13 +13,6 @@ BASE_STEAL_SECOND_PROB = 0.08  # 8% from first
 BASE_STEAL_THIRD_PROB = 0.02  # 2% from second
 BASE_STEAL_HOME_PROB = 0.001  # 0.1% from third
 
-# PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
-# PICKOFF_ERROR_PROB = 0.05  # 5% throwing error
-
-# STEAL_SECOND_SUCCESS_PROB = 0.75  # 75% success rate
-# STEAL_THIRD_SUCCESS_PROB = 0.80  # 80% success rate
-# STEAL_HOME_SUCCESS_PROB = 0.85  # 85% success rate
-
 
 def _get_rng(rng: random.Random | None) -> random.Random:
     """Helper to get RNG instance, creating default if needed."""

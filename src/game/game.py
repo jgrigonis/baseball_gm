@@ -692,39 +692,6 @@ class Game:
         self.logger.trace(f"PA complete: {reason}")
 
     # ------------------------------------------------------------------
-    # Decision Helpers
-    # ------------------------------------------------------------------
-
-    # def _should_attempt_pickoff(self) -> bool:
-    #     """Decide if pitcher should attempt pickoff before this pitch."""
-    #     if self.bases.is_empty:
-    #         return False
-
-    #     # Simple probability - 2% chance per pitch
-    #     # TODO: Make this smarter based on:
-    #     # - Runner speed/steal tendency
-    #     # - Game situation
-    #     # - Pitcher pickoff skill
-    #     return random.random() < 0.02
-
-    # def _select_pickoff_target(self) -> int:
-    #     """Select which base to pick off."""
-    #     occupied = sorted(self.bases.occupied_map().keys())
-
-    #     # TODO some logic based on handedness of pitcher
-    #     # Prefer third base if it's occupied
-    #     if THIRD in occupied:
-    #         # If both third and second occupied, sometimes pick second
-    #         if SECOND in occupied:
-    #             return SECOND if random.random() < 0.1 else THIRD
-    #         return THIRD
-
-    #     if SECOND in occupied:
-    #         return SECOND
-
-    #     return FIRST
-
-    # ------------------------------------------------------------------
     # Initialization
     # ------------------------------------------------------------------
 
