@@ -8,4 +8,4 @@ from src.player.player_in_game import PlayerInGame
 @dataclass(frozen=True)
 class PickOffIntent(GameIntent):
     pitcher: PlayerInGame
-    target_base: str
+    target_base: int

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from src.game.event import GameEvent
 
 
-@dataclass
+@dataclass(frozen=True)
 class NoOpEvent(GameEvent):
     def apply(self, game):
         pass

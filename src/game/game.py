@@ -388,6 +388,31 @@ class Game:
             ),
         )
 
+    def get_player(self, player_id: str) -> PlayerInGame:
+        """
+        Get a player by ID from either team.
+
+        Args:
+            player_id: Player's unique ID
+
+        Returns:
+            PlayerInGame object
+
+        Raises:
+            ValueError: If player not found on either team
+        """
+        # Check home team
+        for player in self.home.players:
+            if player.id == player_id:
+                return player
+
+        # Check away team
+        for player in self.away.players:
+            if player.id == player_id:
+                return player
+
+        raise ValueError(f"Player {player_id} not found on either team")
+
     # ------------------------------------------------------------------
     # Pause/Resume Controls
     # ------------------------------------------------------------------
