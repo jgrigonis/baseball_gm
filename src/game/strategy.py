@@ -129,7 +129,7 @@ class GameStrategy:
         # TODO: Make this smarter based on:
         # - Runner speed/steal tendency
         # - Game situation
-        # - Pitcher pickoff skill
+        # - Pitcher pickoff skill (not a thing, but it could be)
         return rng.random() < BASE_PICKOFF_ATTEMPT_PROB
 
     @staticmethod
@@ -256,7 +256,6 @@ class GameStrategy:
 
         return rng.random() < prob
 
-    # TODO Unused
     @staticmethod
     def should_bunt(
         bases: Bases,

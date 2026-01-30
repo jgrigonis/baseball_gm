@@ -1594,6 +1594,7 @@ class EnhancedResolver(Resolver):
         r = self.rng.random()
 
         # TODO adjust probs based on skills
+        # base_running skill of runner
         if r < self.PICKOFF_SUCCESS_PROB:
             # Successful pickoff - runner out
             self.logger.debug(f"Successful pickoff at base {base}")
@@ -1605,6 +1606,7 @@ class EnhancedResolver(Resolver):
                 RunnerRemovedEvent(runner=runner, from_base=base, reason="pickoff")
             )
 
+        # TODO adjust based on fielding skill of baseman, and pitcher
         elif r < self.PICKOFF_SUCCESS_PROB + self.PICKOFF_ERROR_PROB:
             # Throwing error - runner advances
             self.logger.debug(f"Pickoff throwing error at base {base}")
