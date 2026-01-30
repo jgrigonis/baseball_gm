@@ -50,9 +50,17 @@ class GameStrategy:
         bunt_attempt = False
         hit_and_run = False
         pitch_out = False
-        intentional_walk = False
 
         # Do intentional walk first
+        if GameStrategy.should_intentional_walk(
+            game.bases,
+            game.inning.outs,
+            game.current_batter.player.skills["power"],
+            game.score.differential,
+            game.inning.number,
+            rng,
+        ):
+            return PrePitchSituation(intentional_walk=True)
 
         if not game.bases.is_empty:
             double_steal_bases = GameStrategy.get_double_steal_candidates(game)
@@ -317,7 +325,7 @@ class GameStrategy:
         bases: Bases,
         outs: int,
         batter_power: int = 50,
-        next_batter_power: int = 50,
+        # next_batter_power: int = 50, # No way to easily get this
         score_differential: int = 0,
         inning: int = 1,
         rng: random.Random | None = None,
@@ -326,7 +334,7 @@ class GameStrategy:
         Decide if pitcher should intentionally walk batter.
 
         Classic scenarios:
-        - First base open, dangerous hitter, less dangerous on deck
+        - First base open, dangerous hitter, TODO: less dangerous on deck
         - Late innings, close game, setting up double play
         - First base open, runner on third (avoid sac fly)
         """
@@ -344,8 +352,8 @@ class GameStrategy:
         # 2. Weaker hitter on deck
         # 3. Late innings, close game
 
-        if batter_power >= 70 and next_batter_power < 60:
-            prob = 0.05  # 5%
+        if batter_power >= 70:
+            prob = 0.1  # 10%
 
             # Even more likely late/close
             if inning >= 7 and abs(score_differential) <= 2:
