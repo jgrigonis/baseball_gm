@@ -12,6 +12,9 @@ BASE_PICKOFF_ATTEMPT_PROB = 0.02  # 2% per pitch
 BASE_STEAL_SECOND_PROB = 0.08  # 8% from first
 BASE_STEAL_THIRD_PROB = 0.02  # 2% from second
 BASE_STEAL_HOME_PROB = 0.001  # 0.1% from third
+BUNT_PROB = 0.02
+BUNT_PROB_FIRST_PROB = 0.05
+BUNT_PROB_SECOND_PROB = 0.08
 
 
 def _get_rng(rng: random.Random | None) -> random.Random:
@@ -32,7 +35,7 @@ class GameStrategy:
 
         steal_attempt: Optional[int] = None
         double_steal_attempt: Optional[list[int]] = None
-        bunt_attempt: bool = False # TODO
+        bunt_attempt: bool = False
         hit_and_run: bool = False # TODO
 
         # Defense
@@ -44,6 +47,13 @@ class GameStrategy:
         steal_attempt = None
         double_steal_attempt = None
         pickoff_attempt = None
+        bunt_attempt = False
+        hit_and_run = False
+        pitch_out = False
+        intentional_walk = False
+
+        # Do intentional walk first
+
         if not game.bases.is_empty:
             double_steal_bases = GameStrategy.get_double_steal_candidates(game)
 
@@ -80,6 +90,22 @@ class GameStrategy:
                         rng,
                     ):
                         steal_attempt = base
+
+        if GameStrategy.should_bunt(
+            game.bases,
+            game.inning.outs,
+            game.current_batter.player.skills["bunting"],
+            game.current_batter.player.skills["power"],
+            game.score.differential,
+            game.inning.number,
+            rng,
+        ):
+            bunt_attempt = True
+
+        # hit and run
+
+        # pitch out
+
         if GameStrategy.should_attempt_pickoff(game.bases):
             target_base = GameStrategy.select_pickoff_target(game.bases)
             pickoff_attempt = target_base
@@ -88,6 +114,7 @@ class GameStrategy:
             steal_attempt=steal_attempt,
             double_steal_attempt=double_steal_attempt,
             pickoff_attempt=pickoff_attempt,
+            bunt_attempt=bunt_attempt,
         )
 
     @staticmethod
@@ -252,20 +279,20 @@ class GameStrategy:
         """
         rng = _get_rng(rng)
 
-        # Can't bunt with 2 outs (no sac bunt value)
+        # Won't bunt with 2 outs (no sac bunt value)
         if outs >= 2:
             return False
 
         # Base probability
-        prob = 0.02  # 2% base
+        prob = BUNT_PROB  # 2% base
 
         # Dramatically increase if runner on first, no one on second
         if bases.runner_on(FIRST) and not bases.runner_on(SECOND):
-            prob = 0.15  # 15%
+            prob = BUNT_PROB_FIRST_PROB
 
         # Increase slightly if runner on second, trying to advance to third
         elif bases.runner_on(SECOND) and not bases.runner_on(THIRD):
-            prob = 0.08  # 8%
+            prob = BUNT_PROB_SECOND_PROB
 
         # Bunting skill matters
         skill_factor = batter_bunting_skill / 50
