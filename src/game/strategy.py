@@ -36,11 +36,11 @@ class GameStrategy:
         steal_attempt: Optional[int] = None
         double_steal_attempt: Optional[list[int]] = None
         bunt_attempt: bool = False
-        hit_and_run: bool = False # TODO
+        hit_and_run: bool = False
 
         # Defense
-        pitch_out: bool = False # TODO
-        intentional_walk: bool = False # TODO
+        pitch_out: bool = False
+        intentional_walk: bool = False
         pickoff_attempt: Optional[int] = None  # Which base?
         """
         rng = _get_rng(rng)
@@ -64,15 +64,19 @@ class GameStrategy:
 
         if not game.bases.is_empty:
             double_steal_bases = GameStrategy.get_double_steal_candidates(game)
+            runner_speeds = {}
 
             if double_steal_bases:
-                runner_speeds = {}
                 for base in double_steal_bases:
                     runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
                 if GameStrategy.should_attempt_double_steal(
                     game.inning.outs, double_steal_bases, runner_speeds, rng
                 ):
                     double_steal_attempt = double_steal_bases
+            else:
+                for base in (THIRD, SECOND, FIRST):
+                    if game.bases.runner_on(base):
+                        runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
             if double_steal_attempt is None:
                 # check lead runner first (highest base)
                 occupied = sorted(game.bases.occupied_map().keys(), reverse=True)
@@ -109,10 +113,27 @@ class GameStrategy:
             rng,
         ):
             bunt_attempt = True
-
-        # hit and run
-
-        # pitch out
+        if not bunt_attempt:
+            if GameStrategy.should_hit_and_run(
+                game.bases,
+                game.innings.outs,
+                game.current_batter.player.skills["contact"],
+                game.current_batter.player.skills["speed"],
+                game.count.balls,
+                game.count.strikes,
+                rng,
+            ):
+                hit_and_run = True
+        if runner_speeds:
+            if GameStrategy.should_pitch_out(
+                game.bases,
+                game.inning.outs,
+                runner_speeds,
+                game.count.balls,
+                game.count.strikes,
+                rng,
+            ):
+                pitch_out = True
 
         if GameStrategy.should_attempt_pickoff(game.bases):
             target_base = GameStrategy.select_pickoff_target(game.bases)
@@ -123,6 +144,8 @@ class GameStrategy:
             double_steal_attempt=double_steal_attempt,
             pickoff_attempt=pickoff_attempt,
             bunt_attempt=bunt_attempt,
+            hit_and_run=hit_and_run,
+            pitch_out=pitch_out,
         )
 
     @staticmethod
@@ -319,7 +342,6 @@ class GameStrategy:
 
         return rng.random() < prob
 
-    # TODO Unused
     @staticmethod
     def should_intentional_walk(
         bases: Bases,
@@ -365,13 +387,13 @@ class GameStrategy:
 
         return rng.random() < prob
 
-    # TODO unused
     @staticmethod
     def should_pitch_out(
         bases: Bases,
         outs: int,
         runner_speeds: dict[int, int] = None,
         count_balls: int = 0,
+        count_strikes: int = 0,
         rng: random.Random | None = None,
     ) -> bool:
         """
@@ -396,13 +418,14 @@ class GameStrategy:
             if max_speed >= 70:
                 prob = 0.05
 
+        if count_balls > count_strikes:
+            prob *= 0.1
         # Don't pitch out on 3-0, 3-1 counts
         if count_balls >= 3:
             prob *= 0.1
 
         return rng.random() < prob
 
-    # TODO unused
     @staticmethod
     def should_hit_and_run(
         bases: Bases,
