@@ -62,9 +62,9 @@ class GameStrategy:
         ):
             return PrePitchSituation(intentional_walk=True)
 
+        runner_speeds = {}
         if not game.bases.is_empty:
             double_steal_bases = GameStrategy.get_double_steal_candidates(game)
-            runner_speeds = {}
 
             if double_steal_bases:
                 for base in double_steal_bases:
@@ -116,7 +116,7 @@ class GameStrategy:
         if not bunt_attempt:
             if GameStrategy.should_hit_and_run(
                 game.bases,
-                game.innings.outs,
+                game.inning.outs,
                 game.current_batter.player.skills["contact"],
                 game.current_batter.player.skills["speed"],
                 game.count.balls,
@@ -156,6 +156,8 @@ class GameStrategy:
         if bases.is_empty:
             return False
 
+        # for base in bases:
+        #     pass
         # Simple probability - 2% chance per pitch
         # TODO: Make this smarter based on:
         # - Runner speed/steal tendency
@@ -313,6 +315,10 @@ class GameStrategy:
         if outs >= 2:
             return False
 
+        # no sac bunt without runners
+        if bases.is_empty:
+            return False
+
         # Base probability
         prob = BUNT_PROB  # 2% base
 
@@ -371,7 +377,7 @@ class GameStrategy:
 
         # Much more likely if:
         # 1. Dangerous hitter (power 70+)
-        # 2. Weaker hitter on deck
+        # 2. Weaker hitter on deck # Can't currenty tell
         # 3. Late innings, close game
 
         if batter_power >= 70:

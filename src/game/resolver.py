@@ -125,7 +125,6 @@ class Resolver:
             "swinging_strike",
             "foul",
             "hit_by_pitch",
-            # "intentional_walk",
             "catcher_interference",
             "illegal_pitch",
             "balk",
@@ -223,7 +222,7 @@ class Resolver:
         Update probs for players involved and game situation.
         """
         self.update_probs_for_bases(game.bases)
-        self.update_probs_for_situation(game.situation)
+        self.update_probs_for_situation(game.situation, game.current_batter.player)
         self.update_probs_for_count(game.count)
         self.update_probs_for_batter(game.current_batter.player)
         self.update_probs_for_pitcher(game.current_pitcher)
@@ -239,9 +238,57 @@ class Resolver:
             self.probs["in_play"] = int(self.probs["in_play"] * 1.18)
             self.probs["home_run"] = int(self.probs["home_run"] * 1.18)
 
-    def update_probs_for_situation(self, situation: PrePitchSituation):
-        # TODO
-        pass
+    def update_probs_for_situation(
+        self, situation: PrePitchSituation, batter: PlayerInGame
+    ):
+        bunting = batter.skills["bunting"]
+        contact = batter.skills["contact"]
+        if situation.bunt_attempt:
+            self.probs["strike"] -= 25 * bunting  # -(0-2500)
+            self.probs["foul"] += 25 * (100 - bunting)  # +(0-2500)
+            self.probs["home_run"] = 0
+            self.probs["in_play"] += 25 * (100 - bunting)  # +(0-2500)
+        if situation.double_steal_attempt:
+            pass
+        if situation.hit_and_run:
+            self.probs["strike"] -= 40 * contact  # -(0-4000)
+            if self.probs["strike"] < 0:  # Should never happen
+                self.probs["strike"] = 0
+            self.probs["ball"] = 10  # The batter is always suposed to swing
+            self.probs["foul"] += 5 * (100 - contact)  # +(0-500)
+            self.probs["home_run"] += 2 * (contact - 60)  # -120 to +80
+            self.probs["balk"] = int(self.probs["balk"] * 1.2)
+            self.probs["catcher_interference"] = int(
+                self.probs["catcher_interference"] * 1.2
+            )
+            self.probs["in_play"] += 20 * contact  # +(0-2000)
+        if situation.pitch_out:
+            self.probs["strike"] = int(
+                self.probs["strike"] * 0.05
+            )  # 5 percent of normal
+            self.probs["ball"] *= 2  # double chance
+            self.probs["foul"] = int(self.probs["foul"] * 0.05)  # 5 percent of normal
+            self.probs["home_run"] = int(
+                self.probs["home_run"] * 0.01
+            )  # 1 percent of normal
+            self.probs["hit_by_pitch"] = int(
+                self.probs["hit_by_pitch"] * 0.01
+            )  # 1 percent of normal
+            self.probs["catcher_interference"] = int(
+                self.probs["catcher_interference"] * 1.2
+            )  # 120 percent of normal
+            self.probs["wild_pitch"] = int(
+                self.probs["wild_pitch"] * 0.05
+            )  # 5 percent of normal
+            self.probs["in_play"] = int(self.probs["in_play"] * 0.001)  # 0.1% of normal
+        if situation.hit_and_run and situation.pitch_out:
+            self.probs[
+                "strike"
+            ] *= 25  # 25 times to account for always swinging at bad pitch
+            self.probs["foul"] *= 10  # 10 times as above
+            self.probs["in_play"] *= 50  # 50 times since it is so low from pitch_out
+        if situation.steal_attempt:
+            pass
 
     def update_probs_for_count(self, count: Count):
         if count.balls == 0 and count.strikes == 0:
@@ -367,6 +414,8 @@ class Resolver:
         """
         if probs is None or probs == {}:
             raise ValueError(f"Probabilities not set: {probs}")
+        # clamp all values to min of 0
+        probs = {k: max(0, v) for k, v in probs.items()}
         rand_num = self.rng.random() * sum(probs.values())
 
         for index, value in enumerate(probs.values()):
@@ -396,17 +445,23 @@ class Resolver:
         Update probs for players involved and game situation.
         """
         self.update_in_play_probs_for_bases_outs(game.bases, game.inning.outs)
-        self.update_in_play_probs_for_situation(game.situation)
+        self.update_in_play_probs_for_situation(
+            game.situation, game.current_batter.player
+        )
         self.update_in_play_probs_for_count(game.count)
         self.update_in_play_probs_for_batter(game.current_batter.player, game.score)
         self.update_in_play_probs_for_pitcher(game.current_pitcher, game.score)
+        self.update_in_play_probs_constraints(game.bases, game.inning.outs)
 
     def update_in_play_probs_for_bases_outs(self, bases: Bases, outs: int):
         if bases.runner_on(THIRD) and outs < 2:
             self.in_play_probs["sac_fly"] = 1000
         if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
+            # TODO we need an inside double play
             self.in_play_probs["triple_play"] = 10
         if bases.runner_on(FIRST) and bases.runner_on(THIRD) and outs == 0:
+            # TODO we need a double play and score runner
+            # TODO we need a double play home to first, runner moves to second
             self.in_play_probs["triple_play"] = 2
         if bases.runner_on(SECOND) and bases.runner_on(THIRD) and outs == 0:
             self.in_play_probs["triple_play"] = 2
@@ -414,13 +469,68 @@ class Resolver:
             self.in_play_probs["double_play"] = 400
             self.in_play_probs["ground_out"] = 100
             self.in_play_probs["fielders_choice"] = 1950
-            self.in_play_probs["sac_bunt"] = 100
-        if bases.runner_on(FIRST) and outs < 1:
-            self.in_play_probs["sac_bunt"] = 400
 
-    def update_in_play_probs_for_situation(self, situation: PrePitchSituation):
-        # TODO
-        pass
+    def update_in_play_probs_for_situation(
+        self, situation: PrePitchSituation, batter: PlayerInGame
+    ):
+        bunting = batter.skills["bunting"]
+        if situation.bunt_attempt:
+            self.in_play_probs["fly_out"] -= 15 * bunting
+            self.in_play_probs["ground_out"] += 2 * (100 - bunting)
+            self.in_play_probs["single"] = int(
+                self.in_play_probs["single"] * 0.08
+            )  # 8% of normal
+            self.in_play_probs["double"] = 0
+            self.in_play_probs["triple"] = 0
+            self.in_play_probs["double_play"] += 50 - bunting
+            self.in_play_probs["fielders_choice"] -= 3 * bunting
+            self.in_play_probs["sac_bunt"] = 2000
+            self.in_play_probs["sac_fly"] = 0
+
+        if situation.double_steal_attempt:
+            self.in_play_probs["double_play"] = int(
+                self.in_play_probs["double_play"] / 2
+            )
+            self.in_play_probs["fielders_choice"] = int(
+                self.in_play_probs["fielders_choice"] / 2
+            )
+            # TODO we need essentially the base movement of a sac bunt
+            # TODO This should be significantly higher
+            self.in_play_probs["triple_play"] = int(
+                self.in_play_probs["fielders_choice"] / 2
+            )
+
+        if situation.hit_and_run:
+            # TODO we need essentially the base movement of a sac bunt
+            # TODO This should be significantly higher
+            self.in_play_probs["double_play"] = int(
+                self.in_play_probs["double_play"] / 2
+            )
+            self.in_play_probs["fielders_choice"] = int(
+                self.in_play_probs["fielders_choice"] / 2
+            )
+            self.in_play_probs["triple_play"] = int(
+                self.in_play_probs["fielders_choice"] / 2
+            )
+
+        if situation.pitch_out:
+            pass
+
+        if situation.hit_and_run and situation.pitch_out:
+            pass
+
+        if situation.steal_attempt:
+            # TODO we need essentially the base movement of a sac bunt
+            # TODO This should be significantly higher
+            self.in_play_probs["double_play"] = int(
+                self.in_play_probs["double_play"] / 2
+            )
+            self.in_play_probs["fielders_choice"] = int(
+                self.in_play_probs["fielders_choice"] / 2
+            )
+            self.in_play_probs["triple_play"] = int(
+                self.in_play_probs["fielders_choice"] / 2
+            )
 
     def update_in_play_probs_for_count(self, count: Count):
         if count.balls == 0 and count.strikes == 0:
@@ -429,114 +539,128 @@ class Resolver:
                 self.in_play_probs["ground_out"] * 0.66
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 0.61)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.61)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.61)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.61)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.61)
         elif count.balls == 1 and count.strikes == 0:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.01)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.01
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 1.1)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.1)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.1)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.1)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.1)
         elif count.balls == 0 and count.strikes == 1:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.08)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.08
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 0.78)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.78)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.78)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.78)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.78)
         elif count.balls == 2 and count.strikes == 0:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 0.72)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 0.72
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 0.69)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.69)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.69)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.69)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.69)
         elif count.balls == 1 and count.strikes == 1:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.01)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.01
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 1.15)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.15)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.15)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.15)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.15)
         elif count.balls == 0 and count.strikes == 2:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 0.82)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 0.82
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 0.74)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.74)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.74)
-            self.in_play_probs["sac_bunt"] = 0
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.74)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.74)
         elif count.balls == 3 and count.strikes == 0:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 0.09)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 0.09
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 0.21)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.21)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.21)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 0.21)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 0.21)
         elif count.balls == 2 and count.strikes == 1:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.47)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.47
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 1.71)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.71)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.71)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.71)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.71)
         elif count.balls == 1 and count.strikes == 2:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.2)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.2
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 1.16)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.16)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.16)
-            self.in_play_probs["sac_bunt"] = 0
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.16)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.16)
         elif count.balls == 3 and count.strikes == 1:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.56)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.56
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 1.57)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.57)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.57)
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.57)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.57)
         elif count.balls == 2 and count.strikes == 2:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.39)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.39
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 1.63)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.63)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.63)
-            self.in_play_probs["sac_bunt"] = 0
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.63)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.63)
         elif count.balls == 3 and count.strikes == 2:
             self.in_play_probs["fly_out"] = int(self.in_play_probs["fly_out"] * 1.88)
             self.in_play_probs["ground_out"] = int(
                 self.in_play_probs["ground_out"] * 1.88
             )
             self.in_play_probs["single"] = int(self.in_play_probs["single"] * 1.66)
-            self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.66)
-            self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.66)
-            self.in_play_probs["sac_bunt"] = 0
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] = int(self.in_play_probs["double"] * 1.66)
+            if self.in_play_probs["triple"] > 0:
+                self.in_play_probs["triple"] = int(self.in_play_probs["triple"] * 1.66)
 
     def update_in_play_probs_for_batter(self, batter: PlayerInGame, score: Score):
         # power
         power = batter.skills["power"]
         self.in_play_probs["fly_out"] -= 4 * (power - 50)  # +/- 200
         self.in_play_probs["single"] -= 1 * (power - 50)  # +/- 50
-        self.in_play_probs["double"] += 1 * (power - 50)  # +/- 50
-        # bunting
-        bunting = batter.skills["bunting"]
-        if self.in_play_probs["sac_bunt"] > 0:
-            self.in_play_probs["sac_bunt"] += 10 * (bunting - 50)
-        elif self.in_play_probs["sac_bunt"] <= 0:
-            self.in_play_probs["sac_bunt"] = 0
-        # contact
+        if self.in_play_probs["double"] > 0:
+            self.in_play_probs["double"] += 1 * (power - 50)  # +/- 50
         contact = batter.skills["contact"]
         self.in_play_probs["single"] += 2 * (contact - 50)
         self.in_play_probs["ground_out"] += 1 * (contact - 50)
@@ -544,8 +668,10 @@ class Resolver:
         speed = batter.skills["speed"]
         self.in_play_probs["ground_out"] -= speed - 50
         self.in_play_probs["single"] += 0.9 * (speed - 50)
-        self.in_play_probs["double"] += 0.1 * (speed - 50)
-        self.in_play_probs["triple"] += 0.1 * (speed - 50)
+        if self.in_play_probs["double"] > 0:
+            self.in_play_probs["double"] += 0.1 * (speed - 50)
+        if self.in_play_probs["triple"] > 0:
+            self.in_play_probs["triple"] += 0.1 * (speed - 50)
         if self.in_play_probs["double_play"]:
             self.in_play_probs["double_play"] -= speed - 50
             self.in_play_probs["fielders_choice"] += speed - 50
@@ -554,7 +680,8 @@ class Resolver:
             self.in_play_probs["fly_out"] += 2 * (clutch - 50)  # +/- 100
             self.in_play_probs["ground_out"] += 2 * (clutch - 50)  # +/- 100
             self.in_play_probs["single"] += clutch - 50  # +/- 50
-            self.in_play_probs["double"] += (clutch - 50) / 2  # +/- 25
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] += (clutch - 50) / 2  # +/- 25
 
     def update_in_play_probs_for_pitcher(self, pitcher: PlayerInGame, score: Score):
         # ground_balls
@@ -574,7 +701,24 @@ class Resolver:
             self.in_play_probs["fly_out"] += 2 * (clutch - 50)  # +/- 100
             self.in_play_probs["ground_out"] += 2 * (clutch - 50)  # +/- 100
             self.in_play_probs["single"] += 50 - clutch  # +/- 50
-            self.in_play_probs["double"] += (50 - clutch) / 2  # +/- 25
+            if self.in_play_probs["double"] > 0:
+                self.in_play_probs["double"] += (50 - clutch) / 2  # +/- 25
+
+    def update_in_play_probs_constraints(self, bases: Bases, outs: int):
+        if bases.number_of_baserunners < 2:
+            self.in_play_probs["triple_play"] = 0
+        # if not 2 runners: triple_play = 0
+        if bases.number_of_baserunners < 1:
+            self.in_play_probs["double_play"] = 0
+            self.in_play_probs["fielders_choice"] = 0
+            self.in_play_probs["sac_fly"] = 0
+            self.in_play_probs["sac_bunt"] = 0
+        if not bases.runner_on(THIRD):
+            self.in_play_probs["sac_fly"] = 0
+        if outs > 0:
+            self.in_play_probs["triple_play"] = 0
+        if outs > 1:
+            self.in_play_probs["double_play"] = 0
 
     # ================================================================
     # HELPER METHODS
@@ -836,11 +980,23 @@ class Resolver:
 
     def _resolve_ground_out(self, intent, game) -> list[GameEvent]:
         """Resolve a ground out"""
-        return [
-            GroundOutEvent(batter=intent.batter),
-            OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher),
-            PlateAppearanceEndEvent(reason="ground_out", batter=intent.batter),
-        ]
+        events: list[GameEvent] = []
+
+        events.append(GroundOutEvent(batter=intent.batter))
+        events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
+        events.extend(
+            self._advance_all_runners(
+                game,
+                (THIRD, SECOND, FIRST),
+                advancement=1,
+                reason="ground_out",
+            )
+        )
+        events.append(
+            PlateAppearanceEndEvent(reason="ground_out", batter=intent.batter)
+        )
+
+        return events
 
     def _resolve_home_run(self, intent, game) -> list[GameEvent]:
         """
@@ -1126,7 +1282,14 @@ class Resolver:
                     reason="double_play",
                 )
             )
-            # TODO Check if other runners advanced
+            events.extend(
+                self._advance_all_runners(
+                    game,
+                    (THIRD, SECOND),
+                    advancement=1,
+                    reason="ground_out",
+                )
+            )
 
         # No runner was on first, but we still need a double play
         # try third next.
@@ -1139,7 +1302,6 @@ class Resolver:
                 )
             )
             if game.bases.runner_on(SECOND) and game.bases.runner_on(FIRST):
-                # TODO add some chance they don't advance.
                 runner = game.bases.runner_on(SECOND)
                 events.append(
                     RunnerAdvancedEvent(
@@ -1173,8 +1335,6 @@ class Resolver:
                     )
                 )
             elif game.bases.runner_on(FIRST):
-                # TODO only tiny chance they don't advance.
-                # but it could be a line out double play
                 runner = game.bases.runner_on(FIRST)
                 events.append(
                     RunnerAdvancedEvent(
@@ -1185,8 +1345,6 @@ class Resolver:
                         pitcher=intent.pitcher,
                     )
                 )
-            # TODO Check if other runners advanced
-
         else:
             # must be a runner on second.
             events.append(
@@ -1197,8 +1355,6 @@ class Resolver:
                 )
             )
             if game.bases.runner_on(FIRST):
-                # TODO only tiny chance they don't advance.
-                # but it could be a line out double play
                 runner = game.bases.runner_on(FIRST)
                 events.append(
                     RunnerAdvancedEvent(
@@ -1348,13 +1504,19 @@ class Resolver:
 
         - score the runner on third
         - put out the batter
-        - other runners could possibly advance (TODO)
         """
         # Validation
         self._validate_game_state(game, max_outs=2, require_runner_on=THIRD)
 
         events: list[GameEvent] = []
-        # TODO Other runners could also advance possibly
+        events.extend(
+            self._advance_all_runners(
+                game,
+                (THIRD, SECOND),
+                advancement=1,
+                reason="ground_out",
+            )
+        )
 
         events.append(SacFlyEvent(batter=intent.batter))
         events.append(OutRecordedEvent(reason="sac_fly", pitcher=intent.pitcher))
@@ -1650,6 +1812,8 @@ class EnhancedResolver(Resolver):
 
         NOTE: Steals won't happen on a ball_in_play, as they are handled
         in _resolve_ball_in_play
+
+        TODO: Need to handle hit and runs that aren't put in play here.
         """
         events = []
 
@@ -1661,43 +1825,10 @@ class EnhancedResolver(Resolver):
         double_steal_bases = intent.pre_pitch_situation.double_steal_attempt
 
         if double_steal_bases:
-            # runner_speeds = {}
-            # for base in double_steal_bases:
-            #     runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
-            # if GameStrategy.should_attempt_double_steal(
-            #     game.inning.outs, double_steal_bases, runner_speeds, self.rng
-            # ):
             return self._resolve_double_steal(double_steal_bases, intent, game)
         from_base = intent.pre_pitch_situation.steal_attempt
         if from_base:
             return self._resolve_steal_attempt(from_base, intent, game)
-        # # Otherwise, check lead runner first (highest base)
-        # occupied = sorted(game.bases.occupied_map().keys(), reverse=True)
-
-        # for base in occupied:
-        #     next_base = base + 1
-
-        #     # Can't steal if next base occupied
-        #     if next_base <= THIRD and game.bases.runner_on(next_base):
-        #         continue
-
-        #     runner = game.bases.runner_on(base)
-        #     speed = runner.skills["speed"]
-        #     br_skill = runner.skills["base_running"]
-        #     catcher = game.pitch_team.current_catcher
-        #     arm = catcher.skills["arm"]
-        #     if GameStrategy.should_attempt_steal(
-        #         base,
-        #         game.bases,
-        #         game.inning.outs,
-        #         game.count,
-        #         game.score,
-        #         speed,
-        #         br_skill,
-        #         arm,
-        #         self.rng,
-        #     ):
-        #         return self._resolve_steal_attempt(base, intent, game)
 
         return events
 

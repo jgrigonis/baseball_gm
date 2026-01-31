@@ -275,8 +275,7 @@ class Game:
             self._enqueue(events)
             return
 
-        # TODO Remove debugging here, set to trace
-        self.logger.info(self.situation)
+        self.logger.trace(self.situation)
         # Generate pitch intent
         intent = self._next_intent()
         self.logger.trace(f"[STEP] Intent → {intent}")

@@ -147,6 +147,21 @@ class Bases:
         return len(self._bases) == 0
 
     @property
+    def number_of_baserunners(self) -> int:
+        """Return the number of base runners on base."""
+        return len(self._bases)
+
+    @property
+    def one_man_on(self) -> bool:
+        """True if exactly one man on base."""
+        return len(self._bases) == 1
+
+    @property
+    def two_men_on(self) -> bool:
+        """True if exactly two men on base."""
+        return len(self._bases) == 2
+
+    @property
     def is_loaded(self) -> bool:
         """True if bases are loaded."""
         return len(self._bases) == 3

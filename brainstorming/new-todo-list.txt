@@ -15,7 +15,7 @@ Implement stamina and recovery
 Have long outings affect stamina more
 As energy decreases, impact pitching skills 
 
-Implement pitcher changes, bunts, steals, hit and run, IBB, taking pitches, 
+Implement pitcher changes, 
 eventually defensive shifts, mound visits
 
 Handedness accounted for many places

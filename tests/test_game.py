@@ -588,6 +588,7 @@ class TestStep:
             "power": 50,
             "speed": 50,
             "base_running": 50,
+            "contact": 50,
         }
         game.current_batter = mock_batter
 
