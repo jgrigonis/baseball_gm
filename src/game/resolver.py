@@ -1751,9 +1751,7 @@ class EnhancedResolver(Resolver):
         events = []
         base = intent.target_base
         runner = game.bases.runner_on(base)
-        # TODO if steal, double_steal, hit_and_run are on, pickoff needs to get way better
-        if intent.steal_on:
-            pass
+
         if not runner:
             return events
 
