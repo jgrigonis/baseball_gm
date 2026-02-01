@@ -134,7 +134,7 @@ class GameStrategy:
             ):
                 pitch_out = True
 
-        if GameStrategy.should_attempt_pickoff(game.bases):
+        if GameStrategy.should_attempt_pickoff(game.bases, game.score):
             target_base = GameStrategy.select_pickoff_target(game.bases)
             pickoff_attempt = target_base
 
@@ -148,20 +148,39 @@ class GameStrategy:
         )
 
     @staticmethod
-    def should_attempt_pickoff(bases: Bases, rng: random.Random | None = None) -> bool:
+    def should_attempt_pickoff(
+        bases: Bases, score: Score, rng: random.Random | None = None
+    ) -> bool:
         """Decide if pitcher should attempt pickoff before this pitch."""
         rng = _get_rng(rng)
 
         if bases.is_empty:
             return False
 
-        # for base in bases:
-        #     pass
-        # Simple probability - 2% chance per pitch
-        # TODO: Make this smarter based on:
-        # - Runner speed/steal tendency
-        # - Game situation
-        # - Pitcher pickoff skill (not a thing, but it could be)
+        if bases.one_man_on:
+            base = bases.only_occupied_base()
+            speed = bases.runner_on(base).skills["speed"]
+
+        elif bases.is_loaded:
+            speed = bases.runner_on(THIRD).skills["speed"]
+
+        else:
+            occupied = bases.occupied_map()
+            occupied_bases = set(occupied.keys())
+            if occupied_bases == {FIRST, THIRD}:
+                speed = bases.runner_on(THIRD).skills["speed"]
+            elif occupied_bases == {SECOND, THIRD}:
+                speed = bases.runner_on(THIRD).skills["speed"]
+            elif occupied_bases == {FIRST, SECOND}:
+                speed = bases.runner_on(SECOND).skills["speed"]
+
+        prob = BASE_PICKOFF_ATTEMPT_PROB
+        if speed > 60:
+            prob *= 1.5
+
+        if -2 < score.differential < 2:
+            prob *= 1.5
+
         return rng.random() < BASE_PICKOFF_ATTEMPT_PROB
 
     @staticmethod
@@ -171,7 +190,6 @@ class GameStrategy:
         occupied = sorted(bases.occupied_map().keys())
         if not occupied:
             raise ValueError("Cannot select pickoff target with no runners on base")
-        # TODO: Logic based on handedness of pitcher
         # Prefer third base if it's occupied
         if THIRD in occupied:
             # If both third and second occupied, sometimes pick second
@@ -468,7 +486,7 @@ class GameStrategy:
             prob *= 1.5
 
         runner_speed = 50
-        
+
         if bases.one_man_on:
             if bases.runner_on(FIRST):
                 runner_speed = bases.runner_on(FIRST).skills["speed"]
@@ -476,7 +494,7 @@ class GameStrategy:
                 runner_speed = bases.runner_on(SECOND).skills["speed"]
             elif bases.runner_on(THIRD):
                 runner_speed = bases.runner_on(THIRD).skills["speed"]
-            
+
         if bases.two_men_on:
             # Get the speed of the lead runner
             if bases.runner_on(THIRD):

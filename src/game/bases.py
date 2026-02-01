@@ -174,16 +174,17 @@ class Bases:
     def only_occupied_base(self) -> int:
         """
         Get the only occupied base.
-        
+
         Returns:
             The base number (1, 2, or 3)
-            
+
         Raises:
             RuntimeError: If not exactly one runner on base
         """
         if not self.one_man_on:
             raise RuntimeError(f"Expected exactly one runner, got {len(self._bases)}")
         return next(iter(self._bases.keys()))
+
     # ------------------------------------------------------------------
     # Mutations (event-driven)
     # ------------------------------------------------------------------

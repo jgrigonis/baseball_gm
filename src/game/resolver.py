@@ -82,6 +82,17 @@ class Resolver:
     TRIPLE_PLAY_FIRST_SECOND_THRESHOLD = 0.3333
     TRIPLE_PLAY_FIRST_THIRD_THRESHOLD = 0.6666
 
+    # # Double Steal Probs First and Third
+    # DOUBLE_STEAL_FIRST_AND_THIRD_BOTH_SAFE = 0.70
+    # DOUBLE_STEAL_FIRST_AND_THIRD_ONLY_FIRST_ADVANCES = 0.85
+    # DOUBLE_STEAL_FIRST_AND_THIRD_FIRST_OUT_THIRD_SCORES = 0.95
+    # DOUBLE_STEAL_FIRST_AND_THIRD_FIRST_SAFE_THIRD_OUT = 0.99
+
+    # # Double Steal Probs first and second OR second and third
+    # DOUBLE_STEAL_BOTH_SAFE = 0.65
+    # DOUBLE_STEAL_LEAD_OUT_TRAIL_SAFE = 0.90
+    # DOUBLE_STEAL_LEAD_SAFE_TRAIL_OUT = 0.98
+
     def __init__(self, rng):
         self.rng = rng
         self.logger = logging.getLogger("game.resolver")
@@ -1756,7 +1767,9 @@ class EnhancedResolver(Resolver):
         # Determine outcome
         r = self.rng.random()
 
-        pickoff_success_prob, pickoff_error_prob = self.adjust_pickoff_success(base, intent.pitcher, game, runner.skills["base_running"])
+        pickoff_success_prob, pickoff_error_prob = self.adjust_pickoff_success(
+            base, intent.pitcher, game, runner.skills["base_running"]
+        )
         # base_running skill of runner
         if r < pickoff_success_prob:
             # Successful pickoff - runner out
@@ -1794,10 +1807,14 @@ class EnhancedResolver(Resolver):
 
         return events
 
-    def adjust_pickoff_success(self, base: int, pitcher: PlayerInGame, game, br_skill=50):
+    def adjust_pickoff_success(
+        self, base: int, pitcher: PlayerInGame, game, br_skill=50
+    ):
         success = self.PICKOFF_SUCCESS_PROB
         error = self.PICKOFF_ERROR_PROB
-        self.logger.trace(f"pickoff success vars, base={base}, pitcher.throws={pitcher.throws}, baserunning={br_skill}")
+        self.logger.trace(
+            f"pickoff success vars, base={base}, pitcher.throws={pitcher.throws}, baserunning={br_skill}"
+        )
         if base is FIRST and pitcher.throws[0].lower() == "l":
             success *= 1.1
         if base is THIRD and pitcher.throws[0].lower() == "r":
@@ -1805,15 +1822,15 @@ class EnhancedResolver(Resolver):
         success = success * 50 / max(30, br_skill)
         error *= 50 / max(30, pitcher.skills["accuracy"])
         if base is FIRST:
-            error *= 50 / game.pitch_team.current_first_basemen.skills["infield"]
+            error *= 50 / game.pitch_team.current_first_baseman.skills["infield"]
         if base is SECOND:
             r = self.rng.random()
             if r < 0.5:
-                error *= 50 / game.pitch_team.current_second_basemen.skills["infield"]
+                error *= 50 / game.pitch_team.current_second_baseman.skills["infield"]
             else:
                 error *= 50 / game.pitch_team.current_shortstop.skills["infield"]
         if base is THIRD:
-            error *= 50 / game.pitch_team.current_third_basemen.skills["infield"]
+            error *= 50 / game.pitch_team.current_third_baseman.skills["infield"]
         return success, error
 
     # ================================================================
@@ -1881,9 +1898,6 @@ class EnhancedResolver(Resolver):
         events.append(
             StealAttemptEvent(runner=runner, from_base=from_base, to_base=to_base)
         )
-
-        # TODO adjust these probs based on skills
-        # Determine success rate based on target base
 
         if to_base == SECOND:
             success_prob = self.STEAL_SECOND_SUCCESS_PROB
@@ -1975,14 +1989,28 @@ class EnhancedResolver(Resolver):
         is_first_and_third = FIRST in from_bases and THIRD in from_bases
 
         # Determine outcome
-        r = self.rng.random()
+        self.first_and_third_probs = {
+            "both_safe": 7000,
+            "first_advances_only": 1500,
+            "first_out_third_scores": 1000,
+            "third_out_first_advances": 400,
+            "both_out": 100,
+        }
+        self.double_steal_probs = {
+            "both_safe": 6500,
+            "lead_out_trail_safe": 2500,
+            "lead_safe_trail_out": 800,
+            "both_out": 200,
+        }
 
         if is_first_and_third:
             # 1st and 3rd special handling
+            self.update_first_and_third_probs(game)
+            result = self.random_event(self.first_and_third_probs)
             first_attempt = next(a for a in steal_attempts if a[0] == FIRST)
             third_attempt = next(a for a in steal_attempts if a[0] == THIRD)
 
-            if r < 0.70:  # TODO adjust number for skills
+            if result == "both_safe":
                 # Both safe - ADVANCE IN REVERSE ORDER
                 # Third → Home first, then First → Second
                 from_base, to_base, runner = third_attempt
@@ -2012,8 +2040,7 @@ class EnhancedResolver(Resolver):
                         pitcher=intent.pitcher,
                     )
                 )
-
-            elif r < 0.85:  # TODO adjust number for skills
+            elif result == "first_advances_only":
                 # Only runner on 1st steals (runner on 3rd holds)
                 from_base, to_base, runner = first_attempt
                 events.append(
@@ -2028,8 +2055,7 @@ class EnhancedResolver(Resolver):
                         pitcher=intent.pitcher,
                     )
                 )
-
-            elif r < 0.95:  # TODO adjust number for skills
+            elif result == "first_out_third_scores":
                 # Runner on 1st out, runner on 3rd scores
                 from_base, to_base, runner = third_attempt
                 events.append(
@@ -2059,8 +2085,7 @@ class EnhancedResolver(Resolver):
                         runner=runner, from_base=from_base, reason="caught_stealing"
                     )
                 )
-
-            elif r < 0.99:  # TODO adjust number for skills
+            elif result == "third_out_first_advances":
                 # Runner on 3rd caught, runner on 1st safe
                 from_base, to_base, runner = third_attempt
                 events.append(
@@ -2090,8 +2115,7 @@ class EnhancedResolver(Resolver):
                         pitcher=intent.pitcher,
                     )
                 )
-
-            else:
+            elif result == "both_out":
                 # Both out
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
@@ -2111,12 +2135,15 @@ class EnhancedResolver(Resolver):
                             reason="caught_stealing",
                         )
                     )
+            else:
+                raise RuntimeError(f"Unknown result={result} first_and_third_probs")
 
         else:
+            self.update_double_steal_probs(game)
+            result = self.random_event(self.double_steal_probs)
             # Standard double steal (1st/2nd or 2nd/3rd)
             # steal_attempts is already sorted in reverse order (lead runner first)
-
-            if r < 0.65:  # TODO adjust number for skills
+            if result == "both_safe":
                 # Both safe - process in order (lead runner first)
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
@@ -2133,8 +2160,7 @@ class EnhancedResolver(Resolver):
                             pitcher=intent.pitcher,
                         )
                     )
-
-            elif r < 0.90:  # TODO adjust number for skills
+            elif result == "lead_out_trail_safe":
                 # Lead runner out, trail runner safe
                 lead_attempt = steal_attempts[0]  # First in list (highest base)
                 trail_attempt = steal_attempts[1]  # Second in list (lowest base)
@@ -2167,8 +2193,7 @@ class EnhancedResolver(Resolver):
                         pitcher=intent.pitcher,
                     )
                 )
-
-            elif r < 0.98:  # TODO adjust number for skills
+            elif result == "lead_safe_trail_out":
                 # Trail runner out, lead runner safe
                 lead_attempt = steal_attempts[0]
                 trail_attempt = steal_attempts[1]
@@ -2203,7 +2228,7 @@ class EnhancedResolver(Resolver):
                     )
                 )
 
-            else:
+            elif result == "both_out":
                 # Both out - order doesn't matter
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
@@ -2223,33 +2248,105 @@ class EnhancedResolver(Resolver):
                             reason="caught_stealing",
                         )
                     )
+            else:
+                raise RuntimeError(f"Unknown result={result} double_steal_probs")
 
         return events
 
-    def _get_double_steal_candidates(self, game) -> List[int] | None:
-        """
-        Get bases for potential double steal.
+    def update_first_and_third_probs(self, game):
+        speed1 = game.bases.runner_on(FIRST).skills["speed"]
+        br1 = game.bases.runner_on(FIRST).skills["base_running"]
+        speed3 = game.bases.runner_on(THIRD).skills["speed"]
+        br3 = game.bases.runner_on(THIRD).skills["base_running"]
+        arm = game.pitch_team.current_catcher.skills["arm"]
+        arm2 = game.pitch_team.current_second_baseman.skills["arm"]
 
-        When multiple double steals are possible, prioritize:
-        1. 2nd and 3rd (most aggressive - runner scores)
-        2. 1st and 3rd (strategic play)
-        3. 1st and 2nd (most common)
-        """
-        # Priority 1: 2nd and 3rd (runner on 3rd can score)
-        if game.bases.runner_on(SECOND) and game.bases.runner_on(THIRD):
-            return [SECOND, THIRD]
+        self.first_and_third_probs["both_safe"] = int(
+            self.first_and_third_probs["both_safe"]
+            * (speed1 + br1 + speed3 + br3)
+            / 200
+            * 50
+            / arm
+        )
+        self.first_and_third_probs["first_advances_only"] = int(
+            self.first_and_third_probs["first_advances_only"]
+            * (speed1 + br1 + speed3 + br3)
+            / 200
+            * 50
+            / arm
+        )
+        self.first_and_third_probs["first_out_third_scores"] = int(
+            self.first_and_third_probs["first_out_third_scores"]
+            * (speed1 + br1 + speed3 + br3)
+            / 200
+            * 50
+            / arm
+            * 50
+            / arm2
+        )
+        self.first_and_third_probs["third_out_first_advances"] = int(
+            self.first_and_third_probs["third_out_first_advances"]
+            * (speed1 + br1 + speed3 + br3)
+            / 200
+            * 50
+            / arm
+            * 50
+            / arm2
+        )
+        self.first_and_third_probs["both_out"] = int(
+            self.first_and_third_probs["both_out"]
+            * 200
+            / (speed1 + br1 + speed3 + br3)
+            / 50
+            * arm
+            / 50
+            * arm2
+        )
 
-        # Priority 2: 1st and 3rd (strategic, only if 2nd empty)
-        if game.bases.runner_on(FIRST) and game.bases.runner_on(THIRD):
-            if not game.bases.runner_on(SECOND):
-                return [FIRST, THIRD]
+    def update_double_steal_probs(self, game):
+        if game.bases.runner_on(FIRST):
+            runner1 = game.bases.runner_on(FIRST)
+            runner2 = game.bases.runner_on(SECOND)
+            arm2 = game.pitch_team.current_third_baseman.skills["arm"]
+        else:
+            runner1 = game.bases.runner_on(SECOND)
+            runner2 = game.bases.runner_on(THIRD)
+            arm2 = None
+        speed1 = runner1.skills["speed"]
+        br1 = runner1.skills["base_running"]
+        speed2 = runner2.skills["speed"]
+        br2 = runner2.skills["base_running"]
+        arm = game.pitch_team.current_catcher.skills["arm"]
+        catcher = game.pitch_team.current_catcher.skills["catching"]
 
-        # Priority 3: 1st and 2nd (only if 3rd empty)
-        if game.bases.runner_on(FIRST) and game.bases.runner_on(SECOND):
-            if not game.bases.runner_on(THIRD):
-                return [FIRST, SECOND]
+        self.double_steal_probs["both_safe"] = int(
+            self.double_steal_probs["both_safe"]
+            * (speed1 + br1 + speed2 + br2)
+            / 200
+            * 50
+            / arm
+        )
 
-        return None
+        if arm2:
+            self.first_and_third_probs["both_out"] = int(
+                self.first_and_third_probs["both_out"]
+                * 200
+                / (speed1 + br1 + speed2 + br2)
+                / 50
+                * arm
+                / 50
+                * arm2
+            )
+        else:
+            self.first_and_third_probs["both_out"] = int(
+                self.first_and_third_probs["both_out"]
+                * 200
+                / (speed1 + br1 + speed2 + br2)
+                / 50
+                * arm
+                / 50
+                * catcher
+            )
 
     def _is_balk(self, events: List[GameEvent]) -> bool:
         """Check if a balk occurred."""
