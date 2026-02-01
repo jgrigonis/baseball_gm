@@ -457,11 +457,8 @@ class Resolver:
         if bases.runner_on(THIRD) and outs < 2:
             self.in_play_probs["sac_fly"] = 1000
         if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
-            # TODO we need an inside double play
             self.in_play_probs["triple_play"] = 10
         if bases.runner_on(FIRST) and bases.runner_on(THIRD) and outs == 0:
-            # TODO we need a double play and score runner
-            # TODO we need a double play home to first, runner moves to second
             self.in_play_probs["triple_play"] = 2
         if bases.runner_on(SECOND) and bases.runner_on(THIRD) and outs == 0:
             self.in_play_probs["triple_play"] = 2
@@ -497,7 +494,7 @@ class Resolver:
             # TODO we need essentially the base movement of a sac bunt
             # TODO This should be significantly higher
             self.in_play_probs["triple_play"] = int(
-                self.in_play_probs["fielders_choice"] / 2
+                self.in_play_probs["triple_play"] / 2
             )
 
         if situation.hit_and_run:
@@ -510,7 +507,7 @@ class Resolver:
                 self.in_play_probs["fielders_choice"] / 2
             )
             self.in_play_probs["triple_play"] = int(
-                self.in_play_probs["fielders_choice"] / 2
+                self.in_play_probs["triple_play"] / 2
             )
 
         if situation.pitch_out:
@@ -529,7 +526,7 @@ class Resolver:
                 self.in_play_probs["fielders_choice"] / 2
             )
             self.in_play_probs["triple_play"] = int(
-                self.in_play_probs["fielders_choice"] / 2
+                self.in_play_probs["triple_play"] / 2
             )
 
     def update_in_play_probs_for_count(self, count: Count):
@@ -1287,7 +1284,7 @@ class Resolver:
                     game,
                     (THIRD, SECOND),
                     advancement=1,
-                    reason="ground_out",
+                    reason="double_play",
                 )
             )
 
@@ -1323,7 +1320,7 @@ class Resolver:
                     )
                 )
             elif game.bases.runner_on(SECOND):
-                # Higher chance they don't advance here, as no force.
+                # TODO Higher chance they don't advance here, as no force.
                 runner = game.bases.runner_on(SECOND)
                 events.append(
                     RunnerAdvancedEvent(
@@ -1757,9 +1754,9 @@ class EnhancedResolver(Resolver):
         # Determine outcome
         r = self.rng.random()
 
-        # TODO adjust probs based on skills
+        pickoff_success_prob, pickoff_error_prob = self.adjust_pickoff_success(base, intent.pitcher, game, runner.skills["base_running"])
         # base_running skill of runner
-        if r < self.PICKOFF_SUCCESS_PROB:
+        if r < pickoff_success_prob:
             # Successful pickoff - runner out
             self.logger.debug(f"Successful pickoff at base {base}")
             events.append(
@@ -1771,7 +1768,7 @@ class EnhancedResolver(Resolver):
             )
 
         # TODO adjust based on fielding skill of baseman, and pitcher
-        elif r < self.PICKOFF_SUCCESS_PROB + self.PICKOFF_ERROR_PROB:
+        elif r < pickoff_success_prob + pickoff_error_prob:
             # Throwing error - runner advances
             self.logger.debug(f"Pickoff throwing error at base {base}")
             events.append(
@@ -1795,6 +1792,28 @@ class EnhancedResolver(Resolver):
             )
 
         return events
+
+    def adjust_pickoff_success(self, base: int, pitcher: PlayerInGame, game, br_skill=50):
+        success = self.PICKOFF_SUCCESS_PROB
+        error = self.PICKOFF_ERROR_PROB
+        self.logger.trace(f"pickoff success vars, base={base}, pitcher.throws={pitcher.throws}, baserunning={br_skill}")
+        if base is FIRST and pitcher.throws[0].lower() == "l":
+            success *= 1.1
+        if base is THIRD and pitcher.throws[0].lower() == "r":
+            success *= 1.1
+        success = success * 50 / max(30, br_skill)
+        error *= 50 / max(30, pitcher.skills["accuracy"])
+        if base is FIRST:
+            error *= 50 / game.pitch_team.current_first_basemen.skills["infield"]
+        if base is SECOND:
+            r = self.rng.random()
+            if r < 0.5:
+                error *= 50 / game.pitch_team.current_second_basemen.skills["infield"]
+            else:
+                error *= 50 / game.pitch_team.current_shortstop.skills["infield"]
+        if base is THIRD:
+            error *= 50 / game.pitch_team.current_third_basemen.skills["infield"]
+        return success, error
 
     # ================================================================
     # CONCURRENT EVENT RESOLUTION (STEALS)

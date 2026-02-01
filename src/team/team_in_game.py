@@ -116,6 +116,38 @@ class TeamInGame:
         if catcher is None:
             raise RuntimeError("No catcher in lineup")
         return catcher
+    
+    @property
+    def current_first_basemen(self) -> PlayerInGame:
+        """Get the current first basemen."""
+        first_base = self._positions.get(Position.FIRST_BASE)
+        if first_base is None:
+            raise RuntimeError("No first_base in lineup")
+        return first_base
+
+    @property
+    def current_second_basemen(self) -> PlayerInGame:
+        """Get the current second basemen."""
+        second_base = self._positions.get(Position.SECOND_BASE)
+        if second_base is None:
+            raise RuntimeError("No second_base in lineup")
+        return second_base
+
+    @property
+    def current_shortstop(self) -> PlayerInGame:
+        """Get the current shortstop."""
+        shortstop = self._positions.get(Position.SHORTSTOP)
+        if shortstop is None:
+            raise RuntimeError("No shortstop in lineup")
+        return shortstop
+        
+    @property
+    def current_third_basemen(self) -> PlayerInGame:
+        """Get the current third basemen."""
+        third_base = self._positions.get(Position.THIRD_BASE)
+        if third_base is None:
+            raise RuntimeError("No third_base in lineup")
+        return third_base
 
     def output_batting_stats(self) -> str:
         """Print the team's batting stats."""
