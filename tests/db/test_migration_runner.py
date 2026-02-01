@@ -1,6 +1,5 @@
 # tests/db/test_migration_runner.py
 
-import pytest
 from src.db.migration_files.runner import load_migrations
 
 

@@ -3,7 +3,6 @@
 import pytest
 from src.game.intents.pitch import PitchIntent, PrePitchSituation
 from src.game.intents.pick_off import PickOffIntent
-from src.player.player_in_game import PlayerInGame
 
 
 class TestPrePitchSituation:

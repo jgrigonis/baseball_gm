@@ -27,7 +27,7 @@ def init_db(conn):
         # Commit all changes
         conn.commit()
 
-    except Exception as e:
+    except Exception:
         # Rollback on any error to maintain clean state
         conn.rollback()
         raise

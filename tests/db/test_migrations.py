@@ -58,7 +58,7 @@ def test_migrations_are_idempotent():
     run_migrations(conn)
 
     # Should not crash and should maintain consistent state
-    versions = _applied_versions(conn)
+    _ = _applied_versions(conn)
 
     # Re-running should not duplicate version records
     cursor = conn.execute(

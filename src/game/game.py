@@ -533,17 +533,6 @@ class Game:
             raise RuntimeError("Resolver returned no events")
         return events
 
-    # def _create_pickoff_intent(self) -> PickOffIntent:
-    #     """
-    #     Create a pickoff intent.
-
-    #     Returns a PickOffIntent targeting the selected base.
-    #     """
-    #     # Select which base to pick off
-    #     target_base = GameStrategy.select_pickoff_target(self.bases)
-
-    #     return PickOffIntent(pitcher=self.current_pitcher, target_base=target_base)
-
     # ------------------------------------------------------------------
     # Event Queue Management
     # ------------------------------------------------------------------
