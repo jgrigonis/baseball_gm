@@ -964,7 +964,7 @@ class Resolver:
             "sac_bunt": self._resolve_sac_bunt,
             "triple_play": self._resolve_triple_play,
         }
-
+        self.logger.trace(f"in_play_outcome = {outcome}")
         if outcome in outcome_handlers:
             return outcome_handlers[outcome](intent, game)
 
@@ -1509,14 +1509,6 @@ class Resolver:
         self._validate_game_state(game, max_outs=2, require_runner_on=THIRD)
 
         events: list[GameEvent] = []
-        events.extend(
-            self._advance_all_runners(
-                game,
-                (THIRD, SECOND),
-                advancement=1,
-                reason="ground_out",
-            )
-        )
 
         events.append(SacFlyEvent(batter=intent.batter))
         events.append(OutRecordedEvent(reason="sac_fly", pitcher=intent.pitcher))
@@ -1530,6 +1522,16 @@ class Resolver:
                 reason="sac_fly",
                 rbi_batter=intent.batter,
                 pitcher=intent.pitcher,
+            )
+        )
+        # Advance the runners from first and second also
+        # Should be a variable chance to change this.
+        events.extend(
+            self._advance_all_runners(
+                game,
+                (SECOND, FIRST),
+                advancement=1,
+                reason="ground_out",
             )
         )
 
@@ -1855,8 +1857,10 @@ class EnhancedResolver(Resolver):
 
         # TODO adjust these probs based on skills
         # Determine success rate based on target base
+
         if to_base == SECOND:
             success_prob = self.STEAL_SECOND_SUCCESS_PROB
+
         elif to_base == THIRD:
             success_prob = self.STEAL_THIRD_SUCCESS_PROB
         elif to_base == HOME:
@@ -1864,7 +1868,13 @@ class EnhancedResolver(Resolver):
         else:
             success_prob = 0.50
 
-        # TODO: Adjust based on runner speed, catcher arm, pitcher delivery
+        success_prob = self.adjust_steal_prob(
+            success_prob,
+            game.bases.runner_on(from_base).skills["speed"],
+            game.bases.runner_on(from_base).skills["base_running"],
+            game.pitch_team.current_catcher.skills["arm"],
+            game.pitch_team.current_catcher.skills["catching"],
+        )
 
         if self.rng.random() < success_prob:
             # Successful steal
@@ -1897,6 +1907,13 @@ class EnhancedResolver(Resolver):
             )
 
         return events
+
+    def adjust_steal_prob(
+        self, prob, run_speed=50, base_running=50, catcher_arm=50, catching_skill=50
+    ):
+        return (
+            (run_speed + base_running) / min(1, (catcher_arm + catching_skill)) * prob
+        )
 
     def _resolve_double_steal(
         self, from_bases: List[int], intent: PitchIntent, game
