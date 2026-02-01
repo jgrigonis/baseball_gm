@@ -265,10 +265,14 @@ class Game:
         # No queued events → check for pre-pitch plays, then generate pitch intent
         self.situation = GameStrategy.plan_pre_pitch(self, self.rng)
 
+        steal_on = GameStrategy.set_steal(self.situation)
+
         # Check if pitcher should attempt pickoff (pre-pitch play)
         if self.situation.pickoff_attempt:
             pickoff_intent = PickOffIntent(
-                pitcher=self.current_pitcher, target_base=self.situation.pickoff_attempt
+                pitcher=self.current_pitcher,
+                target_base=self.situation.pickoff_attempt,
+                steal_on=steal_on,
             )
             self.logger.trace(f"[STEP] Pre-pitch Intent → {pickoff_intent}")
             events = self._resolve_intent(pickoff_intent)
@@ -529,16 +533,16 @@ class Game:
             raise RuntimeError("Resolver returned no events")
         return events
 
-    def _create_pickoff_intent(self) -> PickOffIntent:
-        """
-        Create a pickoff intent.
+    # def _create_pickoff_intent(self) -> PickOffIntent:
+    #     """
+    #     Create a pickoff intent.
 
-        Returns a PickOffIntent targeting the selected base.
-        """
-        # Select which base to pick off
-        target_base = GameStrategy.select_pickoff_target(self.bases)
+    #     Returns a PickOffIntent targeting the selected base.
+    #     """
+    #     # Select which base to pick off
+    #     target_base = GameStrategy.select_pickoff_target(self.bases)
 
-        return PickOffIntent(pitcher=self.current_pitcher, target_base=target_base)
+    #     return PickOffIntent(pitcher=self.current_pitcher, target_base=target_base)
 
     # ------------------------------------------------------------------
     # Event Queue Management

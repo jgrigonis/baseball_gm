@@ -1662,12 +1662,7 @@ class EnhancedResolver(Resolver):
     Extended Resolver with pre-pitch and concurrent event support.
     """
 
-    # Probability constants for new events
-    BASE_PICKOFF_ATTEMPT_PROB = 0.02  # 2% per pitch
-    BASE_STEAL_SECOND_PROB = 0.08  # 8% from first
-    BASE_STEAL_THIRD_PROB = 0.02  # 2% from second
-    BASE_STEAL_HOME_PROB = 0.001  # 0.1% from third
-
+    # Probability constants for events
     PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
     PICKOFF_ERROR_PROB = 0.05  # 5% throwing error
 
@@ -1756,7 +1751,9 @@ class EnhancedResolver(Resolver):
         events = []
         base = intent.target_base
         runner = game.bases.runner_on(base)
-
+        # TODO if steal, double_steal, hit_and_run are on, pickoff needs to get way better
+        if intent.steal_on:
+            pass
         if not runner:
             return events
 
@@ -1768,7 +1765,7 @@ class EnhancedResolver(Resolver):
         r = self.rng.random()
 
         pickoff_success_prob, pickoff_error_prob = self.adjust_pickoff_success(
-            base, intent.pitcher, game, runner.skills["base_running"]
+            base, intent.pitcher, game, runner.skills["base_running"], intent.steal_on
         )
         # base_running skill of runner
         if r < pickoff_success_prob:
@@ -1808,8 +1805,9 @@ class EnhancedResolver(Resolver):
         return events
 
     def adjust_pickoff_success(
-        self, base: int, pitcher: PlayerInGame, game, br_skill=50
+        self, base: int, pitcher: PlayerInGame, game, br_skill=50, steal_on=False
     ):
+
         success = self.PICKOFF_SUCCESS_PROB
         error = self.PICKOFF_ERROR_PROB
         self.logger.trace(
@@ -1831,6 +1829,8 @@ class EnhancedResolver(Resolver):
                 error *= 50 / game.pitch_team.current_shortstop.skills["infield"]
         if base is THIRD:
             error *= 50 / game.pitch_team.current_third_baseman.skills["infield"]
+        if steal_on:
+            success *= 1.5
         return success, error
 
     # ================================================================

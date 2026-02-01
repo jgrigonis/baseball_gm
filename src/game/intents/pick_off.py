@@ -9,3 +9,4 @@ from src.player.player_in_game import PlayerInGame
 class PickOffIntent(GameIntent):
     pitcher: PlayerInGame
     target_base: int
+    steal_on: bool = False

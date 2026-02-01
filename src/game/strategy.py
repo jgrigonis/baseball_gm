@@ -537,3 +537,12 @@ class GameStrategy:
                 return [FIRST, SECOND]
 
         return None
+
+    def set_steal(sit: PrePitchSituation) -> bool:
+        if sit.double_steal_attempt:
+            return True
+        if sit.steal_attempt:
+            return True
+        if sit.hit_and_run:
+            return True
+        return False
