@@ -118,7 +118,6 @@ class GameStrategy:
                 game.bases,
                 game.inning.outs,
                 game.current_batter.player.skills["contact"],
-                game.current_batter.player.skills["speed"],
                 game.count.balls,
                 game.count.strikes,
                 rng,
@@ -437,7 +436,6 @@ class GameStrategy:
         bases: Bases,
         outs: int,
         batter_contact: int = 50,
-        runner_speed: int = 50,
         count_balls: int = 0,
         count_strikes: int = 0,
         rng: random.Random | None = None,
@@ -455,8 +453,8 @@ class GameStrategy:
         """
         rng = _get_rng(rng)
 
-        # Needs runner on first (typically)
-        if not bases.runner_on(FIRST):
+        # Just don't with bases loaded.
+        if bases.is_loaded:
             return False
 
         # Can't do with 2 outs
@@ -468,6 +466,23 @@ class GameStrategy:
         # Good contact hitter
         if batter_contact >= 60:
             prob *= 1.5
+
+        runner_speed = 50
+        
+        if bases.one_man_on:
+            if bases.runner_on(FIRST):
+                runner_speed = bases.runner_on(FIRST).skills["speed"]
+            elif bases.runner_on(SECOND):
+                runner_speed = bases.runner_on(SECOND).skills["speed"]
+            elif bases.runner_on(THIRD):
+                runner_speed = bases.runner_on(THIRD).skills["speed"]
+            
+        if bases.two_men_on:
+            # Get the speed of the lead runner
+            if bases.runner_on(THIRD):
+                runner_speed = bases.runner_on(THIRD).skills["speed"]
+            elif bases.runner_on(SECOND):
+                runner_speed = bases.runner_on(SECOND).skills["speed"]
 
         # Fast runner
         if runner_speed >= 60:

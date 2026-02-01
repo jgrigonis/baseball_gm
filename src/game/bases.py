@@ -105,11 +105,16 @@ class Bases:
     # ------------------------------------------------------------------
 
     def runner_on(self, base: int) -> Optional[PlayerInGame]:
+        """Get the runner on a specific base, or None."""
         if base not in VALID_BASES:
             raise ValueError(f"Invalid base: {base}")
         return self._bases.get(base)
 
     def base_of(self, runner: PlayerInGame) -> Optional[int]:
+        """
+        Check if a specific runner is on any base, or return None.
+        Raises RunTimeError if same runner on multiple bases.
+        """
         found = [b for b, r in self._bases.items() if r == runner]
         if len(found) > 1:
             raise RuntimeError(f"Runner {runner.name} on multiple bases: {found}")
@@ -166,6 +171,19 @@ class Bases:
         """True if bases are loaded."""
         return len(self._bases) == 3
 
+    def only_occupied_base(self) -> int:
+        """
+        Get the only occupied base.
+        
+        Returns:
+            The base number (1, 2, or 3)
+            
+        Raises:
+            RuntimeError: If not exactly one runner on base
+        """
+        if not self.one_man_on:
+            raise RuntimeError(f"Expected exactly one runner, got {len(self._bases)}")
+        return next(iter(self._bases.keys()))
     # ------------------------------------------------------------------
     # Mutations (event-driven)
     # ------------------------------------------------------------------

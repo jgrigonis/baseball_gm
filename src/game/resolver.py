@@ -51,6 +51,7 @@ from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent, PrePitchSituation
 from src.game.intents.pick_off import PickOffIntent
 from src.game.rules.force_advancement import force_advance_chain
+from src.game.strategy import GameStrategy
 from src.player.player_in_game import PlayerInGame
 
 
@@ -464,7 +465,7 @@ class Resolver:
             self.in_play_probs["triple_play"] = 2
         if bases.runner_on(FIRST) and outs < 2:
             self.in_play_probs["double_play"] = 400
-            self.in_play_probs["ground_out"] = 100
+            self.in_play_probs["ground_out"] = int(self.in_play_probs["ground_out"] / 2)
             self.in_play_probs["fielders_choice"] = 1950
 
     def update_in_play_probs_for_situation(
@@ -491,15 +492,15 @@ class Resolver:
             self.in_play_probs["fielders_choice"] = int(
                 self.in_play_probs["fielders_choice"] / 2
             )
-            # TODO we need essentially the base movement of a sac bunt
-            # TODO This should be significantly higher
+            self.in_play_probs["ground_out"] *= 2
+
             self.in_play_probs["triple_play"] = int(
                 self.in_play_probs["triple_play"] / 2
             )
 
         if situation.hit_and_run:
-            # TODO we need essentially the base movement of a sac bunt
-            # TODO This should be significantly higher
+            self.in_play_probs["ground_out"] *= 2
+
             self.in_play_probs["double_play"] = int(
                 self.in_play_probs["double_play"] / 2
             )
@@ -517,8 +518,8 @@ class Resolver:
             pass
 
         if situation.steal_attempt:
-            # TODO we need essentially the base movement of a sac bunt
-            # TODO This should be significantly higher
+            self.in_play_probs["ground_out"] *= 2
+
             self.in_play_probs["double_play"] = int(
                 self.in_play_probs["double_play"] / 2
             )
@@ -1320,17 +1321,18 @@ class Resolver:
                     )
                 )
             elif game.bases.runner_on(SECOND):
-                # TODO Higher chance they don't advance here, as no force.
-                runner = game.bases.runner_on(SECOND)
-                events.append(
-                    RunnerAdvancedEvent(
-                        runner=runner,
-                        from_base=SECOND,
-                        to_base=THIRD,
-                        reason="fielders_choice",
-                        pitcher=intent.pitcher,
+                r = self.rng.random()
+                if r < 0.67:
+                    runner = game.bases.runner_on(SECOND)
+                    events.append(
+                        RunnerAdvancedEvent(
+                            runner=runner,
+                            from_base=SECOND,
+                            to_base=THIRD,
+                            reason="fielders_choice",
+                            pitcher=intent.pitcher,
+                        )
                     )
-                )
             elif game.bases.runner_on(FIRST):
                 runner = game.bases.runner_on(FIRST)
                 events.append(
@@ -1767,7 +1769,6 @@ class EnhancedResolver(Resolver):
                 RunnerRemovedEvent(runner=runner, from_base=base, reason="pickoff")
             )
 
-        # TODO adjust based on fielding skill of baseman, and pitcher
         elif r < pickoff_success_prob + pickoff_error_prob:
             # Throwing error - runner advances
             self.logger.debug(f"Pickoff throwing error at base {base}")
@@ -1834,20 +1835,27 @@ class EnhancedResolver(Resolver):
         NOTE: Steals won't happen on a ball_in_play, as they are handled
         in _resolve_ball_in_play
 
-        TODO: Need to handle hit and runs that aren't put in play here.
         """
         events = []
 
         if game.bases.is_empty:
             return events
+        double_steal_bases = None
+        from_base = None
 
-        # Check for double steal scenarios
-        # double_steal_bases = self._get_double_steal_candidates(game)
-        double_steal_bases = intent.pre_pitch_situation.double_steal_attempt
+        # Check for hit and run double steal scenarios
+        if intent.pre_pitch_situation.hit_and_run:
+            if game.bases.two_men_on:
+                double_steal_bases = GameStrategy.get_double_steal_candidates(game)
+        else:
+            double_steal_bases = intent.pre_pitch_situation.double_steal_attempt
 
         if double_steal_bases:
             return self._resolve_double_steal(double_steal_bases, intent, game)
-        from_base = intent.pre_pitch_situation.steal_attempt
+        if intent.pre_pitch_situation.hit_and_run:
+            from_base = game.bases.only_occupied_base()
+        else:
+            from_base = intent.pre_pitch_situation.steal_attempt
         if from_base:
             return self._resolve_steal_attempt(from_base, intent, game)
 
