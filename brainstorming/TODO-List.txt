@@ -1,6 +1,5 @@
 # TODO if a csv file changes, you have to treat it as a new
 #      team. team.source_hash = sha256(csv)
-# TODO Fix up base advances, so they are not so static
 # TODO verify defensive stats and event probs
 #      For instance outfielders almost never get assists
 #      Catchers and pitchers never get any stats
@@ -23,9 +22,7 @@
 # TODO unit test for walk off home run, vs driving in multiple
 #      home run should score all runs, driving in on a triple for example
 #      should stop scoring once the winning run crosses the plate.
-# TODO handle intentional walk as a play and a stat
 # TODO add a stat for catcher picking off runners.
-# TODO add a stat for catcher having a passed ball.
 # TODO can we get other types of double plays?
 #      Need to be line out double plays
 # TODO the range of abilities is probably too low.
@@ -34,11 +31,6 @@
 # TODO In player replace rng.gauss with
 # def generate_stat(self, rng, ...):
 #    stat = rng.gauss(mean, sigma)
-# TODO in player move the ratings into a RatingModel
-# TODO bug if you do create_players.py -f ./FooBars.csv
-#      You can overwrite FooBars.csv
-#      Also foobars.csv will be allowed and overwrite
-#      Should be a way to check on open() call
 
 
 # Future updates for name generator

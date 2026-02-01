@@ -11,10 +11,29 @@ from src.util.locations import TEAM_FILES_DIR
 
 class PlayerCSVExporter:
     @staticmethod
-    def write(team: TeamRecord, filename):
-        with open(
-            Path(TEAM_FILES_DIR) / filename, "w", newline="", encoding="utf-8"
-        ) as f:
+    def write(team: TeamRecord, filename, force_overwrite=False):
+        """
+        Write team players to CSV file.
+        
+        Args:
+            team: TeamRecord to export
+            filename: Name of file to write
+            force_overwrite: If True, skip confirmation dialog
+            
+        Returns:
+            bool: True if file was written, False if user cancelled
+        """
+        filepath = Path(TEAM_FILES_DIR) / filename
+        
+        # Check if file exists and prompt user
+        if filepath.exists() and not force_overwrite:
+            response = input(f"File '{filename}' already exists. Overwrite? (y/n): ").lower()
+            if response not in ('y', 'yes'):
+                print("Export cancelled.")
+                return False
+        
+        # Write the file
+        with open(filepath, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(PLAYER_CSV_HEADER)
 
@@ -34,3 +53,6 @@ class PlayerCSVExporter:
 
                 row.append(player.id)
                 writer.writerow(row)
+        
+        print(f"Successfully wrote {len(team.players)} players to {filename}")
+        return True
