@@ -82,6 +82,10 @@ class Resolver:
     TRIPLE_PLAY_FIRST_SECOND_THRESHOLD = 0.3333
     TRIPLE_PLAY_FIRST_THIRD_THRESHOLD = 0.6666
 
+    # Default tag up chances
+    PROB_TAGUP_FROM_SECOND_FLYOUT = 0.7
+    PROB_TAGUP_FROM_FIRST_FLYOUT = 0.3
+
     # # Double Steal Probs First and Third
     # DOUBLE_STEAL_FIRST_AND_THIRD_BOTH_SAFE = 0.70
     # DOUBLE_STEAL_FIRST_AND_THIRD_ONLY_FIRST_ADVANCES = 0.85
@@ -467,7 +471,8 @@ class Resolver:
 
     def update_in_play_probs_for_bases_outs(self, bases: Bases, outs: int):
         if bases.runner_on(THIRD) and outs < 2:
-            self.in_play_probs["sac_fly"] = 1000
+            self.in_play_probs["sac_fly"] = 1400
+            self.in_play_probs["fly_out"] = 650
         if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
             self.in_play_probs["triple_play"] = 10
         if bases.runner_on(FIRST) and bases.runner_on(THIRD) and outs == 0:
@@ -981,11 +986,63 @@ class Resolver:
 
     def _resolve_fly_out(self, intent, game) -> list[GameEvent]:
         """Resolve a fly out"""
+        lf_arm = game.pitch_team.current_left_fielder.skills["arm"]
+        cf_arm = game.pitch_team.current_center_fielder.skills["arm"]
+        rf_arm = game.pitch_team.current_right_fielder.skills["arm"]
+        arm = self.rng.choice([lf_arm, cf_arm, rf_arm])
+
+        tag_from_second, tag_from_first = self.adjust_tagup_probs(game.bases, arm)
+        if game.bases.runner_on(SECOND) is None:
+            second_open = True
+        else:
+            second_open = False
+        if game.bases.runner_on(THIRD) is None and game.bases.runner_on(SECOND):
+            r = self.rng.random()
+            if r < tag_from_second:
+                second_open = True
+                RunnerAdvancedEvent(
+                    game.bases.runner_on(SECOND),
+                    pitcher=intent.pitcher,
+                    from_base=SECOND,
+                    to_base=THIRD,
+                    reason="Tag up",
+                    rbi_batter=game.current_batter,
+                )
+        if second_open and game.bases.runner_on(FIRST):
+            r = self.rng.random()
+            if r < tag_from_first:
+                RunnerAdvancedEvent(
+                    game.bases.runner_on(FIRST),
+                    pitcher=intent.pitcher,
+                    from_base=FIRST,
+                    to_base=SECOND,
+                    reason="Tag up",
+                    rbi_batter=game.current_batter,
+                )
+
         return [
             FlyOutEvent(batter=intent.batter),
             OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher),
             PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter),
         ]
+
+    def adjust_tagup_probs(self, bases: Bases, arm: int):
+        tag_from_second = self.PROB_TAGUP_FROM_SECOND_FLYOUT
+        tag_from_first = self.PROB_TAGUP_FROM_FIRST_FLYOUT
+        if bases.runner_on(THIRD):
+            tag_from_second = 0
+        elif bases.runner_on(SECOND):
+            # adjust based on random outfielder arm and scond base runner speed and baserunning skill
+            speed = bases.runner_on(SECOND).skills["speed"]
+            br_skill = bases.runner_on(SECOND).skills["base_running"]
+            tag_from_second = int(tag_from_second * (speed + br_skill) / (2 * arm))
+
+        if bases.runner_on(FIRST) and bases.one_man_on:
+            speed = bases.runner_on(FIRST).skills["speed"]
+            br_skill = bases.runner_on(FIRST).skills["base_running"]
+            tag_from_first = int(tag_from_second * (speed + br_skill) / (2 * arm))
+
+        return tag_from_second, tag_from_first
 
     def _resolve_ground_out(self, intent, game) -> list[GameEvent]:
         """Resolve a ground out"""

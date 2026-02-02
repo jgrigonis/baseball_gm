@@ -1,5 +1,3 @@
-# TODO if a csv file changes, you have to treat it as a new
-#      team. team.source_hash = sha256(csv)
 # TODO verify defensive stats and event probs
 #      For instance outfielders almost never get assists
 #      Catchers and pitchers never get any stats

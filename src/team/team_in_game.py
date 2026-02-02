@@ -149,6 +149,30 @@ class TeamInGame:
             raise RuntimeError("No third_base in lineup")
         return third_base
 
+    @property
+    def current_left_fielder(self) -> PlayerInGame:
+        """Get the current left fielder."""
+        left_field = self._positions.get(Position.LEFT_FIELD)
+        if left_field is None:
+            raise RuntimeError("No left_field in lineup")
+        return left_field
+
+    @property
+    def current_right_fielder(self) -> PlayerInGame:
+        """Get the current right fielder."""
+        right_field = self._positions.get(Position.RIGHT_FIELD)
+        if right_field is None:
+            raise RuntimeError("No right_field in lineup")
+        return right_field
+
+    @property
+    def current_center_fielder(self) -> PlayerInGame:
+        """Get the current center fielder."""
+        center_field = self._positions.get(Position.CENTER_FIELD)
+        if center_field is None:
+            raise RuntimeError("No center_field in lineup")
+        return center_field
+
     def output_batting_stats(self) -> str:
         """Print the team's batting stats."""
         # print(PlayerTableFormatter().horizontal_stat_header())

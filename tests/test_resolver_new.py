@@ -53,6 +53,7 @@ class MockRNG:
         self.value = value
         self.call_count = 0
 
+
     def random(self):
         self.call_count += 1
         return self.value
@@ -60,6 +61,9 @@ class MockRNG:
     def set_value(self, value):
         self.value = value
 
+    def choice(self, seq):
+        """Mock choice - returns first element (or you can make it configurable)"""
+        return seq[0]
 
 class MockCount:
     """Mock count object"""
@@ -111,11 +115,28 @@ class MockGame:
         self.pitch_team = TeamInGameFactory.from_record(make_team_record())
         self.current_pitcher = PlayerInGame(make_player_record())
 
+        # Add outfielders to the lineup
+        mock_lf = PlayerInGame(make_player_record())
+        mock_cf = PlayerInGame(make_player_record())
+        mock_rf = PlayerInGame(make_player_record())
+
+        lf_slot = LineupSlot(player=mock_lf, position="lf")
+        cf_slot = LineupSlot(player=mock_cf, position="cf")
+        rf_slot = LineupSlot(player=mock_rf, position="rf")
+
         # Add a catcher to the lineup
         mock_catcher = PlayerInGame(make_player_record())
         catcher_slot = LineupSlot(player=mock_catcher, position="c")
         self.pitch_team.lineup = [catcher_slot]
         self.pitch_team._positions = {"c": mock_catcher}  # Set the positions dict
+
+        self.pitch_team.lineup.extend([lf_slot, cf_slot, rf_slot])
+        self.pitch_team._positions = {
+            "c": mock_catcher,
+            "lf": mock_lf,
+            "cf": mock_cf,
+            "rf": mock_rf
+        }
 
 
 @pytest.fixture
