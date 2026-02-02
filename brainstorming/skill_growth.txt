@@ -18,7 +18,7 @@ Small regression after repeated failures
 
 SP = run speed
 
-Rn speed can't really be coached. It should vary small amounts
+Run speed can't really be coached. It should vary small amounts
 until the age starts to get up there, then it should decline
 Peak early (22–26)
 Plateau
@@ -49,7 +49,7 @@ Slight decline after mid-30s, very gradual
 
 BR = base running
 
-Base running is different from speed, it is decidion making.
+Base running is different from speed, it is decision making.
 It should trend up for the entire career.
 Coaching should affect it
 Caps earlier for low-IQ players

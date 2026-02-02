@@ -3,3 +3,77 @@ season games over roughly six months, from lateMarch/early April
 to late September/early October, followed by a month-long postseason 
 in October/November, starting with Spring Training in February for 
 preparation. 
+
+Opening Day is the last thursday of march or first thursday of April
+
+
+Since 2023, the format is balanced, ensuring every team plays all 29 opponents annually.
+
+Key Components of the 162-Game Schedule:
+Intradivision (52 games): 13 games against each of the four divisional 
+opponents (4 series of 3-4 games).
+
+Intraleague (64 games): 6 or 7 games against the other 10 teams in the 
+same league (American or National).
+
+Interleague (46 games): 1 series (3 games) against 14 teams in the 
+opposite league, plus a 4-game home-and-home series against a 
+designated "natural rival" (e.g., Cubs-White Sox, Mets-Yankees). 
+
+A "home-and-home" in MLB refers to a series of games where the two 
+teams play at least one game at each team’s respective home stadium. 
+It typically involves a short, consecutive series, such as two games 
+at Team A's ballpark followed by two games at Team B's ballpark. 
+Structure: It breaks up the traditional long home-stand or road trip 
+by splitting the series location.
+Purpose: Usually done to manage travel, create a quick back-to-back 
+series, or to balance home/away games between geographical rivals.
+Example: The Yankees play two games in Boston, then immediately travel 
+for two games in New York against the Red Sox. 
+
+Travel Constraints: Teams rarely play a night game followed by a 
+day game without a day off in between, especially when traveling 
+long distances.
+
+Special Requests: Teams often request home games on specific 
+dates (e.g., Red Sox on Patriots' Day) or avoid them during city events.
+
+Rotation: Matchup locations (home/away) for interleague games 
+alternate annually.
+
+Ending: The regular season finishes with all teams playing 
+simultaneously to prevent advantages in the final standings. 
+
+3 division winners in each league.
+Next 3 best records are wild cards
+
+tiebreaker formula:
+
+Head-to-head record
+Intra-division record
+Inter-division record
+Record in last half of intra-league games
+
+Seedings for the six teams are as follows:
+
+Division winners (1, 2, 3)
+Wild-card teams (4, 5, 6)
+
+1, 2 get byes
+
+3 plays 6
+4 plays 5
+
+best-of-three-game series all hosted at higher seed.
+
+In the Division Series, the 1 seed plays the 4/5 winner, 
+while the 2 seed plays the 3/6 winner.
+
+Since 2013, the Division Series restored the 2–2–1 format
+
+League championship is the winner of each division series.
+
+2-3-2 best of seven, home field to better record, but not wild card
+unless both are wild cards
+
+World Series is 2-3-2 with home to better record.
