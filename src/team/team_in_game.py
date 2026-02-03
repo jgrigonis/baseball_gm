@@ -173,8 +173,44 @@ class TeamInGame:
             raise RuntimeError("No center_field in lineup")
         return center_field
 
+    def output_lineup_skills(self) -> str:
+        """Output the starting lineup skills as a string."""
+        output = ""
+        output += PlayerTableFormatter.header_skills()
+        output += "\n"
+        for slot in self.lineup:
+            output += PlayerTableFormatter.hor_skills(slot.player)
+            output += "\n"
+
+        return output
+
+    def output_lineup_ratings(self) -> str:
+        """Output the starting lineup ratings as a string."""
+        output = ""
+        output += PlayerTableFormatter.header_ratings()
+        output += "\n"
+        for slot in self.lineup:
+            output += PlayerTableFormatter.hor_ratings(slot.player)
+            output += "\n"
+
+        return output
+
+    def output_pitcher_ratings(self) -> str:
+        """Output the current pitcher ratings as a string."""
+        output = ""
+        output += PlayerTableFormatter.hor_ratings(self.current_pitcher)
+        output += "\n"
+        return output
+
+    def output_pitcher_skills(self) -> str:
+        """Output the current pitcher skills as a string."""
+        output = ""
+        output += PlayerTableFormatter.hor_skills(self.current_pitcher)
+        output += "\n"
+        return output
+
     def output_batting_stats(self) -> str:
-        """Print the team's batting stats."""
+        """Output the team's batting stats as a string."""
         # print(PlayerTableFormatter().horizontal_stat_header())
         # ptf = PlayerTableFormatter()
         output = ""
@@ -187,7 +223,7 @@ class TeamInGame:
         return output
 
     def output_pitching_stats(self) -> str:
-        """Print the team's pitching stats."""
+        """Output the team's pitching stats as a string."""
         output = ""
         output += PlayerTableFormatter.horizontal_pitching_stat_header()
         output += "\n"

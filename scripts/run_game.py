@@ -49,8 +49,6 @@ def get_args():
         "--innings", "-i", type=int, default=9, help="Set the number of innings."
     )
     args = parser.parse_args()
-    if args.pauses:
-        args.debug = True
     return args
 
 
@@ -83,8 +81,31 @@ def main(args):
     home_team.set_lineup()
     away_team.set_lineup()
 
-    my_game = Game(home_team=home_team, away_team=away_team, log_level=levl)
+    print(home_team.output_lineup_ratings())
+    print(home_team.output_pitcher_ratings())
+    print(away_team.output_lineup_ratings())
+    print(away_team.output_pitcher_ratings())
+
+    print(home_team.output_lineup_skills())
+    print(home_team.output_pitcher_skills())
+    print(away_team.output_lineup_skills())    
+    print(away_team.output_pitcher_skills())
+
+
+    my_game = Game(
+        home_team=home_team, away_team=away_team, log_level=levl, pauses=args.pauses
+    )
     result = my_game.play()
+
+    print(home_team.output_lineup_ratings())
+    print(home_team.output_pitcher_ratings())
+    print(away_team.output_lineup_ratings())
+    print(away_team.output_pitcher_ratings())
+
+    print(home_team.output_lineup_skills())
+    print(home_team.output_pitcher_skills())
+    print(away_team.output_lineup_skills())    
+    print(away_team.output_pitcher_skills())
 
     print(home_team.output_batting_stats())
     print(away_team.output_batting_stats())

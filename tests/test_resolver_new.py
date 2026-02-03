@@ -53,7 +53,6 @@ class MockRNG:
         self.value = value
         self.call_count = 0
 
-
     def random(self):
         self.call_count += 1
         return self.value
@@ -64,6 +63,7 @@ class MockRNG:
     def choice(self, seq):
         """Mock choice - returns first element (or you can make it configurable)"""
         return seq[0]
+
 
 class MockCount:
     """Mock count object"""
@@ -135,7 +135,7 @@ class MockGame:
             "c": mock_catcher,
             "lf": mock_lf,
             "cf": mock_cf,
-            "rf": mock_rf
+            "rf": mock_rf,
         }
 
 
