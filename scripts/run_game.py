@@ -88,9 +88,8 @@ def main(args):
 
     print(home_team.output_lineup_skills())
     print(home_team.output_pitcher_skills())
-    print(away_team.output_lineup_skills())    
+    print(away_team.output_lineup_skills())
     print(away_team.output_pitcher_skills())
-
 
     my_game = Game(
         home_team=home_team, away_team=away_team, log_level=levl, pauses=args.pauses
@@ -104,7 +103,7 @@ def main(args):
 
     print(home_team.output_lineup_skills())
     print(home_team.output_pitcher_skills())
-    print(away_team.output_lineup_skills())    
+    print(away_team.output_lineup_skills())
     print(away_team.output_pitcher_skills())
 
     print(home_team.output_batting_stats())
