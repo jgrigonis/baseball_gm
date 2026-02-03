@@ -2,8 +2,6 @@ Todo list
 
 Stealing home is happening WAY TOO OFTEN
 
-WeightedChoice - extract random events. Put it in a class
-
 Defensive skill probs adjustments
 
 Implement stamina and recovery

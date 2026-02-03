@@ -89,6 +89,9 @@ class Resolver:
     PROB_TAGUP_FROM_SECOND_FLYOUT = 0.7
     PROB_TAGUP_FROM_FIRST_FLYOUT = 0.3
 
+    # Probability scoring
+    SCORE_FROM_FIRST_ON_DOUBLE = 0.21 # 21%
+
     def __init__(self, rng):
         self.rng = rng
         self.logger = logging.getLogger("game.resolver")
@@ -424,10 +427,8 @@ class Resolver:
         self.pitch_outcome.add("hit_by_pitch", -(accuracy - 50))
 
         # Only modify if non-zero
-        if self.pitch_outcome.get_weights().get("wild_pitch", 0) != 0:
-            self.pitch_outcome.add("wild_pitch", -(accuracy - 50))
-        if self.pitch_outcome.get_weights().get("passed_ball", 0) != 0:
-            self.pitch_outcome.add("passed_ball", int(-0.5 * (accuracy - 50)))
+        self.pitch_outcome.add("wild_pitch", -(accuracy - 50))
+        self.pitch_outcome.add("passed_ball", int(-0.5 * (accuracy - 50)))
 
         ground_balls = pitcher.skills["ground_balls"]
         self.pitch_outcome.add("home_run", -(ground_balls - 40))
@@ -753,6 +754,7 @@ class Resolver:
             self.in_play_outcome.multiply("triple_play", 0.5)
 
     def _modify_in_play_for_count(self, count: Count):
+        """Modify the probabilities based on the count."""
         if count.balls == 0 and count.strikes == 0:
             self.in_play_outcome.multiply("fly_out", 0.66)
             self.in_play_outcome.multiply("ground_out", 0.66)
@@ -827,6 +829,7 @@ class Resolver:
             self.in_play_outcome.multiply("triple", 1.66)
 
     def _modify_in_play_for_batter(self, batter: PlayerInGame, score: Score):
+        """Modify the probabilities based on the batter skills."""
         # power
         power = batter.skills["power"]
         self.in_play_outcome.add("fly_out", -4 * (power - 50))
@@ -851,6 +854,7 @@ class Resolver:
             self.in_play_outcome.add("double", 0.5 * (clutch - 50))
 
     def _modify_in_play_for_pitcher(self, pitcher: PlayerInGame, score: Score):
+        """Modify the probabilities based on pitcher skills."""
         # ground_balls
         ground_balls = pitcher.skills["ground_balls"]
         # changes ground_out, double_play, fielders_choice, sac_fly, triple_play
@@ -894,6 +898,7 @@ class Resolver:
 
     def _resolve_fly_out(self, intent, game) -> list[GameEvent]:
         """Resolve a fly out"""
+        events = []
         lf_arm = game.pitch_team.current_left_fielder.skills["arm"]
         cf_arm = game.pitch_team.current_center_fielder.skills["arm"]
         rf_arm = game.pitch_team.current_right_fielder.skills["arm"]
@@ -908,31 +913,36 @@ class Resolver:
             r = self.rng.random()
             if r < tag_from_second:
                 second_open = True
-                RunnerAdvancedEvent(
-                    game.bases.runner_on(SECOND),
-                    pitcher=intent.pitcher,
-                    from_base=SECOND,
-                    to_base=THIRD,
-                    reason="Tag up",
-                    rbi_batter=game.current_batter,
+                events.append(
+                    RunnerAdvancedEvent(
+                        game.bases.runner_on(SECOND),
+                        pitcher=intent.pitcher,
+                        from_base=SECOND,
+                        to_base=THIRD,
+                        reason="Tag up",
+                        rbi_batter=game.current_batter,
+                    )
                 )
+                
         if second_open and game.bases.runner_on(FIRST):
             r = self.rng.random()
             if r < tag_from_first:
-                RunnerAdvancedEvent(
-                    game.bases.runner_on(FIRST),
-                    pitcher=intent.pitcher,
-                    from_base=FIRST,
-                    to_base=SECOND,
-                    reason="Tag up",
-                    rbi_batter=game.current_batter,
+                events.append(
+                    RunnerAdvancedEvent(
+                        game.bases.runner_on(FIRST),
+                        pitcher=intent.pitcher,
+                        from_base=FIRST,
+                        to_base=SECOND,
+                        reason="Tag up",
+                        rbi_batter=game.current_batter,
+                    )
                 )
+                
+        events.append(FlyOutEvent(batter=intent.batter))
+        events.append(OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher))
+        events.append(PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter))
 
-        return [
-            FlyOutEvent(batter=intent.batter),
-            OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher),
-            PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter),
-        ]
+        return events
 
     def adjust_tagup_probs(self, bases: Bases, arm: int):
         tag_from_second = self.PROB_TAGUP_FROM_SECOND_FLYOUT
@@ -1140,6 +1150,7 @@ class Resolver:
         - All runners advance one base
         - Batter to first
         - Plate appearance ends
+        TODO: Update base movements
         """
         events: list[GameEvent] = []
 
@@ -1171,21 +1182,62 @@ class Resolver:
         - All runners advance two bases by default
         - Batter to second
         - Plate appearance ends
+        TODO: Update base movements, these are simple
+        Also, sometimes they can be thrown out.
         """
         events: list[GameEvent] = []
 
         events.append(DoubleEvent(batter=intent.batter, pitcher=intent.pitcher))
 
-        # Advance all runners two bases
-        events.extend(
-            self._advance_all_runners(
-                game,
-                (THIRD, SECOND, FIRST),
-                advancement=2,
-                reason="double",
-                rbi_batter=intent.batter,
+        if game.bases.runner_on(FIRST):
+            speed = game.bases.runner_on(FIRST).skills["speed"]
+            skill = game.bases.runner_on(FIRST).skills["base_running"]
+            # Advance runners on second and third two bases
+            events.extend(
+                self._advance_all_runners(
+                    game,
+                    (THIRD, SECOND),
+                    advancement=2,
+                    reason="double",
+                    rbi_batter=intent.batter,
+                )
             )
-        )
+            r = self.rng.random()
+            scored = self.SCORE_FROM_FIRST_ON_DOUBLE * (speed + skill) / 100
+            if r < scored:
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=game.bases.runner_on(FIRST),
+                        from_base=FIRST,
+                        to_base=HOME,
+                        reason="double",
+                        rbi_batter=intent.batter,
+                        pitcher=intent.pitcher,
+                    )
+                )
+            else:
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=game.bases.runner_on(FIRST),
+                        from_base=FIRST,
+                        to_base=THIRD,
+                        reason="double",
+                        pitcher=intent.pitcher,
+                    )
+                )
+
+        else:
+
+            # Advance all runners two bases
+            events.extend(
+                self._advance_all_runners(
+                    game,
+                    (THIRD, SECOND, FIRST),
+                    advancement=2,
+                    reason="double",
+                    rbi_batter=intent.batter,
+                )
+            )
 
         # Batter to second
         events.append(
@@ -2067,8 +2119,6 @@ class EnhancedResolver(Resolver):
             self._modify_first_and_third_probs(game)
             result = self.first_and_third_choice.choose()
             # # 1st and 3rd special handling
-            # self.update_first_and_third_probs(game)
-            # result = self.random_event(self.first_and_third_probs)
             first_attempt = next(a for a in steal_attempts if a[0] == FIRST)
             third_attempt = next(a for a in steal_attempts if a[0] == THIRD)
 
@@ -2317,101 +2367,6 @@ class EnhancedResolver(Resolver):
                 raise RuntimeError(f"Unknown result={result} double_steal_probs")
 
         return events
-
-    def update_first_and_third_probs(self, game):
-        speed1 = game.bases.runner_on(FIRST).skills["speed"]
-        br1 = game.bases.runner_on(FIRST).skills["base_running"]
-        speed3 = game.bases.runner_on(THIRD).skills["speed"]
-        br3 = game.bases.runner_on(THIRD).skills["base_running"]
-        arm = game.pitch_team.current_catcher.skills["arm"]
-        arm2 = game.pitch_team.current_second_baseman.skills["arm"]
-
-        self.first_and_third_probs["both_safe"] = int(
-            self.first_and_third_probs["both_safe"]
-            * (speed1 + br1 + speed3 + br3)
-            / 200
-            * 50
-            / arm
-        )
-        self.first_and_third_probs["first_advances_only"] = int(
-            self.first_and_third_probs["first_advances_only"]
-            * (speed1 + br1 + speed3 + br3)
-            / 200
-            * 50
-            / arm
-        )
-        self.first_and_third_probs["first_out_third_scores"] = int(
-            self.first_and_third_probs["first_out_third_scores"]
-            * (speed1 + br1 + speed3 + br3)
-            / 200
-            * 50
-            / arm
-            * 50
-            / arm2
-        )
-        self.first_and_third_probs["third_out_first_advances"] = int(
-            self.first_and_third_probs["third_out_first_advances"]
-            * (speed1 + br1 + speed3 + br3)
-            / 200
-            * 50
-            / arm
-            * 50
-            / arm2
-        )
-        self.first_and_third_probs["both_out"] = int(
-            self.first_and_third_probs["both_out"]
-            * 200
-            / (speed1 + br1 + speed3 + br3)
-            / 50
-            * arm
-            / 50
-            * arm2
-        )
-
-    def update_double_steal_probs(self, game):
-        if game.bases.runner_on(FIRST):
-            runner1 = game.bases.runner_on(FIRST)
-            runner2 = game.bases.runner_on(SECOND)
-            arm2 = game.pitch_team.current_third_baseman.skills["arm"]
-        else:
-            runner1 = game.bases.runner_on(SECOND)
-            runner2 = game.bases.runner_on(THIRD)
-            arm2 = None
-        speed1 = runner1.skills["speed"]
-        br1 = runner1.skills["base_running"]
-        speed2 = runner2.skills["speed"]
-        br2 = runner2.skills["base_running"]
-        arm = game.pitch_team.current_catcher.skills["arm"]
-        catcher = game.pitch_team.current_catcher.skills["catching"]
-
-        self.double_steal_probs["both_safe"] = int(
-            self.double_steal_probs["both_safe"]
-            * (speed1 + br1 + speed2 + br2)
-            / 200
-            * 50
-            / arm
-        )
-
-        if arm2:
-            self.first_and_third_probs["both_out"] = int(
-                self.first_and_third_probs["both_out"]
-                * 200
-                / (speed1 + br1 + speed2 + br2)
-                / 50
-                * arm
-                / 50
-                * arm2
-            )
-        else:
-            self.first_and_third_probs["both_out"] = int(
-                self.first_and_third_probs["both_out"]
-                * 200
-                / (speed1 + br1 + speed2 + br2)
-                / 50
-                * arm
-                / 50
-                * catcher
-            )
 
     def _is_balk(self, events: List[GameEvent]) -> bool:
         """Check if a balk occurred."""

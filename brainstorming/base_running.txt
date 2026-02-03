@@ -1,0 +1,22 @@
+A runner on first base scores on a double roughly 21% of the 
+time, according to OOTP Developments Forums analysis. While 
+a runner on second scores on a single closer to 60% of the 
+time, the risk of getting thrown out at home from first on a 
+double is higher, often leading coaches to hold runners at 
+third base. 
+
+Success Rate: Despite the risk, when sending the runner, 
+studies indicate a very high success rate of over 96% when 
+a runner is sent home from first on a double, but teams are 
+generally more cautious, allowing the runner to score only 
+about 21% of the time.
+
+Context: The decision often depends on the number of outs, 
+the speed of the runner, and the location of the ball.
+
+Alternatives: If the runner does not score, they are left 
+on third base, which still provides a high probability of 
+scoring with 0 or 1 out. 
+
+Meaning, 0 or 1 out probably lowers likelihood of trying 
+to score.
