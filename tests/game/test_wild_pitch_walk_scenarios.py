@@ -1,6 +1,8 @@
 # tests/game/test_wild_pitch_walk_scenarios.py
 
 import pytest
+import random
+
 from src.game.game import Game
 from src.game.bases import FIRST, SECOND, THIRD, HOME
 from src.game.count import Count
@@ -18,13 +20,14 @@ from src.player.positions import SKILLS  # Import SKILLS from positions
 class ControlledResolver(EnhancedResolver):
     """Resolver that returns predetermined outcomes for testing"""
 
-    def __init__(self, scripted_outcomes=None):
+    def __init__(self, scripted_outcomes=None, seed=42):
         """
         Args:
             scripted_outcomes: List of outcomes to return in order
                               e.g., ["wild_pitch", "ball", "strike"]
+            seed: Random seed for non-scripted randomness (default: 42)
         """
-        super().__init__(rng=None)  # Don't need real RNG
+        super().__init__(rng=random.Random(seed))
         self.scripted_outcomes = scripted_outcomes or []
         self.outcome_index = 0
 
