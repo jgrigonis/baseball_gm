@@ -1,0 +1,67 @@
+Traditional Fielding Statistics 
+
+These are the standard stats found on a player's back-of-the-baseball-card 
+profile: 
+Putouts (PO): Credited to the fielder who physically records the 
+out (e.g., catching a fly ball, tagging a runner, stepping on a base 
+for a force play).
+
+Assists (A): Awarded to fielders who touch the ball 
+before a putout is recorded by another fielder.
+
+Errors (E): Charged to a fielder who fails to make a play with "ordinary effort" 
+that results in a batter/runner advancing or reaching base.
+
+Total Chances (TC): The sum of Putouts, Assists, and Errors (PO + A + E). It represents 
+the total opportunities a player had to make a play.
+
+Fielding Percentage (FPCT or FP): The percentage of time a fielder makes a play without an 
+error, calculated as: \((PO+A)/TC\).
+
+Innings Played (INN): The total innings a player spent at a specific position.
+
+Double Plays (DP) / Triple Plays (TP): Credited to a fielder when they are involved in 
+a play where two or three outs are recorded.
+
+Passed Balls (PB): Charged specifically to catchers when they fail to hold a pitch that 
+they should have caught, allowing a runner to advance.
+
+Outfield Assists (OFA): Specific assists recorded by outfielders, often when throwing out a 
+runner. 
+
+Modern & Advanced Defensive Metrics 
+
+Advanced metrics aim to measure a player's range and impact on preventing 
+runs, often relying on "Statcast" data (tracking technology): 
+
+Outs Above Average (OAA): The current primary metric. It measures how many 
+outs a player adds or misses compared to an average fielder based on catch 
+probability (outfield) or distance/time (infield).
+
+Defensive Runs Saved (DRS): A metric that calculates how many runs a player 
+saved (positive) or allowed (negative) compared to an average player, 
+factoring in range, errors, and throwing arm.
+
+Ultimate Zone Rating (UZR): Measures a player's performance relative to the 
+league average, considering range, errors, and double-play ability.
+
+Range Factor (RF): A formulaic approach (usually \((PO+A)\times 9/\text{Innings}\)) 
+to measure how many plays a fielder makes, which is generally more accurate than 
+fielding percentage.
+
+Fielding Run Value (FRV): Statcast's overall metric that converts a player's 
+total defensive performance into a single run-based value.
+
+Catch Probability: Used for outfielders to measure the likelihood of a fly 
+ball being caught based on distance needed to cover and time available.
+
+Pop Time (Catchers): The time it takes a catcher to get the ball from their 
+glove to a fielder's glove on a stolen base attempt. 
+
+Contextual Metrics 
+
+Defensive Efficiency Ratio (DER): A team-level statistic representing the 
+percentage of balls in play that the defense converts into outs.
+
+Def (FanGraphs): A combined metric that adds fielding runs above average to 
+positional adjustments to give an overall value of a player's defensive worth

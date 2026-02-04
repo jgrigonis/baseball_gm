@@ -11,6 +11,7 @@ from src.game.score import Score
 from src.game.event import GameEvent
 from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.hbp import HitByPitchEvent
+from src.game.events.error import FieldingErrorEvent, ThrowingErrorEvent
 from src.game.events.noop import NoOpEvent
 from src.game.events.pitch import PitchThrownEvent
 from src.game.events.balk import BalkEvent
@@ -89,8 +90,12 @@ class Resolver:
     PROB_TAGUP_FROM_SECOND_FLYOUT = 0.7
     PROB_TAGUP_FROM_FIRST_FLYOUT = 0.3
 
-    # Probability scoring
-    SCORE_FROM_FIRST_ON_DOUBLE = 0.21 # 21%
+    # Base advancement probabilities
+    SCORE_FROM_SECOND_ON_SINGLE = 0.60  # 60% chance runner scores from 2nd
+    FIRST_TO_THIRD_ON_SINGLE = 0.35     # 35% chance runner goes 1st to 3rd
+    SCORE_FROM_FIRST_ON_DOUBLE = 0.21   # 21%
+    FIRST_TO_HOME_ON_SINGLE = 0.03
+
 
     # Probability constants for events
     PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
@@ -99,6 +104,10 @@ class Resolver:
     STEAL_SECOND_SUCCESS_PROB = 0.75  # 75% success rate
     STEAL_THIRD_SUCCESS_PROB = 0.60  # 60% success rate
     STEAL_HOME_SUCCESS_PROB = 0.05  # 5% success rate
+
+    BASE_ERROR_RATE = 0.025
+
+    BASE_THROWOUT_PROB = 0.05
 
     def __init__(self, rng):
         self.rng = rng
@@ -114,6 +123,28 @@ class Resolver:
         # In-play outcome chooser
         self.in_play_outcome = WeightedChoice(rng=rng)
         self._setup_in_play_weights()
+
+        # Infielder selection chooser
+        self.infielder_choice = WeightedChoice(
+            {
+                "shortstop": 32,
+                "second_baseman": 25,
+                "third_baseman": 20,
+                "first_baseman": 18,
+                "pitcher": 5,
+            },
+            rng=rng,
+        )
+
+        # Outfielder selection chooser
+        self.outfielder_choice = WeightedChoice(
+            {
+                "center_fielder": 39,
+                "right_fielder": 32,
+                "left_fielder": 29,
+            },
+            rng=rng,
+        )
 
     # ================================================================
     # Extract weight setup into dedicated methods
@@ -703,6 +734,8 @@ class Resolver:
         self._modify_in_play_for_count(game.count)
         self._modify_in_play_for_batter(game.current_batter.player, game.score)
         self._modify_in_play_for_pitcher(game.current_pitcher, game.score)
+        self._modify_in_play_for_defense(game)
+        self._modify_in_play_for_infield_defense(game)
         self._apply_in_play_constraints(game.bases, game.inning.outs)
 
     def _modify_in_play_for_bases_outs(self, bases: Bases, outs: int):
@@ -874,6 +907,42 @@ class Resolver:
             self.in_play_outcome.add("single", 50 - clutch)
             self.in_play_outcome.add("double", 0.5 * (50 - clutch))
 
+    def _modify_in_play_for_defense(self, game):
+        """Modify hit probabilities based on defensive positioning"""
+        # Average outfield range
+        lf_range = int((game.pitch_team.current_left_fielder.skills["speed"] + game.pitch_team.current_left_fielder.skills["outfield"]) / 2)
+        cf_range = int((game.pitch_team.current_center_fielder.skills["speed"] + game.pitch_team.current_center_fielder.skills["outfield"]) / 2)
+        rf_range = int((game.pitch_team.current_center_fielder.skills["speed"] + game.pitch_team.current_right_fielder.skills["outfield"]) / 2)
+        avg_of_range = (lf_range + cf_range + rf_range) / 3
+        
+        # Better range = more outs, fewer hits
+        range_factor = 50 / avg_of_range
+        self.in_play_outcome.multiply("fly_out", range_factor)
+        self.in_play_outcome.multiply("single", 1 / range_factor)
+        self.in_play_outcome.multiply("double", 1 / range_factor)
+        self.in_play_outcome.multiply("triple", 1 / (range_factor * 1.5))
+
+
+    def _modify_in_play_for_infield_defense(self, game):
+        """Modify probabilities based on infield defensive skills"""
+        # Average infield skill
+        ss_skill = game.pitch_team.current_shortstop.skills["infield"] + game.pitch_team.current_shortstop.skills["arm"]
+        _2b_skill = game.pitch_team.current_second_baseman.skills["infield"] + game.pitch_team.current_second_baseman.skills["arm"]
+        _3b_skill = game.pitch_team.current_third_baseman.skills["infield"] + game.pitch_team.current_third_baseman.skills["arm"]
+        _1b_skill = game.pitch_team.current_first_baseman.skills["infield"]
+        
+        avg_if_skill = (2 * ss_skill + 2 * _2b_skill + _3b_skill + _1b_skill) / 9
+        
+        # Better infield defense
+        defense_factor = avg_if_skill / 50
+        
+        # Increases double play probability
+        self.in_play_outcome.multiply("double_play", defense_factor)
+        # Decreases errors/fielders choices
+        self.in_play_outcome.multiply("fielders_choice", 1 / defense_factor)
+        # Slightly increases ground outs
+        self.in_play_outcome.multiply("ground_out", defense_factor * 1.1)
+        
     def _apply_in_play_constraints(self, bases: Bases, outs: int):
         """
         Apply final constraints to ensure probabilities are valid.
@@ -971,21 +1040,57 @@ class Resolver:
         """Resolve a ground out"""
         events: list[GameEvent] = []
 
-        events.append(GroundOutEvent(batter=intent.batter))
-        events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
+        # Determine which infielder fields the ball
+        fielder = self._select_infielder(game)
+        fielding_skill = fielder.skills["infield"]
+
+        # Check if fielder makes an error
+        error_prob = self._calculate_error_probability(fielding_skill)
+
+        if self.rng.random() < error_prob:
+            reason = "fielding_error"
+            events.append(FieldingErrorEvent(fielder=fielder, batter=intent.batter))
+            events.extend(self._handle_fielding_error_advancement(intent, game))
+        else:
+            # Successful out
+            reason = "ground_out"
+            events.append(GroundOutEvent(batter=intent.batter))
+            events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
+            events.extend(
+                self._advance_all_runners(
+                    game,
+                    (THIRD, SECOND, FIRST),
+                    advancement=1,
+                    reason="ground_out",
+                )
+            )
+        events.append(
+            PlateAppearanceEndEvent(reason=reason, batter=intent.batter)
+        )
+
+        return events
+
+    def _handle_fielding_error_advancement(self, intent, game) -> list[GameEvent]:
+        # Advance all runners one base
+        events: list[GameEvent] = []
+
         events.extend(
             self._advance_all_runners(
                 game,
                 (THIRD, SECOND, FIRST),
                 advancement=1,
-                reason="ground_out",
+                reason="fielding_error",
+                rbi_batter=intent.batter,
             )
         )
+
+        # Batter to first
         events.append(
-            PlateAppearanceEndEvent(reason="ground_out", batter=intent.batter)
+            self._advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "fielding_error")
         )
 
         return events
+
 
     def _resolve_home_run(self, intent, game) -> list[GameEvent]:
         """
@@ -1151,26 +1256,117 @@ class Resolver:
 
     def _resolve_single(self, intent, game):
         """
-        Resolve a single:
-        - All runners advance one base
-        - Batter to first
-        - Plate appearance ends
-        TODO: Update base movements
+        Resolve a single with varied base advancement possibilities:
+        - Runner on 2nd: usually scores, sometimes holds at 3rd
+        - Runner on 1st: usually to 3rd, sometimes to 2nd, rarely scores
+        - Batter always to 1st
         """
         events: list[GameEvent] = []
 
         events.append(SingleEvent(batter=intent.batter, pitcher=intent.pitcher))
 
-        # Advance all runners one base
-        events.extend(
-            self._advance_all_runners(
-                game,
-                (THIRD, SECOND, FIRST),
-                advancement=1,
-                reason="single",
-                rbi_batter=intent.batter,
+        # Select outfielder who fields the ball
+        fielder = self._select_outfielder(game)
+        arm_strength = fielder.skills["arm"]
+
+        # Handle runner on third (always scores on single)
+        if game.bases.runner_on(THIRD):
+            events.append(
+                RunnerAdvancedEvent(
+                    runner=game.bases.runner_on(THIRD),
+                    from_base=THIRD,
+                    to_base=HOME,
+                    reason="single",
+                    rbi_batter=intent.batter,
+                    pitcher=intent.pitcher,
+                )
             )
-        )
+
+        held_at_third = False
+        # Handle runner on second
+        if game.bases.runner_on(SECOND):
+            runner = game.bases.runner_on(SECOND)
+            speed = runner.skills["speed"]
+            baserunning = runner.skills["base_running"]
+            
+            # Base probability of scoring from second on a single: 60%
+            base_score_prob = self.SCORE_FROM_SECOND_ON_SINGLE
+            arm_factor = 50 / arm_strength  # Strong arm reduces scoring
+            runner_factor = (speed + baserunning) / 100
+            
+            score_prob = base_score_prob * runner_factor * arm_factor
+            
+            if self.rng.random() < score_prob:
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=runner,
+                        from_base=SECOND,
+                        to_base=HOME,
+                        reason="single",
+                        rbi_batter=intent.batter,
+                        pitcher=intent.pitcher,
+                    )
+                )
+            else:
+                held_at_third = True
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=runner,
+                        from_base=SECOND,
+                        to_base=THIRD,
+                        reason="single",
+                        pitcher=intent.pitcher,
+                    )
+                )
+
+        # Handle runner on first
+        if game.bases.runner_on(FIRST):
+            runner = game.bases.runner_on(FIRST)
+            speed = runner.skills["speed"]
+            baserunning = runner.skills["base_running"]
+            
+            # Base probability of first to third on a single: 35%
+            base_f2t_prob = self.FIRST_TO_THIRD_ON_SINGLE
+            base_fth_prob = self.FIRST_TO_HOME_ON_SINGLE
+            arm_factor = 50 / arm_strength  # Strong arm reduces advancement
+            runner_factor = (speed + baserunning) / 100
+            
+            first_to_third_prob = base_f2t_prob * runner_factor * arm_factor
+            
+            if self.rng.random() < base_fth_prob and not held_at_third:
+                # First to home
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=runner,
+                        from_base=FIRST,
+                        to_base=HOME,
+                        reason="single",
+                        rbi_batter=intent.batter,
+                        pitcher=intent.pitcher,
+                    )
+                )
+            elif self.rng.random() < first_to_third_prob and not held_at_third:
+                # First to third
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=runner,
+                        from_base=FIRST,
+                        to_base=THIRD,
+                        reason="single",
+                        pitcher=intent.pitcher,
+                    )
+                )
+            else:
+                # First to second
+                events.append(
+                    RunnerAdvancedEvent(
+                        runner=runner,
+                        from_base=FIRST,
+                        to_base=SECOND,
+                        reason="single",
+                        pitcher=intent.pitcher,
+                    )
+                )
 
         # Batter to first
         events.append(
@@ -1187,12 +1383,15 @@ class Resolver:
         - All runners advance two bases by default
         - Batter to second
         - Plate appearance ends
-        TODO: Update base movements, these are simple
         Also, sometimes they can be thrown out.
         """
         events: list[GameEvent] = []
 
         events.append(DoubleEvent(batter=intent.batter, pitcher=intent.pitcher))
+
+        # Select which outfielder fields the ball
+        fielder = self._select_outfielder(game)
+        arm_strength = fielder.skills["arm"]
 
         if game.bases.runner_on(FIRST):
             speed = game.bases.runner_on(FIRST).skills["speed"]
@@ -1207,9 +1406,13 @@ class Resolver:
                     rbi_batter=intent.batter,
                 )
             )
-            r = self.rng.random()
-            scored = self.SCORE_FROM_FIRST_ON_DOUBLE * (speed + skill) / 100
-            if r < scored:
+            # Calculate scoring probability based on arm strength
+            base_score_prob = self.SCORE_FROM_FIRST_ON_DOUBLE
+            arm_factor = 50 / arm_strength  # Strong arm reduces scoring
+            runner_factor = (speed + skill) / 100
+            score_prob = base_score_prob * runner_factor * arm_factor
+
+            if self.rng.random() < score_prob:
                 events.append(
                     RunnerAdvancedEvent(
                         runner=game.bases.runner_on(FIRST),
@@ -1221,18 +1424,33 @@ class Resolver:
                     )
                 )
             else:
-                events.append(
-                    RunnerAdvancedEvent(
-                        runner=game.bases.runner_on(FIRST),
-                        from_base=FIRST,
-                        to_base=THIRD,
-                        reason="double",
-                        pitcher=intent.pitcher,
-                    )
+                # Check if runner is thrown out trying to score
+                throw_out_prob = self._calculate_throw_out_probability(
+                    arm_strength, speed, skill
                 )
+                if self.rng.random() < throw_out_prob:
+                    events.append(
+                        OutRecordedEvent(reason="thrown_out_at_home", pitcher=intent.pitcher)
+                    )
+                    events.append(
+                        RunnerRemovedEvent(
+                            runner=game.bases.runner_on(FIRST),
+                            from_base=FIRST,
+                            reason="thrown_out_at_home"
+                        )
+                    )
+                else:
+                    events.append(
+                        RunnerAdvancedEvent(
+                            runner=game.bases.runner_on(FIRST),
+                            from_base=FIRST,
+                            to_base=THIRD,
+                            reason="double",
+                            pitcher=intent.pitcher,
+                        )
+                    )
 
         else:
-
             # Advance all runners two bases
             events.extend(
                 self._advance_all_runners(
@@ -1683,6 +1901,32 @@ class Resolver:
 
         return events
 
+    def _select_infielder(self, game):
+        """Randomly select which infielder fields a ground ball"""
+        position = self.infielder_choice.choose()
+        
+        position_map = {
+            "shortstop": game.pitch_team.current_shortstop,
+            "second_baseman": game.pitch_team.current_second_baseman,
+            "third_baseman": game.pitch_team.current_third_baseman,
+            "first_baseman": game.pitch_team.current_first_baseman,
+            "pitcher": game.current_pitcher,
+        }
+        
+        return position_map[position]
+
+    def _select_outfielder(self, game):
+        """Randomly select which outfielder fields a fly ball"""
+        position = self.outfielder_choice.choose()
+        
+        position_map = {
+            "center_fielder": game.pitch_team.current_center_fielder,
+            "right_fielder": game.pitch_team.current_right_fielder,
+            "left_fielder": game.pitch_team.current_left_fielder,
+        }
+        
+        return position_map[position]
+
 
 class EnhancedResolver(Resolver):
     """
@@ -1760,9 +2004,10 @@ class EnhancedResolver(Resolver):
                 and not self._is_wild_pitch_or_passed_ball(pitch_events)
                 and not self._is_balk(pitch_events)
                 and not self._is_foul(pitch_events)
+                and not self._is_error(pitch_events)
             ):
                 # Steals can happen on balls, strikes,
-                # but not balks, walks, wild pitches, passed balls, fouls or ball_in_play
+                # but not balks, walks, errors, wild pitches, passed balls, fouls or ball_in_play
                 concurrent_events = self._resolve_concurrent_events(intent, game)
 
                 # Find where the PlateAppearanceEndEvent is (if any)
@@ -2372,6 +2617,31 @@ class EnhancedResolver(Resolver):
                 raise RuntimeError(f"Unknown result={result} double_steal_probs")
 
         return events
+
+
+
+    def _calculate_throw_out_probability(self, arm: int, speed: int, baserunning: int) -> float:
+        """Calculate probability of throwing out a runner"""
+        # Strong arm and slow runner = higher throw out probability
+        base_prob = self.BASE_THROWOUT_PROB
+        arm_factor = arm / 50
+        runner_factor = 50 / ((speed + baserunning) / 2)
+        return base_prob * arm_factor * runner_factor
+
+    def _calculate_error_probability(self, fielding_skill: int) -> float:
+        """Calculate probability of fielding error based on skill"""
+        # Base error rate around 2-3% for average fielder (skill=50)
+        base_error_rate = self.BASE_ERROR_RATE
+        # Scale based on skill (lower skill = higher error rate)
+        return base_error_rate * (100 - fielding_skill) / 50
+
+    def _is_error(self, events: List[GameEvent]) -> bool:
+        """Check if an error occurred."""
+        error_event_types = (
+            FieldingErrorEvent,
+            ThrowingErrorEvent,
+        )
+        return any(isinstance(event, error_event_types) for event in events)
 
     def _is_balk(self, events: List[GameEvent]) -> bool:
         """Check if a balk occurred."""

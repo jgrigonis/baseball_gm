@@ -2,6 +2,10 @@ Todo list
 
 Defensive skill probs adjustments
 
+Track defensive stats
+
+Track games played correctly
+
 Implement stamina and recovery
 Have long outings affect stamina more
 As energy decreases, impact pitching skills
