@@ -20,3 +20,14 @@ scoring with 0 or 1 out.
 
 Meaning, 0 or 1 out probably lowers likelihood of trying 
 to score.
+
+choice = WeightedChoice({
+    "scores": 2100,        # 21% 
+    "third_safe": 7800,    # 78%
+    "out_at_home": 100,    # 1%
+}, rng=rng)
+
+# Adjust based on skills
+choice.add("scores", (speed - 50) * 10)
+choice.add("scores", (baserunning - 50) * 8)
+choice.add("out_at_home", (fielder_arm - 50) * 4)

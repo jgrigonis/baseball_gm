@@ -54,6 +54,7 @@ class GameStrategy:
         # Do intentional walk first
         if GameStrategy.should_intentional_walk(
             game.bases,
+            game.count,
             game.inning.outs,
             game.current_batter.player.skills["power"],
             game.score.differential,
@@ -290,7 +291,7 @@ class GameStrategy:
             prob = 0.01  # 1% chance
         elif double_steal_bases == [SECOND, THIRD]:
             # 2nd and 3rd
-            prob = 0.005  # 0.5% chance
+            prob = 0.001  # 0.1% chance
         else:
             return False
 
@@ -368,6 +369,7 @@ class GameStrategy:
     @staticmethod
     def should_intentional_walk(
         bases: Bases,
+        count: Count,
         outs: int,
         batter_power: int = 50,
         # next_batter_power: int = 50, # No way to easily get this
@@ -398,6 +400,8 @@ class GameStrategy:
         # 3. Late innings, close game
 
         if batter_power >= 70:
+            
+
             prob = 0.1  # 10%
 
             # Even more likely late/close
@@ -407,6 +411,10 @@ class GameStrategy:
             # Setting up double play (less than 2 outs)
             if outs < 2:
                 prob *= 1.5
+            
+            # If more strikes than balls, almost never ibb
+            if count.strikes > count.balls:
+                prob *= 0.01
 
         return rng.random() < prob
 
