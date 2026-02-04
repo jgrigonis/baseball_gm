@@ -92,6 +92,14 @@ class Resolver:
     # Probability scoring
     SCORE_FROM_FIRST_ON_DOUBLE = 0.21 # 21%
 
+    # Probability constants for events
+    PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
+    PICKOFF_ERROR_PROB = 0.05  # 5% throwing error
+
+    STEAL_SECOND_SUCCESS_PROB = 0.75  # 75% success rate
+    STEAL_THIRD_SUCCESS_PROB = 0.60  # 60% success rate
+    STEAL_HOME_SUCCESS_PROB = 0.05  # 5% success rate
+
     def __init__(self, rng):
         self.rng = rng
         self.logger = logging.getLogger("game.resolver")
@@ -300,18 +308,13 @@ class Resolver:
             self.pitch_outcome.add("in_play", 25 * (100 - bunting))
 
         if situation.hit_and_run:
-            self.pitch_outcome.add("strike", -40 * contact)
-            # Clamp to 0 if needed
-            current = self.pitch_outcome.get_weights().get("strike", 0)
-            if current < 0:
-                self.pitch_outcome.set("strike", 0)
-
+            self.pitch_outcome.add("strike", -90 * contact)
             self.pitch_outcome.set("ball", 10)
-            self.pitch_outcome.add("foul", 5 * (100 - contact))
+            self.pitch_outcome.add("foul", 4 * (100 - contact))
             self.pitch_outcome.add("home_run", 2 * (contact - 60))
             self.pitch_outcome.multiply("balk", 1.2)
             self.pitch_outcome.multiply("catcher_interference", 1.2)
-            self.pitch_outcome.add("in_play", 20 * contact)
+            self.pitch_outcome.add("in_play", 90 * contact)
 
         if situation.pitch_out:
             self.pitch_outcome.multiply("strike", 0.05)
@@ -895,6 +898,8 @@ class Resolver:
         if outs > 1:
             self.in_play_outcome.set("double_play", 0)
             self.in_play_outcome.set("fielders_choice", 0)
+            self.in_play_outcome.set("sac_fly", 0)
+            self.in_play_outcome.set("sac_bunt", 0)
 
     def _resolve_fly_out(self, intent, game) -> list[GameEvent]:
         """Resolve a fly out"""
@@ -1684,14 +1689,6 @@ class EnhancedResolver(Resolver):
     Extended Resolver with pre-pitch and concurrent event support.
     """
 
-    # Probability constants for events
-    PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
-    PICKOFF_ERROR_PROB = 0.05  # 5% throwing error
-
-    STEAL_SECOND_SUCCESS_PROB = 0.75  # 75% success rate
-    STEAL_THIRD_SUCCESS_PROB = 0.80  # 80% success rate
-    STEAL_HOME_SUCCESS_PROB = 0.85  # 85% success rate
-
     def __init__(self, rng):
         super().__init__(rng)
 
@@ -1700,20 +1697,20 @@ class EnhancedResolver(Resolver):
         # ============================================================
         self.double_steal_choice = WeightedChoice(
             {
-                "both_safe": 6500,
+                "both_safe": 900,
                 "lead_out_trail_safe": 2500,
                 "lead_safe_trail_out": 800,
-                "both_out": 200,
+                "both_out": 100,
             },
             rng=rng,
         )
 
         self.first_and_third_choice = WeightedChoice(
             {
-                "both_safe": 7000,
+                "both_safe": 600,
                 "first_advances_only": 1500,
                 "first_out_third_scores": 1000,
-                "third_out_first_advances": 400,
+                "third_out_first_advances": 2800,
                 "both_out": 100,
             },
             rng=rng,
@@ -1762,8 +1759,10 @@ class EnhancedResolver(Resolver):
                 and not self._is_walk(pitch_events)
                 and not self._is_wild_pitch_or_passed_ball(pitch_events)
                 and not self._is_balk(pitch_events)
+                and not self._is_foul(pitch_events)
             ):
-                # Steals can happen on balls, strikes, fouls, but not walks or ball_in_play
+                # Steals can happen on balls, strikes,
+                # but not balks, walks, wild pitches, passed balls, fouls or ball_in_play
                 concurrent_events = self._resolve_concurrent_events(intent, game)
 
                 # Find where the PlateAppearanceEndEvent is (if any)
@@ -1988,6 +1987,7 @@ class EnhancedResolver(Resolver):
         # Check for hit and run double steal scenarios
         if intent.pre_pitch_situation.hit_and_run:
             if game.bases.two_men_on:
+                self.logger.debug("Hit and run double steal")
                 double_steal_bases = GameStrategy.get_double_steal_candidates(game)
         else:
             double_steal_bases = intent.pre_pitch_situation.double_steal_attempt
@@ -1995,6 +1995,7 @@ class EnhancedResolver(Resolver):
         if double_steal_bases:
             return self._resolve_double_steal(double_steal_bases, intent, game)
         if intent.pre_pitch_situation.hit_and_run:
+            self.logger.debug("Hit and run steal")
             from_base = game.bases.only_occupied_base()
         else:
             from_base = intent.pre_pitch_situation.steal_attempt
@@ -2024,6 +2025,8 @@ class EnhancedResolver(Resolver):
             StealAttemptEvent(runner=runner, from_base=from_base, to_base=to_base)
         )
 
+        arm = game.pitch_team.current_catcher.skills["arm"]
+
         if to_base == SECOND:
             success_prob = self.STEAL_SECOND_SUCCESS_PROB
 
@@ -2031,14 +2034,16 @@ class EnhancedResolver(Resolver):
             success_prob = self.STEAL_THIRD_SUCCESS_PROB
         elif to_base == HOME:
             success_prob = self.STEAL_HOME_SUCCESS_PROB
+            arm = 50 # We just set this to average as it's not relevant
         else:
             success_prob = 0.50
 
+        
         success_prob = self.adjust_steal_prob(
             success_prob,
             game.bases.runner_on(from_base).skills["speed"],
             game.bases.runner_on(from_base).skills["base_running"],
-            game.pitch_team.current_catcher.skills["arm"],
+            arm,
             game.pitch_team.current_catcher.skills["catching"],
         )
 
@@ -2388,3 +2393,13 @@ class EnhancedResolver(Resolver):
         return any(
             isinstance(event, (WildPitchEvent, PassedBallEvent)) for event in events
         )
+    
+    def _is_foul(self, events: List[GameEvent]) -> bool:
+        """Check if a foul ball occurred."""
+        foul_event_types = (
+            FoulStrikeEvent,
+            FouledOffThirdStrikeEvent,
+            FoulTipCaughtThirdStrikeEvent,
+            FoulFlyOutEvent,
+        )
+        return any(isinstance(event, foul_event_types) for event in events)

@@ -8,13 +8,37 @@ from src.game.intents.pitch import PrePitchSituation
 from src.game.score import Score
 
 # Probability constants for new events
-BASE_PICKOFF_ATTEMPT_PROB = 0.02  # 2% per pitch
+BASE_PICKOFF_ATTEMPT_PROB = 0.01  # 1% per pitch
 BASE_STEAL_SECOND_PROB = 0.08  # 8% from first
-BASE_STEAL_THIRD_PROB = 0.02  # 2% from second
-BASE_STEAL_HOME_PROB = 0.001  # 0.1% from third
+BASE_STEAL_THIRD_PROB = 0.005  # 0.5% from second
+BASE_STEAL_HOME_PROB = 0.00001  # 0.0001% from third
+STEAL_FULL_COUNT_MOD = 1.5
+STEAL_BEHIND_COUNT_MOD = 0.5
+STEAL_TWO_OUT_MOD = 0.5
+STEAL_CLOSE_GAME_MOD = 1.3
+STEAL_BLOWOUT_MOD = 0.7
+DOUBLE_STEAL_FIRST_THIRD = 0.003
+DOUBLE_STEAL_SECOND_THIRD = 0.00001
+DOUBLE_STEAL_FIRST_SECOND = 0.001
+DOUBLE_STEAL_TWO_OUT_MOD = 0.2
 BUNT_PROB = 0.02
 BUNT_PROB_FIRST_PROB = 0.05
 BUNT_PROB_SECOND_PROB = 0.08
+BUNT_CLOSE_GAME_MOD = 1.5
+BUNT_LATE_INNING_MOD = 1.3
+IBB_PROB = 0.0001
+IBB_POWERFUL = 0.001
+IBB_POWERFUL_LATE_INNING = 0.002
+IBB_TWO_OUT_MODIFIER = 1.2
+IBB_STRIKES_MODIFIER = 0.01
+IBB_MORE_STRIKES_MOD = 0.01
+PITCHOUT_PROB = 0.001
+PITCHOUT_FAST_MOD = 4
+PITCHOUT_BALLS_OVER_STRIKES = 0.1
+HNR_PROB = 0.02
+HNR_CONTACT_MOD = 1.5
+HNR_SPEED_MOD = 1.5
+HNR_FAVORABLE_COUNT_MOD = 1.3
 
 
 def _get_rng(rng: random.Random | None) -> random.Random:
@@ -135,8 +159,8 @@ class GameStrategy:
             ):
                 pitch_out = True
 
-        if GameStrategy.should_attempt_pickoff(game.bases, game.score):
-            target_base = GameStrategy.select_pickoff_target(game.bases)
+        if GameStrategy.should_attempt_pickoff(game.bases, game.score, rng):
+            target_base = GameStrategy.select_pickoff_target(game.bases, rng)
             pickoff_attempt = target_base
 
         return PrePitchSituation(
@@ -157,6 +181,9 @@ class GameStrategy:
 
         if bases.is_empty:
             return False
+
+        # Initialize speed with a default
+        speed = 50
 
         if bases.one_man_on:
             base = bases.only_occupied_base()
@@ -182,7 +209,7 @@ class GameStrategy:
         if -2 < score.differential < 2:
             prob *= 1.5
 
-        return rng.random() < BASE_PICKOFF_ATTEMPT_PROB
+        return rng.random() < prob
 
     @staticmethod
     def select_pickoff_target(bases: Bases, rng: random.Random | None = None) -> int:
@@ -234,11 +261,11 @@ class GameStrategy:
 
         # Base probability by target base
         if from_base == FIRST:
-            prob = 0.08  # 8% to steal second
+            prob = BASE_STEAL_SECOND_PROB  # 8% to steal second
         elif from_base == SECOND:
-            prob = 0.02  # 2% to steal third
+            prob = BASE_STEAL_THIRD_PROB  # 2% to steal third
         elif from_base == THIRD:
-            prob = 0.001  # 0.1% to steal home
+            prob = BASE_STEAL_HOME_PROB  # 0.1% to steal home
         else:
             return False
 
@@ -256,19 +283,19 @@ class GameStrategy:
 
         # Count adjustments
         if count.balls == 3 and count.strikes == 2:
-            prob *= 1.5  # More aggressive on full count
-        elif count.balls == 0 and count.strikes == 2:
-            prob *= 0.5  # Less aggressive when batter behind
+            prob *= STEAL_FULL_COUNT_MOD  # More aggressive on full count
+        elif count.balls < count.strikes:
+            prob *= STEAL_BEHIND_COUNT_MOD # Less aggressive when batter behind
 
         # Outs adjustment
         if outs == 2:
-            prob *= 0.5  # Less aggressive with 2 outs
+            prob *= STEAL_TWO_OUT_MOD  # Less aggressive with 2 outs
 
         # Score differential (steal more when down)
         if score.differential < -2:
-            prob *= 1.3
+            prob *= STEAL_CLOSE_GAME_MOD
         elif score.differential > 2:
-            prob *= 0.7
+            prob *= STEAL_BLOWOUT_MOD
 
         return rng.random() < prob
 
@@ -285,13 +312,13 @@ class GameStrategy:
         # Check which scenario
         if double_steal_bases == [FIRST, THIRD]:
             # 1st and 3rd is more common (strategic play)
-            prob = 0.03  # 3% chance
+            prob = DOUBLE_STEAL_FIRST_THIRD
         elif double_steal_bases == [FIRST, SECOND]:
             # 1st and 2nd - standard double steal
-            prob = 0.01  # 1% chance
+            prob = DOUBLE_STEAL_FIRST_SECOND
         elif double_steal_bases == [SECOND, THIRD]:
             # 2nd and 3rd
-            prob = 0.001  # 0.1% chance
+            prob = DOUBLE_STEAL_SECOND_THIRD
         else:
             return False
 
@@ -303,7 +330,7 @@ class GameStrategy:
 
         # Less likely with 2 outs
         if outs == 2:
-            prob *= 0.2
+            prob *= DOUBLE_STEAL_TWO_OUT_MOD
 
         return rng.random() < prob
 
@@ -358,11 +385,11 @@ class GameStrategy:
 
         # More likely in close games
         if -1 <= score_differential <= 1:
-            prob *= 1.5
+            prob *= BUNT_CLOSE_GAME_MOD
 
         # More likely in late innings
         if inning >= 7:
-            prob *= 1.3
+            prob *= BUNT_LATE_INNING_MOD
 
         return rng.random() < prob
 
@@ -392,7 +419,7 @@ class GameStrategy:
             return False
 
         # Very rare overall
-        prob = 0.001
+        prob = IBB_PROB
 
         # Much more likely if:
         # 1. Dangerous hitter (power 70+)
@@ -400,21 +427,22 @@ class GameStrategy:
         # 3. Late innings, close game
 
         if batter_power >= 70:
-            
-
-            prob = 0.1  # 10%
+            prob = IBB_POWERFUL
 
             # Even more likely late/close
             if inning >= 7 and abs(score_differential) <= 2:
-                prob = 0.15  # 15%
+                prob = IBB_POWERFUL_LATE_INNING
 
-            # Setting up double play (less than 2 outs)
-            if outs < 2:
-                prob *= 1.5
+        # Setting up double play (less than 2 outs)
+        if outs < 2:
+            prob *= IBB_TWO_OUT_MODIFIER
             
-            # If more strikes than balls, almost never ibb
-            if count.strikes > count.balls:
-                prob *= 0.01
+        if count.strikes > 0:
+            prob *= IBB_STRIKES_MODIFIER
+
+        # If more strikes than balls, almost never ibb
+        if count.strikes > count.balls:
+            prob *= IBB_MORE_STRIKES_MOD
 
         return rng.random() < prob
 
@@ -441,19 +469,19 @@ class GameStrategy:
             return False
 
         # Very rare
-        prob = 0.01
+        prob = PITCHOUT_PROB
 
         # Increase if runner has stolen base tendency (use speed as proxy)
         if runner_speeds:
             max_speed = max(runner_speeds.values())
             if max_speed >= 70:
-                prob = 0.05
+                prob *= PITCHOUT_FAST_MOD
 
         if count_balls > count_strikes:
-            prob *= 0.1
+            prob *= PITCHOUT_BALLS_OVER_STRIKES
         # Don't pitch out on 3-0, 3-1 counts
         if count_balls >= 3:
-            prob *= 0.1
+            prob = 0
 
         return rng.random() < prob
 
@@ -487,11 +515,11 @@ class GameStrategy:
         if outs >= 2:
             return False
 
-        prob = 0.02  # 2% base
+        prob = HNR_PROB
 
         # Good contact hitter
         if batter_contact >= 60:
-            prob *= 1.5
+            prob *= HNR_CONTACT_MOD
 
         runner_speed = 50
 
@@ -512,11 +540,11 @@ class GameStrategy:
 
         # Fast runner
         if runner_speed >= 60:
-            prob *= 1.5
+            prob *= HNR_SPEED_MOD
 
         # Favorable count (1-1, 2-1, 2-2)
-        if count_balls >= 1 and count_strikes >= 1:
-            prob *= 1.3
+        if count_balls >= count_strikes:
+            prob *= HNR_FAVORABLE_COUNT_MOD
 
         return rng.random() < prob
 
@@ -530,6 +558,11 @@ class GameStrategy:
         2. 1st and 3rd (strategic play)
         3. 1st and 2nd (most common)
         """
+        # Don't attempt double steal with bases loaded
+        # TODO Could add a triple steal
+        if game.bases.is_loaded:
+            return None
+        
         # Priority 1: 2nd and 3rd (runner on 3rd can score)
         if game.bases.runner_on(SECOND) and game.bases.runner_on(THIRD):
             return [SECOND, THIRD]

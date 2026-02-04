@@ -1,7 +1,5 @@
 Todo list
 
-Stealing home is happening WAY TOO OFTEN
-
 Defensive skill probs adjustments
 
 Implement stamina and recovery
