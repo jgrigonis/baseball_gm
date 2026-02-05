@@ -22,8 +22,8 @@ from src.types.rows import CsvRow, DbRow
 from typing import TypeAlias
 
 PlayerId: TypeAlias = str
-BattingSide: TypeAlias = str  # "left" | "right" | "switch"
-ThrowingHand: TypeAlias = str  # "left" | "right"
+BattingSide: TypeAlias = str  # "L" | "R" | "S"
+ThrowingHand: TypeAlias = str  # "L" | "R"
 PositionCode: TypeAlias = str  # "ss" | "cf" | etc.
 
 
@@ -65,12 +65,12 @@ class PlayerRecord:
             first_name = parts[0]
             last_name = parts[1] if len(parts) > 1 else ""
 
-            # Convert single-letter codes to full names
-            bats_map = {"l": "left", "r": "right", "s": "switch"}
-            throws_map = {"l": "left", "r": "right"}
+            # Convert single-letter codes to upper case
+            bats_map = {"l": "L", "r": "R", "s": "S", "L": "L", "R": "R", "S": "S"}
+            throws_map = {"l": "L", "r": "R", "L": "L", "R": "R"}
 
-            bats = bats_map.get(row["B"].lower())
-            throws = throws_map.get(row["T"].lower())
+            bats = bats_map.get(row["B"].upper())
+            throws = throws_map.get(row["T"].upper())
 
             if not bats:
                 raise ValueError(f"Invalid bats code: {row['B']}")

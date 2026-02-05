@@ -37,7 +37,6 @@ from src.player.positions import (
     POSITION_TEMPLATES,
     AFFINITY_POSITIONS,
     PositionTemplate,
-    # is_valid_position,
     get_handedness_probabilities,
 )
 from src.name_generator.names import NameGenerator
