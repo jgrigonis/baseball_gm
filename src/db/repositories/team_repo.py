@@ -195,3 +195,16 @@ class TeamRepository:
             )
             for row in rows
         ]
+
+    def get_teams_by_season(self, season_id: str) -> list[TeamRecord]:
+        """Get all teams in a season."""
+        cursor = self.conn.execute(
+            """
+            SELECT t.id FROM teams t
+            JOIN league_season_teams lst ON t.id = lst.team_id
+            WHERE lst.season_id = ?
+            """,
+            (season_id,),
+        )
+        team_ids = [row["id"] for row in cursor.fetchall()]
+        return [self.get(team_id) for team_id in team_ids]

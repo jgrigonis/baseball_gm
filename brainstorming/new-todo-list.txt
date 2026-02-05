@@ -15,7 +15,3 @@ substitutions, pinch hitting, pinch running
 Handedness accounted for many places
 
 Aging.
-
-Scheduler
-Based on number of teams and number of games in season. Quickly complain 
-if the numbers don’t make sense. Alternatively just have some fixed numbers

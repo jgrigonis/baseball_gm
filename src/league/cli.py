@@ -1,5 +1,6 @@
 # src/league/cli.py
 import argparse
+from datetime import date
 from pathlib import Path
 import sqlite3
 import sys
@@ -13,6 +14,7 @@ from src.league.manifest_helper import (
     find_missing_team_files,
     create_team_files,
 )
+from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import LEAGUE_FILES_DIR
 
 
@@ -32,6 +34,14 @@ def get_args():
     parser.add_argument(
         "--manifest", "-m", default="league_teams.json", help="Set the manifest file."
     )
+    parser.add_argument(
+        "--regenerate-schedule",
+        "-r",
+        default=False,
+        action="store_true",
+        help="Regenerate schedule if it exists",
+    )
+
     args = parser.parse_args()
     return args
 
@@ -66,6 +76,34 @@ def main():
     print(f"League created: {league_id}")
     print(f"Season created: {season_id}")
     print(f"Teams imported: {len(teams)}")
+
+    existing_games = conn.execute(
+        "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)
+    ).fetchone()[0]
+
+    if existing_games > 0 and not args.regenerate_schedule:
+        print(f"Schedule already exists: {existing_games} games")
+    elif existing_games > 0 and args.regenerate_schedule:
+        conn.execute("DELETE FROM games WHERE season_id = ?", (season_id,))
+        conn.commit()
+        print(f"Deleted {existing_games} existing games")
+
+    team_ids = [team.id for team in teams]
+
+    # print(f"DEBUG: team_ids = {team_ids}")
+    # print(f"DEBUG: Number of teams = {len(team_ids)}")
+
+    scheduler = ScheduleGenerator()
+    schedule = scheduler.create_schedule(
+        season_id=season_id,
+        team_ids=team_ids,
+        start_date=date(2028, 4, 1),
+        games_per_matchup=3,
+        home_and_away=True,
+    )
+
+    save_schedule_to_db(conn, schedule)
+    print(f"Schedule generated: {len(schedule)} games")
 
 
 if __name__ == "__main__":

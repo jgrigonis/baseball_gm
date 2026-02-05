@@ -2,6 +2,7 @@
 
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.team_repo import TeamRepository
 from src.io.team_importer import TeamImporter
 
 
@@ -10,6 +11,7 @@ class LeagueBootstrapper:
         self.conn = conn
         self.league_repo = LeagueRepository(conn)
         self.season_repo = SeasonRepository(conn)
+        self.team_repo = TeamRepository(conn)
         self.team_importer = TeamImporter(conn)
 
     def bootstrap_from_manifest(self, manifest):
@@ -23,8 +25,9 @@ class LeagueBootstrapper:
 
         # Check if this league-season combo already exists
         if self.league_repo.has_season(league_id, season_id):
+            teams = self.team_repo.get_teams_by_season(season_id)
             # Already bootstrapped, return early
-            return league_id, [], season_id
+            return league_id, teams, season_id
 
         # Link the season to the league
         self.league_repo.assign_season_to_league(league_id, season_id)
