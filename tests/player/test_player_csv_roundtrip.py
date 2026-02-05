@@ -42,4 +42,4 @@ def test_csv_uses_lowercase_handedness():
         PlayerCSVExporter.write(team, path)
 
         text = path.read_text()
-        assert ",r," in text or ",l," in text
+        assert ",R," in text or ",R," in text

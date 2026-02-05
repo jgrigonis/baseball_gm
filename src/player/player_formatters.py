@@ -29,11 +29,11 @@ class PlayerFormatter(object):
     @staticmethod
     def abbreviate(value):
         if value == "right":
-            return "r"
+            return "R"
         if value == "left":
-            return "l"
+            return "L"
         if value == "switch":
-            return "s"
+            return "S"
         return value
 
 

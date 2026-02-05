@@ -44,17 +44,30 @@ class PlayerSkills:
         True
     """
 
-    def __init__(self, skills: dict[str, int], *, validate: bool = True):
+    def __init__(
+        self, skills: dict[str, int] | None = None, *, validate: bool = True, **kwargs
+    ):
         """
         Create PlayerSkills with validation.
 
         Args:
-            skills: Dictionary of skill_name -> value
+            skills: Dictionary of skill_name -> value (or pass as kwargs)
             validate: If True, validate all values are in range
+            **kwargs: Individual skills as keyword arguments
 
         Raises:
             ValueError: If skill values are out of range (1-100)
+
+        Example:
+            >>> # Both styles work:
+            >>> skills1 = PlayerSkills({"power": 85, "speed": 60})
+            >>> skills2 = PlayerSkills(power=85, speed=60)
         """
+        # Merge dict and kwargs
+        if skills is None:
+            skills = {}
+        skills = {**skills, **kwargs}  # kwargs override dict values
+
         normalized = {}
 
         for skill_name in SKILLS:
@@ -335,7 +348,7 @@ class PlayerSkills:
             rng: Random number generator
         """
         # No left-handed catchers (extremely rare in real baseball)
-        if position == "c" and throws == "left":
+        if position == "c" and throws == "L":
             skills["catching"] = cls.generate_stat(rng=rng, mean=10)
 
     @classmethod

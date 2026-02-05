@@ -1,10 +1,26 @@
 # src/db/repositories/player_repo.py
+"""
+Repository for player identity and skills management.
+
+Handles:
+- Creating and updating player records
+- Managing current player skills
+- Tracking skill history across seasons
+- Looking up player information
+
+Uses tables:
+- players (identity)
+- player_skills (current skills)
+- player_skills_history (skill snapshots per season)
+"""
 import datetime
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
 
 class PlayerRepository:
+    """Repository for managing player identity and skills."""
+
     def __init__(self, conn):
         self.conn = conn
 
@@ -21,11 +37,33 @@ class PlayerRepository:
         throws: str,
         position: str,
         skills: PlayerSkills,
-    ):
+    ) -> None:
         """
         Create a player record with identity and initial skills.
-        Idempotent per (id).
+        Idempotent - calling multiple times updates the record.
+
+        Args:
+            id: Player ID
+            first_name: Player's first name
+            last_name: Player's last name
+            bats: Batting hand ('L', 'R', or 'S' for switch) - case insensitive
+            throws: Throwing hand ('L' or 'R') - case insensitive
+            position: Primary position
+            skills: PlayerSkills object with all skill ratings
+
+        Raises:
+            ValueError: If bats or throws values are invalid
         """
+        # Normalize handedness to uppercase
+        bats = bats.upper()
+        throws = throws.upper()
+
+        # Validate
+        if bats not in ("L", "R", "S"):
+            raise ValueError(f"Invalid bats value: '{bats}'. Must be L, R, or S")
+        if throws not in ("L", "R"):
+            raise ValueError(f"Invalid throws value: '{throws}'. Must be L or R")
+
         # Insert identity
         self.conn.execute(
             """
@@ -42,10 +80,14 @@ class PlayerRepository:
 
         self.conn.commit()
 
-    def update_skills(self, player_id: str, skills: PlayerSkills):
+    def update_skills(self, player_id: str, skills: PlayerSkills) -> None:
         """
         Update a player's current skills.
-        Used for training, aging, etc.
+        Used for training, aging, injuries, etc.
+
+        Args:
+            player_id: Player ID
+            skills: PlayerSkills object with updated ratings
         """
         skill_dict = skills.to_db_dict()
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -84,10 +126,14 @@ class PlayerRepository:
 
         self.conn.commit()
 
-    def snapshot_skills(self, player_id: str, season_id: str):
+    def snapshot_skills(self, player_id: str, season_id: str) -> None:
         """
         Save current skills to history for a season.
-        Call this at the end of each season to track progression.
+        Call this at the end of each season to track player progression.
+
+        Args:
+            player_id: Player ID
+            season_id: Season ID to associate with this snapshot
         """
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -120,7 +166,16 @@ class PlayerRepository:
 
     def look_up(self, player_id: str) -> PlayerRecord | None:
         """
-        Fetch a player with current skills
+        Fetch a player with their current skills.
+
+        Args:
+            player_id: Player ID
+
+        Returns:
+            PlayerRecord if found, None otherwise
+
+        Raises:
+            ValueError: If player exists but has no skills record
         """
         # Get identity
         identity_row = self.conn.execute(
@@ -164,7 +219,13 @@ class PlayerRepository:
     def get_skill_history(self, player_id: str) -> list[dict]:
         """
         Get a player's skill progression across seasons.
-        Returns list of dicts with season_id and all skills.
+
+        Args:
+            player_id: Player ID
+
+        Returns:
+            List of dicts, each containing season_id and all skills for that season,
+            ordered chronologically by season
         """
         rows = self.conn.execute(
             """
@@ -177,3 +238,52 @@ class PlayerRepository:
         ).fetchall()
 
         return [dict(row) for row in rows]
+
+    def exists(self, player_id: str) -> bool:
+        """
+        Check if a player exists.
+
+        Args:
+            player_id: Player ID
+
+        Returns:
+            True if player exists, False otherwise
+        """
+        row = self.conn.execute(
+            "SELECT 1 FROM players WHERE id = ?", (player_id,)
+        ).fetchone()
+
+        return row is not None
+
+    def get_all_players(self) -> list[PlayerRecord]:
+        """
+        Get all players in the database.
+
+        Returns:
+            List of PlayerRecord objects
+        """
+        rows = self.conn.execute(
+            """
+            SELECT p.*, ps.*
+            FROM players p
+            JOIN player_skills ps ON p.id = ps.player_id
+            ORDER BY p.last_name, p.first_name
+            """
+        ).fetchall()
+
+        return [
+            PlayerRecord(
+                id=row["id"],
+                first_name=row["first_name"],
+                last_name=row["last_name"],
+                bats=row["bats"],
+                throws=row["throws"],
+                position=row["position"],
+                skills=PlayerSkills.from_db_row(row),
+            )
+            for row in rows
+        ]
+
+    def _get_timestamp(self) -> str:
+        """Helper: Get current UTC timestamp in ISO format."""
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()

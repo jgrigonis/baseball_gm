@@ -24,8 +24,8 @@ def make_player_record(
     id: str | None = None,
     first_name="Test",
     last_name=None,
-    bats="right",  # Changed from "R" to "right"
-    throws="right",  # Changed from "R" to "right"
+    bats="R",
+    throws="R",
     position=None,
     skills: dict | None = None,
     rng=None,

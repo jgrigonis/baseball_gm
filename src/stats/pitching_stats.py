@@ -73,7 +73,7 @@ class PitchingStats(object):
         """Used for aggregating stats, or adding an entire stat instance to another."""
         for attr in vars(self):
             # Skip non-numeric attributes like loggers
-            if attr.startswith('_') or attr == 'logger':
+            if attr.startswith("_") or attr == "logger":
                 continue
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 

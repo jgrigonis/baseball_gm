@@ -176,39 +176,6 @@ def pitch_intent():
 
 
 # ================================================================
-# BASIC FUNCTIONALITY TESTS
-# ================================================================
-
-
-# class TestBasicFunctionality:
-#     """Test basic resolver functionality"""
-
-#     def test_random_event_basic(self, resolver):
-#         """Test random event selection with simple probabilities"""
-#         probs = {"event_a": 50, "event_b": 50}
-#         resolver.rng.set_value(0.25)  # Should select first event
-#         result = resolver.random_event(probs)
-#         assert result == "event_a"
-
-#     def test_random_event_weighted(self, resolver):
-#         """Test random event selection with weighted probabilities"""
-#         probs = {"rare": 10, "common": 90}
-#         resolver.rng.set_value(0.95)  # Should select second event
-#         result = resolver.random_event(probs)
-#         assert result == "common"
-
-#     def test_random_event_empty_probs(self, resolver):
-#         """Test that empty probabilities raise ValueError"""
-#         with pytest.raises(ValueError):
-#             resolver.random_event({})
-
-#     def test_random_event_none_probs(self, resolver):
-#         """Test that None probabilities raise ValueError"""
-#         with pytest.raises(ValueError):
-#             resolver.random_event(None)
-
-
-# ================================================================
 # BALL TESTS
 # ================================================================
 

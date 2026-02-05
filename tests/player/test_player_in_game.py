@@ -41,8 +41,8 @@ def player_record():
         id="player123",
         first_name="John",
         last_name="Doe",
-        bats="right",
-        throws="right",
+        bats="R",
+        throws="R",
         position="cf",
         skills=skills,
     )
@@ -147,6 +147,6 @@ def test_player_record_remains_immutable(player_record):
     pig.fatigue = 99
     pig.rate_player()
 
-    assert player_record.bats == "right"
-    assert player_record.throws == "right"
+    assert player_record.bats == "R"
+    assert player_record.throws == "R"
     assert isinstance(player_record.skills, PlayerSkills)

@@ -63,8 +63,8 @@ def create_test_player(player_id, **skill_overrides):
         id=player_id,
         first_name="Test",
         last_name=player_id,
-        bats="right",
-        throws="right",
+        bats="R",
+        throws="R",
         skills=PlayerSkills(skills_dict),
         position="1b",
     )

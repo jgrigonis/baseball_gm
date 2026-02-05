@@ -72,9 +72,9 @@ def test_invalid_position_raises():
 def test_explicit_throws_is_used():
     """Explicit handedness is honored"""
     factory = PlayerFactory(random.Random(1))
-    player = factory.create(throws="left")
+    player = factory.create(throws="L")
 
-    assert player.throws == "left"
+    assert player.throws == "L"
 
 
 def test_invalid_throws_raises():
@@ -88,9 +88,9 @@ def test_invalid_throws_raises():
 def test_explicit_bats_is_used():
     """Explicit batting side is honored"""
     factory = PlayerFactory(random.Random(1))
-    player = factory.create(bats="switch")
+    player = factory.create(bats="S")
 
-    assert player.bats == "switch"
+    assert player.bats == "S"
 
 
 def test_invalid_bats_raises():
@@ -142,7 +142,7 @@ def test_switch_hitter_probability(monkeypatch):
     )
 
     player = factory.create(position="ss")
-    assert player.bats == "switch"
+    assert player.bats == "S"
 
 
 # Claude generated test below
@@ -242,16 +242,16 @@ class TestResolveHandedness:
     def test_resolve_handedness_left_specified(self, template):
         factory = PlayerFactory()
         result = factory._resolve_handedness(
-            throws="left", template=template, position="ss"
+            throws="L", template=template, position="ss"
         )
-        assert result == "left"
+        assert result == "L"
 
     def test_resolve_handedness_right_specified(self, template):
         factory = PlayerFactory()
         result = factory._resolve_handedness(
-            throws="right", template=template, position="ss"
+            throws="R", template=template, position="ss"
         )
-        assert result == "right"
+        assert result == "R"
 
     def test_resolve_handedness_invalid_raises(self, template):
         factory = PlayerFactory()
@@ -276,7 +276,7 @@ class TestResolveHandedness:
             factory._resolve_handedness(throws=None, template=template, position="of")
             for _ in range(1000)
         ]
-        left_count = results.count("left")
+        left_count = results.count("L")
         left_ratio = left_count / len(results)
 
         # Should be roughly 30% (allow 10% margin)
@@ -296,27 +296,27 @@ class TestResolveBattingSide:
 
     def test_resolve_batting_side_left_specified(self, template):
         factory = PlayerFactory()
-        result = factory._resolve_batting_side("left", "right", template)
-        assert result == "left"
+        result = factory._resolve_batting_side("L", "R", template)
+        assert result == "L"
 
     def test_resolve_batting_side_right_specified(self, template):
         factory = PlayerFactory()
-        result = factory._resolve_batting_side("right", "right", template)
-        assert result == "right"
+        result = factory._resolve_batting_side("R", "R", template)
+        assert result == "R"
 
     def test_resolve_batting_side_switch_specified(self, template):
         factory = PlayerFactory()
-        result = factory._resolve_batting_side("switch", "right", template)
-        assert result == "switch"
+        result = factory._resolve_batting_side("S", "R", template)
+        assert result == "S"
 
     def test_resolve_batting_side_invalid_raises(self, template):
         factory = PlayerFactory()
         with pytest.raises(game_exceptions.BadHandednessException):
-            factory._resolve_batting_side("both", "right", template)
+            factory._resolve_batting_side("both", "R", template)
 
     def test_resolve_batting_side_none_uses_template(self, template):
         factory = PlayerFactory(rng=random.Random(42))
-        result = factory._resolve_batting_side(None, "right", template)
+        result = factory._resolve_batting_side(None, "R", template)
         assert result in VALID_BATS
 
     def test_resolve_batting_side_can_be_switch(self, template):
@@ -324,11 +324,11 @@ class TestResolveBattingSide:
         factory = PlayerFactory(rng=random.Random(42))
 
         results = [
-            factory._resolve_batting_side(None, "right", template) for _ in range(1000)
+            factory._resolve_batting_side(None, "R", template) for _ in range(1000)
         ]
 
         # Should have some switch hitters
-        assert "switch" in results
+        assert "S" in results
 
     def test_resolve_batting_side_defaults_to_throwing_hand(self):
         """Test that most batters bat same as throwing hand."""
@@ -336,12 +336,12 @@ class TestResolveBattingSide:
         factory = PlayerFactory(rng=random.Random(42))
 
         # Right-handed thrower should bat right
-        result = factory._resolve_batting_side(None, "right", template)
-        assert result == "right"
+        result = factory._resolve_batting_side(None, "R", template)
+        assert result == "R"
 
         # Left-handed thrower should bat left
-        result = factory._resolve_batting_side(None, "left", template)
-        assert result == "left"
+        result = factory._resolve_batting_side(None, "L", template)
+        assert result == "L"
 
 
 class TestGetPositionTemplate:
@@ -390,21 +390,21 @@ class TestCreate:
 
     def test_create_with_specified_throws(self):
         factory = PlayerFactory()
-        player = factory.create(throws="left")
-        assert player.throws == "left"
+        player = factory.create(throws="L")
+        assert player.throws == "L"
 
     def test_create_with_specified_bats(self):
         factory = PlayerFactory()
-        player = factory.create(bats="switch")
-        assert player.bats == "switch"
+        player = factory.create(bats="S")
+        assert player.bats == "S"
 
     def test_create_with_all_specified(self):
         factory = PlayerFactory()
-        player = factory.create(position="cf", throws="left", bats="left")
+        player = factory.create(position="cf", throws="L", bats="L")
 
         assert player.position == "cf"
-        assert player.throws == "left"
-        assert player.bats == "left"
+        assert player.throws == "L"
+        assert player.bats == "L"
 
     def test_create_generates_unique_ids(self):
         factory = PlayerFactory()
@@ -563,14 +563,14 @@ class TestConstants:
     """Test module constants."""
 
     def test_valid_bats_constant(self):
-        assert "left" in VALID_BATS
-        assert "right" in VALID_BATS
-        assert "switch" in VALID_BATS
+        assert "L" in VALID_BATS
+        assert "R" in VALID_BATS
+        assert "S" in VALID_BATS
         assert len(VALID_BATS) == 3
 
     def test_valid_throws_constant(self):
-        assert "left" in VALID_THROWS
-        assert "right" in VALID_THROWS
+        assert "L" in VALID_THROWS
+        assert "R" in VALID_THROWS
         assert len(VALID_THROWS) == 2
 
 
@@ -635,7 +635,7 @@ class TestIntegration:
         players = [factory.create() for _ in range(100)]
 
         # Count left-handed throwers
-        left_throwers = [p for p in players if p.throws == "left"]
+        left_throwers = [p for p in players if p.throws == "L"]
         left_ratio = len(left_throwers) / len(players)
 
         # Should be roughly 20-30% left-handed (MLB is ~25%)

@@ -39,7 +39,7 @@ class PlayerGameRepository:
         """
         Persist a player's stats for a single game.
         Idempotent - calling multiple times with same game_id/player_id updates the record.
-        
+
         Args:
             game_id: Game ID
             player_id: Player ID
@@ -112,18 +112,15 @@ class PlayerGameRepository:
         )
 
         self.conn.commit()
-    
+
     def delete_game_stats(self, game_id: str) -> None:
         """
         Delete all player stats for a game (for replaying games).
-        
+
         Args:
             game_id: Game ID
         """
-        self.conn.execute(
-            "DELETE FROM player_game_stats WHERE game_id = ?",
-            (game_id,)
-        )
+        self.conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
         self.conn.commit()
 
     # ------------------------------------------------------------
@@ -133,11 +130,11 @@ class PlayerGameRepository:
     def get_for_game(self, game_id: str, player_id: str) -> Stats | None:
         """
         Fetch a player's stats for a single game.
-        
+
         Args:
             game_id: Game ID
             player_id: Player ID
-            
+
         Returns:
             Stats object if found, None otherwise
         """
@@ -155,14 +152,13 @@ class PlayerGameRepository:
 
         return self._row_to_stats(row)
 
-
     def fetch_player_games(self, player_id: str) -> list[Stats]:
         """
         Fetch all game stats for a player across their career.
-        
+
         Args:
             player_id: Player ID
-            
+
         Returns:
             List of Stats objects, one per game, ordered by game_id
         """
@@ -178,15 +174,14 @@ class PlayerGameRepository:
 
         return [self._row_to_stats(r) for r in rows]
 
-
     def load_season_stats(self, player_id: str, season_id: str) -> SeasonStats:
         """
         Load aggregated stats for a player in a specific season.
-        
+
         Args:
             player_id: Player ID
             season_id: Season ID
-            
+
         Returns:
             SeasonStats with aggregated stats and games played count
         """
@@ -212,10 +207,10 @@ class PlayerGameRepository:
     def get_players_in_game(self, game_id: str) -> list[str]:
         """
         Get all player IDs who participated in a game.
-        
+
         Args:
             game_id: Game ID
-            
+
         Returns:
             List of player IDs
         """
@@ -225,9 +220,9 @@ class PlayerGameRepository:
             WHERE game_id = ?
             ORDER BY player_id
             """,
-            (game_id,)
+            (game_id,),
         ).fetchall()
-        
+
         return [row["player_id"] for row in rows]
 
     # ------------------------------------------------------------

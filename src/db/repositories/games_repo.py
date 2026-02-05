@@ -124,5 +124,5 @@ class GameRepository:
 
         if not row:
             return False
-        
+
         return row["completed"] == 1

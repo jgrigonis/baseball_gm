@@ -407,7 +407,7 @@ class TestGenerate:
         assert skills1 != skills2
 
     def test_generate_left_handed_catcher_has_low_catching(self, rng):
-        skills = PlayerSkills.generate(rng, "c", throws="left")
+        skills = PlayerSkills.generate(rng, "c", throws="L")
         # Left-handed catchers should have very low catching skill
         assert skills["catching"] < 20
 

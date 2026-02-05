@@ -45,8 +45,8 @@ class PlayerCSVExporter:
                 row = [
                     player.name,
                     player.position,
-                    player.throws[0].lower(),  # "right" -> "r"
-                    player.bats[0].lower(),  # "right" -> "r", "switch" -> "s"
+                    player.throws[0].upper(),  # "right" -> "R"
+                    player.bats[0].upper(),  # "right" -> "R", "switch" -> "S"
                 ]
 
                 for csv_key in PLAYER_SKILL_COLUMNS:

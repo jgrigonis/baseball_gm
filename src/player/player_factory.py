@@ -43,8 +43,8 @@ from src.player.positions import (
 from src.name_generator.names import NameGenerator
 from src.util.logger import setup_logger
 
-VALID_BATS = {"left", "right", "switch"}
-VALID_THROWS = {"left", "right"}
+VALID_BATS = {"L", "R", "S"}
+VALID_THROWS = {"L", "R"}
 DEFAULT_LEFT_HANDED_PROB = 0.21  # Much higher than general population
 
 
@@ -109,11 +109,27 @@ class PlayerFactory(object):
             id=self._generate_id(),
             first_name=first_name,
             last_name=last_name,
-            bats=bats,
-            throws=throws,
+            bats=self._normalize_handedness(bats),
+            throws=self._normalize_handedness(throws),
             position=position,
             skills=skills,
         )
+
+    @staticmethod
+    def _normalize_handedness(value: str) -> str:
+        """Convert handedness to single letter format for database."""
+        mapping = {
+            "left": "L",
+            "right": "R",
+            "switch": "S",
+            "l": "L",
+            "r": "R",
+            "s": "S",
+            "L": "L",
+            "R": "R",
+            "S": "S",
+        }
+        return mapping.get(value.lower(), value.upper())
 
     def _resolve_position(self, position: str | None) -> str:
         """
@@ -155,8 +171,7 @@ class PlayerFactory(object):
 
         probs = get_handedness_probabilities(position)
         throws_left_prob = probs.get("throws_left", DEFAULT_LEFT_HANDED_PROB)
-        # throws_left_prob = template.get("throws_left", 0.21)
-        return "left" if self.rng.random() < throws_left_prob else "right"
+        return "L" if self.rng.random() < throws_left_prob else "R"
 
     def _resolve_batting_side(
         self,
@@ -182,11 +197,11 @@ class PlayerFactory(object):
 
         # Switch hitter?
         if self.rng.random() < template.get("switch_hitter", 0.09):
-            return "switch"
+            return "S"
 
         # Natural left-handed batter?
         if self.rng.random() < template.get("bats_left", 0.1):
-            return "left"
+            return "L"
 
         # Otherwise bat same as throwing hand
         return throws

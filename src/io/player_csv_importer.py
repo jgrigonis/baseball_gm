@@ -7,14 +7,14 @@ from src.player.skill_map import SKILL_MAP
 from src.io.player_csv_schema import PLAYER_SKILL_COLUMNS
 
 CSV_TO_THROWS = {
-    "r": "right",
-    "l": "left",
+    "r": "R",
+    "l": "L",
 }
 
 CSV_TO_BATS = {
-    "r": "right",
-    "l": "left",
-    "s": "switch",
+    "r": "R",
+    "l": "L",
+    "s": "S",
 }
 
 
@@ -42,7 +42,6 @@ class PlayerCSVImporter:
                         position=row["PS"],
                         throws=CSV_TO_THROWS[row["T"].lower()],
                         bats=CSV_TO_BATS[row["B"].lower()],
-                        # bats={"r": "right", "l": "left", "s": "switch"}[row["B"]],
                         skills=PlayerSkills(skills),
                     )
                 )

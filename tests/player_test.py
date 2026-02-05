@@ -19,19 +19,19 @@ class TestPlayerFactory(unittest.TestCase):
 
     def test_specific_name(self):
         factory = PlayerFactory()
-        my_player = factory.create(position="3b", bats="right", throws="right")
-        self.assertEqual(my_player.bats, "right")
-        self.assertEqual(my_player.throws, "right")
-        my_player2 = factory.create(position="1b", bats="left", throws="left")
-        self.assertEqual(my_player2.bats, "left")
-        self.assertEqual(my_player2.throws, "left")
+        my_player = factory.create(position="3b", bats="R", throws="R")
+        self.assertEqual(my_player.bats, "R")
+        self.assertEqual(my_player.throws, "R")
+        my_player2 = factory.create(position="1b", bats="L", throws="L")
+        self.assertEqual(my_player2.bats, "L")
+        self.assertEqual(my_player2.throws, "L")
         self.assertNotEqual(my_player2.name, None)
 
     def test_lefty_1b_probability(self):
         rng = random.Random(40)
         factory = PlayerFactory(rng)
         players = [factory.create(position="1b") for _ in range(1000)]
-        lefties = sum(1 for p in players if p.throws == "left")
+        lefties = sum(1 for p in players if p.throws == "L")
         print(lefties)
         assert 250 < lefties < 400  # approx 33%
 
@@ -39,7 +39,7 @@ class TestPlayerFactory(unittest.TestCase):
         rng = random.Random(1)
         ps = PlayerSkills(SKILLS)
 
-        skills = ps.generate(rng, position="c", throws="left")
+        skills = ps.generate(rng, position="c", throws="L")
         assert skills["catching"] < 25
 
 

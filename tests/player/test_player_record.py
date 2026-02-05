@@ -25,8 +25,8 @@ def test_player_record_fields_are_set():
         id="player123",
         first_name="John",
         last_name="Doe",
-        bats="right",
-        throws="left",
+        bats="R",
+        throws="L",
         position="cf",
         skills=skills,
     )
@@ -34,8 +34,8 @@ def test_player_record_fields_are_set():
     assert record.id == "player123"
     assert record.first_name == "John"
     assert record.last_name == "Doe"
-    assert record.bats == "right"
-    assert record.throws == "left"
+    assert record.bats == "R"
+    assert record.throws == "L"
     assert record.skills is skills
 
 
@@ -45,8 +45,8 @@ def test_player_record_name_property():
         id="1",
         first_name="Mike",
         last_name="Trout",
-        bats="right",
-        throws="right",
+        bats="R",
+        throws="R",
         position="3b",
         skills=PlayerSkills({}),
     )
@@ -60,8 +60,8 @@ def test_player_record_str():
         id="1",
         first_name="Shohei",
         last_name="Ohtani",
-        bats="left",
-        throws="right",
+        bats="L",
+        throws="R",
         position="p",
         skills=PlayerSkills({}),
     )
@@ -79,8 +79,8 @@ def test_player_record_is_immutable():
         id="1",
         first_name="Juan",
         last_name="Soto",
-        bats="left",
-        throws="right",
+        bats="L",
+        throws="R",
         position="rf",
         skills=PlayerSkills({}),
     )
@@ -95,8 +95,8 @@ def test_player_record_from_row():
         "id": "abc123",
         "first_name": "Aaron",
         "last_name": "Judge",
-        "bats": "right",
-        "throws": "right",
+        "bats": "R",
+        "throws": "R",
         "power": 90,
         "contact": 75,
         "speed": 60,
@@ -108,8 +108,8 @@ def test_player_record_from_row():
     assert record.id == "abc123"
     assert record.first_name == "Aaron"
     assert record.last_name == "Judge"
-    assert record.bats == "right"
-    assert record.throws == "right"
+    assert record.bats == "R"
+    assert record.throws == "R"
     assert record.position == "rf"
 
     assert isinstance(record.skills, PlayerSkills)
@@ -129,8 +129,8 @@ def test_player_record_does_not_allow_skill_mutation():
         id="1",
         first_name="Test",
         last_name="Player",
-        bats="right",
-        throws="right",
+        bats="R",
+        throws="R",
         position="lf",
         skills=skills,
     )
@@ -145,7 +145,7 @@ def test_player_record_equality():
     """
     skills = PlayerSkills({"power": 50})
 
-    a = PlayerRecord("1", "A", "B", "right", "right", "rf", skills)
-    b = PlayerRecord("1", "A", "B", "right", "right", "rf", skills)
+    a = PlayerRecord("1", "A", "B", "R", "R", "rf", skills)
+    b = PlayerRecord("1", "A", "B", "R", "R", "rf", skills)
 
     assert a == b

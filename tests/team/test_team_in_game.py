@@ -40,8 +40,8 @@ def player_record():
         id="p1",
         first_name="John",
         last_name="Doe",
-        bats="right",
-        throws="right",
+        bats="R",
+        throws="R",
         position="cf",
         skills=full_skills(),
     )
