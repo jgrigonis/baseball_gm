@@ -10,6 +10,7 @@ Implement pitcher recovery
 
 Implement pitcher changes, 
 eventually defensive shifts, mound visits
+substitutions, pinch hitting, pinch running
 
 Handedness accounted for many places
 

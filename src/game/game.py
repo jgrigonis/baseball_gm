@@ -460,6 +460,15 @@ class Game:
             GameStateError: If PA complete but events still queued
         """
         self.logger.trace("Entering _post_event")
+
+        # Check for pitching change after plate appearance completes
+        if self._plate_appearance_complete and self.current_pitcher:
+            if GameStrategy.should_consider_pitching_change(self.current_pitcher):
+                self.logger.info(
+                    f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
+                )
+                # TODO: Implement actual pitching change logic
+
         # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent
         if self._half_inning_over() and self._queue:
             # Keep only PlateAppearanceEndEvent for stat tracking
