@@ -23,6 +23,7 @@ class PitchThrownEvent(GameEvent):
     def apply(self, game):
         game.logger.trace("PitchThrownEvent applied")
         self.pitcher.game_stats.pitching.pitch()
+        self.pitcher.pitcher_fatigue.add_pitch(pitch_type=self.pitch_type)
 
     def should_log(self, game) -> bool:
         """We don't need to log every pitch."""

@@ -33,7 +33,7 @@ from src.game.intents.pitch import PrePitchSituation
 from src.game.resolver import EnhancedResolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
-
+from src.player.fatigue import FatigueLevel
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.logger import setup_logger
 
@@ -133,7 +133,6 @@ class Game:
             raise ValueError("Both home and away teams are required")
         if home_team.record.id == away_team.record.id:
             self.logger.debug("Home and away teams are the same")
-            # raise ValueError()
 
         # Teams
         self.home = home_team
@@ -437,7 +436,7 @@ class Game:
         else:
             self.pause()
 
-    def handle_input(self, inpt):
+    def handle_input(self, inpt) -> None:
         """
         Handle input.
         """
@@ -700,6 +699,13 @@ class Game:
 
         self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
         self.logger.info(f"⚾ Pitching: {self.current_pitcher.name}")
+        # Fatigue info
+        if self.current_pitcher.pitcher_fatigue:
+            fatigue = self.current_pitcher.pitcher_fatigue
+            self.logger.info(
+                f"⚾ Pitching: {self.current_pitcher.name} "
+                f"({fatigue.pitches_thrown}P, {fatigue.get_level().value})"
+            )
 
     # ------------------------------------------------------------------
     # Properties
@@ -769,4 +775,12 @@ class Game:
             ):
                 print(PlayerTableFormatter.horizontal_stat_header())
                 print(PlayerTableFormatter.horizontal_stats(player))
-                quit()
+                raise GameStateError(
+                    f"Plate appearances don't add up for {player.name}"
+                )
+
+    def check_pitcher_fatigue(self) -> FatigueLevel:
+        """Check current pitcher's fatigue level."""
+        if self.current_pitcher and self.current_pitcher.pitcher_fatigue:
+            return self.current_pitcher.pitcher_fatigue.get_level()
+        return FatigueLevel.FRESH

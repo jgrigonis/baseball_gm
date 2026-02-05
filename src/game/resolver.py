@@ -456,7 +456,7 @@ class Resolver:
 
     def _modify_for_pitcher(self, pitcher: PlayerInGame):
         """Modify probabilities based on pitcher skills."""
-        accuracy = pitcher.skills["accuracy"]
+        accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
         self.pitch_outcome.add("ball", -20 * (accuracy - 50))
         self.pitch_outcome.add("strike", 15 * (accuracy - 50))
         self.pitch_outcome.add("hit_by_pitch", -(accuracy - 50))
@@ -465,10 +465,12 @@ class Resolver:
         self.pitch_outcome.add("wild_pitch", -(accuracy - 50))
         self.pitch_outcome.add("passed_ball", int(-0.5 * (accuracy - 50)))
 
-        ground_balls = pitcher.skills["ground_balls"]
+        ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
+
         self.pitch_outcome.add("home_run", -(ground_balls - 40))
 
-        strikes = pitcher.skills["strikes"]
+        strikes = pitcher.get_effective_stat(pitcher.skills["strikes"])
+
         self.pitch_outcome.add("ball", -10 * (strikes - 50))
         self.pitch_outcome.add("strike", 20 * (strikes - 50))
         self.pitch_outcome.add("foul", 2 * (strikes - 50))
@@ -893,7 +895,7 @@ class Resolver:
     def _modify_in_play_for_pitcher(self, pitcher: PlayerInGame, score: Score):
         """Modify the probabilities based on pitcher skills."""
         # ground_balls
-        ground_balls = pitcher.skills["ground_balls"]
+        ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
         # changes ground_out, double_play, fielders_choice, sac_fly, triple_play
         self.in_play_outcome.add("ground_out", 4 * ground_balls)
         self.in_play_outcome.add("double_play", 0.8 * ground_balls)
@@ -2214,7 +2216,8 @@ class EnhancedResolver(Resolver):
         if base is THIRD and pitcher.throws[0].lower() == "r":
             success *= 1.1
         success = success * 50 / max(30, br_skill)
-        error *= 50 / max(30, pitcher.skills["accuracy"])
+        accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
+        error *= 50 / max(30, accuracy)
         if base is FIRST:
             error *= 50 / max(
                 1, game.pitch_team.current_first_baseman.skills["infield"]
