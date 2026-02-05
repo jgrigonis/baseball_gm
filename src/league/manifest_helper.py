@@ -1,6 +1,7 @@
 # src/league/manifest_helper.py
 import json
 from pathlib import Path
+import sys
 
 from src.io.player_csv_exporter import PlayerCSVExporter
 from src.team.team_factory import TeamFactory
@@ -8,8 +9,13 @@ from src.util.locations import TEAM_FILES_DIR
 
 
 def load_manifest(path: str) -> dict:
-    with open(path, "r") as f:
-        return json.load(f)
+    """Open and load the manifest file."""
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError as e:
+        print(e)
+        sys.exit(1)
 
 
 def validate_manifest_structure(manifest: dict) -> None:
