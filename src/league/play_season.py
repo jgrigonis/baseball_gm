@@ -189,7 +189,7 @@ def play_game(
 
     # Play game
     game = Game(
-        home_team=home_team, away_team=away_team, rng=rng, log_level=logging.INFO
+        home_team=home_team, away_team=away_team, rng=rng, log_level=logging.WARNING
     )
 
     result = game.play()
