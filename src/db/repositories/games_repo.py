@@ -122,4 +122,7 @@ class GameRepository:
             "SELECT completed FROM games WHERE id = ?", (game_id,)
         ).fetchone()
 
-        return row and row["completed"] == 1
+        if not row:
+            return False
+        
+        return row["completed"] == 1
