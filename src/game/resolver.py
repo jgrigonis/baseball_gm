@@ -2564,7 +2564,7 @@ class EnhancedResolver(Resolver):
                 # Validate: ensure we have exactly 2 runners
                 if len(steal_attempts) != 2:
                     raise RuntimeError(
-                        f"lead_safe_trail_out requires exactly 2 runners, got {len(steal_attempts)}"
+                        f"lead_out_trail_safe requires exactly 2 runners, got {len(steal_attempts)}"
                     )
 
                 # Lead runner out, trail runner safe
