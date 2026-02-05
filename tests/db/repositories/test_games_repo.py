@@ -28,7 +28,8 @@ def db_connection():
             winner_id TEXT,
             innings_played INTEGER,
             completed INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now'))
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT
         )
     """
     )
