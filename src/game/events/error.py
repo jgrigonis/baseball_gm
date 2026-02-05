@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from src.game.event import GameEvent
 from src.player.player_in_game import PlayerInGame
 
+
 @dataclass
 class FieldingErrorEvent(GameEvent):
     fielder: PlayerInGame
@@ -23,4 +24,3 @@ class ThrowingErrorEvent(GameEvent):
     runner: PlayerInGame
     from_base: int
     to_base: int
-

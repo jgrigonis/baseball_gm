@@ -285,7 +285,7 @@ class GameStrategy:
         if count.balls == 3 and count.strikes == 2:
             prob *= STEAL_FULL_COUNT_MOD  # More aggressive on full count
         elif count.balls < count.strikes:
-            prob *= STEAL_BEHIND_COUNT_MOD # Less aggressive when batter behind
+            prob *= STEAL_BEHIND_COUNT_MOD  # Less aggressive when batter behind
 
         # Outs adjustment
         if outs == 2:
@@ -436,7 +436,7 @@ class GameStrategy:
         # Setting up double play (less than 2 outs)
         if outs < 2:
             prob *= IBB_TWO_OUT_MODIFIER
-            
+
         if count.strikes > 0:
             prob *= IBB_STRIKES_MODIFIER
 
@@ -562,7 +562,7 @@ class GameStrategy:
         # TODO Could add a triple steal
         if game.bases.is_loaded:
             return None
-        
+
         # Priority 1: 2nd and 3rd (runner on 3rd can score)
         if game.bases.runner_on(SECOND) and game.bases.runner_on(THIRD):
             return [SECOND, THIRD]

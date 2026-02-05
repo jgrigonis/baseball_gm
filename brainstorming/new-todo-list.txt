@@ -1,6 +1,6 @@
 Todo list
 
-Defensive skill probs adjustments
+Implement ThrowingErrors
 
 Track defensive stats
 
