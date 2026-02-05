@@ -1,26 +1,26 @@
 # src/db/repositories/player_games.py
 """
-Insert per-game stats
+Repository for player game statistics.
 
-Fetch all games for a player
+Handles:
+- Inserting player stats for individual games
+- Retrieving player stats for a specific game
+- Fetching all games for a player
+- Aggregating stats by season
 
-Aggregate by season
-
-Hydrate Stats
-
-Uses these tables:
-player_game_stats
-games
-teams
+Uses tables:
+- player_game_stats
+- games
 """
-from src.stats.stats import Stats
-from src.stats.stats import SeasonStats
+from src.stats.stats import Stats, SeasonStats
 from src.stats.batting_stats import BattingStats
 from src.stats.pitching_stats import PitchingStats
 from src.stats.fielding_stats import FieldingStats
 
 
 class PlayerGameRepository:
+    """Repository for managing player game statistics."""
+
     def __init__(self, conn):
         self.conn = conn
 
@@ -35,10 +35,17 @@ class PlayerGameRepository:
         team_id: str,
         opponent_team_id: str,
         stats: Stats,
-    ):
+    ) -> None:
         """
         Persist a player's stats for a single game.
-        Idempotent per (game_id, player_id).
+        Idempotent - calling multiple times with same game_id/player_id updates the record.
+        
+        Args:
+            game_id: Game ID
+            player_id: Player ID
+            team_id: Player's team ID
+            opponent_team_id: Opponent team ID
+            stats: Stats object containing batting, pitching, and fielding stats
         """
 
         b = stats.batting
@@ -105,11 +112,34 @@ class PlayerGameRepository:
         )
 
         self.conn.commit()
+    
+    def delete_game_stats(self, game_id: str) -> None:
+        """
+        Delete all player stats for a game (for replaying games).
+        
+        Args:
+            game_id: Game ID
+        """
+        self.conn.execute(
+            "DELETE FROM player_game_stats WHERE game_id = ?",
+            (game_id,)
+        )
+        self.conn.commit()
+
+    # ------------------------------------------------------------
+    # READ
+    # ------------------------------------------------------------
 
     def get_for_game(self, game_id: str, player_id: str) -> Stats | None:
         """
-        READ side (hydration)
-        Fetch a player’s stats for a single game
+        Fetch a player's stats for a single game.
+        
+        Args:
+            game_id: Game ID
+            player_id: Player ID
+            
+        Returns:
+            Stats object if found, None otherwise
         """
         row = self.conn.execute(
             """
@@ -125,9 +155,16 @@ class PlayerGameRepository:
 
         return self._row_to_stats(row)
 
+
     def fetch_player_games(self, player_id: str) -> list[Stats]:
         """
-        Fetch all games for a player (career / season aggregation)
+        Fetch all game stats for a player across their career.
+        
+        Args:
+            player_id: Player ID
+            
+        Returns:
+            List of Stats objects, one per game, ordered by game_id
         """
         rows = self.conn.execute(
             """
@@ -140,6 +177,58 @@ class PlayerGameRepository:
         ).fetchall()
 
         return [self._row_to_stats(r) for r in rows]
+
+
+    def load_season_stats(self, player_id: str, season_id: str) -> SeasonStats:
+        """
+        Load aggregated stats for a player in a specific season.
+        
+        Args:
+            player_id: Player ID
+            season_id: Season ID
+            
+        Returns:
+            SeasonStats with aggregated stats and games played count
+        """
+        rows = self.conn.execute(
+            """
+            SELECT pgs.*
+            FROM player_game_stats pgs
+            JOIN games g ON pgs.game_id = g.id
+            WHERE pgs.player_id = ? AND g.season_id = ?
+            ORDER BY g.date
+            """,
+            (player_id, season_id),
+        ).fetchall()
+
+        # Aggregate stats across all games
+        aggregated = Stats()
+        for row in rows:
+            game_stats = self._row_to_stats(row)
+            aggregated.add(game_stats)
+
+        return SeasonStats(aggregated, games_played=len(rows))
+
+    def get_players_in_game(self, game_id: str) -> list[str]:
+        """
+        Get all player IDs who participated in a game.
+        
+        Args:
+            game_id: Game ID
+            
+        Returns:
+            List of player IDs
+        """
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT player_id FROM player_game_stats
+            WHERE game_id = ?
+            ORDER BY player_id
+            """,
+            (game_id,)
+        ).fetchall()
+        
+        return [row["player_id"] for row in rows]
 
     # ------------------------------------------------------------
     # MAPPING
@@ -190,40 +279,3 @@ class PlayerGameRepository:
         f.chances = f.putouts + f.assists + f.errors
 
         return s
-
-    # def dump_one(self) -> Stats | None:
-    #     """
-    #     Just a testing function, not used
-    #     """
-    #     row = self.conn.execute(
-    #         """
-    #         SELECT *
-    #         FROM player_game_stats
-    #         """
-    #     ).fetchone()
-    #     if row is None:
-    #         return None
-
-    #     return self._row_to_stats(row)
-
-    def load_season_stats(self, player_id: str, season_id: str) -> SeasonStats:
-        """
-        Load a season worth of stats
-        """
-        rows = self.conn.execute(
-            """
-            SELECT pgs.*
-            FROM player_game_stats pgs
-            JOIN games g ON pgs.game_id = g.id
-            WHERE pgs.player_id = ? AND g.season_id = ?
-            ORDER BY g.date
-            """,
-            (player_id, season_id),
-        ).fetchall()
-
-        stats = Stats()
-        for row in rows:
-            game_stats = self._row_to_stats(row)
-            stats.add(game_stats)  # Assuming Stats has an add method
-
-        return SeasonStats(stats, games_played=len(rows))

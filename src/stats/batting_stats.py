@@ -60,12 +60,12 @@ class BattingStats(object):
             f"  GDP: {self.gdp}\n"
             f"  GTP: {self.gtp}"
         )
-
     def add(self, other):
-        """Used for aggregating stats, or adding an entire stat instance to
-        another.
-        """
+        """Used for aggregating stats, or adding an entire stat instance to another."""
         for attr in vars(self):
+            # Skip non-numeric attributes like loggers
+            if attr.startswith('_') or attr == 'logger':
+                continue
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
     @property

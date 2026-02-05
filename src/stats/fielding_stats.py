@@ -33,8 +33,11 @@ class FieldingStats(object):
         return (self.putouts + self.assists) / self.chances
 
     def add(self, other):
-        """Add the fielding statistics from another object."""
+        """Used for aggregating stats, or adding an entire stat instance to another."""
         for attr in vars(self):
+            # Skip non-numeric attributes like loggers
+            if attr.startswith('_') or attr == 'logger':
+                continue
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
     def putout(self):
