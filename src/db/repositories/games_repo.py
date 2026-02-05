@@ -56,7 +56,7 @@ class GameRepository:
                 result.home_score,
                 result.away_score,
                 winner_id,
-                result.innings_played, 
+                result.innings_played,
                 now,
                 game_id,
             ),
@@ -118,7 +118,10 @@ class GameRepository:
                 innings_played = NULL, completed = 0, updated_at = ?
             WHERE id = ?
             """,
-            (now, game_id,),
+            (
+                now,
+                game_id,
+            ),
         )
         self.conn.commit()
 

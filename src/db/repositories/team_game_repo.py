@@ -1,3 +1,4 @@
+# src/db/repositories/team_game_repo.py
 """
 Repository for team game statistics.
 
@@ -5,12 +6,20 @@ Handles:
 - Saving team stats for a game
 - Loading team stats
 - Aggregating team stats by season
+- Generating standings
+
+Uses tables:
+- team_game_stats
+- games
+- teams
 """
 
 from src.team.team_in_game import TeamInGame
 
 
 class TeamGameRepository:
+    """Repository for managing team game statistics."""
+
     def __init__(self, conn):
         self.conn = conn
 
@@ -18,13 +27,23 @@ class TeamGameRepository:
         self,
         game_id: str,
         team_id: str,
-        opponent_id: str,
         runs: int,
         hits: int,
         errors: int,
         won: bool,
-    ):
-        """Save team stats for a game."""
+    ) -> None:
+        """
+        Save team stats for a game.
+        Idempotent - calling multiple times updates the record.
+
+        Args:
+            game_id: Game ID
+            team_id: Team ID
+            runs: Runs scored
+            hits: Team hits
+            errors: Team errors
+            won: Whether team won (True) or lost (False)
+        """
         self.conn.execute(
             """
             INSERT OR REPLACE INTO team_game_stats (
@@ -44,8 +63,20 @@ class TeamGameRepository:
         away_team: TeamInGame,
         home_score: int,
         away_score: int,
-    ):
-        """Save stats for both teams in a game."""
+    ) -> None:
+        """
+        Save stats for both teams in a game.
+        Convenience method that calculates team totals and saves both teams.
+
+        Args:
+            game_id: Game ID
+            home_team_id: Home team ID
+            away_team_id: Away team ID
+            home_team: Home TeamInGame object (for calculating stats)
+            away_team: Away TeamInGame object (for calculating stats)
+            home_score: Home team runs scored
+            away_score: Away team runs scored
+        """
         # Calculate team totals
         home_hits = sum(p.game_stats.batting.hits for p in home_team.players)
         away_hits = sum(p.game_stats.batting.hits for p in away_team.players)
@@ -58,26 +89,23 @@ class TeamGameRepository:
 
         # Save both teams
         self.save_stats(
-            game_id,
-            home_team_id,
-            away_team_id,
-            home_score,
-            home_hits,
-            home_errors,
-            home_won,
+            game_id, home_team_id, home_score, home_hits, home_errors, home_won
         )
         self.save_stats(
-            game_id,
-            away_team_id,
-            home_team_id,
-            away_score,
-            away_hits,
-            away_errors,
-            not home_won,
+            game_id, away_team_id, away_score, away_hits, away_errors, not home_won
         )
 
     def get_team_stats(self, game_id: str, team_id: str) -> dict | None:
-        """Get team stats for a specific game."""
+        """
+        Get team stats for a specific game.
+
+        Args:
+            game_id: Game ID
+            team_id: Team ID
+
+        Returns:
+            Dictionary with team stats, or None if not found
+        """
         row = self.conn.execute(
             """
             SELECT * FROM team_game_stats
@@ -99,8 +127,49 @@ class TeamGameRepository:
             "loss": row["loss"],
         }
 
+    def get_game_stats(self, game_id: str) -> list[dict]:
+        """
+        Get stats for both teams in a game.
+
+        Args:
+            game_id: Game ID
+
+        Returns:
+            List of team stat dictionaries (typically 2 - home and away)
+        """
+        rows = self.conn.execute(
+            """
+            SELECT * FROM team_game_stats
+            WHERE game_id = ?
+            ORDER BY win DESC
+            """,
+            (game_id,),
+        ).fetchall()
+
+        return [
+            {
+                "game_id": row["game_id"],
+                "team_id": row["team_id"],
+                "runs": row["runs"],
+                "hits": row["hits"],
+                "errors": row["errors"],
+                "win": row["win"],
+                "loss": row["loss"],
+            }
+            for row in rows
+        ]
+
     def get_season_stats(self, season_id: str, team_id: str) -> dict:
-        """Get aggregated stats for a team in a season."""
+        """
+        Get aggregated stats for a team in a season.
+
+        Args:
+            season_id: Season ID
+            team_id: Team ID
+
+        Returns:
+            Dictionary with aggregated season stats
+        """
         row = self.conn.execute(
             """
             SELECT 
@@ -112,7 +181,7 @@ class TeamGameRepository:
                 SUM(errors) as errors
             FROM team_game_stats tgs
             JOIN games g ON tgs.game_id = g.id
-            WHERE g.season_id = ? AND tgs.team_id = ?
+            WHERE g.season_id = ? AND tgs.team_id = ? AND g.completed = 1
             """,
             (season_id, team_id),
         ).fetchone()
@@ -124,15 +193,29 @@ class TeamGameRepository:
             "runs_scored": row["runs_scored"] or 0,
             "hits": row["hits"] or 0,
             "errors": row["errors"] or 0,
+            "win_pct": self._calculate_win_pct(row["wins"] or 0, row["losses"] or 0),
         }
 
-    def clear_stats(self, game_id: str):
-        """Clear team stats for a game (for replaying)."""
+    def clear_stats(self, game_id: str) -> None:
+        """
+        Clear team stats for a game (for replaying games).
+
+        Args:
+            game_id: Game ID
+        """
         self.conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (game_id,))
         self.conn.commit()
 
     def get_standings(self, season_id: str) -> list[dict]:
-        """Get season standings."""
+        """
+        Get season standings ordered by winning percentage.
+
+        Args:
+            season_id: Season ID
+
+        Returns:
+            List of team standings dictionaries, ordered by win_pct DESC
+        """
         rows = self.conn.execute(
             """
             SELECT 
@@ -163,3 +246,64 @@ class TeamGameRepository:
             }
             for row in rows
         ]
+
+    def get_team_record(self, season_id: str, team_id: str) -> tuple[int, int]:
+        """
+        Get team's win-loss record for a season.
+
+        Args:
+            season_id: Season ID
+            team_id: Team ID
+
+        Returns:
+            Tuple of (wins, losses)
+        """
+        stats = self.get_season_stats(season_id, team_id)
+        return (stats["wins"], stats["losses"])
+
+    def get_runs_differential(self, season_id: str, team_id: str) -> int:
+        """
+        Get team's run differential for a season.
+
+        Args:
+            season_id: Season ID
+            team_id: Team ID
+
+        Returns:
+            Run differential (runs scored - runs allowed)
+        """
+        row = self.conn.execute(
+            """
+            SELECT 
+                SUM(CASE WHEN tgs.team_id = ? THEN tgs.runs ELSE 0 END) as runs_scored,
+                SUM(CASE WHEN tgs.team_id != ? THEN tgs.runs ELSE 0 END) as runs_allowed
+            FROM team_game_stats tgs
+            JOIN games g ON tgs.game_id = g.id
+            WHERE g.season_id = ? AND g.completed = 1 
+                AND g.id IN (
+                    SELECT game_id FROM team_game_stats WHERE team_id = ?
+                )
+            """,
+            (team_id, team_id, season_id, team_id),
+        ).fetchone()
+
+        runs_scored = row["runs_scored"] or 0
+        runs_allowed = row["runs_allowed"] or 0
+        return runs_scored - runs_allowed
+
+    @staticmethod
+    def _calculate_win_pct(wins: int, losses: int) -> float:
+        """
+        Calculate winning percentage.
+
+        Args:
+            wins: Number of wins
+            losses: Number of losses
+
+        Returns:
+            Winning percentage (0.0 to 1.0), or 0.0 if no games played
+        """
+        total_games = wins + losses
+        if total_games == 0:
+            return 0.0
+        return round(wins / total_games, 3)
