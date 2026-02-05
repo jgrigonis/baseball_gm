@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS games (
     innings_played INTEGER,
     winner_id TEXT,
     created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT,
 
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE,
     FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE SET NULL,

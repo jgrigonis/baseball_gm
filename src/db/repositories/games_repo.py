@@ -8,6 +8,7 @@ Handles:
 - Querying games by season
 - Game completion status
 """
+import datetime
 
 from src.game.game import GameResult
 
@@ -43,17 +44,20 @@ class GameRepository:
 
     def save_result(self, game_id: str, result: GameResult, winner_id: str):
         """Save game result to database."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
         self.conn.execute(
             """
             UPDATE games 
-            SET home_score = ?, away_score = ?, winner_id = ?, innings_played = ?, completed = 1
+            SET home_score = ?, away_score = ?, winner_id = ?, innings_played = ?, completed = 1, updated_at = ?
             WHERE id = ?
             """,
             (
                 result.home_score,
                 result.away_score,
                 winner_id,
-                result.innings_played,
+                result.innings_played, 
+                now,
                 game_id,
             ),
         )
@@ -105,14 +109,16 @@ class GameRepository:
 
     def clear_result(self, game_id: str):
         """Clear game result (for replaying)."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
         self.conn.execute(
             """
             UPDATE games 
             SET home_score = NULL, away_score = NULL, winner_id = NULL, 
-                innings_played = NULL, completed = 0
+                innings_played = NULL, completed = 0, updated_at = ?
             WHERE id = ?
             """,
-            (game_id,),
+            (now, game_id,),
         )
         self.conn.commit()
 
