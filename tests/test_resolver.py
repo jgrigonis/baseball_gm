@@ -52,10 +52,10 @@ def test_pitch_thrown_event_captures_count_snapshot(resolver, pitch_intent):
 
 
 def test_pitch_can_result_in_ball(resolver, pitch_intent):
-    resolver.rng = FakeRNG([0.1])  # whatever threshold you defined
+    rng = FakeRNG([0.1] * 100)
+    resolver.set_rng(rng)  # Replace all RNGs at once
 
     events = resolver.resolve(pitch_intent, fake_game())
-
     assert any(e.__class__.__name__ == "BallEvent" for e in events)
 
 

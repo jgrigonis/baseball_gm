@@ -589,15 +589,15 @@ class GameStrategy:
         if sit.hit_and_run:
             return True
         return False
-    
+
     @staticmethod
     def should_consider_pitching_change(pitcher: PlayerInGame) -> bool:
         """Determine if manager should consider pitching change."""
         if not pitcher or not pitcher.pitcher_fatigue:
             return False
-        
+
         fatigue = pitcher.pitcher_fatigue
-        
+
         # Simple heuristics
         if fatigue.get_level() == FatigueLevel.EXHAUSTED:
             return True
@@ -605,5 +605,5 @@ class GameStrategy:
             return True
         if fatigue.batters_faced > 27:  # Faced lineup 3 times
             return True
-        
+
         return False

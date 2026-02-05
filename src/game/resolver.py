@@ -147,6 +147,14 @@ class Resolver:
             rng=rng,
         )
 
+    def set_rng(self, rng):
+        """Set RNG for resolver and all weighted choices."""
+        self.rng = rng
+        self.pitch_outcome.rng = rng
+        self.in_play_outcome.rng = rng
+        self.infielder_choice.rng = rng
+        self.outfielder_choice.rng = rng
+
     # ================================================================
     # Extract weight setup into dedicated methods
     # ================================================================

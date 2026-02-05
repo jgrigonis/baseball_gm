@@ -47,7 +47,11 @@ class PlayerInGame(object):
         self.in_lineup = False
         self.current_position = None
         self.is_injured = False
-        self.pitcher_fatigue = PitcherFatigue(stamina=self.skills["stamina"]) if self.record.is_pitcher else None
+        self.pitcher_fatigue = (
+            PitcherFatigue(stamina=self.skills["stamina"])
+            if self.record.is_pitcher
+            else None
+        )
         self.rate_player()
 
     def __str__(self):
@@ -76,8 +80,8 @@ class PlayerInGame(object):
         return p
 
     def get_effective_stat(self, base_value: int) -> int:
-            """Get stat value modified by fatigue."""
-            if self.pitcher_fatigue:
-                modifier = self.pitcher_fatigue.get_stat_modifier()
-                return int(base_value * modifier)
-            return base_value
+        """Get stat value modified by fatigue."""
+        if self.pitcher_fatigue:
+            modifier = self.pitcher_fatigue.get_stat_modifier()
+            return int(base_value * modifier)
+        return base_value

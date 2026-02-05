@@ -21,6 +21,8 @@ class FakePlayer:
     def __init__(self, id):
         self.id = id
         self.name = id
+        # Add pitcher_fatigue attribute
+        self.pitcher_fatigue = None  # Or initialize properly if is_pitcher
 
     def init_game_stats(self):
         pass  # Game calls this, but we don't care in tests
@@ -34,6 +36,10 @@ class FakePlayerInGame:
         # optional placeholders for future stats
         # self.stats = None
         self.skills = PlayerSkills(deepcopy(dict(SKILLS)))
+        self.pitcher_fatigue = None
+
+    def get_effective_stat(self, stat: int):
+        return stat
 
 
 class FakeLineupSlot:
@@ -112,9 +118,18 @@ def fake_game():
 class FakeRNG:
     def __init__(self, values):
         self.values = iter(values)
+        self.call_count = 0
 
     def random(self):
-        return next(self.values)
+        self.call_count += 1
+        try:
+            return next(self.values)
+        except StopIteration:
+            print(f"ERROR: FakeRNG exhausted after {self.call_count} calls!")
+            raise
+
+    # def random(self):
+    #     return next(self.values)
 
 
 class NullLogger:
