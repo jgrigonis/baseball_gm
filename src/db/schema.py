@@ -203,7 +203,9 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     field_putouts INTEGER CHECK (field_putouts >= 0),
     field_assists INTEGER CHECK (field_assists >= 0),
     field_errors INTEGER CHECK (field_errors >= 0),
-    -- field_chances INTEGER,
+    passed_balls INTEGER CHECK (passed_balls >= 0),
+    catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
+    catcher_cs INTEGER CHECK (catcher_cs >= 0),
 
     PRIMARY KEY (game_id, player_id),
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,

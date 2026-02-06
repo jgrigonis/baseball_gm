@@ -33,6 +33,14 @@ class FakePlayerInGame:
         self.id = id
         self.name = id
 
+        # game_stats with fielding stats
+        self.game_stats = SimpleNamespace(
+            fielding=SimpleNamespace(
+                putout=lambda: None,  # Mock method that does nothing
+                assist=lambda: None,  # You might need this too
+            )
+        )
+
         # optional placeholders for future stats
         # self.stats = None
         self.skills = PlayerSkills(deepcopy(dict(SKILLS)))
@@ -46,11 +54,6 @@ class FakeLineupSlot:
     def __init__(self, player_id: str, position="dh"):
         self.player = FakePlayerInGame(player_id)
         self.position = position
-
-
-# class FakeLineupSlot:
-#     def __init__(self, player):
-#         self.player = player
 
 
 def real_game(
@@ -87,6 +90,10 @@ def real_game(
 def fake_game():
     batter = FakeLineupSlot("b1")
     pitcher = FakePlayerInGame("p1")
+    catcher = FakePlayerInGame("c1")
+
+    # Create a fake pitch_team
+    pitch_team = SimpleNamespace(current_catcher=catcher)
 
     game = SimpleNamespace(
         # core state
@@ -100,6 +107,8 @@ def fake_game():
         # cursors
         current_batter=batter,
         current_pitcher=pitcher,
+        # team info
+        pitch_team=pitch_team,
         # PA state
         _plate_appearance_complete=False,
         _pa_end_reason=None,

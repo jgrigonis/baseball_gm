@@ -47,6 +47,7 @@ from src.game.events.out import (
     GroundOutEvent,
     FlyOutEvent,
     FoulFlyOutEvent,
+    PutOutEvent,
 )
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
@@ -125,6 +126,15 @@ class Resolver:
         self.in_play_outcome = WeightedChoice(rng=rng)
         self._setup_in_play_weights()
 
+        self.infielder_bunt_choice = WeightedChoice(
+            {
+                "shortstop": 2,
+                "second_baseman": 2,
+                "third_baseman": 20,
+                "pitcher": 15,
+                "catcher": 20,
+            }
+        )
         # Infielder selection chooser
         self.infielder_choice = WeightedChoice(
             {
@@ -145,6 +155,57 @@ class Resolver:
                 "left_fielder": 29,
             },
             rng=rng,
+        )
+
+        self.foul_fly_choice = WeightedChoice(
+            {
+                "right_fielder": 32,
+                "left_fielder": 30,
+                "first_baseman": 9,
+                "third_baseman": 9,
+                "second_baseman": 4,
+                "shortstop": 4,
+                "catcher": 4,
+                "pitcher": 2,
+            },
+            rng=rng,
+        )
+
+        self.double_play_choice = WeightedChoice(
+            {
+                "6-4-3": 43,
+                "4-6-3": 23,
+                "5-4-3": 12,
+                "3-6-3": 7,
+                "6-3": 4,
+                "3-6": 3,
+                "4-3": 2,
+                "1-6-3": 2,
+                "3-6-1": 2,
+            },
+            rng=rng,
+        )
+
+        self._3to1_dp_choice = WeightedChoice(
+            {
+                "5-2-3": 18,
+                "6-2-3": 25,
+                "4-2-3": 22,
+                "1-2-3": 12,
+                "3-2-3": 12,
+                "5-5": 4,
+                "6-5": 3,
+            },
+            rng=rng,
+        )
+
+        self._2to1_dp_choice = WeightedChoice(
+            {
+                "6-3": 25,
+                "6-5-3": 25,
+                "5-3": 25,
+                "4-6": 25,
+            }
         )
 
     def set_rng(self, rng):
@@ -567,6 +628,7 @@ class Resolver:
             events.extend(
                 [
                     StrikeOutEvent(batter=intent.batter, pitcher=intent.pitcher),
+                    PutOutEvent(game.pitch_team.current_catcher),
                     OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
                     PlateAppearanceEndEvent(reason="strikeout", batter=intent.batter),
                 ]
@@ -1050,6 +1112,7 @@ class Resolver:
                 )
 
         events.append(FlyOutEvent(batter=intent.batter))
+        events.append(PutOutEvent(self._select_outfielder(game)))
         events.append(OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher))
         events.append(PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter))
 
@@ -1092,6 +1155,11 @@ class Resolver:
             # Successful out
             reason = "ground_out"
             events.append(GroundOutEvent(batter=intent.batter))
+            events.append(
+                PutOutEvent(
+                    fielder=game.pitch_team.current_first_baseman, assist=fielder
+                )
+            )
             events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
             events.extend(
                 self._advance_all_runners(
@@ -1190,6 +1258,7 @@ class Resolver:
                     [
                         FoulTipCaughtThirdStrikeEvent(),
                         StrikeOutEvent(batter=intent.batter, pitcher=intent.pitcher),
+                        PutOutEvent(game.pitch_team.current_catcher),
                         OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
                         PlateAppearanceEndEvent(
                             reason="strikeout", batter=intent.batter
@@ -1212,8 +1281,10 @@ class Resolver:
 
     def _resolve_fly_out_foul(self, intent, game) -> list[GameEvent]:
         """Simply resolves a fly out foul, can happen with 2 strikes or less."""
+
         return [
             FoulFlyOutEvent(batter=intent.batter),
+            PutOutEvent(self._select_foul_out_catcher(game)),
             OutRecordedEvent(reason="foul_fly_out", pitcher=intent.pitcher),
             PlateAppearanceEndEvent(reason="out", batter=intent.batter),
         ]
@@ -1465,17 +1536,20 @@ class Resolver:
                     arm_strength, speed, skill
                 )
                 if self.rng.random() < throw_out_prob:
-                    events.append(
-                        OutRecordedEvent(
-                            reason="thrown_out_at_home", pitcher=intent.pitcher
-                        )
-                    )
-                    events.append(
-                        RunnerRemovedEvent(
-                            runner=game.bases.runner_on(FIRST),
-                            from_base=FIRST,
-                            reason="thrown_out_at_home",
-                        )
+                    events.extend(
+                        [
+                            PutOutEvent(
+                                fielder=game.pitch_team.current_catcher, assist=fielder
+                            ),
+                            OutRecordedEvent(
+                                reason="thrown_out_at_home", pitcher=intent.pitcher
+                            ),
+                            RunnerRemovedEvent(
+                                runner=game.bases.runner_on(FIRST),
+                                from_base=FIRST,
+                                reason="thrown_out_at_home",
+                            ),
+                        ]
                     )
                 else:
                     events.append(
@@ -1563,10 +1637,9 @@ class Resolver:
         events: list[GameEvent] = []
 
         events.append(DoublePlayEvent(batter=intent.batter, pitcher=intent.pitcher))
-        events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
-        events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
-
         if game.bases.runner_on(FIRST):
+            # pick double play type
+            events.extend(self._choose_double_play(game))
             events.append(
                 RunnerRemovedEvent(
                     runner=game.bases.runner_on(FIRST),
@@ -1586,6 +1659,7 @@ class Resolver:
         # No runner was on first, but we still need a double play
         # try third next.
         elif game.bases.runner_on(THIRD):
+            events.extend(self._3to1_double_play(game))
             events.append(
                 RunnerRemovedEvent(
                     runner=game.bases.runner_on(THIRD),
@@ -1640,6 +1714,7 @@ class Resolver:
                 )
         else:
             # must be a runner on second.
+            events.extend(self._2to1_double_play(game))
             events.append(
                 RunnerRemovedEvent(
                     runner=game.bases.runner_on(SECOND),
@@ -1659,10 +1734,286 @@ class Resolver:
                     )
                 )
 
+        events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
+        events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
         events.append(
             PlateAppearanceEndEvent(reason="double_play", batter=intent.batter)
         )
 
+        return events
+
+    def _choose_double_play(self, game) -> list[PutOutEvent]:
+        """
+        Pick a type of double play to perform, and return the proper PutOutEvent
+        """
+        events: list[GameEvent] = []
+        dp_type = self.double_play_choice.choose()
+        if dp_type == "6-4-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_second_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+        elif dp_type == "4-6-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_shortstop,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+        elif dp_type == "5-4-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_second_baseman,
+                    game.pitch_team.current_third_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+        elif dp_type == "6-3":
+            events.append(PutOutEvent(game.pitch_team.current_shortstop))
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+        elif dp_type == "4-3":
+            events.append(PutOutEvent(game.pitch_team.current_second_baseman))
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+        elif dp_type == "3-6-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_shortstop,
+                    game.pitch_team.current_first_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+        elif dp_type == "1-6-3":
+            events.append(
+                PutOutEvent(game.pitch_team.current_shortstop, game.current_pitcher)
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+        elif dp_type == "3-6":
+            events.append(PutOutEvent(game.pitch_team.current_first_baseman))
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_shortstop,
+                    game.pitch_team.current_first_baseman,
+                )
+            )
+        elif dp_type == "3-6-1":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_shortstop,
+                    game.pitch_team.current_first_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(game.current_pitcher, game.pitch_team.current_shortstop)
+            )
+        else:  # back to 6-4-3
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_second_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+        return events
+
+    def _3to1_double_play(self, game) -> list[PutOutEvent]:
+        """
+        Pick a type of double play to perform, and return the proper PutOutEvent.
+        In this case we are putting out the batter and a runner on third.
+        """
+        events: list[GameEvent] = []
+        dp_type = self._3to1_dp_choice.choose()
+        if dp_type == "5-2-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_catcher,
+                    game.pitch_team.current_third_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_catcher,
+                )
+            )
+        elif dp_type == "6-2-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_catcher,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_catcher,
+                )
+            )
+        elif dp_type == "4-2-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_catcher,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_catcher,
+                )
+            )
+        elif dp_type == "1-2-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_catcher,
+                    game.current_pitcher,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_catcher,
+                )
+            )
+        elif dp_type == "3-2-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_catcher,
+                    game.pitch_team.current_first_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_catcher,
+                )
+            )
+        elif dp_type == "5-5":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_third_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_third_baseman,
+                )
+            )
+        elif dp_type == "6-5":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_shortstop,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_third_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+        else:  # "4-5"
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_third_baseman,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
+
+        return events
+
+    def _2to1_double_play(self, game) -> list[PutOutEvent]:
+        """
+        Pick a type of double play to perform, and return the proper PutOutEvent.
+        In this case we are putting out the batter and a runner on second.
+        """
+        events: list[GameEvent] = []
+        dp_type = self._2to1_dp_choice.choose()
+
+        if dp_type == "6-3":
+            events.append(PutOutEvent(game.pitch_team.current_shortstop))
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+        elif dp_type == "6-5-3":
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_third_baseman,
+                    game.pitch_team.current_shortstop,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_third_baseman,
+                )
+            )
+        elif dp_type == "5-3":
+            events.append(PutOutEvent(game.pitch_team.current_third_baseman))
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_third_baseman,
+                )
+            )
+        elif dp_type == "4-6":
+            events.append(PutOutEvent(game.pitch_team.current_second_baseman))
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_shortstop,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
         return events
 
     def _resolve_fielders_choice(self, intent, game):
@@ -1692,13 +2043,15 @@ class Resolver:
         self._validate_game_state(game, max_outs=2, require_runners=True)
 
         events: list[GameEvent] = []
-
         events.append(FieldersChoiceEvent(batter=intent.batter, pitcher=intent.pitcher))
-        events.append(
-            OutRecordedEvent(reason="fielders_choice", pitcher=intent.pitcher)
-        )
 
         if game.bases.runner_on(THIRD):
+            # throw out at plate
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_catcher, self._select_infielder(game)
+                )
+            )
             events.append(
                 RunnerRemovedEvent(
                     runner=game.bases.runner_on(THIRD),
@@ -1717,6 +2070,37 @@ class Resolver:
             )
 
         elif game.bases.runner_on(FIRST):
+            # force out at second
+            if self.rng.random() < 0.5:
+                if self.rng.random() < 0.7:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_shortstop,
+                            game.pitch_team.current_second_baseman,
+                        )
+                    )
+                else:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_shortstop,
+                            game.pitch_team.current_third_baseman,
+                        )
+                    )
+            else:
+                if self.rng.random() < 0.7:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_second_baseman,
+                            game.pitch_team.current_shortstop,
+                        )
+                    )
+                else:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_second_baseman,
+                            game.pitch_team.current_third_baseman,
+                        )
+                    )
             events.append(
                 RunnerRemovedEvent(
                     runner=game.bases.runner_on(FIRST),
@@ -1738,6 +2122,8 @@ class Resolver:
                 )
 
         else:
+            # runner on second, just have the shortstop tag him out
+            events.append(PutOutEvent(game.pitch_team.current_shortstop))
             events.append(
                 RunnerRemovedEvent(
                     runner=game.bases.runner_on(SECOND),
@@ -1751,6 +2137,9 @@ class Resolver:
             self._advance_batter_to_base(
                 intent.batter, intent.pitcher, FIRST, "fielders_choice"
             )
+        )
+        events.append(
+            OutRecordedEvent(reason="fielders_choice", pitcher=intent.pitcher)
         )
         events.append(
             PlateAppearanceEndEvent(reason="fielders_choice", batter=intent.batter)
@@ -1774,6 +2163,11 @@ class Resolver:
         events: list[GameEvent] = []
 
         events.append(SacBuntEvent(batter=intent.batter))
+        events.append(
+            PutOutEvent(
+                game.pitch_team.current_first_baseman, self._select_infielder_bunt(game)
+            )
+        )
         events.append(OutRecordedEvent(reason="sac_bunt", pitcher=intent.pitcher))
 
         # Advance all runners one base
@@ -1804,6 +2198,7 @@ class Resolver:
         events: list[GameEvent] = []
 
         events.append(SacFlyEvent(batter=intent.batter))
+        events.append(PutOutEvent(self._select_outfielder(game)))
         events.append(OutRecordedEvent(reason="sac_fly", pitcher=intent.pitcher))
 
         runner = game.bases.runner_on(THIRD)
@@ -1856,13 +2251,24 @@ class Resolver:
         events: list[GameEvent] = []
 
         events.append(TriplePlayEvent(batter=intent.batter))
-        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
-        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
-        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
 
         if game.bases.is_loaded:
             r = self.rng.random()
             if r < self.TRIPLE_PLAY_FIRST_SECOND_THRESHOLD:
+                # hard coded around the horn
+                events.append(PutOutEvent(game.pitch_team.current_third_baseman))
+                events.append(
+                    PutOutEvent(
+                        game.pitch_team.current_second_baseman,
+                        game.pitch_team.current_third_baseman,
+                    )
+                )
+                events.append(
+                    PutOutEvent(
+                        game.pitch_team.current_first_baseman,
+                        game.pitch_team.current_second_baseman,
+                    )
+                )
                 events.append(
                     RunnerRemovedEvent(
                         runner=game.bases.runner_on(FIRST),
@@ -1878,6 +2284,15 @@ class Resolver:
                     )
                 )
             elif r < self.TRIPLE_PLAY_FIRST_THIRD_THRESHOLD:
+                # hard coded line out to third baseman, tag third, throw behind runner leaving first
+                events.append(PutOutEvent(game.pitch_team.current_third_baseman))
+                events.append(PutOutEvent(game.pitch_team.current_third_baseman))
+                events.append(
+                    PutOutEvent(
+                        game.pitch_team.current_first_baseman,
+                        game.pitch_team.current_third_baseman,
+                    )
+                )
                 events.append(
                     RunnerRemovedEvent(
                         runner=game.bases.runner_on(FIRST),
@@ -1893,6 +2308,20 @@ class Resolver:
                     )
                 )
             else:
+                # hard coded around the horn
+                events.append(PutOutEvent(game.pitch_team.current_third_baseman))
+                events.append(
+                    PutOutEvent(
+                        game.pitch_team.current_second_baseman,
+                        game.pitch_team.current_third_baseman,
+                    )
+                )
+                events.append(
+                    PutOutEvent(
+                        game.pitch_team.current_first_baseman,
+                        game.pitch_team.current_second_baseman,
+                    )
+                )
                 events.append(
                     RunnerRemovedEvent(
                         runner=game.bases.runner_on(THIRD),
@@ -1908,6 +2337,20 @@ class Resolver:
                     )
                 )
         else:  # bases not loaded, must be two runners on, and both are out
+            # hard coded around the horn
+            events.append(PutOutEvent(game.pitch_team.current_third_baseman))
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_second_baseman,
+                    game.pitch_team.current_third_baseman,
+                )
+            )
+            events.append(
+                PutOutEvent(
+                    game.pitch_team.current_first_baseman,
+                    game.pitch_team.current_second_baseman,
+                )
+            )
             if game.bases.runner_on(FIRST):
                 events.append(
                     RunnerRemovedEvent(
@@ -1933,11 +2376,29 @@ class Resolver:
                     )
                 )
 
+        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
+        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
+        events.append(OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher))
         events.append(
             PlateAppearanceEndEvent(reason="triple_play", batter=intent.batter)
         )
 
         return events
+
+    def _select_infielder_bunt(self, game):
+        """Randomly select which infielder fields a bunted ball"""
+        position = self.infielder_bunt_choice.choose()
+
+        position_map = {
+            "shortstop": game.pitch_team.current_shortstop,
+            "second_baseman": game.pitch_team.current_second_baseman,
+            "third_baseman": game.pitch_team.current_third_baseman,
+            "first_baseman": game.pitch_team.current_first_baseman,
+            "pitcher": game.current_pitcher,
+            "catcher": game.pitch_team.current_catcher,
+        }
+
+        return position_map[position]
 
     def _select_infielder(self, game):
         """Randomly select which infielder fields a ground ball"""
@@ -1961,6 +2422,24 @@ class Resolver:
             "center_fielder": game.pitch_team.current_center_fielder,
             "right_fielder": game.pitch_team.current_right_fielder,
             "left_fielder": game.pitch_team.current_left_fielder,
+        }
+
+        return position_map[position]
+
+    def _select_foul_out_catcher(self, game):
+        """Randomly select which outfielder fields a fly ball"""
+        position = self.foul_fly_choice.choose()
+
+        position_map = {
+            "center_fielder": game.pitch_team.current_center_fielder,
+            "right_fielder": game.pitch_team.current_right_fielder,
+            "left_fielder": game.pitch_team.current_left_fielder,
+            "shortstop": game.pitch_team.current_shortstop,
+            "second_baseman": game.pitch_team.current_second_baseman,
+            "third_baseman": game.pitch_team.current_third_baseman,
+            "first_baseman": game.pitch_team.current_first_baseman,
+            "pitcher": game.current_pitcher,
+            "catcher": game.pitch_team.current_catcher,
         }
 
         return position_map[position]
@@ -2181,6 +2660,16 @@ class EnhancedResolver(Resolver):
             events.append(
                 PickoffSuccessEvent(base=base, runner=runner, pitcher=intent.pitcher)
             )
+            if base == THIRD:
+                fielder = game.pitch_team.current_third_baseman
+            elif base == SECOND:
+                if self.rng.random() < 0.55:
+                    fielder = game.pitch_team.current_shortstop
+                else:
+                    fielder = game.pitch_team.current_second_baseman
+            else:
+                fielder = game.pitch_team.current_first_baseman
+            events.append(PutOutEvent(fielder=fielder, assist=intent.pitcher))
             events.append(OutRecordedEvent(reason="pickoff", pitcher=intent.pitcher))
             events.append(
                 RunnerRemovedEvent(runner=runner, from_base=base, reason="pickoff")
@@ -2359,6 +2848,18 @@ class EnhancedResolver(Resolver):
             events.append(
                 CaughtStealingEvent(runner=runner, from_base=from_base, to_base=to_base)
             )
+            assist = game.pitch_team.current_catcher
+            if to_base == SECOND:
+                if self.rng.random() < 0.55:
+                    fielder = game.pitch_team.current_shortstop
+                else:
+                    fielder = game.pitch_team.current_second_baseman
+            elif to_base == THIRD:
+                fielder = game.pitch_team.current_third_baseman
+            else:
+                fielder = game.pitch_team.current_catcher
+                assist = game.current_pitcher
+            events.append(PutOutEvent(fielder=fielder, assist=assist))
             events.append(
                 OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
             )
@@ -2485,6 +2986,20 @@ class EnhancedResolver(Resolver):
                         runner=runner, from_base=from_base, to_base=to_base
                     )
                 )
+                if self.rng.random() < 0.55:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_shortstop,
+                            game.pitch_team.current_catcher,
+                        )
+                    )
+                else:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_second_baseman,
+                            game.pitch_team.current_catcher,
+                        )
+                    )
                 events.append(
                     OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
                 )
@@ -2500,6 +3015,9 @@ class EnhancedResolver(Resolver):
                     CaughtStealingEvent(
                         runner=runner, from_base=from_base, to_base=to_base
                     )
+                )
+                events.append(
+                    PutOutEvent(game.pitch_team.current_catcher, game.current_pitcher)
                 )
                 events.append(
                     OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
@@ -2525,6 +3043,32 @@ class EnhancedResolver(Resolver):
                 )
             elif result == "both_out":
                 # Both out
+                if self.rng.random() < 0.55:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_shortstop,
+                            game.pitch_team.current_catcher,
+                        )
+                    )
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_catcher,
+                            game.pitch_team.current_shortstop,
+                        )
+                    )
+                else:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_second_baseman,
+                            game.pitch_team.current_catcher,
+                        )
+                    )
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_catcher,
+                            game.pitch_team.current_second_baseman,
+                        )
+                    )
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
                         CaughtStealingEvent(
@@ -2588,6 +3132,19 @@ class EnhancedResolver(Resolver):
                         runner=runner, from_base=from_base, to_base=to_base
                     )
                 )
+                if to_base == HOME:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_catcher, game.current_pitcher
+                        )
+                    )
+                elif to_base == THIRD:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_third_baseman,
+                            game.pitch_team.current_catcher,
+                        )
+                    )
                 events.append(
                     OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
                 )
@@ -2637,6 +3194,28 @@ class EnhancedResolver(Resolver):
                 )
 
                 from_base, to_base, runner = trail_attempt
+                if to_base == SECOND:
+                    if self.rng.random() < 0.55:
+                        events.append(
+                            PutOutEvent(
+                                game.pitch_team.current_shortstop,
+                                game.pitch_team.current_catcher,
+                            )
+                        )
+                    else:
+                        events.append(
+                            PutOutEvent(
+                                game.pitch_team.current_second_baseman,
+                                game.pitch_team.current_catcher,
+                            )
+                        )
+                elif to_base == THIRD:
+                    events.append(
+                        PutOutEvent(
+                            game.pitch_team.current_third_baseman,
+                            game.pitch_team.current_catcher,
+                        )
+                    )
                 events.append(
                     CaughtStealingEvent(
                         runner=runner, from_base=from_base, to_base=to_base
@@ -2654,6 +3233,36 @@ class EnhancedResolver(Resolver):
             elif result == "both_out":
                 # Both out - order doesn't matter
                 for from_base, to_base, runner in steal_attempts:
+                    # TODO this isn't quite right, we are assuming the catcher threw out both
+                    # If the double steal is 2nd and third, this is wrong.
+                    if to_base == SECOND:
+                        if self.rng.random() < 0.55:
+                            events.append(
+                                PutOutEvent(
+                                    game.pitch_team.current_shortstop,
+                                    game.pitch_team.current_catcher,
+                                )
+                            )
+                        else:
+                            events.append(
+                                PutOutEvent(
+                                    game.pitch_team.current_second_baseman,
+                                    game.pitch_team.current_catcher,
+                                )
+                            )
+                    elif to_base == THIRD:
+                        events.append(
+                            PutOutEvent(
+                                game.pitch_team.current_third_baseman,
+                                game.pitch_team.current_catcher,
+                            )
+                        )
+                    elif to_base == HOME:
+                        events.append(
+                            PutOutEvent(
+                                game.pitch_team.current_catcher, game.current_pitcher
+                            )
+                        )
                     events.append(
                         CaughtStealingEvent(
                             runner=runner, from_base=from_base, to_base=to_base

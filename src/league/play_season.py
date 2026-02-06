@@ -22,7 +22,9 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
     parser.add_argument("--season-id", "-i", required=True, help="Season ID to play")
-    parser.add_argument("--seed", "-s", type=int, help="Random seed for reproducibility")
+    parser.add_argument(
+        "--seed", "-s", type=int, help="Random seed for reproducibility"
+    )
     parser.add_argument(
         "--force", "-f", action="store_true", help="Replay completed games"
     )

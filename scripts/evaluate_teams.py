@@ -30,76 +30,77 @@ class TeamEvaluation:
 def load_manifest(manifest_path: Path) -> dict:
     """
     Load and parse a league manifest file.
-    
+
     Args:
         manifest_path: Path to manifest JSON file
-        
+
     Returns:
         Parsed manifest dictionary
-        
+
     Raises:
         FileNotFoundError: If manifest file doesn't exist
         json.JSONDecodeError: If manifest is invalid JSON
     """
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest file not found: {manifest_path}")
-    
-    with open(manifest_path, 'r') as f:
+
+    with open(manifest_path, "r") as f:
         return json.load(f)
 
 
-def evaluate_from_manifest(manifest_path: Path, base_dir: Path | None = None) -> List[TeamEvaluation]:
+def evaluate_from_manifest(
+    manifest_path: Path, base_dir: Path | None = None
+) -> List[TeamEvaluation]:
     """
     Evaluate all teams listed in a manifest file.
-    
+
     Args:
         manifest_path: Path to manifest JSON file
         base_dir: Base directory for CSV files (default: TEAM_FILES_DIR)
-        
+
     Returns:
         List of TeamEvaluation objects
     """
     if base_dir is None:
         base_dir = TEAM_FILES_DIR
-    
+
     manifest = load_manifest(manifest_path)
     tf = TeamFactory()
     evaluations = []
-    
+
     print(f"League: {manifest.get('league_name', 'Unknown')}")
-    print(f"Season: {manifest.get('season_name', 'Unknown')} ({manifest.get('season_year', 'N/A')})")
+    print(
+        f"Season: {manifest.get('season_name', 'Unknown')} ({manifest.get('season_year', 'N/A')})"
+    )
     print(f"Teams: {len(manifest.get('teams', []))}\n")
-    
-    for team_def in manifest.get('teams', []):
-        csv_filename = team_def['csv']
-        city = team_def.get('city', '')
-        mascot = team_def.get('mascot', '')
-        
+
+    for team_def in manifest.get("teams", []):
+        csv_filename = team_def["csv"]
+        city = team_def.get("city", "")
+        mascot = team_def.get("mascot", "")
+
         csv_path = Path(base_dir) / csv_filename
-        
+
         try:
             # Load team from CSV
             team_record = tf.from_csv(path=csv_path, city=city, mascot=mascot)
-            
+
             # Evaluate team
             ratings = TeamEvaluator.evaluate_team(team_record.players)
-            
+
             evaluations.append(
                 TeamEvaluation(
-                    filename=csv_filename,
-                    city=city,
-                    mascot=mascot,
-                    ratings=ratings
+                    filename=csv_filename, city=city, mascot=mascot, ratings=ratings
                 )
             )
-            
+
             print(f"✓ Evaluated {city} {mascot} ({csv_filename})")
-        
+
         except FileNotFoundError:
             print(f"✗ File not found: {csv_path}")
         except Exception as e:
             print(f"✗ Failed to evaluate {city} {mascot} ({csv_filename}): {e}")
-    
+
     return evaluations
 
 
@@ -261,7 +262,7 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="Evaluate all teams in a directory or from a manifest file."
     )
-    
+
     # Mutually exclusive group: either directory or manifest
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument(
@@ -276,7 +277,7 @@ def get_args():
         type=str,
         help="Manifest JSON file listing teams to evaluate",
     )
-    
+
     parser.add_argument(
         "--base-dir",
         "-b",
@@ -290,12 +291,7 @@ def get_args():
         default=10,
         help="Number of top teams to show in each category (default: 10)",
     )
-    parser.add_argument(
-        "--export", 
-        "-e", 
-        type=str,
-        help="Export results to CSV file"
-    )
+    parser.add_argument("--export", "-e", type=str, help="Export results to CSV file")
 
     return parser.parse_args()
 
@@ -309,22 +305,22 @@ def main():
         manifest_path = Path(args.manifest)
         if not manifest_path.is_absolute():
             manifest_path = LEAGUE_FILES_DIR / manifest_path
-        
+
         base_dir = Path(args.base_dir) if args.base_dir else TEAM_FILES_DIR
-        
+
         print(f"Evaluating teams from manifest: {manifest_path}")
         print(f"Base directory: {base_dir}\n")
-        
+
         evaluations = evaluate_from_manifest(manifest_path, base_dir)
-    
+
     else:
         # Evaluate from directory
         directory = Path(args.directory)
-        
+
         if not directory.exists():
             print(f"Error: Directory {directory} does not exist")
             return
-        
+
         print(f"Evaluating teams in {directory}...\n")
         evaluations = evaluate_directory(directory)
 

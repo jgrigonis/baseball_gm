@@ -31,6 +31,7 @@ def get_args():
     )
     return parser.parse_args()
 
+
 def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: TeamInGame):
     """Save player game stats to database."""
     # Clear existing stats if replaying
@@ -76,6 +77,7 @@ def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: Team
             saved_count += 1
 
     print(f"✅ Saved stats for {saved_count} players")
+
 
 def print_player_stats(home_team: TeamInGame, away_team: TeamInGame):
     """Save player game stats to database."""

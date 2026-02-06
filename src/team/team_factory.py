@@ -37,7 +37,7 @@ class TeamFactory:
     def generate_team(self, *, city: str, mascot: str, size: int = 40) -> TeamRecord:
         """
         Generate a team with realistic positional distribution.
-        
+
         For teams of 26+ players:
         - 7 starting pitchers (sp)
         - 6 relief pitchers (rp)
@@ -47,25 +47,25 @@ class TeamFactory:
         - 2 utility infielders (if)
         - 2 utility outfielders (of)
         - Remaining slots: random positions
-        
+
         For smaller teams, scales down proportionally while maintaining balance.
-        
+
         Args:
             city: Team city name
             mascot: Team mascot name
             size: Number of players on roster (default: 40)
-            
+
         Returns:
             TeamRecord with generated players
-            
+
         Raises:
             ValueError: If size < 9 (minimum for fielding a team)
         """
         if size < 9:
             raise ValueError("Team must have at least 9 players")
-        
+
         players = []
-        
+
         if size >= 26:
             # Full roster with specified distribution
             position_counts = {
@@ -82,22 +82,22 @@ class TeamFactory:
                 "if": 2,
                 "of": 2,
             }
-            
+
             # Generate players for each position
             for position, count in position_counts.items():
                 for _ in range(count):
                     players.append(self.player_factory.create(position=position))
-            
+
             # Fill remaining slots with random positions
             remaining = size - len(players)
             for _ in range(remaining):
                 players.append(self.player_factory.create())
-        
+
         else:
             # Smaller roster - use proportional distribution
             # Calculate how many slots for each position type
             pitchers_needed = max(1, size // 5)  # ~20% pitchers minimum
-            
+
             # Distribute pitchers
             if pitchers_needed == 1:
                 # Minimum: just 1 pitcher (use SP)
@@ -112,27 +112,29 @@ class TeamFactory:
                 core_positions = {"sp": sp_count, "rp": rp_count}
 
             # Add required defensive positions (8 positions)
-            core_positions.update({
-                "c": 1,
-                "ss": 1,
-                "2b": 1,
-                "3b": 1,
-                "1b": 1,
-                "lf": 1,
-                "cf": 1,
-                "rf": 1,
-            })
-            
+            core_positions.update(
+                {
+                    "c": 1,
+                    "ss": 1,
+                    "2b": 1,
+                    "3b": 1,
+                    "1b": 1,
+                    "lf": 1,
+                    "cf": 1,
+                    "rf": 1,
+                }
+            )
+
             # Generate core positions
             for position, count in core_positions.items():
                 for _ in range(count):
                     players.append(self.player_factory.create(position=position))
-            
+
             # Fill remaining slots
             remaining = size - len(players)
             for _ in range(remaining):
                 players.append(self.player_factory.create())
-        
+
         return TeamRecord(
             id=uuid.uuid4().hex,
             city=city,

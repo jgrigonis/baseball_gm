@@ -1,5 +1,6 @@
 # src/game/events/out.py
 from dataclasses import dataclass
+from typing import Optional
 
 from src.game.event import GameEvent
 from src.player.player_in_game import PlayerInGame
@@ -72,3 +73,25 @@ class FoulFlyOutEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         return f"{self.batter.name} hit a foul fly out."
+
+
+@dataclass(frozen=True)
+class PutOutEvent(GameEvent):
+    """
+    Simply adds an at bat to the batter
+    """
+
+    fielder: PlayerInGame
+    assist: Optional[PlayerInGame] = None
+
+    def apply(self, game):
+        self.fielder.game_stats.fielding.putout()
+        if self.assist:
+            self.assist.game_stats.fielding.assist()
+
+    def describe(self, game) -> str:
+        """Return human-readable description with game context."""
+        msg = f"{self.fielder.name} with the putout."
+        if self.assist:
+            msg += f" {self.assist.name} with the assist"
+        return msg
