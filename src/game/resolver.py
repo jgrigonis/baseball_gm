@@ -2831,7 +2831,12 @@ class EnhancedResolver(Resolver):
             # Successful steal
             self.logger.debug(f"Successful steal: {from_base} -> {to_base}")
             events.append(
-                StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                StolenBaseEvent(
+                    runner=runner,
+                    from_base=from_base,
+                    to_base=to_base,
+                    catcher=game.pitch_team.current_catcher,
+                )
             )
             events.append(
                 RunnerAdvancedEvent(
@@ -2846,7 +2851,12 @@ class EnhancedResolver(Resolver):
             # Caught stealing
             self.logger.debug(f"Caught stealing: {from_base} -> {to_base}")
             events.append(
-                CaughtStealingEvent(runner=runner, from_base=from_base, to_base=to_base)
+                CaughtStealingEvent(
+                    runner=runner,
+                    from_base=from_base,
+                    to_base=to_base,
+                    catcher=game.pitch_team.current_catcher,
+                )
             )
             assist = game.pitch_team.current_catcher
             if to_base == SECOND:
@@ -2924,7 +2934,12 @@ class EnhancedResolver(Resolver):
                 # Third → Home first, then First → Second
                 from_base, to_base, runner = third_attempt
                 events.append(
-                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                    StolenBaseEvent(
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
+                    )
                 )
                 events.append(
                     RunnerAdvancedEvent(
@@ -2938,7 +2953,12 @@ class EnhancedResolver(Resolver):
 
                 from_base, to_base, runner = first_attempt
                 events.append(
-                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                    StolenBaseEvent(
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
+                    )
                 )
                 events.append(
                     RunnerAdvancedEvent(
@@ -2953,7 +2973,12 @@ class EnhancedResolver(Resolver):
                 # Only runner on 1st steals (runner on 3rd holds)
                 from_base, to_base, runner = first_attempt
                 events.append(
-                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                    StolenBaseEvent(
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
+                    )
                 )
                 events.append(
                     RunnerAdvancedEvent(
@@ -2968,7 +2993,12 @@ class EnhancedResolver(Resolver):
                 # Runner on 1st out, runner on 3rd scores
                 from_base, to_base, runner = third_attempt
                 events.append(
-                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                    StolenBaseEvent(
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
+                    )
                 )
                 events.append(
                     RunnerAdvancedEvent(
@@ -2983,7 +3013,10 @@ class EnhancedResolver(Resolver):
                 from_base, to_base, runner = first_attempt
                 events.append(
                     CaughtStealingEvent(
-                        runner=runner, from_base=from_base, to_base=to_base
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
                     )
                 )
                 if self.rng.random() < 0.55:
@@ -3013,7 +3046,10 @@ class EnhancedResolver(Resolver):
                 from_base, to_base, runner = third_attempt
                 events.append(
                     CaughtStealingEvent(
-                        runner=runner, from_base=from_base, to_base=to_base
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
                     )
                 )
                 events.append(
@@ -3030,7 +3066,12 @@ class EnhancedResolver(Resolver):
 
                 from_base, to_base, runner = first_attempt
                 events.append(
-                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                    StolenBaseEvent(
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
+                    )
                 )
                 events.append(
                     RunnerAdvancedEvent(
@@ -3072,7 +3113,10 @@ class EnhancedResolver(Resolver):
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
                         CaughtStealingEvent(
-                            runner=runner, from_base=from_base, to_base=to_base
+                            runner=runner,
+                            from_base=from_base,
+                            to_base=to_base,
+                            catcher=game.pitch_team.current_catcher,
                         )
                     )
                     events.append(
@@ -3103,7 +3147,10 @@ class EnhancedResolver(Resolver):
                 for from_base, to_base, runner in steal_attempts:
                     events.append(
                         StolenBaseEvent(
-                            runner=runner, from_base=from_base, to_base=to_base
+                            runner=runner,
+                            from_base=from_base,
+                            to_base=to_base,
+                            catcher=game.pitch_team.current_catcher,
                         )
                     )
                     events.append(
@@ -3129,7 +3176,10 @@ class EnhancedResolver(Resolver):
                 from_base, to_base, runner = lead_attempt
                 events.append(
                     CaughtStealingEvent(
-                        runner=runner, from_base=from_base, to_base=to_base
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
                     )
                 )
                 if to_base == HOME:
@@ -3156,7 +3206,12 @@ class EnhancedResolver(Resolver):
 
                 from_base, to_base, runner = trail_attempt
                 events.append(
-                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                    StolenBaseEvent(
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
+                    )
                 )
                 events.append(
                     RunnerAdvancedEvent(
@@ -3181,7 +3236,12 @@ class EnhancedResolver(Resolver):
                 # Lead runner advances first (to clear the base)
                 from_base, to_base, runner = lead_attempt
                 events.append(
-                    StolenBaseEvent(runner=runner, from_base=from_base, to_base=to_base)
+                    StolenBaseEvent(
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
+                    )
                 )
                 events.append(
                     RunnerAdvancedEvent(
@@ -3218,7 +3278,10 @@ class EnhancedResolver(Resolver):
                     )
                 events.append(
                     CaughtStealingEvent(
-                        runner=runner, from_base=from_base, to_base=to_base
+                        runner=runner,
+                        from_base=from_base,
+                        to_base=to_base,
+                        catcher=game.pitch_team.current_catcher,
                     )
                 )
                 events.append(
@@ -3265,7 +3328,10 @@ class EnhancedResolver(Resolver):
                         )
                     events.append(
                         CaughtStealingEvent(
-                            runner=runner, from_base=from_base, to_base=to_base
+                            runner=runner,
+                            from_base=from_base,
+                            to_base=to_base,
+                            catcher=game.pitch_team.current_catcher,
                         )
                     )
                     events.append(

@@ -1,5 +1,6 @@
 # src/game/events/steal.py
 from dataclasses import dataclass
+from typing import Optional
 
 from src.game.event import GameEvent
 from src.player.player_in_game import PlayerInGame
@@ -58,6 +59,7 @@ class CaughtStealingEvent(GameEvent):
     runner: PlayerInGame
     from_base: int
     to_base: int
+    catcher: Optional[PlayerInGame] = None
 
     def apply(self, game):
         """
@@ -68,6 +70,8 @@ class CaughtStealingEvent(GameEvent):
         """
         # The OutRecordedEvent and RunnerRemovedEvent handle the state mutation
         self.runner.game_stats.batting.caught_stealing()
+        if self.catcher:
+            self.catcher.game_stats.fielding.catcher_caught_stealing()
 
     def describe(self, game) -> str:
         base_names = {2: "second", 3: "third", 4: "home"}

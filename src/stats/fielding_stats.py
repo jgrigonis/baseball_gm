@@ -10,6 +10,7 @@ class FieldingStats(object):
         self.passed_balls = 0
         self.catcher_interferences = 0
         self.catcher_cs = 0
+        self.catcher_sb = 0
 
     def __repr__(self):
         """Return the representation of the fielding statistics."""
@@ -69,4 +70,7 @@ class FieldingStats(object):
     def catcher_caught_stealing(self):
         """Add a catcher caught stealing."""
         self.catcher_cs += 1
-        self.error()
+
+    def catcher_stolen_base(self):
+        """Add a catcher stolen base."""
+        self.catcher_sb += 1
