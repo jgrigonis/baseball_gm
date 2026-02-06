@@ -90,7 +90,6 @@ pickoff():
     could result in nothing at all. (runner goes back to base, safe)
     could result in runner picked off at the base
     could result in a run down between bases.
-    TODO all those
 
 take_swing_bunt():
     if the take is on from the manager, take
