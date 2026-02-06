@@ -36,6 +36,7 @@ class StolenBaseEvent(GameEvent):
     runner: PlayerInGame
     from_base: int
     to_base: int
+    catcher: Optional[PlayerInGame] = None
 
     def apply(self, game):
         """
@@ -45,6 +46,8 @@ class StolenBaseEvent(GameEvent):
         RunnerAdvancedEvent that follows this event.
         """
         self.runner.game_stats.batting.steal()
+        if self.catcher:
+            self.catcher.game_stats.fielding.catcher_stolen_base()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
