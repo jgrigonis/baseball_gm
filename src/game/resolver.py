@@ -5,9 +5,7 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from src.game.bases import FIRST, SECOND, THIRD, HOME, Bases
-from src.game.count import Count
-from src.game.score import Score
+from src.game.bases import FIRST, SECOND, THIRD, HOME
 from src.game.event import GameEvent
 from src.game.events.hbp import HitByPitchEvent
 from src.game.events.error import FieldingErrorEvent, ThrowingErrorEvent
@@ -34,18 +32,14 @@ from src.game.events.out import (
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.intent import GameIntent
-from src.game.intents.pitch import PitchIntent, PrePitchSituation
+from src.game.intents.pitch import PitchIntent
 from src.game.intents.pick_off import PickOffIntent
 from src.game.resolvers.concurrent_events import resolve_concurrent_events
-from src.game.resolvers.count_modifiers import (
-    PITCH_COUNT_MODIFIERS,
-    IN_PLAY_COUNT_MODIFIERS,
-)
-from src.game.resolvers.fielder_selector import FielderSelector
+from src.game.resolvers.modifiers import PitchModifiers, InPlayModifiers
 from src.game.resolvers.pick_off import resolve_pickoff
 from src.game.resolvers.pitch import resolve_pitch
+from src.game.resolvers.probabilities import *
 from src.game.resolvers.walk import resolve_walk
-from src.player.player_in_game import PlayerInGame
 from src.util.weighted_choice import WeightedChoice
 
 
@@ -66,39 +60,6 @@ class Resolver:
     - apply events
     """
 
-    # Probability thresholds
-    FOUL_TIP_CAUGHT_PROB = 0.05
-    FOUL_FLY_OUT_WITH_TWO_STRIKES_PROB = 0.05
-    FOUL_FLY_OUT_BEFORE_TWO_STRIKES_PROB = 0.05
-    FOULED_OFF_THIRD_STRIKE_PROB = 0.95
-
-    # Triple play random selection boundaries
-    TRIPLE_PLAY_FIRST_SECOND_THRESHOLD = 0.3333
-    TRIPLE_PLAY_FIRST_THIRD_THRESHOLD = 0.6666
-
-    # Default tag up chances
-    PROB_TAGUP_FROM_SECOND_FLYOUT = 0.7
-    PROB_TAGUP_FROM_FIRST_FLYOUT = 0.3
-
-    # Base advancement probabilities
-    SCORE_FROM_SECOND_ON_SINGLE = 0.60  # 60% chance runner scores from 2nd
-    FIRST_TO_THIRD_ON_SINGLE = 0.35  # 35% chance runner goes 1st to 3rd
-    SCORE_FROM_FIRST_ON_DOUBLE = 0.21  # 21%
-    FIRST_TO_HOME_ON_SINGLE = 0.03
-
-    # Probability constants for events
-    PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
-    PICKOFF_ERROR_PROB = 0.05  # 5% throwing error
-
-    STEAL_SECOND_SUCCESS_PROB = 0.75  # 75% success rate
-    STEAL_THIRD_SUCCESS_PROB = 0.60  # 60% success rate
-    STEAL_HOME_SUCCESS_PROB = 0.05  # 5% success rate
-
-    STEAL_ON_PICKOFF_MODIFIER = 1.5
-
-    BASE_ERROR_RATE = 0.025
-
-    BASE_THROWOUT_PROB = 0.05
 
     def __init__(self, rng):
         self.rng = rng
@@ -114,30 +75,6 @@ class Resolver:
         # In-play outcome chooser
         self.in_play_outcome = WeightedChoice(rng=rng)
         self._setup_in_play_weights()
-
-        # ============================================================
-        # Initialize steal outcome choosers
-        # ============================================================
-        self.double_steal_choice = WeightedChoice(
-            {
-                "both_safe": 900,
-                "lead_out_trail_safe": 2500,
-                "lead_safe_trail_out": 800,
-                "both_out": 100,
-            },
-            rng=rng,
-        )
-
-        self.first_and_third_choice = WeightedChoice(
-            {
-                "both_safe": 600,
-                "first_advances_only": 1500,
-                "first_out_third_scores": 1000,
-                "third_out_first_advances": 2800,
-                "both_out": 100,
-            },
-            rng=rng,
-        )
 
     def set_rng(self, rng):
         """Set RNG for resolver and all weighted choices."""
@@ -258,116 +195,9 @@ class Resolver:
 
         raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
 
-    # def resolve(self, intent: GameIntent, game) -> List[GameEvent]:
-    #     """
-    #     Resolve an intent into one or more GameEvents.
-
-    #     Must always return at least one event.
-    #     """
-    #     if isinstance(intent, PitchIntent):
-    #         return resolve_pitch(self, intent, game)
-
-    #     raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
-
     def _apply_pitch_modifiers(self, game):
         """Apply all pitch probability modifiers based on game state."""
-        self._modify_for_bases(game.bases)
-        self._modify_for_situation(game.situation, game.current_batter.player)
-        self._modify_for_count(game.count)
-        self._modify_for_batter(game.current_batter.player)
-        self._modify_for_pitcher(game.pos("p"))
-
-    def _modify_for_bases(self, bases: Bases):
-        """
-        Modify probabilities based on base state.
-
-        BEFORE: Direct dict manipulation
-        AFTER: Use multiply(), set() methods
-        """
-        if bases.is_empty:
-            self.pitch_outcome.set("illegal_pitch", 10)
-        else:
-            self.pitch_outcome.set("balk", 10)
-            self.pitch_outcome.multiply("ball", 1.03)
-            self.pitch_outcome.multiply("strike", 0.97)
-            self.pitch_outcome.multiply("foul", 0.94)
-            self.pitch_outcome.multiply("in_play", 1.18)
-            self.pitch_outcome.multiply("home_run", 1.18)
-
-    def _modify_for_situation(self, situation: PrePitchSituation, batter: PlayerInGame):
-        """Modify probabilities based on game situation."""
-        bunting = batter.skills["bunting"]
-        contact = batter.skills["contact"]
-
-        if situation.bunt_attempt:
-            self.pitch_outcome.add("strike", -25 * bunting)
-            self.pitch_outcome.add("foul", 25 * (100 - bunting))
-            self.pitch_outcome.set("home_run", 0)
-            self.pitch_outcome.add("in_play", 25 * (100 - bunting))
-
-        if situation.hit_and_run:
-            self.pitch_outcome.add("strike", -90 * contact)
-            self.pitch_outcome.set("ball", 10)
-            self.pitch_outcome.add("foul", 4 * (100 - contact))
-            self.pitch_outcome.add("home_run", 2 * (contact - 60))
-            self.pitch_outcome.multiply("balk", 1.2)
-            self.pitch_outcome.multiply("catcher_interference", 1.2)
-            self.pitch_outcome.add("in_play", 90 * contact)
-
-        if situation.pitch_out:
-            self.pitch_outcome.multiply("strike", 0.05)
-            self.pitch_outcome.multiply("ball", 2.0)
-            self.pitch_outcome.multiply("foul", 0.05)
-            self.pitch_outcome.multiply("home_run", 0.01)
-            self.pitch_outcome.multiply("hit_by_pitch", 0.01)
-            self.pitch_outcome.multiply("catcher_interference", 1.2)
-            self.pitch_outcome.multiply("wild_pitch", 0.05)
-            self.pitch_outcome.multiply("in_play", 0.001)
-
-        if situation.hit_and_run and situation.pitch_out:
-            self.pitch_outcome.multiply("strike", 25)
-            self.pitch_outcome.multiply("foul", 10)
-            self.pitch_outcome.multiply("in_play", 50)
-
-    def _modify_for_count(self, count: Count):
-        """Apply count-based probability modifiers."""
-        modifiers = PITCH_COUNT_MODIFIERS.get((count.balls, count.strikes))
-        if modifiers:
-            for outcome, factor in modifiers.items():
-                self.pitch_outcome.multiply(outcome, factor)
-
-    def _modify_for_batter(self, batter: PlayerInGame):
-        """Modify probabilities based on batter skills."""
-        eye = batter.skills["eye"]
-        self.pitch_outcome.add("strike", -8 * (eye - 50))
-        self.pitch_outcome.add("foul", 4 * (eye - 50))
-        self.pitch_outcome.add("ball", 4 * (eye - 50))
-
-        contact = batter.skills["contact"]
-        self.pitch_outcome.add("strike", -4 * (contact - 50))
-        self.pitch_outcome.add("foul", int(1.2 * (contact - 50)))
-        self.pitch_outcome.add("in_play", int(1.5 * (contact - 50)))
-
-    def _modify_for_pitcher(self, pitcher: PlayerInGame):
-        """Modify probabilities based on pitcher skills."""
-        accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
-        self.pitch_outcome.add("ball", -20 * (accuracy - 50))
-        self.pitch_outcome.add("strike", 15 * (accuracy - 50))
-        self.pitch_outcome.add("hit_by_pitch", -(accuracy - 50))
-
-        # Only modify if non-zero
-        self.pitch_outcome.add("wild_pitch", -(accuracy - 50))
-        self.pitch_outcome.add("passed_ball", int(-0.5 * (accuracy - 50)))
-
-        ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
-
-        self.pitch_outcome.add("home_run", -(ground_balls - 40))
-
-        strikes = pitcher.get_effective_stat(pitcher.skills["strikes"])
-
-        self.pitch_outcome.add("ball", -10 * (strikes - 50))
-        self.pitch_outcome.add("strike", 20 * (strikes - 50))
-        self.pitch_outcome.add("foul", 2 * (strikes - 50))
+        PitchModifiers.apply_all(self, game)
 
     # ================================================================
     # HELPER METHODS
@@ -466,207 +296,7 @@ class Resolver:
 
     def _apply_in_play_modifiers(self, game):
         """Apply all in-play probability modifiers."""
-        self._modify_in_play_for_bases_outs(game.bases, game.inning.outs)
-        self._modify_in_play_for_situation(game.situation, game.current_batter.player)
-        self._modify_in_play_for_count(game.count)
-        self._modify_in_play_for_batter(game.current_batter.player, game.score)
-        self._modify_in_play_for_pitcher(game.pos("p"), game.score)
-        self._modify_in_play_for_defense(game)
-        self._modify_in_play_for_infield_defense(game)
-        self._apply_in_play_constraints(game.bases, game.inning.outs)
-
-    def _modify_in_play_for_bases_outs(self, bases: Bases, outs: int):
-        """Modify in-play probabilities based on bases and outs."""
-        if bases.runner_on(THIRD) and outs < 2:
-            self.in_play_outcome.set("sac_fly", 1400)
-            self.in_play_outcome.set("fly_out", 650)
-        if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
-            self.in_play_outcome.set("triple_play", 10)
-        if bases.runner_on(FIRST) and bases.runner_on(THIRD) and outs == 0:
-            self.in_play_outcome.set("triple_play", 2)
-        if bases.runner_on(SECOND) and bases.runner_on(THIRD) and outs == 0:
-            self.in_play_outcome.set("triple_play", 2)
-        if bases.runner_on(FIRST) and outs < 2:
-            self.in_play_outcome.set("double_play", 400)
-            self.in_play_outcome.multiply("ground_out", 0.5)
-            self.in_play_outcome.set("fielders_choice", 1950)
-
-    def _modify_in_play_for_situation(
-        self, situation: PrePitchSituation, batter: PlayerInGame
-    ):
-        """Modify in-play probabilities based on situation."""
-        bunting = batter.skills["bunting"]
-
-        if situation.bunt_attempt:
-            self.in_play_outcome.add("fly_out", -15 * bunting)
-            self.in_play_outcome.add("ground_out", 2 * (100 - bunting))
-            self.in_play_outcome.multiply("single", 0.08)
-            self.in_play_outcome.set("double", 0)
-            self.in_play_outcome.set("triple", 0)
-            self.in_play_outcome.add("double_play", 50 - bunting)
-            self.in_play_outcome.add("fielders_choice", -3 * bunting)
-            self.in_play_outcome.set("sac_bunt", 2000)
-            self.in_play_outcome.set("sac_fly", 0)
-
-        if situation.double_steal_attempt:
-            self.in_play_outcome.multiply("double_play", 0.5)
-            self.in_play_outcome.multiply("fielders_choice", 0.5)
-            self.in_play_outcome.multiply("ground_out", 2.0)
-            self.in_play_outcome.multiply("triple_play", 0.5)
-
-        if situation.hit_and_run:
-            self.in_play_outcome.multiply("ground_out", 2.0)
-            self.in_play_outcome.multiply("double_play", 0.5)
-            self.in_play_outcome.multiply("fielders_choice", 0.5)
-            self.in_play_outcome.multiply("triple_play", 0.5)
-
-        if situation.steal_attempt:
-            self.in_play_outcome.multiply("ground_out", 2.0)
-            self.in_play_outcome.multiply("double_play", 0.5)
-            self.in_play_outcome.multiply("fielders_choice", 0.5)
-            self.in_play_outcome.multiply("triple_play", 0.5)
-
-    def _modify_in_play_for_count(self, count: Count):
-        """Apply count-based in-play probability modifiers."""
-        modifiers = IN_PLAY_COUNT_MODIFIERS.get((count.balls, count.strikes))
-        if modifiers:
-            for outcome, factor in modifiers.items():
-                self.in_play_outcome.multiply(outcome, factor)
-
-    def _modify_in_play_for_batter(self, batter: PlayerInGame, score: Score):
-        """Modify the probabilities based on the batter skills."""
-        # power
-        power = batter.skills["power"]
-        self.in_play_outcome.add("fly_out", -4 * (power - 50))
-        self.in_play_outcome.add("single", -1 * (power - 50))
-        self.in_play_outcome.add("double", (power - 50))
-        contact = batter.skills["contact"]
-        self.in_play_outcome.add("single", 2 * (contact - 50))
-        self.in_play_outcome.add("ground_out", (contact - 50))
-        # speed
-        speed = batter.skills["speed"]
-        self.in_play_outcome.add("ground_out", -1 * (speed - 50))
-        self.in_play_outcome.add("single", 0.9 * (speed - 50))
-        self.in_play_outcome.add("double", 0.1 * (speed - 50))
-        self.in_play_outcome.add("triple", 0.1 * (speed - 50))
-        self.in_play_outcome.add("double_play", -1 * (speed - 50))
-        self.in_play_outcome.add("fielders_choice", (speed - 50))
-        clutch = batter.skills["clutch"]
-        if -2 < score.differential < 2:
-            self.in_play_outcome.add("fly_out", 2 * (clutch - 50))
-            self.in_play_outcome.add("ground_out", 2 * (clutch - 50))
-            self.in_play_outcome.add("single", (clutch - 50))
-            self.in_play_outcome.add("double", 0.5 * (clutch - 50))
-
-    def _modify_in_play_for_pitcher(self, pitcher: PlayerInGame, score: Score):
-        """Modify the probabilities based on pitcher skills."""
-        # ground_balls
-        ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
-        # changes ground_out, double_play, fielders_choice, sac_fly, triple_play
-        self.in_play_outcome.add("ground_out", 4 * ground_balls)
-        self.in_play_outcome.add("double_play", 0.8 * ground_balls)
-        self.in_play_outcome.add("fielders_choice", 0.5 * ground_balls)
-        self.in_play_outcome.add("sac_fly", -0.5 * (ground_balls - 50))
-
-        # clutch
-        clutch = pitcher.skills["clutch"]
-        if -2 < score.differential < 2:
-            self.in_play_outcome.add("fly_out", 2 * (clutch - 50))
-            self.in_play_outcome.add("ground_out", 2 * (clutch - 50))
-            self.in_play_outcome.add("single", 50 - clutch)
-            self.in_play_outcome.add("double", 0.5 * (50 - clutch))
-
-    def _modify_in_play_for_defense(self, game):
-        """Modify hit probabilities based on defensive positioning"""
-        # Average outfield range
-        lf_range = int(
-            (game.pos("lf").skills["speed"] + game.pos("lf").skills["outfield"]) / 2
-        )
-        cf_range = int(
-            (game.pos("cf").skills["speed"] + game.pos("cf").skills["outfield"]) / 2
-        )
-        rf_range = int(
-            (game.pos("rf").skills["speed"] + game.pos("rf").skills["outfield"]) / 2
-        )
-        avg_of_range = (lf_range + cf_range + rf_range) / 3
-
-        # Better range = more outs, fewer hits
-        range_factor = 50 / max(1, avg_of_range)
-        self.in_play_outcome.multiply("fly_out", range_factor)
-        self.in_play_outcome.multiply("single", 1 / range_factor)
-        self.in_play_outcome.multiply("double", 1 / range_factor)
-        self.in_play_outcome.multiply("triple", 1 / (range_factor * 1.5))
-
-    def _modify_in_play_for_infield_defense(self, game):
-        """Modify probabilities based on infield defensive skills"""
-        # Average infield skill
-        ss_skill = game.pos("ss").skills["infield"] + game.pos("ss").skills["arm"]
-        _2b_skill = game.pos("2b").skills["infield"] + game.pos("2b").skills["arm"]
-        _3b_skill = game.pos("3b").skills["infield"] + game.pos("3b").skills["arm"]
-        _1b_skill = game.pos("1b").skills["infield"]
-
-        avg_if_skill = (2 * ss_skill + 2 * _2b_skill + _3b_skill + _1b_skill) / 9
-
-        # Better infield defense
-        defense_factor = avg_if_skill / 50
-
-        # Increases double play probability
-        self.in_play_outcome.multiply("double_play", defense_factor)
-        # Decreases errors/fielders choices
-        self.in_play_outcome.multiply("fielders_choice", 1 / defense_factor)
-        # Slightly increases ground outs
-        self.in_play_outcome.multiply("ground_out", defense_factor * 1.1)
-
-    def _apply_in_play_constraints(self, bases: Bases, outs: int):
-        """
-        Apply final constraints to ensure probabilities are valid.
-
-        This is cleaner than the original because we can just set to 0.
-        """
-        if bases.number_of_baserunners < 2:
-            self.in_play_outcome.set("triple_play", 0)
-
-        if bases.number_of_baserunners < 1:
-            self.in_play_outcome.set("double_play", 0)
-            self.in_play_outcome.set("fielders_choice", 0)
-            self.in_play_outcome.set("sac_fly", 0)
-            self.in_play_outcome.set("sac_bunt", 0)
-
-        if not bases.runner_on(THIRD):
-            self.in_play_outcome.set("sac_fly", 0)
-
-        if outs > 0:
-            self.in_play_outcome.set("triple_play", 0)
-
-        if outs > 1:
-            self.in_play_outcome.set("double_play", 0)
-            self.in_play_outcome.set("fielders_choice", 0)
-            self.in_play_outcome.set("sac_fly", 0)
-            self.in_play_outcome.set("sac_bunt", 0)
-
-    def _handle_fielding_error_advancement(self, intent, game) -> list[GameEvent]:
-        # Advance all runners one base
-        events: list[GameEvent] = []
-
-        events.extend(
-            self._advance_all_runners(
-                game,
-                (THIRD, SECOND, FIRST),
-                advancement=1,
-                reason="fielding_error",
-                rbi_batter=intent.batter,
-            )
-        )
-
-        # Batter to first
-        events.append(
-            self._advance_batter_to_base(
-                intent.batter, intent.pitcher, FIRST, "fielding_error"
-            )
-        )
-
-        return events
-
+        InPlayModifiers.apply_all(self, game)
 
     # ================================================================
     # Event Checks

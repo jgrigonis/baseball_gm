@@ -6,6 +6,7 @@ from src.game.events.out import PutOutEvent, OutRecordedEvent
 from src.game.events.runners import RunnerRemovedEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
+from src.game.resolvers.probabilities import TRIPLE_PLAY_FIRST_SECOND_THRESHOLD, TRIPLE_PLAY_FIRST_THIRD_THRESHOLD
 
 
 def resolve_triple_play(resolver, intent, game):
@@ -29,7 +30,7 @@ def resolve_triple_play(resolver, intent, game):
 
     if game.bases.is_loaded:
         r = resolver.rng.random()
-        if r < resolver.TRIPLE_PLAY_FIRST_SECOND_THRESHOLD:
+        if r < TRIPLE_PLAY_FIRST_SECOND_THRESHOLD:
             # hard coded around the horn
             events.extend(
                 [
@@ -44,7 +45,7 @@ def resolve_triple_play(resolver, intent, game):
                     ),
                 ]
             )
-        elif r < resolver.TRIPLE_PLAY_FIRST_THIRD_THRESHOLD:
+        elif r < TRIPLE_PLAY_FIRST_THIRD_THRESHOLD:
             # line out to third baseman, tag third, throw behind runner leaving first
             events.extend(
                 [

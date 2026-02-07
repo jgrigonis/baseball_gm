@@ -12,7 +12,7 @@ from src.game.events.out import (
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent
 from src.game.resolvers.fielder_selector import FielderSelector
-
+from src.game.resolvers.probabilities import *
 
 def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
     """Resolve a fly out"""
@@ -72,8 +72,8 @@ def adjust_tagup_probs(resolver, bases: Bases, arm: int) -> tuple[float, float]:
     Returns:
         tuple[float, float]: (tag_from_second_prob, tag_from_first_prob)
     """
-    tag_from_second = resolver.PROB_TAGUP_FROM_SECOND_FLYOUT
-    tag_from_first = resolver.PROB_TAGUP_FROM_FIRST_FLYOUT
+    tag_from_second = PROB_TAGUP_FROM_SECOND_FLYOUT
+    tag_from_first = PROB_TAGUP_FROM_FIRST_FLYOUT
     if bases.runner_on(THIRD):
         tag_from_second = 0
     elif bases.runner_on(SECOND):
@@ -104,7 +104,7 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
     if resolver.rng.random() < error_prob:
         reason = "fielding_error"
         events.append(FieldingErrorEvent(fielder=fielder, batter=intent.batter))
-        events.extend(resolver._handle_fielding_error_advancement(intent, game))
+        events.extend(handle_fielding_error_advancement(resolver, intent, game))
     else:
         # Successful out
         reason = "ground_out"
@@ -123,10 +123,33 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
 
     return events
 
+def handle_fielding_error_advancement(resolver, intent, game) -> list[GameEvent]:
+    # Advance all runners one base
+    events: list[GameEvent] = []
+
+    events.extend(
+        resolver._advance_all_runners(
+            game,
+            (THIRD, SECOND, FIRST),
+            advancement=1,
+            reason="fielding_error",
+            rbi_batter=intent.batter,
+        )
+    )
+
+    # Batter to first
+    events.append(
+        resolver._advance_batter_to_base(
+            intent.batter, intent.pitcher, FIRST, "fielding_error"
+        )
+    )
+
+    return events
+
 
 def _calculate_error_probability(resolver, fielding_skill: int) -> float:
     """Calculate probability of fielding error based on skill"""
     # Base error rate around 2-3% for average fielder (skill=50)
-    base_error_rate = resolver.BASE_ERROR_RATE
+    base_error_rate = BASE_ERROR_RATE
     # Scale based on skill (lower skill = higher error rate)
     return base_error_rate * (100 - fielding_skill) / 50

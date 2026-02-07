@@ -15,6 +15,7 @@ from src.game.events.pick_off import (
 )
 from src.game.intents.pick_off import PickOffIntent
 from src.game.events.runners import RunnerRemovedEvent
+from src.game.resolvers.probabilities import *
 from src.player.player_in_game import PlayerInGame
 
 
@@ -99,8 +100,8 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> List[GameEvent]:
 def adjust_pickoff_success(
     resolver, base: int, pitcher: PlayerInGame, game, br_skill=50, steal_on=False
 ):
-    success = resolver.PICKOFF_SUCCESS_PROB
-    error = resolver.PICKOFF_ERROR_PROB
+    success = PICKOFF_SUCCESS_PROB
+    error = PICKOFF_ERROR_PROB
     resolver.logger.trace(
         f"pickoff success vars, base={base}, pitcher.throws={pitcher.throws}, baserunning={br_skill}"
     )
@@ -123,5 +124,5 @@ def adjust_pickoff_success(
     if base is THIRD:
         error *= 50 / max(1, game.pos("3b").skills["infield"])
     if steal_on:
-        success *= resolver.STEAL_ON_PICKOFF_MODIFIER
+        success *= STEAL_ON_PICKOFF_MODIFIER
     return success, error

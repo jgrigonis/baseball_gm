@@ -7,6 +7,7 @@ from src.game.events.out import OutRecordedEvent, PutOutEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.resolvers.fielder_selector import FielderSelector
+from src.game.resolvers.probabilities import *
 
 
 def resolve_single(resolver, intent, game) -> list[GameEvent]:
@@ -44,7 +45,7 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
         baserunning = runner.skills["base_running"]
 
         # Base probability of scoring from second on a single: 60%
-        base_score_prob = resolver.SCORE_FROM_SECOND_ON_SINGLE
+        base_score_prob = SCORE_FROM_SECOND_ON_SINGLE
         arm_factor = 50 / arm_strength  # Strong arm reduces scoring
         runner_factor = (speed + baserunning) / 100
 
@@ -80,8 +81,8 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
         baserunning = runner.skills["base_running"]
 
         # Base probability of first to third on a single: 35%
-        base_f2t_prob = resolver.FIRST_TO_THIRD_ON_SINGLE
-        base_fth_prob = resolver.FIRST_TO_HOME_ON_SINGLE
+        base_f2t_prob = FIRST_TO_THIRD_ON_SINGLE
+        base_fth_prob = FIRST_TO_HOME_ON_SINGLE
         arm_factor = 50 / arm_strength  # Strong arm reduces advancement
         runner_factor = (speed + baserunning) / 100
 
@@ -162,7 +163,7 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
             )
         )
         # Calculate scoring probability based on arm strength
-        base_score_prob = resolver.SCORE_FROM_FIRST_ON_DOUBLE
+        base_score_prob = SCORE_FROM_FIRST_ON_DOUBLE
         arm_factor = 50 / arm_strength  # Strong arm reduces scoring
         runner_factor = (speed + skill) / 100
         score_prob = base_score_prob * runner_factor * arm_factor
@@ -237,7 +238,7 @@ def _calculate_throw_out_probability(
 ) -> float:
     """Calculate probability of throwing out a runner"""
     # Strong arm and slow runner = higher throw out probability
-    base_prob = resolver.BASE_THROWOUT_PROB
+    base_prob = BASE_THROWOUT_PROB
     arm_factor = arm / 50
     runner_factor = 50 / ((speed + baserunning) / 2)
     return base_prob * arm_factor * runner_factor

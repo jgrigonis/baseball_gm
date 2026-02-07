@@ -15,6 +15,8 @@ from src.game.events.steal import (
     CaughtStealingEvent,
     DoubleStealAttemptEvent,
 )
+from src.game.resolvers.probabilities import *
+from src.util.weighted_choice import WeightedChoice
 
 
 def resolve_steal_attempt(
@@ -41,12 +43,12 @@ def resolve_steal_attempt(
     arm = game.pos("c").skills["arm"]
 
     if to_base == SECOND:
-        success_prob = resolver.STEAL_SECOND_SUCCESS_PROB
+        success_prob = STEAL_SECOND_SUCCESS_PROB
 
     elif to_base == THIRD:
-        success_prob = resolver.STEAL_THIRD_SUCCESS_PROB
+        success_prob = STEAL_THIRD_SUCCESS_PROB
     elif to_base == HOME:
-        success_prob = resolver.STEAL_HOME_SUCCESS_PROB
+        success_prob = STEAL_HOME_SUCCESS_PROB
         arm = 50  # We just set this to average as it's not relevant
     else:
         success_prob = 0.50
@@ -154,10 +156,19 @@ def resolve_double_steal(
     is_first_and_third = FIRST in from_bases and THIRD in from_bases
 
     if is_first_and_third:
-        # Reset to base probabilities and apply modifiers
-        resolver.first_and_third_choice.reset()
-        _modify_first_and_third_probs(resolver, game)
-        result = resolver.first_and_third_choice.choose()
+        first_and_third_choice = WeightedChoice(
+            {
+                "both_safe": 600,
+                "first_advances_only": 1500,
+                "first_out_third_scores": 1000,
+                "third_out_first_advances": 2800,
+                "both_out": 100,
+            },
+            rng=game.rng,
+        )
+        # Apply modifiers and choose
+        _modify_first_and_third_probs(first_and_third_choice, game)
+        result = first_and_third_choice.choose()
         # # 1st and 3rd special handling
         first_attempt = next(a for a in steal_attempts if a[0] == FIRST)
         third_attempt = next(a for a in steal_attempts if a[0] == THIRD)
@@ -365,9 +376,18 @@ def resolve_double_steal(
 
     else:
         # Reset to base probabilities and apply modifiers
-        resolver.double_steal_choice.reset()
-        _modify_double_steal_probs(resolver, game)
-        result = resolver.double_steal_choice.choose()
+        double_steal_choice = WeightedChoice(
+            {
+                "both_safe": 900,
+                "lead_out_trail_safe": 2500,
+                "lead_safe_trail_out": 800,
+                "both_out": 100,
+            },
+            rng=game.rng,
+        )
+        # Apply modifiers and choose
+        _modify_double_steal_probs(double_steal_choice, game)
+        result = double_steal_choice.choose()
 
         # Standard double steal (1st/2nd or 2nd/3rd)
         # steal_attempts is already sorted in reverse order (lead runner first)
@@ -571,11 +591,11 @@ def resolve_double_steal(
     return events
 
 
-def _modify_first_and_third_probs(resolver, game):
+def _modify_first_and_third_probs(first_and_third_choice, game):
     """
     Apply modifiers for first-and-third double steal.
 
-    BEFORE: Direct manipulation of resolver.first_and_third_probs dict
+    BEFORE: Direct manipulation of first_and_third_probs dict
     AFTER: Use WeightedChoice methods
     """
     speed1 = game.bases.runner_on(FIRST).skills["speed"]
@@ -591,29 +611,29 @@ def _modify_first_and_third_probs(resolver, game):
     defense_factor2 = 50 / arm2
 
     # Apply multipliers
-    resolver.first_and_third_choice.multiply(
+    first_and_third_choice.multiply(
         "both_safe", runner_factor * defense_factor
     )
-    resolver.first_and_third_choice.multiply(
+    first_and_third_choice.multiply(
         "first_advances_only", runner_factor * defense_factor
     )
-    resolver.first_and_third_choice.multiply(
+    first_and_third_choice.multiply(
         "first_out_third_scores", runner_factor * defense_factor * defense_factor2
     )
-    resolver.first_and_third_choice.multiply(
+    first_and_third_choice.multiply(
         "third_out_first_advances", runner_factor * defense_factor * defense_factor2
     )
 
     # Inverse multiplier for both_out
     both_out_factor = (200 / (speed1 + br1 + speed3 + br3)) * (arm / 50) * (arm2 / 50)
-    resolver.first_and_third_choice.multiply("both_out", both_out_factor)
+    first_and_third_choice.multiply("both_out", both_out_factor)
 
 
-def _modify_double_steal_probs(resolver, game):
+def _modify_double_steal_probs(double_steal_choice, game):
     """
     Apply modifiers for standard double steal.
 
-    BEFORE: Direct manipulation of resolver.double_steal_probs dict
+    BEFORE: Direct manipulation of double_steal_probs dict
     AFTER: Use WeightedChoice methods
     """
     if game.bases.runner_on(FIRST):
@@ -635,7 +655,7 @@ def _modify_double_steal_probs(resolver, game):
     runner_factor = (speed1 + br1 + speed2 + br2) / 200
     defense_factor = 50 / arm
 
-    resolver.double_steal_choice.multiply("both_safe", runner_factor * defense_factor)
+    double_steal_choice.multiply("both_safe", runner_factor * defense_factor)
 
     if arm2:
         both_out_factor = (
@@ -646,4 +666,4 @@ def _modify_double_steal_probs(resolver, game):
             (200 / (speed1 + br1 + speed2 + br2)) * (arm / 50) * (catcher / 50)
         )
 
-    resolver.double_steal_choice.multiply("both_out", both_out_factor)
+    double_steal_choice.multiply("both_out", both_out_factor)

@@ -13,6 +13,7 @@ from src.game.events.strike import (
 )
 from src.game.events.strikeout import StrikeOutEvent
 from src.game.resolvers.fielder_selector import FielderSelector
+from src.game.resolvers.probabilities import *
 
 
 def resolve_foul(resolver, intent, game) -> list[GameEvent]:
@@ -29,7 +30,7 @@ def resolve_foul(resolver, intent, game) -> list[GameEvent]:
     if game.count.strikes + 1 >= 3:
         r = resolver.rng.random()
         foul_tip_caught_prob = (
-            resolver.FOUL_TIP_CAUGHT_PROB * game.pos("c").skills["catching"] / 50
+            FOUL_TIP_CAUGHT_PROB * game.pos("c").skills["catching"] / 50
         )
         if r < foul_tip_caught_prob:
             resolver.logger.debug("foul tip strike out ending pa")
@@ -42,14 +43,14 @@ def resolve_foul(resolver, intent, game) -> list[GameEvent]:
                     PlateAppearanceEndEvent(reason="strikeout", batter=intent.batter),
                 ]
             )
-        elif r < resolver.FOULED_OFF_THIRD_STRIKE_PROB:
+        elif r < FOULED_OFF_THIRD_STRIKE_PROB:
             events.append(FouledOffThirdStrikeEvent())
         else:
             events.extend(resolve_fly_out_foul(resolver, intent, game))
 
     else:  # less than 2 strikes
         r = resolver.rng.random()
-        if r < resolver.FOUL_FLY_OUT_BEFORE_TWO_STRIKES_PROB:
+        if r < FOUL_FLY_OUT_BEFORE_TWO_STRIKES_PROB:
             events.extend(resolve_fly_out_foul(resolver, intent, game))
         else:
             events.append(FoulStrikeEvent(swinging=True))
