@@ -179,8 +179,8 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
             )
         else:
             # Check if runner is thrown out trying to score
-            throw_out_prob = resolver._calculate_throw_out_probability(
-                arm_strength, speed, skill
+            throw_out_prob = _calculate_throw_out_probability(
+                resolver, arm_strength, speed, skill
             )
             if resolver.rng.random() < throw_out_prob:
                 events.extend(
@@ -230,6 +230,17 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
 
     return events
 
+def _calculate_throw_out_probability(
+    resolver, arm: int, speed: int, baserunning: int
+) -> float:
+    """Calculate probability of throwing out a runner"""
+    # Strong arm and slow runner = higher throw out probability
+    base_prob = resolver.BASE_THROWOUT_PROB
+    arm_factor = arm / 50
+    runner_factor = 50 / ((speed + baserunning) / 2)
+    return base_prob * arm_factor * runner_factor
+
+
 def resolve_triple(resolver, intent, game) -> list[GameEvent]:
     """
     Resolve a triple:
@@ -260,7 +271,6 @@ def resolve_triple(resolver, intent, game) -> list[GameEvent]:
     events.append(PlateAppearanceEndEvent(reason="triple", batter=intent.batter))
 
     return events
-
 
 
 def resolve_home_run(resolver, intent, game) -> list[GameEvent]:
