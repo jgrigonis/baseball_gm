@@ -114,12 +114,12 @@ def resolve_steal_attempt(
 
     return events
 
+
 def adjust_steal_prob(
     resolver, prob, run_speed=50, base_running=50, catcher_arm=50, catching_skill=50
 ) -> float:
-    return (
-        (run_speed + base_running) / max(1, (catcher_arm + catching_skill)) * prob
-    )
+    return (run_speed + base_running) / max(1, (catcher_arm + catching_skill)) * prob
+
 
 def resolve_double_steal(
     resolver, from_bases: List[int], intent: PitchIntent, game
@@ -156,7 +156,7 @@ def resolve_double_steal(
     if is_first_and_third:
         # Reset to base probabilities and apply modifiers
         resolver.first_and_third_choice.reset()
-        resolver._modify_first_and_third_probs(game)
+        _modify_first_and_third_probs(resolver, game)
         result = resolver.first_and_third_choice.choose()
         # # 1st and 3rd special handling
         first_attempt = next(a for a in steal_attempts if a[0] == FIRST)
@@ -351,9 +351,7 @@ def resolve_double_steal(
                     )
                 )
                 events.append(
-                    OutRecordedEvent(
-                        reason="caught_stealing", pitcher=intent.pitcher
-                    )
+                    OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
                 )
                 events.append(
                     RunnerRemovedEvent(
@@ -368,7 +366,7 @@ def resolve_double_steal(
     else:
         # Reset to base probabilities and apply modifiers
         resolver.double_steal_choice.reset()
-        resolver._modify_double_steal_probs(game)
+        _modify_double_steal_probs(resolver, game)
         result = resolver.double_steal_choice.choose()
 
         # Standard double steal (1st/2nd or 2nd/3rd)
@@ -558,9 +556,7 @@ def resolve_double_steal(
                     )
                 )
                 events.append(
-                    OutRecordedEvent(
-                        reason="caught_stealing", pitcher=intent.pitcher
-                    )
+                    OutRecordedEvent(reason="caught_stealing", pitcher=intent.pitcher)
                 )
                 events.append(
                     RunnerRemovedEvent(
@@ -573,3 +569,81 @@ def resolve_double_steal(
             raise RuntimeError(f"Unknown result={result} double_steal_probs")
 
     return events
+
+
+def _modify_first_and_third_probs(resolver, game):
+    """
+    Apply modifiers for first-and-third double steal.
+
+    BEFORE: Direct manipulation of resolver.first_and_third_probs dict
+    AFTER: Use WeightedChoice methods
+    """
+    speed1 = game.bases.runner_on(FIRST).skills["speed"]
+    br1 = game.bases.runner_on(FIRST).skills["base_running"]
+    speed3 = game.bases.runner_on(THIRD).skills["speed"]
+    br3 = game.bases.runner_on(THIRD).skills["base_running"]
+    arm = game.pos("c").skills["arm"]
+    arm2 = game.pos("2b").skills["arm"]
+
+    # Calculate skill factor
+    runner_factor = (speed1 + br1 + speed3 + br3) / 200
+    defense_factor = 50 / arm
+    defense_factor2 = 50 / arm2
+
+    # Apply multipliers
+    resolver.first_and_third_choice.multiply(
+        "both_safe", runner_factor * defense_factor
+    )
+    resolver.first_and_third_choice.multiply(
+        "first_advances_only", runner_factor * defense_factor
+    )
+    resolver.first_and_third_choice.multiply(
+        "first_out_third_scores", runner_factor * defense_factor * defense_factor2
+    )
+    resolver.first_and_third_choice.multiply(
+        "third_out_first_advances", runner_factor * defense_factor * defense_factor2
+    )
+
+    # Inverse multiplier for both_out
+    both_out_factor = (200 / (speed1 + br1 + speed3 + br3)) * (arm / 50) * (arm2 / 50)
+    resolver.first_and_third_choice.multiply("both_out", both_out_factor)
+
+
+def _modify_double_steal_probs(resolver, game):
+    """
+    Apply modifiers for standard double steal.
+
+    BEFORE: Direct manipulation of resolver.double_steal_probs dict
+    AFTER: Use WeightedChoice methods
+    """
+    if game.bases.runner_on(FIRST):
+        runner1 = game.bases.runner_on(FIRST)
+        runner2 = game.bases.runner_on(SECOND)
+        arm2 = game.pos("3b").skills["arm"]
+    else:
+        runner1 = game.bases.runner_on(SECOND)
+        runner2 = game.bases.runner_on(THIRD)
+        arm2 = None
+
+    speed1 = runner1.skills["speed"]
+    br1 = runner1.skills["base_running"]
+    speed2 = runner2.skills["speed"]
+    br2 = runner2.skills["base_running"]
+    arm = game.pos("c").skills["arm"]
+    catcher = game.pos("c").skills["catching"]
+
+    runner_factor = (speed1 + br1 + speed2 + br2) / 200
+    defense_factor = 50 / arm
+
+    resolver.double_steal_choice.multiply("both_safe", runner_factor * defense_factor)
+
+    if arm2:
+        both_out_factor = (
+            (200 / (speed1 + br1 + speed2 + br2)) * (arm / 50) * (arm2 / 50)
+        )
+    else:
+        both_out_factor = (
+            (200 / (speed1 + br1 + speed2 + br2)) * (arm / 50) * (catcher / 50)
+        )
+
+    resolver.double_steal_choice.multiply("both_out", both_out_factor)

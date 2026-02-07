@@ -11,6 +11,7 @@ from src.game.events.out import (
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 
+
 def resolve_double_play(resolver, intent, game) -> List[GameEvent]:
     """
     Resolve a double play:
@@ -131,11 +132,10 @@ def resolve_double_play(resolver, intent, game) -> List[GameEvent]:
 
     events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
     events.append(OutRecordedEvent(reason="double_play", pitcher=intent.pitcher))
-    events.append(
-        PlateAppearanceEndEvent(reason="double_play", batter=intent.batter)
-    )
+    events.append(PlateAppearanceEndEvent(reason="double_play", batter=intent.batter))
 
     return events
+
 
 def _choose_double_play(resolver, game) -> list[PutOutEvent]:
     """
@@ -250,6 +250,7 @@ def _choose_double_play(resolver, game) -> list[PutOutEvent]:
         )
     return events
 
+
 def _3to1_double_play(resolver, game) -> list[PutOutEvent]:
     """
     Pick a type of double play to perform, and return the proper PutOutEvent.
@@ -359,6 +360,7 @@ def _3to1_double_play(resolver, game) -> list[PutOutEvent]:
         )
 
     return events
+
 
 def _2to1_double_play(resolver, game) -> list[PutOutEvent]:
     """

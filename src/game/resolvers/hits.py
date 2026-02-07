@@ -230,6 +230,7 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
 
     return events
 
+
 def _calculate_throw_out_probability(
     resolver, arm: int, speed: int, baserunning: int
 ) -> float:

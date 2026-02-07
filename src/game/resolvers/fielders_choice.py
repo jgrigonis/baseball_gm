@@ -130,9 +130,7 @@ def resolve_fielders_choice(resolver, intent, game) -> List[GameEvent]:
             intent.batter, intent.pitcher, FIRST, "fielders_choice"
         )
     )
-    events.append(
-        OutRecordedEvent(reason="fielders_choice", pitcher=intent.pitcher)
-    )
+    events.append(OutRecordedEvent(reason="fielders_choice", pitcher=intent.pitcher))
     events.append(
         PlateAppearanceEndEvent(reason="fielders_choice", batter=intent.batter)
     )

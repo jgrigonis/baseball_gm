@@ -9,37 +9,20 @@ from src.game.bases import FIRST, SECOND, THIRD, HOME, Bases
 from src.game.count import Count
 from src.game.score import Score
 from src.game.event import GameEvent
-from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.hbp import HitByPitchEvent
 from src.game.events.error import FieldingErrorEvent, ThrowingErrorEvent
-from src.game.events.noop import NoOpEvent
-from src.game.events.pitch import PitchThrownEvent
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
 from src.game.events.hits import SingleEvent, DoubleEvent, TripleEvent, HomeRunEvent
 from src.game.events.fielders_choice import FieldersChoiceEvent
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
-from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
+from src.game.events.runners import RunnerAdvancedEvent
 from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
-from src.game.events.steal import (
-    StealAttemptEvent,
-    StolenBaseEvent,
-    CaughtStealingEvent,
-    DoubleStealAttemptEvent,
-)
 from src.game.events.strike import (
-    StrikeEvent,
     FoulStrikeEvent,
     FouledOffThirdStrikeEvent,
     FoulTipCaughtThirdStrikeEvent,
-)
-from src.game.events.strikeout import StrikeOutEvent
-from src.game.events.pick_off import (
-    PickoffAttemptEvent,
-    PickoffSuccessEvent,
-    PickoffFailedEvent,
-    PickoffErrorEvent,
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import (
@@ -47,29 +30,16 @@ from src.game.events.out import (
     GroundOutEvent,
     FlyOutEvent,
     FoulFlyOutEvent,
-    PutOutEvent,
 )
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent, PrePitchSituation
 from src.game.intents.pick_off import PickOffIntent
-from src.game.resolvers.double_play import resolve_double_play
-from src.game.resolvers.fielders_choice import resolve_fielders_choice
-from src.game.resolvers.fouls import resolve_foul
-from src.game.resolvers.hits import (
-    resolve_single,
-    resolve_double,
-    resolve_triple,
-    resolve_home_run,
-)
-from src.game.resolvers.outs import resolve_fly_out, resolve_ground_out
+from src.game.resolvers.concurrent_events import resolve_concurrent_events
 from src.game.resolvers.pick_off import resolve_pickoff
-from src.game.resolvers.sacrifices import resolve_sac_bunt, resolve_sac_fly
-from src.game.resolvers.steal import resolve_double_steal, resolve_steal_attempt
-from src.game.resolvers.triple_play import resolve_triple_play
+from src.game.resolvers.pitch import resolve_pitch
 from src.game.resolvers.walk import resolve_walk
-from src.game.strategy import GameStrategy
 from src.player.player_in_game import PlayerInGame
 from src.util.weighted_choice import WeightedChoice
 
@@ -276,115 +246,9 @@ class Resolver:
         Must always return at least one event.
         """
         if isinstance(intent, PitchIntent):
-            return self._resolve_pitch(intent, game)
+            return resolve_pitch(self, intent, game)
 
         raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
-
-    def _resolve_pitch(self, intent: PitchIntent, game) -> List[GameEvent]:
-        events: List[GameEvent] = []
-
-        # ------------------------------------------------------------
-        # 1. Pitch is always thrown
-        # ------------------------------------------------------------
-        events.append(
-            PitchThrownEvent(
-                pitcher=intent.pitcher,
-                batter=intent.batter,
-                count=game.count.snapshot(),
-                # pitch_type=intent.pitch_type,
-            )
-        )
-
-        # ------------------------------------------------------------
-        # 2. Determine outcome (pure decision)
-        # ------------------------------------------------------------
-        outcome = self._determine_pitch_outcome(intent, game)
-        self.logger.trace(outcome)
-
-        # Sanity check
-        assert outcome in (
-            "ball",
-            "strike",
-            "called_strike",
-            "swinging_strike",
-            "foul",
-            "hit_by_pitch",
-            "catcher_interference",
-            "illegal_pitch",
-            "balk",
-            "wild_pitch",
-            "passed_ball",
-            "home_run",
-            "in_play",
-        )
-
-        # ------------------------------------------------------------
-        # 3. Emit outcome specific events
-        # ------------------------------------------------------------
-        if outcome == "in_play":
-            self.logger.trace("outcome is in_play")
-            events.extend(self._resolve_ball_in_play(intent, game))
-
-        elif outcome == "ball":
-            events.extend(self._handle_ball(intent, game))
-
-        elif outcome in ("strike", "called_strike", "swinging_strike"):
-            events.extend(self._handle_strike_outcome(outcome, intent, game))
-
-        elif outcome == "foul":
-            events.extend(resolve_foul(self, intent, game))
-
-        elif outcome == "hit_by_pitch":
-            events.extend(resolve_walk(self, intent, game, hbp=True))
-
-        elif outcome == "catcher_interference":
-            events.extend(resolve_walk(self, intent, game, catcher_interference=True))
-
-        elif outcome == "illegal_pitch":
-            events.extend(self._handle_illegal_pitch(intent, game))
-
-        elif outcome == "balk":
-            events.extend(self._handle_balk(game))
-
-        elif outcome == "wild_pitch":
-            events.extend(self._handle_wild_pitch(intent, game))
-
-        elif outcome == "passed_ball":
-            events.extend(self._handle_passed_ball(intent, game))
-
-        elif outcome == "home_run":
-            self.logger.trace("home_run")
-            events.extend(resolve_home_run(self, intent, game))
-
-        else:
-            return [NoOpEvent()]
-
-        self.logger.trace(f"events = {events}")
-        return events
-
-    def _determine_pitch_outcome(self, intent, game) -> str:
-        """
-        Decide the immediate result of a pitch.
-
-        Must:
-        - be pure (no mutation)
-        - use rng only
-        - return one of a small fixed set of strings
-
-        Extremely simple pitch outcome model.
-
-        This will be replaced later with real models.
-        """
-        self.logger.trace("_determine_pitch_outcome")
-
-        # Reset to base weights
-        self.pitch_outcome.reset()
-
-        # Apply all modifiers
-        self._apply_pitch_modifiers(game)
-
-        # Make the choice
-        return self.pitch_outcome.choose()
 
     def _apply_pitch_modifiers(self, game):
         """Apply all pitch probability modifiers based on game state."""
@@ -616,130 +480,6 @@ class Resolver:
             pitcher=pitcher,
         )
 
-    def _handle_ball(self, intent, game) -> list[GameEvent]:
-        """Handle a ball being called"""
-        events = [BallEvent()]
-        if game.count.balls + 1 >= 4:
-            events.extend(resolve_walk(self, intent, game))
-        return events
-
-    def _handle_strike_outcome(
-        self, outcome: str, intent: PitchIntent, game
-    ) -> list[GameEvent]:
-        """Handle different types of strikes"""
-        events = []
-
-        if outcome == "strike":
-            events.append(StrikeEvent())
-        elif outcome == "called_strike":
-            events.append(StrikeEvent(swinging=False))
-        elif outcome == "swinging_strike":
-            events.append(StrikeEvent(swinging=True))
-
-        # Check for strikeout
-        if game.count.strikes + 1 >= 3:
-            self.logger.debug("strike out ending pa")
-            events.extend(
-                [
-                    StrikeOutEvent(batter=intent.batter, pitcher=intent.pitcher),
-                    PutOutEvent(game.pos("c")),
-                    OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
-                    PlateAppearanceEndEvent(reason="strikeout", batter=intent.batter),
-                ]
-            )
-
-        return events
-
-    def _handle_illegal_pitch(self, intent, game) -> list[GameEvent]:
-        """Handle an illegal pitch"""
-        events = [IllegalPitch(pitcher=intent.pitcher), BallEvent()]
-        if game.count.balls + 1 >= 4:
-            events.extend(resolve_walk(self, intent, game))
-        return events
-
-    def _handle_balk(self, game) -> list[GameEvent]:
-        """Handle a balk"""
-        if game.bases.is_empty:
-            self.logger.trace("Balk called with no runners on.")
-            return []
-        return [BalkEvent(pitcher=game.pos("p"))]
-
-    def _handle_wild_pitch(self, intent, game) -> list[GameEvent]:
-        """Handle a wild pitch"""
-        events = []
-        # Always add the ball
-        events.append(BallEvent())
-
-        # Add wild pitch event if runners on (BEFORE walk logic)
-        if not game.bases.is_empty:
-            events.append(WildPitchEvent(pitcher=game.pos("p")))
-        else:
-            self.logger.trace("Wild Pitch occurred with no runners on.")
-
-        # Check for walk
-        if game.count.balls + 1 >= 4:
-            events.extend(resolve_walk(self, intent, game, skip_force_advance=True))
-        return events
-
-    def _handle_passed_ball(self, intent, game) -> list[GameEvent]:
-        """Handle a passed ball"""
-        events = []
-        # Always add the ball
-        events.append(BallEvent())
-
-        # Add passed ball event if runners on (BEFORE walk logic)
-        if not game.bases.is_empty:
-            events.append(
-                PassedBallEvent(
-                    catcher=game.pos("c"),
-                    pitcher=game.pos("p"),
-                )
-            )
-        else:
-            self.logger.trace("Passed Ball occurred with no runners on.")
-
-        # Check for walk
-        if game.count.balls + 1 >= 4:
-            events.extend(resolve_walk(self, intent, game, skip_force_advance=True))
-        return events
-
-    def _ball_in_play(self, events: List[GameEvent]) -> bool:
-        """
-        Check if the ball was put in play during this pitch.
-
-        A ball is "in play" if any of these events occurred:
-        - Hits (single, double, triple, home run)
-        - Outs (fly out, ground out, etc.)
-        - Fielder's choice
-        - Sacrifice plays
-        - Double/triple plays
-
-        Args:
-            events: List of events from the pitch resolution
-
-        Returns:
-            True if ball was put in play, False otherwise
-        """
-        # Events that indicate ball was put in play
-        in_play_event_types = (
-            # Hits
-            SingleEvent,
-            DoubleEvent,
-            TripleEvent,
-            HomeRunEvent,
-            # Outs
-            GroundOutEvent,
-            FlyOutEvent,
-            # Special plays
-            FieldersChoiceEvent,
-            SacBuntEvent,
-            SacFlyEvent,
-            DoublePlayEvent,
-            TriplePlayEvent,
-        )
-
-        return any(isinstance(event, in_play_event_types) for event in events)
-
     def _find_pa_end_index(self, events: List[GameEvent]) -> int | None:
         """
         Find the index of the PlateAppearanceEndEvent in the events list.
@@ -774,45 +514,8 @@ class Resolver:
         return total_outs >= 3
 
     # ================================================================
-    # BALL IN PLAY RESOLUTION
+    # IN PLAY MODIFIERS
     # ================================================================
-
-    def _resolve_ball_in_play(self, intent, game, foul=False) -> list[GameEvent]:
-        """
-        Resolve a ball put into play.
-
-        Must:
-        - use rng
-        - not mutate game
-        - return concrete events
-        """
-        # Reset to base weights
-        self.in_play_outcome.reset()
-
-        # Apply all modifiers
-        self._apply_in_play_modifiers(game)
-
-        # Make the choice
-        outcome = self.in_play_outcome.choose()
-
-        # Mapping approach for cleaner dispatch
-        outcome_handlers = {
-            "fly_out": self._resolve_fly_out,
-            "ground_out": self._resolve_ground_out,
-            "single": self._resolve_single,
-            "double": self._resolve_double,
-            "triple": self._resolve_triple,
-            "double_play": self._resolve_double_play,
-            "fielders_choice": self._resolve_fielders_choice,
-            "sac_fly": self._resolve_sac_fly,
-            "sac_bunt": self._resolve_sac_bunt,
-            "triple_play": self._resolve_triple_play,
-        }
-        self.logger.trace(f"in_play_outcome = {outcome}")
-        if outcome in outcome_handlers:
-            return outcome_handlers[outcome](intent, game)
-
-        raise RuntimeError(f"Unknown in-play outcome: {outcome}")
 
     def _apply_in_play_modifiers(self, game):
         """Apply all in-play probability modifiers."""
@@ -1062,15 +765,6 @@ class Resolver:
             self.in_play_outcome.set("sac_fly", 0)
             self.in_play_outcome.set("sac_bunt", 0)
 
-    def _resolve_fly_out(self, intent, game) -> list[GameEvent]:
-        """Resolve a fly out"""
-        return resolve_fly_out(self, intent, game)
-
-
-    def _resolve_ground_out(self, intent, game) -> list[GameEvent]:
-        """Resolve a ground out"""
-        return resolve_ground_out(self, intent, game)
-
     def _handle_fielding_error_advancement(self, intent, game) -> list[GameEvent]:
         # Advance all runners one base
         events: list[GameEvent] = []
@@ -1093,30 +787,6 @@ class Resolver:
         )
 
         return events
-
-    def _resolve_single(self, intent, game) -> list[GameEvent]:
-        return resolve_single(self, intent, game)
-
-    def _resolve_double(self, intent, game) -> list[GameEvent]:
-        return resolve_double(self, intent, game)
-
-    def _resolve_triple(self, intent, game) -> list[GameEvent]:
-        return resolve_triple(self, intent, game)
-
-    def _resolve_double_play(self, intent, game) -> list[GameEvent]:
-        return resolve_double_play(self, intent, game)
-
-    def _resolve_fielders_choice(self, intent, game):
-        return resolve_fielders_choice(self, intent, game)
- 
-    def _resolve_sac_bunt(self, intent, game) -> List[GameEvent]:
-        return resolve_sac_bunt(self, intent, game)
-
-    def _resolve_sac_fly(self, intent, game) -> List[GameEvent]:
-        return resolve_sac_fly(self, intent, game)
-
-    def _resolve_triple_play(self, intent, game):
-        return resolve_triple_play(self, intent, game)
 
     def _select_infielder(self, game):
         """Randomly select which infielder fields a ground ball"""
@@ -1226,7 +896,7 @@ class EnhancedResolver(Resolver):
             # ============================================================
             # Phase 1: The pitch itself
             # ============================================================
-            pitch_events = self._resolve_pitch(intent, game)
+            pitch_events = resolve_pitch(self, intent, game)
 
             # ============================================================
             # Phase 2: Concurrent events (steals)
@@ -1243,7 +913,7 @@ class EnhancedResolver(Resolver):
             ):
                 # Steals can happen on balls, strikes,
                 # but not balks, walks, errors, wild pitches, passed balls, fouls or ball_in_play
-                concurrent_events = self._resolve_concurrent_events(intent, game)
+                concurrent_events = resolve_concurrent_events(self, intent, game)
 
                 # Find where the PlateAppearanceEndEvent is (if any)
                 pa_end_index = self._find_pa_end_index(pitch_events)
@@ -1267,143 +937,47 @@ class EnhancedResolver(Resolver):
 
         raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
 
-    def _modify_first_and_third_probs(self, game):
-        """
-        Apply modifiers for first-and-third double steal.
-
-        BEFORE: Direct manipulation of self.first_and_third_probs dict
-        AFTER: Use WeightedChoice methods
-        """
-        speed1 = game.bases.runner_on(FIRST).skills["speed"]
-        br1 = game.bases.runner_on(FIRST).skills["base_running"]
-        speed3 = game.bases.runner_on(THIRD).skills["speed"]
-        br3 = game.bases.runner_on(THIRD).skills["base_running"]
-        arm = game.pos("c").skills["arm"]
-        arm2 = game.pos("2b").skills["arm"]
-
-        # Calculate skill factor
-        runner_factor = (speed1 + br1 + speed3 + br3) / 200
-        defense_factor = 50 / arm
-        defense_factor2 = 50 / arm2
-
-        # Apply multipliers
-        self.first_and_third_choice.multiply(
-            "both_safe", runner_factor * defense_factor
-        )
-        self.first_and_third_choice.multiply(
-            "first_advances_only", runner_factor * defense_factor
-        )
-        self.first_and_third_choice.multiply(
-            "first_out_third_scores", runner_factor * defense_factor * defense_factor2
-        )
-        self.first_and_third_choice.multiply(
-            "third_out_first_advances", runner_factor * defense_factor * defense_factor2
-        )
-
-        # Inverse multiplier for both_out
-        both_out_factor = (
-            (200 / (speed1 + br1 + speed3 + br3)) * (arm / 50) * (arm2 / 50)
-        )
-        self.first_and_third_choice.multiply("both_out", both_out_factor)
-
-    def _modify_double_steal_probs(self, game):
-        """
-        Apply modifiers for standard double steal.
-
-        BEFORE: Direct manipulation of self.double_steal_probs dict
-        AFTER: Use WeightedChoice methods
-        """
-        if game.bases.runner_on(FIRST):
-            runner1 = game.bases.runner_on(FIRST)
-            runner2 = game.bases.runner_on(SECOND)
-            arm2 = game.pos("3b").skills["arm"]
-        else:
-            runner1 = game.bases.runner_on(SECOND)
-            runner2 = game.bases.runner_on(THIRD)
-            arm2 = None
-
-        speed1 = runner1.skills["speed"]
-        br1 = runner1.skills["base_running"]
-        speed2 = runner2.skills["speed"]
-        br2 = runner2.skills["base_running"]
-        arm = game.pos("c").skills["arm"]
-        catcher = game.pos("c").skills["catching"]
-
-        runner_factor = (speed1 + br1 + speed2 + br2) / 200
-        defense_factor = 50 / arm
-
-        self.double_steal_choice.multiply("both_safe", runner_factor * defense_factor)
-
-        if arm2:
-            both_out_factor = (
-                (200 / (speed1 + br1 + speed2 + br2)) * (arm / 50) * (arm2 / 50)
-            )
-        else:
-            both_out_factor = (
-                (200 / (speed1 + br1 + speed2 + br2)) * (arm / 50) * (catcher / 50)
-            )
-
-        self.double_steal_choice.multiply("both_out", both_out_factor)
-
-
     # ================================================================
-    # CONCURRENT EVENT RESOLUTION (STEALS)
+    # Event Checks
     # ================================================================
 
-    def _resolve_concurrent_events(self, intent: PitchIntent, game) -> List[GameEvent]:
+    def _ball_in_play(self, events: List[GameEvent]) -> bool:
         """
-        Resolve events that happen concurrently with the pitch.
+        Check if the ball was put in play during this pitch.
 
-        NOTE: Steals currently do NOT happen on walks, as runners are
-        already being force-advanced. This is slightly broken, as a steal
-        could happen by an unforced runner. We just don't currently allow it.
+        A ball is "in play" if any of these events occurred:
+        - Hits (single, double, triple, home run)
+        - Outs (fly out, ground out, etc.)
+        - Fielder's choice
+        - Sacrifice plays
+        - Double/triple plays
 
-        NOTE: Steals should NOT happen if runners are already being advanced
-        by a wild pitch or passed ball. We should adjust so that runner
-        advancement isn't 100% but steal makes it even more likely
+        Args:
+            events: List of events from the pitch resolution
 
-        NOTE: Steals won't happen on a ball_in_play, as they are handled
-        in _resolve_ball_in_play
-
+        Returns:
+            True if ball was put in play, False otherwise
         """
-        events = []
+        # Events that indicate ball was put in play
+        in_play_event_types = (
+            # Hits
+            SingleEvent,
+            DoubleEvent,
+            TripleEvent,
+            HomeRunEvent,
+            # Outs
+            GroundOutEvent,
+            FlyOutEvent,
+            # Special plays
+            FieldersChoiceEvent,
+            SacBuntEvent,
+            SacFlyEvent,
+            DoublePlayEvent,
+            TriplePlayEvent,
+        )
 
-        if game.bases.is_empty:
-            return events
-        double_steal_bases = None
-        from_base = None
+        return any(isinstance(event, in_play_event_types) for event in events)
 
-        # Check for hit and run double steal scenarios
-        if intent.pre_pitch_situation.hit_and_run:
-            if game.bases.two_men_on:
-                self.logger.debug("Hit and run double steal")
-                double_steal_bases = GameStrategy.get_double_steal_candidates(game)
-        else:
-            double_steal_bases = intent.pre_pitch_situation.double_steal_attempt
-
-        if double_steal_bases:
-            return self._resolve_double_steal(double_steal_bases, intent, game)
-        if intent.pre_pitch_situation.hit_and_run:
-            self.logger.debug("Hit and run steal")
-            from_base = game.bases.only_occupied_base()
-        else:
-            from_base = intent.pre_pitch_situation.steal_attempt
-        if from_base:
-            return self._resolve_steal_attempt(from_base, intent, game)
-
-        return events
-
-    def _resolve_steal_attempt(
-        self, from_base: int, intent: PitchIntent, game
-    ) -> List[GameEvent]:
-        return resolve_steal_attempt(self, from_base, intent, game)
-
-
-    def _resolve_double_steal(
-        self, from_bases: List[int], intent: PitchIntent, game
-    ) -> List[GameEvent]:
-        return resolve_double_steal(self, from_bases, intent, game)
- 
     def _is_error(self, events: List[GameEvent]) -> bool:
         """Check if an error occurred."""
         error_event_types = (

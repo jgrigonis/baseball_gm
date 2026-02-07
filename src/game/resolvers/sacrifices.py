@@ -47,6 +47,7 @@ def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
 
     return events
 
+
 def _select_infielder_bunt(resolver, game) -> PlayerInGame:
     """Randomly select which infielder fields a bunted ball"""
     position = resolver.infielder_bunt_choice.choose()
@@ -61,6 +62,7 @@ def _select_infielder_bunt(resolver, game) -> PlayerInGame:
     }
 
     return position_map[position]
+
 
 def resolve_sac_fly(resolver, intent, game) -> List[GameEvent]:
     """

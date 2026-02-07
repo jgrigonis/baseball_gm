@@ -7,10 +7,16 @@ from src.game.events.out import (
     PutOutEvent,
     OutRecordedEvent,
 )
-from src.game.events.pick_off import PickoffAttemptEvent, PickoffSuccessEvent, PickoffErrorEvent, PickoffFailedEvent
+from src.game.events.pick_off import (
+    PickoffAttemptEvent,
+    PickoffSuccessEvent,
+    PickoffErrorEvent,
+    PickoffFailedEvent,
+)
 from src.game.intents.pick_off import PickOffIntent
 from src.game.events.runners import RunnerRemovedEvent
 from src.player.player_in_game import PlayerInGame
+
 
 def resolve_pickoff(resolver, intent: PickOffIntent, game) -> List[GameEvent]:
     """
@@ -29,15 +35,18 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> List[GameEvent]:
     if not runner:
         return events
 
-    events.append(
-        PickoffAttemptEvent(base=base, runner=runner, pitcher=intent.pitcher)
-    )
+    events.append(PickoffAttemptEvent(base=base, runner=runner, pitcher=intent.pitcher))
 
     # Determine outcome
     r = resolver.rng.random()
 
     pickoff_success_prob, pickoff_error_prob = adjust_pickoff_success(
-        resolver, base, intent.pitcher, game, runner.skills["base_running"], intent.steal_on
+        resolver,
+        base,
+        intent.pitcher,
+        game,
+        runner.skills["base_running"],
+        intent.steal_on,
     )
     # base_running skill of runner
     if r < pickoff_success_prob:
@@ -85,6 +94,7 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> List[GameEvent]:
         )
 
     return events
+
 
 def adjust_pickoff_success(
     resolver, base: int, pitcher: PlayerInGame, game, br_skill=50, steal_on=False

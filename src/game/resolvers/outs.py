@@ -62,6 +62,7 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
 
     return events
 
+
 def adjust_tagup_probs(resolver, bases: Bases, arm: int) -> tuple[float, float]:
     """
     Adjust probabilities that a runner tags up.
@@ -85,6 +86,7 @@ def adjust_tagup_probs(resolver, bases: Bases, arm: int) -> tuple[float, float]:
         tag_from_first = tag_from_first * (speed + br_skill) / (2 * arm)
 
     return tag_from_second, tag_from_first
+
 
 def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
     """Resolve a ground out"""
@@ -118,6 +120,7 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
     events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
 
     return events
+
 
 def _calculate_error_probability(resolver, fielding_skill: int) -> float:
     """Calculate probability of fielding error based on skill"""
