@@ -332,3 +332,23 @@ class Resolver:
             FoulFlyOutEvent,
         )
         return any(isinstance(event, foul_event_types) for event in events)
+
+    # ================================================================
+    # Pitch outcome determination
+    # ================================================================
+    def determine_pitch_outcome(self, intent, game) -> str:
+        """
+        Determine pitch outcome. Override point for testing.
+
+        Default implementation uses weighted random selection based on:
+        - Base state (runners on base)
+        - Game situation (bunt attempt, hit-and-run, etc.)
+        - Count
+        - Batter and pitcher skills
+
+        Returns one of: ball, strike, foul, hit_by_pitch, catcher_interference,
+                        illegal_pitch, balk, wild_pitch, passed_ball, home_run, in_play
+        """
+        self.pitch_outcome.reset()
+        self._apply_pitch_modifiers(game)
+        return self.pitch_outcome.choose()

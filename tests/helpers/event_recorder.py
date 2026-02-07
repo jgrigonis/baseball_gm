@@ -20,14 +20,24 @@ class EventRecorder:
 
         # Patch _enqueue
         def capture_enqueue(events):
+            # events should always be a list here based on _enqueue signature
+
             for event in events:
                 recorder.events.append(event)
             return recorder.original_enqueue(events)
 
         # Patch _enqueue_left (for followups)
+        # def capture_enqueue_left(events):
+        #     for event in events:
+        #         recorder.events.append(event)
+        #     return recorder.original_enqueue_left(events)
         def capture_enqueue_left(events):
-            for event in events:
-                recorder.events.append(event)
+            # Handle both single event and list
+            if isinstance(events, list):
+                for event in events:
+                    recorder.events.append(event)
+            else:
+                recorder.events.append(events)
             return recorder.original_enqueue_left(events)
 
         self.game._enqueue = capture_enqueue

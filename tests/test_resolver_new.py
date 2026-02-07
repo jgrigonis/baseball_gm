@@ -15,8 +15,7 @@ Tests cover:
 import pytest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
-from src.game.resolver import Resolver
-from src.game.intents.pitch import PitchIntent
+from src.game.bases import FIRST, SECOND, THIRD, HOME
 from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.strike import (
     StrikeEvent,
@@ -38,7 +37,22 @@ from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
-from src.game.bases import FIRST, SECOND, THIRD, HOME
+from src.game.intents.pitch import PitchIntent
+from src.game.resolver import Resolver
+from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
+from src.game.resolvers.double_play import resolve_double_play
+from src.game.resolvers.fielders_choice import resolve_fielders_choice
+from src.game.resolvers.hits import (
+    resolve_double,
+    resolve_home_run,
+    resolve_single,
+    resolve_triple,
+)
+from src.game.resolvers.outs import resolve_fly_out, resolve_ground_out
+from src.game.resolvers.pitch import resolve_pitch
+from src.game.resolvers.sacrifices import resolve_sac_bunt, resolve_sac_fly
+from src.game.resolvers.triple_play import resolve_triple_play
+from src.game.resolvers.walk import resolve_walk
 from src.player.player_in_game import PlayerInGame
 from src.team.lineup_slot import LineupSlot
 from src.team.team_in_game_factory import TeamInGameFactory
@@ -114,6 +128,7 @@ class MockGame:
         self.inning = SimpleNamespace(outs=0)
         self.pitch_team = TeamInGameFactory.from_record(make_team_record())
         self.current_pitcher = PlayerInGame(make_player_record())
+        self.rng = MockRNG(0.5)
 
         # Add outfielders to the lineup
         mock_lf = PlayerInGame(make_player_record())
@@ -154,6 +169,21 @@ class MockGame:
             "1b": mock_1b,
         }
 
+    def pos(self, position: str):
+        """Get player by position shorthand."""
+        pos_map = {
+            "p": self.current_pitcher,
+            "c": self.pitch_team._positions.get("c"),
+            "ss": self.pitch_team._positions.get("ss"),
+            "2b": self.pitch_team._positions.get("2b"),
+            "3b": self.pitch_team._positions.get("3b"),
+            "1b": self.pitch_team._positions.get("1b"),
+            "lf": self.pitch_team._positions.get("lf"),
+            "cf": self.pitch_team._positions.get("cf"),
+            "rf": self.pitch_team._positions.get("rf"),
+        }
+        return pos_map.get(position)
+
 
 @pytest.fixture
 def rng():
@@ -185,8 +215,8 @@ class TestBalls:
 
     def test_ball_called(self, resolver, game, pitch_intent):
         """Test a ball is properly recorded"""
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="ball"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="ball"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         # Should have PitchThrown and Ball events
         assert len(events) == 2
@@ -196,8 +226,8 @@ class TestBalls:
         """Test that fourth ball results in a walk"""
         game.count.balls = 3  # 3 balls already
 
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="ball"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="ball"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         # Should have walk events
         walk_event = next((e for e in events if isinstance(e, WalkEvent)), None)
@@ -210,9 +240,9 @@ class TestBalls:
     def test_illegal_pitch(self, resolver, game, pitch_intent):
         """Test illegal pitch adds a ball"""
         with patch.object(
-            resolver, "_determine_pitch_outcome", return_value="illegal_pitch"
+            resolver, "determine_pitch_outcome", return_value="illegal_pitch"
         ):
-            events = resolver._resolve_pitch(pitch_intent, game)
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         # Should have IllegalPitch and Ball
         illegal_pitch = next((e for e in events if isinstance(e, IllegalPitch)), None)
@@ -232,9 +262,9 @@ class TestStrikes:
     def test_called_strike(self, resolver, game, pitch_intent):
         """Test called strike"""
         with patch.object(
-            resolver, "_determine_pitch_outcome", return_value="called_strike"
+            resolver, "determine_pitch_outcome", return_value="called_strike"
         ):
-            events = resolver._resolve_pitch(pitch_intent, game)
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         strike = next((e for e in events if isinstance(e, StrikeEvent)), None)
         assert strike is not None
@@ -243,9 +273,9 @@ class TestStrikes:
     def test_swinging_strike(self, resolver, game, pitch_intent):
         """Test swinging strike"""
         with patch.object(
-            resolver, "_determine_pitch_outcome", return_value="swinging_strike"
+            resolver, "determine_pitch_outcome", return_value="swinging_strike"
         ):
-            events = resolver._resolve_pitch(pitch_intent, game)
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         strike = next((e for e in events if isinstance(e, StrikeEvent)), None)
         assert strike is not None
@@ -255,8 +285,8 @@ class TestStrikes:
         """Test strikeout on third strike"""
         game.count.strikes = 2  # 2 strikes already
 
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="strike"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="strike"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         # Should have strikeout, out recorded, and PA end
         strikeout = next((e for e in events if isinstance(e, StrikeOutEvent)), None)
@@ -285,8 +315,8 @@ class TestFoulBalls:
         game.count.strikes = 1
         resolver.rng.set_value(0.5)  # Not a foul fly out
 
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="foul"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="foul"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         foul_strike = next((e for e in events if isinstance(e, FoulStrikeEvent)), None)
         assert foul_strike is not None
@@ -296,8 +326,8 @@ class TestFoulBalls:
         game.count.strikes = 2
         resolver.rng.set_value(0.5)  # Fouled off, not caught
 
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="foul"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="foul"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         fouled_off = next(
             (e for e in events if isinstance(e, FouledOffThirdStrikeEvent)), None
@@ -313,8 +343,8 @@ class TestFoulBalls:
         game.count.strikes = 2
         resolver.rng.set_value(0.01)  # Foul tip caught (< 0.05)
 
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="foul"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="foul"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         foul_tip = next(
             (e for e in events if isinstance(e, FoulTipCaughtThirdStrikeEvent)), None
@@ -329,8 +359,8 @@ class TestFoulBalls:
         game.count.strikes = 1
         resolver.rng.set_value(0.01)  # Foul fly out (< 0.05)
 
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="foul"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="foul"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         out_recorded = next(
             (e for e in events if isinstance(e, OutRecordedEvent)), None
@@ -354,7 +384,7 @@ class TestWalks:
 
     def test_regular_walk_no_runners(self, resolver, game, pitch_intent):
         """Test walk with no runners on base"""
-        events = resolver._resolve_walk(pitch_intent, game)
+        events = resolve_walk(resolver, pitch_intent, game)
 
         walk = next((e for e in events if isinstance(e, WalkEvent)), None)
         batter_advance = next(
@@ -394,7 +424,7 @@ class TestWalks:
                 )
             ]
 
-            events = resolver._resolve_walk(pitch_intent, game)
+            events = resolve_walk(resolver, pitch_intent, game)
 
         # Should have runner advancement from first to second
         runner_advances = [
@@ -407,21 +437,21 @@ class TestWalks:
 
     def test_intentional_walk(self, resolver, game, pitch_intent):
         """Test intentional walk"""
-        events = resolver._resolve_walk(pitch_intent, game, intentional=True)
+        events = resolve_walk(resolver, pitch_intent, game, intentional=True)
 
         ibb = next((e for e in events if isinstance(e, IBBEvent)), None)
         assert ibb is not None
 
     def test_hit_by_pitch(self, resolver, game, pitch_intent):
         """Test hit by pitch"""
-        events = resolver._resolve_walk(pitch_intent, game, hbp=True)
+        events = resolve_walk(resolver, pitch_intent, game, hbp=True)
 
         hbp = next((e for e in events if isinstance(e, HitByPitchEvent)), None)
         assert hbp is not None
 
     def test_catcher_interference(self, resolver, game, pitch_intent):
         """Test catcher interference"""
-        events = resolver._resolve_walk(pitch_intent, game, catcher_interference=True)
+        events = resolve_walk(resolver, pitch_intent, game, catcher_interference=True)
 
         ci = next((e for e in events if isinstance(e, CatcherInterferenceEvent)), None)
         assert ci is not None
@@ -437,7 +467,7 @@ class TestHits:
 
     def test_single_no_runners(self, resolver, game, pitch_intent):
         """Test single with no runners on base"""
-        events = resolver._resolve_single(pitch_intent, game)
+        events = resolve_single(resolver, pitch_intent, game)
 
         single = next((e for e in events if isinstance(e, SingleEvent)), None)
         batter_advance = next(
@@ -463,7 +493,7 @@ class TestHits:
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._resolve_single(pitch_intent, game)
+        events = resolve_single(resolver, pitch_intent, game)
 
         # Runner should advance from third to home
         runner_advance = next(
@@ -481,7 +511,7 @@ class TestHits:
 
     def test_double_no_runners(self, resolver, game, pitch_intent):
         """Test double with no runners on base"""
-        events = resolver._resolve_double(pitch_intent, game)
+        events = resolve_double(resolver, pitch_intent, game)
 
         double = next((e for e in events if isinstance(e, DoubleEvent)), None)
         batter_advance = next(
@@ -503,7 +533,7 @@ class TestHits:
         game.bases.set_runner(SECOND, "runner_2")
         game.bases.is_empty = False
 
-        events = resolver._resolve_double(pitch_intent, game)
+        events = resolve_double(resolver, pitch_intent, game)
 
         # Runner should advance from second to home (2 + 2 = 4 = HOME)
         runner_advance = next(
@@ -523,7 +553,7 @@ class TestHits:
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._resolve_double(pitch_intent, game)
+        events = resolve_double(resolver, pitch_intent, game)
 
         # Runner should advance to HOME, not base 5
         runner_advance = next(
@@ -545,7 +575,7 @@ class TestHits:
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._resolve_triple(pitch_intent, game)
+        events = resolve_triple(resolver, pitch_intent, game)
 
         # All runners should score
         runner_advances = [
@@ -561,7 +591,7 @@ class TestHits:
 
     def test_triple_batter_to_third(self, resolver, game, pitch_intent):
         """Test triple puts batter on third"""
-        events = resolver._resolve_triple(pitch_intent, game)
+        events = resolve_triple(resolver, pitch_intent, game)
 
         batter_advance = next(
             (
@@ -582,7 +612,7 @@ class TestHits:
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._resolve_home_run(pitch_intent, game)
+        events = resolve_home_run(resolver, pitch_intent, game)
 
         home_run = next((e for e in events if isinstance(e, HomeRunEvent)), None)
         assert home_run is not None
@@ -606,7 +636,7 @@ class TestOuts:
 
     def test_fly_out(self, resolver, game, pitch_intent):
         """Test fly out"""
-        events = resolver._resolve_fly_out(pitch_intent, game)
+        events = resolve_fly_out(resolver, pitch_intent, game)
 
         out_recorded = next(
             (e for e in events if isinstance(e, OutRecordedEvent)), None
@@ -616,7 +646,7 @@ class TestOuts:
 
     def test_ground_out(self, resolver, game, pitch_intent):
         """Test ground out"""
-        events = resolver._resolve_ground_out(pitch_intent, game)
+        events = resolve_ground_out(resolver, pitch_intent, game)
 
         out_recorded = next(
             (e for e in events if isinstance(e, OutRecordedEvent)), None
@@ -637,7 +667,7 @@ class TestDoublePlays:
         """Test double play fails with no runners"""
         game.inning.outs = 0
         with pytest.raises(RuntimeError, match="no runners on base"):
-            resolver._resolve_double_play(pitch_intent, game)
+            resolve_double_play(resolver, pitch_intent, game)
 
     def test_double_play_requires_less_than_two_outs(
         self, resolver, game, pitch_intent
@@ -648,14 +678,14 @@ class TestDoublePlays:
         game.bases.is_empty = False
 
         with pytest.raises(RuntimeError, match="2 outs"):
-            resolver._resolve_double_play(pitch_intent, game)
+            resolve_double_play(resolver, pitch_intent, game)
 
     def test_double_play_runner_on_first(self, resolver, game, pitch_intent):
         """Test double play with runner on first"""
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
-        events = resolver._resolve_double_play(pitch_intent, game)
+        events = resolve_double_play(resolver, pitch_intent, game)
 
         # Should have double play event and two outs
         dp = next((e for e in events if isinstance(e, DoublePlayEvent)), None)
@@ -676,7 +706,7 @@ class TestDoublePlays:
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._resolve_double_play(pitch_intent, game)
+        events = resolve_double_play(resolver, pitch_intent, game)
 
         runner_removed = next(
             (e for e in events if isinstance(e, RunnerRemovedEvent)), None
@@ -690,7 +720,7 @@ class TestDoublePlays:
         game.bases.set_runner(SECOND, "runner_2")
         game.bases.is_empty = False
 
-        events = resolver._resolve_double_play(pitch_intent, game)
+        events = resolve_double_play(resolver, pitch_intent, game)
 
         runner_removed = next(
             (e for e in events if isinstance(e, RunnerRemovedEvent)), None
@@ -716,7 +746,7 @@ class TestTriplePlays:
         game.bases.is_empty = False
 
         with pytest.raises(RuntimeError, match="outs already in the inning"):
-            resolver._resolve_triple_play(pitch_intent, game)
+            resolve_triple_play(resolver, pitch_intent, game)
 
     def test_triple_play_requires_two_runners(self, resolver, game, pitch_intent):
         """Test triple play requires at least 2 runners"""
@@ -724,7 +754,7 @@ class TestTriplePlays:
         game.bases.is_empty = False
 
         with pytest.raises(RuntimeError, match="at least 2 runners"):
-            resolver._resolve_triple_play(pitch_intent, game)
+            resolve_triple_play(resolver, pitch_intent, game)
 
     def test_triple_play_bases_loaded(self, resolver, game, pitch_intent):
         """Test triple play with bases loaded"""
@@ -734,7 +764,7 @@ class TestTriplePlays:
         game.bases.is_empty = False
         resolver.rng.set_value(0.1)  # First condition
 
-        events = resolver._resolve_triple_play(pitch_intent, game)
+        events = resolve_triple_play(resolver, pitch_intent, game)
 
         tp = next((e for e in events if isinstance(e, TriplePlayEvent)), None)
         outs = [e for e in events if isinstance(e, OutRecordedEvent)]
@@ -750,7 +780,7 @@ class TestTriplePlays:
         game.bases.set_runner(SECOND, "runner_2")
         game.bases.is_empty = False
 
-        events = resolver._resolve_triple_play(pitch_intent, game)
+        events = resolve_triple_play(resolver, pitch_intent, game)
 
         outs = [e for e in events if isinstance(e, OutRecordedEvent)]
         runner_removed = [e for e in events if isinstance(e, RunnerRemovedEvent)]
@@ -770,7 +800,7 @@ class TestFieldersChoice:
     def test_fielders_choice_requires_runners(self, resolver, game, pitch_intent):
         """Test fielder's choice requires runners on base"""
         with pytest.raises(RuntimeError, match="no runners on base"):
-            resolver._resolve_fielders_choice(pitch_intent, game)
+            resolve_fielders_choice(resolver, pitch_intent, game)
 
     def test_fielders_choice_requires_less_than_two_outs(
         self, resolver, game, pitch_intent
@@ -781,14 +811,14 @@ class TestFieldersChoice:
         game.bases.is_empty = False
 
         with pytest.raises(RuntimeError, match="2 outs"):
-            resolver._resolve_fielders_choice(pitch_intent, game)
+            resolve_fielders_choice(resolver, pitch_intent, game)
 
     def test_fielders_choice_runner_on_third(self, resolver, game, pitch_intent):
         """Test fielder's choice removes runner on third"""
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._resolve_fielders_choice(pitch_intent, game)
+        events = resolve_fielders_choice(resolver, pitch_intent, game)
 
         fc = next((e for e in events if isinstance(e, FieldersChoiceEvent)), None)
         runner_removed = next(
@@ -814,7 +844,7 @@ class TestFieldersChoice:
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
-        events = resolver._resolve_fielders_choice(pitch_intent, game)
+        events = resolve_fielders_choice(resolver, pitch_intent, game)
 
         runner_removed = next(
             (e for e in events if isinstance(e, RunnerRemovedEvent)), None
@@ -834,7 +864,7 @@ class TestSacrifices:
     def test_sac_bunt_requires_runners(self, resolver, game, pitch_intent):
         """Test sacrifice bunt requires runners"""
         with pytest.raises(RuntimeError, match="no runners on base"):
-            resolver._resolve_sac_bunt(pitch_intent, game)
+            resolve_sac_bunt(resolver, pitch_intent, game)
 
     def test_sac_bunt_requires_less_than_two_outs(self, resolver, game, pitch_intent):
         """Test sacrifice bunt requires less than 2 outs"""
@@ -843,14 +873,14 @@ class TestSacrifices:
         game.bases.is_empty = False
 
         with pytest.raises(RuntimeError, match="2 outs"):
-            resolver._resolve_sac_bunt(pitch_intent, game)
+            resolve_sac_bunt(resolver, pitch_intent, game)
 
     def test_sac_bunt_advances_runner(self, resolver, game, pitch_intent):
         """Test sacrifice bunt advances runner"""
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
-        events = resolver._resolve_sac_bunt(pitch_intent, game)
+        events = resolve_sac_bunt(resolver, pitch_intent, game)
 
         sac_bunt = next((e for e in events if isinstance(e, SacBuntEvent)), None)
         out = next((e for e in events if isinstance(e, OutRecordedEvent)), None)
@@ -871,7 +901,7 @@ class TestSacrifices:
     def test_sac_fly_requires_runner_on_third(self, resolver, game, pitch_intent):
         """Test sacrifice fly requires runner on third"""
         with pytest.raises(RuntimeError, match="runner on third"):
-            resolver._resolve_sac_fly(pitch_intent, game)
+            resolve_sac_fly(resolver, pitch_intent, game)
 
     def test_sac_fly_requires_less_than_two_outs(self, resolver, game, pitch_intent):
         """Test sacrifice fly requires less than 2 outs"""
@@ -880,14 +910,14 @@ class TestSacrifices:
         game.bases.is_empty = False
 
         with pytest.raises(RuntimeError, match="2 outs"):
-            resolver._resolve_sac_fly(pitch_intent, game)
+            resolve_sac_fly(resolver, pitch_intent, game)
 
     def test_sac_fly_scores_runner_from_third(self, resolver, game, pitch_intent):
         """Test sacrifice fly scores runner from third"""
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._resolve_sac_fly(pitch_intent, game)
+        events = resolve_sac_fly(resolver, pitch_intent, game)
 
         sac_fly = next((e for e in events if isinstance(e, SacFlyEvent)), None)
         out = next((e for e in events if isinstance(e, OutRecordedEvent)), None)
@@ -920,16 +950,16 @@ class TestSpecialEvents:
         game.bases.set_runner(FIRST, "runner_1")
         game.bases.is_empty = False
 
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="balk"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="balk"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         balk = next((e for e in events if isinstance(e, BalkEvent)), None)
         assert balk is not None
 
     def test_balk_without_runners_ignored(self, resolver, game, pitch_intent):
         """Test balk without runners is ignored"""
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="balk"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="balk"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         balk = next((e for e in events if isinstance(e, BalkEvent)), None)
         assert balk is None
@@ -940,9 +970,9 @@ class TestSpecialEvents:
         game.bases.is_empty = False
 
         with patch.object(
-            resolver, "_determine_pitch_outcome", return_value="wild_pitch"
+            resolver, "determine_pitch_outcome", return_value="wild_pitch"
         ):
-            events = resolver._resolve_pitch(pitch_intent, game)
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         wp = next((e for e in events if isinstance(e, WildPitchEvent)), None)
         assert wp is not None
@@ -953,9 +983,9 @@ class TestSpecialEvents:
         game.bases.is_empty = False
 
         with patch.object(
-            resolver, "_determine_pitch_outcome", return_value="passed_ball"
+            resolver, "determine_pitch_outcome", return_value="passed_ball"
         ):
-            events = resolver._resolve_pitch(pitch_intent, game)
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         pb = next((e for e in events if isinstance(e, PassedBallEvent)), None)
         assert pb is not None
@@ -1006,7 +1036,7 @@ class TestHelperMethods:
 
     def test_advance_all_runners_empty_bases(self, resolver, game):
         """Test advancing runners with no runners on base"""
-        events = resolver._advance_all_runners(
+        events = advance_all_runners(
             game, (THIRD, SECOND, FIRST), advancement=1, reason="single"
         )
         assert len(events) == 0
@@ -1017,7 +1047,7 @@ class TestHelperMethods:
         game.bases.set_runner(SECOND, "runner_2")
         game.bases.is_empty = False
 
-        events = resolver._advance_all_runners(
+        events = advance_all_runners(
             game,
             (THIRD, SECOND, FIRST),
             advancement=1,
@@ -1033,9 +1063,7 @@ class TestHelperMethods:
         game.bases.set_runner(THIRD, "runner_3")
         game.bases.is_empty = False
 
-        events = resolver._advance_all_runners(
-            game, (THIRD,), advancement=5, reason="test"
-        )
+        events = advance_all_runners(game, (THIRD,), advancement=5, reason="test")
 
         assert len(events) == 1
         assert events[0].to_base == HOME
@@ -1043,9 +1071,7 @@ class TestHelperMethods:
 
     def test_advance_batter_to_base(self, resolver):
         """Test batter advancement helper"""
-        event = resolver._advance_batter_to_base(
-            "batter_1", "pitcher_1", SECOND, "double"
-        )
+        event = advance_batter_to_base("batter_1", "pitcher_1", SECOND, "double")
 
         assert isinstance(event, RunnerAdvancedEvent)
         assert event.runner == "batter_1"
@@ -1066,18 +1092,18 @@ class TestIntegration:
         """Test full at-bat ending in strikeout"""
         # Strike 1
         game.count.strikes = 0
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="strike"):
-            _ = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="strike"):
+            _ = resolve_pitch(resolver, pitch_intent, game)
         game.count.strikes = 1
 
         # Strike 2
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="strike"):
-            _ = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="strike"):
+            _ = resolve_pitch(resolver, pitch_intent, game)
         game.count.strikes = 2
 
         # Strike 3 - strikeout
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="strike"):
-            events3 = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="strike"):
+            events3 = resolve_pitch(resolver, pitch_intent, game)
 
         # Final pitch should end PA
         pa_end = next(
@@ -1090,15 +1116,13 @@ class TestIntegration:
         # Ball 1-3
         for i in range(3):
             game.count.balls = i
-            with patch.object(
-                resolver, "_determine_pitch_outcome", return_value="ball"
-            ):
-                resolver._resolve_pitch(pitch_intent, game)
+            with patch.object(resolver, "determine_pitch_outcome", return_value="ball"):
+                resolve_pitch(resolver, pitch_intent, game)
 
         # Ball 4 - walk
         game.count.balls = 3
-        with patch.object(resolver, "_determine_pitch_outcome", return_value="ball"):
-            events = resolver._resolve_pitch(pitch_intent, game)
+        with patch.object(resolver, "determine_pitch_outcome", return_value="ball"):
+            events = resolve_pitch(resolver, pitch_intent, game)
 
         walk = next((e for e in events if isinstance(e, WalkEvent)), None)
         pa_end = next(
@@ -1120,7 +1144,7 @@ class TestIntegration:
         game.bases.is_empty = False
 
         # Double should score two runs
-        events = resolver._resolve_double(pitch_intent, game)
+        events = resolve_double(resolver, pitch_intent, game)
 
         # All runners should advance 2 bases (capped at HOME)
         advances = [e for e in events if isinstance(e, RunnerAdvancedEvent)]

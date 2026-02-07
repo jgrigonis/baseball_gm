@@ -245,7 +245,11 @@ class TeamInGame:
         output += PlayerTableFormatter.horizontal_defensive_stat_header()
         output += "\n"
         for player in self.players:
-            if player.game_stats.fielding.assists > 0 or player.game_stats.fielding.putouts > 0 or player.game_stats.fielding.errors > 0:
+            if (
+                player.game_stats.fielding.assists > 0
+                or player.game_stats.fielding.putouts > 0
+                or player.game_stats.fielding.errors > 0
+            ):
                 output += PlayerTableFormatter.horizontal_defensive_stats(player)
                 output += "\n"
         return output

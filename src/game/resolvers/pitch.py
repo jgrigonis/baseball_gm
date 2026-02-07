@@ -190,25 +190,5 @@ def resolve_pitch(resolver, intent: PitchIntent, game) -> List[GameEvent]:
 
 
 def determine_pitch_outcome(resolver, intent, game) -> str:
-    """
-    Decide the immediate result of a pitch.
-
-    Must:
-    - be pure (no mutation)
-    - use rng only
-    - return one of a small fixed set of strings
-
-    Extremely simple pitch outcome model.
-
-    This will be replaced later with real models.
-    """
-    resolver.logger.trace("_determine_pitch_outcome")
-
-    # Reset to base weights
-    resolver.pitch_outcome.reset()
-
-    # Apply all modifiers
-    resolver._apply_pitch_modifiers(game)
-
-    # Make the choice
-    return resolver.pitch_outcome.choose()
+    """Delegate to resolver method (enables test override)."""
+    return resolver.determine_pitch_outcome(intent, game)

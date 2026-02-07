@@ -53,7 +53,7 @@ def test_pitch_thrown_event_captures_count_snapshot(resolver, pitch_intent):
 
 def test_pitch_can_result_in_ball(resolver, pitch_intent):
     rng = FakeRNG([0.1] * 100)
-    resolver.set_rng(rng)  # Replace all RNGs at once
+    resolver = Resolver(rng=rng)
 
     events = resolver.resolve(pitch_intent, fake_game())
     assert any(e.__class__.__name__ == "BallEvent" for e in events)
@@ -114,6 +114,7 @@ def test_three_strikes_ends_plate_appearance_with_strikeout():
     intent = PitchIntent(
         pitcher=PlayerInGame(make_player_record()),
         batter=PlayerInGame(make_player_record()),
+        pre_pitch_situation=PrePitchSituation(),
     )
 
     all_events = []

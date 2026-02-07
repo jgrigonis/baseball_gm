@@ -91,9 +91,25 @@ def fake_game():
     batter = FakeLineupSlot("b1")
     pitcher = FakePlayerInGame("p1")
     catcher = FakePlayerInGame("c1")
+    shortstop = FakePlayerInGame("ss1")
+    second_baseman = FakePlayerInGame("2b1")
+    third_baseman = FakePlayerInGame("3b1")
+    first_baseman = FakePlayerInGame("1b1")
+    left_fielder = FakePlayerInGame("lf1")
+    center_fielder = FakePlayerInGame("cf1")
+    right_fielder = FakePlayerInGame("rf1")
 
-    # Create a fake pitch_team
-    pitch_team = SimpleNamespace(current_catcher=catcher)
+    # Create a fake pitch_team with all positions
+    pitch_team = SimpleNamespace(
+        current_catcher=catcher,
+        current_shortstop=shortstop,
+        current_second_baseman=second_baseman,
+        current_third_baseman=third_baseman,
+        current_first_baseman=first_baseman,
+        current_left_fielder=left_fielder,
+        current_center_fielder=center_fielder,
+        current_right_fielder=right_fielder,
+    )
 
     game = SimpleNamespace(
         # core state
@@ -113,6 +129,22 @@ def fake_game():
         _plate_appearance_complete=False,
         _pa_end_reason=None,
     )
+
+    def pos(position):
+        pos_map = {
+            "p": pitcher,
+            "c": catcher,
+            "ss": shortstop,
+            "2b": second_baseman,
+            "3b": third_baseman,
+            "1b": first_baseman,
+            "lf": left_fielder,
+            "cf": center_fielder,
+            "rf": right_fielder,
+        }
+        return pos_map[position]
+
+    game.pos = pos
 
     # --- methods expected by events ---
     def _mark_plate_appearance_complete(reason):

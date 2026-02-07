@@ -31,7 +31,7 @@ class ControlledResolver(Resolver):
         self.scripted_outcomes = scripted_outcomes or []
         self.outcome_index = 0
 
-    def _determine_pitch_outcome(self, intent, game):
+    def determine_pitch_outcome(self, intent, game):
         """Return scripted outcome instead of random"""
         if self.outcome_index < len(self.scripted_outcomes):
             outcome = self.scripted_outcomes[self.outcome_index]
@@ -279,9 +279,19 @@ class TestWildPitchWalkScenarios:
 
         initial_batter = game.current_batter.player
 
-        # Execute with event recording
         with EventRecorder(game) as recorder:
-            drain_event_queue(game)
+            drain_event_queue(game)  # Process all events including followups
+
+        # Debug: print what was captured
+        print(f"\nTotal events captured: {len(recorder.events)}")
+        for i, event in enumerate(recorder.events):
+            print(f"  {i}: {type(event).__name__}", end="")
+            if isinstance(event, RunnerAdvancedEvent):
+                print(
+                    f" - runner={event.runner}, {event.from_base}->{event.to_base}, reason={event.reason}"
+                )
+            else:
+                print()
 
         # Assertions
         advance_events = recorder.get_events(RunnerAdvancedEvent)

@@ -2,8 +2,6 @@ Todo list
 
 Implement ThrowingErrors
 
-Track defensive stats
-
 Track games played correctly
 
 Implement pitcher recovery
