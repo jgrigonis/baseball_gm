@@ -10,6 +10,7 @@ from src.game.events.out import (
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent
 from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
+from src.game.resolvers.base_running import advance_all_runners
 from src.game.resolvers.fielder_selector import FielderSelector
 
 
@@ -37,7 +38,7 @@ def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
 
     # Advance all runners one base
     events.extend(
-        resolver._advance_all_runners(
+        advance_all_runners(
             game,
             (THIRD, SECOND, FIRST),
             advancement=1,
@@ -82,7 +83,7 @@ def resolve_sac_fly(resolver, intent, game) -> List[GameEvent]:
     # Advance the runners from first and second also
     # Should be a variable chance to change this.
     events.extend(
-        resolver._advance_all_runners(
+        advance_all_runners(
             game,
             (SECOND, FIRST),
             advancement=1,

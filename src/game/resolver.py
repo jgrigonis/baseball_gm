@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from src.game.bases import FIRST, SECOND, THIRD, HOME
+from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
 from src.game.events.hbp import HitByPitchEvent
 from src.game.events.error import FieldingErrorEvent, ThrowingErrorEvent
@@ -15,7 +15,6 @@ from src.game.events.passed_ball import PassedBallEvent
 from src.game.events.hits import SingleEvent, DoubleEvent, TripleEvent, HomeRunEvent
 from src.game.events.fielders_choice import FieldersChoiceEvent
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
-from src.game.events.runners import RunnerAdvancedEvent
 from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
 from src.game.events.strike import (
     FoulStrikeEvent,
@@ -75,14 +74,6 @@ class Resolver:
         # In-play outcome chooser
         self.in_play_outcome = WeightedChoice(rng=rng)
         self._setup_in_play_weights()
-
-    def set_rng(self, rng):
-        """Set RNG for resolver and all weighted choices."""
-        self.rng = rng
-        self.pitch_outcome.rng = rng
-        self.in_play_outcome.rng = rng
-        self.infielder_choice.rng = rng
-        self.outfielder_choice.rng = rng
 
     # ================================================================
     # Extract weight setup into dedicated methods
@@ -222,40 +213,6 @@ class Resolver:
                     require_runner_on
                 ]
                 raise RuntimeError(f"Play requires a runner on {base_name} base")
-
-    def _advance_all_runners(
-        self, game, bases: tuple, advancement: int, reason: str, rbi_batter=None
-    ) -> list[GameEvent]:
-        """Advance runners on specified bases by advancement amount (capped at HOME)"""
-        events = []
-        for base in bases:
-            runner = game.bases.runner_on(base)
-            if not runner:
-                continue
-
-            events.append(
-                RunnerAdvancedEvent(
-                    runner=runner,
-                    from_base=base,
-                    to_base=min(base + advancement, HOME),
-                    reason=reason,
-                    rbi_batter=rbi_batter,
-                    pitcher=game.pos("p"),
-                )
-            )
-        return events
-
-    def _advance_batter_to_base(
-        self, batter: str, pitcher: str, to_base: int, reason: str
-    ) -> RunnerAdvancedEvent:
-        """Create event for batter advancing to a base"""
-        return RunnerAdvancedEvent(
-            runner=batter,
-            from_base=None,
-            to_base=to_base,
-            reason=reason,
-            pitcher=pitcher,
-        )
 
     def _find_pa_end_index(self, events: List[GameEvent]) -> int | None:
         """

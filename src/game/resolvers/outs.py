@@ -11,6 +11,7 @@ from src.game.events.out import (
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent
+from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
 from src.game.resolvers.fielder_selector import FielderSelector
 from src.game.resolvers.probabilities import *
 
@@ -112,7 +113,7 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
         events.append(PutOutEvent(fielder=game.pos("1b"), assist=fielder))
         events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
         events.extend(
-            resolver._advance_all_runners(
+            advance_all_runners(
                 game,
                 (THIRD, SECOND, FIRST),
                 advancement=1,
@@ -128,7 +129,7 @@ def handle_fielding_error_advancement(resolver, intent, game) -> list[GameEvent]
     events: list[GameEvent] = []
 
     events.extend(
-        resolver._advance_all_runners(
+        advance_all_runners(
             game,
             (THIRD, SECOND, FIRST),
             advancement=1,
@@ -139,7 +140,7 @@ def handle_fielding_error_advancement(resolver, intent, game) -> list[GameEvent]
 
     # Batter to first
     events.append(
-        resolver._advance_batter_to_base(
+        advance_batter_to_base(
             intent.batter, intent.pitcher, FIRST, "fielding_error"
         )
     )

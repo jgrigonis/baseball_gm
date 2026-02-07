@@ -10,6 +10,7 @@ from src.game.events.out import (
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
+from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
 from src.game.resolvers.fielder_selector import FielderSelector
 
 
@@ -56,7 +57,7 @@ def resolve_fielders_choice(resolver, intent, game) -> List[GameEvent]:
         )
         # Advance other runners
         events.extend(
-            resolver._advance_all_runners(
+            advance_all_runners(
                 game,
                 (SECOND, FIRST),
                 advancement=1,
@@ -129,7 +130,7 @@ def resolve_fielders_choice(resolver, intent, game) -> List[GameEvent]:
 
     # Batter to first
     events.append(
-        resolver._advance_batter_to_base(
+        advance_batter_to_base(
             intent.batter, intent.pitcher, FIRST, "fielders_choice"
         )
     )

@@ -5,6 +5,7 @@ from src.game.events.hbp import HitByPitchEvent
 from src.game.events.walk import WalkEvent, IBBEvent, CatcherInterferenceEvent
 from src.game.events.runners import RunnerAdvancedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
+from src.game.resolvers.base_running import advance_batter_to_base
 from src.game.rules.force_advancement import force_advance_chain
 
 
@@ -72,7 +73,7 @@ def resolve_walk(
 
     # Award batter first base
     events.append(
-        resolver._advance_batter_to_base(intent.batter, intent.pitcher, FIRST, reason)
+        advance_batter_to_base(intent.batter, intent.pitcher, FIRST, reason)
     )
 
     resolver.logger.trace("Ending PA in _resolve_walk")

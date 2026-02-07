@@ -6,6 +6,7 @@ from src.game.events.hits import SingleEvent, DoubleEvent, TripleEvent, HomeRunE
 from src.game.events.out import OutRecordedEvent, PutOutEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
+from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
 from src.game.resolvers.fielder_selector import FielderSelector
 from src.game.resolvers.probabilities import *
 
@@ -125,7 +126,7 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
 
     # Batter to first
     events.append(
-        resolver._advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "single")
+        advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "single")
     )
 
     events.append(PlateAppearanceEndEvent(reason="single", batter=intent.batter))
@@ -154,7 +155,7 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
         skill = game.bases.runner_on(FIRST).skills["base_running"]
         # Advance runners on second and third two bases
         events.extend(
-            resolver._advance_all_runners(
+            advance_all_runners(
                 game,
                 (THIRD, SECOND),
                 advancement=2,
@@ -212,7 +213,7 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
     else:
         # Advance all runners two bases
         events.extend(
-            resolver._advance_all_runners(
+            advance_all_runners(
                 game,
                 (THIRD, SECOND, FIRST),
                 advancement=2,
@@ -223,7 +224,7 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
 
     # Batter to second
     events.append(
-        resolver._advance_batter_to_base(
+        advance_batter_to_base(
             intent.batter, intent.pitcher, SECOND, "double"
         )
     )
@@ -257,7 +258,7 @@ def resolve_triple(resolver, intent, game) -> list[GameEvent]:
 
     # All runners score (advancement to HOME)
     events.extend(
-        resolver._advance_all_runners(
+        advance_all_runners(
             game,
             (THIRD, SECOND, FIRST),
             advancement=HOME,  # Will be capped at HOME
@@ -268,7 +269,7 @@ def resolve_triple(resolver, intent, game) -> list[GameEvent]:
 
     # Batter to third
     events.append(
-        resolver._advance_batter_to_base(intent.batter, intent.pitcher, THIRD, "triple")
+        advance_batter_to_base(intent.batter, intent.pitcher, THIRD, "triple")
     )
 
     events.append(PlateAppearanceEndEvent(reason="triple", batter=intent.batter))
@@ -289,7 +290,7 @@ def resolve_home_run(resolver, intent, game) -> list[GameEvent]:
 
     # Score all runners
     events.extend(
-        resolver._advance_all_runners(
+        advance_all_runners(
             game,
             (THIRD, SECOND, FIRST),
             advancement=HOME,  # Will be capped at HOME

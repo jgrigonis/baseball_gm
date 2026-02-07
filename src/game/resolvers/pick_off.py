@@ -15,6 +15,7 @@ from src.game.events.pick_off import (
 )
 from src.game.intents.pick_off import PickOffIntent
 from src.game.events.runners import RunnerRemovedEvent
+from src.game.resolvers.base_running import advance_all_runners
 from src.game.resolvers.probabilities import *
 from src.player.player_in_game import PlayerInGame
 
@@ -79,7 +80,7 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> List[GameEvent]:
         )
         # Advance all runners one base
         events.extend(
-            resolver._advance_all_runners(
+            advance_all_runners(
                 game,
                 (THIRD, SECOND, FIRST),
                 advancement=1,

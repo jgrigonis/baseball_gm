@@ -10,6 +10,7 @@ from src.game.events.out import (
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
+from src.game.resolvers.base_running import advance_all_runners
 from src.game.resolvers.fielder_selector import FielderSelector
 
 
@@ -45,7 +46,7 @@ def resolve_double_play(resolver, intent, game) -> List[GameEvent]:
             )
         )
         events.extend(
-            resolver._advance_all_runners(
+            advance_all_runners(
                 game,
                 (THIRD, SECOND),
                 advancement=1,
