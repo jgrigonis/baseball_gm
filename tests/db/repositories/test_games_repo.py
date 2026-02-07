@@ -1,7 +1,6 @@
 # tests/db/repositories/test_games_repo.py
 import pytest
 import sqlite3
-from datetime import date
 
 from src.db.repositories.games_repo import GameRepository
 from src.game.game import GameResult

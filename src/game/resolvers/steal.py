@@ -15,7 +15,11 @@ from src.game.events.steal import (
     CaughtStealingEvent,
     DoubleStealAttemptEvent,
 )
-from src.game.resolvers.probabilities import *
+from src.game.resolvers.probabilities import (
+    STEAL_SECOND_SUCCESS_PROB,
+    STEAL_THIRD_SUCCESS_PROB,
+    STEAL_HOME_SUCCESS_PROB,
+)
 from src.util.weighted_choice import WeightedChoice
 
 

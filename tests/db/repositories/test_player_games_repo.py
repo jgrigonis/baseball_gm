@@ -4,9 +4,6 @@ import sqlite3
 
 from src.db.repositories.player_games import PlayerGameRepository
 from src.stats.stats import Stats
-from src.stats.batting_stats import BattingStats
-from src.stats.pitching_stats import PitchingStats
-from src.stats.fielding_stats import FieldingStats
 
 
 @pytest.fixture

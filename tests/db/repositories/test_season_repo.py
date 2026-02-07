@@ -390,12 +390,12 @@ class TestSeasonRepositoryIntegration:
     def test_multi_year_multi_season_workflow(self, season_repo):
         """Test managing multiple seasons across multiple years."""
         # Create multiple seasons
-        seasons_2024 = [
+        _ = [
             season_repo.create_season(2024, "Spring"),
             season_repo.create_season(2024, "Fall"),
         ]
 
-        seasons_2025 = [
+        _ = [
             season_repo.create_season(2025, "Spring"),
             season_repo.create_season(2025, "Summer"),
             season_repo.create_season(2025, "Fall"),

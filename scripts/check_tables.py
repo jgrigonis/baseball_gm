@@ -13,7 +13,7 @@ print(f"File size: {db_path.stat().st_size if db_path.exists() else 'N/A'} bytes
 
 if not db_path.exists():
     print("\n❌ DATABASE FILE DOES NOT EXIST AT THIS PATH!")
-    print(f"\nPlease check where your actual league.db file is located.")
+    print("\nPlease check where your actual league.db file is located.")
     print(f"Expected location: {db_path.absolute()}")
 else:
     conn = sqlite3.connect(db_path)

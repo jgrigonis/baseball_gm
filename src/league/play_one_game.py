@@ -116,11 +116,11 @@ def main():
         print(
             f"   Score: {game_info['away_team_id']} {game_info['away_score']} @ {game_info['home_team_id']} {game_info['home_score']}"
         )
-        print(f"   Use --force to replay")
+        print("   Use --force to replay")
         return
 
     if game_info.get("completed") and args.force:
-        print(f"⚠️  Replaying completed game (--force)")
+        print("⚠️  Replaying completed game (--force)")
         # Clear existing data
         conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (args.game_id,))
         conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (args.game_id,))

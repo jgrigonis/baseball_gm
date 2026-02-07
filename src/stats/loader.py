@@ -1,12 +1,10 @@
 # src/stats/loader.py
-from typing import List, Dict
-from pathlib import Path
+from typing import List
 
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
-from src.player.player_record import PlayerRecord
 from src.player.player_in_game import PlayerInGame
-from src.stats.stats import Stats, SeasonStats
+from src.stats.stats import Stats
 import sqlite3
 
 

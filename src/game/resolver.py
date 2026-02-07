@@ -37,7 +37,6 @@ from src.game.resolvers.concurrent_events import resolve_concurrent_events
 from src.game.resolvers.modifiers import PitchModifiers, InPlayModifiers
 from src.game.resolvers.pick_off import resolve_pickoff
 from src.game.resolvers.pitch import resolve_pitch
-from src.game.resolvers.probabilities import *
 from src.game.resolvers.walk import resolve_walk
 from src.util.weighted_choice import WeightedChoice
 

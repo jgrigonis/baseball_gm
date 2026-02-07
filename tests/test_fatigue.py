@@ -287,12 +287,12 @@ class TestEdgeCases:
     def test_zero_stamina(self):
         """Test that zero stamina raises ValueError."""
         with pytest.raises(ValueError, match="Stamina must be positive"):
-            fatigue = PitcherFatigue(stamina=0)
+            _ = PitcherFatigue(stamina=0)
 
     def test_negative_stamina(self):
         """Test that negative stamina raises ValueError."""
         with pytest.raises(ValueError, match="Stamina must be positive"):
-            fatigue = PitcherFatigue(stamina=-50)
+            _ = PitcherFatigue(stamina=-50)
 
     def test_very_high_stamina(self):
         """Test with extremely high stamina."""

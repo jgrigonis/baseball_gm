@@ -1,6 +1,5 @@
 # src/stats/analyzer.py
-from typing import List, Dict, Any, Callable
-from dataclasses import dataclass
+from typing import List, Dict, Any
 
 
 class StatsAnalyzer:

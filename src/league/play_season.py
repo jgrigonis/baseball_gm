@@ -318,7 +318,7 @@ def main():
 
     # Final stats
     elapsed = (datetime.now() - start_time).total_seconds()
-    print(f"\n✅ Season complete!")
+    print("\n✅ Season complete!")
     print(f"   Games played: {completed}")
     print(f"   Time: {elapsed:.1f} seconds ({completed/elapsed:.2f} games/sec)")
 

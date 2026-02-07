@@ -8,7 +8,13 @@ from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
 from src.game.resolvers.fielder_selector import FielderSelector
-from src.game.resolvers.probabilities import *
+from src.game.resolvers.probabilities import (
+    SCORE_FROM_SECOND_ON_SINGLE,
+    FIRST_TO_THIRD_ON_SINGLE,
+    FIRST_TO_HOME_ON_SINGLE,
+    SCORE_FROM_FIRST_ON_DOUBLE,
+    BASE_THROWOUT_PROB,
+)
 
 
 def resolve_single(resolver, intent, game) -> list[GameEvent]:
