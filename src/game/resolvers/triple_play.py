@@ -6,7 +6,10 @@ from src.game.events.out import PutOutEvent, OutRecordedEvent
 from src.game.events.runners import RunnerRemovedEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
-from src.game.resolvers.probabilities import TRIPLE_PLAY_FIRST_SECOND_THRESHOLD, TRIPLE_PLAY_FIRST_THIRD_THRESHOLD
+from src.game.resolvers.probabilities import (
+    TRIPLE_PLAY_FIRST_SECOND_THRESHOLD,
+    TRIPLE_PLAY_FIRST_THIRD_THRESHOLD,
+)
 
 
 def resolve_triple_play(resolver, intent, game):

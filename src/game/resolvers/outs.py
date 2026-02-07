@@ -15,6 +15,7 @@ from src.game.resolvers.base_running import advance_all_runners, advance_batter_
 from src.game.resolvers.fielder_selector import FielderSelector
 from src.game.resolvers.probabilities import *
 
+
 def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
     """Resolve a fly out"""
     fs = FielderSelector(game.rng)
@@ -124,6 +125,7 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
 
     return events
 
+
 def handle_fielding_error_advancement(resolver, intent, game) -> list[GameEvent]:
     # Advance all runners one base
     events: list[GameEvent] = []
@@ -140,9 +142,7 @@ def handle_fielding_error_advancement(resolver, intent, game) -> list[GameEvent]
 
     # Batter to first
     events.append(
-        advance_batter_to_base(
-            intent.batter, intent.pitcher, FIRST, "fielding_error"
-        )
+        advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "fielding_error")
     )
 
     return events

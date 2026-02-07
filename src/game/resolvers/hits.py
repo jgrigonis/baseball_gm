@@ -224,9 +224,7 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
 
     # Batter to second
     events.append(
-        advance_batter_to_base(
-            intent.batter, intent.pitcher, SECOND, "double"
-        )
+        advance_batter_to_base(intent.batter, intent.pitcher, SECOND, "double")
     )
 
     events.append(PlateAppearanceEndEvent(reason="double", batter=intent.batter))

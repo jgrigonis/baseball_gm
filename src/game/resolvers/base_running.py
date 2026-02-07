@@ -3,6 +3,7 @@ from src.game.bases import HOME
 from src.game.event import GameEvent
 from src.game.events.runners import RunnerAdvancedEvent
 
+
 def advance_all_runners(
     game, bases: tuple, advancement: int, reason: str, rbi_batter=None
 ) -> list[GameEvent]:
@@ -24,6 +25,7 @@ def advance_all_runners(
             )
         )
     return events
+
 
 def advance_batter_to_base(
     batter: str, pitcher: str, to_base: int, reason: str

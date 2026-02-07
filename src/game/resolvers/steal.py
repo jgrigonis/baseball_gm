@@ -611,9 +611,7 @@ def _modify_first_and_third_probs(first_and_third_choice, game):
     defense_factor2 = 50 / arm2
 
     # Apply multipliers
-    first_and_third_choice.multiply(
-        "both_safe", runner_factor * defense_factor
-    )
+    first_and_third_choice.multiply("both_safe", runner_factor * defense_factor)
     first_and_third_choice.multiply(
         "first_advances_only", runner_factor * defense_factor
     )

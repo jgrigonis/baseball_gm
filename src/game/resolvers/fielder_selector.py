@@ -87,7 +87,7 @@ class FielderSelector:
                 "4-6": 25,
             }
         )
-    
+
     def select_infielder(self, game) -> PlayerInGame:
         """Randomly select which infielder fields a ground ball"""
         position = self.infielder_choice.choose()
@@ -101,7 +101,7 @@ class FielderSelector:
         }
 
         return position_map[position]
-    
+
     def select_outfielder(self, game) -> PlayerInGame:
         """Randomly select which outfielder fields a fly ball"""
         position = self.outfielder_choice.choose()
@@ -113,7 +113,7 @@ class FielderSelector:
         }
 
         return position_map[position]
-    
+
     def select_foul_out_catcher(self, game) -> PlayerInGame:
         """Randomly select which outfielder fields a fly ball"""
         position = self.foul_fly_choice.choose()
@@ -131,7 +131,7 @@ class FielderSelector:
         }
 
         return position_map[position]
-    
+
     def select_infielder_bunt(self, game) -> PlayerInGame:
         """Randomly select which infielder fields a bunted ball"""
         position = self.infielder_bunt_choice.choose()
@@ -146,4 +146,3 @@ class FielderSelector:
         }
 
         return position_map[position]
-    

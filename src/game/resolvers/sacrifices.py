@@ -14,7 +14,6 @@ from src.game.resolvers.base_running import advance_all_runners
 from src.game.resolvers.fielder_selector import FielderSelector
 
 
-
 def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
     """
     A sac bunt must be a bunt. There can't be 2 outs.

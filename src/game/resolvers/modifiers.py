@@ -24,7 +24,9 @@ class PitchModifiers:
     def apply_all(resolver, game):
         """Apply all pitch probability modifiers based on game state."""
         PitchModifiers.modify_for_bases(resolver, game.bases)
-        PitchModifiers.modify_for_situation(resolver, game.situation, game.current_batter.player)
+        PitchModifiers.modify_for_situation(
+            resolver, game.situation, game.current_batter.player
+        )
         PitchModifiers.modify_for_count(resolver, game.count)
         PitchModifiers.modify_for_batter(resolver, game.current_batter.player)
         PitchModifiers.modify_for_pitcher(resolver, game.pos("p"))
@@ -43,7 +45,9 @@ class PitchModifiers:
             resolver.pitch_outcome.multiply("home_run", 1.18)
 
     @staticmethod
-    def modify_for_situation(resolver, situation: PrePitchSituation, batter: PlayerInGame):
+    def modify_for_situation(
+        resolver, situation: PrePitchSituation, batter: PlayerInGame
+    ):
         """Modify probabilities based on game situation."""
         bunting = batter.skills["bunting"]
         contact = batter.skills["contact"]
@@ -125,9 +129,13 @@ class InPlayModifiers:
     def apply_all(resolver, game):
         """Apply all in-play probability modifiers."""
         InPlayModifiers.modify_for_bases_outs(resolver, game.bases, game.inning.outs)
-        InPlayModifiers.modify_for_situation(resolver, game.situation, game.current_batter.player)
+        InPlayModifiers.modify_for_situation(
+            resolver, game.situation, game.current_batter.player
+        )
         InPlayModifiers.modify_for_count(resolver, game.count)
-        InPlayModifiers.modify_for_batter(resolver, game.current_batter.player, game.score)
+        InPlayModifiers.modify_for_batter(
+            resolver, game.current_batter.player, game.score
+        )
         InPlayModifiers.modify_for_pitcher(resolver, game.pos("p"), game.score)
         InPlayModifiers.modify_for_defense(resolver, game)
         InPlayModifiers.modify_for_infield_defense(resolver, game)
@@ -151,7 +159,9 @@ class InPlayModifiers:
             resolver.in_play_outcome.set("fielders_choice", 1950)
 
     @staticmethod
-    def modify_for_situation(resolver, situation: PrePitchSituation, batter: PlayerInGame):
+    def modify_for_situation(
+        resolver, situation: PrePitchSituation, batter: PlayerInGame
+    ):
         """Modify in-play probabilities based on situation."""
         bunting = batter.skills["bunting"]
 
@@ -199,11 +209,11 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("fly_out", -4 * (power - 50))
         resolver.in_play_outcome.add("single", -1 * (power - 50))
         resolver.in_play_outcome.add("double", (power - 50))
-        
+
         contact = batter.skills["contact"]
         resolver.in_play_outcome.add("single", 2 * (contact - 50))
         resolver.in_play_outcome.add("ground_out", (contact - 50))
-        
+
         speed = batter.skills["speed"]
         resolver.in_play_outcome.add("ground_out", -1 * (speed - 50))
         resolver.in_play_outcome.add("single", 0.9 * (speed - 50))
@@ -211,7 +221,7 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("triple", 0.1 * (speed - 50))
         resolver.in_play_outcome.add("double_play", -1 * (speed - 50))
         resolver.in_play_outcome.add("fielders_choice", (speed - 50))
-        
+
         clutch = batter.skills["clutch"]
         if -2 < score.differential < 2:
             resolver.in_play_outcome.add("fly_out", 2 * (clutch - 50))
@@ -238,9 +248,15 @@ class InPlayModifiers:
     @staticmethod
     def modify_for_defense(resolver, game):
         """Modify hit probabilities based on defensive positioning."""
-        lf_range = int((game.pos("lf").skills["speed"] + game.pos("lf").skills["outfield"]) / 2)
-        cf_range = int((game.pos("cf").skills["speed"] + game.pos("cf").skills["outfield"]) / 2)
-        rf_range = int((game.pos("rf").skills["speed"] + game.pos("rf").skills["outfield"]) / 2)
+        lf_range = int(
+            (game.pos("lf").skills["speed"] + game.pos("lf").skills["outfield"]) / 2
+        )
+        cf_range = int(
+            (game.pos("cf").skills["speed"] + game.pos("cf").skills["outfield"]) / 2
+        )
+        rf_range = int(
+            (game.pos("rf").skills["speed"] + game.pos("rf").skills["outfield"]) / 2
+        )
         avg_of_range = (lf_range + cf_range + rf_range) / 3
 
         range_factor = 50 / max(1, avg_of_range)

@@ -262,7 +262,7 @@ def _3to1_double_play(resolver, game) -> list[PutOutEvent]:
     """
     events: list[GameEvent] = []
     fs = FielderSelector(game.rng)
-    
+
     dp_type = fs._3to1_dp_choice.choose()
     if dp_type == "5-2-3":
         events.append(

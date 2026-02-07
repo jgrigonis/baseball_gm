@@ -72,9 +72,7 @@ def resolve_walk(
             )
 
     # Award batter first base
-    events.append(
-        advance_batter_to_base(intent.batter, intent.pitcher, FIRST, reason)
-    )
+    events.append(advance_batter_to_base(intent.batter, intent.pitcher, FIRST, reason))
 
     resolver.logger.trace("Ending PA in _resolve_walk")
     events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))

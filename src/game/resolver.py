@@ -59,7 +59,6 @@ class Resolver:
     - apply events
     """
 
-
     def __init__(self, rng):
         self.rng = rng
         self.logger = logging.getLogger("game.resolver")
