@@ -37,6 +37,10 @@ from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent, PrePitchSituation
 from src.game.intents.pick_off import PickOffIntent
 from src.game.resolvers.concurrent_events import resolve_concurrent_events
+from src.game.resolvers.count_modifiers import (
+    PITCH_COUNT_MODIFIERS,
+    IN_PLAY_COUNT_MODIFIERS,
+)
 from src.game.resolvers.pick_off import resolve_pickoff
 from src.game.resolvers.pitch import resolve_pitch
 from src.game.resolvers.walk import resolve_walk
@@ -311,83 +315,11 @@ class Resolver:
             self.pitch_outcome.multiply("in_play", 50)
 
     def _modify_for_count(self, count: Count):
-        """
-        Modify probabilities based on count.
-
-        Could be further refactored into a lookup table.
-        """
-        if count.balls == 0 and count.strikes == 0:
-            self.pitch_outcome.multiply("ball", 1.15)
-            self.pitch_outcome.multiply("strike", 1.33)
-            self.pitch_outcome.multiply("foul", 0.66)
-            self.pitch_outcome.multiply("home_run", 0.61)
-            self.pitch_outcome.multiply("in_play", 0.66)
-        elif count.balls == 1 and count.strikes == 0:
-            self.pitch_outcome.multiply("ball", 0.92)
-            self.pitch_outcome.multiply("strike", 1.12)
-            self.pitch_outcome.multiply("foul", 0.94)
-            self.pitch_outcome.multiply("home_run", 1.1)
-            self.pitch_outcome.multiply("in_play", 1.1)
-        elif count.balls == 0 and count.strikes == 1:
-            self.pitch_outcome.multiply("ball", 1.13)
-            self.pitch_outcome.multiply("strike", 0.74)
-            self.pitch_outcome.multiply("foul", 1.11)
-            self.pitch_outcome.multiply("home_run", 0.78)
-            self.pitch_outcome.multiply("in_play", 0.84)
-        elif count.balls == 2 and count.strikes == 0:
-            self.pitch_outcome.multiply("ball", 1.08)
-            self.pitch_outcome.multiply("strike", 1.44)
-            self.pitch_outcome.multiply("foul", 0.57)
-            self.pitch_outcome.multiply("home_run", 0.69)
-            self.pitch_outcome.multiply("in_play", 0.7)
-        elif count.balls == 1 and count.strikes == 1:
-            self.pitch_outcome.multiply("ball", 0.96)
-            self.pitch_outcome.multiply("strike", 0.78)
-            self.pitch_outcome.multiply("foul", 1.34)
-            self.pitch_outcome.multiply("home_run", 1.15)
-            self.pitch_outcome.multiply("in_play", 1.1)
-        elif count.balls == 0 and count.strikes == 2:
-            self.pitch_outcome.multiply("ball", 1.37)
-            self.pitch_outcome.multiply("strike", 0.6)
-            self.pitch_outcome.multiply("foul", 1.02)
-            self.pitch_outcome.multiply("home_run", 0.74)
-            self.pitch_outcome.multiply("in_play", 0.77)
-        elif count.balls == 3 and count.strikes == 0:
-            self.pitch_outcome.multiply("ball", 0.89)
-            self.pitch_outcome.multiply("strike", 2.56)
-            self.pitch_outcome.multiply("foul", 0.08)
-            self.pitch_outcome.multiply("home_run", 0.21)
-            self.pitch_outcome.multiply("in_play", 0.2)
-        elif count.balls == 2 and count.strikes == 1:
-            self.pitch_outcome.multiply("ball", 0.69)
-            self.pitch_outcome.multiply("strike", 0.89)
-            self.pitch_outcome.multiply("foul", 1.19)
-            self.pitch_outcome.multiply("home_run", 1.71)
-            self.pitch_outcome.multiply("in_play", 1.64)
-        elif count.balls == 1 and count.strikes == 2:
-            self.pitch_outcome.multiply("ball", 0.97)
-            self.pitch_outcome.multiply("strike", 0.71)
-            self.pitch_outcome.multiply("foul", 1.26)
-            self.pitch_outcome.multiply("home_run", 1.16)
-            self.pitch_outcome.multiply("in_play", 1.17)
-        elif count.balls == 3 and count.strikes == 1:
-            self.pitch_outcome.multiply("ball", 0.95)
-            self.pitch_outcome.multiply("strike", 0.76)
-            self.pitch_outcome.multiply("foul", 0.79)
-            self.pitch_outcome.multiply("home_run", 1.57)
-            self.pitch_outcome.multiply("in_play", 1.56)
-        elif count.balls == 2 and count.strikes == 2:
-            self.pitch_outcome.multiply("ball", 0.65)
-            self.pitch_outcome.multiply("strike", 0.76)
-            self.pitch_outcome.multiply("foul", 1.54)
-            self.pitch_outcome.multiply("home_run", 1.63)
-            self.pitch_outcome.multiply("in_play", 1.51)
-        elif count.balls == 3 and count.strikes == 2:
-            self.pitch_outcome.multiply("ball", 0.62)
-            self.pitch_outcome.multiply("strike", 0.65)
-            self.pitch_outcome.multiply("foul", 1.36)
-            self.pitch_outcome.multiply("home_run", 1.66)
-            self.pitch_outcome.multiply("in_play", 1.72)
+        """Apply count-based probability modifiers."""
+        modifiers = PITCH_COUNT_MODIFIERS.get((count.balls, count.strikes))
+        if modifiers:
+            for outcome, factor in modifiers.items():
+                self.pitch_outcome.multiply(outcome, factor)
 
     def _modify_for_batter(self, batter: PlayerInGame):
         """Modify probabilities based on batter skills."""
@@ -580,79 +512,11 @@ class Resolver:
             self.in_play_outcome.multiply("triple_play", 0.5)
 
     def _modify_in_play_for_count(self, count: Count):
-        """Modify the probabilities based on the count."""
-        if count.balls == 0 and count.strikes == 0:
-            self.in_play_outcome.multiply("fly_out", 0.66)
-            self.in_play_outcome.multiply("ground_out", 0.66)
-            self.in_play_outcome.multiply("single", 0.61)
-            self.in_play_outcome.multiply("double", 0.61)
-            self.in_play_outcome.multiply("triple", 0.61)
-        elif count.balls == 1 and count.strikes == 0:
-            self.in_play_outcome.multiply("fly_out", 1.01)
-            self.in_play_outcome.multiply("ground_out", 1.01)
-            self.in_play_outcome.multiply("single", 1.1)
-            self.in_play_outcome.multiply("double", 1.1)
-            self.in_play_outcome.multiply("triple", 1.1)
-        elif count.balls == 0 and count.strikes == 1:
-            self.in_play_outcome.multiply("fly_out", 1.08)
-            self.in_play_outcome.multiply("ground_out", 1.08)
-            self.in_play_outcome.multiply("single", 0.78)
-            self.in_play_outcome.multiply("double", 0.78)
-            self.in_play_outcome.multiply("triple", 0.78)
-        elif count.balls == 2 and count.strikes == 0:
-            self.in_play_outcome.multiply("fly_out", 0.72)
-            self.in_play_outcome.multiply("ground_out", 0.72)
-            self.in_play_outcome.multiply("single", 0.69)
-            self.in_play_outcome.multiply("double", 0.69)
-            self.in_play_outcome.multiply("triple", 0.69)
-        elif count.balls == 1 and count.strikes == 1:
-            self.in_play_outcome.multiply("fly_out", 1.01)
-            self.in_play_outcome.multiply("ground_out", 1.01)
-            self.in_play_outcome.multiply("single", 1.15)
-            self.in_play_outcome.multiply("double", 1.15)
-            self.in_play_outcome.multiply("triple", 1.15)
-        elif count.balls == 0 and count.strikes == 2:
-            self.in_play_outcome.multiply("fly_out", 0.82)
-            self.in_play_outcome.multiply("ground_out", 0.82)
-            self.in_play_outcome.multiply("single", 0.74)
-            self.in_play_outcome.multiply("double", 0.74)
-            self.in_play_outcome.multiply("triple", 0.74)
-        elif count.balls == 3 and count.strikes == 0:
-            self.in_play_outcome.multiply("fly_out", 0.09)
-            self.in_play_outcome.multiply("ground_out", 0.09)
-            self.in_play_outcome.multiply("single", 0.21)
-            self.in_play_outcome.multiply("double", 0.21)
-            self.in_play_outcome.multiply("triple", 0.21)
-        elif count.balls == 2 and count.strikes == 1:
-            self.in_play_outcome.multiply("fly_out", 1.47)
-            self.in_play_outcome.multiply("ground_out", 1.47)
-            self.in_play_outcome.multiply("single", 1.71)
-            self.in_play_outcome.multiply("double", 1.71)
-            self.in_play_outcome.multiply("triple", 1.71)
-        elif count.balls == 1 and count.strikes == 2:
-            self.in_play_outcome.multiply("fly_out", 1.2)
-            self.in_play_outcome.multiply("ground_out", 1.2)
-            self.in_play_outcome.multiply("single", 1.16)
-            self.in_play_outcome.multiply("double", 1.16)
-            self.in_play_outcome.multiply("triple", 1.16)
-        elif count.balls == 3 and count.strikes == 1:
-            self.in_play_outcome.multiply("fly_out", 1.56)
-            self.in_play_outcome.multiply("ground_out", 1.56)
-            self.in_play_outcome.multiply("single", 1.57)
-            self.in_play_outcome.multiply("double", 1.57)
-            self.in_play_outcome.multiply("triple", 1.57)
-        elif count.balls == 2 and count.strikes == 2:
-            self.in_play_outcome.multiply("fly_out", 1.39)
-            self.in_play_outcome.multiply("ground_out", 1.39)
-            self.in_play_outcome.multiply("single", 1.63)
-            self.in_play_outcome.multiply("double", 1.63)
-            self.in_play_outcome.multiply("triple", 1.63)
-        elif count.balls == 3 and count.strikes == 2:
-            self.in_play_outcome.multiply("fly_out", 1.88)
-            self.in_play_outcome.multiply("ground_out", 1.88)
-            self.in_play_outcome.multiply("single", 1.66)
-            self.in_play_outcome.multiply("double", 1.66)
-            self.in_play_outcome.multiply("triple", 1.66)
+        """Apply count-based in-play probability modifiers."""
+        modifiers = IN_PLAY_COUNT_MODIFIERS.get((count.balls, count.strikes))
+        if modifiers:
+            for outcome, factor in modifiers.items():
+                self.in_play_outcome.multiply(outcome, factor)
 
     def _modify_in_play_for_batter(self, batter: PlayerInGame, score: Score):
         """Modify the probabilities based on the batter skills."""

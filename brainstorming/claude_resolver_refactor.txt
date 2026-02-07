@@ -27,11 +27,26 @@ PITCH_OUTCOMES = {
 handler = getattr(self, PITCH_OUTCOMES[outcome])
 events.extend(handler(intent, game))
 
-Split into Multiple Files
+Split into Multiple Files X
 
-# resolver/base.py - Base Resolver class
-# resolver/pitch.py - Pitch resolution logic  
-X resolver/hits.py - Single, double, triple, HR
-# resolver/outs.py - Fly outs, ground outs, strikeouts
-# resolver/steals.py - Steal logic
-# resolver/double_plays.py - DP logic
+Move Position Selection to Separate File
+
+python# src/game/resolver/fielders.py
+class FielderSelector:
+    def __init__(self, rng):
+        # All the WeightedChoice objects
+        
+    def select_infielder(self, game):
+        # ...
+    
+    def select_outfielder(self, game):
+        # ...
+
+Split Modifier Methods into ModifierEngine
+
+# src/game/resolver/modifiers.py
+class PitchModifiers:
+    @staticmethod
+    def apply_all(resolver, game):
+        # All the _modify_for_* methods
+
