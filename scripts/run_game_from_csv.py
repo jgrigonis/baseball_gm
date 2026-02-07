@@ -24,12 +24,12 @@ from src.util.locations import TEAM_FILES_DIR
 
 # from src.util.logger import setup_logger
 
-HOME_FILE = Path(TEAM_FILES_DIR) / "Team1.csv"
-AWAY_FILE = Path(TEAM_FILES_DIR) / "Team2.csv"
-HOME_CITY = "Fakeville"
-HOME_MASCOT = "Fakes"
-AWAY_CITY = "Phoneyland"
-AWAY_MASCOT = "Frauds"
+HOME_FILE = Path(TEAM_FILES_DIR) / "amsterdam.csv"
+AWAY_FILE = Path(TEAM_FILES_DIR) / "bangkok.csv"
+HOME_CITY = "Amsterdam"
+HOME_MASCOT = "Homers"
+AWAY_CITY = "Bangkok"
+AWAY_MASCOT = "Visitoors"
 
 
 def get_args():
@@ -84,6 +84,19 @@ def main():
         home_team=home_team, away_team=away_team, log_level=levl, pauses=args.pauses
     )
     result = my_game.play()
+
+    print(home_team.output_defensive_stats())
+    print(away_team.output_defensive_stats())
+
+    print(home_team.output_lineup_ratings())
+    print(home_team.output_pitcher_ratings())
+    print(away_team.output_lineup_ratings())
+    print(away_team.output_pitcher_ratings())
+
+    print(home_team.output_lineup_skills())
+    print(home_team.output_pitcher_skills())
+    print(away_team.output_lineup_skills())
+    print(away_team.output_pitcher_skills())
 
     print(home_team.output_batting_stats())
     print(away_team.output_batting_stats())

@@ -219,8 +219,6 @@ class TeamInGame:
 
     def output_batting_stats(self) -> str:
         """Output the team's batting stats as a string."""
-        # print(PlayerTableFormatter().horizontal_stat_header())
-        # ptf = PlayerTableFormatter()
         output = ""
         output += PlayerTableFormatter.horizontal_stat_header()
         output += "\n"
@@ -238,5 +236,16 @@ class TeamInGame:
         for player in self.players:
             if player.game_stats.pitching.outs > 0:
                 output += PlayerTableFormatter.horizontal_pitching_stats(player)
+                output += "\n"
+        return output
+
+    def output_defensive_stats(self) -> str:
+        """Output the team's defensive stats as a string."""
+        output = ""
+        output += PlayerTableFormatter.horizontal_defensive_stat_header()
+        output += "\n"
+        for player in self.players:
+            if player.game_stats.fielding.assists > 0 or player.game_stats.fielding.putouts > 0 or player.game_stats.fielding.errors > 0:
+                output += PlayerTableFormatter.horizontal_defensive_stats(player)
                 output += "\n"
         return output

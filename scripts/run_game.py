@@ -96,6 +96,9 @@ def main(args):
     )
     result = my_game.play()
 
+    print(home_team.output_defensive_stats())
+    print(away_team.output_defensive_stats())
+
     print(home_team.output_lineup_ratings())
     print(home_team.output_pitcher_ratings())
     print(away_team.output_lineup_ratings())
