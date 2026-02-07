@@ -10,7 +10,8 @@ from src.game.events.out import (
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent
 from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
-from src.player.player_in_game import PlayerInGame
+from src.game.resolvers.fielder_selector import FielderSelector
+
 
 
 def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
@@ -26,10 +27,12 @@ def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
     # Validation
     resolver._validate_game_state(game, max_outs=2, require_runners=True)
 
+    fs = FielderSelector(game.rng)
+
     events: list[GameEvent] = []
 
     events.append(SacBuntEvent(batter=intent.batter))
-    events.append(PutOutEvent(game.pos("1b"), _select_infielder_bunt(resolver, game)))
+    events.append(PutOutEvent(game.pos("1b"), fs.select_infielder_bunt(game)))
     events.append(OutRecordedEvent(reason="sac_bunt", pitcher=intent.pitcher))
 
     # Advance all runners one base
@@ -48,22 +51,6 @@ def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
     return events
 
 
-def _select_infielder_bunt(resolver, game) -> PlayerInGame:
-    """Randomly select which infielder fields a bunted ball"""
-    position = resolver.infielder_bunt_choice.choose()
-
-    position_map = {
-        "shortstop": game.pos("ss"),
-        "second_baseman": game.pos("2b"),
-        "third_baseman": game.pos("3b"),
-        "first_baseman": game.pos("1b"),
-        "pitcher": game.pos("p"),
-        "catcher": game.pos("c"),
-    }
-
-    return position_map[position]
-
-
 def resolve_sac_fly(resolver, intent, game) -> List[GameEvent]:
     """
     A sac fly must result in a score. There can't be 2 outs.
@@ -73,11 +60,12 @@ def resolve_sac_fly(resolver, intent, game) -> List[GameEvent]:
     """
     # Validation
     resolver._validate_game_state(game, max_outs=2, require_runner_on=THIRD)
+    fs = FielderSelector(game.rng)
 
     events: list[GameEvent] = []
 
     events.append(SacFlyEvent(batter=intent.batter))
-    events.append(PutOutEvent(resolver._select_outfielder(game)))
+    events.append(PutOutEvent(fs.select_outfielder(game)))
     events.append(OutRecordedEvent(reason="sac_fly", pitcher=intent.pitcher))
 
     runner = game.bases.runner_on(THIRD)

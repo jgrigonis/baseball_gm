@@ -12,6 +12,7 @@ from src.game.events.strike import (
     FoulTipCaughtThirdStrikeEvent,
 )
 from src.game.events.strikeout import StrikeOutEvent
+from src.game.resolvers.fielder_selector import FielderSelector
 
 
 def resolve_foul(resolver, intent, game) -> list[GameEvent]:
@@ -58,10 +59,11 @@ def resolve_foul(resolver, intent, game) -> list[GameEvent]:
 
 def resolve_fly_out_foul(resolver, intent, game) -> list[GameEvent]:
     """Simply resolves a fly out foul, can happen with 2 strikes or less."""
+    fs = FielderSelector(game.rng)
 
     return [
         FoulFlyOutEvent(batter=intent.batter),
-        PutOutEvent(resolver._select_foul_out_catcher(game)),
+        PutOutEvent(fs.select_foul_out_catcher(game)),
         OutRecordedEvent(reason="foul_fly_out", pitcher=intent.pitcher),
         PlateAppearanceEndEvent(reason="out", batter=intent.batter),
     ]

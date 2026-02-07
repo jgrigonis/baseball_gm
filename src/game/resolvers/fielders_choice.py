@@ -10,6 +10,7 @@ from src.game.events.out import (
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
+from src.game.resolvers.fielder_selector import FielderSelector
 
 
 def resolve_fielders_choice(resolver, intent, game) -> List[GameEvent]:
@@ -38,12 +39,14 @@ def resolve_fielders_choice(resolver, intent, game) -> List[GameEvent]:
     # Validation
     resolver._validate_game_state(game, max_outs=2, require_runners=True)
 
+    fs = FielderSelector(game.rng)
+
     events: list[GameEvent] = []
     events.append(FieldersChoiceEvent(batter=intent.batter, pitcher=intent.pitcher))
 
     if game.bases.runner_on(THIRD):
         # throw out at plate
-        events.append(PutOutEvent(game.pos("c"), resolver._select_infielder(game)))
+        events.append(PutOutEvent(game.pos("c"), fs.select_infielder(game)))
         events.append(
             RunnerRemovedEvent(
                 runner=game.bases.runner_on(THIRD),

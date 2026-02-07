@@ -10,6 +10,7 @@ from src.game.events.out import (
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
+from src.game.resolvers.fielder_selector import FielderSelector
 
 
 def resolve_double_play(resolver, intent, game) -> List[GameEvent]:
@@ -142,7 +143,9 @@ def _choose_double_play(resolver, game) -> list[PutOutEvent]:
     Pick a type of double play to perform, and return the proper PutOutEvent
     """
     events: list[GameEvent] = []
-    dp_type = resolver.double_play_choice.choose()
+    fs = FielderSelector(game.rng)
+
+    dp_type = fs.double_play_choice.choose()
     if dp_type == "6-4-3":
         events.append(
             PutOutEvent(
@@ -257,7 +260,9 @@ def _3to1_double_play(resolver, game) -> list[PutOutEvent]:
     In this case we are putting out the batter and a runner on third.
     """
     events: list[GameEvent] = []
-    dp_type = resolver._3to1_dp_choice.choose()
+    fs = FielderSelector(game.rng)
+    
+    dp_type = fs._3to1_dp_choice.choose()
     if dp_type == "5-2-3":
         events.append(
             PutOutEvent(
@@ -368,7 +373,9 @@ def _2to1_double_play(resolver, game) -> list[PutOutEvent]:
     In this case we are putting out the batter and a runner on second.
     """
     events: list[GameEvent] = []
-    dp_type = resolver._2to1_dp_choice.choose()
+    fs = FielderSelector(game.rng)
+
+    dp_type = fs._2to1_dp_choice.choose()
 
     if dp_type == "6-3":
         events.append(PutOutEvent(game.pos("ss")))

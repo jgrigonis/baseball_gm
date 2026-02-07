@@ -1,5 +1,5 @@
 # tests/test_resolver_helper.py
-from src.game.resolver import EnhancedResolver
+from src.game.resolver import Resolver
 from src.game.events.ball import BallEvent
 from src.game.events.pitch import PitchThrownEvent
 from src.game.events.hits import SingleEvent
@@ -24,7 +24,7 @@ def test_ball_in_play():
     from unittest.mock import Mock
 
     resolver = Mock()
-    resolver._ball_in_play = EnhancedResolver._ball_in_play.__get__(resolver)
+    resolver._ball_in_play = Resolver._ball_in_play.__get__(resolver)
 
     # Test 1: Ball in play (single)
     events = [
@@ -74,7 +74,7 @@ def test_find_pa_end_index():
     from unittest.mock import Mock
 
     resolver = Mock()
-    resolver._find_pa_end_index = EnhancedResolver._find_pa_end_index.__get__(resolver)
+    resolver._find_pa_end_index = Resolver._find_pa_end_index.__get__(resolver)
 
     # Test 1: PA end event present
     pa_end = Mock(spec=PlateAppearanceEndEvent)
@@ -107,7 +107,7 @@ def test_inning_ended():
     from unittest.mock import Mock
 
     resolver = Mock()
-    resolver._inning_ended = EnhancedResolver._inning_ended.__get__(resolver)
+    resolver._inning_ended = Resolver._inning_ended.__get__(resolver)
 
     # Test 1: No outs yet, no outs in events
     game = Mock()

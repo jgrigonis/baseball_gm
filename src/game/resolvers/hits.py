@@ -6,6 +6,7 @@ from src.game.events.hits import SingleEvent, DoubleEvent, TripleEvent, HomeRunE
 from src.game.events.out import OutRecordedEvent, PutOutEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
+from src.game.resolvers.fielder_selector import FielderSelector
 
 
 def resolve_single(resolver, intent, game) -> list[GameEvent]:
@@ -17,9 +18,9 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
     """
     events: list[GameEvent] = []
     events.append(SingleEvent(batter=intent.batter, pitcher=intent.pitcher))
-
+    fs = FielderSelector(game.rng)
     # Select outfielder who fields the ball
-    fielder = resolver._select_outfielder(game)
+    fielder = fs.select_outfielder(game)
     arm_strength = fielder.skills["arm"]
 
     # Handle runner on third (always scores on single)
@@ -142,9 +143,9 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
     events: list[GameEvent] = []
 
     events.append(DoubleEvent(batter=intent.batter, pitcher=intent.pitcher))
-
+    fs = FielderSelector(game.rng)
     # Select which outfielder fields the ball
-    fielder = resolver._select_outfielder(game)
+    fielder = fs.select_outfielder(game)
     arm_strength = fielder.skills["arm"]
 
     if game.bases.runner_on(FIRST):

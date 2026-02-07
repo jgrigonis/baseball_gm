@@ -30,7 +30,7 @@ from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
 from src.game.intents.pick_off import PickOffIntent
 from src.game.intents.pitch import PrePitchSituation
-from src.game.resolver import EnhancedResolver
+from src.game.resolver import Resolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
 from src.player.fatigue import FatigueLevel
@@ -125,7 +125,7 @@ class Game:
         rng: random.Random | None = None,
         log_level: int | None = None,
         intent_generator: IntentGenerator | None = None,
-        resolver: EnhancedResolver | None = None,
+        resolver: Resolver | None = None,
         pauses: bool = False,
     ) -> None:
         """
@@ -172,7 +172,7 @@ class Game:
 
         # Engine components
         self.intent_generator = intent_generator or IntentGenerator(self.rng)
-        self.resolver = resolver or EnhancedResolver(self.rng)
+        self.resolver = resolver or Resolver(self.rng)
         self.situation = PrePitchSituation
 
         # Current player cursors

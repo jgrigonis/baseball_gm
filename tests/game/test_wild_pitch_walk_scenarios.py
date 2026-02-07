@@ -7,7 +7,7 @@ from src.game.game import Game
 from src.game.bases import FIRST, SECOND, THIRD, HOME
 from src.game.count import Count
 
-from src.game.resolver import EnhancedResolver
+from src.game.resolver import Resolver
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.walk import WalkEvent
 from src.game.events.runners import RunnerAdvancedEvent
@@ -17,7 +17,7 @@ from src.player.player_skills import PlayerSkills
 from src.player.positions import SKILLS  # Import SKILLS from positions
 
 
-class ControlledResolver(EnhancedResolver):
+class ControlledResolver(Resolver):
     """Resolver that returns predetermined outcomes for testing"""
 
     def __init__(self, scripted_outcomes=None, seed=42):

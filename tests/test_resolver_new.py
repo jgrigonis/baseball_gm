@@ -15,7 +15,7 @@ Tests cover:
 import pytest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
-from src.game.resolver import EnhancedResolver
+from src.game.resolver import Resolver
 from src.game.intents.pitch import PitchIntent
 from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.strike import (
@@ -162,7 +162,7 @@ def rng():
 
 @pytest.fixture
 def resolver(rng):
-    return EnhancedResolver(rng)
+    return Resolver(rng)
 
 
 @pytest.fixture

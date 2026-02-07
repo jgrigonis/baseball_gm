@@ -11,10 +11,12 @@ from src.game.events.out import (
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent
+from src.game.resolvers.fielder_selector import FielderSelector
 
 
 def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
     """Resolve a fly out"""
+    fs = FielderSelector(game.rng)
     events: list[GameEvent] = []
     lf_arm = game.pos("lf").skills["arm"]
     cf_arm = game.pos("cf").skills["arm"]
@@ -56,7 +58,7 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
             )
 
     events.append(FlyOutEvent(batter=intent.batter))
-    events.append(PutOutEvent(resolver._select_outfielder(game)))
+    events.append(PutOutEvent(fs.select_outfielder(game)))
     events.append(OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher))
     events.append(PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter))
 
@@ -91,9 +93,9 @@ def adjust_tagup_probs(resolver, bases: Bases, arm: int) -> tuple[float, float]:
 def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
     """Resolve a ground out"""
     events: list[GameEvent] = []
-
+    fs = FielderSelector(game.rng)
     # Determine which infielder fields the ball
-    fielder = resolver._select_infielder(game)
+    fielder = fs.select_infielder(game)
     fielding_skill = fielder.skills["infield"]
 
     # Check if fielder makes an error

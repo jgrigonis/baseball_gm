@@ -41,6 +41,7 @@ from src.game.resolvers.count_modifiers import (
     PITCH_COUNT_MODIFIERS,
     IN_PLAY_COUNT_MODIFIERS,
 )
+from src.game.resolvers.fielder_selector import FielderSelector
 from src.game.resolvers.pick_off import resolve_pickoff
 from src.game.resolvers.pitch import resolve_pitch
 from src.game.resolvers.walk import resolve_walk
@@ -114,86 +115,28 @@ class Resolver:
         self.in_play_outcome = WeightedChoice(rng=rng)
         self._setup_in_play_weights()
 
-        self.infielder_bunt_choice = WeightedChoice(
+        # ============================================================
+        # Initialize steal outcome choosers
+        # ============================================================
+        self.double_steal_choice = WeightedChoice(
             {
-                "shortstop": 2,
-                "second_baseman": 2,
-                "third_baseman": 20,
-                "pitcher": 15,
-                "catcher": 20,
-            }
-        )
-        # Infielder selection chooser
-        self.infielder_choice = WeightedChoice(
-            {
-                "shortstop": 32,
-                "second_baseman": 25,
-                "third_baseman": 20,
-                "first_baseman": 18,
-                "pitcher": 5,
+                "both_safe": 900,
+                "lead_out_trail_safe": 2500,
+                "lead_safe_trail_out": 800,
+                "both_out": 100,
             },
             rng=rng,
         )
 
-        # Outfielder selection chooser
-        self.outfielder_choice = WeightedChoice(
+        self.first_and_third_choice = WeightedChoice(
             {
-                "center_fielder": 39,
-                "right_fielder": 32,
-                "left_fielder": 29,
+                "both_safe": 600,
+                "first_advances_only": 1500,
+                "first_out_third_scores": 1000,
+                "third_out_first_advances": 2800,
+                "both_out": 100,
             },
             rng=rng,
-        )
-
-        self.foul_fly_choice = WeightedChoice(
-            {
-                "right_fielder": 32,
-                "left_fielder": 30,
-                "first_baseman": 9,
-                "third_baseman": 9,
-                "second_baseman": 4,
-                "shortstop": 4,
-                "catcher": 4,
-                "pitcher": 2,
-            },
-            rng=rng,
-        )
-
-        self.double_play_choice = WeightedChoice(
-            {
-                "6-4-3": 43,
-                "4-6-3": 23,
-                "5-4-3": 12,
-                "3-6-3": 7,
-                "6-3": 4,
-                "3-6": 3,
-                "4-3": 2,
-                "1-6-3": 2,
-                "3-6-1": 2,
-            },
-            rng=rng,
-        )
-
-        self._3to1_dp_choice = WeightedChoice(
-            {
-                "5-2-3": 18,
-                "6-2-3": 25,
-                "4-2-3": 22,
-                "1-2-3": 12,
-                "3-2-3": 12,
-                "5-5": 4,
-                "6-5": 3,
-            },
-            rng=rng,
-        )
-
-        self._2to1_dp_choice = WeightedChoice(
-            {
-                "6-3": 25,
-                "6-5-3": 25,
-                "5-3": 25,
-                "4-6": 25,
-            }
         )
 
     def set_rng(self, rng):
@@ -247,12 +190,84 @@ class Resolver:
         """
         Resolve an intent into one or more GameEvents.
 
-        Must always return at least one event.
+        For PitchIntent, this happens in three phases:
+        1. Pre-pitch phase (pickoffs, etc.)
+        2. Pitch phase (pitch thrown + outcome)
+        3. Concurrent phase (steals - only if ball not in play)
+
+        Event ordering:
+        - Pre-pitch events
+        - Pitch thrown event
+        - Pitch outcome events (balls, strikes, hits, etc.)
+        - Concurrent events (steals) - BEFORE PlateAppearanceEndEvent
+        - PlateAppearanceEndEvent (if applicable)
         """
+        if isinstance(intent, PickOffIntent):
+            return resolve_pickoff(self, intent, game)
+
         if isinstance(intent, PitchIntent):
-            return resolve_pitch(self, intent, game)
+            events = []
+            situation = intent.pre_pitch_situation
+
+            # Special case: intentional walk skips pitch
+            if situation.intentional_walk:
+                events.extend(resolve_walk(self, intent, game, intentional=True))
+                return events
+
+            # ============================================================
+            # Phase 1: The pitch itself
+            # ============================================================
+            pitch_events = resolve_pitch(self, intent, game)
+
+            # ============================================================
+            # Phase 2: Concurrent events (steals)
+            # Only process if ball was NOT put in play AND no
+            # wild pitch/passed ball
+            # ============================================================
+            if (
+                not self._ball_in_play(pitch_events)
+                and not self._is_walk(pitch_events)
+                and not self._is_wild_pitch_or_passed_ball(pitch_events)
+                and not self._is_balk(pitch_events)
+                and not self._is_foul(pitch_events)
+                and not self._is_error(pitch_events)
+            ):
+                # Steals can happen on balls, strikes,
+                # but not balks, walks, errors, wild pitches, passed balls, fouls or ball_in_play
+                concurrent_events = resolve_concurrent_events(self, intent, game)
+
+                # Find where the PlateAppearanceEndEvent is (if any)
+                pa_end_index = self._find_pa_end_index(pitch_events)
+
+                if pa_end_index is not None:
+                    # Insert concurrent events BEFORE the PA end
+                    events.extend(
+                        pitch_events[:pa_end_index]
+                    )  # Everything before PA end
+                    events.extend(concurrent_events)  # Steal events
+                    events.extend(pitch_events[pa_end_index:])  # PA end event
+                else:
+                    # No PA end yet (pitch didn't end PA)
+                    events.extend(pitch_events)
+                    events.extend(concurrent_events)
+            else:
+                # Ball in play - no concurrent steal events
+                events.extend(pitch_events)
+
+            return events
 
         raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
+
+    # def resolve(self, intent: GameIntent, game) -> List[GameEvent]:
+    #     """
+    #     Resolve an intent into one or more GameEvents.
+
+    #     Must always return at least one event.
+    #     """
+    #     if isinstance(intent, PitchIntent):
+    #         return resolve_pitch(self, intent, game)
+
+    #     raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
 
     def _apply_pitch_modifiers(self, game):
         """Apply all pitch probability modifiers based on game state."""
@@ -652,154 +667,6 @@ class Resolver:
 
         return events
 
-    def _select_infielder(self, game):
-        """Randomly select which infielder fields a ground ball"""
-        position = self.infielder_choice.choose()
-
-        position_map = {
-            "shortstop": game.pos("ss"),
-            "second_baseman": game.pos("2b"),
-            "third_baseman": game.pos("3b"),
-            "first_baseman": game.pos("1b"),
-            "pitcher": game.pos("p"),
-        }
-
-        return position_map[position]
-
-    def _select_outfielder(self, game):
-        """Randomly select which outfielder fields a fly ball"""
-        position = self.outfielder_choice.choose()
-
-        position_map = {
-            "center_fielder": game.pos("cf"),
-            "right_fielder": game.pos("rf"),
-            "left_fielder": game.pos("lf"),
-        }
-
-        return position_map[position]
-
-    def _select_foul_out_catcher(self, game):
-        """Randomly select which outfielder fields a fly ball"""
-        position = self.foul_fly_choice.choose()
-
-        position_map = {
-            "center_fielder": game.pos("cf"),
-            "right_fielder": game.pos("rf"),
-            "left_fielder": game.pos("lf"),
-            "shortstop": game.pos("ss"),
-            "second_baseman": game.pos("2b"),
-            "third_baseman": game.pos("3b"),
-            "first_baseman": game.pos("1b"),
-            "pitcher": game.pos("p"),
-            "catcher": game.pos("c"),
-        }
-
-        return position_map[position]
-
-
-class EnhancedResolver(Resolver):
-    """
-    Extended Resolver with pre-pitch and concurrent event support.
-    """
-
-    def __init__(self, rng):
-        super().__init__(rng)
-
-        # ============================================================
-        # Initialize steal outcome choosers
-        # ============================================================
-        self.double_steal_choice = WeightedChoice(
-            {
-                "both_safe": 900,
-                "lead_out_trail_safe": 2500,
-                "lead_safe_trail_out": 800,
-                "both_out": 100,
-            },
-            rng=rng,
-        )
-
-        self.first_and_third_choice = WeightedChoice(
-            {
-                "both_safe": 600,
-                "first_advances_only": 1500,
-                "first_out_third_scores": 1000,
-                "third_out_first_advances": 2800,
-                "both_out": 100,
-            },
-            rng=rng,
-        )
-
-    def resolve(self, intent: GameIntent, game) -> List[GameEvent]:
-        """
-        Resolve an intent into one or more GameEvents.
-
-        For PitchIntent, this happens in three phases:
-        1. Pre-pitch phase (pickoffs, etc.)
-        2. Pitch phase (pitch thrown + outcome)
-        3. Concurrent phase (steals - only if ball not in play)
-
-        Event ordering:
-        - Pre-pitch events
-        - Pitch thrown event
-        - Pitch outcome events (balls, strikes, hits, etc.)
-        - Concurrent events (steals) - BEFORE PlateAppearanceEndEvent
-        - PlateAppearanceEndEvent (if applicable)
-        """
-        if isinstance(intent, PickOffIntent):
-            return resolve_pickoff(self, intent, game)
-
-        if isinstance(intent, PitchIntent):
-            events = []
-            situation = intent.pre_pitch_situation
-
-            # Special case: intentional walk skips pitch
-            if situation.intentional_walk:
-                events.extend(resolve_walk(self, intent, game, intentional=True))
-                return events
-
-            # ============================================================
-            # Phase 1: The pitch itself
-            # ============================================================
-            pitch_events = resolve_pitch(self, intent, game)
-
-            # ============================================================
-            # Phase 2: Concurrent events (steals)
-            # Only process if ball was NOT put in play AND no
-            # wild pitch/passed ball
-            # ============================================================
-            if (
-                not self._ball_in_play(pitch_events)
-                and not self._is_walk(pitch_events)
-                and not self._is_wild_pitch_or_passed_ball(pitch_events)
-                and not self._is_balk(pitch_events)
-                and not self._is_foul(pitch_events)
-                and not self._is_error(pitch_events)
-            ):
-                # Steals can happen on balls, strikes,
-                # but not balks, walks, errors, wild pitches, passed balls, fouls or ball_in_play
-                concurrent_events = resolve_concurrent_events(self, intent, game)
-
-                # Find where the PlateAppearanceEndEvent is (if any)
-                pa_end_index = self._find_pa_end_index(pitch_events)
-
-                if pa_end_index is not None:
-                    # Insert concurrent events BEFORE the PA end
-                    events.extend(
-                        pitch_events[:pa_end_index]
-                    )  # Everything before PA end
-                    events.extend(concurrent_events)  # Steal events
-                    events.extend(pitch_events[pa_end_index:])  # PA end event
-                else:
-                    # No PA end yet (pitch didn't end PA)
-                    events.extend(pitch_events)
-                    events.extend(concurrent_events)
-            else:
-                # Ball in play - no concurrent steal events
-                events.extend(pitch_events)
-
-            return events
-
-        raise RuntimeError(f"Unhandled intent type: {type(intent).__name__}")
 
     # ================================================================
     # Event Checks
