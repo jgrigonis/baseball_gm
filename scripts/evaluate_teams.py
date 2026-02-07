@@ -264,26 +264,21 @@ def get_args():
     )
 
     # Mutually exclusive group: either directory or manifest
-    input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument(
+    # input_group = parser.add_mutually_exclusive_group(required=True)
+    parser.add_argument(
         "--directory",
         "-d",
         type=str,
+        default=TEAM_FILES_DIR,
         help="Directory containing team CSV files",
     )
-    input_group.add_argument(
+    parser.add_argument(
         "--manifest",
         "-m",
         type=str,
         help="Manifest JSON file listing teams to evaluate",
     )
 
-    parser.add_argument(
-        "--base-dir",
-        "-b",
-        type=str,
-        help="Base directory for CSV files when using manifest (default: TEAM_FILES_DIR)",
-    )
     parser.add_argument(
         "--top",
         "-n",
@@ -306,7 +301,7 @@ def main():
         if not manifest_path.is_absolute():
             manifest_path = LEAGUE_FILES_DIR / manifest_path
 
-        base_dir = Path(args.base_dir) if args.base_dir else TEAM_FILES_DIR
+        base_dir = Path(args.directory)
 
         print(f"Evaluating teams from manifest: {manifest_path}")
         print(f"Base directory: {base_dir}\n")

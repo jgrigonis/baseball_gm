@@ -1,0 +1,37 @@
+Claude Ideas for resolver refactor
+
+Extract Count Modifiers to Lookup Table
+COUNT_MODIFIERS = {
+    (0, 0): {"ball": 1.15, "strike": 1.33, "foul": 0.66, "home_run": 0.61, "in_play": 0.66},
+    (1, 0): {"ball": 0.92, "strike": 1.12, "foul": 0.94, "home_run": 1.1, "in_play": 1.1},
+    # ... all counts
+}
+
+def _modify_for_count(self, count: Count):
+    mods = COUNT_MODIFIERS.get((count.balls, count.strikes))
+    if mods:
+        for outcome, factor in mods.items():
+            self.pitch_outcome.multiply(outcome, factor)
+
+
+Extract Outcome Handlers to Dict
+# Already partially done, but make it complete
+PITCH_OUTCOMES = {
+    "in_play": "_resolve_ball_in_play",
+    "ball": "_handle_ball",
+    "strike": "_handle_strike_outcome",
+    # ... etc
+}
+
+# Then just:
+handler = getattr(self, PITCH_OUTCOMES[outcome])
+events.extend(handler(intent, game))
+
+Split into Multiple Files
+
+# resolver/base.py - Base Resolver class
+# resolver/pitch.py - Pitch resolution logic  
+X resolver/hits.py - Single, double, triple, HR
+# resolver/outs.py - Fly outs, ground outs, strikeouts
+# resolver/steals.py - Steal logic
+# resolver/double_plays.py - DP logic

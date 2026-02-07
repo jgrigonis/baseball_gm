@@ -1,15 +1,20 @@
 
 # TODO deal with age and aging, this will be useful
+
 class PlayerInitializer:
     def age_player(self, player: PlayerRecord):
         player.age = ...
         player.experience = ...
+
 # TODO Another useful aging one:
+
 def _initial_age(self) -> int:
     # Peak around 26–28
     age = int(self.rng.gauss(mu=27, sigma=4))
     return max(18, min(40, age))
+
 # TODO for creating a fresh league we'll want something like:
+
 class LeagueBootstrapper:
     def seed_players(self, num_players: int) -> list[PlayerRecord]:
         players = [self.player_factory.create() for _ in range(num_players)]

@@ -15,3 +15,5 @@ substitutions, pinch hitting, pinch running
 Handedness accounted for many places
 
 Aging.
+
+Track wins and losses, assign earned runs

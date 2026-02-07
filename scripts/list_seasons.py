@@ -1,4 +1,4 @@
-# src/league/list_seasons.py
+# scripts/list_seasons.py
 
 from pathlib import Path
 import sqlite3

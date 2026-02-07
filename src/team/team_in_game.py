@@ -173,6 +173,14 @@ class TeamInGame:
             raise RuntimeError("No center_field in lineup")
         return center_field
 
+    @property
+    def current_dh(self) -> PlayerInGame:
+        """Get the current center fielder."""
+        dh = self._positions.get(Position.DESIGNATED_HITTER)
+        if dh is None:
+            raise RuntimeError("No dh in lineup")
+        return dh
+
     def output_lineup_skills(self) -> str:
         """Output the starting lineup skills as a string."""
         output = ""

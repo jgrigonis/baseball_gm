@@ -49,6 +49,20 @@ class GameStateError(Exception):
     pass
 
 
+POS_MAP = {
+    "ss": lambda g: g.pitch_team.current_shortstop,
+    "2b": lambda g: g.pitch_team.current_second_baseman,
+    "3b": lambda g: g.pitch_team.current_third_baseman,
+    "1b": lambda g: g.pitch_team.current_first_baseman,
+    "p": lambda g: g.current_pitcher,
+    "c": lambda g: g.pitch_team.current_catcher,
+    "lf": lambda g: g.pitch_team.current_left_fielder,
+    "cf": lambda g: g.pitch_team.current_center_fielder,
+    "rf": lambda g: g.pitch_team.current_right_fielder,
+    "dh": lambda g: g.pitch_team.current_dh,
+}
+
+
 @dataclass(frozen=True)
 class GameResult:
     """Final game result."""
@@ -622,6 +636,10 @@ class Game:
             return False  # Continue if tied
 
         return True
+
+    def pos(self, position: str) -> PlayerInGame:
+        """Get fielder by position."""
+        return POS_MAP[position](self)
 
     # ------------------------------------------------------------------
     # Game Flow Helpers

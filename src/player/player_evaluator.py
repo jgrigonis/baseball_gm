@@ -16,6 +16,7 @@ EXPECTED_RATINGS = {
     "contact_hitter",
     "power_hitter",
     "speed_runner",
+    "defensive_value",
     "overall_offense",
     "overall_player",
 }
@@ -149,6 +150,7 @@ class PlayerEvaluator:
             skills.as_dict().get("outfield", 0),
             skills.as_dict().get("catching", 0),
         )
+        ratings["defensive_value"] = defensive_value
 
         overall_weights = ROLE_WEIGHTS["overall_offense"].copy()
         overall_weights["arm"] = 1  # Add arm to the offense weights
