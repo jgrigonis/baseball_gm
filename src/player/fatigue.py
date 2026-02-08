@@ -78,3 +78,6 @@ class PitcherFatigue:
         }
 
         return modifiers[level]
+
+    def set_energy(self, level):
+        self.energy = level  # TODO clamp 0 to 1

@@ -19,6 +19,13 @@ class PitchingStats(object):
         self.pitch_count = 0
         self.ground_double_plays = 0
         self.intentional_walks = 0
+        self.game_played = 0
+        self.game_started = 0
+        self.complete_game = 0
+        self.win = 0
+        self.loss = 0
+        self.save = 0
+        self.hold = 0
 
     @property
     def ip_float(self):

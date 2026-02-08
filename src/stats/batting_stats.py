@@ -27,6 +27,8 @@ class BattingStats(object):
         self.pickoffs = 0
         self.intentional_walks = 0
         self.catcher_interferences = 0
+        self.game_played = 0
+        self.game_started = 0
         self.logger = logging.getLogger("game.stats")
 
     def __repr__(self):

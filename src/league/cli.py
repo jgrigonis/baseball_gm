@@ -48,6 +48,11 @@ def get_args():
 
 def main():
     args = get_args()
+
+    # import time
+
+    # print(f"========== SCRIPT START {time.time()} ==========")
+
     conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
     conn.row_factory = sqlite3.Row
     init_db(conn)
@@ -91,9 +96,6 @@ def main():
 
     team_ids = [team.id for team in teams]
 
-    # print(f"DEBUG: team_ids = {team_ids}")
-    # print(f"DEBUG: Number of teams = {len(team_ids)}")
-
     scheduler = ScheduleGenerator()
     schedule = scheduler.create_schedule(
         season_id=season_id,
@@ -105,6 +107,14 @@ def main():
 
     save_schedule_to_db(conn, schedule)
     print(f"Schedule generated: {len(schedule)} games")
+
+    # conn.executescript(
+    #     """
+    # SELECT COUNT(*) FROM leagues;
+    # SELECT COUNT(*) FROM seasons;
+    # SELECT season_id, COUNT(*) FROM games GROUP BY season_id;
+    # """
+    # )
 
 
 if __name__ == "__main__":

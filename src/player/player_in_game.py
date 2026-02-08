@@ -43,7 +43,6 @@ class PlayerInGame(object):
 
         # mutable, game-only state
         self.game_stats = stats.GameStats()
-        self.fatigue = 0
         self.in_lineup = False
         self.current_position = None
         self.is_injured = False
@@ -85,3 +84,24 @@ class PlayerInGame(object):
             modifier = self.pitcher_fatigue.get_stat_modifier()
             return int(base_value * modifier)
         return base_value
+
+    def apply_fatigue_to_ratings(self):
+        """Re-rate player with fatigue-adjusted skills."""
+        if not self.pitcher_fatigue:
+            return
+
+        modifier = self.pitcher_fatigue.get_stat_modifier()
+
+        fatigued_skills = {}
+        for (
+            skill,
+            value,
+        ) in self.skills.as_dict().items():  # Call as_dict() on Skills object
+            # Clamp to 1-100 range
+            adjusted = int(value * modifier)
+            fatigued_skills[skill] = max(1, min(100, adjusted))
+
+        from src.player.player_skills import PlayerSkills
+
+        fatigued_skills_obj = PlayerSkills(**fatigued_skills)
+        self.ratings = PlayerEvaluator.rate_player(fatigued_skills_obj)

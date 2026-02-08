@@ -1,6 +1,6 @@
 # src/db/init.py
 
-from .schema import SCHEMA_SQL
+from src.db.schema import SCHEMA_SQL
 from src.db.migrations import run_migrations
 
 

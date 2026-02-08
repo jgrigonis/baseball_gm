@@ -78,6 +78,15 @@ class ScheduleGenerator:
 def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
     """Save schedule to games table."""
     cursor = conn.cursor()
+
+    # Debug: check for duplicates
+    # game_ids = [game.id for game in schedule]
+    # unique_ids = set(game_ids)
+    # print(f"DEBUG: Schedule has {len(schedule)} games, {len(unique_ids)} unique IDs")
+
+    # if len(schedule) != len(unique_ids):
+    #     print(f"WARNING: {len(schedule) - len(unique_ids)} duplicate game IDs!")
+
     for game in schedule:
         cursor.execute(
             """
@@ -92,5 +101,7 @@ def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
                 game.away_team_id,
             ),
         )
+
+    # print(f"DEBUG: Inserted {cursor.rowcount} rows")
     conn.commit()
-    print(f"Saved {len(schedule)} games to schedule")
+    # print(f"Saved {len(schedule)} games to schedule")

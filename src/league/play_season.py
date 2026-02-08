@@ -3,13 +3,15 @@
 Play all games in a season.
 """
 import argparse
+from datetime import datetime
 import logging
 import random
 import sqlite3
 from pathlib import Path
-from datetime import datetime
+import traceback
 
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -168,6 +170,42 @@ def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: Team
     conn.commit()
 
 
+def load_energy(
+    conn, game_repo, game_id: str, home_team: TeamInGame, away_team: TeamInGame
+):
+    """
+    Load the pitcher energy for both teams.
+    """
+    pitcher_repo = PitcherStateRepository(conn)
+
+    game_record = game_repo.get(game_id)
+    game_date = datetime.fromisoformat(game_record["game_date"]).date()
+    # game_date = game_record["game_date"]  # This is the date from the games table
+    for player in home_team.players + away_team.players:
+        state = pitcher_repo.get_with_recovery(
+            player_id=player.id,
+            game_date=game_date,  # From the game record
+            recovery_skill=player.skills["recovery"],
+        )
+        player.pitcher_fatigue.set_energy(state.current_energy)
+    return game_date
+
+
+def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
+    """
+    Save the pitcher energy to the database.
+    """
+    pitcher_repo = PitcherStateRepository(conn)
+    for player in home_team.players + away_team.players:
+        if player.game_stats.pitching.pitch_count > 0:
+            pitcher_repo.update_after_game(
+                player_id=player.id,
+                final_energy=player.pitcher_fatigue.energy,
+                pitch_count=player.game_stats.pitching.pitch_count,
+                game_date=game_date,  # Same date from the game record
+            )
+
+
 def play_game(
     conn,
     team_repo: TeamRepository,
@@ -184,6 +222,9 @@ def play_game(
     # Create teams in game
     home_team = TeamInGame(home_record)
     away_team = TeamInGame(away_record)
+
+    # load pitcher energy
+    game_date = load_energy(conn, game_repo, game_info["game_id"], home_team, away_team)
 
     # Set lineups
     home_team.set_lineup()
@@ -214,6 +255,8 @@ def play_game(
         result.away_score,
     )
     save_player_stats(conn, game_info["game_id"], home_team, away_team)
+
+    save_energy(conn, game_date, home_team, away_team)
 
     return result
 
@@ -314,6 +357,8 @@ def main():
             print(
                 f"[{i}/{len(games)}] ❌ Error playing game {game_info['game_id']}: {e}"
             )
+            print(traceback.format_exc())
+
             continue
 
     # Final stats

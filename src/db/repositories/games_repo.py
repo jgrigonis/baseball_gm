@@ -31,10 +31,11 @@ class GameRepository:
 
         return {
             "game_id": row["id"],
+            "game_date": row["date"],
             "season_id": row["season_id"],
+            "series_id": row["series_id"],
             "home_team_id": row["home_team_id"],
             "away_team_id": row["away_team_id"],
-            "game_date": row["date"],
             "completed": row["completed"],
             "home_score": row["home_score"],
             "away_score": row["away_score"],

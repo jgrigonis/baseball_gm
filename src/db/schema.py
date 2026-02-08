@@ -166,6 +166,8 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     opponent_team_id TEXT NOT NULL,
 
     -- Batting
+    bat_game_played INTEGER DEFAULT 1 CHECK (bat_game_played IN (0, 1)),
+    bat_game_started INTEGER DEFAULT 0 CHECK (bat_game_started IN (0, 1)),
     bat_ab INTEGER CHECK (bat_ab >= 0),
     bat_hits INTEGER CHECK (bat_hits >= 0),
     bat_doubles INTEGER CHECK (bat_doubles >= 0),
@@ -185,6 +187,14 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     bat_pickoffs INTEGER CHECK (bat_pickoffs >= 0),
 
     -- Pitching
+    pitch_game_played INTEGER DEFAULT 0 CHECK (pitch_game_played IN (0, 1)),
+    pitch_game_started INTEGER DEFAULT 0 CHECK (pitch_game_started IN (0, 1)),
+    pitch_complete_game INTEGER DEFAULT 0 CHECK (pitch_complete_game IN (0, 1)),
+    pitch_shutout INTEGER DEFAULT 0 CHECK (pitch_shutout IN (0, 1)),
+    pitch_win INTEGER DEFAULT 0 CHECK (pitch_win IN (0, 1)),
+    pitch_loss INTEGER DEFAULT 0 CHECK (pitch_loss IN (0, 1)),
+    pitch_save INTEGER DEFAULT 0 CHECK (pitch_save IN (0, 1)),
+    pitch_hold INTEGER DEFAULT 0 CHECK (pitch_hold IN (0, 1)),
     pitch_outs INTEGER CHECK (pitch_outs >= 0),
     pitch_hits INTEGER CHECK (pitch_hits >= 0),
     pitch_runs INTEGER CHECK (pitch_runs >= 0),

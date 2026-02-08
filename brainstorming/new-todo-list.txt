@@ -1,9 +1,13 @@
 Todo list
 
+Convert stat classes to dataclasses
+
 Implement ThrowingErrors
 
 Track games played correctly
+This has started, need to account for player changes.
 
+Track pitcher state at end game.
 Implement pitcher recovery
 
 Implement pitcher changes, 
