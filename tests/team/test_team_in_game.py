@@ -84,21 +84,22 @@ def test_current_batter_raises_if_lineup_not_set(team_in_game):
     with pytest.raises(RuntimeError):
         team_in_game.current_batter()
 
+
 def test_set_lineup_assigns_lineup_and_pitcher(team_in_game):
     """
     set_lineup() delegates to the injected optimizer
     """
     fake_player = MagicMock()  # Remove spec=PlayerInGame
-    
+
     # Set up the game_stats mock chain
     fake_player.game_stats.batting.game_started = 0
     fake_player.game_stats.batting.game_played = 0
     fake_player.pitcher_fatigue = None  # Not a pitcher
-    
+
     fake_batter = LineupSlot(player=fake_player, position="c")
 
-    fake_pitcher = MagicMock() 
-    
+    fake_pitcher = MagicMock()
+
     # Set up pitcher game_stats mock chain
     fake_pitcher.game_stats.pitching.game_started = 0
     fake_pitcher.game_stats.pitching.game_played = 0
@@ -116,7 +117,6 @@ def test_set_lineup_assigns_lineup_and_pitcher(team_in_game):
     assert fake_player.game_stats.batting.game_played == 1
     assert fake_pitcher.game_stats.pitching.game_started == 1
     assert fake_pitcher.game_stats.pitching.game_played == 1
-
 
 
 def test_next_batter_cycles():
