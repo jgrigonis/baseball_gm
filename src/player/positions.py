@@ -96,7 +96,7 @@ POSITION_NAME: MappingProxyType[str, str] = MappingProxyType(
 POSITION_ABBR: dict[str, str] = {v: k for k, v in POSITION_NAME.items()}
 
 # Position categories
-PITCHER_POSITIONS: list[str] = ["sp", "rp"]
+PITCHER_POSITIONS: list[str] = ["sp", "rp", "p"]
 INFIELD_POSITIONS: list[str] = ["c", "1b", "2b", "ss", "3b", "if"]
 OUTFIELD_POSITIONS: list[str] = ["lf", "cf", "rf", "of"]
 DEFENSIVE_POSITIONS: list[str] = INFIELD_POSITIONS + OUTFIELD_POSITIONS

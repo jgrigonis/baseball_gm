@@ -104,4 +104,4 @@ def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
 
     # print(f"DEBUG: Inserted {cursor.rowcount} rows")
     conn.commit()
-    # print(f"Saved {len(schedule)} games to schedule")
+    print(f"Saved {len(schedule)} games to schedule")

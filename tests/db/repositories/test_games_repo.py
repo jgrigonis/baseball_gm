@@ -129,6 +129,7 @@ class TestGameRepositoryGet:
         expected_fields = {
             "game_id",
             "season_id",
+            "series_id",
             "home_team_id",
             "away_team_id",
             "game_date",

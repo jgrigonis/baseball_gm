@@ -67,11 +67,11 @@ def test_player_in_game_identity_fields(player_record):
 
 
 def test_player_in_game_initial_state(player_record):
-    """Game-only mutable state initializes cleanly"""
+    """Game-only mutable state initializes cleanly"""    
     pig = PlayerInGame(player_record)
 
     assert isinstance(pig.game_stats, stats.GameStats)
-    assert pig.fatigue == 0
+    assert pig.pitcher_fatigue is None    
     assert pig.in_lineup is False
     assert pig.current_position is None
     assert pig.is_injured is False

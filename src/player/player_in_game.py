@@ -48,7 +48,7 @@ class PlayerInGame(object):
         self.is_injured = False
         self.pitcher_fatigue = (
             PitcherFatigue(stamina=self.skills["stamina"])
-            if self.record.is_pitcher
+            if self.record.is_pitcher()
             else None
         )
         self.rate_player()

@@ -112,7 +112,7 @@ def test_three_strikes_ends_plate_appearance_with_strikeout():
     game = fake_game()
 
     intent = PitchIntent(
-        pitcher=PlayerInGame(make_player_record()),
+        pitcher=PlayerInGame(make_player_record(position="sp")),
         batter=PlayerInGame(make_player_record()),
         pre_pitch_situation=PrePitchSituation(),
     )
@@ -163,7 +163,7 @@ def test_walk_events():
     # events = resolver.resolve(pitch_intent, game)
 
     intent = PitchIntent(
-        pitcher=PlayerInGame(make_player_record()),
+        pitcher=PlayerInGame(make_player_record(position="sp")),  # Make it a pitcher!
         batter=PlayerInGame(make_player_record()),
         pre_pitch_situation=PrePitchSituation,
     )

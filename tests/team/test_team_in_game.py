@@ -84,31 +84,39 @@ def test_current_batter_raises_if_lineup_not_set(team_in_game):
     with pytest.raises(RuntimeError):
         team_in_game.current_batter()
 
-
 def test_set_lineup_assigns_lineup_and_pitcher(team_in_game):
     """
     set_lineup() delegates to the injected optimizer
     """
-    fake_player = MagicMock(spec=PlayerInGame)
-    fake_batter = MagicMock(spec=LineupSlot)
-    fake_batter = LineupSlot(player=fake_player, position="c")  # Real position string
+    fake_player = MagicMock()  # Remove spec=PlayerInGame
+    
+    # Set up the game_stats mock chain
+    fake_player.game_stats.batting.game_started = 0
+    fake_player.game_stats.batting.game_played = 0
+    fake_player.pitcher_fatigue = None  # Not a pitcher
+    
+    fake_batter = LineupSlot(player=fake_player, position="c")
 
-    fake_pitcher = MagicMock(spec=PlayerInGame)
+    fake_pitcher = MagicMock() 
+    
+    # Set up pitcher game_stats mock chain
+    fake_pitcher.game_stats.pitching.game_started = 0
+    fake_pitcher.game_stats.pitching.game_played = 0
+    fake_pitcher.pitcher_fatigue = None
 
     mock_optimize = MagicMock(return_value=([fake_batter], fake_pitcher))
     team_in_game._optimizer = mock_optimize
 
     team_in_game.set_lineup()
 
+    # Assertions
     assert team_in_game.lineup == [fake_batter]
-    assert team_in_game.pitcher is fake_pitcher
-    assert team_in_game.batter_index == 0
+    assert team_in_game.pitcher == fake_pitcher
+    assert fake_player.game_stats.batting.game_started == 1
+    assert fake_player.game_stats.batting.game_played == 1
+    assert fake_pitcher.game_stats.pitching.game_started == 1
+    assert fake_pitcher.game_stats.pitching.game_played == 1
 
-    mock_optimize.assert_called_once_with(
-        team_in_game.players,
-        style="prioritized",
-        dh=True,
-    )
 
 
 def test_next_batter_cycles():

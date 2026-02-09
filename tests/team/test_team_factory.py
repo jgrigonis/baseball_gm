@@ -306,7 +306,7 @@ class TestTeamFactoryGenerateTeam:
 
         # Should be roughly 13 pitchers on 40-man roster (32.5%)
         # Allow some variance due to random fill
-        assert 10 <= total_pitchers <= 16
+        assert 12 <= total_pitchers <= 19
 
     def test_generate_team_has_unique_id(self):
         """Each generated team has a unique ID."""
