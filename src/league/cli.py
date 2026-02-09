@@ -1,6 +1,7 @@
 # src/league/cli.py
 import argparse
 import datetime
+
 # from datetime import date
 from pathlib import Path
 import sqlite3
@@ -98,7 +99,9 @@ def main():
     team_ids = [team.id for team in teams]
 
     # Parse start date from manifest or default
-    start_date_str = manifest.get("season_start_date", f"{manifest.get('season_year', 2028)}-04-01")
+    start_date_str = manifest.get(
+        "season_start_date", f"{manifest.get('season_year', 2028)}-04-01"
+    )
     start_date = datetime.datetime.fromisoformat(start_date_str).date()
 
     scheduler = ScheduleGenerator()

@@ -1,31 +1,51 @@
-class PitchingStats(object):
+# src/stats/pitching_stats.py
+from dataclasses import dataclass
+
+
+@dataclass
+class PitchingStats:
     """The pitching statistics object."""
 
-    def __init__(self):
-        """Initialize the pitching statistics."""
-        self.hb = 0
-        self.hits = 0
-        self.doubles = 0
-        self.triples = 0
-        self.home_runs = 0
-        self.walks = 0
-        self.strike_outs = 0
-        self.runs = 0
-        self.pickoffs = 0
-        self.outs = 0
-        self.balks = 0
-        self.wild_pitches = 0
-        self.illegal_pitches = 0
-        self.pitch_count = 0
-        self.ground_double_plays = 0
-        self.intentional_walks = 0
-        self.game_played = 0
-        self.game_started = 0
-        self.complete_game = 0
-        self.win = 0
-        self.loss = 0
-        self.save = 0
-        self.hold = 0
+    # Game participation
+    game_played: int = 0
+    game_started: int = 0
+    complete_game: int = 0
+
+    # Win/Loss/Save
+    win: int = 0
+    loss: int = 0
+    save: int = 0
+    hold: int = 0
+
+    # Outs and innings
+    outs: int = 0
+
+    # Hits allowed
+    hits: int = 0
+    doubles: int = 0
+    triples: int = 0
+    home_runs: int = 0
+
+    # Runs and walks
+    runs: int = 0
+    walks: int = 0
+    intentional_walks: int = 0
+    hb: int = 0  # Hit batters
+
+    # Strikeouts and outs
+    strike_outs: int = 0
+    ground_double_plays: int = 0
+
+    # Baserunning plays
+    pickoffs: int = 0
+
+    # Pitcher mistakes
+    balks: int = 0
+    wild_pitches: int = 0
+    illegal_pitches: int = 0
+
+    # Pitch count
+    pitch_count: int = 0
 
     @property
     def ip_float(self):
@@ -53,6 +73,8 @@ class PitchingStats(object):
         """Return the string representation of the pitching statistics."""
         return (
             "Pitching Stats:\n"
+            f"  G: {self.game_played} (GS: {self.game_started}, CG: {self.complete_game})\n"
+            f"  W-L: {self.win}-{self.loss} (SV: {self.save}, HLD: {self.hold})\n"
             f"  IP: {self.ip_str}\n"
             f"  H: {self.hits}\n"
             f"  R: {self.runs}\n"
@@ -65,22 +87,15 @@ class PitchingStats(object):
             f"  PO: {self.pickoffs}\n"
             f"  Balk: {self.balks}\n"
             f"  WP: {self.wild_pitches}\n"
-        )
-
-    def __repr__(self):
-        """Return the representation of the pitching statistics."""
-        return (
-            f"<PitchingStats "
-            f"H={self.hits} HR={self.home_runs} "
-            f"R={self.runs} BB={self.walks} "
-            f"K={self.strike_outs}>"
+            f"  ERA: {self.era:.2f}\n"
+            f"  WHIP: {self.whip:.2f}"
         )
 
     def add(self, other):
         """Used for aggregating stats, or adding an entire stat instance to another."""
         for attr in vars(self):
-            # Skip non-numeric attributes like loggers
-            if attr.startswith("_") or attr == "logger":
+            # Skip non-numeric attributes
+            if attr.startswith("_"):
                 continue
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
@@ -133,7 +148,7 @@ class PitchingStats(object):
         self.wild_pitches += 1
 
     def illegal_pitch(self):
-        """Add one to pitch count."""
+        """Add an illegal pitch."""
         self.illegal_pitches += 1
 
     def pitch(self):

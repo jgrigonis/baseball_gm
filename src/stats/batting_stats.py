@@ -1,48 +1,56 @@
 # src/stats/batting_stats.py
+from dataclasses import dataclass, field
 import logging
 
 
-class BattingStats(object):
+@dataclass
+class BattingStats:
     """The batting statistics object"""
 
-    def __init__(self):
-        """Initialize the batting statistics."""
-        self.rbi = 0
-        self.hbp = 0
-        self.at_bats = 0
-        self.hits = 0
-        self.doubles = 0
-        self.triples = 0
-        self.home_runs = 0
-        self.walks = 0
-        self.strike_outs = 0
-        self.sac_flys = 0
-        self.sac_bunts = 0
-        self.gdp = 0
-        self.gtp = 0
-        self.runs = 0
-        self.plate_appearances = 0
-        self.sb = 0
-        self.cs = 0
-        self.pickoffs = 0
-        self.intentional_walks = 0
-        self.catcher_interferences = 0
-        self.game_played = 0
-        self.game_started = 0
-        self.logger = logging.getLogger("game.stats")
+    # Game participation
+    game_played: int = 0
+    game_started: int = 0
 
-    def __repr__(self):
-        """Return the representation of the batting statistics."""
-        return (
-            f"<BattingStats AB={self.at_bats} "
-            f"H={self.hits} HR={self.home_runs} "
-            f"RBI={self.rbi}>"
-        )
+    # Plate appearance outcomes
+    at_bats: int = 0
+    hits: int = 0
+    doubles: int = 0
+    triples: int = 0
+    home_runs: int = 0
+    walks: int = 0
+    intentional_walks: int = 0
+    strike_outs: int = 0
+    hbp: int = 0
+    sac_flys: int = 0
+    sac_bunts: int = 0
+    catcher_interferences: int = 0
+
+    # Results
+    rbi: int = 0
+    runs: int = 0
+    plate_appearances: int = 0
+
+    # Baserunning
+    sb: int = 0
+    cs: int = 0
+    pickoffs: int = 0
+
+    # Double/triple plays
+    gdp: int = 0
+    gtp: int = 0
+
+    # Non-serialized
+    logger: logging.Logger = field(
+        default_factory=lambda: logging.getLogger("game.stats"),
+        repr=False,
+        compare=False,
+    )
 
     def __str__(self):
         """Return the string representation of the batting statistics."""
         return (
             "Batting Stats:\n"
+            f"  G: {self.game_played} (GS: {self.game_started})\n"
             f"  AB: {self.at_bats}\n"
             f"  H: {self.hits}\n"
             f"  2B: {self.doubles}\n"
@@ -112,7 +120,7 @@ class BattingStats(object):
         """Batting average on Balls in Play.
         A measure of a player's batting average exclusively on balls
         hit into the field of play, removing outcomes not affected
-        by the opposing defense (namely home runs and streikeouts)
+        by the opposing defense (namely home runs and strikeouts)
         """
         return (
             (self.hits - self.home_runs)
@@ -207,7 +215,7 @@ class BattingStats(object):
         self.plate_appearances += 1
 
     def catcher_interference(self):
-        """Add a catcher interferences."""
+        """Add a catcher interference."""
         self.catcher_interferences += 1
 
     def intentional_walk(self):

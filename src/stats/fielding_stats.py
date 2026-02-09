@@ -1,20 +1,22 @@
-class FieldingStats(object):
+# src/stats/fielding_stats.py
+from dataclasses import dataclass
+
+
+@dataclass
+class FieldingStats:
     """The fielding statistics object."""
 
-    def __init__(self):
-        """Initialize the fielding statistics."""
-        self.putouts = 0
-        self.assists = 0
-        self.errors = 0
-        self.chances = 0  # putouts + assists + errors
-        self.passed_balls = 0
-        self.catcher_interferences = 0
-        self.catcher_cs = 0
-        self.catcher_sb = 0
+    # General fielding
+    putouts: int = 0
+    assists: int = 0
+    errors: int = 0
+    chances: int = 0  # putouts + assists + errors
 
-    def __repr__(self):
-        """Return the representation of the fielding statistics."""
-        return f"<FieldingStats PO={self.putouts} " f"A={self.assists} E={self.errors}>"
+    # Catcher-specific
+    passed_balls: int = 0
+    catcher_interferences: int = 0
+    catcher_cs: int = 0  # Caught stealing
+    catcher_sb: int = 0  # Stolen bases allowed
 
     def __str__(self):
         """Return the string representation of the fielding statistics."""
@@ -37,8 +39,8 @@ class FieldingStats(object):
     def add(self, other):
         """Used for aggregating stats, or adding an entire stat instance to another."""
         for attr in vars(self):
-            # Skip non-numeric attributes like loggers
-            if attr.startswith("_") or attr == "logger":
+            # Skip non-numeric attributes
+            if attr.startswith("_"):
                 continue
             setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
@@ -58,7 +60,7 @@ class FieldingStats(object):
         self.chances += 1
 
     def passed_ball(self):
-        """Add an error."""
+        """Add a passed ball."""
         self.passed_balls += 1
         self.chances += 1
 

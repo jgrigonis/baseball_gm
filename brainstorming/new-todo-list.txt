@@ -2,13 +2,16 @@ Todo list
 
 Convert stat classes to dataclasses
 
+
 Implement ThrowingErrors
+
 
 Track games played correctly
 This has started, need to account for player changes.
+Verify
 
-Track pitcher state at end game.
 Implement pitcher recovery
+Verify
 
 Implement pitcher changes, 
 eventually defensive shifts, mound visits
@@ -18,4 +21,4 @@ Handedness accounted for many places
 
 Aging.
 
-Track wins and losses, assign earned runs
+Track wins, saves, blown saves, holds and losses, assign earned runs
