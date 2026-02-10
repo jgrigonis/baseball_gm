@@ -13,6 +13,13 @@ Key Components of the 162-Game Schedule:
 Intradivision (52 games): 13 games against each of the four divisional 
 opponents (4 series of 3-4 games).
 
+Maximum Consecutive Games: The Collective Bargaining Agreement (CBA) 
+generally restricts teams from playing more than 20 consecutive days 
+without a day off.
+
+All-Star Break: The most significant break occurs in mid-July, 
+providing a 4-day rest for most players.
+
 Intraleague (64 games): 6 or 7 games against the other 10 teams in the 
 same league (American or National).
 
@@ -77,3 +84,16 @@ League championship is the winner of each division series.
 unless both are wild cards
 
 World Series is 2-3-2 with home to better record.
+
+Pitcher rotations shift from a five-man, 162-game structure to a tighter 
+three- or four-man rotation in the playoffs to maximize top-tier talent. 
+Due to increased off-days, starters operate on less rest, often throwing 
+fewer than five innings to allow aggressive bullpen usage. Fifth starters 
+typically move to a relief role, with managers utilizing "openers" or 
+bullpen games. 
+
+Typical rest for an MLB starting pitcher is 4 to 5 days between starts, 
+with the 5-man rotation being the standard system (pitching every 5th day). 
+While historically 4 days was common, many teams now use 5+ days of rest 
+to prioritize arm recovery and health, with average rest days often landing 
+around 4.80. 

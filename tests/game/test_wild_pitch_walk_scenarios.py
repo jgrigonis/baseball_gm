@@ -11,6 +11,7 @@ from src.game.resolver import Resolver
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.walk import WalkEvent
 from src.game.events.runners import RunnerAdvancedEvent
+from src.game.intents.pitch import PrePitchSituation
 from src.player.player_factory import PlayerFactory
 from src.player.player_in_game import PlayerInGame
 from src.player.player_skills import PlayerSkills
@@ -278,6 +279,20 @@ class TestWildPitchWalkScenarios:
         game._sync_players()
 
         initial_batter = game.current_batter.player
+
+        # Disable pickoffs for this test
+        game.situation = PrePitchSituation(
+            steal_attempt=False,
+
+            double_steal_attempt = None,
+            bunt_attempt = False,
+            hit_and_run = False,
+
+            # Defense
+            pitch_out = False,
+            intentional_walk = False,
+            pickoff_attempt = None  # Which base?
+        )
 
         with EventRecorder(game) as recorder:
             drain_event_queue(game)  # Process all events including followups
