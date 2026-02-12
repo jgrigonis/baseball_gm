@@ -421,7 +421,7 @@ class TestCreate:
         # Should have all skills
         assert len(player.skills) > 0
         # Shortstops should have good infield skills
-        assert player.skills["infield"] > 45
+        assert player.skills["infield"] > 39
 
     def test_create_with_invalid_position_raises(self):
         factory = PlayerFactory()

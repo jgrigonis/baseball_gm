@@ -16,6 +16,7 @@ from src.stats.stats import Stats, SeasonStats
 from src.stats.batting_stats import BattingStats
 from src.stats.pitching_stats import PitchingStats
 from src.stats.fielding_stats import FieldingStats
+from tests.db.repositories.test_games_repo import completed_game
 
 
 class PlayerGameRepository:
@@ -56,11 +57,14 @@ class PlayerGameRepository:
             INSERT OR REPLACE INTO player_game_stats (
                 game_id, player_id, team_id, opponent_team_id,
 
+                bat_game_played, bat_game_started,
                 bat_ab, bat_hits, bat_doubles, bat_triples,
                 bat_home_runs, bat_rbi, bat_runs,
                 bat_walks, bat_strike_outs, bat_hbp, bat_sac_flys,
                 bat_sac_bunts, bat_gdp, bat_gtp, bat_stolen_bases, bat_caught_stealing, bat_pickoffs,
 
+                pitch_game_played, pitch_game_started,
+                pitch_complete_game, pitch_shutout, pitch_win, pitch_loss, pitch_save, pitch_hold,
                 pitch_outs, pitch_hits, pitch_runs,
                 pitch_home_runs, pitch_walks, pitch_strike_outs,
                 pitch_hit_batters, pitch_doubles, pitch_triples, pitch_pickoffs, 
@@ -68,13 +72,15 @@ class PlayerGameRepository:
 
                 field_putouts, field_assists, field_errors
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 game_id,
                 player_id,
                 team_id,
                 opponent_team_id,
+                b.game_played,
+                b.game_started,
                 b.at_bats,
                 b.hits,
                 b.doubles,
@@ -92,6 +98,14 @@ class PlayerGameRepository:
                 b.sb,
                 b.cs,
                 b.pickoffs,
+                p.game_played,
+                p.game_started,
+                p.complete_game,
+                p.shut_out,
+                p.win,
+                p.loss,
+                p.save,
+                p.hold,
                 p.outs,
                 p.hits,
                 p.runs,

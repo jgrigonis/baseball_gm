@@ -283,15 +283,13 @@ class TestWildPitchWalkScenarios:
         # Disable pickoffs for this test
         game.situation = PrePitchSituation(
             steal_attempt=False,
-
-            double_steal_attempt = None,
-            bunt_attempt = False,
-            hit_and_run = False,
-
+            double_steal_attempt=None,
+            bunt_attempt=False,
+            hit_and_run=False,
             # Defense
-            pitch_out = False,
-            intentional_walk = False,
-            pickoff_attempt = None  # Which base?
+            pitch_out=False,
+            intentional_walk=False,
+            pickoff_attempt=None,  # Which base?
         )
 
         with EventRecorder(game) as recorder:

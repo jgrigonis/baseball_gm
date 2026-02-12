@@ -10,6 +10,7 @@ class PitchingStats:
     game_played: int = 0
     game_started: int = 0
     complete_game: int = 0
+    shut_out: int = 0
 
     # Win/Loss/Save
     win: int = 0
