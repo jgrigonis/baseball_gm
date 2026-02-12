@@ -1,9 +1,6 @@
 Todo list
 
-Convert stat classes to dataclasses
-
-
-Implement ThrowingErrors
+Implement more ThrowingErrors
 
 
 Track games played correctly
