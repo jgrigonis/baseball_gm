@@ -3,6 +3,7 @@
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.io.team_importer import TeamImporter
 
 
@@ -13,8 +14,9 @@ class LeagueBootstrapper:
         self.season_repo = SeasonRepository(conn)
         self.team_repo = TeamRepository(conn)
         self.team_importer = TeamImporter(conn)
+        self.rotations_repo = TeamRotationsRepository(conn)
 
-    def bootstrap_from_manifest(self, manifest):
+    def bootstrap_from_manifest(self, manifest, start_date):
         league_id = self.league_repo.create_league(manifest["league_name"])
 
         # Defaults to name=Season1 year=2026 if not found in manifest
@@ -45,4 +47,21 @@ class LeagueBootstrapper:
             self.league_repo.assign_to_league(league_id, season_id, team.id)
             teams.append(team)
 
+        # Set starting rotations for all teams
+        self._bootstrap_rotations(teams, season_id, start_date)
+
         return league_id, teams, season_id
+
+    def _bootstrap_rotations(self, teams, season_id: str, start_date: str) -> None:
+        """Set the initial starting rotation for each team."""
+        for team in teams:
+            rotation = team.assign_starting_rotation()
+            if not rotation:
+                print(f"Warning: No pitchers found for team {team.name}, skipping rotation.")
+                continue
+            self.rotations_repo.set_rotation(
+                team_id=team.id,
+                season_id=season_id,
+                player_id_list=rotation,
+                effective_date=start_date,
+            )

@@ -74,8 +74,15 @@ def main():
         for miss in missing:
             print(f"The csv file for {miss} is missing.")
         sys, exit(1)
+
+    # Parse start date from manifest or default
+    start_date_str = manifest.get(
+        "season_start_date", f"{manifest.get('season_year', 2028)}-04-01" # default to april 1
+    )
+    start_date = datetime.datetime.fromisoformat(start_date_str).date()
+
     try:
-        league_id, teams, season_id = boot.bootstrap_from_manifest(manifest)
+        league_id, teams, season_id = boot.bootstrap_from_manifest(manifest, start_date)
     except RuntimeError as e:
         print(e)
         sys.exit(1)
@@ -98,11 +105,7 @@ def main():
 
     team_ids = [team.id for team in teams]
 
-    # Parse start date from manifest or default
-    start_date_str = manifest.get(
-        "season_start_date", f"{manifest.get('season_year', 2028)}-04-01"
-    )
-    start_date = datetime.datetime.fromisoformat(start_date_str).date()
+
 
     scheduler = ScheduleGenerator()
     schedule = scheduler.create_schedule(

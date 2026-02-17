@@ -127,23 +127,6 @@ class PlayerRecord:
             position=row["position"],
         )
 
-    def assign_starting_rotation(self):
-        """Assign 5 best pitchers to starting rotation."""
-        pitchers = [p for p in self.players if p.record.is_pitcher()]
-
-        # Sort by pitcher rating
-        pitchers.sort(key=lambda p: p.ratings.get("p", 0), reverse=True)
-
-        # Assign top 5 as starters
-        for i, pitcher in enumerate(pitchers[:5]):
-            pitcher.rotation_slot = i + 1  # sp1, sp2, sp3, sp4, sp5
-            # Save to DB: UPDATE team_rotations SET pitcher_role = 'sp1' WHERE...
-
-        # Rest are relievers
-        for pitcher in pitchers[5:]:
-            pitcher.rotation_slot = None
-            pitcher.is_reliever = True
-
     @property
     def full_name(self) -> str:
         """Full name (alias for name property)."""

@@ -94,6 +94,8 @@ class PlayerTableFormatter:
     def hor_ratings(player):
         output = f"{player.name:<30}"  # 30 is the longest name
         for item in [
+            player.ratings["sp"],
+            player.ratings["rp"],
             player.ratings["p"],
             player.ratings["c"],
             player.ratings["1b"],
@@ -440,7 +442,7 @@ class PlayerTableFormatter:
     def header_ratings():
         """Return the header for ratings as a single line."""
         output = f"{"Name":<30}"  # 30 is the longest name
-        for item in ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]:
+        for item in ["SP", "RP", "P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]:
             output += f"{item:>3}"
         output += "  "
         for item in ["LO", "CH", "PH", "SR", "OO", "OP"]:
