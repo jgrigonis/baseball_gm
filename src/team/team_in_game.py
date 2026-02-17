@@ -78,6 +78,7 @@ class TeamInGame:
             if player.pitcher_fatigue:
                 player.apply_fatigue_to_ratings()
 
+        # Read in the starting rotation to pick pitcher
         self.lineup, self.pitcher = self._optimizer(
             self.players,
             style=style,

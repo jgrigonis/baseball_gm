@@ -63,7 +63,7 @@ class TestFatigueLevel:
         assert fatigue.get_level() == FatigueLevel.EXHAUSTED
 
         fatigue = PitcherFatigue(energy=0.0)
-        assert fatigue.get_level() == FatigueLevel.EXHAUSTED
+        assert fatigue.get_level() == FatigueLevel.ZERO
 
 
 class TestAddPitch:
@@ -225,7 +225,7 @@ class TestRealisticGameScenarios:
         assert fatigue.batters_faced == 27
         # After 100 pitches: 1.0 - (0.01 * 100) = 0.0
         assert fatigue.energy == 0.0
-        assert fatigue.get_level() == FatigueLevel.EXHAUSTED
+        assert fatigue.get_level() == FatigueLevel.ZERO
 
     def test_short_outing_relief_pitcher(self):
         """Test relief pitcher with short outing."""

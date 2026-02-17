@@ -9,6 +9,7 @@ class FatigueLevel(Enum):
     GOOD = "good"
     TIRED = "tired"
     EXHAUSTED = "exhausted"
+    ZERO = "ZERO"
 
 
 @dataclass
@@ -23,6 +24,7 @@ class PitcherFatigue:
     FRESH_THRESHOLD = 0.85
     GOOD_THRESHOLD = 0.65
     TIRED_THRESHOLD = 0.40
+    EXHAUSTED_THRESHOLD = 0.01
 
     # stamina rating
     stamina: int = 50
@@ -40,7 +42,9 @@ class PitcherFatigue:
             return FatigueLevel.GOOD
         elif self.energy >= self.TIRED_THRESHOLD:
             return FatigueLevel.TIRED
-        return FatigueLevel.EXHAUSTED
+        elif self.energy >= self.EXHAUSTED_THRESHOLD:
+            return FatigueLevel.EXHAUSTED
+        return FatigueLevel.ZERO
 
     def add_pitch(self, pitch_type: str = "fastball") -> None:
         """Record a pitch and decrease energy."""
@@ -75,6 +79,7 @@ class PitcherFatigue:
             FatigueLevel.GOOD: 1.0,  # No effect
             FatigueLevel.TIRED: 0.90,  # 10% worse
             FatigueLevel.EXHAUSTED: 0.75,  # 25% worse
+            FatigueLevel.ZERO: 0.50,  # 50% worse
         }
 
         return modifiers[level]

@@ -1,5 +1,13 @@
 Todo list
 
+Set the starting rotation at the beginning of the season
+Evaluate as SP vs just P.
+Implement pitcher changes, pick a fresh pitcher who isn't 
+in the starting rotation.
+
+Pitching rotation may need to change due to trades, injuries
+or other reasons.
+
 Implement more ThrowingErrors
 
 
@@ -10,8 +18,8 @@ Verify
 Implement pitcher recovery
 Verify
 
-Implement pitcher changes, 
-eventually defensive shifts, mound visits
+
+Eventually defensive shifts, mound visits
 substitutions, pinch hitting, pinch running
 
 Handedness accounted for many places

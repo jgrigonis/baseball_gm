@@ -187,7 +187,8 @@ def load_energy(
             game_date=game_date,  # From the game record
             recovery_skill=player.skills["recovery"],
         )
-        player.pitcher_fatigue.set_energy(state.current_energy)
+        if player.pitcher_fatigue:
+            player.pitcher_fatigue.set_energy(state.current_energy)
     return game_date
 
 
@@ -223,7 +224,7 @@ def play_game(
     home_team = TeamInGame(home_record)
     away_team = TeamInGame(away_record)
 
-    # load pitcher energy
+    # load pitcher energy, game_date is the date of the current game
     game_date = load_energy(conn, game_repo, game_info["game_id"], home_team, away_team)
 
     # Set lineups

@@ -137,7 +137,7 @@ class PlayerRecord:
         # Assign top 5 as starters
         for i, pitcher in enumerate(pitchers[:5]):
             pitcher.rotation_slot = i + 1  # sp1, sp2, sp3, sp4, sp5
-            # Save to DB: UPDATE team_players SET pitcher_role = 'sp1' WHERE...
+            # Save to DB: UPDATE team_rotations SET pitcher_role = 'sp1' WHERE...
 
         # Rest are relievers
         for pitcher in pitchers[5:]:

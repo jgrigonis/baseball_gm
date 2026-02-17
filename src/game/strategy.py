@@ -592,7 +592,12 @@ class GameStrategy:
 
     @staticmethod
     def should_consider_pitching_change(pitcher: PlayerInGame) -> bool:
-        """Determine if manager should consider pitching change."""
+        """
+        Determine if manager should consider pitching change.
+
+        TODO: convert the return values from booleans to a range
+        between 0 and 1.
+        """
         if not pitcher or not pitcher.pitcher_fatigue:
             return False
 

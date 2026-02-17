@@ -76,6 +76,21 @@ CREATE TABLE IF NOT EXISTS player_skills_history (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS team_rotations (
+    team_id TEXT NOT NULL,
+    season_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    rotation_order INTEGER NOT NULL,
+    effective_date TEXT NOT NULL,  -- When this rotation assignment started
+    end_date TEXT,                 -- NULL = currently active
+    
+    PRIMARY KEY (team_id, season_id, player_id, effective_date),
+    
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
     city TEXT NOT NULL,
