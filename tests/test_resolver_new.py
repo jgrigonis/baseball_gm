@@ -150,7 +150,7 @@ class MockGame:
         _1b_slot = LineupSlot(player=mock_1b, position="1b")
 
         # Add a catcher to the lineup
-        mock_catcher = PlayerInGame(make_player_record())
+        mock_catcher = PlayerInGame(make_player_record(position="c"))
         catcher_slot = LineupSlot(player=mock_catcher, position="c")
         self.pitch_team.lineup = [catcher_slot]
         self.pitch_team._positions = {"c": mock_catcher}  # Set the positions dict
@@ -1143,6 +1143,9 @@ class TestIntegration:
         game.bases.set_runner(THIRD, runner3)
         game.bases.is_empty = False
 
+        # Set RNG high to prevent extra base advancement
+        resolver.rng.set_value(0.99)  # High value = no extra advancement
+
         # Double should score two runs
         events = resolve_double(resolver, pitch_intent, game)
 
@@ -1165,6 +1168,29 @@ class TestIntegration:
 
         runner_1_advance = next((e for e in advances if e.runner == runner1), None)
         assert runner_1_advance.to_base == THIRD
+
+    def test_complex_baserunning_scenario_with_extra_base(
+        self, resolver, game, pitch_intent
+    ):
+        """Test runner from first can score on double with good baserunning"""
+        # Bases loaded
+        runner1 = PlayerInGame(make_player_record())
+        runner2 = PlayerInGame(make_player_record())
+        runner3 = PlayerInGame(make_player_record())
+        game.bases.set_runner(FIRST, runner1)
+        game.bases.set_runner(SECOND, runner2)
+        game.bases.set_runner(THIRD, runner3)
+        game.bases.is_empty = False
+
+        # Set RNG low to force extra advancement
+        resolver.rng.set_value(0.01)  # Low value = aggressive baserunning
+
+        events = resolve_double(resolver, pitch_intent, game)
+
+        advances = [e for e in events if isinstance(e, RunnerAdvancedEvent)]
+
+        runner_1_advance = next((e for e in advances if e.runner == runner1), None)
+        assert runner_1_advance.to_base == HOME  # Scores from first on double!
 
 
 if __name__ == "__main__":

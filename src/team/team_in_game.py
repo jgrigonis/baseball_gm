@@ -70,7 +70,21 @@ class TeamInGame:
     def has_lineup(self) -> bool:
         return bool(self.lineup)
 
-    def set_lineup(self, *, style: str = "prioritized", dh: bool = True) -> None:
+    def set_lineup(
+        self,
+        *,
+        starting_pitcher_id: str | None = None,
+        style: str = "prioritized",
+        dh: bool = True,
+    ) -> None:
+        """
+        Set the lineup with an optional specified starting pitcher.
+
+        Args:
+            starting_pitcher_id: ID of the pitcher who will start this game (optional)
+            style: Lineup optimization style
+            dh: Whether to use designated hitter
+        """
         self._ensure_players_rated()
 
         # Apply pitcher fatigue modifications BEFORE optimizing
@@ -78,15 +92,36 @@ class TeamInGame:
             if player.pitcher_fatigue:
                 player.apply_fatigue_to_ratings()
 
-        # Read in the starting rotation to pick pitcher
-        self.lineup, self.pitcher = self._optimizer(
-            self.players,
-            style=style,
-            dh=dh,
-        )
+        if starting_pitcher_id:
+            # Use specified starting pitcher
+            self.pitcher = next(
+                (p for p in self.players if p.record.id == starting_pitcher_id), None
+            )
+
+            if not self.pitcher:
+                raise ValueError(
+                    f"Starting pitcher {starting_pitcher_id} not found on team {self.team.name}"
+                )
+
+            # Build lineup without the starting pitcher
+            available_for_lineup = [
+                p for p in self.players if p.record.id != starting_pitcher_id
+            ]
+
+            self.lineup = self._optimizer(
+                available_for_lineup,
+                style=style,
+                dh=dh,
+            )
+        else:
+            # Fall back to old method - optimizer picks the pitcher
+            self.lineup, self.pitcher = self._optimizer(
+                self.players,
+                style=style,
+                dh=dh,
+            )
 
         self._positions = {Position(slot.position): slot.player for slot in self.lineup}
-
         self.batter_index = 0
 
         # Mark starting lineup as having started the game
@@ -98,6 +133,35 @@ class TeamInGame:
         if self.pitcher:
             self.pitcher.game_stats.pitching.game_started = 1
             self.pitcher.game_stats.pitching.game_played = 1
+
+    # def set_lineup(self, *, style: str = "prioritized", dh: bool = True) -> None:
+    #     self._ensure_players_rated()
+
+    #     # Apply pitcher fatigue modifications BEFORE optimizing
+    #     for player in self.players:
+    #         if player.pitcher_fatigue:
+    #             player.apply_fatigue_to_ratings()
+
+    #     # Read in the starting rotation to pick pitcher
+    #     self.lineup, self.pitcher = self._optimizer(
+    #         self.players,
+    #         style=style,
+    #         dh=dh,
+    #     )
+
+    #     self._positions = {Position(slot.position): slot.player for slot in self.lineup}
+
+    #     self.batter_index = 0
+
+    #     # Mark starting lineup as having started the game
+    #     for slot in self.lineup:
+    #         slot.player.game_stats.batting.game_started = 1
+    #         slot.player.game_stats.batting.game_played = 1
+
+    #     # Mark starting pitcher
+    #     if self.pitcher:
+    #         self.pitcher.game_stats.pitching.game_started = 1
+    #         self.pitcher.game_stats.pitching.game_played = 1
 
     def get_fielder(self, position: Position) -> PlayerInGame | None:
         """Get player at a position."""

@@ -57,7 +57,9 @@ class LeagueBootstrapper:
         for team in teams:
             rotation = team.assign_starting_rotation()
             if not rotation:
-                print(f"Warning: No pitchers found for team {team.name}, skipping rotation.")
+                print(
+                    f"Warning: No pitchers found for team {team.name}, skipping rotation."
+                )
                 continue
             self.rotations_repo.set_rotation(
                 team_id=team.id,

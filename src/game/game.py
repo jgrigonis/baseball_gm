@@ -478,7 +478,7 @@ class Game:
         # Check for pitching change after plate appearance completes
         if self._plate_appearance_complete and self.current_pitcher:
             # TODO this will eventually return a range from 0 to 1.
-            # Use random chance for the "AI" to replace the pitcher 
+            # Use random chance for the "AI" to replace the pitcher
             # based on the level from 0 to 1
             # 1.0 meaning definitely change
             # 0.0 meanint don't change.

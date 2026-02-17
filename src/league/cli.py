@@ -77,7 +77,8 @@ def main():
 
     # Parse start date from manifest or default
     start_date_str = manifest.get(
-        "season_start_date", f"{manifest.get('season_year', 2028)}-04-01" # default to april 1
+        "season_start_date",
+        f"{manifest.get('season_year', 2028)}-04-01",  # default to april 1
     )
     start_date = datetime.datetime.fromisoformat(start_date_str).date()
 
@@ -104,8 +105,6 @@ def main():
         print(f"Deleted {existing_games} existing games")
 
     team_ids = [team.id for team in teams]
-
-
 
     scheduler = ScheduleGenerator()
     schedule = scheduler.create_schedule(
