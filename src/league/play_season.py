@@ -200,6 +200,11 @@ def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
     pitcher_repo = PitcherStateRepository(conn)
     for player in home_team.players + away_team.players:
         if player.game_stats.pitching.pitch_count > 0:
+            # # DEBUG
+            # print(f"{player.name}: pitch_count={player.game_stats.pitching.pitch_count}, "
+            #   f"game_started={player.game_stats.pitching.game_started}, "
+            #   f"type={type(player.game_stats.pitching.game_started)}")
+            # # DEBUG
             pitcher_repo.update_after_game(
                 player_id=player.id,
                 final_energy=player.pitcher_fatigue.energy,
@@ -230,6 +235,9 @@ def play_game(
     # load pitcher energy, game_date is the date of the current game
     game_date = load_energy(conn, game_repo, game_info["game_id"], home_team, away_team)
 
+    # DEBUG
+    # print(f"Playing game on {game_date} - Home: {home_team.record.mascot}")
+    # DEBUG
     # Get pitching rotations
     home_rotation = rotations_repo.get_current_rotation(
         home_team.record.id, season_id, game_date
@@ -249,6 +257,21 @@ def play_game(
         if player.record.id in away_rotation_ids:
             player.is_starter = True
 
+    # DEBUG
+    # last_start = conn.execute(
+    #     """SELECT g.date, p.first_name, p.last_name, tr.rotation_order
+    #     FROM player_game_stats pgs
+    #     JOIN games g ON pgs.game_id = g.id
+    #     JOIN players p ON pgs.player_id = p.id
+    #     JOIN team_rotations tr ON pgs.player_id = tr.player_id
+    #     WHERE pgs.team_id = ? AND g.season_id = ?
+    #     AND pgs.pitch_game_started = 1
+    #     ORDER BY g.date DESC LIMIT 1""",
+    #     (home_team.record.id, season_id)
+    # ).fetchone()
+    # print(f"Last starter for {home_team.record.mascot}: {last_start}")
+    # DEBUG
+
     # Get next starters from rotation
     home_starter_id = rotations_repo.get_next_starter(
         home_team.record.id, season_id, game_date
@@ -257,14 +280,14 @@ def play_game(
         away_team.record.id, season_id, game_date
     )
 
-    # Pass starter IDs to set_lineup
-    home_team.set_lineup(starting_pitcher_id=home_starter_id, dh=True)
-    away_team.set_lineup(starting_pitcher_id=away_starter_id, dh=True)
-
     # Play game
     game = Game(
         home_team=home_team, away_team=away_team, rng=rng, log_level=logging.WARNING
     )
+
+    # Pass starter IDs to set_lineup
+    home_team.set_lineup(starting_pitcher_id=home_starter_id, dh=True)
+    away_team.set_lineup(starting_pitcher_id=away_starter_id, dh=True)
 
     result = game.play()
 
@@ -399,6 +422,15 @@ def main():
             print(traceback.format_exc())
 
             continue
+        # DEBUG
+        # result = conn.execute(
+        #     """SELECT player_id, pitch_game_started
+        #     FROM player_game_stats
+        #     WHERE game_id = ? AND pitch_game_started = 1""",
+        #     (game_info['game_id'],)
+        # ).fetchall()
+        # print(f"Starter saved: {result}")
+        # DEBUG
 
     # Final stats
     elapsed = (datetime.now() - start_time).total_seconds()

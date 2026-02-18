@@ -52,7 +52,6 @@ def main():
     args = get_args()
 
     # import time
-
     # print(f"========== SCRIPT START {time.time()} ==========")
 
     conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)

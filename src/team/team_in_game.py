@@ -103,17 +103,10 @@ class TeamInGame:
                     f"Starting pitcher {starting_pitcher_id} not found on team {self.team.name}"
                 )
 
-            # Build lineup without the starting pitcher
-            available_for_lineup = [
-                p for p in self.players if p.record.id != starting_pitcher_id
-            ]
-
             # Optimizer still returns (lineup, pitcher_choice) tuple
             # But we ignore the pitcher_choice since we already set self.pitcher
             self.lineup, _ = self._optimizer(
-                available_for_lineup,
-                style=style,
-                dh=dh,
+                self.players, style=style, dh=dh, pitcher=self.pitcher
             )
         else:
             # Fall back to old method - optimizer picks the pitcher

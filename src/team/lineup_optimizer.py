@@ -35,9 +35,14 @@ from src.player.player_in_game import PlayerInGame
 class LineupOptimizer:
     @staticmethod
     def optimize(
-        players: list[PlayerInGame], *, style: str = "prioritized", dh: bool = True
+        players: list[PlayerInGame],
+        *,
+        style: str = "prioritized",
+        dh: bool = True,
+        pitcher: PlayerInGame | None = None,
     ) -> tuple[list[LineupSlot], PlayerInGame]:
-        pitcher = LineupOptimizer.select_pitcher(players)
+        if pitcher is None:
+            pitcher = LineupOptimizer.select_pitcher(players)
         if dh:
             hitters = [p for p in players if p != pitcher]
         else:
