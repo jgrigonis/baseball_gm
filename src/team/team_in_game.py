@@ -108,7 +108,9 @@ class TeamInGame:
                 p for p in self.players if p.record.id != starting_pitcher_id
             ]
 
-            self.lineup = self._optimizer(
+            # Optimizer still returns (lineup, pitcher_choice) tuple
+            # But we ignore the pitcher_choice since we already set self.pitcher
+            self.lineup, _ = self._optimizer(
                 available_for_lineup,
                 style=style,
                 dh=dh,
@@ -133,35 +135,6 @@ class TeamInGame:
         if self.pitcher:
             self.pitcher.game_stats.pitching.game_started = 1
             self.pitcher.game_stats.pitching.game_played = 1
-
-    # def set_lineup(self, *, style: str = "prioritized", dh: bool = True) -> None:
-    #     self._ensure_players_rated()
-
-    #     # Apply pitcher fatigue modifications BEFORE optimizing
-    #     for player in self.players:
-    #         if player.pitcher_fatigue:
-    #             player.apply_fatigue_to_ratings()
-
-    #     # Read in the starting rotation to pick pitcher
-    #     self.lineup, self.pitcher = self._optimizer(
-    #         self.players,
-    #         style=style,
-    #         dh=dh,
-    #     )
-
-    #     self._positions = {Position(slot.position): slot.player for slot in self.lineup}
-
-    #     self.batter_index = 0
-
-    #     # Mark starting lineup as having started the game
-    #     for slot in self.lineup:
-    #         slot.player.game_stats.batting.game_started = 1
-    #         slot.player.game_stats.batting.game_played = 1
-
-    #     # Mark starting pitcher
-    #     if self.pitcher:
-    #         self.pitcher.game_stats.pitching.game_started = 1
-    #         self.pitcher.game_stats.pitching.game_played = 1
 
     def get_fielder(self, position: Position) -> PlayerInGame | None:
         """Get player at a position."""

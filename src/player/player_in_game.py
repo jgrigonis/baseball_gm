@@ -51,6 +51,7 @@ class PlayerInGame(object):
             if self.record.is_pitcher()
             else None
         )
+        self.is_starter: bool = False  # Default to not a starting pitcher
         self.rate_player()
 
     def __str__(self):

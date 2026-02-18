@@ -7,7 +7,10 @@ from src.game.count import Count
 from src.game.intents.pitch import PrePitchSituation
 from src.game.score import Score
 from src.player.fatigue import FatigueLevel
+from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_in_game import PlayerInGame
+from src.team.team_in_game import TeamInGame
+
 
 # Probability constants for new events
 BASE_PICKOFF_ATTEMPT_PROB = 0.01  # 1% per pitch
@@ -591,24 +594,110 @@ class GameStrategy:
         return False
 
     @staticmethod
-    def should_consider_pitching_change(pitcher: PlayerInGame) -> bool:
+    def should_consider_pitching_change(
+        pitcher: PlayerInGame, score_diff: int = 0
+    ) -> float:
         """
         Determine if manager should consider pitching change.
 
-        TODO: convert the return values from booleans to a range
-        between 0 and 1.
+        Args:
+            pitcher: The current pitcher
+            score_diff: Team's score minus opponent's score (positive = winning)
+
+        Returns:
+            True if should consider a change, False otherwise
         """
         if not pitcher or not pitcher.pitcher_fatigue:
             return False
 
         fatigue = pitcher.pitcher_fatigue
+        fatigue_level = fatigue.get_level()
 
-        # Simple heuristics
-        if fatigue.get_level() == FatigueLevel.EXHAUSTED:
-            return True
-        if fatigue.pitches_thrown > 100:  # Pitch count limit
-            return True
-        if fatigue.batters_faced > 27:  # Faced lineup 3 times
-            return True
+        # Base probabilities by fatigue level
+        base_probs = {
+            FatigueLevel.FRESH: 0.01,  # Almost never pull a fresh pitcher
+            FatigueLevel.GOOD: 0.05,  # Rarely
+            FatigueLevel.TIRED: 0.25,  # Sometimes
+            FatigueLevel.EXHAUSTED: 0.60,  # Often
+            FatigueLevel.ZERO: 0.95,  # Almost always
+        }
 
-        return False
+        innings_pitched = pitcher.game_stats.pitching.ip_float
+        prob = base_probs.get(fatigue_level, 0.5)
+
+        # Modifier: Protect lead with starter (reduce probability of pulling them)
+        if score_diff > 0 and innings_pitched < 5.0:
+            # Winning and starter hasn't gone 5 innings yet
+            prob *= 0.5  # Half as likely to pull
+
+        # Modifier: Trailing badly (increase probability)
+        if score_diff < -3:
+            prob *= 1.3  # More likely to pull when getting blown out
+
+        # Clamp to [0, 1]
+        prob = max(0.0, min(1.0, prob))
+
+        return prob
+
+    @staticmethod
+    def select_relief_pitcher(
+        team: TeamInGame, current_pitcher: PlayerInGame
+    ) -> PlayerInGame | None:
+        """
+        Select the best available relief pitcher.
+
+        Priority:
+        1. Non-starters with FRESH status
+        2. Non-starters with GOOD status
+        3. Non-starters with TIRED status
+        4. Starters with FRESH status (emergency)
+        5. None available
+        """
+
+        # Get all pitchers except current pitcher
+        available_pitchers = [
+            p
+            for p in team.players
+            if p.record.is_pitcher()
+            and p != current_pitcher
+            and p.pitcher_fatigue is not None
+        ]
+
+        if not available_pitchers:
+            return None
+
+        # Categorize
+        relievers = [p for p in available_pitchers if not p.is_starter]
+        starters = [p for p in available_pitchers if p.is_starter]
+
+        # Try relievers by fatigue level
+        for fatigue_level in [
+            FatigueLevel.FRESH,
+            FatigueLevel.GOOD,
+            FatigueLevel.TIRED,
+        ]:
+            candidates = [
+                p for p in relievers if p.pitcher_fatigue.get_level() == fatigue_level
+            ]
+            if candidates:
+                # Pick best reliever by RP rating
+                candidates.sort(
+                    key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get(
+                        "rp", 0
+                    ),
+                    reverse=True,
+                )
+                return candidates[0]
+
+        # Emergency: use fresh starter
+        fresh_starters = [
+            p for p in starters if p.pitcher_fatigue.get_level() == FatigueLevel.FRESH
+        ]
+        if fresh_starters:
+            fresh_starters.sort(
+                key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("p", 0),
+                reverse=True,
+            )
+            return fresh_starters[0]
+
+        return None

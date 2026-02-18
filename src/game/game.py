@@ -477,15 +477,29 @@ class Game:
 
         # Check for pitching change after plate appearance completes
         if self._plate_appearance_complete and self.current_pitcher:
-            # TODO this will eventually return a range from 0 to 1.
+            # This will eventually return a range from 0 to 1.
             # Use random chance for the "AI" to replace the pitcher
             # based on the level from 0 to 1
             # 1.0 meaning definitely change
-            # 0.0 meanint don't change.
-            if GameStrategy.should_consider_pitching_change(self.current_pitcher):
+            # 0.0 meaning don't change.
+            rnd = self.rng.random()
+            change = GameStrategy.should_consider_pitching_change(
+                self.current_pitcher, self.score_differential
+            )
+            if change > 0.2:
                 self.logger.info(
                     f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
                 )
+            if change > rnd:
+                pitcher = GameStrategy.select_relief_pitcher(
+                    self.pitch_team, self.current_pitcher
+                )
+                if pitcher:
+                    self.current_pitcher = pitcher
+                    self.current_pitcher.game_stats.pitching.game_played = 1
+                    self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
+                else:
+                    self.logger.info(f"⚠️ No available pitchers!")
                 # TODO: Implement actual pitching change logic
 
         # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent
@@ -768,6 +782,13 @@ class Game:
             f"{self.inning.outs} out | "
             f"Count: {self.count}"
         )
+
+    @property
+    def score_differential(self) -> int:
+        """Score differential from pitching team's perspective (positive = winning)."""
+        if self.pitch_team == self.home:
+            return self.score.differential
+        return self.score.away - self.score.home
 
     # ------------------------------------------------------------------
     # Debug Helpers

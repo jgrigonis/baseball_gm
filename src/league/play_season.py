@@ -15,6 +15,7 @@ from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.game.game import Game
 from src.team.team_in_game import TeamInGame
 from src.util.locations import LEAGUE_FILES_DIR
@@ -212,6 +213,8 @@ def play_game(
     team_repo: TeamRepository,
     game_repo: GameRepository,
     team_game_repo: TeamGameRepository,
+    rotations_repo: TeamRotationsRepository,
+    season_id: str,
     game_info: dict,
     rng: random.Random,
 ):
@@ -227,9 +230,36 @@ def play_game(
     # load pitcher energy, game_date is the date of the current game
     game_date = load_energy(conn, game_repo, game_info["game_id"], home_team, away_team)
 
-    # Set lineups
-    home_team.set_lineup()
-    away_team.set_lineup()
+    # Get pitching rotations
+    home_rotation = rotations_repo.get_current_rotation(
+        home_team.record.id, season_id, game_date
+    )
+    away_rotation = rotations_repo.get_current_rotation(
+        away_team.record.id, season_id, game_date
+    )
+
+    # Mark rotation pitchers
+    home_rotation_ids = {r["player_id"] for r in home_rotation}
+    for player in home_team.players:
+        if player.record.id in home_rotation_ids:
+            player.is_starter = True
+
+    away_rotation_ids = {r["player_id"] for r in away_rotation}
+    for player in away_team.players:
+        if player.record.id in away_rotation_ids:
+            player.is_starter = True
+
+    # Get next starters from rotation
+    home_starter_id = rotations_repo.get_next_starter(
+        home_team.record.id, season_id, game_date
+    )
+    away_starter_id = rotations_repo.get_next_starter(
+        away_team.record.id, season_id, game_date
+    )
+
+    # Pass starter IDs to set_lineup
+    home_team.set_lineup(starting_pitcher_id=home_starter_id, dh=True)
+    away_team.set_lineup(starting_pitcher_id=away_starter_id, dh=True)
 
     # Play game
     game = Game(
@@ -302,6 +332,7 @@ def main():
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
+    rotations_repo = TeamRotationsRepository(conn)
 
     # Get all games for season
     games = game_repo.get_season_games(
@@ -339,7 +370,14 @@ def main():
 
         try:
             result = play_game(
-                conn, team_repo, game_repo, team_game_repo, game_info, rng
+                conn,
+                team_repo,
+                game_repo,
+                team_game_repo,
+                rotations_repo,
+                args.season_id,
+                game_info,
+                rng,
             )
             completed += 1
 

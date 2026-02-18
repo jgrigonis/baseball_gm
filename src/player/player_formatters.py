@@ -199,7 +199,7 @@ class PlayerTableFormatter:
             "K/9",
             "BB/9",
         ]:
-            output += f"{item:>5}"
+            output += f"{item:>6}"
         output += "  "
         return output
 
@@ -356,10 +356,10 @@ class PlayerTableFormatter:
         # BB/9 (walks per 9 innings)
         bb_per_9 = (stats.pitching.walks / ip_float * 9) if ip_float > 0 else 0.0
 
-        output += "{:>5.2f}".format(era)
-        output += "{:>5.2f}".format(whip)
-        output += "{:>5.2f}".format(k_per_9)
-        output += "{:>5.2f}".format(bb_per_9)
+        output += "{:>6.2f}".format(era)
+        output += "{:>6.2f}".format(whip)
+        output += "{:>6.2f}".format(k_per_9)
+        output += "{:>6.2f}".format(bb_per_9)
         return output
 
     @staticmethod

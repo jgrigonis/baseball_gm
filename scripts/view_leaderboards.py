@@ -1,9 +1,23 @@
 # scripts/view_leaderboards.py
+import argparse
 from pathlib import Path
 
 from src.stats.analyzer import StatsAnalyzer
 from src.stats.loader import StatsLoader
 from src.util.locations import LEAGUE_FILES_DIR
+
+
+def get_args():
+    """
+    Get arguments from the command line.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--id", "-i", required=True, help="Set the season ID.")
+    parser.add_argument(
+        "--file", "-f", default="league.db", help="Set the league db filename."
+    )
+    args = parser.parse_args()
+    return args
 
 
 def show_all_leaderboards(players, top_n=10):
@@ -108,8 +122,9 @@ def show_all_leaderboards(players, top_n=10):
 
 # Usage:
 if __name__ == "__main__":
-    db_path = Path(LEAGUE_FILES_DIR) / "league.db"
-    season_id = "b6672e1cf63f4efe8a564113d2de98fb"
+    args = get_args()
+    db_path = Path(LEAGUE_FILES_DIR) / args.file
+    season_id = args.id
     # Get all players from your games/season
     with StatsLoader(str(db_path)) as loader:
         all_players = loader.load_season_players_with_stats(season_id)

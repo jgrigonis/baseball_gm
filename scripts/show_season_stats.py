@@ -8,7 +8,7 @@ from src.util.locations import LEAGUE_FILES_DIR
 
 def main():
     db_path = Path(LEAGUE_FILES_DIR) / "league.db"
-    season_id = "b6672e1cf63f4efe8a564113d2de98fb"  # Or whatever your season ID is
+    season_id = "13c105df3c5a4d06881183473af18af2"  # Or whatever your season ID is
 
     with StatsLoader(str(db_path)) as loader:
         # Get players for specific season
