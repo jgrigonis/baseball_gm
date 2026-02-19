@@ -8,9 +8,7 @@ Get next starter
 Update the pitching rotation
 
 """
-import datetime
 from typing import Any
-import uuid
 
 
 class TeamRotationsRepository:

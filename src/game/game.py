@@ -499,7 +499,7 @@ class Game:
                     self.current_pitcher.game_stats.pitching.game_played = 1
                     self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
                 else:
-                    self.logger.info(f"⚠️ No available pitchers!")
+                    self.logger.info("⚠️ No available pitchers!")
                 # TODO: Implement actual pitching change logic
 
         # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent

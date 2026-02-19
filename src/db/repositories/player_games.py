@@ -16,7 +16,6 @@ from src.stats.stats import Stats, SeasonStats
 from src.stats.batting_stats import BattingStats
 from src.stats.pitching_stats import PitchingStats
 from src.stats.fielding_stats import FieldingStats
-from tests.db.repositories.test_games_repo import completed_game
 
 
 class PlayerGameRepository:
