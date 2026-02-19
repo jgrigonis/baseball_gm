@@ -28,4 +28,5 @@ Other information we want to store:
 
 Wins and losses by team, team stats
 
-If pitcher energy is going to drop and then recover on rest days, we need somewhere to track that, outside of the game
+If pitcher energy is going to drop and then recover on rest days, we need 
+somewhere to track that, outside of the game

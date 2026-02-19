@@ -9,13 +9,9 @@
 # TODO we have just a basic raw error event that isn't super useful
 #      We also can trigger errors on batted balls. Need to consolidate
 # TODO implement handedness p vs batter
-# TODO pitcher energy and recovery
-# TODO implement clutch
 # TODO Calculate W/L/S for pitchers
 # TODO Track complete games, shutouts
 # TODO We currently count all runs as earned.  Needs to be fixed.
-# TODO Games Started for pitcher
-# TODO can runners advance more with more speed, not currently
 # TODO many more unit tests
 # TODO unit test for walk off home run, vs driving in multiple
 #      home run should score all runs, driving in on a triple for example
@@ -26,9 +22,6 @@
 # TODO the range of abilities is probably too low.
 # TODO more accurately match stats from MLB teams
 # TODO follow extra innings rules with runner on second.
-# TODO In player replace rng.gauss with
-# def generate_stat(self, rng, ...):
-#    stat = rng.gauss(mean, sigma)
 
 
 # Future updates for name generator
@@ -63,59 +56,3 @@ balanced_offensive_weight = 0.7
 
 # TESTING
 Add TeamRecord → TeamInGame contracts
-
-
-Concrete checklist
-
-Create TeamInGame from TeamRecord
-Convert PlayerRecord → PlayerInGame
-Attach ratings
-No persistence
-Wire LineupOptimizer into Game
-
-Use optimizer output to:
-Set batting order
-Set defensive positions
-Select pitcher
-
-Done:
-    Run a full inning
-    Pitch → swing → result
-    Base advancement
-    Stats update
-
-    Run a full game
-    9 innings
-    Win/loss recorded
-    No crashes
-Done:
-
-
-Phase 2 — Identify friction points (write them down)
-
-As you wire things back together, note:
-“This attribute feels awkward to access”
-“This object is doing too much”
-“This wants to be immutable”
-“This doesn’t serialize cleanly”
-These notes will drive your DB design later.
-
-Only then: Database changes (Phase 3)
-
-Once the game runs:
-Ask the right DB questions
-Which objects are long-lived?
-PlayerRecord ✅
-TeamRecord ✅
-SeasonStats maybe
-Which are ephemeral?
-
-PlayerInGame
-LineupSlot
-Game
-
-What needs versioning?
-What must be queryable?
-What can be reconstructed?
-
-Most “game” objects should never be persisted.

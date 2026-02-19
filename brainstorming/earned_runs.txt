@@ -17,7 +17,8 @@ A passed ball (but not a wild pitch)
 An inning that should have ended if not for an error
 
 Runs can still be earned if:
-The pitcher gives up hits, walks, or hit batters (even after an error), as long as the inning would still be alive
+The pitcher gives up hits, walks, or hit batters (even after an error), 
+as long as the inning would still be alive
 A wild pitch allows a runner to advance
 A reliever inherits runners (those runs belong to the previous pitcher)
 

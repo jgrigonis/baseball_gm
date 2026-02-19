@@ -74,8 +74,10 @@ TeamRecord ──(TeamInGameFactory)──▶ TeamInGame (mutable for game)
 Key Principles / Rules
 
 Separation of layers: Persistent vs. ephemeral.
-No cross-contamination: Never put ratings in PlayerRecord, never put skills in PlayerInGame.
-Snapshots only: PlayerInGame.ratings is a derived snapshot of PlayerRecord.skills.
+No cross-contamination: Never put ratings in PlayerRecord, 
+never put skills in PlayerInGame.
+Snapshots only: PlayerInGame.ratings is a derived snapshot of 
+PlayerRecord.skills.
 Factories enforce invariants:
 PlayerInGame.from_record ensures ratings exist.
 TeamInGameFactory.from_record ensures players are wrapped in-game.
