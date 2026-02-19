@@ -1,9 +1,5 @@
 Todo list
 
-Set the starting rotation at the beginning of the season
-Evaluate as SP vs just P.
-Implement pitcher changes, pick a fresh pitcher who isn't 
-in the starting rotation.
 
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
