@@ -10,7 +10,7 @@ cursor = conn.execute(
     """
     SELECT first_name, last_name, position 
     FROM players 
-    WHERE first_name = 'RYAN' AND last_name = 'COCKRELL'
+    WHERE first_name = 'TERRY' AND last_name = 'SMTIH'
 """
 )
 row = cursor.fetchone()
@@ -25,7 +25,7 @@ cursor = conn.execute(
         SUM(pitch_outs) as Outs,
         ROUND(SUM(pitch_outs) / 3.0, 1) as IP
     FROM player_game_stats
-    WHERE player_id = (SELECT id FROM players WHERE first_name = 'RYAN' AND last_name = 'COCKRELL')
+    WHERE player_id = (SELECT id FROM players WHERE first_name = 'TERRY' AND last_name = 'SMTIH')
 """
 )
 row = cursor.fetchone()

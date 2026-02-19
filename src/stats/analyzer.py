@@ -224,6 +224,24 @@ class StatsAnalyzer:
 
     #     return sorted(leaders, key=lambda x: x['wins'], reverse=True)
 
+    def leaderboard_innings_pitched(self, min_innings=0) -> List[Dict[str, Any]]:
+        """Get pitchers ranked by innings pitched"""
+        leaders = []
+
+        for p in self.players:
+            ip = p.game_stats.pitching.ip_float
+            if ip >= min_innings:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "innings_pitched": ip,
+                        "strike_outs": p.game_stats.pitching.strike_outs,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["innings_pitched"], reverse=True)
+
     def leaderboard_era(self, min_innings=5.0) -> List[Dict[str, Any]]:
         """Get pitchers ranked by ERA (lower is better)"""
         leaders = []

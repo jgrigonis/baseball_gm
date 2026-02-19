@@ -11,8 +11,9 @@ cursor = conn.execute(
     """
     SELECT first_name, last_name, position 
     FROM players 
-    WHERE first_name = 'RYAN' AND last_name = 'COCKRELL'
+    WHERE first_name = 'TERRY' AND last_name = 'SMTIH'
 """
+    # TERRY SMTIH
 )
 print("Player info:", cursor.fetchone())
 
@@ -21,7 +22,7 @@ cursor = conn.execute(
     """
     SELECT COUNT(DISTINCT game_id) as games_played
     FROM player_game_stats
-    WHERE player_id = (SELECT id FROM players WHERE first_name = 'RYAN' AND last_name = 'COCKRELL')
+    WHERE player_id = (SELECT id FROM players WHERE first_name = 'TERRY' AND last_name = 'SMTIH')
 """
 )
 print("Games played:", cursor.fetchone()["games_played"])
@@ -38,7 +39,7 @@ cursor = conn.execute(
         SUM(bat_game_played) as GP,
         SUM(bat_game_started) as GS
     FROM player_game_stats
-    WHERE player_id = (SELECT id FROM players WHERE first_name = 'RYAN' AND last_name = 'COCKRELL')
+    WHERE player_id = (SELECT id FROM players WHERE first_name = 'TERRY' AND last_name = 'SMTIH')
 """
 )
 row = cursor.fetchone()
