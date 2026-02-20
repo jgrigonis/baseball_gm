@@ -1,7 +1,12 @@
 # src/db/schema.py
 # SCHEMA_SQL always represents the final schema
 
-SCHEMA_SQL = """
+from src.team.team_in_game import Position
+
+_positions = ", ".join(f"'{p.value}'" for p in Position)
+POSITION_CHECK = f"CHECK (position IN ({_positions}))"
+
+SCHEMA_SQL = f"""
 -- Enable foreign key enforcement (must be set per connection)
 PRAGMA foreign_keys = ON;
 
@@ -237,6 +242,25 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS player_game_fielding (
+    game_id    TEXT NOT NULL,
+    player_id  TEXT NOT NULL,
+    position   TEXT NOT NULL {POSITION_CHECK},
+
+    putouts               INTEGER DEFAULT 0 CHECK (putouts >= 0),
+    assists               INTEGER DEFAULT 0 CHECK (assists >= 0),
+    errors                INTEGER DEFAULT 0 CHECK (errors >= 0),
+    passed_balls          INTEGER CHECK (passed_balls >= 0),
+    catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
+    catcher_cs            INTEGER CHECK (catcher_cs >= 0),
+    catcher_sb            INTEGER CHECK (catcher_sb >= 0),
+
+    PRIMARY KEY (game_id, player_id, position),
+
+    FOREIGN KEY (game_id)   REFERENCES games(id)   ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS team_game_stats (

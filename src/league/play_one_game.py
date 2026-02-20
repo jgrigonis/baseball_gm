@@ -179,5 +179,7 @@ def main():
     print("\n✅ Game complete and saved!")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
+
+# This script is deprecated, needs similar updates that are found in play_season.py

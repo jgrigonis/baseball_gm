@@ -42,6 +42,7 @@ def clear_game_data(conn, game_id: str):
     """Clear all data for a game (for replaying)."""
     conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (game_id,))
+    conn.execute("DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,))
     conn.execute(
         """
         UPDATE games 
@@ -147,6 +148,7 @@ def save_team_stats(
 def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: TeamInGame):
     """Save player game stats to database."""
     conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
+    conn.execute("DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,))
     conn.commit()
 
     player_repo = PlayerGameRepository(conn)
@@ -159,6 +161,12 @@ def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: Team
                 or player.game_stats.pitching.pitch_count > 0
                 or player.game_stats.fielding.chances > 0
             ):
+                fielding_positions = list(player.fielding_by_position.items())
+                for position, fs in fielding_positions:
+                    if position is None:
+                        raise ValueError(
+                            f"Cannot insert fielding stats for player {player.id}: position is None"
+                        )
 
                 player_repo.insert(
                     game_id=game_id,
@@ -166,6 +174,7 @@ def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: Team
                     team_id=team.record.id,
                     opponent_team_id=opponent_team.record.id,
                     stats=player.game_stats,
+                    fielding_positions=fielding_positions,
                 )
 
     conn.commit()

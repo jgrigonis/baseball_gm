@@ -35,6 +35,7 @@ class PlayerGameRepository:
         team_id: str,
         opponent_team_id: str,
         stats: Stats,
+        fielding_positions: list[tuple[str, "FieldingStats"]] | None = None,
     ) -> None:
         """
         Persist a player's stats for a single game.
@@ -124,16 +125,34 @@ class PlayerGameRepository:
             ),
         )
 
+        # Insert per-position fielding stats
+        if fielding_positions:
+            for position, fs in fielding_positions:
+                self.conn.execute(
+                    """
+                    INSERT OR REPLACE INTO player_game_fielding (
+                        game_id, player_id, position,
+                        putouts, assists, errors
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (game_id, player_id, position, fs.putouts, fs.assists, fs.errors),
+                )
+
         self.conn.commit()
 
     def delete_game_stats(self, game_id: str) -> None:
         """
         Delete all player stats for a game (for replaying games).
+        Delete the fielding stats as well.
 
         Args:
             game_id: Game ID
         """
         self.conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
+        self.conn.execute(
+            "DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,)
+        )
         self.conn.commit()
 
     # ------------------------------------------------------------

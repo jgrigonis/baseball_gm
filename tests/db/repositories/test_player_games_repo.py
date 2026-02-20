@@ -4,6 +4,7 @@ import sqlite3
 
 from src.db.repositories.player_games import PlayerGameRepository
 from src.stats.stats import Stats
+from src.stats.fielding_stats import FieldingStats
 
 
 @pytest.fixture
@@ -75,6 +76,21 @@ def db_connection():
     """
     )
 
+    # Create player_game_fielding table
+    conn.execute(
+        """
+        CREATE TABLE player_game_fielding (
+            game_id   TEXT NOT NULL,
+            player_id TEXT NOT NULL,
+            position  TEXT NOT NULL,
+            putouts   INTEGER DEFAULT 0 CHECK (putouts >= 0),
+            assists   INTEGER DEFAULT 0 CHECK (assists >= 0),
+            errors    INTEGER DEFAULT 0 CHECK (errors >= 0),
+            PRIMARY KEY (game_id, player_id, position)
+        )
+    """
+    )
+
     # Create games table for joins
     conn.execute(
         """
@@ -141,6 +157,33 @@ def sample_stats():
     stats.fielding.errors = 0
 
     return stats
+
+
+@pytest.fixture
+def sample_fielding_positions():
+    """Create sample fielding positions list."""
+    ss_stats = FieldingStats()
+    ss_stats.putouts = 1
+    ss_stats.assists = 5
+    ss_stats.errors = 0
+
+    return [("ss", ss_stats)]
+
+
+@pytest.fixture
+def sample_fielding_positions_two_way():
+    """Create sample fielding positions for a two-way player (1b + pitcher)."""
+    first_base_stats = FieldingStats()
+    first_base_stats.putouts = 10
+    first_base_stats.assists = 2
+    first_base_stats.errors = 0
+
+    pitcher_stats = FieldingStats()
+    pitcher_stats.putouts = 0
+    pitcher_stats.assists = 2
+    pitcher_stats.errors = 1
+
+    return [("1b", first_base_stats), ("p", pitcher_stats)]
 
 
 class TestPlayerGameRepositoryInsert:
@@ -279,6 +322,249 @@ class TestPlayerGameRepositoryInsert:
         ).fetchone()["count"]
 
         assert count == 5
+
+
+class TestPlayerGameRepositoryFieldingPositions:
+    """Test insert() with fielding_positions parameter."""
+
+    def test_insert_single_fielding_position(
+        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+    ):
+        """Test inserting stats with a single fielding position."""
+        player_repo.insert(
+            game_id="game-1",
+            player_id="player-1",
+            team_id="team-1",
+            opponent_team_id="team-2",
+            stats=sample_stats,
+            fielding_positions=sample_fielding_positions,
+        )
+
+        rows = db_connection.execute(
+            "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
+            ("game-1", "player-1"),
+        ).fetchall()
+
+        assert len(rows) == 1
+        assert rows[0]["position"] == "ss"
+        assert rows[0]["putouts"] == 1
+        assert rows[0]["assists"] == 5
+        assert rows[0]["errors"] == 0
+
+    def test_insert_two_way_player(
+        self,
+        player_repo,
+        db_connection,
+        sample_stats,
+        sample_fielding_positions_two_way,
+    ):
+        """Test inserting stats for a two-way player (e.g., 1b who also pitched)."""
+        player_repo.insert(
+            game_id="game-1",
+            player_id="player-1",
+            team_id="team-1",
+            opponent_team_id="team-2",
+            stats=sample_stats,
+            fielding_positions=sample_fielding_positions_two_way,
+        )
+
+        rows = db_connection.execute(
+            """
+            SELECT * FROM player_game_fielding
+            WHERE game_id = ? AND player_id = ?
+            ORDER BY position
+            """,
+            ("game-1", "player-1"),
+        ).fetchall()
+
+        assert len(rows) == 2
+
+        positions = {r["position"]: r for r in rows}
+
+        assert positions["1b"]["putouts"] == 10
+        assert positions["1b"]["assists"] == 2
+        assert positions["1b"]["errors"] == 0
+
+        assert positions["p"]["putouts"] == 0
+        assert positions["p"]["assists"] == 2
+        assert positions["p"]["errors"] == 1
+
+    def test_insert_no_fielding_positions(
+        self, player_repo, db_connection, sample_stats
+    ):
+        """Test that omitting fielding_positions writes nothing to player_game_fielding."""
+        player_repo.insert(
+            game_id="game-1",
+            player_id="player-1",
+            team_id="team-1",
+            opponent_team_id="team-2",
+            stats=sample_stats,
+        )
+
+        rows = db_connection.execute(
+            "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
+            ("game-1", "player-1"),
+        ).fetchall()
+
+        assert len(rows) == 0
+
+    def test_insert_fielding_positions_idempotent(
+        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+    ):
+        """Test that re-inserting fielding positions replaces rather than duplicates."""
+        player_repo.insert(
+            "game-1",
+            "player-1",
+            "team-1",
+            "team-2",
+            sample_stats,
+            fielding_positions=sample_fielding_positions,
+        )
+
+        # Update the fielding stats and re-insert
+        updated_fs = FieldingStats()
+        updated_fs.putouts = 3
+        updated_fs.assists = 7
+        updated_fs.errors = 1
+
+        player_repo.insert(
+            "game-1",
+            "player-1",
+            "team-1",
+            "team-2",
+            sample_stats,
+            fielding_positions=[("ss", updated_fs)],
+        )
+
+        rows = db_connection.execute(
+            "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
+            ("game-1", "player-1"),
+        ).fetchall()
+
+        assert len(rows) == 1
+        assert rows[0]["putouts"] == 3
+        assert rows[0]["assists"] == 7
+        assert rows[0]["errors"] == 1
+
+    def test_fielding_positions_isolated_per_player(
+        self, player_repo, db_connection, sample_stats
+    ):
+        """Test that fielding positions are correctly isolated per player."""
+        ss_stats = FieldingStats()
+        ss_stats.putouts = 1
+        ss_stats.assists = 5
+
+        cf_stats = FieldingStats()
+        cf_stats.putouts = 3
+        cf_stats.assists = 0
+
+        player_repo.insert(
+            "game-1",
+            "player-1",
+            "team-1",
+            "team-2",
+            sample_stats,
+            fielding_positions=[("ss", ss_stats)],
+        )
+        player_repo.insert(
+            "game-1",
+            "player-2",
+            "team-1",
+            "team-2",
+            sample_stats,
+            fielding_positions=[("cf", cf_stats)],
+        )
+
+        p1_rows = db_connection.execute(
+            "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
+            ("game-1", "player-1"),
+        ).fetchall()
+
+        p2_rows = db_connection.execute(
+            "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
+            ("game-1", "player-2"),
+        ).fetchall()
+
+        assert len(p1_rows) == 1
+        assert p1_rows[0]["position"] == "ss"
+
+        assert len(p2_rows) == 1
+        assert p2_rows[0]["position"] == "cf"
+
+
+class TestPlayerGameRepositoryDeleteGameStats:
+    """Test delete_game_stats() cleans up both tables."""
+
+    def test_delete_cleans_player_game_stats(
+        self, player_repo, db_connection, sample_stats
+    ):
+        """Test that delete_game_stats removes rows from player_game_stats."""
+        player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
+        player_repo.delete_game_stats("game-1")
+
+        count = db_connection.execute(
+            "SELECT COUNT(*) as count FROM player_game_stats WHERE game_id = ?",
+            ("game-1",),
+        ).fetchone()["count"]
+
+        assert count == 0
+
+    def test_delete_cleans_player_game_fielding(
+        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+    ):
+        """Test that delete_game_stats removes rows from player_game_fielding."""
+        player_repo.insert(
+            "game-1",
+            "player-1",
+            "team-1",
+            "team-2",
+            sample_stats,
+            fielding_positions=sample_fielding_positions,
+        )
+        player_repo.delete_game_stats("game-1")
+
+        count = db_connection.execute(
+            "SELECT COUNT(*) as count FROM player_game_fielding WHERE game_id = ?",
+            ("game-1",),
+        ).fetchone()["count"]
+
+        assert count == 0
+
+    def test_delete_only_affects_specified_game(
+        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+    ):
+        """Test that delete_game_stats only removes data for the specified game."""
+        player_repo.insert(
+            "game-1",
+            "player-1",
+            "team-1",
+            "team-2",
+            sample_stats,
+            fielding_positions=sample_fielding_positions,
+        )
+        player_repo.insert(
+            "game-2",
+            "player-1",
+            "team-1",
+            "team-2",
+            sample_stats,
+            fielding_positions=sample_fielding_positions,
+        )
+
+        player_repo.delete_game_stats("game-1")
+
+        game1_count = db_connection.execute(
+            "SELECT COUNT(*) as count FROM player_game_fielding WHERE game_id = ?",
+            ("game-1",),
+        ).fetchone()["count"]
+
+        game2_count = db_connection.execute(
+            "SELECT COUNT(*) as count FROM player_game_fielding WHERE game_id = ?",
+            ("game-2",),
+        ).fetchone()["count"]
+
+        assert game1_count == 0
+        assert game2_count == 1
 
 
 class TestPlayerGameRepositoryGetForGame:

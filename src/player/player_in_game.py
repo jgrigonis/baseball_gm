@@ -19,6 +19,7 @@ Unrated	= ratings attribute does not exist
 Rated	= ratings is a dict
 """
 
+from src.stats.fielding_stats import FieldingStats
 import src.stats.stats as stats
 
 from src.player.fatigue import PitcherFatigue
@@ -43,8 +44,9 @@ class PlayerInGame(object):
 
         # mutable, game-only state
         self.game_stats = stats.GameStats()
+        self.fielding_by_position: dict[str, FieldingStats] = {}
+        self._current_position: str | None = None
         self.in_lineup = False
-        self.current_position = None
         self.is_injured = False
         self.pitcher_fatigue = (
             PitcherFatigue(stamina=self.skills["stamina"])
@@ -56,6 +58,19 @@ class PlayerInGame(object):
 
     def __str__(self):
         return f"<Player {self.name}>"
+
+    @property
+    def current_position(self) -> str | None:
+        return self._current_position
+
+    @current_position.setter
+    def current_position(self, pos: str | None) -> None:
+        self._current_position = pos
+        if pos is not None:
+            if pos not in self.fielding_by_position:
+                self.fielding_by_position[pos] = FieldingStats()
+            # Redirect game_stats.fielding to the active position's bucket
+            self.game_stats.fielding = self.fielding_by_position[pos]
 
     @property
     def name(self):
@@ -72,6 +87,8 @@ class PlayerInGame(object):
         Reset the stats.
         """
         self.game_stats = stats.GameStats()
+        self.fielding_by_position = {}
+        self._current_position = None
 
     @classmethod
     def from_record(cls, record: PlayerRecord):

@@ -76,7 +76,9 @@ class LineupOptimizer:
         order = LineupOptimizer.offensive_batting_order(hitters, dh=dh)
 
         # 2. Assign defensive positions by priority
-        assignments = LineupOptimizer.assign_positions_priority(order, dh=dh)
+        assignments = LineupOptimizer.assign_positions_priority(
+            order, dh=dh, pitcher=pitcher
+        )
 
         # 3. Build lineup slots (batting order preserved)
         return LineupOptimizer.build_lineup(order, assignments)
@@ -143,7 +145,9 @@ class LineupOptimizer:
             order.append(nine)
 
         # --- defensive assignment ---
-        assignments = LineupOptimizer.assign_positions_greedy(order, dh=dh)
+        assignments = LineupOptimizer.assign_positions_greedy(
+            order, dh=dh, pitcher=pitcher
+        )
 
         return LineupOptimizer.build_lineup(order, assignments)
 
@@ -158,7 +162,9 @@ class LineupOptimizer:
         order = LineupOptimizer.offensive_batting_order(hitters, dh=dh)
 
         # 2. Assign defensive positions by priority
-        assignments = LineupOptimizer.assign_positions_priority(order, dh=dh)
+        assignments = LineupOptimizer.assign_positions_priority(
+            order, dh=dh, pitcher=pitcher
+        )
 
         # 3. Build lineup slots (batting order preserved)
         return LineupOptimizer.build_lineup(order, assignments)
@@ -174,7 +180,9 @@ class LineupOptimizer:
         order = LineupOptimizer.offensive_batting_order(hitters, dh=dh)
 
         # 2. Assign defensive positions by priority
-        assignments = LineupOptimizer.assign_positions_greedy(order, dh=dh)
+        assignments = LineupOptimizer.assign_positions_greedy(
+            order, dh=dh, pitcher=pitcher
+        )
 
         # 3. Build lineup slots (batting order preserved)
         return LineupOptimizer.build_lineup(order, assignments)
@@ -188,7 +196,9 @@ class LineupOptimizer:
         """
 
         # 1. Assign defensive positions by priority
-        assignments = LineupOptimizer.assign_positions_greedy(hitters, dh=dh)
+        assignments = LineupOptimizer.assign_positions_greedy(
+            hitters, dh=dh, pitcher=pitcher
+        )
 
         # 2. Build batting order
         order = LineupOptimizer.offensive_batting_order(assignments, dh=dh)
@@ -256,11 +266,13 @@ class LineupOptimizer:
         return order
 
     @staticmethod
-    def assign_positions_greedy(players, *, dh):
+    def assign_positions_greedy(players, *, dh, pitcher=None):
         remaining_players = set(players)
         positions = list(LINEUP_SLOTS)
         if dh:
             positions.append("dh")
+        elif pitcher:
+            remaining_players.discard(pitcher)  # pitcher handled separately
         else:
             positions.append("p")
 
@@ -282,15 +294,22 @@ class LineupOptimizer:
         for p in remaining_players:
             assignments[p] = "bench"
 
+        if pitcher and not dh:
+            assignments[pitcher] = "p"
+
         return assignments
 
     @staticmethod
-    def assign_positions_priority(players, *, dh):
+    def assign_positions_priority(players, *, dh, pitcher=None):
         priority = list(POSITION_PRIORITY)
         if not dh:
-            priority.insert(0, "p")
+            if pitcher is None:
+                priority.insert(0, "p")
 
         remaining = set(players)
+        if pitcher and not dh:
+            remaining.discard(pitcher)
+
         assignments = {}
 
         for pos in priority:
@@ -303,6 +322,9 @@ class LineupOptimizer:
 
         for p in remaining:
             assignments[p] = "dh"
+
+        if pitcher and not dh:
+            assignments[pitcher] = "p"
 
         return assignments
 

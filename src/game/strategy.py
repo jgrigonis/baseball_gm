@@ -654,13 +654,14 @@ class GameStrategy:
         5. None available
         """
 
-        # Get all pitchers except current pitcher
+        # Get all available pitchers
         available_pitchers = [
             p
             for p in team.players
-            if p.record.is_pitcher()
-            and p != current_pitcher
+            if p != current_pitcher
+            and p.game_stats.pitching.pitch_count == 0
             and p.pitcher_fatigue is not None
+            and p.current_position is None  # not already playing a field position
         ]
 
         if not available_pitchers:

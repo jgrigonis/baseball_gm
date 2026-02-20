@@ -123,11 +123,14 @@ class TeamInGame:
         for slot in self.lineup:
             slot.player.game_stats.batting.game_started = 1
             slot.player.game_stats.batting.game_played = 1
+            # set player position
+            slot.player.current_position = slot.position
 
         # Mark starting pitcher
         if self.pitcher:
             self.pitcher.game_stats.pitching.game_started = 1
             self.pitcher.game_stats.pitching.game_played = 1
+            self.pitcher.current_position = Position.PITCHER.value
 
     def get_fielder(self, position: Position) -> PlayerInGame | None:
         """Get player at a position."""
