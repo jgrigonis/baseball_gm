@@ -19,30 +19,36 @@ def setup_logger(
     log_dir: str = "logs",
     level=logging.INFO,
     console_level=logging.INFO,
+    log_id: str | None = None,
+    log_to_file: bool = True,
 ):
-    os.makedirs(log_dir, exist_ok=True)
-
-    log_file = os.path.join(log_dir, datetime.now().strftime("%Y%m%d-%H%M%S.log"))
-
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-
-    # Prevent duplicate handlers if called multiple times
-    if logger.handlers:
-        return logger
-
     # formatter = logging.Formatter(LOG_FORMAT)
     formatter = logging.Formatter("[%(levelname)s] %(name)s: %(message)s")
 
-    fh = logging.FileHandler(log_file)
-    fh.setLevel(level)
-    fh.setFormatter(formatter)
+    logger = logging.getLogger(name)
+    logger.setLevel(min(level, console_level))
+    # Clear existing handlers so each game gets its own file
+    logger.handlers.clear()
+
+    if log_to_file:
+        os.makedirs(log_dir, exist_ok=True)
+        if log_id is None:
+            log_file = os.path.join(
+                log_dir, datetime.now().strftime("%Y%m%d-%H%M%S.log")
+            )
+        else:
+            log_file = os.path.join(
+                log_dir, datetime.now().strftime("%Y%m%d-%H%M%S-") + log_id + ".log"
+            )
+
+        fh = logging.FileHandler(log_file)
+        fh.setLevel(level)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
 
     ch = logging.StreamHandler()
     ch.setLevel(console_level)
     ch.setFormatter(formatter)
-
-    logger.addHandler(fh)
     logger.addHandler(ch)
 
     return logger

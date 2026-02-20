@@ -35,6 +35,9 @@ def get_args():
     parser.add_argument(
         "--resume", "-r", action="store_true", help="Resume from last completed game"
     )
+    parser.add_argument(
+        "--logs", action="store_true", help="Keep logfiles for each game"
+    )
     return parser.parse_args()
 
 
@@ -224,6 +227,7 @@ def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
 
 def play_game(
     conn,
+    args,
     team_repo: TeamRepository,
     game_repo: GameRepository,
     team_game_repo: TeamGameRepository,
@@ -288,10 +292,23 @@ def play_game(
     away_starter_id = rotations_repo.get_next_starter(
         away_team.record.id, season_id, game_date
     )
-
+    if args.logs:
+        log_level = logging.INFO
+        log_id = game_info["game_id"]
+        log_to_file = True
+    else:
+        log_level = logging.WARNING
+        log_id = None
+        log_to_file = False
     # Play game
     game = Game(
-        home_team=home_team, away_team=away_team, rng=rng, log_level=logging.WARNING
+        home_team=home_team,
+        away_team=away_team,
+        rng=rng,
+        log_level=log_level,
+        console_level=logging.WARNING,
+        log_id=log_id,
+        log_to_file=log_to_file,
     )
 
     # Pass starter IDs to set_lineup
@@ -403,6 +420,7 @@ def main():
         try:
             result = play_game(
                 conn,
+                args,
                 team_repo,
                 game_repo,
                 team_game_repo,

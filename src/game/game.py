@@ -125,6 +125,8 @@ class Game:
         rng: random.Random | None = None,
         log_level: int | None = None,
         console_level: int | None = None,
+        log_id: str | None = None,
+        log_to_file: bool = True,
         intent_generator: IntentGenerator | None = None,
         resolver: Resolver | None = None,
         pauses: bool = False,
@@ -189,7 +191,11 @@ class Game:
         self.log_level = log_level or logging.INFO
         self.console_level = console_level or logging.INFO
         self.logger = setup_logger(
-            name="game", level=self.log_level, console_level=self.log_level
+            name="game",
+            level=self.log_level,
+            console_level=self.console_level,
+            log_id=log_id,
+            log_to_file=log_to_file,
         )
         self.pauses = pauses
 

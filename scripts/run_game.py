@@ -13,6 +13,7 @@ We can discard the results.
 
 import argparse
 import logging
+import uuid
 
 # from src.game.event_generator import Event
 from src.game.game import Game
@@ -92,7 +93,11 @@ def main(args):
     print(away_team.output_pitcher_skills())
 
     my_game = Game(
-        home_team=home_team, away_team=away_team, log_level=levl, pauses=args.pauses
+        home_team=home_team,
+        away_team=away_team,
+        log_level=levl,
+        pauses=args.pauses,
+        log_id=str(uuid.uuid4()),
     )
     result = my_game.play()
 
