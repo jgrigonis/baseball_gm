@@ -124,6 +124,7 @@ class Game:
         *,
         rng: random.Random | None = None,
         log_level: int | None = None,
+        console_level: int | None = None,
         intent_generator: IntentGenerator | None = None,
         resolver: Resolver | None = None,
         pauses: bool = False,
@@ -136,6 +137,7 @@ class Game:
             away_team: Away team
             rng: Random number generator (default: new Random())
             log_level: Logging level (default: INFO)
+            console_level: Log level for the console (default: INFO)
             intent_generator: Intent generator (default: new IntentGenerator)
             resolver: Event resolver (default: new Resolver)
 
@@ -185,6 +187,7 @@ class Game:
 
         # Logging
         self.log_level = log_level or logging.INFO
+        self.console_level = console_level or logging.INFO
         self.logger = setup_logger(
             name="game", level=self.log_level, console_level=self.log_level
         )

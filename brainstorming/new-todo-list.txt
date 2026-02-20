@@ -1,19 +1,14 @@
 Todo list
 
+Only pitchers and catchers are having errors
+Catchers are having too many
+Pitchers maybs slightly too many
 
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
 
 Implement more ThrowingErrors
-
-
-Track games played correctly
-This has started, need to account for player changes.
-Verify
-
-Implement pitcher recovery
-Verify
-
+Implement more FieldingErrors
 
 Eventually defensive shifts, mound visits
 substitutions, pinch hitting, pinch running
