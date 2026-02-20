@@ -20,6 +20,7 @@ from src.game.resolvers.probabilities import (
     PICKOFF_SUCCESS_PROB,
     PICKOFF_ERROR_PROB,
     STEAL_ON_PICKOFF_MODIFIER,
+    SS_OVER_2B_PROB,
 )
 from src.player.player_in_game import PlayerInGame
 
@@ -64,7 +65,7 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> List[GameEvent]:
         if base == THIRD:
             fielder = game.pos("3b")
         elif base == SECOND:
-            if resolver.rng.random() < 0.55:
+            if resolver.rng.random() < SS_OVER_2B_PROB:
                 fielder = game.pos("ss")
             else:
                 fielder = game.pos("2b")

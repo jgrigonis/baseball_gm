@@ -127,6 +127,7 @@ class MockGame:
         self.bases = MockBases()
         self.inning = SimpleNamespace(outs=0)
         self.pitch_team = TeamInGameFactory.from_record(make_team_record())
+        self.current_batter = PlayerInGame(make_player_record())
         self.current_pitcher = PlayerInGame(make_player_record())
         self.rng = MockRNG(0.5)
 

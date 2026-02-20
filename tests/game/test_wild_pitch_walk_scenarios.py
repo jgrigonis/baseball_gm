@@ -138,8 +138,28 @@ class TestWildPitchWalkScenarios:
 
         initial_batter = game.current_batter.player
 
+        # Instead of setting game.situation (gets overwritten by step()),
+        # resolve and pre-load the queue directly
+        from src.game.intents.pitch import PitchIntent
+
+        intent = PitchIntent(
+            batter=initial_batter,
+            pitcher=game.current_pitcher,
+            pre_pitch_situation=PrePitchSituation(
+                steal_attempt=False,
+                double_steal_attempt=None,
+                bunt_attempt=False,
+                hit_and_run=False,
+                pitch_out=False,
+                intentional_walk=False,
+                pickoff_attempt=None,
+            ),
+        )
+
         # Execute with event recording
         with EventRecorder(game) as recorder:
+            events = game.resolver.resolve(intent, game)
+            game._enqueue(events)
             drain_event_queue(game)
 
         # Verify events
@@ -208,8 +228,28 @@ class TestWildPitchWalkScenarios:
 
         initial_batter = game.current_batter.player
 
+        # Instead of setting game.situation (gets overwritten by step()),
+        # resolve and pre-load the queue directly
+        from src.game.intents.pitch import PitchIntent
+
+        intent = PitchIntent(
+            batter=initial_batter,
+            pitcher=game.current_pitcher,
+            pre_pitch_situation=PrePitchSituation(
+                steal_attempt=False,
+                double_steal_attempt=None,
+                bunt_attempt=False,
+                hit_and_run=False,
+                pitch_out=False,
+                intentional_walk=False,
+                pickoff_attempt=None,
+            ),
+        )
+
         # Execute with event recording
         with EventRecorder(game) as recorder:
+            events = game.resolver.resolve(intent, game)
+            game._enqueue(events)
             drain_event_queue(game)
 
         # Assertions

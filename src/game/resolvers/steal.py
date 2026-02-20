@@ -19,6 +19,7 @@ from src.game.resolvers.probabilities import (
     STEAL_SECOND_SUCCESS_PROB,
     STEAL_THIRD_SUCCESS_PROB,
     STEAL_HOME_SUCCESS_PROB,
+    SS_OVER_2B_PROB,
 )
 from src.util.weighted_choice import WeightedChoice
 
@@ -99,7 +100,7 @@ def resolve_steal_attempt(
         )
         assist = game.pos("c")
         if to_base == SECOND:
-            if resolver.rng.random() < 0.55:
+            if resolver.rng.random() < SS_OVER_2B_PROB:
                 fielder = game.pos("ss")
             else:
                 fielder = game.pos("2b")
@@ -267,7 +268,7 @@ def resolve_double_steal(
                     catcher=game.pos("c"),
                 )
             )
-            if resolver.rng.random() < 0.55:
+            if resolver.rng.random() < SS_OVER_2B_PROB:
                 events.append(
                     PutOutEvent(
                         game.pos("ss"),
@@ -330,7 +331,7 @@ def resolve_double_steal(
             )
         elif result == "both_out":
             # Both out
-            if resolver.rng.random() < 0.55:
+            if resolver.rng.random() < SS_OVER_2B_PROB:
                 events.append(
                     PutOutEvent(
                         game.pos("ss"),
@@ -504,7 +505,7 @@ def resolve_double_steal(
 
             from_base, to_base, runner = trail_attempt
             if to_base == SECOND:
-                if resolver.rng.random() < 0.55:
+                if resolver.rng.random() < SS_OVER_2B_PROB:
                     events.append(
                         PutOutEvent(
                             game.pos("ss"),
@@ -548,7 +549,7 @@ def resolve_double_steal(
                 # TODO this isn't quite right, we are assuming the catcher threw out both
                 # If the double steal is 2nd and third, this is wrong.
                 if to_base == SECOND:
-                    if resolver.rng.random() < 0.55:
+                    if resolver.rng.random() < SS_OVER_2B_PROB:
                         events.append(
                             PutOutEvent(
                                 game.pos("ss"),

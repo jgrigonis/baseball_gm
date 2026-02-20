@@ -28,7 +28,7 @@ FIRST_TO_HOME_ON_SINGLE = 0.03  # 3% chance runner scores from 1st on single
 
 # Pickoff probabilities
 PICKOFF_SUCCESS_PROB = 0.15  # 15% successful
-PICKOFF_ERROR_PROB = 0.05  # 5% throwing error
+PICKOFF_ERROR_PROB = 0.02  # 2% throwing error
 STEAL_ON_PICKOFF_MODIFIER = 1.5
 
 # Steal success rates
@@ -37,5 +37,8 @@ STEAL_THIRD_SUCCESS_PROB = 0.60  # 60% success rate
 STEAL_HOME_SUCCESS_PROB = 0.05  # 5% success rate
 
 # Error and throwout rates
-BASE_ERROR_RATE = 0.025
+BASE_ERROR_RATE = 0.015
 BASE_THROWOUT_PROB = 0.05
+
+# Favor ss over 2b for covering second.
+SS_OVER_2B_PROB = 0.55

@@ -8,7 +8,11 @@ from typing import List
 from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
 from src.game.events.hbp import HitByPitchEvent
-from src.game.events.error import FieldingErrorEvent, ThrowingErrorEvent
+from src.game.events.error import (
+    FieldingErrorEvent,
+    ThrowingErrorEvent,
+    OutfielderThrowingErrorEvent,
+)
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
@@ -87,7 +91,7 @@ class Resolver:
                 "hit_by_pitch": 60,
                 "balk": 0,  # only with runners on base
                 "illegal_pitch": 0,  # only with bases empty
-                "catcher_interference": 10,
+                "catcher_interference": 3,
                 "wild_pitch": 10,
                 "passed_ball": 10,
                 "in_play": 5855,
@@ -299,6 +303,7 @@ class Resolver:
         error_event_types = (
             FieldingErrorEvent,
             ThrowingErrorEvent,
+            OutfielderThrowingErrorEvent,
         )
         return any(isinstance(event, error_event_types) for event in events)
 

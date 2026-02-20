@@ -1,4 +1,5 @@
 # tests/game/test_simplest_game.py
+import logging
 import pytest
 from random import Random
 
@@ -25,7 +26,7 @@ def team2():
 
 
 def test_game_advances_inning(team1, team2):
-    game = Game(team1, team2, rng=Random(2))
+    game = Game(team1, team2, rng=Random(2), log_level=logging.INFO)
     game.home.set_lineup()
     game.away.set_lineup()
     game.play()

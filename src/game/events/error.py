@@ -12,6 +12,7 @@ class FieldingErrorEvent(GameEvent):
 
     def apply(self, game):
         self.batter.game_stats.batting.at_bat()
+        self.fielder.game_stats.fielding.error()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
@@ -21,6 +22,27 @@ class FieldingErrorEvent(GameEvent):
 @dataclass
 class ThrowingErrorEvent(GameEvent):
     fielder: PlayerInGame
+    batter: PlayerInGame
+
+    def apply(self, game):
+        self.batter.game_stats.batting.at_bat()
+        self.fielder.game_stats.fielding.error()
+
+    def describe(self, game) -> str:
+        return f"{self.batter.name} reached base on a throwing error by {self.fielder.name}."
+
+
+@dataclass
+class OutfielderThrowingErrorEvent(GameEvent):
+    """Outfielder throws badly, runner advances an extra base."""
+
+    fielder: PlayerInGame
     runner: PlayerInGame
-    from_base: int
-    to_base: int
+
+    def apply(self, game):
+        self.fielder.game_stats.fielding.error()
+
+    def describe(self, game) -> str:
+        return (
+            f"{self.runner.name} advanced on a throwing error by {self.fielder.name}."
+        )

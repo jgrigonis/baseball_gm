@@ -80,7 +80,7 @@ def resolve_sac_fly(resolver, intent, game) -> List[GameEvent]:
         )
     )
     # Advance the runners from first and second also
-    # Should be a variable chance to change this.
+    # TODO Should be a variable chance to change this.
     events.extend(
         advance_all_runners(
             game,
