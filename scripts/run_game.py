@@ -15,13 +15,11 @@ import argparse
 import logging
 import uuid
 
-# from src.game.event_generator import Event
 from src.game.game import Game
 from src.team.team_factory import TeamFactory
 from src.team.team_in_game_factory import TeamInGameFactory
 
-# from src.util.locations import TEAM_FILES_DIR
-# from src.util.logger import setup_logger
+from src.util.logger import setup_logger
 
 HOME_CITY = "Huntsville"
 HOME_MASCOT = "Hornets"
@@ -65,8 +63,9 @@ def main(args):
         levl = logging.DEBUG
     if args.trace:
         levl = logging.TRACE
-    # logger = setup_logger(name="details", level=levl, console_level=levl)
-    # logger = logging.getLogger("details")
+    logger = setup_logger(
+        name="game", level=levl, console_level=levl, log_id=str(uuid.uuid4())
+    )
     tf = TeamFactory(log_level=levl)
     # Set up Home Team Record
     home_team_record = tf.generate_team(city=HOME_CITY, mascot=HOME_MASCOT)
@@ -95,9 +94,8 @@ def main(args):
     my_game = Game(
         home_team=home_team,
         away_team=away_team,
-        log_level=levl,
+        logger=logger,
         pauses=args.pauses,
-        log_id=str(uuid.uuid4()),
     )
     result = my_game.play()
 

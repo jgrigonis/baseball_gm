@@ -40,7 +40,8 @@ from src.player.positions import (
     get_handedness_probabilities,
 )
 from src.name_generator.names import NameGenerator
-from src.util.logger import setup_logger
+
+# from src.util.logger import setup_logger
 
 VALID_BATS = {"L", "R", "S"}
 VALID_THROWS = {"L", "R"}
@@ -58,10 +59,7 @@ class PlayerFactory(object):
 
         # Logging
         self.log_level = log_level or logging.INFO
-        self.logger = logging.getLogger("pfactory")
-        self.logger = setup_logger(
-            name="pfactory", level=self.log_level, console_level=self.log_level
-        )
+        self.logger = logging.getLogger("game.pfactory")
 
     def _generate_id(self) -> str:
         return uuid.UUID(int=self.rng.getrandbits(128)).hex

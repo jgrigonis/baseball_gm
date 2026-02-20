@@ -19,6 +19,7 @@ from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.game.game import Game
 from src.team.team_in_game import TeamInGame
 from src.util.locations import LEAGUE_FILES_DIR
+from src.util.logger import setup_logger
 
 
 def get_args():
@@ -292,6 +293,7 @@ def play_game(
     away_starter_id = rotations_repo.get_next_starter(
         away_team.record.id, season_id, game_date
     )
+
     if args.logs:
         log_level = logging.INFO
         log_id = game_info["game_id"]
@@ -300,15 +302,21 @@ def play_game(
         log_level = logging.WARNING
         log_id = None
         log_to_file = False
+
+    logger = setup_logger(
+        name="game",
+        level=log_level,
+        console_level=logging.WARNING,
+        log_id=log_id,
+        log_to_file=log_to_file,
+    )
+
     # Play game
     game = Game(
         home_team=home_team,
         away_team=away_team,
         rng=rng,
-        log_level=log_level,
-        console_level=logging.WARNING,
-        log_id=log_id,
-        log_to_file=log_to_file,
+        logger=logger,
     )
 
     # Pass starter IDs to set_lineup

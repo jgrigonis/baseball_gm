@@ -35,7 +35,6 @@ from src.game.score import Score
 from src.game.strategy import GameStrategy
 from src.player.fatigue import FatigueLevel
 from src.player.player_formatters import PlayerTableFormatter
-from src.util.logger import setup_logger
 
 
 if TYPE_CHECKING:
@@ -123,10 +122,7 @@ class Game:
         away_team: TeamInGame,
         *,
         rng: random.Random | None = None,
-        log_level: int | None = None,
-        console_level: int | None = None,
-        log_id: str | None = None,
-        log_to_file: bool = True,
+        logger: logging.Logger = logging.getLogger("game"),
         intent_generator: IntentGenerator | None = None,
         resolver: Resolver | None = None,
         pauses: bool = False,
@@ -188,15 +184,7 @@ class Game:
         self._pa_end_reason: str | None = None
 
         # Logging
-        self.log_level = log_level or logging.INFO
-        self.console_level = console_level or logging.INFO
-        self.logger = setup_logger(
-            name="game",
-            level=self.log_level,
-            console_level=self.console_level,
-            log_id=log_id,
-            log_to_file=log_to_file,
-        )
+        self.logger = logger
         self.pauses = pauses
 
         # Initialize player game stats
@@ -236,7 +224,7 @@ class Game:
             f"🏆 Game Over - {result.winner} wins {result.home_score}-{result.away_score}"
         )
         self.logger.info(f"\n🏆 Final: {result}")
-        if self.log_level in (logging.DEBUG, logging.TRACE):
+        if self.logger.isEnabledFor(logging.DEBUG):
             self.validate_stats()
         return result
 

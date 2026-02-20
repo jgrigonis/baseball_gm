@@ -5,6 +5,7 @@ from random import Random
 
 from src.game.game import Game
 from src.team.team_in_game_factory import TeamInGameFactory
+from src.util.logger import setup_logger
 from tests.factories.team_record_factory import make_team_record
 
 
@@ -26,7 +27,10 @@ def team2():
 
 
 def test_game_advances_inning(team1, team2):
-    game = Game(team1, team2, rng=Random(2), log_level=logging.INFO)
+    logger = setup_logger(
+        name="game", level=logging.INFO, console_level=logging.INFO, log_id="simple"
+    )
+    game = Game(team1, team2, rng=Random(2), logger=logger)
     game.home.set_lineup()
     game.away.set_lineup()
     game.play()
