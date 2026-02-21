@@ -69,8 +69,6 @@ def test_from_csv_produces_valid_teamrecord(
 
 def test_generate_team_produces_valid_teamrecord():
     factory = TeamFactory()
-    factory.player_factory.create = MagicMock(return_value=MagicMock(spec=PlayerRecord))
-
     team = factory.generate_team(
         city="Houston",
         mascot="Astros",
@@ -88,8 +86,6 @@ def test_teamrecord_is_immutable():
     data through.
     """
     factory = TeamFactory()
-    factory.player_factory.create = MagicMock(return_value=MagicMock(spec=PlayerRecord))
-
     team = factory.generate_team(
         city="Atlanta",
         mascot="Braves",
@@ -110,8 +106,6 @@ def test_teamfactory_always_returns_tuple_players():
     This catches a subtle bug where a list might slip through.
     """
     factory = TeamFactory()
-    factory.player_factory.create = MagicMock(return_value=MagicMock(spec=PlayerRecord))
-
     team = factory.generate_team(
         city="Miami",
         mascot="Marlins",

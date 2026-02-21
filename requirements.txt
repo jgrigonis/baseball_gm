@@ -3,3 +3,4 @@ coverage
 numpy
 pyflakes
 pytest
+scipy

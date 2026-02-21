@@ -20,6 +20,7 @@ import random
 from types import MappingProxyType
 from typing import ItemsView, KeysView, ValuesView, Iterator
 
+from src.player.player_skill_aging import SkillAging
 from src.player.positions import SKILLS, SKILL_TEMPLATE
 from src.player.skill_map import SKILL_MAP, SKILL_MIN, SKILL_MAX
 from src.types.rows import CsvRow, DbRow
@@ -27,6 +28,14 @@ from src.types.rows import CsvRow, DbRow
 # Constants for skill generation
 DEFAULT_SKILL_MEAN = 50
 DEFAULT_SIGMA_DIVISOR = 3.0  # For 99.7% of values within range (±3σ)
+START_AGE = 17  # All players are born as 17 year olds
+
+
+# ─────────────────────────────────────────────
+#  HELPERS
+# ─────────────────────────────────────────────
+def clamp(val, lo=1, hi=100):
+    return max(lo, min(hi, int(round(val))))
 
 
 class PlayerSkills:
@@ -435,3 +444,76 @@ class PlayerSkills:
                 continue
 
         return csv_dict
+
+    def age_to(
+        self, age: int, coaching: float = 1.0, rng: random.Random | None = None
+    ) -> PlayerSkills:
+        """
+        Simulate skill progression from START_AGE to the given age.
+        Returns a new PlayerSkills instance — does not mutate self.
+        """
+        if age <= START_AGE:
+            return self
+        rng = rng or random.Random()
+        # Work with floats internally
+        s = {
+            "clutch": float(self["clutch"]),
+            "speed": float(self["speed"]),
+            "power": float(self["power"]),
+            "eye": float(self["eye"]),
+            "contact": float(self["contact"]),
+            "base_running": float(self["base_running"]),
+            "bunting": float(self["bunting"]),
+            "catching": float(self["catching"]),
+            "infield": float(self["infield"]),
+            "outfield": float(self["outfield"]),
+            "arm": float(self["arm"]),
+            "accuracy": float(self["accuracy"]),
+            "stamina": float(self["stamina"]),
+            "recovery": float(self["recovery"]),
+            "ground_balls": float(self["ground_balls"]),
+            "strikes": float(self["strikes"]),
+        }
+
+        for current_age in range(START_AGE, age):
+            s["speed"] += SkillAging.delta_SP(current_age, s["speed"], rng)
+            s["power"] += SkillAging.delta_PO(current_age, s["power"], rng)
+            s["arm"] += SkillAging.delta_AR(current_age, s["arm"], rng)
+            s["strikes"] += SkillAging.delta_KK(current_age, s["strikes"], rng)
+            s["clutch"] += SkillAging.delta_CL(current_age, s["clutch"], rng)
+            s["eye"] += SkillAging.delta_EY(current_age, s["eye"], rng, coaching)
+            s["contact"] += SkillAging.delta_CT(
+                current_age, s["contact"], rng, coaching
+            )
+            s["base_running"] += SkillAging.delta_BR(
+                current_age, s["base_running"], rng, coaching
+            )
+            s["bunting"] += SkillAging.delta_technical_up(
+                current_age, s["bunting"], rng, coaching
+            )
+            s["catching"] += SkillAging.delta_technical_up(
+                current_age, s["catching"], rng, coaching
+            )
+            s["infield"] += SkillAging.delta_technical_up(
+                current_age, s["infield"], rng, coaching
+            )
+            s["outfield"] += SkillAging.delta_technical_up(
+                current_age, s["outfield"], rng, coaching
+            )
+            s["ground_balls"] += SkillAging.delta_technical_up(
+                current_age, s["ground_balls"], rng, coaching
+            )
+            s["accuracy"] += SkillAging.delta_AC(
+                current_age, s["accuracy"], rng, coaching
+            )
+            s["stamina"] += SkillAging.delta_ST(
+                current_age, s["stamina"], rng, coaching
+            )
+            s["recovery"] += SkillAging.delta_RE(
+                current_age, s["recovery"], rng, coaching
+            )
+
+            for k in s:
+                s[k] = float(clamp(s[k]))
+
+        return PlayerSkills(s)

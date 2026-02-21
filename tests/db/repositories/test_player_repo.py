@@ -221,7 +221,9 @@ class TestPlayerRepositoryInsert:
         player_repo.insert("p1", "First", "Player", "r", "r", "1b", sample_skills, "20")
 
         # Left-handed batter
-        player_repo.insert("p2", "Second", "Player", "L", "L", "of", sample_skills, "20")
+        player_repo.insert(
+            "p2", "Second", "Player", "L", "L", "of", sample_skills, "20"
+        )
 
         # Switch hitter
         player_repo.insert("p3", "Third", "Player", "S", "R", "c", sample_skills, "20")
@@ -653,7 +655,14 @@ class TestPlayerRepositoryGetAllPlayers:
         """Test that players are ordered by last name, first name."""
         # Insert in non-alphabetical order - use lowercase positions
         player_repo.insert(
-            "p1", "Zach", "Anderson", "R", "R", "1b", sample_skills, "23",
+            "p1",
+            "Zach",
+            "Anderson",
+            "R",
+            "R",
+            "1b",
+            sample_skills,
+            "23",
         )  # Changed from "1B"
         player_repo.insert(
             "p2", "Aaron", "Judge", "R", "R", "of", sample_skills, "25"

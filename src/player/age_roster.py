@@ -1,11 +1,13 @@
+# This is not actually used, was just a proof of concept
 import numpy as np
 import random
 from collections import Counter
 
+
 def generate_roster_ages(n_players=40, seed=None):
     """
     Generate a realistic MLB roster age distribution.
-    
+
     Uses a right-skewed normal distribution centered around the late 20s,
     with hard constraints to match real MLB roster composition.
     """
@@ -16,8 +18,8 @@ def generate_roster_ages(n_players=40, seed=None):
     MIN_AGE = 19
     MAX_AGE = 43
     MEAN_AGE = 27.5
-    STD_DEV = 3.2      # Controls bell curve width
-    SKEW = 1.8         # Right skew — more older players than younger
+    STD_DEV = 3.2  # Controls bell curve width
+    SKEW = 1.8  # Right skew — more older players than younger never actually used
 
     ages = []
     attempts = 0
@@ -67,12 +69,12 @@ def print_roster_summary(ages):
 
     # Distribution by bracket
     brackets = [
-        ("19-21 (Prospects)",      19, 21),
-        ("22-24 (Young Core)",     22, 24),
-        ("25-27 (Prime)",          25, 27),
-        ("28-30 (Late Prime)",     28, 30),
-        ("31-33 (Experienced)",    31, 33),
-        ("34-36 (Veterans)",       34, 36),
+        ("19-21 (Prospects)", 19, 21),
+        ("22-24 (Young Core)", 22, 24),
+        ("25-27 (Prime)", 25, 27),
+        ("28-30 (Late Prime)", 28, 30),
+        ("31-33 (Experienced)", 31, 33),
+        ("34-36 (Veterans)", 34, 36),
         ("37-40+ (Elder Statesmen)", 37, 99),
     ]
 

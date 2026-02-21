@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 # from src.player.player_record import PlayerRecord
-from src.player.player_skills import PlayerSkills
+from src.player.player_skills import PlayerSkills, START_AGE
 from src.types.rows import CsvRow, DbRow
 from typing import TypeAlias
 
@@ -43,7 +43,7 @@ class PlayerRecord:
     throws: ThrowingHand
     position: PositionCode
     skills: PlayerSkills
-    age: Optional[int] = 17
+    age: Optional[int] = START_AGE
 
     def __post_init__(self):
         """Validate player data after initialization."""

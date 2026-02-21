@@ -2,6 +2,7 @@
 
 PLAYER_CSV_HEADER = [
     "Name",
+    "Age",
     "PS",
     "T",
     "B",

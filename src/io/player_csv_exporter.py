@@ -1,4 +1,5 @@
 # src/io/player_csv_exporter.py
+# Consider renaming this to team_csv_exporter.py
 
 import csv
 from pathlib import Path
@@ -44,6 +45,7 @@ class PlayerCSVExporter:
 
                 row = [
                     player.name,
+                    player.age,
                     player.position,
                     player.throws[0].upper(),  # "right" -> "R"
                     player.bats[0].upper(),  # "right" -> "R", "switch" -> "S"

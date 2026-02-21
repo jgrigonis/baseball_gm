@@ -7,6 +7,9 @@ TeamFactory.generate_team() → creates N players, ages each one to a
 """
 
 import csv
+import dataclasses
+import random
+from scipy.stats import skewnorm
 import uuid
 
 from src.player.player_factory import PlayerFactory
@@ -15,12 +18,18 @@ from src.player.player_skills import PlayerSkills
 from src.team.team_record import TeamRecord
 
 __author__ = "josh"
+_MIN_AGE = 18
+_MAX_AGE = 44
+_MEAN_AGE = 26
+_STD_DEV = 3.2
+_SKEW = 1.5
 
 
 class TeamFactory:
     def __init__(self, rng=None, id_factory=None, log_level: int | None = None):
         self.player_factory = PlayerFactory(rng, log_level=log_level)
         self.id_factory = id_factory or (lambda: uuid.uuid4().hex)
+        self.rng = rng or random.Random()
 
     def from_csv(self, path: str, *, city: str, mascot: str) -> TeamRecord:
         players: list[PlayerRecord] = []
@@ -93,12 +102,14 @@ class TeamFactory:
             # Generate players for each position
             for position, count in position_counts.items():
                 for _ in range(count):
-                    players.append(self.player_factory.create(position=position))
+                    age = self._draw_roster_age(players)
+                    players.append(self._create_aged_player(age, position=position))
 
             # Fill remaining slots with random positions
             remaining = size - len(players)
             for _ in range(remaining):
-                players.append(self.player_factory.create())
+                age = self._draw_roster_age(players)
+                players.append(self._create_aged_player(age))
 
         else:
             # Smaller roster - use proportional distribution
@@ -135,12 +146,14 @@ class TeamFactory:
             # Generate core positions
             for position, count in core_positions.items():
                 for _ in range(count):
-                    players.append(self.player_factory.create(position=position))
+                    age = self._draw_roster_age(players)
+                    players.append(self._create_aged_player(age, position=position))
 
             # Fill remaining slots
             remaining = size - len(players)
             for _ in range(remaining):
-                players.append(self.player_factory.create())
+                age = self._draw_roster_age(players)
+                players.append(self._create_aged_player(age))
 
         return TeamRecord(
             id=uuid.uuid4().hex,
@@ -149,7 +162,48 @@ class TeamFactory:
             players=tuple(players),
         )
 
-    def _create_aged_player(self, position: str | None = None) -> PlayerRecord:
+    def _create_aged_player(
+        self, age: int, position: str | None = None
+    ) -> PlayerRecord:
+        """
+        Create an appropriately aged player for this team
+        """
         player = self.player_factory.create(position=position)
-        age = self._draw_roster_age()
-        return PlayerSkills.age_to(player, age)
+        aged_skills = player.skills.age_to(age, rng=self.rng)
+        return dataclasses.replace(player, age=age, skills=aged_skills)
+
+    def _draw_roster_age(self, current_players: list[PlayerRecord]) -> int:
+        """
+        Draw a single realistic roster age using a right-skewed normal
+        distribution, rerolling if hard roster constraints are violated.
+        """
+
+        current_ages = [p.age for p in current_players]
+
+        for _ in range(10_000):
+            # Use a fresh numpy seed derived from self.rng each draw
+            seed = self.rng.getrandbits(32)
+            age = int(
+                round(
+                    skewnorm.rvs(
+                        a=_SKEW,
+                        loc=_MEAN_AGE,
+                        scale=_STD_DEV,
+                        random_state=seed,
+                    )
+                )
+            )
+
+            # Implement the roster constraints
+            if age < _MIN_AGE or age > _MAX_AGE:
+                continue
+            if age < 21 and sum(1 for a in current_ages if a < 21) >= 2:
+                continue
+            if age > 38 and sum(1 for a in current_ages if a > 38) >= 3:
+                continue
+            if age >= 40 and sum(1 for a in current_ages if a >= 40) >= 1:
+                continue
+
+            return age
+
+        return _MEAN_AGE  # fallback if constraints can't be satisfied

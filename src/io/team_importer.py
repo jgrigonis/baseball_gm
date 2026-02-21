@@ -30,7 +30,7 @@ class TeamImporter:
     def import_csv(
         self,
         league_id: str,
-        season_id: str,  # Added - needed for league_season_teams
+        season_id: str,
         path: str,
         city: str,
         mascot: str,
@@ -100,6 +100,7 @@ class TeamImporter:
                         throws=player.throws,
                         position=player.position,
                         skills=player.skills,
+                        age=player.age,
                     )
 
                     self.team_repo.add_player(team_id, player.id)
