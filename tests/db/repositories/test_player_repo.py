@@ -23,7 +23,8 @@ def db_connection():
             last_name TEXT NOT NULL,
             bats TEXT NOT NULL CHECK (bats IN ('L', 'R', 'S')),
             throws TEXT NOT NULL CHECK (throws IN ('L', 'R')),
-            position TEXT NOT NULL
+            position TEXT NOT NULL,
+            age TEXT
         )
     """
     )
@@ -130,6 +131,7 @@ class TestPlayerRepositoryInsert:
             throws="R",
             position="OF",
             skills=sample_skills,
+            age="21",
         )
 
         # Verify player identity
@@ -165,6 +167,7 @@ class TestPlayerRepositoryInsert:
             throws="r",
             position="rf",
             skills=sample_skills,
+            age="18",
         )
 
         # Insert again with different name
@@ -176,6 +179,7 @@ class TestPlayerRepositoryInsert:
             throws="r",
             position="rf",
             skills=sample_skills,
+            age="18",
         )
 
         # Should only have one player
@@ -201,7 +205,7 @@ class TestPlayerRepositoryInsert:
         ]
 
         for player in players:
-            player_repo.insert(*player, skills=sample_skills)
+            player_repo.insert(*player, skills=sample_skills, age="28")
 
         count = db_connection.execute(
             "SELECT COUNT(*) as count FROM players"
@@ -214,13 +218,13 @@ class TestPlayerRepositoryInsert:
     ):
         """Test inserting players with different batting/throwing hands."""
         # Right-handed batter
-        player_repo.insert("p1", "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1b", sample_skills, "20")
 
         # Left-handed batter
-        player_repo.insert("p2", "Second", "Player", "L", "L", "of", sample_skills)
+        player_repo.insert("p2", "Second", "Player", "L", "L", "of", sample_skills, "20")
 
         # Switch hitter
-        player_repo.insert("p3", "Third", "Player", "S", "R", "c", sample_skills)
+        player_repo.insert("p3", "Third", "Player", "S", "R", "c", sample_skills, "20")
 
         rows = db_connection.execute(
             "SELECT id, bats FROM players ORDER BY id"
@@ -234,7 +238,7 @@ class TestPlayerRepositoryInsert:
         """Test that insert creates a timestamp."""
         before = datetime.now()
 
-        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills, "27")
 
         after = datetime.now()
 
@@ -258,7 +262,7 @@ class TestPlayerRepositoryUpdateSkills:
     def test_update_skills(self, player_repo, db_connection, sample_skills):
         """Test updating player skills."""
         # Insert player first
-        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills, "28")
 
         # Create new skills
         new_skills = PlayerSkills(
@@ -297,7 +301,7 @@ class TestPlayerRepositoryUpdateSkills:
         self, player_repo, db_connection, sample_skills
     ):
         """Test that updating skills creates a new timestamp."""
-        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills, "27")
 
         # Get original timestamp
         original_ts = db_connection.execute(
@@ -324,7 +328,7 @@ class TestPlayerRepositoryUpdateSkills:
 
     def test_update_skills_idempotent(self, player_repo, db_connection, sample_skills):
         """Test that update_skills is idempotent."""
-        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills, "22")
 
         # Update multiple times
         for i in range(5):
@@ -346,7 +350,7 @@ class TestPlayerRepositorySnapshotSkills:
     def test_snapshot_skills(self, player_repo, db_connection, sample_skills):
         """Test taking a snapshot of player skills."""
         # Insert player
-        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills, "21")
 
         # Take snapshot
         player_repo.snapshot_skills("p1", "season-2025")
@@ -369,7 +373,7 @@ class TestPlayerRepositorySnapshotSkills:
         self, player_repo, db_connection, sample_skills
     ):
         """Test taking snapshots for multiple seasons."""
-        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills, "29")
 
         # Take snapshots for 3 seasons with different skills
         seasons = ["season-2023", "season-2024", "season-2025"]
@@ -394,7 +398,7 @@ class TestPlayerRepositorySnapshotSkills:
         self, player_repo, db_connection, sample_skills
     ):
         """Test that snapshot_skills is idempotent (INSERT OR REPLACE)."""
-        player_repo.insert("p1", "First", "Player", "R", "R", "1b", sample_skills)
+        player_repo.insert("p1", "First", "Player", "R", "R", "1b", sample_skills, "26")
 
         # Take snapshot
         player_repo.snapshot_skills("p1", "season-2025")
@@ -432,7 +436,7 @@ class TestPlayerRepositorySnapshotSkills:
         self, player_repo, db_connection, sample_skills
     ):
         """Test that snapshot creates a timestamp."""
-        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
+        player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills, "25")
         player_repo.snapshot_skills("p1", "season-2025")
 
         row = db_connection.execute(
@@ -451,7 +455,7 @@ class TestPlayerRepositoryLookUp:
 
     def test_look_up_existing_player(self, player_repo, sample_skills):
         """Test looking up an existing player."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills, "18")
 
         record = player_repo.look_up("p1")
 
@@ -466,7 +470,7 @@ class TestPlayerRepositoryLookUp:
 
     def test_look_up_skills(self, player_repo, sample_skills):
         """Test that skills are correctly loaded."""
-        player_repo.insert("p1", "Mike", "Trout", "R", "R", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "R", "R", "rf", sample_skills, "30")
 
         record = player_repo.look_up("p1")
 
@@ -500,7 +504,7 @@ class TestPlayerRepositoryLookUp:
 
     def test_look_up_returns_current_skills(self, player_repo, sample_skills):
         """Test that look_up returns current skills, not historical."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills, "34")
 
         # Update skills - CREATE NEW OBJECT
         new_skills = PlayerSkills({**sample_skills.as_dict(), "speed": 85})
@@ -518,7 +522,7 @@ class TestPlayerRepositoryGetSkillHistory:
 
     def test_get_skill_history_empty(self, player_repo, sample_skills):
         """Test getting history for a player with no snapshots."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills, "31")
 
         history = player_repo.get_skill_history("p1")
 
@@ -526,7 +530,7 @@ class TestPlayerRepositoryGetSkillHistory:
 
     def test_get_skill_history_single_season(self, player_repo, sample_skills):
         """Test getting history with one snapshot."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills, "30")
         player_repo.snapshot_skills("p1", "season-2025")
 
         history = player_repo.get_skill_history("p1")
@@ -538,7 +542,7 @@ class TestPlayerRepositoryGetSkillHistory:
 
     def test_get_skill_history_multiple_seasons(self, player_repo, sample_skills):
         """Test getting history with multiple snapshots."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills, "32")
 
         # Take snapshots for 3 seasons
         seasons = ["season-2023", "season-2024", "season-2025"]
@@ -557,7 +561,7 @@ class TestPlayerRepositoryGetSkillHistory:
 
     def test_get_skill_history_ordered(self, player_repo, sample_skills):
         """Test that history is ordered by season_id."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills, "23")
 
         # Insert in random order
         seasons = ["season-2025", "season-2023", "season-2024"]
@@ -572,7 +576,7 @@ class TestPlayerRepositoryGetSkillHistory:
 
     def test_get_skill_history_shows_progression(self, player_repo, sample_skills):
         """Test that history shows skill progression over time."""
-        player_repo.insert("p1", "Mike", "Trout", "R", "R", "of", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "R", "R", "of", sample_skills, "29")
 
         # Snapshot with increasing speed - create NEW skills each time
         for i, year in enumerate([2023, 2024, 2025]):
@@ -592,7 +596,7 @@ class TestPlayerRepositoryExists:
 
     def test_exists_true(self, player_repo, sample_skills):
         """Test exists returns True for existing player."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "of", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "of", sample_skills, "18")
 
         assert player_repo.exists("p1") is True
 
@@ -602,8 +606,8 @@ class TestPlayerRepositoryExists:
 
     def test_exists_multiple_players(self, player_repo, sample_skills):
         """Test exists with multiple players."""
-        player_repo.insert("p1", "Player", "One", "r", "r", "1B", sample_skills)
-        player_repo.insert("p2", "Player", "Two", "L", "L", "rf", sample_skills)
+        player_repo.insert("p1", "Player", "One", "r", "r", "1B", sample_skills, "21")
+        player_repo.insert("p2", "Player", "Two", "L", "L", "rf", sample_skills, "20")
 
         assert player_repo.exists("p1") is True
         assert player_repo.exists("p2") is True
@@ -621,7 +625,7 @@ class TestPlayerRepositoryGetAllPlayers:
 
     def test_get_all_players_single(self, player_repo, sample_skills):
         """Test getting all players with one player."""
-        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills, "27")
 
         players = player_repo.get_all_players()
 
@@ -638,7 +642,7 @@ class TestPlayerRepositoryGetAllPlayers:
         ]
 
         for player in player_data:
-            player_repo.insert(*player, skills=sample_skills)
+            player_repo.insert(*player, skills=sample_skills, age=28)
 
         players = player_repo.get_all_players()
 
@@ -649,13 +653,13 @@ class TestPlayerRepositoryGetAllPlayers:
         """Test that players are ordered by last name, first name."""
         # Insert in non-alphabetical order - use lowercase positions
         player_repo.insert(
-            "p1", "Zach", "Anderson", "R", "R", "1b", sample_skills
+            "p1", "Zach", "Anderson", "R", "R", "1b", sample_skills, "23",
         )  # Changed from "1B"
         player_repo.insert(
-            "p2", "Aaron", "Judge", "R", "R", "of", sample_skills
+            "p2", "Aaron", "Judge", "R", "R", "of", sample_skills, "25"
         )  # Changed from "OF"
         player_repo.insert(
-            "p3", "Mike", "Trout", "R", "R", "of", sample_skills
+            "p3", "Mike", "Trout", "R", "R", "of", sample_skills, "26"
         )  # Changed from "OF"
 
         players = player_repo.get_all_players()
@@ -667,7 +671,7 @@ class TestPlayerRepositoryGetAllPlayers:
 
     def test_get_all_players_includes_skills(self, player_repo, sample_skills):
         """Test that all players include their skills."""
-        player_repo.insert("p1", "Mike", "Trout", "R", "R", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "R", "R", "rf", sample_skills, "19")
 
         players = player_repo.get_all_players()
 
@@ -682,7 +686,7 @@ class TestPlayerRepositoryIntegration:
     def test_full_player_lifecycle(self, player_repo, sample_skills):
         """Test complete player lifecycle: create, update, snapshot."""
         # Create player
-        player_repo.insert("p1", "Mike", "Trout", "R", "R", "rf", sample_skills)
+        player_repo.insert("p1", "Mike", "Trout", "R", "R", "rf", sample_skills, "24")
 
         # Verify creation
         record = player_repo.look_up("p1")
@@ -723,6 +727,7 @@ class TestPlayerRepositoryIntegration:
                 "R",
                 "cf",
                 sample_skills,
+                "22",
             )
 
         # Get all players

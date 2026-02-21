@@ -24,6 +24,9 @@ Return a PlayerRecord
 
 “The only legal way players are born into the world.”
 
+PlayerFactory.create()      → always age 17, base skills
+TeamFactory.generate_team() → creates N players, ages each one to a
+                              realistic roster age, checks distribution
 """
 import logging
 import random
@@ -72,6 +75,7 @@ class PlayerFactory(object):
         throws: str | None = None,
         first_name: str | None = None,
         last_name: str | None = None,
+        age: int = 17,
         gender: str = "male",
     ) -> PlayerRecord:
         """

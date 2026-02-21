@@ -1,10 +1,17 @@
-"""The TeamFactory class."""
+"""
+The TeamFactory class.
+
+PlayerFactory.create()      → always age 17, base skills
+TeamFactory.generate_team() → creates N players, ages each one to a
+                              realistic roster age, checks distribution
+"""
 
 import csv
 import uuid
 
 from src.player.player_factory import PlayerFactory
 from src.player.player_record import PlayerRecord
+from src.player.player_skills import PlayerSkills
 from src.team.team_record import TeamRecord
 
 __author__ = "josh"
@@ -141,3 +148,8 @@ class TeamFactory:
             mascot=mascot,
             players=tuple(players),
         )
+
+    def _create_aged_player(self, position: str | None = None) -> PlayerRecord:
+        player = self.player_factory.create(position=position)
+        age = self._draw_roster_age()
+        return PlayerSkills.age_to(player, age)

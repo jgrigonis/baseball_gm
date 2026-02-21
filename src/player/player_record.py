@@ -18,6 +18,7 @@ it does not belong here.
 from dataclasses import dataclass
 from typing import Optional
 
+# from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.types.rows import CsvRow, DbRow
 from typing import TypeAlias
@@ -90,6 +91,7 @@ class PlayerRecord:
             first_name = parts[0]
             last_name = parts[1] if len(parts) > 1 else ""
 
+            age = row["Age"]
             # Convert single-letter codes to upper case
             bats_map = {"l": "L", "r": "R", "s": "S", "L": "L", "R": "R", "S": "S"}
             throws_map = {"l": "L", "r": "R", "L": "L", "R": "R"}
@@ -110,6 +112,7 @@ class PlayerRecord:
                 throws=throws,
                 position=row["PS"].lower(),
                 skills=PlayerSkills.from_csv_row(row),
+                age=age,
             )
         except KeyError as e:
             raise ValueError(f"Missing required CSV column: {e}") from e
@@ -124,6 +127,7 @@ class PlayerRecord:
             throws=row["throws"],
             skills=PlayerSkills.from_db_row(row),
             position=row["position"],
+            age=row["age"],
         )
 
     @property
@@ -159,6 +163,7 @@ class PlayerRecord:
             "id": self.id,
             "first_name": self.first_name,
             "last_name": self.last_name,
+            "age": self.age,
             "bats": self.bats,
             "throws": self.throws,
             "position": self.position,
@@ -178,6 +183,7 @@ class PlayerRecord:
         return {
             "ID": self.id,
             "Name": self.name,
+            "Age": self.age,
             "B": bats_abbr,
             "T": throws_abbr,
             "PS": self.position,

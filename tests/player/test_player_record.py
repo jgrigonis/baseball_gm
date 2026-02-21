@@ -95,6 +95,7 @@ def test_player_record_from_row():
         "id": "abc123",
         "first_name": "Aaron",
         "last_name": "Judge",
+        "age": 25,
         "bats": "R",
         "throws": "R",
         "power": 90,
