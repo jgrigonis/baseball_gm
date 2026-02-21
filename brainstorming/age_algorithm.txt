@@ -1,0 +1,11 @@
+
+Each year, skills grow or increase, based on age of the player.
+
+A new csv line can be generated for each player to go in a season
+specific csv team file.
+
+Injuries (not yet implemented) should be tracked furing the season
+and should affect some skill growth/decrease.
+
+We won't track birthdays exactly, every player just has one in the 
+offseason. So, if you are 25 for one seaons, you are 26 in the next.

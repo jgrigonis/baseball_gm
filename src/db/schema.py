@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS players (
     bats TEXT NOT NULL,
     throws TEXT NOT NULL,
     position TEXT,  -- Affinity position used in creation, can be NULL
+    age TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT
 );

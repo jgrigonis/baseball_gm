@@ -1,0 +1,33 @@
+Waivers in MLB are a procedural mechanism allowing a team to 
+remove a player from their 40-man roster, offering other teams 
+a 48-hour window to claim them and assume their contract. Primarily 
+used to demote players to the minors (outright waivers) or release 
+them, this process promotes roster flexibility and competitive balance. 
+
+Key Aspects of MLB Waivers
+Claiming Order: If a player is placed on waivers, all 29 other teams 
+have a chance to claim him. Priority is determined by reverse winning 
+percentage (the team with the worst record gets first choice).
+
+Outright Waivers: Used when a team wants to send a player to the minors, 
+but the player is out of options. If he clears (no one claims him), he 
+can be assigned to the minor leagues.
+
+Release Waivers: Requested when a team intends to give a player his 
+unconditional release.
+
+Designated for Assignment (DFA): When a player is DFA'd, they are 
+immediately removed from the 40-man roster and placed on waivers, 
+usually within 7 days, to be either traded, claimed, or outrighted.
+
+Clearing Waivers: If a player is not claimed within 48 hours, 
+they "clear waivers." The team may then send them to the minors, 
+keep them, or release them.
+
+Player Rights: Players with more than five years of service time
+can refuse an outright assignment to the minor leagues and elect 
+free agency instead. 
+
+Waivers prevent teams from hoarding talent and provide a mechanism 
+for struggling teams to add players, often at the cost of the player's 
+remaining salary.

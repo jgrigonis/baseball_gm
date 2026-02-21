@@ -42,8 +42,7 @@ class PlayerRecord:
     throws: ThrowingHand
     position: PositionCode
     skills: PlayerSkills
-    rotation_slot: Optional[str] = None
-    is_reliever: Optional[bool] = True
+    age: Optional[int] = 17
 
     def __post_init__(self):
         """Validate player data after initialization."""

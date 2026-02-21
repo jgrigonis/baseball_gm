@@ -24,4 +24,8 @@ class LeagueBootstrapper:
             p.experience = max(0, p.age - 18)
 
         return players
+
+Flow works like this:
+
+
         
