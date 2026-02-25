@@ -23,7 +23,7 @@ pip install -e .
 * Create a custom team
 * Edit an existing team
 
-* Simulate a baseball game
+* Simulate a baseball game (done)
 
 ### Eventual Gameplay modes:
 
