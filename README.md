@@ -8,11 +8,11 @@ Recommend .venv
 
 python3 -m venv .venv
 
-pip install -r requirements.txt
-
-Currently, no requirements, perhaps pytest will be useful
-
 pip install -e .
+
+For developing:
+
+pip install -e ".[dev]"
 
 ### Goals:
 * Create a random player (done)
@@ -36,4 +36,3 @@ pip install -e .
 * Simple gameplay, no defense, no errors, just hitting
 
 * Comprehensive gameplay, with everything
-
