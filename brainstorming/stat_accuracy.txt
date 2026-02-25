@@ -1,0 +1,30 @@
+
+Get stats closer to mlb expected
+
+Too many HR for the top 25 hitters, but the leader is accurate
+batting averages are little high now.
+
+2024: Only 7 players hit over .300.
+2023: Only 9 players hit over .300.
+2022: 11 players hit over .300.
+2021: 14 players hit over .300.
+2010–2019: Averaged 22.1 players per season.
+
+ERA is a tiny bit high
+
+In 2022, there were 19 qualified MLB pitchers with an ERA under 
+3.00, while in 2023 there were only 6. An ERA below 3.00 is 
+considered elite, typically achieved only by the top pitchers 
+in the league. 
+
+Recent Trends: In 2023, the number of pitchers with a sub-3.00 
+ERA was notably low at only 6.
+Historical Context: Since 1947, only 21 pitchers have maintained 
+an ERA of 3.00 or below while also sustaining 17 or more losses, 
+indicating the rarity of the feat over a full season.
+Career Leaders: Elite modern pitchers like Mariano Rivera (2.21), 
+Clayton Kershaw (2.49), and Jacob deGrom (2.53) are among the few 
+with career ERAs under 3.00.
+
+Definition: An ERA under 3.00 signifies an "excellent" performance, 
+whereas a 4.00-5.00 range is considered average in modern baseball

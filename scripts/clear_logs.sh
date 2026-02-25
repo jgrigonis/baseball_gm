@@ -1,3 +1,3 @@
 
-rm ~/Code/baseball_gm/logs/*.log
+rm -f ~/Code/baseball_gm/logs/*.log
 
