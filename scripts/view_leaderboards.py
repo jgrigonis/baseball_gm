@@ -17,6 +17,9 @@ def get_args():
     parser.add_argument(
         "--file", "-f", default="league.db", help="Set the league db filename."
     )
+    parser.add_argument(
+        "--number", "-n", type=int, default=10, help="Number of leaders to show."
+    )
     args = parser.parse_args()
     return args
 
@@ -183,4 +186,4 @@ if __name__ == "__main__":
     with StatsLoader(str(db_path)) as loader:
         all_players = loader.load_season_players_with_stats(season_id)
 
-    show_all_leaderboards(all_players, top_n=10, min_pa=min_pa, min_ip=min_ip)
+    show_all_leaderboards(all_players, top_n=args.number, min_pa=min_pa, min_ip=min_ip)

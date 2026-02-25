@@ -3,14 +3,13 @@ Todo list
 Track wins, saves, blown saves, holds and losses, assign earned runs
 
 Aging.
+Ages on teams might be too tightly bunched. Run some sims
 
 Injuries
 
 General player fatigue, perhaps have it be something different.
 
 Handedness accounted for many places
-
-Get stats closer to mlb expected
 
 Pitching rotation may need to change due to trades, injuries
 or other reasons.

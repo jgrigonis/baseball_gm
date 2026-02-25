@@ -94,31 +94,34 @@ class PitchModifiers:
     def modify_for_batter(resolver, batter: PlayerInGame):
         """Modify probabilities based on batter skills."""
         eye = batter.skills["eye"]
-        resolver.pitch_outcome.add("strike", -8 * (eye - 50))
-        resolver.pitch_outcome.add("foul", 4 * (eye - 50))
-        resolver.pitch_outcome.add("ball", 4 * (eye - 50))
+        resolver.pitch_outcome.add("strike", -10 * (eye - 50))
+        resolver.pitch_outcome.add("foul", 5 * (eye - 50))
+        resolver.pitch_outcome.add("ball", 5 * (eye - 50))
 
         contact = batter.skills["contact"]
-        resolver.pitch_outcome.add("strike", -4 * (contact - 50))
+        resolver.pitch_outcome.add("strike", -6 * (contact - 50))
         resolver.pitch_outcome.add("foul", int(1.2 * (contact - 50)))
-        resolver.pitch_outcome.add("in_play", int(1.5 * (contact - 50)))
+        resolver.pitch_outcome.add("in_play", int(1.9 * (contact - 50)))
+
+        power = batter.skills["power"]
+        resolver.pitch_outcome.add("home_run", 3 * (power - 50))
 
     @staticmethod
     def modify_for_pitcher(resolver, pitcher: PlayerInGame):
         """Modify probabilities based on pitcher skills."""
         accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
-        resolver.pitch_outcome.add("ball", -20 * (accuracy - 50))
-        resolver.pitch_outcome.add("strike", 15 * (accuracy - 50))
+        resolver.pitch_outcome.add("ball", -24 * (accuracy - 50))
+        resolver.pitch_outcome.add("strike", 16 * (accuracy - 50))
         resolver.pitch_outcome.add("hit_by_pitch", -(accuracy - 50))
         resolver.pitch_outcome.add("wild_pitch", -(accuracy - 50))
-        resolver.pitch_outcome.add("passed_ball", int(-0.5 * (accuracy - 50)))
+        resolver.pitch_outcome.add("passed_ball", int(-0.7 * (accuracy - 50)))
 
         ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
         resolver.pitch_outcome.add("home_run", -(ground_balls - 40))
 
         strikes = pitcher.get_effective_stat(pitcher.skills["strikes"])
         resolver.pitch_outcome.add("ball", -10 * (strikes - 50))
-        resolver.pitch_outcome.add("strike", 20 * (strikes - 50))
+        resolver.pitch_outcome.add("strike", 27 * (strikes - 50))
         resolver.pitch_outcome.add("foul", 2 * (strikes - 50))
 
 
@@ -211,14 +214,14 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("double", (power - 50))
 
         contact = batter.skills["contact"]
-        resolver.in_play_outcome.add("single", 2 * (contact - 50))
+        resolver.in_play_outcome.add("single", 3 * (contact - 50))
         resolver.in_play_outcome.add("ground_out", (contact - 50))
 
         speed = batter.skills["speed"]
         resolver.in_play_outcome.add("ground_out", -1 * (speed - 50))
         resolver.in_play_outcome.add("single", 0.9 * (speed - 50))
-        resolver.in_play_outcome.add("double", 0.1 * (speed - 50))
-        resolver.in_play_outcome.add("triple", 0.1 * (speed - 50))
+        resolver.in_play_outcome.add("double", 0.5 * (speed - 50))
+        resolver.in_play_outcome.add("triple", 0.3 * (speed - 50))
         resolver.in_play_outcome.add("double_play", -1 * (speed - 50))
         resolver.in_play_outcome.add("fielders_choice", (speed - 50))
 
