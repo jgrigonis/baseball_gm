@@ -176,7 +176,7 @@ class PlayerTableFormatter:
     def horizontal_pitching_stat_header(team_name="Name"):
         """Return the pitching stat header as a single line."""
         output = f"{team_name:<31}"  # 31 is the longest name
-        output += f"{"IP":>5}"
+        output += f"{'IP':>5}"
         # Original stats (width 4)
         for item in [
             "H",
@@ -412,10 +412,10 @@ class PlayerTableFormatter:
     @staticmethod
     def header_skills():
         """Return the header for skills as a single line."""
-        output = f"{"Name":<30}"  # 30 is the longest name
-        output += f"{"PS":>3}"
-        output += f"{"T":>2}"
-        output += f"{"B":>2}"
+        output = f"{'Name':<30}"  # 30 is the longest name
+        output += f"{'PS':>3}"
+        output += f"{'T':>2}"
+        output += f"{'B':>2}"
         for item in [
             "CL",
             "SP",
@@ -441,7 +441,7 @@ class PlayerTableFormatter:
     @staticmethod
     def header_ratings():
         """Return the header for ratings as a single line."""
-        output = f"{"Name":<30}"  # 30 is the longest name
+        output = f"{'Name':<30}"  # 30 is the longest name
         for item in ["SP", "RP", "P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]:
             output += f"{item:>3}"
         output += "  "
