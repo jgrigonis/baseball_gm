@@ -53,13 +53,15 @@ def main():
 
     # import time
     # print(f"========== SCRIPT START {time.time()} ==========")
+    path = Path(LEAGUE_FILES_DIR)
+    path.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
+    conn = sqlite3.connect(path / args.db)
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
     boot = LeagueBootstrapper(conn)
-    manifest = load_manifest(Path(LEAGUE_FILES_DIR) / args.manifest)
+    manifest = load_manifest(path / args.manifest)
     try:
         validate_manifest_structure(manifest)
         validate_manifest_uniqueness(manifest)

@@ -43,8 +43,11 @@ def validate_manifest_uniqueness(manifest: dict) -> None:
 
 def find_missing_team_files(manifest: dict) -> list[dict]:
     missing = []
+    team_dir = Path(TEAM_FILES_DIR)
+    team_dir.mkdir(parents=True, exist_ok=True)
+
     for team in manifest["teams"]:
-        path = Path(TEAM_FILES_DIR) / team["csv"]
+        path = team_dir / team["csv"]
         if not path.exists():
             missing.append(team)
     return missing
