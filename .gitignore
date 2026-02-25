@@ -11,7 +11,7 @@ __pycache__
 *.csv
 
 logs/*
-.venv
+.venv*
 
 temp_files
 

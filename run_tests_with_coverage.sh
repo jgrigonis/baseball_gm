@@ -7,6 +7,6 @@ pytest
 # For now we can just leave it installed
 # pip uninstall pytest -y
 # To see coverage:
-# pip install coverage
-# coverage run -m pytest
-# coverage report -m
+pip install coverage
+coverage run -m pytest
+coverage report -m
