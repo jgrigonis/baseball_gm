@@ -106,8 +106,10 @@ class TestWildPitchWalkScenarios:
         game._sync_players()
         batter = game.current_batter.player
         # Execute
-        for _ in range(6):
-            game.step()
+        # for _ in range(6):
+        #     game.step()
+        from tests.helpers.game_helpers import drain_event_queue
+        drain_event_queue(game)
 
         # Assertions
         # 1. Batter walked

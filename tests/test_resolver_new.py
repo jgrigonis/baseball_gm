@@ -33,7 +33,7 @@ from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.events.fielders_choice import FieldersChoiceEvent
 from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
-from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
+from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent, ReachedBaseEvent
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent
@@ -1072,13 +1072,17 @@ class TestHelperMethods:
 
     def test_advance_batter_to_base(self, resolver):
         """Test batter advancement helper"""
-        event = advance_batter_to_base("batter_1", "pitcher_1", SECOND, "double")
+        events = advance_batter_to_base("batter_1", "pitcher_1", SECOND, "double")
 
-        assert isinstance(event, RunnerAdvancedEvent)
-        assert event.runner == "batter_1"
-        assert event.from_base is None
-        assert event.to_base == SECOND
-        assert event.reason == "double"
+        assert isinstance(events[0], ReachedBaseEvent)
+        assert isinstance(events[1], RunnerAdvancedEvent)
+        assert events[0].runner == "batter_1"
+        assert events[0].base == SECOND
+        assert events[0].reason == "double"
+        assert events[1].runner == "batter_1"
+        assert events[1].from_base is None
+        assert events[1].to_base == SECOND
+        assert events[1].reason == "double"
 
 
 # ================================================================

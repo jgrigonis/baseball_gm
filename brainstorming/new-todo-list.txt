@@ -2,9 +2,6 @@ Todo list
 
 Track wins, saves, blown saves, holds and losses, assign earned runs
 
-Aging.
-Ages on teams might be too tightly bunched. Run some sims
-
 Injuries
 
 General player fatigue, perhaps have it be something different.

@@ -1,7 +1,7 @@
 # src/game/resolvers/base_running.py
 from src.game.bases import HOME
 from src.game.event import GameEvent
-from src.game.events.runners import RunnerAdvancedEvent
+from src.game.events.runners import RunnerAdvancedEvent, ReachedBaseEvent
 
 
 def advance_all_runners(
@@ -29,12 +29,20 @@ def advance_all_runners(
 
 def advance_batter_to_base(
     batter: str, pitcher: str, to_base: int, reason: str
-) -> RunnerAdvancedEvent:
+) -> list[GameEvent]:
     """Create event for batter advancing to a base"""
-    return RunnerAdvancedEvent(
-        runner=batter,
-        from_base=None,
-        to_base=to_base,
-        reason=reason,
-        pitcher=pitcher,
-    )
+    return [
+        ReachedBaseEvent(
+            runner=batter,
+            base=to_base,
+            reason=reason,
+            responsible_pitcher=pitcher,
+        ),
+        RunnerAdvancedEvent(
+            runner=batter,
+            from_base=None,
+            to_base=to_base,
+            reason=reason,
+            pitcher=pitcher,
+        ),
+    ]

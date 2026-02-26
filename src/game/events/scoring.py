@@ -17,6 +17,8 @@ class RunScoredEvent(GameEvent):
     rbi_batter: PlayerInGame | None
     reason: str
     pitcher: PlayerInGame
+    responsible_pitcher: PlayerInGame | None
+    earned: bool = True
 
     def apply(self, game):
         game.score.score_run(

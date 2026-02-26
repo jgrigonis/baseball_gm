@@ -129,7 +129,7 @@ def resolve_fielders_choice(resolver, intent, game) -> List[GameEvent]:
         )
 
     # Batter to first
-    events.append(
+    events.extend(
         advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "fielders_choice")
     )
     events.append(OutRecordedEvent(reason="fielders_choice", pitcher=intent.pitcher))

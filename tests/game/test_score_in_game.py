@@ -16,6 +16,7 @@ def test_score_uses_inning_state():
         rbi_batter=PlayerInGame(make_player_record()),
         reason="test",
         pitcher=PlayerInGame(make_player_record()),
+        responsible_pitcher=PlayerInGame(make_player_record()),
     ).apply(game)
 
     assert game.score.home == 1

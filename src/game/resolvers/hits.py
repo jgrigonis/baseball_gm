@@ -131,7 +131,7 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
             )
 
     # Batter to first
-    events.append(
+    events.extend(
         advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "single")
     )
 
@@ -229,7 +229,7 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
         )
 
     # Batter to second
-    events.append(
+    events.extend(
         advance_batter_to_base(intent.batter, intent.pitcher, SECOND, "double")
     )
 
@@ -272,7 +272,7 @@ def resolve_triple(resolver, intent, game) -> list[GameEvent]:
     )
 
     # Batter to third
-    events.append(
+    events.extend(
         advance_batter_to_base(intent.batter, intent.pitcher, THIRD, "triple")
     )
 

@@ -46,6 +46,7 @@ class PlayerInGame(object):
         self.game_stats = stats.GameStats()
         self.fielding_by_position: dict[str, FieldingStats] = {}
         self._current_position: str | None = None
+        self.responsible_pitcher: PlayerInGame | None = None
         self.in_lineup = False
         self.is_injured = False
         self.pitcher_fatigue = (

@@ -228,7 +228,7 @@ def handle_fielding_error_advancement(resolver, intent, game) -> list[GameEvent]
     )
 
     # Batter to first
-    events.append(
+    events.extend(
         advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "fielding_error")
     )
 
