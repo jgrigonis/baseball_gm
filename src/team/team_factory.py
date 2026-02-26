@@ -20,9 +20,9 @@ from src.team.team_record import TeamRecord
 __author__ = "josh"
 _MIN_AGE = 18
 _MAX_AGE = 44
-_MEAN_AGE = 26
-_STD_DEV = 3.2
-_SKEW = 1.5
+_MEAN_AGE = 24
+_STD_DEV = 6.0
+_SKEW = 0.2
 
 
 class TeamFactory:
@@ -181,7 +181,8 @@ class TeamFactory:
         current_ages = [p.age for p in current_players]
 
         for _ in range(10_000):
-            # Use a fresh numpy seed derived from self.rng each draw
+            # Derive a seed from self.rng so scipy's RNG is reproducible
+            # when this factory is seeded (e.g. in tests or simulations)
             seed = self.rng.getrandbits(32)
             age = int(
                 round(
