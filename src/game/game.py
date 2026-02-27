@@ -26,6 +26,7 @@ from src.game.count import Count
 from src.game.bases import Bases
 from src.game.event import GameEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
+from src.game.game_result_resolver import GameResultResolver, PitchingDecisions
 from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
 from src.game.intents.pick_off import PickOffIntent
@@ -187,6 +188,8 @@ class Game:
         # Pitcher appearance and lead change tracking
         self.pitcher_appearances: list[PitcherAppearance] = []
         self.lead_changes: list[LeadChange] = []
+        self._last_known_leader: str = "tied"   # "home", "away", "tied"
+        self.decisions: PitchingDecisions | None = None
 
         # Logging
         self.logger = logger
@@ -213,6 +216,7 @@ class Game:
             raise RuntimeError("Both teams must have lineups before play()")
 
         self._sync_players()
+        self._open_pitcher_appearance(self.current_pitcher)
         self.logger.info("⚾ Play Ball!")
         self.logger.info(
             f"{self.away.record.city} {self.away.record.mascot} @ {self.home.record.city} {self.home.record.mascot}"
@@ -223,6 +227,15 @@ class Game:
                 inpt = input("Press Enter to continue... ")
                 self.handle_input(inpt)
             self.step()
+        
+        for team_id in set(a.team_id for a in self.pitcher_appearances):
+            last = next(
+                a for a in reversed(self.pitcher_appearances)
+                if a.team_id == team_id
+            )
+            last.finished_game = True
+        
+        
 
         result = self.get_result()
         self.logger.info(
@@ -231,6 +244,31 @@ class Game:
         self.logger.info(f"\n🏆 Final: {result}")
         if self.logger.isEnabledFor(logging.DEBUG):
             self.validate_stats()
+
+        home_wins = self.score.home > self.score.away
+        winning_team_id = self.home.record.id if home_wins else self.away.record.id
+        losing_team_id = self.away.record.id if home_wins else self.home.record.id
+        winning_score = max(self.score.home, self.score.away)
+        losing_score = min(self.score.home, self.score.away)
+
+        decisions = GameResultResolver.resolve(
+            pitcher_appearances=self.pitcher_appearances,
+            lead_changes=self.lead_changes,
+            winning_team_id=winning_team_id,
+            losing_team_id=losing_team_id,
+            winning_score=winning_score,
+            losing_score=losing_score,
+        )
+
+        if decisions.win:
+            decisions.win.pitcher.game_stats.pitching.win = 1
+        if decisions.loss:
+            decisions.loss.pitcher.game_stats.pitching.loss = 1
+        if decisions.save:
+            decisions.save.pitcher.game_stats.pitching.save = 1
+        
+        self.decisions = decisions
+
         return result
 
     def step(self) -> None:
@@ -478,33 +516,34 @@ class Game:
         self.logger.trace("Entering _post_event")
 
         # Check for pitching change after plate appearance completes
-        if self._plate_appearance_complete and self.current_pitcher:
-            # This will eventually return a range from 0 to 1.
-            # Use random chance for the "AI" to replace the pitcher
-            # based on the level from 0 to 1
-            # 1.0 meaning definitely change
-            # 0.0 meaning don't change.
-            rnd = self.rng.random()
-            change = GameStrategy.should_consider_pitching_change(
-                self.current_pitcher, self.score_differential
-            )
-            if change > 0.2:
-                self.logger.info(
-                    f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
-                )
-            if change > rnd:
-                pitcher = GameStrategy.select_relief_pitcher(
-                    self.pitch_team, self.current_pitcher
-                )
-                if pitcher:
-                    self._close_pitcher_appearance()
-                    self.current_pitcher = pitcher
-                    self.current_pitcher.game_stats.pitching.game_played = 1
-                    self.current_pitcher.current_position = "p"
-                    self._open_pitcher_appearance(pitcher)
-                    self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
-                else:
-                    self.logger.info("⚠️ No available pitchers!")
+        if self._plate_appearance_complete and self.current_pitcher and not self._half_inning_over():
+            self._consider_pitching_change()
+            # # This will eventually return a range from 0 to 1.
+            # # Use random chance for the "AI" to replace the pitcher
+            # # based on the level from 0 to 1
+            # # 1.0 meaning definitely change
+            # # 0.0 meaning don't change.
+            # rnd = self.rng.random()
+            # change = GameStrategy.should_consider_pitching_change(
+            #     self.current_pitcher, self.score_differential
+            # )
+            # if change > 0.2:
+            #     self.logger.info(
+            #         f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
+            #     )
+            # if change > rnd:
+            #     pitcher = GameStrategy.select_relief_pitcher(
+            #         self.pitch_team, self.current_pitcher
+            #     )
+            #     if pitcher:
+            #         self._close_pitcher_appearance()
+            #         self.current_pitcher = pitcher
+            #         self.current_pitcher.game_stats.pitching.game_played = 1
+            #         self.current_pitcher.current_position = "p"
+            #         self._open_pitcher_appearance(pitcher)
+            #         self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
+            #     else:
+            #         self.logger.info("⚠️ No available pitchers!")
 
         # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent
         if self._half_inning_over() and self._queue:
@@ -704,6 +743,8 @@ class Game:
         # Swap teams
         self._swap_teams()
         self._sync_players()
+        self._open_pitcher_appearance(self.current_pitcher)
+        self._consider_pitching_change()  # manager can change before inning starts
 
         self.logger.info(f"⚾ {self.inning}")
 
@@ -733,23 +774,40 @@ class Game:
         self.logger.trace(f"PA complete: {reason}")
 
     def _record_lead_change_if_needed(self, responsible_pitcher) -> None:
+        # DEBUG
+        #print(f"_record_lead_change_if_needed called: score={self.score.home}-{self.score.away} leader={self.score.leader}")
+        # DEBUG
         scoring_team = "away" if self.inning.top else "home"
-        leader = self.score.leader
+        leader = self.score.leader  # already updated by score_run
+        # DEBUG
+        #print(f"  scoring_team={scoring_team} leader={leader} _last_known_leader={self._last_known_leader}")
+        #print(f"  leader == scoring_team and self._last_known_leader != scoring_team: {leader == scoring_team and self._last_known_leader != scoring_team}")
+        # DEBUG
 
-        if leader == scoring_team:
-            # Only record if this is actually a new lead (not just extending existing)
-            last_leader = self.lead_changes[-1].new_leader if self.lead_changes else None
-            if last_leader != scoring_team:
-                self.lead_changes.append(
-                    LeadChange(
-                        inning=self.inning.number,
-                        half="top" if self.inning.top else "bottom",
-                        new_leader=scoring_team,
-                        responsible_pitcher=responsible_pitcher,
-                    )
+        if leader == scoring_team and self._last_known_leader != scoring_team:
+            self.lead_changes.append(
+                LeadChange(
+                    inning=self.inning.number,
+                    half="top" if self.inning.top else "bottom",
+                    new_leader=scoring_team,
+                    responsible_pitcher=responsible_pitcher,
                 )
+            )
+        
+        self._last_known_leader = leader
 
     def _open_pitcher_appearance(self, pitcher) -> None:
+        # DEBUG
+        # import traceback
+        # print(f"_open_pitcher_appearance called for {pitcher.name}")
+        # traceback.print_stack(limit=4)
+        # DEBUG
+        already_appearing = any(
+            a.pitcher == pitcher and not a.finished_game
+            for a in self.pitcher_appearances
+        )
+        if already_appearing:
+            return
         self.pitcher_appearances.append(
             PitcherAppearance(
                 pitcher=pitcher,
@@ -762,6 +820,32 @@ class Game:
         if self.pitcher_appearances:
             self.pitcher_appearances[-1].finished_game = False
 
+    def _consider_pitching_change(self) -> None:
+        """Evaluate and possibly make a pitching change. Called mid-inning and between innings."""
+        if not self.current_pitcher:
+            return
+        
+        rnd = self.rng.random()
+        change = GameStrategy.should_consider_pitching_change(
+            self.current_pitcher, self.score_differential
+        )
+        if change > 0.2:
+            self.logger.info(
+                f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
+            )
+        if change > rnd:
+            pitcher = GameStrategy.select_relief_pitcher(
+                self.pitch_team, self.current_pitcher
+            )
+            if pitcher:
+                self._close_pitcher_appearance()
+                self.current_pitcher = pitcher
+                self.current_pitcher.game_stats.pitching.game_played = 1
+                self.current_pitcher.current_position = "p"
+                self._open_pitcher_appearance(pitcher)
+                self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
+            else:
+                self.logger.info("⚠️ No available pitchers!")
 
     # ------------------------------------------------------------------
     # Initialization
@@ -780,6 +864,7 @@ class Game:
 
         self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
         self.logger.info(f"⚾ Pitching: {self.current_pitcher.name}")
+
         # Fatigue info
         if self.current_pitcher.pitcher_fatigue:
             fatigue = self.current_pitcher.pitcher_fatigue

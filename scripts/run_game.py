@@ -13,6 +13,7 @@ We can discard the results.
 
 import argparse
 import logging
+import random
 import uuid
 
 from src.game.game import Game
@@ -47,6 +48,9 @@ def get_args():
     parser.add_argument(
         "--innings", "-i", type=int, default=9, help="Set the number of innings."
     )
+    parser.add_argument(
+        "--seed", "-s", type=int, default=None, help="RNG seed for reproducibility."
+    )
     args = parser.parse_args()
     return args
 
@@ -66,7 +70,11 @@ def main(args):
     logger = setup_logger(
         name="game", level=levl, console_level=levl, log_id=str(uuid.uuid4())
     )
-    tf = TeamFactory(log_level=levl)
+    seed = args.seed if args.seed is not None else random.randint(0, 999999)
+    print(f"🎲 Seed: {seed}")  # always print so you can replay
+    rng = random.Random(seed)
+
+    tf = TeamFactory(log_level=levl, rng=rng)
     # Set up Home Team Record
     home_team_record = tf.generate_team(city=HOME_CITY, mascot=HOME_MASCOT)
 
@@ -96,8 +104,18 @@ def main(args):
         away_team=away_team,
         logger=logger,
         pauses=args.pauses,
+        rng=rng,
     )
     result = my_game.play()
+    # Pitching decisions
+    d = my_game.decisions
+    if d:
+        if d.win:
+            print(f"✅ Win:  {d.win.pitcher.name}")
+        if d.loss:
+            print(f"❌ Loss: {d.loss.pitcher.name}")
+        if d.save:
+            print(f"🔒 Save: {d.save.pitcher.name}")
 
     print(home_team.output_defensive_stats())
     print(away_team.output_defensive_stats())
@@ -117,6 +135,7 @@ def main(args):
 
     print(home_team.output_pitching_stats())
     print(away_team.output_pitching_stats())
+
 
     return result
 

@@ -28,6 +28,9 @@ def get_args():
     parser.add_argument(
         "--innings", "-i", type=int, default=9, help="Set the number of innings."
     )
+    parser.add_argument(
+        "--seed", "-s", type=int, default=None, help="RNG seed for reproducibility."
+    )
     args = parser.parse_args()
     if args.pauses:
         args.debug = True

@@ -1,4 +1,4 @@
-# tests/game/simple_game.py
+# tests/simple_game.py
 import logging
 from random import Random
 
@@ -37,3 +37,5 @@ game.dbg = logging.DEBUG
 game.home.set_lineup()
 game.away.set_lineup()
 game.play()
+print(game.pitcher_appearances)
+print(game.lead_changes)
