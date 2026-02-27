@@ -145,6 +145,7 @@ def fake_game():
         return pos_map[position]
 
     game.pos = pos
+    game._record_lead_change_if_needed = lambda pitcher: None
 
     # --- methods expected by events ---
     def _mark_plate_appearance_complete(reason):

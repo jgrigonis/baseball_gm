@@ -30,6 +30,7 @@ from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
 from src.game.intents.pick_off import PickOffIntent
 from src.game.intents.pitch import PrePitchSituation
+from src.game.pitcher_appearance import PitcherAppearance, LeadChange
 from src.game.resolver import Resolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
@@ -182,6 +183,10 @@ class Game:
         # Plate appearance tracking
         self._plate_appearance_complete = False
         self._pa_end_reason: str | None = None
+
+        # Pitcher appearance and lead change tracking
+        self.pitcher_appearances: list[PitcherAppearance] = []
+        self.lead_changes: list[LeadChange] = []
 
         # Logging
         self.logger = logger
@@ -492,9 +497,11 @@ class Game:
                     self.pitch_team, self.current_pitcher
                 )
                 if pitcher:
+                    self._close_pitcher_appearance()
                     self.current_pitcher = pitcher
                     self.current_pitcher.game_stats.pitching.game_played = 1
                     self.current_pitcher.current_position = "p"
+                    self._open_pitcher_appearance(pitcher)
                     self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
                 else:
                     self.logger.info("⚠️ No available pitchers!")
@@ -724,6 +731,37 @@ class Game:
         self._plate_appearance_complete = True
         self._pa_end_reason = reason
         self.logger.trace(f"PA complete: {reason}")
+
+    def _record_lead_change_if_needed(self, responsible_pitcher) -> None:
+        scoring_team = "away" if self.inning.top else "home"
+        leader = self.score.leader
+
+        if leader == scoring_team:
+            # Only record if this is actually a new lead (not just extending existing)
+            last_leader = self.lead_changes[-1].new_leader if self.lead_changes else None
+            if last_leader != scoring_team:
+                self.lead_changes.append(
+                    LeadChange(
+                        inning=self.inning.number,
+                        half="top" if self.inning.top else "bottom",
+                        new_leader=scoring_team,
+                        responsible_pitcher=responsible_pitcher,
+                    )
+                )
+
+    def _open_pitcher_appearance(self, pitcher) -> None:
+        self.pitcher_appearances.append(
+            PitcherAppearance(
+                pitcher=pitcher,
+                team_id=self.pitch_team.record.id,
+                entered_inning=self.inning.number,
+            )
+        )
+
+    def _close_pitcher_appearance(self) -> None:
+        if self.pitcher_appearances:
+            self.pitcher_appearances[-1].finished_game = False
+
 
     # ------------------------------------------------------------------
     # Initialization
