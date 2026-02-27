@@ -137,7 +137,7 @@ def show_all_leaderboards(players, top_n=10, min_pa=100, min_ip=10):
 
     analyzer.print_leaderboard(
         "SAVE LEADERS",
-        analyzer.leaderboard_saves(min_innings=min_ip),
+        analyzer.leaderboard_saves(min_innings=0),
         "saves",
         top_n=top_n,
         format_str="d",

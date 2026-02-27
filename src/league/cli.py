@@ -119,14 +119,6 @@ def main():
     save_schedule_to_db(conn, schedule)
     print(f"Schedule generated: {len(schedule)} games")
 
-    # conn.executescript(
-    #     """
-    # SELECT COUNT(*) FROM leagues;
-    # SELECT COUNT(*) FROM seasons;
-    # SELECT season_id, COUNT(*) FROM games GROUP BY season_id;
-    # """
-    # )
-
 
 if __name__ == "__main__":
     main()

@@ -90,50 +90,9 @@ class ScheduleGenerator:
         return schedule
 
 
-    # def create_schedule(
-    #     self,
-    #     season_id: str,
-    #     team_ids: list[str],
-    #     start_date: date,
-    #     games_per_matchup: int = 3,
-    #     home_and_away: bool = True,
-    # ) -> list[ScheduledGame]:
-    #     """Create a full season schedule."""
-    #     matchups = self.generate_round_robin(team_ids, games_per_matchup, home_and_away)
-
-    #     schedule = []
-    #     current_date = start_date
-
-    #     for home_id, away_id in matchups:
-    #         schedule.append(
-    #             ScheduledGame(
-    #                 id=str(uuid.uuid4()),
-    #                 season_id=season_id,
-    #                 home_team_id=home_id,
-    #                 away_team_id=away_id,
-    #                 game_date=current_date,
-    #                 series_id=None,  # Can group into series later if needed
-    #             )
-    #         )
-
-    #         # Advance date after each round of games
-    #         if len(schedule) % (len(team_ids) // 2) == 0:
-    #             current_date += timedelta(days=1)
-
-    #     return schedule
-
-
 def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
     """Save schedule to games table."""
     cursor = conn.cursor()
-
-    # Debug: check for duplicates
-    # game_ids = [game.id for game in schedule]
-    # unique_ids = set(game_ids)
-    # print(f"DEBUG: Schedule has {len(schedule)} games, {len(unique_ids)} unique IDs")
-
-    # if len(schedule) != len(unique_ids):
-    #     print(f"WARNING: {len(schedule) - len(unique_ids)} duplicate game IDs!")
 
     for game in schedule:
         cursor.execute(
@@ -150,6 +109,5 @@ def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
             ),
         )
 
-    # print(f"DEBUG: Inserted {cursor.rowcount} rows")
     conn.commit()
     print(f"Saved {len(schedule)} games to schedule")
