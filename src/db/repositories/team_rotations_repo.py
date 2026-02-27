@@ -9,6 +9,9 @@ Update the pitching rotation
 
 """
 from typing import Any
+from datetime import datetime, date
+
+from src.db.repositories.pitcher_state import PitcherStateRepository, MIN_ENERGY_STARTER
 
 
 class TeamRotationsRepository:
@@ -123,6 +126,7 @@ class TeamRotationsRepository:
         if not rotation:
             return None
 
+        pitcher_repo = PitcherStateRepository(self.conn)
         # Find most recent starter from this team's rotation
         rotation_player_ids = [r["player_id"] for r in rotation]
 
@@ -138,10 +142,10 @@ class TeamRotationsRepository:
             AND g.season_id = ?
             AND pgs.pitch_game_started = 1
             AND pgs.player_id IN ({})
-            AND g.date < ?
+            AND g.date <= ?
             AND tr.effective_date <= g.date
             AND (tr.end_date IS NULL OR tr.end_date > g.date)
-            ORDER BY g.date DESC
+            ORDER BY g.date DESC, g.id DESC
             LIMIT 1
             """.format(
                 ",".join("?" * len(rotation_player_ids))
@@ -150,21 +154,34 @@ class TeamRotationsRepository:
         )
 
         last_starter = cursor.fetchone()
+        last_rotation_order = last_starter[1] if last_starter else 0
 
-        if last_starter:
-            last_rotation_order = last_starter[1]
-            # Get next in rotation (wrap around)
-            next_order = (last_rotation_order % len(rotation)) + 1
-        else:
-            # No previous starts, use first pitcher
-            next_order = 1
+        # Try each pitcher in rotation order starting from next, skip if too tired
+        game_date = current_date if isinstance(current_date, date) else datetime.fromisoformat(current_date).date()
+        for i in range(len(rotation)):
+            next_order = (last_rotation_order + i) % len(rotation) + 1
+            candidate = next(
+                (r for r in rotation if r["rotation_order"] == next_order), None
+            )
+            if not candidate:
+                continue
+            state = pitcher_repo.get_with_recovery(
+                player_id=candidate["player_id"],
+                game_date=game_date,
+                recovery_skill=50,  # default; ideally pass actual skill
+            )
+            if state.current_energy >= MIN_ENERGY_STARTER:
+                return candidate["player_id"]
 
-        # Find pitcher with next_order
-        for entry in rotation:
-            if entry["rotation_order"] == next_order:
-                return entry["player_id"]
+        # All pitchers tired — return the most-rested one as fallback
+        best = max(
+            rotation,
+            key=lambda r: pitcher_repo.get_with_recovery(
+                r["player_id"], game_date, 50
+            ).current_energy,
+        )
+        return best["player_id"]
 
-        return None
 
     def update_rotation(
         self,

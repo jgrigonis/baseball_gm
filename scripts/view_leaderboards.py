@@ -128,6 +128,22 @@ def show_all_leaderboards(players, top_n=10, min_pa=100, min_ip=10):
     print("=" * 60)
 
     analyzer.print_leaderboard(
+        "WIN LEADERS",
+        analyzer.leaderboard_wins(min_innings=min_ip),
+        "wins",
+        top_n=top_n,
+        format_str="d",
+    )
+
+    analyzer.print_leaderboard(
+        "SAVE LEADERS",
+        analyzer.leaderboard_saves(min_innings=min_ip),
+        "saves",
+        top_n=top_n,
+        format_str="d",
+    )
+
+    analyzer.print_leaderboard(
         "INNINGS PITCHED LEADERS",
         analyzer.leaderboard_innings_pitched(min_innings=min_ip),
         "innings_pitched",

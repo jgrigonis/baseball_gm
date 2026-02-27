@@ -286,6 +286,10 @@ class PlayerGameRepository:
         b.cs = row["bat_caught_stealing"]
         b.pickoffs = row["bat_pickoffs"]
 
+        p.win = row["pitch_win"]
+        p.loss = row["pitch_loss"]
+        p.save = row["pitch_save"]
+        p.hold = row["pitch_hold"]
         p.outs = row["pitch_outs"]
         p.hits = row["pitch_hits"]
         p.runs = row["pitch_runs"]

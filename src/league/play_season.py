@@ -323,6 +323,18 @@ def play_game(
     home_team.set_lineup(starting_pitcher_id=home_starter_id, dh=True)
     away_team.set_lineup(starting_pitcher_id=away_starter_id, dh=True)
 
+    # Print starting pitchers and fatigue
+    home_starter = next((p for p in home_team.players if p.record.id == home_starter_id), None)
+    away_starter = next((p for p in away_team.players if p.record.id == away_starter_id), None)
+
+    home_energy = f"{home_starter.pitcher_fatigue.energy:.1f}" if home_starter and home_starter.pitcher_fatigue else "N/A"
+    away_energy = f"{away_starter.pitcher_fatigue.energy:.1f}" if away_starter and away_starter.pitcher_fatigue else "N/A"
+
+    print(
+        f"  ⚾ {away_team.record.mascot} ({away_starter.record.last_name if away_starter else '?'}, energy={away_energy})"
+        f" @ {home_team.record.mascot} ({home_starter.record.last_name if home_starter else '?'}, energy={home_energy})"
+    )
+
     result = game.play()
 
     # Determine winner
@@ -411,6 +423,7 @@ def main():
         print(f"   (Resuming - {total_games - len(games)} already completed)")
 
     # Setup RNG
+    print(f"🎲 Seed: {args.seed}")
     rng = random.Random(args.seed) if args.seed else random.Random()
 
     # Play games

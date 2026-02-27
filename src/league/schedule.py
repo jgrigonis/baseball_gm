@@ -42,6 +42,7 @@ class ScheduleGenerator:
         self.rng.shuffle(matchups)
         return matchups
 
+
     def create_schedule(
         self,
         season_id: str,
@@ -55,24 +56,71 @@ class ScheduleGenerator:
 
         schedule = []
         current_date = start_date
+        remaining = list(matchups)
 
-        for home_id, away_id in matchups:
-            schedule.append(
-                ScheduledGame(
-                    id=str(uuid.uuid4()),
-                    season_id=season_id,
-                    home_team_id=home_id,
-                    away_team_id=away_id,
-                    game_date=current_date,
-                    series_id=None,  # Can group into series later if needed
+        while remaining:
+            # Build today's slate: each team plays at most once
+            todays_games = []
+            used_teams = set()
+            leftover = []
+
+            for home_id, away_id in remaining:
+                if home_id not in used_teams and away_id not in used_teams:
+                    todays_games.append((home_id, away_id))
+                    used_teams.add(home_id)
+                    used_teams.add(away_id)
+                else:
+                    leftover.append((home_id, away_id))
+
+            for home_id, away_id in todays_games:
+                schedule.append(
+                    ScheduledGame(
+                        id=str(uuid.uuid4()),
+                        season_id=season_id,
+                        home_team_id=home_id,
+                        away_team_id=away_id,
+                        game_date=current_date,
+                        series_id=None,
+                    )
                 )
-            )
 
-            # Advance date after each round of games
-            if len(schedule) % (len(team_ids) // 2) == 0:
-                current_date += timedelta(days=1)
+            remaining = leftover
+            current_date += timedelta(days=1)
 
         return schedule
+
+
+    # def create_schedule(
+    #     self,
+    #     season_id: str,
+    #     team_ids: list[str],
+    #     start_date: date,
+    #     games_per_matchup: int = 3,
+    #     home_and_away: bool = True,
+    # ) -> list[ScheduledGame]:
+    #     """Create a full season schedule."""
+    #     matchups = self.generate_round_robin(team_ids, games_per_matchup, home_and_away)
+
+    #     schedule = []
+    #     current_date = start_date
+
+    #     for home_id, away_id in matchups:
+    #         schedule.append(
+    #             ScheduledGame(
+    #                 id=str(uuid.uuid4()),
+    #                 season_id=season_id,
+    #                 home_team_id=home_id,
+    #                 away_team_id=away_id,
+    #                 game_date=current_date,
+    #                 series_id=None,  # Can group into series later if needed
+    #             )
+    #         )
+
+    #         # Advance date after each round of games
+    #         if len(schedule) % (len(team_ids) // 2) == 0:
+    #             current_date += timedelta(days=1)
+
+    #     return schedule
 
 
 def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
