@@ -1,15 +1,32 @@
 Todo list
 
-Track wins, saves, blown saves, holds and losses, assign earned runs
+Track blown saves, holds, 
+
+Set a Closer role for pitchers
+Assign all bullpen roles
+schema:
+retirement flag on players, bullpen roles table, and free agency 
+status all touch the schema and are better done together than piecemeal.
+
+Assign earned runs
+
+Track complete games, shut outs, no hitters
+
+Hesitate replacing pitchers with shutouts going.
 
 Injuries
 
 General player fatigue, perhaps have it be something different.
 
-Handedness accounted for many places
+Handedness accounted for many places L vs R, etc.
 
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
 
+
+
+More for Human UI:
 Eventually defensive shifts, mound visits
 substitutions, pinch hitting, pinch running
+
+

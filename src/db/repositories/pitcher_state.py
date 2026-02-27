@@ -1,5 +1,6 @@
-# src/db/repositories/pitcher_state.py
 """
+src/db/repositories/pitcher_state.py
+
 Repository for pitcher energy and rest state.
 
 This table tracks pitcher fatigue across games and is used for:
@@ -13,15 +14,80 @@ Updates:
 Queries:
 - Before game start (get energy, apply recovery based on rest days)
 - During roster/lineup decisions (check pitcher availability)
+
+Recovery model
+--------------
+Uses an exponential approach to 1.0 so recovery is fast when a pitcher
+is depleted and tapers as they approach full energy:
+
+    energy += (1.0 - energy) * daily_rate
+
+daily_rate is derived from the pitcher's recovery skill so that a pitcher
+starting at 0.0 reaches 0.99 in:
+
+    recovery skill 100  →  3 days
+    recovery skill 50   →  4 days
+    recovery skill 1    →  5 days
 """
 
+from __future__ import annotations
+
+import logging
 from datetime import datetime, date
 from typing import Optional
 from dataclasses import dataclass
 
-BASE_RECOVERY_RATE = 0.12
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Recovery calibration
+# ---------------------------------------------------------------------------
+
+_RECOVERY_THRESHOLD = 0.99   # "effectively full"
+_DAYS_AT_SKILL_MAX  = 3.0    # recovery = 100
+_DAYS_AT_SKILL_MID  = 4.0    # recovery = 50
+_DAYS_AT_SKILL_MIN  = 5.0    # recovery = 1
+
 MIN_ENERGY_STARTER = 0.75
 
+
+def _daily_recovery_rate(recovery_skill: int) -> float:
+    """
+    Fraction of remaining energy gap closed each day.
+
+    Piecewise linear interpolation of target days across the skill range,
+    then solved analytically:
+
+        rate = 1 - (1 - threshold) ^ (1 / days)
+
+    Examples:
+        skill=100 → rate ≈ 0.779  (full in 3 days)
+        skill=50  → rate ≈ 0.683  (full in 4 days)
+        skill=1   → rate ≈ 0.602  (full in 5 days)
+    """
+    skill = max(1, min(100, recovery_skill))
+
+    if skill <= 50:
+        t = (skill - 1) / (50 - 1)
+        days = _DAYS_AT_SKILL_MIN + t * (_DAYS_AT_SKILL_MID - _DAYS_AT_SKILL_MIN)
+    else:
+        t = (skill - 50) / (100 - 50)
+        days = _DAYS_AT_SKILL_MID + t * (_DAYS_AT_SKILL_MAX - _DAYS_AT_SKILL_MID)
+
+    return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
+
+
+def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
+    """Apply exponential recovery over ``days`` full days."""
+    rate = _daily_recovery_rate(recovery_skill)
+    for _ in range(days):
+        energy += (1.0 - energy) * rate
+    return max(0.0, min(1.0, energy))
+
+
+# ---------------------------------------------------------------------------
+# Data classes
+# ---------------------------------------------------------------------------
 
 @dataclass
 class PitcherState:
@@ -35,16 +101,19 @@ class PitcherState:
     @property
     def is_fresh(self) -> bool:
         """Check if pitcher is at full energy."""
-        return self.current_energy >= 1.0
+        return self.current_energy >= _RECOVERY_THRESHOLD
 
     @property
     def days_since_last_game(self) -> Optional[int]:
-        """Calculate days of rest since last appearance."""
+        """Days of rest since last appearance (uses real-world date — prefer game_date in context)."""
         if not self.last_game_date:
             return None
-        today = date.today()
-        return (today - self.last_game_date).days
+        return (date.today() - self.last_game_date).days
 
+
+# ---------------------------------------------------------------------------
+# Repository
+# ---------------------------------------------------------------------------
 
 class PitcherStateRepository:
     """Repository for managing pitcher energy and rest."""
@@ -52,18 +121,17 @@ class PitcherStateRepository:
     def __init__(self, conn):
         self.conn = conn
 
+    # ------------------------------------------------------------------
+    # Read
+    # ------------------------------------------------------------------
+
     def get(self, player_id: str) -> Optional[PitcherState]:
         """
-        Get pitcher's current state.
+        Get raw pitcher state from DB (no recovery applied).
 
-        Args:
-            player_id: Player's unique ID
-
-        Returns:
-            PitcherState if exists, None if pitcher has no history
+        Returns None if pitcher has no recorded history.
         """
         cursor = self.conn.cursor()
-
         cursor.execute(
             """
             SELECT player_id, current_energy, last_game_date, last_pitch_count
@@ -72,7 +140,6 @@ class PitcherStateRepository:
             """,
             (player_id,),
         )
-
         row = cursor.fetchone()
         if not row:
             return None
@@ -88,123 +155,136 @@ class PitcherStateRepository:
             last_pitch_count=row[3],
         )
 
-    @staticmethod
-    def calculate_recovery_rate(recovery_skill: int) -> float:
-        """
-        Calculate daily recovery rate based on pitcher's recovery skill.
-
-        Recovery skill -> Daily rate:
-        100 -> 0.24 (150% of base)
-        75  -> 0.208 (130% of base)
-        60  -> 0.192 (120% of base)
-        50  -> 0.16 (100% base)
-        30  -> 0.12 (75% of base)
-        1   -> 0.10 (62.5% of base)
-
-        Args:
-            recovery_skill: Pitcher's recovery skill (1-100)
-
-        Returns:
-            Daily recovery rate (0.0-1.0)
-        """
-        # Base rate at skill=50
-        base_rate = BASE_RECOVERY_RATE
-
-        # Scale factor: skill affects rate with diminishing returns
-        # At 100: 1.5x base (0.24)
-        # At 50: 1.0x base (0.16)
-        # At 1: 0.625x base (0.10)
-
-        # Use a power curve for diminishing returns at high skills
-        normalized_skill = (recovery_skill - 50) / 50  # -0.98 to 1.0
-        multiplier = 1.0 + (normalized_skill * 0.5)  # 0.51 to 1.5
-
-        return base_rate * multiplier
-
     def get_with_recovery(
         self,
         player_id: str,
         game_date: date,
-        recovery_skill: int = 50,  # Pass the actual recovery skill
+        recovery_skill: int = 50,
     ) -> PitcherState:
         """
-        Get pitcher state with automatic recovery applied based on rest days.
+        Get pitcher state with exponential recovery applied up to game_date.
 
-        If pitcher has no history, returns fresh state at 100% energy. (1.0)
+        If pitcher has no history they are returned at full energy (1.0).
 
         Args:
-            player_id: Player's unique ID
-            game_date: Date of the upcoming game (from season schedule)
-            recovery_skill: Pitcher's recovery skill (1-100, default: 50)
+            player_id:      Player's unique ID.
+            game_date:      Date of the upcoming game (from season schedule).
+            recovery_skill: Pitcher's recovery skill [1-100].
 
         Returns:
-            PitcherState with recovery applied
+            PitcherState with current_energy reflecting time elapsed since
+            last appearance.
         """
         state = self.get(player_id)
 
-        # No history - pitcher is fresh
         if not state:
             return PitcherState(
                 player_id=player_id,
                 current_energy=1.0,
-                last_game_date=None,
-                last_pitch_count=None,
             )
 
-        # Fix bad data - if energy is > 10, assume it's on 0-100 scale
-        if state.current_energy > 10.0:
-            state.current_energy = state.current_energy / 100.0
-        # Fix bad data - if energy is still > 1, assume it's on 0-10 scale
-        if state.current_energy > 1.0:
-            state.current_energy = state.current_energy / 10.0
+        if not state.last_game_date:
+            state.current_energy = 1.0
+            return state
 
-        # Apply recovery based on days of rest
-        if state.last_game_date:
-            days_rest = (game_date - state.last_game_date).days
+        days_rest = (game_date - state.last_game_date).days
 
-            # Handle bad data
-            if days_rest < 0:
-                import logging
+        if days_rest < 0:
+            logger.warning(
+                "Data inconsistency for pitcher %s: game_date %s is before "
+                "last_game_date %s. Returning fresh state.",
+                player_id, game_date, state.last_game_date,
+            )
+            return PitcherState(player_id=player_id, current_energy=1.0)
 
-                logger = logging.getLogger(__name__)
-                logger.warning(
-                    f"Data inconsistency for pitcher {player_id}: "
-                    f"game date {game_date} is before last appearance {state.last_game_date}. "
-                    f"Resetting pitcher to fresh state."
-                )
-                return PitcherState(
-                    player_id=player_id,
-                    current_energy=1.0,
-                    last_game_date=None,
-                    last_pitch_count=None,
-                )
-
-            # Calculate recovery rate based on skill
-            recovery_rate = self.calculate_recovery_rate(recovery_skill)
-            recovery = days_rest * recovery_rate
-            state.current_energy = min(1.0, state.current_energy + recovery)
-
+        state.current_energy = _apply_recovery(
+            state.current_energy, days_rest, recovery_skill
+        )
         return state
+
+    def days_until_ready(
+        self,
+        player_id: str,
+        game_date: date,
+        recovery_skill: int = 50,
+        threshold: float = MIN_ENERGY_STARTER,
+    ) -> int:
+        """
+        How many more days until this pitcher meets the energy threshold.
+
+        Returns 0 if they are already ready.
+
+        Args:
+            player_id:      Player's unique ID.
+            game_date:      Reference date (usually today in the sim).
+            recovery_skill: Pitcher's recovery skill [1-100].
+            threshold:      Minimum energy to be considered ready (default 0.75).
+        """
+        state = self.get_with_recovery(player_id, game_date, recovery_skill)
+        energy = state.current_energy
+
+        if energy >= threshold:
+            return 0
+
+        rate = _daily_recovery_rate(recovery_skill)
+        days = 0
+        while energy < threshold and days < 365:
+            energy += (1.0 - energy) * rate
+            days += 1
+
+        return days
+
+    def get_available_pitchers(
+        self,
+        player_ids: list[str],
+        game_date: date,
+        recovery_skills: dict[str, int] | None = None,
+        min_energy: float = MIN_ENERGY_STARTER,
+    ) -> list[PitcherState]:
+        """
+        Return pitchers whose current energy meets the minimum threshold.
+
+        Args:
+            player_ids:      Pitcher IDs to check.
+            game_date:       Date of the upcoming game.
+            recovery_skills: Optional mapping of player_id → recovery skill.
+                             Defaults to 50 for any pitcher not in the map.
+            min_energy:      Minimum energy to be considered available.
+
+        Returns:
+            List of PitcherStates (with recovery applied) for available pitchers.
+        """
+        recovery_skills = recovery_skills or {}
+        available = []
+
+        for player_id in player_ids:
+            skill = recovery_skills.get(player_id, 50)
+            state = self.get_with_recovery(player_id, game_date, skill)
+            if state.current_energy >= min_energy:
+                available.append(state)
+
+        return available
+
+    # ------------------------------------------------------------------
+    # Write
+    # ------------------------------------------------------------------
 
     def save(self, state: PitcherState) -> None:
         """
-        Save or update pitcher state.
+        Upsert a pitcher state row.
 
-        Args:
-            state: PitcherState to save
+        Energy is clamped to [0.0, 1.0] and rounded to 4 decimal places
+        before storage to avoid floating-point noise accumulating over time.
         """
         cursor = self.conn.cursor()
 
         last_game_date_str = None
         if state.last_game_date:
-            # Handle both date objects and strings
             if isinstance(state.last_game_date, str):
                 last_game_date_str = state.last_game_date
             else:
                 last_game_date_str = state.last_game_date.isoformat()
 
-        # Round energy to 4 decimal places to avoid floating point noise
-        # Also clamp to valid range [0.0, 1.0]
         energy = max(0.0, min(1.0, round(state.current_energy, 4)))
 
         cursor.execute(
@@ -212,80 +292,53 @@ class PitcherStateRepository:
             INSERT INTO pitcher_state (player_id, current_energy, last_game_date, last_pitch_count)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(player_id) DO UPDATE SET
-                current_energy = excluded.current_energy,
-                last_game_date = excluded.last_game_date,
+                current_energy   = excluded.current_energy,
+                last_game_date   = excluded.last_game_date,
                 last_pitch_count = excluded.last_pitch_count
             """,
             (state.player_id, energy, last_game_date_str, state.last_pitch_count),
         )
-
         self.conn.commit()
 
     def update_after_game(
-        self, player_id: str, final_energy: float, pitch_count: int, game_date: date
+        self,
+        player_id: str,
+        final_energy: float,
+        pitch_count: int,
+        game_date: date,
     ) -> None:
         """
-        Update pitcher state after a game appearance.
+        Persist pitcher state after a game appearance.
+
+        Pass fatigue.energy and fatigue.pitches_thrown directly from
+        the PitcherFatigue instance that ran the game.
+
+        No-ops if pitch_count is 0 — this protects pitchers who warmed up
+        or were rostered but never appeared from having their last_game_date
+        incorrectly updated.
 
         Args:
-            player_id: Player's unique ID
-            final_energy: Energy level at end of game
-            pitch_count: Total pitches thrown in game
-            game_date: Date of the game
+            player_id:    Player's unique ID.
+            final_energy: fatigue.energy at end of game.
+            pitch_count:  fatigue.pitches_thrown for the game.
+            game_date:    Date the game was played.
         """
-        if final_energy == 1.0:
+        if pitch_count == 0:
             return
-        state = PitcherState(
+
+        self.save(PitcherState(
             player_id=player_id,
             current_energy=final_energy,
             last_game_date=game_date,
             last_pitch_count=pitch_count,
-        )
-        self.save(state)
+        ))
 
     def delete(self, player_id: str) -> bool:
         """
-        Delete pitcher state (useful for testing or player removal).
-
-        Args:
-            player_id: Player's unique ID
-
-        Returns:
-            True if state was deleted, False if didn't exist
+        Delete a pitcher's state row. Returns True if a row was removed.
         """
         cursor = self.conn.cursor()
-
         cursor.execute("DELETE FROM pitcher_state WHERE player_id = ?", (player_id,))
-
         deleted = cursor.rowcount > 0
         self.conn.commit()
         return deleted
-
-    def get_available_pitchers(
-        self,
-        player_ids: list[str],
-        game_date: date,
-        min_energy: float = MIN_ENERGY_STARTER,
-    ) -> list[PitcherState]:
-        """
-        Get all pitchers with sufficient energy for a game.
-
-        Useful for lineup/roster decisions.
-
-        Args:
-            player_ids: List of pitcher IDs to check
-            game_date: Date of the upcoming game
-            min_energy: Minimum energy threshold (default: 50%)
-            recovery_rate_per_day: Energy recovery per day
-
-        Returns:
-            List of PitcherStates with energy >= min_energy
-        """
-        available = []
-
-        for player_id in player_ids:
-            state = self.get_with_recovery(player_id, game_date)
-            if state.current_energy >= min_energy:
-                available.append(state)
-
-        return available
