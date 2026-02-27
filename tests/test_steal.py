@@ -2,13 +2,14 @@
 """
 Unit tests for src/game/resolvers/steal.py
 """
-import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
 
+import pytest
+from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
 # Helpers / Fixtures
 # ---------------------------------------------------------------------------
+
 
 def make_runner(speed=50, base_running=50, name="Runner"):
     runner = MagicMock()
@@ -36,16 +37,21 @@ def make_bases(**runners):
     runners: keyword args like first=runner_obj, second=None, etc.
     Bases constants: FIRST=1, SECOND=2, THIRD=3, HOME=4
     """
-    mapping = {1: runners.get("first"), 2: runners.get("second"),
-               3: runners.get("third"), 4: runners.get("home")}
+    mapping = {
+        1: runners.get("first"),
+        2: runners.get("second"),
+        3: runners.get("third"),
+        4: runners.get("home"),
+    }
 
     bases = MagicMock()
     bases.runner_on.side_effect = lambda base: mapping.get(base)
     return bases
 
 
-def make_game(bases, rng=None, catcher=None, ss=None, second_b=None,
-              third_b=None, pitcher=None):
+def make_game(
+    bases, rng=None, catcher=None, ss=None, second_b=None, third_b=None, pitcher=None
+):
     if catcher is None:
         catcher = make_player()
     if ss is None:
@@ -58,8 +64,11 @@ def make_game(bases, rng=None, catcher=None, ss=None, second_b=None,
         pitcher = make_player()
 
     pos_map = {
-        "c": catcher, "ss": ss, "2b": second_b,
-        "3b": third_b, "p": pitcher,
+        "c": catcher,
+        "ss": ss,
+        "2b": second_b,
+        "3b": third_b,
+        "p": pitcher,
     }
 
     game = MagicMock()
@@ -88,12 +97,12 @@ from src.game.resolvers.steal import (
     resolve_steal_attempt,
     resolve_double_steal,
 )
-from src.game.bases import FIRST, SECOND, THIRD, HOME
-
+from src.game.bases import FIRST, SECOND, THIRD
 
 # ---------------------------------------------------------------------------
 # adjust_steal_prob
 # ---------------------------------------------------------------------------
+
 
 class TestAdjustStealProb:
     def test_all_average_returns_base_prob(self):
@@ -104,14 +113,26 @@ class TestAdjustStealProb:
 
     def test_fast_runner_increases_prob(self):
         resolver = make_resolver()
-        result = adjust_steal_prob(resolver, prob=0.70, run_speed=80, base_running=80,
-                                   catcher_arm=50, catching_skill=50)
+        result = adjust_steal_prob(
+            resolver,
+            prob=0.70,
+            run_speed=80,
+            base_running=80,
+            catcher_arm=50,
+            catching_skill=50,
+        )
         assert result > 0.70
 
     def test_strong_catcher_decreases_prob(self):
         resolver = make_resolver()
-        result = adjust_steal_prob(resolver, prob=0.70, run_speed=50, base_running=50,
-                                   catcher_arm=80, catching_skill=80)
+        result = adjust_steal_prob(
+            resolver,
+            prob=0.70,
+            run_speed=50,
+            base_running=50,
+            catcher_arm=80,
+            catching_skill=80,
+        )
         assert result < 0.70
 
     def test_zero_denominator_guard(self):
@@ -125,10 +146,15 @@ class TestAdjustStealProb:
 # resolve_steal_attempt – single steal
 # ---------------------------------------------------------------------------
 
+
 class TestResolveStealAttempt:
     def _setup(self, rng_value, from_base=FIRST):
         runner = make_runner(speed=50, base_running=50)
-        bases = make_bases(first=runner) if from_base == FIRST else make_bases(second=runner)
+        bases = (
+            make_bases(first=runner)
+            if from_base == FIRST
+            else make_bases(second=runner)
+        )
         rng = make_rng(rng_value)
         game = make_game(bases=bases, rng=rng)
         resolver = make_resolver(rng=rng)
@@ -156,7 +182,7 @@ class TestResolveStealAttempt:
         assert RunnerAdvancedEvent in event_types
 
     def test_caught_stealing_emits_out_events(self):
-        from src.game.events.steal import StealAttemptEvent, CaughtStealingEvent
+        from src.game.events.steal import CaughtStealingEvent
         from src.game.events.out import OutRecordedEvent, PutOutEvent
         from src.game.events.runners import RunnerRemovedEvent
 
@@ -181,7 +207,7 @@ class TestResolveStealAttempt:
 
         # Force SS path (rng returns 0.0 for success check AND 0.0 for SS_OVER_2B)
         rng = MagicMock()
-        rng.random.side_effect = [1.0, 0.0]   # caught, then SS chosen
+        rng.random.side_effect = [1.0, 0.0]  # caught, then SS chosen
         game = make_game(bases=bases, rng=rng, ss=ss, second_b=second_b)
         resolver = make_resolver(rng=rng)
 
@@ -211,6 +237,7 @@ class TestResolveStealAttempt:
 # resolve_double_steal
 # ---------------------------------------------------------------------------
 
+
 class TestResolveDoubleSteal:
     """Smoke tests for the standard double steal (1st & 2nd)."""
 
@@ -218,7 +245,11 @@ class TestResolveDoubleSteal:
         runner1 = make_runner(speed=50, base_running=50, name="R1")
         runner2 = make_runner(speed=50, base_running=50, name="R2")
         bases = make_bases(first=runner1, second=runner2)
-        rng = rng_value if isinstance(rng_value, MagicMock) else make_rng(rng_value or 0.5)
+        rng = (
+            rng_value
+            if isinstance(rng_value, MagicMock)
+            else make_rng(rng_value or 0.5)
+        )
         game = make_game(bases=bases, rng=rng)
         return game, rng, [FIRST, SECOND]
 
@@ -302,13 +333,14 @@ class TestFirstAndThirdDoubleSteal:
 
     def test_first_out_third_scores(self):
         from src.game.events.steal import StolenBaseEvent, CaughtStealingEvent
-        from src.game.events.out import OutRecordedEvent
         from src.util.weighted_choice import WeightedChoice
 
         game, rng = self._make_game()
         resolver = make_resolver(rng=rng)
 
-        with patch.object(WeightedChoice, "choose", return_value="first_out_third_scores"):
+        with patch.object(
+            WeightedChoice, "choose", return_value="first_out_third_scores"
+        ):
             events = resolve_double_steal(resolver, [FIRST, THIRD], make_intent(), game)
 
         # Runner on 1st caught, runner on 3rd scores
@@ -326,7 +358,9 @@ class TestFirstAndThirdDoubleSteal:
         game, rng = self._make_game()
         resolver = make_resolver(rng=rng)
 
-        with patch.object(WeightedChoice, "choose", return_value="third_out_first_advances"):
+        with patch.object(
+            WeightedChoice, "choose", return_value="third_out_first_advances"
+        ):
             events = resolve_double_steal(resolver, [FIRST, THIRD], make_intent(), game)
 
         caught = [e for e in events if isinstance(e, CaughtStealingEvent)]

@@ -8,6 +8,7 @@ Handles:
 - Querying games by season
 - Game completion status
 """
+
 import datetime
 
 from src.game.game import GameResult

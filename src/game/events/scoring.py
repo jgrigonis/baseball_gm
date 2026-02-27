@@ -29,7 +29,7 @@ class RunScoredEvent(GameEvent):
         self.pitcher.game_stats.pitching.run()
         if self.rbi_batter:
             self.rbi_batter.game_stats.batting.hit_rbi()
-            
+
         # Track lead changes for win/loss attribution
         game._record_lead_change_if_needed(self.responsible_pitcher)
 

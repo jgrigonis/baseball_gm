@@ -109,6 +109,7 @@ class TestWildPitchWalkScenarios:
         # for _ in range(6):
         #     game.step()
         from tests.helpers.game_helpers import drain_event_queue
+
         drain_event_queue(game)
 
         # Assertions

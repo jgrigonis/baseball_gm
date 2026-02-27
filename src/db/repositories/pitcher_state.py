@@ -43,10 +43,10 @@ logger = logging.getLogger(__name__)
 # Recovery calibration
 # ---------------------------------------------------------------------------
 
-_RECOVERY_THRESHOLD = 0.99   # "effectively full"
-_DAYS_AT_SKILL_MAX  = 3.0    # recovery = 100
-_DAYS_AT_SKILL_MID  = 4.0    # recovery = 50
-_DAYS_AT_SKILL_MIN  = 5.0    # recovery = 1
+_RECOVERY_THRESHOLD = 0.99  # "effectively full"
+_DAYS_AT_SKILL_MAX = 3.0  # recovery = 100
+_DAYS_AT_SKILL_MID = 4.0  # recovery = 50
+_DAYS_AT_SKILL_MIN = 5.0  # recovery = 1
 
 MIN_ENERGY_STARTER = 0.75
 
@@ -89,6 +89,7 @@ def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PitcherState:
     """Pitcher's current energy state and recent activity."""
@@ -114,6 +115,7 @@ class PitcherState:
 # ---------------------------------------------------------------------------
 # Repository
 # ---------------------------------------------------------------------------
+
 
 class PitcherStateRepository:
     """Repository for managing pitcher energy and rest."""
@@ -193,7 +195,9 @@ class PitcherStateRepository:
             logger.warning(
                 "Data inconsistency for pitcher %s: game_date %s is before "
                 "last_game_date %s. Returning fresh state.",
-                player_id, game_date, state.last_game_date,
+                player_id,
+                game_date,
+                state.last_game_date,
             )
             return PitcherState(player_id=player_id, current_energy=1.0)
 
@@ -326,12 +330,14 @@ class PitcherStateRepository:
         if pitch_count == 0:
             return
 
-        self.save(PitcherState(
-            player_id=player_id,
-            current_energy=final_energy,
-            last_game_date=game_date,
-            last_pitch_count=pitch_count,
-        ))
+        self.save(
+            PitcherState(
+                player_id=player_id,
+                current_energy=final_energy,
+                last_game_date=game_date,
+                last_pitch_count=pitch_count,
+            )
+        )
 
     def delete(self, player_id: str) -> bool:
         """

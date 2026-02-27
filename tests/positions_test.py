@@ -2,7 +2,6 @@ import unittest
 
 from src.player.positions import POSITIONS, SKILL_TEMPLATE
 
-
 __author__ = "josh"
 
 

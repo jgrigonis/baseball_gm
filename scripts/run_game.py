@@ -136,7 +136,6 @@ def main(args):
     print(home_team.output_pitching_stats())
     print(away_team.output_pitching_stats())
 
-
     return result
 
 

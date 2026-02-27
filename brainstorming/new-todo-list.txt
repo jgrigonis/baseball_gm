@@ -12,8 +12,6 @@ Assign earned runs
 
 Track complete games, shut outs, no hitters
 
-Hesitate replacing pitchers with shutouts going.
-
 Injuries
 
 General player fatigue, perhaps have it be something different.
@@ -22,7 +20,6 @@ Handedness accounted for many places L vs R, etc.
 
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
-
 
 
 More for Human UI:

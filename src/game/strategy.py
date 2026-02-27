@@ -11,7 +11,6 @@ from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_in_game import PlayerInGame
 from src.team.team_in_game import TeamInGame
 
-
 # Probability constants for new events
 BASE_PICKOFF_ATTEMPT_PROB = 0.01  # 1% per pitch
 BASE_STEAL_SECOND_PROB = 0.08  # 8% from first
@@ -625,8 +624,18 @@ class GameStrategy:
         innings_pitched = pitcher.game_stats.pitching.ip_float
         prob = base_probs.get(fatigue_level, 0.5)
 
+        if pitcher.game_stats.pitching.runs == 0:
+            prob *= 0.5
+
+        if pitcher.game_stats.pitching.hits == 0:
+            prob *= 0.2
+
         # Modifier: Protect lead with starter (reduce probability of pulling them)
-        if score_diff > 0 and innings_pitched < 5.0:
+        if (
+            score_diff > 0
+            and innings_pitched < 5.0
+            and pitcher.game_stats.pitching.game_started == 1
+        ):
             # Winning and starter hasn't gone 5 innings yet
             prob *= 0.5  # Half as likely to pull
 

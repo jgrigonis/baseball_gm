@@ -19,7 +19,7 @@ def generate_roster_ages(n_players=40, seed=None):
     MAX_AGE = 43
     MEAN_AGE = 27.5
     STD_DEV = 3.2  # Controls bell curve width
-    SKEW = 1.8  # Right skew — more older players than younger never actually used
+    # SKEW = 1.8  # Right skew — more older players than younger never actually used
 
     ages = []
     attempts = 0

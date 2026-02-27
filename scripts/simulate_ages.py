@@ -3,6 +3,7 @@
 Quick simulation of roster age distribution.
 Run from project root: python simulate_ages.py
 """
+
 import random
 from collections import Counter
 from scipy.stats import skewnorm
@@ -17,7 +18,11 @@ _SKEW = 0.2
 def draw_roster_age(rng, current_ages):
     for _ in range(10_000):
         seed = rng.getrandbits(32)
-        age = int(round(skewnorm.rvs(a=_SKEW, loc=_MEAN_AGE, scale=_STD_DEV, random_state=seed)))
+        age = int(
+            round(
+                skewnorm.rvs(a=_SKEW, loc=_MEAN_AGE, scale=_STD_DEV, random_state=seed)
+            )
+        )
 
         if age < _MIN_AGE or age > _MAX_AGE:
             continue
@@ -72,10 +77,12 @@ def print_histogram(ages, width=50):
 if __name__ == "__main__":
     import sys
 
-    num_teams  = int(sys.argv[1]) if len(sys.argv) > 1 else 100
+    num_teams = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     roster_size = int(sys.argv[2]) if len(sys.argv) > 2 else 40
 
-    ages, oldest_avg, youngest_avg = simulate(num_teams=num_teams, roster_size=roster_size)
+    ages, oldest_avg, youngest_avg = simulate(
+        num_teams=num_teams, roster_size=roster_size
+    )
     print_histogram(ages)
     print(f"\n  Oldest team avg age:   {oldest_avg:.1f}")
     print(f"  Youngest team avg age: {youngest_avg:.1f}")

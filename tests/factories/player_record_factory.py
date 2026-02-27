@@ -7,7 +7,6 @@ from src.player.player_skills import PlayerSkills
 from src.player.positions import AFFINITY_POSITIONS  # Changed from POSITIONS
 import src.game.game_exceptions as game_exceptions
 
-
 _counter = itertools.count()
 
 

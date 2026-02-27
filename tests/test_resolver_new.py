@@ -33,7 +33,11 @@ from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.events.fielders_choice import FieldersChoiceEvent
 from src.game.events.sacrifice import SacBuntEvent, SacFlyEvent
-from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent, ReachedBaseEvent
+from src.game.events.runners import (
+    RunnerAdvancedEvent,
+    RunnerRemovedEvent,
+    ReachedBaseEvent,
+)
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
 from src.game.events.passed_ball import PassedBallEvent

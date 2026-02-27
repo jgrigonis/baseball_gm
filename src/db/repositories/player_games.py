@@ -12,6 +12,7 @@ Uses tables:
 - player_game_stats
 - games
 """
+
 from src.stats.stats import Stats, SeasonStats
 from src.stats.batting_stats import BattingStats
 from src.stats.pitching_stats import PitchingStats

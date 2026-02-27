@@ -5,7 +5,6 @@ import random
 from unittest.mock import mock_open, patch, MagicMock
 from src.name_generator.names import SimpleNameGenerator, NameGenerator, NameFrequency
 
-
 # Sample test data matching actual file format
 MALE_NAMES = "JAMES          2.758  2.758      1\nJOHN           2.631  5.389      2\nROBERT         2.563  7.952      3\n"
 FEMALE_NAMES = "MARY           2.629  2.629      1\nPATRICIA       1.073  3.702      2\nJENNIFER       0.932  7.586      6\n"

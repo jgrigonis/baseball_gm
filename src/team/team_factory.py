@@ -14,7 +14,6 @@ import uuid
 
 from src.player.player_factory import PlayerFactory
 from src.player.player_record import PlayerRecord
-from src.player.player_skills import PlayerSkills
 from src.team.team_record import TeamRecord
 
 __author__ = "josh"

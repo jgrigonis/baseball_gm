@@ -12,16 +12,14 @@ def db_connection():
     conn.row_factory = sqlite3.Row
 
     # Create seasons table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE seasons (
             id TEXT PRIMARY KEY,
             year INTEGER NOT NULL,
             name TEXT NOT NULL,
             UNIQUE(year, name)
         )
-    """
-    )
+    """)
 
     yield conn
     conn.close()

@@ -7,8 +7,7 @@ conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 
 # Check a sample of games Terry DIDN'T play in
-cursor = conn.execute(
-    """
+cursor = conn.execute("""
     SELECT g.id, g.date, 
            CASE WHEN g.home_team_id = tp.team_id THEN 'home' ELSE 'away' END as home_away
     FROM games g
@@ -21,15 +20,13 @@ cursor = conn.execute(
         WHERE player_id = p.id
     )
     LIMIT 5
-"""
-)
+""")
 print("Games Terry's team played but Terry didn't:")
 for row in cursor:
     print(f"  Game {row['id']} on {row['date']} ({row['home_away']})")
 
 # Check who DID play 2B in those games
-cursor = conn.execute(
-    """
+cursor = conn.execute("""
     SELECT p.first_name, p.last_name, COUNT(*) as games
     FROM player_game_stats pgs
     JOIN players p ON pgs.player_id = p.id
@@ -40,8 +37,7 @@ cursor = conn.execute(
     GROUP BY p.id
     ORDER BY games DESC
     LIMIT 10
-"""
-)
+""")
 print("\nPlayers who started games on Terry's team:")
 for row in cursor:
     print(f"  {row['first_name']} {row['last_name']}: {row['games']} games started")

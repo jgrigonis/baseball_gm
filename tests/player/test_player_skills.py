@@ -12,6 +12,7 @@ PlayerSkills must:
 ✅ Apply left-handed catcher rule correctly
 ❌ Never require attribute-style access
 """
+
 import pytest
 import random
 

@@ -38,7 +38,6 @@ from src.game.strategy import GameStrategy
 from src.player.fatigue import FatigueLevel
 from src.player.player_formatters import PlayerTableFormatter
 
-
 if TYPE_CHECKING:
     from src.team.team_in_game import TeamInGame
     from src.player.player_in_game import PlayerInGame
@@ -188,7 +187,7 @@ class Game:
         # Pitcher appearance and lead change tracking
         self.pitcher_appearances: list[PitcherAppearance] = []
         self.lead_changes: list[LeadChange] = []
-        self._last_known_leader: str = "tied"   # "home", "away", "tied"
+        self._last_known_leader: str = "tied"  # "home", "away", "tied"
         self.decisions: PitchingDecisions | None = None
 
         # Logging
@@ -227,15 +226,12 @@ class Game:
                 inpt = input("Press Enter to continue... ")
                 self.handle_input(inpt)
             self.step()
-        
+
         for team_id in set(a.team_id for a in self.pitcher_appearances):
             last = next(
-                a for a in reversed(self.pitcher_appearances)
-                if a.team_id == team_id
+                a for a in reversed(self.pitcher_appearances) if a.team_id == team_id
             )
             last.finished_game = True
-        
-        
 
         result = self.get_result()
         self.logger.info(
@@ -266,7 +262,7 @@ class Game:
             decisions.loss.pitcher.game_stats.pitching.loss = 1
         if decisions.save:
             decisions.save.pitcher.game_stats.pitching.save = 1
-        
+
         self.decisions = decisions
 
         return result
@@ -516,7 +512,11 @@ class Game:
         self.logger.trace("Entering _post_event")
 
         # Check for pitching change after plate appearance completes
-        if self._plate_appearance_complete and self.current_pitcher and not self._half_inning_over():
+        if (
+            self._plate_appearance_complete
+            and self.current_pitcher
+            and not self._half_inning_over()
+        ):
             self._consider_pitching_change()
             # # This will eventually return a range from 0 to 1.
             # # Use random chance for the "AI" to replace the pitcher
@@ -775,13 +775,13 @@ class Game:
 
     def _record_lead_change_if_needed(self, responsible_pitcher) -> None:
         # DEBUG
-        #print(f"_record_lead_change_if_needed called: score={self.score.home}-{self.score.away} leader={self.score.leader}")
+        # print(f"_record_lead_change_if_needed called: score={self.score.home}-{self.score.away} leader={self.score.leader}")
         # DEBUG
         scoring_team = "away" if self.inning.top else "home"
         leader = self.score.leader  # already updated by score_run
         # DEBUG
-        #print(f"  scoring_team={scoring_team} leader={leader} _last_known_leader={self._last_known_leader}")
-        #print(f"  leader == scoring_team and self._last_known_leader != scoring_team: {leader == scoring_team and self._last_known_leader != scoring_team}")
+        # print(f"  scoring_team={scoring_team} leader={leader} _last_known_leader={self._last_known_leader}")
+        # print(f"  leader == scoring_team and self._last_known_leader != scoring_team: {leader == scoring_team and self._last_known_leader != scoring_team}")
         # DEBUG
 
         if leader == scoring_team and self._last_known_leader != scoring_team:
@@ -793,7 +793,7 @@ class Game:
                     responsible_pitcher=responsible_pitcher,
                 )
             )
-        
+
         self._last_known_leader = leader
 
     def _open_pitcher_appearance(self, pitcher) -> None:
@@ -824,7 +824,7 @@ class Game:
         """Evaluate and possibly make a pitching change. Called mid-inning and between innings."""
         if not self.current_pitcher:
             return
-        
+
         rnd = self.rng.random()
         change = GameStrategy.should_consider_pitching_change(
             self.current_pitcher, self.score_differential

@@ -397,8 +397,6 @@ def rows_to_csv_string(rows):
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import sys
-
     # ── Run three coaching scenarios for comparison ─────────────────────
     configs = [
         ("ELITE COACHING", 1.2, 42),

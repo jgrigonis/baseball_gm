@@ -5,6 +5,7 @@
 ✔ Guard test enforces interface, not data shape
 ✔ No defensive clutter in evaluator logic
 """
+
 # import copy
 # import pytest
 

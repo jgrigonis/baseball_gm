@@ -6,8 +6,7 @@ conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 
 # Get a game where Lee didn't start
-cursor = conn.execute(
-    """
+cursor = conn.execute("""
     SELECT
         p.id,
         p.first_name,
@@ -20,8 +19,7 @@ cursor = conn.execute(
     WHERE f.position = 'ss'
     GROUP BY p.id, p.first_name, p.last_name
     ORDER BY p.last_name, p.first_name;
-"""
-)
+""")
 rows = cursor.fetchall()
 
 print(f"{'Last Name':<15} {'First Name':<15} {'PO':>5} {'A':>5} {'E':>5}")

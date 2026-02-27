@@ -2,6 +2,7 @@
 """
 Play a single game and store results.
 """
+
 import argparse
 import random
 import sqlite3

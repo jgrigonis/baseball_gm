@@ -1,9 +1,8 @@
 # tests/game/test_game_result_resolver.py
 
-import pytest
 from unittest.mock import MagicMock
 
-from src.game.game_result_resolver import GameResultResolver, PitchingDecisions
+from src.game.game_result_resolver import GameResultResolver
 from src.game.pitcher_appearance import PitcherAppearance, LeadChange
 
 
@@ -14,7 +13,9 @@ def make_pitcher(name: str):
     return p
 
 
-def make_appearance(pitcher, team_id: str, entered_inning: int, finished_game: bool = False):
+def make_appearance(
+    pitcher, team_id: str, entered_inning: int, finished_game: bool = False
+):
     return PitcherAppearance(
         pitcher=pitcher,
         team_id=team_id,
@@ -51,10 +52,12 @@ class TestWin:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=3, losing_score=1,
+            winning_score=3,
+            losing_score=1,
         )
 
         assert decisions.win is not None
@@ -74,16 +77,18 @@ class TestWin:
         # but we want the away team's pitcher who was on mound when away took the lead.
         # Away takes lead in top 7 — away_reliever entered inning 6, so active in 7.
         lead_changes = [
-            make_lead_change(3, "top", "away", home_starter),   # away leads
-            make_lead_change(5, "bottom", "home", away_starter), # home retakes
-            make_lead_change(7, "top", "away", home_starter),   # away retakes for good
+            make_lead_change(3, "top", "away", home_starter),  # away leads
+            make_lead_change(5, "bottom", "home", away_starter),  # home retakes
+            make_lead_change(7, "top", "away", home_starter),  # away retakes for good
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=4, losing_score=3,
+            winning_score=4,
+            losing_score=3,
         )
 
         assert decisions.win is not None
@@ -105,10 +110,12 @@ class TestWin:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=2, losing_score=1,
+            winning_score=2,
+            losing_score=1,
         )
 
         assert decisions.win is not None
@@ -130,10 +137,12 @@ class TestLoss:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=HOME,
             losing_team_id=AWAY,
-            winning_score=4, losing_score=2,
+            winning_score=4,
+            losing_score=2,
         )
 
         assert decisions.loss is not None
@@ -155,10 +164,12 @@ class TestLoss:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=HOME,
             losing_team_id=AWAY,
-            winning_score=3, losing_score=2,
+            winning_score=3,
+            losing_score=2,
         )
 
         assert decisions.loss is not None
@@ -179,10 +190,12 @@ class TestSave:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=3, losing_score=1,
+            winning_score=3,
+            losing_score=1,
         )
 
         assert decisions.save is None
@@ -202,10 +215,12 @@ class TestSave:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=3, losing_score=2,
+            winning_score=3,
+            losing_score=2,
         )
 
         assert decisions.save is not None
@@ -226,10 +241,12 @@ class TestSave:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=8, losing_score=1,
+            winning_score=8,
+            losing_score=1,
         )
 
         assert decisions.save is None
@@ -249,10 +266,12 @@ class TestSave:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=5, losing_score=2,
+            winning_score=5,
+            losing_score=2,
         )
 
         assert decisions.save is not None
@@ -271,10 +290,12 @@ class TestEdgeCases:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, [],
+            appearances,
+            [],
             winning_team_id=AWAY,
             losing_team_id=HOME,
-            winning_score=1, losing_score=0,
+            winning_score=1,
+            losing_score=0,
         )
 
         assert decisions.win is None
@@ -298,10 +319,12 @@ class TestEdgeCases:
         ]
 
         decisions = GameResultResolver.resolve(
-            appearances, lead_changes,
+            appearances,
+            lead_changes,
             winning_team_id=HOME,
             losing_team_id=AWAY,
-            winning_score=4, losing_score=3,
+            winning_score=4,
+            losing_score=3,
         )
 
         assert decisions.win is not None

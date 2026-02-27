@@ -18,6 +18,7 @@ RunnerAdvancedEvent reason meanings:
         - Movement was decided by resolver logic
         - May involve RNG, heuristics, or player attributes
 """
+
 from dataclasses import dataclass
 import logging
 from typing import Optional
@@ -26,11 +27,12 @@ from src.game.event import GameEvent
 from src.game.events.scoring import RunScoredEvent
 from src.player.player_in_game import PlayerInGame
 
+
 @dataclass(frozen=True)
 class ReachedBaseEvent(GameEvent):
     runner: PlayerInGame
     base: int
-    reason: str # "single", "double", "walk", "hit_by_pitch", "fielders_choice", "error", etc.
+    reason: str  # "single", "double", "walk", "hit_by_pitch", "fielders_choice", "error", etc.
     responsible_pitcher: Optional[PlayerInGame]
 
     def apply(self, game):
@@ -41,6 +43,7 @@ class ReachedBaseEvent(GameEvent):
 
     def describe(self, game) -> str:
         return f"{self.runner.name} reached {self.base} on {self.reason}."
+
 
 @dataclass(frozen=True)
 class RunnerAdvancedEvent(GameEvent):
@@ -75,7 +78,10 @@ class RunnerAdvancedEvent(GameEvent):
                     rbi_batter=self.rbi_batter,
                     reason=self.reason or "run",
                     pitcher=self.pitcher,
-                    responsible_pitcher=getattr(self.runner, 'responsible_pitcher', None) or self.pitcher,
+                    responsible_pitcher=getattr(
+                        self.runner, "responsible_pitcher", None
+                    )
+                    or self.pitcher,
                 )
             ]
 
@@ -107,5 +113,3 @@ class RunnerRemovedEvent(GameEvent):
 
     def log_level(self) -> int:
         return logging.DEBUG
-
-

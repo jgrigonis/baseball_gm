@@ -8,6 +8,7 @@ Get next starter
 Update the pitching rotation
 
 """
+
 from typing import Any
 from datetime import datetime, date
 
@@ -147,9 +148,7 @@ class TeamRotationsRepository:
             AND (tr.end_date IS NULL OR tr.end_date > g.date)
             ORDER BY g.date DESC, g.id DESC
             LIMIT 1
-            """.format(
-                ",".join("?" * len(rotation_player_ids))
-            ),
+            """.format(",".join("?" * len(rotation_player_ids))),
             (team_id, season_id, *rotation_player_ids, current_date),
         )
 
@@ -157,7 +156,11 @@ class TeamRotationsRepository:
         last_rotation_order = last_starter[1] if last_starter else 0
 
         # Try each pitcher in rotation order starting from next, skip if too tired
-        game_date = current_date if isinstance(current_date, date) else datetime.fromisoformat(current_date).date()
+        game_date = (
+            current_date
+            if isinstance(current_date, date)
+            else datetime.fromisoformat(current_date).date()
+        )
         for i in range(len(rotation)):
             next_order = (last_rotation_order + i) % len(rotation) + 1
             candidate = next(
@@ -181,7 +184,6 @@ class TeamRotationsRepository:
             ).current_energy,
         )
         return best["player_id"]
-
 
     def update_rotation(
         self,

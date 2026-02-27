@@ -74,7 +74,7 @@ class GameResultResolver:
         if lead_changes:
             final_lead_change = lead_changes[-1]
             go_ahead_inning = final_lead_change.inning
-            go_ahead_half = final_lead_change.half
+            # go_ahead_half = final_lead_change.half # not used
 
             # Find the winning team's pitcher who was pitching during that inning/half
             # i.e. entered at or before that point and hadn't been replaced yet

@@ -1,5 +1,5 @@
 # src/game/pitcher_appearance.py
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ class PitcherAppearance:
     @property
     def outs_recorded(self) -> int:
         return self.pitcher.game_stats.pitching.outs
-        
+
     @property
     def innings_pitched(self) -> float:
         return self.outs_recorded / 3.0
@@ -25,6 +25,6 @@ class PitcherAppearance:
 @dataclass
 class LeadChange:
     inning: int
-    half: str                          # "top" | "bottom"
-    new_leader: str                    # team_id
+    half: str  # "top" | "bottom"
+    new_leader: str  # team_id
     responsible_pitcher: "PlayerInGame"  # pitcher who gave up the lead-taking run

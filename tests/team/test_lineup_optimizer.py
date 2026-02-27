@@ -134,9 +134,10 @@ def test_optimizer_does_not_mutate_players():
     p = make_player("1", {"p": 10})
     original_ratings = dict(p.ratings)
 
-    with patch.object(
-        LineupOptimizer, "prioritized_lineup", return_value=[]
-    ), patch.object(LineupOptimizer, "select_pitcher", return_value=None):
+    with (
+        patch.object(LineupOptimizer, "prioritized_lineup", return_value=[]),
+        patch.object(LineupOptimizer, "select_pitcher", return_value=None),
+    ):
         LineupOptimizer.optimize([p, make_player("2", {})])
 
     assert p.ratings == original_ratings

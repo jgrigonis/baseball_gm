@@ -11,7 +11,6 @@ from src.game.events.strike import (
 from src.game.events.out import OutRecordedEvent, GroundOutEvent
 from src.game.events.double_play import DoublePlayEvent
 
-
 #
 
 # ================================================================

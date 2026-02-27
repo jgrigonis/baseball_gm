@@ -42,7 +42,6 @@ class ScheduleGenerator:
         self.rng.shuffle(matchups)
         return matchups
 
-
     def create_schedule(
         self,
         season_id: str,

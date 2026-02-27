@@ -214,15 +214,17 @@ class StatsAnalyzer:
         for p in self.players:
             ip = p.game_stats.pitching.ip_float
             if ip >= min_innings:
-                leaders.append({
-                    'player': p,
-                    'player_name': getattr(p, 'name', str(p.id)),
-                    'wins': p.game_stats.pitching.win,
-                    'losses': p.game_stats.pitching.loss,
-                    'innings': ip,
-                })
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "wins": p.game_stats.pitching.win,
+                        "losses": p.game_stats.pitching.loss,
+                        "innings": ip,
+                    }
+                )
 
-        return sorted(leaders, key=lambda x: x['wins'], reverse=True)
+        return sorted(leaders, key=lambda x: x["wins"], reverse=True)
 
     def leaderboard_innings_pitched(self, min_innings=0) -> List[Dict[str, Any]]:
         """Get pitchers ranked by innings pitched"""

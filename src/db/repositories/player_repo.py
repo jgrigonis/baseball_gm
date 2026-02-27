@@ -13,6 +13,7 @@ Uses tables:
 - player_skills (current skills)
 - player_skills_history (skill snapshots per season)
 """
+
 import datetime
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
@@ -265,14 +266,12 @@ class PlayerRepository:
         Returns:
             List of PlayerRecord objects
         """
-        rows = self.conn.execute(
-            """
+        rows = self.conn.execute("""
             SELECT p.*, ps.*
             FROM players p
             JOIN player_skills ps ON p.id = ps.player_id
             ORDER BY p.last_name, p.first_name
-            """
-        ).fetchall()
+            """).fetchall()
 
         return [
             PlayerRecord(
