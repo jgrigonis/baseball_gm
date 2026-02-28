@@ -6,7 +6,6 @@ Set a Closer role for pitchers
 Assign all bullpen roles
 schema:
 retirement flag on players, bullpen roles table, and free agency 
-status all touch the schema and are better done together than piecemeal.
 
 Assign earned runs
 
@@ -14,7 +13,7 @@ Track complete games, shut outs, no hitters
 
 Injuries
 
-General player fatigue, perhaps have it be something different.
+General player fatigue, different from pitcher fatigue
 
 Handedness accounted for many places L vs R, etc.
 

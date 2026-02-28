@@ -1,4 +1,10 @@
 # scripts/check_stats.py
+"""
+Check the stats for a specific player.
+
+TERRY SMTIH
+"""
+
 import sqlite3
 from pathlib import Path
 

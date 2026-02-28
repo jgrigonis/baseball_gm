@@ -1,3 +1,4 @@
+# scripts/check_starters_atbats.py
 import sqlite3
 from pathlib import Path
 

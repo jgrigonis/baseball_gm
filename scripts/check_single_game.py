@@ -1,3 +1,4 @@
+# scripts/check_single_game.py
 import sqlite3
 from pathlib import Path
 

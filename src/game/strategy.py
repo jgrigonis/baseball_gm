@@ -43,6 +43,7 @@ HNR_PROB = 0.02
 HNR_CONTACT_MOD = 1.5
 HNR_SPEED_MOD = 1.5
 HNR_FAVORABLE_COUNT_MOD = 1.3
+PITCH_COUNT_THRESHOLD = 100
 
 
 def _get_rng(rng: random.Random | None) -> random.Random:
@@ -624,11 +625,11 @@ class GameStrategy:
         innings_pitched = pitcher.game_stats.pitching.ip_float
         prob = base_probs.get(fatigue_level, 0.5)
 
-        if pitcher.game_stats.pitching.runs == 0:
-            prob *= 0.5
-
-        if pitcher.game_stats.pitching.hits == 0:
-            prob *= 0.2
+        if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
+            if pitcher.game_stats.pitching.runs == 0:
+                prob *= 0.5
+            if pitcher.game_stats.pitching.hits == 0:
+                prob *= 0.2
 
         # Modifier: Protect lead with starter (reduce probability of pulling them)
         if (

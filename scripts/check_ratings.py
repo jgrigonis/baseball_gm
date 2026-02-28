@@ -1,3 +1,4 @@
+# scripts/check_ratings.py
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
 
