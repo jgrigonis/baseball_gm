@@ -55,6 +55,9 @@ class PlayerInGame(object):
             else None
         )
         self.is_starter: bool = False  # Default to not a starting pitcher
+        self.bullpen_role: str | None = (
+            None  # Set at game start from bullpen_roles table
+        )
         self.rate_player()
 
     def __str__(self):

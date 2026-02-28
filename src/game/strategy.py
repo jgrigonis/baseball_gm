@@ -652,77 +652,186 @@ class GameStrategy:
 
     @staticmethod
     def select_relief_pitcher(
-        team: TeamInGame, current_pitcher: PlayerInGame, inning: Inning, score: Score,
+        team: TeamInGame,
+        current_pitcher: PlayerInGame,
+        inning: Inning,
+        score: Score,
     ) -> PlayerInGame | None:
         """
-        Select the best available relief pitcher.
+        Select the best available relief pitcher based on game situation.
 
-        TODO ASAP
-        New priority needs inning and score info:
-        Inning is 9 and <3 run lead: pick best Closer with GOOD or above
-        Otherwise, best GOOD/FRESH reliever
-        Inning 7-8 and <3 run diff: pick best Setup with GOOD/FRESH
-        Otherwise, best GOOD/FRESH reliever, but not Closer
-        Inning 5-6 and <3 run diff: pick best Long with GOOD/FRESH
-        Otherwise, best Utility with GOOD/FRESH
-        Otherwise, best Non-starter, non-closer with TIRED
-        Otherwise, Fresh Starter
-        Otherwise, best status pitcher
-
-
-        Old Priority:
-        1. Non-starters with FRESH status
-        2. Non-starters with GOOD status
-        3. Non-starters with TIRED status
-        4. Starters with FRESH status (emergency)
-        5. None available
+        Priority:
+        - Inning 9+, lead <= 2: best FRESH/GOOD Closer
+        - Inning 7-8, lead <= 2: best FRESH/GOOD Setup
+        - Inning 5-6, close game: best FRESH/GOOD Long reliever
+        - Otherwise by situation: best FRESH/GOOD non-Closer reliever
+        - Fallback: best TIRED non-starter, non-Closer
+        - Emergency: best FRESH starter
+        - Last resort: best available by fatigue
         """
+        score_diff = abs(score.differential)
+        inning_num = inning.number
+        close_game = score_diff <= 2
 
-        # Get all available pitchers
-        available_pitchers = [
+        available = [
             p
             for p in team.players
             if p != current_pitcher
             and p.game_stats.pitching.pitch_count == 0
             and p.pitcher_fatigue is not None
-            and p.current_position is None  # not already playing a field position
+            and p.current_position is None
         ]
 
-        if not available_pitchers:
+        if not available:
             return None
 
-        # Categorize
-        relievers = [p for p in available_pitchers if not p.is_starter]
-        starters = [p for p in available_pitchers if p.is_starter]
-
-        # Try relievers by fatigue level
-        for fatigue_level in [
-            FatigueLevel.FRESH,
-            FatigueLevel.GOOD,
-            FatigueLevel.TIRED,
-        ]:
-            candidates = [
-                p for p in relievers if p.pitcher_fatigue.get_level() == fatigue_level
-            ]
-            if candidates:
-                # Pick best reliever by RP rating
-                candidates.sort(
-                    key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get(
-                        "rp", 0
-                    ),
-                    reverse=True,
-                )
-                return candidates[0]
-
-        # Emergency: use fresh starter
-        fresh_starters = [
-            p for p in starters if p.pitcher_fatigue.get_level() == FatigueLevel.FRESH
-        ]
-        if fresh_starters:
-            fresh_starters.sort(
-                key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("p", 0),
-                reverse=True,
+        def best_by_rp(candidates):
+            return max(
+                candidates,
+                key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("rp", 0),
             )
-            return fresh_starters[0]
+
+        def best_by_sp(candidates):
+            return max(
+                candidates,
+                key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("sp", 0),
+            )
+
+        def with_fatigue(candidates, *levels):
+            return [p for p in candidates if p.pitcher_fatigue.get_level() in levels]
+
+        def with_role(candidates, role):
+            return [p for p in candidates if p.bullpen_role == role]
+
+        fresh_good = (FatigueLevel.FRESH, FatigueLevel.GOOD)
+        relievers = [p for p in available if not p.is_starter]
+        starters = [p for p in available if p.is_starter]
+
+        # --- Inning 9+, save situation: go to Closer ---
+        if inning_num >= 9 and close_game:
+            closers = with_fatigue(with_role(available, "Closer"), *fresh_good)
+            if closers:
+                return best_by_rp(closers)
+
+        # --- Inning 7-8, close game: go to Setup ---
+        if 7 <= inning_num <= 8 and close_game:
+            setup = with_fatigue(with_role(available, "Setup"), *fresh_good)
+            if setup:
+                return best_by_rp(setup)
+
+        # --- Inning 5-6, close game: go to Long reliever ---
+        if 5 <= inning_num <= 6 and close_game:
+            long_men = with_fatigue(with_role(available, "Long"), *fresh_good)
+            if long_men:
+                return best_by_rp(long_men)
+
+        # --- General: best FRESH/GOOD Middle or Utility reliever (not Closer) ---
+        non_closer_relievers = [p for p in relievers if p.bullpen_role != "Closer"]
+        middle_utility = with_fatigue(
+            with_role(non_closer_relievers, "Middle")
+            or with_role(non_closer_relievers, "Utility")
+            or with_fatigue(non_closer_relievers, *fresh_good),
+            *fresh_good,
+        )
+        if middle_utility:
+            return best_by_rp(middle_utility)
+
+        # --- Fallback: any FRESH/GOOD reliever ---
+        fresh_good_relievers = with_fatigue(relievers, *fresh_good)
+        if fresh_good_relievers:
+            return best_by_rp(fresh_good_relievers)
+
+        # --- Fallback: best TIRED non-starter, non-Closer ---
+        tired_relievers = with_fatigue(
+            [p for p in relievers if p.bullpen_role != "Closer"],
+            FatigueLevel.TIRED,
+        )
+        if tired_relievers:
+            return best_by_rp(tired_relievers)
+
+        # --- Emergency: fresh starter ---
+        fresh_starters = with_fatigue(starters, FatigueLevel.FRESH)
+        if fresh_starters:
+            return best_by_sp(fresh_starters)
+
+        # --- Last resort: best available by any fatigue ---
+        if available:
+            return best_by_rp(available)
 
         return None
+
+    # @staticmethod
+    # def select_relief_pitcher(
+    #     team: TeamInGame, current_pitcher: PlayerInGame, inning: Inning, score: Score,
+    # ) -> PlayerInGame | None:
+    #     """
+    #     Select the best available relief pitcher.
+
+    #     TODO ASAP
+    #     New priority needs inning and score info:
+    #     Inning is 9 and <3 run lead: pick best Closer with GOOD or above
+    #     Otherwise, best GOOD/FRESH reliever
+    #     Inning 7-8 and <3 run diff: pick best Setup with GOOD/FRESH
+    #     Otherwise, best GOOD/FRESH reliever, but not Closer
+    #     Inning 5-6 and <3 run diff: pick best Long with GOOD/FRESH
+    #     Otherwise, best Utility with GOOD/FRESH
+    #     Otherwise, best Non-starter, non-closer with TIRED
+    #     Otherwise, Fresh Starter
+    #     Otherwise, best status pitcher
+
+    #     Old Priority:
+    #     1. Non-starters with FRESH status
+    #     2. Non-starters with GOOD status
+    #     3. Non-starters with TIRED status
+    #     4. Starters with FRESH status (emergency)
+    #     5. None available
+    #     """
+
+    #     # Get all available pitchers
+    #     available_pitchers = [
+    #         p
+    #         for p in team.players
+    #         if p != current_pitcher
+    #         and p.game_stats.pitching.pitch_count == 0
+    #         and p.pitcher_fatigue is not None
+    #         and p.current_position is None  # not already playing a field position
+    #     ]
+
+    #     if not available_pitchers:
+    #         return None
+
+    #     # Categorize
+    #     relievers = [p for p in available_pitchers if not p.is_starter]
+    #     starters = [p for p in available_pitchers if p.is_starter]
+
+    #     # Try relievers by fatigue level
+    #     for fatigue_level in [
+    #         FatigueLevel.FRESH,
+    #         FatigueLevel.GOOD,
+    #         FatigueLevel.TIRED,
+    #     ]:
+    #         candidates = [
+    #             p for p in relievers if p.pitcher_fatigue.get_level() == fatigue_level
+    #         ]
+    #         if candidates:
+    #             # Pick best reliever by RP rating
+    #             candidates.sort(
+    #                 key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get(
+    #                     "rp", 0
+    #                 ),
+    #                 reverse=True,
+    #             )
+    #             return candidates[0]
+
+    #     # Emergency: use fresh starter
+    #     fresh_starters = [
+    #         p for p in starters if p.pitcher_fatigue.get_level() == FatigueLevel.FRESH
+    #     ]
+    #     if fresh_starters:
+    #         fresh_starters.sort(
+    #             key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("p", 0),
+    #             reverse=True,
+    #         )
+    #         return fresh_starters[0]
+
+    #     return None

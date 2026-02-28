@@ -19,7 +19,6 @@ Roster (list of PlayerRecord.ids or full PlayerRecords)
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.player.player_record import PlayerRecord, VALID_ROLES
 from src.player.player_evaluator import PlayerEvaluator
 
@@ -58,30 +57,78 @@ class TeamRecord:
         )
         return [p.id for p in pitchers[:5]]
 
-    def set_bullpen_roles(self, rotation) -> list[dict]:
+    def set_bullpen_roles(self, rotation: list[str]) -> list[dict]:
         """
-        rotation: list of the starting pitchers.
+        rotation: list of player IDs of the starting pitchers.
 
         Return a list of dicts, with keys:
+            player_id (str)
+            role      (str)  -- one of VALID_ROLES
 
-        player_id (str)
-        role      (str)  -- one of VALID_ROLES
         VALID_ROLES = "Closer", "Setup", "Middle", "Long", "Specialist", "Utility"
 
+        Assignment logic:
+        - Closer:  best "stuff" score
+        - Setup:   second best stuff
+        - Long:    best stamina + recovery (combined >= 140), skipped if no one qualifies
+        - Middle:  next best stuff (2 middles if long was skipped)
+        - Utility: remaining relievers up to 8 total
         """
         roles = []
-        # TODO ASAP
-        pitchers = [p for p in self.players if p.is_pitcher()]
-        # remove the starters in rotation from contention
-        # set a closer first, best "stuff"
-        # stuff = (strikes * 0.5) + (accuracy * 0.2) + (clutch * 0.2) + (ground_balls * 0.1)
-        # set a setup, next best stuff
-        # set a long, best stamina + recovery, should combine over 140 or skip
-        # set a middle, next best stuff
-        # 2 middles if you skip long
-        # rest of pitchers, up to 8 total relievers are utility
+
+        # All pitchers not in the starting rotation
+        relievers = [p for p in self.players if p.is_pitcher() and p.id not in rotation]
+
+        def stuff(p: PlayerRecord) -> float:
+            s = p.skills
+            return (
+                (s["strikes"] * 0.5)
+                + (s["accuracy"] * 0.2)
+                + (s["clutch"] * 0.2)
+                + (s["ground_balls"] * 0.1)
+            )
+
+        # Sort relievers by stuff descending — we'll pull from this ordered list
+        relievers.sort(key=stuff, reverse=True)
+        remaining = list(relievers)
+
+        # --- Closer: best stuff ---
+        if remaining:
+            roles.append({"player_id": remaining.pop(0).id, "role": "Closer"})
+
+        # --- Setup: second best stuff ---
+        if remaining:
+            roles.append({"player_id": remaining.pop(0).id, "role": "Setup"})
+
+        # --- Long: best stamina + recovery >= 140, pulled from remaining ---
+        long_candidate = next(
+            (
+                p
+                for p in remaining
+                if (p.skills["stamina"] + p.skills["recovery"]) >= 140
+            ),
+            None,
+        )
+        skip_long = long_candidate is None
+        if long_candidate:
+            remaining.remove(long_candidate)
+            roles.append({"player_id": long_candidate.id, "role": "Long"})
+
+        # --- Middle: next 1 or 2 best stuff (2 if long was skipped) ---
+        middle_slots = 2 if skip_long else 1
+        for _ in range(middle_slots):
+            if remaining:
+                roles.append({"player_id": remaining.pop(0).id, "role": "Middle"})
+
+        # --- Utility: fill up to 8 total relievers ---
+        max_relievers = 8
+        for p in remaining:
+            if len(roles) >= max_relievers:
+                break
+            roles.append({"player_id": p.id, "role": "Utility"})
 
         for player_role in roles:
             if player_role["role"] not in VALID_ROLES:
-                raise(f"Invalid role type: {player_role["role"]}")
+                raise ValueError(f"Invalid role type: {player_role['role']}")
+
         return roles

@@ -70,7 +70,9 @@ class LeagueBootstrapper:
             )
             self._bootstrap_bullpen(team, rotation, season_id, start_date)
 
-    def _bootstrap_bullpen(self, team, rotation, season_id: str, start_date: str) -> None:
+    def _bootstrap_bullpen(
+        self, team, rotation, season_id: str, start_date: str
+    ) -> None:
         """
         Setup the bullpen for a team.
         We assume the rotation is 5 man, and we can have up to 8 pitchers assigned to

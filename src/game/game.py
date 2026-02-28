@@ -809,7 +809,10 @@ class Game:
             )
         if change > rnd:
             pitcher = GameStrategy.select_relief_pitcher(
-                self.pitch_team, self.current_pitcher, self.inning, self.score,
+                self.pitch_team,
+                self.current_pitcher,
+                self.inning,
+                self.score,
             )
             if pitcher:
                 self._close_pitcher_appearance()

@@ -11,6 +11,7 @@ import sqlite3
 from pathlib import Path
 import traceback
 
+from src.db.repositories import bullpen_roles_repo
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -272,21 +273,6 @@ def play_game(
         if player.record.id in away_rotation_ids:
             player.is_starter = True
 
-    # DEBUG
-    # last_start = conn.execute(
-    #     """SELECT g.date, p.first_name, p.last_name, tr.rotation_order
-    #     FROM player_game_stats pgs
-    #     JOIN games g ON pgs.game_id = g.id
-    #     JOIN players p ON pgs.player_id = p.id
-    #     JOIN team_rotations tr ON pgs.player_id = tr.player_id
-    #     WHERE pgs.team_id = ? AND g.season_id = ?
-    #     AND pgs.pitch_game_started = 1
-    #     ORDER BY g.date DESC LIMIT 1""",
-    #     (home_team.record.id, season_id)
-    # ).fetchone()
-    # print(f"Last starter for {home_team.record.mascot}: {last_start}")
-    # DEBUG
-
     # Get next starters from rotation
     home_starter_id = rotations_repo.get_next_starter(
         home_team.record.id, season_id, game_date
@@ -294,6 +280,20 @@ def play_game(
     away_starter_id = rotations_repo.get_next_starter(
         away_team.record.id, season_id, game_date
     )
+
+    # Setup bullpen roles
+    home_bullpen = bullpen_roles_repo.get_current_roles(conn, home_record.id, season_id)
+    away_bullpen = bullpen_roles_repo.get_current_roles(conn, away_record.id, season_id)
+    home_role_map = {entry["player_id"]: entry["role"] for entry in home_bullpen}
+    away_role_map = {entry["player_id"]: entry["role"] for entry in away_bullpen}
+
+    for player in home_team.players:
+        if player.id in home_role_map:
+            player.bullpen_role = home_role_map[player.id]
+
+    for player in away_team.players:
+        if player.id in away_role_map:
+            player.bullpen_role = away_role_map[player.id]
 
     if args.logs:
         log_level = logging.INFO

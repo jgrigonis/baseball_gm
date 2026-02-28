@@ -1,11 +1,12 @@
 Todo list
 
+passed_balls, catcher_interference, catcher_cs and catcher_sb 
+not getting populated ever
+
 Track blown saves, holds
 
-Set a Closer role for pitchers
-Assign all bullpen roles
-schema:
-retirement flag on players, bullpen roles table, and free agency 
+schema updates:
+retirement flag on players, and free agency 
 
 Assign earned runs
 
@@ -16,10 +17,10 @@ Injuries
 General player fatigue, different from pitcher fatigue
 
 Handedness accounted for many places L vs R, etc.
+bryan quick is a left handed shortstop
 
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
-
 
 More for Human UI:
 Eventually defensive shifts, mound visits
