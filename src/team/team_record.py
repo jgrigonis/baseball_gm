@@ -19,7 +19,8 @@ Roster (list of PlayerRecord.ids or full PlayerRecords)
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.player.player_record import PlayerRecord
+from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.player.player_record import PlayerRecord, VALID_ROLES
 from src.player.player_evaluator import PlayerEvaluator
 
 
@@ -56,3 +57,31 @@ class TeamRecord:
             reverse=True,
         )
         return [p.id for p in pitchers[:5]]
+
+    def set_bullpen_roles(self, rotation) -> list[dict]:
+        """
+        rotation: list of the starting pitchers.
+
+        Return a list of dicts, with keys:
+
+        player_id (str)
+        role      (str)  -- one of VALID_ROLES
+        VALID_ROLES = "Closer", "Setup", "Middle", "Long", "Specialist", "Utility"
+
+        """
+        roles = []
+        # TODO ASAP
+        pitchers = [p for p in self.players if p.is_pitcher()]
+        # remove the starters in rotation from contention
+        # set a closer first, best "stuff"
+        # stuff = (strikes * 0.5) + (accuracy * 0.2) + (clutch * 0.2) + (ground_balls * 0.1)
+        # set a setup, next best stuff
+        # set a long, best stamina + recovery, should combine over 140 or skip
+        # set a middle, next best stuff
+        # 2 middles if you skip long
+        # rest of pitchers, up to 8 total relievers are utility
+
+        for player_role in roles:
+            if player_role["role"] not in VALID_ROLES:
+                raise(f"Invalid role type: {player_role["role"]}")
+        return roles

@@ -4,6 +4,7 @@ from typing import List
 
 from src.game.bases import Bases, FIRST, SECOND, THIRD
 from src.game.count import Count
+from src.game.inning import Inning
 from src.game.intents.pitch import PrePitchSituation
 from src.game.score import Score
 from src.player.fatigue import FatigueLevel
@@ -651,12 +652,25 @@ class GameStrategy:
 
     @staticmethod
     def select_relief_pitcher(
-        team: TeamInGame, current_pitcher: PlayerInGame
+        team: TeamInGame, current_pitcher: PlayerInGame, inning: Inning, score: Score,
     ) -> PlayerInGame | None:
         """
         Select the best available relief pitcher.
 
-        Priority:
+        TODO ASAP
+        New priority needs inning and score info:
+        Inning is 9 and <3 run lead: pick best Closer with GOOD or above
+        Otherwise, best GOOD/FRESH reliever
+        Inning 7-8 and <3 run diff: pick best Setup with GOOD/FRESH
+        Otherwise, best GOOD/FRESH reliever, but not Closer
+        Inning 5-6 and <3 run diff: pick best Long with GOOD/FRESH
+        Otherwise, best Utility with GOOD/FRESH
+        Otherwise, best Non-starter, non-closer with TIRED
+        Otherwise, Fresh Starter
+        Otherwise, best status pitcher
+
+
+        Old Priority:
         1. Non-starters with FRESH status
         2. Non-starters with GOOD status
         3. Non-starters with TIRED status

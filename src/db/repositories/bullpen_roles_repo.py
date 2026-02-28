@@ -16,7 +16,7 @@ Enforces:
 from datetime import date
 from typing import Optional
 
-VALID_ROLES = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
+from src.player.player_record import VALID_ROLES
 
 
 # ---------------------------------------------------------------------------

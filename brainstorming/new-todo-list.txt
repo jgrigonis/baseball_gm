@@ -1,6 +1,6 @@
 Todo list
 
-Track blown saves, holds, 
+Track blown saves, holds
 
 Set a Closer role for pitchers
 Assign all bullpen roles
@@ -33,5 +33,5 @@ or finish a half-inning. This effectively killed the "LOOGY"
 (left-handed one-out guy), as relievers can no longer be constantly 
 swapped in to face just one batter
 
-Era rules, dh, etc.
+Era rules, dh, extra innings rules, etc.
 

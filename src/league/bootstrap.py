@@ -1,5 +1,6 @@
 # src/league/bootstrap.py
 
+from src.db.repositories.bullpen_roles_repo import set_roles
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -67,3 +68,21 @@ class LeagueBootstrapper:
                 player_id_list=rotation,
                 effective_date=start_date,
             )
+            self._bootstrap_bullpen(team, rotation, season_id, start_date)
+
+    def _bootstrap_bullpen(self, team, rotation, season_id: str, start_date: str) -> None:
+        """
+        Setup the bullpen for a team.
+        We assume the rotation is 5 man, and we can have up to 8 pitchers assigned to
+        roles in the bullpen.
+
+        There are 6 roles to choose from:
+        - 'Closer', 'Setup', 'Middle', 'Long', 'Specialist', 'Utility'
+
+        """
+        roles = team.set_bullpen_roles(rotation)
+        if not roles:
+            print(
+                f"Warning: No pitchers found for team {team.name}, skipping bullpen roles."
+            )
+        set_roles(self.conn, team.id, season_id, roles, start_date)

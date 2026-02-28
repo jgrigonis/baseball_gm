@@ -28,6 +28,8 @@ BattingSide: TypeAlias = str  # "L" | "R" | "S"
 ThrowingHand: TypeAlias = str  # "L" | "R"
 PositionCode: TypeAlias = str  # "ss" | "cf" | etc.
 
+VALID_ROLES = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
+
 
 @dataclass(slots=True, frozen=True)
 class PlayerRecord:
