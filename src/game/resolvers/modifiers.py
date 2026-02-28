@@ -236,7 +236,7 @@ class InPlayModifiers:
     def modify_for_pitcher(resolver, pitcher: PlayerInGame, score: Score):
         """Modify the probabilities based on pitcher skills."""
         ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
-        resolver.in_play_outcome.add("ground_out", 4 * ground_balls)
+        resolver.in_play_outcome.add("ground_out", 4 * (ground_balls - 50))
         resolver.in_play_outcome.add("double_play", 0.8 * ground_balls)
         resolver.in_play_outcome.add("fielders_choice", 0.5 * ground_balls)
         resolver.in_play_outcome.add("sac_fly", -0.5 * (ground_balls - 50))

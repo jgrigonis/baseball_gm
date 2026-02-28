@@ -20,7 +20,7 @@ def resolve_concurrent_events(resolver, intent: PitchIntent, game) -> List[GameE
     advancement isn't 100% but steal makes it even more likely
 
     NOTE: Steals won't happen on a ball_in_play, as they are handled
-    in _resolve_ball_in_play
+    in resolve_ball_in_play
 
     """
     events = []

@@ -188,8 +188,15 @@ def show_all_leaderboards(players, top_n=10, min_pa=100, min_ip=10):
         format_str="d",
     )
 
+    analyzer.print_leaderboard(
+        "ASSIST LEADERS",
+        analyzer.leaderboard_assists(),
+        "assists",
+        top_n=top_n,
+        format_str="d",
+    )
 
-# Usage:
+
 if __name__ == "__main__":
     args = get_args()
     db_path = Path(LEAGUE_FILES_DIR) / args.file

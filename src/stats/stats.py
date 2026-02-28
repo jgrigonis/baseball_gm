@@ -38,13 +38,21 @@ class SeasonStats(object):
         self.games_played = games_played
 
     def add_game(self, game_stats):
-        """Add a game to the season statistics."""
+        """
+        Add a game to the season statistics.
+
+        We aggregate from the DB, so this is unused.
+        """
         self.stats.add(game_stats)
         self.games_played += 1
 
 
 class CareerStats(object):
-    """The career statistics object."""
+    """
+    The career statistics object.
+
+    Technically, this isn't used anywhere yet.
+    """
 
     def __init__(self):
         """Initialize the career statistics."""

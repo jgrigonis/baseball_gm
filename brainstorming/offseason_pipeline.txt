@@ -1,10 +1,19 @@
 The offseason pipeline steps in order would be:
 
 Archive — snapshot skills to player_skills_history, aggregate season stats
+Where do we aggregate season stats? There's no DB location
+
 Age — run age_to() on every active player, write back to player_skills
+Also write out new csv files in a year subdir
+
 Retire — evaluate players for retirement based on age/skill decline
+
 Free agency — released/retired players leave rosters
+
 Draft — generate new young players to replenish the pool
+
 Roster moves — AI fills gaps on each team from free agent pool
+
 Reset — clear pitcher_state, create new season record
+
 Reassign starting rotations and bullpen roles

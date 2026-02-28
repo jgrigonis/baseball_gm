@@ -131,7 +131,7 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
                     )
 
     events.append(FlyOutEvent(batter=intent.batter))
-    events.append(PutOutEvent(fs.select_outfielder(game)))
+    events.append(PutOutEvent(outfielder))
     events.append(OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher))
     events.append(PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter))
 
@@ -198,7 +198,11 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
         # Successful out
         reason = "ground_out"
         events.append(GroundOutEvent(batter=intent.batter))
-        events.append(PutOutEvent(fielder=game.pos("1b"), assist=fielder))
+        if fielder == game.pos("1b"):
+            # unassisted 3u
+            events.append(PutOutEvent(fielder=game.pos("1b")))
+        else:
+            events.append(PutOutEvent(fielder=game.pos("1b"), assist=fielder))
         events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
         events.extend(
             advance_all_runners(
