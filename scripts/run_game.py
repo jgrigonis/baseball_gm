@@ -60,7 +60,7 @@ def cli():
 
 
 def main(args):
-    # print(args)
+    # logger.info(args)
     # args = get_args()
     levl = logging.INFO
     if args.debug:
@@ -71,7 +71,7 @@ def main(args):
         name="game", level=levl, console_level=levl, log_id=str(uuid.uuid4())
     )
     seed = args.seed if args.seed is not None else random.randint(0, 999999)
-    print(f"🎲 Seed: {seed}")  # always print so you can replay
+    logger.info(f"🎲 Seed: {seed}")  # always logger.info so you can replay
     rng = random.Random(seed)
 
     tf = TeamFactory(log_level=levl, rng=rng)
@@ -89,15 +89,15 @@ def main(args):
     home_team.set_lineup()
     away_team.set_lineup()
 
-    print(home_team.output_lineup_ratings())
-    print(home_team.output_pitcher_ratings())
-    print(away_team.output_lineup_ratings())
-    print(away_team.output_pitcher_ratings())
+    logger.info(home_team.output_lineup_ratings())
+    logger.info(home_team.output_pitcher_ratings())
+    logger.info(away_team.output_lineup_ratings())
+    logger.info(away_team.output_pitcher_ratings())
 
-    print(home_team.output_lineup_skills())
-    print(home_team.output_pitcher_skills())
-    print(away_team.output_lineup_skills())
-    print(away_team.output_pitcher_skills())
+    logger.info(home_team.output_lineup_skills())
+    logger.info(home_team.output_pitcher_skills())
+    logger.info(away_team.output_lineup_skills())
+    logger.info(away_team.output_pitcher_skills())
 
     my_game = Game(
         home_team=home_team,
@@ -111,30 +111,30 @@ def main(args):
     d = my_game.decisions
     if d:
         if d.win:
-            print(f"✅ Win:  {d.win.pitcher.name}")
+            logger.info(f"✅ Win:  {d.win.pitcher.name}")
         if d.loss:
-            print(f"❌ Loss: {d.loss.pitcher.name}")
+            logger.info(f"❌ Loss: {d.loss.pitcher.name}")
         if d.save:
-            print(f"🔒 Save: {d.save.pitcher.name}")
+            logger.info(f"🔒 Save: {d.save.pitcher.name}")
 
-    print(home_team.output_defensive_stats())
-    print(away_team.output_defensive_stats())
+    logger.info(home_team.output_defensive_stats())
+    logger.info(away_team.output_defensive_stats())
 
-    print(home_team.output_lineup_ratings())
-    print(home_team.output_pitcher_ratings())
-    print(away_team.output_lineup_ratings())
-    print(away_team.output_pitcher_ratings())
+    logger.info(home_team.output_lineup_ratings())
+    logger.info(home_team.output_pitcher_ratings())
+    logger.info(away_team.output_lineup_ratings())
+    logger.info(away_team.output_pitcher_ratings())
 
-    print(home_team.output_lineup_skills())
-    print(home_team.output_pitcher_skills())
-    print(away_team.output_lineup_skills())
-    print(away_team.output_pitcher_skills())
+    logger.info(home_team.output_lineup_skills())
+    logger.info(home_team.output_pitcher_skills())
+    logger.info(away_team.output_lineup_skills())
+    logger.info(away_team.output_pitcher_skills())
 
-    print(home_team.output_batting_stats())
-    print(away_team.output_batting_stats())
+    logger.info(home_team.output_batting_stats())
+    logger.info(away_team.output_batting_stats())
 
-    print(home_team.output_pitching_stats())
-    print(away_team.output_pitching_stats())
+    logger.info(home_team.output_pitching_stats())
+    logger.info(away_team.output_pitching_stats())
 
     return result
 
