@@ -15,6 +15,7 @@ class GameResultResolver:
     """
     Resolve the pitching decisions for a game.
     """
+
     @staticmethod
     def resolve(
         pitcher_appearances: list[PitcherAppearance],

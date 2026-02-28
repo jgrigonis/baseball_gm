@@ -24,15 +24,18 @@ cursor = conn.execute(
 print("Player info:", cursor.fetchone())
 
 # Check how many games they played
-cursor = conn.execute("""
+cursor = conn.execute(
+    """
     SELECT COUNT(DISTINCT game_id) as games_played
     FROM player_game_stats
     WHERE player_id = (SELECT id FROM players WHERE first_name = 'TERRY' AND last_name = 'SMTIH')
-""")
+"""
+)
 print("Games played:", cursor.fetchone()["games_played"])
 
 # Check their full batting stats
-cursor = conn.execute("""
+cursor = conn.execute(
+    """
     SELECT 
         SUM(bat_ab) as AB,
         SUM(bat_hits) as H,
@@ -43,7 +46,8 @@ cursor = conn.execute("""
         SUM(bat_game_started) as GS
     FROM player_game_stats
     WHERE player_id = (SELECT id FROM players WHERE first_name = 'TERRY' AND last_name = 'SMTIH')
-""")
+"""
+)
 row = cursor.fetchone()
 for key in row.keys():
     print(f"{key}: {row[key]}")

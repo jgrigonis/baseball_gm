@@ -15,7 +15,8 @@ def db_connection():
     conn.row_factory = sqlite3.Row
 
     # Create players table
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE players (
             id TEXT PRIMARY KEY,
             first_name TEXT NOT NULL,
@@ -25,10 +26,12 @@ def db_connection():
             position TEXT NOT NULL,
             age TEXT
         )
-    """)
+    """
+    )
 
     # Create player_skills table
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE player_skills (
             player_id TEXT PRIMARY KEY,
             clutch INTEGER NOT NULL,
@@ -50,10 +53,12 @@ def db_connection():
             updated_at TEXT NOT NULL,
             FOREIGN KEY (player_id) REFERENCES players(id)
         )
-    """)
+    """
+    )
 
     # Create player_skills_history table
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE player_skills_history (
             player_id TEXT NOT NULL,
             season_id TEXT NOT NULL,
@@ -77,7 +82,8 @@ def db_connection():
             PRIMARY KEY (player_id, season_id),
             FOREIGN KEY (player_id) REFERENCES players(id)
         )
-    """)
+    """
+    )
 
     yield conn
     conn.close()

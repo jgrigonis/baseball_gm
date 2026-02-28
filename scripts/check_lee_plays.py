@@ -6,7 +6,8 @@ conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 
 # Get a game where Lee didn't start
-cursor = conn.execute("""
+cursor = conn.execute(
+    """
     SELECT g.id
     FROM games g
     JOIN team_players tp ON (g.home_team_id = tp.team_id OR g.away_team_id = tp.team_id)
@@ -17,7 +18,8 @@ cursor = conn.execute("""
         AND bat_game_started = 1
     )
     LIMIT 1
-""")
+"""
+)
 game_without_lee = cursor.fetchone()["game_id"]
 
 # Check if Lee appeared at all in that game

@@ -7,6 +7,7 @@ from src.team.team_in_game_factory import TeamInGameFactory
 from tests.factories.team_record_factory import make_team_record
 from src.player.player_formatters import PlayerTableFormatter
 
+
 def test_simple_game():
     team1 = TeamInGameFactory.from_record(make_team_record(size=10))
 

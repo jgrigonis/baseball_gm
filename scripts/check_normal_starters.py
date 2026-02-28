@@ -6,7 +6,8 @@ conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 
 # Who are the usual 9 starters (the ones who started 174 or close to 174 games)?
-cursor = conn.execute("""
+cursor = conn.execute(
+    """
     SELECT p.first_name, p.last_name, COUNT(*) as games_started
     FROM player_game_stats pgs
     JOIN players p ON pgs.player_id = p.id
@@ -15,7 +16,8 @@ cursor = conn.execute("""
     GROUP BY p.id
     HAVING games_started > 100
     ORDER BY games_started DESC
-""")
+"""
+)
 
 print("Usual starters (100+ games):")
 usual_starters = []

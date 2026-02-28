@@ -97,6 +97,21 @@ CREATE TABLE IF NOT EXISTS team_rotations (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS bullpen_roles (
+    team_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    season_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('Closer', 'Setup', 'Middle', 'Long', 'Specialist', 'Utility')),
+    effective_date TEXT NOT NULL,
+    end_date TEXT,  -- NULL = currently active
+
+    PRIMARY KEY (team_id, player_id, season_id, effective_date),
+
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
     city TEXT NOT NULL,
@@ -302,4 +317,6 @@ CREATE INDEX IF NOT EXISTS idx_player_game_stats_game ON player_game_stats(game_
 CREATE INDEX IF NOT EXISTS idx_player_game_stats_player ON player_game_stats(player_id);
 CREATE INDEX IF NOT EXISTS idx_team_game_stats_game ON team_game_stats(game_id);
 CREATE INDEX IF NOT EXISTS idx_team_game_stats_team ON team_game_stats(team_id);
+CREATE INDEX IF NOT EXISTS idx_bullpen_roles_team_season ON bullpen_roles(team_id, season_id);
+CREATE INDEX IF NOT EXISTS idx_bullpen_roles_player ON bullpen_roles(player_id);
 """

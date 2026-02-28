@@ -3,15 +3,27 @@ import argparse
 import sqlite3
 from pathlib import Path
 
+
 def get_args():
     """
     Get arguments from the command line.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", "-p", default="leagues/league.db", help="Set the path to the database file.")
-    parser.add_argument("--name", "-n", default="JAMES WELLS", help="Set the name of the player to check.")
+    parser.add_argument(
+        "--path",
+        "-p",
+        default="leagues/league.db",
+        help="Set the path to the database file.",
+    )
+    parser.add_argument(
+        "--name",
+        "-n",
+        default="JAMES WELLS",
+        help="Set the name of the player to check.",
+    )
     args = parser.parse_args()
     return args
+
 
 def main(args):
     db_path = Path(args.path)
@@ -22,6 +34,7 @@ def main(args):
     conn.row_factory = sqlite3.Row
     check_info(conn, args.name)
     conn.close()
+
 
 def check_info(conn, name):
     """
@@ -34,7 +47,8 @@ def check_info(conn, name):
         print("Name must be in the format 'First Last'")
         return
 
-    cursor = conn.execute("""
+    cursor = conn.execute(
+        """
         SELECT COUNT(*) as total_games
         FROM games g
         JOIN team_players tp ON (g.home_team_id = tp.team_id OR g.away_team_id = tp.team_id)
@@ -46,7 +60,8 @@ def check_info(conn, name):
     )
     print("Team's total games:", cursor.fetchone()["total_games"])
 
-    cursor = conn.execute("""
+    cursor = conn.execute(
+        """
         SELECT ps.*
         FROM player_skills ps
         JOIN players p ON ps.player_id = p.id
@@ -61,6 +76,6 @@ def check_info(conn, name):
         return
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     args = get_args()
     main(args)

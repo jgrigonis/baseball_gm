@@ -11,19 +11,21 @@ import argparse
 import csv
 import sys
 from pathlib import Path
-from collections import defaultdict
 
 from src.player.positions import AFFINITY_POSITIONS
 from src.player.player_formatters import CSV_FIELDS
 
 POSITION_COL = "PS"
 
+
 def get_args():
     """
     Get arguments from the command line.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--directory", "-d", help="Set the directory to scan.", default="team_files")
+    parser.add_argument(
+        "--directory", "-d", help="Set the directory to scan.", default="team_files"
+    )
     parser.add_argument(
         "--pos", "-p", choices=AFFINITY_POSITIONS, help="Set the position to filter on."
     )
@@ -34,7 +36,9 @@ def get_args():
     return args
 
 
-def scan_directory(directory: Path, position_filter: str | None = None, stat_filter: str | None = None):
+def scan_directory(
+    directory: Path, position_filter: str | None = None, stat_filter: str | None = None
+):
     csv_files = sorted(directory.glob("*.csv"))
     if not csv_files:
         print(f"No CSV files found in {directory}")
@@ -52,7 +56,10 @@ def scan_directory(directory: Path, position_filter: str | None = None, stat_fil
                 skipped.append(path.name)
                 continue
             for row in reader:
-                if position_filter and row.get(POSITION_COL, "").lower() != position_filter.lower():
+                if (
+                    position_filter
+                    and row.get(POSITION_COL, "").lower() != position_filter.lower()
+                ):
                     continue
                 try:
                     st = int(row[stat_filter])
@@ -84,13 +91,18 @@ def scan_directory(directory: Path, position_filter: str | None = None, stat_fil
     # Bucket distribution
     buckets = {"1-30": 0, "31-50": 0, "51-70": 0, "71-90": 0, "91-100": 0}
     for v in all_stat:
-        if v <= 30:    buckets["1-30"] += 1
-        elif v <= 50:  buckets["31-50"] += 1
-        elif v <= 70:  buckets["51-70"] += 1
-        elif v <= 90:  buckets["71-90"] += 1
-        else:          buckets["91-100"] += 1
+        if v <= 30:
+            buckets["1-30"] += 1
+        elif v <= 50:
+            buckets["31-50"] += 1
+        elif v <= 70:
+            buckets["51-70"] += 1
+        elif v <= 90:
+            buckets["71-90"] += 1
+        else:
+            buckets["91-100"] += 1
 
-    print(f"\n  Distribution:")
+    print("\n  Distribution:")
     for bucket, count in buckets.items():
         bar = "█" * (count * 30 // len(all_stat))
         print(f"    {bucket:8s}  {count:4d}  {bar}")
@@ -101,7 +113,9 @@ def scan_directory(directory: Path, position_filter: str | None = None, stat_fil
     print(f"  {'-'*52}")
     for team, values in sorted(by_team.items()):
         avg = sum(values) / len(values)
-        print(f"  {team:<28} {len(values):>5}  {min(values):>4}  {avg:>5.1f}  {max(values):>4}")
+        print(
+            f"  {team:<28} {len(values):>5}  {min(values):>4}  {avg:>5.1f}  {max(values):>4}"
+        )
 
     if skipped:
         print(f"\n  Skipped (no STAT column): {', '.join(skipped)}")

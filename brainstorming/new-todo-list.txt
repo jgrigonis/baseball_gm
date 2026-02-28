@@ -25,4 +25,11 @@ More for Human UI:
 Eventually defensive shifts, mound visits
 substitutions, pinch hitting, pinch running
 
+Low prio:
+
+The 3 batter rule. The 3-batter minimum rule, introduced by MLB 
+to speed up games, requires pitchers to face at least three batters 
+or finish a half-inning. This effectively killed the "LOOGY" 
+(left-handed one-out guy), as relievers can no longer be constantly 
+swapped in to face just one batter
 
