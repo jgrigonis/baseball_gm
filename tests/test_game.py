@@ -46,15 +46,6 @@ class TestGameInitialization:
         with pytest.raises(ValueError, match="Both home and away teams are required"):
             Game(None, away)
 
-    # def test_init_validates_same_team(self, mock_teams):
-    #     home, _ = mock_teams
-    #     home.id = "same-id"
-    #     away = Mock()
-    #     away.id = "same-id"
-
-    #     with pytest.raises(ValueError, match="cannot be the same"):
-    #         Game(home, away)
-
     def test_init_default_values(self, mock_teams):
         home, away = mock_teams
         game = Game(home, away)
@@ -376,9 +367,13 @@ class TestEndHalfInning:
         mock_batter.player.name = "Batter"
         mock_pitcher = Mock()
         mock_pitcher.name = "Pitcher"
+        mock_pitcher.pitcher_fatigue = (
+            None  # triggers early return in should_consider_pitching_change
+        )
 
         game.bat_team.current_batter = mock_batter
         game.pitch_team.current_pitcher = mock_pitcher
+        game._sync_players = Mock()  # prevent it from overwriting current_pitcher
 
         return game
 
@@ -406,14 +401,6 @@ class TestEndHalfInning:
         assert game.count.balls == 0
         assert game.count.strikes == 0
 
-    # def test_end_half_inning_clears_queue(self, game):
-    #     event = Mock(spec=GameEvent)
-    #     game._queue.append(event)
-
-    #     game._end_half_inning()
-
-    #     assert len(game._queue) == 0
-
     def test_end_half_inning_swaps_teams(self, game):
         original_bat_team = game.bat_team
         original_pitch_team = game.pitch_team
@@ -436,6 +423,7 @@ class TestPostEvent:
         mock_batter = Mock()
         mock_batter.player.name = "Next Batter"
         game.bat_team.next_batter = Mock(return_value=mock_batter)
+        game._sync_players = Mock()  # prevent it from overwriting current_pitcher
 
         return game
 
@@ -456,9 +444,16 @@ class TestPostEvent:
         mock_batter.player.name = "Batter"
         mock_pitcher = Mock()
         mock_pitcher.name = "Pitcher"
+        mock_pitcher.pitcher_fatigue = (
+            None  # triggers early return in should_consider_pitching_change
+        )
+        # mock_pitcher.pitcher_fatigue.get_level.return_value = FatigueLevel.FRESH
+        # mock_pitcher.game_stats.pitching.pitch_count = 0
+        # mock_pitcher.game_stats.pitching.ip_float = 0.0
 
         game.bat_team.current_batter = mock_batter
         game.pitch_team.current_pitcher = mock_pitcher
+        game.current_pitcher = mock_pitcher
 
         game._post_event()
 
@@ -664,6 +659,9 @@ class TestIntegration:
         mock_batter.player.name = "Batter"
         mock_pitcher = Mock()
         mock_pitcher.name = "Pitcher"
+        mock_pitcher.pitcher_fatigue = (
+            None  # triggers early return in should_consider_pitching_change
+        )
 
         home.current_batter = mock_batter
         away.current_batter = mock_batter

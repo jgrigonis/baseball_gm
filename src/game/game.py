@@ -518,32 +518,6 @@ class Game:
             and not self._half_inning_over()
         ):
             self._consider_pitching_change()
-            # # This will eventually return a range from 0 to 1.
-            # # Use random chance for the "AI" to replace the pitcher
-            # # based on the level from 0 to 1
-            # # 1.0 meaning definitely change
-            # # 0.0 meaning don't change.
-            # rnd = self.rng.random()
-            # change = GameStrategy.should_consider_pitching_change(
-            #     self.current_pitcher, self.score_differential
-            # )
-            # if change > 0.2:
-            #     self.logger.info(
-            #         f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
-            #     )
-            # if change > rnd:
-            #     pitcher = GameStrategy.select_relief_pitcher(
-            #         self.pitch_team, self.current_pitcher
-            #     )
-            #     if pitcher:
-            #         self._close_pitcher_appearance()
-            #         self.current_pitcher = pitcher
-            #         self.current_pitcher.game_stats.pitching.game_played = 1
-            #         self.current_pitcher.current_position = "p"
-            #         self._open_pitcher_appearance(pitcher)
-            #         self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
-            #     else:
-            #         self.logger.info("⚠️ No available pitchers!")
 
         # If 3 outs reached, clear remaining queue EXCEPT PlateAppearanceEndEvent
         if self._half_inning_over() and self._queue:
