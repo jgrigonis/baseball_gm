@@ -293,6 +293,27 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["strike_outs"], reverse=True)
 
+    def leaderboard_pitch_walks(self, min_innings=0) -> List[Dict[str, Any]]:
+        """Get pitchers ranked by walks"""
+        leaders = []
+
+        for p in self.players:
+            ip = p.game_stats.pitching.ip_float
+            if ip >= min_innings:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "walks": p.game_stats.pitching.walks,
+                        "innings": ip,
+                        "bb_per_9": (
+                            (p.game_stats.pitching.walks / ip * 9) if ip > 0 else 0
+                        ),
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["walks"], reverse=True)
+
     def leaderboard_whip(self, min_innings=5.0) -> List[Dict[str, Any]]:
         """Get pitchers ranked by WHIP (Walks + Hits per Inning Pitched)"""
         leaders = []

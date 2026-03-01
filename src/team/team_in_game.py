@@ -232,7 +232,7 @@ class TeamInGame:
 
     def output_lineup_skills(self) -> str:
         """Output the starting lineup skills as a string."""
-        output = ""
+        output = "\n"
         output += PlayerTableFormatter.header_skills()
         output += "\n"
         for slot in self.lineup:
@@ -243,7 +243,7 @@ class TeamInGame:
 
     def output_lineup_ratings(self) -> str:
         """Output the starting lineup ratings as a string."""
-        output = ""
+        output = "\n"
         output += PlayerTableFormatter.header_ratings()
         output += "\n"
         for slot in self.lineup:
@@ -254,21 +254,21 @@ class TeamInGame:
 
     def output_pitcher_ratings(self) -> str:
         """Output the current pitcher ratings as a string."""
-        output = ""
+        output = "\n"
         output += PlayerTableFormatter.hor_ratings(self.current_pitcher)
         output += "\n"
         return output
 
     def output_pitcher_skills(self) -> str:
         """Output the current pitcher skills as a string."""
-        output = ""
+        output = "\n"
         output += PlayerTableFormatter.hor_skills(self.current_pitcher)
         output += "\n"
         return output
 
     def output_batting_stats(self) -> str:
         """Output the team's batting stats as a string."""
-        output = ""
+        output = "\n"
         output += PlayerTableFormatter.horizontal_stat_header()
         output += "\n"
         for player in self.players:
@@ -279,7 +279,7 @@ class TeamInGame:
 
     def output_pitching_stats(self) -> str:
         """Output the team's pitching stats as a string."""
-        output = ""
+        output = "\n"
         output += PlayerTableFormatter.horizontal_pitching_stat_header()
         output += "\n"
         for player in self.players:
@@ -290,7 +290,7 @@ class TeamInGame:
 
     def output_defensive_stats(self) -> str:
         """Output the team's defensive stats as a string."""
-        output = ""
+        output = "\n"
         output += PlayerTableFormatter.horizontal_defensive_stat_header()
         output += "\n"
         for player in self.players:

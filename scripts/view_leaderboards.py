@@ -168,6 +168,14 @@ def show_all_leaderboards(players, top_n=10, min_pa=100, min_ip=10):
     )
 
     analyzer.print_leaderboard(
+        "WALK LEADERS (Higher is worse)",
+        analyzer.leaderboard_pitch_walks(min_innings=0),
+        "walks",
+        top_n=top_n,
+        format_str="d",
+    )
+
+    analyzer.print_leaderboard(
         "WHIP LEADERS (Lower is Better)",
         analyzer.leaderboard_whip(min_innings=min_ip),
         "whip",

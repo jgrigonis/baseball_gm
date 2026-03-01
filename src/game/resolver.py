@@ -103,8 +103,8 @@ class Resolver:
         """Initialize base weights for in-play outcomes."""
         self.in_play_outcome.set_weights(
             {
-                "fly_out": 2050,
-                "ground_out": 2050,
+                "fly_out": 2900,
+                "ground_out": 900,  # 1700
                 "single": 1350,
                 "double": 360,
                 "triple": 45,

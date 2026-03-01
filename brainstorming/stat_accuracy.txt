@@ -30,3 +30,21 @@ Definition: An ERA under 3.00 signifies an "excellent" performance,
 whereas a 4.00-5.00 range is considered average in modern baseball
 
 Saves leader seems low, even after assigning bullpen roles.
+
+6 pitchers under 1.0 WHIP in 2025
+4 pitchers under 1.0 WHIP in 2024
+
+
+12 pitchers under 3 ERA in 2025, 1 under 2
+9 pitchers under 3 ERA in 2024
+
+12 pitchers over 200 Ks, 2025
+11 pitchers over 200 Ks, 2024
+
+7 pitchers over 70 walks in 2025, 1 over 80
+3 pitchers over 70 walks in 2024
+
+
+0.86 to 1.39 HR per team/game in the 2000s
+https://www.baseball-reference.com/leagues/majors/bat.shtml
+
