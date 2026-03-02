@@ -51,6 +51,12 @@ def get_args():
     parser.add_argument(
         "--seed", "-s", type=int, default=None, help="RNG seed for reproducibility."
     )
+    parser.add_argument(
+        "--home", default=None, help="Home Team Record"
+    )
+    parser.add_argument(
+        "--away", "-a", default=None, help="Away Team Record"
+    )
     args = parser.parse_args()
     return args
 
@@ -76,10 +82,22 @@ def main(args):
 
     tf = TeamFactory(log_level=levl, rng=rng)
     # Set up Home Team Record
-    home_team_record = tf.generate_team(city=HOME_CITY, mascot=HOME_MASCOT)
+    home_set = False
+    if hasattr(args, 'home'):
+        if args.home:
+            home_team_record = args.home
+            home_set = True
+    if not home_set:
+        home_team_record = tf.generate_team(city=HOME_CITY, mascot=HOME_MASCOT)
 
     # Set up Away Team Record
-    away_team_record = tf.generate_team(city=AWAY_CITY, mascot=AWAY_MASCOT)
+    away_set = False
+    if hasattr(args, 'away'):
+        if args.away:
+            away_team_record = args.away
+            away_set = True
+    if not away_set:
+        away_team_record = tf.generate_team(city=AWAY_CITY, mascot=AWAY_MASCOT)
 
     # setup TeamInGame objects
     home_team = TeamInGameFactory.from_record(home_team_record)
