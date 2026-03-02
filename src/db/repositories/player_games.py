@@ -62,7 +62,7 @@ class PlayerGameRepository:
                 bat_ab, bat_hits, bat_doubles, bat_triples,
                 bat_home_runs, bat_rbi, bat_runs,
                 bat_walks, bat_strike_outs, bat_hbp, bat_sac_flys,
-                bat_sac_bunts, bat_gdp, bat_gtp, bat_stolen_bases, bat_caught_stealing, bat_pickoffs,
+                bat_sac_bunts, bat_gdp, bat_gtp, bat_stolen_bases, bat_caught_stealing,
 
                 pitch_game_played, pitch_game_started,
                 pitch_complete_game, pitch_shutout, pitch_win, pitch_loss, pitch_save, pitch_hold,
@@ -71,9 +71,10 @@ class PlayerGameRepository:
                 pitch_hit_batters, pitch_doubles, pitch_triples, pitch_pickoffs, 
                 pitch_balks, pitch_wild_pitches, pitch_count,
 
-                field_putouts, field_assists, field_errors
+                field_putouts, field_assists, field_errors, passed_balls, 
+                catcher_interferences, catcher_cs, catcher_sb
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 game_id,
@@ -98,7 +99,6 @@ class PlayerGameRepository:
                 b.gtp,
                 b.sb,
                 b.cs,
-                b.pickoffs,
                 p.game_played,
                 p.game_started,
                 p.complete_game,
@@ -123,6 +123,10 @@ class PlayerGameRepository:
                 f.putouts,
                 f.assists,
                 f.errors,
+                f.passed_balls,
+                f.catcher_interferences,
+                f.catcher_cs,
+                f.catcher_sb,
             ),
         )
 
@@ -133,11 +137,23 @@ class PlayerGameRepository:
                     """
                     INSERT OR REPLACE INTO player_game_fielding (
                         game_id, player_id, position,
-                        putouts, assists, errors
+                        putouts, assists, errors, passed_balls, 
+                        catcher_interferences, catcher_cs, catcher_sb
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (game_id, player_id, position, fs.putouts, fs.assists, fs.errors),
+                    (
+                        game_id,
+                        player_id,
+                        position,
+                        fs.putouts,
+                        fs.assists,
+                        fs.errors,
+                        fs.passed_balls,
+                        fs.catcher_interferences,
+                        fs.catcher_cs,
+                        fs.catcher_sb,
+                    ),
                 )
 
         self.conn.commit()
@@ -285,7 +301,6 @@ class PlayerGameRepository:
         b.gtp = row["bat_gtp"]
         b.sb = row["bat_stolen_bases"]
         b.cs = row["bat_caught_stealing"]
-        b.pickoffs = row["bat_pickoffs"]
 
         p.win = row["pitch_win"]
         p.loss = row["pitch_loss"]

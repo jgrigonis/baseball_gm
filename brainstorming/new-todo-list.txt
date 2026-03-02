@@ -1,8 +1,5 @@
 Todo list
 
-passed_balls, catcher_interference, catcher_cs and catcher_sb 
-not getting populated ever
-
 Make sure closer is coming in with 3 outs to go, and not 2 or 
 after a plate appearance in the 9th. Bump up the chance to go
 in, during the 9th inning swap, or 8th to 9th if home team.

@@ -41,7 +41,6 @@ def db_connection():
             bat_gtp INTEGER CHECK (bat_gtp >= 0),
             bat_stolen_bases INTEGER CHECK (bat_stolen_bases >= 0),
             bat_caught_stealing INTEGER CHECK (bat_caught_stealing >= 0),
-            bat_pickoffs INTEGER CHECK (bat_pickoffs >= 0),
 
             -- Pitching
             pitch_game_played INTEGER DEFAULT 0 CHECK (pitch_game_played IN (0, 1)),
@@ -70,6 +69,10 @@ def db_connection():
             field_putouts INTEGER CHECK (field_putouts >= 0),
             field_assists INTEGER CHECK (field_assists >= 0),
             field_errors INTEGER CHECK (field_errors >= 0),
+            passed_balls INTEGER CHECK (passed_balls >= 0),
+            catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
+            catcher_cs INTEGER CHECK (catcher_cs >= 0),
+            catcher_sb INTEGER CHECK (catcher_sb >= 0),
 
             PRIMARY KEY (game_id, player_id)
         )
@@ -86,6 +89,10 @@ def db_connection():
             putouts   INTEGER DEFAULT 0 CHECK (putouts >= 0),
             assists   INTEGER DEFAULT 0 CHECK (assists >= 0),
             errors    INTEGER DEFAULT 0 CHECK (errors >= 0),
+            passed_balls          INTEGER CHECK (passed_balls >= 0),
+            catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
+            catcher_cs            INTEGER CHECK (catcher_cs >= 0),
+            catcher_sb            INTEGER CHECK (catcher_sb >= 0),
             PRIMARY KEY (game_id, player_id, position)
         )
     """
@@ -150,11 +157,14 @@ def sample_stats():
     stats.pitching.pickoffs = 0
     stats.pitching.balks = 0
     stats.pitching.wild_pitches = 1
+    
 
     # Fielding stats
     stats.fielding.putouts = 3
     stats.fielding.assists = 1
     stats.fielding.errors = 0
+    stats.fielding.passed_ball = 0
+
 
     return stats
 

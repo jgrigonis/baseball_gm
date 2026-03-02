@@ -220,7 +220,6 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     bat_gtp INTEGER CHECK (bat_gtp >= 0),
     bat_stolen_bases INTEGER CHECK (bat_stolen_bases >= 0),
     bat_caught_stealing INTEGER CHECK (bat_caught_stealing >= 0),
-    bat_pickoffs INTEGER CHECK (bat_pickoffs >= 0),
 
     -- Pitching
     pitch_game_played INTEGER DEFAULT 0 CHECK (pitch_game_played IN (0, 1)),

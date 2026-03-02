@@ -92,8 +92,8 @@ class Resolver:
                 "balk": 0,  # only with runners on base
                 "illegal_pitch": 0,  # only with bases empty
                 "catcher_interference": 3,
-                "wild_pitch": 10,
-                "passed_ball": 10,
+                "wild_pitch": 35,
+                "passed_ball": 35,
                 "in_play": 5855,
                 "strike": 7100,  # TODO replace with called_strike and swinging_strike
             }
