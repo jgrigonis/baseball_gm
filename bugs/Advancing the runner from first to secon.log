@@ -1,0 +1,68 @@
+Advancing the runner from first to second on a ground out feels wrong.
+The lead runner should be put out most often.
+Grounding out and advancing the runner to third also seems odd.
+Usually the runner should hold.
+
+[INFO] game: 🏏 Batting: CHRIS GARY
+[INFO] game: ⚾ Pitching: ROBERT CHRISTNER
+[INFO] game: ⚾ Pitching: ROBERT CHRISTNER (11P, fresh)
+[INFO] game: ⚾ Bottom of 2
+[INFO] game: Strike 1
+[INFO] game: Ball 1
+[INFO] game: Ball 2
+[INFO] game: Ball 3
+[INFO] game: Ball 4
+[INFO] game: CHRIS GARY was issued a walk.
+[INFO] game: Man on first
+[INFO] game: 🏏 Batting: KENNETH BURKHART
+[INFO] game: KENNETH BURKHART grounded out.
+[INFO] game: PETER WELCH with the putout. RICHARD HOLLOWAY with the assist
+[INFO] game: 1 out
+[INFO] game: Man on second
+[INFO] game: 🏏 Batting: DAVID SILVER
+[INFO] game: Ball 1
+[INFO] game: Strike 1
+[INFO] game: DAVID SILVER grounded out.
+[INFO] game: PETER WELCH with the putout. RICHARD HOLLOWAY with the assist
+[INFO] game: 2 outs
+[INFO] game: Man on third
+[INFO] game: 🏏 Batting: SCOTT KAYS
+[INFO] game: Ball 1
+[INFO] game: Ball 2
+[INFO] game: SCOTT KAYS hit a single.
+[INFO] game: Run scored. Score: Aces 0 - Hornets 1
+[INFO] game: Man on first
+[INFO] game: 🏏 Batting: ROBERT FUENTES
+[INFO] game: Strike 1
+[INFO] game: ROBERT FUENTES grounded out.
+[INFO] game: PETER WELCH with the putout. RICHARD HOLLOWAY with the assist
+[INFO] game: 3 outs
+[INFO] game: 📊 End of Bottom of 2
+
+Happens again later in the game
+
+[INFO] game: 🏏 Batting: BRENT GREEN
+[INFO] game: ⚾ Pitching: JAMES WILLIAMS
+[INFO] game: ⚾ Pitching: JAMES WILLIAMS (58P, tired)
+[INFO] game: ⚠️ Manager considering pitching change for JAMES WILLIAMS
+[INFO] game: ⚾ Top of 5
+[INFO] game: Ball 1
+[INFO] game: Ball 2
+[INFO] game: Strike 1
+[INFO] game: BRENT GREEN hit a single.
+[INFO] game: Man on first
+[INFO] game: ⚠️ Manager considering pitching change for JAMES WILLIAMS
+[INFO] game: 🏏 Batting: MATTHEW MCMANUS
+[INFO] game: MATTHEW MCMANUS grounded out.
+[INFO] game: KENNETH BURKHART with the putout. ROBERT FUENTES with the assist
+[INFO] game: 1 out
+[INFO] game: Man on second
+[INFO] game: ⚠️ Manager considering pitching change for JAMES WILLIAMS
+[INFO] game: 🏏 Batting: GEORGE KEELY
+[INFO] game: Foul ball, strike 1
+[INFO] game: Ball 1
+[INFO] game: Ball 2
+[INFO] game: GEORGE KEELY grounded out.
+[INFO] game: KENNETH BURKHART with the putout.
+[INFO] game: 2 outs
+[INFO] game: Man on third
