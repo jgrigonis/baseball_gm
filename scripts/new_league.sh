@@ -8,7 +8,7 @@ SEASON_ID=$(python src/league/cli.py -m world_league-2025.json -c | tee /dev/tty
 
 "$SCRIPT_DIR/clear_logs.sh"
 
-python src/league/play_season.py -i $SEASON_ID
+python src/league/play_season.py -i $SEASON_ID --logs
 
 python scripts/view_leaderboards.py -i $SEASON_ID
 

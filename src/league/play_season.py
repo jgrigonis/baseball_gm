@@ -1,6 +1,6 @@
 # src/league/play_season.py
 """
-Play all games in a season.
+Play games in a season.
 """
 
 import argparse
@@ -347,6 +347,25 @@ def play_game(
         f"  ⚾ {away_team.record.mascot} ({away_starter.record.last_name if away_starter else '?'}, energy={away_energy})"
         f" @ {home_team.record.mascot} ({home_starter.record.last_name if home_starter else '?'}, energy={home_energy})"
     )
+
+    logger.info(home_team.output_lineup_ratings())
+    logger.info(home_team.output_pitcher_ratings())
+    logger.info(away_team.output_lineup_ratings())
+    logger.info(away_team.output_pitcher_ratings())
+
+    logger.info(home_team.output_lineup_skills())
+    logger.info(home_team.output_pitcher_skills())
+    logger.info(away_team.output_lineup_skills())
+    logger.info(away_team.output_pitcher_skills())
+
+    logger.info(home_team.output_lineup_card())
+    logger.info(away_team.output_lineup_card())
+
+    logger.info(home_team.output_rotation_card())
+    logger.info(away_team.output_rotation_card())
+
+    logger.info(home_team.output_bullpen_card())
+    logger.info(away_team.output_bullpen_card())    
 
     result = game.play()
 

@@ -1,3 +1,4 @@
+# scripts/league_totals.py
 """
 Display aggregate league-wide stats for a season with expected real-world ranges.
 
@@ -37,7 +38,7 @@ RANGES = {
     "slg": (0.386, 0.435),
     "ops": (0.700, 0.768),
     # Pitching
-    "balks": (0.03, 0.04),
+    "balks": (0.02, 0.05),
     "wild_pitches": (0.29, 0.38),
     "whip": (1.27, 1.408),
     # Baserunning

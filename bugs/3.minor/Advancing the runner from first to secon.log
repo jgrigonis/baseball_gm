@@ -3,6 +3,10 @@ The lead runner should be put out most often.
 Grounding out and advancing the runner to third also seems odd.
 Usually the runner should hold.
 
+We should run with debug or trace, whichever will show us the probs.
+Then look at probs in this situation with a runner on first.
+It should be much more likely to have a fielders choice than a ground out.
+
 [INFO] game: 🏏 Batting: CHRIS GARY
 [INFO] game: ⚾ Pitching: ROBERT CHRISTNER
 [INFO] game: ⚾ Pitching: ROBERT CHRISTNER (11P, fresh)

@@ -37,7 +37,7 @@ STEAL_THIRD_SUCCESS_PROB = 0.63  # 63% success rate
 STEAL_HOME_SUCCESS_PROB = 0.05  # 5% success rate
 
 # Error and throwout rates
-BASE_ERROR_RATE = 0.067
+BASE_ERROR_RATE = 0.062
 BASE_THROWOUT_PROB = 0.24
 
 # Favor ss over 2b for covering second.

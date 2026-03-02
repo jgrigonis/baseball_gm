@@ -488,8 +488,8 @@ class PlayerTableFormatter:
         lines.append("  #  Name                    Throws")
         lines.append("  " + "-" * 32)
         for i, q in enumerate(starters, 1):
-            throws = q.player.record.throws or "?"
-            lines.append(f"  {i:<3} {q.player.name:<22}  {throws}")
+            throws = q.record.throws or "?"
+            lines.append(f"  {i:<3} {q.name:<22}  {throws}")
         return "\n".join(lines)
 
     @staticmethod
