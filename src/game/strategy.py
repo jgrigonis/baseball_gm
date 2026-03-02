@@ -13,7 +13,10 @@ from src.player.player_in_game import PlayerInGame
 from src.team.team_in_game import TeamInGame
 
 # Probability constants for new events
+# Pickoff
 BASE_PICKOFF_ATTEMPT_PROB = 0.01  # 1% per pitch
+
+# Steal
 BASE_STEAL_SECOND_PROB = 0.06  # 6% from first
 BASE_STEAL_THIRD_PROB = 0.005  # 0.5% from second
 BASE_STEAL_HOME_PROB = 0.00001  # 0.0001% from third
@@ -22,28 +25,39 @@ STEAL_BEHIND_COUNT_MOD = 0.5
 STEAL_TWO_OUT_MOD = 0.6
 STEAL_CLOSE_GAME_MOD = 1.3
 STEAL_BLOWOUT_MOD = 0.8
+# Double Steal
 DOUBLE_STEAL_FIRST_THIRD = 0.003
 DOUBLE_STEAL_SECOND_THIRD = 0.00001
 DOUBLE_STEAL_FIRST_SECOND = 0.001
 DOUBLE_STEAL_TWO_OUT_MOD = 0.2
+
+# Bunt
 BUNT_PROB = 0.02
 BUNT_PROB_FIRST_PROB = 0.05
 BUNT_PROB_SECOND_PROB = 0.08
 BUNT_CLOSE_GAME_MOD = 1.5
 BUNT_LATE_INNING_MOD = 1.3
+
+# Intentional Walk
 IBB_PROB = 0.0001
 IBB_POWERFUL = 0.001
 IBB_POWERFUL_LATE_INNING = 0.002
 IBB_TWO_OUT_MODIFIER = 1.2
 IBB_STRIKES_MODIFIER = 0.01
 IBB_MORE_STRIKES_MOD = 0.01
+
+# Pitchout
 PITCHOUT_PROB = 0.001
 PITCHOUT_FAST_MOD = 4
 PITCHOUT_BALLS_OVER_STRIKES = 0.1
+
+# Hit and Run
 HNR_PROB = 0.02
 HNR_CONTACT_MOD = 1.5
 HNR_SPEED_MOD = 1.5
 HNR_FAVORABLE_COUNT_MOD = 1.3
+
+# Pitcher Change
 PITCH_COUNT_THRESHOLD = 100
 
 
@@ -759,79 +773,3 @@ class GameStrategy:
             return best_by_rp(available)
 
         return None
-
-    # @staticmethod
-    # def select_relief_pitcher(
-    #     team: TeamInGame, current_pitcher: PlayerInGame, inning: Inning, score: Score,
-    # ) -> PlayerInGame | None:
-    #     """
-    #     Select the best available relief pitcher.
-
-    #     TODO ASAP
-    #     New priority needs inning and score info:
-    #     Inning is 9 and <3 run lead: pick best Closer with GOOD or above
-    #     Otherwise, best GOOD/FRESH reliever
-    #     Inning 7-8 and <3 run diff: pick best Setup with GOOD/FRESH
-    #     Otherwise, best GOOD/FRESH reliever, but not Closer
-    #     Inning 5-6 and <3 run diff: pick best Long with GOOD/FRESH
-    #     Otherwise, best Utility with GOOD/FRESH
-    #     Otherwise, best Non-starter, non-closer with TIRED
-    #     Otherwise, Fresh Starter
-    #     Otherwise, best status pitcher
-
-    #     Old Priority:
-    #     1. Non-starters with FRESH status
-    #     2. Non-starters with GOOD status
-    #     3. Non-starters with TIRED status
-    #     4. Starters with FRESH status (emergency)
-    #     5. None available
-    #     """
-
-    #     # Get all available pitchers
-    #     available_pitchers = [
-    #         p
-    #         for p in team.players
-    #         if p != current_pitcher
-    #         and p.game_stats.pitching.pitch_count == 0
-    #         and p.pitcher_fatigue is not None
-    #         and p.current_position is None  # not already playing a field position
-    #     ]
-
-    #     if not available_pitchers:
-    #         return None
-
-    #     # Categorize
-    #     relievers = [p for p in available_pitchers if not p.is_starter]
-    #     starters = [p for p in available_pitchers if p.is_starter]
-
-    #     # Try relievers by fatigue level
-    #     for fatigue_level in [
-    #         FatigueLevel.FRESH,
-    #         FatigueLevel.GOOD,
-    #         FatigueLevel.TIRED,
-    #     ]:
-    #         candidates = [
-    #             p for p in relievers if p.pitcher_fatigue.get_level() == fatigue_level
-    #         ]
-    #         if candidates:
-    #             # Pick best reliever by RP rating
-    #             candidates.sort(
-    #                 key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get(
-    #                     "rp", 0
-    #                 ),
-    #                 reverse=True,
-    #             )
-    #             return candidates[0]
-
-    #     # Emergency: use fresh starter
-    #     fresh_starters = [
-    #         p for p in starters if p.pitcher_fatigue.get_level() == FatigueLevel.FRESH
-    #     ]
-    #     if fresh_starters:
-    #         fresh_starters.sort(
-    #             key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("p", 0),
-    #             reverse=True,
-    #         )
-    #         return fresh_starters[0]
-
-    #     return None
