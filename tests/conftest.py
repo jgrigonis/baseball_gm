@@ -59,8 +59,10 @@ def mock_teams():
 
     return home, away
 
+
 def pytest_addoption(parser):
     parser.addoption("--slow", action="store_true", default=False)
+
 
 def pytest_collection_modifyitems(config, items):
     if not config.getoption("--slow"):

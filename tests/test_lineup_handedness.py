@@ -16,6 +16,7 @@ INFIELD_POSITIONS = {"c", "ss", "2b", "3b"}
 NUM_ROSTERS = 500
 MAX_VIOLATION_RATE = 0.01  # allow up to 1%
 
+
 @pytest.mark.slow
 def test_left_handed_infielders_are_rare():
     violations = []
@@ -45,6 +46,7 @@ def test_left_handed_infielders_are_rare():
                 + "\n".join(violations[:20])  # show first 20
             )
 
+
 # def test_left_handed_infielders_are_rare_single_roster():
 #     violations = []
 #     rng = random.Random(83)
@@ -69,7 +71,7 @@ def test_left_handed_infielders_are_rare():
 #             violations.append(
 #                 f"Roster 83: {slot.player.record.name} throws L, assigned to {pos.upper()}"
 #             )
-    
+
 #     if violations:
 #         violation_rate = len(violations) / 1
 #         pytest.fail(
@@ -77,4 +79,3 @@ def test_left_handed_infielders_are_rare():
 #             f"across 1 rosters ({violation_rate:.1%} rate):\n"
 #             + "\n".join(violations[:20])  # show first 20
 #         )
-

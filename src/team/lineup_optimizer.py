@@ -319,7 +319,9 @@ class LineupOptimizer:
 
             candidates = remaining
             if pos in LEFT_HAND_CAPPED_POSITIONS:
-                righty_candidates = {p for p in remaining if (p.throws or "R").upper() != "L"}
+                righty_candidates = {
+                    p for p in remaining if (p.throws or "R").upper() != "L"
+                }
                 if righty_candidates:  # only filter if righties are available
                     candidates = righty_candidates
             best = max(candidates, key=lambda p: (p.ratings.get(pos, 0), p.record.id))
