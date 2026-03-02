@@ -1,6 +1,9 @@
-Nice list already—you’re covering most of the “headline” outcomes. If you’re thinking in terms 
-of **everything that can legally happen on a single pitch**, here are some additional events 
-worth considering, grouped by type. This should plug in nicely with your stats/engine design.
+Already  covering most of the “headline” outcomes.
+here is **everything that can legally happen on a single pitch**
+
+here are some additional events worth considering, 
+grouped by type. This should plug in nicely with the 
+stats/engine design.
 
 ---
 
@@ -31,7 +34,8 @@ Some of these end the plate appearance, some don’t.
 
 ---
 
-## Ball-in-play variants (more granular than “ground_out” / “fly_out”)
+## Ball-in-play variants 
+(more granular than “ground_out” / “fly_out”)
 
 If you want more realism or better stat tracking:
 
@@ -116,8 +120,7 @@ fall out naturally.
 
 ---
 
-If you want, I can:
-
 * Normalize these into a **clean enum**
 * Help you assign **realistic probabilities**
-* Or map each event to **stat updates** (`batting`, `pitching`, `fielding`, `baserunning`)
+* Or map each event to **stat updates** 
+(`batting`, `pitching`, `fielding`, `baserunning`)

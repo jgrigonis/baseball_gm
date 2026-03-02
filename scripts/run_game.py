@@ -100,7 +100,7 @@ def main(args):
 
     # TODO we should find a better way to set the starter
     # As well as set bullpen roles.
-    
+
     my_game = Game(
         home_team=home_team,
         away_team=away_team,

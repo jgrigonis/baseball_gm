@@ -1,5 +1,10 @@
 This would be closer time.
 
+The pitcher changing logic isn't quite right
+We should strongly favor putting in the closer for
+the 9th inning, but it's hard to make that happen
+
+
 [INFO] game: 📊 End of Bottom of 8
 [INFO] game: Score: Aces 2 - Hornets 4
 [INFO] game: 🏏 Batting: PETER WELCH

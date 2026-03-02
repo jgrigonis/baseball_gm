@@ -365,7 +365,7 @@ def play_game(
     logger.info(away_team.output_rotation_card())
 
     logger.info(home_team.output_bullpen_card())
-    logger.info(away_team.output_bullpen_card())    
+    logger.info(away_team.output_bullpen_card())
 
     result = game.play()
 
