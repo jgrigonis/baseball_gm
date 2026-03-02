@@ -139,6 +139,8 @@ class TeamInGame:
     def _ensure_players_rated(self) -> None:
         for p in self.players:
             if not p.is_rated():
+                # print(f"{p.record.name} throws={repr(p.throws)} record.throws={repr(p.record.throws)}")
+
                 p.rate_player()
 
     @property

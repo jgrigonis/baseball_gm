@@ -125,4 +125,4 @@ class PlayerInGame(object):
         from src.player.player_skills import PlayerSkills
 
         fatigued_skills_obj = PlayerSkills(**fatigued_skills)
-        self.ratings = PlayerEvaluator.rate_player(fatigued_skills_obj)
+        self.ratings = PlayerEvaluator.rate_player(fatigued_skills_obj, self.throws)

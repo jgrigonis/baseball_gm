@@ -34,6 +34,7 @@ def make_player(id, ratings):
     p.record = SimpleNamespace(id=id)
 
     p.ratings = ratings
+    p.throws = "R"
     return p
 
 

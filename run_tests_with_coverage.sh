@@ -3,7 +3,7 @@
 
 # Use pytest, it's better
 pip install pytest
-pytest
+pytest --slow
 # For now we can just leave it installed
 # pip uninstall pytest -y
 # To see coverage:

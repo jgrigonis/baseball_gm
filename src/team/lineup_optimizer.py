@@ -29,6 +29,7 @@ pitcher → chosen starting pitcher
 """
 
 from src.team.lineup_slot import LineupSlot, LINEUP_SLOTS, POSITION_PRIORITY
+from src.player.player_evaluator import LEFT_HAND_CAPPED_POSITIONS
 from src.player.player_in_game import PlayerInGame
 
 
@@ -315,8 +316,13 @@ class LineupOptimizer:
         for pos in priority:
             if not remaining:
                 break
-            best = max(remaining, key=lambda p: (p.ratings.get(pos, 0), p.record.id))
-            # best = max(remaining, key=lambda p: p.ratings.get(pos, 0))
+
+            candidates = remaining
+            if pos in LEFT_HAND_CAPPED_POSITIONS:
+                righty_candidates = {p for p in remaining if (p.throws or "R").upper() != "L"}
+                if righty_candidates:  # only filter if righties are available
+                    candidates = righty_candidates
+            best = max(candidates, key=lambda p: (p.ratings.get(pos, 0), p.record.id))
             assignments[best] = pos
             remaining.remove(best)
 
