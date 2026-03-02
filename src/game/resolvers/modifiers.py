@@ -176,7 +176,7 @@ class InPlayModifiers:
             resolver.in_play_outcome.set("triple", 0)
             resolver.in_play_outcome.add("double_play", 50 - bunting)
             resolver.in_play_outcome.add("fielders_choice", -3 * bunting)
-            resolver.in_play_outcome.set("sac_bunt", 2000)
+            resolver.in_play_outcome.set("sac_bunt", 4000)
             resolver.in_play_outcome.set("sac_fly", 0)
 
         if situation.double_steal_attempt:

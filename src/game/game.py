@@ -802,7 +802,7 @@ class Game:
 
         rnd = self.rng.random()
         change = GameStrategy.should_consider_pitching_change(
-            self.current_pitcher, self.score_differential
+            self.current_pitcher, self.inning, self.score_differential
         )
         if change > 0.2:
             self.logger.info(

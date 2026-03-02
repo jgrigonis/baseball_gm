@@ -304,7 +304,21 @@ class TeamInGame:
         return output
 
     def output_lineup_card(self) -> str:
-        """"""
+        """
+        Output the starting batting order and positions.
+        """
         output = "\n"
         output += PlayerTableFormatter.lineup_card(self)
+        return output
+
+    def output_rotation_card(self) -> str:
+        """Output the starting pitcher."""
+        output = "\n"
+        output += PlayerTableFormatter.rotation_card(self)
+        return output
+
+    def output_bullpen_card(self) -> str:
+        """Output the bullpen card."""
+        output = "\n"
+        output += PlayerTableFormatter.bullpen_card(self)
         return output

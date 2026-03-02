@@ -32,9 +32,9 @@ DOUBLE_STEAL_FIRST_SECOND = 0.001
 DOUBLE_STEAL_TWO_OUT_MOD = 0.2
 
 # Bunt
-BUNT_PROB = 0.02
-BUNT_PROB_FIRST_PROB = 0.05
-BUNT_PROB_SECOND_PROB = 0.08
+BUNT_PROB = 0.04
+BUNT_ON_FIRST_MOD = 2.0
+BUNT_ON_SECOND_MOD = 2.5
 BUNT_CLOSE_GAME_MOD = 1.5
 BUNT_LATE_INNING_MOD = 1.3
 
@@ -390,15 +390,15 @@ class GameStrategy:
             return False
 
         # Base probability
-        prob = BUNT_PROB  # 2% base
+        prob = BUNT_PROB  # base
 
         # Dramatically increase if runner on first, no one on second
         if bases.runner_on(FIRST) and not bases.runner_on(SECOND):
-            prob = BUNT_PROB_FIRST_PROB
+            prob *= BUNT_ON_FIRST_MOD
 
         # Increase slightly if runner on second, trying to advance to third
         elif bases.runner_on(SECOND) and not bases.runner_on(THIRD):
-            prob = BUNT_PROB_SECOND_PROB
+            prob *= BUNT_ON_SECOND_MOD
 
         # Bunting skill matters
         skill_factor = batter_bunting_skill / 50
@@ -615,7 +615,7 @@ class GameStrategy:
 
     @staticmethod
     def should_consider_pitching_change(
-        pitcher: PlayerInGame, score_diff: int = 0
+        pitcher: PlayerInGame, inning: Inning, score_diff: int = 0
     ) -> float:
         """
         Determine if manager should consider pitching change.
@@ -645,6 +645,8 @@ class GameStrategy:
         innings_pitched = pitcher.game_stats.pitching.ip_float
         prob = base_probs.get(fatigue_level, 0.5)
 
+        # TODO PITCH_COUNT_THRESHOLD really only matters for starter
+        # other pitchers should have a lower one, or a number of innings
         if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
             if pitcher.game_stats.pitching.runs == 0:
                 prob *= 0.5
@@ -663,6 +665,9 @@ class GameStrategy:
         # Modifier: Trailing badly (increase probability)
         if score_diff < -3:
             prob *= 1.3  # More likely to pull when getting blown out
+
+        if inning.number == 9 and 0 < score_diff < 2:
+            prob *= 3
 
         # Clamp to [0, 1]
         prob = max(0.0, min(1.0, prob))

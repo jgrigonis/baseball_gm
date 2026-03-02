@@ -477,3 +477,36 @@ class PlayerTableFormatter:
             throws = p.player.record.throws or "?"
             lines.append(f"  {i:<3} {p.player.name:<22}  {pos:<4} {bats}  {throws}")
         return "\n".join(lines)
+
+    @staticmethod
+    def rotation_card(team: "TeamInGame") -> str:
+        starters = [p for p in team.players if p.is_starter]
+        lines = ["\n"]
+        lines.append("  #  Name                    Throws")
+        lines.append("  " + "-" * 32)
+        for i, q in enumerate(starters, 1):
+            throws = q.player.record.throws or "?"
+            lines.append(f"  {i:<3} {q.player.name:<22}  {throws}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def bullpen_card(team: "TeamInGame") -> str:
+        relievers = [p for p in team.players if p.bullpen_role is not None]
+        # Sort by role priority
+        role_order = {
+            "Closer": 0,
+            "Setup": 1,
+            "Long": 2,
+            "Middle": 3,
+            "Utility": 4,
+            "Specialist": 5,
+        }
+        relievers.sort(key=lambda p: role_order.get(p.bullpen_role, 99))
+        lines = ["\n"]
+        lines.append("  Role        Name                    Throws")
+        lines.append("  " + "-" * 40)
+        for r in relievers:
+            role = r.bullpen_role or "?"
+            throws = r.record.throws or "?"
+            lines.append(f"  {role:<12} {r.name:<22}  {throws}")
+        return "\n".join(lines)
