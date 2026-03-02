@@ -186,6 +186,7 @@ class Game:
 
         # Pitcher appearance and lead change tracking
         self.pitcher_appearances: list[PitcherAppearance] = []
+        self._active_pitchers: dict[str, PlayerInGame] = {}  # team_id → current pitcher
         self.lead_changes: list[LeadChange] = []
         self._last_known_leader: str = "tied"  # "home", "away", "tied"
         self.decisions: PitchingDecisions | None = None
@@ -817,6 +818,7 @@ class Game:
             if pitcher:
                 self._close_pitcher_appearance()
                 self.current_pitcher = pitcher
+                self._active_pitchers[self.pitch_team.record.id] = pitcher
                 self.current_pitcher.game_stats.pitching.game_played = 1
                 self.current_pitcher.current_position = "p"
                 self._open_pitcher_appearance(pitcher)
@@ -837,7 +839,10 @@ class Game:
     def _sync_players(self) -> None:
         """Sync current batter and pitcher from lineups."""
         self.current_batter = self.bat_team.current_batter
-        self.current_pitcher = self.pitch_team.current_pitcher
+        self.current_pitcher = self._active_pitchers.get(
+            self.pitch_team.record.id,
+            self.pitch_team.current_pitcher,  # fallback for starter
+        )
 
         self.logger.info(f"🏏 Batting: {self.current_batter.player.name}")
         self.logger.info(f"⚾ Pitching: {self.current_pitcher.name}")

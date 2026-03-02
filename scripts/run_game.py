@@ -19,7 +19,6 @@ import uuid
 from src.game.game import Game
 from src.team.team_factory import TeamFactory
 from src.team.team_in_game_factory import TeamInGameFactory
-
 from src.util.logger import setup_logger
 
 HOME_CITY = "Huntsville"
@@ -51,12 +50,8 @@ def get_args():
     parser.add_argument(
         "--seed", "-s", type=int, default=None, help="RNG seed for reproducibility."
     )
-    parser.add_argument(
-        "--home", default=None, help="Home Team Record"
-    )
-    parser.add_argument(
-        "--away", "-a", default=None, help="Away Team Record"
-    )
+    parser.add_argument("--home", default=None, help="Home Team Record")
+    parser.add_argument("--away", "-a", default=None, help="Away Team Record")
     args = parser.parse_args()
     return args
 
@@ -83,7 +78,7 @@ def main(args):
     tf = TeamFactory(log_level=levl, rng=rng)
     # Set up Home Team Record
     home_set = False
-    if hasattr(args, 'home'):
+    if hasattr(args, "home"):
         if args.home:
             home_team_record = args.home
             home_set = True
@@ -92,7 +87,7 @@ def main(args):
 
     # Set up Away Team Record
     away_set = False
-    if hasattr(args, 'away'):
+    if hasattr(args, "away"):
         if args.away:
             away_team_record = args.away
             away_set = True
@@ -116,6 +111,9 @@ def main(args):
     logger.info(home_team.output_pitcher_skills())
     logger.info(away_team.output_lineup_skills())
     logger.info(away_team.output_pitcher_skills())
+
+    logger.info(home_team.output_lineup_card())
+    logger.info(away_team.output_lineup_card())
 
     my_game = Game(
         home_team=home_team,

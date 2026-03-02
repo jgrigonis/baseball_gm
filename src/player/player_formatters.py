@@ -1,5 +1,10 @@
 # src/player/player_formatters.py
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.team.team_in_game import TeamInGame
+
 CSV_FIELDS = [
     "Name",
     "PS",
@@ -460,3 +465,15 @@ class PlayerTableFormatter:
             *[player.skills[skill] for skill in PlayerFormatter.SKILL_NAMES],
             player.id,
         ]
+
+    @staticmethod
+    def lineup_card(team: "TeamInGame") -> str:
+        lines = ["\n"]
+        lines.append("  #  Name                     Pos  B  T")
+        lines.append("  " + "-" * 38)
+        for i, p in enumerate(team.lineup, 1):
+            pos = (p.position).upper()
+            bats = p.player.record.bats or "?"
+            throws = p.player.record.throws or "?"
+            lines.append(f"  {i:<3} {p.player.name:<22}  {pos:<4} {bats}  {throws}")
+        return "\n".join(lines)

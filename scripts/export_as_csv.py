@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.util.locations import TEAM_FILES_DIR
 from src.team.team_factory import TeamFactory
-from src.io.team_exporter import TeamCSVExporter
+from src.io.player_csv_exporter import PlayerCSVExporter
 
 
 def get_args():
@@ -35,7 +35,7 @@ def main():
     tf = TeamFactory()
 
     tr = tf.generate_team(city=args.city, mascot=args.mascot)
-    TeamCSVExporter.write(tr, Path(TEAM_FILES_DIR) / args.filename)
+    PlayerCSVExporter.write(tr, Path(TEAM_FILES_DIR) / args.filename)
 
 
 if __name__ == "__main__":

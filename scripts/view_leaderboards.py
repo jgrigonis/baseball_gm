@@ -35,7 +35,11 @@ def resolve_season(db_path: Path, season_arg: str | None) -> str:
 
     if season_arg:
         for s in seasons:
-            if str(s["year"]) == season_arg or s["name"] == season_arg or s["id"] == season_arg:
+            if (
+                str(s["year"]) == season_arg
+                or s["name"] == season_arg
+                or s["id"] == season_arg
+            ):
                 return s["id"]
         print(f"Season '{season_arg}' not found. Available:")
         for s in seasons:

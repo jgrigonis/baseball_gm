@@ -302,3 +302,9 @@ class TeamInGame:
                 output += PlayerTableFormatter.horizontal_defensive_stats(player)
                 output += "\n"
         return output
+
+    def output_lineup_card(self) -> str:
+        """"""
+        output = "\n"
+        output += PlayerTableFormatter.lineup_card(self)
+        return output

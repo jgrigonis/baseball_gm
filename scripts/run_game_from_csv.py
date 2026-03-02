@@ -56,6 +56,7 @@ def get_args():
     args.away = load_team(AWAY_FILE, AWAY_CITY, AWAY_MASCOT)
     return args
 
+
 def load_team(path: Path, city: str, mascot: str) -> TeamRecord:
     players = tuple(PlayerCSVImporter.read(path))
     return TeamRecord(
@@ -65,6 +66,7 @@ def load_team(path: Path, city: str, mascot: str) -> TeamRecord:
         players=players,
         source_csv=path,
     )
+
 
 def main():
     args = get_args()

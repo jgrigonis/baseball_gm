@@ -151,6 +151,7 @@ class GameStrategy:
         if GameStrategy.should_bunt(
             game.bases,
             game.inning.outs,
+            game.count.strikes,
             game.current_batter.player.skills["bunting"],
             game.current_batter.player.skills["power"],
             game.score.differential,
@@ -358,6 +359,7 @@ class GameStrategy:
     def should_bunt(
         bases: Bases,
         outs: int,
+        strikes: int,
         batter_bunting_skill: int = 50,
         batter_power: int = 50,
         score_differential: int = 0,
@@ -378,6 +380,9 @@ class GameStrategy:
 
         # Won't bunt with 2 outs (no sac bunt value)
         if outs >= 2:
+            return False
+        # Won't bunt with 2 strikes, risk too great
+        if strikes >= 2:
             return False
 
         # no sac bunt without runners
