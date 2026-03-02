@@ -146,6 +146,7 @@ class MockGame:
 
         mock_ss = PlayerInGame(make_player_record())
         mock_2b = PlayerInGame(make_player_record())
+        mock_2b.current_position = "2b"
         mock_3b = PlayerInGame(make_player_record())
         mock_1b = PlayerInGame(make_player_record())
 

@@ -98,7 +98,14 @@ def main(args):
     home_team = TeamInGameFactory.from_record(home_team_record)
     away_team = TeamInGameFactory.from_record(away_team_record)
 
-    # set lineups
+    my_game = Game(
+        home_team=home_team,
+        away_team=away_team,
+        logger=logger,
+        pauses=args.pauses,
+        rng=rng,
+    )
+
     home_team.set_lineup()
     away_team.set_lineup()
 
@@ -121,14 +128,8 @@ def main(args):
     # logger.info(home_team.output_bullpen_card())
     # logger.info(away_team.output_bullpen_card())
 
-    my_game = Game(
-        home_team=home_team,
-        away_team=away_team,
-        logger=logger,
-        pauses=args.pauses,
-        rng=rng,
-    )
     result = my_game.play()
+
     # Pitching decisions
     d = my_game.decisions
     if d:

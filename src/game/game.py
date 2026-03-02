@@ -713,7 +713,6 @@ class Game:
         # Reset state
         self.bases.clear()
         self.count.reset()
-        # self._queue.clear()
 
         # Swap teams
         self._swap_teams()

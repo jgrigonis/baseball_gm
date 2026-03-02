@@ -1,6 +1,10 @@
 # src/player/player_evaluator.py
 
+from src.player.player_factory import VALID_THROWS
 from src.player.player_skills import PlayerSkills
+
+LEFT_HAND_CAPPED_POSITIONS = {"3b", "2b", "ss", "c"}
+LEFT_HAND_CAP = 20
 
 EXPECTED_RATINGS = {
     "cf",
@@ -132,7 +136,7 @@ RatingMap = dict[str, int]
 
 class PlayerEvaluator:
     @staticmethod
-    def rate_player(skills: PlayerSkills) -> RatingMap:
+    def rate_player(skills: PlayerSkills, throws: str = "R") -> RatingMap:
         """
         Based on the player skills, rate the player at various
         positions and hitting styles. For instance, an outfielder's
@@ -155,10 +159,17 @@ class PlayerEvaluator:
         Returns a simple, serializable structure
 
         """
+        if throws not in VALID_THROWS:
+            raise ValueError(f"Invalid throws: {throws}")
         ratings = {}
 
         for role, weights in ROLE_WEIGHTS.items():
             ratings[role] = PlayerEvaluator._calculate_weighted_rating(skills, weights)
+
+        if throws == "L":
+            for pos in LEFT_HAND_CAPPED_POSITIONS:
+                if pos in ratings:
+                    ratings[pos] = min(ratings[pos], LEFT_HAND_CAP)
 
         # --- Overall Player (offense + arm + speed + best defense) ---
         defensive_value = max(

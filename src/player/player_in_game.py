@@ -84,7 +84,7 @@ class PlayerInGame(object):
         return hasattr(self, "ratings")
 
     def rate_player(self):
-        self.ratings = PlayerEvaluator.rate_player(self.record.skills)
+        self.ratings = PlayerEvaluator.rate_player(self.record.skills, self.throws)
 
     def init_game_stats(self):
         """
@@ -92,7 +92,6 @@ class PlayerInGame(object):
         """
         self.game_stats = stats.GameStats()
         self.fielding_by_position = {}
-        self._current_position = None
 
     @classmethod
     def from_record(cls, record: PlayerRecord):

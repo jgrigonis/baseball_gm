@@ -175,7 +175,9 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
     fs = FielderSelector(game.rng)
     # Determine which infielder fields the ball
     fielder = fs.select_infielder(game)
-    fielding_skill = fielder.skills["infield"]
+
+    fielding_skill = fielder.ratings.get(fielder.current_position, 50)
+
     arm_skill = fielder.skills["arm"]
 
     # Check if fielder makes an error

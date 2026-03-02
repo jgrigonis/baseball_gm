@@ -7,18 +7,16 @@ Pitch count threshold doesn't matter for setup or
 long, or short relievers, it should be based on 
 innings or batters faced.
 
+There are never errors on double plays
+
 Track blown saves, holds
 
 Assign earned runs
 
-Track complete games, shut outs, no hitters
-
 Injuries
-
 General player fatigue, different from pitcher fatigue
 
 Handedness accounted for many places L vs R, etc.
-bryan quick is a left handed shortstop
 
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
@@ -28,6 +26,8 @@ Eventually defensive shifts, mound visits
 substitutions, pinch hitting, pinch running
 
 Low prio:
+
+Track complete games, shut outs, no hitters
 
 schema updates:
 retirement flag on players, and free agency 

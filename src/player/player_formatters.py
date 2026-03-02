@@ -67,6 +67,7 @@ class PlayerTableFormatter:
     def hor_skills(player):
         """Output the player and skills as a single line."""
         output = f"{player.name:<30}"  # 30 is the longest name
+        output += f"{player.record.age:>4}"
         try:
             output += f"{player.position:>3}"
         except AttributeError:
@@ -374,6 +375,7 @@ class PlayerTableFormatter:
         output += str("---------------------------\n")
         output += str("SKILLS:\n")
         output += str("PS = position\n")
+        output += str("AG = age\n")
         output += str("T  = throws\n")
         output += str("B  = bats\n")
         output += str("CL = clutch\n")
@@ -418,6 +420,7 @@ class PlayerTableFormatter:
     def header_skills():
         """Return the header for skills as a single line."""
         output = f"{'Name':<30}"  # 30 is the longest name
+        output += f"{'Age':>4}"
         output += f"{'PS':>3}"
         output += f"{'T':>2}"
         output += f"{'B':>2}"
