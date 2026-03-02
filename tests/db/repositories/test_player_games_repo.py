@@ -157,14 +157,12 @@ def sample_stats():
     stats.pitching.pickoffs = 0
     stats.pitching.balks = 0
     stats.pitching.wild_pitches = 1
-    
 
     # Fielding stats
     stats.fielding.putouts = 3
     stats.fielding.assists = 1
     stats.fielding.errors = 0
     stats.fielding.passed_ball = 0
-
 
     return stats
 

@@ -85,17 +85,17 @@ class Resolver:
         """Initialize base weights for pitch outcomes."""
         self.pitch_outcome.set_weights(
             {
-                "ball": 10800,
+                "ball": 13200,
                 "foul": 5100,
                 "home_run": 280,
-                "hit_by_pitch": 60,
+                "hit_by_pitch": 90,
                 "balk": 0,  # only with runners on base
                 "illegal_pitch": 0,  # only with bases empty
                 "catcher_interference": 3,
-                "wild_pitch": 35,
-                "passed_ball": 35,
+                "wild_pitch": 225,
+                "passed_ball": 45,
                 "in_play": 5855,
-                "strike": 7100,  # TODO replace with called_strike and swinging_strike
+                "strike": 8800,  # TODO replace with called_strike and swinging_strike
             }
         )
 
@@ -103,9 +103,9 @@ class Resolver:
         """Initialize base weights for in-play outcomes."""
         self.in_play_outcome.set_weights(
             {
-                "fly_out": 2900,
-                "ground_out": 900,  # 1700
-                "single": 1350,
+                "fly_out": 4100,
+                "ground_out": 1600,  # 1700
+                "single": 1330,
                 "double": 360,
                 "triple": 45,
                 "double_play": 0,

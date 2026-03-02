@@ -37,7 +37,7 @@ class PitchModifiers:
         if bases.is_empty:
             resolver.pitch_outcome.set("illegal_pitch", 10)
         else:
-            resolver.pitch_outcome.set("balk", 10)
+            resolver.pitch_outcome.set("balk", 22)
             resolver.pitch_outcome.multiply("ball", 1.03)
             resolver.pitch_outcome.multiply("strike", 0.97)
             resolver.pitch_outcome.multiply("foul", 0.94)
@@ -74,7 +74,7 @@ class PitchModifiers:
             resolver.pitch_outcome.multiply("home_run", 0.01)
             resolver.pitch_outcome.multiply("hit_by_pitch", 0.01)
             resolver.pitch_outcome.multiply("catcher_interference", 1.2)
-            resolver.pitch_outcome.multiply("wild_pitch", 0.05)
+            resolver.pitch_outcome.multiply("wild_pitch", 0.35)
             resolver.pitch_outcome.multiply("in_play", 0.001)
 
         if situation.hit_and_run and situation.pitch_out:
@@ -148,7 +148,7 @@ class InPlayModifiers:
     def modify_for_bases_outs(resolver, bases: Bases, outs: int):
         """Modify in-play probabilities based on bases and outs."""
         if bases.runner_on(THIRD) and outs < 2:
-            resolver.in_play_outcome.set("sac_fly", 1400)
+            resolver.in_play_outcome.set("sac_fly", 1900)
             resolver.in_play_outcome.set("fly_out", 650)
         if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
             resolver.in_play_outcome.set("triple_play", 10)
@@ -157,7 +157,7 @@ class InPlayModifiers:
         if bases.runner_on(SECOND) and bases.runner_on(THIRD) and outs == 0:
             resolver.in_play_outcome.set("triple_play", 2)
         if bases.runner_on(FIRST) and outs < 2:
-            resolver.in_play_outcome.set("double_play", 400)
+            resolver.in_play_outcome.set("double_play", 900)
             resolver.in_play_outcome.multiply("ground_out", 0.5)
             resolver.in_play_outcome.set("fielders_choice", 1950)
 
@@ -222,7 +222,7 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("single", 0.9 * (speed - 50))
         resolver.in_play_outcome.add("double", 0.5 * (speed - 50))
         resolver.in_play_outcome.add("triple", 0.3 * (speed - 50))
-        resolver.in_play_outcome.add("double_play", -1 * (speed - 50))
+        resolver.in_play_outcome.add("double_play", -2 * (speed - 50))
         resolver.in_play_outcome.add("fielders_choice", (speed - 50))
 
         clutch = batter.skills["clutch"]

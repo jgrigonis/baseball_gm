@@ -1,5 +1,5 @@
 """
-Display aggregate league-wide stats for a season.
+Display aggregate league-wide stats for a season with expected real-world ranges.
 
 Usage:
     python league_totals.py --db leagues/league.db --id <season_id>
@@ -10,7 +10,67 @@ import argparse
 import sqlite3
 from pathlib import Path
 
-WIDTH = 58
+WIDTH = 72
+
+# ---------------------------------------------------------------------------
+# Expected ranges (per team per game)
+# ---------------------------------------------------------------------------
+
+RANGES = {
+    # Batting counting
+    "hits": (8.0, 9.4),
+    "runs": (4.0, 4.9),
+    "singles": (5.1, 6.2),
+    "doubles": (1.5, 1.9),
+    "triples": (0.12, 0.20),
+    "home_runs": (0.85, 1.4),
+    "walks": (2.88, 3.42),
+    "strikeouts": (6.3, 8.8),
+    "rbi": (3.86, 4.63),
+    "hbp": (0.3, 0.4),
+    "sac_flies": (0.22, 0.31),
+    "sac_bunts": (0.1, 0.34),
+    "double_plays": (0.64, 0.82),
+    # Batting rates
+    "avg": (0.243, 0.269),
+    "obp": (0.312, 0.337),
+    "slg": (0.386, 0.435),
+    "ops": (0.700, 0.768),
+    # Pitching
+    "balks": (0.03, 0.04),
+    "wild_pitches": (0.29, 0.38),
+    "whip": (1.27, 1.408),
+    # Baserunning
+    "stolen_bases": (0.46, 0.74),
+    "caught_stealing": (0.15, 0.29),
+    "pickoffs": (0.06, 0.09),
+    "sb_pct": (0.682, 0.802),
+    # Fielding
+    "assists": (8.4, 10.4),
+    "errors": (0.5, 0.7),
+    "passed_balls": (0.05, 0.08),
+    "fpct": (0.982, 0.986),
+}
+
+
+def _indicator(value: float, key: str) -> str:
+    """Return ✓, ↑, or ↓ based on whether value is in expected range."""
+    if key not in RANGES:
+        return " "
+    lo, hi = RANGES[key]
+    if value < lo:
+        return "↓"
+    if value > hi:
+        return "↑"
+    return "✓"
+
+
+def _range_str(key: str) -> str:
+    if key not in RANGES:
+        return ""
+    lo, hi = RANGES[key]
+    return f"[{lo}-{hi}]"
+
 
 # ---------------------------------------------------------------------------
 # Args
@@ -34,7 +94,6 @@ def parse_args():
 
 
 def resolve_season(conn, season_arg: str | None) -> tuple[str, str]:
-    """Return (season_id, season_label). Exits if ambiguous or not found."""
     cur = conn.cursor()
     cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
     seasons = cur.fetchall()
@@ -60,7 +119,7 @@ def resolve_season(conn, season_arg: str | None) -> tuple[str, str]:
         s = seasons[0]
         return s["id"], f"{s['name']} ({s['year']})"
 
-    print("Multiple seasons found — use --season to specify:")
+    print("Multiple seasons found — use --id to specify:")
     for s in seasons:
         print(f"  id={s['id']}  year={s['year']}  name={s['name']}")
     raise SystemExit(1)
@@ -74,7 +133,6 @@ def resolve_season(conn, season_arg: str | None) -> tuple[str, str]:
 def fetch_totals(conn, season_id: str) -> dict:
     cur = conn.cursor()
 
-    # Games played (completed)
     cur.execute(
         """
         SELECT COUNT(*) as games
@@ -83,9 +141,8 @@ def fetch_totals(conn, season_id: str) -> dict:
         """,
         (season_id,),
     )
-    games = cur.fetchone()["games"] or 1  # avoid division by zero
+    games = cur.fetchone()["games"] or 1
 
-    # Batting + pitching aggregates from player_game_stats
     cur.execute(
         """
         SELECT
@@ -106,17 +163,12 @@ def fetch_totals(conn, season_id: str) -> dict:
             SUM(pgs.bat_caught_stealing)                                as caught_stealing,
             SUM(pgs.bat_hbp)                                            as hbp,
             SUM(pgs.bat_ab)                                             as at_bats,
-
-            -- Pitching
             SUM(pgs.pitch_walks)                                        as p_walks,
             SUM(pgs.pitch_hits)                                         as p_hits,
             SUM(pgs.pitch_outs)                                         as p_outs,
             SUM(pgs.pitch_balks)                                        as balks,
             SUM(pgs.pitch_wild_pitches)                                 as wild_pitches,
-            SUM(pgs.pitch_pickoffs)                                       as pickoffs,
-
-
-            -- Fielding
+            SUM(pgs.pitch_pickoffs)                                     as pickoffs,
             SUM(pgs.field_putouts)                                      as putouts,
             SUM(pgs.field_assists)                                      as assists,
             SUM(pgs.field_errors)                                       as errors,
@@ -129,7 +181,6 @@ def fetch_totals(conn, season_id: str) -> dict:
     )
     row = cur.fetchone()
 
-    # OBP / AVG / SLG / WHIP
     ab = row["at_bats"] or 1
     hits = row["hits"] or 0
     walks = row["walks"] or 0
@@ -149,10 +200,13 @@ def fetch_totals(conn, season_id: str) -> dict:
     p_ip = p_outs / 3
     whip = (row["p_walks"] + row["p_hits"]) / p_ip if p_ip else 0
 
+    sb = row["stolen_bases"] or 0
+    cs = row["caught_stealing"] or 0
+    sba = sb + cs
+
     return {
         "games": games,
-        # Batting counting
-        "hits": row["hits"] or 0,
+        "hits": hits,
         "runs": row["runs"] or 0,
         "singles": row["singles"] or 0,
         "doubles": doubles,
@@ -165,20 +219,18 @@ def fetch_totals(conn, season_id: str) -> dict:
         "sac_bunts": row["sac_bunts"] or 0,
         "double_plays": row["double_plays"] or 0,
         "hbp": hbp,
-        # Batting rate
         "avg": avg,
         "obp": obp,
         "slg": slg,
         "ops": ops,
-        # Pitching
         "balks": row["balks"] or 0,
         "wild_pitches": row["wild_pitches"] or 0,
         "whip": whip,
-        # Baserunning
-        "stolen_bases": row["stolen_bases"] or 0,
-        "caught_stealing": row["caught_stealing"] or 0,
+        "stolen_bases": sb,
+        "caught_stealing": cs,
         "pickoffs": row["pickoffs"] or 0,
-        # Fielding
+        "sb_pct": sb / sba if sba else 0,
+        "stolen_base_attempts": sba,
         "putouts": row["putouts"] or 0,
         "assists": row["assists"] or 0,
         "errors": row["errors"] or 0,
@@ -187,17 +239,38 @@ def fetch_totals(conn, season_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Display helpers
+# ---------------------------------------------------------------------------
+
+
+def _count_row(label: str, total: int, pgm: float, key: str) -> str:
+    ind = _indicator(pgm, key)
+    rng = _range_str(key)
+    return f"  {label:<22}  {total:>8,}  {pgm:>6.2f}/g  {ind}  {rng}"
+
+
+def _rate_row(label: str, value: float, key: str, fmt: str = ".3f") -> str:
+    ind = _indicator(value, key)
+    rng = _range_str(key)
+    return f"  {label:<22}  {value:{fmt}}{'':>14}  {ind}  {rng}"
+
+
+def _header(section: str, show_pgm: bool = True) -> str:
+    pgm_col = "Per T/G" if show_pgm else ""
+    return (
+        f"\n{section:<24}  {'Total':>8}  {pgm_col:>7}   {'':1}  Expected\n"
+        + "-" * WIDTH
+    )
+
+
+# ---------------------------------------------------------------------------
 # Display
 # ---------------------------------------------------------------------------
 
 
-def _pgm(value: int, games: int) -> str:
-    """Format a value and its per-game rate."""
-    return f"{value:>8,}  ({value / games / 2.0:>6.2f}/g)"
-
-
 def display(totals: dict, season_label: str):
     g = totals["games"]
+    tpg = g * 2  # two teams per game → per-team-per-game divisor
 
     print()
     print("=" * WIDTH)
@@ -205,8 +278,8 @@ def display(totals: dict, season_label: str):
     print(f"  {g} games played")
     print("=" * WIDTH)
 
-    print("\nBATTING                       Total    Per Game")
-    print("-" * WIDTH)
+    # --- Batting counting ---
+    print(_header("BATTING"))
     for label, key in [
         ("Hits", "hits"),
         ("Runs", "runs"),
@@ -222,51 +295,58 @@ def display(totals: dict, season_label: str):
         ("Sac Bunts", "sac_bunts"),
         ("Double Plays", "double_plays"),
     ]:
-        print(f"  {label:<24}  {_pgm(totals[key], g)}")
+        v = totals[key]
+        print(_count_row(label, v, v / tpg, key))
 
-    print("\nBATTING RATES")
+    # --- Batting rates ---
+    print(f"\n{'BATTING RATES':<24}  {'Value':>8}{'':>11}   {'':1}  Expected")
     print("-" * WIDTH)
-    print(f"  {'AVG':<24}  {totals['avg']:.3f}")
-    print(f"  {'OBP':<24}  {totals['obp']:.3f}")
-    print(f"  {'SLG':<24}  {totals['slg']:.3f}")
-    print(f"  {'OPS':<24}  {totals['ops']:.3f}")
+    for label, key in [("AVG", "avg"), ("OBP", "obp"), ("SLG", "slg"), ("OPS", "ops")]:
+        print(_rate_row(label, totals[key], key))
 
-    print("\nPITCHING                      Total    Per Game")
-    print("-" * WIDTH)
-    for label, key in [
-        ("Balks", "balks"),
-        ("Wild Pitches", "wild_pitches"),
-    ]:
-        print(f"  {label:<24}  {_pgm(totals[key], g)}")
-    print(f"  {'WHIP':<24}  {totals['whip']:.3f}")
+    # --- Pitching ---
+    print(_header("PITCHING"))
+    for label, key in [("Balks", "balks"), ("Wild Pitches", "wild_pitches")]:
+        v = totals[key]
+        print(_count_row(label, v, v / tpg, key))
+    print(_rate_row("WHIP", totals["whip"], "whip"))
 
-    print("\nBASERUNNING                   Total    Per Game")
-    print("-" * WIDTH)
+    # --- Baserunning ---
+    print(_header("BASERUNNING"))
     for label, key in [
         ("Stolen Bases", "stolen_bases"),
         ("Caught Stealing", "caught_stealing"),
         ("Pickoffs", "pickoffs"),
     ]:
-        print(f"  {label:<24}  {_pgm(totals[key], g)}")
+        v = totals[key]
+        print(_count_row(label, v, v / tpg, key))
 
     sb = totals["stolen_bases"]
-    sba = sb + totals["caught_stealing"]
-    sbp = sb / sba if sba else 0
-    print(f"  {'SB%':<24}  {sbp:.3f}  ({sb}/{sba})")
+    sba = totals["stolen_base_attempts"]
+    sbp = totals["sb_pct"]
+    ind = _indicator(sbp, "sb_pct")
+    lo, hi = RANGES["sb_pct"]
+    print(
+        f"  {'SB%':<22}  {sbp:>8.3f}{'':>10}  {ind}  [{lo:.3f}–{hi:.3f}]  ({sb}/{sba})"
+    )
 
-    print("\nFIELDING                      Total    Per Game")
-    print("-" * WIDTH)
+    # --- Fielding ---
+    print(_header("FIELDING"))
+    v = totals["putouts"]
+    print(f"  {'Putouts':<22}  {v:>8,}  {v / tpg:>6.2f}/g")
     for label, key in [
-        ("Putouts", "putouts"),
         ("Assists", "assists"),
         ("Errors", "errors"),
         ("Passed Balls", "passed_balls"),
     ]:
-        print(f"  {label:<24}  {_pgm(totals[key], g)}")
+        v = totals[key]
+        print(_count_row(label, v, v / tpg, key))
 
     tc = totals["putouts"] + totals["assists"] + totals["errors"]
     fpct = (totals["putouts"] + totals["assists"]) / tc if tc else 0
-    print(f"  {'Fielding %':<24}  {fpct:.4f}")
+    ind = _indicator(fpct, "fpct")
+    rng = _range_str("fpct")
+    print(f"  {'Fielding %':<22}  {fpct:.4f}{'':>12}  {ind}  {rng}")
 
     print()
 
