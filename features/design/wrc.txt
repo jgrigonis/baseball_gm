@@ -1,0 +1,14 @@
+wRC+ (Weighted Runs Created Plus) is a comprehensive baseball statistic that measures 
+a hitter's total offensive contribution, adjusted for ballpark and era, with 
+100 as league average. Every point above or below 100 equals a percentage point 
+better or worse than the average hitter. It is calculated as wOBA * PA, generally 
+scaled to make 100 average. 
+
+Key Aspects of wRC+
+
+Context-Neutral: It accounts for differences in league offensive environments 
+and home ballparks (e.g., Coors Field vs. Petco Park).
+Weighted Value: Unlike Batting Average or OPS, wRC+ uses "weighted runs created" 
+(wOBA), which properly values walks, singles, doubles, triples, and home runs.
+Easy to Read: A 150 wRC+ means the player is 50% better than the league average, 
+while 90 wRC+ means they are 10% worse.

@@ -104,6 +104,42 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["rbi"], reverse=True)
 
+    def leaderboard_runs(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by runs"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "runs": p.game_stats.batting.runs,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["runs"], reverse=True)
+
+    def leaderboard_hbp(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by hit by pitches"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "hbp": p.game_stats.batting.hbp,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["hbp"], reverse=True)
+
     def leaderboard_hits(self, min_at_bats=0) -> List[Dict[str, Any]]:
         """Get players ranked by total hits"""
         leaders = []
@@ -121,6 +157,24 @@ class StatsAnalyzer:
                 )
 
         return sorted(leaders, key=lambda x: x["hits"], reverse=True)
+
+    def leaderboard_double_plays(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by double plays"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "double_plays": p.game_stats.batting.gdp,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["double_plays"], reverse=True)
 
     def leaderboard_sac_flys(self, min_at_bats=0) -> List[Dict[str, Any]]:
         """Get players ranked by total sac_flys"""
@@ -333,6 +387,60 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["walks"], reverse=True)
 
+    def leaderboard_batting_strikeouts(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get batters ranked by strikeouts"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "strikeouts": p.game_stats.batting.strike_outs,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["strikeouts"], reverse=True)
+
+    def leaderboard_batting_strikeouts_per_ab(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get batters ranked by strikeouts per at-bat"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "k_per_ab": p.game_stats.batting.strike_outs / ab if ab > 0 else 0.0,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["k_per_ab"], reverse=True)
+
+    def leaderboard_batting_at_bats_per_k(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get batters ranked by at-bats per strikeout"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "ab_per_k": ab / p.game_stats.batting.strike_outs if p.game_stats.batting.strike_outs > 0 else 0.0,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["ab_per_k"], reverse=True)
+
     # ============ PITCHING LEADERBOARDS ============
 
     def leaderboard_wins(self, min_innings=0) -> List[Dict[str, Any]]:
@@ -354,6 +462,24 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["wins"], reverse=True)
 
+    def leaderboard_losses(self, min_innings=0) -> List[Dict[str, Any]]:
+        """Get pitchers ranked by losses"""
+        leaders = []
+
+        for p in self.players:
+            ip = p.game_stats.pitching.ip_float
+            if ip >= min_innings:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "losses": p.game_stats.pitching.loss,
+                        "innings": ip,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["losses"], reverse=True)
+
     def leaderboard_innings_pitched(self, min_innings=0) -> List[Dict[str, Any]]:
         """Get pitchers ranked by innings pitched"""
         leaders = []
@@ -366,7 +492,6 @@ class StatsAnalyzer:
                         "player": p,
                         "player_name": getattr(p, "name", str(p.id)),
                         "innings_pitched": ip,
-                        "strike_outs": p.game_stats.pitching.strike_outs,
                     }
                 )
 

@@ -32,8 +32,6 @@ or (depending on available data)
 - Runs
 - HBP
 - Double Plays
-- wOBA
-- wRC
 
 Pitching:
 - Innings Pitched
@@ -63,10 +61,10 @@ import argparse
 import sqlite3
 
 from src.league.season_resolver import resolve_season
+from src.league.view_leaderboards import calculate_min_pa
 from src.stats.analyzer import StatsAnalyzer
 from src.stats.loader import StatsLoader
 
-# TODO
 # ---------------------------------------------------------------------------
 # Args
 # ---------------------------------------------------------------------------
@@ -143,7 +141,7 @@ RANGES = {
 # ---------------------------------------------------------------------------
 
 
-def fetch_leaders(players) -> dict:
+def fetch_leaders(players, min_pa=0, min_ip=0) -> dict:
     """
     Fetch a dictionary of leaders, it should look something like this:
 
@@ -208,6 +206,92 @@ def fetch_leaders(players) -> dict:
         bb[TOP_N]["walks"],
         bb[0]["walks"],
     )
+    ks = analyzer.leaderboard_batting_strikeouts()
+    return_dict["strikeouts"] = (
+        ks[TOP_N]["strikeouts"],
+        ks[0]["strikeouts"],
+    )
+    k_per_ab = analyzer.leaderboard_batting_strikeouts_per_ab(min_at_bats=min_pa)
+    return_dict["k_per_ab"] = (
+        k_per_ab[TOP_N]["k_per_ab"],
+        k_per_ab[0]["k_per_ab"],
+    )
+    ab_per_k = analyzer.leaderboard_batting_at_bats_per_k(min_at_bats=min_pa)
+    return_dict["ab_per_k"] = (
+        ab_per_k[TOP_N]["ab_per_k"],
+        ab_per_k[0]["ab_per_k"],
+    )
+    avg = analyzer.leaderboard_batting_average(min_at_bats=min_pa)
+    return_dict["avg"] = (
+        avg[TOP_N]["avg"],
+        avg[0]["avg"],
+    )
+    obp = analyzer.leaderboard_on_base_percentage(min_plate_appearances=min_pa)
+    return_dict["obp"] = (
+        obp[TOP_N]["obp"],
+        obp[0]["obp"],
+    )
+    slg = analyzer.leaderboard_slugging_percentage(min_at_bats=min_pa)
+    return_dict["slg"] = (
+        slg[TOP_N]["slg"],
+        slg[0]["slg"],
+    )
+    ops = analyzer.leaderboard_ops(min_at_bats=min_pa)
+    return_dict["ops"] = (
+        ops[TOP_N]["ops"],
+        ops[0]["ops"],
+    )
+    runs = analyzer.leaderboard_runs()
+    return_dict["runs"] = (
+        runs[TOP_N]["runs"],
+        runs[0]["runs"],
+    )
+    hbp = analyzer.leaderboard_hbp()
+    return_dict["hbp"] = (
+        hbp[TOP_N]["hbp"],
+        hbp[0]["hbp"],
+    )
+    double_plays = analyzer.leaderboard_double_plays()
+    return_dict["double_plays"] = (
+        double_plays[TOP_N]["double_plays"],
+        double_plays[0]["double_plays"],
+    )
+    # Pitching leaders
+    ip = analyzer.leaderboard_innings_pitched()
+    return_dict["ip"] = (
+        ip[TOP_N]["innings_pitched"],
+        ip[0]["innings_pitched"],
+    )
+    # starts = analyzer.leaderboard_game_starts()
+    # return_dict["starts"] = (
+    #     starts[TOP_N]["starts"],
+    #     starts[0]["starts"],
+    # )
+    era = analyzer.leaderboard_era()
+    return_dict["era"] = (
+        era[TOP_N]["era"],
+        era[0]["era"],
+    )
+    wins = analyzer.leaderboard_wins()
+    return_dict["wins"] = (
+        wins[TOP_N]["wins"],
+        wins[0]["wins"],
+    )
+    losses = analyzer.leaderboard_losses()
+    return_dict["losses"] = (
+        losses[TOP_N]["losses"],
+        losses[0]["losses"],
+    )
+    saves = analyzer.leaderboard_saves()
+    return_dict["saves"] = (
+        saves[TOP_N]["saves"],
+        saves[0]["saves"],
+    )
+    # save_opps = analyzer.leaderboard_save_opportunities()
+    # return_dict["save_opps"] = (
+    #     save_opps[TOP_N]["save_opps"],
+    #     save_opps[0]["save_opps"],
+    # )
 
     print(return_dict)
 
@@ -286,7 +370,7 @@ def display(totals: dict, season_label: str):
 
     print()
     print("=" * WIDTH)
-    print(f"  LEAGUE TOTALS — {season_label}")
+    print(f"  LEAGUE LEADER EVALUATION — {season_label}")
     print(f"  {g} games played")
     print("=" * WIDTH)
 
@@ -376,10 +460,12 @@ def main():
         print(f"Database not found: {db_path}")
         raise SystemExit(1)
 
+    min_pa, min_ip = calculate_min_pa(db_path, season_id)
+
     with StatsLoader(str(db_path)) as loader:
         all_players = loader.load_season_players_with_stats(season_id)
 
-    totals = fetch_leaders(all_players)
+    totals = fetch_leaders(all_players, min_pa=min_pa, min_ip=min_ip)
 
     # display(totals, season_label)
 

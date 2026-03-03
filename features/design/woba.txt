@@ -1,0 +1,15 @@
+Weighted On-Base Average (wOBA) is a comprehensive sabermetric 
+statistic that measures a hitter's overall offensive contribution 
+per plate appearance by assigning weighted values to different 
+ways of reaching base (e.g., HR > 3B > 2B > 1B > BB). It is scaled 
+to resemble on-base percentage (OBP), with a league average typically 
+around 0.330, offering a more accurate measure of run production than 
+OPS or batting average.
+
+https://en.wikipedia.org/wiki/WOBA
+
+Typical wOBA Values
+.400+: Elite/MVP Level
+.370+: All-Star Level
+.320: Average
+<.300: Below Average
