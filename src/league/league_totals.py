@@ -121,7 +121,7 @@ def fetch_totals(conn, season_id: str) -> dict:
             SUM(pgs.bat_walks)                                          as walks,
             SUM(pgs.bat_strike_outs)                                    as strikeouts,
             SUM(pgs.bat_rbi)                                            as rbi,
-            SUM(pgs.bat_sac_flys)                                       as sac_flies,
+            SUM(pgs.bat_sac_flys)                                       as sac_flys,
             SUM(pgs.bat_sac_bunts)                                      as sac_bunts,
             SUM(pgs.bat_gdp)                                            as double_plays,
             SUM(pgs.bat_stolen_bases)                                   as stolen_bases,
@@ -150,7 +150,7 @@ def fetch_totals(conn, season_id: str) -> dict:
     hits = row["hits"] or 0
     walks = row["walks"] or 0
     hbp = row["hbp"] or 0
-    sf = row["sac_flies"] or 0
+    sf = row["sac_flys"] or 0
     doubles = row["doubles"] or 0
     triples = row["triples"] or 0
     hrs = row["home_runs"] or 0
@@ -180,7 +180,7 @@ def fetch_totals(conn, season_id: str) -> dict:
         "walks": walks,
         "strikeouts": row["strikeouts"] or 0,
         "rbi": row["rbi"] or 0,
-        "sac_flies": sf,
+        "sac_flys": sf,
         "sac_bunts": row["sac_bunts"] or 0,
         "double_plays": row["double_plays"] or 0,
         "hbp": hbp,
