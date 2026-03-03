@@ -122,6 +122,42 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["hits"], reverse=True)
 
+    def leaderboard_sac_flys(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by total sac_flys"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "sac_flys": p.game_stats.batting.sac_flys,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["sac_flys"], reverse=True)
+
+    def leaderboard_sac_bunts(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by total sac_bunts"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "sac_bunts": p.game_stats.batting.sac_bunts,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["sac_bunts"], reverse=True)
+
     def leaderboard_batting_average(self, min_at_bats=10) -> List[Dict[str, Any]]:
         """Get players ranked by batting average"""
         leaders = []
@@ -251,13 +287,51 @@ class StatsAnalyzer:
                     {
                         "player": p,
                         "player_name": getattr(p, "name", str(p.id)),
-                        "stolen_bases": p.game_stats.batting.stolen_bases,
+                        "sb": p.game_stats.batting.sb,
                         "caught_stealing": p.game_stats.batting.caught_stealing,
                         "at_bats": ab,
                     }
                 )
 
-        return sorted(leaders, key=lambda x: x["stolen_bases"], reverse=True)
+        return sorted(leaders, key=lambda x: x["sb"], reverse=True)
+    
+    def leaderboard_caught_stealing(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by caught stealing"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "sb": p.game_stats.batting.sb,
+                        "cs": p.game_stats.batting.cs,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["cs"], reverse=True)
+
+    
+    def leaderboard_walks(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by walks"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "walks": p.game_stats.batting.walks,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["walks"], reverse=True)
 
     # ============ PITCHING LEADERBOARDS ============
 

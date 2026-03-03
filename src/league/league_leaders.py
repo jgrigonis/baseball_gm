@@ -100,8 +100,8 @@ RANGES = {
     "rbi": (3.86, 4.63),
     "sac_flys": (0.22, 0.31),
     "sac_bunts": (0.1, 0.34),
-    "stolen_bases": (0.46, 0.74),
-    "caught_stealing": (0.15, 0.29),
+    "sb": (0.46, 0.74),
+    "cs": (0.15, 0.29),
     "walks": (2.88, 3.42),
     "strikeouts": (6.3, 8.8),
     "k_per_ab": (1, 2),
@@ -160,28 +160,53 @@ def fetch_leaders(players) -> dict:
 
     hr = analyzer.leaderboard_home_runs()
     return_dict["home_runs"] = (
-        hr[0]["home_runs"],
         hr[TOP_N]["home_runs"],
+        hr[0]["home_runs"],
     )
     triples = analyzer.leaderboard_triples()
     return_dict["triples"] = (
-        triples[0]["triples"],
         triples[TOP_N]["triples"],
+        triples[0]["triples"],
     )
     doubles = analyzer.leaderboard_doubles()
     return_dict["doubles"] = (
-        doubles[0]["doubles"],
         doubles[TOP_N]["doubles"],
+        doubles[0]["doubles"],
     )
     singles = analyzer.leaderboard_singles()
     return_dict["singles"] = (
-        singles[0]["singles"],
         singles[TOP_N]["singles"],
+        singles[0]["singles"],
     )
     hits = analyzer.leaderboard_hits()
     return_dict["hits"] = (
-        hits[0]["hits"],
         hits[TOP_N]["hits"],
+        hits[0]["hits"],
+    )
+    sacf = analyzer.leaderboard_sac_flys()
+    return_dict["sac_flys"] = (
+        sacf[TOP_N]["sac_flys"],
+        sacf[0]["sac_flys"],
+    )
+    sacb = analyzer.leaderboard_sac_bunts()
+    return_dict["sac_bunts"] = (
+        sacb[TOP_N]["sac_bunts"],
+        sacb[0]["sac_bunts"],
+    )
+    sb = analyzer.leaderboard_stolen_bases()
+    return_dict["sb"] = (
+        sb[TOP_N]["sb"],
+        sb[0]["sb"],
+    )
+    cs = analyzer.leaderboard_caught_stealing()
+    return_dict["cs"] = (
+        cs[TOP_N]["cs"],
+        cs[0]["cs"],
+    )
+    bb = analyzer.leaderboard_walks()
+    return_dict["walks"] = (
+        bb[TOP_N]["walks"],
+        bb[0]["walks"],
     )
 
     print(return_dict)
@@ -214,16 +239,33 @@ def _header(section: str, show_pgm: bool = True) -> str:
     )
 
 
-def _indicator(value: float, key: str) -> str:
-    """Return ✓, ↑, or ↓ based on whether value is in expected range."""
+def _indicators(values: float, key: str) -> str:
+    """
+    Return a pair of ✓, ↑, or ↓ based on whether values are in expected range.
+
+    If the high is in the range and the low is in the range: ✓✓
+    If the high is lower than the bottom: ↓↓
+    If the low is higher than the bottom: ↑↑
+    If the high is higher than the top and the low is higher than the bottom: ↑✓
+    If the low is lower than the bottom and the high is lower than the top: ↓✓
+    If the high is higher than the top and the low is lower than the bottom: ↓↑
+
+    """
     if key not in RANGES:
         return " "
     lo, hi = RANGES[key]
-    if value < lo:
-        return "↓"
-    if value > hi:
-        return "↑"
-    return "✓"
+
+    if values[1] < lo:
+        return "↓↓"
+    if values[0] > hi:
+        return "↑↑"
+    if values[1] > hi and values[0] > lo:
+        return "↑✓"
+    if values[0] < lo and values[1] < hi:
+        return "↓✓"
+    if values[1] > hi and values[0] < lo:
+        return "↓↑"
+    return "✓✓"
 
 
 def _range_str(key: str) -> str:
