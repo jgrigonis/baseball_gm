@@ -63,7 +63,8 @@ import argparse
 import sqlite3
 
 from src.league.season_resolver import resolve_season
-
+from src.stats.analyzer import StatsAnalyzer
+from src.stats.loader import StatsLoader
 
 # TODO
 # ---------------------------------------------------------------------------
@@ -87,6 +88,7 @@ def parse_args():
 # ---------------------------------------------------------------------------
 
 WIDTH = 72
+TOP_N = 9  # compare 10th leader
 
 RANGES = {
     # Batting counting
@@ -96,14 +98,14 @@ RANGES = {
     "singles": (5.1, 6.2),
     "hits": (110, 300),
     "rbi": (3.86, 4.63),
-    "sac_flies": (0.22, 0.31),
+    "sac_flys": (0.22, 0.31),
     "sac_bunts": (0.1, 0.34),
     "stolen_bases": (0.46, 0.74),
     "caught_stealing": (0.15, 0.29),
     "walks": (2.88, 3.42),
     "strikeouts": (6.3, 8.8),
-    "k_per_ab": (x, y),
-    "ab_per_k": (x, y),
+    "k_per_ab": (1, 2),
+    "ab_per_k": (1, 2),
     "avg": (0.243, 0.269),
     "obp": (0.312, 0.337),
     "slg": (0.386, 0.435),
@@ -111,25 +113,25 @@ RANGES = {
     "runs": (4.0, 4.9),
     "hbp": (0.3, 0.4),
     "double_plays": (0.64, 0.82),
-    "woba": (x, y),
-    "wrc": (x, y),
+    "woba": (1, 2),
+    "wrc": (1, 2),
     # Pitching
-    "ip": (x, y),
-    "starts": (x, y),
-    "era": (x, y),
-    "wins": (x, y),
-    "losses": (x, y),
-    "saves": (x, y),
-    "save_opps": (x, y),
-    "sv_per_svo": (x, y),
+    "ip": (1, 2),
+    "starts": (1, 2),
+    "era": (1, 2),
+    "wins": (1, 2),
+    "losses": (1, 2),
+    "saves": (1, 2),
+    "save_opps": (1, 2),
+    "sv_per_svo": (1, 2),
     "whip": (1.27, 1.408),
-    "k_per_9": (x, y),
-    "bb_per_9": (x, y),
+    "k_per_9": (1, 2),
+    "bb_per_9": (1, 2),
     "balks": (0.02, 0.05),
     "wild_pitches": (0.29, 0.38),
     "pickoffs": (0.06, 0.09),
     # Fielding
-    "putouts": (x, y),
+    "putouts": (1, 2),
     "assists": (8.4, 10.4),
     "errors": (0.5, 0.7),
     "passed_balls": (0.05, 0.08),
@@ -141,112 +143,50 @@ RANGES = {
 # ---------------------------------------------------------------------------
 
 
-def fetch_leaders(conn, season_id: str) -> dict:
-    cur = conn.cursor()
+def fetch_leaders(players) -> dict:
+    """
+    Fetch a dictionary of leaders, it should look something like this:
 
-    cur.execute(
-        """
-        SELECT COUNT(*) as games
-        FROM games
-        WHERE season_id = ? AND completed = 1
-        """,
-        (season_id,),
-    )
-    games = cur.fetchone()["games"] or 1
-
-    cur.execute(
-        """
-        SELECT
-            SUM(pgs.bat_hits)                                           as hits,
-            SUM(pgs.bat_runs)                                           as runs,
-            SUM(pgs.bat_doubles)                                        as doubles,
-            SUM(pgs.bat_triples)                                        as triples,
-            SUM(pgs.bat_home_runs)                                      as home_runs,
-            SUM(pgs.bat_hits - pgs.bat_doubles - pgs.bat_triples
-                - pgs.bat_home_runs)                                    as singles,
-            SUM(pgs.bat_walks)                                          as walks,
-            SUM(pgs.bat_strike_outs)                                    as strikeouts,
-            SUM(pgs.bat_rbi)                                            as rbi,
-            SUM(pgs.bat_sac_flys)                                       as sac_flies,
-            SUM(pgs.bat_sac_bunts)                                      as sac_bunts,
-            SUM(pgs.bat_gdp)                                            as double_plays,
-            SUM(pgs.bat_stolen_bases)                                   as stolen_bases,
-            SUM(pgs.bat_caught_stealing)                                as caught_stealing,
-            SUM(pgs.bat_hbp)                                            as hbp,
-            SUM(pgs.bat_ab)                                             as at_bats,
-            SUM(pgs.pitch_walks)                                        as p_walks,
-            SUM(pgs.pitch_hits)                                         as p_hits,
-            SUM(pgs.pitch_outs)                                         as p_outs,
-            SUM(pgs.pitch_balks)                                        as balks,
-            SUM(pgs.pitch_wild_pitches)                                 as wild_pitches,
-            SUM(pgs.pitch_pickoffs)                                     as pickoffs,
-            SUM(pgs.field_putouts)                                      as putouts,
-            SUM(pgs.field_assists)                                      as assists,
-            SUM(pgs.field_errors)                                       as errors,
-            SUM(pgs.passed_balls)                                       as passed_balls
-        FROM player_game_stats pgs
-        JOIN games g ON g.id = pgs.game_id
-        WHERE g.season_id = ? AND g.completed = 1
-        """,
-        (season_id,),
-    )
-    row = cur.fetchone()
-
-    ab = row["at_bats"] or 1
-    hits = row["hits"] or 0
-    walks = row["walks"] or 0
-    hbp = row["hbp"] or 0
-    sf = row["sac_flies"] or 0
-    doubles = row["doubles"] or 0
-    triples = row["triples"] or 0
-    hrs = row["home_runs"] or 0
-
-    obp_denom = ab + walks + hbp + sf
-    avg = hits / ab
-    obp = (hits + walks + hbp) / obp_denom if obp_denom else 0
-    slg = (hits + doubles + 2 * triples + 3 * hrs) / ab
-    ops = obp + slg
-
-    p_outs = row["p_outs"] or 1
-    p_ip = p_outs / 3
-    whip = (row["p_walks"] + row["p_hits"]) / p_ip if p_ip else 0
-
-    sb = row["stolen_bases"] or 0
-    cs = row["caught_stealing"] or 0
-    sba = sb + cs
-
-    return {
-        "games": games,
-        "hits": hits,
-        "runs": row["runs"] or 0,
-        "singles": row["singles"] or 0,
-        "doubles": doubles,
-        "triples": triples,
-        "home_runs": hrs,
-        "walks": walks,
-        "strikeouts": row["strikeouts"] or 0,
-        "rbi": row["rbi"] or 0,
-        "sac_flies": sf,
-        "sac_bunts": row["sac_bunts"] or 0,
-        "double_plays": row["double_plays"] or 0,
-        "hbp": hbp,
-        "avg": avg,
-        "obp": obp,
-        "slg": slg,
-        "ops": ops,
-        "balks": row["balks"] or 0,
-        "wild_pitches": row["wild_pitches"] or 0,
-        "whip": whip,
-        "stolen_bases": sb,
-        "caught_stealing": cs,
-        "pickoffs": row["pickoffs"] or 0,
-        "sb_pct": sb / sba if sba else 0,
-        "stolen_base_attempts": sba,
-        "putouts": row["putouts"] or 0,
-        "assists": row["assists"] or 0,
-        "errors": row["errors"] or 0,
-        "passed_balls": row["passed_balls"] or 0,
+    {
+        "home_runs": (38, 50),
     }
+    where 38 is the 10th best home run hitter's total for the season
+    and 50 is the league leader's total
+
+    """
+
+    analyzer = StatsAnalyzer(players)
+    return_dict = {}
+
+    hr = analyzer.leaderboard_home_runs()
+    return_dict["home_runs"] = (
+        hr[0]["home_runs"],
+        hr[TOP_N]["home_runs"],
+    )
+    triples = analyzer.leaderboard_triples()
+    return_dict["triples"] = (
+        triples[0]["triples"],
+        triples[TOP_N]["triples"],
+    )
+    doubles = analyzer.leaderboard_doubles()
+    return_dict["doubles"] = (
+        doubles[0]["doubles"],
+        doubles[TOP_N]["doubles"],
+    )
+    singles = analyzer.leaderboard_singles()
+    return_dict["singles"] = (
+        singles[0]["singles"],
+        singles[TOP_N]["singles"],
+    )
+    hits = analyzer.leaderboard_hits()
+    return_dict["hits"] = (
+        hits[0]["hits"],
+        hits[TOP_N]["hits"],
+    )
+
+    print(return_dict)
+
+    return return_dict
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +261,7 @@ def display(totals: dict, season_label: str):
         ("Strikeouts", "strikeouts"),
         ("RBI", "rbi"),
         ("HBP", "hbp"),
-        ("Sac Flies", "sac_flies"),
+        ("Sac Flys", "sac_flys"),
         ("Sac Bunts", "sac_bunts"),
         ("Double Plays", "double_plays"),
     ]:
@@ -394,13 +334,12 @@ def main():
         print(f"Database not found: {db_path}")
         raise SystemExit(1)
 
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    with StatsLoader(str(db_path)) as loader:
+        all_players = loader.load_season_players_with_stats(season_id)
 
-    totals = fetch_leaders(conn, season_id)
-    conn.close()
+    totals = fetch_leaders(all_players)
 
-    display(totals, season_label)
+    # display(totals, season_label)
 
 
 if __name__ == "__main__":

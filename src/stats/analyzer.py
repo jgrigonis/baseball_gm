@@ -32,6 +32,60 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["home_runs"], reverse=True)
 
+    def leaderboard_triples(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by triples"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "triples": p.game_stats.batting.triples,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["triples"], reverse=True)
+
+    def leaderboard_doubles(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by doubles"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "doubles": p.game_stats.batting.doubles,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["doubles"], reverse=True)
+
+    def leaderboard_singles(self, min_at_bats=0) -> List[Dict[str, Any]]:
+        """Get players ranked by singles"""
+        leaders = []
+
+        for p in self.players:
+            ab = p.game_stats.batting.at_bats
+            if ab >= min_at_bats:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "singles": p.game_stats.batting.singles,
+                        "at_bats": ab,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["singles"], reverse=True)
+
     def leaderboard_rbi(self, min_at_bats=0) -> List[Dict[str, Any]]:
         """Get players ranked by RBIs"""
         leaders = []
@@ -101,7 +155,7 @@ class StatsAnalyzer:
             # OBP = (H + BB + HBP) / (AB + BB + HBP + SF)
 
             numerator = stats.hits + stats.walks + stats.hbp
-            denominator = stats.at_bats + stats.walks + stats.hbp + stats.sac_flys
+            denominator = stats.at_bats + stats.walks + stats.hbp + stats.sac_flys + stats.sac_bunts
 
             if denominator >= min_plate_appearances:
                 obp = numerator / denominator if denominator > 0 else 0.0
@@ -159,7 +213,7 @@ class StatsAnalyzer:
             if ab >= min_at_bats:
                 # Calculate OBP
                 obp_numerator = stats.hits + stats.walks + stats.hbp
-                obp_denominator = ab + stats.walks + stats.hbp + stats.sac_flys
+                obp_denominator = ab + stats.walks + stats.hbp + stats.sac_flys + stats.sac_bunts
                 obp = obp_numerator / obp_denominator if obp_denominator > 0 else 0.0
 
                 # Calculate SLG

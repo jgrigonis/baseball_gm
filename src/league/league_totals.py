@@ -30,7 +30,7 @@ RANGES = {
     "strikeouts": (6.3, 8.8),
     "rbi": (3.86, 4.63),
     "hbp": (0.3, 0.4),
-    "sac_flies": (0.22, 0.31),
+    "sac_flys": (0.22, 0.31),
     "sac_bunts": (0.1, 0.34),
     "double_plays": (0.64, 0.82),
     # Batting rates
@@ -256,7 +256,7 @@ def display(totals: dict, season_label: str):
         ("Strikeouts", "strikeouts"),
         ("RBI", "rbi"),
         ("HBP", "hbp"),
-        ("Sac Flies", "sac_flies"),
+        ("Sac Fliys", "sac_flys"),
         ("Sac Bunts", "sac_bunts"),
         ("Double Plays", "double_plays"),
     ]:
