@@ -9,7 +9,8 @@ Usage:
 
 import argparse
 import sqlite3
-from pathlib import Path
+
+from src.league.season_resolver import resolve_season
 
 WIDTH = 72
 
@@ -83,47 +84,10 @@ def parse_args():
         description="League-wide stat totals for a season."
     )
     parser.add_argument(
-        "--db", default="leagues/league.db", help="Path to SQLite database"
+        "--file", "-f", default="league.db", help="Set the league db filename."
     )
     parser.add_argument("--id", "-i", help="Season ID (or partial name/year match)")
     return parser.parse_args()
-
-
-# ---------------------------------------------------------------------------
-# Season resolution
-# ---------------------------------------------------------------------------
-
-
-def resolve_season(conn, season_arg: str | None) -> tuple[str, str]:
-    cur = conn.cursor()
-    cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
-    seasons = cur.fetchall()
-
-    if not seasons:
-        print("No seasons found in database.")
-        raise SystemExit(1)
-
-    if season_arg:
-        for s in seasons:
-            if (
-                str(s["year"]) == season_arg
-                or s["name"] == season_arg
-                or s["id"] == season_arg
-            ):
-                return s["id"], f"{s['name']} ({s['year']})"
-        print(f"Season '{season_arg}' not found. Available:")
-        for s in seasons:
-            print(f"  id={s['id']}  year={s['year']}  name={s['name']}")
-        raise SystemExit(1)
-
-    if len(seasons) == 1:
-        s = seasons[0]
-        return s["id"], f"{s['name']} ({s['year']})"
-
-    print("Multiple seasons found — use --id to specify:")
-    for s in seasons:
-        print(f"  id={s['id']}  year={s['year']}  name={s['name']}")
-    raise SystemExit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +323,7 @@ def display(totals: dict, season_label: str):
 
 def main():
     args = parse_args()
-    db_path = Path(args.db)
+    db_path, season_id, season_label = resolve_season(args.file, args.id)
 
     if not db_path.exists():
         print(f"Database not found: {db_path}")
@@ -368,7 +332,6 @@ def main():
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
 
-    season_id, season_label = resolve_season(conn, args.id)
     totals = fetch_totals(conn, season_id)
     conn.close()
 

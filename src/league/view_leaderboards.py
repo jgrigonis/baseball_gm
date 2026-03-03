@@ -3,9 +3,9 @@ import argparse
 from pathlib import Path
 import sqlite3
 
+from src.league.season_resolver import resolve_season
 from src.stats.analyzer import StatsAnalyzer
 from src.stats.loader import StatsLoader
-from src.util.locations import LEAGUE_FILES_DIR
 
 
 def get_args():
@@ -18,41 +18,6 @@ def get_args():
         "--number", "-n", type=int, default=10, help="Number of leaders to show."
     )
     return parser.parse_args()
-
-
-def resolve_season(db_path: Path, season_arg: str | None) -> str:
-    """Return season_id, auto-selecting if only one season exists."""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
-    seasons = cur.fetchall()
-    conn.close()
-
-    if not seasons:
-        print("No seasons found in database.")
-        raise SystemExit(1)
-
-    if season_arg:
-        for s in seasons:
-            if (
-                str(s["year"]) == season_arg
-                or s["name"] == season_arg
-                or s["id"] == season_arg
-            ):
-                return s["id"]
-        print(f"Season '{season_arg}' not found. Available:")
-        for s in seasons:
-            print(f"  id={s['id']}  year={s['year']}  name={s['name']}")
-        raise SystemExit(1)
-
-    if len(seasons) == 1:
-        return seasons[0]["id"]
-
-    print("Multiple seasons found — use --id to specify:")
-    for s in seasons:
-        print(f"  id={s['id']}  year={s['year']}  name={s['name']}")
-    raise SystemExit(1)
 
 
 def calculate_min_pa(db_path: Path, season_id: str) -> tuple[float, float]:
@@ -216,8 +181,7 @@ def show_all_leaderboards(players, top_n=10, min_pa=100, min_ip=10):
 
 if __name__ == "__main__":
     args = get_args()
-    db_path = Path(LEAGUE_FILES_DIR) / args.file
-    season_id = resolve_season(db_path, args.id)
+    db_path, season_id, _ = resolve_season(args.file, args.id)
 
     min_pa, min_ip = calculate_min_pa(db_path, season_id)
 
