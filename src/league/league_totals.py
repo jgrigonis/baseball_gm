@@ -3,8 +3,8 @@
 Display aggregate league-wide stats for a season with expected real-world ranges.
 
 Usage:
-    python league_totals.py --db leagues/league.db --id <season_id>
-    python league_totals.py --db leagues/league.db  # auto-selects if one season
+    python league_totals.py --file league.db --id <season_id>
+    python league_totals.py --file league.db  # auto-selects if one season
 """
 
 import argparse
