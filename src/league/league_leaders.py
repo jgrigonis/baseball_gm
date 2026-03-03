@@ -303,27 +303,26 @@ def fetch_leaders(players, min_pa=0, min_ip=0) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _count_row(label: str, total: int, pgm: float, key: str) -> str:
-    ind = _indicator(pgm, key)
+def _count_row(label: str, min: int, max: int, key: str) -> str:
+    ind = _indicators(min, max, key)
     rng = _range_str(key)
-    return f"  {label:<22}  {total:>8,}  {pgm:>6.2f}/g  {ind}  {rng}"
+    return f"  {label:<22}  {min:>8,}  {max:>6}  {ind}  {rng}"
 
 
-def _rate_row(label: str, value: float, key: str, fmt: str = ".3f") -> str:
-    ind = _indicator(value, key)
-    rng = _range_str(key)
-    return f"  {label:<22}  {value:{fmt}}{'':>14}  {ind}  {rng}"
+# def _rate_row(label: str, value: float, key: str, fmt: str = ".3f") -> str:
+#     ind = _indicator(value, key)
+#     rng = _range_str(key)
+#     return f"  {label:<22}  {value:{fmt}}{'':>14}  {ind}  {rng}"
 
 
-def _header(section: str, show_pgm: bool = True) -> str:
-    pgm_col = "Per T/G" if show_pgm else ""
+def _header(section: str) -> str:
     return (
-        f"\n{section:<24}  {'Total':>8}  {pgm_col:>7}   {'':1}  Expected\n"
+        f"\n{section:<24}  {'10th':>8}   {'Leader':>1}  Expected\n"
         + "-" * WIDTH
     )
 
 
-def _indicators(values: float, key: str) -> str:
+def _indicators(min, max, key: str) -> str:
     """
     Return a pair of ✓, ↑, or ↓ based on whether values are in expected range.
 
@@ -339,15 +338,15 @@ def _indicators(values: float, key: str) -> str:
         return " "
     lo, hi = RANGES[key]
 
-    if values[1] < lo:
+    if max < lo:
         return "↓↓"
-    if values[0] > hi:
+    if min > hi:
         return "↑↑"
-    if values[1] > hi and values[0] > lo:
+    if max > hi and min > lo:
         return "↑✓"
-    if values[0] < lo and values[1] < hi:
+    if min < lo and max < hi:
         return "↓✓"
-    if values[1] > hi and values[0] < lo:
+    if max > hi and min < lo:
         return "↓↑"
     return "✓✓"
 
@@ -365,13 +364,13 @@ def _range_str(key: str) -> str:
 
 
 def display(totals: dict, season_label: str):
-    g = totals["games"]
-    tpg = g * 2  # two teams per game → per-team-per-game divisor
+    # g = totals["games"]
+    # tpg = g * 2  # two teams per game → per-team-per-game divisor
 
     print()
     print("=" * WIDTH)
     print(f"  LEAGUE LEADER EVALUATION — {season_label}")
-    print(f"  {g} games played")
+    # print(f"  {g} games played")
     print("=" * WIDTH)
 
     # --- Batting counting ---
@@ -385,66 +384,68 @@ def display(totals: dict, season_label: str):
         ("Home Runs", "home_runs"),
         ("Walks", "walks"),
         ("Strikeouts", "strikeouts"),
-        ("RBI", "rbi"),
+        #("RBI", "rbi"),
         ("HBP", "hbp"),
         ("Sac Flys", "sac_flys"),
         ("Sac Bunts", "sac_bunts"),
         ("Double Plays", "double_plays"),
     ]:
-        v = totals[key]
-        print(_count_row(label, v, v / tpg, key))
+        # v = totals[key]
+        min = totals[key][0]
+        max = totals[key][1]
+        print(_count_row(label, min, max, key))
+    return
+    # # --- Batting rates ---
+    # print(f"\n{'BATTING RATES':<24}  {'Value':>8}{'':>11}   {'':1}  Expected")
+    # print("-" * WIDTH)
+    # for label, key in [("AVG", "avg"), ("OBP", "obp"), ("SLG", "slg"), ("OPS", "ops")]:
+    #     print(_rate_row(label, totals[key], key))
 
-    # --- Batting rates ---
-    print(f"\n{'BATTING RATES':<24}  {'Value':>8}{'':>11}   {'':1}  Expected")
-    print("-" * WIDTH)
-    for label, key in [("AVG", "avg"), ("OBP", "obp"), ("SLG", "slg"), ("OPS", "ops")]:
-        print(_rate_row(label, totals[key], key))
+    # # --- Pitching ---
+    # print(_header("PITCHING"))
+    # for label, key in [("Balks", "balks"), ("Wild Pitches", "wild_pitches")]:
+    #     v = totals[key]
+    #     print(_count_row(label, v, v / tpg, key))
+    # print(_rate_row("WHIP", totals["whip"], "whip"))
 
-    # --- Pitching ---
-    print(_header("PITCHING"))
-    for label, key in [("Balks", "balks"), ("Wild Pitches", "wild_pitches")]:
-        v = totals[key]
-        print(_count_row(label, v, v / tpg, key))
-    print(_rate_row("WHIP", totals["whip"], "whip"))
+    # # --- Baserunning ---
+    # print(_header("BASERUNNING"))
+    # for label, key in [
+    #     ("Stolen Bases", "stolen_bases"),
+    #     ("Caught Stealing", "caught_stealing"),
+    #     ("Pickoffs", "pickoffs"),
+    # ]:
+    #     v = totals[key]
+    #     print(_count_row(label, v, v / tpg, key))
 
-    # --- Baserunning ---
-    print(_header("BASERUNNING"))
-    for label, key in [
-        ("Stolen Bases", "stolen_bases"),
-        ("Caught Stealing", "caught_stealing"),
-        ("Pickoffs", "pickoffs"),
-    ]:
-        v = totals[key]
-        print(_count_row(label, v, v / tpg, key))
+    # sb = totals["stolen_bases"]
+    # sba = totals["stolen_base_attempts"]
+    # sbp = totals["sb_pct"]
+    # ind = _indicator(sbp, "sb_pct")
+    # lo, hi = RANGES["sb_pct"]
+    # print(
+    #     f"  {'SB%':<22}  {sbp:>8.3f}{'':>10}  {ind}  [{lo:.3f}–{hi:.3f}]  ({sb}/{sba})"
+    # )
 
-    sb = totals["stolen_bases"]
-    sba = totals["stolen_base_attempts"]
-    sbp = totals["sb_pct"]
-    ind = _indicator(sbp, "sb_pct")
-    lo, hi = RANGES["sb_pct"]
-    print(
-        f"  {'SB%':<22}  {sbp:>8.3f}{'':>10}  {ind}  [{lo:.3f}–{hi:.3f}]  ({sb}/{sba})"
-    )
+    # # --- Fielding ---
+    # print(_header("FIELDING"))
+    # v = totals["putouts"]
+    # print(f"  {'Putouts':<22}  {v:>8,}  {v / tpg:>6.2f}/g")
+    # for label, key in [
+    #     ("Assists", "assists"),
+    #     ("Errors", "errors"),
+    #     ("Passed Balls", "passed_balls"),
+    # ]:
+    #     v = totals[key]
+    #     print(_count_row(label, v, v / tpg, key))
 
-    # --- Fielding ---
-    print(_header("FIELDING"))
-    v = totals["putouts"]
-    print(f"  {'Putouts':<22}  {v:>8,}  {v / tpg:>6.2f}/g")
-    for label, key in [
-        ("Assists", "assists"),
-        ("Errors", "errors"),
-        ("Passed Balls", "passed_balls"),
-    ]:
-        v = totals[key]
-        print(_count_row(label, v, v / tpg, key))
+    # tc = totals["putouts"] + totals["assists"] + totals["errors"]
+    # fpct = (totals["putouts"] + totals["assists"]) / tc if tc else 0
+    # ind = _indicator(fpct, "fpct")
+    # rng = _range_str("fpct")
+    # print(f"  {'Fielding %':<22}  {fpct:.4f}{'':>12}  {ind}  {rng}")
 
-    tc = totals["putouts"] + totals["assists"] + totals["errors"]
-    fpct = (totals["putouts"] + totals["assists"]) / tc if tc else 0
-    ind = _indicator(fpct, "fpct")
-    rng = _range_str("fpct")
-    print(f"  {'Fielding %':<22}  {fpct:.4f}{'':>12}  {ind}  {rng}")
-
-    print()
+    # print()
 
 
 # ---------------------------------------------------------------------------
@@ -467,7 +468,7 @@ def main():
 
     totals = fetch_leaders(all_players, min_pa=min_pa, min_ip=min_ip)
 
-    # display(totals, season_label)
+    display(totals, season_label)
 
 
 if __name__ == "__main__":
