@@ -232,15 +232,6 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
         events.extend(
             advance_all_runners(game, tuple(non_force_bases), advancement=1, reason="ground_out")
         )
-        # # Advance all runners one base
-        # events.extend(
-        #     advance_all_runners(
-        #         game,
-        #         (THIRD, SECOND, FIRST),
-        #         advancement=1,
-        #         reason="ground_out",
-        #     )
-        # )
     events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
 
     return events

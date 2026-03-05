@@ -59,6 +59,7 @@ HNR_FAVORABLE_COUNT_MOD = 1.3
 
 # Pitcher Change
 PITCH_COUNT_THRESHOLD = 100
+CLOSER_ENTRANCE_PROB = 0.92
 
 
 def _get_rng(rng: random.Random | None) -> random.Random:
@@ -666,13 +667,64 @@ class GameStrategy:
         if score_diff < -3:
             prob *= 1.3  # More likely to pull when getting blown out
 
-        if inning.number == 9 and 0 < score_diff < 2:
+        if inning.number == 9 and 0 < score_diff <= 3:
             prob *= 3
 
         # Clamp to [0, 1]
         prob = max(0.0, min(1.0, prob))
 
         return prob
+
+    @staticmethod
+    def should_bring_in_closer(
+        current_pitcher: PlayerInGame,
+        team: TeamInGame,
+        inning: Inning,
+        score_diff: int,  # positive = pitching team is winning
+        rng: random.Random | None = None,
+    ) -> bool:
+        """
+        Decide if this is a clear save situation that warrants bringing in the Closer.
+
+        Triggers when ALL of the following are true:
+        - Inning 9 or later
+        - Pitching team leads by 1-3 runs (classic save situation)
+        - A fresh/good Closer is available on the roster
+        - The current pitcher IS NOT already the Closer role
+
+        Returns True with very high probability (CLOSER_ENTRANCE_PROB) so the manager
+        almost always makes the move, but not robotically 100%.
+        """
+        rng = _get_rng(rng)
+
+        # Must be save situation: inning 9+, leading by 1-3
+        if inning.number < 9:
+            return False
+        if not (1 <= score_diff <= 3):
+            return False
+
+        # Don't pull the closer to replace themselves
+        if getattr(current_pitcher, "bullpen_role", None) == "Closer":
+            return False
+
+        # Check a fresh/good closer is actually available
+        available_closers = [
+            p for p in team.players
+            if p != current_pitcher
+            and getattr(p, "bullpen_role", None) == "Closer"
+            and p.game_stats.pitching.pitch_count == 0
+            and p.pitcher_fatigue is not None
+            and p.pitcher_fatigue.get_level() in (FatigueLevel.FRESH, FatigueLevel.GOOD)
+            and p.current_position is None
+        ]
+
+        if not available_closers:
+            return False
+
+        # Almost always make the move — 92% so it's not robotic
+        return rng.random() < CLOSER_ENTRANCE_PROB
+
+
 
     @staticmethod
     def select_relief_pitcher(

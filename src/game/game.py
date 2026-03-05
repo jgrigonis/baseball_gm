@@ -799,6 +799,33 @@ class Game:
         if not self.current_pitcher:
             return
 
+        # ── Closer situation: override fatigue logic entirely ──────────────
+        # Check this BEFORE the fatigue roll so a save situation always
+        # triggers the closer regardless of the current pitcher's fatigue.
+        if GameStrategy.should_bring_in_closer(
+            self.current_pitcher,
+            self.pitch_team,
+            self.inning,
+            self.score_differential,
+            self.rng,
+        ):
+            pitcher = GameStrategy.select_relief_pitcher(
+                self.pitch_team,
+                self.current_pitcher,
+                self.inning,
+                self.score,
+            )
+            if pitcher:
+                self._close_pitcher_appearance()
+                self.current_pitcher = pitcher
+                self._active_pitchers[self.pitch_team.record.id] = pitcher
+                self.current_pitcher.game_stats.pitching.game_played = 1
+                self.current_pitcher.current_position = "p"
+                self._open_pitcher_appearance(pitcher)
+                self.logger.info(f"🔒 Closer in: {self.current_pitcher.name}")
+                return  # Don't also run the fatigue check below
+
+        # ── Normal fatigue-based change ────────────────────────────────────
         rnd = self.rng.random()
         change = GameStrategy.should_consider_pitching_change(
             self.current_pitcher, self.inning, self.score_differential
@@ -824,6 +851,38 @@ class Game:
                 self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
             else:
                 self.logger.info("⚠️ No available pitchers!")
+
+
+    # def _consider_pitching_change(self) -> None:
+    #     """Evaluate and possibly make a pitching change. Called mid-inning and between innings."""
+    #     if not self.current_pitcher:
+    #         return
+
+    #     rnd = self.rng.random()
+    #     change = GameStrategy.should_consider_pitching_change(
+    #         self.current_pitcher, self.inning, self.score_differential
+    #     )
+    #     if change > 0.2:
+    #         self.logger.info(
+    #             f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
+    #         )
+    #     if change > rnd:
+    #         pitcher = GameStrategy.select_relief_pitcher(
+    #             self.pitch_team,
+    #             self.current_pitcher,
+    #             self.inning,
+    #             self.score,
+    #         )
+    #         if pitcher:
+    #             self._close_pitcher_appearance()
+    #             self.current_pitcher = pitcher
+    #             self._active_pitchers[self.pitch_team.record.id] = pitcher
+    #             self.current_pitcher.game_stats.pitching.game_played = 1
+    #             self.current_pitcher.current_position = "p"
+    #             self._open_pitcher_appearance(pitcher)
+    #             self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
+    #         else:
+    #             self.logger.info("⚠️ No available pitchers!")
 
     # ------------------------------------------------------------------
     # Initialization
