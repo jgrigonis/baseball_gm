@@ -94,17 +94,17 @@ class PitchModifiers:
     def modify_for_batter(resolver, batter: PlayerInGame):
         """Modify probabilities based on batter skills."""
         eye = batter.skills["eye"]
-        resolver.pitch_outcome.add("strike", -10 * (eye - 50))
-        resolver.pitch_outcome.add("foul", 5 * (eye - 50))
-        resolver.pitch_outcome.add("ball", 5 * (eye - 50))
+        resolver.pitch_outcome.add("strike", -14 * (eye - 50))
+        resolver.pitch_outcome.add("foul", 8 * (eye - 50))
+        resolver.pitch_outcome.add("ball", 8 * (eye - 50))
 
         contact = batter.skills["contact"]
-        resolver.pitch_outcome.add("strike", -6 * (contact - 50))
-        resolver.pitch_outcome.add("foul", int(1.2 * (contact - 50)))
-        resolver.pitch_outcome.add("in_play", int(1.9 * (contact - 50)))
+        resolver.pitch_outcome.add("strike", -9 * (contact - 50))
+        resolver.pitch_outcome.add("foul", int(2 * (contact - 50)))
+        resolver.pitch_outcome.add("in_play", int(2.6 * (contact - 50)))
 
         power = batter.skills["power"]
-        resolver.pitch_outcome.add("home_run", 3 * (power - 50))
+        resolver.pitch_outcome.add("home_run", 3.5 * (power - 50))
 
     @staticmethod
     def modify_for_pitcher(resolver, pitcher: PlayerInGame):
@@ -149,7 +149,7 @@ class InPlayModifiers:
         """Modify in-play probabilities based on bases and outs."""
         if bases.runner_on(THIRD) and outs < 2:
             resolver.in_play_outcome.set("sac_fly", 1900)
-            resolver.in_play_outcome.set("fly_out", 650)
+            resolver.in_play_outcome.set("fly_out", 850)
             resolver.in_play_outcome.multiply("ground_out", 0.1)
             resolver.in_play_outcome.set("fielders_choice", 1850)
         if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
@@ -216,6 +216,7 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("fly_out", -4 * (power - 50))
         resolver.in_play_outcome.add("single", -1 * (power - 50))
         resolver.in_play_outcome.add("double", (power - 50))
+        resolver.in_play_outcome.add("triple", int(0.2 * (power - 50)))
 
         contact = batter.skills["contact"]
         resolver.in_play_outcome.add("single", 3 * (contact - 50))
@@ -225,7 +226,7 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("ground_out", -1 * (speed - 50))
         resolver.in_play_outcome.add("single", 0.9 * (speed - 50))
         resolver.in_play_outcome.add("double", 0.5 * (speed - 50))
-        resolver.in_play_outcome.add("triple", 0.3 * (speed - 50))
+        resolver.in_play_outcome.add("triple", 0.36 * (speed - 50))
         resolver.in_play_outcome.add("double_play", -2 * (speed - 50))
         resolver.in_play_outcome.add("fielders_choice", (speed - 50))
 
@@ -235,6 +236,7 @@ class InPlayModifiers:
             resolver.in_play_outcome.add("ground_out", 2 * (clutch - 50))
             resolver.in_play_outcome.add("single", (clutch - 50))
             resolver.in_play_outcome.add("double", 0.5 * (clutch - 50))
+            resolver.in_play_outcome.add("triple", 0.12 * (clutch - 50))
 
     @staticmethod
     def modify_for_pitcher(resolver, pitcher: PlayerInGame, score: Score):

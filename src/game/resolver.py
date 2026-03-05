@@ -92,7 +92,7 @@ class Resolver:
                 "balk": 0,  # only with runners on base
                 "illegal_pitch": 0,  # only with bases empty
                 "catcher_interference": 3,
-                "wild_pitch": 225,
+                "wild_pitch": 205,
                 "passed_ball": 45,
                 "in_play": 5855,
                 "strike": 8800,  # TODO replace with called_strike and swinging_strike
@@ -103,11 +103,11 @@ class Resolver:
         """Initialize base weights for in-play outcomes."""
         self.in_play_outcome.set_weights(
             {
-                "fly_out": 4100,
-                "ground_out": 1600,  # 1700
-                "single": 1330,
+                "fly_out": 4400,
+                "ground_out": 1700,  # 1700
+                "single": 1320,
                 "double": 360,
-                "triple": 45,
+                "triple": 48,
                 "double_play": 0,
                 "fielders_choice": 0,
                 "sac_fly": 0,
