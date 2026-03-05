@@ -1,0 +1,32 @@
+Two-Club Tiebreaker Procedure
+If two teams are tied, the following steps are taken in order until the tie is b
+roken:
+Head-to-head record: Best winning percentage in games between the two clubs.
+
+Intradivision record: Best winning percentage in games within their own division.
+
+Intraleague record: Best winning percentage in games against the same league 
+(AL or NL).
+
+Second-half Intraleague record: Best winning percentage in the second half 
+of the season against the same league.
+
+Second-half +1 Intraleague record: Continuing to add one game back from the 
+second half until a winner is decided. 
+
+Three-Club (or more) Tiebreaker Procedure
+If three or more clubs are tied, the same steps are used, but with specific, 
+in-group applications: 
+
+Best Head-to-Head: The team with the best combined winning percentage against 
+all other teams involved in the tie wins.
+
+If still tied, the clubs are ranked by the best winning percentage in all 
+intradivision games.
+
+If two teams are still tied after the above, the two-club tiebreaker rules 
+are applied. 
+
+Wild Card and Seeding
+These rules apply for division titles, Wild Card spots, and determining 
+playoff seeding, ensuring a quick, mathematical resolution.

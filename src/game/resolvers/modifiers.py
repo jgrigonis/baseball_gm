@@ -150,16 +150,20 @@ class InPlayModifiers:
         if bases.runner_on(THIRD) and outs < 2:
             resolver.in_play_outcome.set("sac_fly", 1900)
             resolver.in_play_outcome.set("fly_out", 650)
+            resolver.in_play_outcome.multiply("ground_out", 0.1)
+            resolver.in_play_outcome.set("fielders_choice", 1850)
         if bases.runner_on(FIRST) and bases.runner_on(SECOND) and outs == 0:
             resolver.in_play_outcome.set("triple_play", 10)
         if bases.runner_on(FIRST) and bases.runner_on(THIRD) and outs == 0:
             resolver.in_play_outcome.set("triple_play", 2)
         if bases.runner_on(SECOND) and bases.runner_on(THIRD) and outs == 0:
             resolver.in_play_outcome.set("triple_play", 2)
+            resolver.in_play_outcome.multiply("ground_out", 0.1)
+            resolver.in_play_outcome.set("fielders_choice", 1850)
         if bases.runner_on(FIRST) and outs < 2:
-            resolver.in_play_outcome.set("double_play", 900)
-            resolver.in_play_outcome.multiply("ground_out", 0.5)
-            resolver.in_play_outcome.set("fielders_choice", 1950)
+            resolver.in_play_outcome.set("double_play", 950)
+            resolver.in_play_outcome.multiply("ground_out", 0.1)
+            resolver.in_play_outcome.set("fielders_choice", 2450)
 
     @staticmethod
     def modify_for_situation(

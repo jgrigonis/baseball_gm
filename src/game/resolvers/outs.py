@@ -189,10 +189,12 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
     r = resolver.rng.random()
 
     if r < error_prob:
+        # Fielding error
         reason = "fielding_error"
         events.append(FieldingErrorEvent(fielder=fielder, batter=intent.batter))
         events.extend(handle_fielding_error_advancement(resolver, intent, game))
     elif r < error_prob + throwing_error_prob:
+        # Throwing error
         reason = "throwing_error"
         events.append(ThrowingErrorEvent(fielder=fielder, batter=intent.batter))
         events.extend(handle_fielding_error_advancement(resolver, intent, game))
@@ -206,6 +208,7 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
         else:
             events.append(PutOutEvent(fielder=game.pos("1b"), assist=fielder))
         events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
+        # Advance all runners one base
         events.extend(
             advance_all_runners(
                 game,
