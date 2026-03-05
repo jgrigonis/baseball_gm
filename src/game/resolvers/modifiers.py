@@ -242,17 +242,22 @@ class InPlayModifiers:
     def modify_for_pitcher(resolver, pitcher: PlayerInGame, score: Score):
         """Modify the probabilities based on pitcher skills."""
         ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
-        resolver.in_play_outcome.add("ground_out", 4 * (ground_balls - 50))
         resolver.in_play_outcome.add("double_play", 0.8 * ground_balls)
-        resolver.in_play_outcome.add("fielders_choice", 0.5 * ground_balls)
+        resolver.in_play_outcome.add("fielders_choice", 5 * ground_balls)
         resolver.in_play_outcome.add("sac_fly", -0.5 * (ground_balls - 50))
+        # Only add to ground_out if bases are effectively empty (no force play available)
+        # otherwise the ground-ball tendency shows up as DPs and FCs instead
+        current_go = resolver.in_play_outcome.get_weights().get("ground_out", 0)
+        if current_go > 500:  # hasn't been suppressed by a runner-on-first situation
+            resolver.in_play_outcome.add("ground_out", 4 * (ground_balls - 50))
 
         clutch = pitcher.skills["clutch"]
         if -2 < score.differential < 2:
             resolver.in_play_outcome.add("fly_out", 2 * (clutch - 50))
-            resolver.in_play_outcome.add("ground_out", 2 * (clutch - 50))
             resolver.in_play_outcome.add("single", 50 - clutch)
             resolver.in_play_outcome.add("double", 0.5 * (50 - clutch))
+            if current_go > 500:  # hasn't been suppressed by a runner-on-first situation
+                resolver.in_play_outcome.add("ground_out", 2 * (clutch - 50))
 
     @staticmethod
     def modify_for_defense(resolver, game):
