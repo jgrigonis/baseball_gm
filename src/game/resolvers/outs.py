@@ -208,15 +208,39 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
         else:
             events.append(PutOutEvent(fielder=game.pos("1b"), assist=fielder))
         events.append(OutRecordedEvent(reason="ground_out", pitcher=intent.pitcher))
-        # Advance all runners one base
+        # Only advance runners who are NOT in a force situation
+        # (i.e., runner on 2nd or 3rd can advance on a ground out, but runner on 1st cannot
+        # if 1st is occupied — they'd have been a fielder's choice or DP instead)
+        force_bases = []
+        non_force_bases = []
+        for base in (THIRD, SECOND, FIRST):
+            runner = game.bases.runner_on(base)
+            if not runner:
+                continue
+            # A runner is in a force situation if all bases behind them are occupied
+            if base == FIRST:
+                force_bases.append(base)  # always forced on a ground out
+            elif base == SECOND and game.bases.runner_on(FIRST):
+                force_bases.append(base)
+            elif base == THIRD and game.bases.runner_on(SECOND) and game.bases.runner_on(FIRST):
+                force_bases.append(base)
+            else:
+                non_force_bases.append(base)
+
+        # Forced runners don't advance — they'd have been a FC/DP (that path handles it)
+        # Non-forced runners advance probabilistically
         events.extend(
-            advance_all_runners(
-                game,
-                (THIRD, SECOND, FIRST),
-                advancement=1,
-                reason="ground_out",
-            )
+            advance_all_runners(game, tuple(non_force_bases), advancement=1, reason="ground_out")
         )
+        # # Advance all runners one base
+        # events.extend(
+        #     advance_all_runners(
+        #         game,
+        #         (THIRD, SECOND, FIRST),
+        #         advancement=1,
+        #         reason="ground_out",
+        #     )
+        # )
     events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
 
     return events
