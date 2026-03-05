@@ -14,3 +14,5 @@ python src/league/view_leaderboards.py -i $SEASON_ID
 
 python src/league/league_totals.py -i $SEASON_ID
 
+python src/league/league_leaders.py -i $SEASON_ID
+

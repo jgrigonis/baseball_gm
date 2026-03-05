@@ -610,6 +610,42 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["saves"], reverse=True)
 
+    def leaderboard_balks(self, min_innings=0) -> List[Dict[str, Any]]:
+        """Get pitchers ranked by balks"""
+        leaders = []
+
+        for p in self.players:
+            ip = p.game_stats.pitching.ip_float
+            if ip >= min_innings:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "balks": p.game_stats.pitching.balks,
+                        "innings": ip,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["balks"], reverse=True)
+
+    def leaderboard_wild_pitches(self, min_innings=0) -> List[Dict[str, Any]]:
+        """Get pitchers ranked by wild pitches"""
+        leaders = []
+
+        for p in self.players:
+            ip = p.game_stats.pitching.ip_float
+            if ip >= min_innings:
+                leaders.append(
+                    {
+                        "player": p,
+                        "player_name": getattr(p, "name", str(p.id)),
+                        "wild_pitches": p.game_stats.pitching.wild_pitches,
+                        "innings": ip,
+                    }
+                )
+
+        return sorted(leaders, key=lambda x: x["wild_pitches"], reverse=True)
+
     # ============ FIELDING LEADERBOARDS ============
 
     def leaderboard_putouts(self) -> List[Dict[str, Any]]:

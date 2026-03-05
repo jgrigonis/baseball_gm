@@ -1,456 +1,305 @@
 # scripts/league_leaders.py
 """
-Display the stat leaders for various stats for a season, compar with expected
+Display the stat leaders for various stats for a season, compare with expected
 real-world ranges.
 
-Usage:
-    python league_leaders.py --db leagues/league.db --id <season_id>
-    python league_leaders.py --db leagues/league.db  # auto-selects if one season
-
-Stat leader categories to compare to expected:
-Batting:
-- Home Runs
-- Triples
-- Doubles
-- Singles
-- Hits
-- RBI
-- Sac Flies
-- Sac Bunts
-- Stolen Bases
-- Caught Stealing
-(SB% already in league_totals)
-- Walks (batting)
-- Strikeouts (batting)
-- lowest K/AB
-or (depending on available data)
-- highest AB/K
-- batting averages
-- OBP
-- Slugging
-- OPS
-- Runs
-- HBP
-- Double Plays
-
-Pitching:
-- Innings Pitched
-- Game Starts
-- ERA
-- Wins
-- Losses
-- Saves
-- Save Opps
-- SV / SVO
-- WHIP
-- K/9
-- BB/9
-- Balks
-- Wild Pitches
-- pickoffs
-
-Fielding (By positions):
-- Putouts
-- Assists
-- Errors
-- Passed Balls
-- FPCT
 """
 
 import argparse
-import sqlite3
 
 from src.league.season_resolver import resolve_season
 from src.league.view_leaderboards import calculate_min_pa
 from src.stats.analyzer import StatsAnalyzer
 from src.stats.loader import StatsLoader
 
-# ---------------------------------------------------------------------------
-# Args
-# ---------------------------------------------------------------------------
-
-
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="League-wide stat leaders for a season."
-    )
-    parser.add_argument(
-        "--file", "-f", default="league.db", help="Set the league db filename."
-    )
+    parser = argparse.ArgumentParser(description="League-wide stat leaders for a season.")
+    parser.add_argument("--file", "-f", default="league.db", help="Set the league db filename.")
     parser.add_argument("--id", "-i", help="Season ID (or partial name/year match)")
     return parser.parse_args()
-
-
-# ---------------------------------------------------------------------------
-# Expected ranges (per season for leaders)
-# ---------------------------------------------------------------------------
 
 WIDTH = 72
 TOP_N = 9  # compare 10th leader
 
+# Higher-is-better: (lo, hi) with lo < hi
+# Lower-is-better:  (lo, hi) with lo > hi  — lo = expected 10th, hi = expected leader
 RANGES = {
-    # Batting counting
-    "home_runs": (25, 70),
-    "triples": (7, 15),
-    "doubles": (20, 50),
-    "singles": (5.1, 6.2),
-    "hits": (110, 300),
-    "rbi": (3.86, 4.63),
-    "sac_flys": (0.22, 0.31),
-    "sac_bunts": (0.1, 0.34),
-    "sb": (0.46, 0.74),
-    "cs": (0.15, 0.29),
-    "walks": (2.88, 3.42),
-    "strikeouts": (6.3, 8.8),
-    "k_per_ab": (1, 2),
-    "ab_per_k": (1, 2),
-    "avg": (0.243, 0.269),
-    "obp": (0.312, 0.337),
-    "slg": (0.386, 0.435),
-    "ops": (0.700, 0.768),
-    "runs": (4.0, 4.9),
-    "hbp": (0.3, 0.4),
-    "double_plays": (0.64, 0.82),
-    "woba": (1, 2),
-    "wrc": (1, 2),
-    # Pitching
-    "ip": (1, 2),
-    "starts": (1, 2),
-    "era": (1, 2),
-    "wins": (1, 2),
-    "losses": (1, 2),
-    "saves": (1, 2),
-    "save_opps": (1, 2),
-    "sv_per_svo": (1, 2),
-    "whip": (1.27, 1.408),
-    "k_per_9": (1, 2),
-    "bb_per_9": (1, 2),
-    "balks": (0.02, 0.05),
-    "wild_pitches": (0.29, 0.38),
-    "pickoffs": (0.06, 0.09),
+    "home_runs":    (25,    70),
+    "triples":      (7,     23),
+    "doubles":      (36,    60),
+    "singles":      (100,  150),
+    "hits":         (172,  260),
+    "rbi":          (100,  150),
+    "sac_flys":     (8,     14),
+    "sac_bunts":    (6,     15),
+    "sb":           (25,    73),
+    "cs":           (7,     14),
+    "walks":        (85,   140),
+    "strikeouts":   (175,  225),
+    "k_per_ab":     (0.10, 0.30),
+    "ab_per_k":     (10,    15),
+    "avg":          (0.289, 0.350),
+    "obp":          (0.360, 0.420),
+    "slg":          (0.480, 0.700),
+    "ops":          (0.840, 1.200),
+    "runs":         (100,  150),
+    "hbp":          (10,    20),
+    "double_plays": (20,    40),
+    "ip":           (180,  230),
+    "starts":       (30,    35),
+    "wins":         (12,    22),
+    "losses":       (12,    22),
+    "saves":        (25,    50),
+    "save_opps":    (30,   100),
+    "sv_per_svo":   (0.80, 0.99),
+    "k_per_9":      (9,     11),
+    "balks":        (2,     10),
+    "wild_pitches": (5,     22),
+    # Lower-is-better: lo > hi
+    "era":          (3.2,   1.8),
+    "whip":         (1.1,   0.9),
+    "bb_per_9":     (3.0,   1.5),
     # Fielding
-    "putouts": (1, 2),
-    "assists": (8.4, 10.4),
-    "errors": (0.5, 0.7),
-    "passed_balls": (0.05, 0.08),
-    "fpct": (0.982, 0.986),
+    "putouts":      (1,      2),
+    "assists":      (8.4,  10.4),
+    "errors":       (0.7,   0.5),   # lower is better
+    "passed_balls": (0.08,  0.05),  # lower is better
+    "fpct":         (0.982, 0.986),
 }
-
-# ---------------------------------------------------------------------------
-# Query
-# ---------------------------------------------------------------------------
 
 
 def fetch_leaders(players, min_pa=0, min_ip=0) -> dict:
-    """
-    Fetch a dictionary of leaders, it should look something like this:
-
-    {
-        "home_runs": (38, 50),
-    }
-    where 38 is the 10th best home run hitter's total for the season
-    and 50 is the league leader's total
-
-    """
-
     analyzer = StatsAnalyzer(players)
-    return_dict = {}
+    d = {}
 
-    hr = analyzer.leaderboard_home_runs()
-    return_dict["home_runs"] = (
-        hr[TOP_N]["home_runs"],
-        hr[0]["home_runs"],
-    )
-    triples = analyzer.leaderboard_triples()
-    return_dict["triples"] = (
-        triples[TOP_N]["triples"],
-        triples[0]["triples"],
-    )
-    doubles = analyzer.leaderboard_doubles()
-    return_dict["doubles"] = (
-        doubles[TOP_N]["doubles"],
-        doubles[0]["doubles"],
-    )
-    singles = analyzer.leaderboard_singles()
-    return_dict["singles"] = (
-        singles[TOP_N]["singles"],
-        singles[0]["singles"],
-    )
-    hits = analyzer.leaderboard_hits()
-    return_dict["hits"] = (
-        hits[TOP_N]["hits"],
-        hits[0]["hits"],
-    )
-    sacf = analyzer.leaderboard_sac_flys()
-    return_dict["sac_flys"] = (
-        sacf[TOP_N]["sac_flys"],
-        sacf[0]["sac_flys"],
-    )
-    sacb = analyzer.leaderboard_sac_bunts()
-    return_dict["sac_bunts"] = (
-        sacb[TOP_N]["sac_bunts"],
-        sacb[0]["sac_bunts"],
-    )
-    sb = analyzer.leaderboard_stolen_bases()
-    return_dict["sb"] = (
-        sb[TOP_N]["sb"],
-        sb[0]["sb"],
-    )
-    cs = analyzer.leaderboard_caught_stealing()
-    return_dict["cs"] = (
-        cs[TOP_N]["cs"],
-        cs[0]["cs"],
-    )
-    bb = analyzer.leaderboard_walks()
-    return_dict["walks"] = (
-        bb[TOP_N]["walks"],
-        bb[0]["walks"],
-    )
-    ks = analyzer.leaderboard_batting_strikeouts()
-    return_dict["strikeouts"] = (
-        ks[TOP_N]["strikeouts"],
-        ks[0]["strikeouts"],
-    )
+    # Batting counting
+    for attr, key in [
+        ("leaderboard_home_runs",          "home_runs"),
+        ("leaderboard_triples",            "triples"),
+        ("leaderboard_doubles",            "doubles"),
+        ("leaderboard_singles",            "singles"),
+        ("leaderboard_hits",               "hits"),
+        ("leaderboard_rbi",                "rbi"),
+        ("leaderboard_sac_flys",           "sac_flys"),
+        ("leaderboard_sac_bunts",          "sac_bunts"),
+        ("leaderboard_stolen_bases",       "sb"),
+        ("leaderboard_caught_stealing",    "cs"),
+        ("leaderboard_walks",              "walks"),
+        ("leaderboard_batting_strikeouts", "strikeouts"),
+        ("leaderboard_runs",               "runs"),
+        ("leaderboard_hbp",                "hbp"),
+        ("leaderboard_double_plays",       "double_plays"),
+    ]:
+        rows = getattr(analyzer, attr)()
+        d[key] = (rows[TOP_N][key], rows[0][key])
+
+    # Batting rates (need min_pa qualifier)
     k_per_ab = analyzer.leaderboard_batting_strikeouts_per_ab(min_at_bats=min_pa)
-    return_dict["k_per_ab"] = (
-        k_per_ab[TOP_N]["k_per_ab"],
-        k_per_ab[0]["k_per_ab"],
-    )
+    d["k_per_ab"] = (k_per_ab[TOP_N]["k_per_ab"], k_per_ab[0]["k_per_ab"])
+
     ab_per_k = analyzer.leaderboard_batting_at_bats_per_k(min_at_bats=min_pa)
-    return_dict["ab_per_k"] = (
-        ab_per_k[TOP_N]["ab_per_k"],
-        ab_per_k[0]["ab_per_k"],
-    )
+    d["ab_per_k"] = (ab_per_k[TOP_N]["ab_per_k"], ab_per_k[0]["ab_per_k"])
+
     avg = analyzer.leaderboard_batting_average(min_at_bats=min_pa)
-    return_dict["avg"] = (
-        avg[TOP_N]["avg"],
-        avg[0]["avg"],
-    )
+    d["avg"] = (avg[TOP_N]["avg"], avg[0]["avg"])
+
     obp = analyzer.leaderboard_on_base_percentage(min_plate_appearances=min_pa)
-    return_dict["obp"] = (
-        obp[TOP_N]["obp"],
-        obp[0]["obp"],
-    )
+    d["obp"] = (obp[TOP_N]["obp"], obp[0]["obp"])
+
     slg = analyzer.leaderboard_slugging_percentage(min_at_bats=min_pa)
-    return_dict["slg"] = (
-        slg[TOP_N]["slg"],
-        slg[0]["slg"],
-    )
+    d["slg"] = (slg[TOP_N]["slg"], slg[0]["slg"])
+
     ops = analyzer.leaderboard_ops(min_at_bats=min_pa)
-    return_dict["ops"] = (
-        ops[TOP_N]["ops"],
-        ops[0]["ops"],
-    )
-    runs = analyzer.leaderboard_runs()
-    return_dict["runs"] = (
-        runs[TOP_N]["runs"],
-        runs[0]["runs"],
-    )
-    hbp = analyzer.leaderboard_hbp()
-    return_dict["hbp"] = (
-        hbp[TOP_N]["hbp"],
-        hbp[0]["hbp"],
-    )
-    double_plays = analyzer.leaderboard_double_plays()
-    return_dict["double_plays"] = (
-        double_plays[TOP_N]["double_plays"],
-        double_plays[0]["double_plays"],
-    )
-    # Pitching leaders
+    d["ops"] = (ops[TOP_N]["ops"], ops[0]["ops"])
+
+    # Pitching counting
     ip = analyzer.leaderboard_innings_pitched()
-    return_dict["ip"] = (
-        ip[TOP_N]["innings_pitched"],
-        ip[0]["innings_pitched"],
-    )
+    d["ip"] = (ip[TOP_N]["innings_pitched"], ip[0]["innings_pitched"])
+
     # starts = analyzer.leaderboard_game_starts()
-    # return_dict["starts"] = (
-    #     starts[TOP_N]["starts"],
-    #     starts[0]["starts"],
-    # )
-    era = analyzer.leaderboard_era()
-    return_dict["era"] = (
-        era[TOP_N]["era"],
-        era[0]["era"],
-    )
+    # d["starts"] = (starts[TOP_N]["starts"], starts[0]["starts"])
+
     wins = analyzer.leaderboard_wins()
-    return_dict["wins"] = (
-        wins[TOP_N]["wins"],
-        wins[0]["wins"],
-    )
+    d["wins"] = (wins[TOP_N]["wins"], wins[0]["wins"])
+
     losses = analyzer.leaderboard_losses()
-    return_dict["losses"] = (
-        losses[TOP_N]["losses"],
-        losses[0]["losses"],
-    )
+    d["losses"] = (losses[TOP_N]["losses"], losses[0]["losses"])
+
     saves = analyzer.leaderboard_saves()
-    return_dict["saves"] = (
-        saves[TOP_N]["saves"],
-        saves[0]["saves"],
-    )
+    d["saves"] = (saves[TOP_N]["saves"], saves[0]["saves"])
+
     # save_opps = analyzer.leaderboard_save_opportunities()
-    # return_dict["save_opps"] = (
-    #     save_opps[TOP_N]["save_opps"],
-    #     save_opps[0]["save_opps"],
-    # )
+    # d["save_opps"] = (save_opps[TOP_N]["save_opps"], save_opps[0]["save_opps"])
 
-    print(return_dict)
+    balks = analyzer.leaderboard_balks()
+    d["balks"] = (balks[TOP_N]["balks"], balks[0]["balks"])
 
-    return return_dict
+    wild_pitches = analyzer.leaderboard_wild_pitches()
+    d["wild_pitches"] = (wild_pitches[TOP_N]["wild_pitches"], wild_pitches[0]["wild_pitches"])
+
+    # Pitching rates (lower is better; leaderboards sort ascending so index 0 = best/lowest)
+    era = analyzer.leaderboard_era(min_innings=min_ip)
+    d["era"] = (era[TOP_N]["era"], era[0]["era"])
+
+    whip = analyzer.leaderboard_whip(min_innings=min_ip)
+    d["whip"] = (whip[TOP_N]["whip"], whip[0]["whip"])
+
+    # bb_per_9 = analyzer.leaderboard_bb_per_9(min_ip=min_ip)
+    # d["bb_per_9"] = (bb_per_9[TOP_N]["bb_per_9"], bb_per_9[0]["bb_per_9"])
+
+    # k_per_9 = analyzer.leaderboard_k_per_9(min_ip=min_ip)
+    # d["k_per_9"] = (k_per_9[TOP_N]["k_per_9"], k_per_9[0]["k_per_9"])
+
+    # sv_per_svo = analyzer.leaderboard_sv_per_svo()
+    # d["sv_per_svo"] = (sv_per_svo[TOP_N]["sv_per_svo"], sv_per_svo[0]["sv_per_svo"])
+
+    return d
 
 
-# ---------------------------------------------------------------------------
-# Display helpers
-# ---------------------------------------------------------------------------
+def _indicators(tenth_val, leader_val, key: str) -> str:
+    """
+    Two-character indicator for (10th place, leader).
+    Each character: ✓ in range, ↑ above range (bad for lower-is-better),
+                    ↓ below range (bad for higher-is-better).
+
+    Direction is encoded in RANGES:
+      lo < hi  →  higher is better
+      lo > hi  →  lower is better (e.g. ERA: 3.2 → 1.8)
+    """
+    if key not in RANGES:
+        return "  "
+
+    lo, hi = RANGES[key]
+
+    if lo <= hi:
+        # Higher is better. ↓ = too low, ↑ = too high.
+        def sym(v):
+            if v < lo: return "↓"
+            if v > hi: return "↑"
+            return "✓"
+    else:
+        # Lower is better. Valid range is [hi, lo].
+        # ↑ = too high (bad), ↓ = unrealistically low.
+        def sym(v):
+            if v > lo: return "↑"
+            if v < hi: return "↓"
+            return "✓"
+
+    return sym(tenth_val) + sym(leader_val)
 
 
-def _count_row(label: str, min: int, max: int, key: str) -> str:
-    ind = _indicators(min, max, key)
-    rng = _range_str(key)
-    return f"  {label:<22}  {min:>8,}  {max:>6}  {ind}  {rng}"
-
-
-# def _rate_row(label: str, value: float, key: str, fmt: str = ".3f") -> str:
-#     ind = _indicator(value, key)
-#     rng = _range_str(key)
-#     return f"  {label:<22}  {value:{fmt}}{'':>14}  {ind}  {rng}"
+def _range_str(key: str, fmt: str = ".3f") -> str:
+    if key not in RANGES:
+        return ""
+    lo, hi = RANGES[key]
+    # Always display as [better–worse] for clarity
+    better, worse = (lo, hi) if lo <= hi else (hi, lo)
+    return f"[{better:{fmt}} - {worse:{fmt}}]"
 
 
 def _header(section: str) -> str:
     return (
-        f"\n{section:<24}  {'10th':>8}   {'Leader':>1}  Expected\n"
+        f"\n{section:<24}  {'10th':>8}  {'Leader':>6}  {'':2}  Expected\n"
         + "-" * WIDTH
     )
 
 
-def _indicators(min, max, key: str) -> str:
-    """
-    Return a pair of ✓, ↑, or ↓ based on whether values are in expected range.
-
-    If the high is in the range and the low is in the range: ✓✓
-    If the high is lower than the bottom: ↓↓
-    If the low is higher than the bottom: ↑↑
-    If the high is higher than the top and the low is higher than the bottom: ↑✓
-    If the low is lower than the bottom and the high is lower than the top: ↓✓
-    If the high is higher than the top and the low is lower than the bottom: ↓↑
-
-    """
-    if key not in RANGES:
-        return " "
-    lo, hi = RANGES[key]
-
-    if max < lo:
-        return "↓↓"
-    if min > hi:
-        return "↑↑"
-    if max > hi and min > lo:
-        return "↑✓"
-    if min < lo and max < hi:
-        return "↓✓"
-    if max > hi and min < lo:
-        return "↓↑"
-    return "✓✓"
+def _count_row(label: str, tenth, leader, key: str) -> str:
+    ind = _indicators(tenth, leader, key)
+    rng = _range_str(key, ".0f")
+    return f"  {label:<22}  {tenth:>8,}  {leader:>6,}  {ind}  {rng}"
 
 
-def _range_str(key: str) -> str:
-    if key not in RANGES:
-        return ""
-    lo, hi = RANGES[key]
-    return f"[{lo}-{hi}]"
-
-
-# ---------------------------------------------------------------------------
-# Display
-# ---------------------------------------------------------------------------
+def _rate_row(label: str, tenth, leader, key: str, fmt: str = ".3f") -> str:
+    ind = _indicators(tenth, leader, key)
+    rng = _range_str(key, fmt)
+    return f"  {label:<22}  {tenth:>8{fmt}}  {leader:>6{fmt}}  {ind}  {rng}"
 
 
 def display(totals: dict, season_label: str):
-    # g = totals["games"]
-    # tpg = g * 2  # two teams per game → per-team-per-game divisor
-
     print()
     print("=" * WIDTH)
     print(f"  LEAGUE LEADER EVALUATION — {season_label}")
-    # print(f"  {g} games played")
     print("=" * WIDTH)
 
-    # --- Batting counting ---
     print(_header("BATTING"))
     for label, key in [
-        ("Hits", "hits"),
-        ("Runs", "runs"),
-        ("Singles", "singles"),
-        ("Doubles", "doubles"),
-        ("Triples", "triples"),
-        ("Home Runs", "home_runs"),
-        ("Walks", "walks"),
-        ("Strikeouts", "strikeouts"),
-        #("RBI", "rbi"),
-        ("HBP", "hbp"),
-        ("Sac Flys", "sac_flys"),
-        ("Sac Bunts", "sac_bunts"),
+        ("Hits",         "hits"),
+        ("Runs",         "runs"),
+        ("Singles",      "singles"),
+        ("Doubles",      "doubles"),
+        ("Triples",      "triples"),
+        ("Home Runs",    "home_runs"),
+        ("RBI",          "rbi"),
+        ("Walks",        "walks"),
+        ("Strikeouts",   "strikeouts"),
+        ("HBP",          "hbp"),
+        ("Sac Flies",    "sac_flys"),
+        ("Sac Bunts",    "sac_bunts"),
         ("Double Plays", "double_plays"),
     ]:
-        # v = totals[key]
-        min = totals[key][0]
-        max = totals[key][1]
-        print(_count_row(label, min, max, key))
-    return
-    # # --- Batting rates ---
-    # print(f"\n{'BATTING RATES':<24}  {'Value':>8}{'':>11}   {'':1}  Expected")
-    # print("-" * WIDTH)
-    # for label, key in [("AVG", "avg"), ("OBP", "obp"), ("SLG", "slg"), ("OPS", "ops")]:
-    #     print(_rate_row(label, totals[key], key))
+        tenth, leader = totals[key]
+        print(_count_row(label, tenth, leader, key))
 
-    # # --- Pitching ---
-    # print(_header("PITCHING"))
-    # for label, key in [("Balks", "balks"), ("Wild Pitches", "wild_pitches")]:
-    #     v = totals[key]
-    #     print(_count_row(label, v, v / tpg, key))
-    # print(_rate_row("WHIP", totals["whip"], "whip"))
+    print(_header("BATTING RATES"))
+    for label, key, fmt in [
+        ("AVG",   "avg",    ".3f"),
+        ("OBP",   "obp",    ".3f"),
+        ("SLG",   "slg",    ".3f"),
+        ("OPS",   "ops",    ".3f"),
+        ("AB/K",  "ab_per_k", ".1f"),
+        ("K/AB",  "k_per_ab", ".3f"),
+    ]:
+        tenth, leader = totals[key]
+        print(_rate_row(label, tenth, leader, key, fmt))
 
-    # # --- Baserunning ---
-    # print(_header("BASERUNNING"))
-    # for label, key in [
-    #     ("Stolen Bases", "stolen_bases"),
-    #     ("Caught Stealing", "caught_stealing"),
-    #     ("Pickoffs", "pickoffs"),
-    # ]:
-    #     v = totals[key]
-    #     print(_count_row(label, v, v / tpg, key))
+    print(_header("BASERUNNING"))
+    for label, key in [
+        ("Stolen Bases",    "sb"),
+        ("Caught Stealing", "cs"),
+    ]:
+        tenth, leader = totals[key]
+        print(_count_row(label, tenth, leader, key))
 
-    # sb = totals["stolen_bases"]
-    # sba = totals["stolen_base_attempts"]
-    # sbp = totals["sb_pct"]
-    # ind = _indicator(sbp, "sb_pct")
-    # lo, hi = RANGES["sb_pct"]
-    # print(
-    #     f"  {'SB%':<22}  {sbp:>8.3f}{'':>10}  {ind}  [{lo:.3f}–{hi:.3f}]  ({sb}/{sba})"
-    # )
+    print(_header("PITCHING"))
+    for label, key in [
+        # ("Game Starts",     "starts"),
+        ("Wins",            "wins"),
+        ("Losses",          "losses"),
+        ("Saves",           "saves"),
+        # ("Save Opps",       "save_opps"),
+        ("Balks",           "balks"),
+        ("Wild Pitches",    "wild_pitches"),
+    ]:
+        tenth, leader = totals[key]
+        print(_count_row(label, tenth, leader, key))
 
-    # # --- Fielding ---
+    print(_header("PITCHING RATES"))
+    for label, key, fmt in [
+        ("Innings Pitched", "ip", ".0f"),
+        ("ERA",    "era",      ".2f"),
+        ("WHIP",   "whip",     ".3f"),
+        # ("K/9",    "k_per_9",  ".2f"),
+        # ("BB/9",   "bb_per_9", ".2f"),
+        # ("SV/SVO", "sv_per_svo", ".3f"),
+    ]:
+        tenth, leader = totals[key]
+        print(_rate_row(label, tenth, leader, key, fmt))
+
+    # Fielding stubbed — uncomment when fielding leaderboards are available
     # print(_header("FIELDING"))
-    # v = totals["putouts"]
-    # print(f"  {'Putouts':<22}  {v:>8,}  {v / tpg:>6.2f}/g")
     # for label, key in [
-    #     ("Assists", "assists"),
-    #     ("Errors", "errors"),
+    #     ("Putouts",      "putouts"),
+    #     ("Assists",      "assists"),
+    #     ("Errors",       "errors"),
     #     ("Passed Balls", "passed_balls"),
     # ]:
-    #     v = totals[key]
-    #     print(_count_row(label, v, v / tpg, key))
+    #     tenth, leader = totals[key]
+    #     print(_count_row(label, tenth, leader, key))
+    # tenth, leader = totals["fpct"]
+    # print(_rate_row("Fielding %", tenth, leader, "fpct", ".4f"))
 
-    # tc = totals["putouts"] + totals["assists"] + totals["errors"]
-    # fpct = (totals["putouts"] + totals["assists"]) / tc if tc else 0
-    # ind = _indicator(fpct, "fpct")
-    # rng = _range_str("fpct")
-    # print(f"  {'Fielding %':<22}  {fpct:.4f}{'':>12}  {ind}  {rng}")
-
-    # print()
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+    print()
 
 
 def main():
@@ -467,7 +316,6 @@ def main():
         all_players = loader.load_season_players_with_stats(season_id)
 
     totals = fetch_leaders(all_players, min_pa=min_pa, min_ip=min_ip)
-
     display(totals, season_label)
 
 

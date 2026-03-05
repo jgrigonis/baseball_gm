@@ -45,14 +45,15 @@ def resolve_double_play(resolver, intent, game) -> List[GameEvent]:
                 reason="double_play",
             )
         )
-        events.extend(
-            advance_all_runners(
-                game,
-                (THIRD, SECOND),
-                advancement=1,
-                reason="double_play",
+        if game.inning.outs + 2 < 3: # if the inning is not over, advance the runners
+            events.extend(
+                advance_all_runners(
+                    game,
+                    (THIRD, SECOND),
+                    advancement=1,
+                    reason="double_play",
+                )
             )
-        )
 
     # No runner was on first, but we still need a double play
     # try third next.
