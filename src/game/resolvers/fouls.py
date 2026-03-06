@@ -13,7 +13,7 @@ from src.game.events.strike import (
 )
 from src.game.events.strikeout import StrikeOutEvent
 from src.game.resolvers.fielder_selector import FielderSelector
-from src.game.resolvers.probabilities import (
+from src.game.probabilities import (
     FOUL_TIP_CAUGHT_PROB,
     FOULED_OFF_THIRD_STRIKE_PROB,
     FOUL_FLY_OUT_BEFORE_TWO_STRIKES_PROB,

@@ -38,7 +38,8 @@ from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 from src.game.intents.pick_off import PickOffIntent
 from src.game.resolvers.concurrent_events import resolve_concurrent_events
-from src.game.resolvers.modifiers import PitchModifiers, InPlayModifiers
+from src.game.modifiers.pitch_modifiers import PitchModifiers
+from src.game.modifiers.in_play_modifiers import InPlayModifiers
 from src.game.resolvers.pick_off import resolve_pickoff
 from src.game.resolvers.pitch import resolve_pitch
 from src.game.resolvers.walk import resolve_walk

@@ -17,7 +17,7 @@ from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent
 from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
 from src.game.resolvers.fielder_selector import FielderSelector
-from src.game.resolvers.probabilities import (
+from src.game.probabilities import (
     PROB_TAGUP_FROM_SECOND_FLYOUT,
     PROB_TAGUP_FROM_FIRST_FLYOUT,
     BASE_ERROR_RATE,

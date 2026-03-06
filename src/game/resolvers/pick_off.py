@@ -16,7 +16,7 @@ from src.game.events.pick_off import (
 from src.game.intents.pick_off import PickOffIntent
 from src.game.events.runners import RunnerRemovedEvent
 from src.game.resolvers.base_running import advance_all_runners
-from src.game.resolvers.probabilities import (
+from src.game.probabilities import (
     PICKOFF_SUCCESS_PROB,
     PICKOFF_ERROR_PROB,
     STEAL_ON_PICKOFF_MODIFIER,

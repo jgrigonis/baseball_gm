@@ -6,61 +6,46 @@ from src.game.bases import Bases, FIRST, SECOND, THIRD
 from src.game.count import Count
 from src.game.inning import Inning
 from src.game.intents.pitch import PrePitchSituation
+from src.game.probabilities import (
+    BASE_PICKOFF_ATTEMPT_PROB,
+    BASE_STEAL_SECOND_PROB,
+    BASE_STEAL_THIRD_PROB,
+    BASE_STEAL_HOME_PROB,
+    STEAL_FULL_COUNT_MOD,
+    STEAL_BEHIND_COUNT_MOD,
+    STEAL_TWO_OUT_MOD,
+    STEAL_CLOSE_GAME_MOD,
+    STEAL_BLOWOUT_MOD,
+    DOUBLE_STEAL_FIRST_THIRD,
+    DOUBLE_STEAL_SECOND_THIRD,
+    DOUBLE_STEAL_FIRST_SECOND,
+    DOUBLE_STEAL_TWO_OUT_MOD,
+    BUNT_PROB,
+    BUNT_ON_FIRST_MOD,
+    BUNT_ON_SECOND_MOD,
+    BUNT_CLOSE_GAME_MOD,
+    BUNT_LATE_INNING_MOD,
+    IBB_PROB,
+    IBB_POWERFUL,
+    IBB_POWERFUL_LATE_INNING,
+    IBB_TWO_OUT_MODIFIER,
+    IBB_STRIKES_MODIFIER,
+    IBB_MORE_STRIKES_MOD,
+    PITCHOUT_PROB,
+    PITCHOUT_FAST_MOD,
+    PITCHOUT_BALLS_OVER_STRIKES,
+    HNR_PROB,
+    HNR_CONTACT_MOD,
+    HNR_SPEED_MOD,
+    HNR_FAVORABLE_COUNT_MOD,
+    PITCH_COUNT_THRESHOLD,
+    CLOSER_ENTRANCE_PROB,
+)
 from src.game.score import Score
 from src.player.fatigue import FatigueLevel
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_in_game import PlayerInGame
 from src.team.team_in_game import TeamInGame
-
-# Probability constants for new events
-# Pickoff
-BASE_PICKOFF_ATTEMPT_PROB = 0.01  # 1% per pitch
-
-# Steal
-BASE_STEAL_SECOND_PROB = 0.058  # 5.8% from first
-BASE_STEAL_THIRD_PROB = 0.005  # 0.5% from second
-BASE_STEAL_HOME_PROB = 0.00001  # 0.0001% from third
-STEAL_FULL_COUNT_MOD = 1.5
-STEAL_BEHIND_COUNT_MOD = 0.5
-STEAL_TWO_OUT_MOD = 0.6
-STEAL_CLOSE_GAME_MOD = 1.27
-STEAL_BLOWOUT_MOD = 0.8
-# Double Steal
-DOUBLE_STEAL_FIRST_THIRD = 0.003
-DOUBLE_STEAL_SECOND_THIRD = 0.00001
-DOUBLE_STEAL_FIRST_SECOND = 0.001
-DOUBLE_STEAL_TWO_OUT_MOD = 0.2
-
-# Bunt
-BUNT_PROB = 0.04
-BUNT_ON_FIRST_MOD = 2.0
-BUNT_ON_SECOND_MOD = 2.5
-BUNT_CLOSE_GAME_MOD = 1.5
-BUNT_LATE_INNING_MOD = 1.3
-
-# Intentional Walk
-IBB_PROB = 0.0001
-IBB_POWERFUL = 0.001
-IBB_POWERFUL_LATE_INNING = 0.002
-IBB_TWO_OUT_MODIFIER = 1.2
-IBB_STRIKES_MODIFIER = 0.01
-IBB_MORE_STRIKES_MOD = 0.01
-
-# Pitchout
-PITCHOUT_PROB = 0.001
-PITCHOUT_FAST_MOD = 4
-PITCHOUT_BALLS_OVER_STRIKES = 0.1
-
-# Hit and Run
-HNR_PROB = 0.02
-HNR_CONTACT_MOD = 1.5
-HNR_SPEED_MOD = 1.5
-HNR_FAVORABLE_COUNT_MOD = 1.3
-
-# Pitcher Change
-PITCH_COUNT_THRESHOLD = 100
-CLOSER_ENTRANCE_PROB = 0.92
-
 
 def _get_rng(rng: random.Random | None) -> random.Random:
     """Helper to get RNG instance, creating default if needed."""
