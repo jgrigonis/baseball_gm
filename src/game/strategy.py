@@ -616,20 +616,23 @@ class GameStrategy:
 
     @staticmethod
     def should_consider_pitching_change(
-        pitcher: PlayerInGame, inning: Inning, score_diff: int = 0
+        pitcher: PlayerInGame,
+        inning: Inning,
+        score_differential: int,
     ) -> float:
         """
         Determine if manager should consider pitching change.
 
         Args:
             pitcher: The current pitcher
-            score_diff: Team's score minus opponent's score (positive = winning)
+            score_differential: Team's score minus opponent's score (positive = winning)
+            inning: The current inning
 
         Returns:
-            True if should consider a change, False otherwise
+            1.0 if should consider a change, 0.0 if not, or some value in between
         """
         if not pitcher or not pitcher.pitcher_fatigue:
-            return False
+            return 0.0
 
         fatigue = pitcher.pitcher_fatigue
         fatigue_level = fatigue.get_level()
@@ -643,37 +646,49 @@ class GameStrategy:
             FatigueLevel.ZERO: 0.95,  # Almost always
         }
 
-        innings_pitched = pitcher.game_stats.pitching.ip_float
+        
         prob = base_probs.get(fatigue_level, 0.5)
 
-        # TODO PITCH_COUNT_THRESHOLD really only matters for starter
-        # other pitchers should have a lower one, or a number of innings
-        if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
-            if pitcher.game_stats.pitching.runs == 0:
-                prob *= 0.5
-            if pitcher.game_stats.pitching.hits == 0:
-                prob *= 0.2
+        stats = pitcher.game_stats.pitching
 
-        # Modifier: Protect lead with starter (reduce probability of pulling them)
-        if (
-            score_diff > 0
-            and innings_pitched < 5.0
-            and pitcher.game_stats.pitching.game_started == 1
-        ):
-            # Winning and starter hasn't gone 5 innings yet
-            prob *= 0.5  # Half as likely to pull
+        if pitcher.is_starter:
+            if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
+                if stats.runs == 0:
+                    prob *= 0.5
+                if stats.hits == 0:
+                    prob *= 0.2
 
-        # Modifier: Trailing badly (increase probability)
-        if score_diff < -3:
-            prob *= 1.3  # More likely to pull when getting blown out
+            # Modifier: Protect lead with starter (reduce probability of pulling them)
+            if (
+                score_differential > 0
+                and stats.outs < 15 # Haven't gone 5 innings yet
+            ):
+                # Winning and starter hasn't gone 5 innings yet
+                prob *= 0.5  # Half as likely to pull
+            if stats.pitch_count >= PITCH_COUNT_THRESHOLD:
+                prob = max(prob, 0.75)
 
-        if inning.number == 9 and 0 < score_diff <= 3:
-            prob *= 3
 
-        # Clamp to [0, 1]
-        prob = max(0.0, min(1.0, prob))
+        elif pitcher.bullpen_role == "Closer":
+            outs = stats.outs
+            if outs >= 9 or stats.runs >= 3:
+                return 1.0   # 3 innings or 3 runs is the max
+            elif outs >= 6 or stats.runs >= 2:
+                return min(1.0, prob + 0.3)  # getting long for a closer
+            elif outs >= 3: # done his job, but manager may want him back
+                return min(0.6, max(0.15, prob))  # at least some chance of pulling him
+            return 0.0
 
+        else:  # RELIEVER / SETUP / LONG / SHORT
+            outs = stats.outs
+            if outs >= 6 or stats.runs >= 2:
+                return min(1, prob + 0.6)
+            elif outs >= 3 or stats.runs >= 1:
+                return min(1.0, prob + 0.3)
+            return 0.0
+        
         return prob
+
 
     @staticmethod
     def should_bring_in_closer(
