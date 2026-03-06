@@ -131,6 +131,7 @@ class TeamInGame:
             self.pitcher.game_stats.pitching.game_started = 1
             self.pitcher.game_stats.pitching.game_played = 1
             self.pitcher.current_position = Position.PITCHER.value
+            self.pitcher.is_starter = True
 
     def get_fielder(self, position: Position) -> PlayerInGame | None:
         """Get player at a position."""

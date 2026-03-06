@@ -834,6 +834,11 @@ class Game:
             self.logger.info(
                 f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
             )
+            self.logger.debug(f"Change probability: {change}")
+            self.logger.trace(
+                f"(fatigue={self.current_pitcher.pitcher_fatigue.get_level()}, runs={self.current_pitcher.game_stats.pitching.runs}, "
+                f"hits={self.current_pitcher.game_stats.pitching.hits}, outs={self.current_pitcher.game_stats.pitching.outs}, pitches={self.current_pitcher.game_stats.pitching.pitch_count})"
+            )
         if change > rnd:
             pitcher = GameStrategy.select_relief_pitcher(
                 self.pitch_team,
@@ -852,37 +857,6 @@ class Game:
             else:
                 self.logger.info("⚠️ No available pitchers!")
 
-
-    # def _consider_pitching_change(self) -> None:
-    #     """Evaluate and possibly make a pitching change. Called mid-inning and between innings."""
-    #     if not self.current_pitcher:
-    #         return
-
-    #     rnd = self.rng.random()
-    #     change = GameStrategy.should_consider_pitching_change(
-    #         self.current_pitcher, self.inning, self.score_differential
-    #     )
-    #     if change > 0.2:
-    #         self.logger.info(
-    #             f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
-    #         )
-    #     if change > rnd:
-    #         pitcher = GameStrategy.select_relief_pitcher(
-    #             self.pitch_team,
-    #             self.current_pitcher,
-    #             self.inning,
-    #             self.score,
-    #         )
-    #         if pitcher:
-    #             self._close_pitcher_appearance()
-    #             self.current_pitcher = pitcher
-    #             self._active_pitchers[self.pitch_team.record.id] = pitcher
-    #             self.current_pitcher.game_stats.pitching.game_played = 1
-    #             self.current_pitcher.current_position = "p"
-    #             self._open_pitcher_appearance(pitcher)
-    #             self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
-    #         else:
-    #             self.logger.info("⚠️ No available pitchers!")
 
     # ------------------------------------------------------------------
     # Initialization

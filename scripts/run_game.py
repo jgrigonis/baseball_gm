@@ -98,8 +98,7 @@ def main(args):
     home_team = TeamInGameFactory.from_record(home_team_record)
     away_team = TeamInGameFactory.from_record(away_team_record)
 
-    # TODO we should find a better way to set the starter
-    # As well as set bullpen roles.
+    # TODO we should find a better way to set bullpen roles.
 
     my_game = Game(
         home_team=home_team,

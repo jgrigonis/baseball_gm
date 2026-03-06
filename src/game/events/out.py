@@ -91,7 +91,7 @@ class PutOutEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        msg = f"{self.fielder.name} with the putout."
+        msg = f"{self.fielder.name} ({self.fielder.current_position}) with the putout."
         if self.assist:
-            msg += f" {self.assist.name} with the assist"
+            msg += f" {self.assist.name} ({self.assist.current_position}) with the assist"
         return msg
