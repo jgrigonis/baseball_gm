@@ -523,7 +523,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["era"])  # Lower is better
 
-    def leaderboard_strikeouts(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_pitch_strikeouts(self, min_innings=0) -> List[Dict[str, Any]]:
         """Get pitchers ranked by strikeouts"""
         leaders = []
 

@@ -271,7 +271,10 @@ def display(totals: dict, season_label: str):
 
     # --- Pitching ---
     print(_header("PITCHING"))
-    for label, key in [("Balks", "balks"), ("Wild Pitches", "wild_pitches")]:
+    for label, key in [
+        ("Balks", "balks"),
+        ("Wild Pitches", "wild_pitches"),
+    ]:
         v = totals[key]
         print(_count_row(label, v, v / tpg, key))
     print(_rate_row("WHIP", totals["whip"], "whip"))

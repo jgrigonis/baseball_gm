@@ -36,7 +36,7 @@ RANGES = {
     "cs":           (7,     14),
     "walks":        (85,   140),
     "strikeouts":   (175,  225),
-    "k_per_ab":     (0.10, 0.30),
+    "k_per_ab":     (0.067, 0.10),
     "ab_per_k":     (10,    15),
     "avg":          (0.289, 0.350),
     "obp":          (0.360, 0.420),
@@ -52,6 +52,8 @@ RANGES = {
     "saves":        (25,    50),
     "save_opps":    (30,   100),
     "sv_per_svo":   (0.80, 0.99),
+    "p_walks":      (70,    90),
+    "p_strikeouts": (180,   220),
     "k_per_9":      (9,     11),
     "balks":        (2,     10),
     "wild_pitches": (5,     22),
@@ -130,6 +132,12 @@ def fetch_leaders(players, min_pa=0, min_ip=0) -> dict:
 
     # save_opps = analyzer.leaderboard_save_opportunities()
     # d["save_opps"] = (save_opps[TOP_N]["save_opps"], save_opps[0]["save_opps"])
+
+    p_walks = analyzer.leaderboard_pitch_walks()
+    d["p_walks"] = (p_walks[TOP_N]["walks"], p_walks[0]["walks"])
+
+    p_strikeouts = analyzer.leaderboard_pitch_strikeouts()
+    d["p_strikeouts"] = (p_strikeouts[TOP_N]["strike_outs"], p_strikeouts[0]["strike_outs"])
 
     balks = analyzer.leaderboard_balks()
     d["balks"] = (balks[TOP_N]["balks"], balks[0]["balks"])
@@ -268,6 +276,8 @@ def display(totals: dict, season_label: str):
         ("Losses",          "losses"),
         ("Saves",           "saves"),
         # ("Save Opps",       "save_opps"),
+        ("Walks",           "p_walks"),
+        ("Strikeouts",      "p_strikeouts"),
         ("Balks",           "balks"),
         ("Wild Pitches",    "wild_pitches"),
     ]:
