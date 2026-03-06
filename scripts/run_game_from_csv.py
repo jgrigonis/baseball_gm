@@ -72,53 +72,6 @@ def main():
     args = get_args()
     result = game_runner(args)
     print(result)
-    # levl = logging.INFO
-    # if args.debug:
-    #     levl = logging.DEBUG
-    # if args.trace:
-    #     levl = logging.TRACE
-    # # logger = setup_logger(name="details", level=levl, console_level=levl)
-    # # logger = logging.getLogger("details")
-    # tf = TeamFactory(log_level=levl)
-    # # Set up Home Team Record
-    # home_team_record = tf.from_csv(path=HOME_FILE, city=HOME_CITY, mascot=HOME_MASCOT)
-
-    # # Set up Away Team Record
-    # away_team_record = tf.from_csv(path=AWAY_FILE, city=AWAY_CITY, mascot=AWAY_MASCOT)
-
-    # # setup TeamInGame objects
-    # home_team = TeamInGameFactory.from_record(home_team_record)
-    # away_team = TeamInGameFactory.from_record(away_team_record)
-
-    # # set lineups
-    # home_team.set_lineup()
-    # away_team.set_lineup()
-
-    # my_game = Game(
-    #     home_team=home_team, away_team=away_team, pauses=args.pauses
-    # )
-    # result = my_game.play()
-
-    # print(home_team.output_defensive_stats())
-    # print(away_team.output_defensive_stats())
-
-    # print(home_team.output_lineup_ratings())
-    # print(home_team.output_pitcher_ratings())
-    # print(away_team.output_lineup_ratings())
-    # print(away_team.output_pitcher_ratings())
-
-    # print(home_team.output_lineup_skills())
-    # print(home_team.output_pitcher_skills())
-    # print(away_team.output_lineup_skills())
-    # print(away_team.output_pitcher_skills())
-
-    # print(home_team.output_batting_stats())
-    # print(away_team.output_batting_stats())
-
-    # print(home_team.output_pitching_stats())
-    # print(away_team.output_pitching_stats())
-
-    # return result
 
 
 if __name__ == "__main__":
