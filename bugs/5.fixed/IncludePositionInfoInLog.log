@@ -6,3 +6,5 @@ We should put the position of the player doing the putout in the log
 [INFO] game: CHRIS GARY hit a foul fly out.
 [INFO] game: MATTHEW MCMANUS with the putout.
 [INFO] game: 3 outs
+
+Also add the position on errors.

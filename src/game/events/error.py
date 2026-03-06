@@ -16,7 +16,7 @@ class FieldingErrorEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"{self.batter.name} got on base via an error."
+        return f"{self.batter.name} got on base via a fielding error by {self.fielder.name} ({self.fielder.current_position})."
 
 
 @dataclass
@@ -29,7 +29,7 @@ class ThrowingErrorEvent(GameEvent):
         self.fielder.game_stats.fielding.error()
 
     def describe(self, game) -> str:
-        return f"{self.batter.name} reached base on a throwing error by {self.fielder.name}."
+        return f"{self.batter.name} reached base on a throwing error by {self.fielder.name} ({self.fielder.current_position})."
 
 
 @dataclass
