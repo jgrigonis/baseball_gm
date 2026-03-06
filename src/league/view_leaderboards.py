@@ -138,7 +138,7 @@ def show_all_leaderboards(players, top_n=10, min_pa=100, min_ip=10):
     )
     analyzer.print_leaderboard(
         "STRIKEOUT LEADERS",
-        analyzer.leaderboard_strikeouts(min_innings=min_ip),
+        analyzer.leaderboard_pitch_strikeouts(min_innings=min_ip),
         "strike_outs",
         top_n=top_n,
         format_str="d",

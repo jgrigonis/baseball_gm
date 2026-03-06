@@ -85,21 +85,21 @@ class PitchModifiers:
         eye = batter.skills["eye"]
         resolver.pitch_outcome.add("strike", -14 * (eye - 50))
         resolver.pitch_outcome.add("foul", 8 * (eye - 50))
-        resolver.pitch_outcome.add("ball", 8 * (eye - 50))
+        resolver.pitch_outcome.add("ball", 9 * (eye - 50))
 
         contact = batter.skills["contact"]
-        resolver.pitch_outcome.add("strike", -9 * (contact - 50))
+        resolver.pitch_outcome.add("strike", -9.9 * (contact - 50))
         resolver.pitch_outcome.add("foul", int(2 * (contact - 50)))
-        resolver.pitch_outcome.add("in_play", int(2.6 * (contact - 50)))
+        resolver.pitch_outcome.add("in_play", int(3.6 * (contact - 50)))
 
         power = batter.skills["power"]
-        resolver.pitch_outcome.add("home_run", 3.5 * (power - 50))
+        resolver.pitch_outcome.add("home_run", 3.7 * (power - 50))
 
     @staticmethod
     def modify_for_pitcher(resolver, pitcher: PlayerInGame):
         """Modify probabilities based on pitcher skills."""
         accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
-        resolver.pitch_outcome.add("ball", -24 * (accuracy - 50))
+        resolver.pitch_outcome.add("ball", -30 * (accuracy - 50))
         resolver.pitch_outcome.add("strike", 16 * (accuracy - 50))
         resolver.pitch_outcome.add("hit_by_pitch", -(accuracy - 50))
         resolver.pitch_outcome.add("wild_pitch", -(accuracy - 50))
@@ -110,5 +110,6 @@ class PitchModifiers:
 
         strikes = pitcher.get_effective_stat(pitcher.skills["strikes"])
         resolver.pitch_outcome.add("ball", -12 * (strikes - 50))
-        resolver.pitch_outcome.add("strike", 32 * (strikes - 50))
-        resolver.pitch_outcome.add("foul", 4 * (strikes - 50))
+        resolver.pitch_outcome.add("strike", 40 * (strikes - 50))
+        resolver.pitch_outcome.add("foul", -4 * (strikes - 50))
+        resolver.pitch_outcome.add("in_play", -8 * (strikes - 50))

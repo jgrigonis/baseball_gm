@@ -86,7 +86,7 @@ class Resolver:
         """Initialize base weights for pitch outcomes."""
         self.pitch_outcome.set_weights(
             {
-                "ball": 13200,
+                "ball": 15200,
                 "foul": 5100,
                 "home_run": 280,
                 "hit_by_pitch": 90,
@@ -96,7 +96,7 @@ class Resolver:
                 "wild_pitch": 205,
                 "passed_ball": 45,
                 "in_play": 5855,
-                "strike": 8800,  # TODO replace with called_strike and swinging_strike
+                "strike": 10000,  # TODO replace with called_strike and swinging_strike
             }
         )
 
