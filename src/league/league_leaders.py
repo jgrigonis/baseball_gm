@@ -6,17 +6,36 @@ real-world ranges.
 """
 
 import argparse
+import logging
 
 from src.league.season_resolver import resolve_season
 from src.league.view_leaderboards import calculate_min_pa
 from src.stats.analyzer import StatsAnalyzer
 from src.stats.loader import StatsLoader
 
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+def log_print(msg: str = "", logger: logging.Logger = None):
+    print(msg)
+    if logger:
+        logger.info(msg)
+
+# ---------------------------------------------------------------------------
+# Args
+# ---------------------------------------------------------------------------
+
 def parse_args():
     parser = argparse.ArgumentParser(description="League-wide stat leaders for a season.")
     parser.add_argument("--file", "-f", default="league.db", help="Set the league db filename.")
     parser.add_argument("--id", "-i", help="Season ID (or partial name/year match)")
+    parser.add_argument("--logs", action="store_true", help="Write output to log file.")
     return parser.parse_args()
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
 WIDTH = 72
 TOP_N = 9  # compare 10th leader
@@ -224,13 +243,14 @@ def _rate_row(label: str, tenth, leader, key: str, fmt: str = ".3f") -> str:
     return f"  {label:<22}  {tenth:>8{fmt}}  {leader:>6{fmt}}  {ind}  {rng}"
 
 
-def display(totals: dict, season_label: str):
-    print()
-    print("=" * WIDTH)
-    print(f"  LEAGUE LEADER EVALUATION — {season_label}")
-    print("=" * WIDTH)
+def display(totals: dict, season_label: str, logger: logging.Logger = None):
+    lines = []
+    lines.append("")
+    lines.append("=" * WIDTH)
+    lines.append(f"  LEAGUE LEADER EVALUATION — {season_label}")
+    lines.append("=" * WIDTH)
 
-    print(_header("BATTING"))
+    lines.append(_header("BATTING"))
     for label, key in [
         ("Hits",         "hits"),
         ("Runs",         "runs"),
@@ -247,9 +267,9 @@ def display(totals: dict, season_label: str):
         ("Double Plays", "double_plays"),
     ]:
         tenth, leader = totals[key]
-        print(_count_row(label, tenth, leader, key))
+        lines.append(_count_row(label, tenth, leader, key))
 
-    print(_header("BATTING RATES"))
+    lines.append(_header("BATTING RATES"))
     for label, key, fmt in [
         ("AVG",   "avg",    ".3f"),
         ("OBP",   "obp",    ".3f"),
@@ -259,17 +279,17 @@ def display(totals: dict, season_label: str):
         ("K/AB",  "k_per_ab", ".3f"),
     ]:
         tenth, leader = totals[key]
-        print(_rate_row(label, tenth, leader, key, fmt))
+        lines.append(_rate_row(label, tenth, leader, key, fmt))
 
-    print(_header("BASERUNNING"))
+    lines.append(_header("BASERUNNING"))
     for label, key in [
         ("Stolen Bases",    "sb"),
         ("Caught Stealing", "cs"),
     ]:
         tenth, leader = totals[key]
-        print(_count_row(label, tenth, leader, key))
+        lines.append(_count_row(label, tenth, leader, key))
 
-    print(_header("PITCHING"))
+    lines.append(_header("PITCHING"))
     for label, key in [
         # ("Game Starts",     "starts"),
         ("Wins",            "wins"),
@@ -282,9 +302,9 @@ def display(totals: dict, season_label: str):
         ("Wild Pitches",    "wild_pitches"),
     ]:
         tenth, leader = totals[key]
-        print(_count_row(label, tenth, leader, key))
+        lines.append(_count_row(label, tenth, leader, key))
 
-    print(_header("PITCHING RATES"))
+    lines.append(_header("PITCHING RATES"))
     for label, key, fmt in [
         ("Innings Pitched", "ip", ".0f"),
         ("ERA",    "era",      ".2f"),
@@ -294,10 +314,10 @@ def display(totals: dict, season_label: str):
         # ("SV/SVO", "sv_per_svo", ".3f"),
     ]:
         tenth, leader = totals[key]
-        print(_rate_row(label, tenth, leader, key, fmt))
+        lines.append(_rate_row(label, tenth, leader, key, fmt))
 
     # Fielding stubbed — uncomment when fielding leaderboards are available
-    # print(_header("FIELDING"))
+    # lines.append(_header("FIELDING"))
     # for label, key in [
     #     ("Putouts",      "putouts"),
     #     ("Assists",      "assists"),
@@ -305,28 +325,44 @@ def display(totals: dict, season_label: str):
     #     ("Passed Balls", "passed_balls"),
     # ]:
     #     tenth, leader = totals[key]
-    #     print(_count_row(label, tenth, leader, key))
+    #     lines.append(_count_row(label, tenth, leader, key))
     # tenth, leader = totals["fpct"]
-    # print(_rate_row("Fielding %", tenth, leader, "fpct", ".4f"))
+    # lines.append(_rate_row("Fielding %", tenth, leader, "fpct", ".4f"))
 
-    print()
+    lines.append("")
+    output = "\n".join(lines)
+    print(output)
+    if logger:
+        logger.info(output)
 
 
 def main():
     args = parse_args()
     db_path, season_id, season_label = resolve_season(args.file, args.id)
 
-    if not db_path.exists():
-        print(f"Database not found: {db_path}")
-        raise SystemExit(1)
+    logger = None
+    if args.logs:
+        from src.util.logger import setup_logger
+        import logging
+        logger = setup_logger(
+            name="league_leaders",
+            level=logging.INFO,
+            console_level=logging.WARNING,
+            log_id="league_leaders",
+            log_to_file=True,
+        )
 
-    min_pa, min_ip = calculate_min_pa(db_path, season_id)
+    if not db_path.exists():
+        log_print(f"Database not found: {db_path}", logger=logger)
+        return
+
+    min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
 
     with StatsLoader(str(db_path)) as loader:
         all_players = loader.load_season_players_with_stats(season_id)
 
     totals = fetch_leaders(all_players, min_pa=min_pa, min_ip=min_ip)
-    display(totals, season_label)
+    display(totals, season_label, logger=logger)
 
 
 if __name__ == "__main__":

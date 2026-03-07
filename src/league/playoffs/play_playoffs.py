@@ -16,7 +16,9 @@ Usage:
 """
 
 import argparse
+import logging
 import random
+from re import L
 import sqlite3
 import traceback
 from datetime import date, timedelta
@@ -28,7 +30,17 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
 from src.util.locations import LEAGUE_FILES_DIR
+from src.util.logger import setup_logger
 
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+def log_print(msg: str = "", logger: logging.Logger = None):
+    print(msg)
+    if logger:
+        logger.info(msg)
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -104,7 +116,7 @@ def series_is_decided(conn, series_id: str, best_of: int) -> bool:
     return get_series_winner(conn, series_id, best_of) is not None
 
 
-def print_series_result(conn, series_id: str, best_of: int) -> None:
+def print_series_result(conn, series_id: str, best_of: int, logger: logging.logger = None) -> None:
     winner_id = get_series_winner(conn, series_id, best_of)
     rows = conn.execute(
         """
@@ -141,7 +153,7 @@ def print_series_result(conn, series_id: str, best_of: int) -> None:
 
     w = win_map.get(winner_id, 0)
     l = win_map.get(loser_id, 0)
-    print(f"  🏆 {series['name']}: {winner_name} defeats {loser_name} {w}-{l}")
+    log_print(f"  🏆 {series['name']}: {winner_name} defeats {loser_name} {w}-{l}", logger=logger)
 
 
 # ---------------------------------------------------------------------------
@@ -213,32 +225,34 @@ def play_series(
     series_name: str,
     best_of: int,
     rng: random.Random,
+    logger: logging.logger = None,
 ) -> str:
     """
     Play all undecided games in a series. Returns the winning team_id.
     """
-    wins_needed = _WINS_NEEDED[best_of]
-    print(f"\n{'='*60}")
-    print(f"  {series_name}  (Best of {best_of})")
-    print(f"{'='*60}")
+    # wins_needed = _WINS_NEEDED[best_of]
+    lines = []
+    lines.append(f"\n{'='*60}")
+    lines.append(f"  {series_name}  (Best of {best_of})")
+    lines.append(f"{'='*60}")
+    output = "\n".join(lines)
+    log_print(output, logger)
 
     games = get_series_games(conn, series_id)
 
     for i, game_info in enumerate(games, 1):
         # Check if series already decided before this game
         if series_is_decided(conn, series_id, best_of):
-            print(f"  Game {i}: Series decided — skipping")
+            log_print(f"  Game {i}: Series decided — skipping", logger=logger)
             continue
 
         if game_info["completed"]:
             # Already played (e.g. on a resume run)
             winner = game_info["winner_id"]
-            home_score = game_info["home_score"]
-            away_score = game_info["away_score"]
-            print(f"  Game {i}: Already played — skipping")
+            log_print(f"  Game {i}: Already played — skipping", logger=logger)
             continue
 
-        print(f"\n  Game {i}:")
+        log_print(f"\n  Game {i}:", logger=logger)
         try:
             result = play_game(
                 conn=conn,
@@ -256,13 +270,13 @@ def play_series(
                 },
                 rng=rng,
             )
-            print(f"    {result}")
+            log_print(f"    {result}", logger=logger)
         except Exception as e:
-            print(f"    ❌ Error: {e}")
-            print(traceback.format_exc())
+            log_print(f"    ❌ Error: {e}", logger=logger)
+            log_print(traceback.format_exc(), logger=logger)
             raise
 
-    print_series_result(conn, series_id, best_of)
+    print_series_result(conn, series_id, best_of, logger)
     winner = get_series_winner(conn, series_id, best_of)
     if winner is None:
         raise RuntimeError(f"Series {series_name} ended without a winner — check game results")
@@ -302,7 +316,15 @@ def main():
     args = get_args()
     conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
     conn.row_factory = sqlite3.Row
-
+    logger = None
+    if args.logs:
+        logger = setup_logger(
+            name="play_playoffs",
+            level=logging.INFO,
+            console_level=logging.WARNING,
+            log_id="play_playoffs",
+            log_to_file=True,
+        )
     rng = random.Random(args.seed) if args.seed else random.Random()
 
     team_repo = TeamRepository(conn)
@@ -311,7 +333,7 @@ def main():
     rotations_repo = TeamRotationsRepository(conn)
 
     sid = args.season_id
-    print(f"\n🏆 Playing playoffs for season {sid}")
+    log_print(f"\n🏆 Playing playoffs for season {sid}", logger=logger)
 
     # Recover seeds from R1 series
     seeds = get_seeds(conn, sid)
@@ -331,7 +353,7 @@ def main():
     # ------------------------------------------------------------------
     # Round 1  (BO5)
     # ------------------------------------------------------------------
-    print("\n📋 ROUND 1")
+    log_print("\n📋 ROUND 1", logger=logger)
     r1_matchups = [("1v8", 1, 8), ("2v7", 2, 7), ("3v6", 3, 6), ("4v5", 4, 5)]
     r1_winners = {}  # name -> winning team_id
 
@@ -339,7 +361,7 @@ def main():
         series_id = get_series_id(conn, sid, name)
         winner = play_series(
             conn, args, team_repo, game_repo, team_game_repo, rotations_repo,
-            series_id, name, best_of=5, rng=rng,
+            series_id, name, best_of=5, rng=rng, logger=logger
         )
         r1_winners[name] = winner
 
@@ -348,7 +370,7 @@ def main():
     # Winner of 1v8 vs Winner of 4v5 → [1,8]v[4,5]
     # Winner of 2v7 vs Winner of 3v6 → [2,7]v[3,6]
     # ------------------------------------------------------------------
-    print("\n📋 SEMIFINALS")
+    log_print("\n📋 SEMIFINALS", logger=logger)
 
     semi_matchups = [
         ("[1,8]v[4,5]", r1_winners["1v8"], r1_winners["4v5"]),
@@ -380,7 +402,7 @@ def main():
     # ------------------------------------------------------------------
     # Finals  (BO7)
     # ------------------------------------------------------------------
-    print("\n📋 FINALS")
+    log_print("\n📋 FINALS", logger=logger)
 
     finalist_a, seed_a = semi_winners[0]
     finalist_b, seed_b = semi_winners[1]
@@ -402,9 +424,12 @@ def main():
         "SELECT city || ' ' || mascot AS name FROM teams WHERE id = ?", (champion,)
     ).fetchone()["name"]
 
-    print(f"\n{'='*60}")
-    print(f"  🎉 CHAMPION: {champ_name}")
-    print(f"{'='*60}\n")
+    lines = []
+    lines.append(f"\n{'='*60}")
+    lines.append(f"  🎉 CHAMPION: {champ_name}")
+    lines.append(f"{'='*60}\n")
+    output = "\n".join(lines)
+    log_print(output, logger)
 
 
 if __name__ == "__main__":

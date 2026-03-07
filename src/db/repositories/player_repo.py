@@ -83,6 +83,14 @@ class PlayerRepository:
 
         self.conn.commit()
 
+    def update_age(self, player_id: str, age: int) -> None:
+        """Increment a player's age in the players table."""
+        self.conn.execute(
+            "UPDATE players SET age = ? WHERE id = ?",
+            (age, player_id),
+        )
+        self.conn.commit()
+
     def update_skills(self, player_id: str, skills: PlayerSkills) -> None:
         """
         Update a player's current skills.
@@ -289,6 +297,33 @@ class PlayerRepository:
             for row in rows
         ]
 
+    def get_players_by_team(self, team_id: str) -> list[PlayerRecord]:
+        rows = self.conn.execute(
+            """
+            SELECT p.*, ps.*
+            FROM players p
+            JOIN player_skills ps ON p.id = ps.player_id
+            JOIN team_players tp ON p.id = tp.player_id
+            WHERE tp.team_id = ?
+            ORDER BY p.last_name, p.first_name
+            """,
+            (team_id,),
+        ).fetchall()
+
+        return [
+            PlayerRecord(
+                id=row["id"],
+                first_name=row["first_name"],
+                last_name=row["last_name"],
+                age=row["age"],
+                bats=row["bats"],
+                throws=row["throws"],
+                position=row["position"],
+                skills=PlayerSkills.from_db_row(row),
+            )
+            for row in rows
+        ]
+        
     def _get_timestamp(self) -> str:
         """Helper: Get current UTC timestamp in ISO format."""
         return datetime.datetime.now(datetime.timezone.utc).isoformat()

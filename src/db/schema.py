@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS players (
     bats TEXT NOT NULL,
     throws TEXT NOT NULL,
     position TEXT,  -- Affinity position used in creation, can be NULL
-    age TEXT,
+    age INTEGER,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT
 );
@@ -79,6 +79,15 @@ CREATE TABLE IF NOT EXISTS player_skills_history (
     
     PRIMARY KEY (player_id, season_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+-- Track completed offseason steps for each season
+CREATE TABLE IF NOT EXISTS offseason_steps (
+    season_id TEXT NOT NULL,
+    step TEXT NOT NULL,
+    completed_at TEXT NOT NULL,
+    PRIMARY KEY (season_id, step),
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 

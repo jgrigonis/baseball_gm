@@ -1,0 +1,11 @@
+
+Retire — evaluate players for retirement based on age/skill decline
+
+Free agency — released/retired players leave rosters
+
+Draft — generate new young players to replenish the pool
+
+Roster moves — AI fills gaps on each team from free agent pool
+
+
+

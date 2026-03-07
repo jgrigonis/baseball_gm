@@ -1,4 +1,5 @@
 # src/league/bootstrap.py
+from os import sep
 
 from src.db.repositories.bullpen_roles_repo import set_roles
 from src.db.repositories.league_repo import LeagueRepository
@@ -40,7 +41,7 @@ class LeagueBootstrapper:
             team = self.team_importer.import_csv(
                 league_id=league_id,
                 season_id=season_id,
-                path=team_def["csv"],
+                path=str(manifest.get('season_year', 2026)) + sep + team_def["csv"],
                 city=team_def["city"],
                 mascot=team_def["mascot"],
                 allow_existing=True,

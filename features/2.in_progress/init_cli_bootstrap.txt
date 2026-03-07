@@ -1,0 +1,6 @@
+We need to move team_files into the proper place.
+
+Basically, take team_files/*.csv
+
+Put them in the proper leagues/YYYY/*.csv
+

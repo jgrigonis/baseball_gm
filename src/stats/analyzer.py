@@ -1,5 +1,6 @@
 # src/stats/analyzer.py
 from typing import List, Dict, Any
+import logging
 
 
 class StatsAnalyzer:
@@ -719,11 +720,17 @@ class StatsAnalyzer:
         stat_key: str,
         top_n: int = 10,
         format_str: str = ".3f",
+        logger: logging.Logger = None,
     ):
         """Pretty print a leaderboard"""
-        print(f"\n{'=' * 60}")
-        print(f"{title:^60}")
-        print(f"{'=' * 60}")
+        lines = []
+        lines.append(f"\n{'=' * 60}")
+        lines.append(f"{title:^60}")
+        lines.append(f"{'=' * 60}")
+
+        # print(f"\n{'=' * 60}")
+        # print(f"{title:^60}")
+        # print(f"{'=' * 60}")
 
         for i, leader in enumerate(leaders[:top_n], 1):
             player_name = leader["player_name"]
@@ -744,5 +751,10 @@ class StatsAnalyzer:
                 context.append(f"IP: {leader['innings']:.1f}")
 
             context_str = f" ({', '.join(context)})" if context else ""
+            lines.append(f"{i:2d}. {player_name:30s} {stat_display:>10s}{context_str}")
 
-            print(f"{i:2d}. {player_name:30s} {stat_display:>10s}{context_str}")
+            
+        output = "\n".join(lines)
+        print(output)
+        if logger:
+            logger.info(output)

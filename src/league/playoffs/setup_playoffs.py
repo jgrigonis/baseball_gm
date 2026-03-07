@@ -16,13 +16,23 @@ Usage:
 """
 
 import argparse
+import logging
 import sqlite3
-import uuid
 from datetime import date, timedelta
 from pathlib import Path
 
 from src.util.locations import LEAGUE_FILES_DIR
+from src.util.logger import setup_logger
 
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+def log_print(msg: str = "", logger: logging.Logger = None):
+    print(msg)
+    if logger:
+        logger.info(msg)
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -41,6 +51,7 @@ def get_args():
         default=4,
         help="Keep only this many starters; rest go to Long bullpen (default: 4, drops 5th only)",
     )
+    p.add_argument("--logs", action="store_true", help="Write output to log file.")
     return p.parse_args()
 
 
@@ -82,7 +93,7 @@ def get_top_8(conn, season_id: str) -> list[dict]:
 # Rotation management
 # ---------------------------------------------------------------------------
 
-def demote_extra_starters(conn, season_id: str, teams: list[dict], keep: int) -> None:
+def demote_extra_starters(conn, season_id: str, teams: list[dict], keep: int, logger: logging.Logger = None) -> None:
     """
     For each team, keep only `keep` rotation slots active.
     Demote remaining starters to Long bullpen role.
@@ -135,7 +146,7 @@ def demote_extra_starters(conn, season_id: str, teams: list[dict], keep: int) ->
                 (team_id, player_id, season_id, today),
             )
 
-            print(f"  ↓ {team['team_name']} — player {player_id} demoted to Long relief")
+            log_print(f"  ↓ {team['team_name']} — player {player_id} demoted to Long relief", logger=logger)
 
     conn.commit()
 
@@ -201,7 +212,7 @@ def _insert_games(conn, games: list[dict]) -> None:
 _R1_OFFSETS = [0, 2, 4, 6, 8]  # BO5 — 5 possible games
 
 
-def build_bracket(conn, season_id: str, seeds: list[dict], start_date: date) -> None:
+def build_bracket(conn, season_id: str, seeds: list[dict], start_date: date, logger: logging.Logger = None) -> None:
     """
     Create all series and pre-generate all possible games.
     seeds is a list of 8 dicts ordered [1st, 2nd, ..., 8th].
@@ -237,7 +248,7 @@ def build_bracket(conn, season_id: str, seeds: list[dict], start_date: date) -> 
             offsets=_R1_OFFSETS,
         )
         _insert_games(conn, games)
-        print(f"  📋 Series {name}: {seeds[hi-1]['team_name']} vs {seeds[lo-1]['team_name']} ({len(games)} games)")
+        log_print(f"  📋 Series {name}: {seeds[hi-1]['team_name']} vs {seeds[lo-1]['team_name']} ({len(games)} games)", logger=logger)
 
     # ------------------------------------------------------------------
     # Semifinals + Finals — create series records only.
@@ -246,7 +257,7 @@ def build_bracket(conn, season_id: str, seeds: list[dict], start_date: date) -> 
     # ------------------------------------------------------------------
     for name in ("[1,8]v[4,5]", "[2,7]v[3,6]", "Finals"):
         _insert_series(conn, f"{sid}_{name}", sid, name)
-        print(f"  📋 Series {name}: record created (games generated after Round 1)")
+        log_print(f"  📋 Series {name}: record created (games generated after Round 1)", logger=logger)
 
     conn.commit()
 
@@ -258,29 +269,40 @@ def build_bracket(conn, season_id: str, seeds: list[dict], start_date: date) -> 
 def main():
     args = get_args()
     start_date = date.fromisoformat(args.start_date)
-
+    logger = None
+    if args.logs:
+        logger = setup_logger(
+            name="setup_playoffs",
+            level=logging.INFO,
+            console_level=logging.WARNING,
+            log_id="setup_playoffs",
+            log_to_file=True,
+        )
     conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
     conn.row_factory = sqlite3.Row
-
-    print(f"\n🏆 Setting up playoffs for season {args.season_id}")
-    print(f"   Start date : {start_date}")
-    print(f"   Rotation   : keeping top {args.short_rotation} starters\n")
+    lines = []
+    lines.append(f"\n🏆 Setting up playoffs for season {args.season_id}")
+    lines.append(f"   Start date : {start_date}")
+    lines.append(f"   Rotation   : keeping top {args.short_rotation} starters\n")
 
     # 1. Seed teams
     seeds = get_top_8(conn, args.season_id)
-    print("Playoff seeds:")
+    lines.append("Playoff seeds:")
     for i, s in enumerate(seeds, 1):
-        print(f"  {i}. {s['team_name']}  ({s['wins']}-{s['losses']}, {s['win_pct']:.3f})")
+        lines.append(f"  {i}. {s['team_name']}  ({s['wins']}-{s['losses']}, {s['win_pct']:.3f})")
 
     # 2. Demote extra starters
-    print("\nAdjusting rotations...")
-    demote_extra_starters(conn, args.season_id, seeds, keep=args.short_rotation)
+    lines.append("\nAdjusting rotations...")
+    demote_extra_starters(conn, args.season_id, seeds, keep=args.short_rotation, logger=logger)
 
     # 3. Build bracket + pre-generate games
-    print("\nBuilding bracket...")
-    build_bracket(conn, args.season_id, seeds, start_date)
+    lines.append("\nBuilding bracket...")
+    build_bracket(conn, args.season_id, seeds, start_date, logger=logger)
 
-    print("\n✅ Playoff bracket ready.")
+    lines.append("\n✅ Playoff bracket ready.")
+    output = "\n".join(lines)
+    log_print(output, logger)
+    
 
 
 if __name__ == "__main__":

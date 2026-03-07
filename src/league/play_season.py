@@ -215,11 +215,6 @@ def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
     pitcher_repo = PitcherStateRepository(conn)
     for player in home_team.players + away_team.players:
         if player.game_stats.pitching.pitch_count > 0:
-            # # DEBUG
-            # print(f"{player.name}: pitch_count={player.game_stats.pitching.pitch_count}, "
-            #   f"game_started={player.game_stats.pitching.game_started}, "
-            #   f"type={type(player.game_stats.pitching.game_started)}")
-            # # DEBUG
             pitcher_repo.update_after_game(
                 player_id=player.id,
                 final_energy=player.pitcher_fatigue.energy,
@@ -251,9 +246,6 @@ def play_game(
     # load pitcher energy, game_date is the date of the current game
     game_date = load_energy(conn, game_repo, game_info["game_id"], home_team, away_team)
 
-    # DEBUG
-    # print(f"Playing game on {game_date} - Home: {home_team.record.mascot}")
-    # DEBUG
     # Get pitching rotations
     home_rotation = rotations_repo.get_current_rotation(
         home_team.record.id, season_id, game_date
@@ -393,7 +385,7 @@ def play_game(
     return result
 
 
-def print_standings(conn, season_id: str):
+def print_standings(conn, season_id: str, logger: logging.Logger = None):
     """Print current season standings."""
     rows = conn.execute(
         """
@@ -413,12 +405,16 @@ def print_standings(conn, season_id: str):
         (season_id,),
     ).fetchall()
 
-    print("\n" + "=" * 60)
-    print(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
-    print("=" * 60)
+    lines = []
+    lines.append("\n" + "=" * 60)
+    lines.append(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
+    lines.append("=" * 60)
     for row in rows:
-        print(f"{row[0]:<30} {row[1]:>5} {row[2]:>5} {row[4]:>7.3f} {row[3]:>6}")
-    print("=" * 60 + "\n")
+        lines.append(f"{row[0]:<30} {row[1]:>5} {row[2]:>5} {row[4]:>7.3f} {row[3]:>6}")
+    lines.append("=" * 60)
+
+    output = "\n".join(lines)
+    logger.info(output)
 
 
 def main():
@@ -428,6 +424,14 @@ def main():
     # Connect to database
     conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
     conn.row_factory = sqlite3.Row
+
+    season_logger = setup_logger(
+        name="season",
+        level=logging.INFO,
+        console_level=logging.WARNING,  # still prints to console via print()
+        log_id="season",
+        log_to_file=True,
+    )
 
     # Initialize repositories
     game_repo = GameRepository(conn)
@@ -455,8 +459,10 @@ def main():
         print(f"   (Resuming - {total_games - len(games)} already completed)")
 
     # Setup RNG
-    print(f"🎲 Seed: {args.seed}")
-    rng = random.Random(args.seed) if args.seed else random.Random()
+    seed = args.seed if args.seed is not None else random.randint(0, 999999)
+    season_logger.info(f"🎲 Seed: {seed}")
+    season_logger.info(f"season id: {args.season_id}")
+    rng = random.Random(seed)
 
     # Play games
     completed = 0
@@ -492,7 +498,11 @@ def main():
                 print(
                     f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
                 )
+                if args.logs:
+                    season_logger.info(f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)")
             else:
+                if args.logs:
+                    season_logger.info(f"[{i}/{len(games)}] ✅ {result}")
                 print(f"[{i}/{len(games)}] ✅ {result}")
 
         except Exception as e:
@@ -502,24 +512,15 @@ def main():
             print(traceback.format_exc())
 
             continue
-        # DEBUG
-        # result = conn.execute(
-        #     """SELECT player_id, pitch_game_started
-        #     FROM player_game_stats
-        #     WHERE game_id = ? AND pitch_game_started = 1""",
-        #     (game_info['game_id'],)
-        # ).fetchall()
-        # print(f"Starter saved: {result}")
-        # DEBUG
 
     # Final stats
     elapsed = (datetime.now() - start_time).total_seconds()
-    print("\n✅ Season complete!")
-    print(f"   Games played: {completed}")
-    print(f"   Time: {elapsed:.1f} seconds ({completed/elapsed:.2f} games/sec)")
+    msg_complete = f"✅ Season complete! Games played: {completed}, Time: {elapsed:.1f}s ({completed/elapsed:.2f} games/sec)"
+    print("\n" + msg_complete)
+    season_logger.info(msg_complete)
 
     # Print standings
-    print_standings(conn, args.season_id)
+    print_standings(conn, args.season_id, season_logger)
 
 
 if __name__ == "__main__":

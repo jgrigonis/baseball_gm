@@ -176,18 +176,18 @@ class PlayerRecord:
         """Convert to dictionary for CSV export."""
         skills_dict = self.skills.to_csv_dict()
 
-        # Convert bats to single letter
-        bats_abbr = {"left": "L", "right": "R", "switch": "S"}[self.bats]
+        # # Convert bats to single letter
+        # bats_abbr = {"left": "L", "right": "R", "switch": "S"}[self.bats]
 
-        # Convert throws to single letter
-        throws_abbr = {"left": "L", "right": "R"}[self.throws]
+        # # Convert throws to single letter
+        # throws_abbr = {"left": "L", "right": "R"}[self.throws]
 
         return {
             "ID": self.id,
             "Name": self.name,
             "Age": self.age,
-            "B": bats_abbr,
-            "T": throws_abbr,
+            "B": self.bats,
+            "T": self.throws,
             "PS": self.position,
             **skills_dict,
         }
