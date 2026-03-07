@@ -348,3 +348,11 @@ class PitcherStateRepository:
         deleted = cursor.rowcount > 0
         self.conn.commit()
         return deleted
+
+    def clear_all(self) -> int:
+        """Delete all pitcher state rows. Call between seasons. Returns row count deleted."""
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM pitcher_state")
+        deleted = cursor.rowcount
+        self.conn.commit()
+        return deleted

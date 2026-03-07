@@ -34,6 +34,12 @@ class OffseasonPipeline:
         else:
             print("  Skipping age (already done)")
 
+        if not self._is_done(season_id, "reset_pitcher_state"):
+            self._reset_pitcher_state()
+            self._mark_done(season_id, "reset_pitcher_state")
+        else:
+            print("  Skipping pitcher state reset (already done)")
+
         if not self._is_done(season_id, "write_csvs"):
             self._write_csvs(season_id)
             self._mark_done(season_id, "write_csvs")
@@ -131,6 +137,13 @@ class OffseasonPipeline:
         ).fetchone()
 
         return row is not None and row["wins"] >= 4
+
+    def _reset_pitcher_state(self) -> None:
+        """Clear all pitcher energy state between seasons."""
+        from src.db.repositories.pitcher_state import PitcherStateRepository
+        repo = PitcherStateRepository(self.conn)
+        count = repo.clear_all()
+        print(f"  Cleared pitcher state for {count} pitchers")
 
 def get_args():
     p = argparse.ArgumentParser()
