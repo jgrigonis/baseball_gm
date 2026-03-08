@@ -10,7 +10,7 @@ class PitchModifiers:
     """Modifies pitch outcome probabilities based on game state."""
 
     @staticmethod
-    def apply_all(resolver, game):
+    def apply_all(resolver, game) -> None:
         """Apply all pitch probability modifiers based on game state."""
         PitchModifiers.modify_for_bases(resolver, game.bases)
         PitchModifiers.modify_for_situation(
@@ -19,9 +19,10 @@ class PitchModifiers:
         PitchModifiers.modify_for_count(resolver, game.count)
         PitchModifiers.modify_for_batter(resolver, game.current_batter.player)
         PitchModifiers.modify_for_pitcher(resolver, game.pos("p"))
+        PitchModifiers.modify_for_platoon(resolver, game.current_batter.player, game.pos("p"))
 
     @staticmethod
-    def modify_for_bases(resolver, bases: Bases):
+    def modify_for_bases(resolver, bases: Bases) -> None:
         """Modify probabilities based on base state."""
         if bases.is_empty:
             resolver.pitch_outcome.set("illegal_pitch", 10)
@@ -36,7 +37,7 @@ class PitchModifiers:
     @staticmethod
     def modify_for_situation(
         resolver, situation: PrePitchSituation, batter: PlayerInGame
-    ):
+    ) -> None:
         """Modify probabilities based on game situation."""
         bunting = batter.skills["bunting"]
         contact = batter.skills["contact"]
@@ -72,7 +73,7 @@ class PitchModifiers:
             resolver.pitch_outcome.multiply("in_play", 50)
 
     @staticmethod
-    def modify_for_count(resolver, count: Count):
+    def modify_for_count(resolver, count: Count) -> None:
         """Apply count-based probability modifiers."""
         modifiers = PITCH_COUNT_MODIFIERS.get((count.balls, count.strikes))
         if modifiers:
@@ -80,7 +81,7 @@ class PitchModifiers:
                 resolver.pitch_outcome.multiply(outcome, factor)
 
     @staticmethod
-    def modify_for_batter(resolver, batter: PlayerInGame):
+    def modify_for_batter(resolver, batter: PlayerInGame) -> None:
         """Modify probabilities based on batter skills."""
         eye = batter.skills["eye"]
         resolver.pitch_outcome.add("strike", -14 * (eye - 50))
@@ -96,7 +97,7 @@ class PitchModifiers:
         resolver.pitch_outcome.add("home_run", 3.7 * (power - 50))
 
     @staticmethod
-    def modify_for_pitcher(resolver, pitcher: PlayerInGame):
+    def modify_for_pitcher(resolver, pitcher: PlayerInGame) -> None:
         """Modify probabilities based on pitcher skills."""
         accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
         resolver.pitch_outcome.add("ball", -30 * (accuracy - 50))
@@ -113,3 +114,10 @@ class PitchModifiers:
         resolver.pitch_outcome.add("strike", 40 * (strikes - 50))
         resolver.pitch_outcome.add("foul", -4 * (strikes - 50))
         resolver.pitch_outcome.add("in_play", -8 * (strikes - 50))
+
+    @staticmethod
+    def modify_for_platoon(resolver, batter: PlayerInGame, pitcher: PlayerInGame) -> None:
+        """Modify for handedness of batter and pitcher."""
+        pt = pitcher.record.throws
+        bb = batter.record.bats
+

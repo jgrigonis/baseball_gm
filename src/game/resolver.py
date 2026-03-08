@@ -40,6 +40,31 @@ from src.game.intents.pick_off import PickOffIntent
 from src.game.resolvers.concurrent_events import resolve_concurrent_events
 from src.game.modifiers.pitch_modifiers import PitchModifiers
 from src.game.modifiers.in_play_modifiers import InPlayModifiers
+from src.game.probabilities import (
+    # Pitch outcome weights
+    BALL_PROB,
+    FOUL_PROB,
+    HOME_RUN_PROB,
+    HBP_PROB,
+    BALK_PROB,
+    ILLEGAL_PITCH_PROB,
+    CATCHER_INTERFERENCE_PROB,
+    WILD_PITCH_PROB,
+    PASSED_BALL_PROB,
+    IN_PLAY_PROB,
+    STRIKE_PROB,
+    # In play outcome weights
+    FLY_OUT_PROB,
+    GROUND_OUT_PROB,
+    SINGLE_PROB,
+    DOUBLE_PROB,
+    TRIPLE_PROB,
+    DOUBLE_PLAY_PROB,
+    FIELDERS_CHOICE_PROB,
+    SAC_FLY_PROB,
+    SAC_BUNT_PROB,
+    TRIPLE_PLAY_PROB,
+)
 from src.game.resolvers.pick_off import resolve_pickoff
 from src.game.resolvers.pitch import resolve_pitch
 from src.game.resolvers.walk import resolve_walk
@@ -86,17 +111,17 @@ class Resolver:
         """Initialize base weights for pitch outcomes."""
         self.pitch_outcome.set_weights(
             {
-                "ball": 15200,
-                "foul": 5100,
-                "home_run": 280,
-                "hit_by_pitch": 90,
-                "balk": 0,  # only with runners on base
-                "illegal_pitch": 0,  # only with bases empty
-                "catcher_interference": 3,
-                "wild_pitch": 205,
-                "passed_ball": 45,
-                "in_play": 5855,
-                "strike": 10000,  # TODO replace with called_strike and swinging_strike
+                "ball": BALL_PROB,
+                "foul": FOUL_PROB,
+                "home_run": HOME_RUN_PROB,
+                "hit_by_pitch": HBP_PROB,
+                "balk": BALK_PROB,  # only with runners on base
+                "illegal_pitch": ILLEGAL_PITCH_PROB,  # only with bases empty
+                "catcher_interference": CATCHER_INTERFERENCE_PROB,
+                "wild_pitch": WILD_PITCH_PROB,
+                "passed_ball": PASSED_BALL_PROB,
+                "in_play": IN_PLAY_PROB,
+                "strike": STRIKE_PROB,  # TODO replace with called_strike and swinging_strike
             }
         )
 
@@ -104,16 +129,16 @@ class Resolver:
         """Initialize base weights for in-play outcomes."""
         self.in_play_outcome.set_weights(
             {
-                "fly_out": 4400,
-                "ground_out": 1700,  # 1700
-                "single": 1320,
-                "double": 360,
-                "triple": 48,
-                "double_play": 0,
-                "fielders_choice": 0,
-                "sac_fly": 0,
-                "sac_bunt": 0,
-                "triple_play": 0,
+                "fly_out": FLY_OUT_PROB,
+                "ground_out": GROUND_OUT_PROB,
+                "single": SINGLE_PROB,
+                "double": DOUBLE_PROB,
+                "triple": TRIPLE_PROB,
+                "double_play": DOUBLE_PLAY_PROB,
+                "fielders_choice": FIELDERS_CHOICE_PROB,
+                "sac_fly": SAC_FLY_PROB,
+                "sac_bunt": SAC_BUNT_PROB,
+                "triple_play": TRIPLE_PLAY_PROB,
             }
         )
 
