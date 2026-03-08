@@ -1,0 +1,16 @@
+./scripts/run_season.sh 2026
+CSV mismatch for team London Lions — refusing to import different roster
+usage: play_season.py [-h] [--db DB] --season-id SEASON_ID [--seed SEED] [--force] [--limit LIMIT] [--resume] [--logs]
+play_season.py: error: argument --season-id/-i: expected one argument
+usage: view_leaderboards.py [-h] [--id ID] [--file FILE] [--number NUMBER] [--logs]
+view_leaderboards.py: error: argument --id/-i: expected one argument
+usage: league_totals.py [-h] [--file FILE] [--id ID] [--logs]
+league_totals.py: error: argument --id/-i: expected one argument
+usage: league_leaders.py [-h] [--file FILE] [--id ID] [--logs]
+league_leaders.py: error: argument --id/-i: expected one argument
+usage: setup_playoffs.py [-h] [--db DB] --season-id SEASON_ID --start-date START_DATE [--short-rotation {3,4}] [--logs]
+setup_playoffs.py: error: argument --season-id/-i: expected one argument
+usage: play_playoffs.py [-h] [--db DB] --season-id SEASON_ID [--seed SEED] [--logs]
+play_playoffs.py: error: argument --season-id/-i: expected one argument
+usage: offseason_pipeline.py [-h] [--db DB] --season-id SEASON_ID [--seed SEED]
+offseason_pipeline.py: error: argument --season-id/-i: expected one argument

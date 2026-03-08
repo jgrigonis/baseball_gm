@@ -441,7 +441,7 @@ def main():
 
     # Get all games for season
     games = game_repo.get_season_games(
-        season_id=args.season_id, incomplete_only=args.resume
+        season_id=args.season_id, incomplete_only=args.resume, regular_season_only=True
     )
 
     if not games:

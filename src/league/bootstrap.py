@@ -18,7 +18,7 @@ class LeagueBootstrapper:
         self.team_importer = TeamImporter(conn)
         self.rotations_repo = TeamRotationsRepository(conn)
 
-    def bootstrap_from_manifest(self, manifest, start_date):
+    def bootstrap_from_manifest(self, manifest, start_date, allow_roster_update=False):
         league_id = self.league_repo.create_league(manifest["league_name"])
 
         # Defaults to name=Season1 year=2026 if not found in manifest
@@ -45,6 +45,7 @@ class LeagueBootstrapper:
                 city=team_def["city"],
                 mascot=team_def["mascot"],
                 allow_existing=True,
+                allow_roster_update=allow_roster_update,
             )
             self.league_repo.assign_to_league(league_id, season_id, team.id)
             teams.append(team)

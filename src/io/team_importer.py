@@ -36,6 +36,7 @@ class TeamImporter:
         mascot: str,
         *,
         allow_existing=False,
+        allow_roster_update=False,
     ) -> TeamRecord:
         full_path = Path(TEAM_FILES_DIR) / path
         if not full_path.exists():
@@ -56,11 +57,12 @@ class TeamImporter:
                 if not allow_existing:
                     raise RuntimeError(f"Team {city} {mascot} already exists")
 
-                if team_record.source_hash != csv_hash:  # Access attribute
-                    raise RuntimeError(
-                        f"CSV mismatch for team {city} {mascot} — "
-                        f"refusing to import different roster"
-                    )
+                if not allow_roster_update:
+                    if team_record.source_hash != csv_hash:  # Access attribute
+                        raise RuntimeError(
+                            f"CSV mismatch for team {city} {mascot} — "
+                            f"refusing to import different roster"
+                        )
 
                 if self.team_repo.is_in_league(team_id, league_id, season_id):
                     raise RuntimeError(

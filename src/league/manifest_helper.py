@@ -53,13 +53,13 @@ def find_missing_team_files(manifest: dict) -> list[dict]:
     return missing
 
 
-def create_team_files(teams: list[dict]) -> None:
+def create_team_files(teams: list[dict], year) -> None:
     for team in teams:
         print(f"creating {team['csv']} for {team['city']} {team['mascot']}")
-        create_team_from_manifest(team)
+        create_team_from_manifest(team, year)
 
 
-def create_team_from_manifest(team):
+def create_team_from_manifest(team, year) -> None:
     tf = TeamFactory()
     tr = tf.generate_team(city=team["city"], mascot=team["mascot"])
-    PlayerCSVExporter.write(team=tr, filename=team["csv"])
+    PlayerCSVExporter.write(team=tr, year=year, filename=team["csv"])

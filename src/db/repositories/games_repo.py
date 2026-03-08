@@ -70,28 +70,25 @@ class GameRepository:
         season_id: str,
         completed_only: bool = False,
         incomplete_only: bool = False,
-    ):
+        regular_season_only: bool = False,
+    ) -> list[dict]:
         """Get all games for a season."""
-        if completed_only:
-            query = """
-                SELECT * FROM games 
-                WHERE season_id = ? AND completed = 1
-                ORDER BY date, id
-            """
-        elif incomplete_only:
-            query = """
-                SELECT * FROM games 
-                WHERE season_id = ? AND (completed IS NULL OR completed = 0)
-                ORDER BY date, id
-            """
-        else:
-            query = """
-                SELECT * FROM games 
-                WHERE season_id = ?
-                ORDER BY date, id
-            """
+        conditions = ["season_id = ?"]
+        params = [season_id]
 
-        rows = self.conn.execute(query, (season_id,)).fetchall()
+        if incomplete_only:
+            conditions.append("completed = 0")
+        
+        if regular_season_only:
+            conditions.append("series_id IS NULL")
+
+        where = " AND ".join(conditions)
+
+        rows = self.conn.execute(
+            f"SELECT * FROM games WHERE {where} ORDER BY date",
+            params,
+        ).fetchall()
+    
 
         return [
             {

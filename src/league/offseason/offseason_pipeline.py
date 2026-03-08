@@ -94,6 +94,9 @@ class OffseasonPipeline:
                 else f"{team['id']}.csv"
             )
             path = out_dir / filename
+            if path.exists():
+                print(f"  Skipping {path} (already exists)")
+                continue
 
             rows = [p.to_csv_dict() for p in players]
             with open(path, "w", newline="") as f:

@@ -1,0 +1,60 @@
+
+[2601/2651] Skipping completed game 95b06e3b-5ff3-4c54-b429-8cb849cf1118
+[2602/2651] Skipping completed game a95b5cbe-2317-43ca-8f51-9d335330683f
+[2603/2651] Skipping completed game abef5b19-8eaa-4e47-90b5-15976aaca548
+[2604/2651] Skipping completed game aeb14ed4-9928-4942-9efd-2c8596011432
+[2605/2651] Skipping completed game 835a61f1-b431-4d5e-9156-8b93ec9ea0c9
+[2606/2651] Skipping completed game 9ce2b8e8-5e48-429a-81a8-af9430911250
+[2607/2651] Skipping completed game ed507e62-126e-42be-84a5-fffda5bccafe
+[2608/2651] Skipping completed game f36cb71d-ef4d-4407-a0c7-51bb23643ce8
+[2609/2651] Skipping completed game e9ea888e-0cf9-4dd7-bafe-45ad973ac5a7
+[2610/2651] Skipping completed game a692dbb8-ba25-4ffe-816f-09b40eaa2d9f
+[2611/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_1v8_g1
+[2612/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_2v7_g1
+[2613/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_3v6_g1
+[2614/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_4v5_g1
+[2615/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_1v8_g2
+[2616/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_2v7_g2
+[2617/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_3v6_g2
+[2618/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_4v5_g2
+[2619/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_1v8_g3
+[2620/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_2v7_g3
+[2621/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_3v6_g3
+[2622/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_4v5_g3
+[2623/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_1v8_g4
+[2624/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_2v7_g4
+[2625/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_3v6_g4
+[2626/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_4v5_g4
+  ⚾ Seals (MOHAMED, energy=1.0) @ Bandeirantes (RAMIREZ, energy=1.0)
+[2627/2651] ✅ Seals 7 @ Bandeirantes 5 (F) - Seals wins by 2
+  ⚾ Garudas (PACHECO, energy=1.0) @ Eagles (PEDERSON, energy=1.0)
+[2628/2651] ✅ Garudas 1 @ Eagles 2 (F/10) - Eagles wins by 1
+  ⚾ Maestros (MORRIS, energy=1.0) @ Captains (MEYER, energy=1.0)
+[2629/2651] ✅ Maestros 2 @ Captains 6 (F) - Captains wins by 4
+[2630/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_4v5_g5
+[2631/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[1,8]v[4,5]_g1
+[2632/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[2,7]v[3,6]_g1
+[2633/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[1,8]v[4,5]_g2
+[2634/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[2,7]v[3,6]_g2
+[2635/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[1,8]v[4,5]_g3
+[2636/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[2,7]v[3,6]_g3
+[2637/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[1,8]v[4,5]_g4
+[2638/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[2,7]v[3,6]_g4
+  ⚾ Bandeirantes (HESSE, energy=1.0) @ Guardians (SWANSON, energy=1.0)
+[2639/2651] ✅ Bandeirantes 1 @ Guardians 2 (F/10) - Guardians wins by 1
+[2640/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[2,7]v[3,6]_g5
+  ⚾ Guardians (ETIENNE, energy=1.0) @ Bandeirantes (RAMIREZ, energy=1.0)
+[2641/2651] ✅ Guardians 5 @ Bandeirantes 6 (F) - Bandeirantes wins by 1
+[2642/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_[2,7]v[3,6]_g6
+  ⚾ Guardians (DAVIS, energy=1.0) @ Bandeirantes (BLAIR, energy=1.0)
+[2643/2651] ✅ Guardians 12 @ Bandeirantes 5 (F) - Guardians wins by 7
+  ⚾ Captains (STASH, energy=1.0) @ Eagles (STETSON, energy=1.0)
+[2644/2651] ✅ Captains 3 @ Eagles 5 (F) - Eagles wins by 2
+[2645/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_Finals_g1
+[2646/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_Finals_g2
+[2647/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_Finals_g3
+[2648/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_Finals_g4
+[2649/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_Finals_g5
+[2650/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_Finals_g6
+[2651/2651] Skipping completed game c36872996a7f4e488fff9c92a1982627_Finals_g7
+

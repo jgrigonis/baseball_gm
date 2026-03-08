@@ -12,7 +12,7 @@ from src.util.locations import TEAM_FILES_DIR
 
 class PlayerCSVExporter:
     @staticmethod
-    def write(team: TeamRecord, filename, force_overwrite=False):
+    def write(team: TeamRecord, year, filename, force_overwrite=False):
         """
         Write team players to CSV file.
 
@@ -24,7 +24,7 @@ class PlayerCSVExporter:
         Returns:
             bool: True if file was written, False if user cancelled
         """
-        filepath = Path(TEAM_FILES_DIR) / filename
+        filepath = Path(TEAM_FILES_DIR) / str(year) / filename
 
         # Check if file exists and prompt user
         if filepath.exists() and not force_overwrite:

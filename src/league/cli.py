@@ -32,6 +32,13 @@ def get_args():
         action="store_true",
         help="Create missing csv files.",
     )
+    parser.add_argument(
+        "--update-rosters",
+        "-u",
+        default=False,
+        action="store_true",
+        help="Allow importing updated roster CSVs (e.g. after offseason aging).",
+    )
     parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
     parser.add_argument(
         "--manifest", "-m", default="league_teams.json", help="Set the manifest file."
@@ -69,8 +76,9 @@ def main():
         print(e)
         sys.exit(1)
     missing = find_missing_team_files(manifest)
+    year = manifest.get("season_year", 2028)
     if missing and args.create:
-        create_team_files(missing)
+        create_team_files(missing, year)
     elif missing:
         for miss in missing:
             print(f"The csv file for {miss} is missing.")
@@ -79,12 +87,12 @@ def main():
     # Parse start date from manifest or default
     start_date_str = manifest.get(
         "season_start_date",
-        f"{manifest.get('season_year', 2028)}-04-01",  # default to april 1
+        f"{year}-04-01",  # default to april 1
     )
     start_date = datetime.datetime.fromisoformat(start_date_str).date()
 
     try:
-        league_id, teams, season_id = boot.bootstrap_from_manifest(manifest, start_date)
+        league_id, teams, season_id = boot.bootstrap_from_manifest(manifest, start_date, allow_roster_update=args.update_rosters)
     except RuntimeError as e:
         print(e)
         sys.exit(1)
