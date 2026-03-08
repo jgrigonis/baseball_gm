@@ -29,9 +29,14 @@ class FakePlayer:
 
 
 class FakePlayerInGame:
-    def __init__(self, id: str):
+    def __init__(self, id: str, bats: str = "R", throws: str = "R"):
         self.id = id
         self.name = id
+        self.record = SimpleNamespace(
+            id=id,
+            throws=throws,
+            bats=bats,
+        )
 
         # game_stats with fielding stats
         self.game_stats = SimpleNamespace(
