@@ -47,6 +47,7 @@ from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_in_game import PlayerInGame
 from src.team.team_in_game import TeamInGame
 
+
 def _get_rng(rng: random.Random | None) -> random.Random:
     """Helper to get RNG instance, creating default if needed."""
     return rng if rng is not None else random.Random()
@@ -631,7 +632,6 @@ class GameStrategy:
             FatigueLevel.ZERO: 0.95,  # Almost always
         }
 
-        
         prob = base_probs.get(fatigue_level, 0.5)
 
         stats = pitcher.game_stats.pitching
@@ -644,23 +644,19 @@ class GameStrategy:
                     prob *= 0.2
 
             # Modifier: Protect lead with starter (reduce probability of pulling them)
-            if (
-                score_differential > 0
-                and stats.outs < 15 # Haven't gone 5 innings yet
-            ):
+            if score_differential > 0 and stats.outs < 15:  # Haven't gone 5 innings yet
                 # Winning and starter hasn't gone 5 innings yet
                 prob *= 0.5  # Half as likely to pull
             if stats.pitch_count >= PITCH_COUNT_THRESHOLD:
                 prob = max(prob, 0.75)
 
-
         elif pitcher.bullpen_role == "Closer":
             outs = stats.outs
             if outs >= 9 or stats.runs >= 3:
-                return 1.0   # 3 innings or 3 runs is the max
+                return 1.0  # 3 innings or 3 runs is the max
             elif outs >= 6 or stats.runs >= 2:
                 return min(1.0, prob + 0.3)  # getting long for a closer
-            elif outs >= 3: # done his job, but manager may want him back
+            elif outs >= 3:  # done his job, but manager may want him back
                 return min(0.6, max(0.15, prob))  # at least some chance of pulling him
             return 0.0
 
@@ -671,9 +667,8 @@ class GameStrategy:
             elif outs >= 3 or stats.runs >= 1:
                 return min(1.0, prob + 0.3)
             return 0.0
-        
-        return prob
 
+        return prob
 
     @staticmethod
     def should_bring_in_closer(
@@ -709,7 +704,8 @@ class GameStrategy:
 
         # Check a fresh/good closer is actually available
         available_closers = [
-            p for p in team.players
+            p
+            for p in team.players
             if p != current_pitcher
             and getattr(p, "bullpen_role", None) == "Closer"
             and p.game_stats.pitching.pitch_count == 0
@@ -723,8 +719,6 @@ class GameStrategy:
 
         # Almost always make the move — 92% so it's not robotic
         return rng.random() < CLOSER_ENTRANCE_PROB
-
-
 
     @staticmethod
     def select_relief_pitcher(

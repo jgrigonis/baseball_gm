@@ -93,5 +93,7 @@ class PutOutEvent(GameEvent):
         """Return human-readable description with game context."""
         msg = f"{self.fielder.name} ({self.fielder.current_position}) with the putout."
         if self.assist:
-            msg += f" {self.assist.name} ({self.assist.current_position}) with the assist"
+            msg += (
+                f" {self.assist.name} ({self.assist.current_position}) with the assist"
+            )
         return msg

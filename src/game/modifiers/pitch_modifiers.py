@@ -19,7 +19,9 @@ class PitchModifiers:
         PitchModifiers.modify_for_count(resolver, game.count)
         PitchModifiers.modify_for_batter(resolver, game.current_batter.player)
         PitchModifiers.modify_for_pitcher(resolver, game.pos("p"))
-        PitchModifiers.modify_for_platoon(resolver, game.current_batter.player, game.pos("p"))
+        PitchModifiers.modify_for_platoon(
+            resolver, game.current_batter.player, game.pos("p")
+        )
 
     @staticmethod
     def modify_for_bases(resolver, bases: Bases) -> None:
@@ -116,8 +118,9 @@ class PitchModifiers:
         resolver.pitch_outcome.add("in_play", -8 * (strikes - 50))
 
     @staticmethod
-    def modify_for_platoon(resolver, batter: PlayerInGame, pitcher: PlayerInGame) -> None:
+    def modify_for_platoon(
+        resolver, batter: PlayerInGame, pitcher: PlayerInGame
+    ) -> None:
         """Modify for handedness of batter and pitcher."""
         pt = pitcher.record.throws
         bb = batter.record.bats
-

@@ -32,19 +32,21 @@ from src.league.play_season import play_game
 from src.util.locations import LEAGUE_FILES_DIR
 from src.util.logger import setup_logger
 
-
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
+
 
 def log_print(msg: str = "", logger: logging.Logger = None):
     print(msg)
     if logger:
         logger.info(msg)
 
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def get_args():
     p = argparse.ArgumentParser()
@@ -64,8 +66,8 @@ _WINS_NEEDED = {5: 3, 7: 4}
 _HOME_MAP_BO5 = [True, True, False, False, True]
 _HOME_MAP_BO7 = [True, True, False, False, False, True, True]
 
-_R1_OFFSETS    = [0, 2, 4, 6, 8]
-_SEMI_OFFSETS  = [11, 13, 15, 17, 19, 21, 23]
+_R1_OFFSETS = [0, 2, 4, 6, 8]
+_SEMI_OFFSETS = [11, 13, 15, 17, 19, 21, 23]
 _FINAL_OFFSETS = [26, 28, 30, 32, 34, 36, 38]
 
 
@@ -116,7 +118,9 @@ def series_is_decided(conn, series_id: str, best_of: int) -> bool:
     return get_series_winner(conn, series_id, best_of) is not None
 
 
-def print_series_result(conn, series_id: str, best_of: int, logger: logging.logger = None) -> None:
+def print_series_result(
+    conn, series_id: str, best_of: int, logger: logging.logger = None
+) -> None:
     winner_id = get_series_winner(conn, series_id, best_of)
     rows = conn.execute(
         """
@@ -153,12 +157,16 @@ def print_series_result(conn, series_id: str, best_of: int, logger: logging.logg
 
     w = win_map.get(winner_id, 0)
     l = win_map.get(loser_id, 0)
-    log_print(f"  🏆 {series['name']}: {winner_name} defeats {loser_name} {w}-{l}", logger=logger)
+    log_print(
+        f"  🏆 {series['name']}: {winner_name} defeats {loser_name} {w}-{l}",
+        logger=logger,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Game generation for later rounds
 # ---------------------------------------------------------------------------
+
 
 def generate_round_games(
     conn,
@@ -202,6 +210,7 @@ def generate_round_games(
 # Home-field for later rounds
 # ---------------------------------------------------------------------------
 
+
 def original_seed(seeds: list[dict], team_id: str) -> int:
     """Return 1-based seed of team_id from the initial seeding list."""
     for i, s in enumerate(seeds, 1):
@@ -213,6 +222,7 @@ def original_seed(seeds: list[dict], team_id: str) -> int:
 # ---------------------------------------------------------------------------
 # Play a full series
 # ---------------------------------------------------------------------------
+
 
 def play_series(
     conn,
@@ -279,13 +289,16 @@ def play_series(
     print_series_result(conn, series_id, best_of, logger)
     winner = get_series_winner(conn, series_id, best_of)
     if winner is None:
-        raise RuntimeError(f"Series {series_name} ended without a winner — check game results")
+        raise RuntimeError(
+            f"Series {series_name} ended without a winner — check game results"
+        )
     return winner
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def get_seeds(conn, season_id: str) -> list[dict]:
     """Reconstruct original seeds from R1 series ordering."""
@@ -360,8 +373,17 @@ def main():
     for name, hi, lo in r1_matchups:
         series_id = get_series_id(conn, sid, name)
         winner = play_series(
-            conn, args, team_repo, game_repo, team_game_repo, rotations_repo,
-            series_id, name, best_of=5, rng=rng, logger=logger
+            conn,
+            args,
+            team_repo,
+            game_repo,
+            team_game_repo,
+            rotations_repo,
+            series_id,
+            name,
+            best_of=5,
+            rng=rng,
+            logger=logger,
         )
         r1_winners[name] = winner
 
@@ -385,17 +407,31 @@ def main():
         seed_a = original_seed(seeds, team_a)
         seed_b = original_seed(seeds, team_b)
         high_seed_id = team_a if seed_a < seed_b else team_b
-        low_seed_id  = team_b if seed_a < seed_b else team_a
+        low_seed_id = team_b if seed_a < seed_b else team_a
 
         # Generate games now that teams are known
         generate_round_games(
-            conn, sid, series_id, high_seed_id, low_seed_id,
-            _HOME_MAP_BO7, playoff_start, _SEMI_OFFSETS,
+            conn,
+            sid,
+            series_id,
+            high_seed_id,
+            low_seed_id,
+            _HOME_MAP_BO7,
+            playoff_start,
+            _SEMI_OFFSETS,
         )
 
         winner = play_series(
-            conn, args, team_repo, game_repo, team_game_repo, rotations_repo,
-            series_id, name, best_of=7, rng=rng,
+            conn,
+            args,
+            team_repo,
+            game_repo,
+            team_game_repo,
+            rotations_repo,
+            series_id,
+            name,
+            best_of=7,
+            rng=rng,
         )
         semi_winners.append((winner, original_seed(seeds, winner)))
 
@@ -407,17 +443,31 @@ def main():
     finalist_a, seed_a = semi_winners[0]
     finalist_b, seed_b = semi_winners[1]
     high_seed_id = finalist_a if seed_a < seed_b else finalist_b
-    low_seed_id  = finalist_b if seed_a < seed_b else finalist_a
+    low_seed_id = finalist_b if seed_a < seed_b else finalist_a
 
     finals_id = get_series_id(conn, sid, "Finals")
     generate_round_games(
-        conn, sid, finals_id, high_seed_id, low_seed_id,
-        _HOME_MAP_BO7, playoff_start, _FINAL_OFFSETS,
+        conn,
+        sid,
+        finals_id,
+        high_seed_id,
+        low_seed_id,
+        _HOME_MAP_BO7,
+        playoff_start,
+        _FINAL_OFFSETS,
     )
 
     champion = play_series(
-        conn, args, team_repo, game_repo, team_game_repo, rotations_repo,
-        finals_id, "Finals", best_of=7, rng=rng,
+        conn,
+        args,
+        team_repo,
+        game_repo,
+        team_game_repo,
+        rotations_repo,
+        finals_id,
+        "Finals",
+        best_of=7,
+        rng=rng,
     )
 
     champ_name = conn.execute(

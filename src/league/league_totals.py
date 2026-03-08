@@ -21,38 +21,38 @@ WIDTH = 72
 
 RANGES = {
     # Batting counting
-    "hits": (8.0,             9.4),
-    "runs": (4.0,             4.9),
-    "singles": (5.1,          6.2),
-    "doubles": (1.5,          1.9),
-    "triples": (0.12,         0.20),
-    "home_runs": (0.85,       1.4),
-    "walks": (2.88,           3.42),
-    "strikeouts": (6.3,       8.8),
-    "rbi": (3.86,             4.63),
-    "hbp": (0.3,              0.4),
-    "sac_flys": (0.22,        0.31),
-    "sac_bunts": (0.1,        0.34),
-    "double_plays": (0.64,    0.82),
+    "hits": (8.0, 9.4),
+    "runs": (4.0, 4.9),
+    "singles": (5.1, 6.2),
+    "doubles": (1.5, 1.9),
+    "triples": (0.12, 0.20),
+    "home_runs": (0.85, 1.4),
+    "walks": (2.88, 3.42),
+    "strikeouts": (6.3, 8.8),
+    "rbi": (3.86, 4.63),
+    "hbp": (0.3, 0.4),
+    "sac_flys": (0.22, 0.31),
+    "sac_bunts": (0.1, 0.34),
+    "double_plays": (0.64, 0.82),
     # Batting rates
-    "avg": (0.243,            0.269),
-    "obp": (0.312,            0.337),
-    "slg": (0.386,            0.435),
-    "ops": (0.700,            0.768),
+    "avg": (0.243, 0.269),
+    "obp": (0.312, 0.337),
+    "slg": (0.386, 0.435),
+    "ops": (0.700, 0.768),
     # Pitching
-    "balks": (0.02,           0.05),
-    "wild_pitches": (0.29,    0.38),
-    "whip": (1.27,            1.408),
+    "balks": (0.02, 0.05),
+    "wild_pitches": (0.29, 0.38),
+    "whip": (1.27, 1.408),
     # Baserunning
-    "stolen_bases": (0.46,    0.74),
+    "stolen_bases": (0.46, 0.74),
     "caught_stealing": (0.15, 0.29),
-    "pickoffs": (0.06,        0.09),
-    "sb_pct": (0.682,         0.802),
+    "pickoffs": (0.06, 0.09),
+    "sb_pct": (0.682, 0.802),
     # Fielding
-    "assists": (8.4,          10.4),
-    "errors": (0.5,           0.7),
-    "passed_balls": (0.05,    0.08),
-    "fpct": (0.982,           0.986),
+    "assists": (8.4, 10.4),
+    "errors": (0.5, 0.7),
+    "passed_balls": (0.05, 0.08),
+    "fpct": (0.982, 0.986),
 }
 
 
@@ -91,6 +91,7 @@ def parse_args():
     parser.add_argument("--logs", action="store_true", help="Write output to log file.")
     return parser.parse_args()
 
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -100,6 +101,7 @@ def log_print(msg: str = "", logger: logging.Logger = None):
     print(msg)
     if logger:
         logger.info(msg)
+
 
 # ---------------------------------------------------------------------------
 # Query
@@ -350,6 +352,7 @@ def main():
     if args.logs:
         from src.util.logger import setup_logger
         import logging
+
         logger = setup_logger(
             name="league_totals",
             level=logging.INFO,

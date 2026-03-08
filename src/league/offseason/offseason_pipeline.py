@@ -10,6 +10,7 @@ import sqlite3
 from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 from src.db.repositories.player_repo import PlayerRepository
 
+
 class OffseasonPipeline:
     def __init__(self, conn, rng: random.Random | None = None):
         self.conn = conn
@@ -56,7 +57,7 @@ class OffseasonPipeline:
     def _age(self, rng: random.Random) -> None:
         """Step 2: Age every player by one year and write back updated skills."""
         # Setup RNG
-        
+
         players = self.player_repo.get_all_players()
         for player in players:
             new_age = int(player.age) + 1
@@ -87,7 +88,11 @@ class OffseasonPipeline:
             if not players:
                 continue
 
-            filename = Path(team["source_csv"]).name if team["source_csv"] else f"{team['id']}.csv"
+            filename = (
+                Path(team["source_csv"]).name
+                if team["source_csv"]
+                else f"{team['id']}.csv"
+            )
             path = out_dir / filename
 
             rows = [p.to_csv_dict() for p in players]
@@ -112,7 +117,7 @@ class OffseasonPipeline:
             (season_id, step, now),
         )
         self.conn.commit()
-    
+
     def _playoffs_complete(self, season_id: str) -> bool:
         """Check if a team has clinched the Finals."""
         finals = self.conn.execute(
@@ -141,9 +146,11 @@ class OffseasonPipeline:
     def _reset_pitcher_state(self) -> None:
         """Clear all pitcher energy state between seasons."""
         from src.db.repositories.pitcher_state import PitcherStateRepository
+
         repo = PitcherStateRepository(self.conn)
         count = repo.clear_all()
         print(f"  Cleared pitcher state for {count} pitchers")
+
 
 def get_args():
     p = argparse.ArgumentParser()

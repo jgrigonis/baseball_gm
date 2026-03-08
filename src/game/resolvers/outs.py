@@ -222,7 +222,11 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
                 force_bases.append(base)  # always forced on a ground out
             elif base == SECOND and game.bases.runner_on(FIRST):
                 force_bases.append(base)
-            elif base == THIRD and game.bases.runner_on(SECOND) and game.bases.runner_on(FIRST):
+            elif (
+                base == THIRD
+                and game.bases.runner_on(SECOND)
+                and game.bases.runner_on(FIRST)
+            ):
                 force_bases.append(base)
             else:
                 non_force_bases.append(base)
@@ -230,7 +234,9 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
         # Forced runners don't advance — they'd have been a FC/DP (that path handles it)
         # Non-forced runners advance probabilistically
         events.extend(
-            advance_all_runners(game, tuple(non_force_bases), advancement=1, reason="ground_out")
+            advance_all_runners(
+                game, tuple(non_force_bases), advancement=1, reason="ground_out"
+            )
         )
     events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
 

@@ -499,7 +499,9 @@ def main():
                     f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
                 )
                 if args.logs:
-                    season_logger.info(f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)")
+                    season_logger.info(
+                        f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
+                    )
             else:
                 if args.logs:
                     season_logger.info(f"[{i}/{len(games)}] ✅ {result}")

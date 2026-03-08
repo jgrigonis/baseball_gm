@@ -73,13 +73,11 @@ def test_schema_has_required_tables():
 
     init_db(conn)
 
-    cursor = conn.execute(
-        """
+    cursor = conn.execute("""
         SELECT name FROM sqlite_master 
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
         ORDER BY name
-        """
-    )
+        """)
     tables = {row[0] for row in cursor.fetchall()}
 
     # Check some critical tables exist

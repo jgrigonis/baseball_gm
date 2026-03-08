@@ -18,7 +18,6 @@ from typing import Optional
 
 from src.player.player_record import VALID_ROLES
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

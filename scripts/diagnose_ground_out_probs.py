@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from types import SimpleNamespace
@@ -40,16 +41,20 @@ def _uniform_skills(player: PlayerInGame, skill: int) -> None:
 
 # ── minimal fake RNG ──────────────────────────────────────────────────────────
 
+
 class ConstRNG:
     def __init__(self, v=0.5):
         self.v = v
+
     def random(self):
         return self.v
+
     def choice(self, seq):
         return seq[0]
 
 
 # ── minimal game stub ─────────────────────────────────────────────────────────
+
 
 class FakeBases:
     def __init__(self):
@@ -114,7 +119,10 @@ def _make_game(outs: int, runner_bases: list[int], skill: int = 50) -> SimpleNam
 
 # ── snapshot weights after all modifiers ─────────────────────────────────────
 
-def snapshot_in_play_weights(outs: int, runner_bases: list[int], skill: int = 50) -> dict:
+
+def snapshot_in_play_weights(
+    outs: int, runner_bases: list[int], skill: int = 50
+) -> dict:
     resolver = Resolver(rng=ConstRNG())
     game = _make_game(outs, runner_bases, skill)
     resolver.in_play_outcome.reset()
@@ -126,9 +134,16 @@ def snapshot_in_play_weights(outs: int, runner_bases: list[int], skill: int = 50
 # ── formatting helpers ────────────────────────────────────────────────────────
 
 OUTCOMES = [
-    "ground_out", "fielders_choice", "double_play",
-    "fly_out", "single", "double", "triple",
-    "sac_fly", "sac_bunt", "triple_play",
+    "ground_out",
+    "fielders_choice",
+    "double_play",
+    "fly_out",
+    "single",
+    "double",
+    "triple",
+    "sac_fly",
+    "sac_bunt",
+    "triple_play",
 ]
 
 HIGHLIGHT = {"ground_out", "fielders_choice", "double_play"}
@@ -159,15 +174,15 @@ def print_table(label: str, weights: dict) -> None:
 # ── scenarios ─────────────────────────────────────────────────────────────────
 
 SCENARIOS = [
-    ("empty bases, 0 outs",            0, []),
-    ("runner on 1st, 0 outs",          0, [FIRST]),
-    ("runner on 1st, 1 out",           1, [FIRST]),
-    ("runners on 1st+2nd, 0 outs",     0, [FIRST, SECOND]),
-    ("runners on 1st+2nd, 1 out",      1, [FIRST, SECOND]),
-    ("runners on 1st+3rd, 0 outs",     0, [FIRST, THIRD]),
-    ("runners on 1st+3rd, 1 out",      1, [FIRST, THIRD]),
-    ("bases loaded, 0 outs",           0, [FIRST, SECOND, THIRD]),
-    ("bases loaded, 1 out",            1, [FIRST, SECOND, THIRD]),
+    ("empty bases, 0 outs", 0, []),
+    ("runner on 1st, 0 outs", 0, [FIRST]),
+    ("runner on 1st, 1 out", 1, [FIRST]),
+    ("runners on 1st+2nd, 0 outs", 0, [FIRST, SECOND]),
+    ("runners on 1st+2nd, 1 out", 1, [FIRST, SECOND]),
+    ("runners on 1st+3rd, 0 outs", 0, [FIRST, THIRD]),
+    ("runners on 1st+3rd, 1 out", 1, [FIRST, THIRD]),
+    ("bases loaded, 0 outs", 0, [FIRST, SECOND, THIRD]),
+    ("bases loaded, 1 out", 1, [FIRST, SECOND, THIRD]),
 ]
 
 
@@ -188,9 +203,9 @@ def run_diagnostics(skill: int = 50) -> None:
     print(f"{'='*60}")
     for gb_skill in (30, 50, 70, 90):
         w = snapshot_in_play_weights(outs=0, runner_bases=[FIRST], skill=gb_skill)
-        go_pct  = pct(w, "ground_out")
-        fc_pct  = pct(w, "fielders_choice")
-        dp_pct  = pct(w, "double_play")
+        go_pct = pct(w, "ground_out")
+        fc_pct = pct(w, "fielders_choice")
+        dp_pct = pct(w, "double_play")
         print(
             f"  ground_balls={gb_skill:>2}  →  "
             f"ground_out={go_pct:>5.1f}%  "

@@ -54,14 +54,12 @@ def run_migrations(conn):
 
 def _ensure_migration_table(conn):
     """Create the schema_migrations table if it doesn't exist."""
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version INTEGER PRIMARY KEY,
             applied_at TEXT NOT NULL
         )
-        """
-    )
+        """)
 
 
 def _applied_versions(conn):

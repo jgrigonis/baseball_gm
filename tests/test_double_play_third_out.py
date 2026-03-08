@@ -27,10 +27,10 @@ from src.team.team_in_game_factory import TeamInGameFactory
 from tests.factories.player_record_factory import make_player_record
 from tests.factories.team_record_factory import make_team_record
 
-
 # ---------------------------------------------------------------------------
 # Minimal fixtures (mirror the MockGame / MockRNG pattern in test_resolver.py)
 # ---------------------------------------------------------------------------
+
 
 class MockRNG:
     def __init__(self, value=0.5):
@@ -79,7 +79,7 @@ class MockGame:
 
     def pos(self, position: str):
         pos_map = {
-            "p":  self.current_pitcher,
+            "p": self.current_pitcher,
             **self.pitch_team._positions,
         }
         return pos_map[position]
@@ -93,19 +93,24 @@ def game():
 @pytest.fixture
 def pitch_intent():
     from src.game.intents.pitch import PitchIntent
-    return PitchIntent(pitcher=PlayerInGame(make_player_record(position="sp")),
-                       batter=PlayerInGame(make_player_record()))
+
+    return PitchIntent(
+        pitcher=PlayerInGame(make_player_record(position="sp")),
+        batter=PlayerInGame(make_player_record()),
+    )
 
 
 @pytest.fixture
 def resolver():
     from src.game.resolver import Resolver
+
     return Resolver(rng=MockRNG(0.5))
 
 
 # ---------------------------------------------------------------------------
 # The regression test
 # ---------------------------------------------------------------------------
+
 
 class TestDoublePlayRunnerOnFirstAndThird:
     """
@@ -134,12 +139,15 @@ class TestDoublePlayRunnerOnFirstAndThird:
         # The runner on first must be removed (force out)
         removed = [e for e in events if isinstance(e, RunnerRemovedEvent)]
         removed_runners = [e.runner for e in removed]
-        assert runner_on_first in removed_runners, "Runner on first should be removed on force out"
+        assert (
+            runner_on_first in removed_runners
+        ), "Runner on first should be removed on force out"
 
         # *** The key assertion: runner from 3rd must NOT reach HOME ***
         runner_scored = next(
             (
-                e for e in events
+                e
+                for e in events
                 if isinstance(e, RunnerAdvancedEvent)
                 and e.runner == runner_on_third
                 and e.to_base == HOME
@@ -151,7 +159,9 @@ class TestDoublePlayRunnerOnFirstAndThird:
             "the 3rd out of the inning (force-play third out rule)"
         )
 
-    def test_run_does_score_when_dp_does_not_end_inning(self, resolver, game, pitch_intent):
+    def test_run_does_score_when_dp_does_not_end_inning(
+        self, resolver, game, pitch_intent
+    ):
         """
         Counterpart: with 0 outs the double play only gets to 2 outs total,
         so a runner who crosses from 3rd before the final force out CAN score.
@@ -171,13 +181,14 @@ class TestDoublePlayRunnerOnFirstAndThird:
         # With only 2 outs reached (0 + 2 = 2), the run IS valid
         runner_scored = next(
             (
-                e for e in events
+                e
+                for e in events
                 if isinstance(e, RunnerAdvancedEvent)
                 and e.runner == runner_on_third
                 and e.to_base == HOME
             ),
             None,
         )
-        assert runner_scored is not None, (
-            "Runner from third SHOULD score on a double play that ends with only 2 outs total"
-        )
+        assert (
+            runner_scored is not None
+        ), "Runner from third SHOULD score on a double play that ends with only 2 outs total"

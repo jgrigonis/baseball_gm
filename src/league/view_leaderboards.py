@@ -27,7 +27,10 @@ def log_print(msg: str = "", logger: logging.Logger = None):
     if logger:
         logger.info(msg)
 
-def calculate_min_pa(db_path: Path, season_id: str, logger: logging.Logger = None) -> tuple[float, float]:
+
+def calculate_min_pa(
+    db_path: Path, season_id: str, logger: logging.Logger = None
+) -> tuple[float, float]:
     """Calculate minimum PA and IP for leaderboard qualification based on games completed."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -65,7 +68,9 @@ def calculate_min_pa(db_path: Path, season_id: str, logger: logging.Logger = Non
     return min_pa, min_ip
 
 
-def show_all_leaderboards(players, top_n=10, min_pa=100, min_ip=10, logger: logging.Logger = None):
+def show_all_leaderboards(
+    players, top_n=10, min_pa=100, min_ip=10, logger: logging.Logger = None
+):
     """Show all major leaderboards"""
     analyzer = StatsAnalyzer(players)
     min_ab = int(min_pa * 0.9)
@@ -201,6 +206,7 @@ if __name__ == "__main__":
     if args.logs:
         from src.util.logger import setup_logger
         import logging
+
         logger = setup_logger(
             name="leaderboards",
             level=logging.INFO,
@@ -214,4 +220,6 @@ if __name__ == "__main__":
     with StatsLoader(str(db_path)) as loader:
         all_players = loader.load_season_players_with_stats(season_id)
 
-    show_all_leaderboards(all_players, top_n=args.number, min_pa=min_pa, min_ip=min_ip, logger=logger)
+    show_all_leaderboards(
+        all_players, top_n=args.number, min_pa=min_pa, min_ip=min_ip, logger=logger
+    )

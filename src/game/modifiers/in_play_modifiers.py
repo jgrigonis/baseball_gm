@@ -6,6 +6,7 @@ from src.game.intents.pitch import PrePitchSituation
 from src.player.player_in_game import PlayerInGame
 from src.game.modifiers.count_modifiers import IN_PLAY_COUNT_MODIFIERS
 
+
 class InPlayModifiers:
     """Modifies in-play outcome probabilities based on game state."""
 
@@ -137,7 +138,9 @@ class InPlayModifiers:
             resolver.in_play_outcome.add("fly_out", 2 * (clutch - 50))
             resolver.in_play_outcome.add("single", 50 - clutch)
             resolver.in_play_outcome.add("double", 0.5 * (50 - clutch))
-            if current_go > 500:  # hasn't been suppressed by a runner-on-first situation
+            if (
+                current_go > 500
+            ):  # hasn't been suppressed by a runner-on-first situation
                 resolver.in_play_outcome.add("ground_out", 2 * (clutch - 50))
 
     @staticmethod

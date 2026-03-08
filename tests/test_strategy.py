@@ -2,6 +2,7 @@
 """
 Unit tests for src/game/strategy.py — GameStrategy
 """
+
 import random
 from unittest.mock import MagicMock, patch
 import pytest
@@ -17,10 +18,10 @@ from src.game.bases import FIRST, SECOND, THIRD
 from src.player.fatigue import FatigueLevel
 from src.game.strategy import GameStrategy
 
-
 # ---------------------------------------------------------------------------
 # Lightweight mock factories
 # ---------------------------------------------------------------------------
+
 
 def _make_bases(first=None, second=None, third=None):
     """Return a mock Bases object with runners at the specified bases."""
@@ -69,7 +70,7 @@ def _make_inning(number=5, outs=0):
 
 def _make_pitcher(
     pitch_count=50,
-    fatigue_level=None,   # pass a real FatigueLevel member
+    fatigue_level=None,  # pass a real FatigueLevel member
     runs=0,
     hits=0,
     outs=0,
@@ -106,6 +107,7 @@ def _make_pitcher(
 # Helpers
 # ===========================================================================
 
+
 def _always(value: float):
     """RNG that always returns `value`."""
     rng = MagicMock(spec=random.Random)
@@ -113,13 +115,14 @@ def _always(value: float):
     return rng
 
 
-ALWAYS_HIT = _always(0.0)   # random() == 0.0 → always < any positive prob
+ALWAYS_HIT = _always(0.0)  # random() == 0.0 → always < any positive prob
 ALWAYS_MISS = _always(1.0)  # random() == 1.0 → never < any prob < 1.0
 
 
 # ===========================================================================
 # should_attempt_pickoff
 # ===========================================================================
+
 
 class TestShouldAttemptPickoff:
 
@@ -160,6 +163,7 @@ class TestShouldAttemptPickoff:
 # select_pickoff_target
 # ===========================================================================
 
+
 class TestSelectPickoffTarget:
 
     def test_prefers_third_when_occupied(self):
@@ -190,6 +194,7 @@ class TestSelectPickoffTarget:
 # should_attempt_steal
 # ===========================================================================
 
+
 class TestShouldAttemptSteal:
 
     def _bases_clear_second(self):
@@ -198,15 +203,24 @@ class TestShouldAttemptSteal:
     def test_cannot_steal_if_next_base_occupied(self):
         bases = _make_bases(first=_make_runner(), second=_make_runner())
         assert not GameStrategy.should_attempt_steal(
-            FIRST, bases, outs=0, count=_make_count(), score=_make_score(),
+            FIRST,
+            bases,
+            outs=0,
+            count=_make_count(),
+            score=_make_score(),
             rng=ALWAYS_HIT,
         )
 
     def test_steal_second_base_probability(self):
         bases = self._bases_clear_second()
         assert GameStrategy.should_attempt_steal(
-            FIRST, bases, outs=0, count=_make_count(), score=_make_score(),
-            runner_speed=80, rng=ALWAYS_HIT,
+            FIRST,
+            bases,
+            outs=0,
+            count=_make_count(),
+            score=_make_score(),
+            runner_speed=80,
+            rng=ALWAYS_HIT,
         )
 
     def test_steal_home_very_unlikely(self):
@@ -214,7 +228,11 @@ class TestShouldAttemptSteal:
         # Even with ALWAYS_HIT the probability is so tiny (0.00001 * mods)
         # that it still fires when random=0; but we verify it doesn't with miss
         assert not GameStrategy.should_attempt_steal(
-            THIRD, bases, outs=0, count=_make_count(), score=_make_score(),
+            THIRD,
+            bases,
+            outs=0,
+            count=_make_count(),
+            score=_make_score(),
             rng=ALWAYS_MISS,
         )
 
@@ -224,8 +242,14 @@ class TestShouldAttemptSteal:
         # Should pass even with a slightly higher random threshold
         rng = _always(0.1)  # Would normally exceed base prob but full count boosts it
         result = GameStrategy.should_attempt_steal(
-            FIRST, bases, outs=0, count=count, score=_make_score(),
-            runner_speed=80, catcher_arm=40, rng=rng,
+            FIRST,
+            bases,
+            outs=0,
+            count=count,
+            score=_make_score(),
+            runner_speed=80,
+            catcher_arm=40,
+            rng=rng,
         )
         assert result  # 5.8% * (80/50) * (50/40) * 1.5 ≈ 21.75% > 10%
 
@@ -236,8 +260,14 @@ class TestShouldAttemptSteal:
         # rng must be below that reduced probability to fire
         rng = _always(0.02)
         assert GameStrategy.should_attempt_steal(
-            FIRST, bases, outs=2, count=count, score=_make_score(),
-            runner_speed=50, catcher_arm=50, rng=rng,
+            FIRST,
+            bases,
+            outs=2,
+            count=count,
+            score=_make_score(),
+            runner_speed=50,
+            catcher_arm=50,
+            rng=rng,
         )
 
     def test_blowout_reduces_steal_prob(self):
@@ -246,8 +276,14 @@ class TestShouldAttemptSteal:
         rng = _always(0.07)
         score = _make_score(differential=5)
         result = GameStrategy.should_attempt_steal(
-            FIRST, bases, outs=0, count=_make_count(), score=score,
-            runner_speed=50, catcher_arm=50, rng=rng,
+            FIRST,
+            bases,
+            outs=0,
+            count=_make_count(),
+            score=score,
+            runner_speed=50,
+            catcher_arm=50,
+            rng=rng,
         )
         # 5.8% * 0.8 = 4.64% < 7% → should NOT fire
         assert not result
@@ -255,13 +291,18 @@ class TestShouldAttemptSteal:
     def test_invalid_base_returns_false(self):
         bases = _make_bases()
         assert not GameStrategy.should_attempt_steal(
-            99, bases, outs=0, count=_make_count(), score=_make_score(),
+            99,
+            bases,
+            outs=0,
+            count=_make_count(),
+            score=_make_score(),
         )
 
 
 # ===========================================================================
 # should_attempt_double_steal
 # ===========================================================================
+
 
 class TestShouldAttemptDoubleSteal:
 
@@ -303,6 +344,7 @@ class TestShouldAttemptDoubleSteal:
 # should_bunt
 # ===========================================================================
 
+
 class TestShouldBunt:
 
     def test_no_bunt_with_two_outs(self):
@@ -323,9 +365,14 @@ class TestShouldBunt:
     def test_bunt_fires_runner_on_first_good_conditions(self):
         bases = _make_bases(first=_make_runner())
         result = GameStrategy.should_bunt(
-            bases, outs=0, strikes=0,
-            batter_bunting_skill=80, batter_power=30,
-            score_differential=0, inning=8, rng=ALWAYS_HIT,
+            bases,
+            outs=0,
+            strikes=0,
+            batter_bunting_skill=80,
+            batter_power=30,
+            score_differential=0,
+            inning=8,
+            rng=ALWAYS_HIT,
         )
         assert result
 
@@ -334,18 +381,28 @@ class TestShouldBunt:
         # Very high random threshold to simulate low probability
         rng = _always(0.5)
         result = GameStrategy.should_bunt(
-            bases, outs=0, strikes=0,
-            batter_bunting_skill=30, batter_power=90,
-            score_differential=5, inning=3, rng=rng,
+            bases,
+            outs=0,
+            strikes=0,
+            batter_bunting_skill=30,
+            batter_power=90,
+            score_differential=5,
+            inning=3,
+            rng=rng,
         )
         assert not result
 
     def test_late_inning_close_game_boosts_bunt(self):
         bases = _make_bases(second=_make_runner())
         result = GameStrategy.should_bunt(
-            bases, outs=0, strikes=0,
-            batter_bunting_skill=70, batter_power=40,
-            score_differential=0, inning=9, rng=ALWAYS_HIT,
+            bases,
+            outs=0,
+            strikes=0,
+            batter_bunting_skill=70,
+            batter_power=40,
+            score_differential=0,
+            inning=9,
+            rng=ALWAYS_HIT,
         )
         assert result
 
@@ -353,6 +410,7 @@ class TestShouldBunt:
 # ===========================================================================
 # should_intentional_walk
 # ===========================================================================
+
 
 class TestShouldIntentionalWalk:
 
@@ -365,9 +423,13 @@ class TestShouldIntentionalWalk:
     def test_ibb_fires_powerful_late_close(self):
         bases = _make_bases(second=_make_runner())
         result = GameStrategy.should_intentional_walk(
-            bases, _make_count(balls=0, strikes=0),
-            outs=1, batter_power=80,
-            score_differential=1, inning=9, rng=ALWAYS_HIT,
+            bases,
+            _make_count(balls=0, strikes=0),
+            outs=1,
+            batter_power=80,
+            score_differential=1,
+            inning=9,
+            rng=ALWAYS_HIT,
         )
         assert result
 
@@ -376,8 +438,13 @@ class TestShouldIntentionalWalk:
         count = _make_count(balls=0, strikes=2)
         rng = _always(0.5)
         result = GameStrategy.should_intentional_walk(
-            bases, count, outs=0, batter_power=80,
-            score_differential=0, inning=9, rng=rng,
+            bases,
+            count,
+            outs=0,
+            batter_power=80,
+            score_differential=0,
+            inning=9,
+            rng=rng,
         )
         # prob gets multiplied by IBB_STRIKES_MODIFIER (0.01) × MORE_STRIKES (0.01) → tiny
         assert not result
@@ -396,26 +463,33 @@ class TestShouldIntentionalWalk:
 # should_pitch_out
 # ===========================================================================
 
+
 class TestShouldPitchOut:
 
     def test_empty_bases_no_pitchout(self):
-        assert not GameStrategy.should_pitch_out(
-            _make_bases(), outs=0, rng=ALWAYS_HIT
-        )
+        assert not GameStrategy.should_pitch_out(_make_bases(), outs=0, rng=ALWAYS_HIT)
 
     def test_fast_runner_can_trigger_pitchout(self):
         bases = _make_bases(first=_make_runner(speed=80))
         result = GameStrategy.should_pitch_out(
-            bases, outs=0, runner_speeds={FIRST: 80},
-            count_balls=0, count_strikes=0, rng=ALWAYS_HIT,
+            bases,
+            outs=0,
+            runner_speeds={FIRST: 80},
+            count_balls=0,
+            count_strikes=0,
+            rng=ALWAYS_HIT,
         )
         assert result
 
     def test_three_balls_never_pitchout(self):
         bases = _make_bases(first=_make_runner(speed=90))
         result = GameStrategy.should_pitch_out(
-            bases, outs=0, runner_speeds={FIRST: 90},
-            count_balls=3, count_strikes=0, rng=ALWAYS_HIT,
+            bases,
+            outs=0,
+            runner_speeds={FIRST: 90},
+            count_balls=3,
+            count_strikes=0,
+            rng=ALWAYS_HIT,
         )
         assert not result
 
@@ -424,8 +498,12 @@ class TestShouldPitchOut:
         # prob = 0.001 * 0.1 = 0.0001; random=0.001 → no pitchout
         rng = _always(0.001)
         result = GameStrategy.should_pitch_out(
-            bases, outs=0, runner_speeds={FIRST: 50},
-            count_balls=2, count_strikes=1, rng=rng,
+            bases,
+            outs=0,
+            runner_speeds={FIRST: 50},
+            count_balls=2,
+            count_strikes=1,
+            rng=rng,
         )
         assert not result
 
@@ -433,6 +511,7 @@ class TestShouldPitchOut:
 # ===========================================================================
 # should_hit_and_run
 # ===========================================================================
+
 
 class TestShouldHitAndRun:
 
@@ -451,8 +530,12 @@ class TestShouldHitAndRun:
         runner = _make_runner(speed=70)
         bases = _make_bases(first=runner)
         result = GameStrategy.should_hit_and_run(
-            bases, outs=0, batter_contact=70,
-            count_balls=1, count_strikes=0, rng=ALWAYS_HIT,
+            bases,
+            outs=0,
+            batter_contact=70,
+            count_balls=1,
+            count_strikes=0,
+            rng=ALWAYS_HIT,
         )
         assert result
 
@@ -462,8 +545,12 @@ class TestShouldHitAndRun:
         bases = _make_bases(first=runner)
         rng = _always(0.05)
         result = GameStrategy.should_hit_and_run(
-            bases, outs=0, batter_contact=70,
-            count_balls=2, count_strikes=1, rng=rng,
+            bases,
+            outs=0,
+            batter_contact=70,
+            count_balls=2,
+            count_strikes=1,
+            rng=rng,
         )
         # 2% * 1.5 (contact) * 1.5 (speed) * 1.3 (count) = 5.85% > 5%
         assert result
@@ -472,6 +559,7 @@ class TestShouldHitAndRun:
 # ===========================================================================
 # get_double_steal_candidates
 # ===========================================================================
+
 
 class TestGetDoubleStealCandidates:
 
@@ -506,6 +594,7 @@ class TestGetDoubleStealCandidates:
 # ===========================================================================
 # should_consider_pitching_change
 # ===========================================================================
+
 
 class TestShouldConsiderPitchingChange:
 
@@ -565,6 +654,7 @@ class TestShouldConsiderPitchingChange:
 # ===========================================================================
 # should_bring_in_closer
 # ===========================================================================
+
 
 class TestShouldBringInCloser:
 
@@ -653,15 +743,20 @@ class TestShouldBringInCloser:
 # select_relief_pitcher
 # ===========================================================================
 
-@patch("src.game.strategy.PlayerEvaluator.rate_player", return_value={"rp": 60, "sp": 55})
+
+@patch(
+    "src.game.strategy.PlayerEvaluator.rate_player", return_value={"rp": 60, "sp": 55}
+)
 class TestSelectReliefPitcher:
 
     def _make_available(self, role, fatigue=None, is_starter=False):
         if fatigue is None:
             fatigue = FatigueLevel.FRESH
         p = _make_pitcher(
-            pitch_count=0, fatigue_level=fatigue,
-            is_starter=is_starter, bullpen_role=role
+            pitch_count=0,
+            fatigue_level=fatigue,
+            is_starter=is_starter,
+            bullpen_role=role,
         )
         p.current_position = None
         p.record = MagicMock()
@@ -712,7 +807,9 @@ class TestSelectReliefPitcher:
 
     def test_emergency_uses_fresh_starter(self, mock_rate_player):
         current = _make_pitcher(bullpen_role="Starter")
-        sp = self._make_available(role=None, fatigue=FatigueLevel.FRESH, is_starter=True)
+        sp = self._make_available(
+            role=None, fatigue=FatigueLevel.FRESH, is_starter=True
+        )
         team = MagicMock()
         team.players = [current, sp]
         result = GameStrategy.select_relief_pitcher(

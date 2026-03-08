@@ -45,7 +45,7 @@ def resolve_double_play(resolver, intent, game) -> List[GameEvent]:
                 reason="double_play",
             )
         )
-        if game.inning.outs + 2 < 3: # if the inning is not over, advance the runners
+        if game.inning.outs + 2 < 3:  # if the inning is not over, advance the runners
             events.extend(
                 advance_all_runners(
                     game,

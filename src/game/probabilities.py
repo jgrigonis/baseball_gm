@@ -5,6 +5,7 @@ Baseball event probability constants.
 
 These values tune the likelihood of various outcomes throughout the game.
 """
+
 # Pitch outcome weights
 BALL_PROB = 15200
 FOUL_PROB = 5100

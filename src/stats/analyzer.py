@@ -246,7 +246,13 @@ class StatsAnalyzer:
             # OBP = (H + BB + HBP) / (AB + BB + HBP + SF)
 
             numerator = stats.hits + stats.walks + stats.hbp
-            denominator = stats.at_bats + stats.walks + stats.hbp + stats.sac_flys + stats.sac_bunts
+            denominator = (
+                stats.at_bats
+                + stats.walks
+                + stats.hbp
+                + stats.sac_flys
+                + stats.sac_bunts
+            )
 
             if denominator >= min_plate_appearances:
                 obp = numerator / denominator if denominator > 0 else 0.0
@@ -304,7 +310,9 @@ class StatsAnalyzer:
             if ab >= min_at_bats:
                 # Calculate OBP
                 obp_numerator = stats.hits + stats.walks + stats.hbp
-                obp_denominator = ab + stats.walks + stats.hbp + stats.sac_flys + stats.sac_bunts
+                obp_denominator = (
+                    ab + stats.walks + stats.hbp + stats.sac_flys + stats.sac_bunts
+                )
                 obp = obp_numerator / obp_denominator if obp_denominator > 0 else 0.0
 
                 # Calculate SLG
@@ -349,7 +357,7 @@ class StatsAnalyzer:
                 )
 
         return sorted(leaders, key=lambda x: x["sb"], reverse=True)
-    
+
     def leaderboard_caught_stealing(self, min_at_bats=0) -> List[Dict[str, Any]]:
         """Get players ranked by caught stealing"""
         leaders = []
@@ -369,7 +377,6 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["cs"], reverse=True)
 
-    
     def leaderboard_walks(self, min_at_bats=0) -> List[Dict[str, Any]]:
         """Get players ranked by walks"""
         leaders = []
@@ -406,7 +413,9 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["strikeouts"], reverse=True)
 
-    def leaderboard_batting_strikeouts_per_ab(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_batting_strikeouts_per_ab(
+        self, min_at_bats=0
+    ) -> List[Dict[str, Any]]:
         """Get batters ranked by strikeouts per at-bat"""
         leaders = []
 
@@ -417,7 +426,9 @@ class StatsAnalyzer:
                     {
                         "player": p,
                         "player_name": getattr(p, "name", str(p.id)),
-                        "k_per_ab": p.game_stats.batting.strike_outs / ab if ab > 0 else 0.0,
+                        "k_per_ab": (
+                            p.game_stats.batting.strike_outs / ab if ab > 0 else 0.0
+                        ),
                         "at_bats": ab,
                     }
                 )
@@ -435,7 +446,11 @@ class StatsAnalyzer:
                     {
                         "player": p,
                         "player_name": getattr(p, "name", str(p.id)),
-                        "ab_per_k": ab / p.game_stats.batting.strike_outs if p.game_stats.batting.strike_outs > 0 else 0.0,
+                        "ab_per_k": (
+                            ab / p.game_stats.batting.strike_outs
+                            if p.game_stats.batting.strike_outs > 0
+                            else 0.0
+                        ),
                         "at_bats": ab,
                     }
                 )
@@ -753,7 +768,6 @@ class StatsAnalyzer:
             context_str = f" ({', '.join(context)})" if context else ""
             lines.append(f"{i:2d}. {player_name:30s} {stat_display:>10s}{context_str}")
 
-            
         output = "\n".join(lines)
         print(output)
         if logger:

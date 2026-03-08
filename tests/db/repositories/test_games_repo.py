@@ -13,8 +13,7 @@ def db_connection():
     conn.row_factory = sqlite3.Row
 
     # Create games table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE games (
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL,
@@ -30,8 +29,7 @@ def db_connection():
             created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT
         )
-    """
-    )
+    """)
 
     yield conn
     conn.close()
