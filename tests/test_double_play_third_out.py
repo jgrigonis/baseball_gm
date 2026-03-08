@@ -13,13 +13,11 @@ Scenario (from the bug report):
 """
 
 import pytest
-from unittest.mock import Mock
 from types import SimpleNamespace
 
-from src.game.bases import FIRST, SECOND, THIRD, HOME
+from src.game.bases import FIRST, THIRD, HOME
 from src.game.events.out import OutRecordedEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
-from src.game.events.double_play import DoublePlayEvent
 from src.game.resolvers.double_play import resolve_double_play
 from src.player.player_in_game import PlayerInGame
 from src.team.lineup_slot import LineupSlot

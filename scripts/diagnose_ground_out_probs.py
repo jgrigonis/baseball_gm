@@ -189,7 +189,7 @@ SCENARIOS = [
 def run_diagnostics(skill: int = 50) -> None:
     print(f"\n{'='*60}")
     print(f"  IN-PLAY OUTCOME PROBABILITIES  (all skills = {skill})")
-    print(f"  Outcomes of interest marked with ◄")
+    print("  Outcomes of interest marked with ◄")
     print(f"{'='*60}")
 
     for label, outs, bases in SCENARIOS:
@@ -199,7 +199,7 @@ def run_diagnostics(skill: int = 50) -> None:
     # Extra: show how ground-ball pitcher skill shifts the numbers
     print(f"\n{'='*60}")
     print("  EFFECT OF PITCHER 'ground_balls' SKILL")
-    print(f"  Scenario: runner on 1st, 0 outs")
+    print("  Scenario: runner on 1st, 0 outs")
     print(f"{'='*60}")
     for gb_skill in (30, 50, 70, 90):
         w = snapshot_in_play_weights(outs=0, runner_bases=[FIRST], skill=gb_skill)

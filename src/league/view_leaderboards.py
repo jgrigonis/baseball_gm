@@ -7,6 +7,7 @@ import sqlite3
 from src.league.season_resolver import resolve_season
 from src.stats.analyzer import StatsAnalyzer
 from src.stats.loader import StatsLoader
+from src.util.logger import setup_logger
 
 
 def get_args():
@@ -204,9 +205,6 @@ if __name__ == "__main__":
 
     logger = None
     if args.logs:
-        from src.util.logger import setup_logger
-        import logging
-
         logger = setup_logger(
             name="leaderboards",
             level=logging.INFO,

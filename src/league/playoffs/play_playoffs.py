@@ -18,7 +18,6 @@ Usage:
 import argparse
 import logging
 import random
-from re import L
 import sqlite3
 import traceback
 from datetime import date, timedelta
