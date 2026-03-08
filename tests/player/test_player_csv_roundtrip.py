@@ -17,7 +17,7 @@ def test_csv_round_trip_is_lossless():
         p2 = Path(tmp) / "out2.csv"
 
         # export
-        PlayerCSVExporter.write(team, p1)
+        PlayerCSVExporter.write(team, 2025, p1)
 
         # import
         players = PlayerCSVImporter.read(p1)
@@ -29,7 +29,7 @@ def test_csv_round_trip_is_lossless():
         )
 
         # export again
-        PlayerCSVExporter.write(rehydrated_team, p2)
+        PlayerCSVExporter.write(rehydrated_team, 2025, p2)
 
         assert p1.read_text() == p2.read_text()
 
@@ -39,7 +39,7 @@ def test_csv_uses_lowercase_handedness():
 
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "out.csv"
-        PlayerCSVExporter.write(team, path)
+        PlayerCSVExporter.write(team, 2025, path)
 
         text = path.read_text()
         assert ",R," in text or ",R," in text

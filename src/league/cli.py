@@ -92,7 +92,9 @@ def main():
     start_date = datetime.datetime.fromisoformat(start_date_str).date()
 
     try:
-        league_id, teams, season_id = boot.bootstrap_from_manifest(manifest, start_date, allow_roster_update=args.update_rosters)
+        league_id, teams, season_id = boot.bootstrap_from_manifest(
+            manifest, start_date, allow_roster_update=args.update_rosters
+        )
     except RuntimeError as e:
         print(e)
         sys.exit(1)

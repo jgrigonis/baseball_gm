@@ -76,9 +76,12 @@ class GameRepository:
         conditions = ["season_id = ?"]
         params = [season_id]
 
+        if completed_only:
+            conditions.append("completed = 1")
+
         if incomplete_only:
             conditions.append("completed = 0")
-        
+
         if regular_season_only:
             conditions.append("series_id IS NULL")
 
@@ -88,7 +91,6 @@ class GameRepository:
             f"SELECT * FROM games WHERE {where} ORDER BY date",
             params,
         ).fetchall()
-    
 
         return [
             {
