@@ -172,7 +172,8 @@ class PlayerRecord:
 
     def to_csv_dict(self) -> dict[str, any]:
         """Convert to dictionary for CSV export."""
-        skills_dict = self.skills.to_csv_dict()
+        csv_skills = self.skills.to_csv_dict()
+        # skills_dict = self.skills.to_csv_dict()
 
         # # Convert bats to single letter
         # bats_abbr = {"left": "L", "right": "R", "switch": "S"}[self.bats]
@@ -181,13 +182,28 @@ class PlayerRecord:
         # throws_abbr = {"left": "L", "right": "R"}[self.throws]
 
         return {
-            "ID": self.id,
             "Name": self.name,
             "Age": self.age,
-            "B": self.bats,
-            "T": self.throws,
             "PS": self.position,
-            **skills_dict,
+            "T": self.throws,
+            "B": self.bats,
+            "CL": csv_skills["CL"],
+            "SP": csv_skills["SP"],
+            "PO": csv_skills["PO"],
+            "EY": csv_skills["EY"],
+            "CT": csv_skills["CT"],
+            "BR": csv_skills["BR"],
+            "BU": csv_skills["BU"],
+            "CA": csv_skills["CA"],
+            "IF": csv_skills["IF"],
+            "OF": csv_skills["OF"],
+            "AR": csv_skills["AR"],
+            "AC": csv_skills["AC"],
+            "ST": csv_skills["ST"],
+            "RE": csv_skills["RE"],
+            "GB": csv_skills["GB"],
+            "KK": csv_skills["KK"],
+            "ID": self.id,
         }
 
     def __lt__(self, other: "PlayerRecord") -> bool:

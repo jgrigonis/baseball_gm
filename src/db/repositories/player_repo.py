@@ -81,14 +81,6 @@ class PlayerRepository:
 
         self.conn.commit()
 
-    # def update_age(self, player_id: str, age: int) -> None:
-    #     """Increment a player's age in the players table."""
-    #     self.conn.execute(
-    #         "UPDATE players SET age = ? WHERE id = ?",
-    #         (age, player_id),
-    #     )
-    #     self.conn.commit()
-
     def update_skills(self, player_id: str, skills: PlayerSkills) -> None:
         """
         Update a player's current skills.
@@ -104,15 +96,16 @@ class PlayerRepository:
         self.conn.execute(
             """
             INSERT OR REPLACE INTO player_skills (
-                player_id, clutch, speed, power, eye, contact, 
+                player_id, age, clutch, speed, power, eye, contact, 
                 base_running, bunting, catching, infield, outfield, 
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 player_id,
+                skill_dict["age"],
                 skill_dict["clutch"],
                 skill_dict["speed"],
                 skill_dict["power"],

@@ -208,3 +208,11 @@ class TeamRepository:
         )
         team_ids = [row["id"] for row in cursor.fetchall()]
         return [self.get(team_id) for team_id in team_ids]
+
+    def remove_player(self, team_id: str, player_id: str) -> None:
+        """Remove a player from a team's roster."""
+        self.conn.execute(
+            "DELETE FROM team_players WHERE team_id = ? AND player_id = ?",
+            (team_id, player_id),
+        )
+        self.conn.commit()
