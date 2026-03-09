@@ -7,8 +7,6 @@ Assign earned runs
 Injuries
 General player fatigue, different from pitcher fatigue
 
-Handedness accounted for many places L vs R, etc.
-
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
 
