@@ -24,6 +24,7 @@ class InPlayModifiers:
         InPlayModifiers.modify_for_pitcher(resolver, game.pos("p"), game.score)
         InPlayModifiers.modify_for_defense(resolver, game)
         InPlayModifiers.modify_for_infield_defense(resolver, game)
+        InPlayModifiers.modify_for_platoon(resolver, game.current_batter.player, game.pos("p"))
         InPlayModifiers.apply_constraints(resolver, game.bases, game.inning.outs)
 
     @staticmethod
@@ -177,6 +178,22 @@ class InPlayModifiers:
         resolver.in_play_outcome.multiply("double_play", defense_factor)
         resolver.in_play_outcome.multiply("fielders_choice", 1 / defense_factor)
         resolver.in_play_outcome.multiply("ground_out", defense_factor * 1.1)
+
+    @staticmethod
+    def modify_for_platoon(
+        resolver, batter: PlayerInGame, pitcher: PlayerInGame
+    ) -> None:
+        """Modify for handedness of batter and pitcher."""
+        pt = pitcher.record.throws # R, L
+        bb = batter.record.bats # R, L, S
+        if pt == bb: # LvL or RvR
+            resolver.in_play_outcome.multiply("fly_out", 1.02)
+            resolver.in_play_outcome.multiply("ground_out", 1.11)
+            resolver.in_play_outcome.multiply("single", 0.95)
+            resolver.in_play_outcome.multiply("double", 0.96)
+            resolver.in_play_outcome.multiply("triple", 0.97)
+            resolver.in_play_outcome.multiply("double_play", 1.02)
+            resolver.in_play_outcome.multiply("fielders_choice", 1.02)
 
     @staticmethod
     def apply_constraints(resolver, bases: Bases, outs: int):

@@ -122,5 +122,12 @@ class PitchModifiers:
         resolver, batter: PlayerInGame, pitcher: PlayerInGame
     ) -> None:
         """Modify for handedness of batter and pitcher."""
-        pt = pitcher.record.throws
-        bb = batter.record.bats
+        pt = pitcher.record.throws # R, L
+        bb = batter.record.bats # R, L, S
+        if pt == bb: # LvL or RvR
+            resolver.pitch_outcome.multiply("ball", 0.95)
+            resolver.pitch_outcome.multiply("foul", 1.05)
+            resolver.pitch_outcome.multiply("home_run", 0.89)
+            resolver.pitch_outcome.multiply("hit_by_pitch", 0.96)
+            resolver.pitch_outcome.multiply("in_play", 0.95)
+            resolver.pitch_outcome.multiply("strike", 1.05)
