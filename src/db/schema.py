@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE TABLE IF NOT EXISTS player_skills (
     player_id TEXT PRIMARY KEY,
     
-    age INTEGER NOT NULL,
+    age INTEGER NOT NULL DEFAULT 17,
     clutch INTEGER NOT NULL,
     speed INTEGER NOT NULL,
     power INTEGER NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS player_skills_history (
     player_id TEXT NOT NULL,
     season_id TEXT NOT NULL,
 
-    age INTEGER NOT NULL,
+    age INTEGER NOT NULL DEFAULT 17,
     clutch INTEGER NOT NULL,
     speed INTEGER NOT NULL,
     power INTEGER NOT NULL,
@@ -81,6 +81,15 @@ CREATE TABLE IF NOT EXISTS player_skills_history (
     PRIMARY KEY (player_id, season_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS player_status (
+    player_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN (
+        'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
+    )),
+    since TEXT NOT NULL,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
 -- Track completed offseason steps for each season
@@ -315,6 +324,7 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
 CREATE INDEX IF NOT EXISTS idx_player_skills_player_id ON player_skills(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_player ON player_skills_history(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_season ON player_skills_history(season_id);
+CREATE INDEX IF NOT EXISTS idx_player_status_status ON player_status(status);
 CREATE INDEX IF NOT EXISTS idx_team_players_team ON team_players(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_players_player ON team_players(player_id);
 CREATE INDEX IF NOT EXISTS idx_league_season_teams_league_season ON league_season_teams(league_id, season_id);

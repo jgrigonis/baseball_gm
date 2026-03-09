@@ -5,8 +5,10 @@ import hashlib
 from pathlib import Path
 
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.player.player_record import PlayerRecord
+from src.team.roster_assigner import RosterAssigner
 from src.team.team_record import TeamRecord
 from src.util.locations import TEAM_FILES_DIR
 
@@ -109,6 +111,10 @@ class TeamImporter:
 
                     self.team_repo.add_player(team_id, player.id)
                     players.append(player)
+
+            # Assign roster tiers
+            assignments = RosterAssigner().assign(players)
+            PlayerStatusRepository(self.conn).bulk_set(assignments)
 
             self.conn.commit()
             # Build and return TeamRecord with all data

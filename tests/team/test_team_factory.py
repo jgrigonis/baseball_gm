@@ -162,13 +162,13 @@ class TestTeamFactoryGenerateTeam:
 
         assert len(team.players) == 9
 
-    def test_generate_team_default_size_is_40(self):
+    def test_generate_team_default_size_is_160(self):
         """Default roster size is 40 players."""
         factory = TeamFactory()
 
         team = factory.generate_team(city="Toronto", mascot="Blue Jays")
 
-        assert len(team.players) == 40
+        assert len(team.players) == 160
 
     def test_generate_team_full_roster_distribution(self):
         """26+ player roster follows specified positional distribution."""

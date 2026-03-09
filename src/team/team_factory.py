@@ -49,7 +49,7 @@ class TeamFactory:
             players=tuple(players),
         )
 
-    def generate_team(self, *, city: str, mascot: str, size: int = 40) -> TeamRecord:
+    def generate_team(self, *, city: str, mascot: str, size: int = 160) -> TeamRecord:
         """
         Generate a team with realistic positional distribution.
 
@@ -68,7 +68,7 @@ class TeamFactory:
         Args:
             city: Team city name
             mascot: Team mascot name
-            size: Number of players on roster (default: 40)
+            size: Number of players on roster (default: 160)
 
         Returns:
             TeamRecord with generated players

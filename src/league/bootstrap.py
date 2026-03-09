@@ -1,8 +1,10 @@
 # src/league/bootstrap.py
+import dataclasses
 from os import sep
 
 from src.db.repositories.bullpen_roles_repo import set_roles
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -17,6 +19,7 @@ class LeagueBootstrapper:
         self.team_repo = TeamRepository(conn)
         self.team_importer = TeamImporter(conn)
         self.rotations_repo = TeamRotationsRepository(conn)
+        self.status_repo = PlayerStatusRepository(conn)
 
     def bootstrap_from_manifest(self, manifest, start_date, allow_roster_update=False):
         league_id = self.league_repo.create_league(manifest["league_name"])
@@ -56,9 +59,16 @@ class LeagueBootstrapper:
         return league_id, teams, season_id
 
     def _bootstrap_rotations(self, teams, season_id: str, start_date: str) -> None:
-        """Set the initial starting rotation for each team."""
+        """Set the initial starting rotation for each team using 26-man roster only."""
         for team in teams:
-            rotation = team.assign_starting_rotation()
+            # Filter to 26-man players only
+            active_ids = set(self.status_repo.get_by_team_and_status(team.id, "26man"))
+            active_players = [p for p in team.players if p.id in active_ids]
+
+            # Build a filtered team-like object the rotation logic can use
+            active_team = dataclasses.replace(team, players=tuple(active_players))
+
+            rotation = active_team.assign_starting_rotation()
             if not rotation:
                 print(
                     f"Warning: No pitchers found for team {team.name}, skipping rotation."
@@ -70,7 +80,7 @@ class LeagueBootstrapper:
                 player_id_list=rotation,
                 effective_date=start_date,
             )
-            self._bootstrap_bullpen(team, rotation, season_id, start_date)
+            self._bootstrap_bullpen(active_team, rotation, season_id, start_date)
 
     def _bootstrap_bullpen(
         self, team, rotation, season_id: str, start_date: str
