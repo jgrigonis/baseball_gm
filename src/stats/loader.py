@@ -67,7 +67,7 @@ class StatsLoader:
             SELECT DISTINCT pgs.player_id
             FROM player_game_stats pgs
             JOIN games g ON pgs.game_id = g.id
-            WHERE g.season_id = ?
+            WHERE g.season_id = ? AND g.series_id IS NULL
         """,
             (season_id,),
         )

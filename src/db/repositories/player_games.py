@@ -239,7 +239,7 @@ class PlayerGameRepository:
             SELECT pgs.*
             FROM player_game_stats pgs
             JOIN games g ON pgs.game_id = g.id
-            WHERE pgs.player_id = ? AND g.season_id = ?
+            WHERE pgs.player_id = ? AND g.season_id = ? AND g.series_id IS NULL
             ORDER BY g.date
             """,
             (player_id, season_id),

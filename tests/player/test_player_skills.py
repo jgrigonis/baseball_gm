@@ -497,7 +497,7 @@ class TestSerialization:
         assert isinstance(db_dict, dict)
         assert db_dict["power"] == 85
         assert db_dict["speed"] == 60
-        assert len(db_dict) == len(SKILLS)
+        assert len(db_dict) == len(SKILLS) + 1  # +1 for age
 
     def test_to_db_dict_is_mutable_copy(self):
         skills = PlayerSkills({"power": 85})
@@ -623,7 +623,7 @@ class TestIntegration:
         db_dict = skills.to_db_dict()
         csv_dict = skills.to_csv_dict()
 
-        assert len(db_dict) == len(SKILLS)
+        assert len(db_dict) == len(SKILLS) + 1  # +1 for age
         assert len(csv_dict) > 0
 
     def test_create_modify_copy_original_unchanged(self):

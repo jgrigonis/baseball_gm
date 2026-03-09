@@ -60,9 +60,7 @@ class OffseasonPipeline:
 
         players = self.player_repo.get_all_players()
         for player in players:
-            new_age = int(player.age) + 1
-            new_skills = player.skills.age_to(new_age, rng=rng)
-            self.player_repo.update_age(player.id, new_age)
+            new_skills = player.skills.age_to(player.age + 1, rng=rng)
             self.player_repo.update_skills(player.id, new_skills)
         print(f"  Aged {len(players)} players")
 

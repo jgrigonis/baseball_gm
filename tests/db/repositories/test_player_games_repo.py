@@ -99,7 +99,8 @@ def db_connection():
         CREATE TABLE games (
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL,
-            season_id TEXT NOT NULL
+            season_id TEXT NOT NULL,
+            series_id TEXT
         )
     """)
 

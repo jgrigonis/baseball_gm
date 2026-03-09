@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS players (
     bats TEXT NOT NULL,
     throws TEXT NOT NULL,
     position TEXT,  -- Affinity position used in creation, can be NULL
-    age INTEGER,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT
 );
@@ -31,6 +30,7 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE TABLE IF NOT EXISTS player_skills (
     player_id TEXT PRIMARY KEY,
     
+    age INTEGER NOT NULL,
     clutch INTEGER NOT NULL,
     speed INTEGER NOT NULL,
     power INTEGER NOT NULL,
@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS player_skills (
 CREATE TABLE IF NOT EXISTS player_skills_history (
     player_id TEXT NOT NULL,
     season_id TEXT NOT NULL,
-    
+
+    age INTEGER NOT NULL,
     clutch INTEGER NOT NULL,
     speed INTEGER NOT NULL,
     power INTEGER NOT NULL,

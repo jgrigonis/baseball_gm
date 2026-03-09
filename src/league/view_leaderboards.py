@@ -50,7 +50,7 @@ def calculate_min_pa(
         """
         SELECT COUNT(*) as games_completed
         FROM games
-        WHERE season_id = ? AND completed = 1
+        WHERE season_id = ? AND completed = 1 AND series_id IS NULL
         """,
         (season_id,),
     )
@@ -197,6 +197,23 @@ def show_all_leaderboards(
     lines.append("=" * 60)
     output = "\n".join(lines)
     log_print(output, logger=logger)
+
+    analyzer.print_leaderboard(
+        "PUTOUT LEADERS",
+        analyzer.leaderboard_putouts(),
+        "putouts",
+        top_n=top_n,
+        format_str="d",
+        logger=logger,
+    )
+    analyzer.print_leaderboard(
+        "ASSIST LEADERS",
+        analyzer.leaderboard_assists(),
+        "assists",
+        top_n=top_n,
+        format_str="d",
+        logger=logger,
+    )
 
 
 if __name__ == "__main__":

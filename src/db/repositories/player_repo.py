@@ -38,7 +38,6 @@ class PlayerRepository:
         throws: str,
         position: str,
         skills: PlayerSkills,
-        age: int,
     ) -> None:
         """
         Create a player record with identity and initial skills.
@@ -52,7 +51,6 @@ class PlayerRepository:
             throws: Throwing hand ('L' or 'R') - case insensitive
             position: Primary position
             skills: PlayerSkills object with all skill ratings
-            age: Player's age
 
         Raises:
             ValueError: If bats or throws values are invalid
@@ -70,12 +68,12 @@ class PlayerRepository:
         # Insert identity
         self.conn.execute(
             """
-            INSERT OR REPLACE INTO players (
-                id, first_name, last_name, bats, throws, position, age
+            INSERT OR IGNORE INTO players (
+                id, first_name, last_name, bats, throws, position
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (id, first_name, last_name, bats, throws, position, age),
+            (id, first_name, last_name, bats, throws, position),
         )
 
         # Insert or update skills
@@ -83,13 +81,13 @@ class PlayerRepository:
 
         self.conn.commit()
 
-    def update_age(self, player_id: str, age: int) -> None:
-        """Increment a player's age in the players table."""
-        self.conn.execute(
-            "UPDATE players SET age = ? WHERE id = ?",
-            (age, player_id),
-        )
-        self.conn.commit()
+    # def update_age(self, player_id: str, age: int) -> None:
+    #     """Increment a player's age in the players table."""
+    #     self.conn.execute(
+    #         "UPDATE players SET age = ? WHERE id = ?",
+    #         (age, player_id),
+    #     )
+    #     self.conn.commit()
 
     def update_skills(self, player_id: str, skills: PlayerSkills) -> None:
         """
@@ -152,14 +150,14 @@ class PlayerRepository:
             """
             INSERT OR REPLACE INTO player_skills_history (
                 player_id, season_id,
-                clutch, speed, power, eye, contact,
+                age, clutch, speed, power, eye, contact,
                 base_running, bunting, catching, infield, outfield,
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
                 recorded_at
             )
             SELECT 
                 player_id, ?, 
-                clutch, speed, power, eye, contact,
+                age, clutch, speed, power, eye, contact,
                 base_running, bunting, catching, infield, outfield,
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
                 ?
@@ -221,7 +219,6 @@ class PlayerRepository:
             id=identity_row["id"],
             first_name=identity_row["first_name"],
             last_name=identity_row["last_name"],
-            age=identity_row["age"],
             bats=identity_row["bats"],
             throws=identity_row["throws"],
             position=identity_row["position"],
@@ -286,7 +283,6 @@ class PlayerRepository:
                 id=row["id"],
                 first_name=row["first_name"],
                 last_name=row["last_name"],
-                age=row["age"],
                 bats=row["bats"],
                 throws=row["throws"],
                 position=row["position"],
@@ -313,7 +309,6 @@ class PlayerRepository:
                 id=row["id"],
                 first_name=row["first_name"],
                 last_name=row["last_name"],
-                age=row["age"],
                 bats=row["bats"],
                 throws=row["throws"],
                 position=row["position"],

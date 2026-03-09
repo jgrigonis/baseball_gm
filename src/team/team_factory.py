@@ -169,7 +169,7 @@ class TeamFactory:
         """
         player = self.player_factory.create(position=position)
         aged_skills = player.skills.age_to(age, rng=self.rng)
-        return dataclasses.replace(player, age=age, skills=aged_skills)
+        return dataclasses.replace(player, skills=aged_skills)
 
     def _draw_roster_age(self, current_players: list[PlayerRecord]) -> int:
         """

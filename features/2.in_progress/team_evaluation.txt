@@ -1,2 +1,5 @@
 Teams need to designate their 26 man and 40 man rosters
 
+We will need schema updates most likely
+
+Also, a place to hold unattached players that either aren't drafted or are free agents

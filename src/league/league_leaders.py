@@ -380,6 +380,11 @@ def main():
     with StatsLoader(str(db_path)) as loader:
         all_players = loader.load_season_players_with_stats(season_id)
 
+    # print(f"DEBUG: loaded {len(all_players)} players for season {season_id}")
+    # if all_players:
+    #     sample = all_players[0]
+    #     print(f"DEBUG: sample player {sample.name}, AB={sample.game_stats.batting.at_bats}")
+
     totals = fetch_leaders(all_players, min_pa=min_pa, min_ip=min_ip)
     display(totals, season_label, logger=logger)
 

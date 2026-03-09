@@ -28,7 +28,6 @@ class PlayerCSVImporter:
 
             for row in reader:
                 first, last = row["Name"].split(" ", 1)
-                age = row["Age"]
 
                 skills = {
                     SKILL_MAP[csv_key]: int(row[csv_key])
@@ -40,7 +39,6 @@ class PlayerCSVImporter:
                         id=row["ID"],
                         first_name=first,
                         last_name=last,
-                        age=age,
                         position=row["PS"],
                         throws=CSV_TO_THROWS[row["T"].lower()],
                         bats=CSV_TO_BATS[row["B"].lower()],

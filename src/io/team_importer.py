@@ -94,16 +94,18 @@ class TeamImporter:
                 for row in reader:
                     player = PlayerRecord.from_csv_row(row)
 
-                    self.player_repo.insert(
-                        id=player.id,
-                        first_name=player.first_name,
-                        last_name=player.last_name,
-                        bats=player.bats,
-                        throws=player.throws,
-                        position=player.position,
-                        skills=player.skills,
-                        age=player.age,
-                    )
+                    if allow_roster_update and self.player_repo.exists(player.id):
+                        self.player_repo.update_skills(player.id, player.skills)
+                    else:
+                        self.player_repo.insert(
+                            id=player.id,
+                            first_name=player.first_name,
+                            last_name=player.last_name,
+                            bats=player.bats,
+                            throws=player.throws,
+                            position=player.position,
+                            skills=player.skills,
+                        )
 
                     self.team_repo.add_player(team_id, player.id)
                     players.append(player)

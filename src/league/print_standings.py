@@ -35,7 +35,7 @@ def print_standings(db_path: Path, season_id: str):
         FROM teams t
         JOIN team_game_stats tgs ON t.id = tgs.team_id
         JOIN games g ON tgs.game_id = g.id
-        WHERE g.season_id = ? AND g.completed = 1
+        WHERE g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
         GROUP BY t.id
         ORDER BY win_pct DESC, wins DESC
         """,

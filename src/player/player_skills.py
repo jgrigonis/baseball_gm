@@ -54,7 +54,12 @@ class PlayerSkills:
     """
 
     def __init__(
-        self, skills: dict[str, int] | None = None, *, validate: bool = True, **kwargs
+        self,
+        skills: dict[str, int] | None = None,
+        age: int = 17,
+        *,
+        validate: bool = True,
+        **kwargs,
     ):
         """
         Create PlayerSkills with validation.
@@ -76,6 +81,7 @@ class PlayerSkills:
         if skills is None:
             skills = {}
         skills = {**skills, **kwargs}  # kwargs override dict values
+        self.age = age
 
         normalized = {}
 
@@ -264,7 +270,8 @@ class PlayerSkills:
         """
         row_dict = dict(row)
         skills = {k: row_dict.get(k, DEFAULT_SKILL_MEAN) for k in SKILLS}
-        return cls(skills)
+        age = row_dict.get("age", START_AGE)
+        return cls(skills, age=age)
 
     @classmethod
     def from_csv_row(cls, row: CsvRow) -> PlayerSkills:
@@ -297,7 +304,8 @@ class PlayerSkills:
                     f"Invalid value for '{csv_key}': {row[csv_key]}"
                 ) from e
 
-        return cls(skills)
+        age = int(row.get("Age", START_AGE))
+        return cls(skills, age=age)
 
     @classmethod
     def generate(
@@ -423,7 +431,9 @@ class PlayerSkills:
         Returns:
             Dictionary with full skill names as keys
         """
-        return self.as_dict()
+        d = self.as_dict()
+        d["age"] = self.age
+        return d
 
     def to_csv_dict(self) -> dict[str, int]:
         """
@@ -516,4 +526,4 @@ class PlayerSkills:
             for k in s:
                 s[k] = float(clamp(s[k]))
 
-        return PlayerSkills(s)
+        return PlayerSkills(s, age=age)

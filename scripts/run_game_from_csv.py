@@ -19,11 +19,11 @@ from src.io.player_csv_importer import PlayerCSVImporter
 from src.team.team_record import TeamRecord
 from src.util.locations import TEAM_FILES_DIR
 
-HOME_FILE = Path(TEAM_FILES_DIR) / "hong_kong.csv"
+HOME_FILE = Path(TEAM_FILES_DIR) / "2025" / "hong_kong.csv"
 HOME_CITY = "Hong Kong"
 HOME_MASCOT = "Homers"
 
-AWAY_FILE = Path(TEAM_FILES_DIR) / "amsterdam.csv"
+AWAY_FILE = Path(TEAM_FILES_DIR) / "2025" / "amsterdam.csv"
 AWAY_CITY = "Amsterdam"
 AWAY_MASCOT = "Aardvarks"
 
