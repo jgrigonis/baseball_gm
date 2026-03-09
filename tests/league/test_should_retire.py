@@ -108,8 +108,8 @@ class TestRosteredSkillDecline:
         # skill_avg=80 → decline_factor=0, same probability as skill_avg=50
         # age=32, base=0.08 — both should produce same result
         rng = rng_always(0.05)
-        assert should_retire(32, MockSkills(80), False, rng) is True   # 0.05 < 0.08
-        assert should_retire(32, MockSkills(50), False, rng) is True   # same probability
+        assert should_retire(32, MockSkills(80), False, rng) is True  # 0.05 < 0.08
+        assert should_retire(32, MockSkills(50), False, rng) is True  # same probability
 
     def test_skill_avg_50_no_decline_factor(self):
         # age=31, base=0.04, decline_factor=0

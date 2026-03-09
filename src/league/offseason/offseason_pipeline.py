@@ -76,7 +76,7 @@ class OffseasonPipeline:
     def _retire(self, rng: random.Random) -> None:
         """Step 3: Evaluate all players for retirement, release retirees to free agency."""
         team_repo = TeamRepository(self.conn)
-        
+
         players = self.player_repo.get_all_players()
         retired = []
 
@@ -88,8 +88,7 @@ class OffseasonPipeline:
                 self.player_status_repo.set_status(player.id, "free_agent")
                 # Remove from team roster
                 row = self.conn.execute(
-                    "SELECT team_id FROM team_players WHERE player_id = ?",
-                    (player.id,)
+                    "SELECT team_id FROM team_players WHERE player_id = ?", (player.id,)
                 ).fetchone()
                 if row:
                     team_repo.remove_player(row["team_id"], player.id)
