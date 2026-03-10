@@ -11,6 +11,7 @@ from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_generator import DraftGenerator
+from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft
 from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 
@@ -57,6 +58,11 @@ class OffseasonPipeline:
             self._mark_done(season_id, "run_draft")
         else:
             print("  Skipping run draft (already done)")
+        if not self._is_done(season_id, "trim_rosters"):
+            self._trim_rosters(season_id)
+            self._mark_done(season_id, "trim_rosters")
+        else:
+            print("  Skipping roster trim (already done)")
 
         if not self._is_done(season_id, "reset_pitcher_state"):
             self._reset_pitcher_state()
@@ -223,6 +229,11 @@ class OffseasonPipeline:
         picks = draft.run(season_id, year)
         print(f"  Draft complete: {len(picks)} total picks")
 
+    def _trim_rosters(self, season_id: str) -> None:
+        
+        trimmer = RosterTrimmer(self.conn)
+        trimmer.run(season_id)
+        
     @staticmethod
     def _should_retire(age: int, skills, is_prospect: bool, rng: random.Random) -> bool:
         """

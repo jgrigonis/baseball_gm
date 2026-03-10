@@ -11,6 +11,8 @@ from src.team.team_factory import TeamFactory
 from src.util.locations import TEAM_FILES_DIR, LEAGUE_FILES_DIR
 
 
+SKIP_FILES = {"draft.csv", "draft_results.csv"}
+
 @dataclass
 class TeamEvaluation:
     """Container for team name and evaluation."""
@@ -109,7 +111,9 @@ def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
     tf = TeamFactory()
     evaluations = []
 
-    csv_files = sorted(directory.glob("*.csv"))
+    csv_files = sorted(
+        f for f in directory.glob("*.csv") if f.name not in SKIP_FILES
+    )
 
     for csv_file in csv_files:
         try:
@@ -256,6 +260,32 @@ def export_to_csv(evaluations: List[TeamEvaluation], output_path: Path):
 
     print(f"Exported results to {output_path}")
 
+def pick_year_directory(base_dir: Path) -> Path:
+    """
+    Find year subdirectories in base_dir.
+    Auto-select if only one, prompt user if multiple.
+    """
+    subdirs = sorted(
+        [d for d in base_dir.iterdir() if d.is_dir() and d.name.isdigit()],
+        key=lambda d: d.name,
+    )
+
+    if not subdirs:
+        # No year subdirs — fall back to base_dir itself
+        return base_dir
+
+    if len(subdirs) == 1:
+        print(f"Using year: {subdirs[0].name}")
+        return subdirs[0]
+
+    print("Multiple seasons found:")
+    for i, d in enumerate(subdirs):
+        print(f"  [{i}] {d.name}")
+
+    choice = input(f"Select [0-{len(subdirs)-1}]: ").strip()
+    idx = int(choice) if choice.isdigit() and int(choice) < len(subdirs) else 0
+    return subdirs[idx]
+
 
 def get_args():
     """Get arguments from the command line."""
@@ -309,16 +339,16 @@ def main():
         evaluations = evaluate_from_manifest(manifest_path, base_dir)
 
     else:
-        # Evaluate from directory
-        directory = Path(args.directory)
-
-        if not directory.exists():
-            print(f"Error: Directory {directory} does not exist")
+        base_dir = Path(args.directory)
+        if not base_dir.exists():
+            print(f"Error: Directory {base_dir} does not exist")
             return
 
+        # Evaluate from directory
+        directory = pick_year_directory(base_dir)
         print(f"Evaluating teams in {directory}...\n")
         evaluations = evaluate_directory(directory)
-
+        
     if not evaluations:
         print("No teams found or evaluated successfully.")
         return

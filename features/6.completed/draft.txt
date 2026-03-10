@@ -1,0 +1,3 @@
+Draft — generate new young players to replenish the pool
+
+We now generate the draft pool, and pick from it.
