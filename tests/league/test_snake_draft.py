@@ -16,12 +16,11 @@ Tests cover:
 import csv
 import random
 import sqlite3
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
+from src.league.offseason.snake_draft import SnakeDraft, ROUNDS
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -415,7 +414,7 @@ class TestRunSnake:
     def test_snake_round_1_worst_to_best(self, conn, draft):
         """Round 1 picks should follow worst→best order."""
         insert_season(conn, "s1")
-        teams = setup_basic_draft(conn, n_teams=4, n_prospects=200, season_id="s1")
+        setup_basic_draft(conn, n_teams=4, n_prospects=200, season_id="s1")
 
         order = draft._build_draft_order("s1")
         pool = draft._load_draft_pool()

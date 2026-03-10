@@ -188,7 +188,7 @@ class SnakeDraft:
         rated: list[tuple[PlayerRecord, int]],
     ) -> list[DraftPick]:
         """Execute the snake draft, returning all picks."""
-        n_teams = len(draft_order)
+        # n_teams = len(draft_order)
         picks = []
         overall_pick = 1
 
