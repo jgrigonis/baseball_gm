@@ -42,19 +42,54 @@ def parse_args():
 # ---------------------------------------------------------------------------
 
 
-def find_players_in_csvs(name_query: str, directory: Path) -> list[dict]:
-    """Search all CSVs for players matching name_query (case-insensitive)."""
+def find_players_in_csvs(
+    name_query: str, directory: Path, season: str | None = None
+) -> list[dict]:
+    """Search CSVs for players matching name_query. If season given, limit to that year's dir."""
     matches = []
     query = name_query.lower()
 
-    for csv_path in sorted(directory.glob("**/*.csv")):
+    if season:
+        # Try to find a subdirectory matching the season year
+        season_dir = directory / season
+        if season_dir.exists():
+            search_root = season_dir
+        else:
+            search_root = directory
+    else:
+        search_root = directory
+
+    for csv_path in sorted(search_root.glob("**/*.csv")):
+        # Label includes parent dir so e.g. "2025/madrid" instead of just "madrid"
+        relative = csv_path.relative_to(directory)
+        label = (
+            str(relative.parent / relative.stem)
+            if relative.parent != Path(".")
+            else relative.stem
+        )
+
         with open(csv_path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if query in row.get("Name", "").lower():
-                    matches.append({**row, "_source_file": csv_path.name})
+                    matches.append({**row, "_source_file": label})
 
     return matches
+
+
+# def find_players_in_csvs(name_query: str, directory: Path) -> list[dict]:
+#     """Search all CSVs for players matching name_query (case-insensitive)."""
+#     matches = []
+#     query = name_query.lower()
+
+#     for csv_path in sorted(directory.glob("**/*.csv")):
+#         with open(csv_path, newline="", encoding="utf-8") as f:
+#             reader = csv.DictReader(f)
+#             for row in reader:
+#                 if query in row.get("Name", "").lower():
+#                     matches.append({**row, "_source_file": csv_path.name})
+
+#     return matches
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +247,7 @@ def query_season_stats(db_path: Path, player_id: str, season: str | None) -> dic
         "games": row["games_played"],
         "batting": batting,
         "pitching": pitching,
+        "is_career": season_id is None,
     }
 
 
@@ -249,6 +285,8 @@ def display_player(row: dict, ratings: dict, stats: dict):
     bats = row.get("B", "?")
     throws = row.get("T", "?")
     team = row.get("_source_file", "?").replace(".csv", "")
+
+    stats_label = "CAREER STATS" if stats.get("is_career") else "SEASON STATS"
 
     print()
     print("=" * 58)
@@ -296,10 +334,10 @@ def display_player(row: dict, ratings: dict, stats: dict):
 
     # Season stats
     if not stats:
-        print("\nSEASON STATS: (no data found)")
+        print(f"\n{stats_label}: (no data found)")
         return
 
-    print(f"\nSEASON STATS  ({stats['games']} games):")
+    print(f"\n{stats_label}  ({stats['games']} games):")
 
     bat = stats["batting"]
     if bat["AB"] > 0:
@@ -344,7 +382,8 @@ def main():
         print(f"Directory not found: {directory}")
         sys.exit(1)
 
-    matches = find_players_in_csvs(args.name, directory)
+    # matches = find_players_in_csvs(args.name, directory)
+    matches = find_players_in_csvs(args.name, directory, args.season)
 
     if not matches:
         print(f"No players found matching '{args.name}' in {directory}")
