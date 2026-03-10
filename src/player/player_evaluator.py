@@ -25,6 +25,7 @@ EXPECTED_RATINGS = {
     "defensive_value",
     "overall_offense",
     "overall_player",
+    "prospect",
 }
 
 # Weight values:
@@ -191,6 +192,8 @@ class PlayerEvaluator:
             0, min(100, int(round(overall_player_score / total_weight)))
         )
 
+        ratings["prospect"] = PlayerEvaluator.prospect_rating(skills)
+
         return ratings
 
     @staticmethod
@@ -251,6 +254,38 @@ class PlayerEvaluator:
         lines.append(f"  Overall: {ratings.get('overall_player', 0):3d}")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def prospect_rating(skills: PlayerSkills) -> int:
+        """
+        Rate a player's value as a draft prospect.
+
+        Weights raw, physical tools heavily since they are predictive
+        of future ceiling. Coachable skills (accuracy, infield, outfield)
+        will improve naturally and are less informative at draft time.
+        """
+
+        # Raw stuff and durability — accuracy is coachable so weighted low
+        p_score = (
+            skills["strikes"] * 0.40
+            + skills["stamina"] * 0.25
+            + skills["recovery"] * 0.20
+            + skills["accuracy"] * 0.10
+            + skills["clutch"] * 0.05
+        )
+
+        # Physical tools — defense skills are coachable so weighted low
+        b_score = (
+            skills["speed"] * 0.20
+            + skills["power"] * 0.20
+            + skills["arm"] * 0.15
+            + skills["eye"] * 0.15
+            + skills["contact"] * 0.15
+            + skills["clutch"] * 0.10
+            + skills["base_running"] * 0.05
+        )
+
+        return max(0, min(100, int(round(max(p_score, b_score)))))
 
 
 # Call at module load time

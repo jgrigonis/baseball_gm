@@ -7,10 +7,12 @@ import random
 import sqlite3
 
 
-from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.league.offseason.draft_generator import DraftGenerator
+from src.league.offseason.snake_draft import SnakeDraft
+from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 
 
 class OffseasonPipeline:
@@ -43,6 +45,18 @@ class OffseasonPipeline:
             self._mark_done(season_id, "retire")
         else:
             print("  Skipping retirement (already done)")
+
+        if not self._is_done(season_id, "generate_draft"):
+            self._generate_draft(season_id)
+            self._mark_done(season_id, "generate_draft")
+        else:
+            print("  Skipping draft generation (already done)")
+
+        if not self._is_done(season_id, "run_draft"):
+            self._run_draft(season_id)
+            self._mark_done(season_id, "run_draft")
+        else:
+            print("  Skipping run draft (already done)")
 
         if not self._is_done(season_id, "reset_pitcher_state"):
             self._reset_pitcher_state()
@@ -183,6 +197,31 @@ class OffseasonPipeline:
         repo = PitcherStateRepository(self.conn)
         count = repo.clear_all()
         print(f"  Cleared pitcher state for {count} pitchers")
+
+    def _generate_draft(self, season_id: str) -> None:
+        """Generate prospect pool and write draft.csv."""
+        row = self.conn.execute(
+            "SELECT year FROM seasons WHERE id = ?", (season_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Season {season_id} not found")
+        year = row["year"] + 1
+
+        generator = DraftGenerator(self.conn, self.rng)
+        total = generator.run(season_id, year)
+        print(f"  Draft pool ready: {total} draftable players")
+
+    def _run_draft(self, season_id: str) -> None:
+        row = self.conn.execute(
+            "SELECT year FROM seasons WHERE id = ?", (season_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Season {season_id} not found")
+        year = row["year"] + 1
+
+        draft = SnakeDraft(self.conn, self.rng)
+        picks = draft.run(season_id, year)
+        print(f"  Draft complete: {len(picks)} total picks")
 
     @staticmethod
     def _should_retire(age: int, skills, is_prospect: bool, rng: random.Random) -> bool:

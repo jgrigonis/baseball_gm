@@ -44,8 +44,9 @@ from src.player.positions import (
     get_handedness_probabilities,
 )
 from src.name_generator.names import NameGenerator
+import src.util.logger as _logger  # registers logging.Logger.trace
 
-# from src.util.logger import setup_logger
+_ = _logger  # noqa
 
 VALID_BATS = {"L", "R", "S"}
 VALID_THROWS = {"L", "R"}
