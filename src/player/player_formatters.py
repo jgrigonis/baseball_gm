@@ -67,7 +67,10 @@ class PlayerTableFormatter:
     def hor_skills(player):
         """Output the player and skills as a single line."""
         output = f"{player.name:<30}"  # 30 is the longest name
-        output += f"{player.record.age:>4}"
+        try:
+            output += f"{player.record.age:>4}"
+        except:
+            output += f"{player.age:>4}"
         try:
             output += f"{player.position:>3}"
         except AttributeError:

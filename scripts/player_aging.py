@@ -142,7 +142,7 @@ def delta_BR(age, val, coaching=1.0):
 def delta_BU(age, val, rng, coaching=1.0, ceiling=75):
     """Bunting — pure technique, low ceiling, never declines."""
     distance = max(0.0, ceiling - val)
-    return max(0.0, coaching * (0.4 + noise(rng, 0.3)) * (distance / 40.0))
+    return max(0.0, coaching * (0.4 + noise(0.3)) * (distance / 40.0))
 
 
 @staticmethod
@@ -150,8 +150,8 @@ def delta_CA(age, val, rng, coaching=1.0, ceiling=88):
     """Catching — experience-driven, peaks 28-32, physical wear after."""
     distance = max(0.0, ceiling - val)
     if age > 32:
-        return -0.6 + noise(rng, 0.5)
-    return max(0.0, coaching * (0.6 + noise(rng, 0.3)) * (distance / 40.0))
+        return -0.6 + noise(0.5)
+    return max(0.0, coaching * (0.6 + noise(0.3)) * (distance / 40.0))
 
 
 @staticmethod
@@ -159,10 +159,10 @@ def delta_IF(age, val, rng, coaching=1.0, ceiling=85):
     """Infield — technique + range; range declines after 30."""
     distance = max(0.0, ceiling - val)
     if age > 33:
-        return -0.8 + noise(rng, 0.5)
+        return -0.8 + noise(0.5)
     elif age > 30:
-        return -0.2 + noise(rng, 0.4)
-    return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
+        return -0.2 + noise(0.4)
+    return max(0.0, coaching * (0.5 + noise(0.3)) * (distance / 40.0))
 
 
 @staticmethod
@@ -170,10 +170,10 @@ def delta_OF(age, val, rng, coaching=1.0, ceiling=85):
     """Outfield — range-dependent, declines earlier than infield."""
     distance = max(0.0, ceiling - val)
     if age > 32:
-        return -1.0 + noise(rng, 0.5)
+        return -1.0 + noise(0.5)
     elif age > 29:
-        return -0.3 + noise(rng, 0.4)
-    return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
+        return -0.3 + noise(0.4)
+    return max(0.0, coaching * (0.5 + noise(0.3)) * (distance / 40.0))
 
 
 @staticmethod
@@ -181,10 +181,10 @@ def delta_GB(age, val, rng, coaching=1.0, ceiling=83):
     """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
     distance = max(0.0, ceiling - val)
     if age > 32:
-        return -1.2 + noise(rng, 0.6)
+        return -1.2 + noise(0.6)
     elif age > 28:
-        return -0.3 + noise(rng, 0.4)
-    return max(0.0, coaching * (0.55 + noise(rng, 0.3)) * (distance / 40.0))
+        return -0.3 + noise(0.4)
+    return max(0.0, coaching * (0.55 + noise(0.3)) * (distance / 40.0))
 
 
 def delta_AC(age, val, coaching=1.0, ceiling=90):
@@ -376,11 +376,11 @@ def print_career_table(rows):
 
 def print_career_arcs(rows):
     """Show per-skill sparkline + start/peak/end summary."""
-    print("\n── Skill Trajectories (sparkline, age 17→37) ──────────────────")
+    print("\n── Skill Trajectories (sparkline, age 17→37) ────────────────────────────────────────")
     print(
-        f"{'Skill':<13}  {'Cat':<9}  {'Arc (17→37)':^22}  {'Start':>5}  {'Peak':>5}  {'End':>5}  {'Δ':>5}"
+        f"{'Skill':<13}  {'Cat':<9}  {'Arc (17→37)':^30}  {'Start':>5}  {'Peak':>5}  {'End':>5}  {'Δ':>5}"
     )
-    print("─" * 72)
+    print("─" * 85)
 
     cat_map = {}
     for cat, keys in CATEGORIES.items():

@@ -25,6 +25,7 @@ class PlayerCSVExporter:
             bool: True if file was written, False if user cancelled
         """
         filepath = Path(TEAM_FILES_DIR) / str(year) / filename
+        filepath.parent.mkdir(parents=True, exist_ok=True)
 
         # Check if file exists and prompt user
         if filepath.exists() and not force_overwrite:

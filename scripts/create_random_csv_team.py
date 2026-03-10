@@ -8,5 +8,5 @@ home_team = tf.generate_team(city="Team", mascot="One")
 
 exporter = PlayerCSVExporter()
 filename = "team_one.csv"
-exporter.write(home_team, filename)
+exporter.write(home_team, "2024", filename)
 print(f"Created {filename}")
