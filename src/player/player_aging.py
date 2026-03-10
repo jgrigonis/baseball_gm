@@ -137,14 +137,49 @@ def delta_BR(age, val, coaching=1.0):
     else:
         return coaching * (0.1 + noise(0.3))  # plateau, not decline
 
+@staticmethod
+def delta_BU(age, val, rng, coaching=1.0, ceiling=75):
+    """Bunting — pure technique, low ceiling, never declines."""
+    distance = max(0.0, ceiling - val)
+    return max(0.0, coaching * (0.4 + noise(rng, 0.3)) * (distance / 40.0))
 
-def delta_technical_up(age, val, coaching=1.0, slow_after=33):
-    """Generic always-upward technical skill (BU, CA, IF, OF, GB)."""
-    rate = coaching * (0.8 + noise(0.4))
-    if age > slow_after:
-        rate *= 0.45  # slows but never negative by design
-    return max(0.0, rate)
+@staticmethod
+def delta_CA(age, val, rng, coaching=1.0, ceiling=88):
+    """Catching — experience-driven, peaks 28-32, physical wear after."""
+    distance = max(0.0, ceiling - val)
+    if age > 32:
+        return -0.6 + noise(rng, 0.5)
+    return max(0.0, coaching * (0.6 + noise(rng, 0.3)) * (distance / 40.0))
 
+@staticmethod
+def delta_IF(age, val, rng, coaching=1.0, ceiling=85):
+    """Infield — technique + range; range declines after 30."""
+    distance = max(0.0, ceiling - val)
+    if age > 33:
+        return -0.8 + noise(rng, 0.5)
+    elif age > 30:
+        return -0.2 + noise(rng, 0.4)
+    return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
+
+@staticmethod
+def delta_OF(age, val, rng, coaching=1.0, ceiling=85):
+    """Outfield — range-dependent, declines earlier than infield."""
+    distance = max(0.0, ceiling - val)
+    if age > 32:
+        return -1.0 + noise(rng, 0.5)
+    elif age > 29:
+        return -0.3 + noise(rng, 0.4)
+    return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
+
+@staticmethod
+def delta_GB(age, val, rng, coaching=1.0, ceiling=83):
+    """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
+    distance = max(0.0, ceiling - val)
+    if age > 32:
+        return -1.2 + noise(rng, 0.6)
+    elif age > 28:
+        return -0.3 + noise(rng, 0.4)
+    return max(0.0, coaching * (0.55 + noise(rng, 0.3)) * (distance / 40.0))
 
 def delta_AC(age, val, coaching=1.0, ceiling=90):
     """Pitching accuracy — asymptotically approaches player ceiling."""
@@ -246,11 +281,11 @@ def age_player_career(
         s["EY"] += delta_EY(age, s["EY"], coaching)
         s["CT"] += delta_CT(age, s["CT"], coaching)
         s["BR"] += delta_BR(age, s["BR"], coaching)
-        s["BU"] += delta_technical_up(age, s["BU"], coaching)
-        s["CA"] += delta_technical_up(age, s["CA"], coaching)
-        s["IF"] += delta_technical_up(age, s["IF"], coaching)
-        s["OF"] += delta_technical_up(age, s["OF"], coaching)
-        s["GB"] += delta_technical_up(age, s["GB"], coaching)
+        s["BU"] += delta_BU(age, s["BU"], coaching)
+        s["CA"] += delta_CA(age, s["CA"], coaching)
+        s["IF"] += delta_IF(age, s["IF"], coaching)
+        s["OF"] += delta_OF(age, s["OF"], coaching)
+        s["GB"] += delta_GB(age, s["GB"], coaching)
         s["AC"] += delta_AC(age, s["AC"], coaching)
         s["ST"] += delta_ST(age, s["ST"], coaching)
         s["RE"] += delta_RE(age, s["RE"], coaching)

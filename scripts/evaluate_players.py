@@ -10,6 +10,8 @@ from src.player.player_evaluator import PlayerEvaluator
 from src.team.team_factory import TeamFactory
 from src.util.locations import TEAM_FILES_DIR, LEAGUE_FILES_DIR
 
+SKIP_FILES = {"draft.csv", "draft_results.csv"}
+
 
 @dataclass
 class PlayerEvaluation:
@@ -62,6 +64,15 @@ def evaluate_players_from_manifest(
     manifest = load_manifest(manifest_path)
     tf = TeamFactory()
     evaluations = []
+
+    season_year = manifest.get("season_year")
+    if season_year:
+        year_dir = Path(base_dir) / str(season_year)
+        if year_dir.exists():
+            base_dir = year_dir
+        else:
+            print(f"  Warning: year directory {year_dir} not found, using {base_dir}")
+
 
     print(f"League: {manifest.get('league_name', 'Unknown')}")
     print(
@@ -218,7 +229,6 @@ def export_to_csv(evaluations: List[PlayerEvaluation], output_path: Path):
             )
 
     print(f"\n✓ Exported player ratings to {output_path}")
-
 
 def get_args():
     """Get arguments from the command line."""
