@@ -118,17 +118,31 @@ def test_power_hitter_emphasizes_power():
     assert r_weak["contact_hitter"] > r_slugger["contact_hitter"]
 
 
-def test_overall_player_uses_best_defensive_skill_only():
-    """Critical test: overall_player uses max(IF, OF, C)"""
-    infielder = skills(infield=90, outfield=10, catching=10)
-    outfielder = skills(infield=10, outfield=90, catching=10)
-    catcher = skills(infield=10, outfield=10, catching=90)
+# Bad test, no longer true.
+# def test_overall_player_uses_best_defensive_skill_only():
+#     """Critical test: overall_player uses max(IF, OF, C)"""
+#     infielder = skills(infield=90, outfield=10, catching=10)
+#     outfielder = skills(infield=10, outfield=90, catching=10)
+#     catcher = skills(infield=10, outfield=10, catching=90)
 
-    r_i = PlayerEvaluator.rate_player(infielder)["overall_player"]
-    r_o = PlayerEvaluator.rate_player(outfielder)["overall_player"]
-    r_c = PlayerEvaluator.rate_player(catcher)["overall_player"]
+#     r_i = PlayerEvaluator.rate_player(infielder)["overall_player"]
+#     r_o = PlayerEvaluator.rate_player(outfielder)["overall_player"]
+#     r_c = PlayerEvaluator.rate_player(catcher)["overall_player"]
 
-    assert r_i == r_o == r_c
+#     assert r_i == r_o == r_c
+
+
+def test_overall_player_defensive_value_reflects_position_context():
+    """defensive_value uses position ratings, so arm and speed contribute
+    for outfielders/infielders but not catchers."""
+    # High arm boosts outfield positions but not catcher
+    high_arm_outfielder = skills(outfield=80, arm=90, speed=50, catching=10)
+    low_arm_outfielder = skills(outfield=80, arm=30, speed=50, catching=10)
+
+    r_high = PlayerEvaluator.rate_player(high_arm_outfielder)["defensive_value"]
+    r_low = PlayerEvaluator.rate_player(low_arm_outfielder)["defensive_value"]
+
+    assert r_high > r_low
 
 
 def test_arm_contributes_to_overall_player():

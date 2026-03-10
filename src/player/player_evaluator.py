@@ -174,9 +174,7 @@ class PlayerEvaluator:
 
         # --- Overall Player (offense + arm + speed + best defense) ---
         defensive_value = max(
-            skills.as_dict().get("infield", 0),
-            skills.as_dict().get("outfield", 0),
-            skills.as_dict().get("catching", 0),
+            ratings[pos] for pos in ["cf", "rf", "lf", "c", "1b", "2b", "ss", "3b"]
         )
         ratings["defensive_value"] = defensive_value
 

@@ -1,0 +1,6 @@
+Injuries
+General player fatigue, different from pitcher fatigue
+
+random chances for injuries.
+
+affect aging

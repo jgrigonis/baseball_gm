@@ -1,9 +1,16 @@
 # scripts/export_as_csv.py
 
-import argparse
-from pathlib import Path
+"""
+This script can generate a team and write it out as a csv.
 
-from src.util.locations import TEAM_FILES_DIR
+By default it creates a city/mascot combo of Default Mascot
+
+For the 2025 season and writes it to default-mascot.csv
+
+"""
+
+import argparse
+
 from src.team.team_factory import TeamFactory
 from src.io.player_csv_exporter import PlayerCSVExporter
 
@@ -26,6 +33,7 @@ def get_args():
     parser.add_argument(
         "--filename", "-f", default="default-mascot.csv", help="Set the file name."
     )
+    parser.add_argument("--year", "-y", default="2025", help="Set the year.")
     args = parser.parse_args()
     return args
 
@@ -35,7 +43,7 @@ def main():
     tf = TeamFactory()
 
     tr = tf.generate_team(city=args.city, mascot=args.mascot)
-    PlayerCSVExporter.write(tr, Path(TEAM_FILES_DIR) / args.filename)
+    PlayerCSVExporter.write(tr, args.year, args.filename)
 
 
 if __name__ == "__main__":

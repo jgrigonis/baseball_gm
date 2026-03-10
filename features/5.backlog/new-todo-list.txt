@@ -4,9 +4,6 @@ Track blown saves, or save opportunities, holds
 
 Assign earned runs
 
-Injuries
-General player fatigue, different from pitcher fatigue
-
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
 

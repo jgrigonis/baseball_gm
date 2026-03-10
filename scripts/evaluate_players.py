@@ -1,11 +1,13 @@
 # scripts/evaluate_players.py
 
 import argparse
+import csv
 import json
 from pathlib import Path
 from typing import List, Dict
 from dataclasses import dataclass
 
+from src.io.player_csv_schema import EVALUATION_CSV_HEADER, EVALUATION_RATING_COLUMNS
 from src.player.player_evaluator import PlayerEvaluator
 from src.team.team_factory import TeamFactory
 from src.util.locations import TEAM_FILES_DIR, LEAGUE_FILES_DIR
@@ -19,6 +21,7 @@ class PlayerEvaluation:
 
     player_id: str
     name: str
+    age: int
     position: str
     team_name: str
     ratings: Dict[str, int]
@@ -73,7 +76,6 @@ def evaluate_players_from_manifest(
         else:
             print(f"  Warning: year directory {year_dir} not found, using {base_dir}")
 
-
     print(f"League: {manifest.get('league_name', 'Unknown')}")
     print(
         f"Season: {manifest.get('season_name', 'Unknown')} ({manifest.get('season_year', 'N/A')})"
@@ -100,6 +102,7 @@ def evaluate_players_from_manifest(
                     PlayerEvaluation(
                         player_id=player.id,
                         name=player.name,
+                        age=player.skills.age,
                         position=player.position,
                         team_name=team_name,
                         ratings=ratings,
@@ -183,52 +186,26 @@ def print_full_report(evaluations: List[PlayerEvaluation], top_n: int = 10):
 
 
 def export_to_csv(evaluations: List[PlayerEvaluation], output_path: Path):
-    """Export all player evaluations to CSV for analysis."""
-    import csv
 
     with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
-
-        # Header
-        writer.writerow(
-            [
-                "player_id",
-                "name",
-                "position",
-                "team",
-                "overall_rating",
-                "offensive_rating",
-                "defensive_rating",
-                "pitching_rating",
-                "speed_rating",
-                "power_rating",
-                "contact_rating",
-                "eye_rating",
-            ]
-        )
-
-        # Data - sorted by overall rating
+        writer.writerow(EVALUATION_CSV_HEADER)
         for player_eval in sorted(
-            evaluations, key=lambda x: x.ratings["overall_rating"], reverse=True
+            evaluations, key=lambda x: x.ratings["overall_player"], reverse=True
         ):
-            writer.writerow(
-                [
-                    player_eval.player_id,
-                    player_eval.name,
-                    player_eval.position,
-                    player_eval.team_name,
-                    player_eval.ratings["overall_rating"],
-                    player_eval.ratings["offensive_rating"],
-                    player_eval.ratings["defensive_rating"],
-                    player_eval.ratings["pitching_rating"],
-                    player_eval.ratings["speed_rating"],
-                    player_eval.ratings["power_rating"],
-                    player_eval.ratings["contact_rating"],
-                    player_eval.ratings["eye_rating"],
-                ]
-            )
+            row = [
+                player_eval.name,
+                player_eval.age,
+                player_eval.position,
+                *[
+                    player_eval.ratings[rating_key]
+                    for _, rating_key in EVALUATION_RATING_COLUMNS
+                ],
+                player_eval.team_name,
+                player_eval.player_id,
+            ]
+            writer.writerow(row)
 
-    print(f"\n✓ Exported player ratings to {output_path}")
 
 def get_args():
     """Get arguments from the command line."""

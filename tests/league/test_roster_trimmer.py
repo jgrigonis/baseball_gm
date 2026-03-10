@@ -12,13 +12,11 @@ Tests cover:
 - Total cut count returned correctly
 """
 
-import random
 import sqlite3
 
 import pytest
 
 from src.league.offseason.roster_trimmer import RosterTrimmer, MINORS_LIMIT
-
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -101,6 +99,7 @@ CREATE TABLE IF NOT EXISTS league_season_teams (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def conn():
     connection = sqlite3.connect(":memory:")
@@ -129,8 +128,12 @@ def _next_id():
 
 
 def setup_season(conn, season_id="s1", team_ids=("t1",)):
-    conn.execute("INSERT OR IGNORE INTO seasons (id, year) VALUES (?, 2026)", (season_id,))
-    conn.execute("INSERT OR IGNORE INTO leagues (id, name) VALUES ('lg1', 'Test League')")
+    conn.execute(
+        "INSERT OR IGNORE INTO seasons (id, year) VALUES (?, 2026)", (season_id,)
+    )
+    conn.execute(
+        "INSERT OR IGNORE INTO leagues (id, name) VALUES ('lg1', 'Test League')"
+    )
     for team_id in team_ids:
         conn.execute(
             "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, 'Test', 'Team')",
@@ -174,7 +177,9 @@ def insert_n_minors(conn, team_id, n, base_strikes=50):
     """Insert n minors players, each with slightly different ratings."""
     ids = []
     for i in range(n):
-        pid = insert_player(conn, team_id, "minors", strikes=max(1, min(99, base_strikes + i)))
+        pid = insert_player(
+            conn, team_id, "minors", strikes=max(1, min(99, base_strikes + i))
+        )
         ids.append(pid)
     return ids
 
@@ -200,15 +205,19 @@ def get_status(conn, player_id):
 
 
 def in_team(conn, team_id, player_id):
-    return conn.execute(
-        "SELECT 1 FROM team_players WHERE team_id = ? AND player_id = ?",
-        (team_id, player_id),
-    ).fetchone() is not None
+    return (
+        conn.execute(
+            "SELECT 1 FROM team_players WHERE team_id = ? AND player_id = ?",
+            (team_id, player_id),
+        ).fetchone()
+        is not None
+    )
 
 
 # ---------------------------------------------------------------------------
 # _trim_team
 # ---------------------------------------------------------------------------
+
 
 class TestTrimTeam:
     def test_no_cut_when_under_limit(self, conn, trimmer):
@@ -313,7 +322,9 @@ class TestTrimTeam:
         conn.commit()
 
         for pid in protected_ids:
-            assert get_status(conn, pid) == "26man", f"26man player {pid} should be protected"
+            assert (
+                get_status(conn, pid) == "26man"
+            ), f"26man player {pid} should be protected"
             assert in_team(conn, "t1", pid)
 
     def test_40man_players_never_cut(self, conn, trimmer):
@@ -330,7 +341,9 @@ class TestTrimTeam:
         conn.commit()
 
         for pid in protected_ids:
-            assert get_status(conn, pid) == "40man", f"40man player {pid} should be protected"
+            assert (
+                get_status(conn, pid) == "40man"
+            ), f"40man player {pid} should be protected"
             assert in_team(conn, "t1", pid)
 
     def test_no_minors_no_cut(self, conn, trimmer):
@@ -349,6 +362,7 @@ class TestTrimTeam:
 # run()
 # ---------------------------------------------------------------------------
 
+
 class TestRosterTrimmerRun:
     def test_trims_all_teams(self, conn, trimmer):
         setup_season(conn, team_ids=["t1", "t2"])
@@ -361,7 +375,7 @@ class TestRosterTrimmerRun:
     def test_returns_total_cut_count(self, conn, trimmer):
         setup_season(conn, team_ids=["t1", "t2", "t3"])
         insert_n_minors(conn, "t1", MINORS_LIMIT + 5)
-        insert_n_minors(conn, "t2", MINORS_LIMIT)   # at limit, no cuts
+        insert_n_minors(conn, "t2", MINORS_LIMIT)  # at limit, no cuts
         insert_n_minors(conn, "t3", MINORS_LIMIT + 8)
 
         total = trimmer.run("s1")
@@ -395,11 +409,9 @@ class TestRosterTrimmerRun:
         trimmer.run("s1")
 
         # Verify via a fresh query
-        remaining = conn.execute(
-            """SELECT COUNT(*) FROM team_players tp
+        remaining = conn.execute("""SELECT COUNT(*) FROM team_players tp
                JOIN player_status ps ON tp.player_id = ps.player_id
-               WHERE tp.team_id = 't1' AND ps.status = 'minors'"""
-        ).fetchone()[0]
+               WHERE tp.team_id = 't1' AND ps.status = 'minors'""").fetchone()[0]
         assert remaining == MINORS_LIMIT
 
     def test_each_team_trimmed_independently(self, conn, trimmer):

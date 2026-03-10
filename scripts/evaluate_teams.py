@@ -10,8 +10,8 @@ from src.team.team_evaluator import TeamEvaluator
 from src.team.team_factory import TeamFactory
 from src.util.locations import TEAM_FILES_DIR, LEAGUE_FILES_DIR
 
-
 SKIP_FILES = {"draft.csv", "draft_results.csv"}
+
 
 @dataclass
 class TeamEvaluation:
@@ -111,9 +111,7 @@ def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
     tf = TeamFactory()
     evaluations = []
 
-    csv_files = sorted(
-        f for f in directory.glob("*.csv") if f.name not in SKIP_FILES
-    )
+    csv_files = sorted(f for f in directory.glob("*.csv") if f.name not in SKIP_FILES)
 
     for csv_file in csv_files:
         try:
@@ -260,6 +258,7 @@ def export_to_csv(evaluations: List[TeamEvaluation], output_path: Path):
 
     print(f"Exported results to {output_path}")
 
+
 def pick_year_directory(base_dir: Path) -> Path:
     """
     Find year subdirectories in base_dir.
@@ -348,7 +347,7 @@ def main():
         directory = pick_year_directory(base_dir)
         print(f"Evaluating teams in {directory}...\n")
         evaluations = evaluate_directory(directory)
-        
+
     if not evaluations:
         print("No teams found or evaluated successfully.")
         return

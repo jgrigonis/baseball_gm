@@ -137,11 +137,13 @@ def delta_BR(age, val, coaching=1.0):
     else:
         return coaching * (0.1 + noise(0.3))  # plateau, not decline
 
+
 @staticmethod
 def delta_BU(age, val, rng, coaching=1.0, ceiling=75):
     """Bunting — pure technique, low ceiling, never declines."""
     distance = max(0.0, ceiling - val)
     return max(0.0, coaching * (0.4 + noise(rng, 0.3)) * (distance / 40.0))
+
 
 @staticmethod
 def delta_CA(age, val, rng, coaching=1.0, ceiling=88):
@@ -150,6 +152,7 @@ def delta_CA(age, val, rng, coaching=1.0, ceiling=88):
     if age > 32:
         return -0.6 + noise(rng, 0.5)
     return max(0.0, coaching * (0.6 + noise(rng, 0.3)) * (distance / 40.0))
+
 
 @staticmethod
 def delta_IF(age, val, rng, coaching=1.0, ceiling=85):
@@ -161,6 +164,7 @@ def delta_IF(age, val, rng, coaching=1.0, ceiling=85):
         return -0.2 + noise(rng, 0.4)
     return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
 
+
 @staticmethod
 def delta_OF(age, val, rng, coaching=1.0, ceiling=85):
     """Outfield — range-dependent, declines earlier than infield."""
@@ -171,6 +175,7 @@ def delta_OF(age, val, rng, coaching=1.0, ceiling=85):
         return -0.3 + noise(rng, 0.4)
     return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
 
+
 @staticmethod
 def delta_GB(age, val, rng, coaching=1.0, ceiling=83):
     """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
@@ -180,6 +185,7 @@ def delta_GB(age, val, rng, coaching=1.0, ceiling=83):
     elif age > 28:
         return -0.3 + noise(rng, 0.4)
     return max(0.0, coaching * (0.55 + noise(rng, 0.3)) * (distance / 40.0))
+
 
 def delta_AC(age, val, coaching=1.0, ceiling=90):
     """Pitching accuracy — asymptotically approaches player ceiling."""

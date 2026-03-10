@@ -230,10 +230,10 @@ class OffseasonPipeline:
         print(f"  Draft complete: {len(picks)} total picks")
 
     def _trim_rosters(self, season_id: str) -> None:
-        
+
         trimmer = RosterTrimmer(self.conn)
         trimmer.run(season_id)
-        
+
     @staticmethod
     def _should_retire(age: int, skills, is_prospect: bool, rng: random.Random) -> bool:
         """
