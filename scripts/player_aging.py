@@ -1,5 +1,5 @@
-# This is unused sample code.
-# Can be tossed eventually.
+# scripts/player_aging.py
+# This is intended to visualize the deltas in player_skill_aging.py
 
 """
 MLB Player Skill Aging Simulation
@@ -11,6 +11,9 @@ development patterns per skill category.
 import random
 import csv
 import io
+
+
+from src.player.player_skill_aging import SkillAging
 
 # ─────────────────────────────────────────────
 #  HELPERS
@@ -44,181 +47,6 @@ Without it, every player aged identically.
 """
 
 # ─────────────────────────────────────────────
-#  AGING DELTAS (one year)
-#  Each function returns the raw float delta
-#  to apply to a skill value.
-# ─────────────────────────────────────────────
-
-
-def delta_SP(age, val):
-    """Run Speed — physical, peaks 22-26, sharp fall after 30."""
-    if age < 22:
-        return 1.2 + noise(0.5)
-    elif age <= 26:
-        return 0.1 + noise(0.4)
-    elif age <= 30:
-        return -0.9 + noise(0.5)
-    elif age <= 33:
-        return -2.2 + noise(0.6)
-    else:
-        return -2.8 + noise(0.7)
-
-
-def delta_PO(age, val):
-    """Batting Power — physical, slow rise > long plateau > late decline."""
-    if age < 21:
-        return 2.0 + noise(0.7)
-    elif age <= 28:
-        return 0.7 + noise(0.5)
-    elif age <= 32:
-        return -0.2 + noise(0.5)
-    else:
-        return -1.6 + noise(0.7)
-
-
-def delta_AR(age, val):
-    """Throwing Arm — physical, peaks mid-20s, declines from 30."""
-    if age < 24:
-        return 1.6 + noise(0.5)
-    elif age <= 28:
-        return 0.2 + noise(0.4)
-    elif age <= 32:
-        return -1.0 + noise(0.5)
-    else:
-        return -1.8 + noise(0.6)
-
-
-def delta_KK(age, val):
-    """Strikeout ability — physical/raw talent, can't be coached."""
-    if age < 24:
-        return 1.8 + noise(0.6)
-    elif age <= 27:
-        return 0.4 + noise(0.5)
-    elif age <= 31:
-        return -0.6 + noise(0.5)
-    else:
-        return -2.0 + noise(0.7)
-
-
-def delta_CL(age, val, playoff_boost=0.0):
-    """Clutch — cognitive, slight random walk, vet upward drift."""
-    vet_bonus = 0.35 if age >= 28 else 0.0
-    return vet_bonus + playoff_boost + noise(1.6)
-
-
-def delta_EY(age, val, coaching=1.0):
-    """Eye / plate discipline — peaks later than physical, gentle decline."""
-    if age < 27:
-        return coaching * (1.3 + noise(0.5))
-    elif age <= 32:
-        return coaching * (0.4 + noise(0.4))
-    elif age <= 35:
-        return -0.4 + noise(0.4)
-    else:
-        return -1.1 + noise(0.5)
-
-
-def delta_CT(age, val, coaching=1.0):
-    """Contact — trainable; very slow decline after mid-30s."""
-    if age < 27:
-        return coaching * (1.2 + noise(0.5))
-    elif age <= 33:
-        return coaching * (0.5 + noise(0.4))
-    elif age <= 36:
-        return -0.3 + noise(0.4)
-    else:
-        return -0.9 + noise(0.4)
-
-
-def delta_BR(age, val, coaching=1.0):
-    """Base running — decision-making, trends up all career, late plateau."""
-    if age <= 33:
-        return coaching * (0.9 + noise(0.4))
-    else:
-        return coaching * (0.1 + noise(0.3))  # plateau, not decline
-
-
-@staticmethod
-def delta_BU(age, val, rng, coaching=1.0, ceiling=75):
-    """Bunting — pure technique, low ceiling, never declines."""
-    distance = max(0.0, ceiling - val)
-    return max(0.0, coaching * (0.4 + noise(0.3)) * (distance / 40.0))
-
-
-@staticmethod
-def delta_CA(age, val, rng, coaching=1.0, ceiling=88):
-    """Catching — experience-driven, peaks 28-32, physical wear after."""
-    distance = max(0.0, ceiling - val)
-    if age > 32:
-        return -0.6 + noise(0.5)
-    return max(0.0, coaching * (0.6 + noise(0.3)) * (distance / 40.0))
-
-
-@staticmethod
-def delta_IF(age, val, rng, coaching=1.0, ceiling=85):
-    """Infield — technique + range; range declines after 30."""
-    distance = max(0.0, ceiling - val)
-    if age > 33:
-        return -0.8 + noise(0.5)
-    elif age > 30:
-        return -0.2 + noise(0.4)
-    return max(0.0, coaching * (0.5 + noise(0.3)) * (distance / 40.0))
-
-
-@staticmethod
-def delta_OF(age, val, rng, coaching=1.0, ceiling=85):
-    """Outfield — range-dependent, declines earlier than infield."""
-    distance = max(0.0, ceiling - val)
-    if age > 32:
-        return -1.0 + noise(0.5)
-    elif age > 29:
-        return -0.3 + noise(0.4)
-    return max(0.0, coaching * (0.5 + noise(0.3)) * (distance / 40.0))
-
-
-@staticmethod
-def delta_GB(age, val, rng, coaching=1.0, ceiling=83):
-    """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
-    distance = max(0.0, ceiling - val)
-    if age > 32:
-        return -1.2 + noise(0.6)
-    elif age > 28:
-        return -0.3 + noise(0.4)
-    return max(0.0, coaching * (0.55 + noise(0.3)) * (distance / 40.0))
-
-
-def delta_AC(age, val, coaching=1.0, ceiling=90):
-    """Pitching accuracy — asymptotically approaches player ceiling."""
-    distance = max(0.0, ceiling - val)
-    base = coaching * (0.55 + noise(0.3)) * (distance / 45.0)
-    return max(0.0, base)
-
-
-def delta_ST(age, val, coaching=1.0):
-    """Pitching stamina — rises early, declines from 30+."""
-    if age < 26:
-        return coaching * (1.1 + noise(0.5))
-    elif age <= 30:
-        return coaching * (0.3 + noise(0.4))
-    elif age <= 33:
-        return -1.0 + noise(0.5)
-    else:
-        return -2.0 + noise(0.7)
-
-
-def delta_RE(age, val, coaching=1.0):
-    """Pitching recovery — most coaching-sensitive; declines from 30+."""
-    if age < 26:
-        return coaching * (1.3 + noise(0.5))
-    elif age <= 30:
-        return coaching * (0.5 + noise(0.4))
-    elif age <= 33:
-        return -0.8 + noise(0.5)
-    else:
-        return -1.7 + noise(0.7)
-
-
-# ─────────────────────────────────────────────
 #  MAIN SIMULATION
 # ─────────────────────────────────────────────
 
@@ -235,8 +63,8 @@ def age_player_career(
     player_id="player_001",
     seed=None,
 ):
-    if seed is not None:
-        random.seed(seed)
+
+    rng = random.Random(seed)
 
     s = {
         k: float(start_skill)
@@ -279,22 +107,22 @@ def age_player_career(
         rows.append(row)
 
         # ── Apply one year of aging ─────────────────────────────────────
-        s["SP"] += delta_SP(age, s["SP"])
-        s["PO"] += delta_PO(age, s["PO"])
-        s["AR"] += delta_AR(age, s["AR"])
-        s["KK"] += delta_KK(age, s["KK"])
-        s["CL"] += delta_CL(age, s["CL"])
-        s["EY"] += delta_EY(age, s["EY"], coaching)
-        s["CT"] += delta_CT(age, s["CT"], coaching)
-        s["BR"] += delta_BR(age, s["BR"], coaching)
-        s["BU"] += delta_BU(age, s["BU"], coaching)
-        s["CA"] += delta_CA(age, s["CA"], coaching)
-        s["IF"] += delta_IF(age, s["IF"], coaching)
-        s["OF"] += delta_OF(age, s["OF"], coaching)
-        s["GB"] += delta_GB(age, s["GB"], coaching)
-        s["AC"] += delta_AC(age, s["AC"], coaching)
-        s["ST"] += delta_ST(age, s["ST"], coaching)
-        s["RE"] += delta_RE(age, s["RE"], coaching)
+        s["SP"] += SkillAging.delta_SP(age, s["SP"], rng)
+        s["PO"] += SkillAging.delta_PO(age, s["PO"], rng)
+        s["AR"] += SkillAging.delta_AR(age, s["AR"], rng)
+        s["KK"] += SkillAging.delta_KK(age, s["KK"], rng)
+        s["CL"] += SkillAging.delta_CL(age, s["CL"], rng)
+        s["EY"] += SkillAging.delta_EY(age, s["EY"], rng, coaching)
+        s["CT"] += SkillAging.delta_CT(age, s["CT"], rng, coaching)
+        s["BR"] += SkillAging.delta_BR(age, s["BR"], rng, coaching)
+        s["BU"] += SkillAging.delta_BU(age, s["BU"], rng, coaching)
+        s["CA"] += SkillAging.delta_CA(age, s["CA"], rng, coaching)
+        s["IF"] += SkillAging.delta_IF(age, s["IF"], rng, coaching)
+        s["OF"] += SkillAging.delta_OF(age, s["OF"], rng, coaching)
+        s["GB"] += SkillAging.delta_GB(age, s["GB"], rng, coaching)
+        s["AC"] += SkillAging.delta_AC(age, s["AC"], rng, coaching)
+        s["ST"] += SkillAging.delta_ST(age, s["ST"], rng, coaching)
+        s["RE"] += SkillAging.delta_RE(age, s["RE"], rng, coaching)
 
         # Clamp everything to valid range
         for k in s:

@@ -1,7 +1,5 @@
 # src/player/position_fatigue.py
 
-# TODO move this into fatigue.py OR rename fatigue.py
-
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -46,7 +44,7 @@ class PositionPlayerFatigue:
     durability: int = 50          # Player attribute, like stamina for pitchers
 
     # In-season tracking
-    consecutive_games: int = 0    # Streak of games without rest
+    consecutive_days: int = 0     # Streak of days in lineup without a break
     season_games_played: int = 0
 
     # Energy thresholds (mirrors PitcherFatigue)
@@ -110,13 +108,13 @@ class PositionPlayerFatigue:
         # Durability reduces drain, same pattern as pitcher stamina
         drain = base_drain * innings_fraction * (50 / self.durability)
 
-        # Consecutive game penalty: each game in a long streak adds a small
+        # Consecutive day penalty: each day in a long streak adds a small
         # extra drain (fatigue compounds — day 7+ hurts more than day 2)
-        streak_penalty = max(0, (self.consecutive_games - 4) * 0.005)
+        streak_penalty = max(0, (self.consecutive_days - 4) * 0.005)
         drain += streak_penalty
 
         self.energy = max(0.0, self.energy - drain)
-        self.consecutive_games += 1
+        self.consecutive_days += 1
         self.season_games_played += 1
 
     def rest_day(self, days: int = 1) -> None:
@@ -129,12 +127,12 @@ class PositionPlayerFatigue:
             recovery = deficit * REST_RECOVERY_RATE
             self.energy = min(1.0, self.energy + recovery)
 
-        self.consecutive_games = 0
+        self.consecutive_days = 0
 
     def end_season(self) -> None:
         """Full reset at the start of the offseason."""
         self.energy = 1.0
-        self.consecutive_games = 0
+        self.consecutive_days = 0
         self.season_games_played = 0
 
     # ------------------------------------------------------------------

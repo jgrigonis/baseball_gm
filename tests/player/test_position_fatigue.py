@@ -47,8 +47,8 @@ class TestInit:
         with pytest.raises(ValueError, match="Unknown position"):
             PositionPlayerFatigue(position="P", durability=50)
 
-    def test_consecutive_games_starts_at_zero(self, catcher):
-        assert catcher.consecutive_games == 0
+    def test_consecutive_days_starts_at_zero(self, catcher):
+        assert catcher.consecutive_days == 0
 
     def test_season_games_starts_at_zero(self, catcher):
         assert catcher.season_games_played == 0
@@ -106,11 +106,11 @@ class TestPlayGame:
         catcher.play_game()
         assert catcher.energy < before
 
-    def test_consecutive_games_increments(self, catcher):
+    def test_consecutive_days_increments(self, catcher):
         catcher.play_game()
-        assert catcher.consecutive_games == 1
+        assert catcher.consecutive_days == 1
         catcher.play_game()
-        assert catcher.consecutive_games == 2
+        assert catcher.consecutive_days == 2
 
     def test_season_games_increments(self, catcher):
         catcher.play_game()
@@ -182,11 +182,11 @@ class TestRestDay:
         catcher.rest_day()
         assert catcher.energy > 0.5
 
-    def test_consecutive_games_resets_on_rest(self, catcher):
+    def test_consecutive_days_resets_on_rest(self, catcher):
         catcher.play_game()
         catcher.play_game()
         catcher.rest_day()
-        assert catcher.consecutive_games == 0
+        assert catcher.consecutive_days == 0
 
     def test_energy_never_exceeds_one(self, catcher):
         catcher.set_energy(0.99)
@@ -236,11 +236,11 @@ class TestEndSeason:
         catcher.end_season()
         assert catcher.energy == 1.0
 
-    def test_consecutive_games_resets(self, catcher):
+    def test_consecutive_days_resets(self, catcher):
         for _ in range(10):
             catcher.play_game()
         catcher.end_season()
-        assert catcher.consecutive_games == 0
+        assert catcher.consecutive_days == 0
 
     def test_season_games_resets(self, catcher):
         for _ in range(10):

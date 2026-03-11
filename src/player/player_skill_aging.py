@@ -189,3 +189,52 @@ class SkillAging:
             return -0.8 + noise(rng, 0.5)
         else:
             return -1.7 + noise(rng, 0.7)
+
+
+    @staticmethod
+    def delta_BU(age, val, rng: random.Random, coaching: float = 1.0, ceiling=75):
+        """Bunting — pure technique, low ceiling, never declines."""
+        distance = max(0.0, ceiling - val)
+        return max(0.0, coaching * (0.4 + noise(rng, 0.3)) * (distance / 40.0))
+
+
+    @staticmethod
+    def delta_CA(age, val, rng: random.Random, coaching: float = 1.0, ceiling=88):
+        """Catching — experience-driven, peaks 28-32, physical wear after."""
+        distance = max(0.0, ceiling - val)
+        if age > 32:
+            return -0.6 + noise(rng, 0.5)
+        return max(0.0, coaching * (0.6 + noise(rng, 0.3)) * (distance / 40.0))
+
+
+    @staticmethod
+    def delta_IF(age, val, rng: random.Random, coaching: float = 1.0, ceiling=85):
+        """Infield — technique + range; range declines after 30."""
+        distance = max(0.0, ceiling - val)
+        if age > 33:
+            return -0.8 + noise(rng, 0.5)
+        elif age > 30:
+            return -0.2 + noise(rng, 0.4)
+        return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
+
+
+    @staticmethod
+    def delta_OF(age, val, rng: random.Random, coaching: float = 1.0, ceiling=85):
+        """Outfield — range-dependent, declines earlier than infield."""
+        distance = max(0.0, ceiling - val)
+        if age > 32:
+            return -1.0 + noise(rng, 0.5)
+        elif age > 29:
+            return -0.3 + noise(rng, 0.4)
+        return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
+
+
+    @staticmethod
+    def delta_GB(age, val, rng: random.Random, coaching: float = 1.0, ceiling=83):
+        """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
+        distance = max(0.0, ceiling - val)
+        if age > 32:
+            return -1.2 + noise(rng, 0.6)
+        elif age > 28:
+            return -0.3 + noise(rng, 0.4)
+        return max(0.0, coaching * (0.55 + noise(rng, 0.3)) * (distance / 40.0))

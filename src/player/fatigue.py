@@ -1,16 +1,8 @@
 # src/player/fatigue.py
 
 from dataclasses import dataclass
-from enum import Enum
 
-
-class FatigueLevel(Enum):
-    FRESH = "fresh"
-    GOOD = "good"
-    TIRED = "tired"
-    EXHAUSTED = "exhausted"
-    ZERO = "ZERO"
-
+from src.player.fatigue_level import FatigueLevel
 
 @dataclass
 class PitcherFatigue:

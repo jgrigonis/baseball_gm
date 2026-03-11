@@ -92,6 +92,16 @@ CREATE TABLE IF NOT EXISTS player_status (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS player_energy (
+    player_id          TEXT PRIMARY KEY,
+    current_energy     REAL NOT NULL DEFAULT 1.0 CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
+    last_game_date     TEXT,                                    -- ISO date of last game played
+    consecutive_days   INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
+    season_games_played INTEGER NOT NULL DEFAULT 0 CHECK (season_games_played >= 0),
+
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 -- Track completed offseason steps for each season
 CREATE TABLE IF NOT EXISTS offseason_steps (
     season_id TEXT NOT NULL,
@@ -325,6 +335,7 @@ CREATE INDEX IF NOT EXISTS idx_player_skills_player_id ON player_skills(player_i
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_player ON player_skills_history(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_season ON player_skills_history(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_status_status ON player_status(status);
+CREATE INDEX IF NOT EXISTS idx_player_energy_player ON player_energy(player_id);
 CREATE INDEX IF NOT EXISTS idx_team_players_team ON team_players(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_players_player ON team_players(player_id);
 CREATE INDEX IF NOT EXISTS idx_league_season_teams_league_season ON league_season_teams(league_id, season_id);
