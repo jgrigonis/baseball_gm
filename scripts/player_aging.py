@@ -1,4 +1,5 @@
 # scripts/player_aging.py
+
 # This is intended to visualize the deltas in player_skill_aging.py
 
 """
@@ -23,28 +24,6 @@ from src.player.player_skill_aging import SkillAging
 def clamp(val, lo=1, hi=100):
     return max(lo, min(hi, int(round(val))))
 
-
-def noise(scale=1.0):
-    return random.gauss(0, scale)
-
-
-"""
-random.gauss(0, scale) draws a single random number from a
-normal (bell curve) distribution centered at 0 with a standard 
-deviation of scale. In plain terms:
-
-It returns a small positive or negative float, most of the 
-time close to zero
-The bigger scale is, the wider the spread of possible values
-With scale=1.0, about 68% of calls return something between 
--1.0 and +1.0, and about 95% land between -2.0 and +2.0
-
-So when you write something like return 1.2 + noise(0.5), 
-you're saying "grow by roughly 1.2 this year, but add a 
-realistic random wobble so no two careers are identical." 
-Without it, every player aged identically.
-
-"""
 
 # ─────────────────────────────────────────────
 #  MAIN SIMULATION
@@ -90,6 +69,8 @@ def age_player_career(
 
     rows = []
 
+    SA = SkillAging()
+
     for season_idx in range(seasons):
         age = start_age + season_idx
 
@@ -107,22 +88,22 @@ def age_player_career(
         rows.append(row)
 
         # ── Apply one year of aging ─────────────────────────────────────
-        s["SP"] += SkillAging.delta_SP(age, s["SP"], rng)
-        s["PO"] += SkillAging.delta_PO(age, s["PO"], rng)
-        s["AR"] += SkillAging.delta_AR(age, s["AR"], rng)
-        s["KK"] += SkillAging.delta_KK(age, s["KK"], rng)
-        s["CL"] += SkillAging.delta_CL(age, s["CL"], rng)
-        s["EY"] += SkillAging.delta_EY(age, s["EY"], rng, coaching)
-        s["CT"] += SkillAging.delta_CT(age, s["CT"], rng, coaching)
-        s["BR"] += SkillAging.delta_BR(age, s["BR"], rng, coaching)
-        s["BU"] += SkillAging.delta_BU(age, s["BU"], rng, coaching)
-        s["CA"] += SkillAging.delta_CA(age, s["CA"], rng, coaching)
-        s["IF"] += SkillAging.delta_IF(age, s["IF"], rng, coaching)
-        s["OF"] += SkillAging.delta_OF(age, s["OF"], rng, coaching)
-        s["GB"] += SkillAging.delta_GB(age, s["GB"], rng, coaching)
-        s["AC"] += SkillAging.delta_AC(age, s["AC"], rng, coaching)
-        s["ST"] += SkillAging.delta_ST(age, s["ST"], rng, coaching)
-        s["RE"] += SkillAging.delta_RE(age, s["RE"], rng, coaching)
+        s["SP"] += SA.delta_SP(age, s["SP"], rng)
+        s["PO"] += SA.delta_PO(age, s["PO"], rng)
+        s["AR"] += SA.delta_AR(age, s["AR"], rng)
+        s["KK"] += SA.delta_KK(age, s["KK"], rng)
+        s["CL"] += SA.delta_CL(age, s["CL"], rng)
+        s["EY"] += SA.delta_EY(age, s["EY"], rng, coaching)
+        s["CT"] += SA.delta_CT(age, s["CT"], rng, coaching)
+        s["BR"] += SA.delta_BR(age, s["BR"], rng, coaching)
+        s["BU"] += SA.delta_BU(age, s["BU"], rng, coaching)
+        s["CA"] += SA.delta_CA(age, s["CA"], rng, coaching)
+        s["IF"] += SA.delta_IF(age, s["IF"], rng, coaching)
+        s["OF"] += SA.delta_OF(age, s["OF"], rng, coaching)
+        s["GB"] += SA.delta_GB(age, s["GB"], rng, coaching)
+        s["AC"] += SA.delta_AC(age, s["AC"], rng, coaching)
+        s["ST"] += SA.delta_ST(age, s["ST"], rng, coaching)
+        s["RE"] += SA.delta_RE(age, s["RE"], rng, coaching)
 
         # Clamp everything to valid range
         for k in s:
@@ -204,7 +185,9 @@ def print_career_table(rows):
 
 def print_career_arcs(rows):
     """Show per-skill sparkline + start/peak/end summary."""
-    print("\n── Skill Trajectories (sparkline, age 17→37) ────────────────────────────────────────")
+    print(
+        "\n── Skill Trajectories (sparkline, age 17→37) ────────────────────────────────────────"
+    )
     print(
         f"{'Skill':<13}  {'Cat':<9}  {'Arc (17→37)':^30}  {'Start':>5}  {'Peak':>5}  {'End':>5}  {'Δ':>5}"
     )
@@ -296,22 +279,50 @@ if __name__ == "__main__":
         print_career_table(career)
         print_career_arcs(career)
 
-    # ── Save average-coaching CSV ────────────────────────────────────────
-    avg_career = age_player_career(
-        name="SIM PLAYER",
-        start_age=17,
-        seasons=20,
-        start_skill=50,
-        coaching=1.0,
-        position="sp",
-        throws="R",
-        bats="R",
-        player_id="sim_avg_001",
-        seed=42,
-    )
+    # # ── Save average-coaching CSV ────────────────────────────────────────
+    # avg_career = age_player_career(
+    #     name="SIM PLAYER",
+    #     start_age=17,
+    #     seasons=20,
+    #     start_skill=50,
+    #     coaching=1.0,
+    #     position="sp",
+    #     throws="R",
+    #     bats="R",
+    #     player_id="sim_avg_001",
+    #     seed=42,
+    # )
 
-    csv_out = rows_to_csv_string(avg_career)
-    path = "player_career_sim.csv"
-    with open(path, "w") as f:
-        f.write(csv_out)
-    print(f"\nCSV saved → {path}")
+    # csv_out = rows_to_csv_string(avg_career)
+    # path = "player_career_sim.csv"
+    # with open(path, "w") as f:
+    #     f.write(csv_out)
+    # print(f"\nCSV saved → {path}")
+
+    start_configs = [
+        ("ELITE PLAYER", 80, 42),
+        ("ABOVE AVG PLAYER", 65, 42),
+        ("AVG PLAYER", 50, 42),
+        ("BELOW AVERAGE PLAYER", 35, 42),
+        ("POOR PLAYER", 20, 42),
+    ]
+    for label, starting_skill, seed_val in start_configs:
+        print(f"\n{'═'*72}")
+        print(f"  {label}  (starting_skill={starting_skill})  —  Age 17-37")
+        print(f"{'═'*72}")
+
+        career = age_player_career(
+            name=f"PLAYER ({label})",
+            start_age=17,
+            seasons=30,
+            start_skill=starting_skill,
+            coaching=1.0,
+            position="sp",
+            throws="R",
+            bats="R",
+            player_id=f"sim_{label.lower().replace(' ','_')}",
+            seed=seed_val,
+        )
+
+        print_career_table(career)
+        print_career_arcs(career)

@@ -7,7 +7,7 @@ db_path = Path("leagues/league.db")  # Adjust path as needed
 conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 
-season_id = "d9e8714621b64e539838ada9524acdf0" # This is hardcoded to a probably long gone season.
+season_id = "d9e8714621b64e539838ada9524acdf0"  # This is hardcoded to a probably long gone season.
 
 row = conn.execute(
     "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)

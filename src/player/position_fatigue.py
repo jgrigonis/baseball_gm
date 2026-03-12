@@ -14,7 +14,7 @@ class FatigueLevel(Enum):
 
 # Catchers drain fastest, middle infielders moderate, corners/OF lightest
 POSITION_DRAIN_RATES = {
-    "C":  0.055,
+    "C": 0.055,
     "SS": 0.038,
     "2B": 0.035,
     "3B": 0.028,
@@ -40,16 +40,16 @@ class PositionPlayerFatigue:
     """
 
     position: str = "LF"
-    energy: float = 1.0           # 1.0 = fresh, 0.0 = exhausted
-    durability: int = 50          # Player attribute, like stamina for pitchers
+    energy: float = 1.0  # 1.0 = fresh, 0.0 = exhausted
+    durability: int = 50  # Player attribute, like stamina for pitchers
 
     # In-season tracking
-    consecutive_days: int = 0     # Streak of days in lineup without a break
+    consecutive_days: int = 0  # Streak of days in lineup without a break
     season_games_played: int = 0
 
     # Energy thresholds (mirrors PitcherFatigue)
     FRESH_THRESHOLD: float = field(default=0.85, init=False, repr=False)
-    GOOD_THRESHOLD:  float = field(default=0.65, init=False, repr=False)
+    GOOD_THRESHOLD: float = field(default=0.65, init=False, repr=False)
     TIRED_THRESHOLD: float = field(default=0.40, init=False, repr=False)
     EXHAUSTED_THRESHOLD: float = field(default=0.01, init=False, repr=False)
 
@@ -57,7 +57,9 @@ class PositionPlayerFatigue:
         if self.durability <= 0:
             raise ValueError(f"Durability must be positive, got {self.durability}")
         if self.position not in POSITION_DRAIN_RATES:
-            raise ValueError(f"Unknown position '{self.position}'. Valid: {list(POSITION_DRAIN_RATES)}")
+            raise ValueError(
+                f"Unknown position '{self.position}'. Valid: {list(POSITION_DRAIN_RATES)}"
+            )
 
     # ------------------------------------------------------------------
     # Core state
@@ -81,11 +83,11 @@ class PositionPlayerFatigue:
         Mirrors PitcherFatigue.get_stat_modifier().
         """
         modifiers = {
-            FatigueLevel.FRESH:     1.03,   # Small bonus when fresh
-            FatigueLevel.GOOD:      1.0,
-            FatigueLevel.TIRED:     0.92,   # 8% worse
-            FatigueLevel.EXHAUSTED: 0.80,   # 20% worse
-            FatigueLevel.ZERO:      0.60,   # 40% worse
+            FatigueLevel.FRESH: 1.03,  # Small bonus when fresh
+            FatigueLevel.GOOD: 1.0,
+            FatigueLevel.TIRED: 0.92,  # 8% worse
+            FatigueLevel.EXHAUSTED: 0.80,  # 20% worse
+            FatigueLevel.ZERO: 0.60,  # 40% worse
         }
         return modifiers[self.get_level()]
 
@@ -149,11 +151,11 @@ class PositionPlayerFatigue:
         """
         level = self.get_level()
         multipliers = {
-            FatigueLevel.FRESH:     0.80,   # Slightly protected
-            FatigueLevel.GOOD:      1.0,
-            FatigueLevel.TIRED:     1.40,
+            FatigueLevel.FRESH: 0.80,  # Slightly protected
+            FatigueLevel.GOOD: 1.0,
+            FatigueLevel.TIRED: 1.40,
             FatigueLevel.EXHAUSTED: 2.00,
-            FatigueLevel.ZERO:      3.00,
+            FatigueLevel.ZERO: 3.00,
         }
         return multipliers[level]
 

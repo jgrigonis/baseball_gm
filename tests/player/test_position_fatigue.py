@@ -4,22 +4,22 @@ import pytest
 from src.player.position_fatigue import (
     FatigueLevel,
     PositionPlayerFatigue,
-    POSITION_DRAIN_RATES,
-    REST_RECOVERY_RATE,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def catcher():
     return PositionPlayerFatigue(position="C", durability=50)
 
+
 @pytest.fixture
 def outfielder():
     return PositionPlayerFatigue(position="LF", durability=50)
+
 
 @pytest.fixture
 def dh():
@@ -29,6 +29,7 @@ def dh():
 # ---------------------------------------------------------------------------
 # Initialization
 # ---------------------------------------------------------------------------
+
 
 class TestInit:
     def test_defaults_to_fresh(self, catcher):
@@ -57,6 +58,7 @@ class TestInit:
 # ---------------------------------------------------------------------------
 # Fatigue levels
 # ---------------------------------------------------------------------------
+
 
 class TestFatigueLevels:
     def test_fresh_at_full_energy(self, catcher):
@@ -99,6 +101,7 @@ class TestFatigueLevels:
 # ---------------------------------------------------------------------------
 # play_game
 # ---------------------------------------------------------------------------
+
 
 class TestPlayGame:
     def test_energy_decreases_after_game(self, catcher):
@@ -176,6 +179,7 @@ class TestPlayGame:
 # rest_day
 # ---------------------------------------------------------------------------
 
+
 class TestRestDay:
     def test_energy_increases_on_rest(self, catcher):
         catcher.set_energy(0.5)
@@ -230,6 +234,7 @@ class TestRestDay:
 # end_season
 # ---------------------------------------------------------------------------
 
+
 class TestEndSeason:
     def test_energy_resets_to_full(self, catcher):
         catcher.set_energy(0.3)
@@ -252,6 +257,7 @@ class TestEndSeason:
 # ---------------------------------------------------------------------------
 # get_stat_modifier
 # ---------------------------------------------------------------------------
+
 
 class TestStatModifier:
     def test_fresh_has_bonus(self, catcher):
@@ -281,6 +287,7 @@ class TestStatModifier:
 # ---------------------------------------------------------------------------
 # get_injury_risk_multiplier
 # ---------------------------------------------------------------------------
+
 
 class TestInjuryRiskMultiplier:
     def test_fresh_reduces_risk(self, catcher):
@@ -312,6 +319,7 @@ class TestInjuryRiskMultiplier:
 # ---------------------------------------------------------------------------
 # set_energy
 # ---------------------------------------------------------------------------
+
 
 class TestSetEnergy:
     def test_sets_valid_energy(self, catcher):

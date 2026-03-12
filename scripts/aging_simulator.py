@@ -12,80 +12,7 @@ Usage:
 import random
 from dataclasses import dataclass, field
 
-# ═══════════════════════════════════════════════════════════════
-#  AGING CURVE CONSTANTS
-#  Each group corresponds to one delta function.
-#  PHASE_BREAKS are exclusive upper bounds: the phase fires when
-#  age < break.  The last rate/noise applies for all remaining ages.
-# ═══════════════════════════════════════════════════════════════
-
-# ── Speed (SP) — physical, peaks 22-26, sharp fall after 30 ──
-SP_PHASE_BREAKS = [22, 27, 31, 34]  # age < break → use that phase
-SP_RATES = [1.2, 0.1, -0.9, -2.2, -2.8]
-SP_NOISES = [0.5, 0.4, 0.5, 0.6, 0.7]
-
-# ── Power (PO) — physical, slow rise then long plateau ──
-PO_PHASE_BREAKS = [21, 29, 33]
-PO_RATES = [2.0, 0.7, -0.2, -1.6]
-PO_NOISES = [0.7, 0.5, 0.5, 0.7]
-
-# ── Arm (AR) — physical, peaks mid-20s, declines from 30 ──
-AR_PHASE_BREAKS = [24, 29, 33]
-AR_RATES = [1.6, 0.2, -1.0, -1.8]
-AR_NOISES = [0.5, 0.4, 0.5, 0.6]
-
-# ── Strikes / K (KK) — raw talent, can't be coached ──
-KK_PHASE_BREAKS = [24, 28, 32]
-KK_RATES = [1.8, 0.4, -0.6, -2.0]
-KK_NOISES = [0.6, 0.5, 0.5, 0.7]
-
-# ── Clutch (CL) — cognitive random walk, vet upward drift ──
-CL_VET_AGE = 28  # age at which vet bonus kicks in
-CL_VET_BONUS = 0.35  # annual bonus once veteran
-CL_NOISE = 1.6  # wide noise; clutch is hard to predict
-
-# ── Eye / plate discipline (EY) — coaching-sensitive growth ──
-EY_PHASE_BREAKS = [27, 33, 36]
-EY_RATES = [1.3, 0.4, -0.4, -1.1]
-EY_NOISES = [0.5, 0.4, 0.4, 0.5]
-EY_COACHED = [True, True, False, False]  # coaching multiplier applied?
-
-# ── Contact (CT) — trainable; very slow decline after mid-30s ──
-CT_PHASE_BREAKS = [27, 34, 37]
-CT_RATES = [1.2, 0.5, -0.3, -0.9]
-CT_NOISES = [0.5, 0.4, 0.4, 0.4]
-CT_COACHED = [True, True, False, False]
-
-# ── Base Running (BR) — decision-making, never declines ──
-BR_PHASE_BREAKS = [34]
-BR_RATES = [0.9, 0.1]
-BR_NOISES = [0.4, 0.3]
-BR_COACHED = [True, True]  # coaching always applied
-
-# ── Technical skills (BU, CA, IF, OF, GB) — always upward ──
-TECH_BASE_RATE = 0.8
-TECH_NOISE = 0.4
-TECH_SLOW_AFTER = 33  # age after which growth slows
-TECH_SLOW_MULT = 0.45  # multiplier applied after slowdown age
-
-# ── Pitching Accuracy (AC) — asymptotes toward player ceiling ──
-AC_BASE_RATE = 0.55
-AC_NOISE = 0.3
-AC_CEILING = 90  # hard ceiling; growth slows as val approaches this
-AC_DIST_DIVISOR = 45.0  # normalises distance-to-ceiling
-
-# ── Pitching Stamina (ST) — rises early, declines from 30+ ──
-ST_PHASE_BREAKS = [26, 31, 34]
-ST_RATES = [1.1, 0.3, -1.0, -2.0]
-ST_NOISES = [0.5, 0.4, 0.5, 0.7]
-ST_COACHED = [True, True, False, False]
-
-# ── Pitching Recovery (RE) — most coaching-sensitive ──
-RE_PHASE_BREAKS = [26, 31, 34]
-RE_RATES = [1.3, 0.5, -0.8, -1.7]
-RE_NOISES = [0.5, 0.4, 0.5, 0.7]
-RE_COACHED = [True, True, False, False]
-
+from src.player.player_skill_aging import SkillAging
 
 # ═══════════════════════════════════════════════════════════════
 #  HELPERS
@@ -130,74 +57,74 @@ def phased_delta(
 # ═══════════════════════════════════════════════════════════════
 
 
-def delta_SP(age: int, val: float, rng: random.Random) -> float:
-    return phased_delta(age, rng, SP_PHASE_BREAKS, SP_RATES, SP_NOISES)
+# def delta_SP(age: int, val: float, rng: random.Random) -> float:
+#     return phased_delta(age, rng, SP_PHASE_BREAKS, SP_RATES, SP_NOISES)
 
 
-def delta_PO(age: int, val: float, rng: random.Random) -> float:
-    return phased_delta(age, rng, PO_PHASE_BREAKS, PO_RATES, PO_NOISES)
+# def delta_PO(age: int, val: float, rng: random.Random) -> float:
+#     return phased_delta(age, rng, PO_PHASE_BREAKS, PO_RATES, PO_NOISES)
 
 
-def delta_AR(age: int, val: float, rng: random.Random) -> float:
-    return phased_delta(age, rng, AR_PHASE_BREAKS, AR_RATES, AR_NOISES)
+# def delta_AR(age: int, val: float, rng: random.Random) -> float:
+#     return phased_delta(age, rng, AR_PHASE_BREAKS, AR_RATES, AR_NOISES)
 
 
-def delta_KK(age: int, val: float, rng: random.Random) -> float:
-    return phased_delta(age, rng, KK_PHASE_BREAKS, KK_RATES, KK_NOISES)
+# def delta_KK(age: int, val: float, rng: random.Random) -> float:
+#     return phased_delta(age, rng, KK_PHASE_BREAKS, KK_RATES, KK_NOISES)
 
 
-def delta_CL(
-    age: int, val: float, rng: random.Random, playoff_boost: float = 0.0
-) -> float:
-    vet_bonus = CL_VET_BONUS if age >= CL_VET_AGE else 0.0
-    return vet_bonus + playoff_boost + noise(rng, CL_NOISE)
+# def delta_CL(
+#     age: int, val: float, rng: random.Random, playoff_boost: float = 0.0
+# ) -> float:
+#     vet_bonus = CL_VET_BONUS if age >= CL_VET_AGE else 0.0
+#     return vet_bonus + playoff_boost + noise(rng, CL_NOISE)
 
 
-def delta_EY(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-    return phased_delta(
-        age, rng, EY_PHASE_BREAKS, EY_RATES, EY_NOISES, EY_COACHED, coaching
-    )
+# def delta_EY(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
+#     return phased_delta(
+#         age, rng, EY_PHASE_BREAKS, EY_RATES, EY_NOISES, EY_COACHED, coaching
+#     )
 
 
-def delta_CT(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-    return phased_delta(
-        age, rng, CT_PHASE_BREAKS, CT_RATES, CT_NOISES, CT_COACHED, coaching
-    )
+# def delta_CT(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
+#     return phased_delta(
+#         age, rng, CT_PHASE_BREAKS, CT_RATES, CT_NOISES, CT_COACHED, coaching
+#     )
 
 
-def delta_BR(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-    return phased_delta(
-        age, rng, BR_PHASE_BREAKS, BR_RATES, BR_NOISES, BR_COACHED, coaching
-    )
+# def delta_BR(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
+#     return phased_delta(
+#         age, rng, BR_PHASE_BREAKS, BR_RATES, BR_NOISES, BR_COACHED, coaching
+#     )
 
 
-def delta_technical_up(
-    age: int, val: float, rng: random.Random, coaching: float = 1.0
-) -> float:
-    rate = coaching * (TECH_BASE_RATE + noise(rng, TECH_NOISE))
-    if age > TECH_SLOW_AFTER:
-        rate *= TECH_SLOW_MULT
-    return max(0.0, rate)
+# def delta_technical_up(
+#     age: int, val: float, rng: random.Random, coaching: float = 1.0
+# ) -> float:
+#     rate = coaching * (TECH_BASE_RATE + noise(rng, TECH_NOISE))
+#     if age > TECH_SLOW_AFTER:
+#         rate *= TECH_SLOW_MULT
+#     return max(0.0, rate)
 
 
-def delta_AC(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-    distance = max(0.0, AC_CEILING - val)
-    base = (
-        coaching * (AC_BASE_RATE + noise(rng, AC_NOISE)) * (distance / AC_DIST_DIVISOR)
-    )
-    return max(0.0, base)
+# def delta_AC(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
+#     distance = max(0.0, AC_CEILING - val)
+#     base = (
+#         coaching * (AC_BASE_RATE + noise(rng, AC_NOISE)) * (distance / AC_DIST_DIVISOR)
+#     )
+#     return max(0.0, base)
 
 
-def delta_ST(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-    return phased_delta(
-        age, rng, ST_PHASE_BREAKS, ST_RATES, ST_NOISES, ST_COACHED, coaching
-    )
+# def delta_ST(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
+#     return phased_delta(
+#         age, rng, ST_PHASE_BREAKS, ST_RATES, ST_NOISES, ST_COACHED, coaching
+#     )
 
 
-def delta_RE(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-    return phased_delta(
-        age, rng, RE_PHASE_BREAKS, RE_RATES, RE_NOISES, RE_COACHED, coaching
-    )
+# def delta_RE(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
+#     return phased_delta(
+#         age, rng, RE_PHASE_BREAKS, RE_RATES, RE_NOISES, RE_COACHED, coaching
+#     )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -237,23 +164,25 @@ def simulate_one(
     s = {k: float(v) for k, v in initial_skills.items()}
     records = [{"age": start_age, **{k: int(round(v)) for k, v in s.items()}}]
 
+    SA = SkillAging()
+
     for age in range(start_age, end_age):
-        s["speed"] += delta_SP(age, s["speed"], rng)
-        s["power"] += delta_PO(age, s["power"], rng)
-        s["arm"] += delta_AR(age, s["arm"], rng)
-        s["strikes"] += delta_KK(age, s["strikes"], rng)
-        s["clutch"] += delta_CL(age, s["clutch"], rng)
-        s["eye"] += delta_EY(age, s["eye"], rng, coaching)
-        s["contact"] += delta_CT(age, s["contact"], rng, coaching)
-        s["base_running"] += delta_BR(age, s["base_running"], rng, coaching)
-        s["bunting"] += delta_technical_up(age, s["bunting"], rng, coaching)
-        s["catching"] += delta_technical_up(age, s["catching"], rng, coaching)
-        s["infield"] += delta_technical_up(age, s["infield"], rng, coaching)
-        s["outfield"] += delta_technical_up(age, s["outfield"], rng, coaching)
-        s["ground_balls"] += delta_technical_up(age, s["ground_balls"], rng, coaching)
-        s["accuracy"] += delta_AC(age, s["accuracy"], rng, coaching)
-        s["stamina"] += delta_ST(age, s["stamina"], rng, coaching)
-        s["recovery"] += delta_RE(age, s["recovery"], rng, coaching)
+        s["speed"] += SA.delta_SP(age, s["speed"], rng)
+        s["power"] += SA.delta_PO(age, s["power"], rng)
+        s["arm"] += SA.delta_AR(age, s["arm"], rng)
+        s["strikes"] += SA.delta_KK(age, s["strikes"], rng)
+        s["clutch"] += SA.delta_CL(age, s["clutch"], rng)
+        s["eye"] += SA.delta_EY(age, s["eye"], rng, coaching)
+        s["contact"] += SA.delta_CT(age, s["contact"], rng, coaching)
+        s["base_running"] += SA.delta_BR(age, s["base_running"], rng, coaching)
+        s["bunting"] += SA.delta_BU(age, s["bunting"], rng, coaching)
+        s["catching"] += SA.delta_CA(age, s["catching"], rng, coaching)
+        s["infield"] += SA.delta_IF(age, s["infield"], rng, coaching)
+        s["outfield"] += SA.delta_OF(age, s["outfield"], rng, coaching)
+        s["ground_balls"] += SA.delta_GB(age, s["ground_balls"], rng, coaching)
+        s["accuracy"] += SA.delta_AC(age, s["accuracy"], rng, coaching)
+        s["stamina"] += SA.delta_ST(age, s["stamina"], rng, coaching)
+        s["recovery"] += SA.delta_RE(age, s["recovery"], rng, coaching)
 
         for k in s:
             s[k] = float(clamp(s[k]))

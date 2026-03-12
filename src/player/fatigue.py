@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from src.player.fatigue_level import FatigueLevel
 
+
 @dataclass
 class PitcherFatigue:
     """Track pitcher fatigue state."""

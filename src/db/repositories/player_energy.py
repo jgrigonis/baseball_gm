@@ -51,9 +51,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _RECOVERY_THRESHOLD = 0.99
-_DAYS_AT_DURABILITY_MAX = 3.0   # durability = 100
-_DAYS_AT_DURABILITY_MID = 4.0   # durability = 50
-_DAYS_AT_DURABILITY_MIN = 5.0   # durability = 1
+_DAYS_AT_DURABILITY_MAX = 3.0  # durability = 100
+_DAYS_AT_DURABILITY_MID = 4.0  # durability = 50
+_DAYS_AT_DURABILITY_MIN = 5.0  # durability = 1
 
 # Minimum energy before the AI should consider resting a player
 MIN_ENERGY_AVAILABLE = 0.40  # maps to TIRED threshold in PositionPlayerFatigue
@@ -76,10 +76,14 @@ def _daily_recovery_rate(durability: int) -> float:
 
     if d <= 50:
         t = (d - 1) / (50 - 1)
-        days = _DAYS_AT_DURABILITY_MIN + t * (_DAYS_AT_DURABILITY_MID - _DAYS_AT_DURABILITY_MIN)
+        days = _DAYS_AT_DURABILITY_MIN + t * (
+            _DAYS_AT_DURABILITY_MID - _DAYS_AT_DURABILITY_MIN
+        )
     else:
         t = (d - 50) / (100 - 50)
-        days = _DAYS_AT_DURABILITY_MID + t * (_DAYS_AT_DURABILITY_MAX - _DAYS_AT_DURABILITY_MID)
+        days = _DAYS_AT_DURABILITY_MID + t * (
+            _DAYS_AT_DURABILITY_MAX - _DAYS_AT_DURABILITY_MID
+        )
 
     return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
 
@@ -385,6 +389,7 @@ class PlayerEnergyRepository:
         deleted = cursor.rowcount > 0
         self.conn.commit()
         return deleted
+
 
 # """
 # Repository for position player energy and fatigue state.

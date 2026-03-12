@@ -2,9 +2,132 @@
 
 """
 Player Skill Aging
+
+Each delta function returns the expected one-year change in a skill.
+Constants are grouped by skill above each function for easy tuning.
+
+Phase breaks are always ascending. phased_delta() resolves the phase
+using age < break, so the last rate/noise applies for all remaining ages.
 """
 
 import random
+
+# ═══════════════════════════════════════════════════════════════
+#  AGING CURVE CONSTANTS
+# ═══════════════════════════════════════════════════════════════
+
+# ── Speed (SP) — physical, peaks 22-26, sharp fall after 30 ──
+SP_PHASE_BREAKS = [22, 27, 31, 34]
+SP_RATES = [0.8, 0.1, -0.9, -2.2, -2.8]
+SP_NOISES = [1.5, 1.0, 0.8, 0.7, 0.6]
+
+# ── Power (PO) — physical, slow rise then long plateau ──
+PO_PHASE_BREAKS = [21, 29, 33]
+PO_RATES = [0.8, 0.4, -0.4, -1.6]
+PO_NOISES = [1.5, 1.0, 0.8, 0.7]
+
+# ── Arm (AR) — physical, peaks mid-20s, declines from 30 ──
+AR_PHASE_BREAKS = [24, 29, 33]
+AR_RATES = [1.6, 0.2, -1.0, -1.8]
+AR_NOISES = [0.5, 0.4, 0.5, 0.6]
+
+# ── Strikeout (KK) — raw talent, can't be coached ──
+KK_PHASE_BREAKS = [24, 28, 32]
+KK_RATES = [1.8, 0.4, -0.6, -2.0]
+KK_NOISES = [0.6, 0.5, 0.5, 0.7]
+
+# ── Clutch (CL) — cognitive random walk, vet upward drift ──
+CL_VET_AGE = 28
+CL_VET_BONUS = 0.35
+CL_NOISE = 1.6
+
+# ── Eye (EY) — plate discipline, coaching-sensitive ──
+EY_PHASE_BREAKS = [27, 33, 36]
+EY_RATES = [1.3, 0.4, -0.4, -1.1]
+EY_NOISES = [0.5, 0.4, 0.4, 0.5]
+EY_COACHED = [True, True, False, False]
+
+# ── Contact (CT) — trainable; very slow decline after mid-30s ──
+CT_PHASE_BREAKS = [27, 34, 37]
+CT_RATES = [1.2, 0.5, -0.3, -0.9]
+CT_NOISES = [0.5, 0.4, 0.4, 0.4]
+CT_COACHED = [True, True, False, False]
+
+# ── Base Running (BR) — decision-making, never declines ──
+BR_PHASE_BREAKS = [34]
+BR_RATES = [0.9, 0.1]
+BR_NOISES = [0.4, 0.3]
+BR_COACHED = [True, True]
+
+# ── Pitching Accuracy (AC) — asymptotes toward ceiling ──
+AC_BASE_RATE = 0.55
+AC_NOISE = 0.3
+AC_CEILING = 90
+AC_DIST_DIVISOR = 45.0
+
+# ── Pitching Stamina (ST) — rises early, declines from 30+ ──
+ST_PHASE_BREAKS = [26, 31, 34]
+ST_RATES = [0.7, 0.3, -1.2, -2.0]
+ST_NOISES = [1.5, 1.4, 1.5, 1.7]
+ST_COACHED = [True, True, False, False]
+
+# ── Pitching Recovery (RE) — most coaching-sensitive ──
+RE_PHASE_BREAKS = [26, 31, 34]
+RE_RATES = [1.3, 0.2, -1.3, -1.9]
+RE_NOISES = [1.5, 1.4, 1.5, 1.7]
+RE_COACHED = [True, True, False, False]
+
+# ── Bunting (BU) — pure technique, low ceiling ──
+BU_BASE_RATE = 0.2
+BU_NOISE = 0.5
+BU_CEILING = 75
+BU_DIST_DIVISOR = 40.0
+
+# ── Catching (CA) — experience-driven, physical wear after 32 ──
+CA_DECLINE_AGE = 32
+CA_BASE_RATE = 0.4
+CA_BASE_NOISE = 0.5
+CA_DECLINE_RATE = -0.8
+CA_DECLINE_NOISE = 1.5
+CA_CEILING = 88
+CA_DIST_DIVISOR = 40.0
+
+# ── Infield (IF) — technique + range; range declines after 30 ──
+IF_DECLINE_AGE_LIGHT = 29
+IF_DECLINE_AGE_HARD = 33
+IF_RATE_GROWTH = 0.5
+IF_NOISE_GROWTH = 0.6
+IF_RATE_LIGHT = -0.3
+IF_NOISE_LIGHT = 0.5
+IF_RATE_HARD = -0.9
+IF_NOISE_HARD = 0.6
+IF_CEILING = 85
+IF_DIST_DIVISOR = 40.0
+
+# ── Outfield (OF) — range-dependent, declines earlier than infield ──
+OF_DECLINE_AGE_LIGHT = 29
+OF_DECLINE_AGE_HARD = 32
+OF_RATE_GROWTH = 0.5
+OF_NOISE_GROWTH = 0.5
+OF_RATE_LIGHT = -0.4
+OF_NOISE_LIGHT = 0.6
+OF_RATE_HARD = -1.4
+OF_NOISE_HARD = 0.7
+OF_CEILING = 85
+OF_DIST_DIVISOR = 40.0
+
+# ── Ground Balls (GB) — pitcher physical skill, peaks mid-20s ──
+GB_DECLINE_AGE_LIGHT = 28
+GB_DECLINE_AGE_HARD = 32
+GB_RATE_GROWTH = 0.55
+GB_NOISE_GROWTH = 0.3
+GB_RATE_LIGHT = -0.3
+GB_NOISE_LIGHT = 0.4
+GB_RATE_HARD = -1.2
+GB_NOISE_HARD = 0.6
+GB_CEILING = 83
+GB_DIST_DIVISOR = 40.0
+
 
 # ─────────────────────────────────────────────
 #  HELPERS
@@ -13,228 +136,206 @@ import random
 
 def noise(rng: random.Random, scale: float = 1.0) -> float:
     """
-    random.gauss(0, scale) draws a single random number from a
-    normal (bell curve) distribution centered at 0 with a standard
-    deviation of scale. In plain terms:
+    Returns a random float from a normal distribution centered at 0.
 
-    It returns a small positive or negative float, most of the
-    time close to zero
-    The bigger scale is, the wider the spread of possible values
-    With scale=1.0, about 68% of calls return something between
-    -1.0 and +1.0, and about 95% land between -2.0 and +2.0
-
-    So when you write something like return 1.2 + noise(0.5),
-    you're saying "grow by roughly 1.2 this year, but add a
-    realistic random wobble so no two careers are identical."
-    Without it, every player aged identically.
-
+    Most values land within ±scale (68%) or ±2×scale (95%).
+    Adds realistic career variance so no two players develop identically.
     """
     return rng.gauss(0, scale)
 
 
+# ─────────────────────────────────────────────
+#  SKILL AGING
+# ─────────────────────────────────────────────
+
+
 class SkillAging:
+
+    def phased_delta(
+        self,
+        age: int,
+        val: float,
+        rng: random.Random,
+        breaks: list[int],
+        rates: list[float],
+        noises: list[float],
+        coached: list[bool] | None = None,
+        coaching: float = 1.0,
+    ) -> float:
+        """
+        Resolve the age phase and return rate + noise, optionally scaled
+        by the coaching multiplier when coached[phase] is True.
+
+        Phase breaks must be in ascending order. The phase fires when
+        age < break. The final rate/noise applies for all remaining ages.
+        """
+        idx = len(breaks)  # default → last phase
+        for i, b in enumerate(breaks):
+            if age < b:
+                idx = i
+                break
+
+        raw = rates[idx] + noise(rng, noises[idx])
+        if coached and coached[idx]:
+            return coaching * raw
+        return raw
+
     # ─────────────────────────────────────────────
-    #  AGING DELTAS (one year)
-    #  Each function returns the raw float delta
-    #  to apply to a skill value.
+    #  AGING DELTAS
     # ─────────────────────────────────────────────
 
-    @staticmethod
-    def delta_SP(age: int, val: float, rng: random.Random) -> float:
+    def delta_SP(self, age: int, val: float, rng: random.Random) -> float:
         """Run Speed — physical, peaks 22-26, sharp fall after 30."""
-        if age < 22:
-            return 1.2 + noise(rng, 0.5)
-        elif age <= 26:
-            return 0.1 + noise(rng, 0.4)
-        elif age <= 30:
-            return -0.9 + noise(rng, 0.5)
-        elif age <= 33:
-            return -2.2 + noise(rng, 0.6)
-        else:
-            return -2.8 + noise(rng, 0.7)
+        return self.phased_delta(age, val, rng, SP_PHASE_BREAKS, SP_RATES, SP_NOISES)
 
-    @staticmethod
-    def delta_PO(age: int, val: float, rng: random.Random) -> float:
-        """Batting Power — physical, slow rise > long plateau > late decline."""
-        if age < 21:
-            return 2.0 + noise(rng, 0.7)
-        elif age <= 28:
-            return 0.7 + noise(rng, 0.5)
-        elif age <= 32:
-            return -0.2 + noise(rng, 0.5)
-        else:
-            return -1.6 + noise(rng, 0.7)
+    def delta_PO(self, age: int, val: float, rng: random.Random) -> float:
+        """Batting Power — slow rise, long plateau, late decline."""
+        return self.phased_delta(age, val, rng, PO_PHASE_BREAKS, PO_RATES, PO_NOISES)
 
-    @staticmethod
-    def delta_AR(age: int, val: float, rng: random.Random) -> float:
+    def delta_AR(self, age: int, val: float, rng: random.Random) -> float:
         """Throwing Arm — physical, peaks mid-20s, declines from 30."""
-        if age < 24:
-            return 1.6 + noise(rng, 0.5)
-        elif age <= 28:
-            return 0.2 + noise(rng, 0.4)
-        elif age <= 32:
-            return -1.0 + noise(rng, 0.5)
-        else:
-            return -1.8 + noise(rng, 0.6)
+        return self.phased_delta(age, val, rng, AR_PHASE_BREAKS, AR_RATES, AR_NOISES)
 
-    @staticmethod
-    def delta_KK(age: int, val: float, rng: random.Random) -> float:
-        """Strikeout ability — physical/raw talent, can't be coached."""
-        if age < 24:
-            return 1.8 + noise(rng, 0.6)
-        elif age <= 27:
-            return 0.4 + noise(rng, 0.5)
-        elif age <= 31:
-            return -0.6 + noise(rng, 0.5)
-        else:
-            return -2.0 + noise(rng, 0.7)
+    def delta_KK(self, age: int, val: float, rng: random.Random) -> float:
+        """Strikeout ability — raw talent, can't be coached."""
+        return self.phased_delta(age, val, rng, KK_PHASE_BREAKS, KK_RATES, KK_NOISES)
 
     @staticmethod
     def delta_CL(
         age: int, val: float, rng: random.Random, playoff_boost: float = 0.0
     ) -> float:
-        """Clutch — cognitive, slight random walk, vet upward drift."""
-        vet_bonus = 0.35 if age >= 28 else 0.0
-        return vet_bonus + playoff_boost + noise(rng, 1.6)
+        """Clutch — cognitive random walk with vet upward drift."""
+        vet_bonus = CL_VET_BONUS if age >= CL_VET_AGE else 0.0
+        return vet_bonus + playoff_boost + noise(rng, CL_NOISE)
 
-    @staticmethod
     def delta_EY(
-        age: int, val: float, rng: random.Random, coaching: float = 1.0
+        self, age: int, val: float, rng: random.Random, coaching: float = 1.0
     ) -> float:
-        """Eye / plate discipline — peaks later than physical, gentle decline."""
-        if age < 27:
-            return coaching * (1.3 + noise(rng, 0.5))
-        elif age <= 32:
-            return coaching * (0.4 + noise(rng, 0.4))
-        elif age <= 35:
-            return -0.4 + noise(rng, 0.4)
-        else:
-            return -1.1 + noise(rng, 0.5)
+        """Eye / plate discipline — peaks later than physical, coaching-sensitive."""
+        return self.phased_delta(
+            age, val, rng, EY_PHASE_BREAKS, EY_RATES, EY_NOISES, EY_COACHED, coaching
+        )
 
-    @staticmethod
     def delta_CT(
-        age: int, val: float, rng: random.Random, coaching: float = 1.0
+        self, age: int, val: float, rng: random.Random, coaching: float = 1.0
     ) -> float:
         """Contact — trainable; very slow decline after mid-30s."""
-        if age < 27:
-            return coaching * (1.2 + noise(rng, 0.5))
-        elif age <= 33:
-            return coaching * (0.5 + noise(rng, 0.4))
-        elif age <= 36:
-            return -0.3 + noise(rng, 0.4)
-        else:
-            return -0.9 + noise(rng, 0.4)
+        return self.phased_delta(
+            age, val, rng, CT_PHASE_BREAKS, CT_RATES, CT_NOISES, CT_COACHED, coaching
+        )
 
-    @staticmethod
     def delta_BR(
-        age: int, val: float, rng: random.Random, coaching: float = 1.0
+        self, age: int, val: float, rng: random.Random, coaching: float = 1.0
     ) -> float:
-        """Base running — decision-making, trends up all career, late plateau."""
-        if age <= 33:
-            return coaching * (0.9 + noise(rng, 0.4))
-        else:
-            return coaching * (0.1 + noise(rng, 0.3))  # plateau, not decline
-
-    @staticmethod
-    def delta_technical_up(
-        age: int,
-        val: float,
-        rng: random.Random,
-        coaching: float = 1.0,
-        slow_after: int = 33,
-    ) -> float:
-        """Generic always-upward technical skill (BU, CA, IF, OF, GB)."""
-        rate = coaching * (0.8 + noise(rng, 0.4))
-        if age > slow_after:
-            rate *= 0.45  # slows but never negative by design
-        return max(0.0, rate)
+        """Base running — decision-making, never declines."""
+        return self.phased_delta(
+            age, val, rng, BR_PHASE_BREAKS, BR_RATES, BR_NOISES, BR_COACHED, coaching
+        )
 
     @staticmethod
     def delta_AC(
-        age: int,
-        val: float,
-        rng: random.Random,
-        coaching: float = 1.0,
-        ceiling: int = 90,
+        age: int, val: float, rng: random.Random, coaching: float = 1.0
     ) -> float:
-        """Pitching accuracy — asymptotically approaches player ceiling."""
-        distance = max(0.0, ceiling - val)
-        base = coaching * (0.55 + noise(rng, 0.3)) * (distance / 45.0)
+        """Pitching accuracy — asymptotically approaches ceiling."""
+        distance = max(0.0, AC_CEILING - val)
+        base = (
+            coaching
+            * (AC_BASE_RATE + noise(rng, AC_NOISE))
+            * (distance / AC_DIST_DIVISOR)
+        )
         return max(0.0, base)
 
-    @staticmethod
     def delta_ST(
-        age: int, val: float, rng: random.Random, coaching: float = 1.0
+        self, age: int, val: float, rng: random.Random, coaching: float = 1.0
     ) -> float:
         """Pitching stamina — rises early, declines from 30+."""
-        if age < 26:
-            return coaching * (1.1 + noise(rng, 0.5))
-        elif age <= 30:
-            return coaching * (0.3 + noise(rng, 0.4))
-        elif age <= 33:
-            return -1.0 + noise(rng, 0.5)
-        else:
-            return -2.0 + noise(rng, 0.7)
+        return self.phased_delta(
+            age, val, rng, ST_PHASE_BREAKS, ST_RATES, ST_NOISES, ST_COACHED, coaching
+        )
 
-    @staticmethod
     def delta_RE(
-        age: int, val: float, rng: random.Random, coaching: float = 1.0
+        self, age: int, val: float, rng: random.Random, coaching: float = 1.0
     ) -> float:
         """Pitching recovery — most coaching-sensitive; declines from 30+."""
-        if age < 26:
-            return coaching * (1.3 + noise(rng, 0.5))
-        elif age <= 30:
-            return coaching * (0.5 + noise(rng, 0.4))
-        elif age <= 33:
-            return -0.8 + noise(rng, 0.5)
-        else:
-            return -1.7 + noise(rng, 0.7)
-
+        return self.phased_delta(
+            age, val, rng, RE_PHASE_BREAKS, RE_RATES, RE_NOISES, RE_COACHED, coaching
+        )
 
     @staticmethod
-    def delta_BU(age, val, rng: random.Random, coaching: float = 1.0, ceiling=75):
+    def delta_BU(
+        age: int, val: float, rng: random.Random, coaching: float = 1.0
+    ) -> float:
         """Bunting — pure technique, low ceiling, never declines."""
-        distance = max(0.0, ceiling - val)
-        return max(0.0, coaching * (0.4 + noise(rng, 0.3)) * (distance / 40.0))
-
-
-    @staticmethod
-    def delta_CA(age, val, rng: random.Random, coaching: float = 1.0, ceiling=88):
-        """Catching — experience-driven, peaks 28-32, physical wear after."""
-        distance = max(0.0, ceiling - val)
-        if age > 32:
-            return -0.6 + noise(rng, 0.5)
-        return max(0.0, coaching * (0.6 + noise(rng, 0.3)) * (distance / 40.0))
-
+        distance = max(0.0, BU_CEILING - val)
+        return max(
+            0.0,
+            coaching
+            * (BU_BASE_RATE + noise(rng, BU_NOISE))
+            * (distance / BU_DIST_DIVISOR),
+        )
 
     @staticmethod
-    def delta_IF(age, val, rng: random.Random, coaching: float = 1.0, ceiling=85):
+    def delta_CA(
+        age: int, val: float, rng: random.Random, coaching: float = 1.0
+    ) -> float:
+        """Catching — experience-driven, physical wear after decline age."""
+        if age > CA_DECLINE_AGE:
+            return CA_DECLINE_RATE + noise(rng, CA_DECLINE_NOISE)
+        distance = max(0.0, CA_CEILING - val)
+        return max(
+            0.0,
+            coaching
+            * (CA_BASE_RATE + noise(rng, CA_BASE_NOISE))
+            * (distance / CA_DIST_DIVISOR),
+        )
+
+    @staticmethod
+    def delta_IF(
+        age: int, val: float, rng: random.Random, coaching: float = 1.0
+    ) -> float:
         """Infield — technique + range; range declines after 30."""
-        distance = max(0.0, ceiling - val)
-        if age > 33:
-            return -0.8 + noise(rng, 0.5)
-        elif age > 30:
-            return -0.2 + noise(rng, 0.4)
-        return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
-
+        if age > IF_DECLINE_AGE_HARD:
+            return IF_RATE_HARD + noise(rng, IF_NOISE_HARD)
+        elif age > IF_DECLINE_AGE_LIGHT:
+            return IF_RATE_LIGHT + noise(rng, IF_NOISE_LIGHT)
+        distance = max(0.0, IF_CEILING - val)
+        return max(
+            0.0,
+            coaching
+            * (IF_RATE_GROWTH + noise(rng, IF_NOISE_GROWTH))
+            * (distance / IF_DIST_DIVISOR),
+        )
 
     @staticmethod
-    def delta_OF(age, val, rng: random.Random, coaching: float = 1.0, ceiling=85):
+    def delta_OF(
+        age: int, val: float, rng: random.Random, coaching: float = 1.0
+    ) -> float:
         """Outfield — range-dependent, declines earlier than infield."""
-        distance = max(0.0, ceiling - val)
-        if age > 32:
-            return -1.0 + noise(rng, 0.5)
-        elif age > 29:
-            return -0.3 + noise(rng, 0.4)
-        return max(0.0, coaching * (0.5 + noise(rng, 0.3)) * (distance / 40.0))
-
+        if age > OF_DECLINE_AGE_HARD:
+            return OF_RATE_HARD + noise(rng, OF_NOISE_HARD)
+        elif age > OF_DECLINE_AGE_LIGHT:
+            return OF_RATE_LIGHT + noise(rng, OF_NOISE_LIGHT)
+        distance = max(0.0, OF_CEILING - val)
+        return max(
+            0.0,
+            coaching
+            * (OF_RATE_GROWTH + noise(rng, OF_NOISE_GROWTH))
+            * (distance / OF_DIST_DIVISOR),
+        )
 
     @staticmethod
-    def delta_GB(age, val, rng: random.Random, coaching: float = 1.0, ceiling=83):
+    def delta_GB(
+        age: int, val: float, rng: random.Random, coaching: float = 1.0
+    ) -> float:
         """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
-        distance = max(0.0, ceiling - val)
-        if age > 32:
-            return -1.2 + noise(rng, 0.6)
-        elif age > 28:
-            return -0.3 + noise(rng, 0.4)
-        return max(0.0, coaching * (0.55 + noise(rng, 0.3)) * (distance / 40.0))
+        if age > GB_DECLINE_AGE_HARD:
+            return GB_RATE_HARD + noise(rng, GB_NOISE_HARD)
+        elif age > GB_DECLINE_AGE_LIGHT:
+            return GB_RATE_LIGHT + noise(rng, GB_NOISE_LIGHT)
+        distance = max(0.0, GB_CEILING - val)
+        return max(
+            0.0,
+            coaching
+            * (GB_RATE_GROWTH + noise(rng, GB_NOISE_GROWTH))
+            * (distance / GB_DIST_DIVISOR),
+        )
