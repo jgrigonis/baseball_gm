@@ -281,7 +281,8 @@ class TestSaveScheduleToDB:
         conn.row_factory = sqlite3.Row
 
         # Create games table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE games (
                 id TEXT PRIMARY KEY,
                 date TEXT NOT NULL,
@@ -291,7 +292,8 @@ class TestSaveScheduleToDB:
                 away_team_id TEXT NOT NULL,
                 created_at TEXT DEFAULT (datetime('now'))
             )
-        """)
+        """
+        )
 
         yield conn
         conn.close()

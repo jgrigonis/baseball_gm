@@ -295,11 +295,13 @@ def test_migrations_with_real_schema_changes():
     conn = create_test_db()
 
     # Check that some expected tables exist (from your actual migrations)
-    cursor = conn.execute("""
+    cursor = conn.execute(
+        """
         SELECT name FROM sqlite_master 
         WHERE type='table' 
         ORDER BY name
-        """)
+        """
+    )
     tables = {row[0] for row in cursor.fetchall()}
 
     # Migration table should exist

@@ -409,9 +409,11 @@ class TestRosterTrimmerRun:
         trimmer.run("s1")
 
         # Verify via a fresh query
-        remaining = conn.execute("""SELECT COUNT(*) FROM team_players tp
+        remaining = conn.execute(
+            """SELECT COUNT(*) FROM team_players tp
                JOIN player_status ps ON tp.player_id = ps.player_id
-               WHERE tp.team_id = 't1' AND ps.status = 'minors'""").fetchone()[0]
+               WHERE tp.team_id = 't1' AND ps.status = 'minors'"""
+        ).fetchone()[0]
         assert remaining == MINORS_LIMIT
 
     def test_each_team_trimmed_independently(self, conn, trimmer):

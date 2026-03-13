@@ -6,13 +6,15 @@ conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 
 # Check one game where Terry DID start
-cursor = conn.execute("""
+cursor = conn.execute(
+    """
     SELECT game_id 
     FROM player_game_stats 
     WHERE player_id = '3468615f7460a494e37cfb9cae8c0cb8' 
     AND bat_game_started = 1
     LIMIT 1
-""")
+"""
+)
 game_where_terry_started = cursor.fetchone()["game_id"]
 print(f"Game where Terry started: {game_where_terry_started}")
 
