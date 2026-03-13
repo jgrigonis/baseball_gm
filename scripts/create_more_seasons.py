@@ -3,15 +3,15 @@ import os
 from pathlib import Path
 
 LEAGUE_FILES_DIR = "leagues"
-BASE_FILE = "world_league-2035.json"
-NUM_FILES = 40  # how many future manifests to create
+BASE_FILE = "world_league-2025.json"
+NUM_FILES = 50  # how many future manifests to create
 
 with open(LEAGUE_FILES_DIR + os.sep + BASE_FILE) as f:
     data = json.load(f)
 
 base_year = data["season_year"]
 
-# Extract the season number from "Season 11"
+# Extract the season number from "Season 1"
 base_season = int(data["season_name"].split()[1])
 
 for i in range(1, NUM_FILES + 1):

@@ -118,7 +118,7 @@ def series_is_decided(conn, series_id: str, best_of: int) -> bool:
 
 
 def print_series_result(
-    conn, series_id: str, best_of: int, logger: logging.logger = None
+    conn, series_id: str, best_of: int, logger: logging.Logger = None
 ) -> None:
     winner_id = get_series_winner(conn, series_id, best_of)
     rows = conn.execute(
@@ -234,7 +234,7 @@ def play_series(
     series_name: str,
     best_of: int,
     rng: random.Random,
-    logger: logging.logger = None,
+    logger: logging.Logger = None,
 ) -> str:
     """
     Play all undecided games in a series. Returns the winning team_id.
