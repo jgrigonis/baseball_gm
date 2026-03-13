@@ -1,6 +1,5 @@
 import json
 import os
-from pathlib import Path
 
 LEAGUE_FILES_DIR = "leagues"
 BASE_FILE = "world_league-2025.json"
