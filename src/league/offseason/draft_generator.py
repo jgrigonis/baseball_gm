@@ -3,7 +3,7 @@
 Generates the prospect pool for the annual draft.
 
 Steps:
-1. Generate 1000 new players at ages 18-22 with position distribution:
+1. Generate 650 new players at ages 18-22 with position distribution:
    - 55% pitchers: 27.5% sp, 27.5% rp
    - 45% position players: evenly split across 11 positions (~4.1% each)
 2. Insert new players into DB with status 'prospect'
@@ -25,7 +25,7 @@ from src.util.locations import TEAM_FILES_DIR
 # Draft pool configuration
 # -----------------------------------------------------------------------
 
-DRAFT_POOL_SIZE = 1000
+DRAFT_POOL_SIZE = 650
 
 # Age distribution for new prospects
 AGE_DISTRIBUTION = [

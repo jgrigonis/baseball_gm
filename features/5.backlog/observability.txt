@@ -1,0 +1,27 @@
+Nearly perfect (radar/statcast/timing):
+
+SP — 60-yard dash, statcast sprint speed, exact
+AR — radar gun on throws, very precise
+KK — spin rate, velocity, highly measurable
+ST — pitch count data, innings logged, objective
+
+Good but not perfect (large sample stats):
+
+PO — exit velocity, hard contact rate, converges with enough ABs
+CT — contact rate, K%, needs a season+ to stabilize
+EY — walk rate, chase rate, needs sample size
+GB — ground ball %, pretty reliable with enough pitches
+AC — walk rate, command metrics, reliable over time
+
+Soft/requires interpretation:
+
+BR — baserunning runs above average, exists but noisy
+RE — how quickly a pitcher recovers between starts, only visible over a 
+full season and even then confounded by usage patterns
+IF/OF — defensive metrics are notoriously noisy, years of data needed
+CA — catching framing is measurable now but still debated
+BU — rarely used enough to get a real read
+
+Essentially invisible:
+
+CL — the whole point is it's unknowable until the moment arrives
