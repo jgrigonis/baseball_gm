@@ -28,7 +28,7 @@ if [ "$YES" -eq 0 ]; then
 fi
 
 # ── Run ────────────────────────────────────────────────────────
-rm leagues/league.db
+rm -f leagues/league.db
 
 "${SCRIPT_DIR}/delete_team_files.sh"
 
