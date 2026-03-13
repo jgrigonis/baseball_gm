@@ -45,18 +45,24 @@ CL_NOISE = 1.6
 EY_PHASE_BREAKS = [27, 33, 36]
 EY_RATES = [1.3, 0.4, -0.4, -1.1]
 EY_NOISES = [0.5, 0.4, 0.4, 0.5]
+EY_CEILING      = 92
+EY_DIST_DIVISOR = 42.0
 EY_COACHED = [True, True, False, False]
 
 # ── Contact (CT) — trainable; very slow decline after mid-30s ──
 CT_PHASE_BREAKS = [27, 34, 37]
 CT_RATES = [1.2, 0.5, -0.3, -0.9]
 CT_NOISES = [0.5, 0.4, 0.4, 0.4]
+CT_CEILING      = 90
+CT_DIST_DIVISOR = 40.0
 CT_COACHED = [True, True, False, False]
 
 # ── Base Running (BR) — decision-making, never declines ──
 BR_PHASE_BREAKS = [34]
 BR_RATES = [0.9, 0.1]
 BR_NOISES = [0.4, 0.3]
+BR_CEILING      = 88
+BR_DIST_DIVISOR = 38.0
 BR_COACHED = [True, True]
 
 # ── Pitching Accuracy (AC) — asymptotes toward ceiling ──
@@ -151,6 +157,35 @@ def noise(rng: random.Random, scale: float = 1.0) -> float:
 
 class SkillAging:
 
+    # def phased_delta(
+    #     self,
+    #     age: int,
+    #     val: float,
+    #     rng: random.Random,
+    #     breaks: list[int],
+    #     rates: list[float],
+    #     noises: list[float],
+    #     coached: list[bool] | None = None,
+    #     coaching: float = 1.0,
+    # ) -> float:
+    #     """
+    #     Resolve the age phase and return rate + noise, optionally scaled
+    #     by the coaching multiplier when coached[phase] is True.
+
+    #     Phase breaks must be in ascending order. The phase fires when
+    #     age < break. The final rate/noise applies for all remaining ages.
+    #     """
+    #     idx = len(breaks)  # default → last phase
+    #     for i, b in enumerate(breaks):
+    #         if age < b:
+    #             idx = i
+    #             break
+
+    #     raw = rates[idx] + noise(rng, noises[idx])
+    #     if coached and coached[idx]:
+    #         return coaching * raw
+    #     return raw
+
     def phased_delta(
         self,
         age: int,
@@ -161,15 +196,10 @@ class SkillAging:
         noises: list[float],
         coached: list[bool] | None = None,
         coaching: float = 1.0,
+        ceiling: float | None = None,     # add these
+        dist_divisor: float | None = None,
     ) -> float:
-        """
-        Resolve the age phase and return rate + noise, optionally scaled
-        by the coaching multiplier when coached[phase] is True.
-
-        Phase breaks must be in ascending order. The phase fires when
-        age < break. The final rate/noise applies for all remaining ages.
-        """
-        idx = len(breaks)  # default → last phase
+        idx = len(breaks)
         for i, b in enumerate(breaks):
             if age < b:
                 idx = i
@@ -177,8 +207,15 @@ class SkillAging:
 
         raw = rates[idx] + noise(rng, noises[idx])
         if coached and coached[idx]:
-            return coaching * raw
+            raw = coaching * raw
+
+        # Apply ceiling dampening on growth phases if ceiling provided
+        if raw > 0 and ceiling is not None and dist_divisor is not None:
+            distance = max(0.0, ceiling - val)
+            return raw * (distance / dist_divisor)
+
         return raw
+
 
     # ─────────────────────────────────────────────
     #  AGING DELTAS
@@ -213,7 +250,7 @@ class SkillAging:
     ) -> float:
         """Eye / plate discipline — peaks later than physical, coaching-sensitive."""
         return self.phased_delta(
-            age, val, rng, EY_PHASE_BREAKS, EY_RATES, EY_NOISES, EY_COACHED, coaching
+            age, val, rng, EY_PHASE_BREAKS, EY_RATES, EY_NOISES, EY_COACHED, coaching, EY_CEILING, EY_DIST_DIVISOR
         )
 
     def delta_CT(
@@ -221,7 +258,7 @@ class SkillAging:
     ) -> float:
         """Contact — trainable; very slow decline after mid-30s."""
         return self.phased_delta(
-            age, val, rng, CT_PHASE_BREAKS, CT_RATES, CT_NOISES, CT_COACHED, coaching
+            age, val, rng, CT_PHASE_BREAKS, CT_RATES, CT_NOISES, CT_COACHED, coaching, CT_CEILING, CT_DIST_DIVISOR
         )
 
     def delta_BR(
@@ -229,7 +266,7 @@ class SkillAging:
     ) -> float:
         """Base running — decision-making, never declines."""
         return self.phased_delta(
-            age, val, rng, BR_PHASE_BREAKS, BR_RATES, BR_NOISES, BR_COACHED, coaching
+            age, val, rng, BR_PHASE_BREAKS, BR_RATES, BR_NOISES, BR_COACHED, coaching, BR_CEILING, BR_DIST_DIVISOR
         )
 
     @staticmethod

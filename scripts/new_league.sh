@@ -1,33 +1,33 @@
 #!/bin/sh
 
-read -p "⚠️  Are you sure? This will destroy db and team files. [y/N] " confirm
-case "$confirm" in
-    [yY]|[yY][eE][sS]) ;;
-    *) echo "Aborted."; exit 1 ;;
-esac
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# First arg is year (default 2025), rest are flags
-YEAR=${1:-2025}
-shift 2>/dev/null  # shift off the year arg if present, ignore error if no args
-
-# Pass --game_logs through to play_season if provided
+# ── Parse flags ────────────────────────────────────────────────
+YES=0
+YEAR=2025
 GAME_LOGS_FLAG=""
-for arg in "$@"; do
-    if [ "$arg" = "--game_logs" ]; then
-        GAME_LOGS_FLAG="--game_logs"
-    fi
-done
-
-# Pass --logs through to play_season if provided
 LOGS_FLAG=""
+
 for arg in "$@"; do
-    if [ "$arg" = "--logs" ]; then
-        LOGS_FLAG="--logs"
-    fi
+    case "$arg" in
+        -y|--yes)       YES=1 ;;
+        --game_logs)    GAME_LOGS_FLAG="--game_logs" ;;
+        --logs)         LOGS_FLAG="--logs" ;;
+        [0-9]*)         YEAR="$arg" ;;
+    esac
 done
 
+# ── Confirmation prompt (skipped with -y) ─────────────────────
+if [ "$YES" -eq 0 ]; then
+    printf "⚠️  Are you sure? This will destroy db and team files. [y/N] "
+    read confirm
+    case "$confirm" in
+        [yY]|[yY][eE][sS]) ;;
+        *) echo "Aborted."; exit 1 ;;
+    esac
+fi
+
+# ── Run ────────────────────────────────────────────────────────
 rm leagues/league.db
 
 "${SCRIPT_DIR}/delete_team_files.sh"
@@ -49,4 +49,3 @@ python src/league/playoffs/setup_playoffs.py -i ${SEASON_ID} --start-date ${YEAR
 python src/league/playoffs/play_playoffs.py -i ${SEASON_ID} ${LOGS_FLAG}
 
 python src/league/offseason/offseason_pipeline.py -i ${SEASON_ID}
-
