@@ -1,0 +1,8 @@
+
+One potential bug: skills.as_dict() for the skill_avg in _should_retire — does 
+that return all 20 skills including pitcher skills for position players? If so, 
+a position player's AR/AC/ST/RE/GB/KK are all low (10-30 range typically), which 
+would artificially drag their average below 50 and trigger the decline_factor 
+prematurely. A 28-year-old SS with great hitting but low pitcher skills could 
+read as a "declining" player.
+
