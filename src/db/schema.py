@@ -53,6 +53,34 @@ CREATE TABLE IF NOT EXISTS player_skills (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS player_talent_caps (
+    player_id    TEXT PRIMARY KEY,
+
+    -- Hitting
+    clutch       INTEGER NOT NULL DEFAULT 100 CHECK (clutch      BETWEEN 1 AND 100),
+    speed        INTEGER NOT NULL DEFAULT 100 CHECK (speed       BETWEEN 1 AND 100),
+    power        INTEGER NOT NULL DEFAULT 100 CHECK (power       BETWEEN 1 AND 100),
+    eye          INTEGER NOT NULL DEFAULT 100 CHECK (eye         BETWEEN 1 AND 100),
+    contact      INTEGER NOT NULL DEFAULT 100 CHECK (contact     BETWEEN 1 AND 100),
+    base_running INTEGER NOT NULL DEFAULT 100 CHECK (base_running BETWEEN 1 AND 100),
+    bunting      INTEGER NOT NULL DEFAULT 100 CHECK (bunting     BETWEEN 1 AND 100),
+
+    -- Defense
+    catching     INTEGER NOT NULL DEFAULT 100 CHECK (catching    BETWEEN 1 AND 100),
+    infield      INTEGER NOT NULL DEFAULT 100 CHECK (infield     BETWEEN 1 AND 100),
+    outfield     INTEGER NOT NULL DEFAULT 100 CHECK (outfield    BETWEEN 1 AND 100),
+    arm          INTEGER NOT NULL DEFAULT 100 CHECK (arm         BETWEEN 1 AND 100),
+
+    -- Pitching
+    accuracy     INTEGER NOT NULL DEFAULT 100 CHECK (accuracy    BETWEEN 1 AND 100),
+    stamina      INTEGER NOT NULL DEFAULT 100 CHECK (stamina     BETWEEN 1 AND 100),
+    recovery     INTEGER NOT NULL DEFAULT 100 CHECK (recovery    BETWEEN 1 AND 100),
+    ground_balls INTEGER NOT NULL DEFAULT 100 CHECK (ground_balls BETWEEN 1 AND 100),
+    strikes      INTEGER NOT NULL DEFAULT 100 CHECK (strikes     BETWEEN 1 AND 100),
+
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 -- Track skill progression over time
 CREATE TABLE IF NOT EXISTS player_skills_history (
     player_id TEXT NOT NULL,
@@ -334,6 +362,7 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
 CREATE INDEX IF NOT EXISTS idx_player_skills_player_id ON player_skills(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_player ON player_skills_history(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_season ON player_skills_history(season_id);
+CREATE INDEX IF NOT EXISTS idx_talent_caps_player ON player_talent_caps(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_status_status ON player_status(status);
 CREATE INDEX IF NOT EXISTS idx_player_energy_player ON player_energy(player_id);
 CREATE INDEX IF NOT EXISTS idx_team_players_team ON team_players(team_id);

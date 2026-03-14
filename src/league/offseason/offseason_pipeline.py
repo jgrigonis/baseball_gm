@@ -9,6 +9,7 @@ import sqlite3
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
@@ -83,14 +84,31 @@ class OffseasonPipeline:
             self.player_repo.snapshot_skills(player.id, season_id)
         # aggregate_season_stats(season_id)  — TBD
 
-    def _age(self, rng: random.Random) -> None:
+    # def _age(self, rng: random.Random) -> None:
+    #     """Step 2: Age every player by one year and write back updated skills."""
+    #     # Setup RNG
+
+    #     players = self.player_repo.get_all_players()
+    #     for player in players:
+    #         new_skills = player.skills.age_to(player.age + 1, rng=rng)
+    #         self.player_repo.update_skills(player.id, new_skills)
+    #     print(f"  Aged {len(players)} players")
+
+    def _age(self, rng):
         """Step 2: Age every player by one year and write back updated skills."""
-        # Setup RNG
+        cap_repo = TalentCapRepository(self.conn)
 
         players = self.player_repo.get_all_players()
+
+        # Batch-load all caps in one query
+        player_ids = [p.id for p in players]
+        all_caps = cap_repo.get_many(player_ids)
+
         for player in players:
-            new_skills = player.skills.age_to(player.age + 1, rng=rng)
+            caps = all_caps.get(player.id)  # None for legacy players = no dampening
+            new_skills = player.skills.age_to(player.age + 1, rng=rng, caps=caps)
             self.player_repo.update_skills(player.id, new_skills)
+
         print(f"  Aged {len(players)} players")
 
     def _retire(self, rng: random.Random) -> None:

@@ -12,8 +12,10 @@ import random
 from scipy.stats import skewnorm
 import uuid
 
+from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.player.player_factory import PlayerFactory
 from src.player.player_record import PlayerRecord
+from src.player.talent_caps import generate_talent_caps
 from src.team.team_record import TeamRecord
 
 __author__ = "josh"
@@ -25,7 +27,12 @@ _SKEW = 0.2
 
 
 class TeamFactory:
-    def __init__(self, rng=None, id_factory=None, log_level: int | None = None):
+    def __init__(self, conn=None, rng=None, id_factory=None, log_level: int | None = None):
+        self.conn = conn
+        if conn is not None:
+            self.cap_repo = TalentCapRepository(conn)
+        else:
+            self.cap_repo = None
         self.player_factory = PlayerFactory(rng, log_level=log_level)
         self.id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self.rng = rng or random.Random()
@@ -168,7 +175,10 @@ class TeamFactory:
         Create an appropriately aged player for this team
         """
         player = self.player_factory.create(position=position)
-        aged_skills = player.skills.age_to(age, rng=self.rng)
+        caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
+        aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)
+        if self.cap_repo is not None:
+            self.cap_repo.insert(player.id, caps)
         return dataclasses.replace(player, skills=aged_skills)
 
     def _draw_roster_age(self, current_players: list[PlayerRecord]) -> int:

@@ -109,7 +109,7 @@ class DraftGenerator:
         self.rng = rng or random.Random()
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
-        self.factory = PlayerFactory(rng=self.rng)
+        self.factory = PlayerFactory(conn=self.conn, rng=self.rng)
 
     def run(self, season_id: str, year: int) -> int:
         """
