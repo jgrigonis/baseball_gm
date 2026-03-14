@@ -65,6 +65,27 @@ CREATE TABLE IF NOT EXISTS player_skills (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS player_talent_caps (
+    player_id    TEXT PRIMARY KEY,
+    clutch       INTEGER NOT NULL DEFAULT 100,
+    speed        INTEGER NOT NULL DEFAULT 100,
+    power        INTEGER NOT NULL DEFAULT 100,
+    eye          INTEGER NOT NULL DEFAULT 100,
+    contact      INTEGER NOT NULL DEFAULT 100,
+    base_running INTEGER NOT NULL DEFAULT 100,
+    bunting      INTEGER NOT NULL DEFAULT 100,
+    catching     INTEGER NOT NULL DEFAULT 100,
+    infield      INTEGER NOT NULL DEFAULT 100,
+    outfield     INTEGER NOT NULL DEFAULT 100,
+    arm          INTEGER NOT NULL DEFAULT 100,
+    accuracy     INTEGER NOT NULL DEFAULT 100,
+    stamina      INTEGER NOT NULL DEFAULT 100,
+    recovery     INTEGER NOT NULL DEFAULT 100,
+    ground_balls INTEGER NOT NULL DEFAULT 100,
+    strikes      INTEGER NOT NULL DEFAULT 100,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS player_status (
     player_id TEXT PRIMARY KEY,
     status TEXT NOT NULL CHECK (status IN (

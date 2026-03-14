@@ -33,7 +33,7 @@ class TeamFactory:
             self.cap_repo = TalentCapRepository(conn)
         else:
             self.cap_repo = None
-        self.player_factory = PlayerFactory(rng, log_level=log_level)
+        self.player_factory = PlayerFactory(conn=conn, rng=rng, log_level=log_level)
         self.id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self.rng = rng or random.Random()
 

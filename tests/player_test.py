@@ -29,7 +29,7 @@ class TestPlayerFactory(unittest.TestCase):
 
     def test_lefty_1b_probability(self):
         rng = random.Random(40)
-        factory = PlayerFactory(rng)
+        factory = PlayerFactory(rng=rng)
         players = [factory.create(position="1b") for _ in range(1000)]
         lefties = sum(1 for p in players if p.throws == "L")
         print(lefties)

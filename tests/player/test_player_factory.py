@@ -43,7 +43,7 @@ def test_player_factory_is_deterministic_with_seed():
 
 def test_player_factory_creates_player_record():
     """Creates a valid PlayerRecord"""
-    factory = PlayerFactory(random.Random(1))
+    factory = PlayerFactory(rng=random.Random(1))
     player = factory.create()
 
     assert isinstance(player, PlayerRecord)
@@ -55,7 +55,7 @@ def test_player_factory_creates_player_record():
 
 def test_explicit_position_is_used():
     """Explicit position is honored"""
-    factory = PlayerFactory(random.Random(1))
+    factory = PlayerFactory(rng=random.Random(1))
 
     player = factory.create(position="ss")
     assert player.skills["infield"] > 0  # sanity check
@@ -71,7 +71,7 @@ def test_invalid_position_raises():
 
 def test_explicit_throws_is_used():
     """Explicit handedness is honored"""
-    factory = PlayerFactory(random.Random(1))
+    factory = PlayerFactory(rng=random.Random(1))
     player = factory.create(throws="L")
 
     assert player.throws == "L"
@@ -87,7 +87,7 @@ def test_invalid_throws_raises():
 
 def test_explicit_bats_is_used():
     """Explicit batting side is honored"""
-    factory = PlayerFactory(random.Random(1))
+    factory = PlayerFactory(rng=random.Random(1))
     player = factory.create(bats="S")
 
     assert player.bats == "S"
@@ -103,7 +103,7 @@ def test_invalid_bats_raises():
 
 def test_position_is_randomized_when_not_provided():
     """Position is randomly selected when omitted"""
-    factory = PlayerFactory(random.Random(42))
+    factory = PlayerFactory(rng=random.Random(42))
     player = factory.create()
 
     assert player.skills is not None
@@ -111,7 +111,7 @@ def test_position_is_randomized_when_not_provided():
 
 def test_generated_id_is_hex_uuid():
     """ID generation is stable + UUID-shaped"""
-    factory = PlayerFactory(random.Random(99))
+    factory = PlayerFactory(rng=random.Random(99))
     player = factory.create()
 
     assert len(player.id) == 32
@@ -133,7 +133,7 @@ def test_switch_hitter_probability(monkeypatch):
     """
     To lock down template influence, we do this with monkeypatching:
     """
-    factory = PlayerFactory(random.Random(0))
+    factory = PlayerFactory(rng=random.Random(0))
 
     monkeypatch.setitem(
         factory._get_position_template("ss"),
