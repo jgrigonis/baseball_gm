@@ -67,9 +67,7 @@ class TalentCapRepository:
         )
         self.conn.commit()
 
-    def insert_many(
-        self, records: Sequence[tuple[str, dict[str, int]]]
-    ) -> None:
+    def insert_many(self, records: Sequence[tuple[str, dict[str, int]]]) -> None:
         """
         Bulk insert caps for multiple players.
 
@@ -144,10 +142,7 @@ class TalentCapRepository:
             tuple(player_ids),
         ).fetchall()
 
-        return {
-            row["player_id"]: {sk: row[sk] for sk in _SKILLS}
-            for row in rows
-        }
+        return {row["player_id"]: {sk: row[sk] for sk in _SKILLS} for row in rows}
 
     def exists(self, player_id: str) -> bool:
         """Check whether caps exist for a player."""

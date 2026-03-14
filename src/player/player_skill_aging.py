@@ -283,9 +283,15 @@ class SkillAging:
     ) -> float:
         """Eye / plate discipline — peaks later than physical, coaching-sensitive."""
         return self.phased_delta(
-            age, val, rng,
-            EY_PHASE_BREAKS, EY_RATES, EY_NOISES,
-            EY_COACHED, coaching, cap=cap,
+            age,
+            val,
+            rng,
+            EY_PHASE_BREAKS,
+            EY_RATES,
+            EY_NOISES,
+            EY_COACHED,
+            coaching,
+            cap=cap,
         )
 
     def delta_CT(
@@ -298,9 +304,15 @@ class SkillAging:
     ) -> float:
         """Contact — trainable; very slow decline after mid-30s."""
         return self.phased_delta(
-            age, val, rng,
-            CT_PHASE_BREAKS, CT_RATES, CT_NOISES,
-            CT_COACHED, coaching, cap=cap,
+            age,
+            val,
+            rng,
+            CT_PHASE_BREAKS,
+            CT_RATES,
+            CT_NOISES,
+            CT_COACHED,
+            coaching,
+            cap=cap,
         )
 
     def delta_BR(
@@ -313,9 +325,15 @@ class SkillAging:
     ) -> float:
         """Base running — decision-making, never declines."""
         return self.phased_delta(
-            age, val, rng,
-            BR_PHASE_BREAKS, BR_RATES, BR_NOISES,
-            BR_COACHED, coaching, cap=cap,
+            age,
+            val,
+            rng,
+            BR_PHASE_BREAKS,
+            BR_RATES,
+            BR_NOISES,
+            BR_COACHED,
+            coaching,
+            cap=cap,
         )
 
     @staticmethod
@@ -341,9 +359,15 @@ class SkillAging:
     ) -> float:
         """Pitching stamina — rises early, declines from 30+."""
         return self.phased_delta(
-            age, val, rng,
-            ST_PHASE_BREAKS, ST_RATES, ST_NOISES,
-            ST_COACHED, coaching, cap=cap,
+            age,
+            val,
+            rng,
+            ST_PHASE_BREAKS,
+            ST_RATES,
+            ST_NOISES,
+            ST_COACHED,
+            coaching,
+            cap=cap,
         )
 
     def delta_RE(
@@ -356,9 +380,15 @@ class SkillAging:
     ) -> float:
         """Pitching recovery — most coaching-sensitive; declines from 30+."""
         return self.phased_delta(
-            age, val, rng,
-            RE_PHASE_BREAKS, RE_RATES, RE_NOISES,
-            RE_COACHED, coaching, cap=cap,
+            age,
+            val,
+            rng,
+            RE_PHASE_BREAKS,
+            RE_RATES,
+            RE_NOISES,
+            RE_COACHED,
+            coaching,
+            cap=cap,
         )
 
     @staticmethod

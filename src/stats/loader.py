@@ -25,12 +25,10 @@ class StatsLoader:
         Returns PlayerInGame objects with populated game_stats.
         """
         # Get all unique players who have stats
-        cursor = self.conn.execute(
-            """
+        cursor = self.conn.execute("""
             SELECT DISTINCT player_id 
             FROM player_game_stats
-        """
-        )
+        """)
         player_ids = [row["player_id"] for row in cursor.fetchall()]
 
         players_with_stats = []

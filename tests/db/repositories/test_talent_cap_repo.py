@@ -15,9 +15,22 @@ from src.db.repositories.talent_cap_repo import TalentCapRepository
 # ─────────────────────────────────────────────
 
 _SKILLS = [
-    "clutch", "speed", "power", "eye", "contact", "base_running",
-    "bunting", "catching", "infield", "outfield", "arm", "accuracy",
-    "stamina", "recovery", "ground_balls", "strikes",
+    "clutch",
+    "speed",
+    "power",
+    "eye",
+    "contact",
+    "base_running",
+    "bunting",
+    "catching",
+    "infield",
+    "outfield",
+    "arm",
+    "accuracy",
+    "stamina",
+    "recovery",
+    "ground_balls",
+    "strikes",
 ]
 
 
@@ -58,11 +71,22 @@ def _full_caps(base: int = 70) -> dict[str, int]:
 def _varied_caps() -> dict[str, int]:
     """Return a caps dict with varied values for testing key lookups."""
     return {
-        "clutch": 55, "speed": 72, "power": 81, "eye": 88,
-        "contact": 65, "base_running": 60, "bunting": 50,
-        "catching": 45, "infield": 78, "outfield": 70,
-        "arm": 66, "accuracy": 82, "stamina": 58,
-        "recovery": 63, "ground_balls": 74, "strikes": 77,
+        "clutch": 55,
+        "speed": 72,
+        "power": 81,
+        "eye": 88,
+        "contact": 65,
+        "base_running": 60,
+        "bunting": 50,
+        "catching": 45,
+        "infield": 78,
+        "outfield": 70,
+        "arm": 66,
+        "accuracy": 82,
+        "stamina": 58,
+        "recovery": 63,
+        "ground_balls": 74,
+        "strikes": 77,
     }
 
 
@@ -136,10 +160,12 @@ class TestInsertMany(unittest.TestCase):
     def test_insert_many_partial_duplicates(self):
         """Only new players inserted; existing ones unchanged."""
         self.repo.insert("player-1", _full_caps(60))
-        self.repo.insert_many([
-            ("player-1", _full_caps(99)),  # duplicate — ignored
-            ("player-2", _full_caps(75)),  # new — inserted
-        ])
+        self.repo.insert_many(
+            [
+                ("player-1", _full_caps(99)),  # duplicate — ignored
+                ("player-2", _full_caps(75)),  # new — inserted
+            ]
+        )
         self.assertEqual(self.repo.get("player-1")["speed"], 60)
         self.assertEqual(self.repo.get("player-2")["speed"], 75)
 

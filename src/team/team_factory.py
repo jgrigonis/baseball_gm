@@ -27,7 +27,9 @@ _SKEW = 0.2
 
 
 class TeamFactory:
-    def __init__(self, conn=None, rng=None, id_factory=None, log_level: int | None = None):
+    def __init__(
+        self, conn=None, rng=None, id_factory=None, log_level: int | None = None
+    ):
         self.conn = conn
         if conn is not None:
             self.cap_repo = TalentCapRepository(conn)

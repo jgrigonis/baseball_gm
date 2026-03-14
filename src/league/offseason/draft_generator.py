@@ -174,16 +174,14 @@ class DraftGenerator:
         - not on any team (no team_players row)
         - excludes newly generated players (already handled)
         """
-        rows = self.conn.execute(
-            """
+        rows = self.conn.execute("""
             SELECT p.id
             FROM players p
             JOIN player_status ps ON p.id = ps.player_id
             LEFT JOIN team_players tp ON p.id = tp.player_id
             WHERE ps.status IN ('prospect', 'unassigned')
               AND tp.player_id IS NULL
-            """
-        ).fetchall()
+            """).fetchall()
 
         players = []
         for row in rows:

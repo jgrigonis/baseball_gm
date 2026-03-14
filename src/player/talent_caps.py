@@ -28,28 +28,25 @@ import random
 # Higher = harder to project (fog of war matters more here)
 TALENT_SIGMA: dict[str, float] = {
     # Physical tools — observable with instruments, but development varies
-    "speed":        8.0,   # sprint timing is exact; ceiling varies a lot
-    "arm":          6.0,   # radar gun; most predictable physical tool
-    "power":        9.0,   # exit velo hints at ceiling but varies most
-
+    "speed": 8.0,  # sprint timing is exact; ceiling varies a lot
+    "arm": 6.0,  # radar gun; most predictable physical tool
+    "power": 9.0,  # exit velo hints at ceiling but varies most
     # Craft / mental — hardest to project
-    "contact":     12.0,   # genuinely hard to scout in minors
-    "eye":         11.0,   # walk rate needs huge sample to stabilize
-    "clutch":      14.0,   # essentially unknowable until high-leverage ABs
+    "contact": 12.0,  # genuinely hard to scout in minors
+    "eye": 11.0,  # walk rate needs huge sample to stabilize
+    "clutch": 14.0,  # essentially unknowable until high-leverage ABs
     "base_running": 9.0,
-
     # Pitcher physical
-    "strikes":      7.0,   # spin rate/velo visible; development still varies
-    "stamina":     10.0,   # usage patterns confound projection
-    "recovery":    11.0,   # nearly invisible until years of data
+    "strikes": 7.0,  # spin rate/velo visible; development still varies
+    "stamina": 10.0,  # usage patterns confound projection
+    "recovery": 11.0,  # nearly invisible until years of data
     "ground_balls": 8.0,
-    "accuracy":    10.0,
-
+    "accuracy": 10.0,
     # Technique
-    "catching":     9.0,
-    "infield":      9.0,
-    "outfield":     8.0,
-    "bunting":      6.0,   # pure technique; fairly predictable
+    "catching": 9.0,
+    "infield": 9.0,
+    "outfield": 8.0,
+    "bunting": 6.0,  # pure technique; fairly predictable
 }
 
 # Fallback sigma for any skill not listed
@@ -71,14 +68,14 @@ def expected_growth(base: int) -> float:
         Expected growth in skill points over career
     """
     if base < 25:
-        return 4.0    # near floor — almost no ceiling, skill is essentially frozen
+        return 4.0  # near floor — almost no ceiling, skill is essentially frozen
     if base < 40:
-        return 12.0   # below average — modest ceiling
+        return 12.0  # below average — modest ceiling
     if base < 55:
-        return 20.0   # average — most development potential
+        return 20.0  # average — most development potential
     if base < 70:
-        return 15.0   # above average — less room to grow
-    return 8.0        # already elite — near their ceiling at generation
+        return 15.0  # above average — less room to grow
+    return 8.0  # already elite — near their ceiling at generation
 
 
 def generate_talent_caps(
@@ -108,7 +105,7 @@ def generate_talent_caps(
     for skill, base in skills.items():
         sigma = TALENT_SIGMA.get(skill, _DEFAULT_SIGMA)
         growth = rng.gauss(expected_growth(base), sigma)
-        growth = max(0.0, growth)          # never below base
+        growth = max(0.0, growth)  # never below base
         cap = base + int(round(growth))
-        caps[skill] = min(cap, 100)        # absolute ceiling
+        caps[skill] = min(cap, 100)  # absolute ceiling
     return caps

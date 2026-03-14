@@ -110,7 +110,7 @@ class PlayerFactory(object):
 
         # Generate ID first — needed for both PlayerRecord and cap persistence
         player_id = self._generate_id()
-        
+
         # -------------------------
         # Skill generation
         # -------------------------

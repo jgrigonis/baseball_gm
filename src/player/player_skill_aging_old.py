@@ -31,28 +31,28 @@ import random
 SP_PHASE_BREAKS = [22, 27, 31, 34]
 SP_RATES = [0.8, 0.1, -0.9, -2.2, -2.8]
 SP_NOISES = [1.5, 1.0, 0.8, 0.7, 0.6]
-SP_CEILING = 85          # elite burner speed
+SP_CEILING = 85  # elite burner speed
 SP_DIST_DIVISOR = 40.0
 
 # ── Power (PO) — physical, slow rise then long plateau ──
 PO_PHASE_BREAKS = [21, 29, 33]
 PO_RATES = [0.8, 0.4, -0.4, -1.6]
 PO_NOISES = [1.5, 1.0, 0.8, 0.7]
-PO_CEILING = 88          # elite raw power
+PO_CEILING = 88  # elite raw power
 PO_DIST_DIVISOR = 42.0
 
 # ── Arm (AR) — physical, peaks mid-20s, declines from 30 ──
 AR_PHASE_BREAKS = [24, 29, 33]
 AR_RATES = [1.6, 0.2, -1.0, -1.8]
 AR_NOISES = [0.5, 0.4, 0.5, 0.6]
-AR_CEILING = 82          # elite cannon arm
+AR_CEILING = 82  # elite cannon arm
 AR_DIST_DIVISOR = 38.0
 
 # ── Strikeout (KK) — raw talent, can't be coached ──
 KK_PHASE_BREAKS = [24, 28, 32]
 KK_RATES = [1.8, 0.4, -0.6, -2.0]
 KK_NOISES = [0.6, 0.5, 0.5, 0.7]
-KK_CEILING = 80          # elite swing-and-miss stuff
+KK_CEILING = 80  # elite swing-and-miss stuff
 KK_DIST_DIVISOR = 38.0
 
 # ── Clutch (CL) — cognitive random walk, vet upward drift ──
@@ -94,7 +94,7 @@ AC_DIST_DIVISOR = 45.0
 ST_PHASE_BREAKS = [26, 31, 34]
 ST_RATES = [0.7, 0.3, -1.2, -2.0]
 ST_NOISES = [1.5, 1.4, 1.5, 1.7]
-ST_CEILING = 78          # elite workhorse stamina
+ST_CEILING = 78  # elite workhorse stamina
 ST_DIST_DIVISOR = 36.0
 ST_COACHED = [True, True, False, False]
 
@@ -102,7 +102,7 @@ ST_COACHED = [True, True, False, False]
 RE_PHASE_BREAKS = [26, 31, 34]
 RE_RATES = [1.3, 0.2, -1.3, -1.9]
 RE_NOISES = [1.5, 1.4, 1.5, 1.7]
-RE_CEILING = 80          # elite quick recovery
+RE_CEILING = 80  # elite quick recovery
 RE_DIST_DIVISOR = 38.0
 RE_COACHED = [True, True, False, False]
 
@@ -229,33 +229,53 @@ class SkillAging:
     def delta_SP(self, age: int, val: float, rng: random.Random) -> float:
         """Run Speed — physical, peaks 22-26, sharp fall after 30."""
         return self.phased_delta(
-            age, val, rng,
-            SP_PHASE_BREAKS, SP_RATES, SP_NOISES,
-            ceiling=SP_CEILING, dist_divisor=SP_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            SP_PHASE_BREAKS,
+            SP_RATES,
+            SP_NOISES,
+            ceiling=SP_CEILING,
+            dist_divisor=SP_DIST_DIVISOR,
         )
 
     def delta_PO(self, age: int, val: float, rng: random.Random) -> float:
         """Batting Power — slow rise, long plateau, late decline."""
         return self.phased_delta(
-            age, val, rng,
-            PO_PHASE_BREAKS, PO_RATES, PO_NOISES,
-            ceiling=PO_CEILING, dist_divisor=PO_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            PO_PHASE_BREAKS,
+            PO_RATES,
+            PO_NOISES,
+            ceiling=PO_CEILING,
+            dist_divisor=PO_DIST_DIVISOR,
         )
 
     def delta_AR(self, age: int, val: float, rng: random.Random) -> float:
         """Throwing Arm — physical, peaks mid-20s, declines from 30."""
         return self.phased_delta(
-            age, val, rng,
-            AR_PHASE_BREAKS, AR_RATES, AR_NOISES,
-            ceiling=AR_CEILING, dist_divisor=AR_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            AR_PHASE_BREAKS,
+            AR_RATES,
+            AR_NOISES,
+            ceiling=AR_CEILING,
+            dist_divisor=AR_DIST_DIVISOR,
         )
 
     def delta_KK(self, age: int, val: float, rng: random.Random) -> float:
         """Strikeout ability — raw talent, can't be coached."""
         return self.phased_delta(
-            age, val, rng,
-            KK_PHASE_BREAKS, KK_RATES, KK_NOISES,
-            ceiling=KK_CEILING, dist_divisor=KK_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            KK_PHASE_BREAKS,
+            KK_RATES,
+            KK_NOISES,
+            ceiling=KK_CEILING,
+            dist_divisor=KK_DIST_DIVISOR,
         )
 
     @staticmethod
@@ -271,10 +291,16 @@ class SkillAging:
     ) -> float:
         """Eye / plate discipline — peaks later than physical, coaching-sensitive."""
         return self.phased_delta(
-            age, val, rng,
-            EY_PHASE_BREAKS, EY_RATES, EY_NOISES,
-            EY_COACHED, coaching,
-            EY_CEILING, EY_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            EY_PHASE_BREAKS,
+            EY_RATES,
+            EY_NOISES,
+            EY_COACHED,
+            coaching,
+            EY_CEILING,
+            EY_DIST_DIVISOR,
         )
 
     def delta_CT(
@@ -282,10 +308,16 @@ class SkillAging:
     ) -> float:
         """Contact — trainable; very slow decline after mid-30s."""
         return self.phased_delta(
-            age, val, rng,
-            CT_PHASE_BREAKS, CT_RATES, CT_NOISES,
-            CT_COACHED, coaching,
-            CT_CEILING, CT_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            CT_PHASE_BREAKS,
+            CT_RATES,
+            CT_NOISES,
+            CT_COACHED,
+            coaching,
+            CT_CEILING,
+            CT_DIST_DIVISOR,
         )
 
     def delta_BR(
@@ -293,10 +325,16 @@ class SkillAging:
     ) -> float:
         """Base running — decision-making, never declines."""
         return self.phased_delta(
-            age, val, rng,
-            BR_PHASE_BREAKS, BR_RATES, BR_NOISES,
-            BR_COACHED, coaching,
-            BR_CEILING, BR_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            BR_PHASE_BREAKS,
+            BR_RATES,
+            BR_NOISES,
+            BR_COACHED,
+            coaching,
+            BR_CEILING,
+            BR_DIST_DIVISOR,
         )
 
     @staticmethod
@@ -317,10 +355,16 @@ class SkillAging:
     ) -> float:
         """Pitching stamina — rises early, declines from 30+."""
         return self.phased_delta(
-            age, val, rng,
-            ST_PHASE_BREAKS, ST_RATES, ST_NOISES,
-            ST_COACHED, coaching,
-            ST_CEILING, ST_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            ST_PHASE_BREAKS,
+            ST_RATES,
+            ST_NOISES,
+            ST_COACHED,
+            coaching,
+            ST_CEILING,
+            ST_DIST_DIVISOR,
         )
 
     def delta_RE(
@@ -328,10 +372,16 @@ class SkillAging:
     ) -> float:
         """Pitching recovery — most coaching-sensitive; declines from 30+."""
         return self.phased_delta(
-            age, val, rng,
-            RE_PHASE_BREAKS, RE_RATES, RE_NOISES,
-            RE_COACHED, coaching,
-            RE_CEILING, RE_DIST_DIVISOR,
+            age,
+            val,
+            rng,
+            RE_PHASE_BREAKS,
+            RE_RATES,
+            RE_NOISES,
+            RE_COACHED,
+            coaching,
+            RE_CEILING,
+            RE_DIST_DIVISOR,
         )
 
     @staticmethod

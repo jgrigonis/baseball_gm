@@ -484,42 +484,62 @@ class PlayerSkills:
 
         # Work with floats internally
         s = {
-            "clutch":       float(self["clutch"]),
-            "speed":        float(self["speed"]),
-            "power":        float(self["power"]),
-            "eye":          float(self["eye"]),
-            "contact":      float(self["contact"]),
+            "clutch": float(self["clutch"]),
+            "speed": float(self["speed"]),
+            "power": float(self["power"]),
+            "eye": float(self["eye"]),
+            "contact": float(self["contact"]),
             "base_running": float(self["base_running"]),
-            "bunting":      float(self["bunting"]),
-            "catching":     float(self["catching"]),
-            "infield":      float(self["infield"]),
-            "outfield":     float(self["outfield"]),
-            "arm":          float(self["arm"]),
-            "accuracy":     float(self["accuracy"]),
-            "stamina":      float(self["stamina"]),
-            "recovery":     float(self["recovery"]),
+            "bunting": float(self["bunting"]),
+            "catching": float(self["catching"]),
+            "infield": float(self["infield"]),
+            "outfield": float(self["outfield"]),
+            "arm": float(self["arm"]),
+            "accuracy": float(self["accuracy"]),
+            "stamina": float(self["stamina"]),
+            "recovery": float(self["recovery"]),
             "ground_balls": float(self["ground_balls"]),
-            "strikes":      float(self["strikes"]),
+            "strikes": float(self["strikes"]),
         }
         SA = SkillAging()
 
         for current_age in range(START_AGE, age):
-            s["speed"]        += SA.delta_SP(current_age, s["speed"],        rng, cap("speed"))
-            s["power"]        += SA.delta_PO(current_age, s["power"],        rng, cap("power"))
-            s["arm"]          += SA.delta_AR(current_age, s["arm"],          rng, cap("arm"))
-            s["strikes"]      += SA.delta_KK(current_age, s["strikes"],      rng, cap("strikes"))
-            s["clutch"]       += SA.delta_CL(current_age, s["clutch"],       rng)
-            s["eye"]          += SA.delta_EY(current_age, s["eye"],          rng, coaching, cap("eye"))
-            s["contact"]      += SA.delta_CT(current_age, s["contact"],      rng, coaching, cap("contact"))
-            s["base_running"] += SA.delta_BR(current_age, s["base_running"], rng, coaching, cap("base_running"))
-            s["bunting"]      += SA.delta_BU(current_age, s["bunting"],      rng, coaching, cap("bunting"))
-            s["catching"]     += SA.delta_CA(current_age, s["catching"],     rng, coaching, cap("catching"))
-            s["infield"]      += SA.delta_IF(current_age, s["infield"],      rng, coaching, cap("infield"))
-            s["outfield"]     += SA.delta_OF(current_age, s["outfield"],     rng, coaching, cap("outfield"))
-            s["ground_balls"] += SA.delta_GB(current_age, s["ground_balls"], rng, coaching, cap("ground_balls"))
-            s["accuracy"]     += SA.delta_AC(current_age, s["accuracy"],     rng, coaching, cap("accuracy"))
-            s["stamina"]      += SA.delta_ST(current_age, s["stamina"],      rng, coaching, cap("stamina"))
-            s["recovery"]     += SA.delta_RE(current_age, s["recovery"],     rng, coaching, cap("recovery"))
+            s["speed"] += SA.delta_SP(current_age, s["speed"], rng, cap("speed"))
+            s["power"] += SA.delta_PO(current_age, s["power"], rng, cap("power"))
+            s["arm"] += SA.delta_AR(current_age, s["arm"], rng, cap("arm"))
+            s["strikes"] += SA.delta_KK(current_age, s["strikes"], rng, cap("strikes"))
+            s["clutch"] += SA.delta_CL(current_age, s["clutch"], rng)
+            s["eye"] += SA.delta_EY(current_age, s["eye"], rng, coaching, cap("eye"))
+            s["contact"] += SA.delta_CT(
+                current_age, s["contact"], rng, coaching, cap("contact")
+            )
+            s["base_running"] += SA.delta_BR(
+                current_age, s["base_running"], rng, coaching, cap("base_running")
+            )
+            s["bunting"] += SA.delta_BU(
+                current_age, s["bunting"], rng, coaching, cap("bunting")
+            )
+            s["catching"] += SA.delta_CA(
+                current_age, s["catching"], rng, coaching, cap("catching")
+            )
+            s["infield"] += SA.delta_IF(
+                current_age, s["infield"], rng, coaching, cap("infield")
+            )
+            s["outfield"] += SA.delta_OF(
+                current_age, s["outfield"], rng, coaching, cap("outfield")
+            )
+            s["ground_balls"] += SA.delta_GB(
+                current_age, s["ground_balls"], rng, coaching, cap("ground_balls")
+            )
+            s["accuracy"] += SA.delta_AC(
+                current_age, s["accuracy"], rng, coaching, cap("accuracy")
+            )
+            s["stamina"] += SA.delta_ST(
+                current_age, s["stamina"], rng, coaching, cap("stamina")
+            )
+            s["recovery"] += SA.delta_RE(
+                current_age, s["recovery"], rng, coaching, cap("recovery")
+            )
 
             for k in s:
                 s[k] = float(clamp(s[k]))

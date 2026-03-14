@@ -27,8 +27,7 @@ def conn():
     """In-memory SQLite DB with minimal schema."""
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
-    connection.executescript(
-        """
+    connection.executescript("""
         CREATE TABLE players (
             id TEXT PRIMARY KEY
         );
@@ -50,8 +49,7 @@ def conn():
             )),
             since     TEXT NOT NULL
         );
-    """
-    )
+    """)
     yield connection
     connection.close()
 

@@ -5,8 +5,7 @@ db_path = Path("leagues/league.db")  # Adjust path as needed
 conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 
-cursor = conn.execute(
-    """
+cursor = conn.execute("""
 SELECT 
     p.first_name || ' ' || p.last_name as pitcher,
     COUNT(*) as starts,
@@ -18,8 +17,7 @@ JOIN players p ON p.id = pgs.player_id
 WHERE pgs.pitch_game_started = 1
 GROUP BY pgs.player_id
 ORDER BY avg_pitches DESC;
-"""
-)
+""")
 rows = cursor.fetchall()
 for row in rows:
     print(

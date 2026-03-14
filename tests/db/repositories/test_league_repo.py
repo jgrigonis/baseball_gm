@@ -12,18 +12,15 @@ def db_connection():
     conn.row_factory = sqlite3.Row
 
     # Create leagues table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE leagues (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL UNIQUE
         )
-    """
-    )
+    """)
 
     # Create league_seasons table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE league_seasons (
             league_id TEXT NOT NULL,
             season_id TEXT NOT NULL,
@@ -31,12 +28,10 @@ def db_connection():
             FOREIGN KEY (league_id) REFERENCES leagues(id),
             FOREIGN KEY (season_id) REFERENCES seasons(id)
         )
-    """
-    )
+    """)
 
     # Create league_season_teams table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE league_season_teams (
             league_id TEXT NOT NULL,
             season_id TEXT NOT NULL,
@@ -46,30 +41,25 @@ def db_connection():
             FOREIGN KEY (season_id) REFERENCES seasons(id),
             FOREIGN KEY (team_id) REFERENCES teams(id)
         )
-    """
-    )
+    """)
 
     # Create seasons table (for foreign key)
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE seasons (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             year INTEGER NOT NULL
         )
-    """
-    )
+    """)
 
     # Create teams table (for foreign key)
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE teams (
             id TEXT PRIMARY KEY,
             city TEXT NOT NULL,
             mascot TEXT NOT NULL
         )
-    """
-    )
+    """)
 
     yield conn
     conn.close()
