@@ -1,0 +1,393 @@
+
+############################################################
+2025 TEAM EVALUATION REPORT
+############################################################
+
+============================================================
+LEAGUE SUMMARY (30 teams)
+============================================================
+  Average Overall Strength:    65.9
+  Average Offensive Strength:  65.7
+  Average Defensive Strength:  67.3
+  Average Pitching Strength:   63.6
+  Average Star Power:          69.1
+  Average Depth Score:         64.0
+
+============================================================
+TOP TEAMS - OVERALL STRENGTH
+============================================================
+ 1. beijing.csv                     67
+ 2. dubai.csv                       67
+ 3. istanbul.csv                    67
+ 4. london.csv                      67
+ 5. los_angeles.csv                 67
+ 6. madrid.csv                      67
+ 7. new_york.csv                    67
+ 8. seoul.csv                       67
+ 9. tokyo.csv                       67
+10. amsterdam.csv                   66
+
+============================================================
+TOP TEAMS - OFFENSIVE STRENGTH
+============================================================
+ 1. beijing.csv                     67
+ 2. dubai.csv                       67
+ 3. istanbul.csv                    67
+ 4. london.csv                      67
+ 5. los_angeles.csv                 67
+ 6. new_york.csv                    67
+ 7. seoul.csv                       67
+ 8. tokyo.csv                       67
+ 9. bangkok.csv                     66
+10. hong_kong.csv                   66
+
+============================================================
+TOP TEAMS - DEFENSIVE STRENGTH
+============================================================
+ 1. hong_kong.csv                   71
+ 2. jakarta.csv                     70
+ 3. london.csv                      70
+ 4. frankfurt.csv                   69
+ 5. madrid.csv                      69
+ 6. sao_paulo.csv                   69
+ 7. amsterdam.csv                   68
+ 8. buenos_aires.csv                68
+ 9. chicago.csv                     68
+10. mexico_city.csv                 68
+
+============================================================
+TOP TEAMS - PITCHING STRENGTH
+============================================================
+ 1. lisbon.csv                      66
+ 2. dublin.csv                      65
+ 3. mumbai.csv                      65
+ 4. san_francisco.csv               65
+ 5. sao_paulo.csv                   65
+ 6. seoul.csv                       65
+ 7. singapore.csv                   65
+ 8. sydney.csv                      65
+ 9. warsaw.csv                      65
+10. hong_kong.csv                   64
+
+============================================================
+TOP TEAMS - STAR POWER
+============================================================
+ 1. london.csv                      72
+ 2. tokyo.csv                       72
+ 3. istanbul.csv                    71
+ 4. new_york.csv                    71
+ 5. beijing.csv                     70
+ 6. dubai.csv                       70
+ 7. hong_kong.csv                   70
+ 8. los_angeles.csv                 70
+ 9. madrid.csv                      70
+10. singapore.csv                   70
+
+============================================================
+TOP TEAMS - DEPTH
+============================================================
+ 1. beijing.csv                     65
+ 2. hong_kong.csv                   65
+ 3. jakarta.csv                     65
+ 4. los_angeles.csv                 65
+ 5. madrid.csv                      65
+ 6. seoul.csv                       65
+ 7. amsterdam.csv                   64
+ 8. bangkok.csv                     64
+ 9. buenos_aires.csv                64
+10. chicago.csv                     64
+
+
+############################################################
+2030 TEAM EVALUATION REPORT
+############################################################
+
+============================================================
+LEAGUE SUMMARY (30 teams)
+============================================================
+  Average Overall Strength:    73.3
+  Average Offensive Strength:  73.6
+  Average Defensive Strength:  71.3
+  Average Pitching Strength:   69.6
+  Average Star Power:          74.9
+  Average Depth Score:         72.4
+
+============================================================
+TOP TEAMS - OVERALL STRENGTH
+============================================================
+ 1. bangkok.csv                     74
+ 2. beijing.csv                     74
+ 3. buenos_aires.csv                74
+ 4. istanbul.csv                    74
+ 5. jakarta.csv                     74
+ 6. los_angeles.csv                 74
+ 7. madrid.csv                      74
+ 8. mumbai.csv                      74
+ 9. new_york.csv                    74
+10. san_francisco.csv               74
+
+============================================================
+TOP TEAMS - OFFENSIVE STRENGTH
+============================================================
+ 1. bangkok.csv                     75
+ 2. beijing.csv                     74
+ 3. buenos_aires.csv                74
+ 4. frankfurt.csv                   74
+ 5. istanbul.csv                    74
+ 6. jakarta.csv                     74
+ 7. lisbon.csv                      74
+ 8. los_angeles.csv                 74
+ 9. madrid.csv                      74
+10. milan.csv                       74
+
+============================================================
+TOP TEAMS - DEFENSIVE STRENGTH
+============================================================
+ 1. hong_kong.csv                   74
+ 2. chicago.csv                     73
+ 3. dubai.csv                       73
+ 4. new_york.csv                    73
+ 5. paris.csv                       73
+ 6. san_francisco.csv               73
+ 7. amsterdam.csv                   72
+ 8. beijing.csv                     72
+ 9. jakarta.csv                     72
+10. london.csv                      72
+
+============================================================
+TOP TEAMS - PITCHING STRENGTH
+============================================================
+ 1. seoul.csv                       72
+ 2. lisbon.csv                      71
+ 3. paris.csv                       71
+ 4. san_francisco.csv               71
+ 5. warsaw.csv                      71
+ 6. amsterdam.csv                   70
+ 7. buenos_aires.csv                70
+ 8. dubai.csv                       70
+ 9. dublin.csv                      70
+10. istanbul.csv                    70
+
+============================================================
+TOP TEAMS - STAR POWER
+============================================================
+ 1. bangkok.csv                     76
+ 2. istanbul.csv                    76
+ 3. jakarta.csv                     76
+ 4. mumbai.csv                      76
+ 5. san_francisco.csv               76
+ 6. singapore.csv                   76
+ 7. beijing.csv                     75
+ 8. buenos_aires.csv                75
+ 9. chicago.csv                     75
+10. dubai.csv                       75
+
+============================================================
+TOP TEAMS - DEPTH
+============================================================
+ 1. beijing.csv                     73
+ 2. chicago.csv                     73
+ 3. frankfurt.csv                   73
+ 4. istanbul.csv                    73
+ 5. jakarta.csv                     73
+ 6. los_angeles.csv                 73
+ 7. madrid.csv                      73
+ 8. mumbai.csv                      73
+ 9. new_york.csv                    73
+10. san_francisco.csv               73
+
+############################################################
+2035 TEAM EVALUATION REPORT
+############################################################
+
+============================================================
+LEAGUE SUMMARY (30 teams)
+============================================================
+  Average Overall Strength:    73.8
+  Average Offensive Strength:  74.1
+  Average Defensive Strength:  71.5
+  Average Pitching Strength:   71.3
+  Average Star Power:          75.2
+  Average Depth Score:         72.8
+
+============================================================
+TOP TEAMS - OVERALL STRENGTH
+============================================================
+ 1. chicago.csv                     75
+ 2. los_angeles.csv                 75
+ 3. amsterdam.csv                   74
+ 4. bangkok.csv                     74
+ 5. beijing.csv                     74
+ 6. buenos_aires.csv                74
+ 7. hong_kong.csv                   74
+ 8. jakarta.csv                     74
+ 9. lisbon.csv                      74
+10. london.csv                      74
+
+============================================================
+TOP TEAMS - OFFENSIVE STRENGTH
+============================================================
+ 1. chicago.csv                     75
+ 2. los_angeles.csv                 75
+ 3. mumbai.csv                      75
+ 4. new_york.csv                    75
+ 5. sydney.csv                      75
+ 6. tokyo.csv                       75
+ 7. amsterdam.csv                   74
+ 8. bangkok.csv                     74
+ 9. beijing.csv                     74
+10. buenos_aires.csv                74
+
+============================================================
+TOP TEAMS - DEFENSIVE STRENGTH
+============================================================
+ 1. shanghai.csv                    74
+ 2. chicago.csv                     73
+ 3. bangkok.csv                     72
+ 4. buenos_aires.csv                72
+ 5. dubai.csv                       72
+ 6. dublin.csv                      72
+ 7. jakarta.csv                     72
+ 8. lisbon.csv                      72
+ 9. london.csv                      72
+10. madrid.csv                      72
+
+============================================================
+TOP TEAMS - PITCHING STRENGTH
+============================================================
+ 1. seoul.csv                       73
+ 2. warsaw.csv                      73
+ 3. buenos_aires.csv                72
+ 4. dubai.csv                       72
+ 5. dublin.csv                      72
+ 6. frankfurt.csv                   72
+ 7. istanbul.csv                    72
+ 8. lisbon.csv                      72
+ 9. mexico_city.csv                 72
+10. mumbai.csv                      72
+
+============================================================
+TOP TEAMS - STAR POWER
+============================================================
+ 1. bangkok.csv                     76
+ 2. chicago.csv                     76
+ 3. los_angeles.csv                 76
+ 4. madrid.csv                      76
+ 5. mumbai.csv                      76
+ 6. new_york.csv                    76
+ 7. san_francisco.csv               76
+ 8. singapore.csv                   76
+ 9. sydney.csv                      76
+10. warsaw.csv                      76
+
+============================================================
+TOP TEAMS - DEPTH
+============================================================
+ 1. chicago.csv                     74
+ 2. los_angeles.csv                 74
+ 3. amsterdam.csv                   73
+ 4. bangkok.csv                     73
+ 5. beijing.csv                     73
+ 6. buenos_aires.csv                73
+ 7. hong_kong.csv                   73
+ 8. jakarta.csv                     73
+ 9. lisbon.csv                      73
+10. london.csv                      73
+
+############################################################
+2040 TEAM EVALUATION REPORT
+############################################################
+
+============================================================
+LEAGUE SUMMARY (30 teams)
+============================================================
+  Average Overall Strength:    73.6
+  Average Offensive Strength:  74.1
+  Average Defensive Strength:  71.2
+  Average Pitching Strength:   71.6
+  Average Star Power:          75.2
+  Average Depth Score:         72.8
+
+============================================================
+TOP TEAMS - OVERALL STRENGTH
+============================================================
+ 1. amsterdam.csv                   74
+ 2. buenos_aires.csv                74
+ 3. dubai.csv                       74
+ 4. dublin.csv                      74
+ 5. hong_kong.csv                   74
+ 6. jakarta.csv                     74
+ 7. lisbon.csv                      74
+ 8. los_angeles.csv                 74
+ 9. madrid.csv                      74
+10. milan.csv                       74
+
+============================================================
+TOP TEAMS - OFFENSIVE STRENGTH
+============================================================
+ 1. hong_kong.csv                   75
+ 2. los_angeles.csv                 75
+ 3. paris.csv                       75
+ 4. tokyo.csv                       75
+ 5. amsterdam.csv                   74
+ 6. bangkok.csv                     74
+ 7. beijing.csv                     74
+ 8. buenos_aires.csv                74
+ 9. chicago.csv                     74
+10. dubai.csv                       74
+
+============================================================
+TOP TEAMS - DEFENSIVE STRENGTH
+============================================================
+ 1. jakarta.csv                     74
+ 2. dublin.csv                      73
+ 3. shanghai.csv                    73
+ 4. lisbon.csv                      72
+ 5. los_angeles.csv                 72
+ 6. milan.csv                       72
+ 7. mumbai.csv                      72
+ 8. san_francisco.csv               72
+ 9. sao_paulo.csv                   72
+10. tokyo.csv                       72
+
+============================================================
+TOP TEAMS - PITCHING STRENGTH
+============================================================
+ 1. mexico_city.csv                 73
+ 2. paris.csv                       73
+ 3. san_francisco.csv               73
+ 4. warsaw.csv                      73
+ 5. amsterdam.csv                   72
+ 6. beijing.csv                     72
+ 7. buenos_aires.csv                72
+ 8. frankfurt.csv                   72
+ 9. hong_kong.csv                   72
+10. istanbul.csv                    72
+
+============================================================
+TOP TEAMS - STAR POWER
+============================================================
+ 1. los_angeles.csv                 77
+ 2. dublin.csv                      76
+ 3. hong_kong.csv                   76
+ 4. jakarta.csv                     76
+ 5. paris.csv                       76
+ 6. sao_paulo.csv                   76
+ 7. shanghai.csv                    76
+ 8. tokyo.csv                       76
+ 9. amsterdam.csv                   75
+10. buenos_aires.csv                75
+
+============================================================
+TOP TEAMS - DEPTH
+============================================================
+ 1. amsterdam.csv                   73
+ 2. bangkok.csv                     73
+ 3. beijing.csv                     73
+ 4. buenos_aires.csv                73
+ 5. dubai.csv                       73
+ 6. dublin.csv                      73
+ 7. hong_kong.csv                   73
+ 8. istanbul.csv                    73
+ 9. jakarta.csv                     73
+10. lisbon.csv                      73

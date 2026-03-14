@@ -30,38 +30,20 @@ class TeamEvaluation:
 
 
 def load_manifest(manifest_path: Path) -> dict:
-    """
-    Load and parse a league manifest file.
-
-    Args:
-        manifest_path: Path to manifest JSON file
-
-    Returns:
-        Parsed manifest dictionary
-
-    Raises:
-        FileNotFoundError: If manifest file doesn't exist
-        json.JSONDecodeError: If manifest is invalid JSON
-    """
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest file not found: {manifest_path}")
-
     with open(manifest_path, "r") as f:
         return json.load(f)
 
 
 def evaluate_from_manifest(
     manifest_path: Path, base_dir: Path | None = None
-) -> List[TeamEvaluation]:
+) -> tuple[List[TeamEvaluation], str | None]:
     """
     Evaluate all teams listed in a manifest file.
 
-    Args:
-        manifest_path: Path to manifest JSON file
-        base_dir: Base directory for CSV files (default: TEAM_FILES_DIR)
-
     Returns:
-        List of TeamEvaluation objects
+        Tuple of (evaluations, year_str) where year_str comes from the manifest.
     """
     if base_dir is None:
         base_dir = TEAM_FILES_DIR
@@ -69,6 +51,8 @@ def evaluate_from_manifest(
     manifest = load_manifest(manifest_path)
     tf = TeamFactory()
     evaluations = []
+
+    year_str = str(manifest.get("season_year", "")) or None
 
     print(f"League: {manifest.get('league_name', 'Unknown')}")
     print(
@@ -84,10 +68,7 @@ def evaluate_from_manifest(
         csv_path = Path(base_dir) / csv_filename
 
         try:
-            # Load team from CSV
             team_record = tf.from_csv(path=csv_path, city=city, mascot=mascot)
-
-            # Evaluate team
             ratings = TeamEvaluator.evaluate_team(team_record.players)
 
             evaluations.append(
@@ -103,7 +84,7 @@ def evaluate_from_manifest(
         except Exception as e:
             print(f"✗ Failed to evaluate {city} {mascot} ({csv_filename}): {e}")
 
-    return evaluations
+    return evaluations, year_str
 
 
 def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
@@ -115,10 +96,7 @@ def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
 
     for csv_file in csv_files:
         try:
-            # Parse city/mascot from filename if needed
-            # For now, just use filename
             team_record = tf.from_csv(path=csv_file, city="", mascot="")
-
             ratings = TeamEvaluator.evaluate_team(team_record.players)
 
             evaluations.append(
@@ -186,16 +164,18 @@ def print_summary(evaluations: List[TeamEvaluation]):
     print(f"  Average Depth Score:         {averages['depth_score']:.1f}")
 
 
-def print_full_report(evaluations: List[TeamEvaluation], top_n: int = 10):
+def print_full_report(
+    evaluations: List[TeamEvaluation], top_n: int = 10, year: str | None = None
+):
     """Print comprehensive rankings report."""
+    heading = f"{year} TEAM EVALUATION REPORT" if year else "TEAM EVALUATION REPORT"
+
     print(f"\n{'#' * 60}")
-    print("TEAM EVALUATION REPORT")
+    print(heading)
     print(f"{'#' * 60}")
 
-    # Overall summary
     print_summary(evaluations)
 
-    # Rankings for each category
     print_rankings(
         evaluations, "overall_strength", "TOP TEAMS - OVERALL STRENGTH", top_n
     )
@@ -221,7 +201,6 @@ def export_to_csv(evaluations: List[TeamEvaluation], output_path: Path):
     with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
 
-        # Header
         writer.writerow(
             [
                 "filename",
@@ -237,7 +216,6 @@ def export_to_csv(evaluations: List[TeamEvaluation], output_path: Path):
             ]
         )
 
-        # Data
         for team_eval in sorted(
             evaluations, key=lambda x: x.ratings["overall_strength"], reverse=True
         ):
@@ -259,10 +237,13 @@ def export_to_csv(evaluations: List[TeamEvaluation], output_path: Path):
     print(f"Exported results to {output_path}")
 
 
-def pick_year_directory(base_dir: Path) -> Path:
+def pick_year_directory(base_dir: Path) -> tuple[Path, str | None]:
     """
     Find year subdirectories in base_dir.
     Auto-select if only one, prompt user if multiple.
+
+    Returns:
+        Tuple of (directory_path, year_str).
     """
     subdirs = sorted(
         [d for d in base_dir.iterdir() if d.is_dir() and d.name.isdigit()],
@@ -270,12 +251,11 @@ def pick_year_directory(base_dir: Path) -> Path:
     )
 
     if not subdirs:
-        # No year subdirs — fall back to base_dir itself
-        return base_dir
+        return base_dir, None
 
     if len(subdirs) == 1:
         print(f"Using year: {subdirs[0].name}")
-        return subdirs[0]
+        return subdirs[0], subdirs[0].name
 
     print("Multiple seasons found:")
     for i, d in enumerate(subdirs):
@@ -283,7 +263,7 @@ def pick_year_directory(base_dir: Path) -> Path:
 
     choice = input(f"Select [0-{len(subdirs)-1}]: ").strip()
     idx = int(choice) if choice.isdigit() and int(choice) < len(subdirs) else 0
-    return subdirs[idx]
+    return subdirs[idx], subdirs[idx].name
 
 
 def get_args():
@@ -292,8 +272,6 @@ def get_args():
         description="Evaluate all teams in a directory or from a manifest file."
     )
 
-    # Mutually exclusive group: either directory or manifest
-    # input_group = parser.add_mutually_exclusive_group(required=True)
     parser.add_argument(
         "--directory",
         "-d",
@@ -307,7 +285,6 @@ def get_args():
         type=str,
         help="Manifest JSON file listing teams to evaluate",
     )
-
     parser.add_argument(
         "--top",
         "-n",
@@ -323,9 +300,7 @@ def get_args():
 def main():
     args = get_args()
 
-    # Determine evaluation mode
     if args.manifest:
-        # Evaluate from manifest
         manifest_path = Path(args.manifest)
         if not manifest_path.is_absolute():
             manifest_path = LEAGUE_FILES_DIR / manifest_path
@@ -335,7 +310,7 @@ def main():
         print(f"Evaluating teams from manifest: {manifest_path}")
         print(f"Base directory: {base_dir}\n")
 
-        evaluations = evaluate_from_manifest(manifest_path, base_dir)
+        evaluations, year = evaluate_from_manifest(manifest_path, base_dir)
 
     else:
         base_dir = Path(args.directory)
@@ -343,8 +318,7 @@ def main():
             print(f"Error: Directory {base_dir} does not exist")
             return
 
-        # Evaluate from directory
-        directory = pick_year_directory(base_dir)
+        directory, year = pick_year_directory(base_dir)
         print(f"Evaluating teams in {directory}...\n")
         evaluations = evaluate_directory(directory)
 
@@ -352,10 +326,8 @@ def main():
         print("No teams found or evaluated successfully.")
         return
 
-    # Print full report
-    print_full_report(evaluations, top_n=args.top)
+    print_full_report(evaluations, top_n=args.top, year=year)
 
-    # Export if requested
     if args.export:
         export_to_csv(evaluations, Path(args.export))
 
