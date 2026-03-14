@@ -83,13 +83,6 @@ class TestCapDampen(unittest.TestCase):
         self.assertLess(close, medium)
         self.assertLess(medium, far)
 
-    # def test_far_from_cap_approaches_raw(self):
-    #     """Very far from cap, dampening is negligible."""
-    #     cap = 100
-    #     result = _cap_dampen(5.0, 1.0, cap)   # distance=99
-    #     # Should be close to 5.0 but slightly less
-    #     self.assertGreater(result, 4.8)
-    #     self.assertLessEqual(result, 5.0)
 
     def test_far_from_cap_approaches_raw(self):
         """Very far from cap, dampening is reduced but not negligible."""
