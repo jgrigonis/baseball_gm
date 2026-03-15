@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from src.team.team_evaluator import TeamEvaluator
 from src.team.team_factory import TeamFactory
-from src.util.locations import TEAM_FILES_DIR, LEAGUE_FILES_DIR
+from src.util.locations import TEAM_FILES_DIR, MANIFEST_FILES_DIR
 
 SKIP_FILES = {"draft.csv", "draft_results.csv"}
 
@@ -303,7 +303,7 @@ def main():
     if args.manifest:
         manifest_path = Path(args.manifest)
         if not manifest_path.is_absolute():
-            manifest_path = LEAGUE_FILES_DIR / manifest_path
+            manifest_path = MANIFEST_FILES_DIR / manifest_path
 
         base_dir = Path(args.directory)
 
