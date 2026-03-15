@@ -135,8 +135,9 @@ GB_NOISE_HARD = 0.6
 # ── Sigmoid dampening constant ──
 # Controls how early growth slows near the cap.
 # At distance=CAP_BRAKE: growth is 50% of raw.
-# Smaller value = growth slows sooner.
-CAP_BRAKE = 8.0
+# Smaller value = growth slows LATER (only near the ceiling).
+# Larger value = growth slows SOONER (dampening kicks in further from cap).
+CAP_BRAKE = 6.5
 
 
 # ─────────────────────────────────────────────

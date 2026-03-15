@@ -91,7 +91,7 @@ class PitchModifiers:
         resolver.pitch_outcome.add("ball", 9 * (eye - 50))
 
         contact = batter.skills["contact"]
-        resolver.pitch_outcome.add("strike", -9.9 * (contact - 50))
+        resolver.pitch_outcome.add("strike", -12 * (contact - 50))
         resolver.pitch_outcome.add("foul", int(2 * (contact - 50)))
         resolver.pitch_outcome.add("in_play", int(3.6 * (contact - 50)))
 
@@ -113,9 +113,9 @@ class PitchModifiers:
 
         strikes = pitcher.get_effective_stat(pitcher.skills["strikes"])
         resolver.pitch_outcome.add("ball", -12 * (strikes - 50))
-        resolver.pitch_outcome.add("strike", 40 * (strikes - 50))
-        resolver.pitch_outcome.add("foul", -4 * (strikes - 50))
-        resolver.pitch_outcome.add("in_play", -8 * (strikes - 50))
+        resolver.pitch_outcome.add("strike", 16 * (strikes - 50))
+        resolver.pitch_outcome.add("foul", 6 * (strikes - 50))
+        resolver.pitch_outcome.add("in_play", -12 * (strikes - 50))
 
     @staticmethod
     def modify_for_platoon(
