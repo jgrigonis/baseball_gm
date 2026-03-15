@@ -33,11 +33,11 @@ fi
 
 python src/league/play_season.py -i ${SEASON_ID} ${GAME_LOGS_FLAG}
 
-python src/league/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG}
 
-python src/league/league_totals.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/league_totals.py -i ${SEASON_ID} ${LOGS_FLAG}
 
-python src/league/league_leaders.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/league_leaders.py -i ${SEASON_ID} ${LOGS_FLAG}
 
 python src/league/playoffs/setup_playoffs.py -i ${SEASON_ID} --start-date ${YEAR}-10-01 ${LOGS_FLAG}
 
