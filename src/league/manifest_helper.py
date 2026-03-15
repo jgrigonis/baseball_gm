@@ -1,6 +1,7 @@
 # src/league/manifest_helper.py
 import json
 from pathlib import Path
+import random
 import sys
 
 from src.io.player_csv_exporter import PlayerCSVExporter
@@ -53,13 +54,13 @@ def find_missing_team_files(manifest: dict) -> list[dict]:
     return missing
 
 
-def create_team_files(teams: list[dict], year) -> None:
+def create_team_files(teams: list[dict], year, rng: random.Random) -> None:
     for team in teams:
         print(f"creating {team['csv']} for {team['city']} {team['mascot']}")
-        create_team_from_manifest(team, year)
+        create_team_from_manifest(team, year, rng=rng)
 
 
-def create_team_from_manifest(team, year, conn) -> None:
-    tf = TeamFactory(conn=conn)
+def create_team_from_manifest(team, year, rng: random.Random) -> None:
+    tf = TeamFactory(rng=rng)
     tr = tf.generate_team(city=team["city"], mascot=team["mascot"])
     PlayerCSVExporter.write(team=tr, year=year, filename=team["csv"])

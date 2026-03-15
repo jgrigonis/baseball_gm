@@ -3,11 +3,14 @@
 import csv
 import hashlib
 from pathlib import Path
+import random
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.player.player_record import PlayerRecord
+from src.player.talent_caps import generate_talent_caps
 from src.team.roster_assigner import RosterAssigner
 from src.team.team_record import TeamRecord
 from src.util.locations import TEAM_FILES_DIR
@@ -24,10 +27,12 @@ class TeamImporter:
     Return a fully populated Team object
     """
 
-    def __init__(self, conn):
+    def __init__(self, conn, rng=None):
         self.conn = conn
+        self.rng = rng or random.Random()
         self.player_repo = PlayerRepository(conn)
         self.team_repo = TeamRepository(conn)
+        self.cap_repo = TalentCapRepository(conn)
 
     def import_csv(
         self,
@@ -108,6 +113,8 @@ class TeamImporter:
                             position=player.position,
                             skills=player.skills,
                         )
+                        caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
+                        self.cap_repo.insert(player.id, caps)
 
                     self.team_repo.add_player(team_id, player.id)
                     players.append(player)

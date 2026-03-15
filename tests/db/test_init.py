@@ -39,6 +39,7 @@ def test_init_db_rolls_back_on_error():
     """Test that init_db rolls back if migrations fail"""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
 
     # Mock run_migrations to raise an error
     import src.db.init as init_module

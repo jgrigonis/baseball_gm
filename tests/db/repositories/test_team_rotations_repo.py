@@ -11,6 +11,7 @@ from src.db.schema import SCHEMA_SQL
 def db_conn():
     """Create an in-memory SQLite database for testing."""
     conn = sqlite3.connect(":memory:")
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA_SQL)
 
     # Insert test data

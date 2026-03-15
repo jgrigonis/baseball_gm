@@ -12,13 +12,16 @@ Steps:
 """
 
 import csv
+import dataclasses
 import random
 from pathlib import Path
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.player.player_factory import PlayerFactory
 from src.player.player_skills import START_AGE
+from src.player.talent_caps import generate_talent_caps
 from src.util.locations import TEAM_FILES_DIR
 
 # -----------------------------------------------------------------------
@@ -109,7 +112,8 @@ class DraftGenerator:
         self.rng = rng or random.Random()
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
-        self.factory = PlayerFactory(conn=self.conn, rng=self.rng)
+        self.cap_repo = TalentCapRepository(conn)
+        self.factory = PlayerFactory(rng=self.rng)
 
     def run(self, season_id: str, year: int) -> int:
         """
@@ -141,6 +145,8 @@ class DraftGenerator:
                 position=player.position,
                 skills=player.skills,
             )
+            if player.caps is not None:
+                self.cap_repo.insert(player.id, player.caps)
             self.status_repo.set_status(player.id, "prospect")
 
         # 4. Write draft.csv
@@ -158,11 +164,11 @@ class DraftGenerator:
         for age, position in age_positions:
             # Create at age 17, then age forward
             player = self.factory.create(position=position)
+            caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
             if age > START_AGE:
-                aged_skills = player.skills.age_to(age, rng=self.rng)
-                import dataclasses
+                aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)
+                player = dataclasses.replace(player, skills=aged_skills, caps=caps)
 
-                player = dataclasses.replace(player, skills=aged_skills)
             players.append(player)
 
         return players

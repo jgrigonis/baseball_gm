@@ -28,6 +28,7 @@ def conn():
     """In-memory SQLite database with the minimal schema needed for these tests."""
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
+    db.execute("PRAGMA foreign_keys = ON")
     db.executescript("""
         PRAGMA foreign_keys = ON;
 

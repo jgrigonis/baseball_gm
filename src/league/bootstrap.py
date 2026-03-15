@@ -1,5 +1,6 @@
 # src/league/bootstrap.py
 import dataclasses
+import random
 from os import sep
 
 from src.db.repositories.bullpen_roles_repo import set_roles
@@ -12,12 +13,13 @@ from src.io.team_importer import TeamImporter
 
 
 class LeagueBootstrapper:
-    def __init__(self, conn):
+    def __init__(self, conn, rng: random.Random):
         self.conn = conn
+        self.rng = rng or random.Random()
         self.league_repo = LeagueRepository(conn)
         self.season_repo = SeasonRepository(conn)
         self.team_repo = TeamRepository(conn)
-        self.team_importer = TeamImporter(conn)
+        self.team_importer = TeamImporter(conn, rng=self.rng)
         self.rotations_repo = TeamRotationsRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
 

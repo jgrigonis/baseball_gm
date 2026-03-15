@@ -33,7 +33,6 @@ import logging
 import random
 import uuid
 
-from src.db.repositories.talent_cap_repo import TalentCapRepository
 import src.game.game_exceptions as game_exceptions
 from src.player.positions import is_valid_affinity_position
 from src.player.player_record import PlayerRecord
@@ -59,15 +58,10 @@ class PlayerFactory(object):
     """Factory for creating persistent PlayerRecord instances."""
 
     def __init__(
-        self, conn=None, rng: random.Random | None = None, log_level: int | None = None
+        self, rng: random.Random | None = None, log_level: int | None = None
     ) -> None:
         self.rng = rng or random.Random()
         self.name_gen = NameGenerator(rng=self.rng)
-        self.conn = conn
-        if conn is not None:
-            self.cap_repo = TalentCapRepository(conn)
-        else:
-            self.cap_repo = None
 
         # Logging
         self.log_level = log_level or logging.INFO
@@ -119,17 +113,15 @@ class PlayerFactory(object):
             f"Created player: first_name={first_name}, last_name={last_name}, position={position}, throws={throws}, bats={bats}"
         )
         caps = generate_talent_caps(skills.as_dict(), self.rng)
-        if self.cap_repo is not None:
-            # player_id generated just before this — pass it in
-            self.cap_repo.insert(player_id, caps)
         return PlayerRecord(
-            id=self._generate_id(),
+            id=player_id,
             first_name=first_name,
             last_name=last_name,
             bats=self._normalize_handedness(bats),
             throws=self._normalize_handedness(throws),
             position=position,
             skills=skills,
+            caps=caps,
         )
 
     @staticmethod

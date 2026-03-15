@@ -1,6 +1,7 @@
 # src/league/cli.py
 import argparse
 import datetime
+import random
 
 # from datetime import date
 from pathlib import Path
@@ -50,6 +51,8 @@ def get_args():
         action="store_true",
         help="Regenerate schedule if it exists",
     )
+    parser.add_argument("--seed", "-s", type=int, help="Random seed for reproducibility")
+
 
     args = parser.parse_args()
     return args
@@ -57,6 +60,10 @@ def get_args():
 
 def main():
     args = get_args()
+
+    seed = args.seed if args.seed is not None else random.randint(0, 999999)
+    print(f"🎲 Seed: {seed}")
+    rng = random.Random(seed)
 
     # import time
     # print(f"========== SCRIPT START {time.time()} ==========")
@@ -67,7 +74,7 @@ def main():
     conn.row_factory = sqlite3.Row
     init_db(conn)
 
-    boot = LeagueBootstrapper(conn)
+    boot = LeagueBootstrapper(conn, rng=rng)
     manifest = load_manifest(path / args.manifest)
     try:
         validate_manifest_structure(manifest)
@@ -78,7 +85,7 @@ def main():
     missing = find_missing_team_files(manifest)
     year = manifest.get("season_year", 2028)
     if missing and args.create:
-        create_team_files(missing, year)
+        create_team_files(missing, year, rng=rng)
     elif missing:
         for miss in missing:
             print(f"The csv file for {miss} is missing.")

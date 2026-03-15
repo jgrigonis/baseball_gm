@@ -82,17 +82,6 @@ class OffseasonPipeline:
         players = self.player_repo.get_all_players()
         for player in players:
             self.player_repo.snapshot_skills(player.id, season_id)
-        # aggregate_season_stats(season_id)  — TBD
-
-    # def _age(self, rng: random.Random) -> None:
-    #     """Step 2: Age every player by one year and write back updated skills."""
-    #     # Setup RNG
-
-    #     players = self.player_repo.get_all_players()
-    #     for player in players:
-    #         new_skills = player.skills.age_to(player.age + 1, rng=rng)
-    #         self.player_repo.update_skills(player.id, new_skills)
-    #     print(f"  Aged {len(players)} players")
 
     def _age(self, rng):
         """Step 2: Age every player by one year and write back updated skills."""
@@ -106,7 +95,7 @@ class OffseasonPipeline:
 
         for player in players:
             caps = all_caps.get(player.id)  # None for legacy players = no dampening
-            new_skills = player.skills.age_to(player.age + 1, rng=rng, caps=caps)
+            new_skills = player.skills.age_to(player.age + 1, from_age=player.age, rng=rng, caps=caps)
             self.player_repo.update_skills(player.id, new_skills)
 
         print(f"  Aged {len(players)} players")

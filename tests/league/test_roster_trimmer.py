@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS league_season_teams (
 def conn():
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
     connection.executescript(MINIMAL_SCHEMA)
     yield connection
     connection.close()

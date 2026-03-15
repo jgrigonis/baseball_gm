@@ -27,6 +27,7 @@ def conn():
     """In-memory SQLite DB with minimal schema."""
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
     connection.executescript("""
         CREATE TABLE players (
             id TEXT PRIMARY KEY

@@ -458,6 +458,7 @@ class PlayerSkills:
     def age_to(
         self,
         age: int,
+        from_age: int = START_AGE,
         coaching: float = 1.0,
         rng: random.Random | None = None,
         caps: dict[str, int] | None = None,
@@ -474,7 +475,7 @@ class PlayerSkills:
                       If None, no cap dampening is applied (legacy behaviour).
                       Keys are full skill names e.g. "contact", "stamina".
         """
-        if age <= START_AGE:
+        if age <= from_age:
             return self
         rng = rng or random.Random()
 
@@ -503,7 +504,7 @@ class PlayerSkills:
         }
         SA = SkillAging()
 
-        for current_age in range(START_AGE, age):
+        for current_age in range(from_age, age):
             s["speed"] += SA.delta_SP(current_age, s["speed"], rng, cap("speed"))
             s["power"] += SA.delta_PO(current_age, s["power"], rng, cap("power"))
             s["arm"] += SA.delta_AR(current_age, s["arm"], rng, cap("arm"))

@@ -44,6 +44,7 @@ class PlayerRecord:
     throws: ThrowingHand
     position: PositionCode
     skills: PlayerSkills
+    caps: dict | None = None  # only set when generated, not from CSV
 
     def __post_init__(self):
         """Validate player data after initialization."""

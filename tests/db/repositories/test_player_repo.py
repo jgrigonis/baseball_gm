@@ -13,6 +13,7 @@ def db_connection():
     """Create in-memory SQLite database with player tables."""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
 
     # Create players table
     conn.execute("""

@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS team_players (
 def conn():
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
     connection.executescript(MINIMAL_SCHEMA)
     yield connection
     connection.close()
@@ -393,6 +394,7 @@ class TestDraftGeneratorRun:
         """Same seed should produce same player IDs."""
         conn2 = sqlite3.connect(":memory:")
         conn2.row_factory = sqlite3.Row
+        conn2.execute("PRAGMA foreign_keys = ON")
         conn2.executescript(MINIMAL_SCHEMA)
 
         gen1 = DraftGenerator(conn, random.Random(99))
