@@ -382,6 +382,15 @@ def play_game(
 
     save_energy(conn, game_date, home_team, away_team)
 
+    logger.info(home_team.output_defensive_stats())
+    logger.info(away_team.output_defensive_stats())
+
+    logger.info(home_team.output_batting_stats())
+    logger.info(away_team.output_batting_stats())
+
+    logger.info(home_team.output_pitching_stats())
+    logger.info(away_team.output_pitching_stats())
+
     return result
 
 
