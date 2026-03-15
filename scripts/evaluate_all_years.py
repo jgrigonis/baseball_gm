@@ -121,10 +121,18 @@ def format_full_report(
         heading,
         f"{'#' * 60}",
         format_summary(evaluations),
-        format_rankings(evaluations, "overall_strength", "TOP TEAMS - OVERALL STRENGTH", top_n),
-        format_rankings(evaluations, "offensive_strength", "TOP TEAMS - OFFENSIVE STRENGTH", top_n),
-        format_rankings(evaluations, "defensive_strength", "TOP TEAMS - DEFENSIVE STRENGTH", top_n),
-        format_rankings(evaluations, "pitching_strength", "TOP TEAMS - PITCHING STRENGTH", top_n),
+        format_rankings(
+            evaluations, "overall_strength", "TOP TEAMS - OVERALL STRENGTH", top_n
+        ),
+        format_rankings(
+            evaluations, "offensive_strength", "TOP TEAMS - OFFENSIVE STRENGTH", top_n
+        ),
+        format_rankings(
+            evaluations, "defensive_strength", "TOP TEAMS - DEFENSIVE STRENGTH", top_n
+        ),
+        format_rankings(
+            evaluations, "pitching_strength", "TOP TEAMS - PITCHING STRENGTH", top_n
+        ),
         format_rankings(evaluations, "star_power", "TOP TEAMS - STAR POWER", top_n),
         format_rankings(evaluations, "depth_score", "TOP TEAMS - DEPTH", top_n),
         "\n",
@@ -137,37 +145,41 @@ def export_to_csv(all_evaluations: Dict[str, List[TeamEvaluation]], output_path:
     """Export all evaluations across all years to a single CSV."""
     with open(output_path, "w", newline="") as f:
         writer = csv_module.writer(f)
-        writer.writerow([
-            "year",
-            "filename",
-            "city",
-            "mascot",
-            "overall_strength",
-            "offensive_strength",
-            "defensive_strength",
-            "pitching_strength",
-            "star_power",
-            "depth_score",
-            "roster_size",
-        ])
+        writer.writerow(
+            [
+                "year",
+                "filename",
+                "city",
+                "mascot",
+                "overall_strength",
+                "offensive_strength",
+                "defensive_strength",
+                "pitching_strength",
+                "star_power",
+                "depth_score",
+                "roster_size",
+            ]
+        )
 
         for year, evaluations in sorted(all_evaluations.items()):
             for team_eval in sorted(
                 evaluations, key=lambda x: x.ratings["overall_strength"], reverse=True
             ):
-                writer.writerow([
-                    year,
-                    team_eval.filename,
-                    team_eval.city,
-                    team_eval.mascot,
-                    team_eval.ratings["overall_strength"],
-                    team_eval.ratings["offensive_strength"],
-                    team_eval.ratings["defensive_strength"],
-                    team_eval.ratings["pitching_strength"],
-                    team_eval.ratings["star_power"],
-                    team_eval.ratings["depth_score"],
-                    team_eval.ratings["roster_size"],
-                ])
+                writer.writerow(
+                    [
+                        year,
+                        team_eval.filename,
+                        team_eval.city,
+                        team_eval.mascot,
+                        team_eval.ratings["overall_strength"],
+                        team_eval.ratings["offensive_strength"],
+                        team_eval.ratings["defensive_strength"],
+                        team_eval.ratings["pitching_strength"],
+                        team_eval.ratings["star_power"],
+                        team_eval.ratings["depth_score"],
+                        team_eval.ratings["roster_size"],
+                    ]
+                )
 
     print(f"Exported CSV to {output_path}")
 
@@ -186,25 +198,29 @@ def get_args():
         description="Evaluate teams across all year directories and write a combined report."
     )
     parser.add_argument(
-        "--directory", "-d",
+        "--directory",
+        "-d",
         type=str,
         default=TEAM_FILES_DIR,
         help="Base directory containing year subdirectories of team CSV files",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         default="temp_files" + os.sep + "all_years_report.txt",
         help="Output file for the combined text report (default: temp_files/all_years_report.txt)",
     )
     parser.add_argument(
-        "--top", "-n",
+        "--top",
+        "-n",
         type=int,
         default=10,
         help="Number of top teams to show in each category (default: 10)",
     )
     parser.add_argument(
-        "--export", "-e",
+        "--export",
+        "-e",
         type=str,
         default="temp_files" + os.sep + "all_years_results.csv",
         help="Also export all results to a CSV file (default: temp_files/all_years_results.csv)",

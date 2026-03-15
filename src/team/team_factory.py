@@ -27,9 +27,7 @@ _SKEW = 0.2
 
 
 class TeamFactory:
-    def __init__(
-        self, rng=None, id_factory=None, log_level: int | None = None
-    ):
+    def __init__(self, rng=None, id_factory=None, log_level: int | None = None):
         self.player_factory = PlayerFactory(rng=rng, log_level=log_level)
         self.id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self.rng = rng or random.Random()
@@ -165,7 +163,9 @@ class TeamFactory:
             players=tuple(players),
         )
 
-    def _create_aged_player(self, age: int, position: str | None = None) -> PlayerRecord:
+    def _create_aged_player(
+        self, age: int, position: str | None = None
+    ) -> PlayerRecord:
         """
         Create an appropriately aged player for this team
         """

@@ -113,7 +113,9 @@ class TeamImporter:
                             position=player.position,
                             skills=player.skills,
                         )
-                        caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
+                        caps = generate_talent_caps(
+                            player.skills.as_dict(), rng=self.rng
+                        )
                         self.cap_repo.insert(player.id, caps)
 
                     self.team_repo.add_player(team_id, player.id)

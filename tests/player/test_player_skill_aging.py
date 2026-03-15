@@ -20,10 +20,10 @@ from src.player.player_skill_aging import (
     _cap_dampen,
 )
 
-
 # ─────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────
+
 
 def _fixed_rng(seed: int = 42) -> random.Random:
     return random.Random(seed)
@@ -38,6 +38,7 @@ def _mean_delta(fn, age: int, val: float, n: int = 2000, **kwargs) -> float:
 # ─────────────────────────────────────────────
 #  _cap_dampen
 # ─────────────────────────────────────────────
+
 
 class TestCapDampen(unittest.TestCase):
 
@@ -77,17 +78,16 @@ class TestCapDampen(unittest.TestCase):
     def test_dampening_increases_with_distance(self):
         """Further from cap → less dampening → higher delta."""
         cap = 80
-        close   = _cap_dampen(5.0, 75.0, cap)   # distance=5
-        medium  = _cap_dampen(5.0, 60.0, cap)   # distance=20
-        far     = _cap_dampen(5.0, 40.0, cap)   # distance=40
+        close = _cap_dampen(5.0, 75.0, cap)  # distance=5
+        medium = _cap_dampen(5.0, 60.0, cap)  # distance=20
+        far = _cap_dampen(5.0, 40.0, cap)  # distance=40
         self.assertLess(close, medium)
         self.assertLess(medium, far)
-
 
     def test_far_from_cap_approaches_raw(self):
         """Very far from cap, dampening is reduced but not negligible."""
         cap = 100
-        result = _cap_dampen(5.0, 1.0, cap)   # distance=99
+        result = _cap_dampen(5.0, 1.0, cap)  # distance=99
         # formula: 5.0 * 99 / (99 + 15) ≈ 4.34
         self.assertGreater(result, 4.0)
         self.assertLessEqual(result, 5.0)
@@ -106,6 +106,7 @@ class TestCapDampen(unittest.TestCase):
 #  phased_delta
 # ─────────────────────────────────────────────
 
+
 class TestPhasedDelta(unittest.TestCase):
 
     def setUp(self):
@@ -115,10 +116,10 @@ class TestPhasedDelta(unittest.TestCase):
         """Young player should be in first phase (positive rate)."""
         mean = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
-                a, v, r, [24, 29, 33], [1.6, 0.2, -1.0, -1.8],
-                [0.5, 0.4, 0.5, 0.6]
+                a, v, r, [24, 29, 33], [1.6, 0.2, -1.0, -1.8], [0.5, 0.4, 0.5, 0.6]
             ),
-            age=20, val=50.0
+            age=20,
+            val=50.0,
         )
         self.assertGreater(mean, 1.0)
 
@@ -126,10 +127,10 @@ class TestPhasedDelta(unittest.TestCase):
         """Old player should be in last phase (negative rate)."""
         mean = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
-                a, v, r, [24, 29, 33], [1.6, 0.2, -1.0, -1.8],
-                [0.5, 0.4, 0.5, 0.6]
+                a, v, r, [24, 29, 33], [1.6, 0.2, -1.0, -1.8], [0.5, 0.4, 0.5, 0.6]
             ),
-            age=36, val=50.0
+            age=36,
+            val=50.0,
         )
         self.assertLess(mean, 0.0)
 
@@ -138,17 +139,17 @@ class TestPhasedDelta(unittest.TestCase):
         coached = [True]
         mean_1x = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
-                a, v, r, [30], [1.0, -0.5], [0.3, 0.3],
-                coached=coached, coaching=1.0
+                a, v, r, [30], [1.0, -0.5], [0.3, 0.3], coached=coached, coaching=1.0
             ),
-            age=25, val=50.0
+            age=25,
+            val=50.0,
         )
         mean_2x = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
-                a, v, r, [30], [1.0, -0.5], [0.3, 0.3],
-                coached=coached, coaching=2.0
+                a, v, r, [30], [1.0, -0.5], [0.3, 0.3], coached=coached, coaching=2.0
             ),
-            age=25, val=50.0
+            age=25,
+            val=50.0,
         )
         self.assertAlmostEqual(mean_2x, mean_1x * 2, delta=0.15)
 
@@ -157,17 +158,17 @@ class TestPhasedDelta(unittest.TestCase):
         coached = [False]
         mean_1x = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
-                a, v, r, [30], [1.0, -0.5], [0.3, 0.3],
-                coached=coached, coaching=1.0
+                a, v, r, [30], [1.0, -0.5], [0.3, 0.3], coached=coached, coaching=1.0
             ),
-            age=25, val=50.0
+            age=25,
+            val=50.0,
         )
         mean_2x = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
-                a, v, r, [30], [1.0, -0.5], [0.3, 0.3],
-                coached=coached, coaching=2.0
+                a, v, r, [30], [1.0, -0.5], [0.3, 0.3], coached=coached, coaching=2.0
             ),
-            age=25, val=50.0
+            age=25,
+            val=50.0,
         )
         self.assertAlmostEqual(mean_1x, mean_2x, delta=0.15)
 
@@ -180,13 +181,15 @@ class TestPhasedDelta(unittest.TestCase):
             lambda a, v, r, **kw: self.sa.phased_delta(
                 a, v, r, breaks, rates, noises, cap=None
             ),
-            age=25, val=70.0
+            age=25,
+            val=70.0,
         )
         mean_with_cap = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
                 a, v, r, breaks, rates, noises, cap=80
             ),
-            age=25, val=70.0
+            age=25,
+            val=70.0,
         )
         self.assertGreater(mean_no_cap, mean_with_cap)
 
@@ -199,13 +202,15 @@ class TestPhasedDelta(unittest.TestCase):
             lambda a, v, r, **kw: self.sa.phased_delta(
                 a, v, r, breaks, rates, noises, cap=None
             ),
-            age=35, val=70.0
+            age=35,
+            val=70.0,
         )
         mean_with_cap = _mean_delta(
             lambda a, v, r, **kw: self.sa.phased_delta(
                 a, v, r, breaks, rates, noises, cap=80
             ),
-            age=35, val=70.0
+            age=35,
+            val=70.0,
         )
         self.assertAlmostEqual(mean_no_cap, mean_with_cap, delta=0.1)
 
@@ -213,6 +218,7 @@ class TestPhasedDelta(unittest.TestCase):
 # ─────────────────────────────────────────────
 #  Individual delta functions — cap=None backward compat
 # ─────────────────────────────────────────────
+
 
 class TestDeltaFunctionsNoCap(unittest.TestCase):
     """All delta functions should work without a cap (legacy behaviour)."""
@@ -285,6 +291,7 @@ class TestDeltaFunctionsNoCap(unittest.TestCase):
 #  Cap dampening per delta function
 # ─────────────────────────────────────────────
 
+
 class TestDeltaFunctionsWithCap(unittest.TestCase):
     """
     For each growth-phase delta, verify:
@@ -300,8 +307,11 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
     def _assert_cap_reduces_growth(self, fn, age, val, cap_close, **kwargs):
         mean_no_cap = _mean_delta(fn, age, val, **kwargs)
         mean_capped = _mean_delta(fn, age, val, cap=cap_close, **kwargs)
-        self.assertGreater(mean_no_cap, mean_capped,
-                           f"Cap should reduce growth at age={age}, val={val}, cap={cap_close}")
+        self.assertGreater(
+            mean_no_cap,
+            mean_capped,
+            f"Cap should reduce growth at age={age}, val={val}, cap={cap_close}",
+        )
 
     def _assert_cap_stops_growth(self, fn, age, val, **kwargs):
         """At the cap, mean growth should be near zero."""
@@ -315,7 +325,9 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── SP ──
     def test_SP_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_SP, age=20, val=60.0, cap_close=65)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_SP, age=20, val=60.0, cap_close=65
+        )
 
     def test_SP_cap_stops_growth(self):
         self._assert_cap_stops_growth(self.sa.delta_SP, age=20, val=70.0)
@@ -325,7 +337,9 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── PO ──
     def test_PO_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_PO, age=22, val=55.0, cap_close=62)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_PO, age=22, val=55.0, cap_close=62
+        )
 
     def test_PO_cap_stops_growth(self):
         self._assert_cap_stops_growth(self.sa.delta_PO, age=22, val=65.0)
@@ -335,7 +349,9 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── AR ──
     def test_AR_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_AR, age=20, val=60.0, cap_close=65)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_AR, age=20, val=60.0, cap_close=65
+        )
 
     def test_AR_cap_stops_growth(self):
         self._assert_cap_stops_growth(self.sa.delta_AR, age=20, val=70.0)
@@ -345,7 +361,9 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── KK ──
     def test_KK_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_KK, age=20, val=55.0, cap_close=62)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_KK, age=20, val=55.0, cap_close=62
+        )
 
     def test_KK_cap_stops_growth(self):
         self._assert_cap_stops_growth(self.sa.delta_KK, age=20, val=65.0)
@@ -355,7 +373,9 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── EY ──
     def test_EY_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_EY, age=22, val=60.0, cap_close=68)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_EY, age=22, val=60.0, cap_close=68
+        )
 
     def test_EY_cap_stops_growth(self):
         self._assert_cap_stops_growth(self.sa.delta_EY, age=22, val=70.0)
@@ -365,7 +385,9 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── CT ──
     def test_CT_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_CT, age=22, val=55.0, cap_close=63)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_CT, age=22, val=55.0, cap_close=63
+        )
 
     def test_CT_cap_stops_growth(self):
         self._assert_cap_stops_growth(self.sa.delta_CT, age=22, val=65.0)
@@ -375,7 +397,9 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── BR ──
     def test_BR_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_BR, age=25, val=60.0, cap_close=68)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_BR, age=25, val=60.0, cap_close=68
+        )
 
     def test_BR_cap_stops_growth(self):
         self._assert_cap_stops_growth(self.sa.delta_BR, age=25, val=72.0)
@@ -399,14 +423,18 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
     # ── ST ──
     def test_ST_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_ST, age=22, val=50.0, cap_close=58)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_ST, age=22, val=50.0, cap_close=58
+        )
 
     def test_ST_decline_ignores_cap(self):
         self._assert_decline_ignores_cap(self.sa.delta_ST, age=34, val=55.0, cap=58)
 
     # ── RE ──
     def test_RE_cap_reduces_growth(self):
-        self._assert_cap_reduces_growth(self.sa.delta_RE, age=22, val=50.0, cap_close=60)
+        self._assert_cap_reduces_growth(
+            self.sa.delta_RE, age=22, val=50.0, cap_close=60
+        )
 
     def test_RE_decline_ignores_cap(self):
         self._assert_decline_ignores_cap(self.sa.delta_RE, age=35, val=50.0, cap=55)
@@ -473,32 +501,35 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 #  CL special case
 # ─────────────────────────────────────────────
 
+
 class TestDeltaCL(unittest.TestCase):
 
     def test_vet_bonus_applied_at_and_after_vet_age(self):
         """Players 28+ should trend slightly positive on average."""
         mean_vet = _mean_delta(
-            lambda a, v, r, **kw: SkillAging.delta_CL(a, v, r),
-            age=30, val=50.0, n=5000
+            lambda a, v, r, **kw: SkillAging.delta_CL(a, v, r), age=30, val=50.0, n=5000
         )
         self.assertGreater(mean_vet, 0.0)
 
     def test_no_vet_bonus_before_vet_age(self):
         """Young players are a pure random walk — mean near zero."""
         mean_young = _mean_delta(
-            lambda a, v, r, **kw: SkillAging.delta_CL(a, v, r),
-            age=24, val=50.0, n=5000
+            lambda a, v, r, **kw: SkillAging.delta_CL(a, v, r), age=24, val=50.0, n=5000
         )
         self.assertAlmostEqual(mean_young, 0.0, delta=0.15)
 
     def test_playoff_boost_adds_to_delta(self):
         mean_no_boost = _mean_delta(
             lambda a, v, r, **kw: SkillAging.delta_CL(a, v, r, playoff_boost=0.0),
-            age=25, val=50.0, n=2000
+            age=25,
+            val=50.0,
+            n=2000,
         )
         mean_boosted = _mean_delta(
             lambda a, v, r, **kw: SkillAging.delta_CL(a, v, r, playoff_boost=1.0),
-            age=25, val=50.0, n=2000
+            age=25,
+            val=50.0,
+            n=2000,
         )
         self.assertAlmostEqual(mean_boosted - mean_no_boost, 1.0, delta=0.15)
 
@@ -506,6 +537,7 @@ class TestDeltaCL(unittest.TestCase):
 # ─────────────────────────────────────────────
 #  Cross-player cap variance
 # ─────────────────────────────────────────────
+
 
 class TestCapVarianceAcrossPlayers(unittest.TestCase):
     """
@@ -524,8 +556,8 @@ class TestCapVarianceAcrossPlayers(unittest.TestCase):
 
     def test_high_cap_player_develops_further(self):
         ages = list(range(17, 33))
-        low_cap_final  = self._simulate(50.0, cap=58,  ages=ages)
-        high_cap_final = self._simulate(50.0, cap=82,  ages=ages)
+        low_cap_final = self._simulate(50.0, cap=58, ages=ages)
+        high_cap_final = self._simulate(50.0, cap=82, ages=ages)
         self.assertGreater(high_cap_final, low_cap_final)
 
     def test_capped_player_does_not_exceed_cap_on_average(self):
@@ -558,7 +590,7 @@ class TestCapVarianceAcrossPlayers(unittest.TestCase):
             return val
 
         n = 200
-        mean_capped   = sum(run(cap=65, seed=i) for i in range(n)) / n
+        mean_capped = sum(run(cap=65, seed=i) for i in range(n)) / n
         mean_uncapped = sum(run(cap=None, seed=i) for i in range(n)) / n
         self.assertGreater(mean_uncapped, mean_capped)
 

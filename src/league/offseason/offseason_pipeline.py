@@ -95,7 +95,9 @@ class OffseasonPipeline:
 
         for player in players:
             caps = all_caps.get(player.id)  # None for legacy players = no dampening
-            new_skills = player.skills.age_to(player.age + 1, from_age=player.age, rng=rng, caps=caps)
+            new_skills = player.skills.age_to(
+                player.age + 1, from_age=player.age, rng=rng, caps=caps
+            )
             self.player_repo.update_skills(player.id, new_skills)
 
         print(f"  Aged {len(players)} players")

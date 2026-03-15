@@ -349,17 +349,29 @@ class TestShouldBunt:
 
     def test_no_bunt_with_two_outs(self):
         assert not GameStrategy.should_bunt(
-            _make_bases(first=_make_runner()), outs=2, strikes=0, balls=0, rng=ALWAYS_HIT
+            _make_bases(first=_make_runner()),
+            outs=2,
+            strikes=0,
+            balls=0,
+            rng=ALWAYS_HIT,
         )
 
     def test_no_bunt_with_two_strikes(self):
         assert not GameStrategy.should_bunt(
-            _make_bases(first=_make_runner()), outs=0, strikes=2, balls=0, rng=ALWAYS_HIT
+            _make_bases(first=_make_runner()),
+            outs=0,
+            strikes=2,
+            balls=0,
+            rng=ALWAYS_HIT,
         )
 
     def test_no_bunt_with_three_balls(self):
         assert not GameStrategy.should_bunt(
-            _make_bases(first=_make_runner()), outs=0, strikes=0, balls=3, rng=ALWAYS_HIT
+            _make_bases(first=_make_runner()),
+            outs=0,
+            strikes=0,
+            balls=3,
+            rng=ALWAYS_HIT,
         )
 
     def test_no_bunt_with_empty_bases(self):

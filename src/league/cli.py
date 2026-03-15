@@ -51,8 +51,9 @@ def get_args():
         action="store_true",
         help="Regenerate schedule if it exists",
     )
-    parser.add_argument("--seed", "-s", type=int, help="Random seed for reproducibility")
-
+    parser.add_argument(
+        "--seed", "-s", type=int, help="Random seed for reproducibility"
+    )
 
     args = parser.parse_args()
     return args
