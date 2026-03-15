@@ -78,7 +78,7 @@ def main():
     missing = find_missing_team_files(manifest)
     year = manifest.get("season_year", 2028)
     if missing and args.create:
-        create_team_files(missing, year, conn)
+        create_team_files(missing, year)
     elif missing:
         for miss in missing:
             print(f"The csv file for {miss} is missing.")
