@@ -279,26 +279,6 @@ if __name__ == "__main__":
         print_career_table(career)
         print_career_arcs(career)
 
-    # # ── Save average-coaching CSV ────────────────────────────────────────
-    # avg_career = age_player_career(
-    #     name="SIM PLAYER",
-    #     start_age=17,
-    #     seasons=20,
-    #     start_skill=50,
-    #     coaching=1.0,
-    #     position="sp",
-    #     throws="R",
-    #     bats="R",
-    #     player_id="sim_avg_001",
-    #     seed=42,
-    # )
-
-    # csv_out = rows_to_csv_string(avg_career)
-    # path = "player_career_sim.csv"
-    # with open(path, "w") as f:
-    #     f.write(csv_out)
-    # print(f"\nCSV saved → {path}")
-
     start_configs = [
         ("ELITE PLAYER", 80, 42),
         ("ABOVE AVG PLAYER", 65, 42),
