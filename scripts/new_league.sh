@@ -1,5 +1,8 @@
 #!/bin/sh
 
+set -e
+set -o pipefail
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ── Parse flags ────────────────────────────────────────────────
