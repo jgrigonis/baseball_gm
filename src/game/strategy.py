@@ -139,6 +139,7 @@ class GameStrategy:
             game.bases,
             game.inning.outs,
             game.count.strikes,
+            game.count.balls,
             game.current_batter.player.skills["bunting"],
             game.current_batter.player.skills["power"],
             game.score.differential,
@@ -347,6 +348,7 @@ class GameStrategy:
         bases: Bases,
         outs: int,
         strikes: int,
+        balls: int,
         batter_bunting_skill: int = 50,
         batter_power: int = 50,
         score_differential: int = 0,
@@ -368,8 +370,8 @@ class GameStrategy:
         # Won't bunt with 2 outs (no sac bunt value)
         if outs >= 2:
             return False
-        # Won't bunt with 2 strikes, risk too great
-        if strikes >= 2:
+        # Won't bunt with 2 strikes or 3 balls, risk too great
+        if strikes >= 2 or balls >= 3:
             return False
 
         # no sac bunt without runners

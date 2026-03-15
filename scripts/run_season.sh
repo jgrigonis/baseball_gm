@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # First arg is year (default 2025), rest are flags
@@ -10,7 +12,7 @@ shift 2>/dev/null  # shift off the year arg if present, ignore error if no args
 GAME_LOGS_FLAG=""
 for arg in "$@"; do
     if [ "$arg" = "--game_logs" ]; then
-        GAME_LOGS_FLAG="--game_logs"
+        GAME_LOGS_FLAG="--logs"
     fi
 done
 

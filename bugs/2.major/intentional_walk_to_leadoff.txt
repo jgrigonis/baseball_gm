@@ -1,0 +1,35 @@
+This doesn't seem very realistic
+
+[INFO] game: 🏏 Batting: JEFFERY SHELTON
+[INFO] game: ⚾ Pitching: TOMMY GARTLAND
+[INFO] game: ⚾ Pitching: TOMMY GARTLAND (43P, good)
+[INFO] game: ⚾ Top of 4
+[INFO] game: Ball 1
+[INFO] game: JEFFERY SHELTON was issued an intentional walk.
+[INFO] game: Man on first
+
+Name                           Age PS T B CL SP PO EY CT BR BU CA IF OF AR AC ST RE GB KK  
+JEFFERY SHELTON                 17 of R R 54 49 97 54 48 51 49 35 53 51 56 11  9 14 12 11  
+
+He is a 97 power hitter...
+
+Name                           SP RP  P  C 1B 2B 3B SS LF CF RF   LO CH PH SR OO OP
+JEFFERY SHELTON                16 22 18 41 53 53 54 53 52 52 52   51 51 78 50 64 62
+
+
+Yes, MLB teams occasionally intentionally walk elite power hitters with no runners on 
+base and no outs. While rare, this strategy is employed to avoid a high-probability 
+home run or extra-base hit, preferring to take their chances with the following 
+batter (the "on-deck" hitter), especially in high-leverage situations. 
+
+
+Rationale: The goal is to bypass a dangerous hitter (e.g., Shohei Ohtani or 
+Barry Bonds) and start with a fresh matchup against a less intimidating batter,
+even though it puts a runner on base.
+
+Context: This is more common in late-inning, close-game scenarios, or when an 
+elite hitter is facing a pitcher they have historically dominated.
+
+Significance: While generally avoided early in games due to the risk of creating a 
+scoring opportunity, it is an accepted, albeit debated, defensive strategy to 
+minimize damage.

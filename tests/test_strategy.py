@@ -349,17 +349,22 @@ class TestShouldBunt:
 
     def test_no_bunt_with_two_outs(self):
         assert not GameStrategy.should_bunt(
-            _make_bases(first=_make_runner()), outs=2, strikes=0, rng=ALWAYS_HIT
+            _make_bases(first=_make_runner()), outs=2, strikes=0, balls=0, rng=ALWAYS_HIT
         )
 
     def test_no_bunt_with_two_strikes(self):
         assert not GameStrategy.should_bunt(
-            _make_bases(first=_make_runner()), outs=0, strikes=2, rng=ALWAYS_HIT
+            _make_bases(first=_make_runner()), outs=0, strikes=2, balls=0, rng=ALWAYS_HIT
+        )
+
+    def test_no_bunt_with_three_balls(self):
+        assert not GameStrategy.should_bunt(
+            _make_bases(first=_make_runner()), outs=0, strikes=0, balls=3, rng=ALWAYS_HIT
         )
 
     def test_no_bunt_with_empty_bases(self):
         assert not GameStrategy.should_bunt(
-            _make_bases(), outs=0, strikes=0, rng=ALWAYS_HIT
+            _make_bases(), outs=0, strikes=0, balls=0, rng=ALWAYS_HIT
         )
 
     def test_bunt_fires_runner_on_first_good_conditions(self):
@@ -368,6 +373,7 @@ class TestShouldBunt:
             bases,
             outs=0,
             strikes=0,
+            balls=0,
             batter_bunting_skill=80,
             batter_power=30,
             score_differential=0,
@@ -384,6 +390,7 @@ class TestShouldBunt:
             bases,
             outs=0,
             strikes=0,
+            balls=0,
             batter_bunting_skill=30,
             batter_power=90,
             score_differential=5,
@@ -398,6 +405,7 @@ class TestShouldBunt:
             bases,
             outs=0,
             strikes=0,
+            balls=0,
             batter_bunting_skill=70,
             batter_power=40,
             score_differential=0,

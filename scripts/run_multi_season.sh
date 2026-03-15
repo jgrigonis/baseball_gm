@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --game_logs)
-            GAME_LOGS_FLAG="--game_logs"
+            GAME_LOGS_FLAG="--logs"
             shift
             ;;
         --logs)

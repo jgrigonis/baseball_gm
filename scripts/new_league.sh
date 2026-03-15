@@ -14,7 +14,7 @@ LOGS_FLAG=""
 for arg in "$@"; do
     case "$arg" in
         -y|--yes)       YES=1 ;;
-        --game_logs)    GAME_LOGS_FLAG="--game_logs" ;;
+        --game_logs)    GAME_LOGS_FLAG="--logs" ;;
         --logs)         LOGS_FLAG="--logs" ;;
         [0-9]*)         YEAR="$arg" ;;
     esac
