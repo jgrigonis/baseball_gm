@@ -628,9 +628,9 @@ class GameStrategy:
         # Base probabilities by fatigue level
         base_probs = {
             FatigueLevel.FRESH: 0.01,  # Almost never pull a fresh pitcher
-            FatigueLevel.GOOD: 0.05,  # Rarely
-            FatigueLevel.TIRED: 0.25,  # Sometimes
-            FatigueLevel.EXHAUSTED: 0.60,  # Often
+            FatigueLevel.GOOD: 0.03,  # Rarely
+            FatigueLevel.TIRED: 0.15,  # Sometimes
+            FatigueLevel.EXHAUSTED: 0.40,  # Often
             FatigueLevel.ZERO: 0.95,  # Almost always
         }
 
@@ -659,15 +659,15 @@ class GameStrategy:
             elif outs >= 6 or stats.runs >= 2:
                 return min(1.0, prob + 0.3)  # getting long for a closer
             elif outs >= 3:  # done his job, but manager may want him back
-                return min(0.6, max(0.15, prob))  # at least some chance of pulling him
+                return min(0.25, max(0.12, prob))  # at least some chance of pulling him
             return 0.0
 
         else:  # RELIEVER / SETUP / LONG / SHORT
             outs = stats.outs
             if outs >= 6 or stats.runs >= 2:
-                return min(1, prob + 0.6)
+                return min(1, prob + 0.3)
             elif outs >= 3 or stats.runs >= 1:
-                return min(1.0, prob + 0.3)
+                return min(1.0, prob + 0.1)
             return 0.0
 
         return prob

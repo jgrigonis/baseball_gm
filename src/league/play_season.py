@@ -298,7 +298,8 @@ def play_game(
 
     logger = setup_logger(
         name="game",
-        level=log_level,
+        level=logging.TRACE,
+        # level=log_level,
         console_level=logging.WARNING,
         log_id=log_id,
         log_to_file=log_to_file,
