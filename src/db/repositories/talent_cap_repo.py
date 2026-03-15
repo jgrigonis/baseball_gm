@@ -144,7 +144,7 @@ class TalentCapRepository:
                 chunk,
             ).fetchall()
             for row in rows:
-                result[row["player_id"]] = dict(row)
+                result[row["player_id"]] = {k: v for k, v in dict(row).items() if k != "player_id"}
 
         return result
 

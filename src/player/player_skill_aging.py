@@ -136,7 +136,7 @@ GB_NOISE_HARD = 0.6
 # Controls how early growth slows near the cap.
 # At distance=CAP_BRAKE: growth is 50% of raw.
 # Smaller value = growth slows sooner.
-CAP_BRAKE = 15.0
+CAP_BRAKE = 8.0
 
 
 # ─────────────────────────────────────────────
