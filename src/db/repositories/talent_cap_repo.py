@@ -133,16 +133,20 @@ class TalentCapRepository:
         if not player_ids:
             return {}
 
-        placeholders = ", ".join("?" for _ in player_ids)
-        rows = self.conn.execute(
-            f"""
-            SELECT * FROM player_talent_caps
-            WHERE player_id IN ({placeholders})
-            """,
-            tuple(player_ids),
-        ).fetchall()
+        result = {}
+        chunk_size = 900  # safely under SQLite's 999 limit
 
-        return {row["player_id"]: {sk: row[sk] for sk in _SKILLS} for row in rows}
+        for i in range(0, len(player_ids), chunk_size):
+            chunk = player_ids[i:i + chunk_size]
+            placeholders = ",".join("?" for _ in chunk)
+            rows = self.conn.execute(
+                f"SELECT * FROM player_talent_caps WHERE player_id IN ({placeholders})",
+                chunk,
+            ).fetchall()
+            for row in rows:
+                result[row["player_id"]] = dict(row)
+
+        return result
 
     def exists(self, player_id: str) -> bool:
         """Check whether caps exist for a player."""
