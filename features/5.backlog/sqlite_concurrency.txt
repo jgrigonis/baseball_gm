@@ -1,0 +1,21 @@
+
+Best Practices for Concurrent Access
+If you must use SQLite in a high-concurrency environment, consider these strategies: 
+
+Enable WAL Mode: This is the most effective way to improve mixed read/write performance.
+
+Set a busy_timeout: Configure a timeout value (e.g., PRAGMA busy_timeout=3000; for 
+3 seconds) to prevent immediate errors when the database is locked, allowing the 
+connection to wait and retry the operation.
+
+Minimize Transaction Time: Keep write transactions short and to the point. Batch 
+operations and avoid long-running queries within a transaction.
+
+Use Connection Pooling: Reusing connections can reduce overhead, but the application 
+must manage how these connections are used concurrently.
+
+Serialize Writes at the Application Level: For extremely high-write scenarios, some 
+developers use a message queue or a single dedicated process to handle all writes sequentially. 
+
+Ultimately, if an application requires high levels of concurrent writes, a client-server 
+RDBMS like PostgreSQL or MySQL is generally a more suitable choice.
