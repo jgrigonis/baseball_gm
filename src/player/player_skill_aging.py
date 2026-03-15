@@ -76,8 +76,8 @@ BR_NOISES = [0.4, 0.3]
 BR_COACHED = [True, True]
 
 # ── Pitching Accuracy (AC) — asymptotes toward cap ──
-AC_BASE_RATE = 0.55
-AC_NOISE = 0.3
+AC_BASE_RATE = 0.8
+AC_NOISE = 0.6
 
 # ── Pitching Stamina (ST) — rises early, declines from 30+ ──
 ST_PHASE_BREAKS = [26, 31, 34]
