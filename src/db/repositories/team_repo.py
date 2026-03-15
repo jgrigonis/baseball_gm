@@ -172,6 +172,7 @@ class TeamRepository:
             """
             SELECT 
                 p.id, p.first_name, p.last_name, p.bats, p.throws, p.position,
+                p.age,
                 ps.clutch, ps.speed, ps.power, ps.eye, ps.contact,
                 ps.base_running, ps.bunting, ps.catching, ps.infield, ps.outfield,
                 ps.arm, ps.accuracy, ps.stamina, ps.recovery, ps.ground_balls, ps.strikes
