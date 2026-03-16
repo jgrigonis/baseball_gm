@@ -46,11 +46,13 @@ def verify_schema(conn):
     Raises:
         RuntimeError: If critical tables are missing
     """
-    cursor = conn.execute("""
+    cursor = conn.execute(
+        """
         SELECT name FROM sqlite_master 
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
         ORDER BY name
-        """)
+        """
+    )
     tables = {row[0] for row in cursor.fetchall()}
 
     # Critical tables that must exist

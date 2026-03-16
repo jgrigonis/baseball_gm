@@ -1,0 +1,56 @@
+Sun March 15, 7pm
+
+Leaders:
+
+K/AB ↑↑ every single year (0.253-0.266 vs 0.125-0.150) — strikeout rate 
+is still double the expected range. The KK coefficient reduction helped 
+but didn't fully solve it
+
+Walk leader ↑↑ consistently (91-129 vs 70-90) — there are always outlier 
+pitchers walking far too many batters. The top of the distribution is 
+broken even if the middle is fine
+
+IP leader ↑↑ every year (250-264 vs 180-230) — no fatigue or innings 
+limit system, elite pitchers just keep throwing
+
+
+New observation:
+SB leader flipped from ↑↑ (1.03-1.10/g) to ↓✓ (23-35 leaders vs 25-73 
+expected). The stolen base fix may have slightly overcorrected — or 
+the lower SB attempt rate just produces less variance at the top.
+
+The K/AB and walk leader problems are almost certainly the same root 
+cause — a small number of elite pitchers with very high KK and low AC 
+are dominating the extremes of both distributions. One pitcher can lead 
+in both strikeouts (257 in 2035) AND walks (129 in 2035) — that's a guy 
+who misses a lot of bats but also can't find the zone. The IP leader 
+problem compounds this: that same pitcher is throwing 263 innings. Fix 
+the IP limiter first and the walk/strikeout outliers will naturally compress.
+
+Totals:
+
+AVG is extremely close — it's only 0.003-0.005 below the floor of 0.243. 
+One season (2033) actually hits ✓ at 0.244. This is likely the in-play 
+conversion issue we identified — singles coefficient slightly too weak. 
+A small nudge to 3 * (contact - 50) → 3.5 * (contact - 50) in 
+InPlayModifiers would probably close this gap.
+
+Walks are persistently just over the ceiling — 3.41-3.53 vs ceiling of 
+3.42. The accuracy coefficient is slightly over-generating balls. The 
+walk leader outliers (91-129 BB) in the leader report are a separate 
+elite-pitcher problem, but the population-wide walk rate just barely 
+above ceiling suggests AC's ball suppression (-30 * (accuracy - 50)) 
+might need a very small increase.
+
+Assists consistently low is interesting and unchanged across all three 
+sims. This is a fielding system issue — ground balls aren't generating 
+enough assist opportunities. Either the GB rate in the engine is too low, 
+or the fielding resolution isn't converting ground balls into assist 
+chances at the right rate. Worth looking at separately.
+
+HBP persistently low — 0.26-0.29 vs floor of 0.30. The HBP coefficient 
+in the pitch modifier (-(accuracy - 50)) is probably too aggressive at 
+suppressing hit-by-pitches for accurate pitchers.
+
+Overall this is a much healthier sim than either previous version. The 
+remaining issues are small calibration tweaks rather than structural problems.

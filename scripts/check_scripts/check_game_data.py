@@ -35,19 +35,23 @@ row = conn.execute(
 ).fetchone()
 print(f"Season for that game: {row[0] if row else 'NOT FOUND'}")
 
-rows = conn.execute("""
+rows = conn.execute(
+    """
     SELECT season_id, COUNT(*) as total, SUM(completed) as completed
     FROM games
     GROUP BY season_id
-""").fetchall()
+"""
+).fetchall()
 for r in rows:
     print(f"{r['season_id']}: {r['completed']}/{r['total']} completed")
 
-rows = conn.execute("""
+rows = conn.execute(
+    """
     SELECT g.season_id, COUNT(*) as stat_rows
     FROM player_game_stats pgs
     JOIN games g ON pgs.game_id = g.id
     GROUP BY g.season_id
-""").fetchall()
+"""
+).fetchall()
 for r in rows:
     print(f"{r['season_id']}: {r['stat_rows']} stat rows")

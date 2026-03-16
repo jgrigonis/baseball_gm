@@ -279,7 +279,7 @@ class GameStrategy:
             return False
 
         # Adjust for runner speed
-        speed_factor = runner_speed / 50  # 1.0 at average
+        speed_factor = (runner_speed + base_running_skill) / 100  # 1.0 at average
         prob *= speed_factor
 
         # # Adjust for pitcher delivery

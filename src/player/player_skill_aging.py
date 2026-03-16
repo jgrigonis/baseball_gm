@@ -48,8 +48,8 @@ AR_RATES = [1.6, 0.2, -1.0, -1.8]
 AR_NOISES = [0.5, 0.4, 0.5, 0.6]
 
 # ── Strikeout (KK) — raw talent, can't be coached ──
-KK_PHASE_BREAKS = [24, 30, 34]     # was [24, 28, 32]
-KK_RATES        = [1.8, 0.9, -0.4, -1.8]  # was [1.8, 0.4, -0.6, -2.0]
+KK_PHASE_BREAKS = [24, 30, 34]  # was [24, 28, 32]
+KK_RATES = [1.8, 0.9, -0.4, -1.8]  # was [1.8, 0.4, -0.6, -2.0]
 KK_NOISES = [0.6, 0.5, 0.5, 0.7]
 
 # ── Clutch (CL) — cognitive random walk, vet upward drift ──

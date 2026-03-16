@@ -137,14 +137,16 @@ class TalentCapRepository:
         chunk_size = 900  # safely under SQLite's 999 limit
 
         for i in range(0, len(player_ids), chunk_size):
-            chunk = player_ids[i:i + chunk_size]
+            chunk = player_ids[i : i + chunk_size]
             placeholders = ",".join("?" for _ in chunk)
             rows = self.conn.execute(
                 f"SELECT * FROM player_talent_caps WHERE player_id IN ({placeholders})",
                 chunk,
             ).fetchall()
             for row in rows:
-                result[row["player_id"]] = {k: v for k, v in dict(row).items() if k != "player_id"}
+                result[row["player_id"]] = {
+                    k: v for k, v in dict(row).items() if k != "player_id"
+                }
 
         return result
 

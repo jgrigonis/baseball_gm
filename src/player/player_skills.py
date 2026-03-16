@@ -27,9 +27,11 @@ from src.types.rows import CsvRow, DbRow
 
 # Constants for skill generation
 DEFAULT_SKILL_MEAN = 50
-DEFAULT_SIGMA_DIVISOR = 3.5  # Tighter generation — ±3.5σ within range (99.95% of values)
-                               # Increase to cluster skills closer to position means;
-                               # decrease to produce more extreme outliers.
+DEFAULT_SIGMA_DIVISOR = (
+    3.5  # Tighter generation — ±3.5σ within range (99.95% of values)
+)
+# Increase to cluster skills closer to position means;
+# decrease to produce more extreme outliers.
 START_AGE = 17  # All players are born as 17 year olds
 
 

@@ -1,3 +1,4 @@
+# scripts/player_lookup.py
 """
 Look up a player by name across team CSV files, display their skills,
 ratings, and season stats from the database.
