@@ -25,6 +25,10 @@ while [[ $# -gt 0 ]]; do
             END_YEAR="$2"
             shift 2
             ;;
+        --seed)
+            SEED_FLAG="--seed $2"
+            shift 2
+            ;;
         --game_logs)
             GAME_LOGS_FLAG="--logs"
             shift
@@ -53,7 +57,7 @@ echo "════════════════════════�
 echo "  Initializing new league (2025)"
 echo "════════════════════════════════════════"
 
-"${SCRIPT_DIR}/new_league.sh" -y ${GAME_LOGS_FLAG} ${LOGS_FLAG}
+"${SCRIPT_DIR}/new_league.sh" -y ${SEED_FLAG} ${GAME_LOGS_FLAG} ${LOGS_FLAG}
 
 # ── Run seasons ───────────────────────────────────────────────
 YEAR=$START_YEAR
@@ -64,7 +68,7 @@ while [[ "$YEAR" -le "$END_YEAR" ]]; do
     echo "  Running season: $YEAR"
     echo "════════════════════════════════════════"
 
-    "${SCRIPT_DIR}/run_season.sh" "$YEAR" ${GAME_LOGS_FLAG} ${LOGS_FLAG}
+    "${SCRIPT_DIR}/run_season.sh" "$YEAR" ${SEED_FLAG} ${GAME_LOGS_FLAG} ${LOGS_FLAG}
 
     ((YEAR++))
 done

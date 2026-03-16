@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# scripts/new_league.sh
 
 set -e
 set -o pipefail
@@ -10,18 +11,22 @@ YES=0
 YEAR=2025
 GAME_LOGS_FLAG=""
 LOGS_FLAG=""
+SEED_FLAG=""
+CLI_SEED_FLAG=""
 
-for arg in "$@"; do
-    case "$arg" in
-        -y|--yes)       YES=1 ;;
-        --game_logs)    GAME_LOGS_FLAG="--logs" ;;
-        --logs)         LOGS_FLAG="--logs" ;;
-        [0-9]*)         YEAR="$arg" ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -y|--yes)       YES=1 ; shift ;;
+        --game_logs)    GAME_LOGS_FLAG="--logs" ; shift ;;
+        --logs)         LOGS_FLAG="--logs" ; shift ;;
+        --seed)         SEED_FLAG="--seed $2" ; CLI_SEED_FLAG="--seed $2" ; shift 2 ;;
+        [0-9]*)         YEAR="$1" ; shift ;;
+        *)              echo "❌ Unknown argument: $1" ; exit 1 ;;
     esac
 done
 
 # ── Confirmation prompt (skipped with -y) ─────────────────────
-if [ "$YES" -eq 0 ]; then
+if [[ "$YES" -eq 0 ]]; then
     printf "⚠️  Are you sure? This will destroy db and team files. [y/N] "
     read confirm
     case "$confirm" in
@@ -35,11 +40,11 @@ rm -f leagues/league.db
 
 "${SCRIPT_DIR}/delete_team_files.sh"
 
-SEASON_ID=$(python src/league/cli.py -m world_league-${YEAR}.json -c | tee /dev/tty | grep "Season created:" | awk '{print $3}')
+SEASON_ID=$(python src/league/cli.py -m world_league-${YEAR}.json -c ${CLI_SEED_FLAG} | tee /dev/tty | grep "Season created:" | awk '{print $3}')
 
 "${SCRIPT_DIR}/clear_logs.sh"
 
-python src/league/play_season.py -i ${SEASON_ID} ${GAME_LOGS_FLAG}
+python src/league/play_season.py -i ${SEASON_ID} ${SEED_FLAG} ${GAME_LOGS_FLAG}
 
 python src/league/statistics/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG}
 
