@@ -111,9 +111,10 @@ class OffseasonPipeline:
 
         for player in players:
             current_status = self.player_status_repo.get_status(player.id)
-            is_prospect = current_status in ("prospect", "unassigned")
+            is_unrostered = current_status in ("prospect", "unassigned", "free_agent")
+            # is_prospect = current_status in ("prospect", "unassigned")
 
-            if self._should_retire(player.age, player.skills, is_prospect, rng):
+            if self._should_retire(player.age, player.skills, is_unrostered, rng):
                 self.player_status_repo.set_status(player.id, "free_agent")
                 # Remove from team roster
                 row = self.conn.execute(
@@ -244,14 +245,16 @@ class OffseasonPipeline:
         trimmer.run(season_id)
 
     @staticmethod
-    def _should_retire(age: int, skills, is_prospect: bool, rng: random.Random) -> bool:
-        if is_prospect:
-            if age < 22:
+    def _should_retire(age: int, skills, is_unrostered: bool, rng: random.Random) -> bool:
+        if is_unrostered:
+            if age < 18:
                 return False
-            probability = min(0.95, (age - 22) * 0.20)
+            probability = min(0.95, (age - 18) * 0.2)
         else:
             if age < 30:
                 return False
+
+            
 
             # Use role-appropriate skills for decline check
             # Pitchers: AC, ST, RE, GB, KK, CL
@@ -264,42 +267,30 @@ class OffseasonPipeline:
             is_pitcher = skill_dict.get("stamina", 0) > 40 or skill_dict.get("strikes", 0) > 40
 
             if is_pitcher:
+                # Only physically declining skills — AC never declines so exclude it
+                peak = max(skill_dict.get(k, 0) for k in ["strikes", "stamina", "recovery", "ground_balls"])
+                if peak >= 75:
+                    return False
+            else:
+                # Only physically declining skills — CT/EY decline too late to be useful gates
+                peak = max(skill_dict.get(k, 0) for k in ["power", "speed", "arm"])
+                if peak >= 72:
+                    return False
+
+            if is_pitcher:
                 relevant = {k: v for k, v in skill_dict.items() if k in pitching_skills}
             else:
                 relevant = {k: v for k, v in skill_dict.items() if k in batting_skills}
 
             skill_avg = sum(relevant.values()) / len(relevant)
-            base = (age - 30) * 0.04
+            if age < 35:
+                base = (age - 30) * 0.03
+            else:
+                base = 0.15 + (age - 35) * 0.09  # steeper after 35
             decline_factor = max(0.0, (50 - skill_avg) / 100)
             probability = min(0.95, base + decline_factor)
 
         return rng.random() < probability
-    # @staticmethod
-    # def _should_retire(age: int, skills, is_prospect: bool, rng: random.Random) -> bool:
-    #     """
-    #     Decide if a player retires this offseason.
-
-    #     Rostered players:
-    #       - No chance before 30
-    #       - 4% per year over 30, accelerated by skill decline below 50 avg
-
-    #     Prospects/unassigned:
-    #       - No chance before 22
-    #       - 20% per year over 22 — ages out quickly if never drafted
-    #     """
-    #     if is_prospect:
-    #         if age < 22:
-    #             return False
-    #         probability = min(0.95, (age - 22) * 0.20)
-    #     else:
-    #         if age < 30:
-    #             return False
-    #         skill_avg = sum(skills.as_dict().values()) / len(skills.as_dict())
-    #         base = (age - 30) * 0.04
-    #         decline_factor = max(0.0, (50 - skill_avg) / 100)
-    #         probability = min(0.95, base + decline_factor)
-
-    #     return rng.random() < probability
 
 
 def get_args():
