@@ -52,8 +52,8 @@ PITCH_COUNT_MODIFIERS = {
         "in_play": 0.77,
     },
     (3, 0): {
-        "ball": 0.89,
-        "strike": 2.56,
+        "ball": 0.82,
+        "strike": 2.61,
         "foul": 0.08,
         "home_run": 0.21,
         "in_play": 0.2,
