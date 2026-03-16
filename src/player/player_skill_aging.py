@@ -48,8 +48,8 @@ AR_RATES = [1.6, 0.2, -1.0, -1.8]
 AR_NOISES = [0.5, 0.4, 0.5, 0.6]
 
 # ── Strikeout (KK) — raw talent, can't be coached ──
-KK_PHASE_BREAKS = [24, 28, 32]
-KK_RATES = [1.8, 0.4, -0.6, -2.0]
+KK_PHASE_BREAKS = [24, 30, 34]     # was [24, 28, 32]
+KK_RATES        = [1.8, 0.9, -0.4, -1.8]  # was [1.8, 0.4, -0.6, -2.0]
 KK_NOISES = [0.6, 0.5, 0.5, 0.7]
 
 # ── Clutch (CL) — cognitive random walk, vet upward drift ──
@@ -59,19 +59,19 @@ CL_NOISE = 1.6
 
 # ── Eye (EY) — plate discipline, coaching-sensitive ──
 EY_PHASE_BREAKS = [27, 33, 36]
-EY_RATES = [1.3, 0.4, -0.4, -1.1]
+EY_RATES = [2.0, 0.6, -0.4, -1.1]
 EY_NOISES = [0.5, 0.4, 0.4, 0.5]
 EY_COACHED = [True, True, False, False]
 
 # ── Contact (CT) — trainable; very slow decline after mid-30s ──
 CT_PHASE_BREAKS = [27, 34, 37]
-CT_RATES = [1.2, 0.5, -0.3, -0.9]
+CT_RATES = [2.0, 0.8, -0.3, -0.9]
 CT_NOISES = [0.5, 0.4, 0.4, 0.4]
 CT_COACHED = [True, True, False, False]
 
 # ── Base Running (BR) — decision-making, never declines ──
 BR_PHASE_BREAKS = [34]
-BR_RATES = [0.9, 0.1]
+BR_RATES = [1.8, 0.3]
 BR_NOISES = [0.4, 0.3]
 BR_COACHED = [True, True]
 
@@ -82,7 +82,7 @@ AC_NOISE = 0.6
 # ── Pitching Stamina (ST) — rises early, declines from 30+ ──
 ST_PHASE_BREAKS = [26, 31, 34]
 ST_RATES = [0.7, 0.3, -1.2, -2.0]
-ST_NOISES = [1.5, 1.4, 1.5, 1.7]
+ST_NOISES = [0.9, 0.8, 1.2, 1.5]  # was [1.5, 1.4, 1.5, 1.7]
 ST_COACHED = [True, True, False, False]
 
 # ── Pitching Recovery (RE) — most coaching-sensitive ──
@@ -105,7 +105,7 @@ CA_DECLINE_NOISE = 1.5
 # ── Infield (IF) — technique + range; range declines after 30 ──
 IF_DECLINE_AGE_LIGHT = 29
 IF_DECLINE_AGE_HARD = 33
-IF_RATE_GROWTH = 0.5
+IF_RATE_GROWTH = 1.2
 IF_NOISE_GROWTH = 0.6
 IF_RATE_LIGHT = -0.3
 IF_NOISE_LIGHT = 0.5
@@ -115,7 +115,7 @@ IF_NOISE_HARD = 0.6
 # ── Outfield (OF) — range-dependent, declines earlier than infield ──
 OF_DECLINE_AGE_LIGHT = 29
 OF_DECLINE_AGE_HARD = 32
-OF_RATE_GROWTH = 0.5
+OF_RATE_GROWTH = 1.2
 OF_NOISE_GROWTH = 0.5
 OF_RATE_LIGHT = -0.4
 OF_NOISE_LIGHT = 0.6
@@ -266,13 +266,11 @@ class SkillAging:
             age, val, rng, KK_PHASE_BREAKS, KK_RATES, KK_NOISES, cap=cap
         )
 
-    @staticmethod
-    def delta_CL(
-        age: int, val: float, rng: random.Random, playoff_boost: float = 0.0
-    ) -> float:
-        """Clutch — cognitive random walk with vet upward drift."""
+    # CL — add cap dampening
+    def delta_CL(age, val, rng, cap=None, playoff_boost=0.0) -> float:
         vet_bonus = CL_VET_BONUS if age >= CL_VET_AGE else 0.0
-        return vet_bonus + playoff_boost + noise(rng, CL_NOISE)
+        raw = vet_bonus + playoff_boost + noise(rng, CL_NOISE)
+        return _cap_dampen(raw, val, cap)
 
     def delta_EY(
         self,

@@ -27,7 +27,9 @@ from src.types.rows import CsvRow, DbRow
 
 # Constants for skill generation
 DEFAULT_SKILL_MEAN = 50
-DEFAULT_SIGMA_DIVISOR = 3.0  # For 99.7% of values within range (±3σ)
+DEFAULT_SIGMA_DIVISOR = 3.5  # Tighter generation — ±3.5σ within range (99.95% of values)
+                               # Increase to cluster skills closer to position means;
+                               # decrease to produce more extreme outliers.
 START_AGE = 17  # All players are born as 17 year olds
 
 
@@ -509,7 +511,7 @@ class PlayerSkills:
             s["power"] += SA.delta_PO(current_age, s["power"], rng, cap("power"))
             s["arm"] += SA.delta_AR(current_age, s["arm"], rng, cap("arm"))
             s["strikes"] += SA.delta_KK(current_age, s["strikes"], rng, cap("strikes"))
-            s["clutch"] += SA.delta_CL(current_age, s["clutch"], rng)
+            s["clutch"] += SA.delta_CL(current_age, s["clutch"], rng, cap("clutch"))
             s["eye"] += SA.delta_EY(current_age, s["eye"], rng, coaching, cap("eye"))
             s["contact"] += SA.delta_CT(
                 current_age, s["contact"], rng, coaching, cap("contact")

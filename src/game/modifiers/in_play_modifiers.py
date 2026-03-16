@@ -104,7 +104,8 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("triple", int(0.2 * (power - 50)))
 
         contact = batter.skills["contact"]
-        resolver.in_play_outcome.add("single", 3 * (contact - 50))
+        resolver.in_play_outcome.add("single", 8 * (contact - 50))
+        resolver.in_play_outcome.add("double", 2 * (contact - 50))
         resolver.in_play_outcome.add("ground_out", (contact - 50))
 
         speed = batter.skills["speed"]
