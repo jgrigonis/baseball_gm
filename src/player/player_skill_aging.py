@@ -39,7 +39,7 @@ SP_NOISES = [1.5, 1.0, 0.8, 0.7, 0.6]
 
 # ── Power (PO) — physical, slow rise then long plateau ──
 PO_PHASE_BREAKS = [21, 29, 33]
-PO_RATES = [0.8, 0.4, -0.4, -1.6]
+PO_RATES = [1.2, 0.8, -0.6, -1.9]
 PO_NOISES = [1.5, 1.0, 0.8, 0.7]
 
 # ── Arm (AR) — physical, peaks mid-20s, declines from 30 ──

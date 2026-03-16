@@ -1,4 +1,5 @@
 # src/league/play_one_game.py
+# This is really now dead code.
 """
 Play a single game and store results.
 """

@@ -256,7 +256,6 @@ def display(totals: dict, season_label: str, logger: logging.Logger = None):
     lines.append(f"  LEAGUE TOTALS — {season_label}")
     lines.append(f"  {g} games played")
     lines.append("=" * WIDTH)
-    log_print("\n".join(lines), logger=logger)
 
     # --- Batting counting ---
     lines.append(_header("BATTING"))

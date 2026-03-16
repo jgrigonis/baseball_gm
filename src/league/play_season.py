@@ -295,6 +295,13 @@ def play_game(
         log_level = logging.WARNING
         log_id = None
         log_to_file = False
+    
+    all_pitcher_ids = [p.id for p in home_team.players + away_team.players]
+    _ps_repo = PitcherStateRepository(conn)
+    pitcher_states = {
+        pid: _ps_repo.get(pid)
+        for pid in all_pitcher_ids
+    }
 
     logger = setup_logger(
         name="game",
@@ -311,6 +318,8 @@ def play_game(
         away_team=away_team,
         rng=rng,
         logger=logger,
+        pitcher_states=pitcher_states,
+        game_date=game_date,
     )
 
     # Pass starter IDs to set_lineup

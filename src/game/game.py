@@ -17,10 +17,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from collections import deque
 from dataclasses import dataclass
+from datetime import date
 import logging
 import random
 
-
+from src.db.repositories.pitcher_state import PitcherState
 from src.game.inning import Inning
 from src.game.count import Count
 from src.game.bases import Bases
@@ -127,6 +128,8 @@ class Game:
         intent_generator: IntentGenerator | None = None,
         resolver: Resolver | None = None,
         pauses: bool = False,
+        pitcher_states: dict[str, "PitcherState"] | None = None,
+        game_date: "date | None" = None,  
     ) -> None:
         """
         Initialize a new game.
@@ -190,6 +193,8 @@ class Game:
         self.lead_changes: list[LeadChange] = []
         self._last_known_leader: str = "tied"  # "home", "away", "tied"
         self.decisions: PitchingDecisions | None = None
+        self.pitcher_states = pitcher_states or {}
+        self.game_date = game_date
 
         # Logging
         self.logger = logger
@@ -814,6 +819,9 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
+                pitcher_states=self.pitcher_states, 
+                game_date=self.game_date,          
+                rng=self.rng,     
             )
             if pitcher:
                 self._close_pitcher_appearance()
@@ -845,6 +853,9 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
+                pitcher_states=self.pitcher_states, 
+                game_date=self.game_date,          
+                rng=self.rng,   
             )
             if pitcher:
                 self._close_pitcher_appearance()

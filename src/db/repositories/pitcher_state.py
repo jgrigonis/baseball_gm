@@ -50,6 +50,9 @@ _DAYS_AT_SKILL_MIN = 5.0  # recovery = 1
 
 MIN_ENERGY_STARTER = 0.75
 
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
 
 def _daily_recovery_rate(recovery_skill: int) -> float:
     """
@@ -84,6 +87,51 @@ def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
         energy += (1.0 - energy) * rate
     return max(0.0, min(1.0, energy))
 
+
+def availability_weight(state: PitcherState, game_date: date) -> float:
+    if state is None or state.last_game_date is None:
+        return 1.0
+
+    days_rest = (game_date - state.last_game_date).days
+    last_pitches = state.last_pitch_count or 0
+
+    # Days needed to recover based on pitch count
+    if last_pitches >= 60:
+        days_needed = 4
+    elif last_pitches >= 30:
+        days_needed = 3
+    elif last_pitches >= 15:
+        days_needed = 2
+    else:
+        days_needed = 1
+
+    if days_rest >= days_needed:
+        return 1.0
+
+    return max(0.05, days_rest / days_needed)
+
+
+# def availability_weight(state: "PitcherState | None", game_date: date) -> float:
+#     """
+#     Selection weight based on days of rest since last appearance.
+
+#     0 days rest : 0.05  — emergency only
+#     1 day rest  : 0.35  — light use
+#     2 days rest : 0.75  — available
+#     3+ days rest: 1.00  — fresh, preferred
+#     No history  : 1.00  — treat as fully rested
+#     """
+#     if state is None or state.last_game_date is None:
+#         return 1.0
+
+#     days_rest = (game_date - state.last_game_date).days
+#     if days_rest <= 0:
+#         return 0.05
+#     if days_rest == 1:
+#         return 0.35
+#     if days_rest == 2:
+#         return 0.75
+#     return 1.0
 
 # ---------------------------------------------------------------------------
 # Data classes

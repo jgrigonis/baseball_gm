@@ -1,0 +1,24 @@
+evaluate_all_years
+
+league_leaders for each season with -i
+
+league_totals for each season with -i
+
+We should trace some player careers:
+
+scripts/career_tracer.py NAME
+
+Pitcher start young 19-22 in 2025
+Pitcher start middle career 26-28 in 2025
+1b 19-22
+1b veteran
+ss 19-22
+ss veteran
+cf 19-22
+cf veteran
+
+HR leader from 2025
+avg leader from 2025
+
+young pitcher in 2035
+

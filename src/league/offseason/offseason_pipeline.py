@@ -245,17 +245,6 @@ class OffseasonPipeline:
 
     @staticmethod
     def _should_retire(age: int, skills, is_prospect: bool, rng: random.Random) -> bool:
-        """
-        Decide if a player retires this offseason.
-
-        Rostered players:
-          - No chance before 30
-          - 4% per year over 30, accelerated by skill decline below 50 avg
-
-        Prospects/unassigned:
-          - No chance before 22
-          - 20% per year over 22 — ages out quickly if never drafted
-        """
         if is_prospect:
             if age < 22:
                 return False
@@ -263,12 +252,54 @@ class OffseasonPipeline:
         else:
             if age < 30:
                 return False
-            skill_avg = sum(skills.as_dict().values()) / len(skills.as_dict())
+
+            # Use role-appropriate skills for decline check
+            # Pitchers: AC, ST, RE, GB, KK, CL
+            # Position players: CT, PO, EY, SP, BR, AR, OF, IF, CA, CL
+            pitching_skills = ["accuracy", "stamina", "recovery", "ground_balls", "strikes"]
+            batting_skills = ["contact", "power", "eye", "speed", "base_running",
+                            "arm", "outfield", "infield", "catching"]
+
+            skill_dict = skills.as_dict()
+            is_pitcher = skill_dict.get("stamina", 0) > 40 or skill_dict.get("strikes", 0) > 40
+
+            if is_pitcher:
+                relevant = {k: v for k, v in skill_dict.items() if k in pitching_skills}
+            else:
+                relevant = {k: v for k, v in skill_dict.items() if k in batting_skills}
+
+            skill_avg = sum(relevant.values()) / len(relevant)
             base = (age - 30) * 0.04
             decline_factor = max(0.0, (50 - skill_avg) / 100)
             probability = min(0.95, base + decline_factor)
 
         return rng.random() < probability
+    # @staticmethod
+    # def _should_retire(age: int, skills, is_prospect: bool, rng: random.Random) -> bool:
+    #     """
+    #     Decide if a player retires this offseason.
+
+    #     Rostered players:
+    #       - No chance before 30
+    #       - 4% per year over 30, accelerated by skill decline below 50 avg
+
+    #     Prospects/unassigned:
+    #       - No chance before 22
+    #       - 20% per year over 22 — ages out quickly if never drafted
+    #     """
+    #     if is_prospect:
+    #         if age < 22:
+    #             return False
+    #         probability = min(0.95, (age - 22) * 0.20)
+    #     else:
+    #         if age < 30:
+    #             return False
+    #         skill_avg = sum(skills.as_dict().values()) / len(skills.as_dict())
+    #         base = (age - 30) * 0.04
+    #         decline_factor = max(0.0, (50 - skill_avg) / 100)
+    #         probability = min(0.95, base + decline_factor)
+
+    #     return rng.random() < probability
 
 
 def get_args():

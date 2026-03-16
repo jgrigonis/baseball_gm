@@ -107,6 +107,10 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("single", 8 * (contact - 50))
         resolver.in_play_outcome.add("double", 2 * (contact - 50))
         resolver.in_play_outcome.add("ground_out", (contact - 50))
+        if contact > 75:
+            elite_bonus = (contact - 75) ** 1.6
+            resolver.in_play_outcome.add("single", elite_bonus)
+            resolver.in_play_outcome.add("ground_out", -0.5 * elite_bonus)
 
         speed = batter.skills["speed"]
         resolver.in_play_outcome.add("ground_out", -1 * (speed - 50))
