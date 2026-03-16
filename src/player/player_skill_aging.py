@@ -267,6 +267,7 @@ class SkillAging:
         )
 
     # CL — add cap dampening
+    @staticmethod
     def delta_CL(age, val, rng, cap=None, playoff_boost=0.0) -> float:
         vet_bonus = CL_VET_BONUS if age >= CL_VET_AGE else 0.0
         raw = vet_bonus + playoff_boost + noise(rng, CL_NOISE)
