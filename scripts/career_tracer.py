@@ -22,77 +22,63 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 SKILL_ABBRS = [
-    ("contact", "CT"),
-    ("power", "PO"),
-    ("eye", "EY"),
-    ("speed", "SP"),
-    ("base_running", "BR"),
-    ("bunting", "BU"),
-    ("clutch", "CL"),
-    ("catching", "CA"),
-    ("infield", "IF"),
-    ("outfield", "OF"),
-    ("arm", "AR"),
-    ("accuracy", "AC"),
-    ("stamina", "ST"),
-    ("recovery", "RE"),
-    ("ground_balls", "GB"),
-    ("strikes", "KK"),
+    ("contact",     "CT"),
+    ("power",       "PO"),
+    ("eye",         "EY"),
+    ("speed",       "SP"),
+    ("base_running","BR"),
+    ("bunting",     "BU"),
+    ("clutch",      "CL"),
+    ("catching",    "CA"),
+    ("infield",     "IF"),
+    ("outfield",    "OF"),
+    ("arm",         "AR"),
+    ("accuracy",    "AC"),
+    ("stamina",     "ST"),
+    ("recovery",    "RE"),
+    ("ground_balls","GB"),
+    ("strikes",     "KK"),
 ]
 
 CAP_SKILL_ORDER = [
-    "clutch",
-    "speed",
-    "power",
-    "eye",
-    "contact",
-    "base_running",
-    "bunting",
-    "catching",
-    "infield",
-    "outfield",
-    "arm",
-    "accuracy",
-    "stamina",
-    "recovery",
-    "ground_balls",
-    "strikes",
+    "clutch","speed","power","eye","contact","base_running","bunting",
+    "catching","infield","outfield","arm","accuracy","stamina","recovery",
+    "ground_balls","strikes",
 ]
 
 BATTING_COLS = [
-    ("bat_ab", "AB"),
-    ("bat_hits", "H"),
-    ("bat_doubles", "2B"),
-    ("bat_triples", "3B"),
-    ("bat_home_runs", "HR"),
-    ("bat_rbi", "RBI"),
-    ("bat_runs", "R"),
-    ("bat_walks", "BB"),
-    ("bat_strike_outs", "SO"),
-    ("bat_stolen_bases", "SB"),
-    ("bat_hbp", "HBP"),
-    ("bat_sac_flys", "SF"),
+    ("bat_ab",            "AB"),
+    ("bat_hits",          "H"),
+    ("bat_doubles",       "2B"),
+    ("bat_triples",       "3B"),
+    ("bat_home_runs",     "HR"),
+    ("bat_rbi",           "RBI"),
+    ("bat_runs",          "R"),
+    ("bat_walks",         "BB"),
+    ("bat_strike_outs",   "SO"),
+    ("bat_stolen_bases",  "SB"),
+    ("bat_hbp",           "HBP"),
+    ("bat_sac_flys",      "SF"),
 ]
 
 PITCHING_COLS = [
-    ("pitch_game_started", "GS"),
+    ("pitch_game_started","GS"),
     ("pitch_game_played", "G"),
-    ("pitch_win", "W"),
-    ("pitch_loss", "L"),
-    ("pitch_save", "SV"),
-    ("pitch_outs", "OUTS"),
-    ("pitch_hits", "H"),
-    ("pitch_runs", "R"),
-    ("pitch_walks", "BB"),
+    ("pitch_win",         "W"),
+    ("pitch_loss",        "L"),
+    ("pitch_save",        "SV"),
+    ("pitch_outs",        "OUTS"),
+    ("pitch_hits",        "H"),
+    ("pitch_runs",        "R"),
+    ("pitch_walks",       "BB"),
     ("pitch_strike_outs", "SO"),
-    ("pitch_home_runs", "HR"),
-    ("pitch_count", "PC"),
+    ("pitch_home_runs",   "HR"),
+    ("pitch_count",       "PC"),
 ]
 
 # ---------------------------------------------------------------------------
 # Args
 # ---------------------------------------------------------------------------
-
 
 def parse_args():
     p = argparse.ArgumentParser(description="Full career trace for a player.")
@@ -100,14 +86,12 @@ def parse_args():
     grp.add_argument("name", nargs="?", help="Player name (partial ok)")
     grp.add_argument("--id", dest="player_id", help="Player UUID")
     p.add_argument("--dir", default="team_files", help="Root dir of team CSVs")
-    p.add_argument("--db", default="leagues/league.db", help="SQLite DB path")
+    p.add_argument("--db",  default="leagues/league.db", help="SQLite DB path")
     return p.parse_args()
-
 
 # ---------------------------------------------------------------------------
 # CSV helpers
 # ---------------------------------------------------------------------------
-
 
 def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
     """Find every CSV row for this player ID, across all season subdirs."""
@@ -124,22 +108,18 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
                             season_year = int(part)
                             break
                     team = csv_path.stem  # e.g. "madrid"
-                    appearances.append(
-                        {
-                            **row,
-                            "_season_year": season_year,
-                            "_team": team,
-                            "_csv_path": str(csv_path),
-                        }
-                    )
+                    appearances.append({
+                        **row,
+                        "_season_year": season_year,
+                        "_team": team,
+                        "_csv_path": str(csv_path),
+                    })
     # Sort by season year, unknown last
     appearances.sort(key=lambda r: r["_season_year"] or 9999)
     return appearances
 
 
-def resolve_id_from_name(
-    directory: Path, name_query: str
-) -> tuple[str | None, str | None]:
+def resolve_id_from_name(directory: Path, name_query: str) -> tuple[str | None, str | None]:
     """Find a player ID by partial name match. Returns (player_id, canonical_name)."""
     query = name_query.lower()
     seen = {}  # id -> name
@@ -164,11 +144,9 @@ def resolve_id_from_name(
     idx = int(choice) if choice.isdigit() else 0
     return items[idx]
 
-
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
-
 
 def get_talent_caps(db_path: Path, player_id: str) -> dict | None:
     if not db_path.exists():
@@ -204,8 +182,7 @@ def get_season_stats(db_path: Path, player_id: str, season_id: int) -> dict:
     bat_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in BATTING_COLS)
     pit_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in PITCHING_COLS)
 
-    cur.execute(
-        f"""
+    cur.execute(f"""
         SELECT
             COUNT(DISTINCT pgs.game_id) as games_played,
             {bat_sums},
@@ -213,9 +190,7 @@ def get_season_stats(db_path: Path, player_id: str, season_id: int) -> dict:
         FROM player_game_stats pgs
         JOIN games g ON g.id = pgs.game_id
         WHERE pgs.player_id = ? AND g.season_id = ?
-    """,
-        (player_id, season_id),
-    )
+    """, (player_id, season_id))
 
     row = cur.fetchone()
     conn.close()
@@ -223,14 +198,14 @@ def get_season_stats(db_path: Path, player_id: str, season_id: int) -> dict:
     if not row or (row["games_played"] or 0) == 0:
         return {}
 
-    batting = {label: (row[col] or 0) for col, label in BATTING_COLS}
+    batting  = {label: (row[col] or 0) for col, label in BATTING_COLS}
     pitching = {label: (row[col] or 0) for col, label in PITCHING_COLS}
 
-    ab = batting["AB"] or 1
-    h = batting["H"]
-    bb = batting["BB"]
-    hbp = batting["HBP"]
-    sf = batting["SF"]
+    ab   = batting["AB"] or 1
+    h    = batting["H"]
+    bb   = batting["BB"]
+    hbp  = batting["HBP"]
+    sf   = batting["SF"]
     batting["AVG"] = f"{h/ab:.3f}" if batting["AB"] else ".000"
     denom = ab + bb + hbp + sf
     batting["OBP"] = f"{(h+bb+hbp)/denom:.3f}" if denom else ".000"
@@ -261,17 +236,14 @@ def get_career_stats(db_path: Path, player_id: str) -> dict:
     bat_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in BATTING_COLS)
     pit_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in PITCHING_COLS)
 
-    cur.execute(
-        f"""
+    cur.execute(f"""
         SELECT
             COUNT(DISTINCT pgs.game_id) as games_played,
             {bat_sums},
             {pit_sums}
         FROM player_game_stats pgs
         WHERE pgs.player_id = ?
-    """,
-        (player_id,),
-    )
+    """, (player_id,))
 
     row = cur.fetchone()
     conn.close()
@@ -279,14 +251,14 @@ def get_career_stats(db_path: Path, player_id: str) -> dict:
     if not row or (row["games_played"] or 0) == 0:
         return {}
 
-    batting = {label: (row[col] or 0) for col, label in BATTING_COLS}
+    batting  = {label: (row[col] or 0) for col, label in BATTING_COLS}
     pitching = {label: (row[col] or 0) for col, label in PITCHING_COLS}
 
-    ab = batting["AB"] or 1
-    h = batting["H"]
-    bb = batting["BB"]
+    ab  = batting["AB"] or 1
+    h   = batting["H"]
+    bb  = batting["BB"]
     hbp = batting["HBP"]
-    sf = batting["SF"]
+    sf  = batting["SF"]
     batting["AVG"] = f"{h/ab:.3f}" if batting["AB"] else ".000"
     denom = ab + bb + hbp + sf
     batting["OBP"] = f"{(h+bb+hbp)/denom:.3f}" if denom else ".000"
@@ -295,10 +267,10 @@ def get_career_stats(db_path: Path, player_id: str) -> dict:
     ip_f = outs // 3
     ip_r = outs % 3
     pitching["IP"] = f"{ip_f}.{ip_r}"
-    er = pitching["R"]
+    er  = pitching["R"]
     pitching["ERA"] = f"{er*27/outs:.2f}" if outs else "-.--"
-    gs = pitching["GS"]
-    pc = pitching["PC"]
+    gs  = pitching["GS"]
+    pc  = pitching["PC"]
     pitching["AVG PC"] = f"{pc/gs:.1f}" if gs else "—"
 
     return {
@@ -307,29 +279,24 @@ def get_career_stats(db_path: Path, player_id: str) -> dict:
         "pitching": pitching,
     }
 
-
 # ---------------------------------------------------------------------------
 # Ratings
 # ---------------------------------------------------------------------------
-
 
 def compute_ratings(row: dict) -> dict:
     try:
         sys.path.insert(0, str(Path(__file__).parent))
         from src.player.player_record import PlayerRecord
         from src.player.player_in_game import PlayerInGame
-
         record = PlayerRecord.from_csv_row(row)
         pig = PlayerInGame(record)
         return pig.ratings
     except Exception:
         return {}
 
-
 # ---------------------------------------------------------------------------
 # Report builder
 # ---------------------------------------------------------------------------
-
 
 def format_skills_line(row: dict) -> str:
     parts = []
@@ -339,7 +306,7 @@ def format_skills_line(row: dict) -> str:
     # 8 per line
     lines = []
     for i in range(0, len(parts), 8):
-        lines.append("  " + "   ".join(parts[i : i + 8]))
+        lines.append("  " + "   ".join(parts[i:i+8]))
     return "\n".join(lines)
 
 
@@ -348,50 +315,34 @@ def format_caps_line(caps: dict) -> str:
         return "  (no caps found)"
     # Map DB column names to abbrs
     col_to_abbr = {
-        "clutch": "CL",
-        "speed": "SP",
-        "power": "PO",
-        "eye": "EY",
-        "contact": "CT",
-        "base_running": "BR",
-        "bunting": "BU",
-        "catching": "CA",
-        "infield": "IF",
-        "outfield": "OF",
-        "arm": "AR",
-        "accuracy": "AC",
-        "stamina": "ST",
-        "recovery": "RE",
-        "ground_balls": "GB",
-        "strikes": "KK",
+        "clutch":       "CL", "speed":        "SP", "power":        "PO",
+        "eye":          "EY", "contact":       "CT", "base_running": "BR",
+        "bunting":      "BU", "catching":      "CA", "infield":      "IF",
+        "outfield":     "OF", "arm":           "AR", "accuracy":     "AC",
+        "stamina":      "ST", "recovery":      "RE", "ground_balls": "GB",
+        "strikes":      "KK",
     }
     parts = []
     for col in CAP_SKILL_ORDER:
         abbr = col_to_abbr.get(col, col)
-        val = caps.get(col, "—")
+        val  = caps.get(col, "—")
         parts.append(f"{abbr}:{str(val):>3}")
     lines = []
     for i in range(0, len(parts), 8):
-        lines.append("  " + "   ".join(parts[i : i + 8]))
+        lines.append("  " + "   ".join(parts[i:i+8]))
     return "\n".join(lines)
 
 
 def format_ratings_line(ratings: dict) -> str:
     if not ratings:
         return "  (ratings unavailable)"
-    def_pos = ["c", "1b", "2b", "ss", "3b", "lf", "cf", "rf"]
+    def_pos = ["c","1b","2b","ss","3b","lf","cf","rf"]
     line1 = "  " + "   ".join(f"{p.upper():3s}:{ratings.get(p,0):>3}" for p in def_pos)
     line2 = "  SP:{:>3}   RP:{:>3}   P:{:>3}".format(
-        ratings.get("sp", 0), ratings.get("rp", 0), ratings.get("p", 0)
-    )
-    off = [
-        ("lead_off", "LO"),
-        ("contact_hitter", "CON"),
-        ("power_hitter", "PWR"),
-        ("overall_offense", "OFF"),
-        ("overall_player", "OVR"),
-    ]
-    line3 = "  " + "   ".join(f"{a}:{ratings.get(k,0):>3}" for k, a in off)
+        ratings.get("sp",0), ratings.get("rp",0), ratings.get("p",0))
+    off = [("lead_off","LO"),("contact_hitter","CON"),("power_hitter","PWR"),
+           ("overall_offense","OFF"),("overall_player","OVR")]
+    line3 = "  " + "   ".join(f"{a}:{ratings.get(k,0):>3}" for k,a in off)
     return "\n".join([line1, line2, line3])
 
 
@@ -433,7 +384,7 @@ def build_report(
     lines.append(format_caps_line(caps))
 
     # ── Build season_id -> year lookup ──
-    # sid_to_year = {s["id"]: s["year"] for s in seasons_db}
+    sid_to_year = {s["id"]: s["year"] for s in seasons_db}
     year_to_sid = {s["year"]: s["id"] for s in seasons_db}
 
     # ── Per-season blocks ──
@@ -442,17 +393,15 @@ def build_report(
     lines.append("─" * 62)
 
     for row in appearances:
-        year = row.get("_season_year")
-        team = row.get("_team", "?").upper()
-        age = row.get("Age", "?")
-        pos = row.get("PS", "?").upper()
-        bats = row.get("B", "?")
+        year  = row.get("_season_year")
+        team  = row.get("_team", "?").upper()
+        age   = row.get("Age", "?")
+        pos   = row.get("PS", "?").upper()
+        bats  = row.get("B", "?")
         throws = row.get("T", "?")
 
         lines.append(f"\n{'─'*62}")
-        lines.append(
-            f"  {year or '????'} / {team}  |  Age {age}  |  {pos}  |  B:{bats} T:{throws}"
-        )
+        lines.append(f"  {year or '????'} / {team}  |  Age {age}  |  {pos}  |  B:{bats} T:{throws}")
         lines.append("─" * 62)
 
         # Skills
@@ -467,22 +416,10 @@ def build_report(
         # Cap headroom snapshot (if caps available)
         if caps:
             col_to_abbr = {
-                "clutch": "CL",
-                "speed": "SP",
-                "power": "PO",
-                "eye": "EY",
-                "contact": "CT",
-                "base_running": "BR",
-                "bunting": "BU",
-                "catching": "CA",
-                "infield": "IF",
-                "outfield": "OF",
-                "arm": "AR",
-                "accuracy": "AC",
-                "stamina": "ST",
-                "recovery": "RE",
-                "ground_balls": "GB",
-                "strikes": "KK",
+                "clutch":"CL","speed":"SP","power":"PO","eye":"EY",
+                "contact":"CT","base_running":"BR","bunting":"BU","catching":"CA",
+                "infield":"IF","outfield":"OF","arm":"AR","accuracy":"AC",
+                "stamina":"ST","recovery":"RE","ground_balls":"GB","strikes":"KK",
             }
             abbr_to_col = {v: k for k, v in col_to_abbr.items()}
             headroom_parts = []
@@ -495,13 +432,10 @@ def build_report(
                 if cap_val is None or not str(cur_val_str).isdigit():
                     continue
                 cur_val = int(cur_val_str)
-                hdroom = cap_val - cur_val
+                hdroom  = cap_val - cur_val
                 if hdroom != 0:
-                    headroom_parts.append(
-                        f"{abbr}:{cur_val}→{cap_val}(+{hdroom})"
-                        if hdroom > 0
-                        else f"{abbr}:{cur_val}→{cap_val}({hdroom})"
-                    )
+                    headroom_parts.append(f"{abbr}:{cur_val}→{cap_val}(+{hdroom})" if hdroom > 0
+                                          else f"{abbr}:{cur_val}→{cap_val}({hdroom})")
             if headroom_parts:
                 lines.append("CAP HEADROOM (non-zero):")
                 # wrap at ~70 chars
@@ -561,11 +495,10 @@ def build_report(
 # Main
 # ---------------------------------------------------------------------------
 
-
 def main():
     args = parse_args()
     directory = Path(args.dir)
-    db_path = Path(args.db)
+    db_path   = Path(args.db)
 
     if not directory.exists():
         print(f"Directory not found: {directory}")
@@ -599,6 +532,15 @@ def main():
     # Build and print report
     report = build_report(player_id, canonical_name, apps, caps, seasons_db, db_path)
     print(report)
+
+    # Write to temp_files/<first>_<last>.txt
+    name_parts = canonical_name.lower().split()
+    filename = "_".join(name_parts) + ".txt"
+    out_dir = Path("temp_files")
+    out_dir.mkdir(exist_ok=True)
+    out_path = out_dir / filename
+    out_path.write_text(report, encoding="utf-8")
+    print(f"  → saved to {out_path}")
 
 
 if __name__ == "__main__":
