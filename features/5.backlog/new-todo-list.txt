@@ -2,8 +2,6 @@ Todo list
 
 Track blown saves, or save opportunities, holds
 
-Assign earned runs
-
 Pitching rotation may need to change due to trades, injuries
 or other reasons.
 
@@ -11,9 +9,6 @@ More for Human UI:
 Eventually defensive shifts, mound visits
 substitutions, pinch hitting, pinch running
 
-Low prio:
-
-Track complete games, shut outs, no hitters
 
 schema updates:
 retirement flag on players, and free agency 

@@ -44,6 +44,8 @@ SEASON_ID=$(python src/league/cli.py -m world_league-${YEAR}.json -c ${CLI_SEED_
 
 "${SCRIPT_DIR}/clear_logs.sh"
 
+"${SCRIPT_DIR}/clear_temp_files.sh"
+
 python src/league/play_season.py -i ${SEASON_ID} ${SEED_FLAG} ${GAME_LOGS_FLAG}
 
 python src/league/statistics/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG}

@@ -1,0 +1,70 @@
+Player and especially pitcher fatigue remodel
+
+
+# Two independent levers with very different time constants:
+
+@dataclass
+class PitcherFatigue:
+    energy: float = 1.0      # current readiness — fast moving
+    max_energy: float = 1.0  # seasonal ceiling — slow moving
+
+
+# Energy depletion per outing — existing logic, just capped at max_energy on recovery:
+
+def deplete_energy(self, pitch_count: int, stamina: int) -> None:
+    depletion = pitch_count / (stamina + 50)
+    self.energy = max(0.0, self.energy - depletion)
+
+
+# Cap degradation per outing — only fires above a pitch threshold:
+
+# Thresholds for cap damage
+CAP_DAMAGE_THRESHOLD = 30   # no cap damage below this
+CAP_DAMAGE_HEAVY     = 60   # heavier damage above this
+
+# cap threshold could be per player, or set based on recovery/stamina ratings
+
+def degrade_cap(self, pitch_count: int, stamina: int) -> None:
+    if pitch_count < CAP_DAMAGE_THRESHOLD:
+        return  # short outing — cap completely safe
+
+    # Base damage scales with pitches above threshold
+    if pitch_count < CAP_DAMAGE_HEAVY:
+        excess = pitch_count - CAP_DAMAGE_THRESHOLD
+        base_damage = excess * 0.0008          # 30-59 pitches: light damage
+    else:
+        excess = pitch_count - CAP_DAMAGE_THRESHOLD
+        base_damage = excess * 0.0018          # 60+ pitches: heavier damage
+
+    # ST skill resists cap damage
+    stamina_factor = 1.0 - (stamina / 100) * 0.5   # ST=100 → half damage
+    damage = base_damage * stamina_factor
+
+    self.max_energy = max(0.25, self.max_energy - damage)
+
+
+# Recovery between games — energy recovers fast, cap recovers glacially:
+
+def recover(self, days_rest: int, recovery: int) -> None:
+    # Energy: fast curved recovery toward cap (existing logic)
+    recovery_rate = 0.15 + (recovery / 100) * 0.35  # RE skill matters
+    self.energy = min(
+        self.max_energy,
+        self.energy + (recovery_rate * days_rest)
+    )
+
+    # Cap: very slow passive regeneration regardless of RE skill
+    # ~150 days to fully regenerate from 0.50 → 1.0
+    # This can be modified by Recovery attribute of a pitcher
+    cap_regen_per_day = 0.003
+    self.max_energy = min(1.0, self.max_energy + (cap_regen_per_day * days_rest))
+
+
+# DB change is minimal — just the one new column:
+
+ALTER TABLE pitcher_state ADD COLUMN max_energy REAL NOT NULL DEFAULT 1.0;
+
+
+Both values reset to 1.0 at season start. The cap's slow 150-day regeneration 
+means a September callup arrives fresh, while the workhorse who threw 200 IP is 
+running on fumes — exactly the right behavior.

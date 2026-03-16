@@ -10,7 +10,7 @@ These values tune the likelihood of various outcomes throughout the game.
 BALL_PROB = 15000
 FOUL_PROB = 5100
 HOME_RUN_PROB = 280
-HBP_PROB = 94
+HBP_PROB = 102
 BALK_PROB = 0
 ILLEGAL_PITCH_PROB = 0
 CATCHER_INTERFERENCE_PROB = 3
