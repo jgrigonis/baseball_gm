@@ -53,19 +53,19 @@ KK_RATES = [1.8, 0.9, -0.4, -1.8]  # was [1.8, 0.4, -0.6, -2.0]
 KK_NOISES = [0.6, 0.5, 0.5, 0.7]
 
 # ── Clutch (CL) — cognitive random walk, vet upward drift ──
-CL_VET_AGE = 28
-CL_VET_BONUS = 0.35
-CL_NOISE = 1.6
+CL_VET_AGE_BREAKS = [28, 34]          # phase boundaries
+CL_VET_BONUSES    = [0.2, 1.0, 1.5]  # under 28 | 28-33 | 34+
+CL_NOISE          = 3.5
 
 # ── Eye (EY) — plate discipline, coaching-sensitive ──
 EY_PHASE_BREAKS = [27, 33, 36]
-EY_RATES = [2.0, 0.6, -0.4, -1.1]
+EY_RATES = [2.0, 1.1, -0.4, -1.3]
 EY_NOISES = [0.5, 0.4, 0.4, 0.5]
 EY_COACHED = [True, True, False, False]
 
 # ── Contact (CT) — trainable; very slow decline after mid-30s ──
 CT_PHASE_BREAKS = [27, 34, 37]
-CT_RATES = [2.0, 0.8, -0.3, -0.9]
+CT_RATES = [2.0, 1.1, -0.3, -1.1]
 CT_NOISES = [0.5, 0.4, 0.4, 0.4]
 CT_COACHED = [True, True, False, False]
 
@@ -76,7 +76,7 @@ BR_NOISES = [0.4, 0.3]
 BR_COACHED = [True, True]
 
 # ── Pitching Accuracy (AC) — asymptotes toward cap ──
-AC_BASE_RATE = 0.8
+AC_BASE_RATE = 1.1
 AC_NOISE = 0.6
 
 # ── Pitching Stamina (ST) — rises early, declines from 30+ ──
@@ -87,12 +87,12 @@ ST_COACHED = [True, True, False, False]
 
 # ── Pitching Recovery (RE) — most coaching-sensitive ──
 RE_PHASE_BREAKS = [26, 31, 34]
-RE_RATES = [1.3, 0.2, -1.3, -1.9]
+RE_RATES = [1.3, 0.9, -1.3, -1.9]
 RE_NOISES = [1.5, 1.4, 1.5, 1.7]
 RE_COACHED = [True, True, False, False]
 
 # ── Bunting (BU) — pure technique ──
-BU_BASE_RATE = 0.2
+BU_BASE_RATE = 0.5
 BU_NOISE = 0.5
 
 # ── Catching (CA) — experience-driven, physical wear after 32 ──
@@ -125,7 +125,7 @@ OF_NOISE_HARD = 0.7
 # ── Ground Balls (GB) — pitcher physical skill, peaks mid-20s ──
 GB_DECLINE_AGE_LIGHT = 28
 GB_DECLINE_AGE_HARD = 32
-GB_RATE_GROWTH = 0.55
+GB_RATE_GROWTH = 0.9
 GB_NOISE_GROWTH = 0.3
 GB_RATE_LIGHT = -0.3
 GB_NOISE_LIGHT = 0.4
@@ -266,11 +266,14 @@ class SkillAging:
             age, val, rng, KK_PHASE_BREAKS, KK_RATES, KK_NOISES, cap=cap
         )
 
-    # CL — add cap dampening
     @staticmethod
     def delta_CL(age, val, rng, cap=None, playoff_boost=0.0) -> float:
-        vet_bonus = CL_VET_BONUS if age >= CL_VET_AGE else 0.0
-        raw = vet_bonus + playoff_boost + noise(rng, CL_NOISE)
+        idx = len(CL_VET_AGE_BREAKS)
+        for i, break_age in enumerate(CL_VET_AGE_BREAKS):
+            if age < break_age:
+                idx = i
+                break
+        raw = CL_VET_BONUSES[idx] + playoff_boost + noise(rng, CL_NOISE)
         return _cap_dampen(raw, val, cap)
 
     def delta_EY(
