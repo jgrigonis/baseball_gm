@@ -1,0 +1,17 @@
+
+Does your system apply defensive skill coaching/development 
+to players who never play defense?
+
+
+It treats them the same as anyone else, but it should not, a 
+good future update.
+
+The tricky cases are:
+
+A 1B who occasionally DHs — does he still develop IF? 
+Probably yes, partial multiplier based on games at position
+
+A utility player who plays 5 different positions — full 
+development across everything
+
+A catcher who DHs for a rest day — CA development unaffected
