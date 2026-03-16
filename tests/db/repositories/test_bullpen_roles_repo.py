@@ -29,7 +29,8 @@ def conn():
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys = ON")
-    db.executescript("""
+    db.executescript(
+        """
         PRAGMA foreign_keys = ON;
 
         CREATE TABLE teams (
@@ -71,10 +72,12 @@ def conn():
             end_date TEXT,
             PRIMARY KEY (team_id, player_id, season_id, effective_date)
         );
-    """)
+    """
+    )
 
     # Seed baseline rows
-    db.executescript(f"""
+    db.executescript(
+        f"""
         INSERT INTO teams VALUES ('{TEAM_ID}', 'Springfield', 'Isotopes');
         INSERT INTO teams VALUES ('{OTHER_TEAM_ID}', 'Shelbyville', 'Sharks');
 
@@ -92,7 +95,8 @@ def conn():
         INSERT INTO players VALUES ('starter-1', 'Frank', 'Miller', 'R', 'R');
         INSERT INTO team_rotations VALUES
             ('{TEAM_ID}', '{SEASON_ID}', 'starter-1', 1, '2024-04-01', NULL);
-    """)
+    """
+    )
 
     yield db
     db.close()

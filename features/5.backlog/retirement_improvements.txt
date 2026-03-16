@@ -1,0 +1,11 @@
+A cap-aware retirement system would be a meaningful upgrade. 
+The inputs are all there:
+
+Headroom score — sum of remaining cap space on relevant skills 
+weighted by position. A 32-year-old OF with OF headroom of 0, CT 
+headroom of 0, EY headroom of 2 has essentially zero development ceiling.
+
+Decline trajectory — how many key stats are already in decline phases 
+vs growth phases.
+
+Age — as a modifier, not the primary signal.

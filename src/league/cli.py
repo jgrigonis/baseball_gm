@@ -18,7 +18,7 @@ from src.league.manifest_helper import (
     create_team_files,
 )
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
-from src.util.locations import LEAGUE_FILES_DIR
+from src.util.locations import LEAGUE_FILES_DIR, MANIFEST_FILES_DIR
 
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -72,6 +72,7 @@ def main():
     # import time
     # print(f"========== SCRIPT START {time.time()} ==========")
     path = Path(LEAGUE_FILES_DIR)
+    man_path = Path(MANIFEST_FILES_DIR)
     path.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(path / args.db)
@@ -79,7 +80,7 @@ def main():
     init_db(conn)
 
     boot = LeagueBootstrapper(conn, rng=rng)
-    manifest = load_manifest(path / args.manifest)
+    manifest = load_manifest(man_path / args.manifest)
     try:
         validate_manifest_structure(manifest)
         validate_manifest_uniqueness(manifest)

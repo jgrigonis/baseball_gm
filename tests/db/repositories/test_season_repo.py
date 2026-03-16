@@ -13,14 +13,16 @@ def db_connection():
     conn.execute("PRAGMA foreign_keys = ON")
 
     # Create seasons table
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE seasons (
             id TEXT PRIMARY KEY,
             year INTEGER NOT NULL,
             name TEXT NOT NULL,
             UNIQUE(year, name)
         )
-    """)
+    """
+    )
 
     yield conn
     conn.close()

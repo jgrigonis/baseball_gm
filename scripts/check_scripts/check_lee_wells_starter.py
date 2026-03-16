@@ -9,12 +9,14 @@ conn.row_factory = sqlite3.Row
 
 
 # Check if Lee Wells ever started as a pitcher
-cursor = conn.execute("""
+cursor = conn.execute(
+    """
     SELECT COUNT(*) as games_started_pitching
     FROM player_game_stats
     WHERE player_id = (SELECT id FROM players WHERE first_name = 'LEE' AND last_name = 'WELLS')
     AND pitch_game_started = 1
-""")
+"""
+)
 print(
     f"Games Lee Wells started as pitcher: {cursor.fetchone()['games_started_pitching']}"
 )

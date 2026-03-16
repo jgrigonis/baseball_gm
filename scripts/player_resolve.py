@@ -1,3 +1,4 @@
+# scripts/player_resolve.py
 """
 Resolve a player's ID from their name, or their name from an ID.
 
