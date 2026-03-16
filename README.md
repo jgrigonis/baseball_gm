@@ -14,6 +14,13 @@ For developing:
 
 pip install -e ".[dev]"
 
+On windows I had to use pythom -m pip
+Or I'd get permission problems.
+
+On windows you should also do this in a powershell as an admin:
+
+[System.Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Machine")
+
 ### Goals:
 * Create a random player (done)
 * Create a custom player
