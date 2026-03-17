@@ -1,0 +1,49 @@
+The persistent problems (every single season):
+K/AB is ↑↑ every year without exception — 0.246-0.270 vs expected 0.125-0.150. 
+This hasn't moved in 21 seasons. It's not drifting, it's structurally wrong. 
+The strikeout rate is roughly double what it should be. This needs a direct 
+intervention in the pitch outcome probabilities — either KK is too effective, 
+the strike probability is too high, or contact is too suppressed in the resolver.
+
+ERA 10th percentile is ↑ almost every year — 3.12-3.83 vs floor of 1.80. The 
+league's worst qualifying starters are ERA 3.5+ consistently. This is healthy 
+actually — the floor being above 3.0 means no truly dominant bottom-of-rotation 
+pitchers, which is realistic. Not a problem.
+
+Walks leader is ↑ most years — 83-111 vs ceiling of 90. One high-BB pitcher per 
+league getting 100+ walks annually is the AC development lag showing. Improving
+over time (111 in 2025 → 85-95 by 2040s) as AC matures — working as designed.
+
+IP leader is ↑ most years — 225-258 vs ceiling of 230. Still not solved, though 
+better than the previous run's 250-270. The fatigue cap should be helping but 
+one or two relievers still eating 240+ innings.
+
+Things that improved vs previous run:
+Stolen bases are much better — previous run had SB persistently over ceiling, 
+this run is mostly ✓✓ with occasional ↓. The 10th percentile at 21-26 is occasionally 
+below the 25 floor but not dramatically. The base attempt probability adjustment worked.
+
+HBP looks healthy throughout — 10-16 annually, consistently ✓✓. The AC suppression 
+fix resolved the previous run's chronic undercount.
+WHIP is mostly ✓ now vs previous run's consistent ↑ — AC development producing real 
+results.
+
+New concerns:
+Triples are ↓ every single year — 5-9 vs expected 7-23. The floor is barely met and 
+usually missed. Either SP-based triple generation is too low or the triple probability 
+in the resolver needs a bump.
+
+Sac bunts ↑ occasionally — 13-19 vs ceiling of 15, appearing in 2031, 2034, 2035, 2038, 
+2040, 2041, 2044. The frequency is increasing over time which is odd. Possibly the 
+bunting skill developing over time is pushing the probability above threshold in the late era.
+
+ERA leader below floor in 2044 — 1.71 marked ↑↓ (below floor). One anomalous dominant 
+season every 20 years is acceptable variance, not a systematic problem.
+
+The K/AB issue is the single highest priority. Everything else is marginal or trending 
+right. At 0.25-0.27 K/AB vs expected 0.125-0.150, batters are striking out at roughly 
+2x the real rate. The question is whether the expected range itself needs updating 
+for modern baseball — real 2024 MLB K/AB is around 0.225 — or whether the sim's strike 
+probability is genuinely too high. Given the range was set at 0.125-0.150 which reflects 
+1980s-era baseball, this might be a case where the expected range needs revision upward 
+to 0.200-0.260 rather than the sim being broken.
