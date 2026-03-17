@@ -1,0 +1,16 @@
+
+This log message in team_in_game.py
+
+        self.logger.info(
+            f"↔️  {incoming.name} replaces {outgoing.player.name} "
+            f"at {incoming.current_position}"
+        )
+
+Is never showing up in logs.
+
+It might be that the logger isn't ever run for "details"
+
+self.logger = logging.getLogger("details")
+
+It might just be too low of a log level for that somehow.
+
