@@ -34,39 +34,39 @@ import random
 
 # ── Speed (SP) — physical, peaks 22-26, sharp fall after 30 ──
 SP_PHASE_BREAKS = [22, 27, 31, 34]
-SP_RATES = [0.8, 0.1, -0.9, -2.2, -2.8]
-SP_NOISES = [1.5, 1.0, 0.8, 0.7, 0.6]
+SP_RATES = [0.9, 0.1, -0.9, -2.2, -2.8]
+SP_NOISES = [1.8, 1.0, 0.8, 0.7, 0.6]
 
 # ── Power (PO) — physical, slow rise then long plateau ──
 PO_PHASE_BREAKS = [21, 29, 33]
-PO_RATES = [1.2, 0.8, -0.6, -1.9]
-PO_NOISES = [1.5, 1.0, 0.8, 0.7]
+PO_RATES = [2.4, 0.9, -0.6, -2.9]
+PO_NOISES = [2.0, 1.2, 0.8, 0.7]
 
 # ── Arm (AR) — physical, peaks mid-20s, declines from 30 ──
 AR_PHASE_BREAKS = [24, 29, 33]
-AR_RATES = [1.6, 0.2, -1.0, -1.8]
-AR_NOISES = [0.5, 0.4, 0.5, 0.6]
+AR_RATES = [1.9, 0.4, -1.0, -1.9]
+AR_NOISES = [0.8, 0.4, 0.5, 0.6]
 
 # ── Strikeout (KK) — raw talent, can't be coached ──
 KK_PHASE_BREAKS = [24, 30, 34]  # was [24, 28, 32]
-KK_RATES = [1.8, 0.9, -0.4, -1.8]  # was [1.8, 0.4, -0.6, -2.0]
-KK_NOISES = [0.6, 0.5, 0.5, 0.7]
+KK_RATES = [1.9, 1.1, -0.9, -2.8]  # was [1.8, 0.4, -0.6, -2.0]
+KK_NOISES = [0.6, 0.5, 0.5, 1.7]
 
 # ── Clutch (CL) — cognitive random walk, vet upward drift ──
 CL_VET_AGE_BREAKS = [28, 34]  # phase boundaries
-CL_VET_BONUSES = [0.2, 1.0, 1.5]  # under 28 | 28-33 | 34+
+CL_VET_BONUSES = [0.5, 1.4, 1.9]  # under 28 | 28-33 | 34+
 CL_NOISE = 3.5
 
 # ── Eye (EY) — plate discipline, coaching-sensitive ──
 EY_PHASE_BREAKS = [27, 33, 36]
-EY_RATES = [2.0, 1.1, -0.4, -1.3]
-EY_NOISES = [0.5, 0.4, 0.4, 0.5]
+EY_RATES = [2.4, 1.1, -0.4, -1.3]
+EY_NOISES = [0.5, 0.6, 0.6, 0.5]
 EY_COACHED = [True, True, False, False]
 
 # ── Contact (CT) — trainable; very slow decline after mid-30s ──
 CT_PHASE_BREAKS = [27, 34, 37]
-CT_RATES = [2.0, 1.1, -0.3, -1.1]
-CT_NOISES = [0.5, 0.4, 0.4, 0.4]
+CT_RATES = [2.8, 1.1, -0.3, -1.4]
+CT_NOISES = [0.7, 0.5, 0.4, 0.4]
 CT_COACHED = [True, True, False, False]
 
 # ── Base Running (BR) — decision-making, never declines ──
@@ -81,13 +81,13 @@ AC_NOISE = 0.6
 
 # ── Pitching Stamina (ST) — rises early, declines from 30+ ──
 ST_PHASE_BREAKS = [26, 31, 34]
-ST_RATES = [0.7, 0.3, -1.2, -2.0]
+ST_RATES = [0.9, 0.3, -1.2, -2.0]
 ST_NOISES = [0.9, 0.8, 1.2, 1.5]  # was [1.5, 1.4, 1.5, 1.7]
 ST_COACHED = [True, True, False, False]
 
 # ── Pitching Recovery (RE) — most coaching-sensitive ──
 RE_PHASE_BREAKS = [26, 31, 34]
-RE_RATES = [1.3, 0.9, -1.3, -1.9]
+RE_RATES = [1.6, 0.9, -1.3, -1.9]
 RE_NOISES = [1.5, 1.4, 1.5, 1.7]
 RE_COACHED = [True, True, False, False]
 
@@ -97,7 +97,7 @@ BU_NOISE = 0.5
 
 # ── Catching (CA) — experience-driven, physical wear after 32 ──
 CA_DECLINE_AGE = 32
-CA_BASE_RATE = 0.4
+CA_BASE_RATE = 0.7
 CA_BASE_NOISE = 0.5
 CA_DECLINE_RATE = -0.8
 CA_DECLINE_NOISE = 1.5
@@ -105,7 +105,7 @@ CA_DECLINE_NOISE = 1.5
 # ── Infield (IF) — technique + range; range declines after 30 ──
 IF_DECLINE_AGE_LIGHT = 29
 IF_DECLINE_AGE_HARD = 33
-IF_RATE_GROWTH = 1.2
+IF_RATE_GROWTH = 1.9
 IF_NOISE_GROWTH = 0.6
 IF_RATE_LIGHT = -0.3
 IF_NOISE_LIGHT = 0.5
@@ -115,7 +115,7 @@ IF_NOISE_HARD = 0.6
 # ── Outfield (OF) — range-dependent, declines earlier than infield ──
 OF_DECLINE_AGE_LIGHT = 29
 OF_DECLINE_AGE_HARD = 32
-OF_RATE_GROWTH = 1.2
+OF_RATE_GROWTH = 1.9
 OF_NOISE_GROWTH = 0.5
 OF_RATE_LIGHT = -0.4
 OF_NOISE_LIGHT = 0.6
@@ -125,7 +125,7 @@ OF_NOISE_HARD = 0.7
 # ── Ground Balls (GB) — pitcher physical skill, peaks mid-20s ──
 GB_DECLINE_AGE_LIGHT = 28
 GB_DECLINE_AGE_HARD = 32
-GB_RATE_GROWTH = 0.9
+GB_RATE_GROWTH = 1.1
 GB_NOISE_GROWTH = 0.3
 GB_RATE_LIGHT = -0.3
 GB_NOISE_LIGHT = 0.4
@@ -135,7 +135,7 @@ GB_NOISE_HARD = 0.6
 # ── Durability (DU) — general physical skill, peaks late-20s ──
 DU_DECLINE_AGE_LIGHT = 30
 DU_DECLINE_AGE_HARD = 36
-DU_RATE_GROWTH = 1.3
+DU_RATE_GROWTH = 1.9
 DU_NOISE_GROWTH = 0.3
 DU_RATE_LIGHT = -0.3
 DU_NOISE_LIGHT = 0.4
