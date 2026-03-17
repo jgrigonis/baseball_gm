@@ -10,9 +10,9 @@ using age < break, so the last rate/noise applies for all remaining ages.
 
 Ceiling dampening (per-player soft caps):
   Growth slows as a player approaches their talent cap using a sigmoid:
-      dampening = distance / (distance + 15.0)
-  This means at distance=15 growth is 50% of raw, at distance=30 it's 67%,
-  at distance=5 it's 25%. Players can slightly exceed their cap via noise
+      dampening = distance / (distance + 4.0)
+  This means at distance=4 growth is 50% of raw, at distance=8 it's 67%,
+  at distance=1 it's 25%. Players can slightly exceed their cap via noise
   (soft cap) but the base curve never pushes past it.
 
   The cap is passed in per-call from player_talent_caps — skills grow
@@ -33,9 +33,9 @@ import random
 # ═══════════════════════════════════════════════════════════════
 
 # ── Speed (SP) — physical, peaks 22-26, sharp fall after 30 ──
-SP_PHASE_BREAKS = [22, 27, 31, 34]
-SP_RATES = [0.9, 0.1, -0.9, -2.2, -2.8]
-SP_NOISES = [1.8, 1.0, 0.8, 0.7, 0.6]
+SP_PHASE_BREAKS = [22, 27, 31, 34, 39]
+SP_RATES = [0.9, 0.1, -0.9, -2.2, -2.8, -4.5]
+SP_NOISES = [1.8, 1.0, 0.8, 0.7, 0.6, 1.9]
 
 # ── Power (PO) — physical, slow rise then long plateau ──
 PO_PHASE_BREAKS = [21, 29, 33]
@@ -59,7 +59,7 @@ CL_NOISE = 3.5
 
 # ── Eye (EY) — plate discipline, coaching-sensitive ──
 EY_PHASE_BREAKS = [27, 33, 36]
-EY_RATES = [2.4, 1.1, -0.4, -1.3]
+EY_RATES = [3.0, 1.1, -0.4, -1.3]
 EY_NOISES = [0.5, 0.6, 0.6, 0.5]
 EY_COACHED = [True, True, False, False]
 
@@ -70,14 +70,16 @@ CT_NOISES = [0.7, 0.5, 0.4, 0.4]
 CT_COACHED = [True, True, False, False]
 
 # ── Base Running (BR) — decision-making, never declines ──
-BR_PHASE_BREAKS = [34]
-BR_RATES = [1.8, 0.3]
-BR_NOISES = [0.4, 0.3]
-BR_COACHED = [True, True]
+BR_PHASE_BREAKS = [34, 38]
+BR_RATES = [1.8, 0.3, -0.9]
+BR_NOISES = [0.4, 0.3, 0.5]
+BR_COACHED = [True, True, False]
 
-# ── Pitching Accuracy (AC) — asymptotes toward cap ──
-AC_BASE_RATE = 1.1
-AC_NOISE = 0.6
+# ── Pitching Accuracy (AC) — declines after 36 ──
+AC_PHASE_BREAKS = [36]
+AC_RATES = [1.6, -0.8]
+AC_NOISES = [0.6, 0.8]
+AC_COACHED = [True, False]
 
 # ── Pitching Stamina (ST) — rises early, declines from 30+ ──
 ST_PHASE_BREAKS = [26, 31, 34]
@@ -91,63 +93,95 @@ RE_RATES = [1.6, 0.9, -1.3, -1.9]
 RE_NOISES = [1.5, 1.4, 1.5, 1.7]
 RE_COACHED = [True, True, False, False]
 
-# ── Bunting (BU) — pure technique ──
-BU_BASE_RATE = 0.5
-BU_NOISE = 0.5
+# ── Bunting (BU) — pure technique, very slow decline after 40 ──
+BU_PHASE_BREAKS = [40]
+BU_RATES = [0.5, -0.4]
+BU_NOISES = [0.5, 0.5]
+BU_COACHED = [True, False]
 
 # ── Catching (CA) — experience-driven, physical wear after 32 ──
-CA_DECLINE_AGE = 32
-CA_BASE_RATE = 0.7
-CA_BASE_NOISE = 0.5
-CA_DECLINE_RATE = -0.8
-CA_DECLINE_NOISE = 1.5
+CA_PHASE_BREAKS = [33]
+CA_RATES = [0.7, -0.8]
+CA_NOISES = [0.5, 1.5]
+CA_COACHED = [True, False]
 
 # ── Infield (IF) — technique + range; range declines after 30 ──
-IF_DECLINE_AGE_LIGHT = 29
-IF_DECLINE_AGE_HARD = 33
-IF_RATE_GROWTH = 1.9
-IF_NOISE_GROWTH = 0.6
-IF_RATE_LIGHT = -0.3
-IF_NOISE_LIGHT = 0.5
-IF_RATE_HARD = -0.9
-IF_NOISE_HARD = 0.6
+IF_PHASE_BREAKS = [30, 34]
+IF_RATES = [1.9, -0.3, -0.9]
+IF_NOISES = [0.6, 0.5, 0.6]
+IF_COACHED = [True, False, False]
 
 # ── Outfield (OF) — range-dependent, declines earlier than infield ──
-OF_DECLINE_AGE_LIGHT = 29
-OF_DECLINE_AGE_HARD = 32
-OF_RATE_GROWTH = 1.9
-OF_NOISE_GROWTH = 0.5
-OF_RATE_LIGHT = -0.4
-OF_NOISE_LIGHT = 0.6
-OF_RATE_HARD = -1.4
-OF_NOISE_HARD = 0.7
+OF_PHASE_BREAKS = [30, 33]
+OF_RATES = [1.9, -0.4, -1.4]
+OF_NOISES = [0.5, 0.6, 0.7]
+OF_COACHED = [True, False, False]
 
 # ── Ground Balls (GB) — pitcher physical skill, peaks mid-20s ──
-GB_DECLINE_AGE_LIGHT = 28
-GB_DECLINE_AGE_HARD = 32
-GB_RATE_GROWTH = 1.1
-GB_NOISE_GROWTH = 0.3
-GB_RATE_LIGHT = -0.3
-GB_NOISE_LIGHT = 0.4
-GB_RATE_HARD = -1.2
-GB_NOISE_HARD = 0.6
+GB_PHASE_BREAKS = [29, 33]
+GB_RATES = [1.1, -0.3, -1.2]
+GB_NOISES = [0.3, 0.4, 0.6]
+GB_COACHED = [True, False, False]
 
 # ── Durability (DU) — general physical skill, peaks late-20s ──
-DU_DECLINE_AGE_LIGHT = 30
-DU_DECLINE_AGE_HARD = 36
-DU_RATE_GROWTH = 1.9
-DU_NOISE_GROWTH = 0.3
-DU_RATE_LIGHT = -0.3
-DU_NOISE_LIGHT = 0.4
-DU_RATE_HARD = -2.8
-DU_NOISE_HARD = 0.6
+DU_PHASE_BREAKS = [31, 37]
+DU_RATES = [1.9, -0.3, -2.8]
+DU_NOISES = [0.3, 0.4, 0.6]
+DU_COACHED = [True, False, False]
+
+# # ── Catching (CA) — experience-driven, physical wear after 32 ──
+# CA_DECLINE_AGE = 32
+# CA_BASE_RATE = 0.7
+# CA_BASE_NOISE = 0.5
+# CA_DECLINE_RATE = -0.8
+# CA_DECLINE_NOISE = 1.5
+
+# # ── Infield (IF) — technique + range; range declines after 30 ──
+# IF_DECLINE_AGE_LIGHT = 29
+# IF_DECLINE_AGE_HARD = 33
+# IF_RATE_GROWTH = 1.9
+# IF_NOISE_GROWTH = 0.6
+# IF_RATE_LIGHT = -0.3
+# IF_NOISE_LIGHT = 0.5
+# IF_RATE_HARD = -0.9
+# IF_NOISE_HARD = 0.6
+
+# # ── Outfield (OF) — range-dependent, declines earlier than infield ──
+# OF_DECLINE_AGE_LIGHT = 29
+# OF_DECLINE_AGE_HARD = 32
+# OF_RATE_GROWTH = 1.9
+# OF_NOISE_GROWTH = 0.5
+# OF_RATE_LIGHT = -0.4
+# OF_NOISE_LIGHT = 0.6
+# OF_RATE_HARD = -1.4
+# OF_NOISE_HARD = 0.7
+
+# # ── Ground Balls (GB) — pitcher physical skill, peaks mid-20s ──
+# GB_DECLINE_AGE_LIGHT = 28
+# GB_DECLINE_AGE_HARD = 32
+# GB_RATE_GROWTH = 1.1
+# GB_NOISE_GROWTH = 0.3
+# GB_RATE_LIGHT = -0.3
+# GB_NOISE_LIGHT = 0.4
+# GB_RATE_HARD = -1.2
+# GB_NOISE_HARD = 0.6
+
+# # ── Durability (DU) — general physical skill, peaks late-20s ──
+# DU_DECLINE_AGE_LIGHT = 30
+# DU_DECLINE_AGE_HARD = 36
+# DU_RATE_GROWTH = 1.9
+# DU_NOISE_GROWTH = 0.3
+# DU_RATE_LIGHT = -0.3
+# DU_NOISE_LIGHT = 0.4
+# DU_RATE_HARD = -2.8
+# DU_NOISE_HARD = 0.6
 
 # ── Sigmoid dampening constant ──
 # Controls how early growth slows near the cap.
 # At distance=CAP_BRAKE: growth is 50% of raw.
 # Smaller value = growth slows LATER (only near the ceiling).
 # Larger value = growth slows SOONER (dampening kicks in further from cap).
-CAP_BRAKE = 6.5
+CAP_BRAKE = 4.0
 
 
 # ─────────────────────────────────────────────
@@ -171,6 +205,8 @@ def _cap_dampen(raw: float, val: float, cap: int | None) -> float:
     At distance=0 (at cap): returns 0.0 (soft stop)
     At distance=CAP_BRAKE:  returns raw * 0.5
     At distance=large:      approaches raw (no dampening far from cap)
+
+    note: coached=False on decline phases is always irrelevant
 
     Args:
         raw: Undampened delta
@@ -336,7 +372,7 @@ class SkillAging:
         coaching: float = 1.0,
         cap: int | None = None,
     ) -> float:
-        """Base running — decision-making, never declines."""
+        """Base running — decision-making, declines after 38."""
         return self.phased_delta(
             age,
             val,
@@ -349,18 +385,26 @@ class SkillAging:
             cap=cap,
         )
 
-    @staticmethod
     def delta_AC(
+        self,
         age: int,
         val: float,
         rng: random.Random,
         coaching: float = 1.0,
         cap: int | None = None,
     ) -> float:
-        """Pitching accuracy — asymptotically approaches cap."""
-        raw = coaching * (AC_BASE_RATE + noise(rng, AC_NOISE))
-        raw = max(0.0, raw)
-        return _cap_dampen(raw, val, cap)
+        """Pitching accuracy — eventually declines."""
+        return self.phased_delta(
+            age,
+            val,
+            rng,
+            AC_PHASE_BREAKS,
+            AC_RATES,
+            AC_NOISES,
+            AC_COACHED,
+            coaching,
+            cap=cap,
+        )
 
     def delta_ST(
         self,
@@ -404,92 +448,147 @@ class SkillAging:
             cap=cap,
         )
 
-    @staticmethod
     def delta_BU(
+        self,
         age: int,
         val: float,
         rng: random.Random,
         coaching: float = 1.0,
         cap: int | None = None,
     ) -> float:
-        """Bunting — pure technique, never declines."""
-        raw = max(0.0, coaching * (BU_BASE_RATE + noise(rng, BU_NOISE)))
-        return _cap_dampen(raw, val, cap)
+        """Bunting — pure technique, declines after 40."""
+        return self.phased_delta(
+            age,
+            val,
+            rng,
+            BU_PHASE_BREAKS,
+            BU_RATES,
+            BU_NOISES,
+            BU_COACHED,
+            coaching,
+            cap=cap,
+        )
 
-    @staticmethod
+
     def delta_CA(
-        age: int,
-        val: float,
-        rng: random.Random,
-        coaching: float = 1.0,
-        cap: int | None = None,
+        self, age: int, val: float, rng: random.Random,
+        coaching: float = 1.0, cap: int | None = None,
     ) -> float:
-        """Catching — experience-driven, physical wear after decline age."""
-        if age > CA_DECLINE_AGE:
-            return CA_DECLINE_RATE + noise(rng, CA_DECLINE_NOISE)
-        raw = max(0.0, coaching * (CA_BASE_RATE + noise(rng, CA_BASE_NOISE)))
-        return _cap_dampen(raw, val, cap)
+        """Catching — experience-driven, physical wear after 32."""
+        return self.phased_delta(
+            age, val, rng, CA_PHASE_BREAKS, CA_RATES, CA_NOISES, CA_COACHED, coaching, cap=cap
+        )
 
-    @staticmethod
     def delta_IF(
-        age: int,
-        val: float,
-        rng: random.Random,
-        coaching: float = 1.0,
-        cap: int | None = None,
+        self, age: int, val: float, rng: random.Random,
+        coaching: float = 1.0, cap: int | None = None,
     ) -> float:
-        """Infield — technique + range; range declines after 30."""
-        if age > IF_DECLINE_AGE_HARD:
-            return IF_RATE_HARD + noise(rng, IF_NOISE_HARD)
-        if age > IF_DECLINE_AGE_LIGHT:
-            return IF_RATE_LIGHT + noise(rng, IF_NOISE_LIGHT)
-        raw = max(0.0, coaching * (IF_RATE_GROWTH + noise(rng, IF_NOISE_GROWTH)))
-        return _cap_dampen(raw, val, cap)
+        """Infield — technique + range; declines from 30."""
+        return self.phased_delta(
+            age, val, rng, IF_PHASE_BREAKS, IF_RATES, IF_NOISES, IF_COACHED, coaching, cap=cap
+        )
 
-    @staticmethod
     def delta_OF(
-        age: int,
-        val: float,
-        rng: random.Random,
-        coaching: float = 1.0,
-        cap: int | None = None,
+        self, age: int, val: float, rng: random.Random,
+        coaching: float = 1.0, cap: int | None = None,
     ) -> float:
         """Outfield — range-dependent, declines earlier than infield."""
-        if age > OF_DECLINE_AGE_HARD:
-            return OF_RATE_HARD + noise(rng, OF_NOISE_HARD)
-        if age > OF_DECLINE_AGE_LIGHT:
-            return OF_RATE_LIGHT + noise(rng, OF_NOISE_LIGHT)
-        raw = max(0.0, coaching * (OF_RATE_GROWTH + noise(rng, OF_NOISE_GROWTH)))
-        return _cap_dampen(raw, val, cap)
+        return self.phased_delta(
+            age, val, rng, OF_PHASE_BREAKS, OF_RATES, OF_NOISES, OF_COACHED, coaching, cap=cap
+        )
 
-    @staticmethod
     def delta_GB(
-        age: int,
-        val: float,
-        rng: random.Random,
-        coaching: float = 1.0,
-        cap: int | None = None,
+        self, age: int, val: float, rng: random.Random,
+        coaching: float = 1.0, cap: int | None = None,
     ) -> float:
-        """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
-        if age > GB_DECLINE_AGE_HARD:
-            return GB_RATE_HARD + noise(rng, GB_NOISE_HARD)
-        if age > GB_DECLINE_AGE_LIGHT:
-            return GB_RATE_LIGHT + noise(rng, GB_NOISE_LIGHT)
-        raw = max(0.0, coaching * (GB_RATE_GROWTH + noise(rng, GB_NOISE_GROWTH)))
-        return _cap_dampen(raw, val, cap)
+        """Ground balls — pitcher physical skill, peaks mid-20s."""
+        return self.phased_delta(
+            age, val, rng, GB_PHASE_BREAKS, GB_RATES, GB_NOISES, GB_COACHED, coaching, cap=cap
+        )
 
-    @staticmethod
     def delta_DU(
-        age: int,
-        val: float,
-        rng: random.Random,
-        coaching: float = 1.0,
-        cap: int | None = None,
+        self, age: int, val: float, rng: random.Random,
+        coaching: float = 1.0, cap: int | None = None,
     ) -> float:
-        """Durability - general physical skill, peaks in late 20s, declines from 34."""
-        if age > DU_DECLINE_AGE_HARD:
-            return DU_RATE_HARD + noise(rng, DU_NOISE_HARD)
-        if age > DU_DECLINE_AGE_LIGHT:
-            return DU_RATE_LIGHT + noise(rng, DU_NOISE_LIGHT)
-        raw = max(0.0, coaching * (DU_RATE_GROWTH + noise(rng, DU_NOISE_GROWTH)))
-        return _cap_dampen(raw, val, cap)
+        """Durability — physical skill, peaks late-20s, hard decline after 36."""
+        return self.phased_delta(
+            age, val, rng, DU_PHASE_BREAKS, DU_RATES, DU_NOISES, DU_COACHED, coaching, cap=cap
+        )
+        
+    # @staticmethod
+    # def delta_CA(
+    #     age: int,
+    #     val: float,
+    #     rng: random.Random,
+    #     coaching: float = 1.0,
+    #     cap: int | None = None,
+    # ) -> float:
+    #     """Catching — experience-driven, physical wear after decline age."""
+    #     if age > CA_DECLINE_AGE:
+    #         return CA_DECLINE_RATE + noise(rng, CA_DECLINE_NOISE)
+    #     raw = max(0.0, coaching * (CA_BASE_RATE + noise(rng, CA_BASE_NOISE)))
+    #     return _cap_dampen(raw, val, cap)
+
+    # @staticmethod
+    # def delta_IF(
+    #     age: int,
+    #     val: float,
+    #     rng: random.Random,
+    #     coaching: float = 1.0,
+    #     cap: int | None = None,
+    # ) -> float:
+    #     """Infield — technique + range; range declines after 30."""
+    #     if age > IF_DECLINE_AGE_HARD:
+    #         return IF_RATE_HARD + noise(rng, IF_NOISE_HARD)
+    #     if age > IF_DECLINE_AGE_LIGHT:
+    #         return IF_RATE_LIGHT + noise(rng, IF_NOISE_LIGHT)
+    #     raw = max(0.0, coaching * (IF_RATE_GROWTH + noise(rng, IF_NOISE_GROWTH)))
+    #     return _cap_dampen(raw, val, cap)
+
+    # @staticmethod
+    # def delta_OF(
+    #     age: int,
+    #     val: float,
+    #     rng: random.Random,
+    #     coaching: float = 1.0,
+    #     cap: int | None = None,
+    # ) -> float:
+    #     """Outfield — range-dependent, declines earlier than infield."""
+    #     if age > OF_DECLINE_AGE_HARD:
+    #         return OF_RATE_HARD + noise(rng, OF_NOISE_HARD)
+    #     if age > OF_DECLINE_AGE_LIGHT:
+    #         return OF_RATE_LIGHT + noise(rng, OF_NOISE_LIGHT)
+    #     raw = max(0.0, coaching * (OF_RATE_GROWTH + noise(rng, OF_NOISE_GROWTH)))
+    #     return _cap_dampen(raw, val, cap)
+
+    # @staticmethod
+    # def delta_GB(
+    #     age: int,
+    #     val: float,
+    #     rng: random.Random,
+    #     coaching: float = 1.0,
+    #     cap: int | None = None,
+    # ) -> float:
+    #     """Ground balls — pitcher physical skill, peaks mid-20s, declines from 30."""
+    #     if age > GB_DECLINE_AGE_HARD:
+    #         return GB_RATE_HARD + noise(rng, GB_NOISE_HARD)
+    #     if age > GB_DECLINE_AGE_LIGHT:
+    #         return GB_RATE_LIGHT + noise(rng, GB_NOISE_LIGHT)
+    #     raw = max(0.0, coaching * (GB_RATE_GROWTH + noise(rng, GB_NOISE_GROWTH)))
+    #     return _cap_dampen(raw, val, cap)
+
+    # @staticmethod
+    # def delta_DU(
+    #     age: int,
+    #     val: float,
+    #     rng: random.Random,
+    #     coaching: float = 1.0,
+    #     cap: int | None = None,
+    # ) -> float:
+    #     """Durability - general physical skill, peaks in late 20s, declines from 34."""
+    #     if age > DU_DECLINE_AGE_HARD:
+    #         return DU_RATE_HARD + noise(rng, DU_NOISE_HARD)
+    #     if age > DU_DECLINE_AGE_LIGHT:
+    #         return DU_RATE_LIGHT + noise(rng, DU_NOISE_LIGHT)
+    #     raw = max(0.0, coaching * (DU_RATE_GROWTH + noise(rng, DU_NOISE_GROWTH)))
+    #     return _cap_dampen(raw, val, cap)

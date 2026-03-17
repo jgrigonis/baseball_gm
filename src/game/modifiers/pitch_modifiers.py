@@ -88,14 +88,25 @@ class PitchModifiers:
         resolver.pitch_outcome.add("strike", -14 * (eye - 50))
         resolver.pitch_outcome.add("foul", 8 * (eye - 50))
         resolver.pitch_outcome.add("ball", 9 * (eye - 50))
+        if eye > 75:
+            elite_bonus = (eye - 75) ** 1.6
+            resolver.pitch_outcome.add("ball", elite_bonus)
+            resolver.pitch_outcome.add("strike", -0.5 * elite_bonus)
 
         contact = batter.skills["contact"]
         resolver.pitch_outcome.add("strike", -12 * (contact - 50))
         resolver.pitch_outcome.add("foul", int(2 * (contact - 50)))
         resolver.pitch_outcome.add("in_play", int(3.6 * (contact - 50)))
+        if contact > 75:
+            elite_bonus = (contact - 75) ** 1.6
+            resolver.pitch_outcome.add("in_play", elite_bonus)
+            resolver.pitch_outcome.add("strike", -0.5 * elite_bonus)
 
         power = batter.skills["power"]
-        resolver.pitch_outcome.add("home_run", 3.7 * (power - 50))
+        resolver.pitch_outcome.add("home_run", 3.8 * (power - 50))
+        if power > 75:
+            elite_bonus = (power - 75) ** 1.6
+            resolver.pitch_outcome.add("home_run", 0.2 * elite_bonus)
 
     @staticmethod
     def modify_for_pitcher(resolver, pitcher: PlayerInGame) -> None:

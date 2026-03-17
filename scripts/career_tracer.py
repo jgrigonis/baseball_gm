@@ -124,6 +124,8 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
                             season_year = int(part)
                             break
                     team = csv_path.stem  # e.g. "madrid"
+                    if team.lower() == "draft":
+                        continue
                     appearances.append(
                         {
                             **row,
