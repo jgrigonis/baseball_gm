@@ -373,6 +373,7 @@ SKILLS: MappingProxyType[str, int] = MappingProxyType(
         # General
         "clutch": 50,  # Performance in high-pressure situations
         "speed": 50,  # Running speed
+        "durability": 50,  # player durability
         # Hitting
         "power": 50,  # Home run power
         "eye": 50,  # Plate discipline, walk rate

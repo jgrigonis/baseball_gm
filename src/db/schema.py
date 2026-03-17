@@ -57,54 +57,55 @@ CREATE TABLE IF NOT EXISTS player_talent_caps (
     player_id    TEXT PRIMARY KEY,
 
     -- Hitting
-    clutch       INTEGER NOT NULL DEFAULT 100 CHECK (clutch      BETWEEN 1 AND 100),
-    speed        INTEGER NOT NULL DEFAULT 100 CHECK (speed       BETWEEN 1 AND 100),
-    power        INTEGER NOT NULL DEFAULT 100 CHECK (power       BETWEEN 1 AND 100),
-    eye          INTEGER NOT NULL DEFAULT 100 CHECK (eye         BETWEEN 1 AND 100),
-    contact      INTEGER NOT NULL DEFAULT 100 CHECK (contact     BETWEEN 1 AND 100),
+    clutch       INTEGER NOT NULL DEFAULT 100 CHECK (clutch       BETWEEN 1 AND 100),
+    speed        INTEGER NOT NULL DEFAULT 100 CHECK (speed        BETWEEN 1 AND 100),
+    durability   INTEGER NOT NULL DEFAULT 100 CHECK (durability   BETWEEN 1 AND 100),
+    power        INTEGER NOT NULL DEFAULT 100 CHECK (power        BETWEEN 1 AND 100),
+    eye          INTEGER NOT NULL DEFAULT 100 CHECK (eye          BETWEEN 1 AND 100),
+    contact      INTEGER NOT NULL DEFAULT 100 CHECK (contact      BETWEEN 1 AND 100),
     base_running INTEGER NOT NULL DEFAULT 100 CHECK (base_running BETWEEN 1 AND 100),
-    bunting      INTEGER NOT NULL DEFAULT 100 CHECK (bunting     BETWEEN 1 AND 100),
+    bunting      INTEGER NOT NULL DEFAULT 100 CHECK (bunting      BETWEEN 1 AND 100),
 
     -- Defense
-    catching     INTEGER NOT NULL DEFAULT 100 CHECK (catching    BETWEEN 1 AND 100),
-    infield      INTEGER NOT NULL DEFAULT 100 CHECK (infield     BETWEEN 1 AND 100),
-    outfield     INTEGER NOT NULL DEFAULT 100 CHECK (outfield    BETWEEN 1 AND 100),
-    arm          INTEGER NOT NULL DEFAULT 100 CHECK (arm         BETWEEN 1 AND 100),
+    catching     INTEGER NOT NULL DEFAULT 100 CHECK (catching     BETWEEN 1 AND 100),
+    infield      INTEGER NOT NULL DEFAULT 100 CHECK (infield      BETWEEN 1 AND 100),
+    outfield     INTEGER NOT NULL DEFAULT 100 CHECK (outfield     BETWEEN 1 AND 100),
+    arm          INTEGER NOT NULL DEFAULT 100 CHECK (arm          BETWEEN 1 AND 100),
 
     -- Pitching
-    accuracy     INTEGER NOT NULL DEFAULT 100 CHECK (accuracy    BETWEEN 1 AND 100),
-    stamina      INTEGER NOT NULL DEFAULT 100 CHECK (stamina     BETWEEN 1 AND 100),
-    recovery     INTEGER NOT NULL DEFAULT 100 CHECK (recovery    BETWEEN 1 AND 100),
+    accuracy     INTEGER NOT NULL DEFAULT 100 CHECK (accuracy     BETWEEN 1 AND 100),
+    stamina      INTEGER NOT NULL DEFAULT 100 CHECK (stamina      BETWEEN 1 AND 100),
+    recovery     INTEGER NOT NULL DEFAULT 100 CHECK (recovery     BETWEEN 1 AND 100),
     ground_balls INTEGER NOT NULL DEFAULT 100 CHECK (ground_balls BETWEEN 1 AND 100),
-    strikes      INTEGER NOT NULL DEFAULT 100 CHECK (strikes     BETWEEN 1 AND 100),
+    strikes      INTEGER NOT NULL DEFAULT 100 CHECK (strikes      BETWEEN 1 AND 100),
 
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
 -- Track skill progression over time
 CREATE TABLE IF NOT EXISTS player_skills_history (
-    player_id TEXT NOT NULL,
-    season_id TEXT NOT NULL,
+    player_id    TEXT NOT NULL,
+    season_id    TEXT NOT NULL,
 
-    age INTEGER NOT NULL DEFAULT 17,
-    clutch INTEGER NOT NULL,
-    speed INTEGER NOT NULL,
-    power INTEGER NOT NULL,
-    eye INTEGER NOT NULL,
-    contact INTEGER NOT NULL,
+    age          INTEGER NOT NULL DEFAULT 17,
+    clutch       INTEGER NOT NULL,
+    speed        INTEGER NOT NULL,
+    power        INTEGER NOT NULL,
+    eye          INTEGER NOT NULL,
+    contact      INTEGER NOT NULL,
     base_running INTEGER NOT NULL,
-    bunting INTEGER NOT NULL,
-    catching INTEGER NOT NULL,
-    infield INTEGER NOT NULL,
-    outfield INTEGER NOT NULL,
-    arm INTEGER NOT NULL,
-    accuracy INTEGER NOT NULL,
-    stamina INTEGER NOT NULL,
-    recovery INTEGER NOT NULL,
+    bunting      INTEGER NOT NULL,
+    catching     INTEGER NOT NULL,
+    infield      INTEGER NOT NULL,
+    outfield     INTEGER NOT NULL,
+    arm          INTEGER NOT NULL,
+    accuracy     INTEGER NOT NULL,
+    stamina      INTEGER NOT NULL,
+    recovery     INTEGER NOT NULL,
     ground_balls INTEGER NOT NULL,
-    strikes INTEGER NOT NULL,
+    strikes      INTEGER NOT NULL,
     
-    recorded_at TEXT NOT NULL,
+    recorded_at  TEXT NOT NULL,
     
     PRIMARY KEY (player_id, season_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
@@ -121,12 +122,19 @@ CREATE TABLE IF NOT EXISTS player_status (
 );
 
 CREATE TABLE IF NOT EXISTS player_energy (
-    player_id          TEXT PRIMARY KEY,
-    current_energy     REAL NOT NULL DEFAULT 1.0 CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
-    last_game_date     TEXT,                                    -- ISO date of last game played
-    consecutive_days   INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
-    season_games_played INTEGER NOT NULL DEFAULT 0 CHECK (season_games_played >= 0),
+    player_id            TEXT PRIMARY KEY,
+    current_energy       REAL NOT NULL DEFAULT 1.0 CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
+    injuries_this_season INTEGER NOT NULL DEFAULT 0,
+    last_game_date       TEXT,                                    -- ISO date of last game played
+    consecutive_days     INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
+    season_games_played  INTEGER NOT NULL DEFAULT 0 CHECK (season_games_played >= 0),
 
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS player_injuries (
+    player_id               TEXT PRIMARY KEY,
+    games_remaining         INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 

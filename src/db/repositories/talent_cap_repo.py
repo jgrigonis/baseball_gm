@@ -9,26 +9,9 @@ ceilings determined at birth.
 
 import sqlite3
 from typing import Sequence
+from src.player.positions import SKILLS
 
-# Full skill names in a stable order matching the DB columns
-_SKILLS = [
-    "clutch",
-    "speed",
-    "power",
-    "eye",
-    "contact",
-    "base_running",
-    "bunting",
-    "catching",
-    "infield",
-    "outfield",
-    "arm",
-    "accuracy",
-    "stamina",
-    "recovery",
-    "ground_balls",
-    "strikes",
-]
+_SKILLS = list(SKILLS.keys())
 
 
 class TalentCapRepository:
@@ -134,7 +117,7 @@ class TalentCapRepository:
             return {}
 
         result = {}
-        chunk_size = 900  # safely under SQLite's 999 limit
+        chunk_size = 900
 
         for i in range(0, len(player_ids), chunk_size):
             chunk = player_ids[i : i + chunk_size]
@@ -144,9 +127,7 @@ class TalentCapRepository:
                 chunk,
             ).fetchall()
             for row in rows:
-                result[row["player_id"]] = {
-                    k: v for k, v in dict(row).items() if k != "player_id"
-                }
+                result[row["player_id"]] = {sk: row[sk] for sk in _SKILLS}
 
         return result
 

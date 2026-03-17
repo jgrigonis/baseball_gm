@@ -512,11 +512,11 @@ class TestDeltaCL(unittest.TestCase):
         self.assertGreater(mean_vet, 0.0)
 
     def test_no_vet_bonus_before_vet_age(self):
-        """Young players are a pure random walk — mean near zero."""
+        """Young players have only a small baseline drift."""
         mean_young = _mean_delta(
             lambda a, v, r, **kw: SkillAging.delta_CL(a, v, r), age=24, val=50.0, n=5000
         )
-        self.assertAlmostEqual(mean_young, 0.0, delta=0.15)
+        self.assertAlmostEqual(mean_young, 0.2, delta=0.15)
 
     def test_playoff_boost_adds_to_delta(self):
         mean_no_boost = _mean_delta(

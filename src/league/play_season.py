@@ -14,6 +14,7 @@ import traceback
 from src.db.repositories import bullpen_roles_repo
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
+from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -223,6 +224,13 @@ def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
             )
 
 
+def save_position_energy(conn, player_energy_states: dict) -> None:
+    repo = PlayerEnergyRepository(conn)
+    for state in player_energy_states.values():
+        if state.season_games_played > 0 or state.last_game_date is not None:
+            repo.save(state)
+
+
 def play_game(
     conn,
     args,
@@ -295,12 +303,16 @@ def play_game(
         log_level = logging.WARNING
         log_id = None
         log_to_file = False
-    
+
     all_pitcher_ids = [p.id for p in home_team.players + away_team.players]
     _ps_repo = PitcherStateRepository(conn)
-    pitcher_states = {
-        pid: _ps_repo.get(pid)
-        for pid in all_pitcher_ids
+    pitcher_states = {pid: _ps_repo.get(pid) for pid in all_pitcher_ids}
+    energy_repo = PlayerEnergyRepository(conn)
+    player_energy_states = {
+        p.id: energy_repo.get_with_recovery(
+            p.id, game_date, durability=p.skills.get("durability", 50)
+        )
+        for p in home_team.position_players + away_team.position_players
     }
 
     logger = setup_logger(
@@ -320,6 +332,7 @@ def play_game(
         logger=logger,
         pitcher_states=pitcher_states,
         game_date=game_date,
+        player_energy_states=player_energy_states,
     )
 
     # Pass starter IDs to set_lineup
@@ -391,6 +404,7 @@ def play_game(
     save_player_stats(conn, game_info["game_id"], home_team, away_team)
 
     save_energy(conn, game_date, home_team, away_team)
+    save_position_energy(conn, player_energy_states)
 
     logger.info(home_team.output_defensive_stats())
     logger.info(away_team.output_defensive_stats())

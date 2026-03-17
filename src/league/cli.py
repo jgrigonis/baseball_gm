@@ -21,7 +21,7 @@ from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import LEAGUE_FILES_DIR, MANIFEST_FILES_DIR
 
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 
 def get_args():

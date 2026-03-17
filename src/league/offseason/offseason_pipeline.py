@@ -7,6 +7,7 @@ import random
 import sqlite3
 
 
+from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
@@ -86,6 +87,7 @@ class OffseasonPipeline:
     def _age(self, rng):
         """Step 2: Age every player by one year and write back updated skills."""
         cap_repo = TalentCapRepository(self.conn)
+        energy_repo = PlayerEnergyRepository(self.conn)
 
         players = self.player_repo.get_all_players()
 
@@ -94,9 +96,40 @@ class OffseasonPipeline:
         all_caps = cap_repo.get_many(player_ids)
 
         for player in players:
-            caps = all_caps.get(player.id)  # None for legacy players = no dampening
+            caps = all_caps.get(player.id)
+
+            # Players who ended the season with very low energy aged harder —
+            # either from injury or chronic overuse. Only affects coached/physical
+            # skills via the coaching multiplier.
+            energy_state = energy_repo.get(player.id)
+            coaching = 1.0
+            if energy_state is not None:
+                games = energy_state.season_games_played
+                injuries = energy_state.injuries_this_season
+
+                # Heavy usage wears players down over the season
+                # 130+ games is a full workload — above that, physical aging accelerates
+                if games >= 150:
+                    coaching = 0.85  # extreme usage — 15% faster
+                elif games >= 130:
+                    coaching = 0.92  # heavy usage — 8% faster
+                elif games >= 110:
+                    coaching = 0.96  # moderate — 4% faster
+
+                if injuries >= 2:
+                    coaching = min(coaching, 0.80)
+                elif injuries == 1:
+                    coaching = min(coaching, 0.88)
+
+                if energy_state.current_energy < 0.20:
+                    coaching = min(coaching, 0.80)  # severe — 20% faster physical aging
+
             new_skills = player.skills.age_to(
-                player.age + 1, from_age=player.age, rng=rng, caps=caps
+                player.age + 1,
+                from_age=player.age,
+                rng=rng,
+                caps=caps,
+                coaching=coaching,
             )
             self.player_repo.update_skills(player.id, new_skills)
 
@@ -245,30 +278,50 @@ class OffseasonPipeline:
         trimmer.run(season_id)
 
     @staticmethod
-    def _should_retire(age: int, skills, is_unrostered: bool, rng: random.Random) -> bool:
+    def _should_retire(
+        age: int, skills, is_unrostered: bool, rng: random.Random
+    ) -> bool:
         if is_unrostered:
             if age < 18:
                 return False
-            probability = min(0.95, (age - 18) * 0.2)
+            probability = min(0.95, (age - 22) * 0.20)
         else:
             if age < 30:
                 return False
 
-            
-
             # Use role-appropriate skills for decline check
             # Pitchers: AC, ST, RE, GB, KK, CL
             # Position players: CT, PO, EY, SP, BR, AR, OF, IF, CA, CL
-            pitching_skills = ["accuracy", "stamina", "recovery", "ground_balls", "strikes"]
-            batting_skills = ["contact", "power", "eye", "speed", "base_running",
-                            "arm", "outfield", "infield", "catching"]
+            pitching_skills = [
+                "accuracy",
+                "stamina",
+                "recovery",
+                "ground_balls",
+                "strikes",
+            ]
+            batting_skills = [
+                "contact",
+                "power",
+                "eye",
+                "speed",
+                "base_running",
+                "arm",
+                "outfield",
+                "infield",
+                "catching",
+            ]
 
             skill_dict = skills.as_dict()
-            is_pitcher = skill_dict.get("stamina", 0) > 40 or skill_dict.get("strikes", 0) > 40
+            is_pitcher = (
+                skill_dict.get("stamina", 0) > 40 or skill_dict.get("strikes", 0) > 40
+            )
 
             if is_pitcher:
                 # Only physically declining skills — AC never declines so exclude it
-                peak = max(skill_dict.get(k, 0) for k in ["strikes", "stamina", "recovery", "ground_balls"])
+                peak = max(
+                    skill_dict.get(k, 0)
+                    for k in ["strikes", "stamina", "recovery", "ground_balls"]
+                )
                 if peak >= 75:
                     return False
             else:

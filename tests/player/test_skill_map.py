@@ -131,7 +131,7 @@ class TestSkillCategories:
         assert SKILL_CATEGORIES["pitching"] == expected
 
     def test_general_skills_correct(self):
-        expected = ["CL", "SP"]
+        expected = ["CL", "SP", "DU"]
         assert SKILL_CATEGORIES["general"] == expected
 
     def test_clutch_is_general_skill(self):
@@ -334,7 +334,7 @@ class TestGetSkillsByCategory:
 
     def test_get_skills_by_category_general(self):
         skills = get_skills_by_category("general")
-        assert skills == ["CL", "SP"]
+        assert skills == ["CL", "SP", "DU"]
 
     def test_get_skills_by_category_returns_copy(self):
         """Modifying returned list shouldn't affect original."""
@@ -508,14 +508,14 @@ class TestSkillMapIntegrity:
     """Test overall integrity and consistency."""
 
     def test_expected_skill_count(self):
-        """Ensure we have all 16 skills."""
-        assert len(SKILL_MAP) == 16
+        """Ensure we have all 17 skills."""
+        assert len(SKILL_MAP) == 17
 
     def test_category_counts(self):
         assert len(SKILL_CATEGORIES["hitting"]) == 5
         assert len(SKILL_CATEGORIES["defense"]) == 4
         assert len(SKILL_CATEGORIES["pitching"]) == 5
-        assert len(SKILL_CATEGORIES["general"]) == 2
+        assert len(SKILL_CATEGORIES["general"]) == 3
 
     def test_roundtrip_abbr_to_name_to_abbr(self):
         """Test that converting back and forth works."""

@@ -116,3 +116,9 @@ HNR_FAVORABLE_COUNT_MOD = 1.3
 # Pitcher Change
 PITCH_COUNT_THRESHOLD = 100
 CLOSER_ENTRANCE_PROB = 0.92
+
+# Injury/Fatigue
+INJURY_BASE_PROB = 0.003  # per half-inning ≈ 0.054/game, close to 5.78/1000
+FATIGUE_MULTIPLIER = 1.6  # injury multiplier for fatigued players
+LOW_ENERGY = 0.50  # threshold for low player energy
+BASE_ENERGY_DEPLETION = 0.035

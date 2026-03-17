@@ -9,29 +9,11 @@ import sqlite3
 import unittest
 
 from src.db.repositories.talent_cap_repo import TalentCapRepository
+from src.db.repositories.talent_cap_repo import _SKILLS
 
 # ─────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────
-
-_SKILLS = [
-    "clutch",
-    "speed",
-    "power",
-    "eye",
-    "contact",
-    "base_running",
-    "bunting",
-    "catching",
-    "infield",
-    "outfield",
-    "arm",
-    "accuracy",
-    "stamina",
-    "recovery",
-    "ground_balls",
-    "strikes",
-]
 
 
 def _make_conn() -> sqlite3.Connection:
@@ -45,6 +27,7 @@ def _make_conn() -> sqlite3.Connection:
             player_id    TEXT PRIMARY KEY,
             clutch       INTEGER NOT NULL DEFAULT 100,
             speed        INTEGER NOT NULL DEFAULT 100,
+            durability   INTEGER NOT NULL DEFAULT 100,
             power        INTEGER NOT NULL DEFAULT 100,
             eye          INTEGER NOT NULL DEFAULT 100,
             contact      INTEGER NOT NULL DEFAULT 100,
@@ -71,26 +54,8 @@ def _full_caps(base: int = 70) -> dict[str, int]:
     return {sk: base for sk in _SKILLS}
 
 
-def _varied_caps() -> dict[str, int]:
-    """Return a caps dict with varied values for testing key lookups."""
-    return {
-        "clutch": 55,
-        "speed": 72,
-        "power": 81,
-        "eye": 88,
-        "contact": 65,
-        "base_running": 60,
-        "bunting": 50,
-        "catching": 45,
-        "infield": 78,
-        "outfield": 70,
-        "arm": 66,
-        "accuracy": 82,
-        "stamina": 58,
-        "recovery": 63,
-        "ground_balls": 74,
-        "strikes": 77,
-    }
+def _varied_caps():
+    return {sk: (i % 50) + 50 for i, sk in enumerate(_SKILLS)}
 
 
 # ─────────────────────────────────────────────

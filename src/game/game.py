@@ -33,6 +33,12 @@ from src.game.intent_generator import IntentGenerator
 from src.game.intents.pick_off import PickOffIntent
 from src.game.intents.pitch import PrePitchSituation
 from src.game.pitcher_appearance import PitcherAppearance, LeadChange
+from src.game.probabilities import (
+    INJURY_BASE_PROB,
+    FATIGUE_MULTIPLIER,
+    LOW_ENERGY,
+    BASE_ENERGY_DEPLETION,
+)
 from src.game.resolver import Resolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
@@ -129,7 +135,8 @@ class Game:
         resolver: Resolver | None = None,
         pauses: bool = False,
         pitcher_states: dict[str, "PitcherState"] | None = None,
-        game_date: "date | None" = None,  
+        game_date: "date | None" = None,
+        player_energy_states: dict | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -195,6 +202,7 @@ class Game:
         self.decisions: PitchingDecisions | None = None
         self.pitcher_states = pitcher_states or {}
         self.game_date = game_date
+        self.player_energy_states = player_energy_states or {}
 
         # Logging
         self.logger = logger
@@ -712,6 +720,7 @@ class Game:
         # Check if game is over BEFORE incrementing
         if self.is_over():
             return
+        self._check_injuries()
         # Advance inning
         self.inning.increment()
 
@@ -726,6 +735,28 @@ class Game:
         self._consider_pitching_change()  # manager can change before inning starts
 
         self.logger.info(f"⚾ {self.inning}")
+
+    def _check_injuries(self) -> None:
+        """Random injury check for active position players."""
+        for player in self.bat_team.lineup:
+            if not player or getattr(player.player, "is_injured", False):
+                continue
+            state = self.player_energy_states.get(player.player.id)
+            prob = INJURY_BASE_PROB
+            if state and state.current_energy < LOW_ENERGY:
+                prob *= FATIGUE_MULTIPLIER
+            if self.rng.random() < prob:
+                player.player.is_injured = True
+                if state:
+                    state.current_energy = 0.0
+                    state.injuries_this_season += 1
+                self.logger.info(
+                    f"🚑 {player.player.name} injured and removed from game"
+                )
+                sub = self.bat_team.get_bench_player(player)
+                if sub:
+                    self.bat_team.substitute(player, sub)
+                    self.logger.info(f"↔️ {sub.name} enters for {player.player.name}")
 
     def _swap_teams(self) -> None:
         """Swap batting and pitching teams."""
@@ -751,6 +782,24 @@ class Game:
         self._plate_appearance_complete = True
         self._pa_end_reason = reason
         self.logger.trace(f"PA complete: {reason}")
+        self._deplete_batter_energy()
+
+    def _deplete_batter_energy(self) -> None:
+        if not self.current_batter:
+            return
+        state = self.player_energy_states.get(self.current_batter.player.id)
+        if not state:
+            return
+        base_depletion = BASE_ENERGY_DEPLETION
+        # No penalty for first 3 consecutive days, then ramps up
+        streak_days = max(0, state.consecutive_days - 3)
+        streak_penalty = min(0.015 * streak_days, 0.05)
+        state.current_energy = max(
+            0.0, state.current_energy - base_depletion - streak_penalty
+        )
+        state.consecutive_days += 1
+        state.season_games_played += 1
+        state.last_game_date = self.game_date
 
     def _record_lead_change_if_needed(self, responsible_pitcher) -> None:
         # DEBUG
@@ -819,9 +868,9 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
-                pitcher_states=self.pitcher_states, 
-                game_date=self.game_date,          
-                rng=self.rng,     
+                pitcher_states=self.pitcher_states,
+                game_date=self.game_date,
+                rng=self.rng,
             )
             if pitcher:
                 self._close_pitcher_appearance()
@@ -853,9 +902,9 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
-                pitcher_states=self.pitcher_states, 
-                game_date=self.game_date,          
-                rng=self.rng,   
+                pitcher_states=self.pitcher_states,
+                game_date=self.game_date,
+                rng=self.rng,
             )
             if pitcher:
                 self._close_pitcher_appearance()

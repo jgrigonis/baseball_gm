@@ -766,7 +766,9 @@ class GameStrategy:
 
         def _weight(p: PlayerInGame) -> float:
             """Combined weight: rest days × in-game energy."""
-            state = (pitcher_states or {}).get(p.id if hasattr(p, 'id') else p.player.id)
+            state = (pitcher_states or {}).get(
+                p.id if hasattr(p, "id") else p.player.id
+            )
             rest_w = availability_weight(state, game_date) if game_date else 1.0
             energy_w = p.pitcher_fatigue.energy if p.pitcher_fatigue else 1.0
             return rest_w * energy_w
@@ -812,11 +814,15 @@ class GameStrategy:
             if closers:
                 # Closer situation: still use weighted choice but bias heavily
                 # toward best closer — pick best by rating, weighted by rest
-                return _weighted_choice(sorted(
-                    closers,
-                    key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("rp", 0),
-                    reverse=True,
-                )[:3])  # top 3 closers by rating, weighted by rest
+                return _weighted_choice(
+                    sorted(
+                        closers,
+                        key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get(
+                            "rp", 0
+                        ),
+                        reverse=True,
+                    )[:3]
+                )  # top 3 closers by rating, weighted by rest
 
         # --- Inning 7-8, close game: Setup ---
         if 7 <= inning_num <= 8 and close_game:
@@ -861,7 +867,7 @@ class GameStrategy:
 
         # --- Last resort ---
         return _weighted_choice(available)
-        
+
     # @staticmethod
     # def select_relief_pitcher(
     #     team: TeamInGame,

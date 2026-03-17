@@ -239,8 +239,8 @@ class TestShouldAttemptSteal:
     def test_full_count_increases_steal_prob(self):
         bases = self._bases_clear_second()
         count = _make_count(balls=3, strikes=2)
-        # Should pass even with a slightly higher random threshold
-        rng = _always(0.1)  # Would normally exceed base prob but full count boosts it
+        # 0.034 * ((80+50)/100) * (50/40) * 1.5 ≈ 8.3%
+        rng = _always(0.07)
         result = GameStrategy.should_attempt_steal(
             FIRST,
             bases,
@@ -248,10 +248,11 @@ class TestShouldAttemptSteal:
             count=count,
             score=_make_score(),
             runner_speed=80,
+            base_running_skill=50,
             catcher_arm=40,
             rng=rng,
         )
-        assert result  # 5.8% * (80/50) * (50/40) * 1.5 ≈ 21.75% > 10%
+        assert result
 
     def test_two_outs_reduces_steal_prob(self):
         bases = self._bases_clear_second()
@@ -770,18 +771,25 @@ class TestShouldBringInCloser:
 class TestSelectReliefPitcher:
 
     def _make_available(self, role, fatigue=None, is_starter=False):
-        if fatigue is None:
-            fatigue = FatigueLevel.FRESH
-        p = _make_pitcher(
-            pitch_count=0,
-            fatigue_level=fatigue,
-            is_starter=is_starter,
-            bullpen_role=role,
-        )
+        p = MagicMock()
+        p.bullpen_role = role
+        p.game_stats.pitching.pitch_count = 0
         p.current_position = None
-        p.record = MagicMock()
-        p.record.skills = MagicMock()
+        p.pitcher_fatigue.energy = 1.0  # ADD — must be a float
+        p.pitcher_fatigue.get_level.return_value = FatigueLevel.FRESH
         return p
+        # if fatigue is None:
+        #     fatigue = FatigueLevel.FRESH
+        # p = _make_pitcher(
+        #     pitch_count=0,
+        #     fatigue_level=fatigue,
+        #     is_starter=is_starter,
+        #     bullpen_role=role,
+        # )
+        # p.current_position = None
+        # p.record = MagicMock()
+        # p.record.skills = MagicMock()
+        # return p
 
     def test_returns_none_if_no_available(self, mock_rate_player):
         current = _make_pitcher()

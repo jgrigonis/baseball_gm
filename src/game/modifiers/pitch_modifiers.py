@@ -15,15 +15,11 @@ class PitchModifiers:
         batter = game.current_batter.player
         pitcher = game.pos("p")
         PitchModifiers.modify_for_bases(resolver, game.bases)
-        PitchModifiers.modify_for_situation(
-            resolver, game.situation, batter
-        )
+        PitchModifiers.modify_for_situation(resolver, game.situation, batter)
         PitchModifiers.modify_for_count(resolver, game.count)
         PitchModifiers.modify_for_batter(resolver, batter)
         PitchModifiers.modify_for_pitcher(resolver, pitcher)
-        PitchModifiers.modify_for_platoon(
-            resolver, batter, pitcher
-        )
+        PitchModifiers.modify_for_platoon(resolver, batter, pitcher)
         PitchModifiers.modify_for_clutch(resolver, batter, pitcher, game)
 
     @staticmethod
@@ -136,9 +132,7 @@ class PitchModifiers:
             resolver.pitch_outcome.multiply("strike", 1.05)
 
     @staticmethod
-    def modify_for_clutch(
-        resolver, batter, pitcher, game
-    ) -> None:
+    def modify_for_clutch(resolver, batter, pitcher, game) -> None:
         """
         Adjust outcomes based on the situation and player clutch ratings.
         Determine clutch situations, they can be multiplicative
@@ -163,7 +157,7 @@ class PitchModifiers:
             scoring_position = True
         if game.count.balls > 2 or game.count.strikes == 2:
             high_count = True
-        if game.inning.inning_number > 7:
+        if game.inning.number > 7:
             late_game = True
 
         situation_count = sum([tight_game, scoring_position, high_count, late_game])
@@ -172,7 +166,7 @@ class PitchModifiers:
 
         # Each active situation amplifies the clutch effect
         # 1 situation: 1.4x, 2: 1.6x, 3: 1.8x, 4: 1.9x (diminishing returns)
-        situation_multiplier = 1.0 + (0.4 * situation_count ** 0.6)
+        situation_multiplier = 1.0 + (0.4 * situation_count**0.6)
 
         # Base effect: ~1.5% swing per 50 clutch points in a single situation
         # Scales to ~3% at max differential with all 4 situations active
@@ -180,9 +174,11 @@ class PitchModifiers:
 
         # Positive effect = batter clutch advantage → more contact, more power
         # Negative effect = pitcher clutch advantage → more strikes, less contact
-        resolver.pitch_outcome.multiply("in_play",  1.0 + effect)
-        resolver.pitch_outcome.multiply("home_run", 1.0 + effect * 1.5)  # power amplified
-        resolver.pitch_outcome.multiply("strike",   1.0 - effect)
-        resolver.pitch_outcome.multiply("foul",     1.0 + effect * 0.4)
-        resolver.pitch_outcome.multiply("ball",     1.0 - effect * 0.3)
+        resolver.pitch_outcome.multiply("in_play", 1.0 + effect)
+        resolver.pitch_outcome.multiply(
+            "home_run", 1.0 + effect * 1.5
+        )  # power amplified
+        resolver.pitch_outcome.multiply("strike", 1.0 - effect)
+        resolver.pitch_outcome.multiply("foul", 1.0 + effect * 0.4)
+        resolver.pitch_outcome.multiply("ball", 1.0 - effect * 0.3)
         resolver.pitch_outcome.multiply("hit_by_pitch", 1.0 - effect * 0.2)

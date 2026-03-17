@@ -505,6 +505,7 @@ class PlayerSkills:
             "recovery": float(self["recovery"]),
             "ground_balls": float(self["ground_balls"]),
             "strikes": float(self["strikes"]),
+            "durability": float(self["durability"]),
         }
         SA = SkillAging()
 
@@ -544,6 +545,9 @@ class PlayerSkills:
             )
             s["recovery"] += SA.delta_RE(
                 current_age, s["recovery"], rng, coaching, cap("recovery")
+            )
+            s["durability"] += SA.delta_DU(
+                current_age, s["durability"], rng, coaching, cap("durability")
             )
 
             for k in s:

@@ -31,6 +31,7 @@ TALENT_SIGMA: dict[str, float] = {
     "speed": 8.0,  # sprint timing is exact; ceiling varies a lot
     "arm": 6.0,  # radar gun; most predictable physical tool
     "power": 9.0,  # exit velo hints at ceiling but varies most
+    "durability": 12.0,  # little harder to detect
     # Craft / mental — hardest to project
     "contact": 12.0,  # genuinely hard to scout in minors
     "eye": 11.0,  # walk rate needs huge sample to stabilize

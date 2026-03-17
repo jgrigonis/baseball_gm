@@ -54,6 +54,7 @@ MIN_ENERGY_STARTER = 0.75
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 def _daily_recovery_rate(recovery_skill: int) -> float:
     """
     Fraction of remaining energy gap closed each day.

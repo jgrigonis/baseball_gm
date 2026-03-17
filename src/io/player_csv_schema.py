@@ -6,6 +6,7 @@ PLAYER_CSV_HEADER = [
     "PS",
     "T",
     "B",
+    "DU",
     "CL",
     "SP",
     "PO",
@@ -27,6 +28,7 @@ PLAYER_CSV_HEADER = [
 
 # mapping from CSV column → PlayerSkills field
 PLAYER_SKILL_COLUMNS = [
+    "DU",
     "CL",
     "SP",
     "PO",

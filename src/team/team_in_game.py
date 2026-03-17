@@ -1,3 +1,4 @@
+# src/team/team_in_game.py
 """The TeamInGame class.
 
 Owns:
@@ -133,16 +134,22 @@ class TeamInGame:
             self.pitcher.current_position = Position.PITCHER.value
             self.pitcher.is_starter = True
 
-    def get_fielder(self, position: Position) -> PlayerInGame | None:
-        """Get player at a position."""
-        return self._positions.get(position)
+    @property
+    def bench_players(self) -> list[PlayerInGame]:
+        """Players not currently in the active lineup."""
+        lineup_ids = {slot.player.id for slot in self.lineup}
+        return [
+            p
+            for p in self.players
+            if p.id not in lineup_ids
+            and not p.pitcher_fatigue  # exclude pitchers
+            and not p.is_injured
+        ]
 
-    def _ensure_players_rated(self) -> None:
-        for p in self.players:
-            if not p.is_rated():
-                # print(f"{p.record.name} throws={repr(p.throws)} record.throws={repr(p.record.throws)}")
-
-                p.rate_player()
+    @property
+    def position_players(self) -> list[PlayerInGame]:
+        """All non-pitcher players on the roster."""
+        return [p for p in self.players if not p.pitcher_fatigue]
 
     @property
     def current_batter(self) -> LineupSlot:
@@ -150,11 +157,6 @@ class TeamInGame:
         if not self.lineup:
             raise RuntimeError("Lineup has not been set")
         return self.lineup[self.batter_index]
-
-    def next_batter(self) -> LineupSlot:
-        """Increment the batter index and return the next batter."""
-        self.batter_index = (self.batter_index + 1) % len(self.lineup)
-        return self.current_batter
 
     @property
     def current_pitcher(self):
@@ -232,6 +234,81 @@ class TeamInGame:
         if dh is None:
             raise RuntimeError("No dh in lineup")
         return dh
+
+    def next_batter(self) -> LineupSlot:
+        """Increment the batter index and return the next batter."""
+        self.batter_index = (self.batter_index + 1) % len(self.lineup)
+        return self.current_batter
+
+    def get_fielder(self, position: Position) -> PlayerInGame | None:
+        """Get player at a position."""
+        return self._positions.get(position)
+
+    def _ensure_players_rated(self) -> None:
+        for p in self.players:
+            if not p.is_rated():
+                # print(f"{p.record.name} throws={repr(p.throws)} record.throws={repr(p.record.throws)}")
+
+                p.rate_player()
+
+    def get_bench_player(self, injured: PlayerInGame) -> PlayerInGame | None:
+        """
+        Find the best available bench player for the injured player's position.
+
+        Rates all bench players if needed, then returns the highest rated
+        at the specific position being vacated.
+
+        Args:
+            injured: The player who was injured
+
+        Returns:
+            Best available substitute, or None if bench is empty
+        """
+        bench = self.bench_players
+        if not bench:
+            return None
+
+        # Ensure all bench players are rated
+        for p in bench:
+            if not p.is_rated():
+                p.rate_player()
+
+        position = injured.player.current_position  # e.g. "lf", "1b", "c"
+        if not position:
+            return max(bench, key=lambda p: p.ratings.get("ovr", 0))
+
+        return max(bench, key=lambda p: p.ratings.get(position, 0))
+
+    def substitute(self, outgoing: PlayerInGame, incoming: PlayerInGame) -> None:
+        """
+        Replace a player in the lineup with a bench player.
+
+        Args:
+            outgoing: The player leaving the game
+            incoming: The replacement player
+        """
+        slot = next((s for s in self.lineup if s.player.id == outgoing.player.id), None)
+        if slot is None:
+            self.logger.warning(
+                f"substitute: {outgoing.player.name} not found in lineup"
+            )
+            return
+
+        incoming.current_position = outgoing.player.current_position
+        incoming.game_stats.batting.game_played = 1
+        slot.player = incoming
+
+        try:
+            pos = Position(outgoing.player.current_position)
+            self._positions[pos] = incoming
+        except (ValueError, TypeError):
+            pass
+
+        outgoing.player.current_position = None
+        self.logger.info(
+            f"↔️  {incoming.name} replaces {outgoing.player.name} "
+            f"at {incoming.current_position}"
+        )
 
     def output_lineup_skills(self) -> str:
         """Output the starting lineup skills as a string."""

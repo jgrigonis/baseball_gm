@@ -27,8 +27,24 @@ class MockSkills:
         self._avg = avg
 
     def as_dict(self) -> dict:
-        # Return 16 skills all equal to avg so the average is exact
-        return {f"skill_{i}": self._avg for i in range(16)}
+        return {
+            "contact": self._avg,
+            "power": self._avg,
+            "eye": self._avg,
+            "speed": self._avg,
+            "base_running": self._avg,
+            "arm": self._avg,
+            "outfield": self._avg,
+            "infield": self._avg,
+            "catching": self._avg,
+            "accuracy": self._avg,
+            "stamina": self._avg,
+            "recovery": self._avg,
+            "ground_balls": self._avg,
+            "strikes": self._avg,
+            "clutch": self._avg,
+            "durability": self._avg,
+        }
 
 
 def rng_always(value: float) -> random.Random:
@@ -58,9 +74,9 @@ class TestRosteredAgeThreshold:
         assert should_retire(30, MockSkills(50), False, rng_always(0.0)) is False
 
     def test_age_31_first_retirement_chance(self):
-        # At 31, base = (31-30)*0.04 = 0.04
-        # rng=0.03 → retires
-        assert should_retire(31, MockSkills(50), False, rng_always(0.03)) is True
+        # At 31, base = (31-30)*0.03 = 0.03
+        # rng=0.02 → retires
+        assert should_retire(31, MockSkills(50), False, rng_always(0.02)) is True
 
     def test_age_31_no_retire_if_rng_above(self):
         # probability=0.04, rng=0.05 → does not retire
@@ -105,16 +121,16 @@ class TestRosteredSkillDecline:
         assert should_retire(32, MockSkills(50), False, rng) is False
 
     def test_above_average_skills_no_decline_bonus(self):
-        # skill_avg=80 → decline_factor=0, same probability as skill_avg=50
-        # age=32, base=0.08 — both should produce same result
+        # skill_avg=65 → decline_factor=0 (above 50, no penalty)
+        # age=32, base=(32-30)*0.03=0.06
+        # peak=65 < 72 so peak guard doesn't fire
         rng = rng_always(0.05)
-        assert should_retire(32, MockSkills(80), False, rng) is True  # 0.05 < 0.08
-        assert should_retire(32, MockSkills(50), False, rng) is True  # same probability
+        assert should_retire(32, MockSkills(65), False, rng) is True  # 0.05 < 0.06
 
     def test_skill_avg_50_no_decline_factor(self):
-        # age=31, base=0.04, decline_factor=0
-        # rng=0.03 → retires
-        assert should_retire(31, MockSkills(50), False, rng_always(0.03)) is True
+        # age=31, base=(31-30)*0.03=0.03, decline_factor=0
+        # rng=0.02 → retires
+        assert should_retire(31, MockSkills(50), False, rng_always(0.02)) is True
 
 
 # ---------------------------------------------------------------------------

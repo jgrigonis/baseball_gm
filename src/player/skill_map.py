@@ -37,6 +37,7 @@ SKILL_MAP: dict[str, str] = {
     # General
     "CL": "clutch",
     "SP": "speed",
+    "DU": "durability",
 }
 
 # Reverse mapping: full name -> abbreviation
@@ -47,7 +48,7 @@ SKILL_CATEGORIES: dict[str, list[str]] = {
     "hitting": ["PO", "EY", "CT", "BR", "BU"],
     "defense": ["CA", "IF", "OF", "AR"],
     "pitching": ["AC", "ST", "RE", "GB", "KK"],
-    "general": ["CL", "SP"],
+    "general": ["CL", "SP", "DU"],
 }
 
 # Skill value constraints
@@ -75,6 +76,7 @@ SkillAbbr = Literal[
     "KK",  # Pitching
     "CL",
     "SP",  # General
+    "DU",
 ]
 
 

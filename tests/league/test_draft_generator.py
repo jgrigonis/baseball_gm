@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS player_talent_caps (
     player_id    TEXT PRIMARY KEY,
     clutch       INTEGER NOT NULL DEFAULT 100,
     speed        INTEGER NOT NULL DEFAULT 100,
+    durability   INTEGER NOT NULL DEFAULT 100,
     power        INTEGER NOT NULL DEFAULT 100,
     eye          INTEGER NOT NULL DEFAULT 100,
     contact      INTEGER NOT NULL DEFAULT 100,

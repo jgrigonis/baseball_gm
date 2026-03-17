@@ -360,6 +360,8 @@ class TestEndHalfInning:
     @pytest.fixture
     def game(self, mock_teams):
         home, away = mock_teams
+        home.lineup = []
+        away.lineup = []
         game = Game(home, away)
 
         # Mock sync_players
@@ -417,6 +419,8 @@ class TestPostEvent:
     @pytest.fixture
     def game(self, mock_teams):
         home, away = mock_teams
+        home.lineup = []
+        away.lineup = []
         game = Game(home, away)
 
         # Mock next batter
@@ -641,12 +645,14 @@ class TestIntegration:
         home.name = "Home"
         home.has_lineup = True
         home.players = []
+        home.lineup = []
 
         away = Mock()
         away.id = "away"
         away.name = "Away"
         away.has_lineup = True
         away.players = []
+        away.lineup = []
 
         return home, away
 

@@ -110,6 +110,7 @@ class PlayerEnergyState:
     last_game_date: Optional[date] = None
     consecutive_days: int = 0
     season_games_played: int = 0
+    injuries_this_season: int = 0
 
     @property
     def is_fresh(self) -> bool:
@@ -146,7 +147,7 @@ class PlayerEnergyRepository:
         cursor.execute(
             """
             SELECT player_id, current_energy, last_game_date,
-                   consecutive_days, season_games_played
+                   consecutive_days, season_games_played, injuries_this_season
             FROM player_energy
             WHERE player_id = ?
             """,
@@ -309,13 +310,14 @@ class PlayerEnergyRepository:
         cursor.execute(
             """
             INSERT INTO player_energy
-                (player_id, current_energy, last_game_date, consecutive_days, season_games_played)
-            VALUES (?, ?, ?, ?, ?)
+                (player_id, current_energy, last_game_date, consecutive_days, season_games_played, injuries_this_season)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(player_id) DO UPDATE SET
-                current_energy      = excluded.current_energy,
-                last_game_date      = excluded.last_game_date,
-                consecutive_days    = excluded.consecutive_days,
-                season_games_played = excluded.season_games_played
+                current_energy       = excluded.current_energy,
+                last_game_date       = excluded.last_game_date,
+                consecutive_days     = excluded.consecutive_days,
+                season_games_played  = excluded.season_games_played,
+                injuries_this_season = excluded.injuries_this_season
             """,
             (
                 state.player_id,
@@ -323,6 +325,7 @@ class PlayerEnergyRepository:
                 last_game_date_str,
                 state.consecutive_days,
                 state.season_games_played,
+                state.injuries_this_season,
             ),
         )
         self.conn.commit()
@@ -334,6 +337,7 @@ class PlayerEnergyRepository:
         consecutive_days: int,
         season_games_played: int,
         game_date: date,
+        injuries_this_season: int,
     ) -> None:
         """
         Persist position player state after a game appearance.
@@ -342,11 +346,12 @@ class PlayerEnergyRepository:
         that ran the game.
 
         Args:
-            player_id:           Player's unique ID.
-            final_energy:        fatigue.energy at end of game.
-            consecutive_days:    fatigue.consecutive_days after the game.
-            season_games_played: fatigue.season_games_played after the game.
-            game_date:           Date the game was played.
+            player_id:            Player's unique ID.
+            final_energy:         fatigue.energy at end of game.
+            consecutive_days:     fatigue.consecutive_days after the game.
+            season_games_played:  fatigue.season_games_played after the game.
+            game_date:            Date the game was played.
+            injuries_this_season: Number of injuries during the season.
         """
         self.save(
             PlayerEnergyState(
@@ -355,6 +360,7 @@ class PlayerEnergyRepository:
                 last_game_date=game_date,
                 consecutive_days=consecutive_days,
                 season_games_played=season_games_played,
+                injuries_this_season=injuries_this_season,
             )
         )
 

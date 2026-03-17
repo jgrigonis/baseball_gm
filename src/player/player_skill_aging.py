@@ -20,10 +20,10 @@ Ceiling dampening (per-player soft caps):
   identical base stamina may have caps of 57 vs 73.
 
 Career net delta targets (start=50, ages 17→38):
-  Physical (SP/PO/AR/KK/ST/RE): net negative — retire below entry
-  Coached  (EY/CT/BR/AC/BU):    net positive — craft improves over career
-  Defense  (IF/OF/CA/GB):       roughly neutral to slightly negative
-  Clutch   (CL):                random walk, near-zero net
+  Physical (SP/PO/AR/KK/ST/RE/DU): net negative — retire below entry
+  Coached  (EY/CT/BR/AC/BU):       net positive — craft improves over career
+  Defense  (IF/OF/CA/GB):          roughly neutral to slightly negative
+  Clutch   (CL):                   random walk, near-zero net
 """
 
 import random
@@ -53,9 +53,9 @@ KK_RATES = [1.8, 0.9, -0.4, -1.8]  # was [1.8, 0.4, -0.6, -2.0]
 KK_NOISES = [0.6, 0.5, 0.5, 0.7]
 
 # ── Clutch (CL) — cognitive random walk, vet upward drift ──
-CL_VET_AGE_BREAKS = [28, 34]          # phase boundaries
-CL_VET_BONUSES    = [0.2, 1.0, 1.5]  # under 28 | 28-33 | 34+
-CL_NOISE          = 3.5
+CL_VET_AGE_BREAKS = [28, 34]  # phase boundaries
+CL_VET_BONUSES = [0.2, 1.0, 1.5]  # under 28 | 28-33 | 34+
+CL_NOISE = 3.5
 
 # ── Eye (EY) — plate discipline, coaching-sensitive ──
 EY_PHASE_BREAKS = [27, 33, 36]
@@ -131,6 +131,16 @@ GB_RATE_LIGHT = -0.3
 GB_NOISE_LIGHT = 0.4
 GB_RATE_HARD = -1.2
 GB_NOISE_HARD = 0.6
+
+# ── Durability (DU) — general physical skill, peaks late-20s ──
+DU_DECLINE_AGE_LIGHT = 30
+DU_DECLINE_AGE_HARD = 36
+DU_RATE_GROWTH = 1.3
+DU_NOISE_GROWTH = 0.3
+DU_RATE_LIGHT = -0.3
+DU_NOISE_LIGHT = 0.4
+DU_RATE_HARD = -2.8
+DU_NOISE_HARD = 0.6
 
 # ── Sigmoid dampening constant ──
 # Controls how early growth slows near the cap.
@@ -466,4 +476,20 @@ class SkillAging:
         if age > GB_DECLINE_AGE_LIGHT:
             return GB_RATE_LIGHT + noise(rng, GB_NOISE_LIGHT)
         raw = max(0.0, coaching * (GB_RATE_GROWTH + noise(rng, GB_NOISE_GROWTH)))
+        return _cap_dampen(raw, val, cap)
+
+    @staticmethod
+    def delta_DU(
+        age: int,
+        val: float,
+        rng: random.Random,
+        coaching: float = 1.0,
+        cap: int | None = None,
+    ) -> float:
+        """Durability - general physical skill, peaks in late 20s, declines from 34."""
+        if age > DU_DECLINE_AGE_HARD:
+            return DU_RATE_HARD + noise(rng, DU_NOISE_HARD)
+        if age > DU_DECLINE_AGE_LIGHT:
+            return DU_RATE_LIGHT + noise(rng, DU_NOISE_LIGHT)
+        raw = max(0.0, coaching * (DU_RATE_GROWTH + noise(rng, DU_NOISE_GROWTH)))
         return _cap_dampen(raw, val, cap)

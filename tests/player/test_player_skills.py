@@ -327,6 +327,7 @@ class TestFromCsvRow:
             "RE": "70",  # recovery
             "GB": "55",  # ground_balls
             "KK": "65",  # strikes
+            "DU": "50",  # durability
         }
 
         skills = PlayerSkills.from_csv_row(row)
