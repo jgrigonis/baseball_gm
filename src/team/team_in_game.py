@@ -251,7 +251,7 @@ class TeamInGame:
 
                 p.rate_player()
 
-    def get_bench_player(self, injured: PlayerInGame) -> PlayerInGame | None:
+    def get_bench_player(self, injured: LineupSlot) -> PlayerInGame | None:
         """
         Find the best available bench player for the injured player's position.
 
@@ -279,7 +279,7 @@ class TeamInGame:
 
         return max(bench, key=lambda p: p.ratings.get(position, 0))
 
-    def substitute(self, outgoing: PlayerInGame, incoming: PlayerInGame) -> None:
+    def substitute(self, outgoing: LineupSlot, incoming: PlayerInGame) -> None:
         """
         Replace a player in the lineup with a bench player.
 

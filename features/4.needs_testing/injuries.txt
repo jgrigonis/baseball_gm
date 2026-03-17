@@ -4,3 +4,9 @@ General player fatigue, different from pitcher fatigue
 random chances for injuries.
 
 affect aging
+
+Need to verify that injuries affect progression correctly
+
+Also need to have injuries last for a certain variable length.
+
+Also need to adjust roster for players on Injured Reserve

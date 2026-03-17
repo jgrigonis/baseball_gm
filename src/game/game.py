@@ -755,8 +755,8 @@ class Game:
                 )
                 sub = self.bat_team.get_bench_player(player)
                 if sub:
-                    self.bat_team.substitute(player, sub)
                     self.logger.info(f"↔️ {sub.name} enters for {player.player.name}")
+                    self.bat_team.substitute(player, sub)
 
     def _swap_teams(self) -> None:
         """Swap batting and pitching teams."""
