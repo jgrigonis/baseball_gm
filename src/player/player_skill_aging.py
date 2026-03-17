@@ -39,7 +39,7 @@ SP_NOISES = [1.8, 1.0, 0.8, 0.7, 0.6]
 
 # ── Power (PO) — physical, slow rise then long plateau ──
 PO_PHASE_BREAKS = [21, 29, 33]
-PO_RATES = [2.4, 0.9, -0.6, -2.9]
+PO_RATES = [2.4, 0.9, -0.6, -2.1]
 PO_NOISES = [2.0, 1.2, 0.8, 0.7]
 
 # ── Arm (AR) — physical, peaks mid-20s, declines from 30 ──
@@ -48,8 +48,8 @@ AR_RATES = [1.9, 0.4, -1.0, -1.9]
 AR_NOISES = [0.8, 0.4, 0.5, 0.6]
 
 # ── Strikeout (KK) — raw talent, can't be coached ──
-KK_PHASE_BREAKS = [24, 30, 34]  # was [24, 28, 32]
-KK_RATES = [1.9, 1.1, -0.9, -2.8]  # was [1.8, 0.4, -0.6, -2.0]
+KK_PHASE_BREAKS = [24, 30, 34]
+KK_RATES = [1.9, 1.1, -0.9, -2.1]
 KK_NOISES = [0.6, 0.5, 0.5, 1.7]
 
 # ── Clutch (CL) — cognitive random walk, vet upward drift ──
