@@ -53,6 +53,9 @@ class FakePlayerInGame:
 
     def get_effective_stat(self, stat: int):
         return stat
+    
+    def apply_fatigue_to_ratings(self, stat: int):
+        return stat
 
 
 class FakeLineupSlot:
