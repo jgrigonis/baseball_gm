@@ -42,6 +42,8 @@ class LineupOptimizer:
         dh: bool = True,
         pitcher: PlayerInGame | None = None,
     ) -> tuple[list[LineupSlot], PlayerInGame]:
+        # Defensive guard — filter out any injured players that slipped through
+        players = [p for p in players if not p.is_injured]
         if pitcher is None:
             pitcher = LineupOptimizer.select_pitcher(players)
         if dh:

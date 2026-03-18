@@ -1,3 +1,6 @@
 Is lineup selector accounting for energy and injuries?
 
 Are modifiers?
+
+Injury durations are all wrong.
+see injury_repo.py

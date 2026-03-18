@@ -77,6 +77,7 @@ class TeamInGame:
         starting_pitcher_id: str | None = None,
         style: str = "prioritized",
         dh: bool = True,
+        injured_ids: set[str] | None = None,
     ) -> None:
         """
         Set the lineup with an optional specified starting pitcher.
@@ -88,10 +89,18 @@ class TeamInGame:
         """
         self._ensure_players_rated()
 
-        # Apply pitcher fatigue modifications BEFORE optimizing
+        # Mark injured players before optimizer sees the roster
+        if injured_ids:
+            for player in self.players:
+                if player.id in injured_ids:
+                    player.is_injured = True
+
+        # Apply fatigue modifications BEFORE optimizing
         for player in self.players:
-            if player.pitcher_fatigue:
-                player.apply_fatigue_to_ratings()
+            player.apply_fatigue_to_ratings()
+
+        # Exclude injured players from the optimizer's candidate pool
+        available = [p for p in self.players if not p.is_injured]
 
         if starting_pitcher_id:
             # Use specified starting pitcher
@@ -101,18 +110,18 @@ class TeamInGame:
 
             if not self.pitcher:
                 raise ValueError(
-                    f"Starting pitcher {starting_pitcher_id} not found on team {self.team.name}"
+                    f"Starting pitcher {starting_pitcher_id} not found on team {self.record.name}"
                 )
 
             # Optimizer still returns (lineup, pitcher_choice) tuple
             # But we ignore the pitcher_choice since we already set self.pitcher
             self.lineup, _ = self._optimizer(
-                self.players, style=style, dh=dh, pitcher=self.pitcher
+                available, style=style, dh=dh, pitcher=self.pitcher
             )
         else:
             # Fall back to old method - optimizer picks the pitcher
             self.lineup, self.pitcher = self._optimizer(
-                self.players,
+                available,
                 style=style,
                 dh=dh,
             )
@@ -273,13 +282,13 @@ class TeamInGame:
             if not p.is_rated():
                 p.rate_player()
 
-        position = injured.player.current_position  # e.g. "lf", "1b", "c"
+        position = injured.current_position  # e.g. "lf", "1b", "c"
         if not position:
             return max(bench, key=lambda p: p.ratings.get("ovr", 0))
 
         return max(bench, key=lambda p: p.ratings.get(position, 0))
 
-    def substitute(self, outgoing: LineupSlot, incoming: PlayerInGame) -> None:
+    def substitute(self, outgoing: PlayerInGame, incoming: PlayerInGame) -> None:
         """
         Replace a player in the lineup with a bench player.
 
@@ -287,26 +296,24 @@ class TeamInGame:
             outgoing: The player leaving the game
             incoming: The replacement player
         """
-        slot = next((s for s in self.lineup if s.player.id == outgoing.player.id), None)
+        slot = next((s for s in self.lineup if s.player.id == outgoing.id), None)
         if slot is None:
-            self.logger.warning(
-                f"substitute: {outgoing.player.name} not found in lineup"
-            )
+            self.logger.warning(f"substitute: {outgoing.name} not found in lineup")
             return
 
-        incoming.current_position = outgoing.player.current_position
+        incoming.current_position = outgoing.current_position
         incoming.game_stats.batting.game_played = 1
         slot.player = incoming
 
         try:
-            pos = Position(outgoing.player.current_position)
+            pos = Position(outgoing.current_position)
             self._positions[pos] = incoming
         except (ValueError, TypeError):
             pass
 
-        outgoing.player.current_position = None
+        outgoing.current_position = None
         self.logger.info(
-            f"↔️  {incoming.name} replaces {outgoing.player.name} "
+            f"↔️  {incoming.name} replaces {outgoing.name} "
             f"at {incoming.current_position}"
         )
 

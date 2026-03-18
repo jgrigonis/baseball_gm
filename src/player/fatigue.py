@@ -12,6 +12,7 @@ class PitcherFatigue:
     pitches_thrown: int = 0
     batters_faced: int = 0
     energy: float = 1.0  # 1.0 = fresh, 0.0 = exhausted
+    injuries_this_season: int = 0
 
     # Energy thresholds
     FRESH_THRESHOLD = 0.85

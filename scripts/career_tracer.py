@@ -22,6 +22,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 SKILL_ABBRS = [
+    ("durability", "DU"),
     ("contact", "CT"),
     ("power", "PO"),
     ("eye", "EY"),
@@ -41,6 +42,7 @@ SKILL_ABBRS = [
 ]
 
 CAP_SKILL_ORDER = [
+    "durability",
     "clutch",
     "speed",
     "power",
@@ -350,6 +352,7 @@ def format_caps_line(caps: dict) -> str:
         return "  (no caps found)"
     # Map DB column names to abbrs
     col_to_abbr = {
+        "durability": "DU",
         "clutch": "CL",
         "speed": "SP",
         "power": "PO",

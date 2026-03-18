@@ -13,6 +13,7 @@ import traceback
 
 from src.db.repositories import bullpen_roles_repo
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -304,16 +305,22 @@ def play_game(
         log_id = None
         log_to_file = False
 
-    all_pitcher_ids = [p.id for p in home_team.players + away_team.players]
+    all_player_ids = [p.id for p in home_team.players + away_team.players]
     _ps_repo = PitcherStateRepository(conn)
-    pitcher_states = {pid: _ps_repo.get(pid) for pid in all_pitcher_ids}
+    pitcher_states = {pid: _ps_repo.get(pid) for pid in all_player_ids}
     energy_repo = PlayerEnergyRepository(conn)
+    injury_repo = InjuryRepository(conn)
     player_energy_states = {
         p.id: energy_repo.get_with_recovery(
             p.id, game_date, durability=p.skills.get("durability", 50)
         )
         for p in home_team.position_players + away_team.position_players
     }
+
+    for player in home_team.position_players + away_team.position_players:
+        state = player_energy_states.get(player.id)
+        if state and player.player_energy:
+            player.player_energy.set_energy(state.current_energy)
 
     logger = setup_logger(
         name="game",
@@ -324,6 +331,11 @@ def play_game(
         log_to_file=log_to_file,
     )
 
+    injury_repo.tick_all(all_player_ids)
+
+    # Load current injured set to pass into lineup/game
+    injured_ids = {p_id for p_id in all_player_ids if injury_repo.is_injured(p_id)}
+
     # Play game
     game = Game(
         home_team=home_team,
@@ -333,11 +345,34 @@ def play_game(
         pitcher_states=pitcher_states,
         game_date=game_date,
         player_energy_states=player_energy_states,
+        injured_ids=injured_ids,
     )
 
     # Pass starter IDs to set_lineup
-    home_team.set_lineup(starting_pitcher_id=home_starter_id, dh=True)
-    away_team.set_lineup(starting_pitcher_id=away_starter_id, dh=True)
+    home_team.set_lineup(
+        starting_pitcher_id=home_starter_id,
+        dh=True,
+        injured_ids=injured_ids,
+    )
+    away_team.set_lineup(
+        starting_pitcher_id=away_starter_id,
+        dh=True,
+        injured_ids=injured_ids,
+    )
+
+    # DEBUG
+    for team in [home_team, away_team]:
+        for slot in team.lineup:
+            if slot.player.is_injured:
+                logger.info(
+                    f"❌ INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
+                )
+                print(
+                    f"❌ INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
+                )
+                raise RuntimeError(
+                    f"❌ INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
+                )
 
     # Print starting pitchers and fatigue
     home_starter = next(
@@ -405,6 +440,10 @@ def play_game(
 
     save_energy(conn, game_date, home_team, away_team)
     save_position_energy(conn, player_energy_states)
+
+    # Save any new injuries that occurred during the game
+    for player_id, severity in game.new_injuries:
+        injury_repo.injure(player_id, severity=severity, rng=rng)
 
     logger.info(home_team.output_defensive_stats())
     logger.info(away_team.output_defensive_stats())

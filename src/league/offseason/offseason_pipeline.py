@@ -1,4 +1,4 @@
-# src/league/offseason_pipeline.py
+# src/league/offseason/offseason_pipeline.py
 import argparse
 import csv
 import datetime
@@ -71,6 +71,12 @@ class OffseasonPipeline:
             self._mark_done(season_id, "reset_pitcher_state")
         else:
             print("  Skipping pitcher state reset (already done)")
+
+        if not self._is_done(season_id, "reset_player_energy"):
+            self._reset_player_energy()
+            self._mark_done(season_id, "reset_player_energy")
+        else:
+            print("  Skipping player energy reset (already done)")
 
         if not self._is_done(season_id, "write_csvs"):
             self._write_csvs(season_id)
@@ -238,6 +244,12 @@ class OffseasonPipeline:
         ).fetchone()
 
         return row is not None and row["wins"] >= 4
+
+    def _reset_player_energy(self) -> None:
+        """Clear position player energy and injury counters between seasons."""
+        repo = PlayerEnergyRepository(self.conn)
+        count = repo.clear_season()
+        print(f"  Cleared player energy for {count} players")
 
     def _reset_pitcher_state(self) -> None:
         """Clear all pitcher energy state between seasons."""

@@ -99,9 +99,9 @@ class PlayerRepository:
                 player_id, age, clutch, speed, power, eye, contact, 
                 base_running, bunting, catching, infield, outfield, 
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
-                updated_at
+                durability, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 player_id,
@@ -122,6 +122,7 @@ class PlayerRepository:
                 skill_dict["recovery"],
                 skill_dict["ground_balls"],
                 skill_dict["strikes"],
+                skill_dict["durability"],
                 now,
             ),
         )
@@ -146,14 +147,14 @@ class PlayerRepository:
                 age, clutch, speed, power, eye, contact,
                 base_running, bunting, catching, infield, outfield,
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
-                recorded_at
+                durability, recorded_at
             )
             SELECT 
                 player_id, ?, 
                 age, clutch, speed, power, eye, contact,
                 base_running, bunting, catching, infield, outfield,
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
-                ?
+                durability, ?
             FROM player_skills
             WHERE player_id = ?
             """,

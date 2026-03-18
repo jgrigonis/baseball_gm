@@ -1,12 +1,16 @@
-Injuries
-General player fatigue, different from pitcher fatigue
 
-random chances for injuries.
-
-affect aging
-
+Needs testing:
 Need to verify that injuries affect progression correctly
 
+This should be working:
 Also need to have injuries last for a certain variable length.
+Lengths are incorrect though.
+Injury durations are all wrong.
+see injury_repo.py
 
+This isn't done:
 Also need to adjust roster for players on Injured Reserve
+
+todo:
+fielders never get Injured
+pitchers never get Injured

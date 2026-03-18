@@ -38,12 +38,18 @@ from src.game.probabilities import (
     FATIGUE_MULTIPLIER,
     LOW_ENERGY,
     BASE_ENERGY_DEPLETION,
+    MINOR_INJURY_PROB,
+    MODERATE_INJURY_PROB,
+    # PITCHER_INJURY_PROB, # use this soon...
+    SEVERE_INJURE_PROB,
+    SURGERY_INJURY_PROB,
 )
 from src.game.resolver import Resolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
 from src.player.fatigue import FatigueLevel
 from src.player.player_formatters import PlayerTableFormatter
+from src.util.weighted_choice import WeightedChoice
 
 if TYPE_CHECKING:
     from src.team.team_in_game import TeamInGame
@@ -137,6 +143,7 @@ class Game:
         pitcher_states: dict[str, "PitcherState"] | None = None,
         game_date: "date | None" = None,
         player_energy_states: dict | None = None,
+        injured_ids: set[str] | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -203,6 +210,10 @@ class Game:
         self.pitcher_states = pitcher_states or {}
         self.game_date = game_date
         self.player_energy_states = player_energy_states or {}
+
+        # Injury info
+        self.injured_ids = set(injured_ids or {})
+        self.new_injuries: list[tuple[str, str]] = []  # (player_id, severity)
 
         # Logging
         self.logger = logger
@@ -720,7 +731,6 @@ class Game:
         # Check if game is over BEFORE incrementing
         if self.is_over():
             return
-        self._check_injuries()
         # Advance inning
         self.inning.increment()
 
@@ -736,26 +746,51 @@ class Game:
 
         self.logger.info(f"⚾ {self.inning}")
 
-    def _check_injuries(self) -> None:
+    def _check_injuries(self, reason: str = None) -> None:
         """Random injury check for active position players."""
-        for player in self.bat_team.lineup:
-            if not player or getattr(player.player, "is_injured", False):
+        self.logger.debug(f"Checking injuries. reason: {reason}")
+
+        candidates = []
+
+        # The batter
+        if self.current_batter:
+            candidates.append(self.current_batter.player)
+
+        # Runners on base
+        for runner in self.bases.runners():
+            candidates.append(runner)
+
+        for player in candidates:
+            if getattr(player, "is_injured", False):
                 continue
-            state = self.player_energy_states.get(player.player.id)
+            state = player.player_energy
             prob = INJURY_BASE_PROB
-            if state and state.current_energy < LOW_ENERGY:
-                prob *= FATIGUE_MULTIPLIER
+
             if self.rng.random() < prob:
-                player.player.is_injured = True
+                player.is_injured = True
+                injury_types = WeightedChoice(rng=self.rng)
+                injury_types.set_weights(
+                    {
+                        "minor": MINOR_INJURY_PROB,
+                        "moderate": MODERATE_INJURY_PROB,
+                        # "pitcher": PITCHER_INJURY_PROB,
+                        "severe": SEVERE_INJURE_PROB,
+                        "surgery": SURGERY_INJURY_PROB,
+                    }
+                )
+                if state and state.energy < LOW_ENERGY:
+                    injury_types.multiply("moderate", FATIGUE_MULTIPLIER)
+                    injury_types.multiply("severe", FATIGUE_MULTIPLIER)
+                    injury_types.multiply("surgery", FATIGUE_MULTIPLIER)
+                severity = injury_types.choose()
+                self.new_injuries.append((player.id, severity))
                 if state:
                     state.current_energy = 0.0
                     state.injuries_this_season += 1
-                self.logger.info(
-                    f"🚑 {player.player.name} injured and removed from game"
-                )
+                self.logger.info(f"🚑 {player.name} injured and removed from game")
                 sub = self.bat_team.get_bench_player(player)
                 if sub:
-                    self.logger.info(f"↔️ {sub.name} enters for {player.player.name}")
+                    self.logger.info(f"↔️ {sub.name} enters for {player.name}")
                     self.bat_team.substitute(player, sub)
 
     def _swap_teams(self) -> None:
@@ -783,6 +818,7 @@ class Game:
         self._pa_end_reason = reason
         self.logger.trace(f"PA complete: {reason}")
         self._deplete_batter_energy()
+        self._check_injuries(reason)
 
     def _deplete_batter_energy(self) -> None:
         if not self.current_batter:

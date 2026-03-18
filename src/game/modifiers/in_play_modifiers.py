@@ -55,7 +55,7 @@ class InPlayModifiers:
         resolver, situation: PrePitchSituation, batter: PlayerInGame
     ):
         """Modify in-play probabilities based on situation."""
-        bunting = batter.skills["bunting"]
+        bunting = batter.get_effective_stat(batter.skills["bunting"])
 
         if situation.bunt_attempt:
             resolver.in_play_outcome.add("fly_out", -15 * bunting)
@@ -97,13 +97,13 @@ class InPlayModifiers:
     @staticmethod
     def modify_for_batter(resolver, batter: PlayerInGame, score: Score):
         """Modify the probabilities based on the batter skills."""
-        power = batter.skills["power"]
+        power = batter.get_effective_stat(batter.skills["power"])
         resolver.in_play_outcome.add("fly_out", -4 * (power - 50))
         resolver.in_play_outcome.add("single", -1 * (power - 50))
         resolver.in_play_outcome.add("double", (power - 50))
         resolver.in_play_outcome.add("triple", int(0.2 * (power - 50)))
 
-        contact = batter.skills["contact"]
+        contact = batter.get_effective_stat(batter.skills["contact"])
         resolver.in_play_outcome.add("single", 8 * (contact - 50))
         resolver.in_play_outcome.add("double", 2 * (contact - 50))
         resolver.in_play_outcome.add("ground_out", (contact - 50))
@@ -112,7 +112,7 @@ class InPlayModifiers:
             resolver.in_play_outcome.add("single", elite_bonus)
             resolver.in_play_outcome.add("ground_out", -0.5 * elite_bonus)
 
-        speed = batter.skills["speed"]
+        speed = batter.get_effective_stat(batter.skills["speed"])
         resolver.in_play_outcome.add("ground_out", -1 * (speed - 50))
         resolver.in_play_outcome.add("single", 0.9 * (speed - 50))
         resolver.in_play_outcome.add("double", 0.5 * (speed - 50))
@@ -120,7 +120,7 @@ class InPlayModifiers:
         resolver.in_play_outcome.add("double_play", -2 * (speed - 50))
         resolver.in_play_outcome.add("fielders_choice", (speed - 50))
 
-        clutch = batter.skills["clutch"]
+        clutch = batter.get_effective_stat(batter.skills["clutch"])
         if -2 < score.differential < 2:
             resolver.in_play_outcome.add("fly_out", 2 * (clutch - 50))
             resolver.in_play_outcome.add("ground_out", 2 * (clutch - 50))
@@ -141,7 +141,7 @@ class InPlayModifiers:
         if current_go > 500:  # hasn't been suppressed by a runner-on-first situation
             resolver.in_play_outcome.add("ground_out", 4 * (ground_balls - 50))
 
-        clutch = pitcher.skills["clutch"]
+        clutch = pitcher.get_effective_stat(pitcher.skills["clutch"])
         if -2 < score.differential < 2:
             resolver.in_play_outcome.add("fly_out", 2 * (clutch - 50))
             resolver.in_play_outcome.add("single", 50 - clutch)

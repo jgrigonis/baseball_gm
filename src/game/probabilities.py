@@ -118,7 +118,13 @@ PITCH_COUNT_THRESHOLD = 100
 CLOSER_ENTRANCE_PROB = 0.92
 
 # Injury/Fatigue
-INJURY_BASE_PROB = 0.003  # per half-inning ≈ 0.054/game, close to 5.78/1000
+INJURY_BASE_PROB = 0.0006  # per plate appearance ≈ 0.045/game
 FATIGUE_MULTIPLIER = 1.6  # injury multiplier for fatigued players
 LOW_ENERGY = 0.50  # threshold for low player energy
 BASE_ENERGY_DEPLETION = 0.035
+# Injury type probabilities
+MINOR_INJURY_PROB = 50
+MODERATE_INJURY_PROB = 30
+PITCHER_INJURY_PROB = 35
+SEVERE_INJURE_PROB = 5
+SURGERY_INJURY_PROB = 2

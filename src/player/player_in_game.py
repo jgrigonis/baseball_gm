@@ -26,6 +26,7 @@ from src.player.fatigue import PitcherFatigue
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
+from src.player.position_fatigue import PositionPlayerFatigue
 
 
 class PlayerInGame(object):
@@ -53,6 +54,11 @@ class PlayerInGame(object):
         self.pitcher_fatigue = (
             PitcherFatigue(stamina=self.skills["stamina"])
             if self.record.is_pitcher()
+            else None
+        )
+        self.player_energy = (
+            PositionPlayerFatigue(durability=self.skills["durability"])
+            if not self.record.is_pitcher()
             else None
         )
         self.is_starter: bool = False  # Default to not a starting pitcher
@@ -104,22 +110,21 @@ class PlayerInGame(object):
         """Get stat value modified by fatigue."""
         if self.pitcher_fatigue:
             modifier = self.pitcher_fatigue.get_stat_modifier()
-            return int(base_value * modifier)
-        return base_value
+        else:
+            modifier = self.player_energy.get_stat_modifier()
+        return int(base_value * modifier)
 
     def apply_fatigue_to_ratings(self):
         """Re-rate player with fatigue-adjusted skills."""
-        if not self.pitcher_fatigue:
+        if self.pitcher_fatigue:
+            modifier = self.pitcher_fatigue.get_stat_modifier()
+        elif self.player_energy:
+            modifier = self.player_energy.get_stat_modifier()
+        else:
             return
 
-        modifier = self.pitcher_fatigue.get_stat_modifier()
-
         fatigued_skills = {}
-        for (
-            skill,
-            value,
-        ) in self.skills.as_dict().items():  # Call as_dict() on Skills object
-            # Clamp to 1-100 range
+        for skill, value in self.skills.as_dict().items():
             adjusted = int(value * modifier)
             fatigued_skills[skill] = max(1, min(100, adjusted))
 

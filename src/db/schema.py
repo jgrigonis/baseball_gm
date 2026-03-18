@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS player_skills (
     player_id TEXT PRIMARY KEY,
     
     age INTEGER NOT NULL DEFAULT 17,
+    durability INTEGER NOT NULL,
     clutch INTEGER NOT NULL,
     speed INTEGER NOT NULL,
     power INTEGER NOT NULL,
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS player_skills_history (
     season_id    TEXT NOT NULL,
 
     age          INTEGER NOT NULL DEFAULT 17,
+    durability   INTEGER NOT NULL,
     clutch       INTEGER NOT NULL,
     speed        INTEGER NOT NULL,
     power        INTEGER NOT NULL,

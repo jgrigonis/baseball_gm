@@ -42,8 +42,8 @@ class PitchModifiers:
         resolver, situation: PrePitchSituation, batter: PlayerInGame
     ) -> None:
         """Modify probabilities based on game situation."""
-        bunting = batter.skills["bunting"]
-        contact = batter.skills["contact"]
+        bunting = batter.get_effective_stat(batter.skills["bunting"])
+        contact = batter.get_effective_stat(batter.skills["contact"])
 
         if situation.bunt_attempt:
             resolver.pitch_outcome.add("strike", -25 * bunting)
@@ -86,7 +86,7 @@ class PitchModifiers:
     @staticmethod
     def modify_for_batter(resolver, batter: PlayerInGame) -> None:
         """Modify probabilities based on batter skills."""
-        eye = batter.skills["eye"]
+        eye = batter.get_effective_stat(batter.skills["eye"])
         resolver.pitch_outcome.add("strike", -14 * (eye - 50))
         resolver.pitch_outcome.add("foul", 8 * (eye - 50))
         resolver.pitch_outcome.add("ball", 9 * (eye - 50))
@@ -95,7 +95,7 @@ class PitchModifiers:
             resolver.pitch_outcome.add("ball", elite_bonus)
             resolver.pitch_outcome.add("strike", -0.5 * elite_bonus)
 
-        contact = batter.skills["contact"]
+        contact = batter.get_effective_stat(batter.skills["contact"])
         resolver.pitch_outcome.add("strike", -12 * (contact - 50))
         resolver.pitch_outcome.add("foul", int(2 * (contact - 50)))
         resolver.pitch_outcome.add("in_play", int(3.6 * (contact - 50)))
@@ -104,7 +104,7 @@ class PitchModifiers:
             resolver.pitch_outcome.add("in_play", elite_bonus)
             resolver.pitch_outcome.add("strike", -0.5 * elite_bonus)
 
-        power = batter.skills["power"]
+        power = batter.get_effective_stat(batter.skills["power"])
         resolver.pitch_outcome.add("home_run", 3.8 * (power - 50))
         if power > 75:
             elite_bonus = (power - 75) ** 1.6
@@ -113,7 +113,7 @@ class PitchModifiers:
     @staticmethod
     def modify_for_catcher(resolver, catcher: PlayerInGame) -> None:
         """Modify passed balls and wild pitches for catcher."""
-        catching = catcher.apply_fatigue_to_ratings(catcher.skills["catching"])
+        catching = catcher.get_effective_stat(catcher.skills["catching"])
         resolver.pitch_outcome.add("wild_pitch", -(catching))
         resolver.pitch_outcome.add("passed_ball", -(catching - 50))
 
@@ -152,7 +152,9 @@ class PitchModifiers:
             resolver.pitch_outcome.multiply("strike", 1.05)
 
     @staticmethod
-    def modify_for_clutch(resolver, batter, pitcher, game) -> None:
+    def modify_for_clutch(
+        resolver, batter: PlayerInGame, pitcher: PlayerInGame, game
+    ) -> None:
         """
         Adjust outcomes based on the situation and player clutch ratings.
         Determine clutch situations, they can be multiplicative
@@ -164,8 +166,8 @@ class PitchModifiers:
         clutch is negative with a more clutch pitcher
         clutch can range between -100 and 100 but tpically will be close to 0
         """
-        bclutch = batter.skills["clutch"]
-        pclutch = pitcher.skills["clutch"]
+        bclutch = batter.get_effective_stat(batter.skills["clutch"])
+        pclutch = pitcher.get_effective_stat(pitcher.skills["clutch"])
         clutch = bclutch - pclutch
         tight_game = False
         scoring_position = False

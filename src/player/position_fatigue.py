@@ -42,6 +42,7 @@ class PositionPlayerFatigue:
     position: str = "LF"
     energy: float = 1.0  # 1.0 = fresh, 0.0 = exhausted
     durability: int = 50  # Player attribute, like stamina for pitchers
+    injuries_this_season: int = 0
 
     # In-season tracking
     consecutive_days: int = 0  # Streak of days in lineup without a break

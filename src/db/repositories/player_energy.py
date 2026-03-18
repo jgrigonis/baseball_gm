@@ -167,6 +167,7 @@ class PlayerEnergyRepository:
             last_game_date=last_game_date,
             consecutive_days=row[3],
             season_games_played=row[4],
+            injuries_this_season=row[5],
         )
 
     def get_with_recovery(
