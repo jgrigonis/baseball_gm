@@ -17,6 +17,7 @@ SECTIONS = [
     "STRIKEOUT LEADERS",
 ]
 
+
 def parse_leaders(text: str, top_n: int = 3) -> list[str]:
     seen = set()
     results = []
@@ -25,10 +26,10 @@ def parse_leaders(text: str, top_n: int = 3) -> list[str]:
         idx = text.find(section)
         if idx == -1:
             continue
-        chunk = text[idx:idx + 800]
+        chunk = text[idx : idx + 800]
         count = 0
-        for line in chunk.split('\n'):
-            match = re.match(r'\s+(\d+)\.\s+([A-Z][A-Z\s]+[A-Z])\s', line)
+        for line in chunk.split("\n"):
+            match = re.match(r"\s+(\d+)\.\s+([A-Z][A-Z\s]+[A-Z])\s", line)
             if match and int(match.group(1)) <= top_n:
                 name = match.group(2).strip()
                 if name not in seen:
@@ -39,6 +40,7 @@ def parse_leaders(text: str, top_n: int = 3) -> list[str]:
                     break
 
     return results
+
 
 if __name__ == "__main__":
     top_n = int(sys.argv[1]) if len(sys.argv) > 1 else 3

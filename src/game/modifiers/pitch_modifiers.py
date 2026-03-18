@@ -14,11 +14,13 @@ class PitchModifiers:
         """Apply all pitch probability modifiers based on game state."""
         batter = game.current_batter.player
         pitcher = game.pos("p")
+        catcher = game.pos("c")
         PitchModifiers.modify_for_bases(resolver, game.bases)
         PitchModifiers.modify_for_situation(resolver, game.situation, batter)
         PitchModifiers.modify_for_count(resolver, game.count)
         PitchModifiers.modify_for_batter(resolver, batter)
         PitchModifiers.modify_for_pitcher(resolver, pitcher)
+        PitchModifiers.modify_for_catcher(resolver, catcher)
         PitchModifiers.modify_for_platoon(resolver, batter, pitcher)
         PitchModifiers.modify_for_clutch(resolver, batter, pitcher, game)
 
@@ -107,6 +109,13 @@ class PitchModifiers:
         if power > 75:
             elite_bonus = (power - 75) ** 1.6
             resolver.pitch_outcome.add("home_run", 0.2 * elite_bonus)
+
+    @staticmethod
+    def modify_for_catcher(resolver, catcher: PlayerInGame) -> None:
+        """Modify passed balls and wild pitches for catcher."""
+        catching = catcher.apply_fatigue_to_ratings(catcher.skills["catching"])
+        resolver.pitch_outcome.add("wild_pitch", -(catching))
+        resolver.pitch_outcome.add("passed_ball", -(catching - 50))
 
     @staticmethod
     def modify_for_pitcher(resolver, pitcher: PlayerInGame) -> None:

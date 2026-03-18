@@ -5,6 +5,7 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 START_YEAR=2025
 END_YEAR=2026
+NUM_LEADERS_TO_TRACE=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -54,7 +55,7 @@ trace_year_leaders() {
         echo ""
         echo "  ── Tracing: $name ──"
         python scripts/career_tracer.py "$name"
-    done < <(echo "$leaderboard_output" | python scripts/parse_leaders.py 3)
+    done < <(echo "$leaderboard_output" | python scripts/parse_leaders.py $NUM_LEADERS_TO_TRACE)
 }
 
 # ── 4. Always trace START_YEAR leaders ───────────────────────

@@ -25,6 +25,7 @@ import src.stats.stats as stats
 from src.player.fatigue import PitcherFatigue
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
+from src.player.player_skills import PlayerSkills
 
 
 class PlayerInGame(object):
@@ -121,8 +122,6 @@ class PlayerInGame(object):
             # Clamp to 1-100 range
             adjusted = int(value * modifier)
             fatigued_skills[skill] = max(1, min(100, adjusted))
-
-        from src.player.player_skills import PlayerSkills
 
         fatigued_skills_obj = PlayerSkills(**fatigued_skills)
         self.ratings = PlayerEvaluator.rate_player(fatigued_skills_obj, self.throws)

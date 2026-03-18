@@ -59,13 +59,13 @@ CL_NOISE = 3.5
 
 # ── Eye (EY) — plate discipline, coaching-sensitive ──
 EY_PHASE_BREAKS = [27, 33, 36]
-EY_RATES = [3.0, 1.1, -0.4, -1.3]
+EY_RATES = [2.7, 1.1, -0.4, -1.3]
 EY_NOISES = [0.5, 0.6, 0.6, 0.5]
 EY_COACHED = [True, True, False, False]
 
 # ── Contact (CT) — trainable; very slow decline after mid-30s ──
 CT_PHASE_BREAKS = [27, 34, 37]
-CT_RATES = [2.8, 1.1, -0.3, -1.4]
+CT_RATES = [2.5, 1.1, -0.3, -1.4]
 CT_NOISES = [0.7, 0.5, 0.4, 0.4]
 CT_COACHED = [True, True, False, False]
 
@@ -469,52 +469,111 @@ class SkillAging:
             cap=cap,
         )
 
-
     def delta_CA(
-        self, age: int, val: float, rng: random.Random,
-        coaching: float = 1.0, cap: int | None = None,
+        self,
+        age: int,
+        val: float,
+        rng: random.Random,
+        coaching: float = 1.0,
+        cap: int | None = None,
     ) -> float:
         """Catching — experience-driven, physical wear after 32."""
         return self.phased_delta(
-            age, val, rng, CA_PHASE_BREAKS, CA_RATES, CA_NOISES, CA_COACHED, coaching, cap=cap
+            age,
+            val,
+            rng,
+            CA_PHASE_BREAKS,
+            CA_RATES,
+            CA_NOISES,
+            CA_COACHED,
+            coaching,
+            cap=cap,
         )
 
     def delta_IF(
-        self, age: int, val: float, rng: random.Random,
-        coaching: float = 1.0, cap: int | None = None,
+        self,
+        age: int,
+        val: float,
+        rng: random.Random,
+        coaching: float = 1.0,
+        cap: int | None = None,
     ) -> float:
         """Infield — technique + range; declines from 30."""
         return self.phased_delta(
-            age, val, rng, IF_PHASE_BREAKS, IF_RATES, IF_NOISES, IF_COACHED, coaching, cap=cap
+            age,
+            val,
+            rng,
+            IF_PHASE_BREAKS,
+            IF_RATES,
+            IF_NOISES,
+            IF_COACHED,
+            coaching,
+            cap=cap,
         )
 
     def delta_OF(
-        self, age: int, val: float, rng: random.Random,
-        coaching: float = 1.0, cap: int | None = None,
+        self,
+        age: int,
+        val: float,
+        rng: random.Random,
+        coaching: float = 1.0,
+        cap: int | None = None,
     ) -> float:
         """Outfield — range-dependent, declines earlier than infield."""
         return self.phased_delta(
-            age, val, rng, OF_PHASE_BREAKS, OF_RATES, OF_NOISES, OF_COACHED, coaching, cap=cap
+            age,
+            val,
+            rng,
+            OF_PHASE_BREAKS,
+            OF_RATES,
+            OF_NOISES,
+            OF_COACHED,
+            coaching,
+            cap=cap,
         )
 
     def delta_GB(
-        self, age: int, val: float, rng: random.Random,
-        coaching: float = 1.0, cap: int | None = None,
+        self,
+        age: int,
+        val: float,
+        rng: random.Random,
+        coaching: float = 1.0,
+        cap: int | None = None,
     ) -> float:
         """Ground balls — pitcher physical skill, peaks mid-20s."""
         return self.phased_delta(
-            age, val, rng, GB_PHASE_BREAKS, GB_RATES, GB_NOISES, GB_COACHED, coaching, cap=cap
+            age,
+            val,
+            rng,
+            GB_PHASE_BREAKS,
+            GB_RATES,
+            GB_NOISES,
+            GB_COACHED,
+            coaching,
+            cap=cap,
         )
 
     def delta_DU(
-        self, age: int, val: float, rng: random.Random,
-        coaching: float = 1.0, cap: int | None = None,
+        self,
+        age: int,
+        val: float,
+        rng: random.Random,
+        coaching: float = 1.0,
+        cap: int | None = None,
     ) -> float:
         """Durability — physical skill, peaks late-20s, hard decline after 36."""
         return self.phased_delta(
-            age, val, rng, DU_PHASE_BREAKS, DU_RATES, DU_NOISES, DU_COACHED, coaching, cap=cap
+            age,
+            val,
+            rng,
+            DU_PHASE_BREAKS,
+            DU_RATES,
+            DU_NOISES,
+            DU_COACHED,
+            coaching,
+            cap=cap,
         )
-        
+
     # @staticmethod
     # def delta_CA(
     #     age: int,

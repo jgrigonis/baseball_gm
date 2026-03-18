@@ -1,0 +1,14 @@
+Different pitchers should have different pitching arsenal
+
+Some options:
+
+4 seam fastball
+2 seam fastball
+Slider
+Knuckle
+Sweeper
+Rising fastball
+Sinker
+changeup
+splitter
+Cutter

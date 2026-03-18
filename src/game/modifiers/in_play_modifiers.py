@@ -33,7 +33,7 @@ class InPlayModifiers:
     def modify_for_bases_outs(resolver, bases: Bases, outs: int):
         """Modify in-play probabilities based on bases and outs."""
         if bases.runner_on(THIRD) and outs < 2:
-            resolver.in_play_outcome.set("sac_fly", 1900)
+            resolver.in_play_outcome.set("sac_fly", 1700)
             resolver.in_play_outcome.set("fly_out", 850)
             resolver.in_play_outcome.multiply("ground_out", 0.1)
             resolver.in_play_outcome.set("fielders_choice", 1850)
