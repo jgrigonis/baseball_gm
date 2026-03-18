@@ -471,6 +471,7 @@ def build_report(
         # Cap headroom snapshot (if caps available)
         if caps:
             col_to_abbr = {
+                "durability": "DU",
                 "clutch": "CL",
                 "speed": "SP",
                 "power": "PO",
