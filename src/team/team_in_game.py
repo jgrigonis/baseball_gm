@@ -260,7 +260,7 @@ class TeamInGame:
 
                 p.rate_player()
 
-    def get_bench_player(self, injured: LineupSlot) -> PlayerInGame | None:
+    def get_bench_player(self, injured: PlayerInGame) -> PlayerInGame | None:
         """
         Find the best available bench player for the injured player's position.
 

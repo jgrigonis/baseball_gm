@@ -50,6 +50,7 @@ def db_connection():
             recovery INTEGER NOT NULL,
             ground_balls INTEGER NOT NULL,
             strikes INTEGER NOT NULL,
+            durability INTEGER NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (player_id) REFERENCES players(id)
         )
@@ -79,6 +80,7 @@ def db_connection():
             recovery INTEGER NOT NULL,
             ground_balls INTEGER NOT NULL,
             strikes INTEGER NOT NULL,
+            durability INTEGER NOT NULL,
             recorded_at TEXT NOT NULL,
             PRIMARY KEY (player_id, season_id),
             FOREIGN KEY (player_id) REFERENCES players(id)

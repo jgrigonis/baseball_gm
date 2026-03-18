@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS player_skills (
     recovery INTEGER NOT NULL DEFAULT 50,
     ground_balls INTEGER NOT NULL DEFAULT 50,
     strikes INTEGER NOT NULL DEFAULT 50,
+    durability INTEGER NOT NULL DEFAULT 50,
     updated_at TEXT,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );

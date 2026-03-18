@@ -47,6 +47,7 @@ def mock_teams():
     home.name = "Home Team"
     home.has_lineup = True
     home.players = []
+    home.pitch_team.lineup = []
 
     away = Mock()
     away.record = Mock()
@@ -56,6 +57,7 @@ def mock_teams():
     away.name = "Away Team"
     away.has_lineup = True
     away.players = []
+    away.pitch_team.lineup = []
 
     return home, away
 

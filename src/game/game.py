@@ -760,10 +760,20 @@ class Game:
         for runner in self.bases.runners():
             candidates.append(runner)
 
+        # The pitcher
+        if self.current_pitcher:
+            candidates.append(self.current_pitcher)
+
+        # All fielders (pitch_team's lineup)
+        for slot in self.pitch_team.lineup:
+            if slot.position != "dh" and slot.player not in candidates:
+                candidates.append(slot.player)
+
         for player in candidates:
             if getattr(player, "is_injured", False):
                 continue
-            state = player.player_energy
+            fatigue = player.player_energy
+            state = self.player_energy_states.get(player.id)
             prob = INJURY_BASE_PROB
 
             if self.rng.random() < prob:
@@ -778,7 +788,7 @@ class Game:
                         "surgery": SURGERY_INJURY_PROB,
                     }
                 )
-                if state and state.energy < LOW_ENERGY:
+                if fatigue and fatigue.energy < LOW_ENERGY:
                     injury_types.multiply("moderate", FATIGUE_MULTIPLIER)
                     injury_types.multiply("severe", FATIGUE_MULTIPLIER)
                     injury_types.multiply("surgery", FATIGUE_MULTIPLIER)
@@ -788,10 +798,22 @@ class Game:
                     state.current_energy = 0.0
                     state.injuries_this_season += 1
                 self.logger.info(f"🚑 {player.name} injured and removed from game")
-                sub = self.bat_team.get_bench_player(player)
-                if sub:
-                    self.logger.info(f"↔️ {sub.name} enters for {player.name}")
-                    self.bat_team.substitute(player, sub)
+                if player.pitcher_fatigue:
+                    self._consider_pitching_change()
+                else:
+                    # Find which team and substitute
+                    for team in [self.bat_team, self.pitch_team]:
+                        slot = next(
+                            (s for s in team.lineup if s.player.id == player.id), None
+                        )
+                        if slot:
+                            sub = team.get_bench_player(player)
+                            if sub:
+                                self.logger.info(
+                                    f"↔️ {sub.name} enters for {player.name}"
+                                )
+                                team.substitute(player, sub)
+                            break
 
     def _swap_teams(self) -> None:
         """Swap batting and pitching teams."""

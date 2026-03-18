@@ -23,6 +23,7 @@ class FakePlayer:
         self.name = id
         # Add pitcher_fatigue attribute
         self.pitcher_fatigue = None  # Or initialize properly if is_pitcher
+        self.player_energy = 1.0
 
     def init_game_stats(self):
         pass  # Game calls this, but we don't care in tests
@@ -50,6 +51,7 @@ class FakePlayerInGame:
         # self.stats = None
         self.skills = PlayerSkills(deepcopy(dict(SKILLS)))
         self.pitcher_fatigue = None
+        self.player_energy = 1.0
 
     def get_effective_stat(self, stat: int):
         return stat
@@ -117,6 +119,7 @@ def fake_game():
         current_left_fielder=left_fielder,
         current_center_fielder=center_fielder,
         current_right_fielder=right_fielder,
+        lineup=[],
     )
 
     game = SimpleNamespace(

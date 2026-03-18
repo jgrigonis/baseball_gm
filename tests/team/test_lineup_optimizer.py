@@ -35,6 +35,7 @@ def make_player(id, ratings):
 
     p.ratings = ratings
     p.throws = "R"
+    p.is_injured = False
     return p
 
 

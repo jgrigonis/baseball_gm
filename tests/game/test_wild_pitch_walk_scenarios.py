@@ -130,7 +130,7 @@ class TestWildPitchWalkScenarios:
         game.count = Count(balls=3, strikes=0)
 
         pf = PlayerFactory()
-        runner = pf.create()
+        runner = PlayerInGame(pf.create())
         game.bases.place_runner(FIRST, runner)
 
         # Controlled resolver
