@@ -38,9 +38,9 @@ SP_RATES = [0.9, 0.1, -0.9, -2.2, -2.8, -4.5]
 SP_NOISES = [1.8, 1.0, 0.8, 0.7, 0.6, 1.9]
 
 # ── Power (PO) — physical, slow rise then long plateau ──
-PO_PHASE_BREAKS = [21, 29, 33]
-PO_RATES = [2.4, 0.9, -0.6, -2.1]
-PO_NOISES = [2.0, 1.2, 0.8, 0.7]
+PO_PHASE_BREAKS = [21, 29, 33, 36]
+PO_RATES = [2.6, 0.9, 0.6, -0.6, -2.1]
+PO_NOISES = [2.0, 1.2, 0.8, 0.7, 0.8]
 
 # ── Arm (AR) — physical, peaks mid-20s, declines from 30 ──
 AR_PHASE_BREAKS = [24, 29, 33]
@@ -59,7 +59,7 @@ CL_NOISE = 3.5
 
 # ── Eye (EY) — plate discipline, coaching-sensitive ──
 EY_PHASE_BREAKS = [27, 33, 36]
-EY_RATES = [2.7, 1.1, -0.4, -1.3]
+EY_RATES = [2.9, 1.5, -0.4, -1.3]
 EY_NOISES = [0.5, 0.6, 0.6, 0.5]
 EY_COACHED = [True, True, False, False]
 
