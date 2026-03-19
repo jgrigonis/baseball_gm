@@ -1,0 +1,1 @@
+separate out the called strikes and swinging strikes.
