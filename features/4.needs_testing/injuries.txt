@@ -11,6 +11,6 @@ see injury_repo.py
 This isn't done:
 Also need to adjust roster for players on Injured Reserve
 
-todo:
+needs testing, should be working:
 fielders never get Injured
 pitchers never get Injured

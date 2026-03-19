@@ -147,6 +147,7 @@ class PitcherState:
     current_energy: float
     last_game_date: Optional[date] = None
     last_pitch_count: Optional[int] = None
+    consecutive_days: int = 0
 
     @property
     def is_fresh(self) -> bool:
@@ -185,7 +186,7 @@ class PitcherStateRepository:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT player_id, current_energy, last_game_date, last_pitch_count
+            SELECT player_id, current_energy, last_game_date, last_pitch_count, consecutive_days
             FROM pitcher_state
             WHERE player_id = ?
             """,
@@ -204,6 +205,7 @@ class PitcherStateRepository:
             current_energy=row[1],
             last_game_date=last_game_date,
             last_pitch_count=row[3],
+            consecutive_days=row[4] or 0,
         )
 
     def get_with_recovery(
@@ -342,14 +344,21 @@ class PitcherStateRepository:
 
         cursor.execute(
             """
-            INSERT INTO pitcher_state (player_id, current_energy, last_game_date, last_pitch_count)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO pitcher_state (player_id, current_energy, last_game_date, last_pitch_count, consecutive_days)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(player_id) DO UPDATE SET
                 current_energy   = excluded.current_energy,
                 last_game_date   = excluded.last_game_date,
-                last_pitch_count = excluded.last_pitch_count
+                last_pitch_count = excluded.last_pitch_count,
+                consecutive_days = excluded.consecutive_days
             """,
-            (state.player_id, energy, last_game_date_str, state.last_pitch_count),
+            (
+                state.player_id,
+                energy,
+                last_game_date_str,
+                state.last_pitch_count,
+                state.consecutive_days,
+            ),
         )
         self.conn.commit()
 
@@ -379,12 +388,21 @@ class PitcherStateRepository:
         if pitch_count == 0:
             return
 
+        # Load existing state to compute consecutive_days
+        existing = self.get(player_id)
+        if existing and existing.last_game_date:
+            days_rest = (game_date - existing.last_game_date).days
+            consecutive_days = existing.consecutive_days + 1 if days_rest == 1 else 1
+        else:
+            consecutive_days = 1
+
         self.save(
             PitcherState(
                 player_id=player_id,
                 current_energy=final_energy,
                 last_game_date=game_date,
                 last_pitch_count=pitch_count,
+                consecutive_days=consecutive_days,
             )
         )
 

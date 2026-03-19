@@ -7,7 +7,7 @@ Each team is scheduled to play 162 regular-season games.
 
 The total number of games can be calculated by multiplying the number of teams by the 
 number of games per team and dividing by two (since two teams play in every game): 
-(30 teams × 162 games) / 2 = 2,430 games. 
+(30 teams x 162 games) / 2 = 2,430 games. 
 
 This total excludes any potential tie-breaker games or the games played during the 
 postseason playoffs and World Series.

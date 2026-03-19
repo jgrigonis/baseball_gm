@@ -283,6 +283,9 @@ class GameStrategy:
         # Adjust for runner speed
         speed_factor = (runner_speed + base_running_skill) / 100  # 1.0 at average
         prob *= speed_factor
+        # Elite speed runners should steal much more often
+        if speed_factor > 1.5:
+            prob *= speed_factor
 
         # # Adjust for pitcher delivery
         # delivery_factor = 50 / pitcher_delivery  # Higher delivery = easier steal
@@ -641,14 +644,16 @@ class GameStrategy:
         stats = pitcher.game_stats.pitching
 
         if pitcher.is_starter:
+            if stats.runs == 0:
+                prob *= 0.33
+            elif stats.runs == 1:
+                prob *= 0.7
             if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
-                if stats.runs == 0:
-                    prob *= 0.5
                 if stats.hits == 0:
-                    prob *= 0.2
+                    prob *= 0.18
 
             # Modifier: Protect lead with starter (reduce probability of pulling them)
-            if score_differential > 0 and stats.outs < 15:  # Haven't gone 5 innings yet
+            if score_differential > 0 and stats.outs < 18:  # Haven't gone 6 innings yet
                 # Winning and starter hasn't gone 5 innings yet
                 prob *= 0.5  # Half as likely to pull
             if stats.pitch_count >= PITCH_COUNT_THRESHOLD:
@@ -752,6 +757,39 @@ class GameStrategy:
         inning_num = inning.number
         close_game = score_diff <= 2
 
+        def _is_available(p: PlayerInGame) -> bool:
+            state = (pitcher_states or {}).get(p.id)
+            if not state or not state.last_game_date or not game_date:
+                return True  # no history, assume rested
+
+            days_rest = (game_date - state.last_game_date).days
+
+            # Pitched today in a previous game (shouldn't happen but guard it)
+            if days_rest == 0:
+                return False
+
+            # Had two days off — always available
+            if days_rest >= 3:
+                return True
+
+            # Pitched yesterday — check workload
+            # Heavy outing (18+ pitches) needs at least 2 days rest
+            if days_rest <= 2 and getattr(state, "last_pitch_count", 0) >= 18:
+                return False
+
+            # Check consecutive days streak
+            consecutive = getattr(state, "consecutive_days", 0)
+
+            # 3 consecutive days is the hard cap regardless of workload
+            if consecutive >= 3:
+                return False
+
+            # 2 consecutive days + decent outing (9+ pitches) yesterday = needs rest
+            if consecutive >= 2 and getattr(state, "last_pitch_count", 0) >= 9:
+                return False
+
+            return True
+
         available = [
             p
             for p in team.players
@@ -759,13 +797,15 @@ class GameStrategy:
             and p.game_stats.pitching.pitch_count == 0
             and p.pitcher_fatigue is not None
             and p.current_position is None
+            and not p.is_injured
+            and _is_available(p)
         ]
 
         if not available:
             return None
 
         def _weight(p: PlayerInGame) -> float:
-            """Combined weight: rest days × in-game energy."""
+            """Combined weight: rest days x in-game energy."""
             state = (pitcher_states or {}).get(
                 p.id if hasattr(p, "id") else p.player.id
             )
@@ -786,11 +826,12 @@ class GameStrategy:
                     return p
             return candidates[-1]
 
-        def best_by_rp(candidates):
-            return max(
-                candidates,
-                key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("rp", 0),
-            )
+        # unused function
+        # def best_by_rp(candidates):
+        #     return max(
+        #         candidates,
+        #         key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("rp", 0),
+        #     )
 
         def best_by_sp(candidates):
             return max(
@@ -867,113 +908,3 @@ class GameStrategy:
 
         # --- Last resort ---
         return _weighted_choice(available)
-
-    # @staticmethod
-    # def select_relief_pitcher(
-    #     team: TeamInGame,
-    #     current_pitcher: PlayerInGame,
-    #     inning: Inning,
-    #     score: Score,
-    # ) -> PlayerInGame | None:
-    #     """
-    #     Select the best available relief pitcher based on game situation.
-
-    #     Priority:
-    #     - Inning 9+, lead <= 2: best FRESH/GOOD Closer
-    #     - Inning 7-8, lead <= 2: best FRESH/GOOD Setup
-    #     - Inning 5-6, close game: best FRESH/GOOD Long reliever
-    #     - Otherwise by situation: best FRESH/GOOD non-Closer reliever
-    #     - Fallback: best TIRED non-starter, non-Closer
-    #     - Emergency: best FRESH starter
-    #     - Last resort: best available by fatigue
-    #     """
-    #     score_diff = abs(score.differential)
-    #     inning_num = inning.number
-    #     close_game = score_diff <= 2
-
-    #     available = [
-    #         p
-    #         for p in team.players
-    #         if p != current_pitcher
-    #         and p.game_stats.pitching.pitch_count == 0
-    #         and p.pitcher_fatigue is not None
-    #         and p.current_position is None
-    #     ]
-
-    #     if not available:
-    #         return None
-
-    #     def best_by_rp(candidates):
-    #         return max(
-    #             candidates,
-    #             key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("rp", 0),
-    #         )
-
-    #     def best_by_sp(candidates):
-    #         return max(
-    #             candidates,
-    #             key=lambda p: PlayerEvaluator.rate_player(p.record.skills).get("sp", 0),
-    #         )
-
-    #     def with_fatigue(candidates, *levels):
-    #         return [p for p in candidates if p.pitcher_fatigue.get_level() in levels]
-
-    #     def with_role(candidates, role):
-    #         return [p for p in candidates if p.bullpen_role == role]
-
-    #     fresh_good = (FatigueLevel.FRESH, FatigueLevel.GOOD)
-    #     relievers = [p for p in available if not p.is_starter]
-    #     starters = [p for p in available if p.is_starter]
-
-    #     # --- Inning 9+, save situation: go to Closer ---
-    #     if inning_num >= 9 and close_game:
-    #         closers = with_fatigue(with_role(available, "Closer"), *fresh_good)
-    #         if closers:
-    #             return best_by_rp(closers)
-
-    #     # --- Inning 7-8, close game: go to Setup ---
-    #     if 7 <= inning_num <= 8 and close_game:
-    #         setup = with_fatigue(with_role(available, "Setup"), *fresh_good)
-    #         if setup:
-    #             return best_by_rp(setup)
-
-    #     # --- Inning 5-6, close game: go to Long reliever ---
-    #     if 5 <= inning_num <= 6 and close_game:
-    #         long_men = with_fatigue(with_role(available, "Long"), *fresh_good)
-    #         if long_men:
-    #             return best_by_rp(long_men)
-
-    #     # --- General: best FRESH/GOOD Middle or Utility reliever (not Closer) ---
-    #     non_closer_relievers = [p for p in relievers if p.bullpen_role != "Closer"]
-    #     middle_utility = with_fatigue(
-    #         with_role(non_closer_relievers, "Middle")
-    #         or with_role(non_closer_relievers, "Utility")
-    #         or with_fatigue(non_closer_relievers, *fresh_good),
-    #         *fresh_good,
-    #     )
-    #     if middle_utility:
-    #         return best_by_rp(middle_utility)
-
-    #     # --- Fallback: any FRESH/GOOD reliever ---
-    #     fresh_good_relievers = with_fatigue(relievers, *fresh_good)
-    #     if fresh_good_relievers:
-    #         return best_by_rp(fresh_good_relievers)
-
-    #     # --- Fallback: best TIRED non-starter, non-Closer ---
-    #     tired_relievers = with_fatigue(
-    #         [p for p in relievers if p.bullpen_role != "Closer"],
-    #         FatigueLevel.TIRED,
-    #     )
-    #     if tired_relievers:
-    #         return best_by_rp(tired_relievers)
-
-    #     # --- Emergency: fresh starter ---
-    #     fresh_starters = with_fatigue(starters, FatigueLevel.FRESH)
-    #     if fresh_starters:
-    #         return best_by_sp(fresh_starters)
-
-    #     # --- Last resort: best available by any fatigue ---
-    #     if available:
-    #         return best_by_rp(available)
-
-    #     return None

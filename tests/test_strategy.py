@@ -467,7 +467,7 @@ class TestShouldIntentionalWalk:
             inning=9,
             rng=rng,
         )
-        # prob gets multiplied by IBB_STRIKES_MODIFIER (0.01) × MORE_STRIKES (0.01) → tiny
+        # prob gets multiplied by IBB_STRIKES_MODIFIER (0.01) x MORE_STRIKES (0.01) → tiny
         assert not result
 
     def test_ibb_weak_batter_very_rare(self):
@@ -640,19 +640,7 @@ class TestShouldConsiderPitchingChange:
         pitcher = _make_pitcher(fatigue_level=FatigueLevel.ZERO, pitch_count=130)
         inning = _make_inning(number=7)
         prob = GameStrategy.should_consider_pitching_change(pitcher, inning, 0)
-        assert prob >= 0.9
-
-    # def test_ninth_inning_close_game_boosts_prob(self):
-    #     pitcher = _make_pitcher(fatigue_level=FatigueLevel.TIRED, pitch_count=95, runs=1)
-    #     inning_9 = _make_inning(number=9)
-    #     inning_5 = _make_inning(number=5)
-    #     prob_9 = GameStrategy.should_consider_pitching_change(
-    #         pitcher, inning_9, score_differential=2
-    #     )
-    #     prob_5 = GameStrategy.should_consider_pitching_change(
-    #         pitcher, inning_5, score_differential=2
-    #     )
-    #     assert prob_9 > prob_5
+        assert prob >= 0.74
 
     def test_no_hits_no_runs_reduces_prob(self):
         base = _make_pitcher(

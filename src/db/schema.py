@@ -360,10 +360,11 @@ CREATE TABLE IF NOT EXISTS team_game_stats (
 );
 
 CREATE TABLE IF NOT EXISTS pitcher_state (
-    player_id TEXT PRIMARY KEY,
-    current_energy REAL NOT NULL CHECK (current_energy >= 0),
-    last_game_date TEXT,
-    last_pitch_count INTEGER CHECK (last_pitch_count >= 0),
+    player_id            TEXT PRIMARY KEY,
+    current_energy       REAL NOT NULL CHECK (current_energy >= 0),
+    consecutive_days     INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
+    last_game_date       TEXT,
+    last_pitch_count     INTEGER CHECK (last_pitch_count >= 0),
 
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
