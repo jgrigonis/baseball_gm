@@ -1,1 +1,8 @@
 separate out the called strikes and swinging strikes.
+
+Separate the swinging and looking strikes.
+
+This will allow us to get a little more refined with adjusting 
+outcomes based on skills.
+
+
