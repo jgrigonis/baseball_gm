@@ -648,6 +648,8 @@ class GameStrategy:
                 prob *= 0.33
             elif stats.runs == 1:
                 prob *= 0.7
+            elif stats.runs == 2 and score_differential > 0:
+                prob *= 0.75
             if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
                 if stats.hits == 0:
                     prob *= 0.18
