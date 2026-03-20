@@ -92,8 +92,8 @@ class PitchModifiers:
         resolver.pitch_outcome.add("ball", 9 * (eye - 50))
         if eye > 75:
             elite_bonus = (eye - 75) ** 1.6
-            resolver.pitch_outcome.add("ball", 3 * elite_bonus)
-            resolver.pitch_outcome.add("strike", -5.5 * elite_bonus)
+            resolver.pitch_outcome.add("ball", int(3 * elite_bonus))
+            resolver.pitch_outcome.add("strike", int(-5.5 * elite_bonus))
 
         contact = batter.get_effective_stat(batter.skills["contact"])
         resolver.pitch_outcome.add("strike", -15 * (contact - 50))
@@ -101,14 +101,14 @@ class PitchModifiers:
         resolver.pitch_outcome.add("in_play", int(3.6 * (contact - 50)))
         if contact > 75:
             elite_bonus = (contact - 75) ** 1.6
-            resolver.pitch_outcome.add("in_play", 3 * elite_bonus)
-            resolver.pitch_outcome.add("strike", -6.5 * elite_bonus)
+            resolver.pitch_outcome.add("in_play", int(3 * elite_bonus))
+            resolver.pitch_outcome.add("strike", int(-6.5 * elite_bonus))
 
         power = batter.get_effective_stat(batter.skills["power"])
-        resolver.pitch_outcome.add("home_run", 3.1 * (power - 50))
+        resolver.pitch_outcome.add("home_run", int(3.1 * (power - 50)))
         if power > 75:
             elite_bonus = (power - 75) ** 1.6
-            resolver.pitch_outcome.add("home_run", 0.6 * elite_bonus)
+            resolver.pitch_outcome.add("home_run", int(0.6 * elite_bonus))
 
     @staticmethod
     def modify_for_catcher(resolver, catcher: PlayerInGame) -> None:
@@ -143,12 +143,12 @@ class PitchModifiers:
             elite_bonus = (strikes - 75) ** 1.6
             resolver.pitch_outcome.add("strike", 5 * elite_bonus)
         
-        if strikes < 80 and accuracy > 80:
+        if strikes > 80 and accuracy > 80:
             super_elite_bonus = (strikes + accuracy - 150) ** 1.5
             resolver.pitch_outcome.add("ball", -3 * super_elite_bonus)
             resolver.pitch_outcome.add("strike", 3 * (super_elite_bonus))
-            resolver.pitch_outcome.add("hit_by_pitch", -0.2 * (super_elite_bonus))
-            resolver.pitch_outcome.add("wild_pitch", -0.2 * (super_elite_bonus))
+            resolver.pitch_outcome.add("hit_by_pitch", int(-0.2 * (super_elite_bonus)))
+            resolver.pitch_outcome.add("wild_pitch", int(-0.2 * (super_elite_bonus)))
 
 
 
