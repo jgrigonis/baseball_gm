@@ -797,7 +797,7 @@ class Game:
                 if state:
                     state.current_energy = 0.0
                     state.injuries_this_season += 1
-                self.logger.info(f"🚑 {player.name} injured and removed from game")
+                self.logger.info(f"🚑 {player.name} injured and removed from game. Severity: {severity}")
                 if player.pitcher_fatigue:
                     self._consider_pitching_change()
                 else:

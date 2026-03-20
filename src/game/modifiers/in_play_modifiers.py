@@ -113,12 +113,19 @@ class InPlayModifiers:
             resolver.in_play_outcome.add("ground_out", -0.5 * elite_bonus)
 
         speed = batter.get_effective_stat(batter.skills["speed"])
+        base_running = batter.get_effective_stat(batter.skills["base_running"])
         resolver.in_play_outcome.add("ground_out", -1 * (speed - 50))
         resolver.in_play_outcome.add("single", 0.9 * (speed - 50))
         resolver.in_play_outcome.add("double", 0.5 * (speed - 50))
         resolver.in_play_outcome.add("triple", 0.36 * (speed - 50))
         resolver.in_play_outcome.add("double_play", -2 * (speed - 50))
         resolver.in_play_outcome.add("fielders_choice", (speed - 50))
+        if speed + base_running > 150:
+            elite_bonus = (speed + base_running - 150) ** 1.6
+            resolver.in_play_outcome.add("single", 0.9 * (elite_bonus))
+            resolver.in_play_outcome.add("double", 0.5 * (elite_bonus))
+            resolver.in_play_outcome.add("triple", 0.36 * (elite_bonus))
+
 
         clutch = batter.get_effective_stat(batter.skills["clutch"])
         if -2 < score.differential < 2:

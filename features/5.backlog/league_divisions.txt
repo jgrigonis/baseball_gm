@@ -1,0 +1,7 @@
+Split the league
+Create divisions (6 in mlb)
+
+Adjust the schedule creation to account for leagues and divisions
+
+Change the playoff qulifications
+

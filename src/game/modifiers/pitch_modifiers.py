@@ -87,28 +87,28 @@ class PitchModifiers:
     def modify_for_batter(resolver, batter: PlayerInGame) -> None:
         """Modify probabilities based on batter skills."""
         eye = batter.get_effective_stat(batter.skills["eye"])
-        resolver.pitch_outcome.add("strike", -14 * (eye - 50))
+        resolver.pitch_outcome.add("strike", -15 * (eye - 50))
         resolver.pitch_outcome.add("foul", 8 * (eye - 50))
         resolver.pitch_outcome.add("ball", 9 * (eye - 50))
         if eye > 75:
             elite_bonus = (eye - 75) ** 1.6
             resolver.pitch_outcome.add("ball", 3 * elite_bonus)
-            resolver.pitch_outcome.add("strike", -2.5 * elite_bonus)
+            resolver.pitch_outcome.add("strike", -5.5 * elite_bonus)
 
         contact = batter.get_effective_stat(batter.skills["contact"])
-        resolver.pitch_outcome.add("strike", -12 * (contact - 50))
+        resolver.pitch_outcome.add("strike", -15 * (contact - 50))
         resolver.pitch_outcome.add("foul", int(2 * (contact - 50)))
         resolver.pitch_outcome.add("in_play", int(3.6 * (contact - 50)))
         if contact > 75:
             elite_bonus = (contact - 75) ** 1.6
             resolver.pitch_outcome.add("in_play", 3 * elite_bonus)
-            resolver.pitch_outcome.add("strike", -4.5 * elite_bonus)
+            resolver.pitch_outcome.add("strike", -6.5 * elite_bonus)
 
         power = batter.get_effective_stat(batter.skills["power"])
-        resolver.pitch_outcome.add("home_run", 3.8 * (power - 50))
+        resolver.pitch_outcome.add("home_run", 3.1 * (power - 50))
         if power > 75:
             elite_bonus = (power - 75) ** 1.6
-            resolver.pitch_outcome.add("home_run", 0.2 * elite_bonus)
+            resolver.pitch_outcome.add("home_run", 0.6 * elite_bonus)
 
     @staticmethod
     def modify_for_catcher(resolver, catcher: PlayerInGame) -> None:
@@ -122,26 +122,34 @@ class PitchModifiers:
         """Modify probabilities based on pitcher skills."""
         accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
         resolver.pitch_outcome.add("ball", -30 * (accuracy - 50))
-        resolver.pitch_outcome.add("strike", 16 * (accuracy - 50))
+        resolver.pitch_outcome.add("strike", 18 * (accuracy - 50))
         resolver.pitch_outcome.add("hit_by_pitch", -(accuracy - 50))
         resolver.pitch_outcome.add("wild_pitch", -(accuracy - 50))
         resolver.pitch_outcome.add("passed_ball", int(-0.7 * (accuracy - 50)))
         if accuracy > 75:
             elite_bonus = (accuracy - 75) ** 1.6
-            resolver.pitch_outcome.add("strike", elite_bonus)
-            resolver.pitch_outcome.add("ball", -(elite_bonus))
+            resolver.pitch_outcome.add("strike", 2 * (elite_bonus))
+            resolver.pitch_outcome.add("ball", -2 * (elite_bonus))
 
         ground_balls = pitcher.get_effective_stat(pitcher.skills["ground_balls"])
         resolver.pitch_outcome.add("home_run", -(ground_balls - 40))
 
         strikes = pitcher.get_effective_stat(pitcher.skills["strikes"])
         resolver.pitch_outcome.add("ball", -12 * (strikes - 50))
-        resolver.pitch_outcome.add("strike", 16 * (strikes - 50))
+        resolver.pitch_outcome.add("strike", 17 * (strikes - 50))
         resolver.pitch_outcome.add("foul", 6 * (strikes - 50))
         resolver.pitch_outcome.add("in_play", -12 * (strikes - 50))
         if strikes > 75:
             elite_bonus = (strikes - 75) ** 1.6
-            resolver.pitch_outcome.add("strike", 4 * elite_bonus)
+            resolver.pitch_outcome.add("strike", 5 * elite_bonus)
+        
+        if strikes < 80 and accuracy > 80:
+            super_elite_bonus = (strikes + accuracy - 150) ** 1.5
+            resolver.pitch_outcome.add("ball", -3 * super_elite_bonus)
+            resolver.pitch_outcome.add("strike", 3 * (super_elite_bonus))
+            resolver.pitch_outcome.add("hit_by_pitch", -0.2 * (super_elite_bonus))
+            resolver.pitch_outcome.add("wild_pitch", -0.2 * (super_elite_bonus))
+
 
 
     @staticmethod

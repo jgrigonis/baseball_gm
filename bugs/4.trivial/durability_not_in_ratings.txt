@@ -1,0 +1,103 @@
+Durability not included in ratings
+
+These should amost al have durability included:
+
+ROLE_WEIGHTS: dict[str, dict[str, int]] = {
+    "cf": {
+        "outfield": 5,
+        "arm": 2,
+        "speed": 3,
+        "clutch": 1,
+    },
+    "rf": {
+        "outfield": 5,
+        "arm": 2,
+        "speed": 1,
+        "clutch": 1,
+    },
+    "lf": {
+        "outfield": 5,
+        "arm": 1,
+        "speed": 1,
+        "clutch": 1,
+    },
+    "c": {
+        "catching": 5,
+        "arm": 1,
+        "clutch": 1,
+    },
+    "1b": {
+        "infield": 5,
+        "clutch": 1,
+    },
+    "2b": {
+        "infield": 5,
+        "speed": 1,
+        "clutch": 1,
+    },
+    "ss": {
+        "infield": 5,
+        "speed": 1,
+        "arm": 1,
+        "clutch": 1,
+    },
+    "3b": {
+        "infield": 5,
+        "arm": 1,
+        "clutch": 1,
+    },
+    "p": {
+        "accuracy": 1,
+        "stamina": 1,
+        "recovery": 1,
+        "ground_balls": 1,
+        "strikes": 1,
+        "clutch": 1,
+    },
+    "sp": {
+        "accuracy": 1,
+        "stamina": 3,
+        "recovery": 3,
+        "ground_balls": 1,
+        "strikes": 1,
+        "clutch": 1,
+    },
+    "rp": {
+        "accuracy": 1,
+        "ground_balls": 1,
+        "strikes": 1,
+        "clutch": 1,
+    },
+    "lead_off": {
+        "speed": 1,
+        "eye": 2,
+        "contact": 2,
+        "base_running": 1,
+        "clutch": 1,
+    },
+    "contact_hitter": {
+        "eye": 2,
+        "contact": 4,
+        "clutch": 1,
+    },
+    "power_hitter": {
+        "power": 4,
+        "eye": 1,
+        "contact": 1,
+        "clutch": 1,
+    },
+    "speed_runner": {
+        "speed": 2,
+        "base_running": 1,
+    },
+    # This one is most likely subject to change
+    "overall_offense": {
+        # "clutch": 1,
+        "power": 4,
+        "eye": 2,
+        "contact": 3,
+        "base_running": 2,
+        # "bunting": 1,
+        "speed": 3,
+    },
+}

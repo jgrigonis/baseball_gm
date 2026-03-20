@@ -1,0 +1,9 @@
+player_injuries 
+
+should store a permanent record of each injury.
+It should store the date of the injury and the duration
+Don't delete when it gets to 0 days remaining.
+
+player_status
+
+should record days_injured as well as injuries_this_season

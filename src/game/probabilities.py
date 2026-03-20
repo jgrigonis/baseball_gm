@@ -7,17 +7,17 @@ These values tune the likelihood of various outcomes throughout the game.
 """
 
 # Pitch outcome weights
-BALL_PROB = 15200
+BALL_PROB = 16200
 FOUL_PROB = 5100
 HOME_RUN_PROB = 280
-HBP_PROB = 102
+HBP_PROB = 107
 BALK_PROB = 0
 ILLEGAL_PITCH_PROB = 0
 CATCHER_INTERFERENCE_PROB = 3
 WILD_PITCH_PROB = 275
 PASSED_BALL_PROB = 69
 IN_PLAY_PROB = 5875
-STRIKE_PROB = 10000
+STRIKE_PROB = 11500
 
 # In play outcome weights
 FLY_OUT_PROB = 4400
