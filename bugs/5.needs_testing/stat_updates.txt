@@ -1,9 +1,32 @@
+Thursday March 19th, 4pm
+
+The league totals are clean across all 11 seasons — every core stat 
+in range, stable year over year. ERA at the leader level is meaningfully 
+better, with the best pitchers now regularly hitting 3.0-3.2 and the 
+10th percentile tightening from 4.3 down toward 3.8 by season 11. Stolen 
+bases are finally behaving — leaders are now regularly in the 30-38 range 
+which touches the low end of expected. The career traces look excellent: 
+Benjamin is a legitimate SP with consistent starts and sensible pitch 
+counts, Anderson is used correctly as a closer with ~57 games and ~1 
+IP each, Barnes is a proper short-relief closer.
+
+Strikeouts are still stubbornly low at the leader level — the leader is 
+consistently below 180 where 180 is the floor of expected. K/AB is still 
+roughly double expected. These two move together and haven't moved despite 
+all the other fixes, which confirms the problem is in pitch outcome 
+probabilities rather than anything we've changed. This is the tuning 
+problem from before.
+
+Walks at the 10th percentile are still consistently below the expected 
+floor in most seasons. The best passers are fine but the average qualifier 
+still walks too few.
+
 Sun March 15, 10:30 PM
 
-Walks/g3.46 ↑3.46 ↑Consistently just over 3.42 ceiling
-HBP/g0.26 ↓0.27 ↓Consistently just under 0.30 floor
-SB/g0.84 ↑0.83 ↑Consistently ~0.10 over ceiling
-Assists/g8.50 ✓8.34 ↓Oscillating around the 8.40 floor
+Walks/g 3.46 ↑ 3.46 ↑ Consistently just over 3.42 ceiling
+HBP/g 0.26 ↓ 0.27 ↓ Consistently just under 0.30 floor
+SB/g 0.84 ↑ 0.83 ↑ Consistently ~0.10 over ceiling
+Assists/g 8.50 ✓ 8.34 ↓ Oscillating around the 8.40 floor
 
 Sun March 15, 7pm
 

@@ -456,6 +456,55 @@ def play_game(
 
     return result
 
+# Not yet used
+def head_to_head_wins(conn, season_id: str, team_ids: list[str]) -> dict[str, int]:
+    """
+    For a group of tied teams, count wins only in games against each other.
+    Returns {team_id: h2h_win_count}.
+    """
+    placeholders = ",".join("?" * len(team_ids))
+    rows = conn.execute(
+        f"""
+        SELECT winner_id, COUNT(*) as wins
+        FROM games
+        WHERE season_id = ?
+          AND completed = 1
+          AND home_team_id IN ({placeholders})
+          AND away_team_id IN ({placeholders})
+          AND winner_id IS NOT NULL
+        GROUP BY winner_id
+        """,
+        [season_id] + team_ids + team_ids,
+    ).fetchall()
+
+    result = {tid: 0 for tid in team_ids}
+    for row in rows:
+        if row["winner_id"] in result:
+            result[row["winner_id"]] = row["wins"]
+    return result
+
+# Not yet used
+def sort_standings(conn, season_id: str, rows: list) -> list:
+    from itertools import groupby
+
+    # Group rows by win_pct
+    sorted_rows = sorted(rows, key=lambda r: -r["win_pct"])
+    result = []
+
+    for _, group in groupby(sorted_rows, key=lambda r: r["win_pct"]):
+        group = list(group)
+        if len(group) == 1:
+            result.extend(group)
+            continue
+
+        # Break tie with head-to-head
+        tied_ids = [r["team_id"] for r in group]
+        h2h = head_to_head_wins(conn, season_id, tied_ids)
+        group.sort(key=lambda r: (-h2h.get(r["team_id"], 0), -r["runs_scored"]))
+        result.extend(group)
+
+    return result
+
 
 def print_standings(conn, season_id: str, logger: logging.Logger = None):
     """Print current season standings."""
