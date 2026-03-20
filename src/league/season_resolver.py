@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import sqlite3
 
+from src.db.connection import get_connection
 from src.util.locations import LEAGUE_FILES_DIR
 
 
@@ -28,13 +29,12 @@ def resolve_season(db_file: str, season_arg: str | None) -> tuple[str, str, str]
     - season_label - name year combo for the season
 
     """
-    db_path = Path(LEAGUE_FILES_DIR) / db_file
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(db_file)
     cur = conn.cursor()
     cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
     seasons = cur.fetchall()
     conn.close()
+    db_path = Path(LEAGUE_FILES_DIR) / db_file
 
     if not seasons:
         print("No seasons found in database.")

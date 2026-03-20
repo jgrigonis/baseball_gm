@@ -21,6 +21,7 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
+from src.db.connection import get_connection
 from src.util.locations import LEAGUE_FILES_DIR
 from src.util.logger import setup_logger
 
@@ -306,8 +307,7 @@ def main():
             log_id="setup_playoffs",
             log_to_file=True,
         )
-    conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(args.db)
     lines = []
     lines.append(f"\n🏆 Setting up playoffs for season {args.season_id}")
     lines.append(f"   Start date : {start_date}")

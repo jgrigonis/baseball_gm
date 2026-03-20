@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 import sqlite3
 
+from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season
 from src.stats.analyzer import StatsAnalyzer
 from src.stats.loader import StatsLoader
@@ -33,8 +34,7 @@ def calculate_min_pa(
     db_path: Path, season_id: str, logger: logging.Logger = None
 ) -> tuple[float, float]:
     """Calculate minimum PA and IP for leaderboard qualification based on games completed."""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection()
 
     cursor = conn.execute(
         """

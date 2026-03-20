@@ -15,8 +15,8 @@ import argparse
 import sqlite3
 from pathlib import Path
 
+from src.db.connection import get_connection
 from src.util.locations import LEAGUE_FILES_DIR
-
 
 # ---------------------------------------------------------------------------
 # Core resolver
@@ -112,8 +112,7 @@ def get_args():
 def main():
     args = get_args()
 
-    conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(args.db)
 
     try:
         team = resolve_team(conn, args.query)

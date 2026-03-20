@@ -6,7 +6,7 @@ from pathlib import Path
 import random
 import sqlite3
 
-
+from src.db.connection import get_connection
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -368,8 +368,7 @@ def get_args():
 
 def main():
     args = get_args()
-    conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(args.db)
 
     seed = args.seed if args.seed is not None else random.randint(0, 999999)
     print(f"🎲 Seed: {seed}")

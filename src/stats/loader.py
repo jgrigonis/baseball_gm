@@ -1,6 +1,7 @@
 # src/stats/loader.py
 from typing import List
 
+from src.db.connection import get_connection
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.player.player_in_game import PlayerInGame
@@ -13,9 +14,7 @@ class StatsLoader:
 
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self.conn = sqlite3.connect(db_path)
-        self.conn.row_factory = sqlite3.Row
-
+        self.conn = get_connection(db_path)
         self.player_repo = PlayerRepository(self.conn)
         self.player_game_repo = PlayerGameRepository(self.conn)
 

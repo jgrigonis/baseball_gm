@@ -23,6 +23,7 @@ import traceback
 from datetime import date, timedelta
 from pathlib import Path
 
+from src.db.connection import get_connection
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -326,8 +327,7 @@ def get_seeds(conn, season_id: str) -> list[dict]:
 
 def main():
     args = get_args()
-    conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(args.db)
     logger = None
     if args.logs:
         logger = setup_logger(
