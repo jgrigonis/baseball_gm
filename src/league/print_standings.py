@@ -3,6 +3,7 @@ import argparse
 import sqlite3
 from pathlib import Path
 
+from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season
 
 
@@ -22,8 +23,8 @@ def parse_args():
 
 def print_standings(db_path: Path, season_id: str):
     """Print current season standings."""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(db_path)
+
     rows = conn.execute(
         """
         SELECT 

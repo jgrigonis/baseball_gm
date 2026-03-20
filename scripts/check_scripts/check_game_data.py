@@ -3,9 +3,9 @@
 import sqlite3
 from pathlib import Path
 
-db_path = Path("leagues/league.db")  # Adjust path as needed
-conn = sqlite3.connect(db_path)
-conn.row_factory = sqlite3.Row
+from src.db.connection import get_connection
+conn = get_connection()
+
 
 season_id = "d9e8714621b64e539838ada9524acdf0"  # This is hardcoded to a probably long gone season.
 

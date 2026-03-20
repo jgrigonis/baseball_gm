@@ -381,6 +381,7 @@ class PlayerTableFormatter:
         output += str("AG = age\n")
         output += str("T  = throws\n")
         output += str("B  = bats\n")
+        output += str("DU = durability\n")
         output += str("CL = clutch\n")
         output += str("SP = run speed\n")
         output += str("PO = batting power\n")

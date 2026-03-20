@@ -3,9 +3,8 @@ from pathlib import Path
 
 from src.player.player_skills import PlayerSkills
 
-db_path = Path("leagues/league.db")  # Adjust path as needed
-conn = sqlite3.connect(db_path)
-conn.row_factory = sqlite3.Row
+from src.db.connection import get_connection
+conn = get_connection()
 
 
 # Check if Lee Wells ever started as a pitcher

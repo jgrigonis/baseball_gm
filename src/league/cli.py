@@ -5,9 +5,9 @@ import random
 
 # from datetime import date
 from pathlib import Path
-import sqlite3
 import sys
 
+from src.db.connection import get_connection
 from src.db.init import init_db
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
@@ -71,12 +71,10 @@ def main():
 
     # import time
     # print(f"========== SCRIPT START {time.time()} ==========")
-    path = Path(LEAGUE_FILES_DIR)
     man_path = Path(MANIFEST_FILES_DIR)
-    path.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(path / args.db)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(args.db)
+
     init_db(conn)
 
     boot = LeagueBootstrapper(conn, rng=rng)

@@ -6,7 +6,7 @@ ratings, and season stats from the database.
 Usage:
     python player_lookup.py "John Smith"
     python player_lookup.py "John Smith" --season 2025
-    python player_lookup.py "John Smith" --season 2025 --db path/to/db.sqlite
+    python player_lookup.py "John Smith" --season 2025 --db db_filename
     python player_lookup.py "John Smith" --dir team_files/2025
 
 Defaults:
@@ -16,9 +16,11 @@ Defaults:
 
 import argparse
 import csv
-import sqlite3
 import sys
 from pathlib import Path
+
+from src.db.connection import get_connection
+
 
 # ---------------------------------------------------------------------------
 # Args
@@ -33,7 +35,7 @@ def parse_args():
         "--season", help="Season year or name to filter stats (e.g. 2025)"
     )
     parser.add_argument(
-        "--db", default="leagues/league.db", help="Path to SQLite database"
+        "--db", default="league.db", help="Name of SQLite database"
     )
     return parser.parse_args()
 
@@ -76,21 +78,6 @@ def find_players_in_csvs(
                     matches.append({**row, "_source_file": label})
 
     return matches
-
-
-# def find_players_in_csvs(name_query: str, directory: Path) -> list[dict]:
-#     """Search all CSVs for players matching name_query (case-insensitive)."""
-#     matches = []
-#     query = name_query.lower()
-
-#     for csv_path in sorted(directory.glob("**/*.csv")):
-#         with open(csv_path, newline="", encoding="utf-8") as f:
-#             reader = csv.DictReader(f)
-#             for row in reader:
-#                 if query in row.get("Name", "").lower():
-#                     matches.append({**row, "_source_file": csv_path.name})
-
-#     return matches
 
 
 # ---------------------------------------------------------------------------
@@ -148,16 +135,12 @@ PITCHING_COLS = [
 ]
 
 
-def query_season_stats(db_path: Path, player_id: str, season: str | None) -> dict:
+def query_season_stats(db_file: str, player_id: str, season: str | None) -> dict:
     """
     Aggregate player_game_stats for a player, optionally filtered by season.
     Returns dict with 'batting', 'pitching', and 'games' keys.
     """
-    if not db_path.exists():
-        return {}
-
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(db_file)
     cur = conn.cursor()
 
     # Show available seasons and resolve season_id
@@ -410,10 +393,9 @@ def main():
         ratings = {}
 
     # DB stats
-    db_path = Path(args.db)
     player_id = row.get("ID", "")
     season_stats = (
-        query_season_stats(db_path, player_id, args.season) if player_id else {}
+        query_season_stats(args.db, player_id, args.season) if player_id else {}
     )
 
     display_player(row, ratings, season_stats)

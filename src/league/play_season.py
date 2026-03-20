@@ -11,6 +11,8 @@ import sqlite3
 from pathlib import Path
 import traceback
 
+
+from src.db.connection import get_connection
 from src.db.repositories import bullpen_roles_repo
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -537,45 +539,12 @@ def print_standings(conn, season_id: str, logger: logging.Logger = None):
     output = "\n".join(lines)
     logger.info(output)
 
-# def print_standings(conn, season_id: str, logger: logging.Logger = None):
-#     """Print current season standings."""
-#     rows = conn.execute(
-#         """
-#         SELECT 
-#             t.city || ' ' || t.mascot as team_name,
-#             SUM(tgs.win) as wins,
-#             SUM(tgs.loss) as losses,
-#             SUM(tgs.runs) as runs_scored,
-#             ROUND(CAST(SUM(tgs.win) AS FLOAT) / (SUM(tgs.win) + SUM(tgs.loss)), 3) as win_pct
-#         FROM teams t
-#         JOIN team_game_stats tgs ON t.id = tgs.team_id
-#         JOIN games g ON tgs.game_id = g.id
-#         WHERE g.season_id = ? AND g.completed = 1
-#         GROUP BY t.id
-#         ORDER BY win_pct DESC, wins DESC
-#         """,
-#         (season_id,),
-#     ).fetchall()
-
-#     lines = []
-#     lines.append("\n" + "=" * 60)
-#     lines.append(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
-#     lines.append("=" * 60)
-#     for row in rows:
-#         lines.append(f"{row[0]:<30} {row[1]:>5} {row[2]:>5} {row[4]:>7.3f} {row[3]:>6}")
-#     lines.append("=" * 60)
-
-#     output = "\n".join(lines)
-#     logger.info(output)
-
-
 def main():
     args = get_args()
     start_time = datetime.now()
 
     # Connect to database
-    conn = sqlite3.connect(Path(LEAGUE_FILES_DIR) / args.db)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(args.db)
 
     season_logger = setup_logger(
         name="season",

@@ -2,9 +2,8 @@
 import sqlite3
 from pathlib import Path
 
-db_path = Path("leagues/league.db")  # Adjust path as needed
-conn = sqlite3.connect(db_path)
-conn.row_factory = sqlite3.Row
+from src.db.connection import get_connection
+conn = get_connection()
 
 # Check a sample of games Terry DIDN'T play in
 cursor = conn.execute(

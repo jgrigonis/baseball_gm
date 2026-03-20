@@ -4,16 +4,20 @@ import sqlite3
 from pathlib import Path
 
 
+from src.db.connection import get_connection
+
+
+
 def get_args():
     """
     Get arguments from the command line.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--path",
-        "-p",
-        default="leagues/league.db",
-        help="Set the path to the database file.",
+        "--db_file",
+        "-d",
+        default="league.db",
+        help="Set the name of the database file.",
     )
     parser.add_argument(
         "--name",
@@ -26,12 +30,8 @@ def get_args():
 
 
 def main(args):
-    db_path = Path(args.path)
-    if not db_path.exists():
-        print(f"Database file not found: {db_path}")
-        return
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(args.db_file)
+
     check_info(conn, args.name)
     conn.close()
 
