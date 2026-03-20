@@ -57,6 +57,7 @@ class TeamInGame:
         record: TeamRecord,
         *,
         optimizer: OptimizeFn = LineupOptimizer.optimize,
+        logger=None,
     ):
         self.record = record
         self.players = [PlayerInGame(p) for p in record.players]
@@ -65,7 +66,7 @@ class TeamInGame:
         self.pitcher: PlayerInGame | None = None
         self._positions: dict[Position, PlayerInGame] = {}
         self.batter_index: int = 0
-        self.logger = logging.getLogger("details")
+        self.logger = logger or logging.getLogger("game.details")
 
     @property
     def has_lineup(self) -> bool:
@@ -312,7 +313,7 @@ class TeamInGame:
             pass
 
         outgoing.current_position = None
-        self.logger.info(
+        self.logger.debug(
             f"↔️  {incoming.name} replaces {outgoing.name} "
             f"at {incoming.current_position}"
         )

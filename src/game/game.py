@@ -810,7 +810,7 @@ class Game:
                             sub = team.get_bench_player(player)
                             if sub:
                                 self.logger.info(
-                                    f"↔️ {sub.name} enters for {player.name}"
+                                    f"↔️ {sub.name} enters for {player.name} at {player.current_position}"
                                 )
                                 team.substitute(player, sub)
                             break

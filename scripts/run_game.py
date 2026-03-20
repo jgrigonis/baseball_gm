@@ -95,8 +95,8 @@ def main(args):
         away_team_record = tf.generate_team(city=AWAY_CITY, mascot=AWAY_MASCOT)
 
     # setup TeamInGame objects
-    home_team = TeamInGameFactory.from_record(home_team_record)
-    away_team = TeamInGameFactory.from_record(away_team_record)
+    home_team = TeamInGameFactory.from_record(home_team_record, logger=logger)
+    away_team = TeamInGameFactory.from_record(away_team_record, logger=logger)
 
     # TODO we should find a better way to set bullpen roles.
 
