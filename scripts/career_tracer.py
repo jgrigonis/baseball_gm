@@ -144,7 +144,8 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
 
 def resolve_id_from_name(
     directory: Path, name_query: str
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, int | None]:
+    """Returns (player_id, canonical_name, disambiguation_index)."""
     query = name_query.lower()
     seen = {}
     for csv_path in sorted(directory.glob("**/*.csv")):
@@ -165,7 +166,7 @@ def resolve_id_from_name(
     # Auto-select if any entry is an exact match (case-insensitive)
     exact = [(pid, name) for pid, name in items if name.lower() == query]
     if len(exact) == 1:
-        return exact[0]
+        return exact[0][0], exact[0][1], None  # no suffix needed
 
     print(f"Found {len(items)} players matching '{name_query}':")
     for i, (pid, name) in enumerate(items):
@@ -178,36 +179,7 @@ def resolve_id_from_name(
         idx = 0
         print("(no input available, defaulting to [0])")
 
-    return items[idx]
-
-
-# def resolve_id_from_name(
-#     directory: Path, name_query: str
-# ) -> tuple[str | None, str | None]:
-#     """Find a player ID by partial name match. Returns (player_id, canonical_name)."""
-#     query = name_query.lower()
-#     seen = {}  # id -> name
-#     for csv_path in sorted(directory.glob("**/*.csv")):
-#         with open(csv_path, newline="", encoding="utf-8") as f:
-#             for row in csv.DictReader(f):
-#                 if query in row.get("Name", "").lower():
-#                     pid = row.get("ID", "").strip()
-#                     if pid:
-#                         seen[pid] = row["Name"]
-#     if not seen:
-#         return None, None
-#     if len(seen) == 1:
-#         pid, name = next(iter(seen.items()))
-#         return pid, name
-#     # Multiple — prompt
-#     items = list(seen.items())
-#     print(f"Found {len(items)} players matching '{name_query}':")
-#     for i, (pid, name) in enumerate(items):
-#         print(f"  [{i}] {name}  ({pid})")
-#     choice = input("Select [0]: ").strip()
-#     idx = int(choice) if choice.isdigit() else 0
-#     return items[idx]
-
+    return items[idx][0], items[idx][1], idx
 
 # ---------------------------------------------------------------------------
 # DB helpers
@@ -583,7 +555,7 @@ def main():
         apps = find_all_appearances(directory, player_id)
         canonical_name = apps[0]["Name"] if apps else player_id
     else:
-        player_id, canonical_name = resolve_id_from_name(directory, args.name)
+        player_id, canonical_name, disambig_idx = resolve_id_from_name(directory, args.name)
         if not player_id:
             print(f"No player found matching '{args.name}'")
             sys.exit(1)
@@ -607,7 +579,10 @@ def main():
 
     # Write to temp_files/<first>_<last>.txt
     name_parts = canonical_name.lower().split()
-    filename = "_".join(name_parts) + ".txt"
+    filename = "_".join(name_parts)
+    if disambig_idx is not None:
+        filename += f"_{disambig_idx}"
+    filename += ".txt"
     out_dir = Path("temp_files")
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / filename
