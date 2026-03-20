@@ -456,7 +456,6 @@ def play_game(
 
     return result
 
-# Not yet used
 def head_to_head_wins(conn, season_id: str, team_ids: list[str]) -> dict[str, int]:
     """
     For a group of tied teams, count wins only in games against each other.
@@ -483,7 +482,6 @@ def head_to_head_wins(conn, season_id: str, team_ids: list[str]) -> dict[str, in
             result[row["winner_id"]] = row["wins"]
     return result
 
-# Not yet used
 def sort_standings(conn, season_id: str, rows: list) -> list:
     from itertools import groupby
 
@@ -511,6 +509,7 @@ def print_standings(conn, season_id: str, logger: logging.Logger = None):
     rows = conn.execute(
         """
         SELECT 
+            t.id as team_id,
             t.city || ' ' || t.mascot as team_name,
             SUM(tgs.win) as wins,
             SUM(tgs.loss) as losses,
@@ -521,21 +520,53 @@ def print_standings(conn, season_id: str, logger: logging.Logger = None):
         JOIN games g ON tgs.game_id = g.id
         WHERE g.season_id = ? AND g.completed = 1
         GROUP BY t.id
-        ORDER BY win_pct DESC, wins DESC
-        """,
+        """,  # No ORDER BY — sort_standings handles this
         (season_id,),
     ).fetchall()
+
+    sorted_rows = sort_standings(conn, season_id, [dict(r) for r in rows])
 
     lines = []
     lines.append("\n" + "=" * 60)
     lines.append(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
     lines.append("=" * 60)
-    for row in rows:
-        lines.append(f"{row[0]:<30} {row[1]:>5} {row[2]:>5} {row[4]:>7.3f} {row[3]:>6}")
+    for row in sorted_rows:
+        lines.append(f"{row['team_name']:<30} {row['wins']:>5} {row['losses']:>5} {row['win_pct']:>7.3f} {row['runs_scored']:>6}")
     lines.append("=" * 60)
 
     output = "\n".join(lines)
     logger.info(output)
+
+# def print_standings(conn, season_id: str, logger: logging.Logger = None):
+#     """Print current season standings."""
+#     rows = conn.execute(
+#         """
+#         SELECT 
+#             t.city || ' ' || t.mascot as team_name,
+#             SUM(tgs.win) as wins,
+#             SUM(tgs.loss) as losses,
+#             SUM(tgs.runs) as runs_scored,
+#             ROUND(CAST(SUM(tgs.win) AS FLOAT) / (SUM(tgs.win) + SUM(tgs.loss)), 3) as win_pct
+#         FROM teams t
+#         JOIN team_game_stats tgs ON t.id = tgs.team_id
+#         JOIN games g ON tgs.game_id = g.id
+#         WHERE g.season_id = ? AND g.completed = 1
+#         GROUP BY t.id
+#         ORDER BY win_pct DESC, wins DESC
+#         """,
+#         (season_id,),
+#     ).fetchall()
+
+#     lines = []
+#     lines.append("\n" + "=" * 60)
+#     lines.append(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
+#     lines.append("=" * 60)
+#     for row in rows:
+#         lines.append(f"{row[0]:<30} {row[1]:>5} {row[2]:>5} {row[4]:>7.3f} {row[3]:>6}")
+#     lines.append("=" * 60)
+
+#     output = "\n".join(lines)
+#     logger.info(output)
 
 
 def main():
