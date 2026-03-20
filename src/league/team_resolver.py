@@ -12,11 +12,8 @@ Usage (as a library):
 """
 
 import argparse
-import sqlite3
-from pathlib import Path
 
 from src.db.connection import get_connection
-from src.util.locations import LEAGUE_FILES_DIR
 
 # ---------------------------------------------------------------------------
 # Core resolver

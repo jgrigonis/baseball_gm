@@ -1,6 +1,5 @@
 # src/league/print_standings.py
 import argparse
-import sqlite3
 from pathlib import Path
 
 from src.db.connection import get_connection

@@ -1,7 +1,6 @@
-import sqlite3
-from pathlib import Path
 
 from src.db.connection import get_connection
+
 conn = get_connection()
 
 # Check if Lee appeared AT ALL (even in relief) in those 19 games

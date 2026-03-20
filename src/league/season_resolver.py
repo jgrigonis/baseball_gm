@@ -1,7 +1,6 @@
 # src/league/season_resolver.py
 import argparse
 from pathlib import Path
-import sqlite3
 
 from src.db.connection import get_connection
 from src.util.locations import LEAGUE_FILES_DIR

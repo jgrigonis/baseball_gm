@@ -126,7 +126,6 @@ class InPlayModifiers:
             resolver.in_play_outcome.add("double", 0.5 * (elite_bonus))
             resolver.in_play_outcome.add("triple", 0.36 * (elite_bonus))
 
-
         clutch = batter.get_effective_stat(batter.skills["clutch"])
         if -2 < score.differential < 2:
             resolver.in_play_outcome.add("fly_out", 2 * (clutch - 50))

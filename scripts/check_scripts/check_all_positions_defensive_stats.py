@@ -1,7 +1,7 @@
-import sqlite3
-from pathlib import Path
+# scripts/check_scripts/check_all_positions_defensive_stats.py
 
 from src.db.connection import get_connection
+
 conn = get_connection()
 
 

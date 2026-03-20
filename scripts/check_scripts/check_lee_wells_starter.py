@@ -1,9 +1,9 @@
-import sqlite3
-from pathlib import Path
+
 
 from src.player.player_skills import PlayerSkills
 
 from src.db.connection import get_connection
+
 conn = get_connection()
 
 

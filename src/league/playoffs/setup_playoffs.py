@@ -17,12 +17,9 @@ Usage:
 
 import argparse
 import logging
-import sqlite3
 from datetime import date, timedelta
-from pathlib import Path
 
 from src.db.connection import get_connection
-from src.util.locations import LEAGUE_FILES_DIR
 from src.util.logger import setup_logger
 
 # ---------------------------------------------------------------------------

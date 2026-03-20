@@ -7,8 +7,6 @@ import argparse
 from datetime import datetime
 import logging
 import random
-import sqlite3
-from pathlib import Path
 import traceback
 
 
@@ -24,7 +22,6 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.game.game import Game
 from src.team.team_in_game import TeamInGame
-from src.util.locations import LEAGUE_FILES_DIR
 from src.util.logger import setup_logger
 
 
@@ -458,6 +455,7 @@ def play_game(
 
     return result
 
+
 def head_to_head_wins(conn, season_id: str, team_ids: list[str]) -> dict[str, int]:
     """
     For a group of tied teams, count wins only in games against each other.
@@ -483,6 +481,7 @@ def head_to_head_wins(conn, season_id: str, team_ids: list[str]) -> dict[str, in
         if row["winner_id"] in result:
             result[row["winner_id"]] = row["wins"]
     return result
+
 
 def sort_standings(conn, season_id: str, rows: list) -> list:
     from itertools import groupby
@@ -533,11 +532,14 @@ def print_standings(conn, season_id: str, logger: logging.Logger = None):
     lines.append(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
     lines.append("=" * 60)
     for row in sorted_rows:
-        lines.append(f"{row['team_name']:<30} {row['wins']:>5} {row['losses']:>5} {row['win_pct']:>7.3f} {row['runs_scored']:>6}")
+        lines.append(
+            f"{row['team_name']:<30} {row['wins']:>5} {row['losses']:>5} {row['win_pct']:>7.3f} {row['runs_scored']:>6}"
+        )
     lines.append("=" * 60)
 
     output = "\n".join(lines)
     logger.info(output)
+
 
 def main():
     args = get_args()

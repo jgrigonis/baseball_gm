@@ -1,8 +1,6 @@
 # scripts/check_non_terry_games.py
-import sqlite3
-from pathlib import Path
-
 from src.db.connection import get_connection
+
 conn = get_connection()
 
 # Check a sample of games Terry DIDN'T play in

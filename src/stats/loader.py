@@ -6,7 +6,6 @@ from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.player.player_in_game import PlayerInGame
 from src.stats.stats import Stats
-import sqlite3
 
 
 class StatsLoader:

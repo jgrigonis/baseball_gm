@@ -4,7 +4,6 @@ import csv
 import datetime
 from pathlib import Path
 import random
-import sqlite3
 
 from src.db.connection import get_connection
 from src.db.repositories.player_energy import PlayerEnergyRepository
@@ -15,7 +14,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft
-from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
+from src.util.locations import TEAM_FILES_DIR
 
 
 class OffseasonPipeline:

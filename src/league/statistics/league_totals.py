@@ -9,7 +9,6 @@ Usage:
 
 import argparse
 import logging
-import sqlite3
 
 from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season

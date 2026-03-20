@@ -1,9 +1,8 @@
-# srcipts/check_game_data.py
+# srcipts/check_scripts/check_game_data.py
 
-import sqlite3
-from pathlib import Path
 
 from src.db.connection import get_connection
+
 conn = get_connection()
 
 

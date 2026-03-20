@@ -142,6 +142,7 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
     appearances.sort(key=lambda r: r["_season_year"] or 9999)
     return appearances
 
+
 def resolve_id_from_name(
     directory: Path, name_query: str
 ) -> tuple[str | None, str | None, int | None]:
@@ -180,6 +181,7 @@ def resolve_id_from_name(
         print("(no input available, defaulting to [0])")
 
     return items[idx][0], items[idx][1], idx
+
 
 # ---------------------------------------------------------------------------
 # DB helpers
@@ -547,7 +549,9 @@ def main():
         apps = find_all_appearances(directory, player_id)
         canonical_name = apps[0]["Name"] if apps else player_id
     else:
-        player_id, canonical_name, disambig_idx = resolve_id_from_name(directory, args.name)
+        player_id, canonical_name, disambig_idx = resolve_id_from_name(
+            directory, args.name
+        )
         if not player_id:
             print(f"No player found matching '{args.name}'")
             sys.exit(1)

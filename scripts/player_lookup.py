@@ -34,9 +34,7 @@ def parse_args():
     parser.add_argument(
         "--season", help="Season year or name to filter stats (e.g. 2025)"
     )
-    parser.add_argument(
-        "--db", default="league.db", help="Name of SQLite database"
-    )
+    parser.add_argument("--db", default="league.db", help="Name of SQLite database")
     return parser.parse_args()
 
 

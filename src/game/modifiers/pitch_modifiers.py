@@ -142,15 +142,13 @@ class PitchModifiers:
         if strikes > 75:
             elite_bonus = (strikes - 75) ** 1.6
             resolver.pitch_outcome.add("strike", 5 * elite_bonus)
-        
+
         if strikes > 80 and accuracy > 80:
             super_elite_bonus = (strikes + accuracy - 150) ** 1.5
             resolver.pitch_outcome.add("ball", -3 * super_elite_bonus)
             resolver.pitch_outcome.add("strike", 3 * (super_elite_bonus))
             resolver.pitch_outcome.add("hit_by_pitch", int(-0.2 * (super_elite_bonus)))
             resolver.pitch_outcome.add("wild_pitch", int(-0.2 * (super_elite_bonus)))
-
-
 
     @staticmethod
     def modify_for_platoon(

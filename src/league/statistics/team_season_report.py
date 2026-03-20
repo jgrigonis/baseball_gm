@@ -9,7 +9,6 @@ Usage:
 
 import argparse
 import csv
-import sqlite3
 from pathlib import Path
 
 from src.db.connection import get_connection

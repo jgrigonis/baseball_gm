@@ -1,5 +1,4 @@
-import sqlite3
-
+# scripts/delete_pitcher_state_table.py
 from src.db.connection import get_connection
 
 

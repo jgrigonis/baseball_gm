@@ -2,7 +2,6 @@
 import argparse
 import logging
 from pathlib import Path
-import sqlite3
 
 from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season

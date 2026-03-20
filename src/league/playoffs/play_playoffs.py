@@ -18,10 +18,8 @@ Usage:
 import argparse
 import logging
 import random
-import sqlite3
 import traceback
 from datetime import date, timedelta
-from pathlib import Path
 
 from src.db.connection import get_connection
 from src.db.repositories.games_repo import GameRepository
@@ -29,7 +27,6 @@ from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
-from src.util.locations import LEAGUE_FILES_DIR
 from src.util.logger import setup_logger
 
 # ---------------------------------------------------------------------------
