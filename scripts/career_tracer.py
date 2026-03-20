@@ -13,10 +13,11 @@ Output: a text report suitable for pasting into analysis.
 
 import argparse
 import csv
-import sqlite3
+# import sqlite3
 import sys
 from pathlib import Path
 
+from src.db.connection import get_connection
 from src.player.skill_map import SKILL_MAP, SKILL_ABBREVIATIONS
 
 # ---------------------------------------------------------------------------
@@ -104,7 +105,7 @@ def parse_args():
     grp.add_argument("name", nargs="?", help="Player name (partial ok)")
     grp.add_argument("--id", dest="player_id", help="Player UUID")
     p.add_argument("--dir", default="team_files", help="Root dir of team CSVs")
-    p.add_argument("--db", default="leagues/league.db", help="SQLite DB path")
+    p.add_argument("--db", default="league.db", help="SQLite DB filename")
     return p.parse_args()
 
 
@@ -156,10 +157,10 @@ def resolve_id_from_name(
                     if pid:
                         seen[pid] = row["Name"]
     if not seen:
-        return None, None
+        return None, None, None
     if len(seen) == 1:
         pid, name = next(iter(seen.items()))
-        return pid, name
+        return pid, name, None
 
     items = list(seen.items())
 
@@ -186,11 +187,8 @@ def resolve_id_from_name(
 # ---------------------------------------------------------------------------
 
 
-def get_talent_caps(db_path: Path, player_id: str) -> dict | None:
-    if not db_path.exists():
-        return None
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+def get_talent_caps(db_file: str, player_id: str) -> dict | None:
+    conn = get_connection(db_file)
     cur = conn.cursor()
     cur.execute("SELECT * FROM player_talent_caps WHERE player_id = ?", (player_id,))
     row = cur.fetchone()
@@ -200,11 +198,8 @@ def get_talent_caps(db_path: Path, player_id: str) -> dict | None:
     return dict(row)
 
 
-def get_all_seasons(db_path: Path) -> list[dict]:
-    if not db_path.exists():
-        return []
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+def get_all_seasons(db_file: str) -> list[dict]:
+    conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
     rows = [dict(r) for r in cur.fetchall()]
@@ -212,9 +207,8 @@ def get_all_seasons(db_path: Path) -> list[dict]:
     return rows
 
 
-def get_season_stats(db_path: Path, player_id: str, season_id: int) -> dict:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+def get_season_stats(db_file: str, player_id: str, season_id: int) -> dict:
+    conn = get_connection()
     cur = conn.cursor()
 
     bat_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in BATTING_COLS)
@@ -268,10 +262,9 @@ def get_season_stats(db_path: Path, player_id: str, season_id: int) -> dict:
     }
 
 
-def get_career_stats(db_path: Path, player_id: str) -> dict:
+def get_career_stats(db_file: str, player_id: str) -> dict:
     """Sum stats across all seasons."""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection(db_file)
     cur = conn.cursor()
 
     bat_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in BATTING_COLS)
@@ -415,7 +408,7 @@ def build_report(
     appearances: list[dict],
     caps: dict | None,
     seasons_db: list[dict],
-    db_path: Path,
+    db_file: str,
 ) -> str:
     lines = []
     sep = "=" * 62
@@ -495,7 +488,7 @@ def build_report(
         # Season stats from DB
         season_id = year_to_sid.get(year) if year else None
         if season_id:
-            stats = get_season_stats(db_path, player_id, season_id)
+            stats = get_season_stats(db_file, player_id, season_id)
             if stats:
                 lines.append(f"SEASON STATS  ({stats['games']} games):")
                 b = stats["batting"]
@@ -516,7 +509,7 @@ def build_report(
     lines.append("  CAREER TOTALS")
     lines.append("═" * 62)
 
-    career = get_career_stats(db_path, player_id)
+    career = get_career_stats(db_file, player_id)
     if career:
         lines.append(f"  {career['games']} games")
         b = career["batting"]
@@ -542,7 +535,7 @@ def build_report(
 def main():
     args = parse_args()
     directory = Path(args.dir)
-    db_path = Path(args.db)
+    db_file = args.db
 
     if not directory.exists():
         print(f"Directory not found: {directory}")
@@ -566,15 +559,15 @@ def main():
         sys.exit(1)
 
     # Caps
-    caps = get_talent_caps(db_path, player_id)
+    caps = get_talent_caps(db_file, player_id)
     if not caps:
         print(f"  Warning: no talent caps found for {player_id}")
 
     # Seasons
-    seasons_db = get_all_seasons(db_path)
+    seasons_db = get_all_seasons(db_file)
 
     # Build and print report
-    report = build_report(player_id, canonical_name, apps, caps, seasons_db, db_path)
+    report = build_report(player_id, canonical_name, apps, caps, seasons_db, db_file)
     print(report)
 
     # Write to temp_files/<first>_<last>.txt
