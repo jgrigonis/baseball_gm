@@ -38,43 +38,51 @@ ROLE_WEIGHTS: dict[str, dict[str, int]] = {
         "arm": 2,
         "speed": 3,
         "clutch": 1,
+        "durability": 1,
     },
     "rf": {
         "outfield": 5,
         "arm": 2,
         "speed": 1,
         "clutch": 1,
+        "durability": 1,
     },
     "lf": {
         "outfield": 5,
         "arm": 1,
         "speed": 1,
         "clutch": 1,
+        "durability": 1,
     },
     "c": {
         "catching": 5,
         "arm": 1,
         "clutch": 1,
+        "durability": 1,
     },
     "1b": {
         "infield": 5,
         "clutch": 1,
+        "durability": 1,
     },
     "2b": {
         "infield": 5,
         "speed": 1,
         "clutch": 1,
+        "durability": 1,
     },
     "ss": {
         "infield": 5,
         "speed": 1,
         "arm": 1,
         "clutch": 1,
+        "durability": 1,
     },
     "3b": {
         "infield": 5,
         "arm": 1,
         "clutch": 1,
+        "durability": 1,
     },
     "p": {
         "accuracy": 1,
@@ -122,7 +130,7 @@ ROLE_WEIGHTS: dict[str, dict[str, int]] = {
     },
     # This one is most likely subject to change
     "overall_offense": {
-        # "clutch": 1,
+        "clutch": 1,
         "power": 4,
         "eye": 2,
         "contact": 3,
