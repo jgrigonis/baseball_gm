@@ -13,7 +13,6 @@ Output: a text report suitable for pasting into analysis.
 
 import argparse
 import csv
-# import sqlite3
 import sys
 from pathlib import Path
 

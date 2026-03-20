@@ -8,6 +8,8 @@ def get_connection(db: str | Path = "league.db") -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
+Above is done
+
 Everywhere you find something like:
 
 

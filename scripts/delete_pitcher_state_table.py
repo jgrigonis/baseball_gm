@@ -1,8 +1,12 @@
 import sqlite3
 
-conn = sqlite3.connect("leagues/league.db")
-cursor = conn.cursor()
-cursor.execute("DELETE FROM pitcher_state")
+from src.db.connection import get_connection
+
+
+conn = get_connection()
+cur = conn.cursor()
+
+cur.execute("DELETE FROM pitcher_state")
 conn.commit()
 conn.close()
 print("Success!")
