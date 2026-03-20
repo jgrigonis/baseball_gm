@@ -17,6 +17,8 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from src.player.skill_map import SKILL_MAP, SKILL_ABBREVIATIONS
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -140,13 +142,11 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
     appearances.sort(key=lambda r: r["_season_year"] or 9999)
     return appearances
 
-
 def resolve_id_from_name(
     directory: Path, name_query: str
 ) -> tuple[str | None, str | None]:
-    """Find a player ID by partial name match. Returns (player_id, canonical_name)."""
     query = name_query.lower()
-    seen = {}  # id -> name
+    seen = {}
     for csv_path in sorted(directory.glob("**/*.csv")):
         with open(csv_path, newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
@@ -159,14 +159,54 @@ def resolve_id_from_name(
     if len(seen) == 1:
         pid, name = next(iter(seen.items()))
         return pid, name
-    # Multiple — prompt
+
     items = list(seen.items())
+
+    # Auto-select if any entry is an exact match (case-insensitive)
+    exact = [(pid, name) for pid, name in items if name.lower() == query]
+    if len(exact) == 1:
+        return exact[0]
+
     print(f"Found {len(items)} players matching '{name_query}':")
     for i, (pid, name) in enumerate(items):
         print(f"  [{i}] {name}  ({pid})")
-    choice = input("Select [0]: ").strip()
-    idx = int(choice) if choice.isdigit() else 0
+
+    try:
+        choice = input("Select [0]: ").strip()
+        idx = int(choice) if choice.isdigit() else 0
+    except EOFError:
+        idx = 0
+        print("(no input available, defaulting to [0])")
+
     return items[idx]
+
+
+# def resolve_id_from_name(
+#     directory: Path, name_query: str
+# ) -> tuple[str | None, str | None]:
+#     """Find a player ID by partial name match. Returns (player_id, canonical_name)."""
+#     query = name_query.lower()
+#     seen = {}  # id -> name
+#     for csv_path in sorted(directory.glob("**/*.csv")):
+#         with open(csv_path, newline="", encoding="utf-8") as f:
+#             for row in csv.DictReader(f):
+#                 if query in row.get("Name", "").lower():
+#                     pid = row.get("ID", "").strip()
+#                     if pid:
+#                         seen[pid] = row["Name"]
+#     if not seen:
+#         return None, None
+#     if len(seen) == 1:
+#         pid, name = next(iter(seen.items()))
+#         return pid, name
+#     # Multiple — prompt
+#     items = list(seen.items())
+#     print(f"Found {len(items)} players matching '{name_query}':")
+#     for i, (pid, name) in enumerate(items):
+#         print(f"  [{i}] {name}  ({pid})")
+#     choice = input("Select [0]: ").strip()
+#     idx = int(choice) if choice.isdigit() else 0
+#     return items[idx]
 
 
 # ---------------------------------------------------------------------------
@@ -350,29 +390,9 @@ def format_skills_line(row: dict) -> str:
 def format_caps_line(caps: dict) -> str:
     if not caps:
         return "  (no caps found)"
-    # Map DB column names to abbrs
-    col_to_abbr = {
-        "durability": "DU",
-        "clutch": "CL",
-        "speed": "SP",
-        "power": "PO",
-        "eye": "EY",
-        "contact": "CT",
-        "base_running": "BR",
-        "bunting": "BU",
-        "catching": "CA",
-        "infield": "IF",
-        "outfield": "OF",
-        "arm": "AR",
-        "accuracy": "AC",
-        "stamina": "ST",
-        "recovery": "RE",
-        "ground_balls": "GB",
-        "strikes": "KK",
-    }
     parts = []
     for col in CAP_SKILL_ORDER:
-        abbr = col_to_abbr.get(col, col)
+        abbr = SKILL_ABBREVIATIONS.get(col, col)
         val = caps.get(col, "—")
         parts.append(f"{abbr}:{str(val):>3}")
     lines = []
@@ -470,29 +490,9 @@ def build_report(
 
         # Cap headroom snapshot (if caps available)
         if caps:
-            col_to_abbr = {
-                "durability": "DU",
-                "clutch": "CL",
-                "speed": "SP",
-                "power": "PO",
-                "eye": "EY",
-                "contact": "CT",
-                "base_running": "BR",
-                "bunting": "BU",
-                "catching": "CA",
-                "infield": "IF",
-                "outfield": "OF",
-                "arm": "AR",
-                "accuracy": "AC",
-                "stamina": "ST",
-                "recovery": "RE",
-                "ground_balls": "GB",
-                "strikes": "KK",
-            }
-            abbr_to_col = {v: k for k, v in col_to_abbr.items()}
             headroom_parts = []
             for _, abbr in SKILL_ABBRS:
-                col = abbr_to_col.get(abbr)
+                col = SKILL_MAP.get(abbr)
                 if not col:
                     continue
                 cap_val = caps.get(col)
