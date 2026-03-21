@@ -27,6 +27,7 @@ class OffseasonPipeline:
 
     def run(self, season_id: str) -> None:
         print(f"season id: {season_id}")
+        self._load_season_year(season_id)
         if not self._is_done(season_id, "archive"):
             if not self._playoffs_complete(season_id):
                 print("❌ Playoffs are not complete — run play_playoffs.py first")
@@ -164,7 +165,7 @@ class OffseasonPipeline:
 
         # Write retired players to CSV
         if retired:
-            out_dir = Path(TEAM_FILES_DIR)
+            out_dir = Path(TEAM_FILES_DIR) / str(self.year)
             out_dir.mkdir(parents=True, exist_ok=True)
             path = out_dir / "retired.csv"
             rows = [p.to_csv_dict() for p in retired]
@@ -179,15 +180,7 @@ class OffseasonPipeline:
     def _write_csvs(self, season_id: str) -> None:
         """Step 3: Write post-aging CSVs for every team into TEAM_FILES_DIR/YYYY/."""
 
-        # Get the year from the season record
-        row = self.conn.execute(
-            "SELECT year FROM seasons WHERE id = ?", (season_id,)
-        ).fetchone()
-        if row is None:
-            raise ValueError(f"Season {season_id} not found")
-        year = row["year"] + 1
-
-        out_dir = Path(TEAM_FILES_DIR) / str(year)
+        out_dir = Path(TEAM_FILES_DIR) / str(self.year)
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Get all teams with their players
@@ -272,27 +265,14 @@ class OffseasonPipeline:
 
     def _generate_draft(self, season_id: str) -> None:
         """Generate prospect pool and write draft.csv."""
-        row = self.conn.execute(
-            "SELECT year FROM seasons WHERE id = ?", (season_id,)
-        ).fetchone()
-        if row is None:
-            raise ValueError(f"Season {season_id} not found")
-        year = row["year"] + 1
-
         generator = DraftGenerator(self.conn, self.rng)
-        total = generator.run(season_id, year)
+        total = generator.run(season_id, self.year)
         print(f"  Draft pool ready: {total} draftable players")
 
     def _run_draft(self, season_id: str) -> None:
-        row = self.conn.execute(
-            "SELECT year FROM seasons WHERE id = ?", (season_id,)
-        ).fetchone()
-        if row is None:
-            raise ValueError(f"Season {season_id} not found")
-        year = row["year"] + 1
-
+        """Run the draft."""
         draft = SnakeDraft(self.conn, self.rng)
-        picks = draft.run(season_id, year)
+        picks = draft.run(season_id, self.year)
         print(f"  Draft complete: {len(picks)} total picks")
 
     def _trim_rosters(self, season_id: str) -> None:
@@ -368,6 +348,15 @@ class OffseasonPipeline:
 
         return rng.random() < probability
 
+    def _load_season_year(self, season_id: str) -> int:
+        """Fetch and cache the next season year (current year + 1)."""
+        row = self.conn.execute(
+            "SELECT year FROM seasons WHERE id = ?", (season_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Season {season_id} not found")
+        self.year = row["year"] + 1
+        return self.year
 
 def get_args():
     p = argparse.ArgumentParser()
