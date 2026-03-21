@@ -130,6 +130,8 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
                     team = csv_path.stem  # e.g. "madrid"
                     if team.lower() == "draft":
                         continue
+                    if team.lower() == "retired":
+                        continue
                     appearances.append(
                         {
                             **row,

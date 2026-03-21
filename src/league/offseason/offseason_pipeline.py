@@ -162,7 +162,19 @@ class OffseasonPipeline:
                     team_repo.remove_player(row["team_id"], player.id)
                 retired.append(player)
 
-        print(f"  Retired {len(retired)} players")
+        # Write retired players to CSV
+        if retired:
+            out_dir = Path(TEAM_FILES_DIR)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            path = out_dir / "retired.csv"
+            rows = [p.to_csv_dict() for p in retired]
+            with open(path, "w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows(rows)
+            print(f"  Retired {len(retired)} players → {path}")
+        else:
+            print(f"  Retired 0 players")
 
     def _write_csvs(self, season_id: str) -> None:
         """Step 3: Write post-aging CSVs for every team into TEAM_FILES_DIR/YYYY/."""
