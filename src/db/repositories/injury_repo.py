@@ -26,9 +26,10 @@ Injury duration table (games missed, not counting the game of injury):
 
 from __future__ import annotations
 
-import random
-import logging
 from dataclasses import dataclass
+from datetime import datetime, date
+import logging
+import random
 from typing import Optional
 
 from src.db.repositories.player_energy import PlayerEnergyRepository
@@ -129,53 +130,43 @@ class InjuryRepository:
     # Write
     # ------------------------------------------------------------------
 
-    def injure(
-        self,
-        player_id: str,
-        severity: str = "minor",
-        rng: random.Random | None = None,
-        games: int | None = None,
-    ) -> PlayerInjury:
-        """
-        Record a new injury for a player.
-
-        If the player is already injured, only updates if the new injury
-        is longer than the remaining games (worse injury wins).
-
-        Args:
-            player_id: Player's unique ID.
-            severity:  Tier name from INJURY_TIERS. Ignored if games is set.
-            rng:       Optional seeded RNG for duration roll.
-            games:     Explicit games-missed count. Overrides severity roll.
-
-        Returns:
-            The resulting PlayerInjury.
-        """
+    def injure(self, player_id, season_id, game_date, severity="minor", rng=None, games=None):
         games_missed = games if games is not None else roll_games_missed(severity, rng)
 
         existing = self.get(player_id)
         if existing and existing.games_remaining >= games_missed:
-            logger.debug(
-                "Player %s already has %d games remaining — new injury (%d) ignored.",
-                player_id,
-                existing.games_remaining,
-                games_missed,
-            )
+            logger.debug(...)
             return existing
 
         injury = PlayerInjury(player_id=player_id, games_remaining=games_missed)
-        self._save(injury)
 
-        # Keep the season injury counter in sync
-        energy_repo = PlayerEnergyRepository(self.conn)
-        state = energy_repo.get(player_id)
-        if state:
-            state.injuries_this_season += 1
-            energy_repo.save(state)
+        cursor = self.conn.cursor()
+        try:
+            # Upsert active injury
+            cursor.execute(
+                """
+                INSERT INTO player_injuries (player_id, games_remaining)
+                VALUES (?, ?)
+                ON CONFLICT(player_id) DO UPDATE SET
+                    games_remaining = excluded.games_remaining
+                """,
+                (injury.player_id, injury.games_remaining),
+            )
+            # Append to permanent log
+            cursor.execute(
+                """
+                INSERT INTO player_injury_log (player_id, season_id, games_missed, severity, injury_date)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (player_id, season_id, games_missed, severity,
+                game_date.isoformat() if hasattr(game_date, "isoformat") else game_date),
+            )
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
 
-        logger.info(
-            "Player %s injured: %s (%d games).", player_id, severity, games_missed
-        )
+        logger.info("Player %s injured: %s (%d games).", player_id, severity, games_missed)
         return injury
 
     def tick(self, player_id: str) -> Optional[PlayerInjury]:

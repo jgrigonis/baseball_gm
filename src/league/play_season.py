@@ -442,7 +442,7 @@ def play_game(
 
     # Save any new injuries that occurred during the game
     for player_id, severity in game.new_injuries:
-        injury_repo.injure(player_id, severity=severity, rng=rng)
+        injury_repo.injure(player_id, season_id, game_date, severity=severity, rng=rng)
 
     logger.info(home_team.output_defensive_stats())
     logger.info(away_team.output_defensive_stats())

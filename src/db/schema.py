@@ -126,7 +126,6 @@ CREATE TABLE IF NOT EXISTS player_status (
 CREATE TABLE IF NOT EXISTS player_energy (
     player_id            TEXT PRIMARY KEY,
     current_energy       REAL NOT NULL DEFAULT 1.0 CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
-    injuries_this_season INTEGER NOT NULL DEFAULT 0,
     last_game_date       TEXT,                                    -- ISO date of last game played
     consecutive_days     INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
     season_games_played  INTEGER NOT NULL DEFAULT 0 CHECK (season_games_played >= 0),
@@ -137,6 +136,16 @@ CREATE TABLE IF NOT EXISTS player_energy (
 CREATE TABLE IF NOT EXISTS player_injuries (
     player_id               TEXT PRIMARY KEY,
     games_remaining         INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS player_injury_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id       TEXT NOT NULL,
+    season_id       TEXT,                   -- nullable for pre-season injuries
+    injury_date     TEXT NOT NULL,
+    severity        TEXT NOT NULL,
+    games_missed    INTEGER NOT NULL,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
@@ -373,6 +382,8 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
 CREATE INDEX IF NOT EXISTS idx_player_skills_player_id ON player_skills(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_player ON player_skills_history(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_season ON player_skills_history(season_id);
+CREATE INDEX IF NOT EXISTS idx_injury_log_player ON player_injury_log(player_id);
+CREATE INDEX IF NOT EXISTS idx_injury_log_season ON player_injury_log(season_id);
 CREATE INDEX IF NOT EXISTS idx_talent_caps_player ON player_talent_caps(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_status_status ON player_status(status);
 CREATE INDEX IF NOT EXISTS idx_player_energy_player ON player_energy(player_id);
