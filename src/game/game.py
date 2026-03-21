@@ -796,7 +796,6 @@ class Game:
                 self.new_injuries.append((player.id, severity))
                 if state:
                     state.current_energy = 0.0
-                    state.injuries_this_season += 1
                 self.logger.info(
                     f"🚑 {player.name} injured and removed from game. Severity: {severity}"
                 )

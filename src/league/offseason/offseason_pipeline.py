@@ -38,7 +38,7 @@ class OffseasonPipeline:
             print("  Skipping archive (already done)")
 
         if not self._is_done(season_id, "age"):
-            self._age(self.rng)
+            self._age(season_id, self.rng)
             self._mark_done(season_id, "age")
         else:
             print("  Skipping age (already done)")
@@ -90,7 +90,7 @@ class OffseasonPipeline:
         for player in players:
             self.player_repo.snapshot_skills(player.id, season_id)
 
-    def _age(self, rng):
+    def _age(self, season_id, rng):
         """Step 2: Age every player by one year and write back updated skills."""
         cap_repo = TalentCapRepository(self.conn)
         energy_repo = PlayerEnergyRepository(self.conn)
@@ -111,7 +111,11 @@ class OffseasonPipeline:
             coaching = 1.0
             if energy_state is not None:
                 games = energy_state.season_games_played
-                injuries = energy_state.injuries_this_season
+                result = self.conn.execute(
+                    "SELECT COUNT(*) FROM player_injury_log WHERE player_id = ? AND season_id = ?",
+                    (player.id, season_id),
+                ).fetchone()
+                injuries = result[0] if result else 0
 
                 # Heavy usage wears players down over the season
                 # 130+ games is a full workload — above that, physical aging accelerates

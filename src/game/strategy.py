@@ -282,10 +282,10 @@ class GameStrategy:
 
         # Adjust for runner speed
         speed_factor = (runner_speed + base_running_skill) / 100  # 1.0 at average
-        prob *= speed_factor
+        prob *= speed_factor * speed_factor
         # Elite speed runners should steal much more often
         if speed_factor > 1.5:
-            prob *= speed_factor
+            prob *= speed_factor * speed_factor
 
         # # Adjust for pitcher delivery
         # delivery_factor = 50 / pitcher_delivery  # Higher delivery = easier steal

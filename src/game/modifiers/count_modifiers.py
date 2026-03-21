@@ -52,7 +52,7 @@ PITCH_COUNT_MODIFIERS = {
         "in_play": 0.77,
     },
     (3, 0): {
-        "ball": 0.82,
+        "ball": 0.70,
         "strike": 2.61,
         "foul": 0.08,
         "home_run": 0.21,
@@ -73,7 +73,7 @@ PITCH_COUNT_MODIFIERS = {
         "in_play": 1.17,
     },
     (3, 1): {
-        "ball": 0.95,
+        "ball": 0.92,
         "strike": 0.76,
         "foul": 0.79,
         "home_run": 1.57,
@@ -87,7 +87,7 @@ PITCH_COUNT_MODIFIERS = {
         "in_play": 1.51,
     },
     (3, 2): {
-        "ball": 0.62,
+        "ball": 0.58,
         "strike": 0.65,
         "foul": 1.36,
         "home_run": 1.66,
