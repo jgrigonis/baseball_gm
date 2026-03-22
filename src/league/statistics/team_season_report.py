@@ -102,6 +102,7 @@ SELECT
 
     SUM(pgs.pitch_hits)                             AS H,
     SUM(pgs.pitch_runs)                             AS R,
+    SUM(pgs.pitch_earned_runs)                      AS ER,
     SUM(pgs.pitch_walks)                            AS BB,
     SUM(pgs.pitch_strike_outs)                      AS SO,
     SUM(pgs.pitch_home_runs)                        AS HR,
@@ -110,7 +111,7 @@ SELECT
 
     CASE
         WHEN SUM(pgs.pitch_outs) > 0
-        THEN ROUND(9.0 * SUM(pgs.pitch_runs) / (SUM(pgs.pitch_outs) / 3.0), 2)
+        THEN ROUND(9.0 * SUM(pgs.pitch_earned_runs) / (SUM(pgs.pitch_outs) / 3.0), 2)
         ELSE NULL
     END                                             AS ERA,
 

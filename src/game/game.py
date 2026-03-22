@@ -212,6 +212,7 @@ class Game:
         self.pitcher_states = pitcher_states or {}
         self.game_date = game_date
         self.player_energy_states = player_energy_states or {}
+        self._inning_had_error = False  # reset each half-inning
 
         # Injury info
         self.injured_ids = set(injured_ids or {})
@@ -739,6 +740,7 @@ class Game:
         # Reset state
         self.bases.clear()
         self.count.reset()
+        self._inning_had_error = False  # reset each half-inning
 
         # Swap teams
         self._swap_teams()
@@ -784,7 +786,11 @@ class Game:
                 activity_mult *= pos_mult
 
             if activity != "pitching":
-                durability = player.skills.get("durability", 50) if hasattr(player, "skills") else 50
+                durability = (
+                    player.skills.get("durability", 50)
+                    if hasattr(player, "skills")
+                    else 50
+                )
                 durability_mult = 1.0 - ((durability - 50) / 50) * 0.3
                 activity_mult *= durability_mult
 

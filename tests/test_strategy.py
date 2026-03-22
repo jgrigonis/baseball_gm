@@ -7,6 +7,7 @@ import random
 from unittest.mock import MagicMock, patch
 import pytest
 import uuid
+
 # ---------------------------------------------------------------------------
 # Use the real project imports.  The sys.modules stubs in the original version
 # mutated already-loaded real modules (e.g. swapped the real FatigueLevel enum
@@ -202,6 +203,7 @@ class TestShouldAttemptSteal:
         bases = MagicMock()
         bases.runner_on.return_value = False  # no base is occupied
         return bases
+
     # def _bases_clear_second(self):
     #     return _make_bases(first=_make_runner())
 
@@ -774,7 +776,7 @@ class TestSelectReliefPitcher:
 
     def _make_available(self, role, fatigue=None, is_starter=False):
         p = MagicMock()
-        p.id = str(uuid.uuid4())          # ← explicit string id
+        p.id = str(uuid.uuid4())  # ← explicit string id
         p.bullpen_role = role
         p.is_starter = is_starter
         p.is_injured = False
@@ -783,6 +785,7 @@ class TestSelectReliefPitcher:
         p.pitcher_fatigue.energy = 1.0
         p.pitcher_fatigue.get_level.return_value = FatigueLevel.FRESH
         return p
+
     # def _make_available(self, role, fatigue=None, is_starter=False):
     #     p = MagicMock()
     #     p.bullpen_role = role

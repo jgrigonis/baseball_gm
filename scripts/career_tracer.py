@@ -86,6 +86,7 @@ PITCHING_COLS = [
     ("pitch_save", "SV"),
     ("pitch_outs", "OUTS"),
     ("pitch_hits", "H"),
+    ("pitch_earned_runs", "ER"),
     ("pitch_runs", "R"),
     ("pitch_walks", "BB"),
     ("pitch_strike_outs", "SO"),
@@ -226,7 +227,8 @@ def get_season_stats(db_file: str, player_id: str, season_id: int) -> dict:
     ip_f = outs // 3
     ip_r = outs % 3
     pitching["IP"] = f"{ip_f}.{ip_r}"
-    er = pitching["R"]
+    # r = pitching["R"]
+    er = pitching["ER"]
     pitching["ERA"] = f"{er*27/outs:.2f}" if outs else "-.--"
     gs = pitching["GS"]
     pc = pitching["PC"]
@@ -281,7 +283,7 @@ def get_career_stats(db_file: str, player_id: str) -> dict:
     ip_f = outs // 3
     ip_r = outs % 3
     pitching["IP"] = f"{ip_f}.{ip_r}"
-    er = pitching["R"]
+    er = pitching["ER"]
     pitching["ERA"] = f"{er*27/outs:.2f}" if outs else "-.--"
     gs = pitching["GS"]
     pc = pitching["PC"]
@@ -374,7 +376,7 @@ def format_pitching(p: dict) -> str:
     return (
         f"  ERA:{p['ERA']}  IP:{p['IP']}  GS:{p['GS']}  "
         f"W:{p['W']}  L:{p['L']}  SV:{p['SV']}\n"
-        f"  H:{p['H']}  R:{p['R']}  BB:{p['BB']}  SO:{p['SO']}  "
+        f"  H:{p['H']}  ER:{p['ER']}  BB:{p['BB']}  SO:{p['SO']}  "
         f"HR:{p['HR']}  PC:{p['PC']}  AVG PC:{p['AVG PC']}"
     )
 

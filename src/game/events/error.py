@@ -13,6 +13,7 @@ class FieldingErrorEvent(GameEvent):
     def apply(self, game):
         self.batter.game_stats.batting.at_bat()
         self.fielder.game_stats.fielding.error()
+        game._inning_had_error = True
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
@@ -27,6 +28,7 @@ class ThrowingErrorEvent(GameEvent):
     def apply(self, game):
         self.batter.game_stats.batting.at_bat()
         self.fielder.game_stats.fielding.error()
+        game._inning_had_error = True
 
     def describe(self, game) -> str:
         return f"{self.batter.name} reached base on a throwing error by {self.fielder.name} ({self.fielder.current_position})."
@@ -41,6 +43,7 @@ class OutfielderThrowingErrorEvent(GameEvent):
 
     def apply(self, game):
         self.fielder.game_stats.fielding.error()
+        game._inning_had_error = True
 
     def describe(self, game) -> str:
         return (

@@ -139,6 +139,7 @@ def fake_game():
         # PA state
         _plate_appearance_complete=False,
         _pa_end_reason=None,
+        _inning_had_error=False,
     )
 
     def pos(position):

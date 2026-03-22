@@ -29,6 +29,7 @@ class PitchingStats:
 
     # Runs and walks
     runs: int = 0
+    earned_runs: int = 0
     walks: int = 0
     intentional_walks: int = 0
     hb: int = 0  # Hit batters
@@ -63,7 +64,7 @@ class PitchingStats:
     @property
     def era(self):
         """Return the earned run average."""
-        return self.runs / self.ip_float * 9 if self.ip_float > 0 else 0
+        return self.earned_runs / self.ip_float * 9 if self.ip_float > 0 else 0
 
     @property
     def whip(self):
@@ -131,6 +132,10 @@ class PitchingStats:
     def run(self):
         """Add a run."""
         self.runs += 1
+
+    def earned_run(self):
+        """Add an earned run."""
+        self.earned_runs += 1
 
     def pickoff(self):
         """Add a pick off."""

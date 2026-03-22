@@ -28,7 +28,11 @@ def resolve_season(db_file: str, season_arg: str | None) -> tuple[str, str, str]
     - season_label - name year combo for the season
 
     """
-    db_path = Path(db_file) if Path(db_file).is_absolute() else Path(LEAGUE_FILES_DIR) / db_file
+    db_path = (
+        Path(db_file)
+        if Path(db_file).is_absolute()
+        else Path(LEAGUE_FILES_DIR) / db_file
+    )
 
     conn = get_connection(db_path)
     cur = conn.cursor()

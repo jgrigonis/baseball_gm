@@ -21,12 +21,15 @@ class RunScoredEvent(GameEvent):
     earned: bool = True
 
     def apply(self, game):
+        earned = not game._inning_had_error
         game.score.score_run(
             top=game.inning.top,
             inning_number=game.inning.number,
         )
         self.runner.game_stats.batting.run()
-        self.pitcher.game_stats.pitching.run()
+        self.responsible_pitcher.game_stats.pitching.run()
+        if earned:
+            self.responsible_pitcher.game_stats.pitching.earned_run()
         if self.rbi_batter:
             self.rbi_batter.game_stats.batting.hit_rbi()
 

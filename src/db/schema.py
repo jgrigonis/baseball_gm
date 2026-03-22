@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     pitch_outs INTEGER CHECK (pitch_outs >= 0),
     pitch_hits INTEGER CHECK (pitch_hits >= 0),
     pitch_runs INTEGER CHECK (pitch_runs >= 0),
+    pitch_earned_runs INTEGER CHECK (pitch_earned_runs >= 0),
     pitch_home_runs INTEGER CHECK (pitch_home_runs >= 0),
     pitch_walks INTEGER CHECK (pitch_walks >= 0),
     pitch_strike_outs INTEGER CHECK (pitch_strike_outs >= 0),

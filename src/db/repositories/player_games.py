@@ -66,7 +66,7 @@ class PlayerGameRepository:
 
                 pitch_game_played, pitch_game_started,
                 pitch_complete_game, pitch_shutout, pitch_win, pitch_loss, pitch_save, pitch_hold,
-                pitch_outs, pitch_hits, pitch_runs,
+                pitch_outs, pitch_hits, pitch_runs, pitch_earned_runs,
                 pitch_home_runs, pitch_walks, pitch_strike_outs,
                 pitch_hit_batters, pitch_doubles, pitch_triples, pitch_pickoffs, 
                 pitch_balks, pitch_wild_pitches, pitch_count,
@@ -74,7 +74,7 @@ class PlayerGameRepository:
                 field_putouts, field_assists, field_errors, passed_balls, 
                 catcher_interferences, catcher_cs, catcher_sb
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 game_id,
@@ -110,6 +110,7 @@ class PlayerGameRepository:
                 p.outs,
                 p.hits,
                 p.runs,
+                p.earned_runs,
                 p.home_runs,
                 p.walks,
                 p.strike_outs,
