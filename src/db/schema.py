@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS player_injury_log (
     season_id       TEXT,                   -- nullable for pre-season injuries
     injury_date     TEXT NOT NULL,
     severity        TEXT NOT NULL,
+    activity        TEXT,
     games_missed    INTEGER NOT NULL,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );

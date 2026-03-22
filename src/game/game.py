@@ -43,6 +43,8 @@ from src.game.probabilities import (
     # PITCHER_INJURY_PROB, # use this soon...
     SEVERE_INJURE_PROB,
     SURGERY_INJURY_PROB,
+    INJURY_ACTIVITY_WEIGHT,
+    INJURY_POSITION_WEIGHT,
 )
 from src.game.resolver import Resolver
 from src.game.score import Score
@@ -750,59 +752,72 @@ class Game:
         """Random injury check for active position players."""
         self.logger.debug(f"Checking injuries. reason: {reason}")
 
-        candidates = []
+        # Build candidates as (player, activity) tuples
+        candidates: list[tuple] = []
 
-        # The batter
         if self.current_batter:
-            candidates.append(self.current_batter.player)
+            candidates.append((self.current_batter.player, "batting"))
 
-        # Runners on base
         for runner in self.bases.runners():
-            candidates.append(runner)
+            candidates.append((runner, "running"))
 
-        # The pitcher
         if self.current_pitcher:
-            candidates.append(self.current_pitcher)
+            candidates.append((self.current_pitcher, "pitching"))
 
-        # All fielders (pitch_team's lineup)
         for slot in self.pitch_team.lineup:
-            if slot.position != "dh" and slot.player not in candidates:
-                candidates.append(slot.player)
+            if slot.position == "dh":
+                continue
+            player = slot.player
+            if any(player.id == c[0].id for c in candidates):
+                continue
+            candidates.append((player, "fielding"))
 
-        for player in candidates:
+        for player, activity in candidates:
             if getattr(player, "is_injured", False):
                 continue
-            fatigue = player.player_energy
-            state = self.player_energy_states.get(player.id)
-            prob = INJURY_BASE_PROB
+
+            # Compute probability with activity and position weights
+            activity_mult = INJURY_ACTIVITY_WEIGHT.get(activity, 1.0)
+            if activity == "fielding":
+                pos = getattr(player, "current_position", None) or ""
+                pos_mult = INJURY_POSITION_WEIGHT.get(pos, 1.0)
+                activity_mult *= pos_mult
+
+            prob = INJURY_BASE_PROB * activity_mult
+            if prob <= 0:
+                continue
 
             if self.rng.random() < prob:
                 player.is_injured = True
                 injury_types = WeightedChoice(rng=self.rng)
                 injury_types.set_weights(
                     {
-                        "minor": MINOR_INJURY_PROB,
+                        "minor":    MINOR_INJURY_PROB,
                         "moderate": MODERATE_INJURY_PROB,
-                        # "pitcher": PITCHER_INJURY_PROB,
-                        "severe": SEVERE_INJURE_PROB,
-                        "surgery": SURGERY_INJURY_PROB,
+                        "severe":   SEVERE_INJURE_PROB,
+                        "surgery":  SURGERY_INJURY_PROB,
                     }
                 )
+                fatigue = player.player_energy
                 if fatigue and fatigue.energy < LOW_ENERGY:
                     injury_types.multiply("moderate", FATIGUE_MULTIPLIER)
                     injury_types.multiply("severe", FATIGUE_MULTIPLIER)
                     injury_types.multiply("surgery", FATIGUE_MULTIPLIER)
+
                 severity = injury_types.choose()
-                self.new_injuries.append((player.id, severity))
+                self.new_injuries.append((player.id, severity, activity))  # ← activity added
+
+                state = self.player_energy_states.get(player.id)
                 if state:
                     state.current_energy = 0.0
+
                 self.logger.info(
-                    f"🚑 {player.name} injured and removed from game. Severity: {severity}"
+                    f"🚑 {player.name} injured ({activity}). Severity: {severity}"
                 )
+
                 if player.pitcher_fatigue:
                     self._consider_pitching_change()
                 else:
-                    # Find which team and substitute
                     for team in [self.bat_team, self.pitch_team]:
                         slot = next(
                             (s for s in team.lineup if s.player.id == player.id), None
@@ -811,7 +826,7 @@ class Game:
                             sub = team.get_bench_player(player)
                             if sub:
                                 self.logger.info(
-                                    f"↔️ {sub.name} enters for {player.name} at {player.current_position}"
+                                    f"↔️ {sub.name} enters for {player.name}"
                                 )
                                 team.substitute(player, sub)
                             break

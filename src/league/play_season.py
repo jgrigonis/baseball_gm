@@ -442,8 +442,11 @@ def play_game(
     save_position_energy(conn, player_energy_states)
 
     # Save any new injuries that occurred during the game
-    for player_id, severity in game.new_injuries:
-        injury_repo.injure(player_id, season_id, game_date, severity=severity, rng=rng)
+    for player_id, severity, activity in game.new_injuries:
+        injury_repo.injure(
+            player_id, season_id, game_date,
+            severity=severity, activity=activity, rng=rng
+        )
 
     logger.info(home_team.output_defensive_stats())
     logger.info(away_team.output_defensive_stats())

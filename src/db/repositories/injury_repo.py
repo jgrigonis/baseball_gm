@@ -130,7 +130,7 @@ class InjuryRepository:
     # Write
     # ------------------------------------------------------------------
 
-    def injure(self, player_id, season_id, game_date, severity="minor", rng=None, games=None):
+    def injure(self, player_id, season_id, game_date, severity="minor", activity=None, rng=None, games=None):
         games_missed = games if games is not None else roll_games_missed(severity, rng)
 
         existing = self.get(player_id)
@@ -155,11 +155,11 @@ class InjuryRepository:
             # Append to permanent log
             cursor.execute(
                 """
-                INSERT INTO player_injury_log (player_id, season_id, games_missed, severity, injury_date)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO player_injury_log (player_id, season_id, games_missed, severity, injury_date, activity)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (player_id, season_id, games_missed, severity,
-                game_date.isoformat() if hasattr(game_date, "isoformat") else game_date),
+                game_date.isoformat() if hasattr(game_date, "isoformat") else game_date, activity),
             )
             self.conn.commit()
         except Exception:
