@@ -1,0 +1,404 @@
+  ── Tracing: ALLEN JACKSON ──
+Found 2 players matching 'ALLEN JACKSON':
+  [0] ALLEN JACKSON  (7f256746c23f8e1b7cedc98a4185bd2e)
+  [1] ALLEN JACKSON  (245de3b87fcf76d891997c264dc2137e)
+Select [0]: No CSV appearances found for player 7f256746c23f8e1b7cedc98a4185bd2e
+
+(.venv) josh@Joshuas-MacBook-Air baseball_gm % python scripts/career_tracer.py "Allen Jackson"
+Found 2 players matching 'Allen Jackson':
+  [0] ALLEN JACKSON  (7f256746c23f8e1b7cedc98a4185bd2e)
+  [1] ALLEN JACKSON  (245de3b87fcf76d891997c264dc2137e)
+Select [0]: 0
+No CSV appearances found for player 7f256746c23f8e1b7cedc98a4185bd2e
+(.venv) josh@Joshuas-MacBook-Air baseball_gm % python scripts/career_tracer.py "Allen Jackson"
+Found 2 players matching 'Allen Jackson':
+  [0] ALLEN JACKSON  (7f256746c23f8e1b7cedc98a4185bd2e)
+  [1] ALLEN JACKSON  (245de3b87fcf76d891997c264dc2137e)
+Select [0]: 1
+==============================================================
+  CAREER TRACE: ALLEN JACKSON
+  ID: 245de3b87fcf76d891997c264dc2137e
+==============================================================
+
+TALENT CAPS:
+  DU: 62   CL: 65   SP: 74   PO: 17   EY: 24   CT: 25   BR: 32   BU: 87
+  CA: 28   IF: 45   OF: 22   AR: 84   AC: 89   ST: 82   RE: 75   GB: 79
+  KK:100
+
+──────────────────────────────────────────────────────────────
+  SEASON-BY-SEASON
+──────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────
+  2054 / SEOUL  |  Age 22  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 59   CT: 25   PO: 16   EY: 24   SP: 63   BR: 32   BU: 69   CL: 41
+  CA: 26   IF: 38   OF: 22   AR: 73   AC: 70   ST: 82   RE: 51   GB: 58
+  KK: 98
+RATINGS:
+  C  : 38   1B : 41   2B : 44   SS : 47   3B : 45   LF : 38   CF : 45   RF : 42
+  SP: 67   RP: 67   P: 67
+  LO: 33   CON: 27   PWR: 22   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:59→62(+3)  PO:16→17(+1)  SP:63→74(+11)  BU:69→87(+18)
+  CL:41→65(+24)  CA:26→28(+2)  IF:38→45(+7)  AR:73→84(+11)
+  AC:70→89(+19)  RE:51→75(+24)  GB:58→79(+21)  KK:98→100(+2)
+SEASON STATS  (1 games):
+  Pitching:
+    ERA:0.00  IP:1.0  GS:0  W:0  L:0  SV:0
+    H:0  R:0  BB:1  SO:1  HR:0  PC:20  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2055 / SEOUL  |  Age 23  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 60   CT: 25   PO: 16   EY: 24   SP: 62   BR: 32   BU: 70   CL: 44
+  CA: 26   IF: 39   OF: 22   AR: 75   AC: 71   ST: 82   RE: 52   GB: 59
+  KK: 99
+RATINGS:
+  C  : 39   1B : 43   2B : 45   SS : 48   3B : 47   LF : 39   CF : 46   RF : 43
+  SP: 68   RP: 68   P: 68
+  LO: 34   CON: 27   PWR: 22   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:60→62(+2)  PO:16→17(+1)  SP:62→74(+12)  BU:70→87(+17)
+  CL:44→65(+21)  CA:26→28(+2)  IF:39→45(+6)  AR:75→84(+9)
+  AC:71→89(+18)  RE:52→75(+23)  GB:59→79(+20)  KK:99→100(+1)
+SEASON STATS: (no data in DB for this season)
+
+──────────────────────────────────────────────────────────────
+  2056 / SEOUL  |  Age 24  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 16   EY: 24   SP: 63   BR: 32   BU: 70   CL: 44
+  CA: 26   IF: 41   OF: 22   AR: 76   AC: 73   ST: 82   RE: 53   GB: 60
+  KK: 99
+RATINGS:
+  C  : 39   1B : 44   2B : 47   SS : 50   3B : 48   LF : 39   CF : 46   RF : 43
+  SP: 68   RP: 69   P: 68
+  LO: 34   CON: 27   PWR: 22   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  PO:16→17(+1)  SP:63→74(+11)  BU:70→87(+17)
+  CL:44→65(+21)  CA:26→28(+2)  IF:41→45(+4)  AR:76→84(+8)
+  AC:73→89(+16)  RE:53→75(+22)  GB:60→79(+19)  KK:99→100(+1)
+SEASON STATS  (3 games):
+  Pitching:
+    ERA:3.86  IP:2.1  GS:0  W:0  L:0  SV:1
+    H:1  R:1  BB:0  SO:3  HR:1  PC:34  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2057 / SEOUL  |  Age 25  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 17   EY: 24   SP: 62   BR: 32   BU: 71   CL: 48
+  CA: 26   IF: 42   OF: 22   AR: 76   AC: 75   ST: 82   RE: 53   GB: 61
+  KK: 99
+RATINGS:
+  C  : 39   1B : 46   2B : 48   SS : 51   3B : 49   LF : 40   CF : 46   RF : 43
+  SP: 69   RP: 71   P: 70
+  LO: 34   CON: 28   PWR: 24   OFF: 33   OVR: 38
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  SP:62→74(+12)  BU:71→87(+16)  CL:48→65(+17)
+  CA:26→28(+2)  IF:42→45(+3)  AR:76→84(+8)  AC:75→89(+14)
+  RE:53→75(+22)  GB:61→79(+18)  KK:99→100(+1)
+SEASON STATS  (52 games):
+  Pitching:
+    ERA:4.45  IP:56.2  GS:0  W:6  L:3  SV:23
+    H:38  R:28  BB:21  SO:59  HR:11  PC:893  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2058 / SEOUL  |  Age 26  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 17   EY: 24   SP: 62   BR: 32   BU: 71   CL: 48
+  CA: 26   IF: 43   OF: 22   AR: 76   AC: 77   ST: 82   RE: 53   GB: 62
+  KK: 99
+RATINGS:
+  C  : 39   1B : 46   2B : 48   SS : 51   3B : 50   LF : 40   CF : 46   RF : 43
+  SP: 69   RP: 72   P: 70
+  LO: 34   CON: 28   PWR: 24   OFF: 33   OVR: 38
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  SP:62→74(+12)  BU:71→87(+16)  CL:48→65(+17)
+  CA:26→28(+2)  IF:43→45(+2)  AR:76→84(+8)  AC:77→89(+12)
+  RE:53→75(+22)  GB:62→79(+17)  KK:99→100(+1)
+SEASON STATS  (46 games):
+  Pitching:
+    ERA:3.83  IP:44.2  GS:0  W:5  L:5  SV:21
+    H:36  R:19  BB:12  SO:63  HR:8  PC:683  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2059 / SEOUL  |  Age 27  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 17   EY: 24   SP: 61   BR: 32   BU: 72   CL: 45
+  CA: 26   IF: 43   OF: 22   AR: 77   AC: 78   ST: 82   RE: 54   GB: 63
+  KK: 99
+RATINGS:
+  C  : 39   1B : 46   2B : 48   SS : 51   3B : 50   LF : 39   CF : 46   RF : 43
+  SP: 69   RP: 71   P: 70
+  LO: 34   CON: 28   PWR: 23   OFF: 32   OVR: 38
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  SP:61→74(+13)  BU:72→87(+15)  CL:45→65(+20)
+  CA:26→28(+2)  IF:43→45(+2)  AR:77→84(+7)  AC:78→89(+11)
+  RE:54→75(+21)  GB:63→79(+16)  KK:99→100(+1)
+SEASON STATS  (52 games):
+  Pitching:
+    ERA:1.64  IP:55.0  GS:0  W:5  L:1  SV:31
+    H:32  R:10  BB:10  SO:66  HR:3  PC:774  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2060 / SEOUL  |  Age 28  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 17   EY: 24   SP: 61   BR: 32   BU: 73   CL: 42
+  CA: 26   IF: 44   OF: 22   AR: 77   AC: 79   ST: 82   RE: 54   GB: 64
+  KK: 99
+RATINGS:
+  C  : 39   1B : 46   2B : 48   SS : 51   3B : 50   LF : 39   CF : 46   RF : 43
+  SP: 69   RP: 71   P: 70
+  LO: 33   CON: 27   PWR: 23   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  SP:61→74(+13)  BU:73→87(+14)  CL:42→65(+23)
+  CA:26→28(+2)  IF:44→45(+1)  AR:77→84(+7)  AC:79→89(+10)
+  RE:54→75(+21)  GB:64→79(+15)  KK:99→100(+1)
+SEASON STATS  (49 games):
+  Pitching:
+    ERA:2.56  IP:45.2  GS:0  W:5  L:4  SV:26
+    H:30  R:13  BB:10  SO:59  HR:2  PC:664  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2061 / SEOUL  |  Age 29  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 17   EY: 24   SP: 58   BR: 32   BU: 74   CL: 47
+  CA: 26   IF: 44   OF: 22   AR: 77   AC: 81   ST: 82   RE: 57   GB: 65
+  KK: 99
+RATINGS:
+  C  : 39   1B : 47   2B : 48   SS : 51   3B : 51   LF : 39   CF : 46   RF : 43
+  SP: 71   RP: 73   P: 72
+  LO: 34   CON: 28   PWR: 23   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  SP:58→74(+16)  BU:74→87(+13)  CL:47→65(+18)
+  CA:26→28(+2)  IF:44→45(+1)  AR:77→84(+7)  AC:81→89(+8)
+  RE:57→75(+18)  GB:65→79(+14)  KK:99→100(+1)
+SEASON STATS  (46 games):
+  Pitching:
+    ERA:5.48  IP:42.2  GS:0  W:6  L:7  SV:18
+    H:49  R:26  BB:11  SO:54  HR:7  PC:676  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2062 / SEOUL  |  Age 30  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 17   EY: 24   SP: 57   BR: 32   BU: 74   CL: 51
+  CA: 26   IF: 44   OF: 22   AR: 76   AC: 82   ST: 82   RE: 59   GB: 64
+  KK: 99
+RATINGS:
+  C  : 40   1B : 47   2B : 49   SS : 52   3B : 51   LF : 39   CF : 45   RF : 43
+  SP: 72   RP: 74   P: 73
+  LO: 34   CON: 28   PWR: 24   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  SP:57→74(+17)  BU:74→87(+13)  CL:51→65(+14)
+  CA:26→28(+2)  IF:44→45(+1)  AR:76→84(+8)  AC:82→89(+7)
+  RE:59→75(+16)  GB:64→79(+15)  KK:99→100(+1)
+SEASON STATS  (51 games):
+  Pitching:
+    ERA:3.26  IP:49.2  GS:0  W:11  L:4  SV:26
+    H:35  R:18  BB:13  SO:67  HR:5  PC:772  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2063 / SEOUL  |  Age 31  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 61   CT: 25   PO: 17   EY: 24   SP: 57   BR: 32   BU: 75   CL: 51
+  CA: 26   IF: 44   OF: 21   AR: 75   AC: 83   ST: 82   RE: 58   GB: 64
+  KK: 98
+RATINGS:
+  C  : 40   1B : 47   2B : 49   SS : 52   3B : 51   LF : 39   CF : 45   RF : 42
+  SP: 72   RP: 74   P: 73
+  LO: 34   CON: 28   PWR: 24   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:61→62(+1)  SP:57→74(+17)  BU:75→87(+12)  CL:51→65(+14)
+  CA:26→28(+2)  IF:44→45(+1)  OF:21→22(+1)  AR:75→84(+9)
+  AC:83→89(+6)  RE:58→75(+17)  GB:64→79(+15)  KK:98→100(+2)
+SEASON STATS  (56 games):
+  Pitching:
+    ERA:4.09  IP:55.0  GS:0  W:6  L:8  SV:27
+    H:52  R:25  BB:8  SO:67  HR:11  PC:821  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2064 / SEOUL  |  Age 32  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 60   CT: 25   PO: 17   EY: 24   SP: 55   BR: 32   BU: 75   CL: 53
+  CA: 27   IF: 44   OF: 21   AR: 74   AC: 84   ST: 80   RE: 55   GB: 63
+  KK: 97
+RATINGS:
+  C  : 40   1B : 48   2B : 48   SS : 51   3B : 51   LF : 39   CF : 44   RF : 42
+  SP: 70   RP: 74   P: 72
+  LO: 34   CON: 29   PWR: 24   OFF: 32   OVR: 37
+CAP HEADROOM (non-zero):
+  DU:60→62(+2)  SP:55→74(+19)  BU:75→87(+12)  CL:53→65(+12)
+  CA:27→28(+1)  IF:44→45(+1)  OF:21→22(+1)  AR:74→84(+10)
+  AC:84→89(+5)  ST:80→82(+2)  RE:55→75(+20)  GB:63→79(+16)
+  KK:97→100(+3)
+SEASON STATS  (48 games):
+  Pitching:
+    ERA:3.24  IP:41.2  GS:0  W:4  L:1  SV:27
+    H:30  R:15  BB:10  SO:58  HR:5  PC:629  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2065 / SEOUL  |  Age 33  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 59   CT: 25   PO: 17   EY: 24   SP: 53   BR: 32   BU: 75   CL: 53
+  CA: 27   IF: 43   OF: 21   AR: 73   AC: 86   ST: 78   RE: 54   GB: 63
+  KK: 96
+RATINGS:
+  C  : 40   1B : 47   2B : 48   SS : 50   3B : 50   LF : 38   CF : 44   RF : 42
+  SP: 69   RP: 74   P: 72
+  LO: 34   CON: 29   PWR: 24   OFF: 31   OVR: 36
+CAP HEADROOM (non-zero):
+  DU:59→62(+3)  SP:53→74(+21)  BU:75→87(+12)  CL:53→65(+12)
+  CA:27→28(+1)  IF:43→45(+2)  OF:21→22(+1)  AR:73→84(+11)
+  AC:86→89(+3)  ST:78→82(+4)  RE:54→75(+21)  GB:63→79(+16)
+  KK:96→100(+4)
+SEASON STATS  (60 games):
+  Pitching:
+    ERA:0.96  IP:56.0  GS:0  W:10  L:0  SV:36
+    H:33  R:6  BB:10  SO:64  HR:1  PC:816  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2066 / SEOUL  |  Age 34  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 59   CT: 25   PO: 17   EY: 23   SP: 52   BR: 32   BU: 75   CL: 58
+  CA: 25   IF: 43   OF: 20   AR: 70   AC: 87   ST: 76   RE: 53   GB: 61
+  KK: 95
+RATINGS:
+  C  : 39   1B : 47   2B : 48   SS : 50   3B : 50   LF : 38   CF : 43   RF : 41
+  SP: 69   RP: 75   P: 72
+  LO: 34   CON: 29   PWR: 25   OFF: 31   OVR: 36
+CAP HEADROOM (non-zero):
+  DU:59→62(+3)  EY:23→24(+1)  SP:52→74(+22)  BU:75→87(+12)
+  CL:58→65(+7)  CA:25→28(+3)  IF:43→45(+2)  OF:20→22(+2)
+  AR:70→84(+14)  AC:87→89(+2)  ST:76→82(+6)  RE:53→75(+22)
+  GB:61→79(+18)  KK:95→100(+5)
+SEASON STATS  (65 games):
+  Pitching:
+    ERA:3.23  IP:78.0  GS:0  W:3  L:2  SV:0
+    H:55  R:28  BB:21  SO:88  HR:9  PC:1145  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2067 / SEOUL  |  Age 35  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 59   CT: 24   PO: 17   EY: 23   SP: 49   BR: 32   BU: 75   CL: 62
+  CA: 25   IF: 43   OF: 19   AR: 68   AC: 88   ST: 74   RE: 51   GB: 61
+  KK: 89
+RATINGS:
+  C  : 39   1B : 48   2B : 48   SS : 50   3B : 50   LF : 37   CF : 42   RF : 40
+  SP: 68   RP: 75   P: 71
+  LO: 34   CON: 29   PWR: 25   OFF: 31   OVR: 36
+CAP HEADROOM (non-zero):
+  DU:59→62(+3)  CT:24→25(+1)  EY:23→24(+1)  SP:49→74(+25)
+  BU:75→87(+12)  CL:62→65(+3)  CA:25→28(+3)  IF:43→45(+2)
+  OF:19→22(+3)  AR:68→84(+16)  AC:88→89(+1)  ST:74→82(+8)
+  RE:51→75(+24)  GB:61→79(+18)  KK:89→100(+11)
+SEASON STATS  (80 games):
+  Pitching:
+    ERA:3.61  IP:112.1  GS:0  W:7  L:3  SV:0
+    H:94  R:45  BB:22  SO:140  HR:12  PC:1645  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2068 / SEOUL  |  Age 36  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 59   CT: 23   PO: 17   EY: 23   SP: 47   BR: 32   BU: 75   CL: 63
+  CA: 25   IF: 42   OF: 18   AR: 66   AC: 88   ST: 71   RE: 53   GB: 60
+  KK: 88
+RATINGS:
+  C  : 39   1B : 47   2B : 47   SS : 49   3B : 50   LF : 36   CF : 40   RF : 39
+  SP: 67   RP: 75   P: 70
+  LO: 33   CON: 29   PWR: 25   OFF: 30   OVR: 35
+CAP HEADROOM (non-zero):
+  DU:59→62(+3)  CT:23→25(+2)  EY:23→24(+1)  SP:47→74(+27)
+  BU:75→87(+12)  CL:63→65(+2)  CA:25→28(+3)  IF:42→45(+3)
+  OF:18→22(+4)  AR:66→84(+18)  AC:88→89(+1)  ST:71→82(+11)
+  RE:53→75(+22)  GB:60→79(+19)  KK:88→100(+12)
+SEASON STATS  (62 games):
+  Pitching:
+    ERA:4.07  IP:90.2  GS:0  W:2  L:2  SV:0
+    H:88  R:41  BB:24  SO:99  HR:10  PC:1470  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2069 / SEOUL  |  Age 37  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 58   CT: 22   PO: 15   EY: 21   SP: 45   BR: 32   BU: 75   CL: 64
+  CA: 23   IF: 42   OF: 16   AR: 64   AC: 87   ST: 72   RE: 53   GB: 57
+  KK: 84
+RATINGS:
+  C  : 38   1B : 47   2B : 47   SS : 49   3B : 50   LF : 35   CF : 39   RF : 38
+  SP: 67   RP: 73   P: 70
+  LO: 32   CON: 28   PWR: 24   OFF: 29   OVR: 34
+CAP HEADROOM (non-zero):
+  DU:58→62(+4)  CT:22→25(+3)  PO:15→17(+2)  EY:21→24(+3)
+  SP:45→74(+29)  BU:75→87(+12)  CL:64→65(+1)  CA:23→28(+5)
+  IF:42→45(+3)  OF:16→22(+6)  AR:64→84(+20)  AC:87→89(+2)
+  ST:72→82(+10)  RE:53→75(+22)  GB:57→79(+22)  KK:84→100(+16)
+SEASON STATS  (71 games):
+  Pitching:
+    ERA:3.99  IP:99.1  GS:0  W:1  L:3  SV:0
+    H:89  R:44  BB:26  SO:100  HR:12  PC:1493  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2070 / SEOUL  |  Age 38  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 56   CT: 21   PO: 13   EY: 19   SP: 42   BR: 32   BU: 76   CL: 64
+  CA: 24   IF: 41   OF: 15   AR: 63   AC: 86   ST: 70   RE: 50   GB: 56
+  KK: 84
+RATINGS:
+  C  : 38   1B : 46   2B : 46   SS : 48   3B : 48   LF : 33   CF : 37   RF : 36
+  SP: 65   RP: 72   P: 68
+  LO: 31   CON: 27   PWR: 22   OFF: 27   OVR: 32
+CAP HEADROOM (non-zero):
+  DU:56→62(+6)  CT:21→25(+4)  PO:13→17(+4)  EY:19→24(+5)
+  SP:42→74(+32)  BU:76→87(+11)  CL:64→65(+1)  CA:24→28(+4)
+  IF:41→45(+4)  OF:15→22(+7)  AR:63→84(+21)  AC:86→89(+3)
+  ST:70→82(+12)  RE:50→75(+25)  GB:56→79(+23)  KK:84→100(+16)
+SEASON STATS  (71 games):
+  Pitching:
+    ERA:3.27  IP:107.1  GS:0  W:5  L:3  SV:0
+    H:63  R:39  BB:29  SO:112  HR:6  PC:1522  AVG PC:—
+
+──────────────────────────────────────────────────────────────
+  2071 / SEOUL  |  Age 39  |  SP  |  B:R T:R
+──────────────────────────────────────────────────────────────
+SKILLS:
+  DU: 52   CT: 20   PO: 10   EY: 17   SP: 39   BR: 31   BU: 76   CL: 59
+  CA: 24   IF: 40   OF: 15   AR: 61   AC: 85   ST: 66   RE: 48   GB: 54
+  KK: 85
+RATINGS:
+  C  : 36   1B : 44   2B : 44   SS : 46   3B : 46   LF : 32   CF : 35   RF : 35
+  SP: 62   RP: 71   P: 66
+  LO: 29   CON: 25   PWR: 19   OFF: 25   OVR: 30
+CAP HEADROOM (non-zero):
+  DU:52→62(+10)  CT:20→25(+5)  PO:10→17(+7)  EY:17→24(+7)
+  SP:39→74(+35)  BR:31→32(+1)  BU:76→87(+11)  CL:59→65(+6)
+  CA:24→28(+4)  IF:40→45(+5)  OF:15→22(+7)  AR:61→84(+23)
+  AC:85→89(+4)  ST:66→82(+16)  RE:48→75(+27)  GB:54→79(+25)
+  KK:85→100(+15)
+SEASON STATS: (season not in DB)
+
+══════════════════════════════════════════════════════════════
+  CAREER TOTALS
+══════════════════════════════════════════════════════════════
+  813 games
+  Pitching:
+    ERA:3.43  IP:938.0  GS:0  W:76  L:46  SV:236
+    H:725  R:358  BB:228  SO:1100  HR:103  PC:14057  AVG PC:—
+
+  → saved to temp_files/allen_jackson_1.txt
+  

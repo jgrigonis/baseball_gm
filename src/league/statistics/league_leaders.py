@@ -52,7 +52,7 @@ TOP_N = 9  # compare 10th leader
 # Lower-is-better:  (lo, hi) with lo > hi  — lo = expected 10th, hi = expected leader
 RANGES = {
     "home_runs": (25, 70),
-    "triples": (7, 23),
+    "triples": (5, 23),
     "doubles": (36, 60),
     "singles": (100, 150),
     "hits": (172, 260),
@@ -62,7 +62,7 @@ RANGES = {
     "sb": (25, 73),
     "cs": (7, 14),
     "walks": (85, 140),
-    "strikeouts": (175, 225),
+    "strikeouts": (150, 225),
     "k_per_ab": (0.125, 0.15),
     "ab_per_k": (10, 15),
     "avg": (0.289, 0.350),

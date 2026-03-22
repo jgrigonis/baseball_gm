@@ -7,7 +7,7 @@ These values tune the likelihood of various outcomes throughout the game.
 """
 
 # Pitch outcome weights
-BALL_PROB = 16000
+BALL_PROB = 15000
 FOUL_PROB = 5100
 HOME_RUN_PROB = 280
 HBP_PROB = 118
@@ -23,8 +23,8 @@ STRIKE_PROB = 11500
 FLY_OUT_PROB = 4440
 GROUND_OUT_PROB = 1740
 SINGLE_PROB = 1320
-DOUBLE_PROB = 366
-TRIPLE_PROB = 49
+DOUBLE_PROB = 372
+TRIPLE_PROB = 51
 DOUBLE_PLAY_PROB = 0
 FIELDERS_CHOICE_PROB = 0
 SAC_FLY_PROB = 0
@@ -57,9 +57,9 @@ PICKOFF_ERROR_PROB = 0.02  # 2% throwing error
 STEAL_ON_PICKOFF_MODIFIER = 1.5
 
 # Steal success rates
-STEAL_SECOND_SUCCESS_PROB = 0.81  # 81% success rate
-STEAL_THIRD_SUCCESS_PROB = 0.63  # 63% success rate
-STEAL_HOME_SUCCESS_PROB = 0.05  # 5% success rate
+STEAL_SECOND_SUCCESS_PROB = 0.74  # 74% success rate
+STEAL_THIRD_SUCCESS_PROB = 0.83  # 83% success rate
+STEAL_HOME_SUCCESS_PROB = 0.25  # 25% success rate
 
 # Error and throwout rates
 BASE_ERROR_RATE = 0.062
@@ -73,8 +73,8 @@ SS_OVER_2B_PROB = 0.55
 BASE_PICKOFF_ATTEMPT_PROB = 0.01  # 1% per pitch
 
 # Steal
-BASE_STEAL_SECOND_PROB = 0.030  # 3.0% from first
-BASE_STEAL_THIRD_PROB = 0.006  # 0.6% from second
+BASE_STEAL_SECOND_PROB = 0.025  # 2.5% from first
+BASE_STEAL_THIRD_PROB = 0.005  # 0.5% from second
 BASE_STEAL_HOME_PROB = 0.00001  # 0.0001% from third
 STEAL_FULL_COUNT_MOD = 1.7
 STEAL_BEHIND_COUNT_MOD = 0.5
