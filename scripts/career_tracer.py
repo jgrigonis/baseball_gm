@@ -147,8 +147,8 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
 
 def resolve_id_from_name(
     directory: Path, name_query: str
-) -> tuple[str | None, str | None, int | None]:
-    """Returns (player_id, canonical_name, disambiguation_index)."""
+) -> list[tuple[str, str]]:
+    """Returns list of (player_id, canonical_name) for all matches."""
     query = name_query.lower()
     seen = {}
     for csv_path in sorted(directory.glob("**/*.csv")):
@@ -158,32 +158,7 @@ def resolve_id_from_name(
                     pid = row.get("ID", "").strip()
                     if pid:
                         seen[pid] = row["Name"]
-    if not seen:
-        return None, None, None
-    if len(seen) == 1:
-        pid, name = next(iter(seen.items()))
-        return pid, name, None
-
-    items = list(seen.items())
-
-    # Auto-select if any entry is an exact match (case-insensitive)
-    exact = [(pid, name) for pid, name in items if name.lower() == query]
-    if len(exact) == 1:
-        return exact[0][0], exact[0][1], None  # no suffix needed
-
-    print(f"Found {len(items)} players matching '{name_query}':")
-    for i, (pid, name) in enumerate(items):
-        print(f"  [{i}] {name}  ({pid})")
-
-    try:
-        choice = input("Select [0]: ").strip()
-        idx = int(choice) if choice.isdigit() else 0
-    except EOFError:
-        idx = 0
-        print("(no input available, defaulting to [0])")
-
-    return items[idx][0], items[idx][1], idx
-
+    return list(seen.items())
 
 # ---------------------------------------------------------------------------
 # DB helpers
@@ -546,47 +521,38 @@ def main():
 
     # Resolve player ID
     if args.player_id:
-        player_id = args.player_id.strip()
-        # Get canonical name from first appearance
-        apps = find_all_appearances(directory, player_id)
-        canonical_name = apps[0]["Name"] if apps else player_id
+        players_to_trace = [(args.player_id.strip(), None)]
     else:
-        player_id, canonical_name, disambig_idx = resolve_id_from_name(
-            directory, args.name
-        )
-        if not player_id:
+        players_to_trace = resolve_id_from_name(directory, args.name)
+        if not players_to_trace:
             print(f"No player found matching '{args.name}'")
             sys.exit(1)
+        if len(players_to_trace) > 1:
+            print(f"Found {len(players_to_trace)} players matching '{args.name}' — tracing all.\n")
+
+
+    for player_id, canonical_name in players_to_trace:
         apps = find_all_appearances(directory, player_id)
+        if not apps:
+            print(f"No CSV appearances found for player {player_id} ({canonical_name})")
+            continue
 
-    if not apps:
-        print(f"No CSV appearances found for player {player_id}")
-        sys.exit(1)
-
-    # Caps
+    canonical_name = canonical_name or apps[0]["Name"]
     caps = get_talent_caps(db_file, player_id)
     if not caps:
-        print(f"  Warning: no talent caps found for {player_id}")
+        print(f"  Warning: no talent caps found for {canonical_name} ({player_id})")
 
-    # Seasons
     seasons_db = get_all_seasons(db_file)
-
-    # Build and print report
     report = build_report(player_id, canonical_name, apps, caps, seasons_db, db_file)
     print(report)
 
-    # Write to temp_files/<first>_<last>.txt
     name_parts = canonical_name.lower().split()
-    filename = "_".join(name_parts)
-    if disambig_idx is not None:
-        filename += f"_{disambig_idx}"
-    filename += ".txt"
+    filename = "_".join(name_parts) + f"_{player_id[:8]}.txt"
     out_dir = Path("temp_files")
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / filename
     out_path.write_text(report, encoding="utf-8")
     print(f"  → saved to {out_path}")
-
 
 if __name__ == "__main__":
     main()
