@@ -203,8 +203,8 @@ POSITION_TEMPLATES: MappingProxyType[str, dict[str, float]] = MappingProxyType(
 SKILL_TEMPLATE: MappingProxyType[str, dict[str, int]] = MappingProxyType(
     {
         "sp": {
-            "accuracy": 60,  # Good control for starters
-            "stamina": 70,  # High stamina to pitch deep into games
+            "accuracy": 55,  # Good control for starters
+            "stamina": 55,  # High stamina to pitch deep into games
             "recovery": 60,  # Good recovery between starts
             "power": 20,  # Pitchers are poor hitters
             "eye": 30,
@@ -216,8 +216,8 @@ SKILL_TEMPLATE: MappingProxyType[str, dict[str, int]] = MappingProxyType(
             "arm": 60,  # Strong arms
         },
         "rp": {
-            "accuracy": 60,
-            "recovery": 60,  # Need to bounce back quickly
+            "accuracy": 55,
+            "recovery": 55,  # Need to bounce back quickly
             # stamina defaults to 50 (relievers need less)
             "power": 20,
             "eye": 30,

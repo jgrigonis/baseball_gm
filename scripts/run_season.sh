@@ -6,8 +6,6 @@ set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-caffeinate -i
-
 # ── Parse flags ────────────────────────────────────────────────
 YEAR=2025
 GAME_LOGS_FLAG=""
