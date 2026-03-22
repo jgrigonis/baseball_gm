@@ -792,10 +792,10 @@ class Game:
                 injury_types = WeightedChoice(rng=self.rng)
                 injury_types.set_weights(
                     {
-                        "minor":    MINOR_INJURY_PROB,
+                        "minor": MINOR_INJURY_PROB,
                         "moderate": MODERATE_INJURY_PROB,
-                        "severe":   SEVERE_INJURE_PROB,
-                        "surgery":  SURGERY_INJURY_PROB,
+                        "severe": SEVERE_INJURE_PROB,
+                        "surgery": SURGERY_INJURY_PROB,
                     }
                 )
                 fatigue = player.player_energy
@@ -805,7 +805,9 @@ class Game:
                     injury_types.multiply("surgery", FATIGUE_MULTIPLIER)
 
                 severity = injury_types.choose()
-                self.new_injuries.append((player.id, severity, activity))  # ← activity added
+                self.new_injuries.append(
+                    (player.id, severity, activity)
+                )  # ← activity added
 
                 state = self.player_energy_states.get(player.id)
                 if state:

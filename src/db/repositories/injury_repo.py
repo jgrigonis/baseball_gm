@@ -27,12 +27,9 @@ Injury duration table (games missed, not counting the game of injury):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, date
 import logging
 import random
 from typing import Optional
-
-from src.db.repositories.player_energy import PlayerEnergyRepository
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +127,16 @@ class InjuryRepository:
     # Write
     # ------------------------------------------------------------------
 
-    def injure(self, player_id, season_id, game_date, severity="minor", activity=None, rng=None, games=None):
+    def injure(
+        self,
+        player_id,
+        season_id,
+        game_date,
+        severity="minor",
+        activity=None,
+        rng=None,
+        games=None,
+    ):
         games_missed = games if games is not None else roll_games_missed(severity, rng)
 
         existing = self.get(player_id)
@@ -158,15 +164,27 @@ class InjuryRepository:
                 INSERT INTO player_injury_log (player_id, season_id, games_missed, severity, injury_date, activity)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (player_id, season_id, games_missed, severity,
-                game_date.isoformat() if hasattr(game_date, "isoformat") else game_date, activity),
+                (
+                    player_id,
+                    season_id,
+                    games_missed,
+                    severity,
+                    (
+                        game_date.isoformat()
+                        if hasattr(game_date, "isoformat")
+                        else game_date
+                    ),
+                    activity,
+                ),
             )
             self.conn.commit()
         except Exception:
             self.conn.rollback()
             raise
 
-        logger.info("Player %s injured: %s (%d games).", player_id, severity, games_missed)
+        logger.info(
+            "Player %s injured: %s (%d games).", player_id, severity, games_missed
+        )
         return injury
 
     def tick(self, player_id: str) -> Optional[PlayerInjury]:

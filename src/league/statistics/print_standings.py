@@ -110,6 +110,7 @@ def print_standings(db_path: Path, season_id: str, logger: logging.Logger = None
     else:
         print(output)
 
+
 def main():
     args = parse_args()
     db_path, season_id, _ = resolve_season(args.file, args.id)

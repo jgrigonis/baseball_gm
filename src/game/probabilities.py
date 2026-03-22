@@ -131,21 +131,21 @@ SURGERY_INJURY_PROB = 2
 
 # Injury probability multipliers by activity
 INJURY_ACTIVITY_WEIGHT = {
-    "pitching":  1.8,
-    "batting":   0.6,
-    "running":   1.2,
-    "fielding":  1.0,  # baseline, modified by position below
+    "pitching": 1.8,
+    "batting": 0.6,
+    "running": 1.2,
+    "fielding": 1.0,  # baseline, modified by position below
 }
 
 # Fielding position multipliers (applied on top of fielding weight)
 INJURY_POSITION_WEIGHT = {
-    "c":   1.4,
-    "cf":  1.1,
-    "ss":  1.0,
-    "2b":  1.0,
-    "3b":  0.8,
-    "1b":  0.7,
-    "lf":  0.7,
-    "rf":  0.7,
-    "dh":  0.0,
+    "c": 1.4,
+    "cf": 1.1,
+    "ss": 1.0,
+    "2b": 1.0,
+    "3b": 0.8,
+    "1b": 0.7,
+    "lf": 0.7,
+    "rf": 0.7,
+    "dh": 0.0,
 }

@@ -179,7 +179,7 @@ class OffseasonPipeline:
                 writer.writerows(rows)
             print(f"  Retired {len(retired)} players → {path}")
         else:
-            print(f"  Retired 0 players")
+            print("  Retired 0 players")
 
     def _write_csvs(self, season_id: str) -> None:
         """Step 3: Write post-aging CSVs for every team into TEAM_FILES_DIR/YYYY/."""
@@ -361,6 +361,7 @@ class OffseasonPipeline:
             raise ValueError(f"Season {season_id} not found")
         self.year = row["year"] + 1
         return self.year
+
 
 def get_args():
     p = argparse.ArgumentParser()

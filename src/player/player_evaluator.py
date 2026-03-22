@@ -283,15 +283,15 @@ class PlayerEvaluator:
         defensive = max(skills["infield"], skills["outfield"], skills["catching"])
         # Physical tools — defense skills are coachable so weighted low
         b_score = (
-            skills["speed"]         * 0.19
-            + skills["power"]       * 0.18
-            + skills["arm"]         * 0.11
-            + skills["eye"]         * 0.14
-            + skills["contact"]     * 0.16
-            + skills["clutch"]      * 0.08
-            + skills["base_running"]* 0.05
-            + defensive             * 0.05
-            + skills["durability"]  * 0.04
+            skills["speed"] * 0.19
+            + skills["power"] * 0.18
+            + skills["arm"] * 0.11
+            + skills["eye"] * 0.14
+            + skills["contact"] * 0.16
+            + skills["clutch"] * 0.08
+            + skills["base_running"] * 0.05
+            + defensive * 0.05
+            + skills["durability"] * 0.04
         )
 
         return max(0, min(100, int(round(max(p_score, b_score)))))

@@ -145,9 +145,7 @@ def find_all_appearances(directory: Path, player_id: str) -> list[dict]:
     return appearances
 
 
-def resolve_id_from_name(
-    directory: Path, name_query: str
-) -> list[tuple[str, str]]:
+def resolve_id_from_name(directory: Path, name_query: str) -> list[tuple[str, str]]:
     """Returns list of (player_id, canonical_name) for all matches."""
     query = name_query.lower()
     seen = {}
@@ -159,6 +157,7 @@ def resolve_id_from_name(
                     if pid:
                         seen[pid] = row["Name"]
     return list(seen.items())
+
 
 # ---------------------------------------------------------------------------
 # DB helpers
@@ -528,8 +527,9 @@ def main():
             print(f"No player found matching '{args.name}'")
             sys.exit(1)
         if len(players_to_trace) > 1:
-            print(f"Found {len(players_to_trace)} players matching '{args.name}' — tracing all.\n")
-
+            print(
+                f"Found {len(players_to_trace)} players matching '{args.name}' — tracing all.\n"
+            )
 
     for player_id, canonical_name in players_to_trace:
         apps = find_all_appearances(directory, player_id)
@@ -553,6 +553,7 @@ def main():
     out_path = out_dir / filename
     out_path.write_text(report, encoding="utf-8")
     print(f"  → saved to {out_path}")
+
 
 if __name__ == "__main__":
     main()
