@@ -1,0 +1,31 @@
+
+League averages:
+
+8.81 SO / 34.3 AB  0.257  (2019) 
+
+6.30 SO / 34.21 AB  0.184  (2005)
+
+
+
+James Woods, most strikeouts as batter 2025
+
+Year	Tm	    Age	PA	AB	R	H	2B	3B	HR	RBI	SB	CS	BB	SO	BA	    OBP	    SLG	    OPS	    TB	GDP	HBP	SH	SF	IBB	Rel
+2026	Proj.	23	578	506	75	134	29	2	23	77	15	7	68	162	.265	.354	.466	.820	236	8	3	0	2	5	80%
+2025	        22  689	598	87	153	38	0	31	94	15	7	85	221	.256	.350	.475	.825	284	12	3	0	3	8	*7D/H	AS
+
+Luis Arraez
+▼	    Age	Team	Lg	WAR	G	PA	AB	R	H	2B	3B	HR	RBI	SB	CS	BB	SO	BA	OBP	SLG	OPS	OPS+	rOBA	Rbat+	TB	GIDP	HBP	SH	SF	IBB	Pos	Awards
+2025	28	SDP	    NL	1.2	154	675	620	66	181	30	4	8	61	11	4	34	21	.292	.327	.392	.719	99	.318	97	243	12	2	12	7	0	*3D4/H
+
+21 SO / 620 AB = .0339
+
+
+Tarik Skubal
+
+
+Season
+▼	   Age	Team	Lg	WAR	W	L	W-L%	ERA	    G	GS	GF	CG	SHO	SV	IP	    H	R	ER	HR	BB	IBB	SO	HBP	BK	WP	BF	ERA+	FIP	WHIP	H9	HR9	BB9	SO9	   SO/BB	Awards
+2025	28	DET	    AL	6.5	13	6	.684	2.21	31	31	0	1	1	0	195.1	141	55	48	18	33	0	241	5	2	3	748	187	2.45	0.891	6.5	0.8	1.5	11.1	7.30	AS,CYA-1,MVP-5
+
+SO / BB leader
+
