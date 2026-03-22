@@ -783,6 +783,11 @@ class Game:
                 pos_mult = INJURY_POSITION_WEIGHT.get(pos, 1.0)
                 activity_mult *= pos_mult
 
+            if activity != "pitching":
+                durability = player.skills.get("durability", 50) if hasattr(player, "skills") else 50
+                durability_mult = 1.0 - ((durability - 50) / 50) * 0.3
+                activity_mult *= durability_mult
+
             prob = INJURY_BASE_PROB * activity_mult
             if prob <= 0:
                 continue
