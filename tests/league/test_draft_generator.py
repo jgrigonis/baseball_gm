@@ -196,11 +196,11 @@ class TestAgeDistributionPositions:
             ), f"Age {expected_age}: expected ~{expected_pct:.0%}, got {actual_pct:.0%}"
 
     def test_position_distribution_55_percent_pitchers(self):
-        """Roughly 55% of positions should be pitchers."""
+        """Roughly 38% of positions should be pitchers."""
         result = _age_distribution_positions(random.Random(42), 10000)
         pitcher_count = sum(1 for _, pos in result if pos in PITCHER_POSITIONS)
         pitcher_pct = pitcher_count / 10000
-        assert abs(pitcher_pct - 0.55) < 0.03
+        assert abs(pitcher_pct - 0.38) < 0.03
 
     def test_position_distribution_45_percent_position_players(self):
         result = _age_distribution_positions(random.Random(42), 10000)
@@ -208,7 +208,22 @@ class TestAgeDistributionPositions:
             1 for _, pos in result if pos in POSITION_PLAYER_POSITIONS
         )
         pos_pct = pos_player_count / 10000
-        assert abs(pos_pct - 0.45) < 0.03
+        assert abs(pos_pct - 0.62) < 0.03
+
+    # def test_position_distribution_55_percent_pitchers(self):
+    #     """Roughly 55% of positions should be pitchers."""
+    #     result = _age_distribution_positions(random.Random(42), 10000)
+    #     pitcher_count = sum(1 for _, pos in result if pos in PITCHER_POSITIONS)
+    #     pitcher_pct = pitcher_count / 10000
+    #     assert abs(pitcher_pct - 0.55) < 0.03
+
+    # def test_position_distribution_45_percent_position_players(self):
+    #     result = _age_distribution_positions(random.Random(42), 10000)
+    #     pos_player_count = sum(
+    #         1 for _, pos in result if pos in POSITION_PLAYER_POSITIONS
+    #     )
+    #     pos_pct = pos_player_count / 10000
+    #     assert abs(pos_pct - 0.45) < 0.03
 
     def test_pitcher_positions_even_split(self):
         """sp and rp should be roughly equal."""

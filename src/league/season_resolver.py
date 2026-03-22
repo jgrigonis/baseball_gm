@@ -28,12 +28,13 @@ def resolve_season(db_file: str, season_arg: str | None) -> tuple[str, str, str]
     - season_label - name year combo for the season
 
     """
-    conn = get_connection(db_file)
+    db_path = Path(db_file) if Path(db_file).is_absolute() else Path(LEAGUE_FILES_DIR) / db_file
+
+    conn = get_connection(db_path)
     cur = conn.cursor()
     cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
     seasons = cur.fetchall()
     conn.close()
-    db_path = Path(LEAGUE_FILES_DIR) / db_file
 
     if not seasons:
         print("No seasons found in database.")

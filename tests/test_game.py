@@ -328,10 +328,10 @@ class TestEventQueue:
 class TestPlateAppearance:
     """Test plate appearance tracking."""
 
-    @pytest.fixture
-    def game(self, mock_teams):
-        home, away = mock_teams
-        return Game(home, away)
+    # @pytest.fixture
+    # def game(self, mock_teams):
+    #     home, away = mock_teams
+    #     return Game(home, away)
 
     def test_mark_plate_appearance_complete(self, game):
         game._mark_plate_appearance_complete("strikeout")

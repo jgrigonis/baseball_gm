@@ -272,7 +272,7 @@ class GameStrategy:
 
         # Base probability by target base
         if from_base == FIRST:
-            prob = BASE_STEAL_SECOND_PROB  # 8% to steal second
+            prob = BASE_STEAL_SECOND_PROB  # % to steal second
         elif from_base == SECOND:
             prob = BASE_STEAL_THIRD_PROB  # 2% to steal third
         elif from_base == THIRD:
