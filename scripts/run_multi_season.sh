@@ -18,6 +18,8 @@ END_YEAR=2026
 GAME_LOGS_FLAG=""
 LOGS_FLAG=""
 
+caffeinate -i
+
 # ── Parse arguments ───────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
