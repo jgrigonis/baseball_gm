@@ -40,8 +40,8 @@ AGE_DISTRIBUTION = [
 ]
 
 # Position distribution
-PITCHER_SHARE = 0.55
-POSITION_PLAYER_SHARE = 0.45
+PITCHER_SHARE = 0.39
+POSITION_PLAYER_SHARE = 0.61
 
 PITCHER_POSITIONS = ["sp", "rp"]  # even split
 
