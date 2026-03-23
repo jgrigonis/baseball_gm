@@ -1,3 +1,5 @@
+We have Earned Runs, but we did it imprecisely
+
 The right way to track earned runs (step by step)
 
 1. Reconstruct the inning without errors
