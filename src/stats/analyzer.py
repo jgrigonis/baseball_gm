@@ -433,7 +433,7 @@ class StatsAnalyzer:
                     }
                 )
 
-        return sorted(leaders, key=lambda x: x["k_per_ab"], reverse=True)
+        return sorted(leaders, key=lambda x: x["k_per_ab"], reverse=False)
 
     def leaderboard_batting_at_bats_per_k(self, min_at_bats=0) -> List[Dict[str, Any]]:
         """Get batters ranked by at-bats per strikeout"""
