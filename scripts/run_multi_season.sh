@@ -14,6 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 START_YEAR=2026
 END_YEAR=2026
+SEED=""
 
 GAME_LOGS_FLAG=""
 LOGS_FLAG=""
@@ -26,8 +27,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --seed)
-            SEED_FLAG="--seed $2"
-            shift 2
+            SEED="$2"
+            shift 2 
             ;;
         --game_logs)
             GAME_LOGS_FLAG="--logs"
@@ -51,13 +52,18 @@ done
 
 set -e
 
+SEED_FLAG=""
+if [[ -n "$SEED" ]]; then
+    SEED_FLAG="--seed $SEED"
+fi
+
 # ── New league ────────────────────────────────────────────────
 echo ""
 echo "════════════════════════════════════════"
 echo "  Initializing new league (2025)"
 echo "════════════════════════════════════════"
 
-"${SCRIPT_DIR}/new_league.sh" -y ${SEED_FLAG} ${GAME_LOGS_FLAG} ${LOGS_FLAG}
+"${SCRIPT_DIR}/new_league.sh" --yes ${SEED_FLAG} ${GAME_LOGS_FLAG} ${LOGS_FLAG}
 
 # ── Run seasons ───────────────────────────────────────────────
 YEAR=$START_YEAR
@@ -74,4 +80,4 @@ while [[ "$YEAR" -le "$END_YEAR" ]]; do
 done
 
 echo ""
-echo "✅  All seasons complete (2025–${END_YEAR})."
+echo "✅  All seasons complete (2025-${END_YEAR})."

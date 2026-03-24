@@ -124,6 +124,7 @@ PITCHING_COLS = [
     ("pitch_outs", "OUTS"),
     ("pitch_hits", "H"),
     ("pitch_runs", "R"),
+    ("pitch_earned_runs", "ER"),
     ("pitch_walks", "BB"),
     ("pitch_strike_outs", "SO"),
     ("pitch_home_runs", "HR"),

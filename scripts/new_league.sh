@@ -9,23 +9,29 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # ── Parse flags ────────────────────────────────────────────────
 YES=0
 YEAR=2025
+SEED=""
 GAME_LOGS_FLAG=""
 LOGS_FLAG=""
-SEED_FLAG=""
-CLI_SEED_FLAG=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -y|--yes)       YES=1 ; shift ;;
-        --game_logs)    GAME_LOGS_FLAG="--logs" ; shift ;;
-        --logs)         LOGS_FLAG="--logs" ; shift ;;
-        --seed)         SEED_FLAG="--seed $2" ; CLI_SEED_FLAG="--seed $2" ; shift 2 ;;
-        [0-9]*)         YEAR="$1" ; shift ;;
-        *)              echo "❌ Unknown argument: $1" ; exit 1 ;;
+        --yes|-y)    YES=1; shift ;;
+        --year)      YEAR="$2"; shift 2 ;;
+        --game_logs) GAME_LOGS_FLAG="--logs"; shift ;;
+        --logs)      LOGS_FLAG="--logs"; shift ;;
+        --seed)      SEED="$2"; shift 2 ;;
+        *)           echo "❌ Unknown argument: $1"; exit 1 ;;
     esac
 done
 
-# ── Confirmation prompt (skipped with -y) ─────────────────────
+SEED_FLAG=""
+CLI_SEED_FLAG=""
+if [[ -n "$SEED" ]]; then
+    SEED_FLAG="--seed $SEED"
+    CLI_SEED_FLAG="--seed $SEED"
+fi
+
+# ── Confirmation prompt (skipped with -yes) ─────────────────────
 if [[ "$YES" -eq 0 ]]; then
     printf "⚠️  Are you sure? This will destroy db and team files. [y/N] "
     read confirm
@@ -58,4 +64,4 @@ python src/league/playoffs/setup_playoffs.py -i ${SEASON_ID} --start-date ${YEAR
 
 python src/league/playoffs/play_playoffs.py -i ${SEASON_ID} ${LOGS_FLAG}
 
-python src/league/offseason/offseason_pipeline.py -i ${SEASON_ID}
+python src/league/offseason/offseason_pipeline.py -i ${SEASON_ID} ${SEED_FLAG}
