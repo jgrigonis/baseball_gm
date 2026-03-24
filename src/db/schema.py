@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS player_status (
 CREATE TABLE IF NOT EXISTS player_energy (
     player_id            TEXT PRIMARY KEY,
     current_energy       REAL NOT NULL DEFAULT 1.0 CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
+    max_energy           REAL NOT NULL DEFAULT 1.0 CHECK (max_energy >= 0.0 AND max_energy <= 1.0),
     last_game_date       TEXT,                                    -- ISO date of last game played
     consecutive_days     INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
     season_games_played  INTEGER NOT NULL DEFAULT 0 CHECK (season_games_played >= 0),
@@ -187,6 +188,18 @@ CREATE TABLE IF NOT EXISTS bullpen_roles (
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS game_lineup_slots (
+    game_id       TEXT NOT NULL,
+    team_id       TEXT NOT NULL,
+    player_id     TEXT NOT NULL,
+    position      TEXT NOT NULL,
+    batting_order INTEGER,          -- NULL for starting pitcher
+    is_pitcher    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (game_id, team_id, player_id),
+    FOREIGN KEY (game_id)   REFERENCES games(id)   ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS teams (
@@ -372,7 +385,8 @@ CREATE TABLE IF NOT EXISTS team_game_stats (
 
 CREATE TABLE IF NOT EXISTS pitcher_state (
     player_id            TEXT PRIMARY KEY,
-    current_energy       REAL NOT NULL CHECK (current_energy >= 0),
+    current_energy       REAL NOT NULL CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
+    max_energy           REAL NOT NULL DEFAULT 1.0 CHECK (max_energy >= 0.0 AND max_energy <= 1.0),
     consecutive_days     INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
     last_game_date       TEXT,
     last_pitch_count     INTEGER CHECK (last_pitch_count >= 0),

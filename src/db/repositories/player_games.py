@@ -310,6 +310,7 @@ class PlayerGameRepository:
         p.outs = row["pitch_outs"]
         p.hits = row["pitch_hits"]
         p.runs = row["pitch_runs"]
+        p.earned_runs = row["pitch_earned_runs"]
         p.home_runs = row["pitch_home_runs"]
         p.walks = row["pitch_walks"]
         p.strike_outs = row["pitch_strike_outs"]

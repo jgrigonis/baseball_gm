@@ -107,6 +107,7 @@ class PlayerEnergyState:
 
     player_id: str
     current_energy: float = 1.0
+    max_energy: float = 1.0
     last_game_date: Optional[date] = None
     consecutive_days: int = 0
     season_games_played: int = 0
@@ -145,7 +146,7 @@ class PlayerEnergyRepository:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT player_id, current_energy, last_game_date,
+            SELECT player_id, current_energy, max_energy, last_game_date,
                    consecutive_days, season_games_played
             FROM player_energy
             WHERE player_id = ?
@@ -157,15 +158,16 @@ class PlayerEnergyRepository:
             return None
 
         last_game_date = None
-        if row[2]:
-            last_game_date = datetime.fromisoformat(row[2]).date()
+        if row[3]:
+            last_game_date = datetime.fromisoformat(row[3]).date()
 
         return PlayerEnergyState(
             player_id=row[0],
             current_energy=row[1],
+            max_energy=row[2],
             last_game_date=last_game_date,
-            consecutive_days=row[3],
-            season_games_played=row[4],
+            consecutive_days=row[4],
+            season_games_played=row[5],
         )
 
     def get_with_recovery(
@@ -213,43 +215,55 @@ class PlayerEnergyRepository:
 
         if days_rest > 0:
             state.consecutive_days = 0
-            state.current_energy = _apply_recovery(
-                state.current_energy, days_rest, durability
-            )
+
+            # Exponential approach toward max_energy
+            rate = _daily_recovery_rate(durability)
+            energy = state.current_energy
+            for _ in range(days_rest):
+                energy += (state.max_energy - energy) * rate
+            state.current_energy = max(0.0, min(state.max_energy, energy))
+
+            # Cap slow regeneration
+            state.max_energy = min(1.0, state.max_energy + 0.003 * days_rest)
+
+            # state.current_energy = _apply_recovery(
+            #     state.current_energy, days_rest, durability
+            # )
 
         return state
 
-    def days_until_ready(
-        self,
-        player_id: str,
-        game_date: date,
-        durability: int = 50,
-        threshold: float = MIN_ENERGY_AVAILABLE,
-    ) -> int:
-        """
-        How many more rest days until the player meets the energy threshold.
+    # THIS CODE IS NOT USED, BUT MAY BE USEFULE
+    # def days_until_ready(
+    #     self,
+    #     player_id: str,
+    #     game_date: date,
+    #     durability: int = 50,
+    #     threshold: float = MIN_ENERGY_AVAILABLE,
+    # ) -> int:
+    #     """
+    #     How many more rest days until the player meets the energy threshold.
 
-        Returns 0 if they are already ready.
+    #     Returns 0 if they are already ready.
 
-        Args:
-            player_id:  Player's unique ID.
-            game_date:  Reference date (current sim date).
-            durability: Player's durability skill [1-100].
-            threshold:  Minimum energy to be considered available.
-        """
-        state = self.get_with_recovery(player_id, game_date, durability)
-        energy = state.current_energy
+    #     Args:
+    #         player_id:  Player's unique ID.
+    #         game_date:  Reference date (current sim date).
+    #         durability: Player's durability skill [1-100].
+    #         threshold:  Minimum energy to be considered available.
+    #     """
+    #     state = self.get_with_recovery(player_id, game_date, durability)
+    #     energy = state.current_energy
 
-        if energy >= threshold:
-            return 0
+    #     if energy >= threshold:
+    #         return 0
 
-        rate = _daily_recovery_rate(durability)
-        days = 0
-        while energy < threshold and days < 365:
-            energy += (1.0 - energy) * rate
-            days += 1
+    #     rate = _daily_recovery_rate(durability)
+    #     days = 0
+    #     while energy < threshold and days < 365:
+    #         energy += (1.0 - energy) * rate
+    #         days += 1
 
-        return days
+    #     return days
 
     def get_players_needing_rest(
         self,
@@ -309,10 +323,11 @@ class PlayerEnergyRepository:
         cursor.execute(
             """
             INSERT INTO player_energy
-                (player_id, current_energy, last_game_date, consecutive_days, season_games_played)
-            VALUES (?, ?, ?, ?, ?)
+                (player_id, current_energy, max_energy, last_game_date, consecutive_days, season_games_played)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(player_id) DO UPDATE SET
                 current_energy       = excluded.current_energy,
+                max_energy           = excluded.max_energy,
                 last_game_date       = excluded.last_game_date,
                 consecutive_days     = excluded.consecutive_days,
                 season_games_played  = excluded.season_games_played
@@ -320,6 +335,7 @@ class PlayerEnergyRepository:
             (
                 state.player_id,
                 energy,
+                state.max_energy,
                 last_game_date_str,
                 state.consecutive_days,
                 state.season_games_played,
@@ -331,6 +347,7 @@ class PlayerEnergyRepository:
         self,
         player_id: str,
         final_energy: float,
+        max_energy: float,
         consecutive_days: int,
         season_games_played: int,
         game_date: date,
@@ -352,6 +369,7 @@ class PlayerEnergyRepository:
             PlayerEnergyState(
                 player_id=player_id,
                 current_energy=final_energy,
+                max_energy=max_energy,
                 last_game_date=game_date,
                 consecutive_days=consecutive_days,
                 season_games_played=season_games_played,

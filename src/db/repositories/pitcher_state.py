@@ -50,6 +50,9 @@ _DAYS_AT_SKILL_MIN = 5.0  # recovery = 1
 
 MIN_ENERGY_STARTER = 0.75
 
+# Cap: slow passive regeneration
+CAP_REGEN_PER_DAY = 0.004
+
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
@@ -112,28 +115,6 @@ def availability_weight(state: PitcherState, game_date: date) -> float:
     return max(0.05, days_rest / days_needed)
 
 
-# def availability_weight(state: "PitcherState | None", game_date: date) -> float:
-#     """
-#     Selection weight based on days of rest since last appearance.
-
-#     0 days rest : 0.05  — emergency only
-#     1 day rest  : 0.35  — light use
-#     2 days rest : 0.75  — available
-#     3+ days rest: 1.00  — fresh, preferred
-#     No history  : 1.00  — treat as fully rested
-#     """
-#     if state is None or state.last_game_date is None:
-#         return 1.0
-
-#     days_rest = (game_date - state.last_game_date).days
-#     if days_rest <= 0:
-#         return 0.05
-#     if days_rest == 1:
-#         return 0.35
-#     if days_rest == 2:
-#         return 0.75
-#     return 1.0
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -145,6 +126,7 @@ class PitcherState:
 
     player_id: str
     current_energy: float
+    max_energy: float
     last_game_date: Optional[date] = None
     last_pitch_count: Optional[int] = None
     consecutive_days: int = 0
@@ -186,7 +168,7 @@ class PitcherStateRepository:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT player_id, current_energy, last_game_date, last_pitch_count, consecutive_days
+            SELECT player_id, current_energy, max_energy, last_game_date, last_pitch_count, consecutive_days
             FROM pitcher_state
             WHERE player_id = ?
             """,
@@ -197,15 +179,16 @@ class PitcherStateRepository:
             return None
 
         last_game_date = None
-        if row[2]:
-            last_game_date = datetime.fromisoformat(row[2]).date()
+        if row[3]:
+            last_game_date = datetime.fromisoformat(row[3]).date()
 
         return PitcherState(
             player_id=row[0],
             current_energy=row[1],
+            max_energy=row[2],
             last_game_date=last_game_date,
-            last_pitch_count=row[3],
-            consecutive_days=row[4] or 0,
+            last_pitch_count=row[4],
+            consecutive_days=row[5] or 0,
         )
 
     def get_with_recovery(
@@ -234,6 +217,7 @@ class PitcherStateRepository:
             return PitcherState(
                 player_id=player_id,
                 current_energy=1.0,
+                max_energy=1.0,
             )
 
         if not state.last_game_date:
@@ -241,6 +225,16 @@ class PitcherStateRepository:
             return state
 
         days_rest = (game_date - state.last_game_date).days
+
+        # Energy: exponential approach toward max_energy (not 1.0)
+        rate = _daily_recovery_rate(recovery_skill)
+        energy = state.current_energy
+        for _ in range(days_rest):
+            energy += (state.max_energy - energy) * rate
+        state.current_energy = max(0.0, min(state.max_energy, energy))
+
+        # Cap: slow passive regeneration
+        state.max_energy = min(1.0, state.max_energy + (CAP_REGEN_PER_DAY * days_rest))
 
         if days_rest < 0:
             logger.warning(
@@ -257,37 +251,38 @@ class PitcherStateRepository:
         )
         return state
 
-    def days_until_ready(
-        self,
-        player_id: str,
-        game_date: date,
-        recovery_skill: int = 50,
-        threshold: float = MIN_ENERGY_STARTER,
-    ) -> int:
-        """
-        How many more days until this pitcher meets the energy threshold.
+    # THIS CODE IS NOT USED, BUT MAY BE USEFULE
+    # def days_until_ready(
+    #     self,
+    #     player_id: str,
+    #     game_date: date,
+    #     recovery_skill: int = 50,
+    #     threshold: float = MIN_ENERGY_STARTER,
+    # ) -> int:
+    #     """
+    #     How many more days until this pitcher meets the energy threshold.
 
-        Returns 0 if they are already ready.
+    #     Returns 0 if they are already ready.
 
-        Args:
-            player_id:      Player's unique ID.
-            game_date:      Reference date (usually today in the sim).
-            recovery_skill: Pitcher's recovery skill [1-100].
-            threshold:      Minimum energy to be considered ready (default 0.75).
-        """
-        state = self.get_with_recovery(player_id, game_date, recovery_skill)
-        energy = state.current_energy
+    #     Args:
+    #         player_id:      Player's unique ID.
+    #         game_date:      Reference date (usually today in the sim).
+    #         recovery_skill: Pitcher's recovery skill [1-100].
+    #         threshold:      Minimum energy to be considered ready (default 0.75).
+    #     """
+    #     state = self.get_with_recovery(player_id, game_date, recovery_skill)
+    #     energy = state.current_energy
 
-        if energy >= threshold:
-            return 0
+    #     if energy >= threshold:
+    #         return 0
 
-        rate = _daily_recovery_rate(recovery_skill)
-        days = 0
-        while energy < threshold and days < 365:
-            energy += (1.0 - energy) * rate
-            days += 1
+    #     rate = _daily_recovery_rate(recovery_skill)
+    #     days = 0
+    #     while energy < threshold and days < 365:
+    #         energy += (1.0 - energy) * rate
+    #         days += 1
 
-        return days
+    #     return days
 
     def get_available_pitchers(
         self,
@@ -366,6 +361,7 @@ class PitcherStateRepository:
         self,
         player_id: str,
         final_energy: float,
+        max_energy: float,
         pitch_count: int,
         game_date: date,
     ) -> None:
@@ -400,6 +396,7 @@ class PitcherStateRepository:
             PitcherState(
                 player_id=player_id,
                 current_energy=final_energy,
+                max_energy=max_energy,
                 last_game_date=game_date,
                 last_pitch_count=pitch_count,
                 consecutive_days=consecutive_days,
