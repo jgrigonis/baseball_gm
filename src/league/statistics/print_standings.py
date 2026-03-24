@@ -87,13 +87,6 @@ def print_standings(db_path: Path, season_id: str, logger: logging.Logger = None
 
     sorted_rows = sort_standings(conn, season_id, [dict(r) for r in rows])
 
-    # print("\n" + "=" * 60)
-    # print(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
-    # print("=" * 60)
-    # for row in sorted_rows:
-    #     print(f"{row['team_name']:<30} {row['wins']:>5} {row['losses']:>5} {row['win_pct']:>7.3f} {row['runs_scored']:>6}")
-    # print("=" * 60 + "\n")
-
     lines = []
     lines.append("\n" + "=" * 60)
     lines.append(f"{'TEAM':<30} {'W':>5} {'L':>5} {'PCT':>7} {'RS':>6}")
