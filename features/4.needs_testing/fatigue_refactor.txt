@@ -68,3 +68,45 @@ ALTER TABLE pitcher_state ADD COLUMN max_energy REAL NOT NULL DEFAULT 1.0;
 Both values reset to 1.0 at season start. The cap's slow 150-day regeneration 
 means a September callup arrives fresh, while the workhorse who threw 200 IP is 
 running on fumes — exactly the right behavior.
+
+
+Updated approach:
+
+# Stamina-adjusted thresholds
+def _cap_damage_threshold(stamina: int) -> int:
+    return 20 + (stamina // 5)          # ST=50 → 30, ST=100 → 40, ST=1 → 20
+
+def _cap_damage_heavy(stamina: int) -> int:
+    return _cap_damage_threshold(stamina) + 30   # always 30 above threshold
+
+
+def degrade_cap(self, pitch_count: int, stamina: int) -> None:
+    threshold = _cap_damage_threshold(stamina)
+    heavy = _cap_damage_heavy(stamina)
+
+    if pitch_count < threshold:
+        return
+
+    if pitch_count < heavy:
+        excess = pitch_count - threshold
+        base_damage = excess * 0.0008
+    else:
+        excess = pitch_count - threshold
+        base_damage = excess * 0.0018
+
+    stamina_factor = 1.0 - (stamina / 100) * 0.5
+    damage = base_damage * stamina_factor
+    self.max_energy = max(0.25, self.max_energy - damage)
+
+
+def recover(self, days_rest: int, recovery: int) -> None:
+    # Energy: exponential approach toward cap — keeps existing behavior
+    rate = _daily_recovery_rate(recovery)   # existing function from pitcher_state.py
+    energy = self.energy
+    for _ in range(days_rest):
+        energy += (self.max_energy - energy) * rate   # ← approaches cap, not 1.0
+    self.energy = max(0.0, min(self.max_energy, energy))
+
+    # Cap: slow passive regeneration (~250 days 0.25→1.0, adjust constant to taste)
+    cap_regen_per_day = 0.004
+    self.max_energy = min(1.0, self.max_energy + (cap_regen_per_day * days_rest))
