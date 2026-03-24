@@ -2,6 +2,7 @@
 import argparse
 import csv
 import datetime
+import logging
 from pathlib import Path
 import random
 
@@ -15,6 +16,7 @@ from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft
 from src.util.locations import TEAM_FILES_DIR
+from src.util.logger import setup_logger
 
 
 class OffseasonPipeline:
@@ -375,8 +377,17 @@ def main():
     args = get_args()
     conn = get_connection(args.db)
 
+    offseason_logger = setup_logger(
+        name="offseason",
+        level=logging.INFO,
+        console_level=logging.WARNING,
+        log_id="offseason",
+        log_to_file=True,
+    )
+
     seed = args.seed if args.seed is not None else random.randint(0, 999999)
     print(f"🎲 Seed: {seed}")
+    offseason_logger.info(f"🎲 Offseason seed: {seed}")
     rng = random.Random(seed)
 
     pipeline = OffseasonPipeline(conn, rng)
