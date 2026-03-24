@@ -12,6 +12,7 @@ import traceback
 
 from src.db.connection import get_connection
 from src.db.repositories import bullpen_roles_repo
+from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
@@ -51,6 +52,7 @@ def clear_game_data(conn, game_id: str):
     conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,))
+    conn.execute("DELETE FROM game_lineup_slots WHERE game_id = ?", (game_id,))
     conn.execute(
         """
         UPDATE games 
@@ -217,11 +219,13 @@ def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
     pitcher_repo = PitcherStateRepository(conn)
     for player in home_team.players + away_team.players:
         if player.game_stats.pitching.pitch_count > 0:
+            player.pitcher_fatigue.degrade_cap(player.game_stats.pitching.pitch_count)
             pitcher_repo.update_after_game(
                 player_id=player.id,
                 final_energy=player.pitcher_fatigue.energy,
+                max_energy=player.pitcher_fatigue.max_energy,
                 pitch_count=player.game_stats.pitching.pitch_count,
-                game_date=game_date,  # Same date from the game record
+                game_date=game_date,
             )
 
 
@@ -348,6 +352,14 @@ def play_game(
         injured_ids=injured_ids,
     )
 
+    # DEBUG PRINT
+    for player in home_team.position_players + away_team.position_players:
+        state = player_energy_states.get(player.id)
+        if player.player_energy and player.player_energy.energy < 0.40:
+            print(
+                f"  TIRED: {player.name} energy={player.player_energy.energy:.3f} DU={player.skills.get('durability')}"
+            )
+
     # Pass starter IDs to set_lineup
     home_team.set_lineup(
         starting_pitcher_id=home_starter_id,
@@ -358,6 +370,14 @@ def play_game(
         starting_pitcher_id=away_starter_id,
         dh=True,
         injured_ids=injured_ids,
+    )
+
+    lineup_repo = LineupRepository(conn)
+    lineup_repo.save_lineup(
+        game_info["game_id"], home_record.id, home_team.lineup, home_team.pitcher
+    )
+    lineup_repo.save_lineup(
+        game_info["game_id"], away_record.id, away_team.lineup, away_team.pitcher
     )
 
     # DEBUG
@@ -437,6 +457,19 @@ def play_game(
         result.away_score,
     )
     save_player_stats(conn, game_info["game_id"], home_team, away_team)
+
+    # Sync post-game fatigue back to energy states
+    for player in home_team.position_players + away_team.position_players:
+        fatigue = player.player_energy
+        if not fatigue:
+            continue
+        state = player_energy_states.get(player.id)
+        if state:
+            state.current_energy = fatigue.energy
+            state.max_energy = fatigue.max_energy
+            state.consecutive_days = fatigue.consecutive_days
+            state.season_games_played = fatigue.season_games_played
+            state.last_game_date = game_date
 
     save_energy(conn, game_date, home_team, away_team)
     save_position_energy(conn, player_energy_states)
