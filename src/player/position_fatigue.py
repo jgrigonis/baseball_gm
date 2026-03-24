@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
+from src.db.repositories.player_energy import _daily_recovery_rate
+
 
 class FatigueLevel(Enum):
     FRESH = "fresh"
@@ -41,6 +43,7 @@ class PositionPlayerFatigue:
 
     position: str = "LF"
     energy: float = 1.0  # 1.0 = fresh, 0.0 = exhausted
+    max_energy: float = 1.0
     durability: int = 50  # Player attribute, like stamina for pitchers
 
     # In-season tracking
@@ -118,17 +121,31 @@ class PositionPlayerFatigue:
         self.energy = max(0.0, self.energy - drain)
         self.consecutive_days += 1
         self.season_games_played += 1
+        self.degrade_cap()
+
+    def degrade_cap(self) -> None:
+        """Degrade seasonal ceiling based on accumulated workload."""
+        # Only starts biting after 100 games
+        if self.season_games_played < 100:
+            return
+        excess = self.season_games_played - 100
+        # Light damage 100-140 games, heavier above 140
+        if self.season_games_played < 140:
+            damage = excess * 0.0004 * (50 / self.durability)
+        else:
+            damage = excess * 0.0008 * (50 / self.durability)
+        self.max_energy = max(0.50, self.max_energy - damage)
 
     def rest_day(self, days: int = 1) -> None:
         """
         Recover energy on a day off. Consecutive rest days recover less
         (diminishing returns — first day of rest does the most work).
+        Exponential recovery toward max_energy (not 1.0).
         """
+        rate = _daily_recovery_rate(self.durability)
         for _ in range(days):
-            deficit = 1.0 - self.energy
-            recovery = deficit * REST_RECOVERY_RATE
-            self.energy = min(1.0, self.energy + recovery)
-
+            self.energy += (self.max_energy - self.energy) * rate
+        self.energy = max(0.0, min(self.max_energy, self.energy))
         self.consecutive_days = 0
 
     def end_season(self) -> None:
@@ -161,4 +178,4 @@ class PositionPlayerFatigue:
 
     def set_energy(self, level: float) -> None:
         """Directly set energy (e.g. for testing or IL return)."""
-        self.energy = max(0.0, min(1.0, level))
+        self.energy = max(0.0, min(self.max_energy, level))
