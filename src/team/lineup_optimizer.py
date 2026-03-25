@@ -143,7 +143,7 @@ class LineupOptimizer:
 
         if dh:
             nine = max(
-                pool, key=lambda p: (p.ratings.get("speed_runner", 0), p.record.id)
+                pool, key=lambda p: (p.ratings.get("lead_off", 0), p.record.id)
             )
             order.append(nine)
 
@@ -257,7 +257,7 @@ class LineupOptimizer:
 
         if dh:
             nine = max(
-                hitters, key=lambda p: (p.ratings.get("speed_runner", 0), p.record.id)
+                hitters, key=lambda p: (p.ratings.get("lead_off", 0), p.record.id)
             )
         else:
             nine = None
