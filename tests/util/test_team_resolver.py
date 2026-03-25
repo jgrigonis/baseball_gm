@@ -10,8 +10,8 @@ import pytest
 
 from src.util.team_resolver import resolve_team, list_teams, TeamResolverError
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def conn():
@@ -28,13 +28,13 @@ def conn():
     db.executemany(
         "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
         [
-            ("uuid-vienna",   "Vienna",      "Maestros"),
-            ("uuid-tokyo",    "Tokyo",       "Samurai"),
-            ("uuid-dubai",    "Dubai",       "Falcons"),
-            ("uuid-london",   "London",      "Lions"),
+            ("uuid-vienna", "Vienna", "Maestros"),
+            ("uuid-tokyo", "Tokyo", "Samurai"),
+            ("uuid-dubai", "Dubai", "Falcons"),
+            ("uuid-london", "London", "Lions"),
             # Two teams sharing a mascot — for ambiguity tests
-            ("uuid-berlin",   "Berlin",      "Eagles"),
-            ("uuid-frankfurt","Frankfurt",   "Eagles"),
+            ("uuid-berlin", "Berlin", "Eagles"),
+            ("uuid-frankfurt", "Frankfurt", "Eagles"),
         ],
     )
     db.commit()
@@ -44,6 +44,7 @@ def conn():
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def assert_team(result, expected_id, expected_city, expected_mascot):
     assert result["id"] == expected_id
     assert result["city"] == expected_city
@@ -52,6 +53,7 @@ def assert_team(result, expected_id, expected_city, expected_mascot):
 
 
 # ── UUID lookup ───────────────────────────────────────────────────────────────
+
 
 def test_resolve_by_exact_uuid(conn):
     result = resolve_team(conn, "uuid-vienna")
@@ -64,6 +66,7 @@ def test_resolve_by_uuid_unknown(conn):
 
 
 # ── Full name lookup ──────────────────────────────────────────────────────────
+
 
 def test_resolve_by_full_name(conn):
     result = resolve_team(conn, "Vienna Maestros")
@@ -82,6 +85,7 @@ def test_resolve_by_full_name_mixed_case(conn):
 
 # ── City-only lookup ──────────────────────────────────────────────────────────
 
+
 def test_resolve_by_city(conn):
     result = resolve_team(conn, "Tokyo")
     assert_team(result, "uuid-tokyo", "Tokyo", "Samurai")
@@ -93,6 +97,7 @@ def test_resolve_by_city_case_insensitive(conn):
 
 
 # ── Mascot-only lookup ────────────────────────────────────────────────────────
+
 
 def test_resolve_by_mascot(conn):
     result = resolve_team(conn, "Falcons")
@@ -112,6 +117,7 @@ def test_resolve_by_mascot_ambiguous(conn):
 
 # ── Partial match ─────────────────────────────────────────────────────────────
 
+
 def test_resolve_by_partial_city(conn):
     result = resolve_team(conn, "Vien")
     assert_team(result, "uuid-vienna", "Vienna", "Maestros")
@@ -130,6 +136,7 @@ def test_resolve_by_partial_ambiguous(conn):
 
 # ── No match ──────────────────────────────────────────────────────────────────
 
+
 def test_resolve_no_match(conn):
     with pytest.raises(TeamResolverError, match="No team found"):
         resolve_team(conn, "Sydney")
@@ -143,6 +150,7 @@ def test_resolve_empty_string(conn):
 
 # ── Return shape ──────────────────────────────────────────────────────────────
 
+
 def test_result_has_all_keys(conn):
     result = resolve_team(conn, "Dubai")
     assert set(result.keys()) == {"id", "city", "mascot", "name"}
@@ -154,6 +162,7 @@ def test_name_is_city_space_mascot(conn):
 
 
 # ── list_teams ────────────────────────────────────────────────────────────────
+
 
 def test_list_teams_returns_all(conn):
     teams = list_teams(conn)
@@ -173,6 +182,7 @@ def test_list_teams_have_name_key(conn):
 
 
 # ── Whitespace handling ───────────────────────────────────────────────────────
+
 
 def test_resolve_strips_whitespace(conn):
     result = resolve_team(conn, "  Vienna  ")

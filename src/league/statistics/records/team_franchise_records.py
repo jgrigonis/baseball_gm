@@ -38,6 +38,7 @@ DEFAULT_DB = os.path.join(LEAGUE_FILES_DIR, "league.db")
 
 # ── Formatting ────────────────────────────────────────────────────────────────
 
+
 def fmt_ip(outs):
     if outs is None:
         return "0.0"
@@ -57,15 +58,19 @@ def print_game_record(label, rows, value_label, team_col=True):
           (date, season, value, innings)         when team_col=False
     """
     if not rows:
-        print(f"\n  {label}: (no data)")
+        # print(f"\n  {label}: (no data)")
         return
     print(f"\n  {label}")
     if team_col:
-        print(f"  {'#':<4} {'Team':<26} {'Date':<12} {'Season':<7} {value_label:<8} {'Inn'}")
+        print(
+            f"  {'#':<4} {'Team':<26} {'Date':<12} {'Season':<7} {value_label:<8} {'Inn'}"
+        )
         print(f"  {'-'*4} {'-'*26} {'-'*12} {'-'*7} {'-'*8} {'-'*4}")
         for i, row in enumerate(rows, 1):
             team, date, season, value, innings = row
-            print(f"  {i:<4} {team:<26} {date:<12} {season:<7} {str(value):<8} {innings}")
+            print(
+                f"  {i:<4} {team:<26} {date:<12} {season:<7} {str(value):<8} {innings}"
+            )
     else:
         print(f"  {'#':<4} {'Date':<12} {'Season':<7} {value_label:<8} {'Inn'}")
         print(f"  {'-'*4} {'-'*12} {'-'*7} {'-'*8} {'-'*4}")
@@ -131,57 +136,61 @@ TOTAL_BASES_EXPR = (
 
 # Batting stats aggregated from player_game_stats by team+game
 GAME_BAT_RECORDS = [
-    ("Most Hits",         "SUM(pgs.bat_hits)",           "H"),
-    ("Most Doubles",      "SUM(pgs.bat_doubles)",        "2B"),
-    ("Most Triples",      "SUM(pgs.bat_triples)",        "3B"),
-    ("Most Home Runs",    "SUM(pgs.bat_home_runs)",      "HR"),
-    ("Most Runs",         "SUM(pgs.bat_runs)",           "R"),
-    ("Most Walks",        "SUM(pgs.bat_walks)",          "BB"),
-    ("Most Stolen Bases", "SUM(pgs.bat_stolen_bases)",   "SB"),
-    ("Most RBI",          "SUM(pgs.bat_rbi)",            "RBI"),
-    ("Most Strikeouts",   "SUM(pgs.bat_strike_outs)",    "K"),
-    ("Most Total Bases",  TOTAL_BASES_EXPR,              "TB"),
+    ("Most Hits", "SUM(pgs.bat_hits)", "H"),
+    ("Most Doubles", "SUM(pgs.bat_doubles)", "2B"),
+    ("Most Triples", "SUM(pgs.bat_triples)", "3B"),
+    ("Most Home Runs", "SUM(pgs.bat_home_runs)", "HR"),
+    ("Most Runs", "SUM(pgs.bat_runs)", "R"),
+    ("Most Walks", "SUM(pgs.bat_walks)", "BB"),
+    ("Most Stolen Bases", "SUM(pgs.bat_stolen_bases)", "SB"),
+    ("Most RBI", "SUM(pgs.bat_rbi)", "RBI"),
+    ("Most Strikeouts", "SUM(pgs.bat_strike_outs)", "K"),
+    ("Most Total Bases", TOTAL_BASES_EXPR, "TB"),
 ]
 
 GAME_PITCH_RECORDS = [
-    ("Most K (pitching)",  "SUM(pgs.pitch_strike_outs)", "K"),
-    ("Most BB Allowed",    "SUM(pgs.pitch_walks)",       "BB"),
-    ("Most HR Allowed",    "SUM(pgs.pitch_home_runs)",   "HR"),
-    ("Most Hits Allowed",  "SUM(pgs.pitch_hits)",        "H"),
+    ("Most K (pitching)", "SUM(pgs.pitch_strike_outs)", "K"),
+    ("Most BB Allowed", "SUM(pgs.pitch_walks)", "BB"),
+    ("Most HR Allowed", "SUM(pgs.pitch_home_runs)", "HR"),
+    ("Most Hits Allowed", "SUM(pgs.pitch_hits)", "H"),
 ]
 
 SEASON_BAT_RECORDS = [
-    ("Most Hits",         "SUM(pss.bat_hits)",           "H"),
-    ("Most Doubles",      "SUM(pss.bat_doubles)",        "2B"),
-    ("Most Triples",      "SUM(pss.bat_triples)",        "3B"),
-    ("Most Home Runs",    "SUM(pss.bat_home_runs)",      "HR"),
-    ("Most Runs",         "SUM(pss.bat_runs)",           "R"),
-    ("Most Walks",        "SUM(pss.bat_walks)",          "BB"),
-    ("Most Stolen Bases", "SUM(pss.bat_stolen_bases)",   "SB"),
-    ("Most RBI",          "SUM(pss.bat_rbi)",            "RBI"),
-    ("Most Strikeouts",   "SUM(pss.bat_strike_outs)",    "K"),
-    ("Most Total Bases",
+    ("Most Hits", "SUM(pss.bat_hits)", "H"),
+    ("Most Doubles", "SUM(pss.bat_doubles)", "2B"),
+    ("Most Triples", "SUM(pss.bat_triples)", "3B"),
+    ("Most Home Runs", "SUM(pss.bat_home_runs)", "HR"),
+    ("Most Runs", "SUM(pss.bat_runs)", "R"),
+    ("Most Walks", "SUM(pss.bat_walks)", "BB"),
+    ("Most Stolen Bases", "SUM(pss.bat_stolen_bases)", "SB"),
+    ("Most RBI", "SUM(pss.bat_rbi)", "RBI"),
+    ("Most Strikeouts", "SUM(pss.bat_strike_outs)", "K"),
+    (
+        "Most Total Bases",
         "(SUM(pss.bat_hits) - SUM(pss.bat_doubles) - SUM(pss.bat_triples) - SUM(pss.bat_home_runs))"
         " + (2 * SUM(pss.bat_doubles))"
         " + (3 * SUM(pss.bat_triples))"
         " + (4 * SUM(pss.bat_home_runs))",
-        "TB"),
+        "TB",
+    ),
 ]
 
 SEASON_PITCH_RECORDS = [
-    ("Most K (pitching)",  "SUM(pss.pitch_strike_outs)", "K"),
-    ("Most Wins",          "SUM(pss.pitch_wins)",         "W"),
-    ("Most Saves",         "SUM(pss.pitch_saves)",        "SV"),
-    ("Most BB Allowed",    "SUM(pss.pitch_walks)",        "BB"),
-    ("Most HR Allowed",    "SUM(pss.pitch_home_runs)",    "HR"),
-    ("Most Hits Allowed",  "SUM(pss.pitch_hits)",         "H"),
+    ("Most K (pitching)", "SUM(pss.pitch_strike_outs)", "K"),
+    ("Most Wins", "SUM(pss.pitch_wins)", "W"),
+    ("Most Saves", "SUM(pss.pitch_saves)", "SV"),
+    ("Most BB Allowed", "SUM(pss.pitch_walks)", "BB"),
+    ("Most HR Allowed", "SUM(pss.pitch_home_runs)", "HR"),
+    ("Most Hits Allowed", "SUM(pss.pitch_hits)", "H"),
 ]
 
 
 # ── Single-game queries ───────────────────────────────────────────────────────
 
-def game_records_query(conn, args, agg_expr, team_id=None,
-                       pitching=False, innings_filter=None, top=5):
+
+def game_records_query(
+    conn, args, agg_expr, team_id=None, pitching=False, innings_filter=None, top=5
+):
     """
     Best single-game team performance for a given aggregated stat.
     Returns (team_name, date, season, value, innings).
@@ -247,8 +256,9 @@ def get_game_9inn_best(conn, args, agg_expr, team_id=None, pitching=False):
     return row[0] if row else None
 
 
-def game_records_extra_query(conn, args, agg_expr, nine_best,
-                              team_id=None, pitching=False, top=5):
+def game_records_extra_query(
+    conn, args, agg_expr, nine_best, team_id=None, pitching=False, top=5
+):
     """Extra-inning game records that beat the 9-inning best."""
     clauses = ["g.completed = 1", "g.innings_played > 9"]
     params = []
@@ -285,8 +295,10 @@ def game_records_extra_query(conn, args, agg_expr, nine_best,
 
 # ── Season queries ────────────────────────────────────────────────────────────
 
-def season_records_query(conn, args, agg_expr, team_id=None,
-                          bat_or_pitch="bat", top=5, fmt_fn=None):
+
+def season_records_query(
+    conn, args, agg_expr, team_id=None, bat_or_pitch="bat", top=5, fmt_fn=None
+):
     """
     Best single-season team total for a stat.
     Returns (team_name, season_year, value).
@@ -318,8 +330,10 @@ def season_records_query(conn, args, agg_expr, team_id=None,
 
 # ── Series queries ────────────────────────────────────────────────────────────
 
-def series_records_query(conn, args, agg_expr, team_id=None,
-                          pitching=False, top=5, fmt_fn=None):
+
+def series_records_query(
+    conn, args, agg_expr, team_id=None, pitching=False, top=5, fmt_fn=None
+):
     """
     Best team total across an entire playoff series.
     Returns (team_name, series_name, season_year, value).
@@ -357,14 +371,16 @@ def series_records_query(conn, args, agg_expr, team_id=None,
 
 # ── Section runners ───────────────────────────────────────────────────────────
 
+
 def run_game_records(args, conn, team_id):
     team_col = team_id is None
 
     def run_batting_9inn():
         print_section("TEAM SINGLE GAME — BATTING (9 INNINGS)")
         for name, expr, val_label in GAME_BAT_RECORDS:
-            raw = game_records_query(conn, args, expr, team_id,
-                                     innings_filter=9, top=args.top)
+            raw = game_records_query(
+                conn, args, expr, team_id, innings_filter=9, top=args.top
+            )
             if team_col:
                 rows = [(t, d, str(s), str(v), inn) for t, d, s, v, inn in raw]
             else:
@@ -375,8 +391,9 @@ def run_game_records(args, conn, team_id):
         print_section("TEAM SINGLE GAME — BATTING (EXTRA INNINGS 10+)")
         for name, expr, val_label in GAME_BAT_RECORDS:
             nine_best = get_game_9inn_best(conn, args, expr, team_id)
-            raw = game_records_extra_query(conn, args, expr, nine_best,
-                                           team_id, top=args.top)
+            raw = game_records_extra_query(
+                conn, args, expr, nine_best, team_id, top=args.top
+            )
             if team_col:
                 rows = [(t, d, str(s), str(v), inn) for t, d, s, v, inn in raw]
             else:
@@ -386,8 +403,9 @@ def run_game_records(args, conn, team_id):
     def run_pitching_9inn():
         print_section("TEAM SINGLE GAME — PITCHING (9 INNINGS)")
         for name, expr, val_label in GAME_PITCH_RECORDS:
-            raw = game_records_query(conn, args, expr, team_id, pitching=True,
-                                     innings_filter=9, top=args.top)
+            raw = game_records_query(
+                conn, args, expr, team_id, pitching=True, innings_filter=9, top=args.top
+            )
             if team_col:
                 rows = [(t, d, str(s), str(v), inn) for t, d, s, v, inn in raw]
             else:
@@ -397,10 +415,10 @@ def run_game_records(args, conn, team_id):
     def run_pitching_extra():
         print_section("TEAM SINGLE GAME — PITCHING (EXTRA INNINGS 10+)")
         for name, expr, val_label in GAME_PITCH_RECORDS:
-            nine_best = get_game_9inn_best(conn, args, expr, team_id,
-                                           pitching=True)
-            raw = game_records_extra_query(conn, args, expr, nine_best,
-                                           team_id, pitching=True, top=args.top)
+            nine_best = get_game_9inn_best(conn, args, expr, team_id, pitching=True)
+            raw = game_records_extra_query(
+                conn, args, expr, nine_best, team_id, pitching=True, top=args.top
+            )
             if team_col:
                 rows = [(t, d, str(s), str(v), inn) for t, d, s, v, inn in raw]
             else:
@@ -417,10 +435,13 @@ def run_season_records(args, conn, team_id):
     team_col = team_id is None
 
     # Check rollup table available
-    has_rollup = conn.execute(
-        "SELECT COUNT(*) FROM sqlite_master"
-        " WHERE type='table' AND name='player_season_stats'"
-    ).fetchone()[0] > 0
+    has_rollup = (
+        conn.execute(
+            "SELECT COUNT(*) FROM sqlite_master"
+            " WHERE type='table' AND name='player_season_stats'"
+        ).fetchone()[0]
+        > 0
+    )
 
     if not has_rollup:
         print("\n  (Season records unavailable — run build_season_stats.py --rebuild)")
@@ -428,25 +449,31 @@ def run_season_records(args, conn, team_id):
 
     print_section("TEAM SEASON — BATTING RECORDS")
     for name, expr, val_label in SEASON_BAT_RECORDS:
-        rows = season_records_query(conn, args, expr, team_id,
-                                    bat_or_pitch="bat", top=args.top)
+        rows = season_records_query(
+            conn, args, expr, team_id, bat_or_pitch="bat", top=args.top
+        )
         if not team_col:
             rows = [(s, v) for _, s, v in rows]
         print_season_record(name, rows, val_label, team_col=team_col)
 
     print_section("TEAM SEASON — PITCHING RECORDS")
     for name, expr, val_label in SEASON_PITCH_RECORDS:
-        rows = season_records_query(conn, args, expr, team_id,
-                                    bat_or_pitch="pitch", top=args.top)
+        rows = season_records_query(
+            conn, args, expr, team_id, bat_or_pitch="pitch", top=args.top
+        )
         if not team_col:
             rows = [(s, v) for _, s, v in rows]
         print_season_record(name, rows, val_label, team_col=team_col)
 
     # IP
     rows = season_records_query(
-        conn, args, "SUM(pss.pitch_outs)", team_id,
-        bat_or_pitch="pitch", top=args.top,
-        fmt_fn=lambda v: fmt_ip(int(v)) if v else "—"
+        conn,
+        args,
+        "SUM(pss.pitch_outs)",
+        team_id,
+        bat_or_pitch="pitch",
+        top=args.top,
+        fmt_fn=lambda v: fmt_ip(int(v)) if v else "—",
     )
     if not team_col:
         rows = [(s, v) for _, s, v in rows]
@@ -465,17 +492,22 @@ def run_series_records(args, conn, team_id):
 
     print_section("TEAM SERIES — PITCHING RECORDS")
     for name, expr, val_label in GAME_PITCH_RECORDS:
-        rows = series_records_query(conn, args, expr, team_id,
-                                    pitching=True, top=args.top)
+        rows = series_records_query(
+            conn, args, expr, team_id, pitching=True, top=args.top
+        )
         if not team_col:
             rows = [(sn, s, v) for _, sn, s, v in rows]
         print_series_record(name, rows, val_label, team_col=team_col)
 
     # IP in series
     rows = series_records_query(
-        conn, args, "SUM(pgs.pitch_outs)", team_id,
-        pitching=True, top=args.top,
-        fmt_fn=lambda v: fmt_ip(int(v)) if v else "—"
+        conn,
+        args,
+        "SUM(pgs.pitch_outs)",
+        team_id,
+        pitching=True,
+        top=args.top,
+        fmt_fn=lambda v: fmt_ip(int(v)) if v else "—",
     )
     if not team_col:
         rows = [(sn, s, v) for _, sn, s, v in rows]
@@ -484,41 +516,38 @@ def run_series_records(args, conn, team_id):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Team franchise records — single game, season, and series"
     )
     parser.add_argument(
-        "--db", default=DEFAULT_DB,
-        help=f"Path to SQLite database (default: {DEFAULT_DB})"
+        "--db",
+        default=DEFAULT_DB,
+        help=f"Path to SQLite database (default: {DEFAULT_DB})",
     )
     parser.add_argument(
-        "--team", "-t",
-        help="Filter to a specific team — city, mascot, full name, or UUID"
+        "--team",
+        "-t",
+        help="Filter to a specific team — city, mascot, full name, or UUID",
+    )
+    parser.add_argument("--teams", action="store_true", help="List all teams and exit")
+    parser.add_argument(
+        "--regular-season",
+        action="store_true",
+        help="Regular season games only (excludes playoffs)",
     )
     parser.add_argument(
-        "--teams", action="store_true",
-        help="List all teams and exit"
+        "--game", action="store_true", help="Show single-game records only"
     )
     parser.add_argument(
-        "--regular-season", action="store_true",
-        help="Regular season games only (excludes playoffs)"
+        "--season", action="store_true", help="Show season records only"
     )
     parser.add_argument(
-        "--game", action="store_true",
-        help="Show single-game records only"
+        "--series", action="store_true", help="Show series records only"
     )
     parser.add_argument(
-        "--season", action="store_true",
-        help="Show season records only"
-    )
-    parser.add_argument(
-        "--series", action="store_true",
-        help="Show series records only"
-    )
-    parser.add_argument(
-        "--top", type=int, default=5,
-        help="Number of entries per record (default: 5)"
+        "--top", type=int, default=5, help="Number of entries per record (default: 5)"
     )
     args = parser.parse_args()
 
