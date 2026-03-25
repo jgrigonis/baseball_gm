@@ -15,8 +15,7 @@ def db_connection():
     conn.execute("PRAGMA foreign_keys = ON")
 
     # Create player_game_stats table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE player_game_stats (
             game_id TEXT NOT NULL,
             player_id TEXT NOT NULL,
@@ -78,12 +77,10 @@ def db_connection():
 
             PRIMARY KEY (game_id, player_id)
         )
-    """
-    )
+    """)
 
     # Create player_game_fielding table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE player_game_fielding (
             game_id   TEXT NOT NULL,
             player_id TEXT NOT NULL,
@@ -97,20 +94,17 @@ def db_connection():
             catcher_sb            INTEGER CHECK (catcher_sb >= 0),
             PRIMARY KEY (game_id, player_id, position)
         )
-    """
-    )
+    """)
 
     # Create games table for joins
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE games (
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL,
             season_id TEXT NOT NULL,
             series_id TEXT
         )
-    """
-    )
+    """)
 
     yield conn
     conn.close()

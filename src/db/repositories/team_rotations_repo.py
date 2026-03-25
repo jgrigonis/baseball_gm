@@ -148,9 +148,7 @@ class TeamRotationsRepository:
             AND (tr.end_date IS NULL OR tr.end_date > g.date)
             ORDER BY g.date DESC, g.id DESC
             LIMIT 1
-            """.format(
-                ",".join("?" * len(rotation_player_ids))
-            ),
+            """.format(",".join("?" * len(rotation_player_ids))),
             (team_id, season_id, *rotation_player_ids, current_date),
         )
 

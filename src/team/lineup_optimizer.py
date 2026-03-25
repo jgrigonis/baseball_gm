@@ -142,9 +142,7 @@ class LineupOptimizer:
         order = [leadoff, two, three, cleanup, five, six, seven, eight]
 
         if dh:
-            nine = max(
-                pool, key=lambda p: (p.ratings.get("lead_off", 0), p.record.id)
-            )
+            nine = max(pool, key=lambda p: (p.ratings.get("lead_off", 0), p.record.id))
             order.append(nine)
 
         # --- defensive assignment ---

@@ -15,7 +15,6 @@ from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season
 from src.league.team_resolver import resolve_team_id, TeamResolverError
 
-
 # ---------------------------------------------------------------------------
 # Queries
 # ---------------------------------------------------------------------------

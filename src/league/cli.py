@@ -20,7 +20,6 @@ from src.league.manifest_helper import (
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import MANIFEST_FILES_DIR
 
-
 sys.stdout.reconfigure(encoding="utf-8")
 
 

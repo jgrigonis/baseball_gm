@@ -3,7 +3,6 @@ import os
 
 from src.util.locations import MANIFEST_FILES_DIR
 
-
 BASE_FILE = "world_league-2025.json"
 NUM_FILES = 50  # how many future manifests to create
 

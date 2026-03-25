@@ -14,8 +14,7 @@ def db_connection():
     conn.execute("PRAGMA foreign_keys = ON")
 
     # Create games table
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE games (
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL,
@@ -31,8 +30,7 @@ def db_connection():
             created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT
         )
-    """
-    )
+    """)
 
     yield conn
     conn.close()

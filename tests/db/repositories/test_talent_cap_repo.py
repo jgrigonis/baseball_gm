@@ -21,8 +21,7 @@ def _make_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE player_talent_caps (
             player_id    TEXT PRIMARY KEY,
             clutch       INTEGER NOT NULL DEFAULT 100,
@@ -43,8 +42,7 @@ def _make_conn() -> sqlite3.Connection:
             ground_balls INTEGER NOT NULL DEFAULT 100,
             strikes      INTEGER NOT NULL DEFAULT 100
         )
-    """
-    )
+    """)
     conn.commit()
     return conn
 
