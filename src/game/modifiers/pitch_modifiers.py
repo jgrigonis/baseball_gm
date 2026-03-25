@@ -93,7 +93,7 @@ class PitchModifiers:
         if eye > 75:
             elite_bonus = (eye - 75) ** 1.6
             resolver.pitch_outcome.add("ball", int(6 * elite_bonus))
-            resolver.pitch_outcome.add("strike", int(-9.5 * elite_bonus))
+            resolver.pitch_outcome.add("strike", int(-9.0 * elite_bonus))
 
         contact = batter.get_effective_stat(batter.skills["contact"])
         resolver.pitch_outcome.add("strike", -19 * (contact - 50))
@@ -102,7 +102,7 @@ class PitchModifiers:
         if contact > 75:
             elite_bonus = (contact - 75) ** 1.6
             resolver.pitch_outcome.add("in_play", int(3.5 * elite_bonus))
-            resolver.pitch_outcome.add("strike", int(-12.5 * elite_bonus))
+            resolver.pitch_outcome.add("strike", int(-11.5 * elite_bonus))
 
         power = batter.get_effective_stat(batter.skills["power"])
         resolver.pitch_outcome.add("home_run", int(3.1 * (power - 50)))
