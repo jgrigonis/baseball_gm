@@ -17,6 +17,8 @@ temp_files
 
 .vscode
 
+.claude
+
 league.db
 
 leagues/*
