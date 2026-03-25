@@ -350,6 +350,71 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS player_season_stats (
+    player_id       TEXT    NOT NULL,
+    season_id       TEXT    NOT NULL,
+    team_id         TEXT    NOT NULL,
+    is_postseason   INTEGER NOT NULL DEFAULT 0 CHECK (is_postseason IN (0, 1)),
+ 
+    -- ── Batting ──────────────────────────────────────────────
+    bat_games_played    INTEGER NOT NULL DEFAULT 0,
+    bat_games_started   INTEGER NOT NULL DEFAULT 0,
+    bat_ab              INTEGER NOT NULL DEFAULT 0,
+    bat_hits            INTEGER NOT NULL DEFAULT 0,
+    bat_doubles         INTEGER NOT NULL DEFAULT 0,
+    bat_triples         INTEGER NOT NULL DEFAULT 0,
+    bat_home_runs       INTEGER NOT NULL DEFAULT 0,
+    bat_rbi             INTEGER NOT NULL DEFAULT 0,
+    bat_runs            INTEGER NOT NULL DEFAULT 0,
+    bat_walks           INTEGER NOT NULL DEFAULT 0,
+    bat_strike_outs     INTEGER NOT NULL DEFAULT 0,
+    bat_hbp             INTEGER NOT NULL DEFAULT 0,
+    bat_sac_flys        INTEGER NOT NULL DEFAULT 0,
+    bat_sac_bunts       INTEGER NOT NULL DEFAULT 0,
+    bat_gdp             INTEGER NOT NULL DEFAULT 0,
+    bat_gtp             INTEGER NOT NULL DEFAULT 0,
+    bat_stolen_bases    INTEGER NOT NULL DEFAULT 0,
+    bat_caught_stealing INTEGER NOT NULL DEFAULT 0,
+ 
+    -- ── Pitching ─────────────────────────────────────────────
+    pitch_games_played  INTEGER NOT NULL DEFAULT 0,
+    pitch_games_started INTEGER NOT NULL DEFAULT 0,
+    pitch_complete_games INTEGER NOT NULL DEFAULT 0,
+    pitch_shutouts      INTEGER NOT NULL DEFAULT 0,
+    pitch_wins          INTEGER NOT NULL DEFAULT 0,
+    pitch_losses        INTEGER NOT NULL DEFAULT 0,
+    pitch_saves         INTEGER NOT NULL DEFAULT 0,
+    pitch_holds         INTEGER NOT NULL DEFAULT 0,
+    pitch_outs          INTEGER NOT NULL DEFAULT 0,  -- divide by 3 for IP
+    pitch_hits          INTEGER NOT NULL DEFAULT 0,
+    pitch_runs          INTEGER NOT NULL DEFAULT 0,
+    pitch_earned_runs   INTEGER NOT NULL DEFAULT 0,
+    pitch_home_runs     INTEGER NOT NULL DEFAULT 0,
+    pitch_walks         INTEGER NOT NULL DEFAULT 0,
+    pitch_strike_outs   INTEGER NOT NULL DEFAULT 0,
+    pitch_hit_batters   INTEGER NOT NULL DEFAULT 0,
+    pitch_doubles       INTEGER NOT NULL DEFAULT 0,
+    pitch_triples       INTEGER NOT NULL DEFAULT 0,
+    pitch_pickoffs      INTEGER NOT NULL DEFAULT 0,
+    pitch_balks         INTEGER NOT NULL DEFAULT 0,
+    pitch_wild_pitches  INTEGER NOT NULL DEFAULT 0,
+    pitch_count         INTEGER NOT NULL DEFAULT 0,
+ 
+    -- ── Fielding ─────────────────────────────────────────────
+    field_putouts           INTEGER NOT NULL DEFAULT 0,
+    field_assists           INTEGER NOT NULL DEFAULT 0,
+    field_errors            INTEGER NOT NULL DEFAULT 0,
+    field_passed_balls      INTEGER NOT NULL DEFAULT 0,
+    field_catcher_cs        INTEGER NOT NULL DEFAULT 0,
+    field_catcher_sb        INTEGER NOT NULL DEFAULT 0,
+ 
+    PRIMARY KEY (player_id, season_id, team_id, is_postseason),
+ 
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS player_game_fielding (
     game_id    TEXT NOT NULL,
     player_id  TEXT NOT NULL,
@@ -416,4 +481,50 @@ CREATE INDEX IF NOT EXISTS idx_team_game_stats_game ON team_game_stats(game_id);
 CREATE INDEX IF NOT EXISTS idx_team_game_stats_team ON team_game_stats(team_id);
 CREATE INDEX IF NOT EXISTS idx_bullpen_roles_team_season ON bullpen_roles(team_id, season_id);
 CREATE INDEX IF NOT EXISTS idx_bullpen_roles_player ON bullpen_roles(player_id);
+-- games: the records queries filter on completed + series_id constantly,
+-- and the games-per-season subquery groups by season_id + home/away team.
+CREATE INDEX IF NOT EXISTS idx_games_completed
+    ON games(completed);
+
+CREATE INDEX IF NOT EXISTS idx_games_season_completed
+    ON games(season_id, completed);
+
+CREATE INDEX IF NOT EXISTS idx_games_season_completed_series
+    ON games(season_id, completed, series_id);
+
+CREATE INDEX IF NOT EXISTS idx_games_season_home_completed
+    ON games(season_id, home_team_id, completed);
+
+CREATE INDEX IF NOT EXISTS idx_games_season_away_completed
+    ON games(season_id, away_team_id, completed);
+
+-- player_game_stats: the main bottleneck. Queries filter on
+-- bat_game_played or pitch_game_played, then aggregate by player_id.
+-- The existing single-column indexes on game_id and player_id are not
+-- enough for the composite access patterns used in leaderboards.
+CREATE INDEX IF NOT EXISTS idx_pgs_player_bat
+    ON player_game_stats(player_id, bat_game_played);
+
+CREATE INDEX IF NOT EXISTS idx_pgs_player_pitch
+    ON player_game_stats(player_id, pitch_game_played);
+
+CREATE INDEX IF NOT EXISTS idx_pgs_game_bat
+    ON player_game_stats(game_id, bat_game_played);
+
+CREATE INDEX IF NOT EXISTS idx_pgs_game_pitch
+    ON player_game_stats(game_id, pitch_game_played);
+
+-- team_id is used in the primary_team_subquery correlated lookup
+CREATE INDEX IF NOT EXISTS idx_pgs_player_team
+    ON player_game_stats(player_id, team_id);
+
+-- Indexes to support leaderboard queries against the rollup
+CREATE INDEX IF NOT EXISTS idx_pss_season_postseason
+    ON player_season_stats(season_id, is_postseason);
+ 
+CREATE INDEX IF NOT EXISTS idx_pss_player_season
+    ON player_season_stats(player_id, season_id);
+ 
+CREATE INDEX IF NOT EXISTS idx_pss_team_season
+    ON player_season_stats(team_id, season_id);
 """

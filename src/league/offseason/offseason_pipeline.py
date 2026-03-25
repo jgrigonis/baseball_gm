@@ -18,6 +18,9 @@ from src.league.offseason.snake_draft import SnakeDraft
 from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
 
+# In offseason_pipeline.py, add to the run() method:
+from src.league.offseason.build_season_stats import build_season, ensure_table
+
 
 class OffseasonPipeline:
     def __init__(self, conn, rng: random.Random | None = None):
@@ -79,6 +82,14 @@ class OffseasonPipeline:
             self._mark_done(season_id, "reset_player_energy")
         else:
             print("  Skipping player energy reset (already done)")
+
+        if not self._is_done(season_id, "build_season_stats"):
+            ensure_table(self.conn)
+            n = build_season(self.conn, season_id)
+            print(f"  Built season stats rollup: {n} rows")
+            self._mark_done(season_id, "build_season_stats")
+        else:
+            print("  Skipping season stat rollup (already done)")
 
         if not self._is_done(season_id, "write_csvs"):
             self._write_csvs(season_id)

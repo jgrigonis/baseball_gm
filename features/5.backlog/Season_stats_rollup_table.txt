@@ -1,0 +1,4 @@
+Season stats rollup table — precompute per-player per-season aggregates (player_season_stats) 
+after each season. The records queries then join a small summary table instead of scanning 
+millions of game rows. This is probably the right long-term move anyway since you'll want 
+season stat lines in the eventual UI.
