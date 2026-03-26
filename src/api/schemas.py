@@ -166,6 +166,7 @@ class PlayerGrades(BaseModel):
     speed: str | None = None
     arm: str | None = None
     field: str | None = None  # best defensive grade (infield/outfield/catching)
+    field_label: str | None = None  # "CA", "IF", or "OF"
     overall: str
 
     # Pitcher tools (None when hitter)
@@ -187,11 +188,17 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         skills.get("strikes", 0) or 0
     ) > 20
 
-    best_field = max(
-        skills.get("catching", 0) or 0,
-        skills.get("infield", 0) or 0,
-        skills.get("outfield", 0) or 0,
-    )
+    catching = skills.get("catching", 0) or 0
+    infield = skills.get("infield", 0) or 0
+    outfield = skills.get("outfield", 0) or 0
+
+    best_field_val = max(catching, infield, outfield)
+    if best_field_val == catching:
+        best_field_label = "CA"
+    elif best_field_val == infield:
+        best_field_label = "IF"
+    else:
+        best_field_label = "OF"
 
     if is_pitcher:
         # Overall for pitchers: weighted blend of stuff, control, stamina
@@ -206,7 +213,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
             + (skills.get("power", 50) or 50) * 0.20
             + (skills.get("eye", 50) or 50) * 0.20
             + (skills.get("speed", 50) or 50) * 0.15
-            + best_field * 0.20
+            + best_field_val * 0.20
         )
 
     return PlayerGrades(
@@ -225,7 +232,8 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         eye=skill_to_grade(skills.get("eye")) if not is_pitcher else None,
         speed=skill_to_grade(skills.get("speed")) if not is_pitcher else None,
         arm=skill_to_grade(skills.get("arm")) if not is_pitcher else None,
-        field=skill_to_grade(best_field) if not is_pitcher else None,
+        field=skill_to_grade(best_field_val) if not is_pitcher else None,
+        field_label=best_field_label if not is_pitcher else None,
         # Pitcher tools
         stuff=skill_to_grade(skills.get("strikes")) if is_pitcher else None,
         control=skill_to_grade(skills.get("accuracy")) if is_pitcher else None,

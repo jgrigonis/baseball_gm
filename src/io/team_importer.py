@@ -44,6 +44,7 @@ class TeamImporter:
         *,
         allow_existing=False,
         allow_roster_update=False,
+        force_new=False,
     ) -> TeamRecord:
         full_path = Path(TEAM_FILES_DIR) / path
         if not full_path.exists():
@@ -58,7 +59,7 @@ class TeamImporter:
             # --------------------------------------------------
             # Case 1: Team already exists
             # --------------------------------------------------
-            if team_record:
+            if team_record and not force_new:
                 team_id = team_record.id  # Access attribute, not dict key
 
                 if not allow_existing:
@@ -75,6 +76,7 @@ class TeamImporter:
                     raise RuntimeError(
                         f"Team {city} {mascot} already in league for this season"
                     )
+
             # --------------------------------------------------
             # Case 2: Create new team
             # --------------------------------------------------

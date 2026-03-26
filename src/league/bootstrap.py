@@ -29,6 +29,7 @@ class LeagueBootstrapper:
         start_date,
         allow_roster_update=False,
         league_id: str | None = None,
+        force_new_teams=False,
     ):
         """
         Bootstrap a league from a manifest.
@@ -83,6 +84,7 @@ class LeagueBootstrapper:
                 mascot=team_def["mascot"],
                 allow_existing=True,
                 allow_roster_update=allow_roster_update,
+                force_new=force_new_teams,
             )
             self.league_repo.assign_to_league(league_id, season_id, team.id)
             teams.append(team)

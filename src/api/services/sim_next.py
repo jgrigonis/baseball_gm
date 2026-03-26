@@ -171,4 +171,5 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         "errors": errors,
         "seed": seed,
         "results": results,
+        "league_state": "season",
     }

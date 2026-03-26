@@ -59,6 +59,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
         start_date,
         allow_roster_update=True,
         league_id=league_id,
+        force_new_teams=True,
     )
 
     # ── 4. Generate schedule ──────────────────────────────────────────────────

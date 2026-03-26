@@ -514,6 +514,21 @@ CREATE TABLE IF NOT EXISTS gms (
     FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS gm_lineup_preferences (
+    gm_id        TEXT NOT NULL,
+    player_id    TEXT NOT NULL,
+    batting_order INTEGER,        -- 1-9, NULL for bench/pitcher
+    position     TEXT,            -- defensive position
+    is_starter   INTEGER NOT NULL DEFAULT 1
+                        CHECK (is_starter IN (0, 1)),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+
+    PRIMARY KEY (gm_id, player_id),
+
+    FOREIGN KEY (gm_id)     REFERENCES gms(id)     ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 -- One row per GM, created on join, mutable between series.
 CREATE TABLE IF NOT EXISTS gm_profiles (
     gm_id TEXT PRIMARY KEY,
@@ -699,4 +714,6 @@ CREATE INDEX IF NOT EXISTS idx_draft_picks_gm       ON draft_picks(gm_id);
 CREATE INDEX IF NOT EXISTS idx_draft_picks_player   ON draft_picks(player_id);
 CREATE INDEX IF NOT EXISTS idx_draft_prefs_gm_draft ON draft_preferences(gm_id, draft_id);
 CREATE INDEX IF NOT EXISTS idx_gm_evals_season      ON gm_season_evaluations(season_id);
+CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm
+            ON gm_lineup_preferences(gm_id);
 """
