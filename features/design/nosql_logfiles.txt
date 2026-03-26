@@ -1,0 +1,3 @@
+NoSQL
+
+Consider using NoSQL as a dumping ground for game logs. Easier to store than simple .log files.

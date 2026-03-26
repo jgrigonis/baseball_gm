@@ -1,0 +1,101 @@
+"how it starts", what's the first thing they see.
+
+
+
+First, the user probably has to decide if they are a guest, or if they want to "sign in". I am imagining we 
+could support guest users from the same browser/computer even for a long time, but if they want to move to 
+a different machine they'd need some kind of login.
+
+
+
+The first step is joining a league. Ideally, there would be some kind of tutorial league explaining all the 
+things you are expected to do to "play" the game. 
+
+
+
+Once they are ready to join a "real" league, they can start with a single player blitz league.
+
+
+
+Alternatively, jump right into a multiplayer league.
+
+
+
+And of course, the non-blitz style leagues, either solo or in a multiplayer environment.
+
+
+
+Once you are "playing" the game I imagine you will have something like a dashboard.
+
+
+
+As the game progresses from states:
+
+
+
+lobby -> draft -> regular season -> playoffs -> evaluation -> go back to draft state.
+
+
+
+The dashboard would vary dramatically based on the game state.
+
+
+
+So in the lobby, you'd see the other players in the league, you'd see the join code to invite people, you'd see the 
+settings for the league (these aren't really variable yet), but things like number of teams, season length, number 
+of seasons, granularity of control, etc.
+
+
+
+In the draft state (in blitz mode) you'd be presented with a list of prospects, similar to the dev.html version, 
+but slightly different, more linear, and you would (optionally) directly drag and reorder selection order. So say 
+you see a guy in the 42nd spot you want to move him up to 21st, you can do that. You would need to know which picks 
+are yours, for this to even make sense. E.g. you have the 15th pick in the snake draft means moving a player ranked 
+20th to 19th does probably nothing. Especially in a full AI competition as they are going to closely follow the linear 
+list you are seeing. (there will be some variation as your scouting views of players are foggy and imperfect)
+
+
+
+You'd also need to be able to view your existing roster you were assigned to at league creation, so you can see where 
+you might have weaknesses.
+
+
+
+Once the draft runs, you'd begin immediately the regular season. As this is where most of the game is "played" you'd 
+have access to the most things here, probably many too big to fit into a single dashboard view, so tabs.
+
+
+
+Major categories would be:
+
+League standings, so showing w-l runs for all teams in the league (highlighting yours and perhaps other human players)
+
+Statistical leaders - so like league leaders in hits, hr, walks, ks, etc, many leaderboards I have built in the CLI version
+
+Roster manager - Players on your team that are injured, tired, etc, allow you to move players on and off the 26 man roster
+
+Daily game summaries - you should be able to go back and forth through days though, similar to the output in dev.html but 
+with history. Also, ability to click into a game for bigger box scores and perhaps even play by play summaries
+
+Line up manager - Ability to set the 9 man lineup, pitching rotation and bullpen assignments. We have bullpen roles already 
+such as closer, long, short, setup, etc
+
+I might still be forgetting some
+
+
+
+In the playoff screen, it's quite similar to the regular season, but you are much more likely to need to make adjustments 
+now, with almost certainly some injuries, and fatigue coming into play, optimizing star pitchers, etc
+
+
+
+The evaluation stage is basically just a summary of the season. This code doesn't exist yet, but basically, grading the 
+GMs, potentially even firing them
+
+
+
+Then it begins another year with the draft
+
+
+
+There are more stages to include someday in the future and certain deadlines, but not for v1
