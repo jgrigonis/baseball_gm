@@ -79,11 +79,11 @@ def get_series_id(conn, season_id: str, name: str) -> str | None:
 def get_series_games(conn, series_id: str) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT id, date, home_team_id, away_team_id, completed,
+        SELECT id, game_date, home_team_id, away_team_id, completed,
                home_score, away_score, winner_id
         FROM games
         WHERE series_id = ?
-        ORDER BY date
+        ORDER BY game_date
         """,
         (series_id,),
     ).fetchall()
@@ -195,8 +195,8 @@ def generate_round_games(
     conn.executemany(
         """
         INSERT OR IGNORE INTO games
-            (id, date, season_id, series_id, home_team_id, away_team_id)
-        VALUES (:id, :date, :season_id, :series_id, :home_team_id, :away_team_id)
+            (id, game_date, season_id, series_id, home_team_id, away_team_id)
+        VALUES (:id, :game_date, :season_id, :series_id, :home_team_id, :away_team_id)
         """,
         games,
     )
@@ -312,7 +312,7 @@ def get_seeds(conn, season_id: str) -> list[dict]:
 
         # Game 1 home = high seed (home_map[0] = True)
         game = conn.execute(
-            "SELECT home_team_id, away_team_id FROM games WHERE series_id = ? ORDER BY date LIMIT 1",
+            "SELECT home_team_id, away_team_id FROM games WHERE series_id = ? ORDER BY game_date LIMIT 1",
             (series_id,),
         ).fetchone()
 

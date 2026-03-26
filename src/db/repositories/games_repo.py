@@ -88,7 +88,7 @@ class GameRepository:
         where = " AND ".join(conditions)
 
         rows = self.conn.execute(
-            f"SELECT * FROM games WHERE {where} ORDER BY date",
+            f"SELECT * FROM games WHERE {where} ORDER BY game_date",
             params,
         ).fetchall()
 

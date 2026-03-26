@@ -210,8 +210,8 @@ def _insert_series(conn, series_id: str, season_id: str, name: str) -> None:
 def _insert_games(conn, games: list[dict]) -> None:
     conn.executemany(
         """
-        INSERT OR IGNORE INTO games (id, date, season_id, series_id, home_team_id, away_team_id)
-        VALUES (:id, :date, :season_id, :series_id, :home_team_id, :away_team_id)
+        INSERT OR IGNORE INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
+        VALUES (:id, :game_date, :season_id, :series_id, :home_team_id, :away_team_id)
         """,
         games,
     )
