@@ -59,7 +59,7 @@ class BlitzDraft(SnakeDraft):
                 team_id = team_entry["team_id"]
 
                 chosen: PlayerRecord | None = None
-                is_auto = True
+                # is_auto = True
 
                 pref_list = self._prefs.get(team_id, [])
                 for pid in pref_list:
@@ -68,7 +68,7 @@ class BlitzDraft(SnakeDraft):
                         if record:
                             chosen = record
                             pref_list.remove(pid)
-                            is_auto = False
+                            # is_auto = False
                             break
 
                 if chosen is None:

@@ -9,9 +9,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
-from functools import lru_cache
 
-from src.config import settings
 from src.db.connection import get_connection
 
 # def get_connection() -> sqlite3.Connection:

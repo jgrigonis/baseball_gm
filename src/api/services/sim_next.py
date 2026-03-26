@@ -92,6 +92,19 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     if not games:
         return {"game_date": game_date, "games_played": 0, "results": []}
 
+    # After loading games, build a name map for the teams involved
+    team_ids = set()
+    for g in games:
+        team_ids.add(g["home_team_id"])
+        team_ids.add(g["away_team_id"])
+
+    placeholders = ",".join("?" * len(team_ids))
+    name_rows = conn.execute(
+        f"SELECT id, city, mascot FROM teams WHERE id IN ({placeholders})",
+        list(team_ids),
+    ).fetchall()
+    team_names = {r["id"]: f"{r['city']} {r['mascot']}" for r in name_rows}
+
     # Advance league state to 'season' if still in preseason
     if league["state"] == "preseason":
         conn.execute("UPDATE leagues SET state = 'season' WHERE id = ?", (league_id,))
@@ -129,6 +142,12 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                     "game_id": game_dict["game_id"],
                     "home_team_id": game_dict["home_team_id"],
                     "away_team_id": game_dict["away_team_id"],
+                    "home_team": team_names.get(
+                        game_dict["home_team_id"], game_dict["home_team_id"]
+                    ),
+                    "away_team": team_names.get(
+                        game_dict["away_team_id"], game_dict["away_team_id"]
+                    ),
                     "home_score": result.home_score,
                     "away_score": result.away_score,
                     "innings": result.innings_played,

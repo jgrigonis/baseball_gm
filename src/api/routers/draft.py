@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import sqlite3
-import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -78,7 +77,7 @@ def get_board(draft_id: str, db: DB) -> list[PlayerGrades]:
     All available (undrafted) players for this draft, with scouting grades.
     Useful for building preference lists and for the interactive draft room.
     """
-    draft = _require_draft(draft_id, db)
+    # draft = _require_draft(draft_id, db)
 
     # Players already picked in this draft
     picked_ids = {

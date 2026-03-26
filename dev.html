@@ -539,6 +539,7 @@
           <option value="stuff">Stuff</option>
           <option value="control">Control</option>
           <option value="stamina">Stamina</option>
+          <option value="recovery">Recovery</option>
           <option value="contact">Contact</option>
           <option value="power">Power</option>
           <option value="eye">Eye</option>
@@ -588,6 +589,7 @@
         <button class="btn" onclick="simNext()">Sim Next Day</button>
         <button class="btn secondary" onclick="simMany(5)">Sim 5 Days</button>
         <button class="btn secondary" onclick="simMany(10)">Sim 10 Days</button>
+        <button id="sim-full-btn" class="btn secondary" onclick="simFullSeason()">Sim Full Season</button>
         <span id="sim-spinner" style="display:none;"><div class="spinner"></div></span>
       </div>
       <div id="sim-summary" class="state-grid" style="display:none;"></div>
@@ -610,6 +612,7 @@ const S = {
   get draftId()    { return localStorage.getItem('gm_draft_id'); },
   get leagueName() { return localStorage.getItem('gm_league_name'); },
   get leagueState(){ return localStorage.getItem('gm_league_state'); },
+  get teamName()   { return localStorage.getItem('gm_team_name'); },
 
   set(league, gm) {
     localStorage.setItem('gm_league_id',    league.id);
@@ -626,7 +629,11 @@ const S = {
 
 function clearSession() {
   ['gm_league_id','gm_join_code','gm_gm_id','gm_session',
-   'gm_draft_id','gm_league_name','gm_league_state'].forEach(k => localStorage.removeItem(k));
+   'gm_draft_id','gm_league_name','gm_league_state','gm_team_name'].forEach(k => localStorage.removeItem(k));
+  boardData = [];
+  preferences = [];
+  renderPrefList();
+  document.getElementById('draft-grid').innerHTML = '';
   refreshState();
   log('create-log', 'Session cleared', 'info');
 }
@@ -641,6 +648,7 @@ function refreshState() {
     ['GM ID',   S.gmId        || '—'],
     ['Draft ID', S.draftId    || '—'],
     ['Session', S.session ? S.session.slice(0,16) + '…' : '—'],
+    ['Your Team', localStorage.getItem('gm_team_name') || '—'],
   ];
   grid.innerHTML = cells.map(([k,v]) => `
     <div class="state-cell">
@@ -727,27 +735,28 @@ async function api(method, path, body) {
 async function createLeague() {
   const name = document.getElementById('league-name').value.trim();
   const gmName = document.getElementById('commissioner-name').value.trim();
-  const mode = document.getElementById('league-mode').value;
-  const window_ = parseInt(document.getElementById('decision-window').value);
-
   if (!name || !gmName) { log('create-log', 'Name and GM name required', 'err'); return; }
 
   log('create-log', `Creating league "${name}"…`);
   try {
     const data = await api('POST', '/leagues', {
-      name, mode,
+      name, mode: document.getElementById('league-mode').value,
       num_teams: 30,
-      decision_window_sec: window_,
+      decision_window_sec: parseInt(document.getElementById('decision-window').value),
       reentry_enabled: true,
       pace_control: 'timer',
       commissioner_display_name: gmName,
     });
-
+    console.log('create response:', JSON.stringify(data, null, 2));
+    clearSession();  // ← wipe everything from previous league first
+    clearSession();
+    boardData = [];
+    preferences = [];
+    renderPrefList();
     S.set(data.league, data.gm);
     refreshState();
     log('create-log', `✓ League created — join code: ${data.league.join_code}`, 'ok');
     log('create-log', `✓ Session token saved (${data.gm.user_session.slice(0,16)}…)`, 'ok');
-    logJSON('create-log', 'Full response', data);
   } catch(e) {
     log('create-log', '✗ ' + e.message, 'err');
   }
@@ -765,17 +774,29 @@ async function startLeague() {
     const data = await api('POST', `/leagues/${S.leagueId}/start`);
     S.setDraftId(data.draft_id);
     S.setLeagueState('draft');
+    if (data.your_team) {
+      localStorage.setItem('gm_team_name', data.your_team);
+    }
     refreshState();
     log('start-log', `✓ ${data.team_count} teams generated`, 'ok');
     log('start-log', `✓ ${data.game_count} games scheduled`, 'ok');
     log('start-log', `✓ ${data.prospect_count} prospects in draft pool`, 'ok');
     log('start-log', `✓ Draft ID: ${data.draft_id}`, 'ok');
+    if (data.your_team) {
+      localStorage.setItem('gm_team_name', data.your_team);
+      log('start-log', `✓ Your team: ${data.your_team}`, 'ok');
+    }
+    // Need team_id too — add it to the /start response or fetch from /gms/{gmId}
+    const gm = await api('GET', `/gms/${S.gmId}`);
+    if (gm.team_id) localStorage.setItem('gm_team_id', gm.team_id);
+    refreshState();
   } catch(e) {
     log('start-log', '✗ ' + e.message, 'err');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Start League';
   }
+  
 }
 
 // ── Draft Board ───────────────────────────────────────────────────────────────
@@ -788,7 +809,7 @@ async function loadBoard() {
   document.getElementById('draft-grid').innerHTML = '';
   try {
     boardData = await api('GET', `/drafts/${S.draftId}/board`);
-    renderBoard(boardData);
+    filterBoard();
     log('board-log', `✓ Loaded ${boardData.length} available players`, 'ok');
   } catch(e) {
     log('board-log', '✗ ' + e.message, 'err');
@@ -863,12 +884,50 @@ function renderPrefList() {
   const el = document.getElementById('pref-list');
   document.getElementById('pref-count').textContent = `${preferences.length} players`;
   el.innerHTML = preferences.map((p, i) => `
-    <div class="pref-tag">
-      <span style="color:var(--muted);font-size:10px;">${i+1}</span>
+    <div class="pref-tag" draggable="true" data-id="${p.id}"
+         ondragstart="dragStart(event)"
+         ondragover="dragOver(event)"
+         ondrop="dragDrop(event)"
+         ondragend="dragEnd(event)">
+      <span style="color:var(--muted);font-size:10px;cursor:grab;">${i+1}</span>
       ${p.name}
       <span class="remove" onclick="togglePref('${p.id}','${p.name}','${p.pos}')">×</span>
     </div>
   `).join('');
+}
+
+let dragSrcId = null;
+
+function dragStart(e) {
+  dragSrcId = e.currentTarget.dataset.id;
+  e.currentTarget.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function dragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.style.borderColor = 'var(--green)';
+}
+
+function dragDrop(e) {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.id;
+  if (dragSrcId === targetId) return;
+
+  const srcIdx = preferences.findIndex(p => p.id === dragSrcId);
+  const tgtIdx = preferences.findIndex(p => p.id === targetId);
+  const [moved] = preferences.splice(srcIdx, 1);
+  preferences.splice(tgtIdx, 0, moved);
+
+  renderPrefList();
+  filterBoard();
+}
+
+function dragEnd(e) {
+  e.currentTarget.style.opacity = '1';
+  e.currentTarget.style.borderColor = '';
+  dragSrcId = null;
 }
 
 async function submitPreferences() {
@@ -895,9 +954,55 @@ async function executeDraft() {
     log('execute-log', `✓ ${data.picks_made} picks made across ${data.rounds} rounds`, 'ok');
     log('execute-log', `✓ ${data.picks_made - data.auto_picks} from preference lists, ${data.auto_picks} auto-picked`, 'ok');
     log('execute-log', `✓ League state: ${data.league_state}`, 'ok');
+    // Load and render draft results
+    const picks = await api('GET', `/drafts/${S.draftId}/picks`);
+    renderDraftResults(picks);
   } catch(e) {
     log('execute-log', '✗ ' + e.message, 'err');
   }
+}
+
+function renderDraftResults(picks) {
+  const el = document.getElementById('execute-log');
+  if (!picks || !picks.length) return;
+
+  // Build a name lookup from boardData (already loaded)
+  const nameMap = {};
+  boardData.forEach(p => nameMap[p.player_id] = `${p.first_name} ${p.last_name}`);
+
+  // Group by round
+  const rounds = {};
+  picks.forEach(p => {
+    if (!rounds[p.round]) rounds[p.round] = [];
+    rounds[p.round].push(p);
+  });
+
+  // Filter to human GM's picks only first, then show all
+  const myTeamId = localStorage.getItem('gm_team_id');
+
+  const html = Object.entries(rounds).map(([round, roundPicks]) => `
+    <div style="margin-top:12px;">
+      <div style="font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Round ${round}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${roundPicks.map(p => {
+          const isMyPick = p.team_id === myTeamId;
+          return `<div style="
+            background:${isMyPick ? 'var(--green-dim)' : 'var(--bg2)'};
+            border:1px solid ${isMyPick ? 'var(--green-mid)' : 'var(--border)'};
+            padding:5px 8px;font-size:11px;min-width:120px;
+          ">
+            <div style="font-weight:600;color:${isMyPick ? 'var(--green)' : 'var(--text)'};">#${p.pick_number}</div>
+            <div style="color:var(--text-dim);font-size:10px;">${nameMap[p.player_id] || p.player_id.slice(0,8)+'…'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  const container = document.createElement('div');
+  container.innerHTML = `<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">${html}</div>`;
+  el.appendChild(container);
+  el.scrollTop = el.scrollHeight;
 }
 
 // ── Sim ───────────────────────────────────────────────────────────────────────
@@ -928,6 +1033,42 @@ async function simMany(n) {
   }
 }
 
+async function simFullSeason() {
+  const btn = document.getElementById('sim-full-btn');
+  btn.disabled = true;
+  btn.textContent = 'Simming…';
+  let days = 0;
+  try {
+    while (true) {
+      const data = await api('POST', `/leagues/${S.leagueId}/sim/next`);
+      if (data.league_state) S.setLeagueState(data.league_state);
+      days++;
+
+      // Playoff transition notification
+      if (data.league_state === 'playoffs' && S.leagueState !== 'playoffs') {
+        log('sim-log', '🏆 Playoffs have started!', 'ok');
+      }
+
+      renderSimResults(data);
+
+      if (!data.results || data.results.length === 0 || data.league_state === 'offseason') {
+        log('sim-log', `✓ Season complete after ${days} days`, 'ok');
+        break;
+      }
+
+      refreshState();
+      // Small delay so the browser doesn't lock up
+      await new Promise(r => setTimeout(r, 50));
+    }
+  } catch(e) {
+    log('sim-log', '✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sim Full Season';
+    refreshState();
+  }
+}
+
 function renderSimResults(data) {
   if (!data.results || !data.results.length) {
     if (data.message) log('sim-log', data.message, 'info');
@@ -947,14 +1088,16 @@ function renderSimResults(data) {
   const resultsEl = document.getElementById('sim-results');
   const rows = data.results.map(r => {
     const awayWin = r.away_score > r.home_score;
+    const awayName = r.away_team || r.away_team_id.slice(0,8) + '…';
+    const homeName = r.home_team || r.home_team_id.slice(0,8) + '…';
     const extra = r.innings !== 9 ? `<span class="badge extra">${r.innings} inn</span>` : '';
     return `<div class="game-row">
-      <div class="team-away ${awayWin?'winner':''}">${r.away_team_id.slice(0,8)}…</div>
-      <div class="scores">${r.away_score} – ${r.home_score} ${extra}</div>
-      <div class="team-home ${!awayWin?'winner':''}">${r.home_team_id.slice(0,8)}…</div>
-      <div class="extra">${r.innings === 9 ? '' : r.innings + ' inn'}</div>
+      <div class="team-away ${awayWin?'winner':''}">${awayName}</div>
+      <div class="scores">${r.away_score} - ${r.home_score} ${extra}</div>
+      <div class="team-home ${!awayWin?'winner':''}">${homeName}</div>
+      <div class="extra"></div>
     </div>`;
-  }).join('');
+}).join('');
 
   resultsEl.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);margin-top:8px;">${rows}</div>`;
   log('sim-log', `✓ ${data.game_date} — ${data.games_played} games played`, 'ok');

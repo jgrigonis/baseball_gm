@@ -1,7 +1,7 @@
 # src/league/bootstrap.py
 import dataclasses
+from pathlib import Path
 import random
-from os import sep
 
 from src.db.repositories.bullpen_roles_repo import set_roles
 from src.db.repositories.league_repo import LeagueRepository
@@ -23,8 +23,38 @@ class LeagueBootstrapper:
         self.rotations_repo = TeamRotationsRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
 
-    def bootstrap_from_manifest(self, manifest, start_date, allow_roster_update=False):
-        league_id = self.league_repo.create_league(manifest["league_name"])
+    def bootstrap_from_manifest(
+        self,
+        manifest,
+        start_date,
+        allow_roster_update=False,
+        league_id: str | None = None,
+    ):
+        """
+        Bootstrap a league from a manifest.
+
+        Args:
+            manifest: League manifest dict
+            start_date: Season start date
+            allow_roster_update: If True, re-import updated CSVs
+            league_id: If provided, use this existing league ID instead of
+                       creating or looking up by name. This prevents duplicate
+                       league rows when called from the API.
+
+        Returns:
+            (league_id, teams, season_id)
+        """
+        if league_id is not None:
+            # Use the provided ID — skip create_league entirely
+            # Verify it exists
+            row = self.conn.execute(
+                "SELECT id FROM leagues WHERE id = ?", (league_id,)
+            ).fetchone()
+            if not row:
+                raise ValueError(f"League {league_id} not found in database.")
+        else:
+            # CLI path — create or look up by name as before
+            league_id = self.league_repo.create_league(manifest["league_name"])
 
         # Defaults to name=Season1 year=2026 if not found in manifest
         season_id = self.season_repo.create_season(
@@ -46,7 +76,9 @@ class LeagueBootstrapper:
             team = self.team_importer.import_csv(
                 league_id=league_id,
                 season_id=season_id,
-                path=str(manifest.get("season_year", 2026)) + sep + team_def["csv"],
+                path=str(
+                    Path(str(manifest.get("season_year", 2026))) / team_def["csv"]
+                ),
                 city=team_def["city"],
                 mascot=team_def["mascot"],
                 allow_existing=True,
@@ -87,15 +119,6 @@ class LeagueBootstrapper:
     def _bootstrap_bullpen(
         self, team, rotation, season_id: str, start_date: str
     ) -> None:
-        """
-        Setup the bullpen for a team.
-        We assume the rotation is 5 man, and we can have up to 8 pitchers assigned to
-        roles in the bullpen.
-
-        There are 6 roles to choose from:
-        - 'Closer', 'Setup', 'Middle', 'Long', 'Specialist', 'Utility'
-
-        """
         roles = team.set_bullpen_roles(rotation)
         if not roles:
             print(

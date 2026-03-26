@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import List, Dict
 from dataclasses import dataclass
 import csv as csv_module
-import os
 
 from src.team.team_evaluator import TeamEvaluator
 from src.team.team_factory import TeamFactory

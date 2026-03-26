@@ -244,7 +244,7 @@ class PitcherStateRepository:
                 game_date,
                 state.last_game_date,
             )
-            return PitcherState(player_id=player_id, current_energy=1.0)
+            return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
 
         state.current_energy = _apply_recovery(
             state.current_energy, days_rest, recovery_skill

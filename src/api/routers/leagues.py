@@ -17,6 +17,7 @@ from src.api.schemas import (
     LeagueJoin,
     LeagueResponse,
 )
+from src.api.services.league_start import start_league as _start
 
 router = APIRouter(prefix="/leagues", tags=["leagues"])
 
@@ -207,8 +208,6 @@ def start_league(
         )
 
     try:
-        from src.api.services.league_start import start_league as _start
-
         result = _start(league_id, db)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
