@@ -1,0 +1,23 @@
+Front office budget
+
+4 spending areas:
+
+Scouting — accuracy of player grades. Low scouting budget means 
+your grades have wider uncertainty (you might think a player is 
+B+ when he's actually C+). High budget means tighter, more reliable 
+grades. Matters most during the draft and when evaluating trade targets.
+
+Coaching — rate at which players develop toward their talent caps. 
+Better coaches push players harder toward their ceiling, especially 
+young players. A team that invests here can develop mid-round draft 
+picks into stars.
+
+Player Development / Facilities — affects injury recovery speed 
+and how well players hold up through a long season. Teams that 
+skimp here see more wear-and-tear injuries and slower returns 
+from the IL.
+
+Analytics — how effectively your strategic profile translates 
+to in-game decisions. A well-resourced analytics department means 
+your "aggressive steal" setting actually runs at the right times; 
+a poor one means suboptimal execution even with the right strategy set.
