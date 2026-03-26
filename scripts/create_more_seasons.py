@@ -1,12 +1,12 @@
 import json
-import os
+from pathlib import Path
 
 from src.util.locations import MANIFEST_FILES_DIR
 
 BASE_FILE = "world_league-2025.json"
 NUM_FILES = 50  # how many future manifests to create
 
-with open(MANIFEST_FILES_DIR + os.sep + BASE_FILE) as f:
+with open(Path(MANIFEST_FILES_DIR) / BASE_FILE) as f:
     data = json.load(f)
 
 base_year = data["season_year"]
@@ -24,7 +24,7 @@ for i in range(1, NUM_FILES + 1):
 
     filename = f"world_league-{new_year}.json"
 
-    with open(MANIFEST_FILES_DIR + os.sep + filename, "w") as f:
+    with open(Path(MANIFEST_FILES_DIR) / filename, "w") as f:
         json.dump(new_data, f, indent=2)
 
     print(f"Created {filename}")

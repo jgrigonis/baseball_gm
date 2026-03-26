@@ -1,0 +1,287 @@
+# src/api/schemas.py
+#
+# Pydantic v2 models for the GM-layer API.
+# Raw skill integers → scouting letter grades is handled here, not in the DB.
+
+from __future__ import annotations
+
+# from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
+
+# ── Scouting grades ───────────────────────────────────────────────────────────
+# The sim engine stores skills as integers (roughly 0-100).
+# GMs see A+-F letter grades; raw numbers are debug-only.
+
+_GRADE_THRESHOLDS: list[tuple[int, str]] = [
+    (75, "A+"),
+    (70, "A"),
+    (65, "A-"),
+    (60, "B+"),
+    (55, "B"),
+    (50, "B-"),
+    (45, "C+"),
+    (40, "C"),
+    (35, "C-"),
+    (30, "D+"),
+    (25, "D"),
+    (20, "D-"),
+    (0, "F"),
+]
+
+
+def skill_to_grade(raw: int | None) -> str:
+    """Map a raw 0-100 skill integer to the A+-F scouting letter grade."""
+    if raw is None:
+        return "?"
+    # Scale 0-100 → 20-80 (the design doc's scouting range)
+    scaled = round(20 + (max(0, min(100, raw)) / 100) * 60)
+    for threshold, grade in _GRADE_THRESHOLDS:
+        if scaled >= threshold:
+            return grade
+    return "F"
+
+
+# ── League ────────────────────────────────────────────────────────────────────
+
+
+class LeagueCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=60)
+    mode: Literal["blitz", "longform"] = "blitz"
+    num_teams: int = Field(30, ge=2, le=30)
+    decision_window_sec: int = Field(120, ge=30, le=600)
+    reentry_enabled: bool = True
+    pace_control: Literal["timer", "confirmed", "scheduled"] = "timer"
+    commissioner_display_name: str = Field(..., min_length=1, max_length=40)
+
+
+class LeagueResponse(BaseModel):
+    id: str
+    name: str
+    join_code: str
+    mode: str
+    num_teams: int
+    decision_window_sec: int
+    reentry_enabled: bool
+    pace_control: str
+    state: str
+    commissioner_gm_id: str | None
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class LeagueJoin(BaseModel):
+    display_name: str = Field(..., min_length=1, max_length=40)
+
+
+# ── GM ────────────────────────────────────────────────────────────────────────
+
+
+class GMResponse(BaseModel):
+    id: str
+    league_id: str
+    team_id: str | None
+    display_name: str
+    is_ai: bool
+    is_away: bool
+    career_seasons: int
+    warned_at: str | None
+    fired_at: str | None
+    # session token returned only on creation
+    user_session: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class GMAwayUpdate(BaseModel):
+    is_away: bool
+
+
+# ── Strategic profile ─────────────────────────────────────────────────────────
+
+LineupStyle = Literal["traditional", "analytics", "speed-first", "power-first"]
+StealAggression = Literal["conservative", "standard", "aggressive"]
+SacBunt = Literal["never", "situational", "frequent"]
+StarterUsage = Literal["let-them-work", "pitch-count-strict", "matchup-based"]
+CloserUsage = Literal["saves-only", "high-leverage", "best-available"]
+BullpenPref = Literal["deep-pen", "starter-heavy"]
+PlatoonUsage = Literal["none", "vs-handedness", "aggressive"]
+
+
+class GMProfileResponse(BaseModel):
+    gm_id: str
+    lineup_style: str
+    steal_aggression: str
+    sac_bunt: str
+    starter_usage: str
+    closer_usage: str
+    bullpen_pref: str
+    dh_enabled: bool
+    platoon_usage: str
+    updated_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class GMProfileUpdate(BaseModel):
+    """All fields optional — patch semantics."""
+
+    lineup_style: LineupStyle | None = None
+    steal_aggression: StealAggression | None = None
+    sac_bunt: SacBunt | None = None
+    starter_usage: StarterUsage | None = None
+    closer_usage: CloserUsage | None = None
+    bullpen_pref: BullpenPref | None = None
+    dh_enabled: bool | None = None
+    platoon_usage: PlatoonUsage | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> "GMProfileUpdate":
+        if all(v is None for v in self.model_dump().values()):
+            raise ValueError("At least one profile field must be provided.")
+        return self
+
+
+# ── Player / roster ───────────────────────────────────────────────────────────
+
+
+class PlayerGrades(BaseModel):
+    """Scouting grades shown to a GM. Raw integers are never exposed."""
+
+    player_id: str
+    first_name: str
+    last_name: str
+    position: str | None
+    bats: str
+    throws: str
+    age: int
+    player_type: Literal["hitter", "pitcher"]
+
+    # Hitter tools (None when pitcher)
+    contact: str | None = None
+    power: str | None = None
+    eye: str | None = None
+    speed: str | None = None
+    arm: str | None = None
+    field: str | None = None  # best defensive grade (infield/outfield/catching)
+    overall: str
+
+    # Pitcher tools (None when hitter)
+    stuff: str | None = None
+    control: str | None = None
+    stamina: str | None = None
+    recovery: str | None = None
+
+    roster_status: str  # '26man' | '40man' | 'minors' | etc.
+
+
+def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrades:
+    """
+    Build a PlayerGrades from raw sqlite3.Row dicts.
+    Determines player_type from whether pitching skills dominate.
+    """
+    # A player is treated as a pitcher if they have meaningful stamina/strikes
+    is_pitcher = (skills.get("stamina", 0) or 0) > 20 and (
+        skills.get("strikes", 0) or 0
+    ) > 20
+
+    best_field = max(
+        skills.get("catching", 0) or 0,
+        skills.get("infield", 0) or 0,
+        skills.get("outfield", 0) or 0,
+    )
+
+    if is_pitcher:
+        # Overall for pitchers: weighted blend of stuff, control, stamina
+        raw_overall = round(
+            (skills.get("strikes", 50) or 50) * 0.40
+            + (skills.get("accuracy", 50) or 50) * 0.35
+            + (skills.get("stamina", 50) or 50) * 0.25
+        )
+    else:
+        raw_overall = round(
+            (skills.get("contact", 50) or 50) * 0.25
+            + (skills.get("power", 50) or 50) * 0.20
+            + (skills.get("eye", 50) or 50) * 0.20
+            + (skills.get("speed", 50) or 50) * 0.15
+            + best_field * 0.20
+        )
+
+    return PlayerGrades(
+        player_id=player["id"],
+        first_name=player["first_name"],
+        last_name=player["last_name"],
+        position=player.get("position"),
+        bats=player["bats"],
+        throws=player["throws"],
+        age=skills.get("age", 0),
+        player_type="pitcher" if is_pitcher else "hitter",
+        overall=skill_to_grade(raw_overall),
+        # Hitter tools
+        contact=skill_to_grade(skills.get("contact")) if not is_pitcher else None,
+        power=skill_to_grade(skills.get("power")) if not is_pitcher else None,
+        eye=skill_to_grade(skills.get("eye")) if not is_pitcher else None,
+        speed=skill_to_grade(skills.get("speed")) if not is_pitcher else None,
+        arm=skill_to_grade(skills.get("arm")) if not is_pitcher else None,
+        field=skill_to_grade(best_field) if not is_pitcher else None,
+        # Pitcher tools
+        stuff=skill_to_grade(skills.get("strikes")) if is_pitcher else None,
+        control=skill_to_grade(skills.get("accuracy")) if is_pitcher else None,
+        stamina=skill_to_grade(skills.get("stamina")) if is_pitcher else None,
+        recovery=skill_to_grade(skills.get("recovery")) if is_pitcher else None,
+        roster_status=status,
+    )
+
+
+# ── Draft ─────────────────────────────────────────────────────────────────────
+
+
+class DraftResponse(BaseModel):
+    id: str
+    league_id: str
+    season_id: str
+    format: str
+    state: str
+    current_pick: int
+    pick_timer_sec: int
+    created_at: str
+
+
+class DraftPickResponse(BaseModel):
+    pick_number: int
+    round: int
+    gm_id: str
+    team_id: str
+    player_id: str
+    auto_picked: bool
+    picked_at: str
+
+
+class PreferenceListSubmit(BaseModel):
+    """Ordered list of player IDs, highest preference first."""
+
+    player_ids: list[str] = Field(..., min_length=1)
+
+
+class PreferenceListResponse(BaseModel):
+    gm_id: str
+    draft_id: str
+    preferences: list[str]  # player_ids in rank order
+
+
+# ── GM season evaluation ──────────────────────────────────────────────────────
+
+
+class GMEvaluationResponse(BaseModel):
+    gm_id: str
+    season_id: str
+    wins: int
+    losses: int
+    expected_wins: float | None
+    roster_quality_rating: float | None
+    made_playoffs: bool
+    won_championship: bool
+    verdict: str | None
+    evaluated_at: str

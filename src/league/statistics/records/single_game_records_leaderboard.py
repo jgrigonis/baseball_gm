@@ -116,7 +116,7 @@ def run_query(
         SELECT
             p.first_name || ' ' || p.last_name,
             t.city || ' ' || t.mascot,
-            g.date,
+            g.game_date,
             s.year,
             {select_expr} as val,
             g.innings_played

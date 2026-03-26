@@ -241,7 +241,7 @@ class PlayerGameRepository:
             FROM player_game_stats pgs
             JOIN games g ON pgs.game_id = g.id
             WHERE pgs.player_id = ? AND g.season_id = ? AND g.series_id IS NULL
-            ORDER BY g.date
+            ORDER BY g.game_date
             """,
             (player_id, season_id),
         ).fetchall()

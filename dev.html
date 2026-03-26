@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GM Sim — Dev Console</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a0e0a;
+    --bg2: #111611;
+    --bg3: #1a221a;
+    --green: #4ade80;
+    --green-dim: #1a3d22;
+    --green-mid: #22c55e;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --muted: #4a5c4a;
+    --text: #d4e8d4;
+    --text-dim: #6b8a6b;
+    --border: #1e2e1e;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: 48px 1fr;
+  }
+
+  /* Header */
+  header {
+    grid-column: 1 / -1;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+  }
+
+  header .logo {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  header .divider { color: var(--muted); }
+
+  header .status-pill {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    background: var(--green-dim);
+    color: var(--green-mid);
+    letter-spacing: 0.05em;
+  }
+
+  header .status-pill.warn { background: #3d2e0a; color: var(--amber); }
+  header .status-pill.err  { background: #2e0a0a; color: var(--red); }
+
+  header .spacer { flex: 1; }
+
+  header .session-display {
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  header .session-display span {
+    color: var(--green);
+  }
+
+  /* Sidebar */
+  nav {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+  }
+
+  .nav-section {
+    padding: 8px 16px 4px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .nav-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-btn:hover { background: var(--bg3); color: var(--text); }
+  .nav-btn.active { background: var(--green-dim); color: var(--green); }
+  .nav-btn .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .nav-btn.active .dot { background: var(--green); }
+
+  /* Main content */
+  main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  .panel.active { display: flex; }
+
+  .panel-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .panel-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Form elements */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 11px; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  input, select, textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--green-mid);
+  }
+
+  select option { background: var(--bg3); }
+
+  textarea { resize: vertical; min-height: 80px; }
+
+  .row { display: flex; gap: 12px; }
+  .row .field { flex: 1; }
+
+  /* Buttons */
+  .btn {
+    background: var(--green-dim);
+    border: 1px solid var(--green-mid);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 9px 20px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.1s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn:hover { background: #22452a; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn.danger {
+    background: #2e0a0a;
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .btn.danger:hover { background: #3d0f0f; }
+
+  .btn.secondary {
+    background: var(--bg3);
+    border-color: var(--border);
+    color: var(--text-dim);
+  }
+  .btn.secondary:hover { border-color: var(--muted); color: var(--text); }
+
+  /* State display */
+  .state-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .state-cell {
+    background: var(--bg2);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .state-cell .key { font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .state-cell .val { font-size: 13px; color: var(--green); word-break: break-all; }
+  .state-cell .val.muted { color: var(--text-dim); }
+
+  /* Log / output */
+  .log {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 14px;
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-y: auto;
+    max-height: 400px;
+    flex-shrink: 0;
+  }
+
+  .log-entry { display: flex; gap: 10px; }
+  .log-entry .ts { color: var(--muted); flex-shrink: 0; }
+  .log-entry .msg { color: var(--text); }
+  .log-entry.ok .msg { color: var(--green-mid); }
+  .log-entry.err .msg { color: var(--red); }
+  .log-entry.info .msg { color: var(--blue); }
+
+  /* Results table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+
+  .score { font-weight: 600; color: var(--amber); }
+  .score.win { color: var(--green); }
+
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  .badge.extra { background: #2d2200; color: var(--amber); }
+
+  /* Divider */
+  hr { border: none; border-top: 1px solid var(--border); }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--green-dim);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+  }
+
+  /* Draft board */
+  .draft-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+  }
+
+  .player-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.1s;
+    position: relative;
+  }
+
+  .player-card:hover { border-color: var(--green-mid); background: var(--bg3); }
+  .player-card.selected { border-color: var(--green); background: var(--green-dim); }
+
+  .player-card .pname { font-weight: 600; font-size: 12px; color: var(--text); }
+  .player-card .pmeta { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+  .player-card .pgrades { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .player-card .grade { font-size: 11px; }
+  .player-card .grade .gk { color: var(--text-dim); }
+  .player-card .grade .gv { color: var(--amber); }
+  .player-card .grade .gv.elite { color: var(--green); }
+  .player-card .rank-badge {
+    position: absolute;
+    top: 6px; right: 8px;
+    font-size: 10px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .filter-bar { display: flex; gap: 8px; align-items: center; }
+  .filter-bar input { max-width: 200px; }
+
+  .pref-list {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    min-height: 60px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+  }
+
+  .pref-tag {
+    background: var(--green-dim);
+    border: 1px solid var(--green-mid);
+    color: var(--green);
+    padding: 3px 8px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+  }
+
+  .pref-tag .remove {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1;
+  }
+  .pref-tag .remove:hover { color: var(--red); }
+
+  /* Sim results */
+  .game-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .game-row:last-child { border-bottom: none; }
+  .game-row .team-away { text-align: right; color: var(--text-dim); }
+  .game-row .team-home { color: var(--text-dim); }
+  .game-row .team-away.winner,
+  .game-row .team-home.winner { color: var(--text); font-weight: 600; }
+  .game-row .scores { text-align: center; font-weight: 600; color: var(--amber); white-space: nowrap; }
+  .game-row .extra { font-size: 10px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚾ GM Sim</span>
+  <span class="divider">/</span>
+  <span class="logo" style="color:var(--text-dim);font-size:12px;">Dev Console</span>
+  <div class="spacer"></div>
+  <div id="header-status" class="session-display">no session</div>
+</header>
+
+<nav>
+  <div class="nav-section">Session</div>
+  <button class="nav-btn active" onclick="showPanel('panel-session')" id="nav-session">
+    <span class="dot"></span>Session / State
+  </button>
+
+  <div class="nav-section">League</div>
+  <button class="nav-btn" onclick="showPanel('panel-create')" id="nav-create">
+    <span class="dot"></span>Create League
+  </button>
+  <button class="nav-btn" onclick="showPanel('panel-start')" id="nav-start">
+    <span class="dot"></span>Start League
+  </button>
+
+  <div class="nav-section">Draft</div>
+  <button class="nav-btn" onclick="showPanel('panel-board'); loadBoard()" id="nav-board">
+    <span class="dot"></span>Draft Board
+  </button>
+  <button class="nav-btn" onclick="showPanel('panel-execute')" id="nav-execute">
+    <span class="dot"></span>Execute Draft
+  </button>
+
+  <div class="nav-section">Season</div>
+  <button class="nav-btn" onclick="showPanel('panel-sim')" id="nav-sim">
+    <span class="dot"></span>Sim Next Day
+  </button>
+</nav>
+
+<main>
+
+  <!-- SESSION PANEL -->
+  <div class="panel active" id="panel-session">
+    <div class="panel-header">
+      <span class="panel-title">Session State</span>
+    </div>
+    <div class="panel-body">
+      <div id="state-grid" class="state-grid"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn danger" onclick="clearSession()">Clear Session</button>
+        <button class="btn secondary" onclick="refreshState()">Refresh</button>
+      </div>
+      <div>
+        <div class="field">
+          <label>Restore from JSON (paste a create-league response)</label>
+          <textarea id="restore-json" placeholder='{"league": {...}, "gm": {...}}'></textarea>
+        </div>
+        <button class="btn secondary" style="margin-top:8px;" onclick="restoreFromJSON()">Restore</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE PANEL -->
+  <div class="panel" id="panel-create">
+    <div class="panel-header">
+      <span class="panel-title">Create League</span>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <div class="field">
+          <label>League Name</label>
+          <input id="league-name" value="Dev League" />
+        </div>
+        <div class="field">
+          <label>Your Name</label>
+          <input id="commissioner-name" value="Dev GM" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Mode</label>
+          <select id="league-mode">
+            <option value="blitz">Blitz</option>
+            <option value="longform">Long Form</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Decision Window (sec)</label>
+          <input id="decision-window" type="number" value="120" />
+        </div>
+      </div>
+      <button class="btn" onclick="createLeague()">Create League</button>
+      <div id="create-log" class="log"></div>
+    </div>
+  </div>
+
+  <!-- START PANEL -->
+  <div class="panel" id="panel-start">
+    <div class="panel-header">
+      <span class="panel-title">Start League</span>
+    </div>
+    <div class="panel-body">
+      <p style="color:var(--text-dim);font-size:12px;line-height:1.7;">
+        Generates all 30 team rosters, builds the schedule, fills AI GM slots,
+        generates the 650-player draft class, and creates the draft record.
+        League advances to <span style="color:var(--amber)">draft</span> state.
+      </p>
+      <div id="start-state" class="state-grid"></div>
+      <button class="btn" onclick="startLeague()">Start League</button>
+      <div id="start-log" class="log"></div>
+    </div>
+  </div>
+
+  <!-- DRAFT BOARD PANEL -->
+  <div class="panel" id="panel-board">
+    <div class="panel-header">
+      <span class="panel-title">Draft Board</span>
+    </div>
+    <div class="panel-body">
+      <div class="filter-bar">
+        <input id="board-filter" placeholder="Filter by name or position…" oninput="filterBoard()" />
+        <select id="board-type" onchange="filterBoard()">
+          <option value="">All</option>
+          <option value="pitcher">Pitchers</option>
+          <option value="hitter">Hitters</option>
+        </select>
+        <select id="board-sort" onchange="filterBoard()">
+          <option value="overall">Overall</option>
+          <option value="age">Age</option>
+          <option value="stuff">Stuff</option>
+          <option value="control">Control</option>
+          <option value="stamina">Stamina</option>
+          <option value="contact">Contact</option>
+          <option value="power">Power</option>
+          <option value="eye">Eye</option>
+          <option value="speed">Speed</option>
+        </select>
+        <button class="btn secondary" onclick="loadBoard()">Reload</button>
+        <button class="btn" onclick="submitPreferences()">Submit Preferences</button>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">
+          PREFERENCE LIST <span id="pref-count" style="color:var(--green);">0 players</span>
+          — click players below to add, drag to reorder
+        </div>
+        <div id="pref-list" class="pref-list"></div>
+      </div>
+      <div id="board-loading" style="display:none;padding:20px;text-align:center;">
+        <div class="spinner" style="margin:0 auto;"></div>
+      </div>
+      <div id="draft-grid" class="draft-grid"></div>
+      <div id="board-log" class="log" style="max-height:120px;"></div>
+    </div>
+  </div>
+
+  <!-- EXECUTE DRAFT PANEL -->
+  <div class="panel" id="panel-execute">
+    <div class="panel-header">
+      <span class="panel-title">Execute Draft</span>
+    </div>
+    <div class="panel-body">
+      <p style="color:var(--text-dim);font-size:12px;line-height:1.7;">
+        Runs the full blitz auto-draft. All 30 teams pick 20 rounds in snake order.
+        Human GM preference list is respected; AI fills the rest by prospect rating.
+        League advances to <span style="color:var(--amber)">preseason</span> state.
+      </p>
+      <button class="btn" onclick="executeDraft()">Execute Draft</button>
+      <div id="execute-log" class="log"></div>
+    </div>
+  </div>
+
+  <!-- SIM PANEL -->
+  <div class="panel" id="panel-sim">
+    <div class="panel-header">
+      <span class="panel-title">Sim Next Day</span>
+    </div>
+    <div class="panel-body">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn" onclick="simNext()">Sim Next Day</button>
+        <button class="btn secondary" onclick="simMany(5)">Sim 5 Days</button>
+        <button class="btn secondary" onclick="simMany(10)">Sim 10 Days</button>
+        <span id="sim-spinner" style="display:none;"><div class="spinner"></div></span>
+      </div>
+      <div id="sim-summary" class="state-grid" style="display:none;"></div>
+      <div id="sim-results"></div>
+      <div id="sim-log" class="log"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = 'http://localhost:8000';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = {
+  get leagueId()   { return localStorage.getItem('gm_league_id'); },
+  get joinCode()   { return localStorage.getItem('gm_join_code'); },
+  get gmId()       { return localStorage.getItem('gm_gm_id'); },
+  get session()    { return localStorage.getItem('gm_session'); },
+  get draftId()    { return localStorage.getItem('gm_draft_id'); },
+  get leagueName() { return localStorage.getItem('gm_league_name'); },
+  get leagueState(){ return localStorage.getItem('gm_league_state'); },
+
+  set(league, gm) {
+    localStorage.setItem('gm_league_id',    league.id);
+    localStorage.setItem('gm_join_code',    league.join_code);
+    localStorage.setItem('gm_league_name',  league.name);
+    localStorage.setItem('gm_league_state', league.state);
+    localStorage.setItem('gm_gm_id',        gm.id);
+    localStorage.setItem('gm_session',      gm.user_session || gm.user_session);
+  },
+
+  setDraftId(id) { localStorage.setItem('gm_draft_id', id); },
+  setLeagueState(s) { localStorage.setItem('gm_league_state', s); },
+};
+
+function clearSession() {
+  ['gm_league_id','gm_join_code','gm_gm_id','gm_session',
+   'gm_draft_id','gm_league_name','gm_league_state'].forEach(k => localStorage.removeItem(k));
+  refreshState();
+  log('create-log', 'Session cleared', 'info');
+}
+
+function refreshState() {
+  const grid = document.getElementById('state-grid');
+  const cells = [
+    ['League',  S.leagueName  || '—'],
+    ['State',   S.leagueState || '—'],
+    ['Join Code', S.joinCode  || '—'],
+    ['League ID', S.leagueId  || '—'],
+    ['GM ID',   S.gmId        || '—'],
+    ['Draft ID', S.draftId    || '—'],
+    ['Session', S.session ? S.session.slice(0,16) + '…' : '—'],
+  ];
+  grid.innerHTML = cells.map(([k,v]) => `
+    <div class="state-cell">
+      <div class="key">${k}</div>
+      <div class="val ${v === '—' ? 'muted' : ''}">${v}</div>
+    </div>
+  `).join('');
+
+  // Header
+  const hdr = document.getElementById('header-status');
+  if (S.session) {
+    hdr.innerHTML = `<span>${S.leagueName || 'league'}</span> · ${S.leagueState || '?'} · session <span>${S.session.slice(0,8)}…</span>`;
+  } else {
+    hdr.textContent = 'no session';
+  }
+
+  // Start panel quick-state
+  const ss = document.getElementById('start-state');
+  if (ss) {
+    ss.innerHTML = cells.slice(0,4).map(([k,v]) => `
+      <div class="state-cell"><div class="key">${k}</div><div class="val ${v==='—'?'muted':''}">${v}</div></div>
+    `).join('');
+  }
+}
+
+function restoreFromJSON() {
+  try {
+    const data = JSON.parse(document.getElementById('restore-json').value);
+    if (data.league && data.gm) {
+      S.set(data.league, data.gm);
+      if (data.draft_id) S.setDraftId(data.draft_id);
+      refreshState();
+      log('create-log', 'Session restored from JSON', 'ok');
+    } else {
+      log('create-log', 'Expected {league, gm} shape', 'err');
+    }
+  } catch(e) {
+    log('create-log', 'Invalid JSON: ' + e.message, 'err');
+  }
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const navId = 'nav-' + id.replace('panel-', '');
+  const btn = document.getElementById(navId);
+  if (btn) btn.classList.add('active');
+  refreshState();
+}
+
+// ── Logging ───────────────────────────────────────────────────────────────────
+function log(containerId, msg, type = '') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const ts = new Date().toTimeString().slice(0,8);
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.innerHTML = `<span class="ts">${ts}</span><span class="msg">${msg}</span>`;
+  el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+}
+
+function logJSON(containerId, label, obj) {
+  log(containerId, `${label}: <pre style="display:inline;white-space:pre-wrap;">${JSON.stringify(obj, null, 2)}</pre>`, 'info');
+}
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (S.session) headers['x-gm-session'] = S.session;
+  const res = await fetch(API + path, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
+}
+
+// ── Create League ─────────────────────────────────────────────────────────────
+async function createLeague() {
+  const name = document.getElementById('league-name').value.trim();
+  const gmName = document.getElementById('commissioner-name').value.trim();
+  const mode = document.getElementById('league-mode').value;
+  const window_ = parseInt(document.getElementById('decision-window').value);
+
+  if (!name || !gmName) { log('create-log', 'Name and GM name required', 'err'); return; }
+
+  log('create-log', `Creating league "${name}"…`);
+  try {
+    const data = await api('POST', '/leagues', {
+      name, mode,
+      num_teams: 30,
+      decision_window_sec: window_,
+      reentry_enabled: true,
+      pace_control: 'timer',
+      commissioner_display_name: gmName,
+    });
+
+    S.set(data.league, data.gm);
+    refreshState();
+    log('create-log', `✓ League created — join code: ${data.league.join_code}`, 'ok');
+    log('create-log', `✓ Session token saved (${data.gm.user_session.slice(0,16)}…)`, 'ok');
+    logJSON('create-log', 'Full response', data);
+  } catch(e) {
+    log('create-log', '✗ ' + e.message, 'err');
+  }
+}
+
+// ── Start League ──────────────────────────────────────────────────────────────
+async function startLeague() {
+  if (!S.leagueId) { log('start-log', 'No league in session — create one first', 'err'); return; }
+  const btn = document.querySelector('#panel-start .btn');
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+  log('start-log', `Starting league ${S.leagueId}…`);
+  log('start-log', 'Generating 30 teams + 650 prospects (this takes ~10s)…', 'info');
+  try {
+    const data = await api('POST', `/leagues/${S.leagueId}/start`);
+    S.setDraftId(data.draft_id);
+    S.setLeagueState('draft');
+    refreshState();
+    log('start-log', `✓ ${data.team_count} teams generated`, 'ok');
+    log('start-log', `✓ ${data.game_count} games scheduled`, 'ok');
+    log('start-log', `✓ ${data.prospect_count} prospects in draft pool`, 'ok');
+    log('start-log', `✓ Draft ID: ${data.draft_id}`, 'ok');
+  } catch(e) {
+    log('start-log', '✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Start League';
+  }
+}
+
+// ── Draft Board ───────────────────────────────────────────────────────────────
+let boardData = [];
+let preferences = []; // [{id, name, position}]
+
+async function loadBoard() {
+  if (!S.draftId) { log('board-log', 'No draft ID — start the league first', 'err'); return; }
+  document.getElementById('board-loading').style.display = 'block';
+  document.getElementById('draft-grid').innerHTML = '';
+  try {
+    boardData = await api('GET', `/drafts/${S.draftId}/board`);
+    renderBoard(boardData);
+    log('board-log', `✓ Loaded ${boardData.length} available players`, 'ok');
+  } catch(e) {
+    log('board-log', '✗ ' + e.message, 'err');
+  } finally {
+    document.getElementById('board-loading').style.display = 'none';
+  }
+}
+
+function filterBoard() {
+  const q = document.getElementById('board-filter').value.toLowerCase();
+  const t = document.getElementById('board-type').value;
+  const sortBy = document.getElementById('board-sort').value;
+
+  let filtered = boardData.filter(p => {
+    const name = `${p.first_name} ${p.last_name}`.toLowerCase();
+    const pos = (p.position || '').toLowerCase();
+    const matchQ = !q || name.includes(q) || pos.includes(q);
+    const matchT = !t || p.player_type === t;
+    return matchQ && matchT;
+  });
+
+  const gradeOrder = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
+  filtered.sort((a, b) => {
+    const av = a[sortBy] || '?';
+    const bv = b[sortBy] || '?';
+    if (sortBy === 'age') return a.age - b.age;
+    return gradeOrder.indexOf(av) - gradeOrder.indexOf(bv);
+  });
+
+  renderBoard(filtered);
+}
+
+function renderBoard(players) {
+  const grid = document.getElementById('draft-grid');
+  const prefIds = new Set(preferences.map(p => p.id));
+  grid.innerHTML = players.map(p => {
+    const name = `${p.first_name} ${p.last_name}`;
+    const selected = prefIds.has(p.player_id) ? 'selected' : '';
+    const rankIdx = preferences.findIndex(x => x.id === p.player_id);
+    const rankBadge = rankIdx >= 0 ? `<div class="rank-badge">#${rankIdx+1}</div>` : '';
+
+    const grades = p.player_type === 'pitcher'
+      ? [['STF', p.stuff], ['CTL', p.control], ['STA', p.stamina], ['REC', p.recovery]]
+      : [['CON', p.contact], ['POW', p.power], ['EYE', p.eye], ['SPD', p.speed]];
+
+    const gradeHtml = grades.filter(([,v]) => v).map(([k,v]) => {
+      const elite = v && (v.startsWith('A') || v === 'B+');
+      return `<div class="grade"><span class="gk">${k}</span> <span class="gv ${elite?'elite':''}">${v||'?'}</span></div>`;
+    }).join('');
+
+    return `<div class="player-card ${selected}" onclick="togglePref('${p.player_id}','${name}','${p.position||''}')">
+      ${rankBadge}
+      <div class="pname">${name}</div>
+      <div class="pmeta">${p.position||'?'} · Age ${p.age} · OVR <span style="color:var(--amber)">${p.overall}</span></div>
+      <div class="pgrades">${gradeHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function togglePref(id, name, pos) {
+  const idx = preferences.findIndex(p => p.id === id);
+  if (idx >= 0) {
+    preferences.splice(idx, 1);
+  } else {
+    preferences.push({id, name, pos});
+  }
+  renderPrefList();
+  filterBoard();
+}
+
+function renderPrefList() {
+  const el = document.getElementById('pref-list');
+  document.getElementById('pref-count').textContent = `${preferences.length} players`;
+  el.innerHTML = preferences.map((p, i) => `
+    <div class="pref-tag">
+      <span style="color:var(--muted);font-size:10px;">${i+1}</span>
+      ${p.name}
+      <span class="remove" onclick="togglePref('${p.id}','${p.name}','${p.pos}')">×</span>
+    </div>
+  `).join('');
+}
+
+async function submitPreferences() {
+  if (!S.draftId) { log('board-log', 'No draft ID', 'err'); return; }
+  if (preferences.length === 0) { log('board-log', 'No preferences selected', 'err'); return; }
+  try {
+    await api('PUT', `/drafts/${S.draftId}/preferences`, {
+      player_ids: preferences.map(p => p.id)
+    });
+    log('board-log', `✓ Submitted ${preferences.length} preferences`, 'ok');
+  } catch(e) {
+    log('board-log', '✗ ' + e.message, 'err');
+  }
+}
+
+// ── Execute Draft ─────────────────────────────────────────────────────────────
+async function executeDraft() {
+  if (!S.draftId) { log('execute-log', 'No draft ID — start the league first', 'err'); return; }
+  log('execute-log', 'Running blitz auto-draft (20 rounds × 30 teams)…', 'info');
+  try {
+    const data = await api('POST', `/drafts/${S.draftId}/execute`);
+    S.setLeagueState('preseason');
+    refreshState();
+    log('execute-log', `✓ ${data.picks_made} picks made across ${data.rounds} rounds`, 'ok');
+    log('execute-log', `✓ ${data.picks_made - data.auto_picks} from preference lists, ${data.auto_picks} auto-picked`, 'ok');
+    log('execute-log', `✓ League state: ${data.league_state}`, 'ok');
+  } catch(e) {
+    log('execute-log', '✗ ' + e.message, 'err');
+  }
+}
+
+// ── Sim ───────────────────────────────────────────────────────────────────────
+let teamNames = {};
+
+async function simNext() {
+  if (!S.leagueId) { log('sim-log', 'No league in session', 'err'); return; }
+  document.getElementById('sim-spinner').style.display = 'inline';
+  try {
+    const data = await api('POST', `/leagues/${S.leagueId}/sim/next`);
+    S.setLeagueState(data.league_state || S.leagueState);
+    refreshState();
+    renderSimResults(data);
+    if (data.errors && data.errors.length) {
+      data.errors.forEach(e => log('sim-log', `✗ ${e.game_id}: ${e.error}`, 'err'));
+    }
+  } catch(e) {
+    log('sim-log', '✗ ' + e.message, 'err');
+  } finally {
+    document.getElementById('sim-spinner').style.display = 'none';
+  }
+}
+
+async function simMany(n) {
+  for (let i = 0; i < n; i++) {
+    await simNext();
+    await new Promise(r => setTimeout(r, 200));
+  }
+}
+
+function renderSimResults(data) {
+  if (!data.results || !data.results.length) {
+    if (data.message) log('sim-log', data.message, 'info');
+    return;
+  }
+
+  const summary = document.getElementById('sim-summary');
+  summary.style.display = 'grid';
+  summary.innerHTML = [
+    ['Date', data.game_date],
+    ['Games', data.games_played],
+    ['Seed', data.seed],
+  ].map(([k,v]) => `
+    <div class="state-cell"><div class="key">${k}</div><div class="val">${v}</div></div>
+  `).join('');
+
+  const resultsEl = document.getElementById('sim-results');
+  const rows = data.results.map(r => {
+    const awayWin = r.away_score > r.home_score;
+    const extra = r.innings !== 9 ? `<span class="badge extra">${r.innings} inn</span>` : '';
+    return `<div class="game-row">
+      <div class="team-away ${awayWin?'winner':''}">${r.away_team_id.slice(0,8)}…</div>
+      <div class="scores">${r.away_score} – ${r.home_score} ${extra}</div>
+      <div class="team-home ${!awayWin?'winner':''}">${r.home_team_id.slice(0,8)}…</div>
+      <div class="extra">${r.innings === 9 ? '' : r.innings + ' inn'}</div>
+    </div>`;
+  }).join('');
+
+  resultsEl.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);margin-top:8px;">${rows}</div>`;
+  log('sim-log', `✓ ${data.game_date} — ${data.games_played} games played`, 'ok');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+refreshState();
+</script>
+</body>
+</html>

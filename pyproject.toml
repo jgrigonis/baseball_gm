@@ -22,6 +22,9 @@ dev = [
   "coverage",
   "pyflakes",
   "pytest",
+  "pydantic-settings",
+  "fastapi",
+  "uvicorn[standard]",
 ]
 
 [tool.pytest.ini_options]

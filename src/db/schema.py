@@ -229,10 +229,46 @@ CREATE TABLE IF NOT EXISTS seasons (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS gms (
+    id           TEXT PRIMARY KEY,
+    league_id    TEXT NOT NULL,
+    team_id      TEXT,           -- NULL until assigned
+    user_session TEXT UNIQUE,    -- opaque token; real auth deferred to v2
+    display_name TEXT NOT NULL,
+    is_ai        INTEGER NOT NULL DEFAULT 0 CHECK (is_ai   IN (0, 1)),
+    is_away      INTEGER NOT NULL DEFAULT 0 CHECK (is_away IN (0, 1)),
+    career_seasons INTEGER NOT NULL DEFAULT 0,
+    warned_at    TEXT,           -- ISO datetime of performance warning
+    fired_at     TEXT,           -- ISO datetime of firing; NULL = active
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+
+    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS leagues (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+
+    -- GM layer fields
+    join_code            TEXT UNIQUE,
+    mode                 TEXT NOT NULL DEFAULT 'blitz'
+                             CHECK (mode IN ('blitz', 'longform')),
+    num_teams            INTEGER NOT NULL DEFAULT 30,
+    decision_window_sec  INTEGER NOT NULL DEFAULT 120,
+    reentry_enabled      INTEGER NOT NULL DEFAULT 1
+                             CHECK (reentry_enabled IN (0, 1)),
+    pace_control         TEXT NOT NULL DEFAULT 'timer'
+                             CHECK (pace_control IN ('timer', 'confirmed', 'scheduled')),
+    state                TEXT NOT NULL DEFAULT 'lobby'
+                             CHECK (state IN (
+                                 'lobby', 'draft', 'preseason', 'season',
+                                 'playoffs', 'offseason', 'complete'
+                             )),
+    commissioner_gm_id   TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+
+    FOREIGN KEY (commissioner_gm_id) REFERENCES gms(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS league_seasons (
@@ -266,7 +302,7 @@ CREATE TABLE IF NOT EXISTS series (
 
 CREATE TABLE IF NOT EXISTS games (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,          -- ISO date
+    game_date TEXT NOT NULL,          -- ISO date
     season_id TEXT NOT NULL,
     series_id TEXT,
     home_team_id TEXT NOT NULL,
@@ -459,7 +495,131 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
--- Indexes for performance
+-- ── GM layer ──────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS gms (
+    id           TEXT PRIMARY KEY,
+    league_id    TEXT NOT NULL,
+    team_id      TEXT,           -- NULL until assigned
+    user_session TEXT UNIQUE,    -- opaque token; real auth deferred to v2
+    display_name TEXT NOT NULL,
+    is_ai        INTEGER NOT NULL DEFAULT 0 CHECK (is_ai   IN (0, 1)),
+    is_away      INTEGER NOT NULL DEFAULT 0 CHECK (is_away IN (0, 1)),
+    career_seasons INTEGER NOT NULL DEFAULT 0,
+    warned_at    TEXT,           -- ISO datetime of performance warning
+    fired_at     TEXT,           -- ISO datetime of firing; NULL = active
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+
+    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
+);
+
+-- One row per GM, created on join, mutable between series.
+CREATE TABLE IF NOT EXISTS gm_profiles (
+    gm_id TEXT PRIMARY KEY,
+
+    -- Batting tendencies
+    lineup_style     TEXT NOT NULL DEFAULT 'traditional'
+                         CHECK (lineup_style     IN ('traditional', 'analytics', 'speed-first', 'power-first')),
+    steal_aggression TEXT NOT NULL DEFAULT 'standard'
+                         CHECK (steal_aggression IN ('conservative', 'standard', 'aggressive')),
+    sac_bunt         TEXT NOT NULL DEFAULT 'situational'
+                         CHECK (sac_bunt         IN ('never', 'situational', 'frequent')),
+
+    -- Pitching tendencies
+    starter_usage TEXT NOT NULL DEFAULT 'pitch-count-strict'
+                      CHECK (starter_usage IN ('let-them-work', 'pitch-count-strict', 'matchup-based')),
+    closer_usage  TEXT NOT NULL DEFAULT 'saves-only'
+                      CHECK (closer_usage  IN ('saves-only', 'high-leverage', 'best-available')),
+    bullpen_pref  TEXT NOT NULL DEFAULT 'deep-pen'
+                      CHECK (bullpen_pref  IN ('deep-pen', 'starter-heavy')),
+
+    -- Roster tendencies
+    dh_enabled    INTEGER NOT NULL DEFAULT 1 CHECK (dh_enabled IN (0, 1)),
+    platoon_usage TEXT NOT NULL DEFAULT 'none'
+                      CHECK (platoon_usage IN ('none', 'vs-handedness', 'aggressive')),
+
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+
+    FOREIGN KEY (gm_id) REFERENCES gms(id) ON DELETE CASCADE
+);
+
+-- One draft per league per season.
+CREATE TABLE IF NOT EXISTS drafts (
+    id             TEXT PRIMARY KEY,
+    league_id      TEXT NOT NULL,
+    season_id      TEXT NOT NULL,
+    format         TEXT NOT NULL CHECK (format IN ('preference', 'interactive')),
+    state          TEXT NOT NULL DEFAULT 'pending'
+                       CHECK (state IN ('pending', 'open', 'complete')),
+    current_pick   INTEGER NOT NULL DEFAULT 1,
+    pick_timer_sec INTEGER NOT NULL DEFAULT 90,  -- interactive drafts only
+
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+
+    UNIQUE (league_id, season_id),
+
+    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+-- Written as the draft runs; snake order derived from pick_number + num_teams.
+CREATE TABLE IF NOT EXISTS draft_picks (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    draft_id    TEXT    NOT NULL,
+    pick_number INTEGER NOT NULL,   -- 1-based absolute pick across all rounds
+    round       INTEGER NOT NULL,
+    gm_id       TEXT    NOT NULL,
+    team_id     TEXT    NOT NULL,
+    player_id   TEXT    NOT NULL,
+    auto_picked INTEGER NOT NULL DEFAULT 0 CHECK (auto_picked IN (0, 1)),
+    picked_at   TEXT NOT NULL DEFAULT (datetime('now')),
+
+    UNIQUE (draft_id, pick_number),
+    UNIQUE (draft_id, player_id),   -- each player picked at most once
+
+    FOREIGN KEY (draft_id)  REFERENCES drafts(id)  ON DELETE CASCADE,
+    FOREIGN KEY (gm_id)     REFERENCES gms(id),
+    FOREIGN KEY (team_id)   REFERENCES teams(id),
+    FOREIGN KEY (player_id) REFERENCES players(id)
+);
+
+-- Blitz: primary mechanism. Longform: fallback when pick timer expires.
+CREATE TABLE IF NOT EXISTS draft_preferences (
+    gm_id     TEXT    NOT NULL,
+    draft_id  TEXT    NOT NULL,
+    player_id TEXT    NOT NULL,
+    rank      INTEGER NOT NULL,  -- lower = higher preference
+
+    PRIMARY KEY (gm_id, draft_id, player_id),
+    UNIQUE      (gm_id, draft_id, rank),  -- no ties within a list
+
+    FOREIGN KEY (gm_id)     REFERENCES gms(id)     ON DELETE CASCADE,
+    FOREIGN KEY (draft_id)  REFERENCES drafts(id)  ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+-- Written at season end by the evaluation job.
+CREATE TABLE IF NOT EXISTS gm_season_evaluations (
+    gm_id                 TEXT NOT NULL,
+    season_id             TEXT NOT NULL,
+    wins                  INTEGER NOT NULL DEFAULT 0,
+    losses                INTEGER NOT NULL DEFAULT 0,
+    expected_wins         REAL,
+    roster_quality_rating REAL,
+    made_playoffs         INTEGER NOT NULL DEFAULT 0 CHECK (made_playoffs    IN (0, 1)),
+    won_championship      INTEGER NOT NULL DEFAULT 0 CHECK (won_championship IN (0, 1)),
+    verdict               TEXT CHECK (verdict IN ('retained', 'warned', 'fired')),
+    evaluated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+
+    PRIMARY KEY (gm_id, season_id),
+
+    FOREIGN KEY (gm_id)     REFERENCES gms(id)     ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+-- ── Indexes ───────────────────────────────────────────────────────────────────
+
 CREATE INDEX IF NOT EXISTS idx_player_skills_player_id ON player_skills(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_player ON player_skills_history(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_skills_history_season ON player_skills_history(season_id);
@@ -527,4 +687,16 @@ CREATE INDEX IF NOT EXISTS idx_pss_player_season
  
 CREATE INDEX IF NOT EXISTS idx_pss_team_season
     ON player_season_stats(team_id, season_id);
+
+-- GM layer indexes
+CREATE INDEX IF NOT EXISTS idx_gms_league           ON gms(league_id);
+CREATE INDEX IF NOT EXISTS idx_gms_team             ON gms(team_id);
+CREATE INDEX IF NOT EXISTS idx_gms_session          ON gms(user_session);
+CREATE INDEX IF NOT EXISTS idx_leagues_join_code    ON leagues(join_code);
+CREATE INDEX IF NOT EXISTS idx_drafts_league_season ON drafts(league_id, season_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_draft    ON draft_picks(draft_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_gm       ON draft_picks(gm_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_player   ON draft_picks(player_id);
+CREATE INDEX IF NOT EXISTS idx_draft_prefs_gm_draft ON draft_preferences(gm_id, draft_id);
+CREATE INDEX IF NOT EXISTS idx_gm_evals_season      ON gm_season_evaluations(season_id);
 """

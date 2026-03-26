@@ -208,7 +208,7 @@ def get_args():
         "--output",
         "-o",
         type=str,
-        default="temp_files" + os.sep + "all_years_report.txt",
+        default=str(Path("temp_files") / "all_years_report.txt"),
         help="Output file for the combined text report (default: temp_files/all_years_report.txt)",
     )
     parser.add_argument(
@@ -222,7 +222,7 @@ def get_args():
         "--export",
         "-e",
         type=str,
-        default="temp_files" + os.sep + "all_years_results.csv",
+        default=str(Path("temp_files") / "all_years_results.csv"),
         help="Also export all results to a CSV file (default: temp_files/all_years_results.csv)",
     )
     return parser.parse_args()

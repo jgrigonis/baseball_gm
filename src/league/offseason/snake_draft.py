@@ -249,7 +249,6 @@ class SnakeDraft:
         for team_entry in draft_order:
             team_id = team_entry["team_id"]
 
-            # Load full roster for this team
             player_ids = self.conn.execute(
                 "SELECT player_id FROM team_players WHERE team_id = ?",
                 (team_id,),

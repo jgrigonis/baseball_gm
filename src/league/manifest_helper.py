@@ -62,5 +62,7 @@ def create_team_files(teams: list[dict], year, rng: random.Random) -> None:
 
 def create_team_from_manifest(team, year, rng: random.Random) -> None:
     tf = TeamFactory(rng=rng)
-    tr = tf.generate_team(city=team["city"], mascot=team["mascot"])
-    PlayerCSVExporter.write(team=tr, year=year, filename=team["csv"])
+    tr = tf.generate_team(city=team["city"], mascot=team["mascot"], size=26)
+    PlayerCSVExporter.write(
+        team=tr, year=year, filename=team["csv"], force_overwrite=True
+    )

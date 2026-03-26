@@ -190,7 +190,7 @@ def _series_games(
         games.append(
             {
                 "id": f"{series_id}_g{i}",
-                "date": game_date,
+                "game_date": game_date,
                 "season_id": season_id,
                 "series_id": series_id,
                 "home_team_id": home_id,

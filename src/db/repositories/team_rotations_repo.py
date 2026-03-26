@@ -39,10 +39,11 @@ class TeamRotationsRepository:
         ).fetchone()[0]
 
         if existing > 0:
-            raise ValueError(
-                f"Active rotation already exists for team {team_id} in season {season_id}. "
-                f"Use update_rotation() to modify it."
-            )
+            return  # already set, skip silently
+            # raise ValueError(
+            #     f"Active rotation already exists for team {team_id} in season {season_id}. "
+            #     f"Use update_rotation() to modify it."
+            # )
 
         for order, player_id in enumerate(player_id_list, 1):
             self.conn.execute(
@@ -143,10 +144,10 @@ class TeamRotationsRepository:
             AND g.season_id = ?
             AND pgs.pitch_game_started = 1
             AND pgs.player_id IN ({})
-            AND g.date <= ?
-            AND tr.effective_date <= g.date
-            AND (tr.end_date IS NULL OR tr.end_date > g.date)
-            ORDER BY g.date DESC, g.id DESC
+            AND g.game_date <= ?
+            AND tr.effective_date <= g.game_date
+            AND (tr.end_date IS NULL OR tr.end_date > g.game_date)
+            ORDER BY g.game_date DESC, g.id DESC
             LIMIT 1
             """.format(",".join("?" * len(rotation_player_ids))),
             (team_id, season_id, *rotation_player_ids, current_date),

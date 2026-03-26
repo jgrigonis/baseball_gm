@@ -134,7 +134,7 @@ def single_game_bat_query(conn, args, team_id, field, innings_filter=None, top=5
     sql = f"""
         SELECT
             p.first_name || ' ' || p.last_name,
-            g.date,
+            g.game_date,
             s.year,
             {field},
             g.innings_played
@@ -165,7 +165,7 @@ def single_game_pitch_query(
     sql = f"""
         SELECT
             p.first_name || ' ' || p.last_name,
-            g.date,
+            g.game_date,
             s.year,
             {field},
             g.innings_played
@@ -254,7 +254,7 @@ def run_single_game_batting(args, conn, team_id):
             params.append(team_id)
         where = " AND ".join(clauses)
         sql = f"""
-            SELECT p.first_name || ' ' || p.last_name, g.date, s.year,
+            SELECT p.first_name || ' ' || p.last_name, g.game_date, s.year,
                    {field}, g.innings_played
             FROM player_game_stats pgs
             JOIN players p ON pgs.player_id = p.id
@@ -294,7 +294,7 @@ def run_single_game_pitching(args, conn, team_id):
             params.append(team_id)
         where = " AND ".join(clauses)
         sql = f"""
-            SELECT p.first_name || ' ' || p.last_name, g.date, s.year,
+            SELECT p.first_name || ' ' || p.last_name, g.game_date, s.year,
                    {field}, g.innings_played
             FROM player_game_stats pgs
             JOIN players p ON pgs.player_id = p.id
@@ -322,7 +322,7 @@ def run_single_game_pitching(args, conn, team_id):
         params.append(team_id)
     where = " AND ".join(clauses)
     sql = f"""
-        SELECT p.first_name || ' ' || p.last_name, g.date, s.year,
+        SELECT p.first_name || ' ' || p.last_name, g.game_date, s.year,
                pgs.pitch_outs, g.innings_played
         FROM player_game_stats pgs
         JOIN players p ON pgs.player_id = p.id

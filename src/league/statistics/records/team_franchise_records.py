@@ -215,7 +215,7 @@ def game_records_query(
     sql = f"""
         SELECT
             t.city || ' ' || t.mascot AS team,
-            g.date,
+            g.game_date,
             s.year,
             {agg_expr} AS value,
             g.innings_played
@@ -276,7 +276,7 @@ def game_records_extra_query(
     sql = f"""
         SELECT
             t.city || ' ' || t.mascot AS team,
-            g.date,
+            g.game_date,
             s.year,
             {agg_expr} AS value,
             g.innings_played

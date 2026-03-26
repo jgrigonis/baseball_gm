@@ -184,7 +184,7 @@ def generate_round_games(
         games.append(
             {
                 "id": f"{series_id}_g{i}",
-                "date": game_date,
+                "game_date": game_date,
                 "season_id": season_id,
                 "series_id": series_id,
                 "home_team_id": home_id,
@@ -350,14 +350,14 @@ def main():
     # Infer playoff start date from first R1 game
     first_game = conn.execute(
         """
-        SELECT g.date FROM games g
+        SELECT g.game_date FROM games g
         JOIN series s ON g.series_id = s.id
         WHERE s.season_id = ? AND s.name IN ('1v8','2v7','3v6','4v5')
-        ORDER BY g.date LIMIT 1
+        ORDER BY g.game_date LIMIT 1
         """,
         (sid,),
     ).fetchone()
-    playoff_start = date.fromisoformat(first_game["date"])
+    playoff_start = date.fromisoformat(first_game["game_date"])
 
     # ------------------------------------------------------------------
     # Round 1  (BO5)
