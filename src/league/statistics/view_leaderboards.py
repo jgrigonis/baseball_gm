@@ -56,7 +56,7 @@ def calculate_min_pa(
     games_completed = cursor.fetchone()["games_completed"]
     conn.close()
 
-    games_per_team = (games_completed * 2) / num_teams
+    games_per_team = (games_completed * 2) / num_teams if num_teams else 0
     min_pa = games_per_team * 3.1
     min_ip = games_per_team * 1.0
 
