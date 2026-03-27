@@ -1,6 +1,322 @@
-<div class="content-inner tab-fade">
-  <div class="page-header">
-    <h1 class="page-title">Coming Soon</h1>
+{# templates/dashboard/partials/roster.html #}
+
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
+  <div class="page-header" style="margin-bottom:10px;">
+    <h1 class="page-title">Roster</h1>
+    <span id="forty-count" class="page-subtitle"></span>
+    <div class="spacer"></div>
+    <span id="save-feedback"
+          style="font-family:var(--font-mono);font-size:11px;margin-right:12px;"></span>
+    <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
+      Save Roster
+    </button>
   </div>
-  <p style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">This tab is under construction.</p>
+
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+              padding-top:10px;border-top:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:6px;
+                font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+      Sort
+      <select id="sort1" onchange="applySort()" style="width:auto;">
+        <option value="overall">Overall</option>
+        <optgroup label="Hitting">
+          <option value="contact">Contact</option>
+          <option value="power">Power</option>
+          <option value="eye">Eye</option>
+          <option value="speed">Speed</option>
+        </optgroup>
+        <optgroup label="Pitching">
+          <option value="stuff">Stuff</option>
+          <option value="control">Control</option>
+          <option value="stamina">Stamina</option>
+          <option value="recovery">Recovery</option>
+        </optgroup>
+        <optgroup label="Defense">
+          <option value="if">Infield (IF)</option>
+          <option value="of">Outfield (OF)</option>
+          <option value="c">Catcher (CA)</option>
+          <option value="1b">First Base</option>
+          <option value="arm">Arm</option>
+        </optgroup>
+      </select>
+      then
+      <select id="sort2" onchange="applySort()" style="width:auto;">
+        <option value="">—</option>
+        <option value="overall">Overall</option>
+        <optgroup label="Hitting">
+          <option value="contact">Contact</option>
+          <option value="power">Power</option>
+          <option value="eye">Eye</option>
+          <option value="speed">Speed</option>
+        </optgroup>
+        <optgroup label="Pitching">
+          <option value="stuff">Stuff</option>
+          <option value="control">Control</option>
+          <option value="stamina">Stamina</option>
+          <option value="recovery">Recovery</option>
+        </optgroup>
+        <optgroup label="Defense">
+          <option value="if">Infield (IF)</option>
+          <option value="of">Outfield (OF)</option>
+          <option value="c">Catcher (CA)</option>
+          <option value="1b">First Base</option>
+          <option value="arm">Arm</option>
+        </optgroup>
+      </select>
+    </div>
+    <button class="btn btn-secondary" onclick="toggleReverse()" id="reverse-btn"
+            style="font-size:11px;padding:5px 10px;">
+      ↑ Best first
+    </button>
+    <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:auto;">
+      Drag between columns · click to inspect
+    </span>
+  </div>
 </div>
+
+<div style="padding:16px 24px 24px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+
+    <div>
+      <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+                  text-transform:uppercase;color:var(--amber);margin-bottom:8px;">
+        40-Man Roster
+        <span style="color:var(--muted);font-size:9px;margin-left:8px;">drag players here</span>
+      </div>
+      <div id="col-40man" class="roster-drop-col"
+           ondragover="colOver(event)" ondrop="colDrop(event,'40man')">
+        <div class="roster-col-empty" id="empty-40man" style="display:none;">Drop players here</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+                  text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">
+        Organization
+        <span style="color:var(--muted);font-size:9px;margin-left:8px;">drag to 40-man</span>
+      </div>
+      <div id="col-org" class="roster-drop-col"
+           ondragover="colOver(event)" ondrop="colDrop(event,'org')">
+        <div class="roster-col-empty" id="empty-org" style="display:none;">No players in org</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.roster-drop-col {
+  min-height:120px;border:1px solid var(--border);
+  background:var(--bg-2);transition:border-color .15s,background .15s;
+}
+.roster-drop-col.drag-target{border-color:var(--amber);background:var(--amber-lo);}
+.roster-col-empty{
+  padding:24px;text-align:center;
+  font-family:var(--font-mono);font-size:12px;color:var(--text-dim);
+}
+.r-card{
+  display:grid;grid-template-columns:auto 1fr;
+  gap:0 10px;align-items:center;
+  padding:8px 14px;border-bottom:1px solid var(--border);
+  cursor:grab;user-select:none;transition:background .08s;
+}
+.r-card:last-child{border-bottom:none;}
+.r-card:hover{background:var(--bg-3);}
+.r-card.dragging{opacity:.3;cursor:grabbing;}
+.r-ovr{font-family:var(--font-mono);font-size:14px;font-weight:600;min-width:28px;}
+.r-name{font-family:var(--font-sans);font-weight:600;font-size:13px;color:var(--text-hi);}
+.r-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:1px;}
+.r-grades{font-family:var(--font-mono);font-size:11px;display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;}
+.r-grades .gl{color:var(--text-dim);margin-right:1px;}
+</style>
+
+<script>
+const LEAGUE_ID   = "{{ league_id }}";
+const ALL_PLAYERS = {{ players | tojson }};
+
+const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
+function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
+function gradeClass(g) {
+  return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
+}
+
+// ── State ──────────────────────────────────────────────────────────────────────
+// Init 40-man: use saved status if any players are already assigned,
+// otherwise seed with the top 40 by overall grade.
+const savedForty = ALL_PLAYERS.filter(p => p.roster_status === '40man');
+let fortyMan;
+if (savedForty.length > 0) {
+  fortyMan = new Set(savedForty.map(p => p.player_id));
+} else {
+  const top40 = [...ALL_PLAYERS]
+    .sort((a, b) => gradeVal(a.overall) - gradeVal(b.overall))
+    .slice(0, 40)
+    .map(p => p.player_id);
+  fortyMan = new Set(top40);
+}
+let reversed  = false;
+let _dragging = null;
+
+// ── Sort ───────────────────────────────────────────────────────────────────────
+// For grades from ratings (IF, OF, CA, 1B, arm) we store them on the player object
+// The server puts them in ratings but not directly on the player grades model.
+// We handle sort keys: overall, contact, power, eye, speed, stuff, control,
+// stamina, recovery, arm — all come from PlayerGrades fields.
+// Defense keys if/of/c/1b come from best_def_grade matching best_def_label.
+
+function getSkillVal(p, key) {
+  // Defense composite ratings from ratings dict
+  if (key === 'if')  return gradeVal(p.if_grade);
+  if (key === 'of')  return gradeVal(p.of_grade);
+  if (key === 'c')   return gradeVal(p.c_grade);
+  if (key === '1b')  return gradeVal(p.b1_grade);
+  if (key === 'arm') return gradeVal(p.arm);
+  // Standard grade fields
+  return gradeVal(p[key]);
+}
+
+function sortedPlayers(ids) {
+  const s1 = document.getElementById('sort1').value;
+  const s2 = document.getElementById('sort2').value;
+  const players = [...ids]
+    .map(id => ALL_PLAYERS.find(p => p.player_id === id))
+    .filter(Boolean);
+
+  players.sort((a, b) => {
+    const d1 = getSkillVal(a, s1) - getSkillVal(b, s1);
+    if (d1 !== 0) return d1;
+    if (s2) return getSkillVal(a, s2) - getSkillVal(b, s2);
+    return 0;
+  });
+
+  if (reversed) players.reverse();
+  return players;
+}
+
+function applySort() { render(); }
+
+function toggleReverse() {
+  reversed = !reversed;
+  const btn = document.getElementById('reverse-btn');
+  btn.textContent = reversed ? '↓ Worst first' : '↑ Best first';
+  render();
+}
+
+// ── Card rendering ─────────────────────────────────────────────────────────────
+function makeCard(p) {
+  const grades = p.player_type === 'pitcher'
+    ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery]]
+    : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
+  const defHtml = p.best_def_grade
+    ? `<span><span class="gl">${p.best_def_label}</span><span class="${gradeClass(p.best_def_grade)}">${p.best_def_grade}</span></span>`
+    : '';
+  const gradesHtml = grades.filter(([,v])=>v).map(([k,v])=>
+    `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
+  ).join('') + defHtml;
+
+  const el = document.createElement('div');
+  el.className = 'r-card';
+  el.draggable = true;
+  el.dataset.id = p.player_id;
+  el.innerHTML = `
+    <span class="r-ovr ${gradeClass(p.overall)}">${p.overall}</span>
+    <div>
+      <div class="r-name">${p.first_name} ${p.last_name}</div>
+      <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
+      <div class="r-grades">${gradesHtml}</div>
+    </div>`;
+
+  let _downId = null;
+  el.addEventListener('mousedown', () => { _downId = p.player_id; });
+  el.addEventListener('mouseup', () => {
+    if (!_dragging && _downId === p.player_id) openPlayerPanel(p.player_id);
+    _downId = null;
+  });
+  el.addEventListener('dragstart', e => {
+    _dragging = p.player_id;
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  el.addEventListener('dragend', e => {
+    e.currentTarget.classList.remove('dragging');
+    setTimeout(() => { _dragging = null; }, 0);
+  });
+  return el;
+}
+
+function render() {
+  const col40 = document.getElementById('col-40man');
+  const colOrg = document.getElementById('col-org');
+  col40.querySelectorAll('.r-card').forEach(c => c.remove());
+  colOrg.querySelectorAll('.r-card').forEach(c => c.remove());
+
+  const orgIds = ALL_PLAYERS.map(p => p.player_id).filter(id => !fortyMan.has(id));
+  sortedPlayers([...fortyMan]).forEach(p => col40.appendChild(makeCard(p)));
+  sortedPlayers(orgIds).forEach(p => colOrg.appendChild(makeCard(p)));
+
+  document.getElementById('empty-40man').style.display = fortyMan.size === 0 ? 'block' : 'none';
+  document.getElementById('empty-org').style.display   = orgIds.length === 0  ? 'block' : 'none';
+  document.getElementById('forty-count').textContent   = `${fortyMan.size} / 40`;
+}
+
+// ── Drag & Drop ────────────────────────────────────────────────────────────────
+function colOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-target');
+}
+
+document.addEventListener('dragover', e => {
+  document.querySelectorAll('.roster-drop-col').forEach(c => {
+    if (!c.contains(e.target)) c.classList.remove('drag-target');
+  });
+});
+
+function colDrop(e, col) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-target');
+  if (!_dragging) return;
+  if (col === '40man') {
+    if (fortyMan.size >= 40) {
+      showFeedback('40-man roster is full (40 max)', 'var(--red)');
+      return;
+    }
+    fortyMan.add(_dragging);
+  } else {
+    fortyMan.delete(_dragging);
+  }
+  render();
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────────
+async function saveRoster() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/roster/save`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ forty_man: [...fortyMan] }),
+    });
+    if (res.ok) {
+      showFeedback('✓ Saved', 'var(--green)');
+    } else {
+      const d = await res.json().catch(()=>({}));
+      showFeedback('✗ ' + (d.detail || 'Error'), 'var(--red)');
+    }
+  } catch(err) {
+    showFeedback('✗ Network error', 'var(--red)');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Roster';
+  }
+}
+
+function showFeedback(msg, color) {
+  const fb = document.getElementById('save-feedback');
+  fb.textContent = msg; fb.style.color = color;
+  setTimeout(() => { if (fb.textContent === msg) fb.textContent = ''; }, 3000);
+}
+
+render();
+</script>
