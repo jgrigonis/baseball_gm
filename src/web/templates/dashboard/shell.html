@@ -147,6 +147,12 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPane
 </nav>
 {% endif %}
 
+<div id="sim-status" style="display:none;padding:6px 24px;
+     background:var(--green-dim);border-bottom:1px solid var(--green-mid);
+     font-family:var(--font-mono);font-size:11px;color:var(--green);
+     display:none;align-items:center;gap:12px;">
+  <span id="sim-status-text"></span>
+</div>
 <div id="tab-content" class="tab-fade">
   {% if tab_template %}{% include tab_template %}{% endif %}
 </div>

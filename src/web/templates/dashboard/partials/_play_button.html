@@ -1,6 +1,4 @@
 <div style="display:flex;align-items:center;gap:8px;">
-  <span id="sched-feedback"
-        style="font-family:var(--font-mono);font-size:11px;color:var(--green);display:none;"></span>
   {% if league_state in ('season', 'playoffs', 'preseason') %}
   <button class="btn btn-secondary" id="sched-stop-btn"
           onclick="schedStop()"

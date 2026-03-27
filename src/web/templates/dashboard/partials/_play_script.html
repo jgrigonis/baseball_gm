@@ -8,31 +8,45 @@
   }
   window.schedToggleDropdown = schedToggleDropdown;
   
-  var _simRunning = false;
-  var _simStop    = false;
+  // Helpers that always look up fresh DOM refs
+  function getBtn()  { return document.getElementById('sched-play-btn'); }
+  function getStop() { return document.getElementById('sched-stop-btn'); }
+  function setStatus(msg, color) {
+    var bar  = document.getElementById('sim-status');
+    var text = document.getElementById('sim-status-text');
+    if (!bar || !text) return;
+    if (msg) {
+      text.textContent = msg;
+      bar.style.setProperty('display', 'flex', 'important');
+      if (color) { bar.style.background = color === 'red' ? 'var(--red-lo, #2e0a0a)' : 'var(--green-dim)'; bar.style.borderColor = color === 'red' ? 'var(--red)' : 'var(--green-mid)'; text.style.color = color === 'red' ? 'var(--red)' : 'var(--green)'; }
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+  
+  function setSimMode(simming) {
+    var btn  = getBtn();
+    var stop = getStop();
+    if (btn)  { btn.disabled  = simming; btn.style.display  = simming ? 'none' : ''; }
+    if (stop) { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
+  }
+  
+  var _simStop = false;
   
   async function schedSim(count) {
-    if (_simRunning) return;
-  
-    var dd   = document.getElementById('sched-dropdown');
-    var btn  = document.getElementById('sched-play-btn');
-    var stop = document.getElementById('sched-stop-btn');
-    var fb   = document.getElementById('sched-feedback');
+    var dd = document.getElementById('sched-dropdown');
     if (dd) dd.style.display = 'none';
   
-    _simRunning = true;
-    _simStop    = false;
-    if (btn)  { btn.disabled = true; btn.style.display = 'none'; }
-    if (stop) stop.style.display = 'inline-block';
-    if (fb)   { fb.style.display = 'inline'; fb.style.color = 'var(--green)'; }
+    _simStop = false;
+    setSimMode(true);
   
     var totalGames = 0;
     var remaining  = null;
-    var daysLimit  = count === 'season' ? 9999 : count;
     var daysSimmed = 0;
   
-    // sim one day at a time so we can show live updates
     while (!_simStop) {
+      setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' games played)' : ''));
+  
       try {
         var res = await fetch('/leagues/{{ league_id }}/sim', {
           method: 'POST',
@@ -46,47 +60,46 @@
         remaining   = d.games_remaining;
         daysSimmed++;
   
-        if (fb) fb.textContent = '▶ ' + totalGames + ' games · ' + remaining + ' remaining';
+        setStatus('▶ Day ' + daysSimmed + ' done · ' + totalGames + ' games · ' + remaining + ' remaining');
   
-        // Refresh current tab after each day
+        // Refresh current tab
         var activeLink = document.querySelector('.tab-link.active');
         if (activeLink) {
           var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
-          var tabRes = await fetch(url, {headers: {'HX-Request': 'true'}});
-          var html = await tabRes.text();
-          var tc = document.getElementById('tab-content');
-          if (tc) tc.innerHTML = html;
+          try {
+            var tabRes = await fetch(url, {headers: {'HX-Request': 'true'}});
+            var html = await tabRes.text();
+            var tc = document.getElementById('tab-content');
+            if (tc) tc.innerHTML = html;
+          } catch(e) {}
         }
-        // Restore sim state after re-render
-        var btn2  = document.getElementById('sched-play-btn');
-        var stop2 = document.getElementById('sched-stop-btn');
-        if (btn2)  { btn2.disabled = true; btn2.style.display = 'none'; }
-        if (stop2) { stop2.style.display = 'inline-block'; stop2.textContent = '■ Stop'; }
+  
+        // Restore sim buttons after re-render
+        setSimMode(true);
   
         if (remaining <= 0) break;
-        // count = number of YOUR games (days) to sim
         if (count !== 'season' && daysSimmed >= count) break;
   
       } catch(err) {
-        if (fb) { fb.textContent = '✗ Error'; fb.style.color = 'var(--red)'; }
+        setStatus('✗ Error', 'red');
         console.error(err);
         break;
       }
     }
   
-    _simRunning = false;
-    _simStop    = false;
-    if (btn)  { btn.disabled = false; btn.style.display = ''; }
-    if (stop) stop.style.display = 'none';
-    if (fb && fb.textContent.startsWith('▶')) {
-      fb.textContent = '✓ ' + totalGames + ' games · ' + (remaining !== null ? remaining : '?') + ' remaining';
+    // Done
+    setSimMode(false);
+    if (remaining !== null) {
+      setStatus('✓ ' + daysSimmed + ' days · ' + totalGames + ' games · ' + remaining + ' remaining');
+    } else {
+      setStatus('');
     }
   }
   window.schedSim = schedSim;
   
   function schedStop() {
     _simStop = true;
-    var stop = document.getElementById('sched-stop-btn');
+    var stop = getStop();
     if (stop) stop.textContent = 'Stopping…';
   }
   window.schedStop = schedStop;
