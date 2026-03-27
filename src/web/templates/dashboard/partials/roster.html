@@ -11,6 +11,10 @@
     <button class="btn btn-secondary" onclick="fillToForty()" style="margin-right:8px;">
       Fill to 40
     </button>
+    <button class="btn btn-secondary" onclick="removeInjured()"
+            style="margin-right:8px;border-color:var(--red);color:var(--red);">
+      Remove Injured
+    </button>
     <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
       Save Roster
     </button>
@@ -148,8 +152,26 @@ function gradeClass(g) {
 // Init 40-man: use saved status if any players are already assigned,
 // otherwise seed with the top 40 by overall grade.
 const savedForty = ALL_PLAYERS.filter(p => p.roster_status === '40man');
+const ROSTER_KEY = `roster_40man_${LEAGUE_ID}`;
+
+function saveToStorage() {
+  try { sessionStorage.setItem(ROSTER_KEY, JSON.stringify([...fortyMan])); } catch(e) {}
+}
+function loadFromStorage() {
+  try {
+    const s = sessionStorage.getItem(ROSTER_KEY);
+    if (!s) return null;
+    const ids = JSON.parse(s);
+    const valid = ids.filter(id => ALL_PLAYERS.some(p => p.player_id === id));
+    return valid.length > 0 ? valid : null;
+  } catch(e) { return null; }
+}
+
 let fortyMan;
-if (savedForty.length > 0) {
+const stored = loadFromStorage();
+if (stored) {
+  fortyMan = new Set(stored);
+} else if (savedForty.length > 0) {
   fortyMan = new Set(savedForty.map(p => p.player_id));
 } else {
   const top40 = [...ALL_PLAYERS]
@@ -214,8 +236,19 @@ function fillToForty() {
     .slice(0, needed);
 
   candidates.forEach(p => fortyMan.add(p.player_id));
+  saveToStorage();
   render();
   showFeedback(`Added ${candidates.length} player${candidates.length !== 1 ? 's' : ''}`, 'var(--green)');
+}
+
+function removeInjured() {
+  const before = fortyMan.size;
+  ALL_PLAYERS.filter(p => p.injured).forEach(p => fortyMan.delete(p.player_id));
+  const removed = before - fortyMan.size;
+  saveToStorage();
+  render();
+  if (removed > 0) showFeedback(`Removed ${removed} injured player${removed !== 1 ? 's' : ''}`, 'var(--amber)');
+  else showFeedback('No injured players on 40-man', 'var(--text-dim)');
 }
 
 function toggleReverse() {
@@ -311,6 +344,7 @@ function colDrop(e, col) {
   } else {
     fortyMan.delete(_dragging);
   }
+  saveToStorage();
   render();
 }
 
