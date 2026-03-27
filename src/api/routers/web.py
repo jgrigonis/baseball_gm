@@ -536,6 +536,27 @@ def draft_tab(
         ctx["board"]       = []
         ctx["preferences"] = []
 
+    # Load GM's current roster for the right-hand column
+    players = []
+    if gm and gm["team_id"]:
+        roster_rows = db.execute(
+            """SELECT p.*, ps.status
+               FROM players p
+               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+               JOIN player_status ps ON ps.player_id = p.id
+               ORDER BY ps.status, p.last_name""",
+            (gm["team_id"],),
+        ).fetchall()
+        for row in roster_rows:
+            d = dict(row)
+            skills_row = db.execute(
+                "SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)
+            ).fetchone()
+            skills = dict(skills_row) if skills_row else {}
+            grades = player_row_to_grades(d, skills, d["status"])
+            players.append(grades.model_dump())
+    ctx["players"] = players
+
     return _respond(request, "dashboard/partials/draft.html", ctx)
 
 
