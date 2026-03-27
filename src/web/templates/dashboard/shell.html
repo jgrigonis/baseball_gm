@@ -1,3 +1,56 @@
+{% block early_scripts %}
+<script>
+// Player panel functions — defined early so partials can call them
+let _pinnedId = null;
+window.openPlayerPanel = function(pid) {
+  const url = _pinnedId && _pinnedId !== pid
+    ? `/leagues/{{ league_id }}/players/${pid}/panel?compare=${_pinnedId}`
+    : `/leagues/{{ league_id }}/players/${pid}/panel`;
+  fetch(url)
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById('player-panel-mount').innerHTML = html;
+      addBackdrop();
+      const hint = document.getElementById('compare-hint');
+      if (hint) hint.remove();
+    })
+    .catch(err => console.error('Panel load failed:', err));
+};
+window.closePlayerPanel = function() {
+  document.getElementById('player-panel-mount').innerHTML = '';
+  removeBackdrop();
+  _pinnedId = null;
+  const hint = document.getElementById('compare-hint');
+  if (hint) hint.remove();
+};
+window.pinForCompare = function(pid, name) { _pinnedId = pid; closeAndBrowse(name); };
+window.closeAndBrowse = function(name) {
+  document.getElementById('player-panel-mount').innerHTML = '';
+  removeBackdrop();
+  const hint = document.createElement('div');
+  hint.id = 'compare-hint';
+  hint.style.cssText = 'position:sticky;top:0;z-index:20;background:var(--amber-lo);' +
+    'border-bottom:1px solid var(--amber-dim);padding:8px 24px;' +
+    'font-family:var(--font-mono);font-size:11px;color:var(--amber);' +
+    'display:flex;align-items:center;gap:12px;';
+  const label = name ? `✓ ${name} pinned — click any player to compare` : '↗ Click any player to compare';
+  hint.innerHTML = label +
+    ' · <button onclick="cancelCompare()" style="background:none;border:none;' +
+    'color:var(--text-dim);font-family:var(--font-mono);font-size:11px;cursor:pointer;">✕ Cancel</button>';
+  const tabContent = document.getElementById('tab-content');
+  if (tabContent) tabContent.prepend(hint);
+};
+window.cancelCompare = function() { _pinnedId = null; const h = document.getElementById('compare-hint'); if(h) h.remove(); };
+function addBackdrop() {
+  removeBackdrop();
+  const bd = document.createElement('div');
+  bd.className = 'panel-backdrop'; bd.id = 'panel-backdrop';
+  bd.onclick = closePlayerPanel;
+  document.body.appendChild(bd);
+}
+function removeBackdrop() { const b = document.getElementById('panel-backdrop'); if(b) b.remove(); }
+</script>
+{% endblock %}
 {% extends "base.html" %}
 {% block title %}{{ team_name or league_name }} — GM Sim{% endblock %}
 
@@ -158,55 +211,6 @@ async function simGames(count) {
   }
 }
 
-// ── Player panel ───────────────────────────────────────────────────────────────
-let _pinnedId = null;
-window.openPlayerPanel = function(pid) {
-  const url = _pinnedId && _pinnedId !== pid
-    ? `/leagues/{{ league_id }}/players/${pid}/panel?compare=${_pinnedId}`
-    : `/leagues/{{ league_id }}/players/${pid}/panel`;
-  fetch(url)
-    .then(r => r.text())
-    .then(html => {
-      document.getElementById('player-panel-mount').innerHTML = html;
-      addBackdrop();
-      const hint = document.getElementById('compare-hint');
-      if (hint) hint.remove();
-    })
-    .catch(err => console.error('Panel load failed:', err));
-}
-window.closePlayerPanel = function() {
-  document.getElementById('player-panel-mount').innerHTML = '';
-  removeBackdrop();
-  _pinnedId = null;
-  const hint = document.getElementById('compare-hint');
-  if (hint) hint.remove();
-}
-window.pinForCompare = function(pid, name) { _pinnedId = pid; closeAndBrowse(name); }
-window.closeAndBrowse = function(name) {
-  document.getElementById('player-panel-mount').innerHTML = '';
-  removeBackdrop();
-  const hint = document.createElement('div');
-  hint.id = 'compare-hint';
-  hint.style.cssText = 'position:sticky;top:0;z-index:20;background:var(--amber-lo);' +
-    'border-bottom:1px solid var(--amber-dim);padding:8px 24px;' +
-    'font-family:var(--font-mono);font-size:11px;color:var(--amber);' +
-    'display:flex;align-items:center;gap:12px;';
-  const label = name ? `✓ ${name} pinned — click any player to compare` : '↗ Click any player to compare';
-  hint.innerHTML = label +
-    ' · <button onclick="cancelCompare()" style="background:none;border:none;' +
-    'color:var(--text-dim);font-family:var(--font-mono);font-size:11px;cursor:pointer;">✕ Cancel</button>';
-  const tabContent = document.getElementById('tab-content');
-  if (tabContent) tabContent.prepend(hint);
-}
-window.cancelCompare = function() { _pinnedId = null; const h = document.getElementById('compare-hint'); if(h) h.remove(); }
-function addBackdrop() {
-  removeBackdrop();
-  const bd = document.createElement('div');
-  bd.className = 'panel-backdrop'; bd.id = 'panel-backdrop';
-  bd.onclick = closePlayerPanel;
-  document.body.appendChild(bd);
-}
-function removeBackdrop() { const b = document.getElementById('panel-backdrop'); if(b) b.remove(); }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPanel(); });
 </script>
 
