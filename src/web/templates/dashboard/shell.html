@@ -59,16 +59,20 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
     void e.detail.target.offsetWidth;
     e.detail.target.classList.add('tab-fade');
   }
-  if (e.detail.target.id === 'player-panel-mount' && e.detail.target.innerHTML.trim()) {
-    addBackdrop();
-  }
+
 });
 let _pinnedId = null;
 function openPlayerPanel(pid) {
   const url = _pinnedId && _pinnedId !== pid
     ? `/leagues/{{ league_id }}/players/${pid}/panel?compare=${_pinnedId}`
     : `/leagues/{{ league_id }}/players/${pid}/panel`;
-  htmx.ajax('GET', url, {target:'#player-panel-mount', swap:'innerHTML'});
+  fetch(url)
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById('player-panel-mount').innerHTML = html;
+      addBackdrop();
+    })
+    .catch(err => console.error('Panel load failed:', err));
 }
 function closePlayerPanel() {
   document.getElementById('player-panel-mount').innerHTML = '';

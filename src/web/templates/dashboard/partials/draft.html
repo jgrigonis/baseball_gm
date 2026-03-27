@@ -1,6 +1,6 @@
 {# templates/dashboard/partials/draft.html #}
 
-{# ── Sticky header — direct child of the scroll container ─────────────────── #}
+{# ── Sticky header ─────────────────────────────────────────────────────────── #}
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:16px 24px 12px;border-bottom:1px solid var(--border);">
 
@@ -10,13 +10,9 @@
       <span class="page-subtitle">{{ board|length }} prospects</span>
       <div class="spacer"></div>
       <button class="btn btn-secondary" onclick="resetOrder()" id="reset-btn"
-              style="opacity:0.4;" disabled>
-        ↺ Reset to Default
-      </button>
+              style="opacity:0.4;" disabled>↺ Reset to Default</button>
       <button class="btn btn-primary" onclick="submitPrefs()" id="submit-btn"
-              style="margin-left:8px;">
-        Submit Preferences
-      </button>
+              style="margin-left:8px;">Submit Preferences</button>
       <span id="submit-feedback"
             style="font-family:var(--font-mono);font-size:11px;margin-left:12px;"></span>
     {% else %}
@@ -78,50 +74,34 @@
 </div>
 
 {% if draft_id %}
-{# ── Scrollable body ───────────────────────────────────────────────────────── #}
 <div style="padding:16px 24px 24px;">
-  <div style="display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start;">
+  <div style="display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start;">
 
     <div class="card">
       <div id="prospect-list"></div>
     </div>
 
-    <div style="position:sticky;top:130px;">
-      <div class="card">
-        <div class="card-header" style="padding:8px 16px;">
+    {# Roster column: fixed max-height with its own scroll #}
+    <div style="position:sticky;top:calc(var(--draft-header-h, 120px) + 16px);
+                max-height:calc(100vh - var(--draft-header-h, 120px) - 32px);
+                display:flex;flex-direction:column;">
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;min-height:0;">
+        <div class="card-header" style="padding:8px 16px;flex-shrink:0;">
           <span class="card-title">Your Roster</span>
-          <span style="font-family:var(--font-mono);font-size:10px;
-                       color:var(--text-dim);margin-left:6px;">click to inspect</span>
+          <div class="spacer"></div>
+          <select id="roster-sort" onchange="renderRoster()"
+                  style="font-size:10px;padding:2px 4px;width:auto;background:var(--bg-3);
+                         border:1px solid var(--border);color:var(--text-dim);font-family:var(--font-mono);">
+            <option value="overall">Overall</option>
+            <option value="contact">Contact</option>
+            <option value="power">Power</option>
+            <option value="eye">Eye</option>
+            <option value="speed">Speed</option>
+            <option value="stuff">Stuff</option>
+            <option value="control">Control</option>
+          </select>
         </div>
-        <div>
-          {% if players %}
-            {% for p in players %}
-            <div class="draft-roster-row" onclick="openPlayerPanel('{{ p.player_id }}')">
-              <div style="display:flex;justify-content:space-between;align-items:baseline;">
-                <span class="draft-roster-name">{{ p.first_name }} {{ p.last_name }}</span>
-                <span class="grade grade-{{ p.overall | replace('+','-plus') | replace('-','-minus') }}">
-                  {{ p.overall }}
-                </span>
-              </div>
-              <div class="draft-roster-meta">
-                {{ p.position or '?' }} · {{ p.bats }}/{{ p.throws }} ·
-                {% if p.player_type == 'pitcher' %}
-                  <span style="color:var(--muted)">STF</span> {{ p.stuff or '?' }}
-                  <span style="color:var(--muted)">CTL</span> {{ p.control or '?' }}
-                {% else %}
-                  <span style="color:var(--muted)">CON</span> {{ p.contact or '?' }}
-                  <span style="color:var(--muted)">POW</span> {{ p.power or '?' }}
-                {% endif %}
-              </div>
-            </div>
-            {% endfor %}
-          {% else %}
-            <div style="padding:20px 16px;font-family:var(--font-mono);
-                        font-size:12px;color:var(--text-dim);">
-              No roster assigned yet
-            </div>
-          {% endif %}
-        </div>
+        <div id="roster-list" style="overflow-y:auto;flex:1;min-height:0;"></div>
       </div>
     </div>
 
@@ -138,6 +118,7 @@
 .type-btn:last-child{border-right:none;}
 .type-btn:hover{color:var(--text);background:var(--bg-3);}
 .type-btn.active{color:var(--amber);background:var(--amber-lo);}
+
 .prospect-row {
   display:grid;grid-template-columns:auto 36px 1fr auto;
   gap:0 10px;align-items:center;padding:8px 14px;
@@ -148,25 +129,28 @@
 .prospect-row:hover{background:var(--bg-3);}
 .prospect-row.dragging{opacity:.3;cursor:grabbing;}
 .prospect-row.drag-over{border-top:2px solid var(--amber);margin-top:-1px;}
+
 .p-overall{font-family:var(--font-mono);font-size:15px;font-weight:600;min-width:28px;}
 .p-rank{font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:right;}
 .p-name{font-family:var(--font-sans);font-weight:600;font-size:13px;color:var(--text-hi);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .p-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:1px;}
-.p-grades{display:flex;gap:10px;font-family:var(--font-mono);font-size:11px;}
-.p-grades .gl{color:var(--text-dim);margin-right:2px;}
-.draft-roster-row{padding:8px 14px;border-bottom:1px solid var(--border);
+.p-grades{display:flex;gap:8px;font-family:var(--font-mono);font-size:11px;flex-wrap:wrap;}
+.p-grades .gl{color:var(--text-dim);margin-right:1px;}
+
+.roster-row{padding:7px 14px;border-bottom:1px solid var(--border);
   cursor:pointer;transition:background .08s;}
-.draft-roster-row:last-child{border-bottom:none;}
-.draft-roster-row:hover{background:var(--bg-3);}
-.draft-roster-name{font-family:var(--font-sans);font-weight:600;font-size:12px;color:var(--text);}
-.draft-roster-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:2px;}
+.roster-row:last-child{border-bottom:none;}
+.roster-row:hover{background:var(--bg-3);}
+.r-name{font-family:var(--font-sans);font-weight:600;font-size:12px;color:var(--text);}
+.r-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:2px;}
 </style>
 
 <script>
 const DRAFT_ID    = "{{ draft_id }}";
 const LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ board | tojson }};
+const ALL_ROSTER  = {{ players | tojson }};
 const SAVED_PREFS = {{ preferences | tojson }};
 const STORAGE_KEY = `draft_order_${DRAFT_ID}`;
 
@@ -181,6 +165,7 @@ let defaultOrder = null;
 let typeFilter   = '';
 let dirty        = false;
 
+// ── Prospect list ──────────────────────────────────────────────────────────────
 function visible() {
   return order
     .map(id => ALL_PLAYERS.find(p => p.player_id === id))
@@ -208,7 +193,7 @@ function renderBoard() {
     return `<div class="prospect-row" draggable="true" data-id="${p.player_id}"
                  ondragstart="dStart(event)" ondragover="dOver(event)"
                  ondrop="dDrop(event)" ondragend="dEnd(event)"
-                 onclick="openPlayerPanel('${p.player_id}')">
+>
       <span class="p-overall ${gradeClass(p.overall)}">${p.overall}</span>
       <div class="p-rank">${rank}</div>
       <div>
@@ -223,6 +208,44 @@ function renderBoard() {
   document.getElementById('prospect-list').innerHTML = html;
 }
 
+// ── Roster list ────────────────────────────────────────────────────────────────
+function renderRoster() {
+  const sortKey = document.getElementById('roster-sort')?.value || 'overall';
+  const sorted = [...ALL_ROSTER].sort((a, b) => {
+    const av = gradeVal(a[sortKey] || a.overall);
+    const bv = gradeVal(b[sortKey] || b.overall);
+    return av - bv;
+  });
+
+  if (!sorted.length) {
+    document.getElementById('roster-list').innerHTML =
+      '<div style="padding:20px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">No roster yet</div>';
+    return;
+  }
+
+  const html = sorted.map(p => {
+    const grades = p.player_type === 'pitcher'
+      ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery]]
+      : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
+    const gradesHtml = grades.filter(([,v])=>v).map(([k,v])=>
+      `<span class="gl">${k}</span><span class="${gradeClass(v)}" style="margin-right:6px;">${v}</span>`
+    ).join('');
+
+    return `<div class="roster-row" onclick="openPlayerPanel('${p.player_id}')">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span class="r-name">${p.first_name} ${p.last_name}</span>
+        <span class="${gradeClass(p.overall)}" style="font-size:13px;font-weight:600;">${p.overall}</span>
+      </div>
+      <div class="r-meta">
+        ${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age} · ${gradesHtml}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('roster-list').innerHTML = html;
+}
+
+// ── Filter & Sort ──────────────────────────────────────────────────────────────
 function setType(btn, type) {
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -262,25 +285,6 @@ function applySort() {
   renderBoard();
 }
 
-function restoreUiState(data) {
-  // Restore type filter buttons
-  if (data.typeFilter) {
-    typeFilter = data.typeFilter;
-    document.querySelectorAll('.type-btn').forEach(b => {
-      b.classList.toggle('active', b.getAttribute('onclick').includes(`'${data.typeFilter}'`));
-    });
-  }
-  // Restore sort dropdowns
-  if (data.sort1) document.getElementById('sort1').value = data.sort1;
-  if (data.sort2 !== undefined) document.getElementById('sort2').value = data.sort2;
-  // Restore save feedback
-  if (data.feedback) {
-    const fb = document.getElementById('submit-feedback');
-    fb.textContent   = data.feedback;
-    fb.style.color   = data.feedbackColor || 'var(--text-dim)';
-  }
-}
-
 function resetOrder() {
   order = [...defaultOrder];
   dirty = false;
@@ -295,33 +299,6 @@ function updateResetBtn() {
   btn.style.opacity = dirty ? '1' : '0.4';
 }
 
-// ── Persist order in sessionStorage so tab switches don't reset it ─────────────
-function saveToStorage() {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      order,
-      typeFilter,
-      sort1: document.getElementById('sort1')?.value || 'overall',
-      sort2: document.getElementById('sort2')?.value || '',
-      feedback: document.getElementById('submit-feedback')?.textContent || '',
-      feedbackColor: document.getElementById('submit-feedback')?.style.color || '',
-    }));
-  } catch(e) {}
-}
-
-function loadFromStorage() {
-  try {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
-    if (!saved) return null;
-    const data = JSON.parse(saved);
-    // Support old format (plain array) gracefully
-    if (Array.isArray(data)) return { order: data };
-    const valid = data.order.filter(id => ALL_PLAYERS.some(p => p.player_id === id));
-    if (valid.length !== ALL_PLAYERS.length) return null;
-    return { ...data, order: valid };
-  } catch(e) { return null; }
-}
-
 // ── Drag ───────────────────────────────────────────────────────────────────────
 let dragId = null;
 
@@ -329,7 +306,6 @@ function dStart(e) {
   dragId = e.currentTarget.dataset.id;
   e.currentTarget.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
-  e.stopPropagation();
 }
 function dOver(e) {
   e.preventDefault();
@@ -356,6 +332,48 @@ function dEnd(e) {
   dragId = null;
 }
 
+// ── Storage ────────────────────────────────────────────────────────────────────
+function saveToStorage() {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      order,
+      typeFilter,
+      sort1: document.getElementById('sort1')?.value || 'overall',
+      sort2: document.getElementById('sort2')?.value || '',
+      feedback: document.getElementById('submit-feedback')?.textContent || '',
+      feedbackColor: document.getElementById('submit-feedback')?.style.color || '',
+    }));
+  } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+    const data = JSON.parse(saved);
+    if (Array.isArray(data)) return { order: data };
+    const valid = data.order.filter(id => ALL_PLAYERS.some(p => p.player_id === id));
+    if (valid.length !== ALL_PLAYERS.length) return null;
+    return { ...data, order: valid };
+  } catch(e) { return null; }
+}
+
+function restoreUiState(data) {
+  if (data.typeFilter) {
+    typeFilter = data.typeFilter;
+    document.querySelectorAll('.type-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('onclick').includes(`'${data.typeFilter}'`));
+    });
+  }
+  if (data.sort1) document.getElementById('sort1').value = data.sort1;
+  if (data.sort2 !== undefined) document.getElementById('sort2').value = data.sort2;
+  if (data.feedback) {
+    const fb = document.getElementById('submit-feedback');
+    fb.textContent = data.feedback;
+    fb.style.color = data.feedbackColor || 'var(--text-dim)';
+  }
+}
+
 // ── Submit ─────────────────────────────────────────────────────────────────────
 async function submitPrefs() {
   const btn = document.getElementById('submit-btn');
@@ -366,7 +384,7 @@ async function submitPrefs() {
   try {
     const res = await fetch(`/leagues/${LEAGUE_ID}/draft/preferences`, {
       method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ player_ids: order }),
     });
     if (res.ok) {
@@ -384,13 +402,38 @@ async function submitPrefs() {
     btn.disabled = false;
     btn.textContent = 'Submit Preferences';
   }
+  saveToStorage();
+}
+
+// ── Measure sticky header height for roster positioning ────────────────────────
+function updateHeaderHeight() {
+  const h = document.querySelector('[style*="position:sticky"]')?.offsetHeight || 120;
+  document.documentElement.style.setProperty('--draft-header-h', h + 'px');
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
-const storedData = loadFromStorage();
+renderRoster();
 
+// ── Event delegation for prospect clicks ──────────────────────────────────────
+// Using mouseup instead of onclick because onclick is unreliable on
+// draggable elements — the browser can swallow it after any drag attempt.
+let _mouseDownId = null;
+document.getElementById('prospect-list').addEventListener('mousedown', e => {
+  const row = e.target.closest('.prospect-row');
+  _mouseDownId = row ? row.dataset.id : null;
+});
+document.getElementById('prospect-list').addEventListener('mouseup', e => {
+  if (dragId) return;  // mid-drag, ignore
+  const row = e.target.closest('.prospect-row');
+  if (row && row.dataset.id === _mouseDownId) {
+    console.log('[draft] opening panel for', row.dataset.id);
+    openPlayerPanel(row.dataset.id);
+  }
+  _mouseDownId = null;
+});
+
+const storedData = loadFromStorage();
 if (storedData) {
-  // Restore from sessionStorage — user switched tabs and came back
   order = storedData.order;
   restoreUiState(storedData);
   defaultOrder = sortedOrder();
@@ -398,7 +441,6 @@ if (storedData) {
   updateResetBtn();
   renderBoard();
 } else if (SAVED_PREFS.length > 0) {
-  // Restore from server-saved preferences (e.g. page reload)
   const prefSet = new Set(SAVED_PREFS);
   const rest = order.filter(id => !prefSet.has(id));
   order = [...SAVED_PREFS.filter(id => order.includes(id)), ...rest];
@@ -408,7 +450,9 @@ if (storedData) {
   updateResetBtn();
   renderBoard();
 } else {
-  // Fresh start — sort by overall
   applySort();
 }
+
+// Measure after render so CSS var is set
+requestAnimationFrame(updateHeaderHeight);
 </script>
