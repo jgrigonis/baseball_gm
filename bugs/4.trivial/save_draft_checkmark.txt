@@ -1,0 +1,1 @@
+The saved checkmark should go away on draft page if you reorder any rows after saving

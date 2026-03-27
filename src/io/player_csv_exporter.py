@@ -12,7 +12,13 @@ from src.util.locations import TEAM_FILES_DIR
 
 class PlayerCSVExporter:
     @staticmethod
-    def write(team: TeamRecord, year, filename, force_overwrite=False):
+    def write(
+        team: TeamRecord,
+        year,
+        filename,
+        force_overwrite=False,
+        league_id: str | None = None,
+    ):
         """
         Write team players to CSV file.
 
@@ -20,11 +26,15 @@ class PlayerCSVExporter:
             team: TeamRecord to export
             filename: Name of file to write
             force_overwrite: If True, skip confirmation dialog
+            league_id: If provided, scope output to a league-specific subdirectory
+                       so multiple leagues don't overwrite each other's CSVs.
 
         Returns:
             bool: True if file was written, False if user cancelled
         """
-        filepath = Path(TEAM_FILES_DIR) / str(year) / filename
+        base = Path(TEAM_FILES_DIR) / str(year)
+        out_dir = base / league_id if league_id else base
+        filepath = out_dir / filename
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
         # Check if file exists and prompt user
@@ -49,7 +59,7 @@ class PlayerCSVExporter:
                     player.age,
                     player.position,
                     player.throws[0].upper(),  # "right" -> "R"
-                    player.bats[0].upper(),  # "right" -> "R", "switch" -> "S"
+                    player.bats[0].upper(),    # "right" -> "R", "switch" -> "S"
                 ]
 
                 for csv_key in PLAYER_SKILL_COLUMNS:

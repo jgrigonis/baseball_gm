@@ -5,6 +5,7 @@ set -e
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DB_FILE="cli.db"
 
 # ── Parse flags ────────────────────────────────────────────────
 YES=0
@@ -33,7 +34,7 @@ fi
 
 # ── Confirmation prompt (skipped with -yes) ─────────────────────
 if [[ "$YES" -eq 0 ]]; then
-    printf "⚠️  Are you sure? This will destroy db and team files. [y/N] "
+    printf "⚠️  Are you sure? This will destroy db. [y/N] "
     read confirm
     case "$confirm" in
         [yY]|[yY][eE][sS]) ;;
@@ -42,9 +43,7 @@ if [[ "$YES" -eq 0 ]]; then
 fi
 
 # ── Run ────────────────────────────────────────────────────────
-rm -f leagues/league.db
-
-"${SCRIPT_DIR}/delete_team_files.sh"
+rm -f leagues/${DB_FILE}
 
 SEASON_ID=$(python src/league/cli.py -m world_league-${YEAR}.json -c ${CLI_SEED_FLAG} | tee /dev/tty | grep "Season created:" | awk '{print $3}')
 
@@ -52,16 +51,16 @@ SEASON_ID=$(python src/league/cli.py -m world_league-${YEAR}.json -c ${CLI_SEED_
 
 "${SCRIPT_DIR}/clear_temp_files.sh"
 
-python src/league/play_season.py -i ${SEASON_ID} ${SEED_FLAG} ${GAME_LOGS_FLAG}
+python src/league/play_season.py -i ${SEASON_ID} ${SEED_FLAG} ${GAME_LOGS_FLAG} --db ${DB_FILE}
 
-python src/league/statistics/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG} -f ${DB_FILE}
 
-python src/league/statistics/league_totals.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/league_totals.py -i ${SEASON_ID} ${LOGS_FLAG} -f ${DB_FILE}
 
-python src/league/statistics/league_leaders.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/league_leaders.py -i ${SEASON_ID} ${LOGS_FLAG} -f ${DB_FILE}
 
-python src/league/playoffs/setup_playoffs.py -i ${SEASON_ID} --start-date ${YEAR}-10-01 ${LOGS_FLAG}
+python src/league/playoffs/setup_playoffs.py -i ${SEASON_ID} --start-date ${YEAR}-10-01 ${LOGS_FLAG} --db ${DB_FILE}
 
-python src/league/playoffs/play_playoffs.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/playoffs/play_playoffs.py -i ${SEASON_ID} ${LOGS_FLAG} --db ${DB_FILE}
 
-python src/league/offseason/offseason_pipeline.py -i ${SEASON_ID} ${SEED_FLAG}
+python src/league/offseason/offseason_pipeline.py -i ${SEASON_ID} ${SEED_FLAG} --db ${DB_FILE}

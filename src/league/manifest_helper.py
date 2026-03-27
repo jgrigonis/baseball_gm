@@ -42,11 +42,19 @@ def validate_manifest_uniqueness(manifest: dict) -> None:
         raise ValueError("Duplicate City/Mascot combinations found")
 
 
-def find_missing_team_files(manifest: dict) -> list[dict]:
-    missing = []
-    team_dir = Path(TEAM_FILES_DIR) / str(manifest["season_year"])
+def _team_dir(year, league_id: str | None = None) -> Path:
+    """Return the directory for team CSV files, scoped by league if provided."""
+    base = Path(TEAM_FILES_DIR) / str(year)
+    return base / league_id if league_id else base
+
+
+def find_missing_team_files(
+    manifest: dict, league_id: str | None = None
+) -> list[dict]:
+    team_dir = _team_dir(manifest["season_year"], league_id)
     team_dir.mkdir(parents=True, exist_ok=True)
 
+    missing = []
     for team in manifest["teams"]:
         path = team_dir / team["csv"]
         if not path.exists():
@@ -54,15 +62,23 @@ def find_missing_team_files(manifest: dict) -> list[dict]:
     return missing
 
 
-def create_team_files(teams: list[dict], year, rng: random.Random) -> None:
+def create_team_files(
+    teams: list[dict], year, rng: random.Random, league_id: str | None = None
+) -> None:
     for team in teams:
         print(f"creating {team['csv']} for {team['city']} {team['mascot']}")
-        create_team_from_manifest(team, year, rng=rng)
+        create_team_from_manifest(team, year, rng=rng, league_id=league_id)
 
 
-def create_team_from_manifest(team, year, rng: random.Random) -> None:
+def create_team_from_manifest(
+    team, year, rng: random.Random, league_id: str | None = None
+) -> None:
     tf = TeamFactory(rng=rng)
     tr = tf.generate_team(city=team["city"], mascot=team["mascot"], size=26)
     PlayerCSVExporter.write(
-        team=tr, year=year, filename=team["csv"], force_overwrite=True
+        team=tr,
+        year=year,
+        filename=team["csv"],
+        force_overwrite=True,
+        league_id=league_id,   # PlayerCSVExporter.write needs to accept this
     )

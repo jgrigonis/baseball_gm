@@ -42,7 +42,7 @@ def get_args():
         action="store_true",
         help="Allow importing updated roster CSVs (e.g. after offseason aging).",
     )
-    parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
+    parser.add_argument("--db", "-d", default="cli.db", help="DB File Name")
     parser.add_argument(
         "--manifest", "-m", default="league_teams.json", help="Set the manifest file."
     )

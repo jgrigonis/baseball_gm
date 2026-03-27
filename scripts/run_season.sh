@@ -5,6 +5,7 @@ set -e
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DB_FILE="cli.db"
 
 # ── Parse flags ────────────────────────────────────────────────
 YEAR=2025
@@ -30,16 +31,16 @@ if [[ -z "$SEASON_ID" ]]; then
     exit 1
 fi
 
-python src/league/play_season.py -i ${SEASON_ID} ${SEED_FLAG} ${GAME_LOGS_FLAG}
+python src/league/play_season.py -i ${SEASON_ID} ${SEED_FLAG} ${GAME_LOGS_FLAG} --db ${DB_FILE}
 
-python src/league/statistics/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/view_leaderboards.py -i ${SEASON_ID} ${LOGS_FLAG} -f ${DB_FILE}
 
-python src/league/statistics/league_totals.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/league_totals.py -i ${SEASON_ID} ${LOGS_FLAG} -f ${DB_FILE}
 
-python src/league/statistics/league_leaders.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/statistics/league_leaders.py -i ${SEASON_ID} ${LOGS_FLAG} -f ${DB_FILE}
 
-python src/league/playoffs/setup_playoffs.py -i ${SEASON_ID} --start-date ${YEAR}-10-01 ${LOGS_FLAG}
+python src/league/playoffs/setup_playoffs.py -i ${SEASON_ID} --start-date ${YEAR}-10-01 ${LOGS_FLAG} --db ${DB_FILE}
 
-python src/league/playoffs/play_playoffs.py -i ${SEASON_ID} ${LOGS_FLAG}
+python src/league/playoffs/play_playoffs.py -i ${SEASON_ID} ${LOGS_FLAG} --db ${DB_FILE}
 
-python src/league/offseason/offseason_pipeline.py -i ${SEASON_ID}
+python src/league/offseason/offseason_pipeline.py -i ${SEASON_ID} --db ${DB_FILE}

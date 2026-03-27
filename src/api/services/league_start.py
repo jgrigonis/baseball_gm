@@ -46,7 +46,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
     year = manifest.get("season_year", 2025)
 
     # ── 2. Generate fresh CSVs for every team ─────────────────────────────────
-    create_team_files(manifest["teams"], year, rng=rng)
+    create_team_files(manifest["teams"], year, rng=rng, league_id=league_id)
 
     # ── 3. Bootstrap teams + season ───────────────────────────────────────────
     start_date_str = manifest.get("season_start_date", f"{year}-04-01")

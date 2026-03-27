@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 START_YEAR=2025
 END_YEAR=2026
 NUM_LEADERS_TO_TRACE=1
+DB_FILE="cli.db"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -44,7 +45,7 @@ trace_year_leaders() {
     echo "  LEADERBOARDS + CAREER TRACES: $year"
     echo "════════════════════════════════════════"
 
-    leaderboard_output=$(python src/league/statistics/view_leaderboards.py -i $year)
+    leaderboard_output=$(python src/league/statistics/view_leaderboards.py -i $year --db ${DB_FILE})
     echo "$leaderboard_output"
 
     echo ""

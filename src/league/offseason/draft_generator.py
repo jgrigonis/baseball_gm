@@ -128,7 +128,7 @@ class DraftGenerator:
             self.status_repo.set_status(player.id, "prospect")
 
         all_draftable = new_players + existing
-        out_path = self._write_draft_csv(all_draftable, year)
+        out_path = self._write_draft_csv(all_draftable, year, league_id)
         print(f"  Wrote {out_path} ({len(all_draftable)} players)")
 
         return len(all_draftable)
@@ -177,8 +177,12 @@ class DraftGenerator:
                 players.append(player)
         return players
 
-    def _write_draft_csv(self, players, year: int) -> Path:
-        out_dir = Path(TEAM_FILES_DIR) / str(year)
+    def _write_draft_csv(self, players, year: int, league_id: str | None = None) -> Path:
+        # Scope by league_id so multiple leagues don't overwrite each other
+        if league_id:
+            out_dir = Path(TEAM_FILES_DIR) / str(year) / league_id
+        else:
+            out_dir = Path(TEAM_FILES_DIR) / str(year)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "draft.csv"
 

@@ -3,6 +3,7 @@
 set -e
 YEAR=$1
 SEED_FLAG=""
+DB_FILE="cli.db"
 
 # Parse optional --seed argument
 shift
@@ -21,7 +22,7 @@ mkdir -p temp_files
 
 for ((y = 2025; y <= YEAR; y++)); do
     echo "=== $y ===" >> "$STANDINGS_FILE"
-    python src/league/statistics/print_standings.py -i "$y" >> "$STANDINGS_FILE"
+    python src/league/statistics/print_standings.py -i "$y" -f ${DB_FILE} >> "$STANDINGS_FILE"
     echo "" >> "$STANDINGS_FILE"
 done
 
