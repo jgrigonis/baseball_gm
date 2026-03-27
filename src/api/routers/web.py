@@ -1184,11 +1184,20 @@ def roster(
             if ratings:
                 if g.get("player_type") == "pitcher":
                     best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
-                    g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
+                    g["overall"]  = skill_to_grade(best_p) if best_p else g["overall"]
+                    g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
+                    g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
                 else:
                     g["overall"] = skill_to_grade(ratings.get("overall_player"))
                 g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
                 g["best_def_label"] = ratings.get("best_def_label", "DEF")
+                g["if_grade"]       = skill_to_grade(ratings.get("if", 0))
+                g["of_grade"]       = skill_to_grade(ratings.get("of", 0))
+                g["c_grade"]        = skill_to_grade(ratings.get("c", 0))
+                g["b1_grade"]       = skill_to_grade(ratings.get("1b", 0))
+            g["base_running"] = skill_to_grade(skills.get("base_running"))
+            g["bunting"]      = skill_to_grade(skills.get("bunting"))
+            g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
             players.append(g)
 
     injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None)
