@@ -580,6 +580,7 @@ def _lobby(request, league_id, db, user, gm):
         "join_code":           league["join_code"],
         "num_teams":           league["num_teams"],
         "decision_window_sec": league["decision_window_sec"],
+        "draft_window_sec":    (dict(league).get("draft_window_sec") or 300),
         "reentry_enabled":     bool(league["reentry_enabled"]),
         "pace_control":        league["pace_control"],
         "league_mode":         league["mode"],
