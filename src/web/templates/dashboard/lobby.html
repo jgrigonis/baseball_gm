@@ -1,4 +1,3 @@
-{# templates/dashboard/lobby.html #}
 {% extends "base.html" %}
 {% block title %}{{ league_name }} — Lobby{% endblock %}
 {% block main %}
@@ -83,13 +82,14 @@
             Starting generates teams, assigns GMs, creates the draft, and generates
             the player pool. AI GMs fill any empty slots. This takes ~10 seconds.
           </p>
-          <form method="POST" action="/render(/{{ league_id }}/start" id="start-form"
+          <form method="POST" action="/leagues/{{ league_id }}/start" id="start-form"
                 onsubmit="onStartLeague(this)">
             <div style="display:flex;align-items:center;gap:12px;">
               <button type="submit" id="start-btn" class="btn btn-primary">
                 Start League →
               </button>
-              <span id="start-spinner" style="display:none;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+              <span id="start-spinner" style="display:none;align-items:center;gap:8px;
+                    font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
                 <span class="spinner"></span> Generating teams &amp; players…
               </span>
             </div>

@@ -154,6 +154,16 @@ def _resolve_gm(
     ).fetchone()
 
 
+
+def _draft_is_complete(db, league_id: str) -> bool:
+    row = db.execute(
+        """SELECT d.state FROM drafts d
+           JOIN league_seasons ls ON ls.season_id = d.season_id
+           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+    return bool(row and row["state"] == "complete")
+
 def _tab_visible(state: str) -> list[str]:
     always = ["standings", "leaders", "roster", "lineup", "strategy"]
     if state == "lobby":                return []
@@ -563,7 +573,7 @@ def _lobby(request, league_id, db, user, gm):
         (league_id,),
     ).fetchall()
     return templates.TemplateResponse(request, "dashboard/lobby.html", {
-                "league_id": league_id,
+        "league_id":           league_id,
         "league_name":         league["name"],
         "league_state":        "lobby",
         "join_code":           league["join_code"],
@@ -575,6 +585,8 @@ def _lobby(request, league_id, db, user, gm):
         "gm_display_name":     gm["display_name"] if gm else user["display_name"],
         "current_gm_id":       gm["id"] if gm else None,
         "is_commissioner":     gm and league["commissioner_gm_id"] == gm["id"],
+        "draft_complete":      False,
+        "visible_tabs":        [],
         "gms": [dict(r) for r in gms],
     })
 
@@ -758,27 +770,38 @@ def draft_results(
             (draft["id"],),
         ).fetchall()
 
+        human_team_ids = {
+            r["team_id"] for r in db.execute(
+                "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
+                (league_id,),
+            ).fetchall()
+        }
+
         # Group by round
         rounds_map = {}
         for pick in picks:
             r = pick["round"]
             if r not in rounds_map:
                 rounds_map[r] = []
+            is_mine   = pick["team_id"] == my_team_id
+            is_human  = pick["team_id"] in human_team_ids and not is_mine
             rounds_map[r].append({
                 "pick_number": pick["pick_number"],
                 "team_id":     pick["team_id"],
+                "player_id":   pick["player_id"],
                 "team_name":   f"{pick['city']} {pick['mascot']}",
                 "player_name": f"{pick['first_name']} {pick['last_name']}",
                 "position":    pick["position"] or "?",
                 "auto_picked": bool(pick["auto_picked"]),
-                "is_mine":     pick["team_id"] == my_team_id,
+                "is_mine":     is_mine,
+                "is_human":    is_human,
             })
         rounds = [{"round": r, "picks": picks}
                   for r, picks in sorted(rounds_map.items())]
 
     ctx["rounds"]     = rounds
     ctx["draft_done"] = bool(draft and draft["state"] == "complete")
-    return templates.TemplateResponse(request, "dashboard/partials/draft_results.html", ctx)
+    return _respond(request, "dashboard/partials/draft_results.html", ctx)
 
 # ── Tab: Standings ─────────────────────────────────────────────────────────────
 

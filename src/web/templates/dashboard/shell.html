@@ -26,6 +26,17 @@
   {% for tab in visible_tabs %}
   {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','strategy':'🎛'} %}
   {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','strategy':'Strategy'} %}
+  {% if tab == 'draft' and draft_complete %}
+  <a href="/leagues/{{ league_id }}/draft/results"
+     class="tab-link {% if active_tab == 'draft' %}active{% endif %}"
+     hx-get="/leagues/{{ league_id }}/draft/results"
+     hx-target="#tab-content"
+     hx-swap="innerHTML"
+     hx-push-url="true"
+     onclick="setActiveTab(this)">
+    📋 Draft Results
+  </a>
+  {% else %}
   <a href="/leagues/{{ league_id }}/{{ tab }}"
      class="tab-link {% if active_tab == tab %}active{% endif %}"
      hx-get="/leagues/{{ league_id }}/{{ tab }}"
@@ -35,6 +46,7 @@
      onclick="setActiveTab(this)">
     {{ icons.get(tab,'') }} {{ labels.get(tab, tab) }}
   </a>
+  {% endif %}
   {% endfor %}
 </nav>
 {% endif %}
