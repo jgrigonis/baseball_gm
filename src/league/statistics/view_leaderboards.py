@@ -14,7 +14,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", "-i", required=False, help="Set the season ID.")
     parser.add_argument(
-        "--file", "-f", default="league.db", help="Set the league db filename."
+        "--file", "-f", default="cli.db", help="Set the league db filename."
     )
     parser.add_argument(
         "--number", "-n", type=int, default=10, help="Number of leaders to show."

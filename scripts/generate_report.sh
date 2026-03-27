@@ -45,7 +45,7 @@ trace_year_leaders() {
     echo "  LEADERBOARDS + CAREER TRACES: $year"
     echo "════════════════════════════════════════"
 
-    leaderboard_output=$(python src/league/statistics/view_leaderboards.py -i $year --db ${DB_FILE})
+    leaderboard_output=$(python src/league/statistics/view_leaderboards.py -i $year -f ${DB_FILE})
     echo "$leaderboard_output"
 
     echo ""
