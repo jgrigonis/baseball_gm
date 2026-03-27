@@ -229,23 +229,6 @@ CREATE TABLE IF NOT EXISTS seasons (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS gms (
-    id           TEXT PRIMARY KEY,
-    league_id    TEXT NOT NULL,
-    team_id      TEXT,           -- NULL until assigned
-    user_session TEXT UNIQUE,    -- opaque token; real auth deferred to v2
-    display_name TEXT NOT NULL,
-    is_ai        INTEGER NOT NULL DEFAULT 0 CHECK (is_ai   IN (0, 1)),
-    is_away      INTEGER NOT NULL DEFAULT 0 CHECK (is_away IN (0, 1)),
-    career_seasons INTEGER NOT NULL DEFAULT 0,
-    warned_at    TEXT,           -- ISO datetime of performance warning
-    fired_at     TEXT,           -- ISO datetime of firing; NULL = active
-    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-
-    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
-    FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
-);
-
 CREATE TABLE IF NOT EXISTS leagues (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
@@ -392,7 +375,7 @@ CREATE TABLE IF NOT EXISTS player_season_stats (
     team_id         TEXT    NOT NULL,
     is_postseason   INTEGER NOT NULL DEFAULT 0 CHECK (is_postseason IN (0, 1)),
  
-    -- ── Batting ──────────────────────────────────────────────
+    -- ── Batting ──────────────────────────────────────────────────────────────
     bat_games_played    INTEGER NOT NULL DEFAULT 0,
     bat_games_started   INTEGER NOT NULL DEFAULT 0,
     bat_ab              INTEGER NOT NULL DEFAULT 0,
@@ -412,7 +395,7 @@ CREATE TABLE IF NOT EXISTS player_season_stats (
     bat_stolen_bases    INTEGER NOT NULL DEFAULT 0,
     bat_caught_stealing INTEGER NOT NULL DEFAULT 0,
  
-    -- ── Pitching ─────────────────────────────────────────────
+    -- ── Pitching ─────────────────────────────────────────────────────────────
     pitch_games_played  INTEGER NOT NULL DEFAULT 0,
     pitch_games_started INTEGER NOT NULL DEFAULT 0,
     pitch_complete_games INTEGER NOT NULL DEFAULT 0,
@@ -436,7 +419,7 @@ CREATE TABLE IF NOT EXISTS player_season_stats (
     pitch_wild_pitches  INTEGER NOT NULL DEFAULT 0,
     pitch_count         INTEGER NOT NULL DEFAULT 0,
  
-    -- ── Fielding ─────────────────────────────────────────────
+    -- ── Fielding ─────────────────────────────────────────────────────────────
     field_putouts           INTEGER NOT NULL DEFAULT 0,
     field_assists           INTEGER NOT NULL DEFAULT 0,
     field_errors            INTEGER NOT NULL DEFAULT 0,
@@ -495,22 +478,39 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
--- ── GM layer ──────────────────────────────────────────────────────────────────
+-- ── GM / Identity layer ───────────────────────────────────────────────────────
+--
+-- users: one row per human across all leagues and sessions.
+--   session_token is the opaque credential stored in the browser cookie.
+--   A future login system would link a new token to an existing user row.
+--
+-- gms: one row per user per league (plus one per AI slot).
+--   user_id is NULL for AI GMs.
+--   All league-specific state (team, performance, fired status) lives here.
+--   The API resolves identity as: session_token → user → gms WHERE league_id = ?
+
+CREATE TABLE IF NOT EXISTS users (
+    id            TEXT PRIMARY KEY,
+    session_token TEXT UNIQUE NOT NULL,   -- credential stored in browser cookie
+    display_name  TEXT NOT NULL,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 CREATE TABLE IF NOT EXISTS gms (
-    id           TEXT PRIMARY KEY,
-    league_id    TEXT NOT NULL,
-    team_id      TEXT,           -- NULL until assigned
-    user_session TEXT UNIQUE,    -- opaque token; real auth deferred to v2
-    display_name TEXT NOT NULL,
-    is_ai        INTEGER NOT NULL DEFAULT 0 CHECK (is_ai   IN (0, 1)),
-    is_away      INTEGER NOT NULL DEFAULT 0 CHECK (is_away IN (0, 1)),
+    id             TEXT PRIMARY KEY,
+    league_id      TEXT NOT NULL,
+    user_id        TEXT,                  -- NULL for AI GMs
+    team_id        TEXT,                  -- NULL until assigned
+    display_name   TEXT NOT NULL,         -- can differ from users.display_name per league
+    is_ai          INTEGER NOT NULL DEFAULT 0 CHECK (is_ai   IN (0, 1)),
+    is_away        INTEGER NOT NULL DEFAULT 0 CHECK (is_away IN (0, 1)),
     career_seasons INTEGER NOT NULL DEFAULT 0,
-    warned_at    TEXT,           -- ISO datetime of performance warning
-    fired_at     TEXT,           -- ISO datetime of firing; NULL = active
-    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    warned_at      TEXT,                  -- ISO datetime of performance warning
+    fired_at       TEXT,                  -- ISO datetime of firing; NULL = active
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE SET NULL,
     FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
 );
 
@@ -550,7 +550,6 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
                       CHECK (bullpen_pref  IN ('deep-pen', 'starter-heavy')),
 
     -- Roster tendencies
-    dh_enabled    INTEGER NOT NULL DEFAULT 1 CHECK (dh_enabled IN (0, 1)),
     platoon_usage TEXT NOT NULL DEFAULT 'none'
                       CHECK (platoon_usage IN ('none', 'vs-handedness', 'aggressive')),
 
@@ -656,64 +655,44 @@ CREATE INDEX IF NOT EXISTS idx_team_game_stats_game ON team_game_stats(game_id);
 CREATE INDEX IF NOT EXISTS idx_team_game_stats_team ON team_game_stats(team_id);
 CREATE INDEX IF NOT EXISTS idx_bullpen_roles_team_season ON bullpen_roles(team_id, season_id);
 CREATE INDEX IF NOT EXISTS idx_bullpen_roles_player ON bullpen_roles(player_id);
--- games: the records queries filter on completed + series_id constantly,
--- and the games-per-season subquery groups by season_id + home/away team.
 CREATE INDEX IF NOT EXISTS idx_games_completed
     ON games(completed);
-
 CREATE INDEX IF NOT EXISTS idx_games_season_completed
     ON games(season_id, completed);
-
 CREATE INDEX IF NOT EXISTS idx_games_season_completed_series
     ON games(season_id, completed, series_id);
-
 CREATE INDEX IF NOT EXISTS idx_games_season_home_completed
     ON games(season_id, home_team_id, completed);
-
 CREATE INDEX IF NOT EXISTS idx_games_season_away_completed
     ON games(season_id, away_team_id, completed);
-
--- player_game_stats: the main bottleneck. Queries filter on
--- bat_game_played or pitch_game_played, then aggregate by player_id.
--- The existing single-column indexes on game_id and player_id are not
--- enough for the composite access patterns used in leaderboards.
 CREATE INDEX IF NOT EXISTS idx_pgs_player_bat
     ON player_game_stats(player_id, bat_game_played);
-
 CREATE INDEX IF NOT EXISTS idx_pgs_player_pitch
     ON player_game_stats(player_id, pitch_game_played);
-
 CREATE INDEX IF NOT EXISTS idx_pgs_game_bat
     ON player_game_stats(game_id, bat_game_played);
-
 CREATE INDEX IF NOT EXISTS idx_pgs_game_pitch
     ON player_game_stats(game_id, pitch_game_played);
-
--- team_id is used in the primary_team_subquery correlated lookup
 CREATE INDEX IF NOT EXISTS idx_pgs_player_team
     ON player_game_stats(player_id, team_id);
-
--- Indexes to support leaderboard queries against the rollup
 CREATE INDEX IF NOT EXISTS idx_pss_season_postseason
     ON player_season_stats(season_id, is_postseason);
- 
 CREATE INDEX IF NOT EXISTS idx_pss_player_season
     ON player_season_stats(player_id, season_id);
- 
 CREATE INDEX IF NOT EXISTS idx_pss_team_season
     ON player_season_stats(team_id, season_id);
 
--- GM layer indexes
-CREATE INDEX IF NOT EXISTS idx_gms_league           ON gms(league_id);
-CREATE INDEX IF NOT EXISTS idx_gms_team             ON gms(team_id);
-CREATE INDEX IF NOT EXISTS idx_gms_session          ON gms(user_session);
-CREATE INDEX IF NOT EXISTS idx_leagues_join_code    ON leagues(join_code);
+-- GM / identity layer indexes
+CREATE INDEX IF NOT EXISTS idx_users_session       ON users(session_token);
+CREATE INDEX IF NOT EXISTS idx_gms_league          ON gms(league_id);
+CREATE INDEX IF NOT EXISTS idx_gms_user            ON gms(user_id);
+CREATE INDEX IF NOT EXISTS idx_gms_team            ON gms(team_id);
+CREATE INDEX IF NOT EXISTS idx_leagues_join_code   ON leagues(join_code);
 CREATE INDEX IF NOT EXISTS idx_drafts_league_season ON drafts(league_id, season_id);
-CREATE INDEX IF NOT EXISTS idx_draft_picks_draft    ON draft_picks(draft_id);
-CREATE INDEX IF NOT EXISTS idx_draft_picks_gm       ON draft_picks(gm_id);
-CREATE INDEX IF NOT EXISTS idx_draft_picks_player   ON draft_picks(player_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_draft   ON draft_picks(draft_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_gm      ON draft_picks(gm_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_player  ON draft_picks(player_id);
 CREATE INDEX IF NOT EXISTS idx_draft_prefs_gm_draft ON draft_preferences(gm_id, draft_id);
-CREATE INDEX IF NOT EXISTS idx_gm_evals_season      ON gm_season_evaluations(season_id);
-CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm
-            ON gm_lineup_preferences(gm_id);
+CREATE INDEX IF NOT EXISTS idx_gm_evals_season     ON gm_season_evaluations(season_id);
+CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm      ON gm_lineup_preferences(gm_id);
 """

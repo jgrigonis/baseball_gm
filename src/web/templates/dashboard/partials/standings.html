@@ -1,0 +1,81 @@
+{# templates/dashboard/partials/standings.html
+   Flat standings — one table, all teams. Highlights your team and other human GMs.
+   Divisions are a future layer when the data model supports them.
+#}
+<div class="content-inner tab-fade">
+
+  <div class="page-header">
+    <h1 class="page-title">Standings</h1>
+    {% if season_name %}
+      <span class="page-subtitle">{{ season_name }}</span>
+    {% endif %}
+    {% if games_played %}
+      <span class="page-subtitle" style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
+        {{ games_played }} games played
+      </span>
+    {% endif %}
+  </div>
+
+  {% if not teams %}
+    <div style="color:var(--text-dim);font-family:var(--font-mono);font-size:13px;padding:40px 0;text-align:center;">
+      No games played yet.
+    </div>
+  {% else %}
+    <div class="card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:24px;">#</th>
+            <th>Team</th>
+            <th class="num">W</th>
+            <th class="num">L</th>
+            <th class="num">PCT</th>
+            <th class="num">GB</th>
+            <th class="num">RS</th>
+            <th class="num">RA</th>
+            <th class="num">DIFF</th>
+            <th class="num">L10</th>
+            <th class="num">STRK</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set leader_wins = teams[0].wins if teams else 0 %}
+          {% for row in teams %}
+          {% set gb = ((leader_wins - row.wins) + (row.losses - teams[0].losses)) / 2 %}
+          <tr class="{% if row.team_id == team_id %}my-team{% elif row.is_human %}human-team{% endif %}">
+            <td style="color:var(--text-dim);font-size:11px;">{{ loop.index }}</td>
+            <td class="team-name">
+              {{ row.city }} {{ row.mascot }}
+              {% if row.is_human and row.team_id != team_id %}
+                <span class="badge badge-human" style="margin-left:6px;">GM</span>
+              {% endif %}
+            </td>
+            <td class="num hi">{{ row.wins }}</td>
+            <td class="num">{{ row.losses }}</td>
+            <td class="num hi">
+              {% if row.wins + row.losses > 0 %}{{ "%.3f"|format(row.wins / (row.wins + row.losses)) }}{% else %}—{% endif %}
+            </td>
+            <td class="num">
+              {% if loop.index == 1 %}—{% elif gb == 0.5 %}½{% else %}{{ gb | int if gb == gb | int else "%.1f"|format(gb) }}{% endif %}
+            </td>
+            <td class="num">{{ row.runs_scored }}</td>
+            <td class="num">{{ row.runs_allowed }}</td>
+            <td class="num" style="{% if row.run_diff > 0 %}color:var(--green){% elif row.run_diff < 0 %}color:var(--red){% endif %}">
+              {{ '+' if row.run_diff > 0 else '' }}{{ row.run_diff }}
+            </td>
+            <td class="num">{{ row.last_10 or '—' }}</td>
+            <td class="num" style="{% if row.streak > 0 %}color:var(--green){% elif row.streak < 0 %}color:var(--red){% endif %}">
+              {% if row.streak > 0 %}W{{ row.streak }}{% elif row.streak < 0 %}L{{ row.streak | abs }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+      <span><span style="color:var(--amber);">■</span> Your team</span>
+      <span><span style="color:var(--sky);">■</span> Human GM</span>
+    </div>
+  {% endif %}
+
+</div>

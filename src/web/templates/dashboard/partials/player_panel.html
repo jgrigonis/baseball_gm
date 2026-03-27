@@ -1,0 +1,59 @@
+{# templates/dashboard/partials/player_panel.html
+   Slide-in player detail panel. Supports single player or side-by-side comparison.
+
+   Usage:
+     Single:  hx-get="/leagues/{id}/players/{player_id}/panel"
+     Compare: hx-get="/leagues/{id}/players/{player_id}/panel?compare={other_id}"
+
+   Triggered from any tab — roster cards, leaderboard rows, draft board.
+   Target: #player-panel-mount  (exists in shell.html)
+#}
+
+<div id="player-panel"
+     class="player-panel {% if compare_player %}split{% endif %}"
+     data-player-id="{{ player.player_id }}">
+
+  <div class="pp-header">
+    <button class="pp-close" onclick="closePlayerPanel()" title="Close">✕</button>
+    <span class="pp-title">
+      {% if compare_player %}Player Comparison{% else %}Player Detail{% endif %}
+    </span>
+    <div class="pp-header-actions">
+      {% if not compare_player %}
+        <button class="btn btn-secondary"
+                style="font-size:10px;padding:4px 10px;"
+                onclick="pinForCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')"
+                title="Pin this player then click another to compare">
+          Compare ↔
+        </button>
+      {% else %}
+        <button class="btn btn-secondary"
+                style="font-size:10px;padding:4px 10px;"
+                hx-get="/leagues/{{ league_id }}/players/{{ player.player_id }}/panel"
+                hx-target="#player-panel-mount"
+                hx-swap="innerHTML">
+          Clear comparison
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="pp-body">
+
+    {# ── Player 1 ──────────────────────────────────────────────────────────── #}
+    <div class="pp-slot">
+      {% include "dashboard/partials/_player_detail_slot.html" with context %}
+    </div>
+
+    {# ── Player 2 (comparison) ─────────────────────────────────────────────── #}
+    {% if compare_player %}
+    <div class="pp-slot pp-slot-compare">
+      {% with player = compare_player %}
+        {% include "dashboard/partials/_player_detail_slot.html" with context %}
+      {% endwith %}
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>

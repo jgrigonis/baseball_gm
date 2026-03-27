@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routers import draft, gms, leagues, sim
+from src.api.routers import draft, gms, leagues, sim, web
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
@@ -19,7 +19,6 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Run DB migrations on startup, nothing special on shutdown."""
     log.info("Running migrations against %s…", settings.db_path)
     conn = get_connection()
     try:
@@ -44,12 +43,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Web UI router registered FIRST — its specific routes like /leagues/new
+# and /leagues/join must take priority over the API's /leagues/{join_code}
+# wildcard, which would otherwise swallow them.
+app.include_router(web.router)
+
+# JSON API routers
 app.include_router(leagues.router)
 app.include_router(gms.router)
 app.include_router(draft.router)
 app.include_router(sim.router)
 
-app.mount("/static", StaticFiles(directory="."), name="static")
+# Static files
+app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
 
 
 @app.get("/health", tags=["meta"])

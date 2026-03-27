@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 
+from src.api.auth import resolve_commissioner
 from src.api.database import get_db
 from src.api.schemas import (
     GMResponse,
@@ -76,9 +77,19 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
         ),
     )
 
+    # Upsert user row for this session token
     db.execute(
-        "INSERT INTO gms (id, league_id, user_session, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
-        (gm_id, league_id, session_token, body.commissioner_display_name),
+        """INSERT INTO users (id, session_token, display_name)
+           VALUES (?, ?, ?)
+           ON CONFLICT (session_token) DO UPDATE SET display_name = excluded.display_name""",
+        (str(__import__('uuid').uuid4()), session_token, body.commissioner_display_name),
+    )
+    user = db.execute(
+        "SELECT id FROM users WHERE session_token = ?", (session_token,)
+    ).fetchone()
+    db.execute(
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        (gm_id, league_id, user["id"], body.commissioner_display_name),
     )
 
     # Create default strategic profile for commissioner
@@ -93,7 +104,7 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
 
     return {
         "league": _league_row(league),
-        "gm": _gm_row(gm, include_session=True),
+        "gm": {**_gm_row(gm), "user_session": session_token},
     }
 
 
@@ -128,7 +139,7 @@ def list_gms(join_code: str, db: DB) -> list[dict]:
         (league["id"],),
     ).fetchall()
 
-    return [_gm_row(r, include_session=False) for r in rows]
+    return [_gm_row(r) for r in rows]
 
 
 # ── POST /leagues/{join_code}/join ────────────────────────────────────────────
@@ -167,18 +178,25 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
     gm_id = str(uuid.uuid4())
     session_token = _make_session_token()
 
+    # Upsert user row for this session token
     db.execute(
-        """
-        INSERT INTO gms (id, league_id, user_session, display_name, is_ai)
-        VALUES (?, ?, ?, ?, 0)
-        """,
-        (gm_id, league["id"], session_token, body.display_name),
+        """INSERT INTO users (id, session_token, display_name)
+           VALUES (?, ?, ?)
+           ON CONFLICT (session_token) DO UPDATE SET display_name = excluded.display_name""",
+        (str(__import__('uuid').uuid4()), session_token, body.display_name),
+    )
+    user = db.execute(
+        "SELECT id FROM users WHERE session_token = ?", (session_token,)
+    ).fetchone()
+    db.execute(
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        (gm_id, league["id"], user["id"], body.display_name),
     )
 
     db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
 
     gm = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
-    return GMResponse(**_gm_row(gm, include_session=True))
+    return GMResponse(**{**_gm_row(gm), "user_session": session_token})
 
 
 # ── POST /leagues/{league_id}/start ──────────────────────────────────────────
@@ -199,13 +217,7 @@ def start_league(
     if not league:
         raise HTTPException(status_code=404, detail="League not found.")
 
-    commissioner = db.execute(
-        "SELECT * FROM gms WHERE id = ?", (league["commissioner_gm_id"],)
-    ).fetchone()
-    if not commissioner or commissioner["user_session"] != x_gm_session:
-        raise HTTPException(
-            status_code=403, detail="Only the commissioner can start the league."
-        )
+    resolve_commissioner(db, x_gm_session, league_id)
 
     try:
         result = _start(league_id, db)
@@ -224,10 +236,8 @@ def _league_row(row: sqlite3.Row) -> dict:
     return d
 
 
-def _gm_row(row: sqlite3.Row, *, include_session: bool) -> dict:
+def _gm_row(row: sqlite3.Row) -> dict:
     d = dict(row)
     d["is_ai"] = bool(d["is_ai"])
     d["is_away"] = bool(d["is_away"])
-    if not include_session:
-        d.pop("user_session", None)
     return d

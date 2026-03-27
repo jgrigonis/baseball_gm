@@ -11,6 +11,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
+from src.api.auth import resolve_gm_for_league, resolve_commissioner
 from src.api.database import get_db
 from src.api.schemas import (
     DraftPickResponse,
@@ -25,19 +26,6 @@ router = APIRouter(prefix="/drafts", tags=["draft"])
 
 DB = Annotated[sqlite3.Connection, Depends(get_db)]
 
-
-# ── Auth helper (shared with gms router) ─────────────────────────────────────
-
-
-def _resolve_gm(db: sqlite3.Connection, x_gm_session: str | None) -> sqlite3.Row:
-    if not x_gm_session:
-        raise HTTPException(status_code=401, detail="X-GM-Session header required.")
-    gm = db.execute(
-        "SELECT * FROM gms WHERE user_session = ?", (x_gm_session,)
-    ).fetchone()
-    if not gm:
-        raise HTTPException(status_code=403, detail="Invalid session token.")
-    return gm
 
 
 # ── GET /drafts/{draft_id} ────────────────────────────────────────────────────
@@ -135,7 +123,7 @@ def submit_preferences(
     if draft["state"] == "complete":
         raise HTTPException(status_code=409, detail="Draft is already complete.")
 
-    gm = _resolve_gm(db, x_gm_session)
+    gm = resolve_gm_for_league(db, x_gm_session, draft["league_id"])
 
     # Validate all player IDs exist
     for pid in body.player_ids:
@@ -174,7 +162,7 @@ def get_preferences(
 ) -> PreferenceListResponse:
     """Return the calling GM's current preference list for this draft."""
     _require_draft(draft_id, db)
-    gm = _resolve_gm(db, x_gm_session)
+    gm = resolve_gm_for_league(db, x_gm_session, draft["league_id"])
 
     rows = db.execute(
         """
@@ -218,7 +206,7 @@ def make_pick(
             status_code=409, detail=f"Draft state is '{draft['state']}'."
         )
 
-    gm = _resolve_gm(db, x_gm_session)
+    gm = resolve_gm_for_league(db, x_gm_session, draft["league_id"])
 
     # Verify it's this GM's turn
     expected_gm_id = _gm_on_the_clock(draft, db)
@@ -274,16 +262,7 @@ def execute_draft(
     """
     draft = _require_draft(draft_id, db)
 
-    league = db.execute(
-        "SELECT * FROM leagues WHERE id = ?", (draft["league_id"],)
-    ).fetchone()
-    commissioner = db.execute(
-        "SELECT * FROM gms WHERE id = ?", (league["commissioner_gm_id"],)
-    ).fetchone()
-    if not commissioner or commissioner["user_session"] != x_gm_session:
-        raise HTTPException(
-            status_code=403, detail="Only the commissioner can execute the draft."
-        )
+    resolve_commissioner(db, x_gm_session, draft["league_id"])
 
     try:
         from src.api.services.draft_execute import execute_blitz_draft

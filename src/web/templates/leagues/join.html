@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Join League — GM Sim{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner" style="max-width:400px;">
+  <div class="page-header"><h1 class="page-title">Join League</h1></div>
+  <form method="POST" action="/leagues/join" style="display:flex;flex-direction:column;gap:16px;">
+    <div class="field">
+      <label>Join Code</label>
+      <input name="join_code" placeholder="ABC123" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:18px;" required>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button type="submit" class="btn btn-primary">Join →</button>
+      <a href="/leagues/" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

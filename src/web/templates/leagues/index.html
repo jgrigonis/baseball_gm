@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Your Leagues — GM Sim{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner">
+  <div class="page-header">
+    <h1 class="page-title">Your Leagues</h1>
+    <div class="spacer"></div>
+    <a href="/leagues/new" class="btn btn-primary">New League</a>
+    <a href="/leagues/join" class="btn btn-secondary" style="margin-left:8px;">Join by Code</a>
+  </div>
+
+  {% if leagues %}
+  <div class="card">
+    <table class="data-table">
+      <thead><tr><th>League</th><th>Mode</th><th>State</th><th>Code</th><th></th></tr></thead>
+      <tbody>
+        {% for l in leagues %}
+        <tr>
+          <td class="team-name">{{ l.name }}</td>
+          <td style="color:var(--text-dim);">{{ l.mode | title }}</td>
+          <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state }}</span></td>
+          <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code }}</td>
+          <td style="text-align:right;">
+            <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Open →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:60px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+    No leagues yet. <a href="/leagues/new" style="color:var(--amber);">Create one</a> or <a href="/leagues/join" style="color:var(--amber);">join with a code</a>.
+  </div>
+  {% endif %}
+
+</div></div>
+{% endblock %}

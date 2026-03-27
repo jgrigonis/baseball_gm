@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
+from src.api.auth import require_gm_by_id
 from src.api.database import get_db
 from src.api.schemas import (
     GMAwayUpdate,
@@ -22,25 +23,6 @@ router = APIRouter(prefix="/gms", tags=["gms"])
 
 DB = Annotated[sqlite3.Connection, Depends(get_db)]
 
-
-# ── Auth helper ───────────────────────────────────────────────────────────────
-
-
-def _require_gm(
-    gm_id: str,
-    db: sqlite3.Connection,
-    x_gm_session: str | None,
-) -> sqlite3.Row:
-    """
-    Fetch a GM row and verify the session token.
-    v1 auth: token is passed in X-GM-Session header.
-    """
-    gm = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
-    if not gm:
-        raise HTTPException(status_code=404, detail="GM not found.")
-    if gm["user_session"] != x_gm_session:
-        raise HTTPException(status_code=403, detail="Invalid session token.")
-    return gm
 
 
 # ── GET /gms/{gm_id} ─────────────────────────────────────────────────────────
@@ -79,7 +61,7 @@ def update_profile(
     Update one or more strategic profile fields. All fields are optional.
     Only the owning GM (verified via X-GM-Session) may update their profile.
     """
-    _require_gm(gm_id, db, x_gm_session)
+    require_gm_by_id(db, gm_id, x_gm_session)
 
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
@@ -112,7 +94,7 @@ def set_away(
     x_gm_session: str | None = Header(default=None),
 ) -> GMResponse:
     """Toggle the GM's away status. Away GMs hand off to AI without penalty."""
-    _require_gm(gm_id, db, x_gm_session)
+    require_gm_by_id(db, gm_id, x_gm_session)
 
     db.execute(
         "UPDATE gms SET is_away = ? WHERE id = ?",
@@ -203,7 +185,7 @@ def set_roster(
     Players on the list get status '26man', others on the team drop to '40man'.
     Max 26 players in active list.
     """
-    _require_gm(gm_id, db, x_gm_session)
+    require_gm_by_id(db, gm_id, x_gm_session)
 
     active_ids = body.get("active", [])
     if len(active_ids) > 26:
@@ -293,7 +275,7 @@ def set_lineup(
     Body: {"lineup": [{"player_id": "...", "batting_order": 1, "position": "cf", "is_starter": true}, ...]}
     Replaces the entire stored lineup.
     """
-    _require_gm(gm_id, db, x_gm_session)
+    require_gm_by_id(db, gm_id, x_gm_session)
 
     slots = body.get("lineup", [])
 
@@ -637,5 +619,4 @@ def _gm_dict(row: sqlite3.Row) -> dict:
     d = dict(row)
     d["is_ai"] = bool(d["is_ai"])
     d["is_away"] = bool(d["is_away"])
-    d.pop("user_session", None)  # never leak session in GET responses
     return d

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ team_name or league_name }} — GM Sim{% endblock %}
+
+{% block main %}
+
+{% if league_state in ('season', 'playoffs') %}
+<div class="sim-bar">
+  <span class="sim-bar-date">GAME DATE <strong id="sim-current-date">—</strong></span>
+  <div class="sim-bar-progress"><div class="sim-bar-progress-fill" id="sim-progress" style="width:0%"></div></div>
+  <div class="sim-bar-spacer"></div>
+  {% if league_mode == 'blitz' %}
+  <button class="btn btn-primary"
+          hx-post="/leagues/{{ league_id }}/sim/next"
+          hx-target="#tab-content"
+          hx-swap="innerHTML"
+          hx-indicator="#sim-spinner">
+    <span id="sim-spinner" class="htmx-indicator"><span class="spinner"></span></span>
+    Sim Next Day
+  </button>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if visible_tabs %}
+<nav class="tab-bar" id="tab-bar">
+  {% for tab in visible_tabs %}
+  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','strategy':'🎛'} %}
+  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','strategy':'Strategy'} %}
+  <a href="/leagues/{{ league_id }}/{{ tab }}"
+     class="tab-link {% if active_tab == tab %}active{% endif %}"
+     hx-get="/leagues/{{ league_id }}/{{ tab }}"
+     hx-target="#tab-content"
+     hx-swap="innerHTML"
+     hx-push-url="true"
+     onclick="setActiveTab(this)">
+    {{ icons.get(tab,'') }} {{ labels.get(tab, tab) }}
+  </a>
+  {% endfor %}
+</nav>
+{% endif %}
+
+<div id="tab-content" class="tab-fade">
+  {% if tab_template %}{% include tab_template %}{% endif %}
+</div>
+
+<div id="player-panel-mount"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setActiveTab(el) {
+  document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'tab-content') {
+    e.detail.target.classList.remove('tab-fade');
+    void e.detail.target.offsetWidth;
+    e.detail.target.classList.add('tab-fade');
+  }
+  if (e.detail.target.id === 'player-panel-mount' && e.detail.target.innerHTML.trim()) {
+    addBackdrop();
+  }
+});
+let _pinnedId = null;
+function openPlayerPanel(pid) {
+  const url = _pinnedId && _pinnedId !== pid
+    ? `/leagues/{{ league_id }}/players/${pid}/panel?compare=${_pinnedId}`
+    : `/leagues/{{ league_id }}/players/${pid}/panel`;
+  htmx.ajax('GET', url, {target:'#player-panel-mount', swap:'innerHTML'});
+}
+function closePlayerPanel() {
+  document.getElementById('player-panel-mount').innerHTML = '';
+  removeBackdrop(); _pinnedId = null;
+}
+function pinForCompare(pid) { _pinnedId = pid; }
+function addBackdrop() {
+  removeBackdrop();
+  const bd = document.createElement('div');
+  bd.className = 'panel-backdrop'; bd.id = 'panel-backdrop';
+  bd.onclick = closePlayerPanel;
+  document.body.appendChild(bd);
+}
+function removeBackdrop() {
+  const b = document.getElementById('panel-backdrop'); if (b) b.remove();
+}
+document.addEventListener('keydown', e => { if (e.key==='Escape') closePlayerPanel(); });
+</script>
+{% endblock %}

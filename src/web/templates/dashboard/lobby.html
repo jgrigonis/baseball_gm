@@ -1,0 +1,115 @@
+{# templates/dashboard/lobby.html #}
+{% extends "base.html" %}
+{% block title %}{{ league_name }} — Lobby{% endblock %}
+{% block main %}
+<div class="page-content">
+<div class="content-inner">
+
+  <div class="page-header">
+    <h1 class="page-title">{{ league_name }}</h1>
+    <span class="page-subtitle">Waiting for league to start</span>
+  </div>
+
+  <div class="grid-2" style="gap:24px;align-items:start;">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">GMs ({{ gms|length }} / {{ num_teams }})</span>
+        <span class="spacer"></span>
+        {% if join_code %}
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+          Join code: <strong style="color:var(--amber);letter-spacing:.2em;">{{ join_code }}</strong>
+        </span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <table class="data-table">
+          <thead>
+            <tr><th>GM</th><th>Team</th><th>Type</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for gm in gms %}
+            <tr {% if gm.id == current_gm_id %}class="my-team"{% endif %}>
+              <td class="team-name">{{ gm.display_name }}</td>
+              <td style="color:var(--text-dim);">
+                {% if gm.city %}{{ gm.city }} {{ gm.mascot }}{% else %}—{% endif %}
+              </td>
+              <td>
+                {% if gm.is_ai %}
+                  <span class="badge badge-40man">AI</span>
+                {% else %}
+                  <span class="badge badge-human">Human</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if gm.is_away %}
+                  <span style="color:var(--text-dim);font-size:11px;">Away</span>
+                {% else %}
+                  <span style="color:var(--green);font-size:11px;">● Ready</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:24px;">
+              No GMs yet — share the join code
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="card">
+        <div class="card-header"><span class="card-title">League Settings</span></div>
+        <div class="card-body">
+          <table class="data-table">
+            <tbody>
+              <tr><td style="color:var(--text-dim);">Mode</td><td class="team-name">{{ league_mode | title }}</td></tr>
+              <tr><td style="color:var(--text-dim);">Teams</td><td>{{ num_teams }}</td></tr>
+              <tr><td style="color:var(--text-dim);">Decision window</td><td>{{ decision_window_sec }}s</td></tr>
+              <tr><td style="color:var(--text-dim);">Re-entry</td><td>{{ 'Enabled' if reentry_enabled else 'Disabled' }}</td></tr>
+              <tr><td style="color:var(--text-dim);">Pace</td><td>{{ pace_control | title }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% if is_commissioner %}
+      <div class="card">
+        <div class="card-header"><span class="card-title">Commissioner Controls</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+          <p style="font-size:12px;color:var(--text-dim);line-height:1.6;">
+            Starting generates teams, assigns GMs, creates the draft, and generates
+            the player pool. AI GMs fill any empty slots. This takes ~10 seconds.
+          </p>
+          <form method="POST" action="/leagues/{{ league_id }}/start" id="start-form"
+                onsubmit="onStartLeague(this)">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <button type="submit" id="start-btn" class="btn btn-primary">
+                Start League →
+              </button>
+              <span id="start-spinner" style="display:none;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+                <span class="spinner"></span> Generating teams &amp; players…
+              </span>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+function onStartLeague(form) {
+  const btn = document.getElementById('start-btn');
+  const spinner = document.getElementById('start-spinner');
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+  spinner.style.display = 'flex';
+}
+</script>
+{% endblock %}

@@ -132,9 +132,19 @@ def create_guest(
     display_name: str = Form(default="Guest"),
 ):
     """
-    Create a guest identity. Only creates a users row — gms rows are
-    created when the user creates or joins a specific league.
+    Create a guest identity (users row only).
+    If a valid session cookie already exists, reuse that user rather than
+    creating a new one — prevents identity fragmentation on repeat visits.
     """
+    # Reuse existing session if the cookie is still valid
+    existing_token = request.cookies.get("gm_session")
+    if existing_token:
+        existing = db.execute(
+            "SELECT * FROM users WHERE session_token = ?", (existing_token,)
+        ).fetchone()
+        if existing:
+            return RedirectResponse("/leagues/", status_code=302)
+
     token = uuid.uuid4().hex + uuid.uuid4().hex
     user_id = str(uuid.uuid4())
     db.execute(
@@ -149,6 +159,38 @@ def create_guest(
         httponly=True, samesite="lax",
     )
     return resp
+
+
+@router.post("/auth/reclaim/{league_id}")
+def reclaim_league(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    """
+    Reassign a league's gm.user_id to the current session's user.
+    Used when a guest has lost their cookie and wants to reconnect.
+    """
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/", status_code=302)
+
+    # Find the gm row for this league that has the same display name
+    gm = db.execute(
+        """SELECT g.id FROM gms g
+           JOIN users u ON u.id = g.user_id
+           WHERE g.league_id = ? AND u.display_name = ? AND g.is_ai = 0
+           LIMIT 1""",
+        (league_id, user["display_name"]),
+    ).fetchone()
+
+    if gm:
+        db.execute(
+            "UPDATE gms SET user_id = ? WHERE id = ?",
+            (user["id"], gm["id"]),
+        )
+        db.commit()
+
+    return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 
 @router.post("/auth/logout")
@@ -169,17 +211,30 @@ def leagues_index(
     if not user:
         return RedirectResponse("/")
 
+    # Auto-reclaim: any gm row with same display_name but different user_id
+    # gets reassigned to the current user. This handles the common case where
+    # the browser cookie was cleared and a new guest identity was created.
+    db.execute(
+        """UPDATE gms SET user_id = ?
+           WHERE is_ai = 0
+             AND user_id != ?
+             AND user_id IN (
+               SELECT id FROM users WHERE display_name = ?
+             )""",
+        (user["id"], user["id"], user["display_name"]),
+    )
+    db.commit()
+
     rows = db.execute(
         """SELECT l.* FROM leagues l
            JOIN gms g ON g.league_id = l.id
-           JOIN users u ON u.id = g.user_id
-           WHERE u.session_token = ?
+           WHERE g.user_id = ? AND g.is_ai = 0
            ORDER BY l.created_at DESC""",
-        (gm_session,),
+        (user["id"],),
     ).fetchall()
 
     return templates.TemplateResponse(request, "leagues/index.html", {
-                "user": dict(user),
+        "user": dict(user),
         "leagues": [dict(r) for r in rows],
     })
 
@@ -269,6 +324,92 @@ def join_league(
 def join_page(request: Request):
     return templates.TemplateResponse(request, "leagues/join.html", {})
 
+
+# ── League actions ────────────────────────────────────────────────────────────
+
+@router.post("/leagues/{league_id}/start")
+def start_league(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/", status_code=302)
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    if not gm:
+        return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    if not league or league["commissioner_gm_id"] != gm["id"]:
+        return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+    from src.api.services.league_start import start_league as _start
+    try:
+        _start(league_id, db)
+    except ValueError as e:
+        # TODO: surface error in lobby template
+        pass
+
+    return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+
+
+# ── Draft actions ──────────────────────────────────────────────────────────────
+
+@router.put("/leagues/{league_id}/draft/preferences")
+async def save_draft_preferences(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    """
+    Save the GM's draft preference list. Called from JS using the session
+    cookie — no token exposure needed. Proxies to the existing draft logic.
+    """
+    from fastapi.responses import JSONResponse
+
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    if not gm:
+        return JSONResponse({"detail": "Not a member of this league"}, status_code=403)
+
+    # Find the current draft for this league
+    draft = db.execute(
+        """SELECT d.* FROM drafts d
+           JOIN league_seasons ls ON ls.season_id = d.season_id
+           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+    if not draft:
+        return JSONResponse({"detail": "No draft found"}, status_code=404)
+    if draft["state"] == "complete":
+        return JSONResponse({"detail": "Draft is already complete"}, status_code=409)
+
+    body = await request.json()
+    player_ids = body.get("player_ids", [])
+    if not player_ids:
+        return JSONResponse({"detail": "player_ids required"}, status_code=422)
+
+    # Validate all IDs exist
+    for pid in player_ids:
+        if not db.execute("SELECT 1 FROM players WHERE id = ?", (pid,)).fetchone():
+            return JSONResponse({"detail": f"Unknown player: {pid}"}, status_code=422)
+
+    # Replace existing preferences atomically
+    db.execute(
+        "DELETE FROM draft_preferences WHERE gm_id = ? AND draft_id = ?",
+        (gm["id"], draft["id"]),
+    )
+    db.executemany(
+        "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (?, ?, ?, ?)",
+        [(gm["id"], draft["id"], pid, rank + 1) for rank, pid in enumerate(player_ids)],
+    )
+    db.commit()
+
+    return JSONResponse({"saved": len(player_ids)})
 
 # ── Dashboard shell ────────────────────────────────────────────────────────────
 

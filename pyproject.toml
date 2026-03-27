@@ -25,6 +25,8 @@ dev = [
   "pydantic-settings",
   "fastapi",
   "uvicorn[standard]",
+  "git+https://github.com/pallets/jinja2.git",
+  "python-multipart",
 ]
 
 [tool.pytest.ini_options]

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}GM Sim{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="topbar">
+    <a href="/leagues/" class="topbar-logo">
+      ⚾ GM Sim{% if league_name %} <span>/ {{ league_name }}</span>{% endif %}
+    </a>
+    {% if league_state %}
+      <span class="topbar-state state-{{ league_state }}">{{ league_state }}</span>
+    {% endif %}
+    <div class="topbar-spacer"></div>
+    {% if team_name %}
+      <div class="topbar-team">
+        <strong>{{ team_name }}</strong>{{ gm_display_name }}
+      </div>
+    {% endif %}
+    <nav class="topbar-nav">
+      <a href="/leagues/">Leagues</a>
+      {% if league_id %}<a href="/leagues/{{ league_id }}/history/">History</a>{% endif %}
+      <form method="POST" action="/auth/logout" style="display:inline;">
+        <button type="submit" style="background:none;border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">Sign Out</button>
+      </form>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    {% block main %}{% endblock %}
+  </main>
+
+</div>
+<script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2uodhrgzmkvbD+ZOoKlcpPdZvgvqHT0/MUz" crossorigin="anonymous"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

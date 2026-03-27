@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}New League — GM Sim{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner" style="max-width:520px;">
+  <div class="page-header"><h1 class="page-title">New League</h1></div>
+  <form method="POST" action="/leagues/new" style="display:flex;flex-direction:column;gap:16px;">
+    <div class="row">
+      <div class="field">
+        <label>League Name</label>
+        <input name="name" value="My League" required>
+      </div>
+      <div class="field">
+        <label>Mode</label>
+        <select name="mode" onchange="onModeChange(this)">
+          <option value="blitz">Blitz</option>
+          <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Decision Window (seconds)</label>
+      <input name="decision_window_sec" type="number" value="120" min="30" max="600">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button type="submit" class="btn btn-primary">Create League →</button>
+      <a href="/leagues/" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}
