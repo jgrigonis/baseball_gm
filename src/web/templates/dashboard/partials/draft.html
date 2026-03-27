@@ -15,6 +15,14 @@
               style="margin-left:8px;">Submit Preferences</button>
       <span id="submit-feedback"
             style="font-family:var(--font-mono);font-size:11px;margin-left:12px;"></span>
+      <form method="POST" action="/leagues/{{ league_id }}/draft/execute"
+            style="margin-left:16px;display:inline;" onsubmit="onExecute(this)">
+        <button type="submit" id="execute-btn"
+                class="btn btn-secondary"
+                style="border-color:var(--green);color:var(--green);">
+          Run Draft ▶
+        </button>
+      </form>
     {% else %}
       <span class="page-subtitle" style="color:var(--text-dim);">Draft not yet open</span>
     {% endif %}
@@ -381,6 +389,12 @@ function restoreUiState(data) {
 }
 
 // ── Submit ─────────────────────────────────────────────────────────────────────
+function onExecute(form) {
+  const btn = document.getElementById('execute-btn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+}
+
 async function submitPrefs() {
   const btn = document.getElementById('submit-btn');
   const fb  = document.getElementById('submit-feedback');

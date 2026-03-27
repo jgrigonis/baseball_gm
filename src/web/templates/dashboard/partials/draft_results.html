@@ -1,0 +1,63 @@
+{# templates/dashboard/partials/draft_results.html
+   Completed draft results. All picks organized by round in columns.
+   Your picks are highlighted in amber. Links to roster when done.
+#}
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
+  <div class="page-header" style="margin-bottom:0;">
+    <h1 class="page-title">Draft Results</h1>
+    <span class="page-subtitle">{{ rounds|length }} rounds · your picks highlighted</span>
+    <div class="spacer"></div>
+    <a href="/leagues/{{ league_id }}/roster" class="btn btn-primary">
+      Go to Roster →
+    </a>
+  </div>
+</div>
+
+<div style="padding:16px 24px 24px;">
+
+  {% if not rounds %}
+    <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);
+                font-size:13px;color:var(--text-dim);">
+      No picks yet.
+    </div>
+  {% else %}
+
+  {# Grid of rounds — 4 columns, each round is a card #}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+
+    {% for round in rounds %}
+    <div class="card">
+      <div class="card-header" style="padding:7px 14px;">
+        <span class="card-title">Round {{ round.round }}</span>
+      </div>
+      <div>
+        {% for pick in round.picks %}
+        <div style="padding:6px 14px;border-bottom:1px solid var(--border);
+                    {% if pick.is_mine %}background:var(--amber-lo);{% endif %}
+                    display:flex;align-items:baseline;gap:8px;">
+          <span style="font-family:var(--font-mono);font-size:10px;
+                       color:var(--muted);min-width:28px;">#{{ pick.pick_number }}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
+                        color:{% if pick.is_mine %}var(--amber){% else %}var(--text){% endif %};
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              {{ pick.player_name }}
+            </div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+              {{ pick.position }} · {{ pick.team_name }}
+              {% if pick.auto_picked %}
+                <span style="color:var(--muted);"> · auto</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+  {% endif %}
+
+</div>

@@ -242,6 +242,7 @@ CREATE TABLE IF NOT EXISTS leagues (
                              CHECK (mode IN ('blitz', 'longform')),
     num_teams            INTEGER NOT NULL DEFAULT 30,
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
+    draft_window_sec     INTEGER NOT NULL DEFAULT 300,
     reentry_enabled      INTEGER NOT NULL DEFAULT 1
                              CHECK (reentry_enabled IN (0, 1)),
     pace_control         TEXT NOT NULL DEFAULT 'timer'

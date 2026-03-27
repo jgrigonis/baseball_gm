@@ -192,6 +192,7 @@ def _shell_ctx(
         "join_code":           league["join_code"]           if league else "",
         "num_teams":           league["num_teams"]           if league else 30,
         "decision_window_sec": league["decision_window_sec"] if league else 120,
+        "draft_window_sec":    league["draft_window_sec"]    if league else 300,
         "reentry_enabled":     bool(league["reentry_enabled"]) if league else True,
         "pace_control":        league["pace_control"]        if league else "timer",
         "gm_id":               gm["id"]                     if gm else None,
@@ -349,6 +350,7 @@ def create_league(
     name: str = Form(...),
     mode: str = Form("blitz"),
     decision_window_sec: int = Form(120),
+    draft_window_sec: int = Form(300),
     reentry_enabled: bool = Form(True),
 ):
     user = _resolve_user(db, gm_session)
@@ -364,9 +366,10 @@ def create_league(
     db.execute(
         """INSERT INTO leagues
              (id, name, join_code, mode, num_teams, decision_window_sec,
-              reentry_enabled, pace_control, state)
-           VALUES (?, ?, ?, ?, 30, ?, ?, 'timer', 'lobby')""",
-        (league_id, name, join_code, mode, decision_window_sec, int(reentry_enabled)),
+              draft_window_sec, reentry_enabled, pace_control, state)
+           VALUES (?, ?, ?, ?, 30, ?, ?, ?, 'timer', 'lobby')""",
+        (league_id, name, join_code, mode, decision_window_sec,
+         draft_window_sec, int(reentry_enabled)),
     )
     db.execute(
         "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
@@ -679,6 +682,103 @@ def draft_tab(
 
     return _respond(request, "dashboard/partials/draft.html", ctx)
 
+
+
+@router.post("/leagues/{league_id}/draft/execute")
+def execute_draft(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    """Execute the blitz auto-draft and redirect to results."""
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/", status_code=302)
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    if not gm:
+        return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
+
+    draft = db.execute(
+        """SELECT d.* FROM drafts d
+           JOIN league_seasons ls ON ls.season_id = d.season_id
+           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+
+    if not draft:
+        return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
+
+    import traceback
+    try:
+        from src.api.services.draft_execute import execute_blitz_draft
+        execute_blitz_draft(draft["id"], db)
+    except Exception as e:
+        return HTMLResponse(
+            f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
+            f"Draft execution failed:\n\n{traceback.format_exc()}</pre>",
+            status_code=500,
+        )
+
+    return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
+
+
+@router.get("/leagues/{league_id}/draft/results", response_class=HTMLResponse)
+def draft_results(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    """Show completed draft results — all picks by round, your picks highlighted."""
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "draft")
+
+    draft = db.execute(
+        """SELECT d.* FROM drafts d
+           JOIN league_seasons ls ON ls.season_id = d.season_id
+           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+
+    rounds = []
+    my_team_id = gm["team_id"] if gm else None
+
+    if draft:
+        picks = db.execute(
+            """SELECT dp.round, dp.pick_number, dp.team_id, dp.player_id, dp.auto_picked,
+                      p.first_name, p.last_name, p.position,
+                      t.city, t.mascot
+               FROM draft_picks dp
+               JOIN players p ON p.id = dp.player_id
+               JOIN teams t ON t.id = dp.team_id
+               WHERE dp.draft_id = ?
+               ORDER BY dp.pick_number""",
+            (draft["id"],),
+        ).fetchall()
+
+        # Group by round
+        rounds_map = {}
+        for pick in picks:
+            r = pick["round"]
+            if r not in rounds_map:
+                rounds_map[r] = []
+            rounds_map[r].append({
+                "pick_number": pick["pick_number"],
+                "team_id":     pick["team_id"],
+                "team_name":   f"{pick['city']} {pick['mascot']}",
+                "player_name": f"{pick['first_name']} {pick['last_name']}",
+                "position":    pick["position"] or "?",
+                "auto_picked": bool(pick["auto_picked"]),
+                "is_mine":     pick["team_id"] == my_team_id,
+            })
+        rounds = [{"round": r, "picks": picks}
+                  for r, picks in sorted(rounds_map.items())]
+
+    ctx["rounds"]     = rounds
+    ctx["draft_done"] = bool(draft and draft["state"] == "complete")
+    return templates.TemplateResponse(request, "dashboard/partials/draft_results.html", ctx)
 
 # ── Tab: Standings ─────────────────────────────────────────────────────────────
 

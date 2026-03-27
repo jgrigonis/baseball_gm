@@ -83,7 +83,7 @@
             Starting generates teams, assigns GMs, creates the draft, and generates
             the player pool. AI GMs fill any empty slots. This takes ~10 seconds.
           </p>
-          <form method="POST" action="/leagues/{{ league_id }}/start" id="start-form"
+          <form method="POST" action="/render(/{{ league_id }}/start" id="start-form"
                 onsubmit="onStartLeague(this)">
             <div style="display:flex;align-items:center;gap:12px;">
               <button type="submit" id="start-btn" class="btn btn-primary">
