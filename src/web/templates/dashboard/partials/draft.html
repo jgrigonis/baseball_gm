@@ -227,6 +227,7 @@ function setType(btn, type) {
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   typeFilter = type;
+  saveToStorage();
   renderBoard();
 }
 
@@ -261,6 +262,25 @@ function applySort() {
   renderBoard();
 }
 
+function restoreUiState(data) {
+  // Restore type filter buttons
+  if (data.typeFilter) {
+    typeFilter = data.typeFilter;
+    document.querySelectorAll('.type-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('onclick').includes(`'${data.typeFilter}'`));
+    });
+  }
+  // Restore sort dropdowns
+  if (data.sort1) document.getElementById('sort1').value = data.sort1;
+  if (data.sort2 !== undefined) document.getElementById('sort2').value = data.sort2;
+  // Restore save feedback
+  if (data.feedback) {
+    const fb = document.getElementById('submit-feedback');
+    fb.textContent   = data.feedback;
+    fb.style.color   = data.feedbackColor || 'var(--text-dim)';
+  }
+}
+
 function resetOrder() {
   order = [...defaultOrder];
   dirty = false;
@@ -277,17 +297,28 @@ function updateResetBtn() {
 
 // ── Persist order in sessionStorage so tab switches don't reset it ─────────────
 function saveToStorage() {
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(order)); } catch(e) {}
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      order,
+      typeFilter,
+      sort1: document.getElementById('sort1')?.value || 'overall',
+      sort2: document.getElementById('sort2')?.value || '',
+      feedback: document.getElementById('submit-feedback')?.textContent || '',
+      feedbackColor: document.getElementById('submit-feedback')?.style.color || '',
+    }));
+  } catch(e) {}
 }
 
 function loadFromStorage() {
   try {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     if (!saved) return null;
-    const ids = JSON.parse(saved);
-    // Validate — make sure all IDs still exist in the current board
-    const valid = ids.filter(id => ALL_PLAYERS.some(p => p.player_id === id));
-    return valid.length === ALL_PLAYERS.length ? valid : null;
+    const data = JSON.parse(saved);
+    // Support old format (plain array) gracefully
+    if (Array.isArray(data)) return { order: data };
+    const valid = data.order.filter(id => ALL_PLAYERS.some(p => p.player_id === id));
+    if (valid.length !== ALL_PLAYERS.length) return null;
+    return { ...data, order: valid };
   } catch(e) { return null; }
 }
 
@@ -356,12 +387,13 @@ async function submitPrefs() {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
-const storedOrder = loadFromStorage();
+const storedData = loadFromStorage();
 
-if (storedOrder) {
+if (storedData) {
   // Restore from sessionStorage — user switched tabs and came back
-  order = storedOrder;
-  defaultOrder = sortedOrder();  // default is still the sort-based order
+  order = storedData.order;
+  restoreUiState(storedData);
+  defaultOrder = sortedOrder();
   dirty = JSON.stringify(order) !== JSON.stringify(defaultOrder);
   updateResetBtn();
   renderBoard();
