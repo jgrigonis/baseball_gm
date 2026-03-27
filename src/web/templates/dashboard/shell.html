@@ -78,7 +78,16 @@ function closePlayerPanel() {
   document.getElementById('player-panel-mount').innerHTML = '';
   removeBackdrop(); _pinnedId = null;
 }
-function pinForCompare(pid) { _pinnedId = pid; }
+function pinForCompare(pid, name) {
+  _pinnedId = pid;
+  // Update the button to show pinned state
+  const btn = document.querySelector('#player-panel .pp-header-actions button');
+  if (btn) {
+    btn.textContent = '✓ Pinned — click another player to compare';
+    btn.style.color = 'var(--amber)';
+    btn.disabled = true;
+  }
+}
 function addBackdrop() {
   removeBackdrop();
   const bd = document.createElement('div');
