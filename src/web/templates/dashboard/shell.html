@@ -1,7 +1,7 @@
 {% block early_scripts %}
 <script>
 // Player panel functions — defined early so partials can call them
-let _pinnedId = null;
+var _pinnedId = null;
 window.openPlayerPanel = function(pid) {
   const url = _pinnedId && _pinnedId !== pid
     ? `/leagues/{{ league_id }}/players/${pid}/panel?compare=${_pinnedId}`
@@ -112,7 +112,7 @@ function removeBackdrop() { const b = document.getElementById('panel-backdrop');
 
 {% block scripts %}
 <script>
-const LEAGUE_ID = "{{ league_id }}";
+var LEAGUE_ID = "{{ league_id }}";
 
 // ── Tab switching ──────────────────────────────────────────────────────────────
 function setActiveTab(el) {

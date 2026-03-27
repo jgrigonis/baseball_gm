@@ -46,7 +46,7 @@
                 font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
       Sort
       <select id="sort1" onchange="applySort()" style="width:auto;">
-        <option value="overall">Prospect Rating</option>
+        <option value="overall">Overall</option>
         <optgroup label="Hitting">
           <option value="contact">Contact</option>
           <option value="power">Power</option>
@@ -63,7 +63,7 @@
       then
       <select id="sort2" onchange="applySort()" style="width:auto;">
         <option value="">—</option>
-        <option value="overall">Prospect Rating</option>
+        <option value="overall">Overall</option>
         <optgroup label="Hitting">
           <option value="contact">Contact</option>
           <option value="power">Power</option>
@@ -163,7 +163,7 @@
 
 <script>
 const DRAFT_ID    = "{{ draft_id }}";
-const LEAGUE_ID   = "{{ league_id }}";
+var LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ board | tojson }};
 const ALL_ROSTER  = {{ players | tojson }};
 const SAVED_PREFS = {{ preferences | tojson }};
