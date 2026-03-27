@@ -501,20 +501,15 @@ def draft_tab(
                 (draft["id"],),
             ).fetchall()
         }
-        # Scope board to players belonging to this league.
-        # league_id is set on players when DraftGenerator creates them.
-        # Falls back to timestamp for legacy rows that predate the column.
+        # Scope board strictly to players belonging to this league.
+        # league_id is set by DraftGenerator when prospects are created.
         all_players = db.execute(
             """SELECT p.*, ps.status FROM players p
                JOIN player_status ps ON ps.player_id = p.id
                WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
-               AND (
-                 p.league_id = ?
-                 OR (p.league_id IS NULL
-                     AND p.created_at >= (SELECT created_at FROM drafts WHERE id = ?))
-               )
+               AND p.league_id = ?
                ORDER BY p.last_name, p.first_name""",
-            (league_id, draft["id"]),
+            (league_id,),
         ).fetchall()
 
         board = []
