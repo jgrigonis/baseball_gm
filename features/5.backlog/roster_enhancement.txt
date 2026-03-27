@@ -1,0 +1,4 @@
+Roster page should be able to, just grab top players
+
+It should work however you have it sorted, taking enough players
+to fill to 40

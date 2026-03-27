@@ -1,6 +1,438 @@
-<div class="content-inner tab-fade">
-  <div class="page-header">
-    <h1 class="page-title">Coming Soon</h1>
+{# templates/dashboard/partials/lineup.html #}
+
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
+  <div class="page-header" style="margin-bottom:0;">
+    <h1 class="page-title">Lineup</h1>
+    <div class="spacer"></div>
+    <span id="lu-feedback" style="font-family:var(--font-mono);font-size:11px;margin-right:12px;"></span>
+    <button class="btn btn-secondary" onclick="autoFill()" style="margin-right:8px;">Auto-fill</button>
+    <button class="btn btn-primary" onclick="saveLineup()" id="lu-save-btn">Save Lineup</button>
   </div>
-  <p style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">This tab is under construction.</p>
 </div>
+
+<div style="padding:16px 24px 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+
+  {# ── LEFT ─────────────────────────────────────────────────────────────── #}
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <div class="card">
+      <div class="card-header" style="padding:8px 16px;">
+        <span class="card-title">Batting Order</span>
+        <span id="slot-count" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">0 / 9</span>
+      </div>
+      <div id="batting-order"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="padding:8px 16px;gap:8px;flex-wrap:wrap;">
+        <span class="card-title">Bench</span>
+        <div style="display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">
+          <select id="bench-sort" onchange="renderBench()" style="width:auto;">
+            <option value="overall">Overall</option>
+            <option value="contact">Contact</option>
+            <option value="power">Power</option>
+            <option value="eye">Eye</option>
+            <option value="speed">Speed</option>
+            <option value="base_running">Baserunning</option>
+            <option value="bunting">Bunting</option>
+            <option value="leadoff_grade">Leadoff role</option>
+            <option value="power_h_grade">Power role</option>
+            <option value="contact_h_grade">Contact role</option>
+          </select>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:auto;">click to add</span>
+      </div>
+      <div id="bench-list"></div>
+    </div>
+
+  </div>
+
+  {# ── RIGHT ────────────────────────────────────────────────────────────── #}
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <div class="card">
+      <div class="card-header" style="padding:8px 16px;">
+        <span class="card-title">Starting Rotation</span>
+        <span id="rot-count" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">0 / 6</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-left:auto;">drag to reorder</span>
+      </div>
+      <div id="rotation-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="padding:8px 16px;gap:8px;flex-wrap:wrap;">
+        <span class="card-title">Bullpen</span>
+        <div style="display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">
+          <select id="bullpen-sort" onchange="renderBullpen()" style="width:auto;">
+            <option value="sp_grade">SP rating</option>
+            <option value="rp_grade">RP rating</option>
+            <option value="stuff">Stuff</option>
+            <option value="control">Control</option>
+            <option value="stamina">Stamina</option>
+            <option value="recovery">Recovery</option>
+            <option value="ground_balls">GB tendency</option>
+          </select>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:auto;">assign roles</span>
+      </div>
+      <div id="bullpen-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.lu-slot{
+  display:grid;grid-template-columns:22px 1fr auto auto;gap:0 8px;
+  align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);
+}
+.lu-slot:last-child{border-bottom:none;}
+.lu-num{font-size:11px;color:var(--amber);font-weight:600;text-align:center;}
+.lu-pos-select{
+  background:var(--bg-3);border:1px solid var(--border);color:var(--text);
+  font-family:var(--font-mono);font-size:11px;padding:3px 6px;width:56px;
+}
+.lu-pos-select.error{border-color:var(--red);}
+.lu-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px;}
+.lu-remove:hover{color:var(--red);}
+.lu-drag-row{cursor:grab;user-select:none;transition:background .08s;}
+.lu-drag-row:hover{background:var(--bg-3);}
+.lu-drag-row.dragging{opacity:.3;}
+.bench-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 14px;border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background .08s;
+}
+.bench-row:last-child{border-bottom:none;}
+.bench-row:hover{background:var(--bg-3);}
+.bench-add{color:var(--green);margin-left:auto;font-size:11px;font-family:var(--font-mono);flex-shrink:0;}
+.rot-slot{
+  display:grid;grid-template-columns:20px 1fr auto;gap:0 8px;
+  align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);
+  cursor:grab;user-select:none;transition:background .08s;
+}
+.rot-slot:last-child{border-bottom:none;}
+.rot-slot:hover{background:var(--bg-3);}
+.rot-slot.dragging{opacity:.3;}
+.rot-num{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);text-align:center;}
+.bp-row{
+  display:grid;grid-template-columns:1fr auto auto;gap:0 8px;
+  align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);
+}
+.bp-row:last-child{border-bottom:none;}
+.bp-role-select{
+  background:var(--bg-3);border:1px solid var(--border);color:var(--text);
+  font-family:var(--font-mono);font-size:11px;padding:3px 6px;
+}
+.lu-grade{font-family:var(--font-mono);font-size:14px;font-weight:600;min-width:26px;}
+.lu-name{font-family:var(--font-sans);font-weight:600;font-size:13px;color:var(--text-hi);cursor:pointer;}
+.lu-skills{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;}
+.lu-skills .gl{color:var(--muted);margin-right:1px;}
+.add-sp-btn{
+  background:none;border:1px solid var(--green-dim);color:var(--green);
+  font-family:var(--font-mono);font-size:10px;padding:2px 6px;cursor:pointer;
+  flex-shrink:0;white-space:nowrap;
+}
+.add-sp-btn:hover{background:var(--green-dim);}
+.add-sp-btn:disabled{opacity:.3;cursor:not-allowed;}
+</style>
+
+<script>
+const LEAGUE_ID    = "{{ league_id }}";
+const ALL_HITTERS  = {{ hitters  | tojson }};
+const ALL_PITCHERS = {{ pitchers | tojson }};
+const SAVED_LINEUP = {{ saved_lineup   | tojson }};
+const SAVED_ROT    = {{ saved_rotation | tojson }};
+const SAVED_BP     = {{ saved_bullpen  | tojson }};
+
+const POSITIONS = ['c','1b','2b','ss','3b','lf','cf','rf','dh'];
+const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
+function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
+function gradeClass(g) {
+  return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
+}
+
+let lineup   = [];
+let rotation = [];
+let bullpen  = {};
+
+// Init
+if (SAVED_LINEUP.length > 0) {
+  lineup = SAVED_LINEUP.sort((a,b) => a.batting_order - b.batting_order)
+    .map(s => ({player_id: s.player_id, position: s.position || 'dh'}));
+}
+if (SAVED_ROT.length > 0) rotation = [...SAVED_ROT];
+if (Object.keys(SAVED_BP).length > 0) bullpen = {...SAVED_BP};
+
+function findHitter(pid)  { return ALL_HITTERS.find(p => p.player_id === pid); }
+function findPitcher(pid) { return ALL_PITCHERS.find(p => p.player_id === pid); }
+
+function hitterSkillsHtml(p) {
+  return [
+    ['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
+    ['BR',p.base_running],
+    [p.best_def_label||'DEF', p.best_def_grade],
+  ].filter(([,v])=>v).map(([k,v])=>
+    `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
+  ).join('') + ` <span style="color:var(--muted);font-size:10px;">${p.bats||'?'}/${p.throws||'?'}</span>`;
+}
+
+function pitcherSkillsHtml(p) {
+  return [
+    ['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],
+    ['GB',p.ground_balls],
+  ].filter(([,v])=>v).map(([k,v])=>
+    `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
+  ).join('') + ` <span style="color:var(--muted);font-size:10px;">${p.throws||'?'}</span>`;
+}
+
+function usedPositions()  { return new Set(lineup.map(s=>s.position).filter(Boolean)); }
+function dupePositions() {
+  const pos = lineup.map(s=>s.position).filter(Boolean);
+  return new Set(pos.filter((p,i) => pos.indexOf(p) !== i));
+}
+
+// ── Batting order ──────────────────────────────────────────────────────────────
+let _luDrag = null;
+
+function renderBattingOrder() {
+  const dupes = dupePositions();
+  const el = document.getElementById('batting-order');
+  el.innerHTML = '';
+
+  lineup.forEach((slot, i) => {
+    const p = findHitter(slot.player_id);
+    if (!p) return;
+    const row = document.createElement('div');
+    row.className = 'lu-slot lu-drag-row';
+    row.dataset.idx = i;
+    const posOpts = POSITIONS.map(pos =>
+      `<option value="${pos}" ${slot.position===pos?'selected':''}>${pos.toUpperCase()}</option>`
+    ).join('');
+    row.innerHTML = `
+      <div class="lu-num">${i+1}</div>
+      <div>
+        <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
+             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+        <div class="lu-skills">${hitterSkillsHtml(p)}</div>
+      </div>
+      <select class="lu-pos-select${dupes.has(slot.position)?' error':''}"
+              onchange="setPosition(${i},this.value)">${posOpts}</select>
+      <button class="lu-remove" onclick="removeFromLineup(${i})">×</button>`;
+
+    row.draggable = true;
+    row.addEventListener('dragstart', e => { _luDrag=i; row.classList.add('dragging'); e.stopPropagation(); });
+    row.addEventListener('dragover', e => e.preventDefault());
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (_luDrag===null||_luDrag===i) return;
+      const [m] = lineup.splice(_luDrag,1); lineup.splice(i,0,m);
+      renderBattingOrder();
+    });
+    row.addEventListener('dragend', () => { row.classList.remove('dragging'); _luDrag=null; });
+    el.appendChild(row);
+  });
+
+  document.getElementById('slot-count').textContent = `${lineup.length} / 9`;
+}
+
+function setPosition(idx, pos) { lineup[idx].position = pos; renderBattingOrder(); }
+
+function removeFromLineup(idx) {
+  lineup.splice(idx,1);
+  renderBattingOrder();
+  renderBench();
+}
+
+function addToLineup(pid) {
+  if (lineup.length >= 9) { showFeedback('Lineup is full (9 max)', 'var(--red)'); return; }
+  if (lineup.find(s => s.player_id === pid)) return;
+  const used = usedPositions();
+  const pos = POSITIONS.find(p => !used.has(p)) || 'dh';
+  lineup.push({player_id: pid, position: pos});
+  renderBattingOrder();
+  renderBench();
+}
+
+// ── Bench ──────────────────────────────────────────────────────────────────────
+function getSortVal(p, key) {
+  return gradeVal(p[key]);
+}
+
+function renderBench() {
+  const inLineup = new Set(lineup.map(s => s.player_id));
+  const sortKey  = document.getElementById('bench-sort').value;
+  const bench    = ALL_HITTERS
+    .filter(p => !inLineup.has(p.player_id))
+    .sort((a, b) => getSortVal(a, sortKey) - getSortVal(b, sortKey));
+
+  const el = document.getElementById('bench-list');
+  if (!bench.length) {
+    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">All hitters in lineup</div>';
+    return;
+  }
+  el.innerHTML = bench.map(p => `
+    <div class="bench-row" onclick="addToLineup('${p.player_id}')">
+      <span class="lu-grade ${gradeClass(p.overall)}">${p.overall}</span>
+      <div style="flex:1;min-width:0;">
+        <div class="lu-name">${p.first_name} ${p.last_name}</div>
+        <div class="lu-skills">${hitterSkillsHtml(p)}</div>
+      </div>
+      <span onclick="event.stopPropagation();openPlayerPanel('${p.player_id}')"
+            style="font-size:11px;color:var(--text-dim);cursor:pointer;padding:0 4px;">↗</span>
+      <span class="bench-add">+ Add</span>
+    </div>`).join('');
+}
+
+// ── Rotation ───────────────────────────────────────────────────────────────────
+let _rotDrag = null;
+
+function renderRotation() {
+  const el = document.getElementById('rotation-list');
+  el.innerHTML = '';
+  rotation.forEach((pid, i) => {
+    const p = findPitcher(pid);
+    if (!p) return;
+    const row = document.createElement('div');
+    row.className = 'rot-slot';
+    row.innerHTML = `
+      <div class="rot-num">${i+1}</div>
+      <div>
+        <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
+             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+        <div class="lu-skills">${pitcherSkillsHtml(p)}</div>
+      </div>
+      <button class="lu-remove" onclick="removeFromRotation(${i})">×</button>`;
+    row.draggable = true;
+    row.addEventListener('dragstart', e => { _rotDrag=i; row.classList.add('dragging'); e.stopPropagation(); });
+    row.addEventListener('dragover', e => e.preventDefault());
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (_rotDrag===null||_rotDrag===i) return;
+      const [m] = rotation.splice(_rotDrag,1); rotation.splice(i,0,m);
+      renderRotation();
+    });
+    row.addEventListener('dragend', () => { row.classList.remove('dragging'); _rotDrag=null; });
+    el.appendChild(row);
+  });
+  document.getElementById('rot-count').textContent = `${rotation.length} / 6`;
+  renderBullpen();  // always re-render bullpen when rotation changes
+}
+
+function removeFromRotation(idx) {
+  rotation.splice(idx,1);
+  renderRotation();
+}
+
+function addToRotation(pid) {
+  if (rotation.length >= 6) { showFeedback('Rotation full (6 max)', 'var(--red)'); return; }
+  if (rotation.includes(pid)) return;
+  rotation.push(pid);
+  renderRotation();
+}
+
+// ── Bullpen ────────────────────────────────────────────────────────────────────
+const ROLES = ['Closer','Setup','Middle','Long','Specialist','Utility'];
+
+function getBullpenSortVal(p, key) {
+  if (key === 'sp_grade' || key === 'rp_grade') return gradeVal(p[key]);
+  return gradeVal(p[key]);
+}
+
+function renderBullpen() {
+  const inRot = new Set(rotation);
+  const sortKey = document.getElementById('bullpen-sort').value;
+  const rotFull = rotation.length >= 6;
+
+  const bpPitchers = ALL_PITCHERS
+    .filter(p => !inRot.has(p.player_id))
+    .sort((a, b) => getBullpenSortVal(a, sortKey) - getBullpenSortVal(b, sortKey));
+
+  const el = document.getElementById('bullpen-list');
+  if (!bpPitchers.length) {
+    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">All pitchers in rotation</div>';
+    return;
+  }
+
+  el.innerHTML = bpPitchers.map(p => {
+    const role = bullpen[p.player_id] || '';
+    const roleOpts = ['', ...ROLES].map(r =>
+      `<option value="${r}" ${role===r?'selected':''}>${r || '— unassigned —'}</option>`
+    ).join('');
+    return `<div class="bp-row">
+      <div>
+        <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
+             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+        <div class="lu-skills">${pitcherSkillsHtml(p)}</div>
+      </div>
+      <button class="add-sp-btn" onclick="addToRotation('${p.player_id}')"
+              ${rotFull ? 'disabled title="Rotation full"' : ''}>+ SP</button>
+      <select class="bp-role-select" onchange="bullpen['${p.player_id}']=this.value">${roleOpts}</select>
+    </div>`;
+  }).join('');
+}
+
+// ── Auto-fill ──────────────────────────────────────────────────────────────────
+function autoFill() {
+  const pos_priority = {
+    c:    p => p.best_def_label==='CA' ? gradeVal(p.best_def_grade) : 90,
+    ss:   p => gradeVal(p.best_def_grade),
+    cf:   p => gradeVal(p.best_def_grade),
+    '2b': p => gradeVal(p.best_def_grade),
+    '3b': p => gradeVal(p.best_def_grade),
+    '1b': p => gradeVal(p.overall),
+    lf:   p => gradeVal(p.overall),
+    rf:   p => gradeVal(p.overall),
+    dh:   p => gradeVal(p.overall),
+  };
+  const used = new Set();
+  lineup = [];
+  const healthyHitters  = ALL_HITTERS.filter(p => !p.injured);
+  const healthyPitchers = ALL_PITCHERS.filter(p => !p.injured);
+  for (const pos of ['c','ss','cf','2b','3b','1b','lf','rf','dh']) {
+    const best = healthyHitters
+      .filter(p => !used.has(p.player_id))
+      .sort((a,b) => pos_priority[pos](a) - pos_priority[pos](b))[0];
+    if (best) { lineup.push({player_id:best.player_id, position:pos}); used.add(best.player_id); }
+  }
+  rotation = healthyPitchers
+    .sort((a,b) => gradeVal(a.sp_grade||a.overall) - gradeVal(b.sp_grade||b.overall))
+    .slice(0,5).map(p => p.player_id);
+
+  renderBattingOrder(); renderBench(); renderRotation();
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────────
+async function saveLineup() {
+  const dupes = dupePositions();
+  if (dupes.size > 0) {
+    showFeedback('✗ Duplicate positions: ' + [...dupes].join(', '), 'var(--red)'); return;
+  }
+  const btn = document.getElementById('lu-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/lineup/save`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        lineup:   lineup.map((s,i) => ({player_id:s.player_id, batting_order:i+1, position:s.position})),
+        rotation, bullpen,
+      }),
+    });
+    if (res.ok) showFeedback('✓ Saved', 'var(--green)');
+    else { const d = await res.json().catch(()=>({})); showFeedback('✗ '+(d.detail||'Error'), 'var(--red)'); }
+  } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
+  finally { btn.disabled=false; btn.textContent='Save Lineup'; }
+}
+
+function showFeedback(msg, color) {
+  const fb = document.getElementById('lu-feedback');
+  fb.textContent=msg; fb.style.color=color;
+  setTimeout(() => { if(fb.textContent===msg) fb.textContent=''; }, 4000);
+}
+
+renderBattingOrder();
+renderBench();
+renderRotation(); // renderBullpen called inside renderRotation
+</script>

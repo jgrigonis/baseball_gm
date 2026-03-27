@@ -155,6 +155,19 @@ def _resolve_gm(
 
 
 
+
+def _injured_player_ids(db, team_id: str) -> set:
+    """Return set of player_ids currently on IL for a team."""
+    if not team_id:
+        return set()
+    rows = db.execute(
+        """SELECT pi.player_id FROM player_injuries pi
+           JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
+           WHERE pi.games_remaining > 0""",
+        (team_id,),
+    ).fetchall()
+    return {r["player_id"] for r in rows}
+
 def _draft_is_complete(db, league_id: str) -> bool:
     row = db.execute(
         """SELECT d.state FROM drafts d
@@ -164,12 +177,16 @@ def _draft_is_complete(db, league_id: str) -> bool:
     ).fetchone()
     return bool(row and row["state"] == "complete")
 
-def _tab_visible(state: str) -> list[str]:
-    always = ["draft", "standings", "leaders", "roster", "lineup", "strategy"]
-    if state == "lobby":                return []
-    if state == "draft":               return always
-    if state in ("season", "playoffs"): return always + ["schedule"]
-    return always
+def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
+    if state == "lobby":
+        return []
+    if not draft_complete:
+        return ["draft", "roster", "lineup", "standings", "leaders", "strategy"]
+    post = ["roster", "lineup", "standings", "leaders", "strategy"]
+    if state in ("season", "playoffs"):
+        post.append("schedule")
+    post.append("draft")  # draft results at far right
+    return post
 
 
 def _shell_ctx(
@@ -211,7 +228,7 @@ def _shell_ctx(
         "team_name":           f"{team['city']} {team['mascot']}" if team else None,
         "is_commissioner":     (league and gm and league["commissioner_gm_id"] == gm["id"]),
         "active_tab":          active_tab,
-        "visible_tabs":        _tab_visible(league["state"] if league else "lobby"),
+        "visible_tabs":        _tab_visible(league["state"] if league else "lobby", _draft_is_complete(db, league_id) if league else False),
         "season_id":           season["id"]   if season else None,
         "season_name":         season["name"] if season else None,
         "draft_complete":      _draft_is_complete(db, league_id) if league else False,
@@ -921,9 +938,11 @@ def standings(
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "standings")
     season_id = ctx["season_id"]
+    my_team_id = gm["team_id"] if gm else None
     teams = []
 
     if season_id:
+        # Base W-L per team
         rows = db.execute(
             """SELECT
                  t.id as team_id, t.city, t.mascot,
@@ -935,8 +954,8 @@ def standings(
                  ON lst.team_id = t.id
                  AND lst.league_id = ?
                  AND lst.season_id = ?
-               JOIN team_game_stats tgs ON tgs.team_id = t.id
-               JOIN games g
+               LEFT JOIN team_game_stats tgs ON tgs.team_id = t.id
+               LEFT JOIN games g
                  ON g.id = tgs.game_id
                  AND g.season_id = ?
                  AND g.completed = 1
@@ -963,27 +982,150 @@ def standings(
             ).fetchall()
         }
 
-        for r in rows:
-            wins   = r["wins"]        or 0
-            losses = r["losses"]      or 0
+        # Recent game results per team for streak (last 10 games ordered newest first)
+        recent_rows = db.execute(
+            """SELECT tgs.team_id, tgs.win, g.game_date
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id
+               WHERE g.season_id = ? AND g.completed = 1
+               ORDER BY g.game_date DESC""",
+            (season_id,),
+        ).fetchall()
+
+        # Build per-team recent results
+        team_recent: dict[str, list] = {}
+        for r in recent_rows:
+            tid = r["team_id"]
+            if tid not in team_recent:
+                team_recent[tid] = []
+            if len(team_recent[tid]) < 10:
+                team_recent[tid].append(r["win"])
+
+        def calc_streak(results: list) -> str:
+            """results[0] is most recent game"""
+            if not results:
+                return "—"
+            letter = "W" if results[0] else "L"
+            count = 0
+            for r in results:
+                if bool(r) == (letter == "W"):
+                    count += 1
+                else:
+                    break
+            return f"{letter}{count}"
+
+        # Sort by win pct descending to get rank and GB
+        ranked = sorted(
+            [dict(r) for r in rows],
+            key=lambda t: (-(t["wins"] or 0), (t["losses"] or 0))
+        )
+        leader_wins = ranked[0]["wins"] or 0 if ranked else 0
+        leader_losses = ranked[0]["losses"] or 0 if ranked else 0
+
+        for rank, r in enumerate(ranked, 1):
+            wins   = r["wins"]   or 0
+            losses = r["losses"] or 0
             rs     = r["runs_scored"] or 0
             ra     = ra_map.get(r["team_id"], 0)
+            played = wins + losses
+            pct    = wins / played if played else 0.0
+            gb_val = ((leader_wins - wins) + (losses - leader_losses)) / 2
+            gb     = "—" if rank == 1 else (f"{gb_val:.1f}" if gb_val != int(gb_val) else str(int(gb_val)))
+            recent = team_recent.get(r["team_id"], [])
             teams.append({
+                "rank":         rank,
                 "team_id":      r["team_id"],
                 "city":         r["city"],
                 "mascot":       r["mascot"],
                 "wins":         wins,
                 "losses":       losses,
-                "run_diff":     rs - ra,
-                "runs_scored":  rs,
-                "runs_allowed": ra,
+                "pct":          f"{pct:.3f}",
+                "gb":           gb,
+                "streak":       calc_streak(recent),
                 "is_human":     r["team_id"] in human_team_ids,
-                "last_10":      None,
-                "streak":       None,
+                "is_mine":      r["team_id"] == my_team_id,
             })
+
+        # ── My next 3 upcoming games ──────────────────────────────────────────
+        upcoming = []
+        if my_team_id:
+            up_rows = db.execute(
+                """SELECT g.id, g.game_date, g.home_team_id, g.away_team_id,
+                          ht.city as home_city, ht.mascot as home_mascot,
+                          at.city as away_city, at.mascot as away_mascot
+                   FROM games g
+                   JOIN teams ht ON ht.id = g.home_team_id
+                   JOIN teams at ON at.id = g.away_team_id
+                   WHERE g.season_id = ? AND g.completed = 0
+                     AND (g.home_team_id = ? OR g.away_team_id = ?)
+                   ORDER BY g.game_date LIMIT 3""",
+                (season_id, my_team_id, my_team_id),
+            ).fetchall()
+            for g_row in up_rows:
+                is_home = g_row["home_team_id"] == my_team_id
+                opp_city   = g_row["away_city"]   if is_home else g_row["home_city"]
+                opp_mascot = g_row["away_mascot"] if is_home else g_row["home_mascot"]
+                upcoming.append({
+                    "date":       g_row["game_date"],
+                    "home_away":  "vs" if is_home else "@",
+                    "opponent":   f"{opp_city} {opp_mascot}",
+                })
+
+        # ── My last 3 completed games ─────────────────────────────────────────
+        recent_games = []
+        if my_team_id:
+            rg_rows = db.execute(
+                """SELECT g.game_date, g.home_team_id, g.away_team_id,
+                          g.home_score, g.away_score,
+                          ht.city as home_city, ht.mascot as home_mascot,
+                          at.city as away_city, at.mascot as away_mascot
+                   FROM games g
+                   JOIN teams ht ON ht.id = g.home_team_id
+                   JOIN teams at ON at.id = g.away_team_id
+                   WHERE g.season_id = ? AND g.completed = 1
+                     AND (g.home_team_id = ? OR g.away_team_id = ?)
+                   ORDER BY g.game_date DESC LIMIT 3""",
+                (season_id, my_team_id, my_team_id),
+            ).fetchall()
+            for g_row in rg_rows:
+                is_home = g_row["home_team_id"] == my_team_id
+                my_score  = g_row["home_score"] if is_home else g_row["away_score"]
+                opp_score = g_row["away_score"] if is_home else g_row["home_score"]
+                opp_city   = g_row["away_city"]   if is_home else g_row["home_city"]
+                opp_mascot = g_row["away_mascot"] if is_home else g_row["home_mascot"]
+                won = (my_score or 0) > (opp_score or 0)
+                recent_games.append({
+                    "date":      g_row["game_date"],
+                    "home_away": "vs" if is_home else "@",
+                    "opponent":  f"{opp_city} {opp_mascot}",
+                    "my_score":  my_score,
+                    "opp_score": opp_score,
+                    "result":    "W" if won else "L",
+                })
+
+        # ── Injury report ─────────────────────────────────────────────────────
+        injuries = []
+        if my_team_id:
+            inj_rows = db.execute(
+                """SELECT p.id as player_id, p.first_name, p.last_name, pi.games_remaining
+                   FROM player_injuries pi
+                   JOIN players p ON p.id = pi.player_id
+                   JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+                   WHERE pi.games_remaining > 0
+                   ORDER BY pi.games_remaining DESC""",
+                (my_team_id,),
+            ).fetchall()
+            injuries = [dict(r) for r in inj_rows]
+
+    else:
+        upcoming = []; recent_games = []; injuries = []
 
     ctx["teams"]        = teams
     ctx["games_played"] = sum(t["wins"] + t["losses"] for t in teams) // 2 if teams else 0
+    ctx["upcoming"]     = upcoming
+    ctx["recent_games"] = recent_games
+    ctx["injuries"]     = injuries
+    ctx["my_team_id"]   = my_team_id
     return _respond(request, "dashboard/partials/standings.html", ctx)
 
 
@@ -1049,6 +1191,9 @@ def roster(
                 g["best_def_label"] = ratings.get("best_def_label", "DEF")
             players.append(g)
 
+    injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None)
+    for p in players:
+        p["injured"] = p["player_id"] in injured_ids
     ctx["players"] = players
     return _respond(request, "dashboard/partials/roster.html", ctx)
 
@@ -1066,11 +1211,183 @@ def lineup(
 
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "lineup")
-    ctx["batting_order"] = []
-    ctx["bench"]         = []
-    ctx["rotation"]      = []
-    ctx["bullpen"]       = []
+
+    if not gm or not gm["team_id"]:
+        ctx["hitters"] = []; ctx["pitchers"] = []
+        ctx["saved_lineup"] = []; ctx["saved_rotation"] = []
+        ctx["saved_bullpen"] = []
+        return _respond(request, "dashboard/partials/lineup.html", ctx)
+
+    team_id = gm["team_id"]
+    season_id = ctx.get("season_id")
+
+    # Load all 40-man players with grades
+    rows = db.execute(
+        """SELECT p.*, ps.status FROM players p
+           JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+           JOIN player_status ps ON ps.player_id = p.id
+           WHERE ps.status = '40man'
+           ORDER BY p.last_name""",
+        (team_id,),
+    ).fetchall()
+
+    hitters = []; pitchers = []
+    for row in rows:
+        d = dict(row)
+        sk = db.execute("SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)).fetchone()
+        skills = dict(sk) if sk else {}
+        grades = player_row_to_grades(d, skills, d["status"])
+        ratings = _compute_ratings(skills, d.get("throws", "R"))
+        g = grades.model_dump()
+        if ratings:
+            if g.get("player_type") == "pitcher":
+                best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
+                g["overall"]  = skill_to_grade(best_p) if best_p else g["overall"]
+                g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
+                g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
+            else:
+                g["overall"]          = skill_to_grade(ratings.get("overall_player"))
+                g["leadoff_grade"]    = skill_to_grade(ratings.get("lead_off", 0))
+                g["power_h_grade"]    = skill_to_grade(ratings.get("power_hitter", 0))
+                g["contact_h_grade"]  = skill_to_grade(ratings.get("contact_hitter", 0))
+            g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
+            g["best_def_label"] = ratings.get("best_def_label", "DEF")
+        # Raw skill grades not in PlayerGrades — needed for sort
+        g["base_running"] = skill_to_grade(skills.get("base_running"))
+        g["bunting"]      = skill_to_grade(skills.get("bunting"))
+        g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
+        if g.get("player_type") == "pitcher":
+            pitchers.append(g)
+        else:
+            hitters.append(g)
+
+    # Load saved lineup preferences
+    saved_lineup = []
+    prefs = db.execute(
+        """SELECT player_id, batting_order, position FROM gm_lineup_preferences
+           WHERE gm_id = ? AND batting_order IS NOT NULL
+           ORDER BY batting_order""",
+        (gm["id"],),
+    ).fetchall()
+    saved_lineup = [{"player_id": r["player_id"], "batting_order": r["batting_order"],
+                     "position": r["position"]} for r in prefs]
+
+    # Load saved rotation
+    saved_rotation = []
+    if season_id:
+        rot = db.execute(
+            """SELECT player_id, rotation_order FROM team_rotations
+               WHERE team_id = ? AND season_id = ? AND end_date IS NULL
+               ORDER BY rotation_order""",
+            (team_id, season_id),
+        ).fetchall()
+        saved_rotation = [r["player_id"] for r in rot]
+
+    # Load saved bullpen roles
+    saved_bullpen = {}
+    if season_id:
+        bp = db.execute(
+            """SELECT player_id, role FROM bullpen_roles
+               WHERE team_id = ? AND season_id = ? AND end_date IS NULL""",
+            (team_id, season_id),
+        ).fetchall()
+        saved_bullpen = {r["player_id"]: r["role"] for r in bp}
+
+    injured_ids = _injured_player_ids(db, team_id)
+    for p in hitters + pitchers:
+        p["injured"] = p["player_id"] in injured_ids
+    ctx["hitters"]        = hitters
+    ctx["pitchers"]       = pitchers
+    ctx["saved_lineup"]   = saved_lineup
+    ctx["saved_rotation"] = saved_rotation
+    ctx["saved_bullpen"]  = saved_bullpen
     return _respond(request, "dashboard/partials/lineup.html", ctx)
+
+
+@router.put("/leagues/{league_id}/lineup/save")
+async def save_lineup(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    from fastapi.responses import JSONResponse
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    if not gm or not gm["team_id"]:
+        return JSONResponse({"detail": "No team"}, status_code=400)
+
+    body = await request.json()
+    lineup   = body.get("lineup", [])    # [{player_id, batting_order, position}]
+    rotation = body.get("rotation", [])  # [player_id, ...] in order
+    bullpen  = body.get("bullpen", {})   # {player_id: role}
+
+    # Validate lineup: 9 slots, no duplicate positions
+    if len(lineup) > 9:
+        return JSONResponse({"detail": "Lineup cannot exceed 9 batters"}, status_code=422)
+    positions_used = [s["position"] for s in lineup if s.get("position")]
+    if len(positions_used) != len(set(positions_used)):
+        dupes = [p for p in positions_used if positions_used.count(p) > 1]
+        return JSONResponse({"detail": f"Duplicate positions: {', '.join(set(dupes))}"}, status_code=422)
+
+    # Validate rotation: max 6
+    if len(rotation) > 6:
+        return JSONResponse({"detail": "Rotation cannot exceed 6 starters"}, status_code=422)
+
+    season_id = ctx_season_id = db.execute(
+        """SELECT s.id FROM seasons s
+           JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? ORDER BY s.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+    season_id = season_id["id"] if season_id else None
+
+    import datetime
+    today = datetime.date.today().isoformat()
+
+    # Save batting lineup to gm_lineup_preferences
+    db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = ?", (gm["id"],))
+    for slot in lineup:
+        db.execute(
+            """INSERT INTO gm_lineup_preferences
+               (gm_id, player_id, batting_order, position, is_starter, updated_at)
+               VALUES (?, ?, ?, ?, 1, datetime('now'))""",
+            (gm["id"], slot["player_id"], slot["batting_order"], slot.get("position")),
+        )
+
+    # Save rotation to team_rotations
+    if season_id:
+        db.execute(
+            "DELETE FROM team_rotations WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
+            (gm["team_id"], season_id),
+        )
+        for i, pid in enumerate(rotation):
+            db.execute(
+                """INSERT INTO team_rotations
+                   (team_id, season_id, player_id, rotation_order, effective_date)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (gm["team_id"], season_id, pid, i + 1, today),
+            )
+
+    # Save bullpen roles
+    if season_id:
+        db.execute(
+            "DELETE FROM bullpen_roles WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
+            (gm["team_id"], season_id),
+        )
+        valid_roles = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
+        for pid, role in bullpen.items():
+            if role in valid_roles:
+                db.execute(
+                    """INSERT INTO bullpen_roles
+                       (team_id, player_id, season_id, role, effective_date)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (gm["team_id"], pid, season_id, role, today),
+                )
+
+    db.commit()
+    return JSONResponse({"saved": True})
 
 
 # ── Tab: Strategy ──────────────────────────────────────────────────────────────

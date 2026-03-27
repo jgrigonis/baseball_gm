@@ -8,6 +8,9 @@
     <div class="spacer"></div>
     <span id="save-feedback"
           style="font-family:var(--font-mono);font-size:11px;margin-right:12px;"></span>
+    <button class="btn btn-secondary" onclick="fillToForty()" style="margin-right:8px;">
+      Fill to 40
+    </button>
     <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
       Save Roster
     </button>
@@ -196,6 +199,25 @@ function sortedPlayers(ids) {
 
 function applySort() { render(); }
 
+function fillToForty() {
+  if (fortyMan.size >= 40) {
+    showFeedback('Already at 40', 'var(--text-dim)');
+    return;
+  }
+  // Use the current sort1 key to determine who to fill with
+  const sortKey = document.getElementById('sort1')?.value || 'overall';
+  const needed  = 40 - fortyMan.size;
+
+  const candidates = ALL_PLAYERS
+    .filter(p => !fortyMan.has(p.player_id) && !p.injured)
+    .sort((a, b) => getSkillVal(a, sortKey) - getSkillVal(b, sortKey))
+    .slice(0, needed);
+
+  candidates.forEach(p => fortyMan.add(p.player_id));
+  render();
+  showFeedback(`Added ${candidates.length} player${candidates.length !== 1 ? 's' : ''}`, 'var(--green)');
+}
+
 function toggleReverse() {
   reversed = !reversed;
   const btn = document.getElementById('reverse-btn');
@@ -219,10 +241,13 @@ function makeCard(p) {
   el.className = 'r-card';
   el.draggable = true;
   el.dataset.id = p.player_id;
+  if (p.injured) el.style.borderLeft = '3px solid var(--red)';
   el.innerHTML = `
     <span class="r-ovr ${gradeClass(p.overall)}">${p.overall}</span>
     <div>
-      <div class="r-name">${p.first_name} ${p.last_name}</div>
+      <div class="r-name" style="color:${p.injured ? 'var(--red)' : ''}">
+        ${p.first_name} ${p.last_name}${p.injured ? ' <span style="font-size:10px;color:var(--red);">IL</span>' : ''}
+      </div>
       <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
       <div class="r-grades">${gradesHtml}</div>
     </div>`;
