@@ -79,6 +79,7 @@ body {
   flex: 1;
   overflow-y: auto;
   min-height: 0;  /* critical: allows flex child to shrink below content height */
+  isolation: isolate;  /* contain stacking context so children can't paint above tab-bar */
 }
 /* ── Top Bar ────────────────────────────────────────────────────────────────── */
 .topbar {

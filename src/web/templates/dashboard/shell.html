@@ -28,7 +28,7 @@
   {% endfor %}
 
   {# ── Play button — only during season/playoffs/preseason ───────────── #}
-  {% if league_state in ('season', 'playoffs', 'preseason') %}
+  {% if league_state in ('season', 'playoffs', 'preseason') and active_tab not in ('roster', 'lineup') %}
   <span id="sim-feedback"
         style="font-family:var(--font-mono);font-size:11px;color:var(--green);
                padding:0 12px;align-self:center;display:none;"></span>
@@ -82,27 +82,45 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
   let _timer = null;
   let _held  = false;
 
-  function onDown(e) {
+  // Use capture:true so we intercept before any content handlers
+  // Use document-level listeners anchored to the button's bounding rect
+  // to avoid tab-content stealing the event
+  document.addEventListener('mousedown', function(e) {
+    if (!btn.contains(e.target)) return;
     e.preventDefault();
     _held  = false;
-    _timer = setTimeout(() => {
-      _held = true;
-      showPlayDropdown();
-    }, 500);
-  }
-  function onUp(e) {
+    _timer = setTimeout(() => { _held = true; showPlayDropdown(); }, 500);
+  }, {capture: true, passive: false});
+
+  document.addEventListener('mouseup', function(e) {
+    if (!_timer && !_held) return;
+    clearTimeout(_timer);
+    if (!_held && btn.contains(e.target)) simGames(1);
+    _held = false;
+    _timer = null;
+  }, {capture: true, passive: false});
+
+  document.addEventListener('mouseleave', function(e) {
+    if (e.target === btn || btn.contains(e.target)) {
+      clearTimeout(_timer); _held = false; _timer = null;
+    }
+  }, {capture: true});
+
+  // Touch support
+  document.addEventListener('touchstart', function(e) {
+    if (!btn.contains(e.target)) return;
     e.preventDefault();
+    _held  = false;
+    _timer = setTimeout(() => { _held = true; showPlayDropdown(); }, 500);
+  }, {capture: true, passive: false});
+
+  document.addEventListener('touchend', function(e) {
+    if (!_timer && !_held) return;
     clearTimeout(_timer);
     if (!_held) simGames(1);
     _held = false;
-  }
-  function onLeave() { clearTimeout(_timer); _held = false; }
-
-  btn.addEventListener('mousedown',  onDown,  {passive: false});
-  btn.addEventListener('mouseup',    onUp,    {passive: false});
-  btn.addEventListener('mouseleave', onLeave);
-  btn.addEventListener('touchstart', onDown,  {passive: false});
-  btn.addEventListener('touchend',   onUp,    {passive: false});
+    _timer = null;
+  }, {capture: true, passive: false});
 })();
 
 function showPlayDropdown() {

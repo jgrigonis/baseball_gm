@@ -1,0 +1,4 @@
+Have the other 29 spots in the lobby show as AI
+
+Then, in multiplayer, as players join, they will boot an AI and slot in.
+
