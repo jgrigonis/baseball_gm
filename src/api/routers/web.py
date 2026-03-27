@@ -925,30 +925,48 @@ def player_panel(
         grades = player_row_to_grades(dict(p), skills, st["status"] if st else "unassigned")
 
         if grades.player_type == "pitcher":
-            grade_map = {
-                "strikes":      {"label": "Stuff",       "grade": grades.stuff},
-                "accuracy":     {"label": "Control",     "grade": grades.control},
-                "stamina":      {"label": "Stamina",     "grade": grades.stamina},
-                "recovery":     {"label": "Recovery",    "grade": grades.recovery},
-                "ground_balls": {"label": "GB tendency", "grade": skill_to_grade(skills.get("ground_balls"))},
-                "clutch":       {"label": "Clutch",      "grade": skill_to_grade(skills.get("clutch"))},
-                "durability":   {"label": "Durability",  "grade": skill_to_grade(skills.get("durability"))},
-            }
+            grade_map = [
+                {"section": "Pitching", "skills": [
+                    {"key": "strikes",      "label": "Stuff",        "grade": grades.stuff},
+                    {"key": "accuracy",     "label": "Control",      "grade": grades.control},
+                    {"key": "stamina",      "label": "Stamina",      "grade": grades.stamina},
+                    {"key": "recovery",     "label": "Recovery",     "grade": grades.recovery},
+                    {"key": "ground_balls", "label": "GB tendency",  "grade": skill_to_grade(skills.get("ground_balls"))},
+                ]},
+                {"section": "Hitting", "skills": [
+                    {"key": "contact",      "label": "Contact",      "grade": skill_to_grade(skills.get("contact"))},
+                    {"key": "power",        "label": "Power",        "grade": skill_to_grade(skills.get("power"))},
+                    {"key": "eye",          "label": "Eye",          "grade": skill_to_grade(skills.get("eye"))},
+                    {"key": "speed",        "label": "Speed",        "grade": skill_to_grade(skills.get("speed"))},
+                    {"key": "base_running", "label": "Baserunning",  "grade": skill_to_grade(skills.get("base_running"))},
+                    {"key": "bunting",      "label": "Bunting",      "grade": skill_to_grade(skills.get("bunting"))},
+                ]},
+                {"section": "General", "skills": [
+                    {"key": "clutch",      "label": "Clutch",       "grade": skill_to_grade(skills.get("clutch"))},
+                    {"key": "durability",  "label": "Durability",   "grade": skill_to_grade(skills.get("durability"))},
+                ]},
+            ]
         else:
-            grade_map = {
-                "contact":      {"label": "Contact",     "grade": grades.contact},
-                "power":        {"label": "Power",       "grade": grades.power},
-                "eye":          {"label": "Eye",         "grade": grades.eye},
-                "speed":        {"label": "Speed",       "grade": grades.speed},
-                "base_running": {"label": "Baserunning", "grade": skill_to_grade(skills.get("base_running"))},
-                "bunting":      {"label": "Bunting",     "grade": skill_to_grade(skills.get("bunting"))},
-                "catching":     {"label": "Catching",    "grade": skill_to_grade(skills.get("catching"))},
-                "infield":      {"label": "Infield",     "grade": skill_to_grade(skills.get("infield"))},
-                "outfield":     {"label": "Outfield",    "grade": skill_to_grade(skills.get("outfield"))},
-                "arm":          {"label": "Arm",         "grade": grades.arm},
-                "clutch":       {"label": "Clutch",      "grade": skill_to_grade(skills.get("clutch"))},
-                "durability":   {"label": "Durability",  "grade": skill_to_grade(skills.get("durability"))},
-            }
+            grade_map = [
+                {"section": "Hitting", "skills": [
+                    {"key": "contact",      "label": "Contact",     "grade": grades.contact},
+                    {"key": "power",        "label": "Power",       "grade": grades.power},
+                    {"key": "eye",          "label": "Eye",         "grade": grades.eye},
+                    {"key": "speed",        "label": "Speed",       "grade": grades.speed},
+                    {"key": "base_running", "label": "Baserunning", "grade": skill_to_grade(skills.get("base_running"))},
+                    {"key": "bunting",      "label": "Bunting",     "grade": skill_to_grade(skills.get("bunting"))},
+                ]},
+                {"section": "Defense", "skills": [
+                    {"key": "catching",  "label": "Catching", "grade": skill_to_grade(skills.get("catching"))},
+                    {"key": "infield",   "label": "Infield",  "grade": skill_to_grade(skills.get("infield"))},
+                    {"key": "outfield",  "label": "Outfield", "grade": skill_to_grade(skills.get("outfield"))},
+                    {"key": "arm",       "label": "Arm",      "grade": grades.arm},
+                ]},
+                {"section": "General", "skills": [
+                    {"key": "clutch",      "label": "Clutch",      "grade": skill_to_grade(skills.get("clutch"))},
+                    {"key": "durability",  "label": "Durability",  "grade": skill_to_grade(skills.get("durability"))},
+                ]},
+            ]
 
         energy = None
         if en:

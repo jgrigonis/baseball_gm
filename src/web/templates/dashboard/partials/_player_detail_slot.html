@@ -1,154 +1,126 @@
 {# templates/dashboard/partials/_player_detail_slot.html
-   Content for one player in the slide-in panel.
-   Used twice in compare mode.
-   Receives: player (dict with all fields)
+  One player's detail in the slide-in panel.
+  grades is a list of {section, skills:[{key,label,grade}]}
+  Sections are ordered by player_type: pitching first for pitchers, hitting first for hitters.
 #}
 
 {# ── Identity ──────────────────────────────────────────────────────────────── #}
 <div class="pd-identity">
-  <div>
-    <div class="pd-name">{{ player.first_name }} {{ player.last_name }}</div>
-    <div class="pd-meta">
-      {{ player.position or '?' }} ·
-      {{ player.bats }}/{{ player.throws }} ·
-      Age {{ player.age }} ·
-      {{ player.team_city }} {{ player.team_mascot }}
-    </div>
-  </div>
-  <div class="pd-overall grade-{{ player.overall_grade | replace('+','-plus') | replace('-','-minus') }}">
-    {{ player.overall_grade }}
-  </div>
+ <div>
+   <div class="pd-name">{{ player.first_name }} {{ player.last_name }}</div>
+   <div class="pd-meta">
+     {{ player.position or '?' }} ·
+     {{ player.bats }}/{{ player.throws }} ·
+     Age {{ player.age }} ·
+     {{ player.team_city }} {{ player.team_mascot }}
+   </div>
+ </div>
+ <div class="pd-overall grade-{{ player.overall_grade | replace('+','-plus') | replace('-','-minus') }}">
+   {{ player.overall_grade }}
+ </div>
 </div>
 
 {# ── Status badges ─────────────────────────────────────────────────────────── #}
 <div class="pd-badges">
-  {% if player.injured %}
-    <span class="badge badge-injured">IL-{{ player.games_remaining }}</span>
-  {% endif %}
-  {% if player.energy_pct is defined %}
-    {% if player.energy_pct < 40 %}
-      <span class="badge badge-tired">Tired ({{ player.energy_pct }}%)</span>
-    {% elif player.energy_pct < 70 %}
-      <span class="badge" style="background:#2a1a05;border-color:#78460a;color:#f59e0b;">Worn ({{ player.energy_pct }}%)</span>
-    {% endif %}
-  {% endif %}
-  <span class="badge {% if player.roster_status == '26man' %}badge-active{% elif player.roster_status == '40man' %}badge-40man{% else %}badge-minors{% endif %}">
-    {{ player.roster_status }}
-  </span>
+ {% if player.injured %}
+   <span class="badge badge-injured">IL-{{ player.games_remaining }}</span>
+ {% endif %}
+ {% if player.energy %}
+   {% if player.energy.current < 40 %}
+     <span class="badge badge-tired">Tired ({{ player.energy.current }}%)</span>
+   {% elif player.energy.current < 70 %}
+     <span class="badge" style="background:#2a1a05;border-color:#78460a;color:#f59e0b;">
+       Worn ({{ player.energy.current }}%)
+     </span>
+   {% endif %}
+ {% endif %}
+ <span class="badge
+   {% if player.roster_status == '26man' %}badge-active
+   {% elif player.roster_status == '40man' %}badge-40man
+   {% else %}badge-minors{% endif %}">
+   {{ player.roster_status }}
+ </span>
 </div>
 
 {# ── Energy bar ────────────────────────────────────────────────────────────── #}
-{% if player.energy_pct is defined %}
+{% if player.energy %}
 <div class="pd-section">
-  <div class="pd-section-title">Energy</div>
-  <div class="energy-bar-wrap">
-    <div class="energy-bar-bg">
-      {% set ec = 'energy-tired' if player.energy_pct < 40 else ('energy-warn' if player.energy_pct < 70 else 'energy-ok') %}
-      <div class="energy-bar-fill {{ ec }}" style="width: {{ player.energy_pct }}%"></div>
-    </div>
-    <div class="energy-bar-labels">
-      <span>{{ player.energy_pct }}% / {{ player.energy_max_pct }}% cap</span>
-      {% if player.consecutive_days %}
-        <span>{{ player.consecutive_days }}d streak</span>
-      {% endif %}
-      {% if player.last_pitch_count %}
-        <span>Last: {{ player.last_pitch_count }}p</span>
-      {% endif %}
-    </div>
-  </div>
+ <div class="pd-section-title">Energy</div>
+ <div class="energy-bar-wrap">
+   <div class="energy-bar-bg">
+     {% set ec = 'energy-tired' if player.energy.current < 40 else ('energy-warn' if player.energy.current < 70 else 'energy-ok') %}
+     <div class="energy-bar-fill {{ ec }}" style="width:{{ player.energy.current }}%"></div>
+   </div>
+   <div class="energy-bar-labels">
+     <span>{{ player.energy.current }}% / {{ player.energy.max }}% cap</span>
+     {% if player.energy.consecutive_days %}
+       <span>{{ player.energy.consecutive_days }}d streak</span>
+     {% endif %}
+     {% if player.energy.last_pitch_count %}
+       <span>Last: {{ player.energy.last_pitch_count }}p</span>
+     {% endif %}
+   </div>
+ </div>
 </div>
 {% endif %}
 
-{# ── Skills ────────────────────────────────────────────────────────────────── #}
-<div class="pd-section">
-  {% if player.player_type == 'pitcher' %}
-    <div class="pd-section-title">Pitching</div>
-    <div class="pd-skill-grid">
-      {% for key, label in [('strikes','Stuff'), ('accuracy','Control'), ('stamina','Stamina'), ('recovery','Recovery'), ('ground_balls','GB tendency')] %}
-        {% if player.grades[key] is defined %}
-        <div class="pd-skill-row">
-          <span class="pd-skill-label">{{ label }}</span>
-          <span class="pd-skill-grade grade-{{ player.grades[key].grade | replace('+','-plus') | replace('-','-minus') }}">
-            {{ player.grades[key].grade }}
-          </span>
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-    <div class="pd-section-title" style="margin-top:12px;">General</div>
-    <div class="pd-skill-grid">
-      {% for key, label in [('clutch','Clutch'), ('durability','Durability')] %}
-        {% if player.grades[key] is defined %}
-        <div class="pd-skill-row">
-          <span class="pd-skill-label">{{ label }}</span>
-          <span class="pd-skill-grade grade-{{ player.grades[key].grade | replace('+','-plus') | replace('-','-minus') }}">
-            {{ player.grades[key].grade }}
-          </span>
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="pd-section-title">Hitting</div>
-    <div class="pd-skill-grid">
-      {% for key, label in [('contact','Contact'), ('power','Power'), ('eye','Eye'), ('speed','Speed'), ('base_running','Baserunning'), ('bunting','Bunting')] %}
-        {% if player.grades[key] is defined %}
-        <div class="pd-skill-row">
-          <span class="pd-skill-label">{{ label }}</span>
-          <span class="pd-skill-grade grade-{{ player.grades[key].grade | replace('+','-plus') | replace('-','-minus') }}">
-            {{ player.grades[key].grade }}
-          </span>
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-    <div class="pd-section-title" style="margin-top:12px;">Defense &amp; General</div>
-    <div class="pd-skill-grid">
-      {% for key, label in [('catching','Catching'), ('infield','Infield'), ('outfield','Outfield'), ('arm','Arm'), ('clutch','Clutch'), ('durability','Durability')] %}
-        {% if player.grades[key] is defined %}
-        <div class="pd-skill-row">
-          <span class="pd-skill-label">{{ label }}</span>
-          <span class="pd-skill-grade grade-{{ player.grades[key].grade | replace('+','-plus') | replace('-','-minus') }}">
-            {{ player.grades[key].grade }}
-          </span>
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  {% endif %}
-</div>
+{# ── Skills — rendered as sections ────────────────────────────────────────── #}
+{% if player.grades %}
+ {% for section in player.grades %}
+ <div class="pd-section">
+   <div class="pd-section-title">{{ section.section }}</div>
+   <div class="pd-skill-grid">
+     {% for skill in section.skills %}
+     <div class="pd-skill-row">
+       <span class="pd-skill-label">{{ skill.label }}</span>
+       <span class="pd-skill-grade
+         {% set g = skill.grade %}
+         {% if g and g.startswith('A') %}elite
+         {% elif g and (g.startswith('B') or g == 'C+') %}good
+         {% elif g and (g.startswith('D') or g == 'F') %}poor
+         {% endif %}">
+         {{ skill.grade or '?' }}
+       </span>
+     </div>
+     {% endfor %}
+   </div>
+ </div>
+ {% endfor %}
+{% endif %}
 
 {# ── Season Stats ──────────────────────────────────────────────────────────── #}
 <div class="pd-section">
-  <div class="pd-section-title">Season Stats</div>
-  {% if player.stats %}
-    <div class="pd-stat-grid">
-      {% for key, val in player.stats.items() %}
-        {% if key != 'type' %}
-        <div class="pd-stat-cell">
-          <span class="pd-stat-label">{{ key }}</span>
-          <span class="pd-stat-val {% if key in ('AVG','OPS','ERA','WHIP') %}pd-stat-hi{% endif %}">
-            {% if val is none %}—{% elif val is float and val < 1 and val > 0 %}{{ "%.3f"|format(val) }}{% else %}{{ val }}{% endif %}
-          </span>
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  {% else %}
-    <span class="pd-empty">No stats yet this season</span>
-  {% endif %}
+ <div class="pd-section-title">Season Stats</div>
+ {% if player.stats %}
+   <div class="pd-stat-grid">
+     {% for key, val in player.stats.items() %}
+       {% if key != 'type' %}
+       <div class="pd-stat-cell">
+         <span class="pd-stat-label">{{ key }}</span>
+         <span class="pd-stat-val {% if key in ('AVG','OPS','ERA','WHIP') %}pd-stat-hi{% endif %}">
+           {% if val is none %}—
+           {% elif val is number and val < 1 and val > 0 %}{{ "%.3f"|format(val) }}
+           {% else %}{{ val }}{% endif %}
+         </span>
+       </div>
+       {% endif %}
+     {% endfor %}
+   </div>
+ {% else %}
+   <span class="pd-empty">No stats yet this season</span>
+ {% endif %}
 </div>
 
 {# ── Injury log ────────────────────────────────────────────────────────────── #}
 {% if player.injury_log %}
 <div class="pd-section">
-  <div class="pd-section-title">Injury History</div>
-  {% for inj in player.injury_log %}
-  <div class="pd-injury-row">
-    <span class="pd-skill-label">{{ inj.injury_date }}</span>
-    <span style="color:var(--text);">{{ inj.severity }}</span>
-    <span class="pd-skill-label">{{ inj.games_missed }}g</span>
-  </div>
-  {% endfor %}
+ <div class="pd-section-title">Injury History</div>
+ {% for inj in player.injury_log %}
+ <div class="pd-injury-row">
+   <span class="pd-skill-label">{{ inj.injury_date }}</span>
+   <span style="color:var(--text);">{{ inj.severity }}</span>
+   <span class="pd-skill-label">{{ inj.games_missed }}g</span>
+ </div>
+ {% endfor %}
 </div>
 {% endif %}
