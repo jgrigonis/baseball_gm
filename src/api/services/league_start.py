@@ -114,14 +114,17 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
     ).fetchone()
 
     # ── 6. Generate prospect pool ─────────────────────────────────────────────
+    # Only delete prospects that belong to THIS league — don't touch other leagues.
     conn.execute("""
         DELETE FROM players WHERE id IN (
             SELECT p.id FROM players p
             JOIN player_status ps ON ps.player_id = p.id
             LEFT JOIN team_players tp ON tp.player_id = p.id
-            WHERE ps.status = 'prospect' AND tp.player_id IS NULL
+            WHERE ps.status = 'prospect'
+              AND tp.player_id IS NULL
+              AND p.league_id = ?
         )
-    """)
+    """, (league_id,))
     conn.commit()
 
     prospect_count = DraftGenerator(conn, rng=rng).run(season_id=season_id, year=year, league_id=league_id)
