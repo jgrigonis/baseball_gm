@@ -82,45 +82,23 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
   let _timer = null;
   let _held  = false;
 
-  // Use capture:true so we intercept before any content handlers
-  // Use document-level listeners anchored to the button's bounding rect
-  // to avoid tab-content stealing the event
-  document.addEventListener('mousedown', function(e) {
-    if (!btn.contains(e.target)) return;
+  btn.addEventListener('mousedown', function(e) {
     e.preventDefault();
     _held  = false;
     _timer = setTimeout(() => { _held = true; showPlayDropdown(); }, 500);
-  }, {capture: true, passive: false});
+  }, {passive: false});
 
-  document.addEventListener('mouseup', function(e) {
-    if (!_timer && !_held) return;
-    clearTimeout(_timer);
-    if (!_held && btn.contains(e.target)) simGames(1);
-    _held = false;
-    _timer = null;
-  }, {capture: true, passive: false});
-
-  document.addEventListener('mouseleave', function(e) {
-    if (e.target === btn || btn.contains(e.target)) {
-      clearTimeout(_timer); _held = false; _timer = null;
-    }
-  }, {capture: true});
-
-  // Touch support
-  document.addEventListener('touchstart', function(e) {
-    if (!btn.contains(e.target)) return;
+  btn.addEventListener('mouseup', function(e) {
     e.preventDefault();
-    _held  = false;
-    _timer = setTimeout(() => { _held = true; showPlayDropdown(); }, 500);
-  }, {capture: true, passive: false});
-
-  document.addEventListener('touchend', function(e) {
-    if (!_timer && !_held) return;
     clearTimeout(_timer);
     if (!_held) simGames(1);
     _held = false;
     _timer = null;
-  }, {capture: true, passive: false});
+  }, {passive: false});
+
+  btn.addEventListener('mouseleave', function() {
+    clearTimeout(_timer); _held = false; _timer = null;
+  });
 })();
 
 function showPlayDropdown() {
@@ -182,7 +160,7 @@ async function simGames(count) {
 
 // ── Player panel ───────────────────────────────────────────────────────────────
 let _pinnedId = null;
-function openPlayerPanel(pid) {
+window.openPlayerPanel = function(pid) {
   const url = _pinnedId && _pinnedId !== pid
     ? `/leagues/{{ league_id }}/players/${pid}/panel?compare=${_pinnedId}`
     : `/leagues/{{ league_id }}/players/${pid}/panel`;
@@ -196,15 +174,15 @@ function openPlayerPanel(pid) {
     })
     .catch(err => console.error('Panel load failed:', err));
 }
-function closePlayerPanel() {
+window.closePlayerPanel = function() {
   document.getElementById('player-panel-mount').innerHTML = '';
   removeBackdrop();
   _pinnedId = null;
   const hint = document.getElementById('compare-hint');
   if (hint) hint.remove();
 }
-function pinForCompare(pid, name) { _pinnedId = pid; closeAndBrowse(name); }
-function closeAndBrowse(name) {
+window.pinForCompare = function(pid, name) { _pinnedId = pid; closeAndBrowse(name); }
+window.closeAndBrowse = function(name) {
   document.getElementById('player-panel-mount').innerHTML = '';
   removeBackdrop();
   const hint = document.createElement('div');
@@ -220,7 +198,7 @@ function closeAndBrowse(name) {
   const tabContent = document.getElementById('tab-content');
   if (tabContent) tabContent.prepend(hint);
 }
-function cancelCompare() { _pinnedId = null; const h = document.getElementById('compare-hint'); if(h) h.remove(); }
+window.cancelCompare = function() { _pinnedId = null; const h = document.getElementById('compare-hint'); if(h) h.remove(); }
 function addBackdrop() {
   removeBackdrop();
   const bd = document.createElement('div');

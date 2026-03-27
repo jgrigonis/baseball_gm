@@ -192,9 +192,9 @@ def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
         return []
     if not draft_complete:
         return ["draft", "roster", "lineup", "standings", "leaders", "strategy"]
-    post = ["roster", "lineup", "standings", "leaders", "strategy"]
-    if state in ("season", "playoffs"):
-        post.append("schedule")
+    post = ["roster", "lineup", "standings", "schedule", "leaders", "strategy"]
+    if state not in ("season", "playoffs"):
+        post.remove("schedule")
     post.append("draft")  # draft results at far right
     return post
 

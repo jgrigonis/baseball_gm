@@ -1,7 +1,7 @@
 {# templates/dashboard/partials/roster.html #}
 
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
+            padding:16px 24px 12px;border-bottom:1px solid var(--border);pointer-events:all;">
   <div class="page-header" style="margin-bottom:10px;">
     <h1 class="page-title">Roster</h1>
     <span id="forty-count" class="page-subtitle"></span>
@@ -142,7 +142,7 @@
 </style>
 
 <script>
-const LEAGUE_ID   = "{{ league_id }}";
+var LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ players | tojson }};
 
 const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
@@ -289,7 +289,7 @@ function makeCard(p) {
     </div>`;
 
   let _downId = null;
-  el.addEventListener('mousedown', () => { _downId = p.player_id; });
+  el.addEventListener('mousedown', () => { _dragging = null; _downId = p.player_id; });
   el.addEventListener('mouseup', () => {
     if (!_dragging && _downId === p.player_id) openPlayerPanel(p.player_id);
     _downId = null;

@@ -1,7 +1,7 @@
 {# templates/dashboard/partials/lineup.html #}
 
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
+            padding:16px 24px 12px;border-bottom:1px solid var(--border);pointer-events:all;">
   <div class="page-header" style="margin-bottom:0;">
     <h1 class="page-title">Lineup</h1>
     <div class="spacer"></div>
@@ -139,7 +139,7 @@
 </style>
 
 <script>
-const LEAGUE_ID    = "{{ league_id }}";
+var LEAGUE_ID    = "{{ league_id }}";
 const ALL_HITTERS  = {{ hitters  | tojson }};
 const ALL_PITCHERS = {{ pitchers | tojson }};
 const SAVED_LINEUP = {{ saved_lineup   | tojson }};
@@ -449,4 +449,22 @@ function showFeedback(msg, color) {
 renderBattingOrder();
 renderBench();
 renderRotation(); // renderBullpen called inside renderRotation
+
+// ── Event delegation for player panel clicks ──────────────────────────────────
+// Inline onclick on draggable children is unreliable — use delegation instead
+let _luDownId = null;
+document.addEventListener('mousedown', e => {
+  const name = e.target.closest('.lu-name, .r-name');
+  if (name) { _luDownId = name.getAttribute('onclick') || name.dataset.pid || null; }
+}, {capture: false});
+
+document.addEventListener('mouseup', e => {
+  const name = e.target.closest('[onclick*="openPlayerPanel"]');
+  if (name && _luDownId) {
+    // Extract pid from onclick attribute
+    const match = (name.getAttribute('onclick') || '').match(/openPlayerPanel\('([^']+)'\)/);
+    if (match) { e.preventDefault(); openPlayerPanel(match[1]); }
+  }
+  _luDownId = null;
+}, {capture: false});
 </script>
