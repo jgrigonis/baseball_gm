@@ -27,14 +27,13 @@
   {% endif %}
   {% endfor %}
 
-  {# ── Play button — only during season/playoffs ─────────────────────── #}
+  {# ── Play button — only during season/playoffs/preseason ───────────── #}
   {% if league_state in ('season', 'playoffs', 'preseason') %}
+  <span id="sim-feedback"
+        style="font-family:var(--font-mono);font-size:11px;color:var(--green);
+               padding:0 12px;align-self:center;display:none;"></span>
   <div class="play-btn-wrap" style="margin-left:auto;">
-    <div class="play-btn" id="play-btn"
-         onmousedown="playBtnDown(event)" onmouseup="playBtnUp(event)"
-         onmouseleave="playBtnCancel()"
-         ontouchstart="playBtnDown(event)" ontouchend="playBtnUp(event)"
-         role="button" tabindex="0">
+    <div class="play-btn" id="play-btn" role="button" tabindex="0">
       ▶ Play
     </div>
     <div class="play-dropdown" id="play-dropdown" style="display:none;">
@@ -46,9 +45,6 @@
       <button onclick="simGames('season')" class="play-opt">Play entire season</button>
     </div>
   </div>
-  <span id="sim-feedback"
-        style="font-family:var(--font-mono);font-size:11px;color:var(--green);
-               padding:0 12px;align-self:center;display:none;"></span>
   {% endif %}
 </nav>
 {% endif %}
@@ -79,30 +75,35 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 });
 
 // ── Play button ────────────────────────────────────────────────────────────────
-// Use a div not a button to avoid browser's native button click-on-mouseup
-let _playTimer   = null;
-let _playHeld    = false;
-let _playMoved   = false;
+(function() {
+  const btn = document.getElementById('play-btn');
+  if (!btn) return;
 
-function playBtnDown(e) {
-  e.preventDefault();
-  _playHeld  = false;
-  _playMoved = false;
-  _playTimer = setTimeout(() => {
-    _playHeld = true;
-    showPlayDropdown();
-  }, 500);
-}
-function playBtnUp(e) {
-  e.preventDefault();
-  clearTimeout(_playTimer);
-  if (!_playHeld && !_playMoved) simGames(1);
-  _playHeld = false;
-}
-function playBtnCancel() {
-  clearTimeout(_playTimer);
-  _playHeld = false;
-}
+  let _timer = null;
+  let _held  = false;
+
+  function onDown(e) {
+    e.preventDefault();
+    _held  = false;
+    _timer = setTimeout(() => {
+      _held = true;
+      showPlayDropdown();
+    }, 500);
+  }
+  function onUp(e) {
+    e.preventDefault();
+    clearTimeout(_timer);
+    if (!_held) simGames(1);
+    _held = false;
+  }
+  function onLeave() { clearTimeout(_timer); _held = false; }
+
+  btn.addEventListener('mousedown',  onDown,  {passive: false});
+  btn.addEventListener('mouseup',    onUp,    {passive: false});
+  btn.addEventListener('mouseleave', onLeave);
+  btn.addEventListener('touchstart', onDown,  {passive: false});
+  btn.addEventListener('touchend',   onUp,    {passive: false});
+})();
 
 function showPlayDropdown() {
   const dd = document.getElementById('play-dropdown');
@@ -131,11 +132,12 @@ async function simGames(count) {
     if (res.ok) {
       const msg = `✓ ${d.games_played} game${d.games_played!==1?'s':''} · ${d.games_remaining} remaining`;
       if (fb) { fb.textContent = msg; fb.style.display = 'inline'; }
-      setTimeout(() => { if(fb) fb.style.display = 'none'; }, 4000);
-      // Refresh current tab content
+      setTimeout(() => { if(fb) fb.style.display = 'none'; }, 8000);
+      // Refresh current tab content — send HX-Request so server returns partial only
       const activeLink = document.querySelector('.tab-link.active');
       if (activeLink) {
-        fetch(activeLink.getAttribute('hx-get') || activeLink.getAttribute('href'))
+        const url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
+        fetch(url, {headers: {'HX-Request': 'true'}})
           .then(r => r.text())
           .then(html => {
             const tc = document.getElementById('tab-content');
