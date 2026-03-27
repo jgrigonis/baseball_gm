@@ -150,8 +150,11 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPane
 <div id="sim-status" style="display:none;padding:6px 24px;
      background:var(--green-dim);border-bottom:1px solid var(--green-mid);
      font-family:var(--font-mono);font-size:11px;color:var(--green);
-     display:none;align-items:center;gap:12px;">
+     align-items:center;gap:12px;">
   <span id="sim-status-text"></span>
+  <button onclick="document.getElementById('sim-status').style.display='none';"
+          style="margin-left:auto;background:none;border:none;color:var(--muted);
+                 cursor:pointer;font-size:14px;line-height:1;padding:0 4px;">×</button>
 </div>
 <div id="tab-content" class="tab-fade">
   {% if tab_template %}{% include tab_template %}{% endif %}
@@ -168,6 +171,8 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPane
 function setActiveTab(el) {
   document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  var sb = document.getElementById('sim-status');
+  if (sb) sb.style.display = 'none';
   // Hide play button on roster and lineup tabs
   const tab = el.getAttribute('hx-get') || el.getAttribute('href') || '';
   const hideOn = ['/roster', '/lineup'];
