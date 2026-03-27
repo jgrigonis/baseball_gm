@@ -193,7 +193,7 @@ def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
     if not draft_complete:
         return ["draft", "roster", "lineup", "standings", "leaders", "strategy"]
     post = ["roster", "lineup", "standings", "schedule", "leaders", "strategy"]
-    if state not in ("season", "playoffs"):
+    if state not in ("season", "playoffs", "preseason"):
         post.remove("schedule")
     post.append("draft")  # draft results at far right
     return post
@@ -1558,10 +1558,8 @@ async def save_strategy(
 # ── Tab: Schedule ──────────────────────────────────────────────────────────────
 
 @router.get("/leagues/{league_id}/schedule", response_class=HTMLResponse)
-@router.get("/leagues/{league_id}/schedule/{date}", response_class=HTMLResponse)
 def schedule(
     request: Request, league_id: str, db: DB,
-    date: str | None = None,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -1570,48 +1568,69 @@ def schedule(
 
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "schedule")
-    season_id = ctx["season_id"]
+    season_id  = ctx["season_id"]
+    my_team_id = gm["team_id"] if gm else None
 
-    if not date and season_id:
-        row = db.execute(
-            "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND completed = 1",
-            (season_id,),
-        ).fetchone()
-        date = row["d"] if row else None
+    upcoming = []
+    recent   = []
 
-    games = []
-    prev_date = next_date = None
-
-    if date and season_id:
-        rows = db.execute(
-            """SELECT g.id, g.home_team_id, g.away_team_id,
-                      g.home_score, g.away_score, g.innings_played, g.winner_id,
+    if season_id and my_team_id:
+        # Upcoming games — all remaining for my team
+        up_rows = db.execute(
+            """SELECT g.game_date, g.home_team_id, g.away_team_id,
                       ht.city as home_city, ht.mascot as home_mascot,
                       at.city as away_city, at.mascot as away_mascot
                FROM games g
                JOIN teams ht ON ht.id = g.home_team_id
                JOIN teams at ON at.id = g.away_team_id
-               WHERE g.season_id = ? AND g.game_date = ?
-               ORDER BY g.home_team_id""",
-            (season_id, date),
+               WHERE g.season_id = ? AND g.completed = 0
+                 AND (g.home_team_id = ? OR g.away_team_id = ?)
+               ORDER BY g.game_date""",
+            (season_id, my_team_id, my_team_id),
         ).fetchall()
-        games = [dict(r) for r in rows]
+        for r in up_rows:
+            is_home = r["home_team_id"] == my_team_id
+            upcoming.append({
+                "date":        r["game_date"],
+                "home_away":   "vs" if is_home else "@",
+                "opp_city":    r["away_city"]   if is_home else r["home_city"],
+                "opp_mascot":  r["away_mascot"] if is_home else r["home_mascot"],
+                "is_home":     is_home,
+            })
 
-        prev = db.execute(
-            "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND game_date < ? AND completed = 1",
-            (season_id, date),
-        ).fetchone()
-        nxt = db.execute(
-            "SELECT MIN(game_date) as d FROM games WHERE season_id = ? AND game_date > ? AND completed = 1",
-            (season_id, date),
-        ).fetchone()
-        prev_date = prev["d"] if prev else None
-        next_date = nxt["d"] if nxt else None
+        # Recent results — last 10
+        rec_rows = db.execute(
+            """SELECT g.game_date, g.home_team_id, g.away_team_id,
+                      g.home_score, g.away_score, g.innings_played,
+                      ht.city as home_city, ht.mascot as home_mascot,
+                      at.city as away_city, at.mascot as away_mascot
+               FROM games g
+               JOIN teams ht ON ht.id = g.home_team_id
+               JOIN teams at ON at.id = g.away_team_id
+               WHERE g.season_id = ? AND g.completed = 1
+                 AND (g.home_team_id = ? OR g.away_team_id = ?)
+               ORDER BY g.game_date DESC LIMIT 10""",
+            (season_id, my_team_id, my_team_id),
+        ).fetchall()
+        for r in rec_rows:
+            is_home  = r["home_team_id"] == my_team_id
+            my_score  = r["home_score"] if is_home else r["away_score"]
+            opp_score = r["away_score"] if is_home else r["home_score"]
+            won = (my_score or 0) > (opp_score or 0)
+            extra = f" ({r['innings_played']})" if r["innings_played"] and r["innings_played"] != 9 else ""
+            recent.append({
+                "date":       r["game_date"],
+                "home_away":  "vs" if is_home else "@",
+                "opp_city":   r["away_city"]   if is_home else r["home_city"],
+                "opp_mascot": r["away_mascot"] if is_home else r["home_mascot"],
+                "my_score":   my_score,
+                "opp_score":  opp_score,
+                "result":     "W" if won else "L",
+                "extra":      extra,
+            })
 
-    ctx["game_date"] = date
-    ctx["games"]     = games
-    ctx["prev_date"] = prev_date
-    ctx["next_date"] = next_date
+    ctx["upcoming"] = upcoming
+    ctx["recent"]   = recent
     return _respond(request, "dashboard/partials/schedule.html", ctx)
 
 

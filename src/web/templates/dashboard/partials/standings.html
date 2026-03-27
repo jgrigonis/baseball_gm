@@ -7,6 +7,9 @@
     {% if games_played %}
     <span class="page-subtitle">{{ games_played }} games played</span>
     {% endif %}
+    <div style="margin-left:auto;">
+      {% include "dashboard/partials/_play_button.html" %}
+    </div>
   </div>
 </div>
 
@@ -147,3 +150,5 @@
 .human-team { background: var(--sky-dim) !important; }
 .my-team    { background: var(--green-dim) !important; }
 </style>
+
+{% include "dashboard/partials/_play_script.html" %}

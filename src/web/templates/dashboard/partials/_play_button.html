@@ -1,0 +1,19 @@
+<div style="display:flex;align-items:center;gap:8px;" id="play-controls">
+  <span id="sched-feedback"
+        style="font-family:var(--font-mono);font-size:11px;color:var(--green);display:none;"></span>
+  {% if league_state in ('season', 'playoffs', 'preseason') %}
+  <div style="position:relative;" id="play-wrap">
+    <button class="btn btn-primary" id="sched-play-btn" onclick="schedToggleDropdown()">
+      ▶ Play
+    </button>
+    <div id="sched-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);
+         right:0;background:var(--bg-2);border:1px solid var(--border);
+         min-width:180px;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.4);">
+      <button onclick="schedSim(1)"  class="play-opt">Play 1 game</button>
+      <button onclick="schedSim(3)"  class="play-opt" id="sopt-3" {% if games_remaining <= 3 %}disabled{% endif %}>Play 3 games</button>
+      <button onclick="schedSim(10)" class="play-opt" id="sopt-10" {% if games_remaining <= 10 %}disabled{% endif %}>Play 10 games</button>
+      <button onclick="schedSim('season')" class="play-opt">Play entire season</button>
+    </div>
+  </div>
+  {% endif %}
+</div>

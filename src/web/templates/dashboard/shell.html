@@ -6,26 +6,14 @@ var LEAGUE_ID = "{{ league_id }}";
 // Play dropdown
 var _dropdownOpen = false;
 function togglePlayDropdown() {
-  const wrap = document.getElementById('play-btn').closest('.play-btn-wrap');
-  const dd = wrap ? wrap.querySelector('.play-dropdown') : document.getElementById('play-dropdown');
+  const dd = document.getElementById('play-dropdown');
   if (!dd) return;
-  _dropdownOpen = !_dropdownOpen;
-  dd.style.display = _dropdownOpen ? 'block' : 'none';
-  if (_dropdownOpen) {
-    setTimeout(() => {
-      document.addEventListener('click', function handler(e) {
-        if (!dd.contains(e.target)) {
-          dd.style.display = 'none';
-          _dropdownOpen = false;
-        }
-        document.removeEventListener('click', handler);
-      });
-    }, 0);
-  }
+  const showing = dd.style.display === 'block';
+  dd.style.display = showing ? 'none' : 'block';
 }
 function closePlayDropdown() {
-  _dropdownOpen = false;
-  document.querySelectorAll('.play-dropdown').forEach(dd => dd.style.display = 'none');
+  const dd = document.getElementById('play-dropdown');
+  if (dd) dd.style.display = 'none';
 }
 // Player panel functions — defined early so partials can call them
 var _pinnedId = null;
@@ -156,25 +144,6 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPane
   {% endif %}
   {% endfor %}
 
-  {# ── Play button — only during season/playoffs/preseason ───────────── #}
-  {% if league_state in ('season', 'playoffs', 'preseason') %}
-  <span id="sim-feedback"
-        style="font-family:var(--font-mono);font-size:11px;color:var(--green);
-               padding:0 12px;align-self:center;display:none;"></span>
-  <div class="play-btn-wrap" style="margin-left:auto;">
-    <button class="play-btn" id="play-btn" onclick="togglePlayDropdown()">
-      ▶ Play
-    </button>
-    <div class="play-dropdown" id="play-dropdown" style="display:none;">
-      <button onclick="simGames(1)"  class="play-opt">Play 1 game</button>
-      <button onclick="simGames(3)"  class="play-opt" id="play-opt-3"
-              {% if games_remaining <= 3 %}disabled{% endif %}>Play 3 games</button>
-      <button onclick="simGames(10)" class="play-opt" id="play-opt-10"
-              {% if games_remaining <= 10 %}disabled{% endif %}>Play 10 games</button>
-      <button onclick="simGames('season')" class="play-opt">Play entire season</button>
-    </div>
-  </div>
-  {% endif %}
 </nav>
 {% endif %}
 
