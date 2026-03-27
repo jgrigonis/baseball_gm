@@ -38,6 +38,7 @@ class PlayerRepository:
         throws: str,
         position: str,
         skills: PlayerSkills,
+        league_id=None,
     ) -> None:
         """
         Create a player record with identity and initial skills.
@@ -69,11 +70,11 @@ class PlayerRepository:
         self.conn.execute(
             """
             INSERT OR IGNORE INTO players (
-                id, first_name, last_name, bats, throws, position
+                id, first_name, last_name, bats, throws, position, league_id
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (id, first_name, last_name, bats, throws, position),
+            (id, first_name, last_name, bats, throws, position, league_id),
         )
 
         # Insert or update skills

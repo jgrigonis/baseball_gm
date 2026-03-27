@@ -501,36 +501,21 @@ def draft_tab(
                 (draft["id"],),
             ).fetchall()
         }
-        # Scope to players created for this specific draft's season.
-        # Players on any team in this league's season are already drafted/rostered.
-        # We identify the pool as prospects NOT on any team in this season.
-        season_team_ids = {
-            r["team_id"] for r in db.execute(
-                """SELECT team_id FROM league_season_teams
-                   WHERE league_id = ? AND season_id = ?""",
-                (league_id, draft["season_id"]),
-            ).fetchall()
-        }
-        rostered_player_ids = set()
-        if season_team_ids:
-            placeholders = ",".join("?" * len(season_team_ids))
-            rostered_player_ids = {
-                r["player_id"] for r in db.execute(
-                    f"SELECT player_id FROM team_players WHERE team_id IN ({placeholders})",
-                    list(season_team_ids),
-                ).fetchall()
-            }
-
+        # Scope board to players belonging to this league.
+        # league_id is set on players when DraftGenerator creates them.
+        # Falls back to timestamp for legacy rows that predate the column.
         all_players = db.execute(
             """SELECT p.*, ps.status FROM players p
                JOIN player_status ps ON ps.player_id = p.id
                WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
-               AND p.created_at >= (SELECT created_at FROM drafts WHERE id = ?)
+               AND (
+                 p.league_id = ?
+                 OR (p.league_id IS NULL
+                     AND p.created_at >= (SELECT created_at FROM drafts WHERE id = ?))
+               )
                ORDER BY p.last_name, p.first_name""",
-            (draft["id"],),
+            (league_id, draft["id"]),
         ).fetchall()
-        # Further filter: exclude players already on teams in other leagues
-        all_players = [p for p in all_players if p["id"] not in rostered_player_ids]
 
         board = []
         for row in all_players:

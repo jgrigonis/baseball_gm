@@ -23,8 +23,11 @@ CREATE TABLE IF NOT EXISTS players (
     bats TEXT NOT NULL,
     throws TEXT NOT NULL,
     position TEXT,  -- Affinity position used in creation, can be NULL
+    league_id TEXT,
     created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT
+    updated_at TEXT,
+
+    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS player_skills (
@@ -683,16 +686,17 @@ CREATE INDEX IF NOT EXISTS idx_pss_team_season
     ON player_season_stats(team_id, season_id);
 
 -- GM / identity layer indexes
-CREATE INDEX IF NOT EXISTS idx_users_session       ON users(session_token);
-CREATE INDEX IF NOT EXISTS idx_gms_league          ON gms(league_id);
-CREATE INDEX IF NOT EXISTS idx_gms_user            ON gms(user_id);
-CREATE INDEX IF NOT EXISTS idx_gms_team            ON gms(team_id);
-CREATE INDEX IF NOT EXISTS idx_leagues_join_code   ON leagues(join_code);
+CREATE INDEX IF NOT EXISTS idx_users_session        ON users(session_token);
+CREATE INDEX IF NOT EXISTS idx_gms_league           ON gms(league_id);
+CREATE INDEX IF NOT EXISTS idx_gms_user             ON gms(user_id);
+CREATE INDEX IF NOT EXISTS idx_gms_team             ON gms(team_id);
+CREATE INDEX IF NOT EXISTS idx_leagues_join_code    ON leagues(join_code);
 CREATE INDEX IF NOT EXISTS idx_drafts_league_season ON drafts(league_id, season_id);
-CREATE INDEX IF NOT EXISTS idx_draft_picks_draft   ON draft_picks(draft_id);
-CREATE INDEX IF NOT EXISTS idx_draft_picks_gm      ON draft_picks(gm_id);
-CREATE INDEX IF NOT EXISTS idx_draft_picks_player  ON draft_picks(player_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_draft    ON draft_picks(draft_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_gm       ON draft_picks(gm_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_player   ON draft_picks(player_id);
 CREATE INDEX IF NOT EXISTS idx_draft_prefs_gm_draft ON draft_preferences(gm_id, draft_id);
-CREATE INDEX IF NOT EXISTS idx_gm_evals_season     ON gm_season_evaluations(season_id);
-CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm      ON gm_lineup_preferences(gm_id);
+CREATE INDEX IF NOT EXISTS idx_gm_evals_season      ON gm_season_evaluations(season_id);
+CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm       ON gm_lineup_preferences(gm_id);
+CREATE INDEX IF NOT EXISTS idx_players_league       ON players(league_id);
 """

@@ -124,7 +124,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
     """)
     conn.commit()
 
-    prospect_count = DraftGenerator(conn, rng=rng).run(season_id=season_id, year=year)
+    prospect_count = DraftGenerator(conn, rng=rng).run(season_id=season_id, year=year, league_id=league_id)
 
     # ── 7. Create draft ───────────────────────────────────────────────────────
     draft_id = str(uuid.uuid4())
