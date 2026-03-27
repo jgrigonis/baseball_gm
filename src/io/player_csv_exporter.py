@@ -59,7 +59,7 @@ class PlayerCSVExporter:
                     player.age,
                     player.position,
                     player.throws[0].upper(),  # "right" -> "R"
-                    player.bats[0].upper(),    # "right" -> "R", "switch" -> "S"
+                    player.bats[0].upper(),  # "right" -> "R", "switch" -> "S"
                 ]
 
                 for csv_key in PLAYER_SKILL_COLUMNS:

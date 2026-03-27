@@ -5,6 +5,7 @@ src/web/routes/dashboard.py
 The main game interface. One shell URL per league, content varies by state.
 All tab routes return either full pages (direct nav) or partials (HTMX swap).
 """
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -14,6 +15,7 @@ templates = Jinja2Templates(directory="src/web/templates")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def is_htmx(request: Request) -> bool:
     """True if this is an HTMX partial request."""
@@ -28,32 +30,37 @@ def shell_context(request: Request, league_id: str, active_tab: str | None = Non
     return {
         "request": request,
         "league_id": league_id,
-        "league_name": "Dev League",          # TODO
-        "league_state": "season",             # TODO: from DB
-        "league_mode": "blitz",               # TODO: from DB
-        "join_code": "ABC123",                # TODO
-        "gm_display_name": "Dev GM",          # TODO
-        "team_name": "Portland Lumber",       # TODO
-        "team_id": None,                      # TODO
+        "league_name": "Dev League",  # TODO
+        "league_state": "season",  # TODO: from DB
+        "league_mode": "blitz",  # TODO: from DB
+        "join_code": "ABC123",  # TODO
+        "gm_display_name": "Dev GM",  # TODO
+        "team_name": "Portland Lumber",  # TODO
+        "team_id": None,  # TODO
         "active_tab": active_tab,
-        "is_commissioner": True,              # TODO
+        "is_commissioner": True,  # TODO
     }
 
 
 def tab_visible(state: str) -> list[str]:
     """Which tabs are shown for a given league state."""
-    always    = ["standings", "leaders", "roster", "lineup", "strategy"]
+    always = ["standings", "leaders", "roster", "lineup", "strategy"]
     draft_tab = ["draft"]
     sched_tab = ["schedule"]
 
-    if state == "lobby":     return []
-    if state == "draft":     return draft_tab + always
-    if state == "season":    return always + sched_tab
-    if state == "playoffs":  return always + sched_tab
+    if state == "lobby":
+        return []
+    if state == "draft":
+        return draft_tab + always
+    if state == "season":
+        return always + sched_tab
+    if state == "playoffs":
+        return always + sched_tab
     return always  # evaluation, offseason
 
 
 # ── Dashboard shell ───────────────────────────────────────────────────────────
+
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, league_id: str):
@@ -82,12 +89,15 @@ async def dashboard(request: Request, league_id: str):
 #   - HTMX: return just the content partial (swapped into #tab-content)
 #   - Direct: return the full shell with the partial embedded
 
+
 @router.get("/draft", response_class=HTMLResponse)
 async def draft(request: Request, league_id: str):
     ctx = {**shell_context(request, league_id, "draft")}
     # TODO: load draft board data
     ctx["players"] = []
-    template = "dashboard/partials/draft.html" if is_htmx(request) else "dashboard/shell.html"
+    template = (
+        "dashboard/partials/draft.html" if is_htmx(request) else "dashboard/shell.html"
+    )
     ctx["tab_template"] = "dashboard/partials/draft.html"
     return templates.TemplateResponse(template, ctx)
 
@@ -97,7 +107,11 @@ async def standings(request: Request, league_id: str):
     ctx = {**shell_context(request, league_id, "standings")}
     # TODO: load standings from DB
     ctx["divisions"] = []
-    template = "dashboard/partials/standings.html" if is_htmx(request) else "dashboard/shell.html"
+    template = (
+        "dashboard/partials/standings.html"
+        if is_htmx(request)
+        else "dashboard/shell.html"
+    )
     ctx["tab_template"] = "dashboard/partials/standings.html"
     return templates.TemplateResponse(template, ctx)
 
@@ -108,7 +122,11 @@ async def leaders(request: Request, league_id: str, category: str = "batting"):
     # TODO: load leaderboards
     ctx["category"] = category
     ctx["rows"] = []
-    template = "dashboard/partials/leaders.html" if is_htmx(request) else "dashboard/shell.html"
+    template = (
+        "dashboard/partials/leaders.html"
+        if is_htmx(request)
+        else "dashboard/shell.html"
+    )
     ctx["tab_template"] = "dashboard/partials/leaders.html"
     return templates.TemplateResponse(template, ctx)
 
@@ -118,7 +136,9 @@ async def roster(request: Request, league_id: str):
     ctx = {**shell_context(request, league_id, "roster")}
     # TODO: load GM's roster
     ctx["players"] = []
-    template = "dashboard/partials/roster.html" if is_htmx(request) else "dashboard/shell.html"
+    template = (
+        "dashboard/partials/roster.html" if is_htmx(request) else "dashboard/shell.html"
+    )
     ctx["tab_template"] = "dashboard/partials/roster.html"
     return templates.TemplateResponse(template, ctx)
 
@@ -130,7 +150,9 @@ async def lineup(request: Request, league_id: str):
     ctx["batting_order"] = []
     ctx["rotation"] = []
     ctx["bullpen"] = []
-    template = "dashboard/partials/lineup.html" if is_htmx(request) else "dashboard/shell.html"
+    template = (
+        "dashboard/partials/lineup.html" if is_htmx(request) else "dashboard/shell.html"
+    )
     ctx["tab_template"] = "dashboard/partials/lineup.html"
     return templates.TemplateResponse(template, ctx)
 
@@ -143,7 +165,11 @@ async def schedule(request: Request, league_id: str, date: str | None = None):
     ctx["games"] = []
     ctx["prev_date"] = None
     ctx["next_date"] = None
-    template = "dashboard/partials/schedule.html" if is_htmx(request) else "dashboard/shell.html"
+    template = (
+        "dashboard/partials/schedule.html"
+        if is_htmx(request)
+        else "dashboard/shell.html"
+    )
     ctx["tab_template"] = "dashboard/partials/schedule.html"
     return templates.TemplateResponse(template, ctx)
 
@@ -166,7 +192,11 @@ async def strategy(request: Request, league_id: str):
         "closer_usage_index": 0,
         "bullpen_pref_index": 0,
     }
-    template = "dashboard/partials/strategy.html" if is_htmx(request) else "dashboard/shell.html"
+    template = (
+        "dashboard/partials/strategy.html"
+        if is_htmx(request)
+        else "dashboard/shell.html"
+    )
     ctx["tab_template"] = "dashboard/partials/strategy.html"
     return templates.TemplateResponse(template, ctx)
 
@@ -175,13 +205,13 @@ async def strategy(request: Request, league_id: str):
 async def save_strategy(request: Request, league_id: str):
     form = await request.form()
     index_maps = {
-        "lineup_style":     ["traditional", "analytics", "speed-first", "power-first"],
+        "lineup_style": ["traditional", "analytics", "speed-first", "power-first"],
         "steal_aggression": ["conservative", "standard", "aggressive"],
-        "sac_bunt":         ["never", "situational", "frequent"],
-        "platoon_usage":    ["none", "vs-handedness", "aggressive"],
-        "starter_usage":    ["let-them-work", "pitch-count-strict", "matchup-based"],
-        "closer_usage":     ["saves-only", "high-leverage", "best-available"],
-        "bullpen_pref":     ["deep-pen", "starter-heavy"],
+        "sac_bunt": ["never", "situational", "frequent"],
+        "platoon_usage": ["none", "vs-handedness", "aggressive"],
+        "starter_usage": ["let-them-work", "pitch-count-strict", "matchup-based"],
+        "closer_usage": ["saves-only", "high-leverage", "best-available"],
+        "bullpen_pref": ["deep-pen", "starter-heavy"],
     }
     profile = {}
     for field, options in index_maps.items():
@@ -194,8 +224,9 @@ async def save_strategy(request: Request, league_id: str):
 
 
 @router.get("/players/{player_id}/panel", response_class=HTMLResponse)
-async def player_panel(request: Request, league_id: str, player_id: str,
-                       compare: str | None = None):
+async def player_panel(
+    request: Request, league_id: str, player_id: str, compare: str | None = None
+):
     """Slide-in player detail panel. Pass ?compare=<id> for side-by-side."""
     ctx = {**shell_context(request, league_id)}
     # TODO: load player + optional compare player from DB

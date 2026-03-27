@@ -24,7 +24,6 @@ router = APIRouter(prefix="/gms", tags=["gms"])
 DB = Annotated[sqlite3.Connection, Depends(get_db)]
 
 
-
 # ── GET /gms/{gm_id} ─────────────────────────────────────────────────────────
 
 

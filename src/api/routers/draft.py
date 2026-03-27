@@ -89,14 +89,17 @@ def get_board(draft_id: str, db: DB) -> list[PlayerGrades]:
 
     draft = _require_draft(draft_id, db)
 
-    all_players = db.execute("""
+    all_players = db.execute(
+        """
         SELECT p.*, ps.status
         FROM players p
         JOIN player_status ps ON ps.player_id = p.id
         WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
         AND p.league_id = (SELECT league_id FROM drafts WHERE id = ?)
         ORDER BY p.last_name, p.first_name
-        """, (draft_id,)).fetchall()
+        """,
+        (draft_id,),
+    ).fetchall()
 
     board = []
     for row in all_players:

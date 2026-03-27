@@ -76,15 +76,21 @@ def require_gm_by_id(
     """
     gm = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
     if not gm:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="GM not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="GM not found."
+        )
 
     # AI GMs have no user_id — can never be claimed via session
     if not gm["user_id"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid session token.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid session token."
+        )
 
     user = _resolve_user(db, session_token)
     if gm["user_id"] != user["id"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid session token.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid session token."
+        )
 
     return gm
 

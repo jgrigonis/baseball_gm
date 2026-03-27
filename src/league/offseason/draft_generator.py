@@ -44,7 +44,17 @@ POSITION_PLAYER_SHARE = 0.61
 PITCHER_POSITIONS = ["sp", "rp"]
 
 POSITION_PLAYER_POSITIONS = [
-    "c", "1b", "2b", "ss", "3b", "lf", "cf", "rf", "if", "of", "dh",
+    "c",
+    "1b",
+    "2b",
+    "ss",
+    "3b",
+    "lf",
+    "cf",
+    "rf",
+    "if",
+    "of",
+    "dh",
 ]
 
 
@@ -121,7 +131,7 @@ class DraftGenerator:
                 throws=player.throws,
                 position=player.position,
                 skills=player.skills,
-                league_id=league_id,      # ← scopes to this league
+                league_id=league_id,  # ← scopes to this league
             )
             if player.caps is not None:
                 self.cap_repo.insert(player.id, player.caps)
@@ -151,7 +161,8 @@ class DraftGenerator:
         and either matching league_id or (for legacy rows) NULL league_id.
         """
         if league_id:
-            rows = self.conn.execute("""
+            rows = self.conn.execute(
+                """
                 SELECT p.id
                 FROM players p
                 JOIN player_status ps ON p.id = ps.player_id
@@ -159,7 +170,9 @@ class DraftGenerator:
                 WHERE ps.status IN ('prospect', 'unassigned')
                   AND tp.player_id IS NULL
                   AND (p.league_id = ? OR p.league_id IS NULL)
-                """, (league_id,)).fetchall()
+                """,
+                (league_id,),
+            ).fetchall()
         else:
             rows = self.conn.execute("""
                 SELECT p.id
@@ -177,7 +190,9 @@ class DraftGenerator:
                 players.append(player)
         return players
 
-    def _write_draft_csv(self, players, year: int, league_id: str | None = None) -> Path:
+    def _write_draft_csv(
+        self, players, year: int, league_id: str | None = None
+    ) -> Path:
         # Scope by league_id so multiple leagues don't overwrite each other
         if league_id:
             out_dir = Path(TEAM_FILES_DIR) / str(year) / league_id

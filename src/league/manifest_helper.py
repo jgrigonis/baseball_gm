@@ -48,9 +48,7 @@ def _team_dir(year, league_id: str | None = None) -> Path:
     return base / league_id if league_id else base
 
 
-def find_missing_team_files(
-    manifest: dict, league_id: str | None = None
-) -> list[dict]:
+def find_missing_team_files(manifest: dict, league_id: str | None = None) -> list[dict]:
     team_dir = _team_dir(manifest["season_year"], league_id)
     team_dir.mkdir(parents=True, exist_ok=True)
 
@@ -80,5 +78,5 @@ def create_team_from_manifest(
         year=year,
         filename=team["csv"],
         force_overwrite=True,
-        league_id=league_id,   # PlayerCSVExporter.write needs to accept this
+        league_id=league_id,  # PlayerCSVExporter.write needs to accept this
     )

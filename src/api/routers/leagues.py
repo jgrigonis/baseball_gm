@@ -82,7 +82,11 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
         """INSERT INTO users (id, session_token, display_name)
            VALUES (?, ?, ?)
            ON CONFLICT (session_token) DO UPDATE SET display_name = excluded.display_name""",
-        (str(__import__('uuid').uuid4()), session_token, body.commissioner_display_name),
+        (
+            str(__import__("uuid").uuid4()),
+            session_token,
+            body.commissioner_display_name,
+        ),
     )
     user = db.execute(
         "SELECT id FROM users WHERE session_token = ?", (session_token,)
@@ -183,7 +187,7 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
         """INSERT INTO users (id, session_token, display_name)
            VALUES (?, ?, ?)
            ON CONFLICT (session_token) DO UPDATE SET display_name = excluded.display_name""",
-        (str(__import__('uuid').uuid4()), session_token, body.display_name),
+        (str(__import__("uuid").uuid4()), session_token, body.display_name),
     )
     user = db.execute(
         "SELECT id FROM users WHERE session_token = ?", (session_token,)

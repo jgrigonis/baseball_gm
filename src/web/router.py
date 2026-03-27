@@ -21,7 +21,6 @@ from src.api.schemas import skill_to_grade, player_row_to_grades
 from jinja2 import Environment, FileSystemLoader
 from starlette.responses import HTMLResponse
 
-
 # Templates are in src/web/templates/ relative to the project root
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 # Work around for bug in Jinja2 3.1.6 with Python 3.14 dict hashability change
@@ -37,9 +36,11 @@ _jinja_env = Environment(
     autoescape=True,
 )
 
+
 def render(name: str, context: dict) -> HTMLResponse:
     template = _jinja_env.get_template(name)
     return HTMLResponse(template.render(**context))
+
 
 router = APIRouter()
 DB = Annotated[sqlite3.Connection, Depends(get_db)]
@@ -55,15 +56,17 @@ DB = Annotated[sqlite3.Connection, Depends(get_db)]
 # GM rows are per-league; a single person can have many GM rows across leagues.
 # All per-league routes look up the GM row by (user_session, league_id).
 
+
 def _get_identity(request: Request) -> tuple[str | None, str | None]:
     """Return (session_token, display_name) from cookies, or (None, None)."""
     token = request.cookies.get("gm_session")
-    name  = request.cookies.get("gm_name")
+    name = request.cookies.get("gm_name")
     return token, name
 
 
-def _gm_for_league(db: sqlite3.Connection, session_token: str | None,
-                   league_id: str) -> sqlite3.Row | None:
+def _gm_for_league(
+    db: sqlite3.Connection, session_token: str | None, league_id: str
+) -> sqlite3.Row | None:
     """Find the GM row for this session token in a specific league."""
     if not session_token:
         return None
@@ -99,8 +102,14 @@ def is_htmx(request: Request) -> bool:
 
 # ── Shell context ─────────────────────────────────────────────────────────────
 
-def _shell_ctx(request: Request, gm: sqlite3.Row, db: sqlite3.Connection,
-               league_id: str | None = None, active_tab: str | None = None) -> dict:
+
+def _shell_ctx(
+    request: Request,
+    gm: sqlite3.Row,
+    db: sqlite3.Connection,
+    league_id: str | None = None,
+    active_tab: str | None = None,
+) -> dict:
     """Base context for all dashboard templates."""
     ctx: dict = {
         "request": request,
@@ -118,13 +127,15 @@ def _shell_ctx(request: Request, gm: sqlite3.Row, db: sqlite3.Connection,
     }
 
     if league_id:
-        league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+        league = db.execute(
+            "SELECT * FROM leagues WHERE id = ?", (league_id,)
+        ).fetchone()
         if league:
-            ctx["league_name"]     = league["name"]
-            ctx["league_state"]    = league["state"]
-            ctx["league_mode"]     = league["mode"]
-            ctx["join_code"]       = league["join_code"]
-            ctx["is_commissioner"] = (league["commissioner_gm_id"] == gm["id"])
+            ctx["league_name"] = league["name"]
+            ctx["league_state"] = league["state"]
+            ctx["league_mode"] = league["mode"]
+            ctx["join_code"] = league["join_code"]
+            ctx["is_commissioner"] = league["commissioner_gm_id"] == gm["id"]
 
     if gm["team_id"]:
         team = db.execute(
@@ -140,13 +151,17 @@ def _tab_visible(state: str | None) -> list[str]:
     if not state:
         return []
     always = ["standings", "leaders", "roster", "lineup", "strategy"]
-    if state == "lobby":                return []
-    if state == "draft":                return ["draft"] + always
-    if state in ("season", "playoffs"): return always + ["schedule"]
+    if state == "lobby":
+        return []
+    if state == "draft":
+        return ["draft"] + always
+    if state in ("season", "playoffs"):
+        return always + ["schedule"]
     return always
 
 
 # ── Landing / Auth ────────────────────────────────────────────────────────────
+
 
 @router.get("/", response_class=HTMLResponse)
 async def landing(request: Request):
@@ -161,10 +176,16 @@ async def create_guest(display_name: str = Form(...)):
     """Store identity in cookies only — no DB row until they join a league."""
     session_token = uuid.uuid4().hex + uuid.uuid4().hex
     resp = RedirectResponse("/leagues", status_code=302)
-    resp.set_cookie("gm_session", session_token,
-                    max_age=60 * 60 * 24 * 365 * 5, httponly=True, samesite="lax")
-    resp.set_cookie("gm_name", display_name,
-                    max_age=60 * 60 * 24 * 365 * 5, samesite="lax")
+    resp.set_cookie(
+        "gm_session",
+        session_token,
+        max_age=60 * 60 * 24 * 365 * 5,
+        httponly=True,
+        samesite="lax",
+    )
+    resp.set_cookie(
+        "gm_name", display_name, max_age=60 * 60 * 24 * 365 * 5, samesite="lax"
+    )
     return resp
 
 
@@ -178,12 +199,15 @@ async def logout():
 
 # ── League index ──────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues", response_class=HTMLResponse)
 async def leagues_index(request: Request, db: DB):
     token, name, redir = _require_identity(request)
-    if redir: return redir
+    if redir:
+        return redir
 
-    rows = db.execute("""
+    rows = db.execute(
+        """
         SELECT l.id, l.name, l.join_code, l.state, l.mode,
             t.city, t.mascot
         FROM users u
@@ -192,55 +216,76 @@ async def leagues_index(request: Request, db: DB):
         LEFT JOIN teams t ON t.id = g.team_id
         WHERE u.session_token = ?
         ORDER BY l.created_at DESC
-    """, (token,)).fetchall()
+    """,
+        (token,),
+    ).fetchall()
 
     active = [dict(r) for r in rows if r["state"] != "complete"]
-    past   = [dict(r) for r in rows if r["state"] == "complete"]
+    past = [dict(r) for r in rows if r["state"] == "complete"]
 
-    return render("leagues/index.html", {
-        "request": request,
-        "display_name": name,
-        "active_leagues": active,
-        "past_leagues":   past,
-    })
+    return render(
+        "leagues/index.html",
+        {
+            "request": request,
+            "display_name": name,
+            "active_leagues": active,
+            "past_leagues": past,
+        },
+    )
 
 
 @router.get("/leagues/new", response_class=HTMLResponse)
 async def new_league_page(request: Request):
     token, name, redir = _require_identity(request)
-    if redir: return redir
-    return render("leagues/new.html", {
-        "request": request, "display_name": name,
-    })
+    if redir:
+        return redir
+    return render(
+        "leagues/new.html",
+        {
+            "request": request,
+            "display_name": name,
+        },
+    )
 
 
 @router.post("/leagues/new")
 async def create_league(
-    request: Request, db: DB,
+    request: Request,
+    db: DB,
     name: str = Form(...),
     mode: str = Form("blitz"),
     decision_window_sec: int = Form(120),
 ):
     token, display_name, redir = _require_identity(request)
-    if redir: return redir
+    if redir:
+        return redir
 
     import random, string
+
     league_id = str(uuid.uuid4())
-    gm_id     = str(uuid.uuid4())
+    gm_id = str(uuid.uuid4())
     join_code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
-    db.execute("""
+    db.execute(
+        """
         INSERT INTO leagues (id, name, join_code, mode, num_teams, decision_window_sec,
                              reentry_enabled, pace_control, state)
         VALUES (?, ?, ?, ?, 30, ?, 1, 'timer', 'lobby')
-    """, (league_id, name, join_code, mode, decision_window_sec))
+    """,
+        (league_id, name, join_code, mode, decision_window_sec),
+    )
 
-    db.execute("""
+    db.execute(
+        """
         INSERT INTO gms (id, league_id, user_session, display_name, is_ai)
         VALUES (?, ?, ?, ?, 0)
-    """, (gm_id, league_id, token, display_name or "GM"))
+    """,
+        (gm_id, league_id, token, display_name or "GM"),
+    )
 
-    db.execute("UPDATE leagues SET commissioner_gm_id = ? WHERE id = ?", (gm_id, league_id))
+    db.execute(
+        "UPDATE leagues SET commissioner_gm_id = ? WHERE id = ?", (gm_id, league_id)
+    )
     db.execute("INSERT OR IGNORE INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
     db.commit()
 
@@ -250,25 +295,35 @@ async def create_league(
 @router.get("/leagues/join", response_class=HTMLResponse)
 async def join_page(request: Request):
     token, name, redir = _require_identity(request)
-    if redir: return redir
-    return render("leagues/join.html", {
-        "request": request, "display_name": name,
-    })
+    if redir:
+        return redir
+    return render(
+        "leagues/join.html",
+        {
+            "request": request,
+            "display_name": name,
+        },
+    )
 
 
 @router.post("/leagues/join")
 async def join_league(request: Request, db: DB, join_code: str = Form(...)):
     token, display_name, redir = _require_identity(request)
-    if redir: return redir
+    if redir:
+        return redir
 
     league = db.execute(
         "SELECT * FROM leagues WHERE join_code = ?", (join_code.upper().strip(),)
     ).fetchone()
     if not league:
-        return render("leagues/join.html", {
-            "request": request, "display_name": display_name,
-            "error": f"No league found with code '{join_code.upper()}'.",
-        })
+        return render(
+            "leagues/join.html",
+            {
+                "request": request,
+                "display_name": display_name,
+                "error": f"No league found with code '{join_code.upper()}'.",
+            },
+        )
 
     existing = db.execute(
         "SELECT id FROM gms WHERE user_session = ? AND league_id = ?",
@@ -276,23 +331,27 @@ async def join_league(request: Request, db: DB, join_code: str = Form(...)):
     ).fetchone()
     if not existing:
         gm_id = str(uuid.uuid4())
-        db.execute("""
+        db.execute(
+            """
             INSERT INTO gms (id, league_id, user_session, display_name, is_ai)
             VALUES (?, ?, ?, ?, 0)
-        """, (gm_id, league["id"], token, display_name or "GM"))
+        """,
+            (gm_id, league["id"], token, display_name or "GM"),
+        )
         db.execute("INSERT OR IGNORE INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
         db.commit()
 
     return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
 
 
-
 # ── Dashboard shell ───────────────────────────────────────────────────────────
+
 
 @router.get("/leagues/{league_id}/", response_class=HTMLResponse)
 async def dashboard(request: Request, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
 
     league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
     if not league:
@@ -307,43 +366,53 @@ async def dashboard(request: Request, league_id: str, db: DB):
         return RedirectResponse(f"/leagues/{league_id}/standings", status_code=302)
     if state == "evaluation":
         year = _current_year(league_id, db)
-        return RedirectResponse(f"/leagues/{league_id}/history/{year}/", status_code=302)
+        return RedirectResponse(
+            f"/leagues/{league_id}/history/{year}/", status_code=302
+        )
     return RedirectResponse(f"/leagues/{league_id}/standings", status_code=302)
 
 
-async def _lobby(request: Request, league_id: str, gm: sqlite3.Row,
-                 db: sqlite3.Connection) -> HTMLResponse:
+async def _lobby(
+    request: Request, league_id: str, gm: sqlite3.Row, db: sqlite3.Connection
+) -> HTMLResponse:
     league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
-    gms_rows = db.execute("""
+    gms_rows = db.execute(
+        """
         SELECT g.id, g.display_name, g.is_ai, g.is_away, g.team_id,
                t.city, t.mascot
         FROM gms g LEFT JOIN teams t ON t.id = g.team_id
         WHERE g.league_id = ?
         ORDER BY g.created_at
-    """, (league_id,)).fetchall()
+    """,
+        (league_id,),
+    ).fetchall()
 
-    return render("dashboard/lobby.html", {
-        "request": request,
-        "gm_id": gm["id"],
-        "league_id": league_id,
-        "league_name": league["name"],
-        "league_state": league["state"],
-        "league_mode": league["mode"],
-        "join_code": league["join_code"],
-        "num_teams": league["num_teams"],
-        "decision_window_sec": league["decision_window_sec"],
-        "reentry_enabled": bool(league["reentry_enabled"]),
-        "pace_control": league["pace_control"],
-        "is_commissioner": league["commissioner_gm_id"] == gm["id"],
-        "current_gm_id": gm["id"],
-        "gms": [dict(r) for r in gms_rows],
-    })
+    return render(
+        "dashboard/lobby.html",
+        {
+            "request": request,
+            "gm_id": gm["id"],
+            "league_id": league_id,
+            "league_name": league["name"],
+            "league_state": league["state"],
+            "league_mode": league["mode"],
+            "join_code": league["join_code"],
+            "num_teams": league["num_teams"],
+            "decision_window_sec": league["decision_window_sec"],
+            "reentry_enabled": bool(league["reentry_enabled"]),
+            "pace_control": league["pace_control"],
+            "is_commissioner": league["commissioner_gm_id"] == gm["id"],
+            "current_gm_id": gm["id"],
+            "gms": [dict(r) for r in gms_rows],
+        },
+    )
 
 
 # ── Tab routes ────────────────────────────────────────────────────────────────
 # Each route:
 #   - Direct load → returns full shell with tab content embedded
 #   - HTMX request → returns just the partial (swapped into #tab-content)
+
 
 def _tab_response(request: Request, template_name: str, ctx: dict):
     if is_htmx(request):
@@ -356,13 +425,14 @@ def _tab_response(request: Request, template_name: str, ctx: dict):
 @router.get("/leagues/{league_id}/draft", response_class=HTMLResponse)
 async def draft_tab(request: Request, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "draft")
 
     # Load draft board
     draft = db.execute(
         "SELECT * FROM drafts WHERE league_id = ? ORDER BY created_at DESC LIMIT 1",
-        (league_id,)
+        (league_id,),
     ).fetchone()
     ctx["draft"] = dict(draft) if draft else None
     ctx["players"] = []
@@ -372,10 +442,13 @@ async def draft_tab(request: Request, league_id: str, db: DB):
     # Load GM's existing preferences
     ctx["preferences"] = []
     if draft:
-        prefs = db.execute("""
+        prefs = db.execute(
+            """
             SELECT player_id FROM draft_preferences
             WHERE gm_id = ? AND draft_id = ? ORDER BY rank
-        """, (gm["id"], draft["id"])).fetchall()
+        """,
+            (gm["id"], draft["id"]),
+        ).fetchall()
         ctx["preferences"] = [r["player_id"] for r in prefs]
 
     # Load this GM's current roster (inherited team)
@@ -387,10 +460,13 @@ async def draft_tab(request: Request, league_id: str, db: DB):
 @router.get("/leagues/{league_id}/standings", response_class=HTMLResponse)
 async def standings_tab(request: Request, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "standings")
     ctx["teams"] = _load_standings(league_id, db)
-    ctx["games_played"] = sum(r["wins"] + r["losses"] for r in ctx["teams"]) // 2 if ctx["teams"] else 0
+    ctx["games_played"] = (
+        sum(r["wins"] + r["losses"] for r in ctx["teams"]) // 2 if ctx["teams"] else 0
+    )
     ctx["season_name"] = _current_season_name(league_id, db)
     ctx["tab_visible"] = _tab_visible(ctx.get("league_state"))
     return _tab_response(request, "dashboard/partials/standings.html", ctx)
@@ -399,31 +475,44 @@ async def standings_tab(request: Request, league_id: str, db: DB):
 @router.get("/leagues/{league_id}/roster", response_class=HTMLResponse)
 async def roster_tab(request: Request, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "roster")
     ctx["players"] = _load_roster(gm, db)
-    ctx["active_count"] = sum(1 for p in ctx["players"] if p.get("roster_status") == "26man")
+    ctx["active_count"] = sum(
+        1 for p in ctx["players"] if p.get("roster_status") == "26man"
+    )
     return _tab_response(request, "dashboard/partials/roster.html", ctx)
 
 
 @router.get("/leagues/{league_id}/lineup", response_class=HTMLResponse)
 async def lineup_tab(request: Request, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "lineup")
 
     roster = _load_roster(gm, db)
-    ctx["hitters"]  = [p for p in roster if p.get("player_type") == "hitter"
-                       and p.get("roster_status") == "26man"]
-    ctx["pitchers"] = [p for p in roster if p.get("player_type") == "pitcher"
-                       and p.get("roster_status") == "26man"]
+    ctx["hitters"] = [
+        p
+        for p in roster
+        if p.get("player_type") == "hitter" and p.get("roster_status") == "26man"
+    ]
+    ctx["pitchers"] = [
+        p
+        for p in roster
+        if p.get("player_type") == "pitcher" and p.get("roster_status") == "26man"
+    ]
 
-    saved = db.execute("""
+    saved = db.execute(
+        """
         SELECT lp.player_id, lp.batting_order, lp.position, lp.is_starter
         FROM gm_lineup_preferences lp
         WHERE lp.gm_id = ?
         ORDER BY lp.batting_order ASC NULLS LAST
-    """, (gm["id"],)).fetchall()
+    """,
+        (gm["id"],),
+    ).fetchall()
     ctx["saved_lineup"] = [dict(r) for r in saved]
 
     return _tab_response(request, "dashboard/partials/lineup.html", ctx)
@@ -432,7 +521,8 @@ async def lineup_tab(request: Request, league_id: str, db: DB):
 @router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
 async def strategy_tab(request: Request, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "strategy")
 
     profile = db.execute(
@@ -440,13 +530,13 @@ async def strategy_tab(request: Request, league_id: str, db: DB):
     ).fetchone()
 
     _INDEX_MAPS = {
-        "lineup_style":     ["traditional", "analytics", "speed-first", "power-first"],
+        "lineup_style": ["traditional", "analytics", "speed-first", "power-first"],
         "steal_aggression": ["conservative", "standard", "aggressive"],
-        "sac_bunt":         ["never", "situational", "frequent"],
-        "platoon_usage":    ["none", "vs-handedness", "aggressive"],
-        "starter_usage":    ["let-them-work", "pitch-count-strict", "matchup-based"],
-        "closer_usage":     ["saves-only", "high-leverage", "best-available"],
-        "bullpen_pref":     ["deep-pen", "starter-heavy"],
+        "sac_bunt": ["never", "situational", "frequent"],
+        "platoon_usage": ["none", "vs-handedness", "aggressive"],
+        "starter_usage": ["let-them-work", "pitch-count-strict", "matchup-based"],
+        "closer_usage": ["saves-only", "high-leverage", "best-available"],
+        "bullpen_pref": ["deep-pen", "starter-heavy"],
     }
 
     profile_indexes = {}
@@ -464,20 +554,23 @@ async def strategy_tab(request: Request, league_id: str, db: DB):
 
 @router.post("/leagues/{league_id}/strategy")
 async def save_strategy(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
 ):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
 
     form = await request.form()
     _INDEX_MAPS = {
-        "lineup_style":     ["traditional", "analytics", "speed-first", "power-first"],
+        "lineup_style": ["traditional", "analytics", "speed-first", "power-first"],
         "steal_aggression": ["conservative", "standard", "aggressive"],
-        "sac_bunt":         ["never", "situational", "frequent"],
-        "platoon_usage":    ["none", "vs-handedness", "aggressive"],
-        "starter_usage":    ["let-them-work", "pitch-count-strict", "matchup-based"],
-        "closer_usage":     ["saves-only", "high-leverage", "best-available"],
-        "bullpen_pref":     ["deep-pen", "starter-heavy"],
+        "sac_bunt": ["never", "situational", "frequent"],
+        "platoon_usage": ["none", "vs-handedness", "aggressive"],
+        "starter_usage": ["let-them-work", "pitch-count-strict", "matchup-based"],
+        "closer_usage": ["saves-only", "high-leverage", "best-available"],
+        "bullpen_pref": ["deep-pen", "starter-heavy"],
     }
     updates = {}
     for field, options in _INDEX_MAPS.items():
@@ -486,27 +579,37 @@ async def save_strategy(
 
     set_clause = ", ".join(f"{col} = ?" for col in updates)
     values = list(updates.values()) + [gm["id"]]
-    db.execute(f"UPDATE gm_profiles SET {set_clause}, updated_at = datetime('now') WHERE gm_id = ?", values)
+    db.execute(
+        f"UPDATE gm_profiles SET {set_clause}, updated_at = datetime('now') WHERE gm_id = ?",
+        values,
+    )
     db.commit()
 
-    return HTMLResponse('<span style="color:var(--green);font-family:var(--font-mono);font-size:11px;">✓ Saved</span>')
+    return HTMLResponse(
+        '<span style="color:var(--green);font-family:var(--font-mono);font-size:11px;">✓ Saved</span>'
+    )
 
 
 @router.get("/leagues/{league_id}/schedule", response_class=HTMLResponse)
-async def schedule_tab(request: Request, league_id: str, db: DB,
-                       date: str | None = None):
+async def schedule_tab(
+    request: Request, league_id: str, db: DB, date: str | None = None
+):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "schedule")
 
     season_id = _current_season_id(league_id, db)
     if not date and season_id:
         # Default to most recent played date
-        row = db.execute("""
+        row = db.execute(
+            """
             SELECT game_date FROM games
             WHERE season_id = ? AND completed = 1
             ORDER BY game_date DESC LIMIT 1
-        """, (season_id,)).fetchone()
+        """,
+            (season_id,),
+        ).fetchone()
         date = row["game_date"] if row else None
 
     ctx["game_date"] = date
@@ -515,7 +618,8 @@ async def schedule_tab(request: Request, league_id: str, db: DB,
     ctx["next_date"] = None
 
     if date and season_id:
-        games = db.execute("""
+        games = db.execute(
+            """
             SELECT g.id, g.home_team_id, g.away_team_id,
                    g.home_score, g.away_score, g.innings_played,
                    ht.city || ' ' || ht.mascot as home_team,
@@ -525,20 +629,28 @@ async def schedule_tab(request: Request, league_id: str, db: DB,
             JOIN teams at ON at.id = g.away_team_id
             WHERE g.season_id = ? AND g.game_date = ? AND g.completed = 1
             ORDER BY ht.city
-        """, (season_id, date)).fetchall()
+        """,
+            (season_id, date),
+        ).fetchall()
         ctx["games"] = [dict(r) for r in games]
 
         # Prev/next navigation
-        prev = db.execute("""
+        prev = db.execute(
+            """
             SELECT game_date FROM games
             WHERE season_id = ? AND completed = 1 AND game_date < ?
             ORDER BY game_date DESC LIMIT 1
-        """, (season_id, date)).fetchone()
-        nxt = db.execute("""
+        """,
+            (season_id, date),
+        ).fetchone()
+        nxt = db.execute(
+            """
             SELECT game_date FROM games
             WHERE season_id = ? AND completed = 1 AND game_date > ?
             ORDER BY game_date ASC LIMIT 1
-        """, (season_id, date)).fetchone()
+        """,
+            (season_id, date),
+        ).fetchone()
         ctx["prev_date"] = prev["game_date"] if prev else None
         ctx["next_date"] = nxt["game_date"] if nxt else None
 
@@ -553,22 +665,27 @@ async def schedule_date(request: Request, league_id: str, date: str, db: DB):
 @router.get("/leagues/{league_id}/games/{game_id}", response_class=HTMLResponse)
 async def game_detail(request: Request, league_id: str, game_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "schedule")
 
-    game = db.execute("""
+    game = db.execute(
+        """
         SELECT g.*, ht.city || ' ' || ht.mascot as home_team,
                at.city || ' ' || at.mascot as away_team
         FROM games g
         JOIN teams ht ON ht.id = g.home_team_id
         JOIN teams at ON at.id = g.away_team_id
         WHERE g.id = ?
-    """, (game_id,)).fetchone()
+    """,
+        (game_id,),
+    ).fetchone()
     ctx["game"] = dict(game) if game else None
 
     # Box score
     if game:
-        batting = db.execute("""
+        batting = db.execute(
+            """
             SELECT pgs.*, p.first_name, p.last_name,
                    pgs.team_id = g.home_team_id as is_home
             FROM player_game_stats pgs
@@ -576,10 +693,13 @@ async def game_detail(request: Request, league_id: str, game_id: str, db: DB):
             JOIN games g ON g.id = pgs.game_id
             WHERE pgs.game_id = ? AND pgs.bat_game_played = 1
             ORDER BY is_home DESC, pgs.team_id, p.last_name
-        """, (game_id,)).fetchall()
+        """,
+            (game_id,),
+        ).fetchall()
         ctx["batting_lines"] = [dict(r) for r in batting]
 
-        pitching = db.execute("""
+        pitching = db.execute(
+            """
             SELECT pgs.*, p.first_name, p.last_name,
                    pgs.team_id = g.home_team_id as is_home
             FROM player_game_stats pgs
@@ -587,7 +707,9 @@ async def game_detail(request: Request, league_id: str, game_id: str, db: DB):
             JOIN games g ON g.id = pgs.game_id
             WHERE pgs.game_id = ? AND pgs.pitch_game_played = 1
             ORDER BY is_home DESC, pgs.team_id, pgs.pitch_game_started DESC
-        """, (game_id,)).fetchall()
+        """,
+            (game_id,),
+        ).fetchall()
         ctx["pitching_lines"] = [dict(r) for r in pitching]
 
     return _tab_response(request, "dashboard/partials/game_detail.html", ctx)
@@ -595,11 +717,16 @@ async def game_detail(request: Request, league_id: str, game_id: str, db: DB):
 
 # ── Player panel ──────────────────────────────────────────────────────────────
 
-@router.get("/leagues/{league_id}/players/{player_id}/panel", response_class=HTMLResponse)
-async def player_panel(request: Request, league_id: str, player_id: str, db: DB,
-                       compare: str | None = None):
+
+@router.get(
+    "/leagues/{league_id}/players/{player_id}/panel", response_class=HTMLResponse
+)
+async def player_panel(
+    request: Request, league_id: str, player_id: str, db: DB, compare: str | None = None
+):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
 
     ctx = {
         "request": request,
@@ -613,11 +740,14 @@ async def player_panel(request: Request, league_id: str, player_id: str, db: DB,
 
 # ── Leaders ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/leaders", response_class=HTMLResponse)
-async def leaders_tab(request: Request, league_id: str, db: DB,
-                      category: str = "batting"):
+async def leaders_tab(
+    request: Request, league_id: str, db: DB, category: str = "batting"
+):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
     ctx = _shell_ctx(request, gm, db, league_id, "leaders")
     ctx["category"] = category
     ctx["rows"] = _load_leaders(league_id, category, db)
@@ -626,83 +756,122 @@ async def leaders_tab(request: Request, league_id: str, db: DB,
 
 # ── History ───────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/history/", response_class=HTMLResponse)
 async def history_index(request: Request, league_id: str, db: DB):
     token, name, redir = _require_identity(request)
-    if redir: return redir
-    gm_rows = db.execute("SELECT * FROM gms WHERE user_session = ? LIMIT 1", (token,)).fetchone()
-    seasons = db.execute("""
+    if redir:
+        return redir
+    gm_rows = db.execute(
+        "SELECT * FROM gms WHERE user_session = ? LIMIT 1", (token,)
+    ).fetchone()
+    seasons = db.execute(
+        """
         SELECT s.id, s.year, s.name FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
         WHERE ls.league_id = ? ORDER BY s.year DESC
-    """, (league_id,)).fetchall()
-    return render("history/index.html", {
-        "request": request, "league_id": league_id,
-        "gm": gm, "seasons": [dict(r) for r in seasons],
-    })
+    """,
+        (league_id,),
+    ).fetchall()
+    return render(
+        "history/index.html",
+        {
+            "request": request,
+            "league_id": league_id,
+            "gm": gm,
+            "seasons": [dict(r) for r in seasons],
+        },
+    )
 
 
 @router.get("/leagues/{league_id}/history/{year}/", response_class=HTMLResponse)
 async def history_season(request: Request, league_id: str, year: int, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
-    if redir: return redir
+    if redir:
+        return redir
 
-    season = db.execute("""
+    season = db.execute(
+        """
         SELECT s.* FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
         WHERE ls.league_id = ? AND s.year = ?
-    """, (league_id, year)).fetchone()
+    """,
+        (league_id, year),
+    ).fetchone()
 
-    standings = _load_standings(league_id, db, season_id=season["id"] if season else None)
-    evaluation = db.execute("""
+    standings = _load_standings(
+        league_id, db, season_id=season["id"] if season else None
+    )
+    evaluation = db.execute(
+        """
         SELECT * FROM gm_season_evaluations
         WHERE gm_id = ? AND season_id = ?
-    """, (gm["id"], season["id"] if season else "")).fetchone()
+    """,
+        (gm["id"], season["id"] if season else ""),
+    ).fetchone()
 
-    return render("history/season.html", {
-        "request": request, "league_id": league_id, "gm": gm,
-        "year": year, "season": dict(season) if season else None,
-        "standings": standings,
-        "evaluation": dict(evaluation) if evaluation else None,
-    })
+    return render(
+        "history/season.html",
+        {
+            "request": request,
+            "league_id": league_id,
+            "gm": gm,
+            "year": year,
+            "season": dict(season) if season else None,
+            "standings": standings,
+            "evaluation": dict(evaluation) if evaluation else None,
+        },
+    )
 
 
 # ── DB query helpers ──────────────────────────────────────────────────────────
 
+
 def _current_season_id(league_id: str, db: sqlite3.Connection) -> str | None:
-    row = db.execute("""
+    row = db.execute(
+        """
         SELECT season_id FROM league_seasons
         WHERE league_id = ? ORDER BY rowid DESC LIMIT 1
-    """, (league_id,)).fetchone()
+    """,
+        (league_id,),
+    ).fetchone()
     return row["season_id"] if row else None
 
 
 def _current_season_name(league_id: str, db: sqlite3.Connection) -> str | None:
-    row = db.execute("""
+    row = db.execute(
+        """
         SELECT s.name, s.year FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
         WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1
-    """, (league_id,)).fetchone()
+    """,
+        (league_id,),
+    ).fetchone()
     return f"Season {row['year']}" if row else None
 
 
 def _current_year(league_id: str, db: sqlite3.Connection) -> int:
-    row = db.execute("""
+    row = db.execute(
+        """
         SELECT s.year FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
         WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1
-    """, (league_id,)).fetchone()
+    """,
+        (league_id,),
+    ).fetchone()
     return row["year"] if row else 1
 
 
-def _load_standings(league_id: str, db: sqlite3.Connection,
-                    season_id: str | None = None) -> list[dict]:
+def _load_standings(
+    league_id: str, db: sqlite3.Connection, season_id: str | None = None
+) -> list[dict]:
     if not season_id:
         season_id = _current_season_id(league_id, db)
     if not season_id:
         return []
 
-    rows = db.execute("""
+    rows = db.execute(
+        """
         SELECT
             t.id as team_id, t.city, t.mascot,
             COALESCE(SUM(tgs.win), 0)  as wins,
@@ -717,12 +886,15 @@ def _load_standings(league_id: str, db: sqlite3.Connection,
         WHERE lst.league_id = ? AND lst.season_id = ?
         GROUP BY t.id, t.city, t.mascot
         ORDER BY wins DESC, (wins - losses) DESC
-    """, (season_id, league_id, season_id)).fetchall()
+    """,
+        (season_id, league_id, season_id),
+    ).fetchall()
 
     human_team_ids = {
-        r["team_id"] for r in db.execute(
+        r["team_id"]
+        for r in db.execute(
             "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
-            (league_id,)
+            (league_id,),
         ).fetchall()
     }
 
@@ -731,7 +903,7 @@ def _load_standings(league_id: str, db: sqlite3.Connection,
         d = dict(r)
         d["run_diff"] = d["runs_scored"] - d["runs_allowed"]
         d["is_human"] = d["team_id"] in human_team_ids
-        d["streak"] = 0   # TODO: compute from recent games
+        d["streak"] = 0  # TODO: compute from recent games
         d["last_10"] = None  # TODO
         result.append(d)
     return result
@@ -741,15 +913,19 @@ def _load_roster(gm: sqlite3.Row, db: sqlite3.Connection) -> list[dict]:
     if not gm["team_id"]:
         return []
 
-    season_row = db.execute("""
+    season_row = db.execute(
+        """
         SELECT season_id FROM league_seasons
         WHERE league_id = ? ORDER BY rowid DESC LIMIT 1
-    """, (gm["league_id"],)).fetchone()
+    """,
+        (gm["league_id"],),
+    ).fetchone()
     if not season_row:
         return []
     season_id = season_row["season_id"]
 
-    rows = db.execute("""
+    rows = db.execute(
+        """
         SELECT p.id, p.first_name, p.last_name, p.bats, p.throws, p.position,
                ps.status
         FROM league_season_teams lst
@@ -759,7 +935,9 @@ def _load_roster(gm: sqlite3.Row, db: sqlite3.Connection) -> list[dict]:
         WHERE lst.team_id = ? AND lst.season_id = ?
         ORDER BY CASE ps.status WHEN '26man' THEN 1 WHEN '40man' THEN 2 ELSE 3 END,
                  p.last_name
-    """, (gm["team_id"], season_id)).fetchall()
+    """,
+        (gm["team_id"], season_id),
+    ).fetchall()
 
     result = []
     for row in rows:
@@ -773,9 +951,12 @@ def _load_roster(gm: sqlite3.Row, db: sqlite3.Connection) -> list[dict]:
 
 
 def _load_draft_board(draft_id: str, db: sqlite3.Connection) -> list[dict]:
-    picked = {r["player_id"] for r in db.execute(
-        "SELECT player_id FROM draft_picks WHERE draft_id = ?", (draft_id,)
-    ).fetchall()}
+    picked = {
+        r["player_id"]
+        for r in db.execute(
+            "SELECT player_id FROM draft_picks WHERE draft_id = ?", (draft_id,)
+        ).fetchall()
+    }
 
     players = db.execute("""
         SELECT p.*, ps.status FROM players p
@@ -796,14 +977,14 @@ def _load_draft_board(draft_id: str, db: sqlite3.Connection) -> list[dict]:
     return board
 
 
-def _load_leaders(league_id: str, category: str,
-                  db: sqlite3.Connection) -> list[dict]:
+def _load_leaders(league_id: str, category: str, db: sqlite3.Connection) -> list[dict]:
     season_id = _current_season_id(league_id, db)
     if not season_id:
         return []
 
     if category == "batting":
-        rows = db.execute("""
+        rows = db.execute(
+            """
             SELECT p.first_name, p.last_name, t.city || ' ' || t.mascot as team,
                    SUM(pgs.bat_ab) as AB, SUM(pgs.bat_hits) as H,
                    SUM(pgs.bat_home_runs) as HR, SUM(pgs.bat_rbi) as RBI,
@@ -819,9 +1000,12 @@ def _load_leaders(league_id: str, category: str,
             GROUP BY pgs.player_id
             HAVING SUM(pgs.bat_ab) >= 10
             ORDER BY AVG DESC LIMIT 50
-        """, (season_id,)).fetchall()
+        """,
+            (season_id,),
+        ).fetchall()
     else:  # pitching
-        rows = db.execute("""
+        rows = db.execute(
+            """
             SELECT p.first_name, p.last_name, t.city || ' ' || t.mascot as team,
                    SUM(pgs.pitch_win) as W, SUM(pgs.pitch_loss) as L,
                    SUM(pgs.pitch_save) as SV,
@@ -838,13 +1022,16 @@ def _load_leaders(league_id: str, category: str,
             GROUP BY pgs.player_id
             HAVING SUM(pgs.pitch_outs) >= 9
             ORDER BY ERA ASC LIMIT 50
-        """, (season_id,)).fetchall()
+        """,
+            (season_id,),
+        ).fetchall()
 
     return [dict(r) for r in rows]
 
 
-def _load_player_detail(player_id: str | None, gm: sqlite3.Row,
-                        db: sqlite3.Connection) -> dict | None:
+def _load_player_detail(
+    player_id: str | None, gm: sqlite3.Row, db: sqlite3.Connection
+) -> dict | None:
     if not player_id:
         return None
 
@@ -865,11 +1052,14 @@ def _load_player_detail(player_id: str | None, gm: sqlite3.Row,
     grades = player_row_to_grades(dict(player), skills, status)
 
     # Team info
-    team_row = db.execute("""
+    team_row = db.execute(
+        """
         SELECT t.city, t.mascot FROM team_players tp
         JOIN teams t ON t.id = tp.team_id
         WHERE tp.player_id = ? LIMIT 1
-    """, (player_id,)).fetchone()
+    """,
+        (player_id,),
+    ).fetchone()
 
     # Energy
     energy = None
@@ -902,19 +1092,33 @@ def _load_player_detail(player_id: str | None, gm: sqlite3.Row,
     inj = db.execute(
         "SELECT * FROM player_injuries WHERE player_id = ?", (player_id,)
     ).fetchone()
-    inj_log = db.execute("""
+    inj_log = db.execute(
+        """
         SELECT injury_date, severity, games_missed FROM player_injury_log
         WHERE player_id = ? ORDER BY injury_date DESC LIMIT 5
-    """, (player_id,)).fetchall()
+    """,
+        (player_id,),
+    ).fetchall()
 
     # Build grades dict matching template expectations
     all_grades = {}
     _skill_labels = {
-        "contact": "Contact", "power": "Power", "eye": "Eye", "speed": "Speed",
-        "base_running": "Baserunning", "bunting": "Bunting", "clutch": "Clutch",
-        "catching": "Catching", "infield": "Infield", "outfield": "Outfield",
-        "arm": "Arm", "strikes": "Stuff", "accuracy": "Control",
-        "stamina": "Stamina", "recovery": "Recovery", "ground_balls": "Ground Balls",
+        "contact": "Contact",
+        "power": "Power",
+        "eye": "Eye",
+        "speed": "Speed",
+        "base_running": "Baserunning",
+        "bunting": "Bunting",
+        "clutch": "Clutch",
+        "catching": "Catching",
+        "infield": "Infield",
+        "outfield": "Outfield",
+        "arm": "Arm",
+        "strikes": "Stuff",
+        "accuracy": "Control",
+        "stamina": "Stamina",
+        "recovery": "Recovery",
+        "ground_balls": "Ground Balls",
         "durability": "Durability",
     }
     for key, label in _skill_labels.items():
@@ -925,17 +1129,19 @@ def _load_player_detail(player_id: str | None, gm: sqlite3.Row,
         }
 
     d = grades.model_dump()
-    d.update({
-        "player_id": player_id,
-        "team_city": team_row["city"] if team_row else "",
-        "team_mascot": team_row["mascot"] if team_row else "",
-        "overall_grade": grades.overall,
-        "grades": all_grades,
-        "injured": bool(inj and inj["games_remaining"] > 0),
-        "games_remaining": inj["games_remaining"] if inj else 0,
-        "injury_log": [dict(r) for r in inj_log],
-        "stats": None,  # TODO: season stats (same logic as gms.py get_player_detail)
-    })
+    d.update(
+        {
+            "player_id": player_id,
+            "team_city": team_row["city"] if team_row else "",
+            "team_mascot": team_row["mascot"] if team_row else "",
+            "overall_grade": grades.overall,
+            "grades": all_grades,
+            "injured": bool(inj and inj["games_remaining"] > 0),
+            "games_remaining": inj["games_remaining"] if inj else 0,
+            "injury_log": [dict(r) for r in inj_log],
+            "stats": None,  # TODO: season stats (same logic as gms.py get_player_detail)
+        }
+    )
     if energy:
         d.update(energy)
     return d
