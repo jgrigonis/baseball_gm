@@ -62,6 +62,23 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
         force_new_teams=True,
     )
 
+    # ── 3b. Clear stale injury/energy state for this league ─────────────────
+    # Player IDs are deterministic (CSV hashes) and reused across leagues.
+    # Delete only rows scoped to THIS league_id so other leagues are unaffected.
+    conn.execute(
+        "DELETE FROM player_injuries WHERE league_id = ?",
+        (league_id,),
+    )
+    conn.execute(
+        "DELETE FROM player_energy WHERE league_id = ?",
+        (league_id,),
+    )
+    conn.execute(
+        "DELETE FROM pitcher_state WHERE league_id = ?",
+        (league_id,),
+    )
+    conn.commit()
+
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     existing_games = conn.execute(
         "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)

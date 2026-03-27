@@ -156,15 +156,15 @@ def _resolve_gm(
 
 
 
-def _injured_player_ids(db, team_id: str) -> set:
-    """Return set of player_ids currently on IL for a team."""
+def _injured_player_ids(db, team_id: str, league_id: str = "") -> set:
+    """Return set of player_ids currently on IL for a team in this league."""
     if not team_id:
         return set()
     rows = db.execute(
         """SELECT pi.player_id FROM player_injuries pi
            JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
-           WHERE pi.games_remaining > 0""",
-        (team_id,),
+           WHERE pi.games_remaining > 0 AND pi.league_id = ?""",
+        (team_id, league_id),
     ).fetchall()
     return {r["player_id"] for r in rows}
 
@@ -1176,9 +1176,9 @@ def standings(
                    FROM player_injuries pi
                    JOIN players p ON p.id = pi.player_id
                    JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
-                   WHERE pi.games_remaining > 0
+                   WHERE pi.games_remaining > 0 AND pi.league_id = ?
                    ORDER BY pi.games_remaining DESC""",
-                (my_team_id,),
+                (my_team_id, league_id),
             ).fetchall()
             injuries = [dict(r) for r in inj_rows]
 
@@ -1265,7 +1265,7 @@ def roster(
             g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
             players.append(g)
 
-    injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None)
+    injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None, league_id)
     for p in players:
         p["injured"] = p["player_id"] in injured_ids
     ctx["players"] = players
@@ -1367,7 +1367,7 @@ def lineup(
         ).fetchall()
         saved_bullpen = {r["player_id"]: r["role"] for r in bp}
 
-    injured_ids = _injured_player_ids(db, team_id)
+    injured_ids = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:
         p["injured"] = p["player_id"] in injured_ids
     ctx["hitters"]        = hitters
