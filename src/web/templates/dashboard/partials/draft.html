@@ -15,6 +15,12 @@
               style="margin-left:8px;">Submit Preferences</button>
       <span id="submit-feedback"
             style="font-family:var(--font-mono);font-size:11px;margin-left:12px;"></span>
+      {% if draft_complete %}
+      <a href="/leagues/{{ league_id }}/draft/results"
+         class="btn btn-secondary" style="margin-left:16px;border-color:var(--green);color:var(--green);">
+        View Results →
+      </a>
+      {% else %}
       <form method="POST" action="/leagues/{{ league_id }}/draft/execute"
             style="margin-left:16px;display:inline;" onsubmit="onExecute(this)">
         <button type="submit" id="execute-btn"
@@ -23,6 +29,7 @@
           Run Draft ▶
         </button>
       </form>
+      {% endif %}
     {% else %}
       <span class="page-subtitle" style="color:var(--text-dim);">Draft not yet open</span>
     {% endif %}
@@ -39,7 +46,7 @@
                 font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
       Sort
       <select id="sort1" onchange="applySort()" style="width:auto;">
-        <option value="overall">Overall</option>
+        <option value="overall">Prospect Rating</option>
         <optgroup label="Hitting">
           <option value="contact">Contact</option>
           <option value="power">Power</option>
@@ -56,7 +63,7 @@
       then
       <select id="sort2" onchange="applySort()" style="width:auto;">
         <option value="">—</option>
-        <option value="overall">Overall</option>
+        <option value="overall">Prospect Rating</option>
         <optgroup label="Hitting">
           <option value="contact">Contact</option>
           <option value="power">Power</option>

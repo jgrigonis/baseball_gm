@@ -165,9 +165,9 @@ def _draft_is_complete(db, league_id: str) -> bool:
     return bool(row and row["state"] == "complete")
 
 def _tab_visible(state: str) -> list[str]:
-    always = ["standings", "leaders", "roster", "lineup", "strategy"]
+    always = ["draft", "standings", "leaders", "roster", "lineup", "strategy"]
     if state == "lobby":                return []
-    if state == "draft":               return ["draft"] + always
+    if state == "draft":               return always
     if state in ("season", "playoffs"): return always + ["schedule"]
     return always
 
@@ -214,6 +214,7 @@ def _shell_ctx(
         "visible_tabs":        _tab_visible(league["state"] if league else "lobby"),
         "season_id":           season["id"]   if season else None,
         "season_name":         season["name"] if season else None,
+        "draft_complete":      _draft_is_complete(db, league_id) if league else False,
     }
 
 
@@ -686,7 +687,11 @@ def draft_tab(
             ratings = _compute_ratings(skills, d.get("throws", "R"))
             g = grades.model_dump()
             if ratings:
-                g["overall"] = skill_to_grade(ratings.get("overall_player"))
+                if g.get("player_type") == "pitcher":
+                    best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
+                    g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
+                else:
+                    g["overall"] = skill_to_grade(ratings.get("overall_player"))
                 g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
                 g["best_def_label"] = ratings.get("best_def_label", "DEF")
             players.append(g)
@@ -719,6 +724,10 @@ def execute_draft(
 
     if not draft:
         return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
+
+    # If already complete, just go to results
+    if draft["state"] == "complete":
+        return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
 
     import traceback
     try:
@@ -936,7 +945,11 @@ def roster(
             ratings = _compute_ratings(skills, d.get("throws", "R"))
             g = grades.model_dump()
             if ratings:
-                g["overall"] = skill_to_grade(ratings.get("overall_player"))
+                if g.get("player_type") == "pitcher":
+                    best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
+                    g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
+                else:
+                    g["overall"] = skill_to_grade(ratings.get("overall_player"))
                 g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
                 g["best_def_label"] = ratings.get("best_def_label", "DEF")
             players.append(g)
@@ -1170,10 +1183,14 @@ def player_panel(
         grades = player_row_to_grades(dict(p), skills, st["status"] if st else "unassigned")
         ratings = _compute_ratings(skills, dict(p).get("throws", "R"))
 
-        # Overall: prospect rating for undrafted players, overall_player for rostered
+        # Overall: prospect rating for undrafted, position-aware rating for rostered
         status = st["status"] if st else "unassigned"
         if status in ("prospect", "unassigned", "free_agent"):
             overall_grade = skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
+        elif grades.player_type == "pitcher":
+            # Pitchers: best of SP/RP rating — overall_player is offense-based and useless
+            best_p = max(ratings.get("sp", 0), ratings.get("rp", 0)) if ratings else 0
+            overall_grade = skill_to_grade(best_p) if best_p else grades.overall
         else:
             overall_grade = skill_to_grade(ratings.get("overall_player")) if ratings else grades.overall
 
