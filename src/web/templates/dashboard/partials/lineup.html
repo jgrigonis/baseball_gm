@@ -139,6 +139,18 @@
 </style>
 
 <script>
+(function() {
+// Hoist exports first
+window.autoFill=autoFill;
+window.saveLineup=saveLineup;
+window.addToLineup=addToLineup;
+window.removeFromLineup=removeFromLineup;
+window.setPosition=setPosition;
+window.addToRotation=addToRotation;
+window.removeFromRotation=removeFromRotation;
+window.renderBench=renderBench;
+window.renderBullpen=renderBullpen;
+
 var LEAGUE_ID    = "{{ league_id }}";
 const ALL_HITTERS  = {{ hitters  | tojson }};
 const ALL_PITCHERS = {{ pitchers | tojson }};
@@ -446,6 +458,9 @@ function showFeedback(msg, color) {
   setTimeout(() => { if(fb.textContent===msg) fb.textContent=''; }, 4000);
 }
 
+window.setPosition    = setPosition;
+window.addToRotation  = addToRotation;
+window.removeFromRotation = removeFromRotation;
 renderBattingOrder();
 renderBench();
 renderRotation(); // renderBullpen called inside renderRotation
@@ -467,4 +482,6 @@ document.addEventListener('mouseup', e => {
   }
   _luDownId = null;
 }, {capture: false});
+
+})();
 </script>

@@ -1,5 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ team_name or league_name }} — GM Sim{% endblock %}
 {% block early_scripts %}
 <script>
+var LEAGUE_ID = "{{ league_id }}";
+// Play dropdown
+var _dropdownOpen = false;
+function togglePlayDropdown() {
+  const wrap = document.getElementById('play-btn').closest('.play-btn-wrap');
+  const dd = wrap ? wrap.querySelector('.play-dropdown') : document.getElementById('play-dropdown');
+  if (!dd) return;
+  _dropdownOpen = !_dropdownOpen;
+  dd.style.display = _dropdownOpen ? 'block' : 'none';
+  if (_dropdownOpen) {
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!dd.contains(e.target)) {
+          dd.style.display = 'none';
+          _dropdownOpen = false;
+        }
+        document.removeEventListener('click', handler);
+      });
+    }, 0);
+  }
+}
+function closePlayDropdown() {
+  _dropdownOpen = false;
+  document.querySelectorAll('.play-dropdown').forEach(dd => dd.style.display = 'none');
+}
 // Player panel functions — defined early so partials can call them
 var _pinnedId = null;
 window.openPlayerPanel = function(pid) {
@@ -49,120 +76,6 @@ function addBackdrop() {
   document.body.appendChild(bd);
 }
 function removeBackdrop() { const b = document.getElementById('panel-backdrop'); if(b) b.remove(); }
-</script>
-{% endblock %}
-{% extends "base.html" %}
-{% block title %}{{ team_name or league_name }} — GM Sim{% endblock %}
-
-{% block main %}
-
-{% if visible_tabs %}
-<nav class="tab-bar" id="tab-bar">
-  {% for tab in visible_tabs %}
-  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','strategy':'🎛'} %}
-  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','strategy':'Strategy'} %}
-  {% if tab == 'draft' and draft_complete %}
-  <a href="/leagues/{{ league_id }}/draft/results"
-     class="tab-link {% if active_tab == 'draft' %}active{% endif %}"
-     hx-get="/leagues/{{ league_id }}/draft/results"
-     hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
-     onclick="setActiveTab(this)">
-    📋 Draft Results
-  </a>
-  {% else %}
-  <a href="/leagues/{{ league_id }}/{{ tab }}"
-     class="tab-link {% if active_tab == tab %}active{% endif %}"
-     hx-get="/leagues/{{ league_id }}/{{ tab }}"
-     hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
-     onclick="setActiveTab(this)">
-    {{ icons.get(tab,'') }} {{ labels.get(tab, tab) }}
-  </a>
-  {% endif %}
-  {% endfor %}
-
-  {# ── Play button — only during season/playoffs/preseason ───────────── #}
-  {% if league_state in ('season', 'playoffs', 'preseason') and active_tab not in ('roster', 'lineup') %}
-  <span id="sim-feedback"
-        style="font-family:var(--font-mono);font-size:11px;color:var(--green);
-               padding:0 12px;align-self:center;display:none;"></span>
-  <div class="play-btn-wrap" style="margin-left:auto;">
-    <div class="play-btn" id="play-btn" role="button" tabindex="0">
-      ▶ Play
-    </div>
-    <div class="play-dropdown" id="play-dropdown" style="display:none;">
-      <button onclick="simGames(1)"  class="play-opt">Play 1 game</button>
-      <button onclick="simGames(3)"  class="play-opt" id="play-opt-3"
-              {% if games_remaining <= 3 %}disabled{% endif %}>Play 3 games</button>
-      <button onclick="simGames(10)" class="play-opt" id="play-opt-10"
-              {% if games_remaining <= 10 %}disabled{% endif %}>Play 10 games</button>
-      <button onclick="simGames('season')" class="play-opt">Play entire season</button>
-    </div>
-  </div>
-  {% endif %}
-</nav>
-{% endif %}
-
-<div id="tab-content" class="tab-fade">
-  {% if tab_template %}{% include tab_template %}{% endif %}
-</div>
-
-<div id="player-panel-mount"></div>
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-var LEAGUE_ID = "{{ league_id }}";
-
-// ── Tab switching ──────────────────────────────────────────────────────────────
-function setActiveTab(el) {
-  document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-}
-document.body.addEventListener('htmx:afterSwap', function(e) {
-  if (e.detail.target.id === 'tab-content') {
-    e.detail.target.classList.remove('tab-fade');
-    void e.detail.target.offsetWidth;
-    e.detail.target.classList.add('tab-fade');
-  }
-});
-
-// ── Play button ────────────────────────────────────────────────────────────────
-(function() {
-  const btn = document.getElementById('play-btn');
-  if (!btn) return;
-
-  let _timer = null;
-  let _held  = false;
-
-  btn.addEventListener('mousedown', function(e) {
-    e.preventDefault();
-    _held  = false;
-    _timer = setTimeout(() => { _held = true; showPlayDropdown(); }, 500);
-  }, {passive: false});
-
-  btn.addEventListener('mouseup', function(e) {
-    e.preventDefault();
-    clearTimeout(_timer);
-    if (!_held) simGames(1);
-    _held = false;
-    _timer = null;
-  }, {passive: false});
-
-  btn.addEventListener('mouseleave', function() {
-    clearTimeout(_timer); _held = false; _timer = null;
-  });
-})();
-
-function showPlayDropdown() {
-  const dd = document.getElementById('play-dropdown');
-  if (dd) { dd.style.display = 'block'; }
-  setTimeout(() => document.addEventListener('click', closePlayDropdown, {once:true}), 0);
-}
-function closePlayDropdown() {
-  const dd = document.getElementById('play-dropdown');
-  if (dd) dd.style.display = 'none';
-}
 
 async function simGames(count) {
   closePlayDropdown();
@@ -212,6 +125,95 @@ async function simGames(count) {
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPanel(); });
+
+</script>
+{% endblock %}
+
+
+{% block main %}
+
+{% if visible_tabs %}
+<nav class="tab-bar" id="tab-bar">
+  {% for tab in visible_tabs %}
+  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','strategy':'🎛'} %}
+  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','strategy':'Strategy'} %}
+  {% if tab == 'draft' and draft_complete %}
+  <a href="/leagues/{{ league_id }}/draft/results"
+     class="tab-link {% if active_tab == 'draft' %}active{% endif %}"
+     hx-get="/leagues/{{ league_id }}/draft/results"
+     hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+     onclick="setActiveTab(this)">
+    📋 Draft Results
+  </a>
+  {% else %}
+  <a href="/leagues/{{ league_id }}/{{ tab }}"
+     class="tab-link {% if active_tab == tab %}active{% endif %}"
+     hx-get="/leagues/{{ league_id }}/{{ tab }}"
+     hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+     onclick="setActiveTab(this)">
+    {{ icons.get(tab,'') }} {{ labels.get(tab, tab) }}
+  </a>
+  {% endif %}
+  {% endfor %}
+
+  {# ── Play button — only during season/playoffs/preseason ───────────── #}
+  {% if league_state in ('season', 'playoffs', 'preseason') %}
+  <span id="sim-feedback"
+        style="font-family:var(--font-mono);font-size:11px;color:var(--green);
+               padding:0 12px;align-self:center;display:none;"></span>
+  <div class="play-btn-wrap" style="margin-left:auto;">
+    <button class="play-btn" id="play-btn" onclick="togglePlayDropdown()">
+      ▶ Play
+    </button>
+    <div class="play-dropdown" id="play-dropdown" style="display:none;">
+      <button onclick="simGames(1)"  class="play-opt">Play 1 game</button>
+      <button onclick="simGames(3)"  class="play-opt" id="play-opt-3"
+              {% if games_remaining <= 3 %}disabled{% endif %}>Play 3 games</button>
+      <button onclick="simGames(10)" class="play-opt" id="play-opt-10"
+              {% if games_remaining <= 10 %}disabled{% endif %}>Play 10 games</button>
+      <button onclick="simGames('season')" class="play-opt">Play entire season</button>
+    </div>
+  </div>
+  {% endif %}
+</nav>
+{% endif %}
+
+<div id="tab-content" class="tab-fade">
+  {% if tab_template %}{% include tab_template %}{% endif %}
+</div>
+
+<div id="player-panel-mount"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function setActiveTab(el) {
+  document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  // Hide play button on roster and lineup tabs
+  const tab = el.getAttribute('hx-get') || el.getAttribute('href') || '';
+  const hideOn = ['/roster', '/lineup'];
+  const wrap = document.querySelector('.play-btn-wrap');
+  if (wrap) wrap.style.display = hideOn.some(t => tab.endsWith(t)) ? 'none' : 'flex';
+}
+// Set initial visibility based on active tab on page load
+(function() {
+  const active = document.querySelector('.tab-link.active');
+  if (active) setActiveTab(active);
+})();
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'tab-content') {
+    e.detail.target.classList.remove('tab-fade');
+    void e.detail.target.offsetWidth;
+    e.detail.target.classList.add('tab-fade');
+  }
+});
+
+// ── Play button ────────────────────────────────────────────────────────────────
+
 </script>
 
 <style>

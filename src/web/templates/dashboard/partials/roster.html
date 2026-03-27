@@ -142,6 +142,12 @@
 </style>
 
 <script>
+(function() {
+// Hoist exports first
+window.colOver=colOver;window.colDrop=colDrop;window.saveRoster=saveRoster;
+window.fillToForty=fillToForty;window.removeInjured=removeInjured;
+window.applySort=applySort;window.toggleReverse=toggleReverse;
+
 var LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ players | tojson }};
 
@@ -381,4 +387,6 @@ function showFeedback(msg, color) {
 }
 
 render();
+
+})();
 </script>

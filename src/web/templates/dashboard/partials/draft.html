@@ -162,6 +162,8 @@
 </style>
 
 <script>
+(function() {
+
 const DRAFT_ID    = "{{ draft_id }}";
 var LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ board | tojson }};
@@ -482,4 +484,17 @@ if (storedData) {
 
 // Measure after render so CSS var is set
 requestAnimationFrame(updateHeaderHeight);
+
+
+// Expose to global scope for inline event handlers
+window.setType        = setType;
+window.applySort      = applySort;
+window.resetOrder     = resetOrder;
+window.submitPrefs    = submitPrefs;
+window.onExecute      = onExecute;
+window.dStart         = dStart;
+window.dOver          = dOver;
+window.dDrop          = dDrop;
+window.dEnd           = dEnd;
+})();
 </script>
