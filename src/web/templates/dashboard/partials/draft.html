@@ -75,7 +75,7 @@
 
 {% if draft_id %}
 <div style="padding:16px 24px 24px;">
-  <div style="display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start;">
+  <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start;">
 
     <div class="card">
       <div id="prospect-list"></div>
@@ -186,9 +186,12 @@ function renderBoard() {
     const grades = p.player_type === 'pitcher'
       ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery]]
       : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
+    const defHtml = p.best_def_grade
+      ? `<span><span class="gl">${p.best_def_label}</span><span class="${gradeClass(p.best_def_grade)}">${p.best_def_grade}</span></span>`
+      : '';
     const gradesHtml = grades.filter(([,v])=>v).map(([k,v])=>
       `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
-    ).join('');
+    ).join('') + defHtml;
 
     return `<div class="prospect-row" draggable="true" data-id="${p.player_id}"
                  ondragstart="dStart(event)" ondragover="dOver(event)"
@@ -227,9 +230,12 @@ function renderRoster() {
     const grades = p.player_type === 'pitcher'
       ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery]]
       : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
+    const defHtml = p.best_def_grade
+      ? `<span class="gl">${p.best_def_label}</span><span class="${gradeClass(p.best_def_grade)}" style="margin-right:6px;">${p.best_def_grade}</span>`
+      : '';
     const gradesHtml = grades.filter(([,v])=>v).map(([k,v])=>
       `<span class="gl">${k}</span><span class="${gradeClass(v)}" style="margin-right:6px;">${v}</span>`
-    ).join('');
+    ).join('') + defHtml;
 
     return `<div class="roster-row" onclick="openPlayerPanel('${p.player_id}')">
       <div style="display:flex;justify-content:space-between;align-items:baseline;">

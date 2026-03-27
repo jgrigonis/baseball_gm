@@ -24,11 +24,109 @@ from fastapi.templating import Jinja2Templates
 
 from src.api.database import get_db
 from src.api.schemas import player_row_to_grades, skill_to_grade
+from src.player.player_evaluator import PlayerEvaluator
+from src.player.player_skills import PlayerSkills, SKILLS
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="src/web/templates")
 
 DB = Annotated[sqlite3.Connection, Depends(get_db)]
+
+
+
+# ── Player rating helpers ─────────────────────────────────────────────────────
+
+def _compute_ratings(skills: dict, throws: str) -> dict:
+    """
+    Run PlayerEvaluator on a raw skills dict.
+    Returns the full ratings map plus derived composites:
+      if_rating   = max(2b, 3b, ss)
+      of_rating   = max(lf, cf, rf)
+      best_def    = max(if, of, c, 1b)
+      best_def_label = "IF" | "OF" | "CA" | "1B"
+    """
+    try:
+        # Filter to valid skill keys only — DB rows include player_id, updated_at, etc.
+        filtered = {k: v for k, v in skills.items() if k in SKILLS and v is not None}
+        ps = PlayerSkills(filtered)
+        ratings = PlayerEvaluator.rate_player(ps, throws or "R")
+    except Exception:
+        return {}
+
+    if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
+    of_rating = max(ratings.get("lf", 0), ratings.get("cf", 0), ratings.get("rf", 0))
+    c_rating  = ratings.get("c", 0)
+    b1_rating = ratings.get("1b", 0)
+
+    best_def = max(if_rating, of_rating, c_rating, b1_rating)
+    if best_def == c_rating and c_rating >= max(if_rating, of_rating, b1_rating):
+        best_def_label = "CA"
+    elif best_def == b1_rating and b1_rating >= max(if_rating, of_rating, c_rating):
+        best_def_label = "1B"
+    elif best_def == of_rating and of_rating >= max(if_rating, c_rating, b1_rating):
+        best_def_label = "OF"
+    else:
+        best_def_label = "IF"
+
+    ratings["if"] = if_rating
+    ratings["of"] = of_rating
+    ratings["best_def"] = best_def
+    ratings["best_def_label"] = best_def_label
+    return ratings
+
+
+def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
+    """
+    Build the section-based grade_map for the player detail panel.
+    Pitchers:  Pitching / General / Defense / Hitting
+    Hitters:   Hitting  / General / Defense / Pitching
+    Ratings-based entries use skill_to_grade(rating_value).
+    """
+    g = skill_to_grade  # shorthand
+
+    def rg(key: str) -> str:
+        return g(ratings.get(key))
+
+    pitching_section = {"section": "Pitching", "skills": [
+        {"key": "strikes",      "label": "Stuff",       "grade": grades.stuff or g(skills.get("strikes"))},
+        {"key": "accuracy",     "label": "Control",     "grade": grades.control or g(skills.get("accuracy"))},
+        {"key": "stamina",      "label": "Stamina",     "grade": grades.stamina or g(skills.get("stamina"))},
+        {"key": "recovery",     "label": "Recovery",    "grade": grades.recovery or g(skills.get("recovery"))},
+        {"key": "ground_balls", "label": "GB tendency", "grade": g(skills.get("ground_balls"))},
+        {"key": "sp",           "label": "SP rating",   "grade": rg("sp")},
+        {"key": "rp",           "label": "RP rating",   "grade": rg("rp")},
+    ]}
+
+    hitting_section = {"section": "Hitting", "skills": [
+        {"key": "contact",      "label": "Contact",     "grade": grades.contact or g(skills.get("contact"))},
+        {"key": "power",        "label": "Power",       "grade": grades.power or g(skills.get("power"))},
+        {"key": "eye",          "label": "Eye",         "grade": grades.eye or g(skills.get("eye"))},
+        {"key": "speed",        "label": "Speed",       "grade": grades.speed or g(skills.get("speed"))},
+        {"key": "base_running", "label": "Baserunning", "grade": g(skills.get("base_running"))},
+        {"key": "bunting",      "label": "Bunting",     "grade": g(skills.get("bunting"))},
+        {"key": "lead_off",     "label": "Leadoff",     "grade": rg("lead_off")},
+        {"key": "power_hitter", "label": "Power hitter","grade": rg("power_hitter")},
+        {"key": "contact_hitter","label":"Contact hitter","grade": rg("contact_hitter")},
+    ]}
+
+    defense_section = {"section": "Defense", "skills": [
+        {"key": "if",  "label": "Infield (IF)", "grade": rg("if")},
+        {"key": "of",  "label": "Outfield (OF)","grade": rg("of")},
+        {"key": "c",   "label": "Catcher (CA)", "grade": rg("c")},
+        {"key": "1b",  "label": "First base",   "grade": rg("1b")},
+        {"key": "arm", "label": "Arm",          "grade": grades.arm or g(skills.get("arm"))},
+    ]}
+
+    general_section = {"section": "General", "skills": [
+        {"key": "clutch",        "label": "Clutch",        "grade": g(skills.get("clutch"))},
+        {"key": "durability",    "label": "Durability",    "grade": g(skills.get("durability"))},
+        {"key": "overall_offense","label":"Off. rating",   "grade": rg("overall_offense")},
+    ]}
+
+    if grades.player_type == "pitcher":
+        return [pitching_section, general_section, defense_section, hitting_section]
+    else:
+        return [hitting_section, general_section, defense_section, pitching_section]
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
@@ -345,11 +443,16 @@ def start_league(
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
     from src.api.services.league_start import start_league as _start
+    import traceback
     try:
         _start(league_id, db)
-    except ValueError as e:
-        # TODO: surface error in lobby template
-        pass
+    except Exception as e:
+        # Surface the error as a plain response so we can see what went wrong
+        return HTMLResponse(
+            f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
+            f"Start league failed:\n\n{traceback.format_exc()}</pre>",
+            status_code=500,
+        )
 
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
@@ -521,7 +624,14 @@ def draft_tab(
             ).fetchone()
             skills = dict(skills_row) if skills_row else {}
             grades = player_row_to_grades(dict(row), skills, row["status"])
-            board.append(grades.model_dump())
+            ratings = _compute_ratings(skills, dict(row).get("throws", "R"))
+            g = grades.model_dump()
+            # Prospects use prospect rating for overall
+            if ratings:
+                g["overall"] = skill_to_grade(ratings.get("prospect"))
+                g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
+                g["best_def_label"] = ratings.get("best_def_label", "DEF")
+            board.append(g)
 
         prefs = []
         if gm:
@@ -558,7 +668,13 @@ def draft_tab(
             ).fetchone()
             skills = dict(skills_row) if skills_row else {}
             grades = player_row_to_grades(d, skills, d["status"])
-            players.append(grades.model_dump())
+            ratings = _compute_ratings(skills, d.get("throws", "R"))
+            g = grades.model_dump()
+            if ratings:
+                g["overall"] = skill_to_grade(ratings.get("overall_player"))
+                g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
+                g["best_def_label"] = ratings.get("best_def_label", "DEF")
+            players.append(g)
     ctx["players"] = players
 
     return _respond(request, "dashboard/partials/draft.html", ctx)
@@ -694,7 +810,13 @@ def roster(
             ).fetchone()
             skills = dict(skills_row) if skills_row else {}
             grades = player_row_to_grades(d, skills, d["status"])
-            players.append(grades.model_dump())
+            ratings = _compute_ratings(skills, d.get("throws", "R"))
+            g = grades.model_dump()
+            if ratings:
+                g["overall"] = skill_to_grade(ratings.get("overall_player"))
+                g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
+                g["best_def_label"] = ratings.get("best_def_label", "DEF")
+            players.append(g)
 
     ctx["players"] = players
     return _respond(request, "dashboard/partials/roster.html", ctx)
@@ -923,50 +1045,20 @@ def player_panel(
 
         skills = dict(sk) if sk else {}
         grades = player_row_to_grades(dict(p), skills, st["status"] if st else "unassigned")
+        ratings = _compute_ratings(skills, dict(p).get("throws", "R"))
 
-        if grades.player_type == "pitcher":
-            grade_map = [
-                {"section": "Pitching", "skills": [
-                    {"key": "strikes",      "label": "Stuff",        "grade": grades.stuff},
-                    {"key": "accuracy",     "label": "Control",      "grade": grades.control},
-                    {"key": "stamina",      "label": "Stamina",      "grade": grades.stamina},
-                    {"key": "recovery",     "label": "Recovery",     "grade": grades.recovery},
-                    {"key": "ground_balls", "label": "GB tendency",  "grade": skill_to_grade(skills.get("ground_balls"))},
-                ]},
-                {"section": "Hitting", "skills": [
-                    {"key": "contact",      "label": "Contact",      "grade": skill_to_grade(skills.get("contact"))},
-                    {"key": "power",        "label": "Power",        "grade": skill_to_grade(skills.get("power"))},
-                    {"key": "eye",          "label": "Eye",          "grade": skill_to_grade(skills.get("eye"))},
-                    {"key": "speed",        "label": "Speed",        "grade": skill_to_grade(skills.get("speed"))},
-                    {"key": "base_running", "label": "Baserunning",  "grade": skill_to_grade(skills.get("base_running"))},
-                    {"key": "bunting",      "label": "Bunting",      "grade": skill_to_grade(skills.get("bunting"))},
-                ]},
-                {"section": "General", "skills": [
-                    {"key": "clutch",      "label": "Clutch",       "grade": skill_to_grade(skills.get("clutch"))},
-                    {"key": "durability",  "label": "Durability",   "grade": skill_to_grade(skills.get("durability"))},
-                ]},
-            ]
+        # Overall: prospect rating for undrafted players, overall_player for rostered
+        status = st["status"] if st else "unassigned"
+        if status in ("prospect", "unassigned", "free_agent"):
+            overall_grade = skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
         else:
-            grade_map = [
-                {"section": "Hitting", "skills": [
-                    {"key": "contact",      "label": "Contact",     "grade": grades.contact},
-                    {"key": "power",        "label": "Power",       "grade": grades.power},
-                    {"key": "eye",          "label": "Eye",         "grade": grades.eye},
-                    {"key": "speed",        "label": "Speed",       "grade": grades.speed},
-                    {"key": "base_running", "label": "Baserunning", "grade": skill_to_grade(skills.get("base_running"))},
-                    {"key": "bunting",      "label": "Bunting",     "grade": skill_to_grade(skills.get("bunting"))},
-                ]},
-                {"section": "Defense", "skills": [
-                    {"key": "catching",  "label": "Catching", "grade": skill_to_grade(skills.get("catching"))},
-                    {"key": "infield",   "label": "Infield",  "grade": skill_to_grade(skills.get("infield"))},
-                    {"key": "outfield",  "label": "Outfield", "grade": skill_to_grade(skills.get("outfield"))},
-                    {"key": "arm",       "label": "Arm",      "grade": grades.arm},
-                ]},
-                {"section": "General", "skills": [
-                    {"key": "clutch",      "label": "Clutch",      "grade": skill_to_grade(skills.get("clutch"))},
-                    {"key": "durability",  "label": "Durability",  "grade": skill_to_grade(skills.get("durability"))},
-                ]},
-            ]
+            overall_grade = skill_to_grade(ratings.get("overall_player")) if ratings else grades.overall
+
+        grade_map = _ratings_to_grade_map(grades, skills, ratings)
+
+        # Best defensive grade for card display
+        best_def_grade = skill_to_grade(ratings.get("best_def")) if ratings else "?"
+        best_def_label = ratings.get("best_def_label", "DEF") if ratings else "DEF"
 
         energy = None
         if en:
@@ -980,14 +1072,16 @@ def player_panel(
 
         return {
             **grades.model_dump(),
-            "player_id":     pid,
-            "team_city":     team["city"]   if team else "—",
-            "team_mascot":   team["mascot"] if team else "",
-            "grades":        grade_map,
-            "overall_grade": grades.overall,
-            "energy":        energy,
-            "injury_log":    [dict(r) for r in inj],
-            "stats":         None,
+            "player_id":      pid,
+            "team_city":      team["city"]   if team else "—",
+            "team_mascot":    team["mascot"] if team else "",
+            "grades":         grade_map,
+            "overall_grade":  overall_grade,
+            "best_def_grade": best_def_grade,
+            "best_def_label": best_def_label,
+            "energy":         energy,
+            "injury_log":     [dict(r) for r in inj],
+            "stats":          None,
         }
 
     ctx = _shell_ctx(request, db, league_id, user, gm)
