@@ -27,17 +27,8 @@
      {% if not compare_player %}
        <button class="btn btn-secondary"
                style="font-size:10px;padding:4px 10px;"
-               onclick="pinForCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')"
-               title="Pin this player then click another to compare">
+               onclick="pinForCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')">
          Compare ↔
-       </button>
-     {% else %}
-       <button class="btn btn-secondary"
-               style="font-size:10px;padding:4px 10px;"
-               hx-get="/leagues/{{ league_id }}/players/{{ player.player_id }}/panel"
-               hx-target="#player-panel-mount"
-               hx-swap="innerHTML">
-         Clear comparison
        </button>
      {% endif %}
    </div>

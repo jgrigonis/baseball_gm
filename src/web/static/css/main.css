@@ -531,14 +531,15 @@ textarea { resize: vertical; min-height: 80px; }
 .player-panel {
   background: var(--bg-2);
   border-left: 1px solid var(--border);
-  width: 380px;
+  width: 420px;
+  max-width: 45vw;  /* never cover more than half the screen */
   display: flex;
   flex-direction: column;
   pointer-events: all;
   animation: slideIn 0.18s ease;
   overflow: hidden;
 }
-.player-panel.split { width: 680px; }
+.player-panel.split { width: 720px; max-width: 75vw; }
 
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }

@@ -71,22 +71,45 @@ function openPlayerPanel(pid) {
     .then(html => {
       document.getElementById('player-panel-mount').innerHTML = html;
       addBackdrop();
+      // Remove compare hint if it was showing
+      const hint = document.getElementById('compare-hint');
+      if (hint) hint.remove();
     })
     .catch(err => console.error('Panel load failed:', err));
 }
 function closePlayerPanel() {
   document.getElementById('player-panel-mount').innerHTML = '';
-  removeBackdrop(); _pinnedId = null;
+  removeBackdrop();
+  _pinnedId = null;
+  const hint = document.getElementById('compare-hint');
+  if (hint) hint.remove();
 }
 function pinForCompare(pid, name) {
   _pinnedId = pid;
-  // Update the button to show pinned state
-  const btn = document.querySelector('#player-panel .pp-header-actions button');
-  if (btn) {
-    btn.textContent = '✓ Pinned — click another player to compare';
-    btn.style.color = 'var(--amber)';
-    btn.disabled = true;
-  }
+  closeAndBrowse(name);
+}
+
+function closeAndBrowse(name) {
+  document.getElementById('player-panel-mount').innerHTML = '';
+  removeBackdrop();
+  const hint = document.createElement('div');
+  hint.id = 'compare-hint';
+  hint.style.cssText = 'position:sticky;top:0;z-index:20;background:var(--amber-lo);' +
+    'border-bottom:1px solid var(--amber-dim);padding:8px 24px;' +
+    'font-family:var(--font-mono);font-size:11px;color:var(--amber);' +
+    'display:flex;align-items:center;gap:12px;';
+  const label = name ? `✓ ${name} pinned — click any player to compare` : '↗ Click any player to compare';
+  hint.innerHTML = label +
+    ' · <button onclick="cancelCompare()" style="background:none;border:none;' +
+    'color:var(--text-dim);font-family:var(--font-mono);font-size:11px;cursor:pointer;">✕ Cancel</button>';
+  const tabContent = document.getElementById('tab-content');
+  if (tabContent) tabContent.prepend(hint);
+}
+
+function cancelCompare() {
+  _pinnedId = null;
+  const hint = document.getElementById('compare-hint');
+  if (hint) hint.remove();
 }
 function addBackdrop() {
   removeBackdrop();
