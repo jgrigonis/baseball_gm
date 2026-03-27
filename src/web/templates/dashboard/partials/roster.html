@@ -114,7 +114,10 @@
 
 <style>
 .roster-drop-col {
-  min-height:120px;border:1px solid var(--border);
+  min-height:120px;
+  max-height:calc(100vh - 220px);
+  overflow-y:auto;
+  border:1px solid var(--border);
   background:var(--bg-2);transition:border-color .15s,background .15s;
 }
 .roster-drop-col.drag-target{border-color:var(--amber);background:var(--amber-lo);}
