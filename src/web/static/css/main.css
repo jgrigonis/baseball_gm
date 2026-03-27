@@ -186,6 +186,8 @@ body {
   gap: 2px;
   overflow-x: auto;
   scrollbar-width: none;
+  position: relative;
+  z-index: 20;
 }
 .tab-bar::-webkit-scrollbar { display: none; }
 

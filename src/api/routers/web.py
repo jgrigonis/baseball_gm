@@ -168,6 +168,16 @@ def _injured_player_ids(db, team_id: str) -> set:
     ).fetchall()
     return {r["player_id"] for r in rows}
 
+
+def _games_remaining(db, season_id: str | None) -> int:
+    if not season_id:
+        return 0
+    row = db.execute(
+        "SELECT COUNT(*) FROM games WHERE season_id = ? AND completed = 0",
+        (season_id,),
+    ).fetchone()
+    return row[0] if row else 0
+
 def _draft_is_complete(db, league_id: str) -> bool:
     row = db.execute(
         """SELECT d.state FROM drafts d
@@ -232,6 +242,7 @@ def _shell_ctx(
         "season_id":           season["id"]   if season else None,
         "season_name":         season["name"] if season else None,
         "draft_complete":      _draft_is_complete(db, league_id) if league else False,
+        "games_remaining":     _games_remaining(db, season["id"] if season else None),
     }
 
 
@@ -923,6 +934,60 @@ def save_roster_put(
 
     db.commit()
     return JSONResponse({"saved": len(forty_man_ids)})
+
+
+# ── Sim ─────────────────────────────────────────────────────────────────────────
+
+@router.post("/leagues/{league_id}/sim")
+async def sim_games(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    """Sim N games (or until season end). Returns JSON with results summary."""
+    from fastapi.responses import JSONResponse
+    from src.api.services.sim_next import sim_next_day
+
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+    body = await request.json()
+    count = body.get("count", 1)  # number of game-days to sim, or "season"
+
+    results = []
+    days_simmed = 0
+    remaining = _games_remaining(db, db.execute(
+        """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? ORDER BY s.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()["id"] if db.execute(
+        "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
+    ).fetchone() else None)
+
+    limit = remaining if count == "season" else min(int(count), remaining)
+
+    for _ in range(limit):
+        day_result = sim_next_day(league_id, db)
+        if not day_result.get("results"):
+            break
+        results.append(day_result)
+        days_simmed += 1
+
+    games_played = sum(r.get("games_played", 0) for r in results)
+    new_remaining = _games_remaining(db, db.execute(
+        """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? ORDER BY s.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()["id"] if db.execute(
+        "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
+    ).fetchone() else None)
+
+    return JSONResponse({
+        "days_simmed":      days_simmed,
+        "games_played":     games_played,
+        "games_remaining":  new_remaining,
+        "last_date":        results[-1]["game_date"] if results else None,
+    })
 
 # ── Tab: Standings ─────────────────────────────────────────────────────────────
 
