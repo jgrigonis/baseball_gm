@@ -1,0 +1,870 @@
+# src/api/routers/web.py
+#
+# HTML-rendering routes for the production web UI.
+#
+# Identity model (matches schema.py):
+#   users.session_token  ← stored in "gm_session" browser cookie
+#   users → gms          via gms.user_id (one gm row per league)
+#
+# So the resolution chain is:
+#   cookie → users row → gms row WHERE league_id = ?
+#
+# Guest creation only makes a users row. The gms row is created
+# by the existing leagues.py router when the user creates/joins a league.
+
+from __future__ import annotations
+
+import sqlite3
+import uuid
+from typing import Annotated
+
+from fastapi import APIRouter, Cookie, Depends, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+
+from src.api.database import get_db
+from src.api.schemas import player_row_to_grades, skill_to_grade
+
+router = APIRouter(tags=["web"])
+templates = Jinja2Templates(directory="src/web/templates")
+
+DB = Annotated[sqlite3.Connection, Depends(get_db)]
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
+
+def _is_htmx(request: Request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def _resolve_user(db: sqlite3.Connection, token: str | None) -> sqlite3.Row | None:
+    """Return the users row for a session cookie, or None."""
+    if not token:
+        return None
+    return db.execute(
+        "SELECT * FROM users WHERE session_token = ?", (token,)
+    ).fetchone()
+
+
+def _resolve_gm(
+    db: sqlite3.Connection, user_id: str, league_id: str
+) -> sqlite3.Row | None:
+    """Return the gms row for this user in this league, or None."""
+    return db.execute(
+        "SELECT * FROM gms WHERE user_id = ? AND league_id = ?",
+        (user_id, league_id),
+    ).fetchone()
+
+
+def _tab_visible(state: str) -> list[str]:
+    always = ["standings", "leaders", "roster", "lineup", "strategy"]
+    if state == "lobby":                return []
+    if state == "draft":               return ["draft"] + always
+    if state in ("season", "playoffs"): return always + ["schedule"]
+    return always
+
+
+def _shell_ctx(
+    request: Request,
+    db: sqlite3.Connection,
+    league_id: str,
+    user: sqlite3.Row,
+    gm: sqlite3.Row | None,
+    active_tab: str | None = None,
+) -> dict:
+    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    team = None
+    if gm and gm["team_id"]:
+        team = db.execute(
+            "SELECT city, mascot FROM teams WHERE id = ?", (gm["team_id"],)
+        ).fetchone()
+
+    season = db.execute(
+        """SELECT s.* FROM seasons s
+           JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+
+    return {
+                "league_id": league_id,
+        "league_name":         league["name"]                if league else "—",
+        "league_state":        league["state"]               if league else "lobby",
+        "league_mode":         league["mode"]                if league else "blitz",
+        "join_code":           league["join_code"]           if league else "",
+        "num_teams":           league["num_teams"]           if league else 30,
+        "decision_window_sec": league["decision_window_sec"] if league else 120,
+        "reentry_enabled":     bool(league["reentry_enabled"]) if league else True,
+        "pace_control":        league["pace_control"]        if league else "timer",
+        "gm_id":               gm["id"]                     if gm else None,
+        "gm_display_name":     gm["display_name"]           if gm else user["display_name"],
+        "team_id":             gm["team_id"]                if gm else None,
+        "team_name":           f"{team['city']} {team['mascot']}" if team else None,
+        "is_commissioner":     (league and gm and league["commissioner_gm_id"] == gm["id"]),
+        "active_tab":          active_tab,
+        "visible_tabs":        _tab_visible(league["state"] if league else "lobby"),
+        "season_id":           season["id"]   if season else None,
+        "season_name":         season["name"] if season else None,
+    }
+
+
+def _respond(request: Request, partial_template: str, ctx: dict) -> HTMLResponse:
+    """HTMX → return partial only. Direct nav → full shell with partial embedded."""
+    if _is_htmx(request):
+        return templates.TemplateResponse(request, partial_template, ctx)
+    ctx["tab_template"] = partial_template
+    return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
+
+
+# ── Landing / Auth ─────────────────────────────────────────────────────────────
+
+@router.get("/", response_class=HTMLResponse)
+def landing(request: Request, db: DB, gm_session: str | None = Cookie(default=None)):
+    user = _resolve_user(db, gm_session)
+    if user:
+        return RedirectResponse("/leagues/")
+    return templates.TemplateResponse(request, "landing.html", {})
+
+
+@router.post("/auth/guest")
+def create_guest(
+    request: Request, db: DB,
+    display_name: str = Form(default="Guest"),
+):
+    """
+    Create a guest identity. Only creates a users row — gms rows are
+    created when the user creates or joins a specific league.
+    """
+    token = uuid.uuid4().hex + uuid.uuid4().hex
+    user_id = str(uuid.uuid4())
+    db.execute(
+        "INSERT INTO users (id, session_token, display_name) VALUES (?, ?, ?)",
+        (user_id, token, display_name or "Guest"),
+    )
+    db.commit()
+    resp = RedirectResponse("/leagues/", status_code=302)
+    resp.set_cookie(
+        "gm_session", token,
+        max_age=60 * 60 * 24 * 365 * 5,
+        httponly=True, samesite="lax",
+    )
+    return resp
+
+
+@router.post("/auth/logout")
+def logout():
+    resp = RedirectResponse("/", status_code=302)
+    resp.delete_cookie("gm_session")
+    return resp
+
+
+# ── League list ────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/", response_class=HTMLResponse)
+def leagues_index(
+    request: Request, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    rows = db.execute(
+        """SELECT l.* FROM leagues l
+           JOIN gms g ON g.league_id = l.id
+           JOIN users u ON u.id = g.user_id
+           WHERE u.session_token = ?
+           ORDER BY l.created_at DESC""",
+        (gm_session,),
+    ).fetchall()
+
+    return templates.TemplateResponse(request, "leagues/index.html", {
+                "user": dict(user),
+        "leagues": [dict(r) for r in rows],
+    })
+
+
+@router.get("/leagues/new", response_class=HTMLResponse)
+def new_league_page(request: Request):
+    return templates.TemplateResponse(request, "leagues/new.html", {})
+
+
+@router.post("/leagues/new")
+def create_league(
+    request: Request, db: DB,
+    gm_session: str | None = Cookie(default=None),
+    name: str = Form(...),
+    mode: str = Form("blitz"),
+    decision_window_sec: int = Form(120),
+    reentry_enabled: bool = Form(True),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/", status_code=302)
+
+    import random as _random, string as _string, uuid as _uuid
+
+    league_id = str(_uuid.uuid4())
+    gm_id = str(_uuid.uuid4())
+    join_code = "".join(_random.choices(_string.ascii_uppercase + _string.digits, k=6))
+
+    db.execute(
+        """INSERT INTO leagues
+             (id, name, join_code, mode, num_teams, decision_window_sec,
+              reentry_enabled, pace_control, state)
+           VALUES (?, ?, ?, ?, 30, ?, ?, 'timer', 'lobby')""",
+        (league_id, name, join_code, mode, decision_window_sec, int(reentry_enabled)),
+    )
+    db.execute(
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        (gm_id, league_id, user["id"], user["display_name"]),
+    )
+    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
+    db.execute("UPDATE leagues SET commissioner_gm_id = ? WHERE id = ?", (gm_id, league_id))
+    db.commit()
+
+    return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+
+@router.post("/leagues/join")
+def join_league(
+    request: Request, db: DB,
+    gm_session: str | None = Cookie(default=None),
+    join_code: str = Form(...),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/", status_code=302)
+
+    import uuid as _uuid
+
+    league = db.execute(
+        "SELECT * FROM leagues WHERE join_code = ?", (join_code.upper(),)
+    ).fetchone()
+    if not league:
+        return templates.TemplateResponse(request, "leagues/join.html", {"error": "League not found."})
+    if league["state"] != "lobby":
+        return templates.TemplateResponse(request, "leagues/join.html", {"error": "League has already started."})
+
+    # Check if already a member
+    existing = db.execute(
+        "SELECT id FROM gms WHERE league_id = ? AND user_id = ?",
+        (league["id"], user["id"]),
+    ).fetchone()
+    if existing:
+        return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
+
+    gm_id = str(_uuid.uuid4())
+    db.execute(
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        (gm_id, league["id"], user["id"], user["display_name"]),
+    )
+    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
+    db.commit()
+
+    return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
+
+
+@router.get("/leagues/join", response_class=HTMLResponse)
+def join_page(request: Request):
+    return templates.TemplateResponse(request, "leagues/join.html", {})
+
+
+# ── Dashboard shell ────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/", response_class=HTMLResponse)
+def dashboard(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    if not league:
+        return RedirectResponse("/leagues/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    state = league["state"]
+
+    if state == "lobby":
+        return _lobby(request, league_id, db, user, gm)
+    if state == "draft":
+        return RedirectResponse(f"/leagues/{league_id}/draft")
+    if state in ("season", "playoffs"):
+        return RedirectResponse(f"/leagues/{league_id}/standings")
+    if state == "evaluation":
+        season = db.execute(
+            """SELECT s.year FROM seasons s JOIN league_seasons ls
+               ON ls.season_id = s.id WHERE ls.league_id = ?
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        year = season["year"] if season else 1
+        return RedirectResponse(f"/leagues/{league_id}/history/{year}/")
+    return RedirectResponse(f"/leagues/{league_id}/standings")
+
+
+def _lobby(request, league_id, db, user, gm):
+    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    gms = db.execute(
+        """SELECT g.id, g.display_name, g.is_ai, g.is_away, g.team_id,
+                  t.city, t.mascot
+           FROM gms g LEFT JOIN teams t ON t.id = g.team_id
+           WHERE g.league_id = ? ORDER BY g.created_at""",
+        (league_id,),
+    ).fetchall()
+    return templates.TemplateResponse(request, "dashboard/lobby.html", {
+                "league_id": league_id,
+        "league_name":         league["name"],
+        "league_state":        "lobby",
+        "join_code":           league["join_code"],
+        "num_teams":           league["num_teams"],
+        "decision_window_sec": league["decision_window_sec"],
+        "reentry_enabled":     bool(league["reentry_enabled"]),
+        "pace_control":        league["pace_control"],
+        "league_mode":         league["mode"],
+        "gm_display_name":     gm["display_name"] if gm else user["display_name"],
+        "current_gm_id":       gm["id"] if gm else None,
+        "is_commissioner":     gm and league["commissioner_gm_id"] == gm["id"],
+        "gms": [dict(r) for r in gms],
+    })
+
+
+# ── Tab: Draft ─────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/draft", response_class=HTMLResponse)
+def draft_tab(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "draft")
+
+    draft = db.execute(
+        """SELECT d.* FROM drafts d
+           JOIN league_seasons ls ON ls.season_id = d.season_id
+           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+
+    if draft:
+        picked_ids = {
+            r["player_id"] for r in db.execute(
+                "SELECT player_id FROM draft_picks WHERE draft_id = ?",
+                (draft["id"],),
+            ).fetchall()
+        }
+        all_players = db.execute(
+            """SELECT p.*, ps.status FROM players p
+               JOIN player_status ps ON ps.player_id = p.id
+               WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
+               ORDER BY p.last_name, p.first_name""",
+        ).fetchall()
+
+        board = []
+        for row in all_players:
+            if row["id"] in picked_ids:
+                continue
+            skills_row = db.execute(
+                "SELECT * FROM player_skills WHERE player_id = ?", (row["id"],)
+            ).fetchone()
+            skills = dict(skills_row) if skills_row else {}
+            grades = player_row_to_grades(dict(row), skills, row["status"])
+            board.append(grades.model_dump())
+
+        prefs = []
+        if gm:
+            prefs = db.execute(
+                """SELECT dp.player_id FROM draft_preferences dp
+                   WHERE dp.draft_id = ? AND dp.gm_id = ?
+                   ORDER BY dp.rank""",
+                (draft["id"], gm["id"]),
+            ).fetchall()
+
+        ctx["draft_id"]    = draft["id"]
+        ctx["board"]       = board
+        ctx["preferences"] = [r["player_id"] for r in prefs]
+    else:
+        ctx["draft_id"]    = None
+        ctx["board"]       = []
+        ctx["preferences"] = []
+
+    return _respond(request, "dashboard/partials/draft.html", ctx)
+
+
+# ── Tab: Standings ─────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/standings", response_class=HTMLResponse)
+def standings(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "standings")
+    season_id = ctx["season_id"]
+    teams = []
+
+    if season_id:
+        rows = db.execute(
+            """SELECT
+                 t.id as team_id, t.city, t.mascot,
+                 SUM(tgs.win)  as wins,
+                 SUM(tgs.loss) as losses,
+                 SUM(tgs.runs) as runs_scored
+               FROM teams t
+               JOIN league_season_teams lst
+                 ON lst.team_id = t.id
+                 AND lst.league_id = ?
+                 AND lst.season_id = ?
+               JOIN team_game_stats tgs ON tgs.team_id = t.id
+               JOIN games g
+                 ON g.id = tgs.game_id
+                 AND g.season_id = ?
+                 AND g.completed = 1
+               GROUP BY t.id
+               ORDER BY wins DESC, losses ASC""",
+            (league_id, season_id, season_id),
+        ).fetchall()
+
+        ra_rows = db.execute(
+            """SELECT tgs.team_id, SUM(opp.runs) as runs_allowed
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id AND g.season_id = ? AND g.completed = 1
+               JOIN team_game_stats opp
+                 ON opp.game_id = g.id AND opp.team_id != tgs.team_id
+               GROUP BY tgs.team_id""",
+            (season_id,),
+        ).fetchall()
+        ra_map = {r["team_id"]: r["runs_allowed"] or 0 for r in ra_rows}
+
+        human_team_ids = {
+            r["team_id"] for r in db.execute(
+                "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
+                (league_id,),
+            ).fetchall()
+        }
+
+        for r in rows:
+            wins   = r["wins"]        or 0
+            losses = r["losses"]      or 0
+            rs     = r["runs_scored"] or 0
+            ra     = ra_map.get(r["team_id"], 0)
+            teams.append({
+                "team_id":      r["team_id"],
+                "city":         r["city"],
+                "mascot":       r["mascot"],
+                "wins":         wins,
+                "losses":       losses,
+                "run_diff":     rs - ra,
+                "runs_scored":  rs,
+                "runs_allowed": ra,
+                "is_human":     r["team_id"] in human_team_ids,
+                "last_10":      None,
+                "streak":       None,
+            })
+
+    ctx["teams"]        = teams
+    ctx["games_played"] = sum(t["wins"] + t["losses"] for t in teams) // 2 if teams else 0
+    return _respond(request, "dashboard/partials/standings.html", ctx)
+
+
+# ── Tab: Leaders ───────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/leaders", response_class=HTMLResponse)
+def leaders(
+    request: Request, league_id: str, db: DB,
+    category: str = "batting",
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "leaders")
+    ctx["category"] = category
+    ctx["rows"]     = []
+    return _respond(request, "dashboard/partials/leaders.html", ctx)
+
+
+# ── Tab: Roster ────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/roster", response_class=HTMLResponse)
+def roster(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "roster")
+    players = []
+
+    if gm and gm["team_id"]:
+        rows = db.execute(
+            """SELECT p.*, ps.status
+               FROM players p
+               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+               JOIN player_status ps ON ps.player_id = p.id
+               ORDER BY ps.status, p.last_name""",
+            (gm["team_id"],),
+        ).fetchall()
+        for row in rows:
+            d = dict(row)
+            skills_row = db.execute(
+                "SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)
+            ).fetchone()
+            skills = dict(skills_row) if skills_row else {}
+            grades = player_row_to_grades(d, skills, d["status"])
+            players.append(grades.model_dump())
+
+    ctx["players"] = players
+    return _respond(request, "dashboard/partials/roster.html", ctx)
+
+
+# ── Tab: Lineup ────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/lineup", response_class=HTMLResponse)
+def lineup(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "lineup")
+    ctx["batting_order"] = []
+    ctx["bench"]         = []
+    ctx["rotation"]      = []
+    ctx["bullpen"]       = []
+    return _respond(request, "dashboard/partials/lineup.html", ctx)
+
+
+# ── Tab: Strategy ──────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
+def strategy(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "strategy")
+
+    profile_row = db.execute(
+        "SELECT * FROM gm_profiles WHERE gm_id = ?", (gm["id"],)
+    ).fetchone() if gm else None
+
+    _L = ["traditional", "analytics", "speed-first", "power-first"]
+    _S = ["conservative", "standard", "aggressive"]
+    _B = ["never", "situational", "frequent"]
+    _P = ["none", "vs-handedness", "aggressive"]
+    _U = ["let-them-work", "pitch-count-strict", "matchup-based"]
+    _C = ["saves-only", "high-leverage", "best-available"]
+    _N = ["deep-pen", "starter-heavy"]
+
+    def idx(lst, val, default=0):
+        try:    return lst.index(val)
+        except: return default
+
+    if profile_row:
+        p = dict(profile_row)
+        ctx["profile"] = {
+            "lineup_style_index":     idx(_L, p.get("lineup_style",     "analytics"),         1),
+            "steal_aggression_index": idx(_S, p.get("steal_aggression", "standard"),           1),
+            "sac_bunt_index":         idx(_B, p.get("sac_bunt",         "situational"),        1),
+            "platoon_usage_index":    idx(_P, p.get("platoon_usage",    "none"),               0),
+            "starter_usage_index":    idx(_U, p.get("starter_usage",    "pitch-count-strict"), 1),
+            "closer_usage_index":     idx(_C, p.get("closer_usage",     "saves-only"),         0),
+            "bullpen_pref_index":     idx(_N, p.get("bullpen_pref",     "deep-pen"),           0),
+        }
+    else:
+        ctx["profile"] = {
+            "lineup_style_index": 1, "steal_aggression_index": 1,
+            "sac_bunt_index": 1,     "platoon_usage_index": 0,
+            "starter_usage_index": 1,"closer_usage_index": 0,
+            "bullpen_pref_index": 0,
+        }
+
+    return _respond(request, "dashboard/partials/strategy.html", ctx)
+
+
+@router.post("/leagues/{league_id}/strategy")
+async def save_strategy(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return HTMLResponse("Unauthorized", status_code=401)
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    if not gm:
+        return HTMLResponse("Not a member of this league", status_code=403)
+
+    form = await request.form()
+    _MAPS = {
+        "lineup_style":     ["traditional", "analytics", "speed-first", "power-first"],
+        "steal_aggression": ["conservative", "standard", "aggressive"],
+        "sac_bunt":         ["never", "situational", "frequent"],
+        "platoon_usage":    ["none", "vs-handedness", "aggressive"],
+        "starter_usage":    ["let-them-work", "pitch-count-strict", "matchup-based"],
+        "closer_usage":     ["saves-only", "high-leverage", "best-available"],
+        "bullpen_pref":     ["deep-pen", "starter-heavy"],
+    }
+    updates = {}
+    for field, options in _MAPS.items():
+        i = int(form.get(field, 0))
+        updates[field] = options[min(i, len(options) - 1)]
+
+    set_clause = ", ".join(f"{col} = ?" for col in updates)
+    db.execute(
+        f"UPDATE gm_profiles SET {set_clause}, updated_at = datetime('now') WHERE gm_id = ?",
+        [*updates.values(), gm["id"]],
+    )
+    db.commit()
+    return HTMLResponse(
+        '<span style="color:var(--green);font-family:var(--font-mono);font-size:11px;">✓ Saved</span>'
+    )
+
+
+# ── Tab: Schedule ──────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/schedule", response_class=HTMLResponse)
+@router.get("/leagues/{league_id}/schedule/{date}", response_class=HTMLResponse)
+def schedule(
+    request: Request, league_id: str, db: DB,
+    date: str | None = None,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "schedule")
+    season_id = ctx["season_id"]
+
+    if not date and season_id:
+        row = db.execute(
+            "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND completed = 1",
+            (season_id,),
+        ).fetchone()
+        date = row["d"] if row else None
+
+    games = []
+    prev_date = next_date = None
+
+    if date and season_id:
+        rows = db.execute(
+            """SELECT g.id, g.home_team_id, g.away_team_id,
+                      g.home_score, g.away_score, g.innings_played, g.winner_id,
+                      ht.city as home_city, ht.mascot as home_mascot,
+                      at.city as away_city, at.mascot as away_mascot
+               FROM games g
+               JOIN teams ht ON ht.id = g.home_team_id
+               JOIN teams at ON at.id = g.away_team_id
+               WHERE g.season_id = ? AND g.game_date = ?
+               ORDER BY g.home_team_id""",
+            (season_id, date),
+        ).fetchall()
+        games = [dict(r) for r in rows]
+
+        prev = db.execute(
+            "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND game_date < ? AND completed = 1",
+            (season_id, date),
+        ).fetchone()
+        nxt = db.execute(
+            "SELECT MIN(game_date) as d FROM games WHERE season_id = ? AND game_date > ? AND completed = 1",
+            (season_id, date),
+        ).fetchone()
+        prev_date = prev["d"] if prev else None
+        next_date = nxt["d"] if nxt else None
+
+    ctx["game_date"] = date
+    ctx["games"]     = games
+    ctx["prev_date"] = prev_date
+    ctx["next_date"] = next_date
+    return _respond(request, "dashboard/partials/schedule.html", ctx)
+
+
+# ── Game detail ────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/games/{game_id}", response_class=HTMLResponse)
+def game_detail(
+    request: Request, league_id: str, game_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "schedule")
+    game = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+    ctx["game"]         = dict(game) if game else None
+    ctx["tab_template"] = "dashboard/partials/game_detail.html"
+    return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
+
+
+# ── Player panel (slide-in) ────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/players/{player_id}/panel", response_class=HTMLResponse)
+def player_panel(
+    request: Request, league_id: str, player_id: str, db: DB,
+    compare: str | None = None,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return HTMLResponse("Unauthorized", status_code=401)
+
+    gm = _resolve_gm(db, user["id"], league_id)
+
+    def _load(pid: str) -> dict | None:
+        p = db.execute("SELECT * FROM players WHERE id = ?", (pid,)).fetchone()
+        if not p:
+            return None
+        sk  = db.execute("SELECT * FROM player_skills WHERE player_id = ?", (pid,)).fetchone()
+        st  = db.execute("SELECT status FROM player_status WHERE player_id = ?", (pid,)).fetchone()
+        en  = db.execute("SELECT * FROM player_energy WHERE player_id = ?", (pid,)).fetchone()
+        inj = db.execute(
+            "SELECT * FROM player_injury_log WHERE player_id = ? ORDER BY injury_date DESC LIMIT 5",
+            (pid,),
+        ).fetchall()
+        team = db.execute(
+            """SELECT t.city, t.mascot FROM teams t
+               JOIN team_players tp ON tp.team_id = t.id WHERE tp.player_id = ?""",
+            (pid,),
+        ).fetchone()
+
+        skills = dict(sk) if sk else {}
+        grades = player_row_to_grades(dict(p), skills, st["status"] if st else "unassigned")
+
+        if grades.player_type == "pitcher":
+            grade_map = {
+                "strikes":      {"label": "Stuff",       "grade": grades.stuff},
+                "accuracy":     {"label": "Control",     "grade": grades.control},
+                "stamina":      {"label": "Stamina",     "grade": grades.stamina},
+                "recovery":     {"label": "Recovery",    "grade": grades.recovery},
+                "ground_balls": {"label": "GB tendency", "grade": skill_to_grade(skills.get("ground_balls"))},
+                "clutch":       {"label": "Clutch",      "grade": skill_to_grade(skills.get("clutch"))},
+                "durability":   {"label": "Durability",  "grade": skill_to_grade(skills.get("durability"))},
+            }
+        else:
+            grade_map = {
+                "contact":      {"label": "Contact",     "grade": grades.contact},
+                "power":        {"label": "Power",       "grade": grades.power},
+                "eye":          {"label": "Eye",         "grade": grades.eye},
+                "speed":        {"label": "Speed",       "grade": grades.speed},
+                "base_running": {"label": "Baserunning", "grade": skill_to_grade(skills.get("base_running"))},
+                "bunting":      {"label": "Bunting",     "grade": skill_to_grade(skills.get("bunting"))},
+                "catching":     {"label": "Catching",    "grade": skill_to_grade(skills.get("catching"))},
+                "infield":      {"label": "Infield",     "grade": skill_to_grade(skills.get("infield"))},
+                "outfield":     {"label": "Outfield",    "grade": skill_to_grade(skills.get("outfield"))},
+                "arm":          {"label": "Arm",         "grade": grades.arm},
+                "clutch":       {"label": "Clutch",      "grade": skill_to_grade(skills.get("clutch"))},
+                "durability":   {"label": "Durability",  "grade": skill_to_grade(skills.get("durability"))},
+            }
+
+        energy = None
+        if en:
+            energy = {
+                "current":             round(en["current_energy"] * 100),
+                "max":                 round(en["max_energy"] * 100),
+                "consecutive_days":    en["consecutive_days"],
+                "last_game_date":      en["last_game_date"],
+                "season_games_played": en["season_games_played"],
+            }
+
+        return {
+            **grades.model_dump(),
+            "player_id":     pid,
+            "team_city":     team["city"]   if team else "—",
+            "team_mascot":   team["mascot"] if team else "",
+            "grades":        grade_map,
+            "overall_grade": grades.overall,
+            "energy":        energy,
+            "injury_log":    [dict(r) for r in inj],
+            "stats":         None,
+        }
+
+    ctx = _shell_ctx(request, db, league_id, user, gm)
+    ctx["player"]         = _load(player_id)
+    ctx["compare_player"] = _load(compare) if compare else None
+    return templates.TemplateResponse(request, "dashboard/partials/player_panel.html", ctx)
+
+
+# ── History ────────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/history/", response_class=HTMLResponse)
+def history_index(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    seasons = db.execute(
+        """SELECT s.* FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? ORDER BY s.year""",
+        (league_id,),
+    ).fetchall()
+
+    return templates.TemplateResponse(request, "history/index.html", {
+                "league_id": league_id,
+        "seasons":   [dict(s) for s in seasons],
+    })
+
+
+@router.get("/leagues/{league_id}/history/{year}/", response_class=HTMLResponse)
+def season_summary(
+    request: Request, league_id: str, year: int, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+
+    season = db.execute(
+        """SELECT s.* FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? AND s.year = ?""",
+        (league_id, year),
+    ).fetchone()
+
+    evaluation = None
+    if season and gm:
+        evaluation = db.execute(
+            "SELECT * FROM gm_season_evaluations WHERE gm_id = ? AND season_id = ?",
+            (gm["id"], season["id"]),
+        ).fetchone()
+
+    return templates.TemplateResponse(request, "history/season.html", {
+                "league_id":     league_id,
+        "year":          year,
+        "season":        dict(season)     if season     else None,
+        "gm_evaluation": dict(evaluation) if evaluation else None,
+        "standings":     [],
+        "stat_leaders":  {},
+        "win_trend":     [],
+    })
