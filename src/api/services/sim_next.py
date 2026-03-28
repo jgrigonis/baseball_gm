@@ -136,6 +136,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 season_id=season_id,
                 game_info=game_dict,
                 rng=rng,
+                league_id=league_id,
             )
             results.append(
                 {

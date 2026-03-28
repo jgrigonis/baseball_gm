@@ -246,6 +246,7 @@ def play_game(
     season_id: str,
     game_info: dict,
     rng: random.Random,
+    league_id: str = "",
 ):
     """Play a single game and save results."""
     # Load teams
@@ -313,7 +314,7 @@ def play_game(
     _ps_repo = PitcherStateRepository(conn)
     pitcher_states = {pid: _ps_repo.get(pid) for pid in all_player_ids}
     energy_repo = PlayerEnergyRepository(conn)
-    injury_repo = InjuryRepository(conn)
+    injury_repo = InjuryRepository(conn, league_id=league_id)
     player_energy_states = {
         p.id: energy_repo.get_with_recovery(
             p.id, game_date, durability=p.skills.get("durability", 50)
@@ -511,6 +512,12 @@ def main():
         log_id="season",
         log_to_file=True,
     )
+    # Look up league_id from season_id for CLI usage
+    league_row = conn.execute(
+        "SELECT league_id FROM league_seasons WHERE season_id = ? LIMIT 1",
+        (args.season_id,),
+    ).fetchone()
+    league_id = league_row["league_id"] if league_row else ""
 
     # Initialize repositories
     game_repo = GameRepository(conn)
@@ -566,6 +573,7 @@ def main():
                 args.season_id,
                 game_info,
                 rng,
+                league_id=league_id,
             )
             completed += 1
 

@@ -98,7 +98,8 @@ class PositionPlayerFatigue:
     # Game events
     # ------------------------------------------------------------------
 
-    def play_game(self, innings_played: int = 9) -> None:
+    # was play_game, don't think it's ever used.
+    def record_game(self, innings_played: int = 9) -> None:
         """
         Record a game played. Drain scales with innings and position.
 
