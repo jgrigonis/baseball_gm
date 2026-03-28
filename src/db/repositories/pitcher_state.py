@@ -44,9 +44,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _RECOVERY_THRESHOLD = 0.99  # "effectively full"
-_DAYS_AT_SKILL_MAX = 3.0    # recovery = 100
-_DAYS_AT_SKILL_MID = 4.0    # recovery = 50
-_DAYS_AT_SKILL_MIN = 5.0    # recovery = 1
+_DAYS_AT_SKILL_MAX = 3.0  # recovery = 100
+_DAYS_AT_SKILL_MID = 4.0  # recovery = 50
+_DAYS_AT_SKILL_MIN = 5.0  # recovery = 1
 
 MIN_ENERGY_STARTER = 0.75
 
@@ -57,6 +57,7 @@ CAP_REGEN_PER_DAY = 0.004
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
+
 
 def _daily_recovery_rate(recovery_skill: int) -> float:
     """
@@ -114,6 +115,7 @@ def availability_weight(state: "PitcherState", game_date: date) -> float:
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PitcherState:
     player_id: str
@@ -137,6 +139,7 @@ class PitcherState:
 # ---------------------------------------------------------------------------
 # Repository
 # ---------------------------------------------------------------------------
+
 
 class PitcherStateRepository:
     """Repository for managing pitcher energy and rest, scoped to a single league."""
@@ -213,7 +216,9 @@ class PitcherStateRepository:
             logger.warning(
                 "Data inconsistency for pitcher %s: game_date %s is before "
                 "last_game_date %s. Returning fresh state.",
-                player_id, game_date, state.last_game_date,
+                player_id,
+                game_date,
+                state.last_game_date,
             )
             return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
 
@@ -223,7 +228,9 @@ class PitcherStateRepository:
             energy += (state.max_energy - energy) * rate
         state.current_energy = max(0.0, min(state.max_energy, energy))
         state.max_energy = min(1.0, state.max_energy + (CAP_REGEN_PER_DAY * days_rest))
-        state.current_energy = _apply_recovery(state.current_energy, days_rest, recovery_skill)
+        state.current_energy = _apply_recovery(
+            state.current_energy, days_rest, recovery_skill
+        )
         return state
 
     # THIS CODE IS NOT USED, BUT MAY BE USEFULE
@@ -403,4 +410,3 @@ class PitcherStateRepository:
         deleted = cursor.rowcount
         self.conn.commit()
         return deleted
-    

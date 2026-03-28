@@ -191,7 +191,12 @@ def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: Team
 
 
 def load_energy(
-    conn, game_repo, game_id: str, home_team: TeamInGame, away_team: TeamInGame, league_id: str = ""
+    conn,
+    game_repo,
+    game_id: str,
+    home_team: TeamInGame,
+    away_team: TeamInGame,
+    league_id: str = "",
 ):
     """
     Load the pitcher energy for both teams.
@@ -212,7 +217,9 @@ def load_energy(
     return game_date
 
 
-def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame, league_id: str = ""):
+def save_energy(
+    conn, game_date, home_team: TeamInGame, away_team: TeamInGame, league_id: str = ""
+):
     """
     Save the pitcher energy to the database.
     """
@@ -462,11 +469,11 @@ def play_game(
             continue
         state = player_energy_states.get(player.id)
         if state:
-            state.current_energy      = fatigue.energy
-            state.max_energy          = fatigue.max_energy
-            state.consecutive_days    = fatigue.consecutive_days
+            state.current_energy = fatigue.energy
+            state.max_energy = fatigue.max_energy
+            state.consecutive_days = fatigue.consecutive_days
             state.season_games_played = fatigue.season_games_played
-            state.last_game_date      = game_date
+            state.last_game_date = game_date
 
     save_energy(conn, game_date, home_team, away_team, league_id=league_id)
     save_position_energy(conn, player_energy_states, league_id)
@@ -516,8 +523,8 @@ def main():
     league_id = league_row["league_id"] if league_row else ""
 
     # Initialize repositories
-    game_repo      = GameRepository(conn)
-    team_repo      = TeamRepository(conn)
+    game_repo = GameRepository(conn)
+    team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 

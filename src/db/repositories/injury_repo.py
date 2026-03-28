@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 INJURY_TIERS = {
-    "minor":    (1,   7),
-    "moderate": (7,  50),
-    "pitcher":  (12, 50),
-    "severe":   (57, 90),
-    "surgery":  (270, 540),
+    "minor": (1, 7),
+    "moderate": (7, 50),
+    "pitcher": (12, 50),
+    "severe": (57, 90),
+    "surgery": (270, 540),
 }
 
 
@@ -158,7 +158,9 @@ class InjuryRepository:
             self.conn.rollback()
             raise
 
-        logger.info("Player %s injured: %s (%d games).", player_id, severity, games_missed)
+        logger.info(
+            "Player %s injured: %s (%d games).", player_id, severity, games_missed
+        )
         return injury
 
     def tick(self, player_id: str) -> Optional[PlayerInjury]:

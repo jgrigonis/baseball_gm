@@ -50,13 +50,13 @@ logger = logging.getLogger(__name__)
 # Recovery calibration
 # ---------------------------------------------------------------------------
 
-_RECOVERY_THRESHOLD     = 0.99
+_RECOVERY_THRESHOLD = 0.99
 _DAYS_AT_DURABILITY_MAX = 3.0  # durability = 100
 _DAYS_AT_DURABILITY_MID = 4.0  # durability = 50
 _DAYS_AT_DURABILITY_MIN = 5.0  # durability = 1
 
 # Minimum energy before the AI should consider resting a player
-MIN_ENERGY_AVAILABLE    = 0.40  # maps to TIRED threshold in PositionPlayerFatigue
+MIN_ENERGY_AVAILABLE = 0.40  # maps to TIRED threshold in PositionPlayerFatigue
 
 
 def _daily_recovery_rate(durability: int) -> float:
@@ -395,7 +395,9 @@ class PlayerEnergyRepository:
                 [self.league_id] + list(player_ids),
             )
         else:
-            cursor.execute("DELETE FROM player_energy WHERE league_id = ?", (self.league_id,))
+            cursor.execute(
+                "DELETE FROM player_energy WHERE league_id = ?", (self.league_id,)
+            )
 
         deleted = cursor.rowcount
         self.conn.commit()
@@ -404,7 +406,10 @@ class PlayerEnergyRepository:
     def delete(self, player_id: str) -> bool:
         """Delete a single player's energy row. Returns True if a row was removed."""
         cursor = self.conn.cursor()
-        cursor.execute("DELETE FROM player_energy WHERE player_id = ? AND league_id = ?", (player_id, self.league_id))
+        cursor.execute(
+            "DELETE FROM player_energy WHERE player_id = ? AND league_id = ?",
+            (player_id, self.league_id),
+        )
         deleted = cursor.rowcount > 0
         self.conn.commit()
         return deleted

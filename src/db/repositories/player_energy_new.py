@@ -12,21 +12,25 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_RECOVERY_THRESHOLD      = 0.99
-_DAYS_AT_DURABILITY_MAX  = 3.0
-_DAYS_AT_DURABILITY_MID  = 4.0
-_DAYS_AT_DURABILITY_MIN  = 5.0
-MIN_ENERGY_AVAILABLE     = 0.40
+_RECOVERY_THRESHOLD = 0.99
+_DAYS_AT_DURABILITY_MAX = 3.0
+_DAYS_AT_DURABILITY_MID = 4.0
+_DAYS_AT_DURABILITY_MIN = 5.0
+MIN_ENERGY_AVAILABLE = 0.40
 
 
 def _daily_recovery_rate(durability: int) -> float:
     d = max(1, min(100, durability))
     if d <= 50:
-        t    = (d - 1) / (50 - 1)
-        days = _DAYS_AT_DURABILITY_MIN + t * (_DAYS_AT_DURABILITY_MID - _DAYS_AT_DURABILITY_MIN)
+        t = (d - 1) / (50 - 1)
+        days = _DAYS_AT_DURABILITY_MIN + t * (
+            _DAYS_AT_DURABILITY_MID - _DAYS_AT_DURABILITY_MIN
+        )
     else:
-        t    = (d - 50) / (100 - 50)
-        days = _DAYS_AT_DURABILITY_MID + t * (_DAYS_AT_DURABILITY_MAX - _DAYS_AT_DURABILITY_MID)
+        t = (d - 50) / (100 - 50)
+        days = _DAYS_AT_DURABILITY_MID + t * (
+            _DAYS_AT_DURABILITY_MAX - _DAYS_AT_DURABILITY_MID
+        )
     return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
 
 
@@ -39,11 +43,11 @@ def _apply_recovery(energy: float, days: int, durability: int) -> float:
 
 @dataclass
 class PlayerEnergyState:
-    player_id:           str
-    current_energy:      float = 1.0
-    max_energy:          float = 1.0
-    last_game_date:      Optional[date] = None
-    consecutive_days:    int = 0
+    player_id: str
+    current_energy: float = 1.0
+    max_energy: float = 1.0
+    last_game_date: Optional[date] = None
+    consecutive_days: int = 0
     season_games_played: int = 0
 
     @property
@@ -59,7 +63,7 @@ class PlayerEnergyRepository:
     """Repository for managing position player energy, scoped to a single league."""
 
     def __init__(self, conn, league_id: str = ""):
-        self.conn      = conn
+        self.conn = conn
         self.league_id = league_id
 
     # ------------------------------------------------------------------
@@ -80,8 +84,11 @@ class PlayerEnergyRepository:
             return None
         last_game_date = datetime.fromisoformat(row[3]).date() if row[3] else None
         return PlayerEnergyState(
-            player_id=row[0], current_energy=row[1], max_energy=row[2],
-            last_game_date=last_game_date, consecutive_days=row[4],
+            player_id=row[0],
+            current_energy=row[1],
+            max_energy=row[2],
+            last_game_date=last_game_date,
+            consecutive_days=row[4],
             season_games_played=row[5],
         )
 
@@ -98,17 +105,19 @@ class PlayerEnergyRepository:
         if days_rest < 0:
             logger.warning(
                 "Data inconsistency for player %s: game_date %s before last_game_date %s.",
-                player_id, game_date, state.last_game_date,
+                player_id,
+                game_date,
+                state.last_game_date,
             )
             return PlayerEnergyState(player_id=player_id)
         if days_rest > 0:
             state.consecutive_days = 0
-            rate   = _daily_recovery_rate(durability)
+            rate = _daily_recovery_rate(durability)
             energy = state.current_energy
             for _ in range(days_rest):
                 energy += (state.max_energy - energy) * rate
             state.current_energy = max(0.0, min(state.max_energy, energy))
-            state.max_energy     = min(1.0, state.max_energy + 0.003 * days_rest)
+            state.max_energy = min(1.0, state.max_energy + 0.003 * days_rest)
         return state
 
     def get_players_needing_rest(
@@ -117,7 +126,9 @@ class PlayerEnergyRepository:
         durabilities = durabilities or {}
         tired = []
         for player_id in player_ids:
-            state = self.get_with_recovery(player_id, game_date, durabilities.get(player_id, 50))
+            state = self.get_with_recovery(
+                player_id, game_date, durabilities.get(player_id, 50)
+            )
             if state.current_energy < threshold:
                 tired.append(state)
         return tired
@@ -148,21 +159,36 @@ class PlayerEnergyRepository:
                    consecutive_days    = excluded.consecutive_days,
                    season_games_played = excluded.season_games_played""",
             (
-                state.player_id, self.league_id, energy, state.max_energy,
-                last_game_date_str, state.consecutive_days, state.season_games_played,
+                state.player_id,
+                self.league_id,
+                energy,
+                state.max_energy,
+                last_game_date_str,
+                state.consecutive_days,
+                state.season_games_played,
             ),
         )
         self.conn.commit()
 
     def update_after_game(
-        self, player_id, final_energy, max_energy,
-        consecutive_days, season_games_played, game_date,
+        self,
+        player_id,
+        final_energy,
+        max_energy,
+        consecutive_days,
+        season_games_played,
+        game_date,
     ):
-        self.save(PlayerEnergyState(
-            player_id=player_id, current_energy=final_energy, max_energy=max_energy,
-            last_game_date=game_date, consecutive_days=consecutive_days,
-            season_games_played=season_games_played,
-        ))
+        self.save(
+            PlayerEnergyState(
+                player_id=player_id,
+                current_energy=final_energy,
+                max_energy=max_energy,
+                last_game_date=game_date,
+                consecutive_days=consecutive_days,
+                season_games_played=season_games_played,
+            )
+        )
 
     def clear_season(self, player_ids=None) -> int:
         cursor = self.conn.cursor()
@@ -173,7 +199,9 @@ class PlayerEnergyRepository:
                 [self.league_id] + list(player_ids),
             )
         else:
-            cursor.execute("DELETE FROM player_energy WHERE league_id = ?", (self.league_id,))
+            cursor.execute(
+                "DELETE FROM player_energy WHERE league_id = ?", (self.league_id,)
+            )
         deleted = cursor.rowcount
         self.conn.commit()
         return deleted
