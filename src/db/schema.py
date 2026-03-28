@@ -17,13 +17,13 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 
 CREATE TABLE IF NOT EXISTS players (
-    id TEXT PRIMARY KEY,
+    id         TEXT PRIMARY KEY,
     first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    bats TEXT NOT NULL,
-    throws TEXT NOT NULL,
-    position TEXT,  -- Affinity position used in creation, can be NULL
-    league_id TEXT,
+    last_name  TEXT NOT NULL,
+    bats       TEXT NOT NULL,
+    throws     TEXT NOT NULL,
+    position   TEXT,  -- Affinity position used in creation, can be NULL
+    league_id  TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT,
 
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS player_status (
 );
 
 CREATE TABLE IF NOT EXISTS player_energy (
-    player_id            TEXT PRIMARY KEY,
+    player_id            TEXT NOT NULL,
     league_id            TEXT NOT NULL DEFAULT '',
     current_energy       REAL NOT NULL DEFAULT 1.0 CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
     max_energy           REAL NOT NULL DEFAULT 1.0 CHECK (max_energy >= 0.0 AND max_energy <= 1.0),
@@ -135,13 +135,15 @@ CREATE TABLE IF NOT EXISTS player_energy (
     consecutive_days     INTEGER NOT NULL DEFAULT 0 CHECK (consecutive_days >= 0),
     season_games_played  INTEGER NOT NULL DEFAULT 0 CHECK (season_games_played >= 0),
 
+    PRIMARY KEY (player_id, league_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS player_injuries (
-    player_id               TEXT PRIMARY KEY,
+    player_id               TEXT NOT NULL,
     league_id               TEXT NOT NULL DEFAULT '',
     games_remaining         INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (player_id, league_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
@@ -244,7 +246,6 @@ CREATE TABLE IF NOT EXISTS leagues (
                              CHECK (mode IN ('blitz', 'longform')),
     num_teams            INTEGER NOT NULL DEFAULT 30,
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
-    draft_window_sec     INTEGER NOT NULL DEFAULT 300,
     reentry_enabled      INTEGER NOT NULL DEFAULT 1
                              CHECK (reentry_enabled IN (0, 1)),
     pace_control         TEXT NOT NULL DEFAULT 'timer'
@@ -255,6 +256,7 @@ CREATE TABLE IF NOT EXISTS leagues (
                                  'playoffs', 'offseason', 'complete'
                              )),
     commissioner_gm_id   TEXT,
+    draft_window_sec     INTEGER NOT NULL DEFAULT 300,
     created_at TEXT DEFAULT (datetime('now')),
 
     FOREIGN KEY (commissioner_gm_id) REFERENCES gms(id) ON DELETE SET NULL
@@ -474,7 +476,7 @@ CREATE TABLE IF NOT EXISTS team_game_stats (
 );
 
 CREATE TABLE IF NOT EXISTS pitcher_state (
-    player_id            TEXT PRIMARY KEY,
+    player_id            TEXT NOT NULL,
     league_id            TEXT NOT NULL DEFAULT '',
     current_energy       REAL NOT NULL CHECK (current_energy >= 0.0 AND current_energy <= 1.0),
     max_energy           REAL NOT NULL DEFAULT 1.0 CHECK (max_energy >= 0.0 AND max_energy <= 1.0),
@@ -482,6 +484,7 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
     last_game_date       TEXT,
     last_pitch_count     INTEGER CHECK (last_pitch_count >= 0),
 
+    PRIMARY KEY (player_id, league_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
