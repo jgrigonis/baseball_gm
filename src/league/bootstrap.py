@@ -78,7 +78,7 @@ class LeagueBootstrapper:
                 league_id=league_id,
                 season_id=season_id,
                 path=str(
-                    Path(str(manifest.get("season_year", 2026))) / team_def["csv"]
+                    Path(str(manifest.get("season_year", 2026))) / league_id / team_def["csv"]
                 ),
                 city=team_def["city"],
                 mascot=team_def["mascot"],
