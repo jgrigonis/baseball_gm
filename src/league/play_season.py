@@ -22,6 +22,7 @@ from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.game.game import Game
+from src.game.game_event_logger import GameEventLogger
 from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
 from src.util.logger import setup_logger
@@ -349,6 +350,7 @@ def play_game(
     injured_ids = {p_id for p_id in all_player_ids if injury_repo.is_injured(p_id)}
 
     # Play game
+    event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
     game = Game(
         home_team=home_team,
         away_team=away_team,
@@ -358,6 +360,7 @@ def play_game(
         game_date=game_date,
         player_energy_states=player_energy_states,
         injured_ids=injured_ids,
+        event_logger=event_logger,
     )
 
     # DEBUG PRINT

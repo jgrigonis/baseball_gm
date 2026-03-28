@@ -312,6 +312,29 @@ CREATE TABLE IF NOT EXISTS games (
     FOREIGN KEY (away_team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS game_events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id       TEXT    NOT NULL,
+    inning        INTEGER,
+    half          TEXT    CHECK (half IN ('top', 'bottom', NULL)),
+    team_id       TEXT    NOT NULL,
+    event_type    TEXT    NOT NULL CHECK (event_type IN (
+                      'lineup_set',
+                      'pitcher_start',
+                      'pitching_change',
+                      'closer_called',
+                      'injury',
+                      'substitution'
+                  )),
+    player_id     TEXT,           -- primary player involved
+    player_id_2   TEXT,           -- secondary player (e.g. who was replaced)
+    reason        TEXT,           -- human-readable explanation
+    detail        TEXT,           -- JSON for structured data (lineup slots, etc.)
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+ 
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS player_game_stats (
     game_id TEXT NOT NULL,
     player_id TEXT NOT NULL,
@@ -706,4 +729,14 @@ CREATE INDEX IF NOT EXISTS idx_draft_prefs_gm_draft ON draft_preferences(gm_id, 
 CREATE INDEX IF NOT EXISTS idx_gm_evals_season      ON gm_season_evaluations(season_id);
 CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm       ON gm_lineup_preferences(gm_id);
 CREATE INDEX IF NOT EXISTS idx_players_league       ON players(league_id);
+
+-- Game Events indexes
+CREATE INDEX IF NOT EXISTS idx_game_events_game
+    ON game_events(game_id);
+ 
+CREATE INDEX IF NOT EXISTS idx_game_events_type
+    ON game_events(game_id, event_type);
+ 
+CREATE INDEX IF NOT EXISTS idx_game_events_player
+    ON game_events(player_id);
 """

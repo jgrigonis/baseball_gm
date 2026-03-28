@@ -27,6 +27,7 @@ from src.game.count import Count
 from src.game.bases import Bases
 from src.game.event import GameEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
+from src.game.game_event_logger import GameEventLogger
 from src.game.game_result_resolver import GameResultResolver, PitchingDecisions
 from src.game.intent import GameIntent
 from src.game.intent_generator import IntentGenerator
@@ -146,6 +147,7 @@ class Game:
         game_date: "date | None" = None,
         player_energy_states: dict | None = None,
         injured_ids: set[str] | None = None,
+        event_logger: "GameEventLogger | None" = None,
     ) -> None:
         """
         Initialize a new game.
@@ -221,6 +223,7 @@ class Game:
         # Logging
         self.logger = logger
         self.pauses = pauses
+        self.event_logger = event_logger
 
         # Initialize player game stats
         self._init_game_stats()
@@ -244,6 +247,7 @@ class Game:
 
         self._sync_players()
         self._open_pitcher_appearance(self.current_pitcher)
+        self._log_starting_lineups()
         self.logger.info("⚾ Play Ball!")
         self.logger.info(
             f"{self.away.record.city} {self.away.record.mascot} @ {self.home.record.city} {self.home.record.mascot}"
@@ -736,6 +740,11 @@ class Game:
             return
         # Advance inning
         self.inning.increment()
+        if self.event_logger:
+            self.event_logger.set_context(
+                self.inning.number,
+                "top" if self.inning.top else "bottom",
+            )
 
         # Reset state
         self.bases.clear()
@@ -818,7 +827,24 @@ class Game:
                 severity = injury_types.choose()
                 self.new_injuries.append(
                     (player.id, severity, activity)
-                )  # ← activity added
+                )
+                if self.event_logger:
+                    team_id = (
+                        self.bat_team.record.id if activity == "batting"
+                        else self.pitch_team.record.id if activity == "pitching"
+                        else next(
+                            (t.record.id for t in [self.bat_team, self.pitch_team]
+                            if any(s.player.id == player.id for s in t.lineup)),
+                            self.pitch_team.record.id
+                        )
+                    )
+                    self.event_logger.injury(
+                        team_id=team_id,
+                        player_id=player.id,
+                        name=player.name,
+                        severity=severity,
+                        activity=activity,
+                    )
 
                 state = self.player_energy_states.get(player.id)
                 if state:
@@ -841,6 +867,16 @@ class Game:
                                 self.logger.info(
                                     f"↔️ {sub.name} enters for {player.name}"
                                 )
+                                self.logger.info(f"↔️ {sub.name} enters for {player.name}")
+                                if self.event_logger:
+                                    self.event_logger.substitution(
+                                        team_id=team.record.id,
+                                        incoming_id=sub.id,
+                                        incoming_name=sub.name,
+                                        outgoing_id=player.id,
+                                        outgoing_name=player.name,
+                                        position=player.current_position or "?",
+                                    )
                                 team.substitute(player, sub)
                             break
 
@@ -967,6 +1003,15 @@ class Game:
                 self.current_pitcher.current_position = "p"
                 self._open_pitcher_appearance(pitcher)
                 self.logger.info(f"🔒 Closer in: {self.current_pitcher.name}")
+                if self.event_logger:
+                    self.event_logger.closer_called(
+                        team_id=self.pitch_team.record.id,
+                        player_id=pitcher.id,
+                        name=pitcher.name,
+                        outgoing_id=self.current_pitcher.id,
+                        outgoing_name=self.current_pitcher.name,
+                        score_diff=self.score_differential,
+                    )
                 return  # Don't also run the fatigue check below
 
         # ── Normal fatigue-based change ────────────────────────────────────
@@ -1001,12 +1046,45 @@ class Game:
                 self.current_pitcher.current_position = "p"
                 self._open_pitcher_appearance(pitcher)
                 self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
+                if self.event_logger:
+                    fatigue = getattr(pitcher, "pitcher_fatigue", None)
+                    level = fatigue.get_level().value if fatigue else "unknown"
+                    self.event_logger.pitching_change(
+                        team_id=self.pitch_team.record.id,
+                        incoming_id=pitcher.id,
+                        incoming_name=pitcher.name,
+                        outgoing_id=self.current_pitcher.id,
+                        outgoing_name=self.current_pitcher.name,
+                        reason=f"fatigue={level}",
+                    )
             else:
                 self.logger.info("⚠️ No available pitchers!")
 
     # ------------------------------------------------------------------
     # Initialization
     # ------------------------------------------------------------------
+
+    def _log_starting_lineups(self) -> None:
+        """Log starting lineups and pitchers to game_events."""
+        if not self.event_logger:
+            return
+        for team in [self.home, self.away]:
+            slots = [
+                {
+                    "batting_order": i + 1,
+                    "player_id": slot.player.id,
+                    "name": slot.player.name,
+                    "position": slot.position,
+                }
+                for i, slot in enumerate(team.lineup)
+            ]
+            self.event_logger.lineup_set(team_id=team.record.id, slots=slots)
+            if team.pitcher:
+                self.event_logger.pitcher_start(
+                    team_id=team.record.id,
+                    player_id=team.pitcher.id,
+                    name=team.pitcher.name,
+                )
 
     def _init_game_stats(self) -> None:
         """Initialize game stats for all players on both teams."""
