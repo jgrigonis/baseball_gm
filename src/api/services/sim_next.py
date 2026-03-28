@@ -15,6 +15,7 @@ from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
+from src.league.offseason.build_season_stats import build_season
 
 
 @dataclass
@@ -164,6 +165,10 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                     "traceback": traceback.format_exc(),
                 }
             )
+
+    # Rollup game stats into player_season_stats after each day
+    if results:
+        build_season(conn, season_id)
 
     return {
         "game_date": game_date,
