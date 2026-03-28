@@ -1,0 +1,3 @@
+We should be compiling logs for games.
+
+Could stuff them in noSQL or just raw files for now
