@@ -18,7 +18,7 @@ mkdir -p temp_files
 
 for (( YEAR=START_YEAR; YEAR<=END_YEAR; YEAR++ )); do
     echo "Processing $YEAR..."
-    python src/league/statistics/league_totals.py -i "$YEAR" -f {DB_FILE} >> "$OUTPUT" 
+    python src/league/statistics/league_totals.py -i "$YEAR" -f ${DB_FILE} >> "$OUTPUT" 
 done
 
 echo "✅ Done — output saved to $OUTPUT"
