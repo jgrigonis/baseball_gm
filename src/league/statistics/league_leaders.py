@@ -34,7 +34,7 @@ def parse_args():
         description="League-wide stat leaders for a season."
     )
     parser.add_argument(
-        "--file", "-f", default="league.db", help="Set the league db filename."
+        "--file", "-f", default="cli.db", help="Set the league db filename."
     )
     parser.add_argument("--id", "-i", help="Season ID (or partial name/year match)")
     parser.add_argument("--logs", action="store_true", help="Write output to log file.")

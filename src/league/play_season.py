@@ -191,12 +191,12 @@ def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: Team
 
 
 def load_energy(
-    conn, game_repo, game_id: str, home_team: TeamInGame, away_team: TeamInGame
+    conn, game_repo, game_id: str, home_team: TeamInGame, away_team: TeamInGame, league_id: str = ""
 ):
     """
     Load the pitcher energy for both teams.
     """
-    pitcher_repo = PitcherStateRepository(conn)
+    pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
 
     game_record = game_repo.get(game_id)
     game_date = datetime.fromisoformat(game_record["game_date"]).date()
@@ -212,11 +212,11 @@ def load_energy(
     return game_date
 
 
-def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
+def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame, league_id: str = ""):
     """
     Save the pitcher energy to the database.
     """
-    pitcher_repo = PitcherStateRepository(conn)
+    pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     for player in home_team.players + away_team.players:
         if player.game_stats.pitching.pitch_count > 0:
             player.pitcher_fatigue.degrade_cap(player.game_stats.pitching.pitch_count)
@@ -229,8 +229,8 @@ def save_energy(conn, game_date, home_team: TeamInGame, away_team: TeamInGame):
             )
 
 
-def save_position_energy(conn, player_energy_states: dict) -> None:
-    repo = PlayerEnergyRepository(conn)
+def save_position_energy(conn, player_energy_states: dict, league_id) -> None:
+    repo = PlayerEnergyRepository(conn, league_id)
     for state in player_energy_states.values():
         if state.season_games_played > 0 or state.last_game_date is not None:
             repo.save(state)
@@ -385,15 +385,11 @@ def play_game(
     for team in [home_team, away_team]:
         for slot in team.lineup:
             if slot.player.is_injured:
-                logger.info(
-                    f"❌ INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
-                )
-                print(
-                    f"❌ INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
-                )
-                raise RuntimeError(
-                    f"❌ INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
-                )
+                msg = f"INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
+
+                logger.info(f"❌ {msg}")
+                print(f"❌ {msg}")
+                raise RuntimeError(f"❌ {msg}")
 
     # Print starting pitchers and fatigue
     home_starter = next(
@@ -466,14 +462,14 @@ def play_game(
             continue
         state = player_energy_states.get(player.id)
         if state:
-            state.current_energy = fatigue.energy
-            state.max_energy = fatigue.max_energy
-            state.consecutive_days = fatigue.consecutive_days
+            state.current_energy      = fatigue.energy
+            state.max_energy          = fatigue.max_energy
+            state.consecutive_days    = fatigue.consecutive_days
             state.season_games_played = fatigue.season_games_played
-            state.last_game_date = game_date
+            state.last_game_date      = game_date
 
-    save_energy(conn, game_date, home_team, away_team)
-    save_position_energy(conn, player_energy_states)
+    save_energy(conn, game_date, home_team, away_team, league_id=league_id)
+    save_position_energy(conn, player_energy_states, league_id)
 
     # Save any new injuries that occurred during the game
     for player_id, severity, activity in game.new_injuries:
@@ -520,8 +516,8 @@ def main():
     league_id = league_row["league_id"] if league_row else ""
 
     # Initialize repositories
-    game_repo = GameRepository(conn)
-    team_repo = TeamRepository(conn)
+    game_repo      = GameRepository(conn)
+    team_repo      = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
@@ -582,13 +578,10 @@ def main():
                 elapsed = (datetime.now() - start_time).total_seconds()
                 rate = completed / elapsed if elapsed > 0 else 0
                 remaining = (len(games) - completed) / rate if rate > 0 else 0
-                print(
-                    f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
-                )
+                msg = f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
+                print(msg)
                 if args.logs:
-                    season_logger.info(
-                        f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
-                    )
+                    season_logger.info(msg)
             else:
                 if args.logs:
                     season_logger.info(f"[{i}/{len(games)}] ✅ {result}")

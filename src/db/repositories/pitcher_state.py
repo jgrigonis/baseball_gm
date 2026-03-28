@@ -44,19 +44,19 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _RECOVERY_THRESHOLD = 0.99  # "effectively full"
-_DAYS_AT_SKILL_MAX = 3.0  # recovery = 100
-_DAYS_AT_SKILL_MID = 4.0  # recovery = 50
-_DAYS_AT_SKILL_MIN = 5.0  # recovery = 1
+_DAYS_AT_SKILL_MAX = 3.0    # recovery = 100
+_DAYS_AT_SKILL_MID = 4.0    # recovery = 50
+_DAYS_AT_SKILL_MIN = 5.0    # recovery = 1
 
 MIN_ENERGY_STARTER = 0.75
 
 # Cap: slow passive regeneration
 CAP_REGEN_PER_DAY = 0.004
 
+
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
-
 
 def _daily_recovery_rate(recovery_skill: int) -> float:
     """
@@ -73,14 +73,12 @@ def _daily_recovery_rate(recovery_skill: int) -> float:
         skill=1   → rate ≈ 0.602  (full in 5 days)
     """
     skill = max(1, min(100, recovery_skill))
-
     if skill <= 50:
         t = (skill - 1) / (50 - 1)
         days = _DAYS_AT_SKILL_MIN + t * (_DAYS_AT_SKILL_MID - _DAYS_AT_SKILL_MIN)
     else:
         t = (skill - 50) / (100 - 50)
         days = _DAYS_AT_SKILL_MID + t * (_DAYS_AT_SKILL_MAX - _DAYS_AT_SKILL_MID)
-
     return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
 
 
@@ -92,10 +90,9 @@ def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
     return max(0.0, min(1.0, energy))
 
 
-def availability_weight(state: PitcherState, game_date: date) -> float:
+def availability_weight(state: "PitcherState", game_date: date) -> float:
     if state is None or state.last_game_date is None:
         return 1.0
-
     days_rest = (game_date - state.last_game_date).days
     last_pitches = state.last_pitch_count or 0
 
@@ -108,10 +105,8 @@ def availability_weight(state: PitcherState, game_date: date) -> float:
         days_needed = 2
     else:
         days_needed = 1
-
     if days_rest >= days_needed:
         return 1.0
-
     return max(0.05, days_rest / days_needed)
 
 
@@ -119,11 +114,8 @@ def availability_weight(state: PitcherState, game_date: date) -> float:
 # Data classes
 # ---------------------------------------------------------------------------
 
-
 @dataclass
 class PitcherState:
-    """Pitcher's current energy state and recent activity."""
-
     player_id: str
     current_energy: float
     max_energy: float
@@ -133,12 +125,10 @@ class PitcherState:
 
     @property
     def is_fresh(self) -> bool:
-        """Check if pitcher is at full energy."""
         return self.current_energy >= _RECOVERY_THRESHOLD
 
     @property
     def days_since_last_game(self) -> Optional[int]:
-        """Days of rest since last appearance (uses real-world date — prefer game_date in context)."""
         if not self.last_game_date:
             return None
         return (date.today() - self.last_game_date).days
@@ -148,31 +138,27 @@ class PitcherState:
 # Repository
 # ---------------------------------------------------------------------------
 
-
 class PitcherStateRepository:
-    """Repository for managing pitcher energy and rest."""
+    """Repository for managing pitcher energy and rest, scoped to a single league."""
 
-    def __init__(self, conn):
+    def __init__(self, conn, league_id: str = ""):
         self.conn = conn
+        self.league_id = league_id
 
     # ------------------------------------------------------------------
     # Read
     # ------------------------------------------------------------------
 
     def get(self, player_id: str) -> Optional[PitcherState]:
-        """
-        Get raw pitcher state from DB (no recovery applied).
-
-        Returns None if pitcher has no recorded history.
-        """
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT player_id, current_energy, max_energy, last_game_date, last_pitch_count, consecutive_days
+            SELECT player_id, current_energy, max_energy, last_game_date,
+                   last_pitch_count, consecutive_days
             FROM pitcher_state
-            WHERE player_id = ?
+            WHERE player_id = ? AND league_id = ?
             """,
-            (player_id,),
+            (player_id, self.league_id),
         )
         row = cursor.fetchone()
         if not row:
@@ -214,11 +200,7 @@ class PitcherStateRepository:
         state = self.get(player_id)
 
         if not state:
-            return PitcherState(
-                player_id=player_id,
-                current_energy=1.0,
-                max_energy=1.0,
-            )
+            return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
 
         if not state.last_game_date:
             state.current_energy = 1.0
@@ -227,28 +209,21 @@ class PitcherStateRepository:
         days_rest = (game_date - state.last_game_date).days
 
         # Energy: exponential approach toward max_energy (not 1.0)
+        if days_rest < 0:
+            logger.warning(
+                "Data inconsistency for pitcher %s: game_date %s is before "
+                "last_game_date %s. Returning fresh state.",
+                player_id, game_date, state.last_game_date,
+            )
+            return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
+
         rate = _daily_recovery_rate(recovery_skill)
         energy = state.current_energy
         for _ in range(days_rest):
             energy += (state.max_energy - energy) * rate
         state.current_energy = max(0.0, min(state.max_energy, energy))
-
-        # Cap: slow passive regeneration
         state.max_energy = min(1.0, state.max_energy + (CAP_REGEN_PER_DAY * days_rest))
-
-        if days_rest < 0:
-            logger.warning(
-                "Data inconsistency for pitcher %s: game_date %s is before "
-                "last_game_date %s. Returning fresh state.",
-                player_id,
-                game_date,
-                state.last_game_date,
-            )
-            return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
-
-        state.current_energy = _apply_recovery(
-            state.current_energy, days_rest, recovery_skill
-        )
+        state.current_energy = _apply_recovery(state.current_energy, days_rest, recovery_skill)
         return state
 
     # THIS CODE IS NOT USED, BUT MAY BE USEFULE
@@ -306,13 +281,11 @@ class PitcherStateRepository:
         """
         recovery_skills = recovery_skills or {}
         available = []
-
         for player_id in player_ids:
             skill = recovery_skills.get(player_id, 50)
             state = self.get_with_recovery(player_id, game_date, skill)
             if state.current_energy >= min_energy:
                 available.append(state)
-
         return available
 
     # ------------------------------------------------------------------
@@ -339,17 +312,22 @@ class PitcherStateRepository:
 
         cursor.execute(
             """
-            INSERT INTO pitcher_state (player_id, current_energy, last_game_date, last_pitch_count, consecutive_days)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(player_id) DO UPDATE SET
+            INSERT INTO pitcher_state
+                (player_id, league_id, current_energy, max_energy,
+                 last_game_date, last_pitch_count, consecutive_days)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(player_id, league_id) DO UPDATE SET
                 current_energy   = excluded.current_energy,
+                max_energy       = excluded.max_energy,
                 last_game_date   = excluded.last_game_date,
                 last_pitch_count = excluded.last_pitch_count,
                 consecutive_days = excluded.consecutive_days
             """,
             (
                 state.player_id,
+                self.league_id,
                 energy,
+                max(0.0, min(1.0, round(state.max_energy, 4))),
                 last_game_date_str,
                 state.last_pitch_count,
                 state.consecutive_days,
@@ -384,7 +362,6 @@ class PitcherStateRepository:
         if pitch_count == 0:
             return
 
-        # Load existing state to compute consecutive_days
         existing = self.get(player_id)
         if existing and existing.last_game_date:
             days_rest = (game_date - existing.last_game_date).days
@@ -408,7 +385,10 @@ class PitcherStateRepository:
         Delete a pitcher's state row. Returns True if a row was removed.
         """
         cursor = self.conn.cursor()
-        cursor.execute("DELETE FROM pitcher_state WHERE player_id = ?", (player_id,))
+        cursor.execute(
+            "DELETE FROM pitcher_state WHERE player_id = ? AND league_id = ?",
+            (player_id, self.league_id),
+        )
         deleted = cursor.rowcount > 0
         self.conn.commit()
         return deleted
@@ -416,7 +396,11 @@ class PitcherStateRepository:
     def clear_all(self) -> int:
         """Delete all pitcher state rows. Call between seasons. Returns row count deleted."""
         cursor = self.conn.cursor()
-        cursor.execute("DELETE FROM pitcher_state")
+        cursor.execute(
+            "DELETE FROM pitcher_state WHERE league_id = ?",
+            (self.league_id,),
+        )
         deleted = cursor.rowcount
         self.conn.commit()
         return deleted
+    

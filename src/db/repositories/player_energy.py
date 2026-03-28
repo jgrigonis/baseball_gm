@@ -50,13 +50,13 @@ logger = logging.getLogger(__name__)
 # Recovery calibration
 # ---------------------------------------------------------------------------
 
-_RECOVERY_THRESHOLD = 0.99
+_RECOVERY_THRESHOLD     = 0.99
 _DAYS_AT_DURABILITY_MAX = 3.0  # durability = 100
 _DAYS_AT_DURABILITY_MID = 4.0  # durability = 50
 _DAYS_AT_DURABILITY_MIN = 5.0  # durability = 1
 
 # Minimum energy before the AI should consider resting a player
-MIN_ENERGY_AVAILABLE = 0.40  # maps to TIRED threshold in PositionPlayerFatigue
+MIN_ENERGY_AVAILABLE    = 0.40  # maps to TIRED threshold in PositionPlayerFatigue
 
 
 def _daily_recovery_rate(durability: int) -> float:
@@ -130,8 +130,9 @@ class PlayerEnergyState:
 class PlayerEnergyRepository:
     """Repository for managing position player energy and fatigue state."""
 
-    def __init__(self, conn):
+    def __init__(self, conn, league_id: str = ""):
         self.conn = conn
+        self.league_id = league_id
 
     # ------------------------------------------------------------------
     # Read
@@ -149,17 +150,16 @@ class PlayerEnergyRepository:
             SELECT player_id, current_energy, max_energy, last_game_date,
                    consecutive_days, season_games_played
             FROM player_energy
-            WHERE player_id = ?
+            WHERE player_id = ? AND league_id = ?
             """,
-            (player_id,),
+            (player_id, self.league_id),
         )
         row = cursor.fetchone()
         if not row:
             return None
 
         last_game_date = None
-        if row[3]:
-            last_game_date = datetime.fromisoformat(row[3]).date()
+        last_game_date = datetime.fromisoformat(row[3]).date() if row[3] else None
 
         return PlayerEnergyState(
             player_id=row[0],
@@ -323,9 +323,9 @@ class PlayerEnergyRepository:
         cursor.execute(
             """
             INSERT INTO player_energy
-                (player_id, current_energy, max_energy, last_game_date, consecutive_days, season_games_played)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(player_id) DO UPDATE SET
+                (player_id, league_id, current_energy, max_energy, last_game_date, consecutive_days, season_games_played)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(player_id, league_id) DO UPDATE SET
                 current_energy       = excluded.current_energy,
                 max_energy           = excluded.max_energy,
                 last_game_date       = excluded.last_game_date,
@@ -334,6 +334,7 @@ class PlayerEnergyRepository:
             """,
             (
                 state.player_id,
+                self.league_id,
                 energy,
                 state.max_energy,
                 last_game_date_str,
@@ -390,11 +391,11 @@ class PlayerEnergyRepository:
         if player_ids is not None:
             placeholders = ",".join("?" * len(player_ids))
             cursor.execute(
-                f"DELETE FROM player_energy WHERE player_id IN ({placeholders})",
-                player_ids,
+                f"DELETE FROM player_energy WHERE league_id = ? AND player_id IN ({placeholders})",
+                [self.league_id] + list(player_ids),
             )
         else:
-            cursor.execute("DELETE FROM player_energy")
+            cursor.execute("DELETE FROM player_energy WHERE league_id = ?", (self.league_id,))
 
         deleted = cursor.rowcount
         self.conn.commit()
@@ -403,7 +404,7 @@ class PlayerEnergyRepository:
     def delete(self, player_id: str) -> bool:
         """Delete a single player's energy row. Returns True if a row was removed."""
         cursor = self.conn.cursor()
-        cursor.execute("DELETE FROM player_energy WHERE player_id = ?", (player_id,))
+        cursor.execute("DELETE FROM player_energy WHERE player_id = ? AND league_id = ?", (player_id, self.league_id))
         deleted = cursor.rowcount > 0
         self.conn.commit()
         return deleted
