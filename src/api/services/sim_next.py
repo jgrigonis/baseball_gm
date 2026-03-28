@@ -119,7 +119,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn)
+    rotations_repo = TeamRotationsRepository(conn, league_id=league_id)
 
     results = []
     errors = []

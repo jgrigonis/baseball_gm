@@ -18,8 +18,9 @@ from src.db.repositories.pitcher_state import PitcherStateRepository, MIN_ENERGY
 class TeamRotationsRepository:
     """Repository for managing starting pitcher rotations."""
 
-    def __init__(self, conn):
+    def __init__(self, conn, league_id: str = ""):
         self.conn = conn
+        self.league_id = league_id
 
     def set_rotation(self, team_id, season_id, player_id_list, effective_date) -> None:
         """
@@ -128,7 +129,7 @@ class TeamRotationsRepository:
         if not rotation:
             return None
 
-        pitcher_repo = PitcherStateRepository(self.conn)
+        pitcher_repo = PitcherStateRepository(self.conn, league_id=self.league_id)
         # Find most recent starter from this team's rotation
         rotation_player_ids = [r["player_id"] for r in rotation]
 
