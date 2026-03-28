@@ -18,16 +18,16 @@
     </div>
     {% if upcoming %}
     <table class="data-table" style="width:100%;">
-      <thead><tr><th>Date</th><th style="text-align:center;">H/A</th><th>Opponent</th></tr></thead>
+      <thead><tr><th>Date</th><th>Opponent</th><th style="text-align:center;">H/A</th></tr></thead>
       <tbody>
         {% for g in upcoming %}
         <tr>
           <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;">{{ g.date }}</td>
+          <td>{{ g.opp_city }} {{ g.opp_mascot }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                      color:{% if g.is_home %}var(--green){% else %}var(--text-dim){% endif %};">
             {{ "HOME" if g.is_home else "AWAY" }}
           </td>
-          <td>{{ g.opp_city }} {{ g.opp_mascot }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -41,19 +41,19 @@
     <div class="card-header"><span class="card-title">Recent Results</span></div>
     {% if recent %}
     <table class="data-table" style="width:100%;">
-      <thead><tr><th>Date</th><th style="text-align:center;">H/A</th><th>Opponent</th><th style="text-align:center;">Score</th><th style="text-align:center;">W/L</th></tr></thead>
+      <thead><tr><th>Date</th><th style="text-align:center;">W/L</th><th style="text-align:center;">Score</th><th>Opponent</th><th style="text-align:center;">H/A</th></tr></thead>
       <tbody>
         {% for g in recent %}
         <tr>
           <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;">{{ g.date }}</td>
+          <td style="text-align:center;font-family:var(--font-mono);font-weight:600;
+                     color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};">{{ g.result }}</td>
+          <td style="text-align:center;font-family:var(--font-mono);font-weight:600;">{{ g.my_score }}–{{ g.opp_score }}{{ g.extra }}</td>
+          <td>{{ g.opp_city }} {{ g.opp_mascot }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                      color:{% if g.home_away == 'vs' %}var(--green){% else %}var(--text-dim){% endif %};">
             {{ "HOME" if g.home_away == 'vs' else "AWAY" }}
           </td>
-          <td>{{ g.opp_city }} {{ g.opp_mascot }}</td>
-          <td style="text-align:center;font-family:var(--font-mono);font-weight:600;">{{ g.my_score }}–{{ g.opp_score }}{{ g.extra }}</td>
-          <td style="text-align:center;font-family:var(--font-mono);font-weight:600;
-                     color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};">{{ g.result }}</td>
         </tr>
         {% endfor %}
       </tbody>
