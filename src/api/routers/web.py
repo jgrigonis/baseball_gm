@@ -1143,7 +1143,7 @@ def standings(
         recent_games = []
         if my_team_id:
             rg_rows = db.execute(
-                """SELECT g.game_date, g.home_team_id, g.away_team_id,
+                """SELECT g.id as game_id, g.game_date, g.home_team_id, g.away_team_id,
                           g.home_score, g.away_score,
                           ht.city as home_city, ht.mascot as home_mascot,
                           at.city as away_city, at.mascot as away_mascot
@@ -1152,7 +1152,7 @@ def standings(
                    JOIN teams at ON at.id = g.away_team_id
                    WHERE g.season_id = ? AND g.completed = 1
                      AND (g.home_team_id = ? OR g.away_team_id = ?)
-                   ORDER BY g.game_date DESC LIMIT 3""",
+                   ORDER BY g.game_date DESC LIMIT 10""",
                 (season_id, my_team_id, my_team_id),
             ).fetchall()
             for g_row in rg_rows:
@@ -1163,6 +1163,7 @@ def standings(
                 opp_mascot = g_row["away_mascot"] if is_home else g_row["home_mascot"]
                 won = (my_score or 0) > (opp_score or 0)
                 recent_games.append({
+                    "game_id":   g_row["game_id"],
                     "date":      g_row["game_date"],
                     "home_away": "vs" if is_home else "@",
                     "opponent":  f"{opp_city} {opp_mascot}",
@@ -1789,9 +1790,9 @@ def schedule(
                 "is_home":     is_home,
             })
 
-        # Recent results — last 10
+        # Recent results — all completed
         rec_rows = db.execute(
-            """SELECT g.game_date, g.home_team_id, g.away_team_id,
+            """SELECT g.id as game_id, g.game_date, g.home_team_id, g.away_team_id,
                       g.home_score, g.away_score, g.innings_played,
                       ht.city as home_city, ht.mascot as home_mascot,
                       at.city as away_city, at.mascot as away_mascot
@@ -1800,7 +1801,7 @@ def schedule(
                JOIN teams at ON at.id = g.away_team_id
                WHERE g.season_id = ? AND g.completed = 1
                  AND (g.home_team_id = ? OR g.away_team_id = ?)
-               ORDER BY g.game_date DESC LIMIT 10""",
+               ORDER BY g.game_date DESC""",
             (season_id, my_team_id, my_team_id),
         ).fetchall()
         for r in rec_rows:
@@ -1810,6 +1811,7 @@ def schedule(
             won = (my_score or 0) > (opp_score or 0)
             extra = f" ({r['innings_played']})" if r["innings_played"] and r["innings_played"] != 9 else ""
             recent.append({
+                "game_id":    r["game_id"],
                 "date":       r["game_date"],
                 "home_away":  "vs" if is_home else "@",
                 "opp_city":   r["away_city"]   if is_home else r["home_city"],
@@ -1827,21 +1829,108 @@ def schedule(
 
 # ── Game detail ────────────────────────────────────────────────────────────────
 
-@router.get("/leagues/{league_id}/games/{game_id}", response_class=HTMLResponse)
-def game_detail(
+@router.get("/leagues/{league_id}/games/{game_id}/panel", response_class=HTMLResponse)
+def game_panel(
     request: Request, league_id: str, game_id: str, db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
     if not user:
-        return RedirectResponse("/")
+        return HTMLResponse("Unauthorized", status_code=401)
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "schedule")
-    game = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
-    ctx["game"]         = dict(game) if game else None
-    ctx["tab_template"] = "dashboard/partials/game_detail.html"
-    return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
+    my_team_id = gm["team_id"] if gm else None
+
+    game = db.execute(
+        """SELECT g.*, ht.city as home_city, ht.mascot as home_mascot,
+                  at.city as away_city, at.mascot as away_mascot
+           FROM games g
+           JOIN teams ht ON ht.id = g.home_team_id
+           JOIN teams at ON at.id = g.away_team_id
+           WHERE g.id = ?""",
+        (game_id,),
+    ).fetchone()
+    if not game:
+        return HTMLResponse("Game not found", status_code=404)
+    game = dict(game)
+
+    # Box score — batting
+    bat_rows = db.execute(
+        """SELECT p.first_name, p.last_name, pgs.team_id,
+                  pgs.bat_ab as AB, pgs.bat_runs as R, pgs.bat_hits as H,
+                  pgs.bat_doubles as "2B", pgs.bat_triples as "3B",
+                  pgs.bat_home_runs as HR, pgs.bat_rbi as RBI,
+                  pgs.bat_walks as BB, pgs.bat_strike_outs as K,
+                  pgs.bat_stolen_bases as SB, pgs.bat_hbp as HBP,
+                  pgs.bat_sac_flys as SF,
+                  pgs.bat_game_started as started
+           FROM player_game_stats pgs
+           JOIN players p ON p.id = pgs.player_id
+           WHERE pgs.game_id = ? AND pgs.bat_ab > 0
+           ORDER BY pgs.team_id, pgs.bat_game_started DESC, p.last_name""",
+        (game_id,),
+    ).fetchall()
+
+    # Box score — pitching
+    pit_rows = db.execute(
+        """SELECT p.first_name, p.last_name, pgs.team_id,
+                  pgs.pitch_outs as outs, pgs.pitch_hits as H,
+                  pgs.pitch_runs as R, pgs.pitch_earned_runs as ER,
+                  pgs.pitch_walks as BB, pgs.pitch_strike_outs as K,
+                  pgs.pitch_home_runs as HR, pgs.pitch_win as W,
+                  pgs.pitch_loss as L, pgs.pitch_save as SV,
+                  pgs.pitch_game_started as started
+           FROM player_game_stats pgs
+           JOIN players p ON p.id = pgs.player_id
+           WHERE pgs.game_id = ? AND pgs.pitch_outs > 0
+           ORDER BY pgs.team_id, pgs.pitch_game_started DESC, pgs.pitch_outs DESC""",
+        (game_id,),
+    ).fetchall()
+
+    # Format pitching IP
+    def fmt_ip(outs): return f"{outs//3}.{outs%3}"
+
+    home_bat = [dict(r) for r in bat_rows if r["team_id"] == game["home_team_id"]]
+    away_bat = [dict(r) for r in bat_rows if r["team_id"] == game["away_team_id"]]
+    home_pit = [dict(r) for r in pit_rows if r["team_id"] == game["home_team_id"]]
+    away_pit = [dict(r) for r in pit_rows if r["team_id"] == game["away_team_id"]]
+    for p in home_pit + away_pit:
+        p["IP"] = fmt_ip(p["outs"] or 0)
+
+    # Event log
+    events = db.execute(
+        """SELECT ge.event_type, ge.inning, ge.half, ge.reason,
+                  ge.detail, ge.team_id
+           FROM game_events ge
+           WHERE ge.game_id = ?
+           ORDER BY ge.id""",
+        (game_id,),
+    ).fetchall()
+    import json as _json
+    events_out = []
+    for e in events:
+        ed = dict(e)
+        if ed.get("detail"):
+            try:
+                ed["detail_parsed"] = _json.loads(ed["detail"])
+            except Exception:
+                ed["detail_parsed"] = None
+        else:
+            ed["detail_parsed"] = None
+        events_out.append(ed)
+
+    ctx = _shell_ctx(request, db, league_id, user, gm)
+    ctx.update({
+        "game":      game,
+        "home_bat":  home_bat,
+        "away_bat":  away_bat,
+        "home_pit":  home_pit,
+        "away_pit":  away_pit,
+        "events":    events_out,
+        "my_team_id": my_team_id,
+        "fmt_ip":    fmt_ip,
+    })
+    return templates.TemplateResponse(request, "dashboard/partials/game_panel_content.html", ctx)
 
 
 # ── Player panel (slide-in) ────────────────────────────────────────────────────

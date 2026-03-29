@@ -996,6 +996,7 @@ class Game:
                 rng=self.rng,
             )
             if pitcher:
+                outgoing = self.current_pitcher
                 self._close_pitcher_appearance()
                 self.current_pitcher = pitcher
                 self._active_pitchers[self.pitch_team.record.id] = pitcher
@@ -1008,8 +1009,8 @@ class Game:
                         team_id=self.pitch_team.record.id,
                         player_id=pitcher.id,
                         name=pitcher.name,
-                        outgoing_id=self.current_pitcher.id,
-                        outgoing_name=self.current_pitcher.name,
+                        outgoing_id=outgoing.id if outgoing else "",
+                        outgoing_name=outgoing.name if outgoing else "",
                         score_diff=self.score_differential,
                     )
                 return  # Don't also run the fatigue check below
@@ -1039,6 +1040,7 @@ class Game:
                 rng=self.rng,
             )
             if pitcher:
+                outgoing = self.current_pitcher
                 self._close_pitcher_appearance()
                 self.current_pitcher = pitcher
                 self._active_pitchers[self.pitch_team.record.id] = pitcher
@@ -1047,14 +1049,14 @@ class Game:
                 self._open_pitcher_appearance(pitcher)
                 self.logger.info(f"🔄 Now pitching: {self.current_pitcher.name}")
                 if self.event_logger:
-                    fatigue = getattr(pitcher, "pitcher_fatigue", None)
+                    fatigue = getattr(outgoing, "pitcher_fatigue", None)
                     level = fatigue.get_level().value if fatigue else "unknown"
                     self.event_logger.pitching_change(
                         team_id=self.pitch_team.record.id,
                         incoming_id=pitcher.id,
                         incoming_name=pitcher.name,
-                        outgoing_id=self.current_pitcher.id,
-                        outgoing_name=self.current_pitcher.name,
+                        outgoing_id=outgoing.id if outgoing else "",
+                        outgoing_name=outgoing.name if outgoing else "",
                         reason=f"fatigue={level}",
                     )
             else:

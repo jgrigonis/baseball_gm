@@ -112,7 +112,42 @@ async function simGames(count) {
   }
 }
 
-document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPanel(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') { closePlayerPanel(); closeGamePanel(); } });
+
+// ── Game panel ─────────────────────────────────────────────────────────────
+window.openGamePanel = function(gameId) {
+  var panel   = document.getElementById('game-panel');
+  var overlay = document.getElementById('game-panel-overlay');
+  var body    = document.getElementById('game-panel-content');
+  var header  = document.getElementById('game-panel-header');
+  if (!panel) return;
+  panel.style.display   = 'flex';
+  overlay.style.display = 'block';
+  body.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--font-mono);color:var(--text-dim);">Loading…</div>';
+  fetch('/leagues/' + LEAGUE_ID + '/games/' + gameId + '/panel', {headers:{'HX-Request':'true'}})
+    .then(function(r){ return r.text(); })
+    .then(function(html){
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      var nh = tmp.querySelector('#game-panel-header-inner');
+      var nb = tmp.querySelector('#game-panel-body-inner');
+      if (nh && header) {
+        // Replace header inner content but keep the close button
+        var closeBtn = header.querySelector('button');
+        header.innerHTML = '';
+        header.appendChild(nh);
+        if (closeBtn) header.appendChild(closeBtn);
+      }
+      if (nb) body.innerHTML = nb.innerHTML;
+    })
+    .catch(function(){ body.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading game.</div>'; });
+};
+window.closeGamePanel = function() {
+  var panel   = document.getElementById('game-panel');
+  var overlay = document.getElementById('game-panel-overlay');
+  if (panel)   panel.style.display   = 'none';
+  if (overlay) overlay.style.display = 'none';
+};
 
 </script>
 {% endblock %}
@@ -161,6 +196,7 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerPane
 </div>
 
 <div id="player-panel-mount"></div>
+{% include "dashboard/partials/game_panel.html" %}
 
 {% endblock %}
 

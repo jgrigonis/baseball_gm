@@ -38,13 +38,18 @@
   </div>
 
   <div class="card">
-    <div class="card-header"><span class="card-title">Recent Results</span></div>
+    <div class="card-header"><span class="card-title">Recent Results</span>
+      <span class="page-subtitle" style="margin-left:auto;">click any game for details</span>
+    </div>
     {% if recent %}
     <table class="data-table" style="width:100%;">
       <thead><tr><th>Date</th><th style="text-align:center;">W/L</th><th style="text-align:center;">Score</th><th>Opponent</th><th style="text-align:center;">H/A</th></tr></thead>
       <tbody>
         {% for g in recent %}
-        <tr>
+        <tr onclick="openGamePanel('{{ g.game_id }}')"
+            style="cursor:pointer;"
+            onmouseover="this.style.background='var(--bg-3)'"
+            onmouseout="this.style.background=''">
           <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;">{{ g.date }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-weight:600;
                      color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};">{{ g.result }}</td>

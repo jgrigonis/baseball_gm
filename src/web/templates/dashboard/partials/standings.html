@@ -83,15 +83,19 @@
           <span class="card-title">Recent Results</span>
         </div>
         {% for g in recent_games %}
-        <div style="padding:8px 14px;border-bottom:1px solid var(--border);
-                    display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;">
+        <div onclick="openGamePanel('{{ g.game_id }}')"
+             style="padding:8px 14px;border-bottom:1px solid var(--border);
+                    display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;
+                    cursor:pointer;transition:background .08s;"
+             onmouseover="this.style.background='var(--bg-3)'"
+             onmouseout="this.style.background=''">
           <span style="color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};
                        font-weight:600;min-width:14px;">{{ g.result }}</span>
           <span style="color:var(--text-dim);font-size:10px;min-width:56px;">{{ g.date }}</span>
           <span style="color:var(--text-dim);font-size:10px;min-width:20px;">{{ g.home_away }}</span>
           <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
                        color:var(--text);">{{ g.opponent }}</span>
-          <span style="color:var(--text);font-weight:600;">{{ g.my_score }}-{{ g.opp_score }}</span>
+          <span style="color:var(--text);font-weight:600;">{{ g.my_score }}–{{ g.opp_score }}</span>
         </div>
         {% endfor %}
       </div>

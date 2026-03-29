@@ -1,0 +1,144 @@
+{# Returned by /games/{id}/panel — injected into #game-panel-header and #game-panel-content #}
+
+<div id="game-panel-header-inner">
+  <div style="flex:1;">
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+      {{ game.game_date }}
+      {% if game.innings_played and game.innings_played != 9 %} · F/{{ game.innings_played }}{% endif %}
+    </div>
+    <div style="font-size:16px;font-weight:700;margin-top:2px;">
+      <span style="color:{% if game.away_team_id == my_team_id %}var(--green){% else %}var(--text){% endif %};">
+        {{ game.away_city }} {{ game.away_mascot }}
+      </span>
+      <span style="font-family:var(--font-mono);color:var(--text-dim);font-size:14px;margin:0 8px;">
+        {{ game.away_score }} – {{ game.home_score }}
+      </span>
+      <span style="color:{% if game.home_team_id == my_team_id %}var(--green){% else %}var(--text){% endif %};">
+        {{ game.home_city }} {{ game.home_mascot }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<div id="game-panel-body-inner">
+
+{% for team_label, team_id, bat_rows, pit_rows in [
+    (game.away_city ~ ' ' ~ game.away_mascot, game.away_team_id, away_bat, away_pit),
+    (game.home_city ~ ' ' ~ game.home_mascot, game.home_team_id, home_bat, home_pit),
+] %}
+<div style="margin-bottom:20px;">
+  <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;
+              color:{% if team_id == my_team_id %}var(--green){% else %}var(--text-dim){% endif %};
+              letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">
+    {{ team_label }}
+  </div>
+
+  {% if bat_rows %}
+  <div style="overflow-x:auto;margin-bottom:8px;">
+    <table class="data-table" style="width:100%;font-size:11px;">
+      <thead><tr>
+        <th>Batter</th>
+        <th style="text-align:right;">AB</th><th style="text-align:right;">R</th>
+        <th style="text-align:right;">H</th><th style="text-align:right;">2B</th>
+        <th style="text-align:right;">3B</th><th style="text-align:right;">HR</th>
+        <th style="text-align:right;">RBI</th><th style="text-align:right;">BB</th>
+        <th style="text-align:right;">K</th><th style="text-align:right;">SB</th>
+      </tr></thead>
+      <tbody>
+        {% for p in bat_rows %}
+        <tr>
+          <td style="font-family:var(--font-sans);">{{ p.first_name[0] }}. {{ p.last_name }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.AB }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:{% if p.H > 0 %}600{% else %}400{% endif %};">{{ p.H }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p['2B'] or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p['3B'] or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);color:{% if p.HR > 0 %}var(--amber){% else %}inherit{% endif %};">{{ p.HR or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.RBI or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.BB or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);color:{% if p.K >= 3 %}var(--red){% else %}inherit{% endif %};">{{ p.K or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.SB or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if pit_rows %}
+  <div style="overflow-x:auto;">
+    <table class="data-table" style="width:100%;font-size:11px;">
+      <thead><tr>
+        <th>Pitcher</th>
+        <th style="text-align:right;">IP</th><th style="text-align:right;">H</th>
+        <th style="text-align:right;">R</th><th style="text-align:right;">ER</th>
+        <th style="text-align:right;">BB</th><th style="text-align:right;">K</th>
+        <th style="text-align:right;">HR</th><th style="text-align:center;">Dec</th>
+      </tr></thead>
+      <tbody>
+        {% for p in pit_rows %}
+        <tr>
+          <td style="font-family:var(--font-sans);">{{ p.first_name[0] }}. {{ p.last_name }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.IP }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.H }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.ER }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.BB }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.K }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);color:{% if p.HR > 0 %}var(--amber){% else %}inherit{% endif %};">{{ p.HR or '' }}</td>
+          <td style="text-align:center;font-family:var(--font-mono);font-weight:600;
+                     color:{% if p.W %}var(--green){% elif p.L %}var(--red){% elif p.SV %}var(--amber){% else %}var(--text-dim){% endif %};">
+            {% if p.W %}W{% elif p.L %}L{% elif p.SV %}S{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if events %}
+<div style="margin-top:8px;">
+  <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;
+              color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">
+    Game Log
+  </div>
+  {% for e in events %}
+  <div style="border-bottom:1px solid var(--border);padding:4px 0;font-family:var(--font-mono);font-size:11px;">
+    {% if e.event_type == 'lineup_set' %}
+      {# Parse lineup JSON and display as a tidy card #}
+      <div style="color:var(--text-dim);margin-bottom:4px;">
+        Pre &nbsp;
+        <span style="color:var(--text);">Starting Lineup</span>
+      </div>
+      {% if e.detail_parsed %}
+        <div style="display:grid;grid-template-columns:20px 1fr 40px;gap:2px 8px;padding-left:68px;">
+        {% for slot in e.detail_parsed %}
+          <span style="color:var(--muted);">{{ slot.batting_order }}.</span>
+          <span style="color:var(--text);">{{ slot.name }}</span>
+          <span style="color:var(--text-dim);text-align:right;">{{ slot.position | upper }}</span>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% else %}
+    <div style="display:flex;gap:10px;">
+      <span style="color:var(--muted);min-width:60px;flex-shrink:0;">
+        {% if e.inning %}{{ 'Top' if e.half == 'top' else 'Bot' }} {{ e.inning }}{% else %}Pre{% endif %}
+      </span>
+      <span style="color:{% if e.event_type == 'injury' %}var(--red){% elif e.event_type in ('closer_called','pitcher_start') %}var(--amber){% else %}var(--text-dim){% endif %};">
+        {{ e.reason }}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:16px;">
+  No event log available for this game.
+</div>
+{% endif %}
+
+</div>
