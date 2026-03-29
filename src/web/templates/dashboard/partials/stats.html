@@ -1,0 +1,223 @@
+{# ── Stats Tab ─────────────────────────────────────────────────────────────── #}
+
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:12px 24px;border-bottom:1px solid var(--border);">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <h1 class="page-title">Stats</h1>
+
+    {# Team selector #}
+    <select id="team-select" onchange="switchTeam(this.value)"
+            style="font-family:var(--font-mono);font-size:12px;padding:4px 8px;">
+      {% for t in all_teams %}
+      <option value="{{ t.id }}" {% if t.id == selected_team_id %}selected{% endif %}>
+        {{ t.city }} {{ t.mascot }}{% if t.id == my_team_id %} ★{% endif %}
+      </option>
+      {% endfor %}
+    </select>
+
+    {# Batting / Pitching toggle #}
+    <div style="display:flex;gap:0;border:1px solid var(--border);">
+      <button id="btn-bat" onclick="showCategory('batting')"
+              style="padding:5px 14px;font-family:var(--font-mono);font-size:11px;
+                     background:var(--green-dim);color:var(--green);border:none;cursor:pointer;">
+        Batting
+      </button>
+      <button id="btn-pit" onclick="showCategory('pitching')"
+              style="padding:5px 14px;font-family:var(--font-mono);font-size:11px;
+                     background:transparent;color:var(--text-dim);border:none;cursor:pointer;
+                     border-left:1px solid var(--border);">
+        Pitching
+      </button>
+    </div>
+
+    {# Qualified toggle #}
+    <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);
+                  font-size:11px;color:var(--text-dim);cursor:pointer;">
+      <input type="checkbox" id="qual-toggle" onchange="renderTable()"
+             style="cursor:pointer;"> Qualified only
+    </label>
+
+    <span id="stats-count" style="font-family:var(--font-mono);font-size:11px;
+                                   color:var(--text-dim);margin-left:auto;"></span>
+  </div>
+</div>
+
+<div style="padding:12px 24px 32px;overflow-x:auto;">
+  <table id="stats-table" class="data-table" style="width:100%;white-space:nowrap;font-size:12px;">
+    <thead id="stats-head"></thead>
+    <tbody id="stats-body"></tbody>
+  </table>
+  <div id="stats-empty" style="display:none;padding:40px 0;text-align:center;
+       font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+    No stats available yet.
+  </div>
+</div>
+
+<script>
+(function() {
+
+var LEAGUE_ID       = "{{ league_id }}";
+var MY_TEAM_ID      = "{{ my_team_id or '' }}";
+var TEAM_GAMES      = {{ team_games }};
+var MIN_AB          = Math.floor(3.1 * TEAM_GAMES);
+var MIN_OUTS        = 3 * TEAM_GAMES;
+
+var BATTERS  = {{ batters  | tojson }};
+var PITCHERS = {{ pitchers | tojson }};
+
+var category  = 'batting';
+var sortKey   = 'AVG';
+var sortAsc   = false;  // descending by default
+var qualOnly  = false;
+
+var BAT_COLS = [
+  {key:'name',  label:'Player',  fmt:null,    rate:false, asc:true},
+  {key:'G',     label:'G',       fmt:null,    rate:false},
+  {key:'AB',    label:'AB',      fmt:null,    rate:false},
+  {key:'H',     label:'H',       fmt:null,    rate:false},
+  {key:'2B',    label:'2B',      fmt:null,    rate:false},
+  {key:'3B',    label:'3B',      fmt:null,    rate:false},
+  {key:'HR',    label:'HR',      fmt:null,    rate:false},
+  {key:'RBI',   label:'RBI',     fmt:null,    rate:false},
+  {key:'R',     label:'R',       fmt:null,    rate:false},
+  {key:'BB',    label:'BB',      fmt:null,    rate:false},
+  {key:'K',     label:'K',       fmt:null,    rate:false},
+  {key:'SB',    label:'SB',      fmt:null,    rate:false},
+  {key:'AVG',   label:'AVG',     fmt:'avg',   rate:true},
+  {key:'OBP',   label:'OBP',     fmt:'avg',   rate:true},
+  {key:'SLG',   label:'SLG',     fmt:'avg',   rate:true},
+  {key:'OPS',   label:'OPS',     fmt:'avg',   rate:true},
+];
+
+var PIT_COLS = [
+  {key:'name',  label:'Player',  fmt:null,    rate:false, asc:true},
+  {key:'G',     label:'G',       fmt:null,    rate:false},
+  {key:'GS',    label:'GS',      fmt:null,    rate:false},
+  {key:'W',     label:'W',       fmt:null,    rate:false},
+  {key:'L',     label:'L',       fmt:null,    rate:false},
+  {key:'SV',    label:'SV',      fmt:null,    rate:false},
+  {key:'IP',    label:'IP',      fmt:'ip',    rate:false},
+  {key:'H',     label:'H',       fmt:null,    rate:false},
+  {key:'ER',    label:'ER',      fmt:null,    rate:false},
+  {key:'BB',    label:'BB',      fmt:null,    rate:false},
+  {key:'K',     label:'K',       fmt:null,    rate:false},
+  {key:'HR',    label:'HR',      fmt:null,    rate:false},
+  {key:'ERA',   label:'ERA',     fmt:'era',   rate:true},
+  {key:'WHIP',  label:'WHIP',    fmt:'era',   rate:true},
+  {key:'BB9',   label:'BB/9',    fmt:'era',   rate:true},
+  {key:'HR9',   label:'HR/9',    fmt:'era',   rate:true},
+];
+
+function fmtVal(val, fmt) {
+  if (val === null || val === undefined) return '—';
+  if (fmt === 'avg') return val.toFixed(3);
+  if (fmt === 'era') return val.toFixed(2);
+  if (fmt === 'ip')  return val;
+  return String(val);
+}
+
+function sortVal(row, key) {
+  if (key === 'name') return row.name || '';
+  if (key === 'IP')   return row.IP_val || 0;
+  var v = row[key];
+  return (v === null || v === undefined) ? -999 : v;
+}
+
+function showCategory(cat) {
+  category = cat;
+  sortKey  = cat === 'batting' ? 'AVG' : 'ERA';
+  sortAsc  = cat === 'pitching';  // ERA sorts ascending
+  document.getElementById('btn-bat').style.background = cat==='batting' ? 'var(--green-dim)' : 'transparent';
+  document.getElementById('btn-bat').style.color      = cat==='batting' ? 'var(--green)'     : 'var(--text-dim)';
+  document.getElementById('btn-pit').style.background = cat==='pitching'? 'var(--green-dim)' : 'transparent';
+  document.getElementById('btn-pit').style.color      = cat==='pitching'? 'var(--green)'     : 'var(--text-dim)';
+  renderTable();
+}
+
+function setSort(key, defaultAsc) {
+  if (sortKey === key) {
+    sortAsc = !sortAsc;
+  } else {
+    sortKey = key;
+    sortAsc = defaultAsc !== undefined ? defaultAsc : false;
+  }
+  renderTable();
+}
+
+function renderTable() {
+  qualOnly = document.getElementById('qual-toggle').checked;
+  var cols = category === 'batting' ? BAT_COLS : PIT_COLS;
+  var rows = category === 'batting' ? BATTERS  : PITCHERS;
+
+  if (qualOnly) rows = rows.filter(r => r.qualified);
+
+  rows = rows.slice().sort(function(a, b) {
+    var av = sortVal(a, sortKey);
+    var bv = sortVal(b, sortKey);
+    if (typeof av === 'string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    return sortAsc ? av - bv : bv - av;
+  });
+
+  // Header
+  var headHtml = '<tr>';
+  cols.forEach(function(col) {
+    var arrow = sortKey === col.key ? (sortAsc ? ' ↑' : ' ↓') : '';
+    var defaultAsc = col.asc !== undefined ? col.asc : (col.key === 'ERA' || col.key === 'BB9' || col.key === 'HR9' || col.key === 'WHIP');
+    headHtml += '<th style="cursor:pointer;user-select:none;text-align:'
+      + (col.key==='name'?'left':'right') + ';white-space:nowrap;"'
+      + ' onclick="setSort(\'' + col.key + '\',' + defaultAsc + ')">'
+      + col.label + arrow + '</th>';
+  });
+  headHtml += '</tr>';
+  document.getElementById('stats-head').innerHTML = headHtml;
+
+  // Body
+  var empty = document.getElementById('stats-empty');
+  if (!rows.length) {
+    document.getElementById('stats-table').style.display = 'none';
+    empty.style.display = 'block';
+    document.getElementById('stats-count').textContent = '0 players';
+    return;
+  }
+  document.getElementById('stats-table').style.display = '';
+  empty.style.display = 'none';
+  document.getElementById('stats-count').textContent = rows.length + ' players';
+
+  var bodyHtml = '';
+  rows.forEach(function(row) {
+    bodyHtml += '<tr onclick="openPlayerPanel(\'' + row.player_id + '\')" style="cursor:pointer;"'
+      + ' onmouseover="this.style.background=\'var(--bg-3)\'"'
+      + ' onmouseout="this.style.background=\'\'">';
+    cols.forEach(function(col) {
+      var val = fmtVal(row[col.key], col.fmt);
+      var isRate = col.rate;
+      // Dim unqualified rate stats
+      var unqual = isRate && !row.qualified;
+      var color = unqual ? 'var(--text-dim)' : (isRate ? 'var(--amber)' : '');
+      var title = unqual ? ' title="Below qualification threshold"' : '';
+      var style = 'text-align:' + (col.key==='name'?'left':'right') + ';font-family:var(--font-mono);';
+      if (color) style += 'color:' + color + ';';
+      if (unqual) style += 'font-style:italic;';
+      if (isRate && !unqual) style += 'font-weight:600;';
+      bodyHtml += '<td style="' + style + '"' + title + '>' + val + '</td>';
+    });
+    bodyHtml += '</tr>';
+  });
+  document.getElementById('stats-body').innerHTML = bodyHtml;
+}
+
+function switchTeam(teamId) {
+  var url = '/leagues/' + LEAGUE_ID + '/stats?team_id=' + teamId;
+  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+}
+
+// Init
+renderTable();
+
+window.setSort       = setSort;
+window.showCategory  = showCategory;
+window.switchTeam    = switchTeam;
+window.renderTable   = renderTable;
+
+})();
+</script>

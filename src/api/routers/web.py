@@ -192,8 +192,8 @@ def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
     if state == "lobby":
         return []
     if not draft_complete:
-        return ["draft", "roster", "lineup", "standings", "leaders", "strategy"]
-    post = ["roster", "lineup", "standings", "schedule", "leaders", "strategy"]
+        return ["draft", "roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
+    post = ["roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
     if state not in ("season", "playoffs", "preseason"):
         post.remove("schedule")
     post.append("draft")  # draft results at far right
@@ -1825,6 +1825,135 @@ def schedule(
     ctx["upcoming"] = upcoming
     ctx["recent"]   = recent
     return _respond(request, "dashboard/partials/schedule.html", ctx)
+
+
+# ── Tab: Stats ─────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/stats", response_class=HTMLResponse)
+def stats(
+    request: Request, league_id: str, db: DB,
+    team_id: str | None = None,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "stats")
+    season_id  = ctx["season_id"]
+    my_team_id = gm["team_id"] if gm else None
+
+    # Default to user's team
+    selected_team_id = team_id or my_team_id
+
+    # All teams in league for dropdown
+    all_teams = db.execute(
+        """SELECT t.id, t.city, t.mascot
+           FROM teams t
+           JOIN league_season_teams lst ON lst.team_id = t.id
+           JOIN league_seasons ls ON ls.season_id = lst.season_id
+           WHERE ls.league_id = ?
+           ORDER BY t.city""",
+        (league_id,),
+    ).fetchall()
+
+    batters  = []
+    pitchers = []
+    team_games = 0
+
+    if season_id and selected_team_id:
+        tg_row = db.execute(
+            """SELECT MAX(bat_games_played) as tg FROM player_season_stats
+               WHERE season_id = ? AND is_postseason = 0
+                 AND player_id IN (
+                     SELECT player_id FROM team_players WHERE team_id = ?
+                 )""",
+            (season_id, selected_team_id),
+        ).fetchone()
+        team_games = tg_row["tg"] or 0
+        min_ab   = int(3.1 * team_games)
+        min_outs = int(3   * team_games)
+
+        rows = db.execute(
+            """SELECT p.id as player_id, p.first_name, p.last_name, pss.*
+               FROM player_season_stats pss
+               JOIN players p ON p.id = pss.player_id
+               WHERE pss.season_id = ? AND pss.is_postseason = 0
+                 AND pss.team_id = ?""",
+            (season_id, selected_team_id),
+        ).fetchall()
+
+        for r in rows:
+            s = dict(r)
+            ab   = s.get("bat_ab") or 0
+            h    = s.get("bat_hits") or 0
+            d    = s.get("bat_doubles") or 0
+            tr   = s.get("bat_triples") or 0
+            hr   = s.get("bat_home_runs") or 0
+            rbi  = s.get("bat_rbi") or 0
+            runs = s.get("bat_runs") or 0
+            bb   = s.get("bat_walks") or 0
+            k    = s.get("bat_strike_outs") or 0
+            sb   = s.get("bat_stolen_bases") or 0
+            hbp  = s.get("bat_hbp") or 0
+            sf   = s.get("bat_sac_flys") or 0
+            g    = s.get("bat_games_played") or 0
+
+            if g > 0 or ab > 0:
+                avg = round(h / ab, 3) if ab else 0.0
+                obp_d = ab + bb + hbp + sf
+                obp   = round((h + bb + hbp) / obp_d, 3) if obp_d else 0.0
+                tb    = h - d - tr - hr + 2*d + 3*tr + 4*hr
+                slg   = round(tb / ab, 3) if ab else 0.0
+                qualifies_bat = ab >= min_ab
+                batters.append({
+                    "player_id": s["player_id"],
+                    "name":  f"{s['first_name']} {s['last_name']}",
+                    "G": g, "AB": ab, "H": h, "2B": d, "3B": tr,
+                    "HR": hr, "RBI": rbi, "R": runs, "BB": bb,
+                    "K": k, "SB": sb,
+                    "AVG": avg, "OBP": obp, "SLG": slg, "OPS": round(obp+slg, 3),
+                    "qualified": qualifies_bat,
+                })
+
+            outs = s.get("pitch_outs") or 0
+            pg   = s.get("pitch_games_played") or 0
+            if pg > 0 or outs > 0:
+                er   = s.get("pitch_earned_runs") or 0
+                ph   = s.get("pitch_hits") or 0
+                pbb  = s.get("pitch_walks") or 0
+                pk   = s.get("pitch_strike_outs") or 0
+                phr  = s.get("pitch_home_runs") or 0
+                w    = s.get("pitch_wins") or 0
+                l    = s.get("pitch_losses") or 0
+                sv   = s.get("pitch_saves") or 0
+                ip_f = outs / 3
+                era  = round((er * 27) / outs, 2) if outs else 0.0
+                whip = round((pbb + ph) / ip_f, 2) if ip_f else 0.0
+                bb9  = round((pbb * 27) / outs, 2) if outs else 0.0
+                hr9  = round((phr * 27) / outs, 2) if outs else 0.0
+                gs   = s.get("pitch_games_started") or 0
+                ip_disp = f"{outs//3}.{outs%3}"
+                qualifies_pit = outs >= min_outs
+                pitchers.append({
+                    "player_id": s["player_id"],
+                    "name": f"{s['first_name']} {s['last_name']}",
+                    "G": pg, "GS": gs, "W": w, "L": l, "SV": sv,
+                    "IP": ip_disp, "IP_val": ip_f,
+                    "H": ph, "ER": er, "BB": pbb, "K": pk, "HR": phr,
+                    "ERA": era, "WHIP": whip, "BB9": bb9, "HR9": hr9,
+                    "qualified": qualifies_pit,
+                })
+
+    ctx.update({
+        "all_teams":        [dict(t) for t in all_teams],
+        "selected_team_id": selected_team_id,
+        "team_games":       team_games,
+        "batters":          batters,
+        "pitchers":         pitchers,
+    })
+    return _respond(request, "dashboard/partials/stats.html", ctx)
 
 
 # ── Game detail ────────────────────────────────────────────────────────────────
