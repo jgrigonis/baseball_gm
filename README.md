@@ -21,6 +21,18 @@ On windows you should also do this in a powershell as an admin:
 
 [System.Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Machine")
 
+### Editor Notes
+
+To get rid of syntax highlight errors in the .html files
+
+In cursor and probably vscode:
+
+Open your Settings (Cmd + , or Ctrl + ,)
+Search for Files: Associations.
+Add an item: Item: *.html / Value: jinja-html.
+Note: This might slightly change how your standard HTML 
+auto-completes, but it stops the syntax errors in your style attributes.
+
 ### Goals:
 * Create a random player (done)
 * Create a custom player
