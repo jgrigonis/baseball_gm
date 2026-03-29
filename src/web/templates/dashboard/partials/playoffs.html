@@ -1,0 +1,253 @@
+{# ── Playoffs Tab ──────────────────────────────────────────────────────────── #}
+
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:12px 24px;border-bottom:1px solid var(--border);">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <h1 class="page-title">Playoffs</h1>
+    {% if champion %}
+    <span style="font-family:var(--font-mono);font-size:13px;color:var(--amber);font-weight:600;">
+      🏆 Champion: {{ champion.name }}
+    </span>
+    {% endif %}
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+      <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
+      {% if not champion %}
+      <div style="position:relative;display:inline-block;">
+        <button id="po-play-btn" onclick="togglePoMenu()"
+                class="btn btn-primary" style="padding:6px 14px;">
+          ▶ Sim &nbsp;▾
+        </button>
+        <div id="po-menu"
+             style="display:none;position:absolute;right:0;top:100%;margin-top:4px;
+                    background:var(--bg-2);border:1px solid var(--border);
+                    min-width:160px;z-index:20;">
+          <button onclick="simPlayoffs('game')"   class="po-menu-item">Sim 1 Game</button>
+          <button onclick="simPlayoffs('series')" class="po-menu-item">Sim 1 Series</button>
+          <button onclick="simPlayoffs('round')"  class="po-menu-item">Sim 1 Round</button>
+          <button onclick="simPlayoffs('all')"    class="po-menu-item">Sim Entire Playoffs</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+.po-menu-item {
+  display:block;width:100%;text-align:left;
+  padding:8px 14px;border:none;background:none;
+  font-family:var(--font-mono);font-size:12px;color:var(--text);
+  cursor:pointer;
+}
+.po-menu-item:hover { background:var(--bg-3); }
+.series-card {
+  width:220px;flex-shrink:0;
+  border:1px solid var(--border);background:var(--bg-2);
+}
+.series-card.decided { border-color:var(--green); }
+.series-card.mine    { border-color:var(--amber); }
+.sc-header {
+  padding:6px 10px;border-bottom:1px solid var(--border);
+  font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.sc-team {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px;
+}
+.sc-team + .sc-team { border-top:1px solid var(--border); }
+.sc-name {
+  font-family:var(--font-sans);font-size:12px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;
+}
+.sc-dots { display:flex;gap:3px;align-items:center; }
+.dot-win  { width:9px;height:9px;border-radius:50%;background:var(--green); }
+.dot-loss { width:9px;height:9px;border-radius:50%;background:var(--red);opacity:.5; }
+.dot-empty{ width:9px;height:9px;border-radius:50%;border:1px solid var(--border); }
+.sc-tbd {
+  padding:18px 10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  text-align:center;
+}
+.round-label {
+  font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
+  letter-spacing:.08em;text-transform:uppercase;
+  text-align:center;margin-bottom:12px;
+}
+</style>
+
+{% if not bracket %}
+<div style="padding:48px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+  Playoff bracket not yet available.
+</div>
+{% else %}
+
+{# ── Bracket ───────────────────────────────────────────────────────────────── #}
+{# Fixed dims: card 220px, connector 32px, height 560px                        #}
+{# R1 centers (space-around, 4 cards): 70, 210, 350, 490                        #}
+{# Semi centers (space-around, 2 cards): 140, 420                               #}
+{# Finals center: 280                                                            #}
+
+<div style="padding:24px;overflow-x:auto;">
+<div style="position:relative;display:inline-flex;align-items:stretch;gap:0;min-width:760px;">
+
+  {# ── SVG bracket connector lines ────────────────────────────────────────── #}
+  {# Rendered as absolute overlay, pointer-events:none                         #}
+  <svg style="position:absolute;top:0;left:0;width:100%;height:560px;
+              pointer-events:none;overflow:visible;"
+       preserveAspectRatio="none">
+    {# R1 right edge x=220, connector mid x=236, Semi left edge x=252 #}
+    {# 1v8→Semi1: y=70 and y=210 → midpoint y=140 #}
+    <path d="M 220 70 H 236 V 140 H 252" stroke="var(--border)" fill="none" stroke-width="1"/>
+    <path d="M 220 210 H 236 V 140"       stroke="var(--border)" fill="none" stroke-width="1"/>
+    {# 2v7→Semi2: y=350 and y=490 → midpoint y=420 #}
+    <path d="M 220 350 H 236 V 420 H 252" stroke="var(--border)" fill="none" stroke-width="1"/>
+    <path d="M 220 490 H 236 V 420"       stroke="var(--border)" fill="none" stroke-width="1"/>
+    {# Semi right edge x=472, connector mid x=488, Finals left x=504 #}
+    {# Semi1→Finals: y=140 and y=420 → midpoint y=280 #}
+    <path d="M 472 140 H 488 V 280 H 504" stroke="var(--border)" fill="none" stroke-width="1"/>
+    <path d="M 472 420 H 488 V 280"       stroke="var(--border)" fill="none" stroke-width="1"/>
+  </svg>
+
+  {# ── Round 1 ─────────────────────────────────────────────────────────────── #}
+  <div style="display:flex;flex-direction:column;justify-content:space-around;
+              height:560px;width:220px;flex-shrink:0;">
+    <div class="round-label" style="position:absolute;top:-20px;left:0;width:220px;">Round 1</div>
+    {% set r1 = bracket[0] %}
+    {% for s in r1.series %}
+    <div class="series-card{% if s.decided %} decided{% endif %}"
+         style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
+      <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
+      {% if s.teams %}
+        {% for t in s.teams %}
+        {% set other = s.teams[1] if loop.first else s.teams[0] %}
+        <div class="sc-team">
+          <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+            {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
+          </span>
+          <div class="sc-dots">
+            {% for i in range(s.wins_needed) %}
+              {% if i < t.wins %}<div class="dot-win"></div>
+              {% else %}<div class="dot-empty"></div>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="sc-tbd">TBD</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ── Connector 1 ─────────────────────────────────────────────────────────── #}
+  <div style="width:32px;flex-shrink:0;"></div>
+
+  {# ── Semifinals ───────────────────────────────────────────────────────────── #}
+  <div style="display:flex;flex-direction:column;justify-content:space-around;
+              height:560px;width:220px;flex-shrink:0;">
+    <div class="round-label" style="position:absolute;top:-20px;left:252px;width:220px;">Semifinals</div>
+    {% set r2 = bracket[1] %}
+    {% for s in r2.series %}
+    <div class="series-card{% if s.decided %} decided{% endif %}"
+         style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
+      <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
+      {% if s.teams %}
+        {% for t in s.teams %}
+        <div class="sc-team">
+          <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+            {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
+          </span>
+          <div class="sc-dots">
+            {% for i in range(s.wins_needed) %}
+              {% if i < t.wins %}<div class="dot-win"></div>
+              {% else %}<div class="dot-empty"></div>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="sc-tbd">Winner of {{ s.name }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ── Connector 2 ─────────────────────────────────────────────────────────── #}
+  <div style="width:32px;flex-shrink:0;"></div>
+
+  {# ── Finals ────────────────────────────────────────────────────────────────── #}
+  <div style="display:flex;flex-direction:column;justify-content:center;
+              height:560px;width:220px;flex-shrink:0;">
+    <div class="round-label" style="position:absolute;top:-20px;left:504px;width:220px;">Finals</div>
+    {% set r3 = bracket[2] %}
+    {% set s = r3.series[0] %}
+    <div class="series-card{% if s.decided %} decided{% endif %}"
+         style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
+      <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
+      {% if s.teams %}
+        {% for t in s.teams %}
+        <div class="sc-team">
+          <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+            {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
+          </span>
+          <div class="sc-dots">
+            {% for i in range(s.wins_needed) %}
+              {% if i < t.wins %}<div class="dot-win"></div>
+              {% else %}<div class="dot-empty"></div>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="sc-tbd">Winners of Semifinals</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+</div>
+{% endif %}
+
+<script>
+(function(){
+var LEAGUE_ID = "{{ league_id }}";
+
+function togglePoMenu() {
+  var m = document.getElementById('po-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+
+function simPlayoffs(mode) {
+  document.getElementById('po-menu').style.display = 'none';
+  var btn = document.getElementById('po-play-btn');
+  var fb  = document.getElementById('po-feedback');
+  if (btn) { btn.disabled = true; btn.textContent = 'Simming…'; }
+  fb.textContent = '';
+
+  fetch('/leagues/' + LEAGUE_ID + '/playoffs/sim?mode=' + mode, {method:'POST'})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Sim  ▾'; }
+      fb.textContent = d.games_played + ' game' + (d.games_played !== 1 ? 's' : '') + ' played';
+      // Refresh bracket
+      htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
+    })
+    .catch(function(){
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Sim  ▾'; }
+      fb.textContent = 'Error';
+    });
+}
+
+// Close menu on outside click
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('po-menu');
+  var btn  = document.getElementById('po-play-btn');
+  if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
+
+window.togglePoMenu = togglePoMenu;
+window.simPlayoffs  = simPlayoffs;
+})();
+</script>

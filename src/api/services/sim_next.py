@@ -16,6 +16,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
 from src.league.offseason.build_season_stats import build_season
+from src.league.playoffs.setup_playoffs import get_top_8, build_bracket
 
 
 @dataclass
@@ -66,15 +67,44 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     ).fetchone()
 
     if not next_date_row:
-        # No games left — advance to offseason
+        # No more regular season games — set up playoffs if not already done
+        existing_series = conn.execute(
+            """SELECT COUNT(*) FROM series s
+               JOIN league_seasons ls ON ls.season_id = s.season_id
+               WHERE ls.league_id = ?""",
+            (league_id,),
+        ).fetchone()[0]
+
+        if existing_series == 0:
+            # Auto-seed and build playoff bracket
+            try:
+                from datetime import date, timedelta
+                last_game = conn.execute(
+                    """SELECT MAX(game_date) as d FROM games
+                       WHERE season_id = ? AND completed = 1""",
+                    (season_id,),
+                ).fetchone()
+                playoff_start = (
+                    date.fromisoformat(last_game["d"]) + timedelta(days=5)
+                    if last_game and last_game["d"]
+                    else date.today()
+                )
+                seeds = get_top_8(conn, season_id)
+                build_bracket(conn, season_id, seeds, playoff_start)
+            except Exception as e:
+                import traceback
+                print(f"Playoff setup failed: {e}")
+                print(traceback.format_exc())
+
         conn.execute(
-            "UPDATE leagues SET state = 'offseason' WHERE id = ?", (league_id,)
+            "UPDATE leagues SET state = 'playoffs' WHERE id = ?", (league_id,)
         )
         conn.commit()
         return {
-            "game_date": None,
+            "game_date":    None,
             "games_played": 0,
-            "message": "Season complete — league advanced to offseason.",
+            "league_state": "playoffs",
+            "message":      "Regular season complete — playoffs ready.",
         }
 
     game_date = next_date_row["game_date"]

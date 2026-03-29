@@ -194,8 +194,10 @@ def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
     if not draft_complete:
         return ["draft", "roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
     post = ["roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
-    if state not in ("season", "playoffs", "preseason"):
+    if state not in ("season", "playoffs", "preseason", "offseason"):
         post.remove("schedule")
+    if state in ("playoffs", "offseason"):
+        post.append("playoffs")
     post.append("draft")  # draft results at far right
     return post
 
@@ -1954,6 +1956,126 @@ def stats(
         "pitchers":         pitchers,
     })
     return _respond(request, "dashboard/partials/stats.html", ctx)
+
+
+# ── Tab: Playoffs ──────────────────────────────────────────────────────────────
+
+def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
+    """Load full bracket state for template rendering."""
+    from src.league.play_playoffs import get_series_id, get_series_winner, series_is_decided
+
+    ROUND_DEFS = [
+        {"name": "Round 1",    "series_names": ["1v8", "2v7", "3v6", "4v5"],    "best_of": 5},
+        {"name": "Semifinals", "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"], "best_of": 7},
+        {"name": "Finals",     "series_names": ["Finals"],                       "best_of": 7},
+    ]
+
+    def load_series(series_name, best_of):
+        sid = get_series_id(db, season_id, series_name)
+        if not sid:
+            return {"name": series_name, "series_id": None, "best_of": best_of,
+                    "teams": [], "games_played": 0, "decided": False, "winner_id": None}
+
+        games = db.execute(
+            """SELECT id, game_date, home_team_id, away_team_id,
+                      completed, home_score, away_score, winner_id
+               FROM games WHERE series_id = ? ORDER BY game_date""",
+            (sid,),
+        ).fetchall()
+
+        team_ids = []
+        seen = set()
+        for g in games:
+            for tid in (g["home_team_id"], g["away_team_id"]):
+                if tid not in seen:
+                    team_ids.append(tid)
+                    seen.add(tid)
+
+        teams = []
+        for tid in team_ids:
+            row = db.execute("SELECT city, mascot FROM teams WHERE id = ?", (tid,)).fetchone()
+            if row:
+                wins = sum(1 for g in games if g["completed"] and g["winner_id"] == tid)
+                teams.append({
+                    "team_id": tid,
+                    "name":    f"{row['city']} {row['mascot']}",
+                    "wins":    wins,
+                    "is_mine": tid == my_team_id,
+                })
+
+        wins_needed = {5: 3, 7: 4}[best_of]
+        winner_id = next((t["team_id"] for t in teams if t["wins"] >= wins_needed), None)
+        games_played = sum(1 for g in games if g["completed"])
+
+        return {
+            "name":        series_name,
+            "series_id":   sid,
+            "best_of":     best_of,
+            "wins_needed": wins_needed,
+            "teams":       teams,
+            "games_played": games_played,
+            "decided":     winner_id is not None,
+            "winner_id":   winner_id,
+        }
+
+    rounds = []
+    for rd in ROUND_DEFS:
+        series_list = [load_series(sn, rd["best_of"]) for sn in rd["series_names"]]
+        rounds.append({
+            "name":    rd["name"],
+            "best_of": rd["best_of"],
+            "series":  series_list,
+            "decided": all(s["decided"] for s in series_list),
+        })
+    return rounds
+
+
+@router.get("/leagues/{league_id}/playoffs", response_class=HTMLResponse)
+def playoffs(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+    gm  = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm, "playoffs")
+
+    season_id  = ctx["season_id"]
+    my_team_id = gm["team_id"] if gm else None
+
+    bracket  = _load_bracket(db, season_id, my_team_id) if season_id else []
+    champion = None
+    if bracket and bracket[-1]["decided"]:
+        finals = bracket[-1]["series"][0]
+        champion = next((t for t in finals["teams"] if t["team_id"] == finals["winner_id"]), None)
+
+    ctx.update({
+        "bracket":   bracket,
+        "champion":  champion,
+        "my_team_id": my_team_id,
+    })
+    return _respond(request, "dashboard/partials/playoffs.html", ctx)
+
+
+@router.post("/leagues/{league_id}/playoffs/sim", response_class=JSONResponse)
+def sim_playoff_route(
+    request: Request, league_id: str, db: DB,
+    mode: str = "game",
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from src.api.services.sim_playoff import sim_playoff
+    result = sim_playoff(league_id, db, mode=mode)
+
+    league_state = db.execute(
+        "SELECT state FROM leagues WHERE id = ?", (league_id,)
+    ).fetchone()["state"]
+    result["league_state"] = league_state
+    return JSONResponse(result)
 
 
 # ── Game detail ────────────────────────────────────────────────────────────────

@@ -233,6 +233,8 @@ def play_series(
     best_of: int,
     rng: random.Random,
     logger: logging.Logger = None,
+    league_id: str = "",
+    league_mode: str = "blitz",
 ) -> str:
     """
     Play all undecided games in a series. Returns the winning team_id.
@@ -276,6 +278,8 @@ def play_series(
                     "completed": game_info["completed"],
                 },
                 rng=rng,
+                league_id=league_id,
+                league_mode=league_mode,
             )
             log_print(f"    {result}", logger=logger)
         except Exception as e:
@@ -347,6 +351,14 @@ def main():
     # Recover seeds from R1 series
     seeds = get_seeds(conn, sid)
 
+    league_row = conn.execute(
+        "SELECT league_id FROM league_seasons WHERE season_id = ? LIMIT 1",
+        (sid,)
+    ).fetchone()
+    league_id = league_row["league_id"] if league_row else ""
+    lr = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league_mode = dict(lr).get("mode", "blitz") if lr else "blitz"
+
     # Infer playoff start date from first R1 game
     first_game = conn.execute(
         """
@@ -380,6 +392,8 @@ def main():
             best_of=5,
             rng=rng,
             logger=logger,
+            league_id=league_id,
+            league_mode=league_mode,
         )
         r1_winners[name] = winner
 
@@ -428,6 +442,8 @@ def main():
             name,
             best_of=7,
             rng=rng,
+            league_id=league_id,
+            league_mode=league_mode,
         )
         semi_winners.append((winner, original_seed(seeds, winner)))
 
@@ -464,6 +480,8 @@ def main():
         "Finals",
         best_of=7,
         rng=rng,
+        league_id=league_id,
+        league_mode=league_mode,
     )
 
     champ_name = conn.execute(
