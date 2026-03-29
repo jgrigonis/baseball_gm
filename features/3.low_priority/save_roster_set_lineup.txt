@@ -1,0 +1,3 @@
+Save roster should pop up go to lineup
+
+After you save your roster, a go to lineup button could appear.

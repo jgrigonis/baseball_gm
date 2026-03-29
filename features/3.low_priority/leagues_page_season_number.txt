@@ -1,0 +1,5 @@
+Your league page should show *which* season you are in
+
+Season 1, Season 2, etc.
+
+Instead of just STATE

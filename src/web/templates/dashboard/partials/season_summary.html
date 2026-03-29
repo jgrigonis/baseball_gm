@@ -118,10 +118,8 @@ function beginOffseason() {
         btn.textContent = 'Go to Draft →';
         btn.disabled = false;
         btn.onclick = function() {
-          htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/draft', {target:'#tab-content', swap:'innerHTML'});
-          // Update topbar state
-          var badge = document.querySelector('.topbar-state');
-          if (badge) { badge.textContent = 'draft'; badge.className = 'topbar-state state-draft'; }
+          // Full navigation so tab bar, URL, and state all update cleanly
+          window.location.href = '/leagues/' + LEAGUE_ID + '/draft';
         };
       } else {
         status.textContent = '✗ Error: ' + d.error;

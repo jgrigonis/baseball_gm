@@ -183,7 +183,7 @@ def _draft_is_complete(db, league_id: str) -> bool:
     row = db.execute(
         """SELECT d.state FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     return bool(row and row["state"] == "complete")
@@ -192,7 +192,7 @@ def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
     if state == "lobby":
         return []
     if not draft_complete:
-        return ["draft", "roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
+        return ["draft", "roster", "lineup", "standings", "leaders", "stats", "strategy"]
     post = ["roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
     if state not in ("season", "playoffs", "preseason", "offseason"):
         post.remove("schedule")
@@ -217,12 +217,37 @@ def _shell_ctx(
             "SELECT city, mascot FROM teams WHERE id = ?", (gm["team_id"],)
         ).fetchone()
 
-    season = db.execute(
-        """SELECT s.* FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
+    league_state_for_season = league["state"] if league else "lobby"
+
+    if league_state_for_season == "draft":
+        # During draft, show the last COMPLETED season for standings/schedule/etc.
+        # Year 2 is being drafted but has no games — year 1's data is what's useful.
+        season = db.execute(
+            """SELECT s.* FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = ?
+                 AND EXISTS (
+                   SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 1
+                 )
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        # Fallback to newest if nothing completed yet (first ever draft)
+        if season is None:
+            season = db.execute(
+                """SELECT s.* FROM seasons s
+                   JOIN league_seasons ls ON ls.season_id = s.id
+                   WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+                (league_id,),
+            ).fetchone()
+    else:
+        # All other states: show the newest season (current active season)
+        season = db.execute(
+            """SELECT s.* FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
 
     return {
                 "league_id": league_id,
@@ -528,7 +553,7 @@ async def save_draft_preferences(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     if not draft:
@@ -641,7 +666,7 @@ def draft_tab(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -750,7 +775,7 @@ def execute_draft(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -791,7 +816,7 @@ def draft_results(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY d.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -961,7 +986,7 @@ async def sim_games(
     days_simmed = 0
     remaining = _games_remaining(db, db.execute(
         """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()["id"] if db.execute(
         "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
@@ -985,7 +1010,7 @@ async def sim_games(
     games_played = sum(r.get("games_played", 0) for r in results)
     new_remaining = _games_remaining(db, db.execute(
         """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()["id"] if db.execute(
         "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
@@ -1500,7 +1525,7 @@ def lineup(
         """SELECT p.*, ps.status FROM players p
            JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
            JOIN player_status ps ON ps.player_id = p.id
-           WHERE ps.status = '40man'
+           WHERE ps.status IN ('26man', '40man')
            ORDER BY p.last_name""",
         (team_id,),
     ).fetchall()
@@ -1612,7 +1637,7 @@ async def save_lineup(
     season_id = ctx_season_id = db.execute(
         """SELECT s.id FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.created_at DESC LIMIT 1""",
+           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     season_id = season_id["id"] if season_id else None
@@ -2581,6 +2606,8 @@ def player_panel(
     ctx["player"]         = _load(player_id)
     ctx["compare_player"] = _load(compare) if compare else None
     return templates.TemplateResponse(request, "dashboard/partials/player_panel.html", ctx)
+
+
 
 
 

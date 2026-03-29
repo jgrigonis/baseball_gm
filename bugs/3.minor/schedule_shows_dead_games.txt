@@ -1,0 +1,4 @@
+Schedule showing unnecessary playoff games
+
+Because we don't properly cancel games in the playoffs when a round completes
+The Schedule tab shows them
