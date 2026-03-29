@@ -182,6 +182,17 @@ class TeamInGame:
                     )
                 continue
 
+            # Guard: player may have already been used as a sub for an earlier injured slot
+            if pid in used_ids:
+                sub = best_for_position(position)
+                if sub:
+                    self.logger.info(
+                        f"Saved lineup: {pid} already used, subbing {sub.id} at {position}"
+                    )
+                    lineup_slots.append(LineupSlot(sub, position))
+                    used_ids.add(sub.id)
+                continue
+
             lineup_slots.append(LineupSlot(player, position))
             used_ids.add(pid)
 

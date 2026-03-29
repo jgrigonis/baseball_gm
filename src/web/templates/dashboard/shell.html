@@ -158,8 +158,8 @@ window.closeGamePanel = function() {
 {% if visible_tabs %}
 <nav class="tab-bar" id="tab-bar">
   {% for tab in visible_tabs %}
-  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','strategy':'🎛'} %}
-  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','strategy':'Strategy'} %}
+  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛'} %}
+  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy'} %}
   {% if tab == 'draft' and draft_complete %}
   <a href="/leagues/{{ league_id }}/draft/results"
      class="tab-link {% if active_tab == 'draft' %}active{% endif %}"
