@@ -2075,6 +2075,7 @@ def sim_playoff_route(
     mode: str = "game",
     gm_session: str | None = Cookie(default=None),
 ):
+    from fastapi.responses import JSONResponse
     user = _resolve_user(db, gm_session)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
