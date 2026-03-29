@@ -10,6 +10,7 @@ runs
 stolen bases
 walks (batting)
 strikeouts (batting)
+
 strikeouts (pitching)
 innings pitched (maybe ignore 9 in a game)
 RBIs

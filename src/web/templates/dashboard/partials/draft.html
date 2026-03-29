@@ -11,10 +11,13 @@
       <div class="spacer"></div>
       <button class="btn btn-secondary" onclick="resetOrder()" id="reset-btn"
               style="opacity:0.4;" disabled>↺ Reset to Default</button>
+      <button class="btn btn-secondary" onclick="returnToSubmitted()" id="submitted-btn"
+              style="margin-left:8px;display:none;">⟳ Return to Submitted</button>
       <button class="btn btn-primary" onclick="submitPrefs()" id="submit-btn"
               style="margin-left:8px;">Submit Preferences</button>
-      <span id="submit-feedback"
-            style="font-family:var(--font-mono);font-size:11px;margin-left:12px;"></span>
+      <span id="submit-checkmark"
+            style="font-family:var(--font-mono);font-size:13px;color:var(--green);
+                   margin-left:8px;display:none;">✓</span>
       {% if draft_complete %}
       <a href="/leagues/{{ league_id }}/draft/results"
          class="btn btn-secondary" style="margin-left:16px;border-color:var(--green);color:var(--green);">
@@ -163,6 +166,10 @@
 
 <script>
 (function() {
+// Hoist exports first
+window.setType=setType;window.applySort=applySort;window.resetOrder=resetOrder;
+window.submitPrefs=submitPrefs;window.onExecute=onExecute;window.returnToSubmitted=returnToSubmitted;
+window.dStart=dStart;window.dOver=dOver;window.dDrop=dDrop;window.dEnd=dEnd;
 
 const DRAFT_ID    = "{{ draft_id }}";
 var LEAGUE_ID   = "{{ league_id }}";
@@ -177,10 +184,11 @@ function gradeClass(g) {
   return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
 }
 
-let order        = ALL_PLAYERS.map(p => p.player_id);
-let defaultOrder = null;
-let typeFilter   = '';
-let dirty        = false;
+let order          = ALL_PLAYERS.map(p => p.player_id);
+let defaultOrder   = null;
+let submittedOrder = null;
+let typeFilter     = '';
+let dirty          = false;
 
 // ── Prospect list ──────────────────────────────────────────────────────────────
 function visible() {
@@ -273,7 +281,10 @@ function setType(btn, type) {
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   typeFilter = type;
+  dirty = true;
   saveToStorage();
+  updateResetBtn();
+  updateCheckmark();
   renderBoard();
 }
 
@@ -301,18 +312,37 @@ function sortedOrder() {
 
 function applySort() {
   order = sortedOrder();
-  defaultOrder = [...order];
-  dirty = false;
+  dirty = true;
   saveToStorage();
   updateResetBtn();
+  updateCheckmark();
   renderBoard();
 }
 
 function resetOrder() {
-  order = [...defaultOrder];
+  // Reset UI controls first
+  typeFilter = '';
+  document.querySelectorAll('.type-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick').includes("''"));
+  });
+  document.getElementById('sort1').value = 'overall';
+  document.getElementById('sort2').value = '';
+  // Recompute order from scratch using the reset sort
+  order = sortedOrder();
   dirty = false;
   saveToStorage();
   updateResetBtn();
+  updateCheckmark();
+  renderBoard();
+}
+
+function returnToSubmitted() {
+  if (!submittedOrder) return;
+  order = [...submittedOrder];
+  dirty = false;
+  saveToStorage();
+  updateResetBtn();
+  updateCheckmark();
   renderBoard();
 }
 
@@ -320,6 +350,19 @@ function updateResetBtn() {
   const btn = document.getElementById('reset-btn');
   btn.disabled = !dirty;
   btn.style.opacity = dirty ? '1' : '0.4';
+}
+
+function updateCheckmark() {
+  const check = document.getElementById('submit-checkmark');
+  const subBtn = document.getElementById('submitted-btn');
+  if (!submittedOrder) {
+    check.style.display = 'none';
+    if (subBtn) subBtn.style.display = 'none';
+    return;
+  }
+  const isSubmitted = JSON.stringify(order) === JSON.stringify(submittedOrder);
+  check.style.display = isSubmitted ? 'inline' : 'none';
+  if (subBtn) subBtn.style.display = !isSubmitted ? 'inline-block' : 'none';
 }
 
 // ── Drag ───────────────────────────────────────────────────────────────────────
@@ -347,6 +390,7 @@ function dDrop(e) {
   dirty = true;
   saveToStorage();
   updateResetBtn();
+  updateCheckmark();
   renderBoard();
 }
 function dEnd(e) {
@@ -363,8 +407,7 @@ function saveToStorage() {
       typeFilter,
       sort1: document.getElementById('sort1')?.value || 'overall',
       sort2: document.getElementById('sort2')?.value || '',
-      feedback: document.getElementById('submit-feedback')?.textContent || '',
-      feedbackColor: document.getElementById('submit-feedback')?.style.color || '',
+
     }));
   } catch(e) {}
 }
@@ -390,11 +433,7 @@ function restoreUiState(data) {
   }
   if (data.sort1) document.getElementById('sort1').value = data.sort1;
   if (data.sort2 !== undefined) document.getElementById('sort2').value = data.sort2;
-  if (data.feedback) {
-    const fb = document.getElementById('submit-feedback');
-    fb.textContent = data.feedback;
-    fb.style.color = data.feedbackColor || 'var(--text-dim)';
-  }
+
 }
 
 // ── Submit ─────────────────────────────────────────────────────────────────────
@@ -406,10 +445,8 @@ function onExecute(form) {
 
 async function submitPrefs() {
   const btn = document.getElementById('submit-btn');
-  const fb  = document.getElementById('submit-feedback');
   btn.disabled = true;
   btn.textContent = 'Saving…';
-  fb.textContent  = '';
   try {
     const res = await fetch(`/leagues/${LEAGUE_ID}/draft/preferences`, {
       method: 'PUT',
@@ -417,21 +454,16 @@ async function submitPrefs() {
       body: JSON.stringify({ player_ids: order }),
     });
     if (res.ok) {
-      fb.style.color = 'var(--green)';
-      fb.textContent = '✓ Saved';
-    } else {
-      const d = await res.json().catch(()=>({}));
-      fb.style.color = 'var(--red)';
-      fb.textContent = '✗ ' + (d.detail || 'Error');
+      submittedOrder = [...order];
     }
   } catch(err) {
-    fb.style.color = 'var(--red)';
-    fb.textContent = '✗ Network error';
+    console.error('Submit failed', err);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Submit Preferences';
   }
   saveToStorage();
+  updateCheckmark();
 }
 
 // ── Measure sticky header height for roster positioning ────────────────────────
@@ -473,10 +505,12 @@ if (storedData) {
   const prefSet = new Set(SAVED_PREFS);
   const rest = order.filter(id => !prefSet.has(id));
   order = [...SAVED_PREFS.filter(id => order.includes(id)), ...rest];
+  submittedOrder = [...order];
   defaultOrder = sortedOrder();
   dirty = true;
   saveToStorage();
   updateResetBtn();
+  updateCheckmark();
   renderBoard();
 } else {
   applySort();
@@ -490,7 +524,8 @@ requestAnimationFrame(updateHeaderHeight);
 window.setType        = setType;
 window.applySort      = applySort;
 window.resetOrder     = resetOrder;
-window.submitPrefs    = submitPrefs;
+window.submitPrefs       = submitPrefs;
+window.returnToSubmitted = returnToSubmitted;
 window.onExecute      = onExecute;
 window.dStart         = dStart;
 window.dOver          = dOver;

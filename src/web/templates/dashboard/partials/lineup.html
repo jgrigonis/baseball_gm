@@ -136,6 +136,18 @@
 }
 .add-sp-btn:hover{background:var(--green-dim);}
 .add-sp-btn:disabled{opacity:.3;cursor:not-allowed;}
+.lu-empty-slot{
+  display:flex;align-items:center;gap:10px;
+  padding:5px 10px;border-bottom:1px solid var(--border);
+  transition:background .08s;
+}
+.lu-empty-slot.drag-over > div:last-child {
+  border-color:var(--green) !important;
+  background:var(--green-dim);
+}
+.lu-drag-row.drag-over{background:var(--bg-3);}
+.bench-row[draggable]{cursor:grab;}
+.bench-row[draggable]:active{cursor:grabbing;}
 </style>
 
 <script>
@@ -165,14 +177,14 @@ function gradeClass(g) {
   return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
 }
 
-let lineup   = [];
+let lineup   = Array(9).fill(null);  // fixed 9 slots, null = empty
 let rotation = [];
 let bullpen  = {};
 
 // Purge slots whose player is no longer on the 40-man — only called at init
 function purgeLineup() {
   const known = new Set(ALL_HITTERS.map(p => p.player_id));
-  lineup = lineup.filter(s => known.has(s.player_id));
+  lineup = lineup.map(s => (s && known.has(s.player_id)) ? s : null);
 }
 function purgeRotation() {
   const known = new Set(ALL_PITCHERS.map(p => p.player_id));
@@ -181,8 +193,13 @@ function purgeRotation() {
 
 // Init
 if (SAVED_LINEUP.length > 0) {
-  lineup = SAVED_LINEUP.sort((a,b) => a.batting_order - b.batting_order)
-    .map(s => ({player_id: s.player_id, position: s.position || 'dh'}));
+  const known = new Set(ALL_HITTERS.map(p => p.player_id));
+  SAVED_LINEUP.sort((a,b) => a.batting_order - b.batting_order).forEach(s => {
+    const idx = (s.batting_order - 1);
+    if (idx >= 0 && idx < 9 && known.has(s.player_id)) {
+      lineup[idx] = {player_id: s.player_id, position: s.position || 'dh'};
+    }
+  });
   purgeLineup();
 }
 if (SAVED_ROT.length > 0) {
@@ -213,70 +230,115 @@ function pitcherSkillsHtml(p) {
   ).join('') + ` <span style="color:var(--muted);font-size:10px;">${p.throws||'?'}</span>`;
 }
 
-function usedPositions()  { return new Set(lineup.map(s=>s.position).filter(Boolean)); }
+function usedPositions()  { return new Set(lineup.filter(Boolean).map(s=>s.position).filter(Boolean)); }
 function dupePositions() {
-  const pos = lineup.map(s=>s.position).filter(Boolean);
+  const pos = lineup.filter(Boolean).map(s=>s.position).filter(Boolean);
   return new Set(pos.filter((p,i) => pos.indexOf(p) !== i));
 }
 
 // ── Batting order ──────────────────────────────────────────────────────────────
-let _luDrag = null;
+let _luDrag     = null;   // index being dragged within lineup
+let _benchDrag  = null;   // player_id being dragged from bench
 
 function renderBattingOrder() {
-  const dupes = dupePositions();
-  const el = document.getElementById('batting-order');
-  el.innerHTML = '';
+  const dupes   = dupePositions();
+  const el      = document.getElementById('batting-order');
+  el.innerHTML  = '';
+  const filled  = lineup.filter(Boolean).length;
 
-  lineup.forEach((slot, i) => {
-    const p = findHitter(slot.player_id);
-    if (!p) return;
-    const row = document.createElement('div');
-    row.className = 'lu-slot lu-drag-row';
-    row.dataset.idx = i;
-    const posOpts = POSITIONS.map(pos =>
-      `<option value="${pos}" ${slot.position===pos?'selected':''}>${pos.toUpperCase()}</option>`
-    ).join('');
-    row.innerHTML = `
-      <div class="lu-num">${i+1}</div>
-      <div>
-        <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
-             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
-        <div class="lu-skills">${hitterSkillsHtml(p)}</div>
-      </div>
-      <select class="lu-pos-select${dupes.has(slot.position)?' error':''}"
-              onchange="setPosition(${i},this.value)">${posOpts}</select>
-      <button class="lu-remove" onclick="removeFromLineup(${i})">×</button>`;
+  for (let i = 0; i < 9; i++) {
+    const slot = lineup[i];
+    const row  = document.createElement('div');
 
-    row.draggable = true;
-    row.addEventListener('dragstart', e => { _luDrag=i; row.classList.add('dragging'); e.stopPropagation(); });
-    row.addEventListener('dragover', e => e.preventDefault());
+    if (slot) {
+      // ── Filled slot ──────────────────────────────────────────────────────
+      const p = findHitter(slot.player_id);
+      if (!p) { lineup[i] = null; continue; }
+      row.className = 'lu-slot lu-drag-row';
+      row.dataset.idx = i;
+      const posOpts = POSITIONS.map(pos =>
+        `<option value="${pos}" ${slot.position===pos?'selected':''}>${pos.toUpperCase()}</option>`
+      ).join('');
+      row.innerHTML = `
+        <div class="lu-num">${i+1}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
+               style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+          <div class="lu-skills">${hitterSkillsHtml(p)}</div>
+        </div>
+        <select class="lu-pos-select${dupes.has(slot.position)?' error':''}"
+                onchange="setPosition(${i},this.value)">${posOpts}</select>
+        <button class="lu-remove" onclick="removeFromLineup(${i})">×</button>`;
+      row.draggable = true;
+      row.addEventListener('dragstart', e => {
+        _luDrag = i; _benchDrag = null;
+        row.classList.add('dragging');
+        e.dataTransfer.setData('source', 'lineup');
+        e.dataTransfer.setData('idx', i);
+        e.stopPropagation();
+      });
+    } else {
+      // ── Empty slot ───────────────────────────────────────────────────────
+      row.className = 'lu-slot lu-empty-slot';
+      row.dataset.idx = i;
+      row.innerHTML = `<div class="lu-num" style="color:var(--muted);">${i+1}</div>
+        <div style="flex:1;border:1px dashed var(--border);border-radius:3px;height:32px;
+                    display:flex;align-items:center;padding-left:10px;
+                    font-family:var(--font-mono);font-size:11px;color:var(--muted);">
+          drag player here
+        </div>`;
+    }
+
+    // Both filled and empty accept drops
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
     row.addEventListener('drop', e => {
       e.preventDefault();
-      if (_luDrag===null||_luDrag===i) return;
-      const [m] = lineup.splice(_luDrag,1); lineup.splice(i,0,m);
-      renderBattingOrder();
+      row.classList.remove('drag-over');
+      const src = e.dataTransfer.getData('source');
+      if (src === 'bench') {
+        const pid = e.dataTransfer.getData('pid');
+        if (!pid) return;
+        // Remove from any existing slot first
+        const existing = lineup.findIndex(s => s && s.player_id === pid);
+        if (existing !== -1) lineup[existing] = null;
+        // If dropping on filled slot, swap to bench (just clear target first)
+        const displaced = lineup[i];
+        const used = usedPositions();
+        const pos = POSITIONS.find(p => !used.has(p)) || 'dh';
+        lineup[i] = {player_id: pid, position: pos};
+        renderBattingOrder();
+        renderBench();
+      } else if (src === 'lineup') {
+        const from = parseInt(e.dataTransfer.getData('idx'));
+        if (isNaN(from) || from === i) return;
+        // Swap the two slots (works for filled→empty, empty→filled, filled→filled)
+        [lineup[from], lineup[i]] = [lineup[i], lineup[from]];
+        renderBattingOrder();
+      }
     });
-    row.addEventListener('dragend', () => { row.classList.remove('dragging'); _luDrag=null; });
+    row.addEventListener('dragend', () => { row.classList.remove('dragging'); _luDrag = null; });
     el.appendChild(row);
-  });
+  }
 
-  document.getElementById('slot-count').textContent = `${lineup.length} / 9`;
+  document.getElementById('slot-count').textContent = `${filled} / 9`;
 }
 
-function setPosition(idx, pos) { lineup[idx].position = pos; renderBattingOrder(); }
+function setPosition(idx, pos) { if (lineup[idx]) lineup[idx].position = pos; renderBattingOrder(); }
 
 function removeFromLineup(idx) {
-  lineup.splice(idx,1);
+  lineup[idx] = null;
   renderBattingOrder();
   renderBench();
 }
 
 function addToLineup(pid) {
-  if (lineup.length >= 9) { showFeedback('Lineup is full (9 max)', 'var(--red)'); return; }
-  if (lineup.find(s => s.player_id === pid)) return;
+  if (lineup.find(s => s && s.player_id === pid)) return;
+  const emptyIdx = lineup.findIndex(s => s === null);
+  if (emptyIdx === -1) { showFeedback('Lineup is full (9 max)', 'var(--red)'); return; }
   const used = usedPositions();
   const pos = POSITIONS.find(p => !used.has(p)) || 'dh';
-  lineup.push({player_id: pid, position: pos});
+  lineup[emptyIdx] = {player_id: pid, position: pos};
   renderBattingOrder();
   renderBench();
 }
@@ -287,7 +349,7 @@ function getSortVal(p, key) {
 }
 
 function renderBench() {
-  const inLineup = new Set(lineup.map(s => s.player_id));
+  const inLineup = new Set(lineup.filter(Boolean).map(s => s.player_id));
   const sortKey  = document.getElementById('bench-sort').value;
   const bench    = ALL_HITTERS
     .filter(p => !inLineup.has(p.player_id))
@@ -299,7 +361,9 @@ function renderBench() {
     return;
   }
   el.innerHTML = bench.map(p => `
-    <div class="bench-row" onclick="addToLineup('${p.player_id}')">
+    <div class="bench-row" draggable="true"
+         onclick="addToLineup('${p.player_id}')"
+         ondragstart="event.dataTransfer.setData('source','bench');event.dataTransfer.setData('pid','${p.player_id}');event.stopPropagation();">
       <span class="lu-grade ${gradeClass(p.overall)}">${p.overall}</span>
       <div style="flex:1;min-width:0;">
         <div class="lu-name" style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
@@ -448,7 +512,7 @@ async function saveLineup() {
     });
     if (res.ok) showFeedback('✓ Saved', 'var(--green)');
     else { const d = await res.json().catch(()=>({})); showFeedback('✗ '+(d.detail||'Error'), 'var(--red)'); }
-  } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
+  } catch(e) { showFeedback('✗ Lineup error', 'var(--red)'); }
   finally { btn.disabled=false; btn.textContent='Save Lineup'; }
 }
 

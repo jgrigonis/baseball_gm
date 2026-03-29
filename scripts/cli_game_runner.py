@@ -17,17 +17,15 @@ It should be able to pick up a partally run sim and continue
 
 It should be able to start with a seed for reproducibility
 
-optionally destroy database
-optionally destroy log files
-optionally destroy team_files
-optionally destroy temp_files
+optionally destroy database (only your own)
+optionally destroy all log files
+optionally destroy team_files (only your own)
+optionally destroy all temp_files
 
-create team_files in a a uuid subdir
+create team_files in a a uuid subdir under year
 
 create more seasons of manifests from a single example
 create_more_seasons.py gets subsumed and deleted
-
-
 
 
 """

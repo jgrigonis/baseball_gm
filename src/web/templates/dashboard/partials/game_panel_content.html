@@ -108,19 +108,19 @@
   {% for e in events %}
   <div style="border-bottom:1px solid var(--border);padding:4px 0;font-family:var(--font-mono);font-size:11px;">
     {% if e.event_type == 'lineup_set' %}
-      {# Parse lineup JSON and display as a tidy card #}
-      <div style="color:var(--text-dim);margin-bottom:4px;">
-        Pre &nbsp;
-        <span style="color:var(--text);">Starting Lineup</span>
+      <div style="color:var(--text-dim);margin-bottom:6px;font-size:11px;">
+        Pre &nbsp;<span style="color:var(--text);">Starting Lineup</span>
       </div>
       {% if e.detail_parsed %}
-        <div style="display:grid;grid-template-columns:20px 1fr 40px;gap:2px 8px;padding-left:68px;">
+        <table style="margin-left:68px;border-collapse:collapse;font-size:11px;">
         {% for slot in e.detail_parsed %}
-          <span style="color:var(--muted);">{{ slot.batting_order }}.</span>
-          <span style="color:var(--text);">{{ slot.name }}</span>
-          <span style="color:var(--text-dim);text-align:right;">{{ slot.position | upper }}</span>
+          <tr>
+            <td style="color:var(--muted);padding:1px 6px 1px 0;min-width:18px;">{{ slot.batting_order }}.</td>
+            <td style="color:var(--text);padding:1px 10px 1px 0;">{{ slot.name }}</td>
+            <td style="color:var(--text-dim);">{{ slot.position | upper }}</td>
+          </tr>
         {% endfor %}
-        </div>
+        </table>
       {% endif %}
     {% else %}
     <div style="display:flex;gap:10px;">
