@@ -79,18 +79,27 @@ class TeamInGame:
         style: str = "prioritized",
         dh: bool = True,
         injured_ids: set[str] | None = None,
+        restrict_to_ids: set[str] | None = None,
+        saved_lineup: list[dict] | None = None,
     ) -> None:
         """
-        Set the lineup with an optional specified starting pitcher.
+        Set the lineup for the game.
 
         Args:
-            starting_pitcher_id: ID of the pitcher who will start this game (optional)
-            style: Lineup optimization style
-            dh: Whether to use designated hitter
+            starting_pitcher_id: ID of the starting pitcher (from rotation)
+            style: Lineup optimizer style (used for AI / gap-fill)
+            dh: Whether to use a DH slot
+            injured_ids: Player IDs currently on the IL — excluded from lineup
+            restrict_to_ids: Eligible player IDs (26man, or 26man+40man for blitz).
+                             None means all roster players are eligible.
+            saved_lineup: Human GM's saved lineup from gm_lineup_preferences.
+                         List of {player_id, batting_order, position} dicts.
+                         If provided, used as-is; injured/ineligible players are
+                         skipped and the optimizer fills any gaps.
         """
         self._ensure_players_rated()
 
-        # Mark injured players before optimizer sees the roster
+        # Mark injured players
         if injured_ids:
             for player in self.players:
                 if player.id in injured_ids:
@@ -100,49 +109,118 @@ class TeamInGame:
         for player in self.players:
             player.apply_fatigue_to_ratings()
 
-        # Exclude injured players from the optimizer's candidate pool
-        available = [p for p in self.players if not p.is_injured]
+        # Build the eligible pool: not injured, within roster eligibility
+        available = [
+            p for p in self.players
+            if not p.is_injured
+            and (restrict_to_ids is None or p.id in restrict_to_ids)
+        ]
 
+        # Set starting pitcher (from rotation — independent of lineup)
         if starting_pitcher_id:
-            # Use specified starting pitcher
             self.pitcher = next(
                 (p for p in self.players if p.record.id == starting_pitcher_id), None
             )
-
             if not self.pitcher:
-                raise ValueError(
-                    f"Starting pitcher {starting_pitcher_id} not found on team {self.record.name}"
+                self.logger.warning(
+                    f"Starting pitcher {starting_pitcher_id} not found on {self.record.name}"
                 )
 
-            # Optimizer still returns (lineup, pitcher_choice) tuple
-            # But we ignore the pitcher_choice since we already set self.pitcher
-            self.lineup, _ = self._optimizer(
-                available, style=style, dh=dh, pitcher=self.pitcher
-            )
+        if saved_lineup:
+            self._set_lineup_from_saved(saved_lineup, available, style, dh)
         else:
-            # Fall back to old method - optimizer picks the pitcher
-            self.lineup, self.pitcher = self._optimizer(
-                available,
-                style=style,
-                dh=dh,
-            )
+            self._set_lineup_from_optimizer(available, style, dh)
 
         self._positions = {Position(slot.position): slot.player for slot in self.lineup}
         self.batter_index = 0
 
-        # Mark starting lineup as having started the game
+        # Mark starting stats
         for slot in self.lineup:
             slot.player.game_stats.batting.game_started = 1
             slot.player.game_stats.batting.game_played = 1
-            # set player position
             slot.player.current_position = slot.position
 
-        # Mark starting pitcher
         if self.pitcher:
             self.pitcher.game_stats.pitching.game_started = 1
             self.pitcher.game_stats.pitching.game_played = 1
             self.pitcher.current_position = Position.PITCHER.value
             self.pitcher.is_starter = True
+
+    def _set_lineup_from_saved(
+        self,
+        saved: list[dict],
+        available: list[PlayerInGame],
+        style: str,
+        dh: bool,
+    ) -> None:
+        """
+        Build lineup from GM's saved preferences.
+        Skips injured/ineligible players and fills gaps with the optimizer.
+        """
+        available_by_id = {p.id: p for p in available}
+        # Pitcher bats last / not in batting lineup
+        if self.pitcher:
+            available_by_id.pop(self.pitcher.id, None)
+
+        lineup_slots: list[LineupSlot] = []
+        used_ids: set[str] = set()
+
+        for slot in sorted(saved, key=lambda s: s["batting_order"]):
+            pid = slot["player_id"]
+            player = available_by_id.get(pid)
+            if not player:
+                # Injured, ineligible, or not on team — will be filled by optimizer
+                self.logger.info(
+                    f"Saved lineup: skipping {pid} (injured or ineligible)"
+                )
+                continue
+            position = slot.get("position") or "dh"
+            lineup_slots.append(LineupSlot(player, position))
+            used_ids.add(pid)
+
+        # Fill any gaps with the optimizer
+        needed = (9 if dh else 8)
+        gap_count = needed - len(lineup_slots)
+        if gap_count > 0:
+            remaining = [
+                p for p in available
+                if p.id not in used_ids
+                and (self.pitcher is None or p.id != self.pitcher.id)
+            ]
+            if remaining:
+                self.logger.info(
+                    f"Saved lineup has {gap_count} gap(s), filling with optimizer"
+                )
+                # Build a mini-lineup for just the gap players
+                # Use dh=True so optimizer produces correct count
+                gap_available = remaining
+                try:
+                    gap_lineup, _ = self._optimizer(
+                        gap_available,
+                        style=style,
+                        dh=True,
+                        pitcher=self.pitcher,
+                    )
+                    lineup_slots.extend(gap_lineup[:gap_count])
+                except Exception as e:
+                    self.logger.warning(f"Gap-fill optimizer failed: {e}")
+
+        self.lineup = lineup_slots
+
+    def _set_lineup_from_optimizer(
+        self,
+        available: list[PlayerInGame],
+        style: str,
+        dh: bool,
+    ) -> None:
+        """Full optimizer-driven lineup — used for AI teams and when no saved lineup."""
+        if self.pitcher:
+            lineup, _ = self._optimizer(
+                available, style=style, dh=dh, pitcher=self.pitcher
+            )
+        else:
+            lineup, self.pitcher = self._optimizer(available, style=style, dh=dh)
+        self.lineup = lineup
 
     @property
     def bench_players(self) -> list[PlayerInGame]:
@@ -152,7 +230,7 @@ class TeamInGame:
             p
             for p in self.players
             if p.id not in lineup_ids
-            and not p.pitcher_fatigue  # exclude pitchers
+            and not p.pitcher_fatigue
             and not p.is_injured
         ]
 
@@ -163,19 +241,16 @@ class TeamInGame:
 
     @property
     def current_batter(self) -> LineupSlot:
-        """Return the current batter."""
         if not self.lineup:
             raise RuntimeError("Lineup has not been set")
         return self.lineup[self.batter_index]
 
     @property
     def current_pitcher(self):
-        """Return the current pitcher."""
         return self.pitcher
 
     @property
     def current_catcher(self) -> PlayerInGame:
-        """Get the current catcher."""
         catcher = self._positions.get(Position.CATCHER)
         if catcher is None:
             raise RuntimeError("No catcher in lineup")
@@ -183,7 +258,6 @@ class TeamInGame:
 
     @property
     def current_first_baseman(self) -> PlayerInGame:
-        """Get the current first basemen."""
         first_base = self._positions.get(Position.FIRST_BASE)
         if first_base is None:
             raise RuntimeError("No first_base in lineup")
@@ -191,7 +265,6 @@ class TeamInGame:
 
     @property
     def current_second_baseman(self) -> PlayerInGame:
-        """Get the current second basemen."""
         second_base = self._positions.get(Position.SECOND_BASE)
         if second_base is None:
             raise RuntimeError("No second_base in lineup")
@@ -199,7 +272,6 @@ class TeamInGame:
 
     @property
     def current_shortstop(self) -> PlayerInGame:
-        """Get the current shortstop."""
         shortstop = self._positions.get(Position.SHORTSTOP)
         if shortstop is None:
             raise RuntimeError("No shortstop in lineup")
@@ -207,7 +279,6 @@ class TeamInGame:
 
     @property
     def current_third_baseman(self) -> PlayerInGame:
-        """Get the current third basemen."""
         third_base = self._positions.get(Position.THIRD_BASE)
         if third_base is None:
             raise RuntimeError("No third_base in lineup")
@@ -215,7 +286,6 @@ class TeamInGame:
 
     @property
     def current_left_fielder(self) -> PlayerInGame:
-        """Get the current left fielder."""
         left_field = self._positions.get(Position.LEFT_FIELD)
         if left_field is None:
             raise RuntimeError("No left_field in lineup")
@@ -223,7 +293,6 @@ class TeamInGame:
 
     @property
     def current_right_fielder(self) -> PlayerInGame:
-        """Get the current right fielder."""
         right_field = self._positions.get(Position.RIGHT_FIELD)
         if right_field is None:
             raise RuntimeError("No right_field in lineup")
@@ -231,7 +300,6 @@ class TeamInGame:
 
     @property
     def current_center_fielder(self) -> PlayerInGame:
-        """Get the current center fielder."""
         center_field = self._positions.get(Position.CENTER_FIELD)
         if center_field is None:
             raise RuntimeError("No center_field in lineup")
@@ -239,26 +307,21 @@ class TeamInGame:
 
     @property
     def current_dh(self) -> PlayerInGame:
-        """Get the current center fielder."""
         dh = self._positions.get(Position.DESIGNATED_HITTER)
         if dh is None:
             raise RuntimeError("No dh in lineup")
         return dh
 
     def next_batter(self) -> LineupSlot:
-        """Increment the batter index and return the next batter."""
         self.batter_index = (self.batter_index + 1) % len(self.lineup)
         return self.current_batter
 
     def get_fielder(self, position: Position) -> PlayerInGame | None:
-        """Get player at a position."""
         return self._positions.get(position)
 
     def _ensure_players_rated(self) -> None:
         for p in self.players:
             if not p.is_rated():
-                # print(f"{p.record.name} throws={repr(p.throws)} record.throws={repr(p.record.throws)}")
-
                 p.rate_player()
 
     def get_bench_player(self, injured: PlayerInGame) -> PlayerInGame | None:
@@ -277,16 +340,12 @@ class TeamInGame:
         bench = self.bench_players
         if not bench:
             return None
-
-        # Ensure all bench players are rated
         for p in bench:
             if not p.is_rated():
                 p.rate_player()
-
-        position = injured.current_position  # e.g. "lf", "1b", "c"
+        position = injured.current_position
         if not position:
             return max(bench, key=lambda p: p.ratings.get("ovr", 0))
-
         return max(bench, key=lambda p: p.ratings.get(position, 0))
 
     def substitute(self, outgoing: PlayerInGame, incoming: PlayerInGame) -> None:
@@ -301,112 +360,67 @@ class TeamInGame:
         if slot is None:
             self.logger.warning(f"substitute: {outgoing.name} not found in lineup")
             return
-
         incoming.current_position = outgoing.current_position
         incoming.game_stats.batting.game_played = 1
         slot.player = incoming
-
         try:
             pos = Position(outgoing.current_position)
             self._positions[pos] = incoming
         except (ValueError, TypeError):
             pass
-
         outgoing.current_position = None
         self.logger.debug(
-            f"↔️  {incoming.name} replaces {outgoing.name} "
-            f"at {incoming.current_position}"
+            f"↔️  {incoming.name} replaces {outgoing.name} at {incoming.current_position}"
         )
 
     def output_lineup_skills(self) -> str:
-        """Output the starting lineup skills as a string."""
-        output = "\n"
-        output += PlayerTableFormatter.header_skills()
-        output += "\n"
+        output = "\n" + PlayerTableFormatter.header_skills() + "\n"
         for slot in self.lineup:
-            output += PlayerTableFormatter.hor_skills(slot.player)
-            output += "\n"
-
+            output += PlayerTableFormatter.hor_skills(slot.player) + "\n"
         return output
 
     def output_lineup_ratings(self) -> str:
-        """Output the starting lineup ratings as a string."""
-        output = "\n"
-        output += PlayerTableFormatter.header_ratings()
-        output += "\n"
+        output = "\n" + PlayerTableFormatter.header_ratings() + "\n"
         for slot in self.lineup:
-            output += PlayerTableFormatter.hor_ratings(slot.player)
-            output += "\n"
-
+            output += PlayerTableFormatter.hor_ratings(slot.player) + "\n"
         return output
 
     def output_pitcher_ratings(self) -> str:
-        """Output the current pitcher ratings as a string."""
-        output = "\n"
-        output += PlayerTableFormatter.hor_ratings(self.current_pitcher)
-        output += "\n"
-        return output
+        return "\n" + PlayerTableFormatter.hor_ratings(self.current_pitcher) + "\n"
 
     def output_pitcher_skills(self) -> str:
-        """Output the current pitcher skills as a string."""
-        output = "\n"
-        output += PlayerTableFormatter.hor_skills(self.current_pitcher)
-        output += "\n"
-        return output
+        return "\n" + PlayerTableFormatter.hor_skills(self.current_pitcher) + "\n"
 
     def output_batting_stats(self) -> str:
-        """Output the team's batting stats as a string."""
-        output = "\n"
-        output += PlayerTableFormatter.horizontal_stat_header()
-        output += "\n"
+        output = "\n" + PlayerTableFormatter.horizontal_stat_header() + "\n"
         for player in self.players:
             if player.game_stats.batting.plate_appearances > 0:
-                output += PlayerTableFormatter.horizontal_stats(player)
-                output += "\n"
+                output += PlayerTableFormatter.horizontal_stats(player) + "\n"
         return output
 
     def output_pitching_stats(self) -> str:
-        """Output the team's pitching stats as a string."""
-        output = "\n"
-        output += PlayerTableFormatter.horizontal_pitching_stat_header()
-        output += "\n"
+        output = "\n" + PlayerTableFormatter.horizontal_pitching_stat_header() + "\n"
         for player in self.players:
             if player.game_stats.pitching.outs > 0:
-                output += PlayerTableFormatter.horizontal_pitching_stats(player)
-                output += "\n"
+                output += PlayerTableFormatter.horizontal_pitching_stats(player) + "\n"
         return output
 
     def output_defensive_stats(self) -> str:
-        """Output the team's defensive stats as a string."""
-        output = "\n"
-        output += PlayerTableFormatter.horizontal_defensive_stat_header()
-        output += "\n"
+        output = "\n" + PlayerTableFormatter.horizontal_defensive_stat_header() + "\n"
         for player in self.players:
             if (
                 player.game_stats.fielding.assists > 0
                 or player.game_stats.fielding.putouts > 0
                 or player.game_stats.fielding.errors > 0
             ):
-                output += PlayerTableFormatter.horizontal_defensive_stats(player)
-                output += "\n"
+                output += PlayerTableFormatter.horizontal_defensive_stats(player) + "\n"
         return output
 
     def output_lineup_card(self) -> str:
-        """
-        Output the starting batting order and positions.
-        """
-        output = "\n"
-        output += PlayerTableFormatter.lineup_card(self)
-        return output
+        return "\n" + PlayerTableFormatter.lineup_card(self)
 
     def output_rotation_card(self) -> str:
-        """Output the starting pitcher."""
-        output = "\n"
-        output += PlayerTableFormatter.rotation_card(self)
-        return output
+        return "\n" + PlayerTableFormatter.rotation_card(self)
 
     def output_bullpen_card(self) -> str:
-        """Output the bullpen card."""
-        output = "\n"
-        output += PlayerTableFormatter.bullpen_card(self)
-        return output
+        return "\n" + PlayerTableFormatter.bullpen_card(self)

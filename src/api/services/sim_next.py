@@ -116,10 +116,12 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     seed = random.randint(0, 999_999)
     rng = random.Random(seed)
 
+    league_mode = dict(league).get("mode", "blitz") or "blitz"
+
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn, league_id=league_id)
+    rotations_repo = TeamRotationsRepository(conn)
 
     results = []
     errors = []
@@ -138,6 +140,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 game_info=game_dict,
                 rng=rng,
                 league_id=league_id,
+                league_mode=league_mode,
             )
             results.append(
                 {

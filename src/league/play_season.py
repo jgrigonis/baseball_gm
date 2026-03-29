@@ -9,7 +9,6 @@ import logging
 import random
 import traceback
 
-
 from src.db.connection import get_connection
 from src.db.repositories import bullpen_roles_repo
 from src.db.repositories.game_lineup_repo import LineupRepository
@@ -32,140 +31,32 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
     parser.add_argument("--season-id", "-i", required=True, help="Season ID to play")
-    parser.add_argument(
-        "--seed", "-s", type=int, help="Random seed for reproducibility"
-    )
-    parser.add_argument(
-        "--force", "-f", action="store_true", help="Replay completed games"
-    )
+    parser.add_argument("--seed", "-s", type=int, help="Random seed for reproducibility")
+    parser.add_argument("--force", "-f", action="store_true", help="Replay completed games")
     parser.add_argument("--limit", "-l", type=int, help="Limit number of games to play")
-    parser.add_argument(
-        "--resume", "-r", action="store_true", help="Resume from last completed game"
-    )
-    parser.add_argument(
-        "--logs", action="store_true", help="Keep logfiles for each game"
-    )
+    parser.add_argument("--resume", "-r", action="store_true", help="Resume from last completed game")
+    parser.add_argument("--logs", action="store_true", help="Keep logfiles for each game")
     return parser.parse_args()
 
 
 def clear_game_data(conn, game_id: str):
-    """Clear all data for a game (for replaying)."""
     conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM game_lineup_slots WHERE game_id = ?", (game_id,))
     conn.execute(
-        """
-        UPDATE games 
-        SET home_score = NULL, away_score = NULL, winner_id = NULL, 
-            innings_played = NULL, completed = 0
-        WHERE id = ?
-        """,
+        "UPDATE games SET home_score=NULL,away_score=NULL,winner_id=NULL,innings_played=NULL,completed=0 WHERE id=?",
         (game_id,),
     )
     conn.commit()
 
 
-def save_game_result(conn, game_id: str, game_info: dict, result):
-    """Save game result to database."""
-    winner_id = (
-        game_info["home_team_id"]
-        if result.home_score > result.away_score
-        else game_info["away_team_id"]
-    )
-
-    conn.execute(
-        """
-        UPDATE games 
-        SET home_score = ?, away_score = ?, winner_id = ?, innings_played = ?, completed = 1
-        WHERE id = ?
-        """,
-        (
-            result.home_score,
-            result.away_score,
-            winner_id,
-            result.innings_played,
-            game_id,
-        ),
-    )
-    conn.commit()
-
-
-def save_team_stats(
-    conn,
-    game_id: str,
-    game_info: dict,
-    home_team: TeamInGame,
-    away_team: TeamInGame,
-    result,
-):
-    """Save team game stats to database."""
-    conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (game_id,))
-
-    cursor = conn.cursor()
-
-    # Calculate team totals
-    home_hits = sum(p.game_stats.batting.hits for p in home_team.players)
-    away_hits = sum(p.game_stats.batting.hits for p in away_team.players)
-
-    home_errors = sum(p.game_stats.fielding.errors for p in home_team.players)
-    away_errors = sum(p.game_stats.fielding.errors for p in away_team.players)
-
-    # Determine win/loss
-    home_win = 1 if result.home_score > result.away_score else 0
-    home_loss = 1 if result.home_score < result.away_score else 0
-    away_win = 1 if result.away_score > result.home_score else 0
-    away_loss = 1 if result.away_score < result.home_score else 0
-
-    # Save home team stats
-    cursor.execute(
-        """
-        INSERT INTO team_game_stats (
-            game_id, team_id, runs, hits, errors, win, loss
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            game_id,
-            game_info["home_team_id"],
-            result.home_score,
-            home_hits,
-            home_errors,
-            home_win,
-            home_loss,
-        ),
-    )
-
-    # Save away team stats
-    cursor.execute(
-        """
-        INSERT INTO team_game_stats (
-            game_id, team_id, runs, hits, errors, win, loss
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            game_id,
-            game_info["away_team_id"],
-            result.away_score,
-            away_hits,
-            away_errors,
-            away_win,
-            away_loss,
-        ),
-    )
-
-    conn.commit()
-
-
-def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: TeamInGame):
-    """Save player game stats to database."""
+def save_player_stats(conn, game_id, home_team, away_team):
     conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
     conn.execute("DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,))
     conn.commit()
-
     player_repo = PlayerGameRepository(conn)
-
-    # Save stats for both teams
-    for team, opponent_team in [(home_team, away_team), (away_team, home_team)]:
+    for team, opp in [(home_team, away_team), (away_team, home_team)]:
         for player in team.players:
             if (
                 player.game_stats.batting.plate_appearances > 0
@@ -173,44 +64,30 @@ def save_player_stats(conn, game_id: str, home_team: TeamInGame, away_team: Team
                 or player.game_stats.fielding.chances > 0
             ):
                 fielding_positions = list(player.fielding_by_position.items())
-                for position, fs in fielding_positions:
+                for position, _ in fielding_positions:
                     if position is None:
                         raise ValueError(
-                            f"Cannot insert fielding stats for player {player.id}: position is None"
+                            f"Cannot insert fielding stats for {player.id}: position is None"
                         )
-
                 player_repo.insert(
                     game_id=game_id,
                     player_id=player.id,
                     team_id=team.record.id,
-                    opponent_team_id=opponent_team.record.id,
+                    opponent_team_id=opp.record.id,
                     stats=player.game_stats,
                     fielding_positions=fielding_positions,
                 )
-
     conn.commit()
 
 
-def load_energy(
-    conn,
-    game_repo,
-    game_id: str,
-    home_team: TeamInGame,
-    away_team: TeamInGame,
-    league_id: str = "",
-):
-    """
-    Load the pitcher energy for both teams.
-    """
+def load_energy(conn, game_repo, game_id, home_team, away_team, league_id=""):
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
-
     game_record = game_repo.get(game_id)
     game_date = datetime.fromisoformat(game_record["game_date"]).date()
-    # game_date = game_record["game_date"]  # This is the date from the games table
     for player in home_team.players + away_team.players:
         state = pitcher_repo.get_with_recovery(
             player_id=player.id,
-            game_date=game_date,  # From the game record
+            game_date=game_date,
             recovery_skill=player.skills["recovery"],
         )
         if player.pitcher_fatigue:
@@ -218,12 +95,7 @@ def load_energy(
     return game_date
 
 
-def save_energy(
-    conn, game_date, home_team: TeamInGame, away_team: TeamInGame, league_id: str = ""
-):
-    """
-    Save the pitcher energy to the database.
-    """
+def save_energy(conn, game_date, home_team, away_team, league_id=""):
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     for player in home_team.players + away_team.players:
         if player.game_stats.pitching.pitch_count > 0:
@@ -237,11 +109,43 @@ def save_energy(
             )
 
 
-def save_position_energy(conn, player_energy_states: dict, league_id) -> None:
+def save_position_energy(conn, player_energy_states, league_id):
     repo = PlayerEnergyRepository(conn, league_id)
     for state in player_energy_states.values():
         if state.season_games_played > 0 or state.last_game_date is not None:
             repo.save(state)
+
+
+def _load_eligible_ids(conn, team_id: str, league_id: str, blitz: bool) -> set[str]:
+    """Return player IDs eligible to play based on league mode.
+    Blitz: 26man + 40man. Long form: 26man only.
+    """
+    statuses = "'26man','40man'" if blitz else "'26man'"
+    rows = conn.execute(
+        f"""SELECT ps.player_id FROM player_status ps
+            JOIN team_players tp ON tp.player_id = ps.player_id
+            WHERE tp.team_id = ? AND ps.status IN ({statuses})""",
+        (team_id,),
+    ).fetchall()
+    return {r["player_id"] for r in rows}
+
+
+def _load_saved_lineup(conn, team_id: str, league_id: str) -> list[dict] | None:
+    """Load human GM's saved lineup preferences, or None if AI team / none saved."""
+    gm = conn.execute(
+        "SELECT id FROM gms WHERE team_id = ? AND league_id = ? AND is_ai = 0 LIMIT 1",
+        (team_id, league_id),
+    ).fetchone()
+    if not gm:
+        return None
+    rows = conn.execute(
+        """SELECT player_id, batting_order, position
+           FROM gm_lineup_preferences
+           WHERE gm_id = ?
+           ORDER BY batting_order""",
+        (gm["id"],),
+    ).fetchall()
+    return [dict(r) for r in rows] if rows else None
 
 
 def play_game(
@@ -255,20 +159,21 @@ def play_game(
     game_info: dict,
     rng: random.Random,
     league_id: str = "",
+    league_mode: str = "blitz",
 ):
     """Play a single game and save results."""
-    # Load teams
+    blitz = (league_mode == "blitz")
+
     home_record = team_repo.get(game_info["home_team_id"])
     away_record = team_repo.get(game_info["away_team_id"])
-
-    # Create teams in game
     home_team = TeamInGame(home_record)
     away_team = TeamInGame(away_record)
 
-    # load pitcher energy, game_date is the date of the current game
-    game_date = load_energy(conn, game_repo, game_info["game_id"], home_team, away_team)
+    game_date = load_energy(
+        conn, game_repo, game_info["game_id"], home_team, away_team, league_id=league_id
+    )
 
-    # Get pitching rotations
+    # Pitching rotations
     home_rotation = rotations_repo.get_current_rotation(
         home_team.record.id, season_id, game_date
     )
@@ -276,18 +181,15 @@ def play_game(
         away_team.record.id, season_id, game_date
     )
 
-    # Mark rotation pitchers
     home_rotation_ids = {r["player_id"] for r in home_rotation}
+    away_rotation_ids = {r["player_id"] for r in away_rotation}
     for player in home_team.players:
         if player.record.id in home_rotation_ids:
             player.is_starter = True
-
-    away_rotation_ids = {r["player_id"] for r in away_rotation}
     for player in away_team.players:
         if player.record.id in away_rotation_ids:
             player.is_starter = True
 
-    # Get next starters from rotation
     home_starter_id = rotations_repo.get_next_starter(
         home_team.record.id, season_id, game_date
     )
@@ -295,32 +197,29 @@ def play_game(
         away_team.record.id, season_id, game_date
     )
 
-    # Setup bullpen roles
+    # Bullpen roles
     home_bullpen = bullpen_roles_repo.get_current_roles(conn, home_record.id, season_id)
     away_bullpen = bullpen_roles_repo.get_current_roles(conn, away_record.id, season_id)
-    home_role_map = {entry["player_id"]: entry["role"] for entry in home_bullpen}
-    away_role_map = {entry["player_id"]: entry["role"] for entry in away_bullpen}
-
+    home_role_map = {e["player_id"]: e["role"] for e in home_bullpen}
+    away_role_map = {e["player_id"]: e["role"] for e in away_bullpen}
     for player in home_team.players:
         if player.id in home_role_map:
             player.bullpen_role = home_role_map[player.id]
-
     for player in away_team.players:
         if player.id in away_role_map:
             player.bullpen_role = away_role_map[player.id]
 
-    if args.logs:
-        log_level = logging.INFO
-        log_id = game_info["game_id"]
-        log_to_file = True
-    else:
-        log_level = logging.WARNING
-        log_id = None
-        log_to_file = False
+    log_level = logging.INFO if args.logs else logging.WARNING
+    log_id    = game_info["game_id"] if args.logs else None
+    logger = setup_logger(
+        name="game", level=log_level, console_level=logging.WARNING,
+        log_id=log_id, log_to_file=bool(args.logs),
+    )
 
     all_player_ids = [p.id for p in home_team.players + away_team.players]
     _ps_repo = PitcherStateRepository(conn)
     pitcher_states = {pid: _ps_repo.get(pid) for pid in all_player_ids}
+
     energy_repo = PlayerEnergyRepository(conn)
     injury_repo = InjuryRepository(conn, league_id=league_id)
     player_energy_states = {
@@ -329,27 +228,20 @@ def play_game(
         )
         for p in home_team.position_players + away_team.position_players
     }
-
     for player in home_team.position_players + away_team.position_players:
         state = player_energy_states.get(player.id)
         if state and player.player_energy:
             player.player_energy.set_energy(state.current_energy)
 
-    logger = setup_logger(
-        name="game",
-        # level=logging.TRACE,
-        level=log_level,
-        console_level=logging.WARNING,
-        log_id=log_id,
-        log_to_file=log_to_file,
-    )
-
     injury_repo.tick_all(all_player_ids)
+    injured_ids = {pid for pid in all_player_ids if injury_repo.is_injured(pid)}
 
-    # Load current injured set to pass into lineup/game
-    injured_ids = {p_id for p_id in all_player_ids if injury_repo.is_injured(p_id)}
+    # Roster eligibility and saved lineups
+    home_eligible  = _load_eligible_ids(conn, home_team.record.id, league_id, blitz)
+    away_eligible  = _load_eligible_ids(conn, away_team.record.id, league_id, blitz)
+    home_saved     = _load_saved_lineup(conn, home_team.record.id, league_id)
+    away_saved     = _load_saved_lineup(conn, away_team.record.id, league_id)
 
-    # Play game
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
     game = Game(
         home_team=home_team,
@@ -363,24 +255,19 @@ def play_game(
         event_logger=event_logger,
     )
 
-    # DEBUG PRINT
-    for player in home_team.position_players + away_team.position_players:
-        state = player_energy_states.get(player.id)
-        if player.player_energy and player.player_energy.energy < 0.40:
-            print(
-                f"  TIRED: {player.name} energy={player.player_energy.energy:.3f} DU={player.skills.get('durability')}"
-            )
-
-    # Pass starter IDs to set_lineup
     home_team.set_lineup(
         starting_pitcher_id=home_starter_id,
         dh=True,
         injured_ids=injured_ids,
+        restrict_to_ids=home_eligible or None,
+        saved_lineup=home_saved,
     )
     away_team.set_lineup(
         starting_pitcher_id=away_starter_id,
         dh=True,
         injured_ids=injured_ids,
+        restrict_to_ids=away_eligible or None,
+        saved_lineup=away_saved,
     )
 
     lineup_repo = LineupRepository(conn)
@@ -391,68 +278,49 @@ def play_game(
         game_info["game_id"], away_record.id, away_team.lineup, away_team.pitcher
     )
 
-    # DEBUG
-    for team in [home_team, away_team]:
-        for slot in team.lineup:
-            if slot.player.is_injured:
-                msg = f"INJURED PLAYER IN LINEUP: {slot.player.name} ({team.record.mascot})"
-
-                logger.info(f"❌ {msg}")
-                print(f"❌ {msg}")
-                raise RuntimeError(f"❌ {msg}")
-
-    # Print starting pitchers and fatigue
     home_starter = next(
         (p for p in home_team.players if p.record.id == home_starter_id), None
     )
     away_starter = next(
         (p for p in away_team.players if p.record.id == away_starter_id), None
     )
-
     home_energy = (
         f"{home_starter.pitcher_fatigue.energy:.1f}"
-        if home_starter and home_starter.pitcher_fatigue
-        else "N/A"
+        if home_starter and home_starter.pitcher_fatigue else "N/A"
     )
     away_energy = (
         f"{away_starter.pitcher_fatigue.energy:.1f}"
-        if away_starter and away_starter.pitcher_fatigue
-        else "N/A"
+        if away_starter and away_starter.pitcher_fatigue else "N/A"
     )
-
     print(
-        f"  ⚾ {away_team.record.mascot} ({away_starter.record.last_name if away_starter else '?'}, energy={away_energy})"
-        f" @ {home_team.record.mascot} ({home_starter.record.last_name if home_starter else '?'}, energy={home_energy})"
+        f"  ⚾ {away_team.record.mascot}"
+        f" ({away_starter.record.last_name if away_starter else '?'}, energy={away_energy})"
+        f" @ {home_team.record.mascot}"
+        f" ({home_starter.record.last_name if home_starter else '?'}, energy={home_energy})"
     )
 
     logger.info(home_team.output_lineup_ratings())
     logger.info(home_team.output_pitcher_ratings())
     logger.info(away_team.output_lineup_ratings())
     logger.info(away_team.output_pitcher_ratings())
-
     logger.info(home_team.output_lineup_skills())
     logger.info(home_team.output_pitcher_skills())
     logger.info(away_team.output_lineup_skills())
     logger.info(away_team.output_pitcher_skills())
-
     logger.info(home_team.output_lineup_card())
     logger.info(away_team.output_lineup_card())
-
     logger.info(home_team.output_rotation_card())
     logger.info(away_team.output_rotation_card())
-
     logger.info(home_team.output_bullpen_card())
     logger.info(away_team.output_bullpen_card())
 
     result = game.play()
 
-    # Determine winner
     winner_id = (
         game_info["home_team_id"]
         if result.home_score > result.away_score
         else game_info["away_team_id"]
     )
-    # Save results
     game_repo.save_result(game_info["game_id"], result, winner_id)
     team_game_repo.save_game_stats(
         game_info["game_id"],
@@ -465,39 +333,31 @@ def play_game(
     )
     save_player_stats(conn, game_info["game_id"], home_team, away_team)
 
-    # Sync post-game fatigue back to energy states
     for player in home_team.position_players + away_team.position_players:
         fatigue = player.player_energy
         if not fatigue:
             continue
         state = player_energy_states.get(player.id)
         if state:
-            state.current_energy = fatigue.energy
-            state.max_energy = fatigue.max_energy
-            state.consecutive_days = fatigue.consecutive_days
+            state.current_energy      = fatigue.energy
+            state.max_energy          = fatigue.max_energy
+            state.consecutive_days    = fatigue.consecutive_days
             state.season_games_played = fatigue.season_games_played
-            state.last_game_date = game_date
+            state.last_game_date      = game_date
 
     save_energy(conn, game_date, home_team, away_team, league_id=league_id)
     save_position_energy(conn, player_energy_states, league_id)
 
-    # Save any new injuries that occurred during the game
     for player_id, severity, activity in game.new_injuries:
         injury_repo.injure(
-            player_id,
-            season_id,
-            game_date,
-            severity=severity,
-            activity=activity,
-            rng=rng,
+            player_id, season_id, game_date,
+            severity=severity, activity=activity, rng=rng,
         )
 
     logger.info(home_team.output_defensive_stats())
     logger.info(away_team.output_defensive_stats())
-
     logger.info(home_team.output_batting_stats())
     logger.info(away_team.output_batting_stats())
-
     logger.info(home_team.output_pitching_stats())
     logger.info(away_team.output_pitching_stats())
 
@@ -507,35 +367,33 @@ def play_game(
 def main():
     args = get_args()
     start_time = datetime.now()
-
-    # Connect to database
     conn = get_connection(args.db)
 
     season_logger = setup_logger(
-        name="season",
-        level=logging.INFO,
-        console_level=logging.WARNING,  # still prints to console via print()
-        log_id="season",
-        log_to_file=True,
+        name="season", level=logging.INFO, console_level=logging.WARNING,
+        log_id="season", log_to_file=True,
     )
-    # Look up league_id from season_id for CLI usage
+
     league_row = conn.execute(
         "SELECT league_id FROM league_seasons WHERE season_id = ? LIMIT 1",
         (args.season_id,),
     ).fetchone()
     league_id = league_row["league_id"] if league_row else ""
 
-    # Initialize repositories
-    game_repo = GameRepository(conn)
-    team_repo = TeamRepository(conn)
+    league_mode = "blitz"
+    if league_id:
+        lr = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()
+        if lr:
+            league_mode = lr["mode"] or "blitz"
+
+    game_repo      = GameRepository(conn)
+    team_repo      = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
-    # Get all games for season
     games = game_repo.get_season_games(
         season_id=args.season_id, incomplete_only=args.resume, regular_season_only=True
     )
-
     if not games:
         print(f"❌ No games found for season {args.season_id}")
         if args.resume:
@@ -550,68 +408,53 @@ def main():
     if args.resume:
         print(f"   (Resuming - {total_games - len(games)} already completed)")
 
-    # Setup RNG
     seed = args.seed if args.seed is not None else random.randint(0, 999999)
     season_logger.info(f"🎲 Seed: {seed}")
     season_logger.info(f"season id: {args.season_id}")
     rng = random.Random(seed)
 
-    # Play games
     completed = 0
     for i, game_info in enumerate(games, 1):
-        # Skip completed games unless force
         if game_info["completed"] and not args.force:
             print(f"[{i}/{len(games)}] Skipping completed game {game_info['game_id']}")
             continue
-
-        # Clear data if replaying
         if game_info["completed"] and args.force:
             clear_game_data(conn, game_info["game_id"])
 
         try:
             result = play_game(
-                conn,
-                args,
-                team_repo,
-                game_repo,
-                team_game_repo,
-                rotations_repo,
-                args.season_id,
-                game_info,
-                rng,
-                league_id=league_id,
+                conn, args, team_repo, game_repo, team_game_repo, rotations_repo,
+                args.season_id, game_info, rng,
+                league_id=league_id, league_mode=league_mode,
             )
             completed += 1
-
-            # Print progress
             if completed % 10 == 0:
                 elapsed = (datetime.now() - start_time).total_seconds()
-                rate = completed / elapsed if elapsed > 0 else 0
+                rate      = completed / elapsed if elapsed > 0 else 0
                 remaining = (len(games) - completed) / rate if rate > 0 else 0
-                msg = f"[{i}/{len(games)}] ✅ {completed} games completed ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
+                msg = (
+                    f"[{i}/{len(games)}] ✅ {completed} games completed"
+                    f" ({rate:.1f} games/sec, ~{remaining:.0f}s remaining)"
+                )
                 print(msg)
                 if args.logs:
                     season_logger.info(msg)
             else:
+                print(f"[{i}/{len(games)}] ✅ {result}")
                 if args.logs:
                     season_logger.info(f"[{i}/{len(games)}] ✅ {result}")
-                print(f"[{i}/{len(games)}] ✅ {result}")
-
         except Exception as e:
-            print(
-                f"[{i}/{len(games)}] ❌ Error playing game {game_info['game_id']}: {e}"
-            )
+            print(f"[{i}/{len(games)}] ❌ Error playing game {game_info['game_id']}: {e}")
             print(traceback.format_exc())
-
             continue
 
-    # Final stats
     elapsed = (datetime.now() - start_time).total_seconds()
-    msg_complete = f"✅ Season complete! Games played: {completed}, Time: {elapsed:.1f}s ({completed/elapsed:.2f} games/sec)"
+    msg_complete = (
+        f"✅ Season complete! Games played: {completed},"
+        f" Time: {elapsed:.1f}s ({completed/elapsed:.2f} games/sec)"
+    )
     print("\n" + msg_complete)
     season_logger.info(msg_complete)
-
-    # Print standings
     print_standings(args.db, args.season_id, season_logger)
 
 
