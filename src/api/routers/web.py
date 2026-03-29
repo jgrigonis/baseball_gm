@@ -1051,20 +1051,23 @@ def standings(
         rows = db.execute(
             """SELECT
                  t.id as team_id, t.city, t.mascot,
-                 SUM(tgs.win)  as wins,
-                 SUM(tgs.loss) as losses,
-                 SUM(tgs.runs) as runs_scored
+                 COALESCE(SUM(tgs.win),  0) as wins,
+                 COALESCE(SUM(tgs.loss), 0) as losses,
+                 COALESCE(SUM(tgs.runs), 0) as runs_scored
                FROM teams t
                JOIN league_season_teams lst
                  ON lst.team_id = t.id
                  AND lst.league_id = ?
                  AND lst.season_id = ?
-               LEFT JOIN team_game_stats tgs ON tgs.team_id = t.id
-               LEFT JOIN games g
-                 ON g.id = tgs.game_id
-                 AND g.season_id = ?
-                 AND g.completed = 1
-                 AND g.series_id IS NULL
+               LEFT JOIN (
+                 SELECT tgs2.team_id, tgs2.win, tgs2.loss, tgs2.runs
+                 FROM team_game_stats tgs2
+                 JOIN games g2
+                   ON g2.id = tgs2.game_id
+                   AND g2.season_id = ?
+                   AND g2.completed = 1
+                   AND g2.series_id IS NULL
+               ) tgs ON tgs.team_id = t.id
                GROUP BY t.id
                ORDER BY wins DESC, losses ASC""",
             (league_id, season_id, season_id),
