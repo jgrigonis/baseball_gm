@@ -12,7 +12,7 @@ Semi and Finals games are generated here once the prior round's winners
 are known, so home/away assignments are correct.
 
 Usage:
-    python -m src.league.play_playoffs --db league.db --season-id S1
+    python -m src.league.playoffs.play_playoffs --db league.db --season-id S1
 """
 
 import argparse

@@ -18,7 +18,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
-from src.league.play_playoffs import (
+from src.league.playoffs.play_playoffs import (
     _HOME_MAP_BO7,
     _SEMI_OFFSETS,
     _FINAL_OFFSETS,

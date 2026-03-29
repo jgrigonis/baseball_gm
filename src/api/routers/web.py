@@ -1039,6 +1039,7 @@ def standings(
                  ON g.id = tgs.game_id
                  AND g.season_id = ?
                  AND g.completed = 1
+                 AND g.series_id IS NULL
                GROUP BY t.id
                ORDER BY wins DESC, losses ASC""",
             (league_id, season_id, season_id),
@@ -1047,7 +1048,7 @@ def standings(
         ra_rows = db.execute(
             """SELECT tgs.team_id, SUM(opp.runs) as runs_allowed
                FROM team_game_stats tgs
-               JOIN games g ON g.id = tgs.game_id AND g.season_id = ? AND g.completed = 1
+               JOIN games g ON g.id = tgs.game_id AND g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
                JOIN team_game_stats opp
                  ON opp.game_id = g.id AND opp.team_id != tgs.team_id
                GROUP BY tgs.team_id""",
@@ -1972,7 +1973,7 @@ def stats(
 
 def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     """Load full bracket state for template rendering."""
-    from src.league.play_playoffs import get_series_id, get_series_winner, series_is_decided
+    from src.league.playoffs.play_playoffs import get_series_id, get_series_winner, series_is_decided
 
     ROUND_DEFS = [
         {"name": "Round 1",    "series_names": ["1v8", "2v7", "3v6", "4v5"],    "best_of": 5},

@@ -236,11 +236,17 @@ def play_game(
     injury_repo.tick_all(all_player_ids)
     injured_ids = {pid for pid in all_player_ids if injury_repo.is_injured(pid)}
 
-    # Roster eligibility and saved lineups
-    home_eligible  = _load_eligible_ids(conn, home_team.record.id, league_id, blitz)
-    away_eligible  = _load_eligible_ids(conn, away_team.record.id, league_id, blitz)
-    home_saved     = _load_saved_lineup(conn, home_team.record.id, league_id)
-    away_saved     = _load_saved_lineup(conn, away_team.record.id, league_id)
+    # Roster eligibility — blitz: no restriction (all non-injured eligible)
+    # Long form: only 26man players can play
+    if blitz:
+        home_eligible = None
+        away_eligible = None
+    else:
+        home_eligible = _load_eligible_ids(conn, home_team.record.id, league_id, blitz)
+        away_eligible = _load_eligible_ids(conn, away_team.record.id, league_id, blitz)
+
+    home_saved = _load_saved_lineup(conn, home_team.record.id, league_id)
+    away_saved = _load_saved_lineup(conn, away_team.record.id, league_id)
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
     game = Game(
