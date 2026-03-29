@@ -16,7 +16,6 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
 from src.league.offseason.build_season_stats import build_season
-from src.league.playoffs.setup_playoffs import get_top_8, build_bracket
 
 
 @dataclass
@@ -78,6 +77,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         if existing_series == 0:
             # Auto-seed and build playoff bracket
             try:
+                from src.league.playoffs.setup_playoffs import get_top_8, build_bracket
                 from datetime import date, timedelta
                 last_game = conn.execute(
                     """SELECT MAX(game_date) as d FROM games
@@ -190,7 +190,11 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
             )
         except Exception as e:
             import traceback
-
+            # Rollback any dirty transaction so the next game starts clean
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             errors.append(
                 {
                     "game_id": game_dict["game_id"],
@@ -198,10 +202,18 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                     "traceback": traceback.format_exc(),
                 }
             )
+            print(f"Game {game_dict['game_id']} failed: {e}")
 
     # Rollup game stats into player_season_stats after each day
     if results:
-        build_season(conn, season_id)
+        try:
+            build_season(conn, season_id)
+        except Exception as _bs_err:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            print(f"build_season non-fatal error (will retry next day): {_bs_err}")
 
     return {
         "game_date": game_date,

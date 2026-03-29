@@ -54,7 +54,14 @@
           body: JSON.stringify({count: 1}),
         });
         var d = await res.json();
-        if (!res.ok || !d.games_played) break;
+        if (!res.ok) { setStatus('✗ Server error', 'red'); break; }
+        if (!d.games_played) {
+          // No games played this tick — could be transient; stop if no progress
+          if (!d.games_remaining || d.games_remaining <= 0) break;
+          // If there are games remaining but none played, something is wrong — stop
+          setStatus('⚠ No games played', 'var(--amber)');
+          break;
+        }
   
         totalGames += d.games_played;
         remaining   = d.games_remaining;

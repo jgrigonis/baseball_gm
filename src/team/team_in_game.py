@@ -1,20 +1,5 @@
 # src/team/team_in_game.py
-"""The TeamInGame class.
-
-Owns:
-players: list[PlayerInGame]
-lineup: list[LineupSlot]
-pitcher
-batter_index
-lineup selection logic
-batter iteration
-
-Does NOT:
-create players
-load CSVs
-generate randomness (except strategic decisions)
-
-"""
+"""The TeamInGame class."""
 
 __author__ = "josh"
 from enum import Enum
@@ -105,7 +90,7 @@ class TeamInGame:
                 if player.id in injured_ids:
                     player.is_injured = True
 
-        # Apply fatigue modifications BEFORE optimizing
+        # Apply fatigue modifications before optimizing
         for player in self.players:
             player.apply_fatigue_to_ratings()
 
@@ -155,30 +140,52 @@ class TeamInGame:
     ) -> None:
         """
         Build lineup from GM's saved preferences.
-        Skips injured/ineligible players and fills gaps with the optimizer.
+        When a saved player is injured/ineligible, immediately find the best
+        available replacement for their specific position so no defensive
+        position is left uncovered.
         """
         available_by_id = {p.id: p for p in available}
-        # Pitcher bats last / not in batting lineup
+        # Pitcher doesn't bat
         if self.pitcher:
             available_by_id.pop(self.pitcher.id, None)
 
         lineup_slots: list[LineupSlot] = []
         used_ids: set[str] = set()
 
+        def best_for_position(pos: str) -> "PlayerInGame | None":
+            """Pick the highest-rated available player for a given position."""
+            candidates = [
+                p for p in available_by_id.values()
+                if p.id not in used_ids
+            ]
+            if not candidates:
+                return None
+            return max(candidates, key=lambda p: p.ratings.get(pos, 0))
+
         for slot in sorted(saved, key=lambda s: s["batting_order"]):
-            pid = slot["player_id"]
-            player = available_by_id.get(pid)
-            if not player:
-                # Injured, ineligible, or not on team — will be filled by optimizer
-                self.logger.info(
-                    f"Saved lineup: skipping {pid} (injured or ineligible)"
-                )
-                continue
+            pid      = slot["player_id"]
             position = slot.get("position") or "dh"
+            player   = available_by_id.get(pid)
+
+            if not player:
+                # Injured or ineligible — find best replacement for their position
+                sub = best_for_position(position)
+                if sub:
+                    self.logger.info(
+                        f"Saved lineup: {pid} unavailable, subbing {sub.id} at {position}"
+                    )
+                    lineup_slots.append(LineupSlot(sub, position))
+                    used_ids.add(sub.id)
+                else:
+                    self.logger.info(
+                        f"Saved lineup: {pid} unavailable, no sub found for {position}"
+                    )
+                continue
+
             lineup_slots.append(LineupSlot(player, position))
             used_ids.add(pid)
 
-        # Fill any gaps with the optimizer
+        # Fill any remaining batting order gaps (shouldn't happen often)
         needed = (9 if dh else 8)
         gap_count = needed - len(lineup_slots)
         if gap_count > 0:
@@ -188,18 +195,10 @@ class TeamInGame:
                 and (self.pitcher is None or p.id != self.pitcher.id)
             ]
             if remaining:
-                self.logger.info(
-                    f"Saved lineup has {gap_count} gap(s), filling with optimizer"
-                )
-                # Build a mini-lineup for just the gap players
-                # Use dh=True so optimizer produces correct count
-                gap_available = remaining
+                self.logger.info(f"Saved lineup has {gap_count} remaining gap(s), filling with optimizer")
                 try:
                     gap_lineup, _ = self._optimizer(
-                        gap_available,
-                        style=style,
-                        dh=True,
-                        pitcher=self.pitcher,
+                        remaining, style=style, dh=True, pitcher=self.pitcher,
                     )
                     lineup_slots.extend(gap_lineup[:gap_count])
                 except Exception as e:
@@ -325,18 +324,6 @@ class TeamInGame:
                 p.rate_player()
 
     def get_bench_player(self, injured: PlayerInGame) -> PlayerInGame | None:
-        """
-        Find the best available bench player for the injured player's position.
-
-        Rates all bench players if needed, then returns the highest rated
-        at the specific position being vacated.
-
-        Args:
-            injured: The player who was injured
-
-        Returns:
-            Best available substitute, or None if bench is empty
-        """
         bench = self.bench_players
         if not bench:
             return None
@@ -349,13 +336,6 @@ class TeamInGame:
         return max(bench, key=lambda p: p.ratings.get(position, 0))
 
     def substitute(self, outgoing: PlayerInGame, incoming: PlayerInGame) -> None:
-        """
-        Replace a player in the lineup with a bench player.
-
-        Args:
-            outgoing: The player leaving the game
-            incoming: The replacement player
-        """
         slot = next((s for s in self.lineup if s.player.id == outgoing.id), None)
         if slot is None:
             self.logger.warning(f"substitute: {outgoing.name} not found in lineup")

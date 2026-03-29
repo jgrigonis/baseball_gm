@@ -971,10 +971,16 @@ async def sim_games(
 
     for _ in range(limit):
         day_result = sim_next_day(league_id, db)
-        if not day_result.get("results"):
+        gp = day_result.get("games_played", 0)
+        if gp > 0:
+            results.append(day_result)
+            days_simmed += 1
+        # Stop if season ended (no game_date) or if state changed out of season
+        if not day_result.get("game_date"):
             break
-        results.append(day_result)
-        days_simmed += 1
+        # Stop if no games played and it wasn't a transient error
+        if gp == 0 and not day_result.get("errors"):
+            break
 
     games_played = sum(r.get("games_played", 0) for r in results)
     new_remaining = _games_remaining(db, db.execute(
@@ -2058,7 +2064,7 @@ def playoffs(
     return _respond(request, "dashboard/partials/playoffs.html", ctx)
 
 
-@router.post("/leagues/{league_id}/playoffs/sim", response_class=JSONResponse)
+@router.post("/leagues/{league_id}/playoffs/sim")
 def sim_playoff_route(
     request: Request, league_id: str, db: DB,
     mode: str = "game",
