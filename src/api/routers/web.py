@@ -991,6 +991,10 @@ async def sim_games(
         "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
     ).fetchone() else None)
 
+    # If season just ended, trigger the state transition (playoffs setup)
+    if new_remaining == 0 and days_simmed > 0:
+        sim_next_day(league_id, db)
+
     league_state_row = db.execute("SELECT state FROM leagues WHERE id = ?", (league_id,)).fetchone()
     return JSONResponse({
         "days_simmed":      days_simmed,

@@ -93,6 +93,10 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 build_bracket(conn, season_id, seeds, playoff_start)
             except Exception as e:
                 import traceback
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 print(f"Playoff setup failed: {e}")
                 print(traceback.format_exc())
 
