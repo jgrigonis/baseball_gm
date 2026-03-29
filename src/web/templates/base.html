@@ -26,7 +26,7 @@
     {% endif %}
     <nav class="topbar-nav">
       <a href="/leagues/">Leagues</a>
-      {% if league_id %}<a href="/leagues/{{ league_id }}/history/">History</a>{% endif %}
+      {% if league_id %}<a href="/leagues/{{ league_id }}/history">History</a>{% endif %}
       <form method="POST" action="/auth/logout" style="display:inline;">
         <button type="submit" style="background:none;border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">Sign Out</button>
       </form>

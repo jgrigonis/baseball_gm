@@ -2196,6 +2196,234 @@ def game_panel(
     return templates.TemplateResponse(request, "dashboard/partials/game_panel_content.html", ctx)
 
 
+# ── Season Summary ─────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/season-summary", response_class=HTMLResponse)
+def season_summary(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+    gm  = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm)
+    season_id  = ctx["season_id"]
+    my_team_id = gm["team_id"] if gm else None
+
+    # My team record
+    my_record = None
+    if my_team_id and season_id:
+        r = db.execute(
+            """SELECT SUM(tgs.win) as w, SUM(tgs.loss) as l
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id
+               WHERE tgs.team_id = ? AND g.season_id = ? AND g.series_id IS NULL""",
+            (my_team_id, season_id),
+        ).fetchone()
+        if r:
+            my_record = {"w": r["w"] or 0, "l": r["l"] or 0}
+
+    # Champion
+    champion = None
+    if season_id:
+        finals = db.execute(
+            "SELECT id FROM series WHERE season_id = ? AND name = 'Finals'",
+            (season_id,),
+        ).fetchone()
+        if finals:
+            champ_row = db.execute(
+                """SELECT winner_id, COUNT(*) as wins FROM games
+                   WHERE series_id = ? AND completed = 1
+                   GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
+                (finals["id"],),
+            ).fetchone()
+            if champ_row and champ_row["wins"] >= 4:
+                t = db.execute(
+                    "SELECT city, mascot FROM teams WHERE id = ?",
+                    (champ_row["winner_id"],),
+                ).fetchone()
+                if t:
+                    champion = {
+                        "team_id": champ_row["winner_id"],
+                        "name": f"{t['city']} {t['mascot']}",
+                        "is_mine": champ_row["winner_id"] == my_team_id,
+                    }
+
+    # My playoff result
+    my_playoff_result = None
+    if my_team_id and season_id:
+        for series_name, best_of in [("Finals", 7), ("[1,8]v[4,5]", 7), ("[2,7]v[3,6]", 7),
+                                      ("1v8", 5), ("2v7", 5), ("3v6", 5), ("4v5", 5)]:
+            sid = db.execute(
+                "SELECT id FROM series WHERE season_id = ? AND name = ?",
+                (season_id, series_name),
+            ).fetchone()
+            if not sid:
+                continue
+            appeared = db.execute(
+                """SELECT 1 FROM games WHERE series_id = ?
+                   AND (home_team_id = ? OR away_team_id = ?) LIMIT 1""",
+                (sid["id"], my_team_id, my_team_id),
+            ).fetchone()
+            if appeared:
+                wins_needed = {5: 3, 7: 4}[best_of]
+                wins_row = db.execute(
+                    """SELECT winner_id, COUNT(*) as wins FROM games
+                       WHERE series_id = ? AND completed = 1 AND winner_id = ?
+                       GROUP BY winner_id""",
+                    (sid["id"], my_team_id),
+                ).fetchone()
+                my_wins = wins_row["wins"] if wins_row else 0
+                if my_wins >= wins_needed:
+                    my_playoff_result = f"Won {series_name}"
+                else:
+                    my_playoff_result = f"Eliminated in {series_name}"
+                break
+
+    # Stat leaders (top batting AVG, ERA)
+    bat_leader = pit_leader = None
+    if season_id:
+        br = db.execute(
+            """SELECT p.first_name, p.last_name, t.city, t.mascot,
+                      CAST(pss.bat_hits AS REAL)/NULLIF(pss.bat_ab,0) as avg
+               FROM player_season_stats pss
+               JOIN players p ON p.id = pss.player_id
+               JOIN teams t ON t.id = pss.team_id
+               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=?
+               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.bat_ab >= 300
+               ORDER BY avg DESC LIMIT 1""",
+            (league_id, season_id),
+        ).fetchone()
+        if br:
+            bat_leader = {"name": f"{br['first_name']} {br['last_name']}",
+                          "team": f"{br['city']} {br['mascot']}",
+                          "stat": f"{br['avg']:.3f}", "label": "AVG"}
+
+        pr = db.execute(
+            """SELECT p.first_name, p.last_name, t.city, t.mascot,
+                      CAST(pss.pitch_earned_runs*27 AS REAL)/NULLIF(pss.pitch_outs,0) as era
+               FROM player_season_stats pss
+               JOIN players p ON p.id = pss.player_id
+               JOIN teams t ON t.id = pss.team_id
+               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=?
+               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.pitch_outs >= 300
+               ORDER BY era ASC LIMIT 1""",
+            (league_id, season_id),
+        ).fetchone()
+        if pr:
+            pit_leader = {"name": f"{pr['first_name']} {pr['last_name']}",
+                          "team": f"{pr['city']} {pr['mascot']}",
+                          "stat": f"{pr['era']:.2f}", "label": "ERA"}
+
+    # Season year
+    season_year = None
+    if season_id:
+        sy = db.execute("SELECT year FROM seasons WHERE id = ?", (season_id,)).fetchone()
+        season_year = sy["year"] if sy else None
+
+    ctx.update({
+        "my_record":        my_record,
+        "champion":         champion,
+        "my_playoff_result": my_playoff_result,
+        "bat_leader":       bat_leader,
+        "pit_leader":       pit_leader,
+        "season_year":      season_year,
+        "my_team_name":     ctx.get("team_name", ""),
+    })
+    return _respond(request, "dashboard/partials/season_summary.html", ctx)
+
+
+@router.post("/leagues/{league_id}/offseason/begin")
+def begin_offseason(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    from fastapi.responses import JSONResponse
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from src.api.services.offseason_service import run_offseason
+    try:
+        result = run_offseason(league_id, db)
+        return JSONResponse({"ok": True, **result})
+    except Exception as e:
+        import traceback
+        return JSONResponse({"ok": False, "error": str(e), "detail": traceback.format_exc()}, status_code=500)
+
+
+# ── History ─────────────────────────────────────────────────────────────────────
+
+@router.get("/leagues/{league_id}/history", response_class=HTMLResponse)
+def history(
+    request: Request, league_id: str, db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return RedirectResponse("/")
+    gm  = _resolve_gm(db, user["id"], league_id)
+    ctx = _shell_ctx(request, db, league_id, user, gm)
+    my_team_id = gm["team_id"] if gm else None
+
+    seasons = db.execute(
+        """SELECT s.id, s.year, s.name
+           FROM seasons s
+           JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ?
+           ORDER BY s.year DESC""",
+        (league_id,),
+    ).fetchall()
+
+    history_rows = []
+    for s in seasons:
+        # Champion
+        finals = db.execute(
+            "SELECT id FROM series WHERE season_id = ? AND name = 'Finals'",
+            (s["id"],),
+        ).fetchone()
+        champion_name = None
+        if finals:
+            champ = db.execute(
+                """SELECT winner_id, COUNT(*) as wins FROM games
+                   WHERE series_id = ? AND completed=1
+                   GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
+                (finals["id"],),
+            ).fetchone()
+            if champ and champ["wins"] >= 4:
+                t = db.execute(
+                    "SELECT city, mascot FROM teams WHERE id = ?", (champ["winner_id"],)
+                ).fetchone()
+                if t:
+                    champion_name = f"{t['city']} {t['mascot']}"
+
+        # My team record
+        my_w = my_l = None
+        if my_team_id:
+            r = db.execute(
+                """SELECT SUM(tgs.win) as w, SUM(tgs.loss) as l
+                   FROM team_game_stats tgs
+                   JOIN games g ON g.id=tgs.game_id
+                   WHERE tgs.team_id=? AND g.season_id=? AND g.series_id IS NULL""",
+                (my_team_id, s["id"]),
+            ).fetchone()
+            if r and (r["w"] or r["l"]):
+                my_w, my_l = r["w"] or 0, r["l"] or 0
+
+        history_rows.append({
+            "season_id":    s["id"],
+            "year":         s["year"],
+            "name":         s["name"],
+            "champion":     champion_name,
+            "my_w":         my_w,
+            "my_l":         my_l,
+        })
+
+    ctx["history_rows"] = history_rows
+    return _respond(request, "dashboard/partials/history.html", ctx)
+
+
 # ── Player panel (slide-in) ────────────────────────────────────────────────────
 
 @router.get("/leagues/{league_id}/players/{player_id}/panel", response_class=HTMLResponse)
@@ -2354,28 +2582,6 @@ def player_panel(
     ctx["compare_player"] = _load(compare) if compare else None
     return templates.TemplateResponse(request, "dashboard/partials/player_panel.html", ctx)
 
-
-# ── History ────────────────────────────────────────────────────────────────────
-
-@router.get("/leagues/{league_id}/history/", response_class=HTMLResponse)
-def history_index(
-    request: Request, league_id: str, db: DB,
-    gm_session: str | None = Cookie(default=None),
-):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
-
-    seasons = db.execute(
-        """SELECT s.* FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year""",
-        (league_id,),
-    ).fetchall()
-
-    return templates.TemplateResponse(request, "history/index.html", {
-                "league_id": league_id,
-        "seasons":   [dict(s) for s in seasons],
-    })
 
 
 @router.get("/leagues/{league_id}/history/{year}/", response_class=HTMLResponse)

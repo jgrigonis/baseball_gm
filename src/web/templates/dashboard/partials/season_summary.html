@@ -1,0 +1,141 @@
+{# Season Summary — shown after playoffs complete #}
+<div style="max-width:600px;margin:40px auto;padding:0 24px;">
+
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">
+      Season {{ season_year }} Complete
+    </div>
+    <h1 style="font-size:28px;font-weight:800;margin:0;">Season Summary</h1>
+  </div>
+
+  {# Champion #}
+  {% if champion %}
+  <div class="card" style="margin-bottom:16px;text-align:center;padding:24px;">
+    <div style="font-size:32px;margin-bottom:8px;">🏆</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">
+      World Champion
+    </div>
+    <div style="font-size:22px;font-weight:700;
+                color:{% if champion.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+      {{ champion.name }}
+      {% if champion.is_mine %}&nbsp;⭐{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# My team record #}
+  {% if my_record %}
+  <div class="card" style="margin-bottom:16px;padding:20px 24px;">
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">
+      {{ my_team_name or 'Your Team' }}
+    </div>
+    <div style="display:flex;gap:32px;align-items:baseline;">
+      <div>
+        <div style="font-size:36px;font-weight:800;font-family:var(--font-mono);
+                    color:var(--green);">{{ my_record.w }}</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">WINS</div>
+      </div>
+      <div>
+        <div style="font-size:36px;font-weight:800;font-family:var(--font-mono);
+                    color:var(--red);">{{ my_record.l }}</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">LOSSES</div>
+      </div>
+      {% if my_playoff_result %}
+      <div style="margin-left:auto;text-align:right;">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                    margin-bottom:4px;">Playoffs</div>
+        <div style="font-family:var(--font-mono);font-size:13px;font-weight:600;
+                    color:{% if 'Won' in my_playoff_result or 'Champion' in my_playoff_result %}var(--amber){% else %}var(--text-dim){% endif %};">
+          {{ my_playoff_result }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Stat leaders #}
+  {% if bat_leader or pit_leader %}
+  <div class="card" style="margin-bottom:24px;padding:20px 24px;">
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">
+      League Leaders
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      {% for leader in [bat_leader, pit_leader] %}
+      {% if leader %}
+      <div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);
+                    margin-bottom:2px;">{{ leader.label }}</div>
+        <div style="font-size:22px;font-weight:700;font-family:var(--font-mono);
+                    color:var(--amber);">{{ leader.stat }}</div>
+        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;">
+          {{ leader.name }}
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          {{ leader.team }}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Begin Offseason button #}
+  {% if league_state == 'offseason' %}
+  <div style="text-align:center;">
+    <button id="begin-offseason-btn" onclick="beginOffseason()"
+            class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
+      Begin Offseason →
+    </button>
+    <div id="offseason-status" style="font-family:var(--font-mono);font-size:11px;
+                                       color:var(--text-dim);margin-top:12px;"></div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+(function(){
+var LEAGUE_ID = "{{ league_id }}";
+
+function beginOffseason() {
+  var btn = document.getElementById('begin-offseason-btn');
+  var status = document.getElementById('offseason-status');
+  btn.disabled = true;
+  btn.textContent = 'Running offseason…';
+  status.textContent = 'Aging players, generating prospects, running AI draft…';
+
+  fetch('/leagues/' + LEAGUE_ID + '/offseason/begin', {method: 'POST'})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.ok) {
+        status.textContent = '✓ Offseason complete — ' + d.game_count + ' games scheduled for ' + d.new_year;
+        btn.textContent = 'Go to Draft →';
+        btn.disabled = false;
+        btn.onclick = function() {
+          htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/draft', {target:'#tab-content', swap:'innerHTML'});
+          // Update topbar state
+          var badge = document.querySelector('.topbar-state');
+          if (badge) { badge.textContent = 'draft'; badge.className = 'topbar-state state-draft'; }
+        };
+      } else {
+        status.textContent = '✗ Error: ' + d.error;
+        btn.disabled = false;
+        btn.textContent = 'Try Again';
+      }
+    })
+    .catch(function(e){
+      status.textContent = '✗ Network error';
+      btn.disabled = false;
+      btn.textContent = 'Try Again';
+    });
+}
+
+window.beginOffseason = beginOffseason;
+})();
+</script>
