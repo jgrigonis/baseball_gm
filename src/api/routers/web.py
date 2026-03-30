@@ -110,10 +110,14 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
     ]}
 
     defense_section = {"section": "Defense", "skills": [
-        {"key": "if",  "label": "Infield (IF)", "grade": rg("if")},
-        {"key": "of",  "label": "Outfield (OF)","grade": rg("of")},
-        {"key": "c",   "label": "Catcher (CA)", "grade": rg("c")},
-        {"key": "1b",  "label": "First base",   "grade": rg("1b")},
+        {"key": "c",   "label": "Catcher",      "grade": rg("c")},
+        {"key": "1b",  "label": "First Base",   "grade": rg("1b")},
+        {"key": "2b",  "label": "Second Base",  "grade": rg("2b")},
+        {"key": "3b",  "label": "Third Base",   "grade": rg("3b")},
+        {"key": "ss",  "label": "Shortstop",    "grade": rg("ss")},
+        {"key": "lf",  "label": "Left Field",   "grade": rg("lf")},
+        {"key": "cf",  "label": "Center Field", "grade": rg("cf")},
+        {"key": "rf",  "label": "Right Field",  "grade": rg("rf")},
         {"key": "arm", "label": "Arm",          "grade": grades.arm or g(skills.get("arm"))},
     ]}
 
