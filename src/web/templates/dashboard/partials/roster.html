@@ -85,6 +85,10 @@
                     font-size:11px;color:var(--red);cursor:pointer;">
         <input type="checkbox" id="show-injured" checked onchange="render()"> Injured
       </label>
+      <label style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);
+                    font-size:11px;color:var(--text-dim);cursor:pointer;">
+        <input type="checkbox" id="show-pitchers" checked onchange="render()"> Pitchers
+      </label>
       <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">
         Drag between columns · click to inspect
       </span>
@@ -340,7 +344,9 @@ function render() {
 
   const showHealthy = document.getElementById('show-healthy').checked;
   const showInjured = document.getElementById('show-injured').checked;
+  const showPitchers = document.getElementById('show-pitchers').checked;
   function visible(p) {
+    if (p.player_type === 'pitcher' && !showPitchers) return false;
     return p.injured ? showInjured : showHealthy;
   }
 
