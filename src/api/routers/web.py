@@ -202,6 +202,32 @@ def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
     return post
 
 
+def _current_league_date(db, season_id: str | None, state: str) -> str | None:
+    """Return the next unplayed game date, or last played date if season is over."""
+    if not season_id or state not in ("preseason", "season", "playoffs"):
+        return None
+    # Next unplayed regular season game
+    row = db.execute(
+        "SELECT game_date FROM games WHERE season_id = ? AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
+        (season_id,),
+    ).fetchone()
+    if row:
+        return row["game_date"]
+    # Playoffs: next unplayed playoff game
+    row = db.execute(
+        "SELECT game_date FROM games WHERE season_id = ? AND completed = 0 ORDER BY game_date ASC LIMIT 1",
+        (season_id,),
+    ).fetchone()
+    if row:
+        return row["game_date"]
+    # All done — last played date
+    row = db.execute(
+        "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND completed = 1",
+        (season_id,),
+    ).fetchone()
+    return row["d"] if row else None
+
+
 def _shell_ctx(
     request: Request,
     db: sqlite3.Connection,
@@ -288,6 +314,7 @@ def _shell_ctx(
         "active_tab":          active_tab,
         "visible_tabs":        _tab_visible(league["state"] if league else "lobby", _draft_is_complete(db, league_id) if league else False),
         "season_id":           season["id"]   if season else None,
+        "current_date":        _current_league_date(db, season["id"] if season else None, league["state"] if league else "lobby"),
         "season_name":         season["name"] if season else None,
         "draft_complete":      _draft_is_complete(db, league_id) if league else False,
         "games_remaining":     _games_remaining(db, season["id"] if season else None),

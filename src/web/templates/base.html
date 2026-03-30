@@ -18,6 +18,9 @@
     {% if league_state %}
       <span class="topbar-state state-{{ league_state }}">{{ league_state }}</span>
     {% endif %}
+    {% if current_date %}
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">{{ current_date }}</span>
+    {% endif %}
     <div class="topbar-spacer"></div>
     {% if team_name %}
       <div class="topbar-team">
