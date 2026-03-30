@@ -1,0 +1,3 @@
+playoff series need to be clickable
+
+At least a way to see game logs 

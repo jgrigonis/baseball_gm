@@ -32,28 +32,32 @@ function setInjuryNews(msg) {
 }
 
 function setSimMode(simming) {
-  var btn  = getBtn();
-  var stop = getStop();
-  if (btn)  { btn.disabled  = simming; btn.style.display  = simming ? 'none' : ''; }
-  if (stop) { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
+  var btn    = getBtn();
+  var btnInj = document.getElementById('sched-injury-btn');
+  var btnSzn = document.getElementById('sched-season-btn');
+  var stop   = getStop();
+  if (btn)    { btn.disabled    = simming; btn.style.display    = simming ? 'none' : ''; }
+  if (btnInj) { btnInj.disabled = simming; btnInj.style.display = simming ? 'none' : ''; }
+  if (btnSzn) { btnSzn.disabled = simming; btnSzn.style.display = simming ? 'none' : ''; }
+  if (stop)   { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
 }
 
-var _simStop = false;
+// _simStop lives on window so it survives IIFE re-execution on tab refresh
+if (typeof window._simStop === 'undefined') window._simStop = false;
 
 async function schedSim(count) {
   var dd = document.getElementById('sched-dropdown');
   if (dd) dd.style.display = 'none';
 
-  _simStop = false;
-  setSimMode(true);
+  window._simStop = false;
+  setSimMode(count !== 1);
 
   var totalGames = 0;
   var remaining  = null;
   var daysSimmed = 0;
 
-  while (!_simStop) {
+  while (!window._simStop) {
     setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' games played)' : ''));
-    setInjuryNews('');
 
     try {
       var res = await fetch('/leagues/{{ league_id }}/sim', {
@@ -64,9 +68,7 @@ async function schedSim(count) {
       var d = await res.json();
       if (!res.ok) { setStatus('✗ Server error', 'red'); break; }
       if (!d.games_played) {
-        // No games played this tick — could be transient; stop if no progress
         if (!d.games_remaining || d.games_remaining <= 0) break;
-        // If there are games remaining but none played, something is wrong — stop
         setStatus('⚠ No games played', 'var(--amber)');
         break;
       }
@@ -77,16 +79,21 @@ async function schedSim(count) {
 
       var statusMsg = '▶ Day ' + daysSimmed + ' done · ' + totalGames + ' games · ' + remaining + ' remaining';
       setStatus(statusMsg);
+
+      // Build injury news
       var injNews = '';
       if (d.new_injuries && d.new_injuries.length > 0) {
-        var injNames = d.new_injuries.map(function(i) { return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
-        injNews += injNames;
+        injNews += d.new_injuries.map(function(i) { return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
       }
       if (d.returned && d.returned.length > 0) {
-        var retNames = d.returned.map(function(i) { return '✅ ' + i.name + ' returned'; }).join('  ');
-        injNews += (injNews ? '  ' : '') + retNames;
+        injNews += (injNews ? '  ' : '') + d.returned.map(function(i) { return '✅ ' + i.name + ' returned'; }).join('  ');
       }
-      setInjuryNews(injNews);
+      setInjuryNews(injNews);  // clears if empty, shows if not
+
+      // Stop on injury — read from window._stopOnInjury which persists across tab re-renders
+      if (injNews && (count === 'injury')) {
+        window._simStop = true;
+      }
 
       // Update topbar state badge if league state changed
       if (d.league_state) {
@@ -95,7 +102,6 @@ async function schedSim(count) {
           var prevState = badge.textContent.trim();
           badge.textContent = d.league_state;
           badge.className = 'topbar-state state-' + d.league_state;
-          // If state changed to a tab-adding state, reload shell to show new tabs
           var tabChangingStates = ['playoffs', 'offseason', 'draft', 'season'];
           if (prevState !== d.league_state && tabChangingStates.includes(d.league_state)) {
             window.location.href = window.location.href;
@@ -104,7 +110,7 @@ async function schedSim(count) {
         }
       }
 
-      // Refresh current tab
+      // Always refresh the tab so standings/schedule show current state
       var activeLink = document.querySelector('.tab-link.active');
       if (activeLink) {
         var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
@@ -115,12 +121,11 @@ async function schedSim(count) {
           if (tc) tc.innerHTML = html;
         } catch(e) {}
       }
-
-      // Restore sim buttons after re-render
-      setSimMode(true);
+      // Only re-enter sim mode if we're continuing
+      if (!window._simStop && count !== 1) setSimMode(true);
 
       if (remaining <= 0) break;
-      if (count !== 'season' && daysSimmed >= count) break;
+      if (count !== 'season' && count !== 'injury' && daysSimmed >= count) break;
 
     } catch(err) {
       setStatus('✗ Error', 'red');
@@ -140,7 +145,7 @@ async function schedSim(count) {
 window.schedSim = schedSim;
 
 function schedStop() {
-  _simStop = true;
+  window._simStop = true;
   var stop = getStop();
   if (stop) stop.textContent = 'Stopping…';
 }

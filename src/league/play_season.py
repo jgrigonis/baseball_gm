@@ -31,19 +31,11 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
     parser.add_argument("--season-id", "-i", required=True, help="Season ID to play")
-    parser.add_argument(
-        "--seed", "-s", type=int, help="Random seed for reproducibility"
-    )
-    parser.add_argument(
-        "--force", "-f", action="store_true", help="Replay completed games"
-    )
+    parser.add_argument("--seed", "-s", type=int, help="Random seed for reproducibility")
+    parser.add_argument("--force", "-f", action="store_true", help="Replay completed games")
     parser.add_argument("--limit", "-l", type=int, help="Limit number of games to play")
-    parser.add_argument(
-        "--resume", "-r", action="store_true", help="Resume from last completed game"
-    )
-    parser.add_argument(
-        "--logs", action="store_true", help="Keep logfiles for each game"
-    )
+    parser.add_argument("--resume", "-r", action="store_true", help="Resume from last completed game")
+    parser.add_argument("--logs", action="store_true", help="Keep logfiles for each game")
     return parser.parse_args()
 
 
@@ -170,7 +162,7 @@ def play_game(
     league_mode: str = "blitz",
 ):
     """Play a single game and save results."""
-    blitz = league_mode == "blitz"
+    blitz = (league_mode == "blitz")
 
     home_record = team_repo.get(game_info["home_team_id"])
     away_record = team_repo.get(game_info["away_team_id"])
@@ -205,6 +197,22 @@ def play_game(
         away_team.record.id, season_id, game_date
     )
 
+    # Fallback: if no rotation set, pick the best pitcher by stamina
+    def _best_pitcher_id(team: TeamInGame) -> str | None:
+        pitchers = [p for p in team.players if p.pitcher_fatigue]
+        if not pitchers:
+            return None
+        return max(pitchers, key=lambda p: p.skills.get("stamina", 0)).id
+
+    if not home_starter_id:
+        home_starter_id = _best_pitcher_id(home_team)
+        if home_starter_id:
+            print(f"  ⚠ No rotation for {home_team.record.mascot} — using best pitcher")
+    if not away_starter_id:
+        away_starter_id = _best_pitcher_id(away_team)
+        if away_starter_id:
+            print(f"  ⚠ No rotation for {away_team.record.mascot} — using best pitcher")
+
     # Bullpen roles
     home_bullpen = bullpen_roles_repo.get_current_roles(conn, home_record.id, season_id)
     away_bullpen = bullpen_roles_repo.get_current_roles(conn, away_record.id, season_id)
@@ -218,13 +226,10 @@ def play_game(
             player.bullpen_role = away_role_map[player.id]
 
     log_level = logging.INFO if args.logs else logging.WARNING
-    log_id = game_info["game_id"] if args.logs else None
+    log_id    = game_info["game_id"] if args.logs else None
     logger = setup_logger(
-        name="game",
-        level=log_level,
-        console_level=logging.WARNING,
-        log_id=log_id,
-        log_to_file=bool(args.logs),
+        name="game", level=log_level, console_level=logging.WARNING,
+        log_id=log_id, log_to_file=bool(args.logs),
     )
 
     all_player_ids = [p.id for p in home_team.players + away_team.players]
@@ -303,13 +308,11 @@ def play_game(
     )
     home_energy = (
         f"{home_starter.pitcher_fatigue.energy:.1f}"
-        if home_starter and home_starter.pitcher_fatigue
-        else "N/A"
+        if home_starter and home_starter.pitcher_fatigue else "N/A"
     )
     away_energy = (
         f"{away_starter.pitcher_fatigue.energy:.1f}"
-        if away_starter and away_starter.pitcher_fatigue
-        else "N/A"
+        if away_starter and away_starter.pitcher_fatigue else "N/A"
     )
     print(
         f"  ⚾ {away_team.record.mascot}"
@@ -358,23 +361,19 @@ def play_game(
             continue
         state = player_energy_states.get(player.id)
         if state:
-            state.current_energy = fatigue.energy
-            state.max_energy = fatigue.max_energy
-            state.consecutive_days = fatigue.consecutive_days
+            state.current_energy      = fatigue.energy
+            state.max_energy          = fatigue.max_energy
+            state.consecutive_days    = fatigue.consecutive_days
             state.season_games_played = fatigue.season_games_played
-            state.last_game_date = game_date
+            state.last_game_date      = game_date
 
     save_energy(conn, game_date, home_team, away_team, league_id=league_id)
     save_position_energy(conn, player_energy_states, league_id)
 
     for player_id, severity, activity in game.new_injuries:
         injury_repo.injure(
-            player_id,
-            season_id,
-            game_date,
-            severity=severity,
-            activity=activity,
-            rng=rng,
+            player_id, season_id, game_date,
+            severity=severity, activity=activity, rng=rng,
         )
 
     logger.info(home_team.output_defensive_stats())
@@ -393,11 +392,8 @@ def main():
     conn = get_connection(args.db)
 
     season_logger = setup_logger(
-        name="season",
-        level=logging.INFO,
-        console_level=logging.WARNING,
-        log_id="season",
-        log_to_file=True,
+        name="season", level=logging.INFO, console_level=logging.WARNING,
+        log_id="season", log_to_file=True,
     )
 
     league_row = conn.execute(
@@ -408,14 +404,12 @@ def main():
 
     league_mode = "blitz"
     if league_id:
-        lr = conn.execute(
-            "SELECT mode FROM leagues WHERE id = ?", (league_id,)
-        ).fetchone()
+        lr = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()
         if lr:
             league_mode = lr["mode"] or "blitz"
 
-    game_repo = GameRepository(conn)
-    team_repo = TeamRepository(conn)
+    game_repo      = GameRepository(conn)
+    team_repo      = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
@@ -451,22 +445,14 @@ def main():
 
         try:
             result = play_game(
-                conn,
-                args,
-                team_repo,
-                game_repo,
-                team_game_repo,
-                rotations_repo,
-                args.season_id,
-                game_info,
-                rng,
-                league_id=league_id,
-                league_mode=league_mode,
+                conn, args, team_repo, game_repo, team_game_repo, rotations_repo,
+                args.season_id, game_info, rng,
+                league_id=league_id, league_mode=league_mode,
             )
             completed += 1
             if completed % 10 == 0:
                 elapsed = (datetime.now() - start_time).total_seconds()
-                rate = completed / elapsed if elapsed > 0 else 0
+                rate      = completed / elapsed if elapsed > 0 else 0
                 remaining = (len(games) - completed) / rate if rate > 0 else 0
                 msg = (
                     f"[{i}/{len(games)}] ✅ {completed} games completed"
@@ -480,9 +466,7 @@ def main():
                 if args.logs:
                     season_logger.info(f"[{i}/{len(games)}] ✅ {result}")
         except Exception as e:
-            print(
-                f"[{i}/{len(games)}] ❌ Error playing game {game_info['game_id']}: {e}"
-            )
+            print(f"[{i}/{len(games)}] ❌ Error playing game {game_info['game_id']}: {e}")
             print(traceback.format_exc())
             continue
 

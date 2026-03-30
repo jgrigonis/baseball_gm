@@ -96,9 +96,9 @@ class TeamInGame:
 
         # Build the eligible pool: not injured, within roster eligibility
         available = [
-            p
-            for p in self.players
-            if not p.is_injured and (restrict_to_ids is None or p.id in restrict_to_ids)
+            p for p in self.players
+            if not p.is_injured
+            and (restrict_to_ids is None or p.id in restrict_to_ids)
         ]
 
         # Set starting pitcher (from rotation — independent of lineup)
@@ -154,15 +154,18 @@ class TeamInGame:
 
         def best_for_position(pos: str) -> "PlayerInGame | None":
             """Pick the highest-rated available player for a given position."""
-            candidates = [p for p in available_by_id.values() if p.id not in used_ids]
+            candidates = [
+                p for p in available_by_id.values()
+                if p.id not in used_ids
+            ]
             if not candidates:
                 return None
             return max(candidates, key=lambda p: p.ratings.get(pos, 0))
 
         for slot in sorted(saved, key=lambda s: s["batting_order"]):
-            pid = slot["player_id"]
+            pid      = slot["player_id"]
             position = slot.get("position") or "dh"
-            player = available_by_id.get(pid)
+            player   = available_by_id.get(pid)
 
             if not player:
                 # Injured or ineligible — find best replacement for their position
@@ -194,31 +197,36 @@ class TeamInGame:
             used_ids.add(pid)
 
         # Fill any remaining batting order gaps (shouldn't happen often)
-        needed = 9 if dh else 8
+        needed = (9 if dh else 8)
         gap_count = needed - len(lineup_slots)
         if gap_count > 0:
             remaining = [
-                p
-                for p in available
+                p for p in available
                 if p.id not in used_ids
                 and (self.pitcher is None or p.id != self.pitcher.id)
             ]
             if remaining:
-                self.logger.info(
-                    f"Saved lineup has {gap_count} remaining gap(s), filling with optimizer"
-                )
+                self.logger.info(f"Saved lineup has {gap_count} remaining gap(s), filling with optimizer")
                 try:
                     gap_lineup, _ = self._optimizer(
-                        remaining,
-                        style=style,
-                        dh=True,
-                        pitcher=self.pitcher,
+                        remaining, style=style, dh=True, pitcher=self.pitcher,
                     )
-                    lineup_slots.extend(gap_lineup[:gap_count])
+                    valid_gap = [s for s in gap_lineup[:gap_count]
+                                 if s is not None and s.player is not None]
+                    lineup_slots.extend(valid_gap)
                 except Exception as e:
                     self.logger.warning(f"Gap-fill optimizer failed: {e}")
 
-        self.lineup = lineup_slots
+        # Safety check — if we couldn't fill all slots, fall back to optimizer
+        valid_slots = [s for s in lineup_slots if s is not None and s.player is not None]
+        if len(valid_slots) < (9 if dh else 8):
+            self.logger.warning(
+                f"Saved lineup only produced {len(valid_slots)} valid slots, "
+                f"falling back to optimizer"
+            )
+            self._set_lineup_from_optimizer(available, style, dh)
+        else:
+            self.lineup = valid_slots
 
     def _set_lineup_from_optimizer(
         self,
@@ -242,7 +250,9 @@ class TeamInGame:
         return [
             p
             for p in self.players
-            if p.id not in lineup_ids and not p.pitcher_fatigue and not p.is_injured
+            if p.id not in lineup_ids
+            and not p.pitcher_fatigue
+            and not p.is_injured
         ]
 
     @property

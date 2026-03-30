@@ -1,0 +1,2 @@
+Dragging a player into the lineup should replace 
+the player at the same position it's replacing

@@ -3,9 +3,9 @@
   <a href="/leagues/{{ league_id }}/playoffs"
      hx-get="/leagues/{{ league_id }}/playoffs"
      hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
-     onclick="setActiveTab(document.querySelector('[hx-get*=\"/playoffs\"]'))"
+     onclick="setTimeout(function(){ setActiveTab(document.querySelector('[hx-get*=\'/playoffs\']')); }, 50);"
      class="btn btn-primary" style="border-color:var(--amber);color:var(--amber);">
-    🏅 Go to Playoffs
+    🥇 Go to Playoffs
   </a>
   {% elif league_state in ('season', 'preseason') %}
   <button class="btn btn-secondary" id="sched-stop-btn"
@@ -13,19 +13,19 @@
           style="display:none;border-color:var(--red);color:var(--red);">
     ■ Stop
   </button>
-  <div style="position:relative;" id="play-wrap">
-    <button class="btn btn-primary" id="sched-play-btn" onclick="schedToggleDropdown()">
-      ▶ Play
-    </button>
-    <div id="sched-dropdown"
-         style="display:none;position:absolute;top:calc(100% + 4px);right:0;
-                background:var(--bg-2);border:1px solid var(--border);
-                min-width:180px;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.4);">
-      <button onclick="schedSim(1)"          class="play-opt">Play 1 game</button>
-      <button onclick="schedSim(3)"          class="play-opt" id="sopt-3"  {% if games_remaining <= 3  %}disabled{% endif %}>Play 3 games</button>
-      <button onclick="schedSim(10)"         class="play-opt" id="sopt-10" {% if games_remaining <= 10 %}disabled{% endif %}>Play 10 games</button>
-      <button onclick="schedSim('season')"   class="play-opt">Play entire season</button>
-    </div>
-  </div>
+  <button class="btn btn-primary" id="sched-play-btn"
+          onclick="schedSim(1)">
+    ▶ Play Day
+  </button>
+  <button class="btn btn-secondary" id="sched-injury-btn"
+          onclick="schedSim('injury')"
+          style="font-size:11px;padding:5px 10px;">
+    ▶ Until Injury
+  </button>
+  <button class="btn btn-secondary" id="sched-season-btn"
+          onclick="schedSim('season')"
+          style="font-size:11px;padding:5px 10px;">
+    ▶▶ Full Season
+  </button>
   {% endif %}
 </div>
