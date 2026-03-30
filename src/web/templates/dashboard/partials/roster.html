@@ -76,9 +76,19 @@
             style="font-size:11px;padding:5px 10px;">
       ↑ Best first
     </button>
-    <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:auto;">
-      Drag between columns · click to inspect
-    </span>
+    <div style="display:flex;gap:12px;margin-left:auto;align-items:center;">
+      <label style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);
+                    font-size:11px;color:var(--text-dim);cursor:pointer;">
+        <input type="checkbox" id="show-healthy" checked onchange="render()"> Healthy
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);
+                    font-size:11px;color:var(--red);cursor:pointer;">
+        <input type="checkbox" id="show-injured" checked onchange="render()"> Injured
+      </label>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">
+        Drag between columns · click to inspect
+      </span>
+    </div>
   </div>
 </div>
 
@@ -148,7 +158,7 @@
 // Hoist exports first
 window.colOver=colOver;window.colDrop=colDrop;window.saveRoster=saveRoster;
 window.fillToForty=fillToForty;window.removeInjured=removeInjured;
-window.applySort=applySort;window.toggleReverse=toggleReverse;
+window.applySort=applySort;window.toggleReverse=toggleReverse;window.render=render;
 
 var LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ players | tojson }};
@@ -328,9 +338,15 @@ function render() {
   col40.querySelectorAll('.r-card').forEach(c => c.remove());
   colOrg.querySelectorAll('.r-card').forEach(c => c.remove());
 
+  const showHealthy = document.getElementById('show-healthy').checked;
+  const showInjured = document.getElementById('show-injured').checked;
+  function visible(p) {
+    return p.injured ? showInjured : showHealthy;
+  }
+
   const orgIds = ALL_PLAYERS.map(p => p.player_id).filter(id => !fortyMan.has(id));
-  sortedPlayers([...fortyMan]).forEach(p => col40.appendChild(makeCard(p)));
-  sortedPlayers(orgIds).forEach(p => colOrg.appendChild(makeCard(p)));
+  sortedPlayers([...fortyMan]).filter(visible).forEach(p => col40.appendChild(makeCard(p)));
+  sortedPlayers(orgIds).filter(visible).forEach(p => colOrg.appendChild(makeCard(p)));
 
   document.getElementById('empty-40man').style.display = fortyMan.size === 0 ? 'block' : 'none';
   document.getElementById('empty-org').style.display   = orgIds.length === 0  ? 'block' : 'none';
