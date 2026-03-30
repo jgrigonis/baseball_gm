@@ -1035,6 +1035,8 @@ async def sim_games(
 
     results = []
     days_simmed = 0
+    all_new_injuries = []
+    all_returned = []
     remaining = _games_remaining(db, db.execute(
         """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
            WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
@@ -1051,6 +1053,8 @@ async def sim_games(
         if gp > 0:
             results.append(day_result)
             days_simmed += 1
+            all_new_injuries.extend(day_result.get("new_injuries", []))
+            all_returned.extend(day_result.get("returned", []))
         # Stop if season ended (no game_date) or if state changed out of season
         if not day_result.get("game_date"):
             break
@@ -1078,6 +1082,8 @@ async def sim_games(
         "games_remaining":  new_remaining,
         "last_date":        results[-1]["game_date"] if results else None,
         "league_state":     league_state_row["state"] if league_state_row else None,
+        "new_injuries":     all_new_injuries,
+        "returned":         all_returned,
     })
 
 # ── Tab: Standings ─────────────────────────────────────────────────────────────

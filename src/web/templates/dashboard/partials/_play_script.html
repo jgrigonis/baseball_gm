@@ -1,131 +1,157 @@
 <script>
-  (function() {
-  
-  function schedToggleDropdown() {
-    var dd = document.getElementById('sched-dropdown');
-    if (!dd) return;
-    dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+(function() {
+
+function schedToggleDropdown() {
+  var dd = document.getElementById('sched-dropdown');
+  if (!dd) return;
+  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+}
+window.schedToggleDropdown = schedToggleDropdown;
+
+// Helpers that always look up fresh DOM refs
+function getBtn()  { return document.getElementById('sched-play-btn'); }
+function getStop() { return document.getElementById('sched-stop-btn'); }
+function setStatus(msg, color) {
+  var bar  = document.getElementById('sim-status');
+  var text = document.getElementById('sim-status-text');
+  if (!bar || !text) return;
+  if (msg) {
+    text.textContent = msg;
+    bar.style.setProperty('display', 'flex', 'important');
+    if (color) { bar.style.background = color === 'red' ? 'var(--red-lo, #2e0a0a)' : 'var(--green-dim)'; bar.style.borderColor = color === 'red' ? 'var(--red)' : 'var(--green-mid)'; text.style.color = color === 'red' ? 'var(--red)' : 'var(--green)'; }
+  } else {
+    bar.style.display = 'none';
   }
-  window.schedToggleDropdown = schedToggleDropdown;
-  
-  // Helpers that always look up fresh DOM refs
-  function getBtn()  { return document.getElementById('sched-play-btn'); }
-  function getStop() { return document.getElementById('sched-stop-btn'); }
-  function setStatus(msg, color) {
-    var bar  = document.getElementById('sim-status');
-    var text = document.getElementById('sim-status-text');
-    if (!bar || !text) return;
-    if (msg) {
-      text.textContent = msg;
-      bar.style.setProperty('display', 'flex', 'important');
-      if (color) { bar.style.background = color === 'red' ? 'var(--red-lo, #2e0a0a)' : 'var(--green-dim)'; bar.style.borderColor = color === 'red' ? 'var(--red)' : 'var(--green-mid)'; text.style.color = color === 'red' ? 'var(--red)' : 'var(--green)'; }
-    } else {
-      bar.style.display = 'none';
-    }
-  }
-  
-  function setSimMode(simming) {
-    var btn  = getBtn();
-    var stop = getStop();
-    if (btn)  { btn.disabled  = simming; btn.style.display  = simming ? 'none' : ''; }
-    if (stop) { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
-  }
-  
-  var _simStop = false;
-  
-  async function schedSim(count) {
-    var dd = document.getElementById('sched-dropdown');
-    if (dd) dd.style.display = 'none';
-  
-    _simStop = false;
-    setSimMode(true);
-  
-    var totalGames = 0;
-    var remaining  = null;
-    var daysSimmed = 0;
-  
-    while (!_simStop) {
-      setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' games played)' : ''));
-  
-      try {
-        var res = await fetch('/leagues/{{ league_id }}/sim', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({count: 1}),
-        });
-        var d = await res.json();
-        if (!res.ok) { setStatus('✗ Server error', 'red'); break; }
-        if (!d.games_played) {
-          // No games played this tick — could be transient; stop if no progress
-          if (!d.games_remaining || d.games_remaining <= 0) break;
-          // If there are games remaining but none played, something is wrong — stop
-          setStatus('⚠ No games played', 'var(--amber)');
-          break;
-        }
-  
-        totalGames += d.games_played;
-        remaining   = d.games_remaining;
-        daysSimmed++;
-  
-        setStatus('▶ Day ' + daysSimmed + ' done · ' + totalGames + ' games · ' + remaining + ' remaining');
-  
-        // Update topbar state badge if league state changed
-        if (d.league_state) {
-          var badge = document.querySelector('.topbar-state');
-          if (badge) {
-            badge.textContent = d.league_state;
-            badge.className = 'topbar-state state-' + d.league_state;
-          }
-        }
-  
-        // Refresh current tab
-        var activeLink = document.querySelector('.tab-link.active');
-        if (activeLink) {
-          var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
-          try {
-            var tabRes = await fetch(url, {headers: {'HX-Request': 'true'}});
-            var html = await tabRes.text();
-            var tc = document.getElementById('tab-content');
-            if (tc) tc.innerHTML = html;
-          } catch(e) {}
-        }
-  
-        // Restore sim buttons after re-render
-        setSimMode(true);
-  
-        if (remaining <= 0) break;
-        if (count !== 'season' && daysSimmed >= count) break;
-  
-      } catch(err) {
-        setStatus('✗ Error', 'red');
-        console.error(err);
+}
+
+function setInjuryNews(msg) {
+  var el = document.getElementById('sim-injury-news');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function setSimMode(simming) {
+  var btn  = getBtn();
+  var stop = getStop();
+  if (btn)  { btn.disabled  = simming; btn.style.display  = simming ? 'none' : ''; }
+  if (stop) { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
+}
+
+var _simStop = false;
+
+async function schedSim(count) {
+  var dd = document.getElementById('sched-dropdown');
+  if (dd) dd.style.display = 'none';
+
+  _simStop = false;
+  setSimMode(true);
+
+  var totalGames = 0;
+  var remaining  = null;
+  var daysSimmed = 0;
+
+  while (!_simStop) {
+    setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' games played)' : ''));
+    setInjuryNews('');
+
+    try {
+      var res = await fetch('/leagues/{{ league_id }}/sim', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({count: 1}),
+      });
+      var d = await res.json();
+      if (!res.ok) { setStatus('✗ Server error', 'red'); break; }
+      if (!d.games_played) {
+        // No games played this tick — could be transient; stop if no progress
+        if (!d.games_remaining || d.games_remaining <= 0) break;
+        // If there are games remaining but none played, something is wrong — stop
+        setStatus('⚠ No games played', 'var(--amber)');
         break;
       }
-    }
-  
-    // Done
-    setSimMode(false);
-    if (remaining !== null) {
-      setStatus('✓ ' + daysSimmed + ' days · ' + totalGames + ' games · ' + remaining + ' remaining');
-    } else {
-      setStatus('');
+
+      totalGames += d.games_played;
+      remaining   = d.games_remaining;
+      daysSimmed++;
+
+      var statusMsg = '▶ Day ' + daysSimmed + ' done · ' + totalGames + ' games · ' + remaining + ' remaining';
+      setStatus(statusMsg);
+      var injNews = '';
+      if (d.new_injuries && d.new_injuries.length > 0) {
+        var injNames = d.new_injuries.map(function(i) { return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
+        injNews += injNames;
+      }
+      if (d.returned && d.returned.length > 0) {
+        var retNames = d.returned.map(function(i) { return '✅ ' + i.name + ' returned'; }).join('  ');
+        injNews += (injNews ? '  ' : '') + retNames;
+      }
+      setInjuryNews(injNews);
+
+      // Update topbar state badge if league state changed
+      if (d.league_state) {
+        var badge = document.querySelector('.topbar-state');
+        if (badge) {
+          var prevState = badge.textContent.trim();
+          badge.textContent = d.league_state;
+          badge.className = 'topbar-state state-' + d.league_state;
+          // If state changed to a tab-adding state, reload shell to show new tabs
+          var tabChangingStates = ['playoffs', 'offseason', 'draft', 'season'];
+          if (prevState !== d.league_state && tabChangingStates.includes(d.league_state)) {
+            window.location.href = window.location.href;
+            return;
+          }
+        }
+      }
+
+      // Refresh current tab
+      var activeLink = document.querySelector('.tab-link.active');
+      if (activeLink) {
+        var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
+        try {
+          var tabRes = await fetch(url, {headers: {'HX-Request': 'true'}});
+          var html = await tabRes.text();
+          var tc = document.getElementById('tab-content');
+          if (tc) tc.innerHTML = html;
+        } catch(e) {}
+      }
+
+      // Restore sim buttons after re-render
+      setSimMode(true);
+
+      if (remaining <= 0) break;
+      if (count !== 'season' && daysSimmed >= count) break;
+
+    } catch(err) {
+      setStatus('✗ Error', 'red');
+      console.error(err);
+      break;
     }
   }
-  window.schedSim = schedSim;
-  
-  function schedStop() {
-    _simStop = true;
-    var stop = getStop();
-    if (stop) stop.textContent = 'Stopping…';
+
+  // Done
+  setSimMode(false);
+  if (remaining !== null) {
+    setStatus('✓ ' + daysSimmed + ' days · ' + totalGames + ' games · ' + remaining + ' remaining');
+  } else {
+    setStatus('');
   }
-  window.schedStop = schedStop;
-  
-  // Close dropdown on outside click
-  document.addEventListener('click', function(e) {
-    var wrap = document.getElementById('play-wrap');
-    var dd   = document.getElementById('sched-dropdown');
-    if (wrap && dd && !wrap.contains(e.target)) dd.style.display = 'none';
-  });
-  
-  })();
-  </script>
+}
+window.schedSim = schedSim;
+
+function schedStop() {
+  _simStop = true;
+  var stop = getStop();
+  if (stop) stop.textContent = 'Stopping…';
+}
+window.schedStop = schedStop;
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('play-wrap');
+  var dd   = document.getElementById('sched-dropdown');
+  if (wrap && dd && !wrap.contains(e.target)) dd.style.display = 'none';
+});
+
+})();
+</script>

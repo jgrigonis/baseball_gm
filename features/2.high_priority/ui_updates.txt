@@ -1,13 +1,4 @@
 UI updates
 
-Need to make it more obvious when a new injury occurs
-Show when a player returns from IL 
-
-
-Maybe play until injury or recover from injury
-
 On player detail page, ERA should always show 2 sig figs
-
-
-The stats page should have K/BB and HR/AB for hitters
 

@@ -77,7 +77,6 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
             try:
                 from src.league.playoffs.setup_playoffs import get_top_8, build_bracket
                 from datetime import date, timedelta
-
                 last_game = conn.execute(
                     """SELECT MAX(game_date) as d FROM games
                        WHERE season_id = ? AND completed = 1""",
@@ -92,7 +91,6 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 build_bracket(conn, season_id, seeds, playoff_start)
             except Exception as e:
                 import traceback
-
                 try:
                     conn.rollback()
                 except Exception:
@@ -100,13 +98,15 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 print(f"Playoff setup failed: {e}")
                 print(traceback.format_exc())
 
-        conn.execute("UPDATE leagues SET state = 'playoffs' WHERE id = ?", (league_id,))
+        conn.execute(
+            "UPDATE leagues SET state = 'playoffs' WHERE id = ?", (league_id,)
+        )
         conn.commit()
         return {
-            "game_date": None,
+            "game_date":    None,
             "games_played": 0,
             "league_state": "playoffs",
-            "message": "Regular season complete — playoffs ready.",
+            "message":      "Regular season complete — playoffs ready.",
         }
 
     game_date = next_date_row["game_date"]
@@ -158,6 +158,29 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     results = []
     errors = []
 
+    # Snapshot GM team injuries before this day to detect changes
+    gm_team_id = conn.execute(
+        "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
+        (league_id,),
+    ).fetchone()
+    gm_team_id = gm_team_id["team_id"] if gm_team_id else None
+
+    def _get_injured(team_id):
+        if not team_id:
+            return {}
+        rows = conn.execute(
+            """SELECT pi.player_id, pi.games_remaining,
+                      p.first_name || ' ' || p.last_name as name
+               FROM player_injuries pi
+               JOIN players p ON p.id = pi.player_id
+               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
+               WHERE pi.games_remaining > 0 AND (pi.league_id = ? OR pi.league_id = '')""",
+            (team_id, league_id),
+        ).fetchall()
+        return {r["player_id"]: {"name": r["name"], "days": r["games_remaining"]} for r in rows}
+
+    injured_before = _get_injured(gm_team_id)
+
     for game_info in games:
         game_dict = dict(game_info)
         try:
@@ -192,7 +215,6 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
             )
         except Exception as e:
             import traceback
-
             # Rollback any dirty transaction so the next game starts clean
             try:
                 conn.rollback()
@@ -218,6 +240,19 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 pass
             print(f"build_season non-fatal error (will retry next day): {_bs_err}")
 
+    # Diff injuries to find new injuries and returns for GM's team
+    injured_after = _get_injured(gm_team_id)
+    new_injuries = [
+        {"name": v["name"], "days": v["days"]}
+        for pid, v in injured_after.items()
+        if pid not in injured_before
+    ]
+    returned = [
+        {"name": v["name"]}
+        for pid, v in injured_before.items()
+        if pid not in injured_after
+    ]
+
     return {
         "game_date": game_date,
         "season_id": season_id,
@@ -226,4 +261,6 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         "seed": seed,
         "results": results,
         "league_state": "season",
+        "new_injuries": new_injuries,
+        "returned": returned,
     }
