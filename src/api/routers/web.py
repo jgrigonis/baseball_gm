@@ -1688,7 +1688,8 @@ def lineup(
         stat_rows = db.execute(
             """SELECT player_id,
                       bat_ab, bat_hits, bat_home_runs,
-                      pitch_outs, pitch_earned_runs
+                      pitch_outs, pitch_earned_runs,
+                      pitch_wins, pitch_losses, pitch_saves
                FROM player_season_stats
                WHERE season_id = ? AND is_postseason = 0""",
             (season_id,),
@@ -1710,9 +1711,15 @@ def lineup(
                 era  = (s["pitch_earned_runs"] * 27) / outs
                 p["stat_era"] = f"{era:.2f}"
                 p["stat_ip"]  = f"{outs // 3}.{outs % 3}"
+                p["stat_w"]   = s["pitch_wins"] or 0
+                p["stat_l"]   = s["pitch_losses"] or 0
+                p["stat_sv"]  = s["pitch_saves"] or 0
             else:
                 p["stat_era"] = None
                 p["stat_ip"]  = None
+                p["stat_w"]   = None
+                p["stat_l"]   = None
+                p["stat_sv"]  = None
 
     injured_map = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:

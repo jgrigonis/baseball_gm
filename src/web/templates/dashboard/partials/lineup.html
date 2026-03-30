@@ -243,6 +243,7 @@ function pitcherSkillsHtml(p) {
   const stats = p.stat_era != null
     ? `<span style="color:var(--amber);font-weight:600;">${p.stat_era} ERA</span>`
     + `<span style="color:var(--text-dim);margin-left:4px;">${p.stat_ip} IP</span>`
+    + `<span style="color:var(--text-dim);margin-left:4px;">${p.stat_w}W ${p.stat_l}L${p.stat_sv ? ' ' + p.stat_sv + 'SV' : ''}</span>`
     : '';
   return skills + ' ' + ht + (stats ? ' &nbsp;' + stats : '');
 }
