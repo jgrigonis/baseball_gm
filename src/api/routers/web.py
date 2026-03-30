@@ -33,8 +33,8 @@ templates = Jinja2Templates(directory="src/web/templates")
 DB = Annotated[sqlite3.Connection, Depends(get_db)]
 
 
-
 # ── Player rating helpers ─────────────────────────────────────────────────────
+
 
 def _compute_ratings(skills: dict, throws: str) -> dict:
     """
@@ -55,7 +55,7 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
 
     if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
     of_rating = max(ratings.get("lf", 0), ratings.get("cf", 0), ratings.get("rf", 0))
-    c_rating  = ratings.get("c", 0)
+    c_rating = ratings.get("c", 0)
     b1_rating = ratings.get("1b", 0)
 
     best_def = max(if_rating, of_rating, c_rating, b1_rating)
@@ -87,41 +87,105 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
     def rg(key: str) -> str:
         return g(ratings.get(key))
 
-    pitching_section = {"section": "Pitching", "skills": [
-        {"key": "strikes",      "label": "Stuff",       "grade": grades.stuff or g(skills.get("strikes"))},
-        {"key": "accuracy",     "label": "Control",     "grade": grades.control or g(skills.get("accuracy"))},
-        {"key": "stamina",      "label": "Stamina",     "grade": grades.stamina or g(skills.get("stamina"))},
-        {"key": "recovery",     "label": "Recovery",    "grade": grades.recovery or g(skills.get("recovery"))},
-        {"key": "ground_balls", "label": "GB tendency", "grade": g(skills.get("ground_balls"))},
-        {"key": "sp",           "label": "SP rating",   "grade": rg("sp")},
-        {"key": "rp",           "label": "RP rating",   "grade": rg("rp")},
-    ]}
+    pitching_section = {
+        "section": "Pitching",
+        "skills": [
+            {
+                "key": "strikes",
+                "label": "Stuff",
+                "grade": grades.stuff or g(skills.get("strikes")),
+            },
+            {
+                "key": "accuracy",
+                "label": "Control",
+                "grade": grades.control or g(skills.get("accuracy")),
+            },
+            {
+                "key": "stamina",
+                "label": "Stamina",
+                "grade": grades.stamina or g(skills.get("stamina")),
+            },
+            {
+                "key": "recovery",
+                "label": "Recovery",
+                "grade": grades.recovery or g(skills.get("recovery")),
+            },
+            {
+                "key": "ground_balls",
+                "label": "GB tendency",
+                "grade": g(skills.get("ground_balls")),
+            },
+            {"key": "sp", "label": "SP rating", "grade": rg("sp")},
+            {"key": "rp", "label": "RP rating", "grade": rg("rp")},
+        ],
+    }
 
-    hitting_section = {"section": "Hitting", "skills": [
-        {"key": "contact",      "label": "Contact",     "grade": grades.contact or g(skills.get("contact"))},
-        {"key": "power",        "label": "Power",       "grade": grades.power or g(skills.get("power"))},
-        {"key": "eye",          "label": "Eye",         "grade": grades.eye or g(skills.get("eye"))},
-        {"key": "speed",        "label": "Speed",       "grade": grades.speed or g(skills.get("speed"))},
-        {"key": "base_running", "label": "Baserunning", "grade": g(skills.get("base_running"))},
-        {"key": "bunting",      "label": "Bunting",     "grade": g(skills.get("bunting"))},
-        {"key": "lead_off",     "label": "Leadoff",     "grade": rg("lead_off")},
-        {"key": "power_hitter", "label": "Power hitter","grade": rg("power_hitter")},
-        {"key": "contact_hitter","label":"Contact hitter","grade": rg("contact_hitter")},
-    ]}
+    hitting_section = {
+        "section": "Hitting",
+        "skills": [
+            {
+                "key": "contact",
+                "label": "Contact",
+                "grade": grades.contact or g(skills.get("contact")),
+            },
+            {
+                "key": "power",
+                "label": "Power",
+                "grade": grades.power or g(skills.get("power")),
+            },
+            {"key": "eye", "label": "Eye", "grade": grades.eye or g(skills.get("eye"))},
+            {
+                "key": "speed",
+                "label": "Speed",
+                "grade": grades.speed or g(skills.get("speed")),
+            },
+            {
+                "key": "base_running",
+                "label": "Baserunning",
+                "grade": g(skills.get("base_running")),
+            },
+            {"key": "bunting", "label": "Bunting", "grade": g(skills.get("bunting"))},
+            {"key": "lead_off", "label": "Leadoff", "grade": rg("lead_off")},
+            {
+                "key": "power_hitter",
+                "label": "Power hitter",
+                "grade": rg("power_hitter"),
+            },
+            {
+                "key": "contact_hitter",
+                "label": "Contact hitter",
+                "grade": rg("contact_hitter"),
+            },
+        ],
+    }
 
-    defense_section = {"section": "Defense", "skills": [
-        {"key": "if",  "label": "Infield (IF)", "grade": rg("if")},
-        {"key": "of",  "label": "Outfield (OF)","grade": rg("of")},
-        {"key": "c",   "label": "Catcher (CA)", "grade": rg("c")},
-        {"key": "1b",  "label": "First base",   "grade": rg("1b")},
-        {"key": "arm", "label": "Arm",          "grade": grades.arm or g(skills.get("arm"))},
-    ]}
+    defense_section = {
+        "section": "Defense",
+        "skills": [
+            {"key": "if", "label": "Infield (IF)", "grade": rg("if")},
+            {"key": "of", "label": "Outfield (OF)", "grade": rg("of")},
+            {"key": "c", "label": "Catcher (CA)", "grade": rg("c")},
+            {"key": "1b", "label": "First base", "grade": rg("1b")},
+            {"key": "arm", "label": "Arm", "grade": grades.arm or g(skills.get("arm"))},
+        ],
+    }
 
-    general_section = {"section": "General", "skills": [
-        {"key": "clutch",        "label": "Clutch",        "grade": g(skills.get("clutch"))},
-        {"key": "durability",    "label": "Durability",    "grade": g(skills.get("durability"))},
-        {"key": "overall_offense","label":"Off. rating",   "grade": rg("overall_offense")},
-    ]}
+    general_section = {
+        "section": "General",
+        "skills": [
+            {"key": "clutch", "label": "Clutch", "grade": g(skills.get("clutch"))},
+            {
+                "key": "durability",
+                "label": "Durability",
+                "grade": g(skills.get("durability")),
+            },
+            {
+                "key": "overall_offense",
+                "label": "Off. rating",
+                "grade": rg("overall_offense"),
+            },
+        ],
+    }
 
     if grades.player_type == "pitcher":
         return [pitching_section, general_section, defense_section, hitting_section]
@@ -130,6 +194,7 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
+
 
 def _is_htmx(request: Request) -> bool:
     return request.headers.get("HX-Request") == "true"
@@ -152,8 +217,6 @@ def _resolve_gm(
         "SELECT * FROM gms WHERE user_id = ? AND league_id = ?",
         (user_id, league_id),
     ).fetchone()
-
-
 
 
 def _injured_player_ids(db, team_id: str, league_id: str = "") -> set:
@@ -179,6 +242,7 @@ def _games_remaining(db, season_id: str | None) -> int:
     ).fetchone()
     return row[0] if row else 0
 
+
 def _draft_is_complete(db, league_id: str) -> bool:
     row = db.execute(
         """SELECT d.state FROM drafts d
@@ -188,11 +252,20 @@ def _draft_is_complete(db, league_id: str) -> bool:
     ).fetchone()
     return bool(row and row["state"] == "complete")
 
+
 def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
     if state == "lobby":
         return []
     if not draft_complete:
-        return ["draft", "roster", "lineup", "standings", "leaders", "stats", "strategy"]
+        return [
+            "draft",
+            "roster",
+            "lineup",
+            "standings",
+            "leaders",
+            "stats",
+            "strategy",
+        ]
     post = ["roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
     if state not in ("season", "playoffs", "preseason", "offseason"):
         post.remove("schedule")
@@ -270,27 +343,30 @@ def _shell_ctx(
         ).fetchone()
 
     return {
-                "league_id": league_id,
-        "league_name":         league["name"]                if league else "—",
-        "league_state":        league["state"]               if league else "lobby",
-        "league_mode":         league["mode"]                if league else "blitz",
-        "join_code":           league["join_code"]           if league else "",
-        "num_teams":           league["num_teams"]           if league else 30,
+        "league_id": league_id,
+        "league_name": league["name"] if league else "—",
+        "league_state": league["state"] if league else "lobby",
+        "league_mode": league["mode"] if league else "blitz",
+        "join_code": league["join_code"] if league else "",
+        "num_teams": league["num_teams"] if league else 30,
         "decision_window_sec": league["decision_window_sec"] if league else 120,
-        "draft_window_sec":    league["draft_window_sec"]    if league else 300,
-        "reentry_enabled":     bool(league["reentry_enabled"]) if league else True,
-        "pace_control":        league["pace_control"]        if league else "timer",
-        "gm_id":               gm["id"]                     if gm else None,
-        "gm_display_name":     gm["display_name"]           if gm else user["display_name"],
-        "team_id":             gm["team_id"]                if gm else None,
-        "team_name":           f"{team['city']} {team['mascot']}" if team else None,
-        "is_commissioner":     (league and gm and league["commissioner_gm_id"] == gm["id"]),
-        "active_tab":          active_tab,
-        "visible_tabs":        _tab_visible(league["state"] if league else "lobby", _draft_is_complete(db, league_id) if league else False),
-        "season_id":           season["id"]   if season else None,
-        "season_name":         season["name"] if season else None,
-        "draft_complete":      _draft_is_complete(db, league_id) if league else False,
-        "games_remaining":     _games_remaining(db, season["id"] if season else None),
+        "draft_window_sec": league["draft_window_sec"] if league else 300,
+        "reentry_enabled": bool(league["reentry_enabled"]) if league else True,
+        "pace_control": league["pace_control"] if league else "timer",
+        "gm_id": gm["id"] if gm else None,
+        "gm_display_name": gm["display_name"] if gm else user["display_name"],
+        "team_id": gm["team_id"] if gm else None,
+        "team_name": f"{team['city']} {team['mascot']}" if team else None,
+        "is_commissioner": (league and gm and league["commissioner_gm_id"] == gm["id"]),
+        "active_tab": active_tab,
+        "visible_tabs": _tab_visible(
+            league["state"] if league else "lobby",
+            _draft_is_complete(db, league_id) if league else False,
+        ),
+        "season_id": season["id"] if season else None,
+        "season_name": season["name"] if season else None,
+        "draft_complete": _draft_is_complete(db, league_id) if league else False,
+        "games_remaining": _games_remaining(db, season["id"] if season else None),
     }
 
 
@@ -304,6 +380,7 @@ def _respond(request: Request, partial_template: str, ctx: dict) -> HTMLResponse
 
 # ── Landing / Auth ─────────────────────────────────────────────────────────────
 
+
 @router.get("/", response_class=HTMLResponse)
 def landing(request: Request, db: DB, gm_session: str | None = Cookie(default=None)):
     user = _resolve_user(db, gm_session)
@@ -314,7 +391,8 @@ def landing(request: Request, db: DB, gm_session: str | None = Cookie(default=No
 
 @router.post("/auth/guest")
 def create_guest(
-    request: Request, db: DB,
+    request: Request,
+    db: DB,
     display_name: str = Form(default="Guest"),
 ):
     """
@@ -340,16 +418,20 @@ def create_guest(
     db.commit()
     resp = RedirectResponse("/leagues/", status_code=302)
     resp.set_cookie(
-        "gm_session", token,
+        "gm_session",
+        token,
         max_age=60 * 60 * 24 * 365 * 5,
-        httponly=True, samesite="lax",
+        httponly=True,
+        samesite="lax",
     )
     return resp
 
 
 @router.post("/auth/reclaim/{league_id}")
 def reclaim_league(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     """
@@ -388,9 +470,11 @@ def logout():
 
 # ── League list ────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/", response_class=HTMLResponse)
 def leagues_index(
-    request: Request, db: DB,
+    request: Request,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -419,10 +503,14 @@ def leagues_index(
         (user["id"],),
     ).fetchall()
 
-    return templates.TemplateResponse(request, "leagues/index.html", {
-        "user": dict(user),
-        "leagues": [dict(r) for r in rows],
-    })
+    return templates.TemplateResponse(
+        request,
+        "leagues/index.html",
+        {
+            "user": dict(user),
+            "leagues": [dict(r) for r in rows],
+        },
+    )
 
 
 @router.get("/leagues/new", response_class=HTMLResponse)
@@ -432,7 +520,8 @@ def new_league_page(request: Request):
 
 @router.post("/leagues/new")
 def create_league(
-    request: Request, db: DB,
+    request: Request,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
     name: str = Form(...),
     mode: str = Form("blitz"),
@@ -455,15 +544,24 @@ def create_league(
              (id, name, join_code, mode, num_teams, decision_window_sec,
               draft_window_sec, reentry_enabled, pace_control, state)
            VALUES (?, ?, ?, ?, 30, ?, ?, ?, 'timer', 'lobby')""",
-        (league_id, name, join_code, mode, decision_window_sec,
-         draft_window_sec, int(reentry_enabled)),
+        (
+            league_id,
+            name,
+            join_code,
+            mode,
+            decision_window_sec,
+            draft_window_sec,
+            int(reentry_enabled),
+        ),
     )
     db.execute(
         "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
         (gm_id, league_id, user["id"], user["display_name"]),
     )
     db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
-    db.execute("UPDATE leagues SET commissioner_gm_id = ? WHERE id = ?", (gm_id, league_id))
+    db.execute(
+        "UPDATE leagues SET commissioner_gm_id = ? WHERE id = ?", (gm_id, league_id)
+    )
     db.commit()
 
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
@@ -471,7 +569,8 @@ def create_league(
 
 @router.post("/leagues/join")
 def join_league(
-    request: Request, db: DB,
+    request: Request,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
     join_code: str = Form(...),
 ):
@@ -485,9 +584,13 @@ def join_league(
         "SELECT * FROM leagues WHERE join_code = ?", (join_code.upper(),)
     ).fetchone()
     if not league:
-        return templates.TemplateResponse(request, "leagues/join.html", {"error": "League not found."})
+        return templates.TemplateResponse(
+            request, "leagues/join.html", {"error": "League not found."}
+        )
     if league["state"] != "lobby":
-        return templates.TemplateResponse(request, "leagues/join.html", {"error": "League has already started."})
+        return templates.TemplateResponse(
+            request, "leagues/join.html", {"error": "League has already started."}
+        )
 
     # Check if already a member
     existing = db.execute(
@@ -515,9 +618,12 @@ def join_page(request: Request):
 
 # ── League actions ────────────────────────────────────────────────────────────
 
+
 @router.post("/leagues/{league_id}/start")
 def start_league(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -534,6 +640,7 @@ def start_league(
 
     from src.api.services.league_start import start_league as _start
     import traceback
+
     try:
         _start(league_id, db)
     except Exception as e:
@@ -547,12 +654,14 @@ def start_league(
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 
-
 # ── Draft actions ──────────────────────────────────────────────────────────────
+
 
 @router.put("/leagues/{league_id}/draft/preferences")
 async def save_draft_preferences(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     """
@@ -604,11 +713,15 @@ async def save_draft_preferences(
 
     return JSONResponse({"saved": len(player_ids)})
 
+
 # ── Dashboard shell ────────────────────────────────────────────────────────────
+
 
 @router.get("/leagues/{league_id}/", response_class=HTMLResponse)
 def dashboard(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -649,31 +762,38 @@ def _lobby(request, league_id, db, user, gm):
            WHERE g.league_id = ? ORDER BY g.created_at""",
         (league_id,),
     ).fetchall()
-    return templates.TemplateResponse(request, "dashboard/lobby.html", {
-        "league_id":           league_id,
-        "league_name":         league["name"],
-        "league_state":        "lobby",
-        "join_code":           league["join_code"],
-        "num_teams":           league["num_teams"],
-        "decision_window_sec": league["decision_window_sec"],
-        "draft_window_sec":    (dict(league).get("draft_window_sec") or 300),
-        "reentry_enabled":     bool(league["reentry_enabled"]),
-        "pace_control":        league["pace_control"],
-        "league_mode":         league["mode"],
-        "gm_display_name":     gm["display_name"] if gm else user["display_name"],
-        "current_gm_id":       gm["id"] if gm else None,
-        "is_commissioner":     gm and league["commissioner_gm_id"] == gm["id"],
-        "draft_complete":      False,
-        "visible_tabs":        [],
-        "gms": [dict(r) for r in gms],
-    })
+    return templates.TemplateResponse(
+        request,
+        "dashboard/lobby.html",
+        {
+            "league_id": league_id,
+            "league_name": league["name"],
+            "league_state": "lobby",
+            "join_code": league["join_code"],
+            "num_teams": league["num_teams"],
+            "decision_window_sec": league["decision_window_sec"],
+            "draft_window_sec": (dict(league).get("draft_window_sec") or 300),
+            "reentry_enabled": bool(league["reentry_enabled"]),
+            "pace_control": league["pace_control"],
+            "league_mode": league["mode"],
+            "gm_display_name": gm["display_name"] if gm else user["display_name"],
+            "current_gm_id": gm["id"] if gm else None,
+            "is_commissioner": gm and league["commissioner_gm_id"] == gm["id"],
+            "draft_complete": False,
+            "visible_tabs": [],
+            "gms": [dict(r) for r in gms],
+        },
+    )
 
 
 # ── Tab: Draft ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/draft", response_class=HTMLResponse)
 def draft_tab(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -692,7 +812,8 @@ def draft_tab(
 
     if draft:
         picked_ids = {
-            r["player_id"] for r in db.execute(
+            r["player_id"]
+            for r in db.execute(
                 "SELECT player_id FROM draft_picks WHERE draft_id = ?",
                 (draft["id"],),
             ).fetchall()
@@ -735,12 +856,12 @@ def draft_tab(
                 (draft["id"], gm["id"]),
             ).fetchall()
 
-        ctx["draft_id"]    = draft["id"]
-        ctx["board"]       = board
+        ctx["draft_id"] = draft["id"]
+        ctx["board"] = board
         ctx["preferences"] = [r["player_id"] for r in prefs]
     else:
-        ctx["draft_id"]    = None
-        ctx["board"]       = []
+        ctx["draft_id"] = None
+        ctx["board"] = []
         ctx["preferences"] = []
 
     # Load GM's current roster for the right-hand column
@@ -777,10 +898,11 @@ def draft_tab(
     return _respond(request, "dashboard/partials/draft.html", ctx)
 
 
-
 @router.post("/leagues/{league_id}/draft/execute")
 def execute_draft(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     """Execute the blitz auto-draft and redirect to results."""
@@ -807,8 +929,10 @@ def execute_draft(
         return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
 
     import traceback
+
     try:
         from src.api.services.draft_execute import execute_blitz_draft
+
         execute_blitz_draft(draft["id"], db)
     except Exception as e:
         return HTMLResponse(
@@ -822,7 +946,9 @@ def execute_draft(
 
 @router.get("/leagues/{league_id}/draft/results", response_class=HTMLResponse)
 def draft_results(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     """Show completed draft results — all picks by round, your picks highlighted."""
@@ -857,7 +983,8 @@ def draft_results(
         ).fetchall()
 
         human_team_ids = {
-            r["team_id"] for r in db.execute(
+            r["team_id"]
+            for r in db.execute(
                 "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
                 (league_id,),
             ).fetchall()
@@ -869,30 +996,35 @@ def draft_results(
             r = pick["round"]
             if r not in rounds_map:
                 rounds_map[r] = []
-            is_mine   = pick["team_id"] == my_team_id
-            is_human  = pick["team_id"] in human_team_ids and not is_mine
-            rounds_map[r].append({
-                "pick_number": pick["pick_number"],
-                "team_id":     pick["team_id"],
-                "player_id":   pick["player_id"],
-                "team_name":   f"{pick['city']} {pick['mascot']}",
-                "player_name": f"{pick['first_name']} {pick['last_name']}",
-                "position":    pick["position"] or "?",
-                "auto_picked": bool(pick["auto_picked"]),
-                "is_mine":     is_mine,
-                "is_human":    is_human,
-            })
-        rounds = [{"round": r, "picks": picks}
-                  for r, picks in sorted(rounds_map.items())]
+            is_mine = pick["team_id"] == my_team_id
+            is_human = pick["team_id"] in human_team_ids and not is_mine
+            rounds_map[r].append(
+                {
+                    "pick_number": pick["pick_number"],
+                    "team_id": pick["team_id"],
+                    "player_id": pick["player_id"],
+                    "team_name": f"{pick['city']} {pick['mascot']}",
+                    "player_name": f"{pick['first_name']} {pick['last_name']}",
+                    "position": pick["position"] or "?",
+                    "auto_picked": bool(pick["auto_picked"]),
+                    "is_mine": is_mine,
+                    "is_human": is_human,
+                }
+            )
+        rounds = [
+            {"round": r, "picks": picks} for r, picks in sorted(rounds_map.items())
+        ]
 
-    ctx["rounds"]     = rounds
+    ctx["rounds"] = rounds
     ctx["draft_done"] = bool(draft and draft["state"] == "complete")
     return _respond(request, "dashboard/partials/draft_results.html", ctx)
 
 
 @router.post("/leagues/{league_id}/roster/save", response_class=HTMLResponse)
 def save_roster(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     """Save 40-man roster. Enforces the 40-player limit."""
@@ -909,14 +1041,21 @@ def save_roster(
 
     # Read JSON body
     import asyncio
-    body_bytes = asyncio.get_event_loop().run_until_complete(request.body())         if hasattr(request, '_body') else None
+
+    body_bytes = (
+        asyncio.get_event_loop().run_until_complete(request.body())
+        if hasattr(request, "_body")
+        else None
+    )
 
     return HTMLResponse("ok")  # placeholder — real logic below
 
 
 @router.put("/leagues/{league_id}/roster/save")
 def save_roster_put(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     """PUT endpoint for roster save from JS fetch."""
@@ -937,6 +1076,7 @@ def save_roster_put(
     body = None
     try:
         import asyncio as _asyncio
+
         loop = _asyncio.new_event_loop()
         body = loop.run_until_complete(request.json())
         loop.close()
@@ -947,19 +1087,24 @@ def save_roster_put(
 
     if len(forty_man_ids) > 40:
         return JSONResponse(
-            {"detail": f"40-man roster cannot exceed 40 players ({len(forty_man_ids)} submitted)"},
+            {
+                "detail": f"40-man roster cannot exceed 40 players ({len(forty_man_ids)} submitted)"
+            },
             status_code=422,
         )
 
     # Verify all submitted players belong to this team
     team_player_ids = {
-        r["player_id"] for r in db.execute(
+        r["player_id"]
+        for r in db.execute(
             "SELECT player_id FROM team_players WHERE team_id = ?", (team_id,)
         ).fetchall()
     }
     for pid in forty_man_ids:
         if pid not in team_player_ids:
-            return JSONResponse({"detail": f"Player {pid} not on this team"}, status_code=422)
+            return JSONResponse(
+                {"detail": f"Player {pid} not on this team"}, status_code=422
+            )
 
     forty_set = set(forty_man_ids)
 
@@ -986,9 +1131,12 @@ def save_roster_put(
 
 # ── Sim ─────────────────────────────────────────────────────────────────────────
 
+
 @router.post("/leagues/{league_id}/sim")
 async def sim_games(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     """Sim N games (or until season end). Returns JSON with results summary."""
@@ -1004,13 +1152,20 @@ async def sim_games(
 
     results = []
     days_simmed = 0
-    remaining = _games_remaining(db, db.execute(
-        """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+    remaining = _games_remaining(
+        db,
+        (
+            db.execute(
+                """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
            WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()["id"] if db.execute(
-        "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
-    ).fetchone() else None)
+                (league_id,),
+            ).fetchone()["id"]
+            if db.execute(
+                "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
+            ).fetchone()
+            else None
+        ),
+    )
 
     limit = remaining if count == "season" else min(int(count), remaining)
 
@@ -1028,32 +1183,47 @@ async def sim_games(
             break
 
     games_played = sum(r.get("games_played", 0) for r in results)
-    new_remaining = _games_remaining(db, db.execute(
-        """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+    new_remaining = _games_remaining(
+        db,
+        (
+            db.execute(
+                """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
            WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()["id"] if db.execute(
-        "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
-    ).fetchone() else None)
+                (league_id,),
+            ).fetchone()["id"]
+            if db.execute(
+                "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
+            ).fetchone()
+            else None
+        ),
+    )
 
     # If season just ended, trigger the state transition (playoffs setup)
     if new_remaining == 0 and days_simmed > 0:
         sim_next_day(league_id, db)
 
-    league_state_row = db.execute("SELECT state FROM leagues WHERE id = ?", (league_id,)).fetchone()
-    return JSONResponse({
-        "days_simmed":      days_simmed,
-        "games_played":     games_played,
-        "games_remaining":  new_remaining,
-        "last_date":        results[-1]["game_date"] if results else None,
-        "league_state":     league_state_row["state"] if league_state_row else None,
-    })
+    league_state_row = db.execute(
+        "SELECT state FROM leagues WHERE id = ?", (league_id,)
+    ).fetchone()
+    return JSONResponse(
+        {
+            "days_simmed": days_simmed,
+            "games_played": games_played,
+            "games_remaining": new_remaining,
+            "last_date": results[-1]["game_date"] if results else None,
+            "league_state": league_state_row["state"] if league_state_row else None,
+        }
+    )
+
 
 # ── Tab: Standings ─────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/standings", response_class=HTMLResponse)
 def standings(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -1105,7 +1275,8 @@ def standings(
         ra_map = {r["team_id"]: r["runs_allowed"] or 0 for r in ra_rows}
 
         human_team_ids = {
-            r["team_id"] for r in db.execute(
+            r["team_id"]
+            for r in db.execute(
                 "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
                 (league_id,),
             ).fetchall()
@@ -1146,34 +1317,40 @@ def standings(
         # Sort by win pct descending to get rank and GB
         ranked = sorted(
             [dict(r) for r in rows],
-            key=lambda t: (-(t["wins"] or 0), (t["losses"] or 0))
+            key=lambda t: (-(t["wins"] or 0), (t["losses"] or 0)),
         )
         leader_wins = ranked[0]["wins"] or 0 if ranked else 0
         leader_losses = ranked[0]["losses"] or 0 if ranked else 0
 
         for rank, r in enumerate(ranked, 1):
-            wins   = r["wins"]   or 0
+            wins = r["wins"] or 0
             losses = r["losses"] or 0
-            rs     = r["runs_scored"] or 0
-            ra     = ra_map.get(r["team_id"], 0)
+            rs = r["runs_scored"] or 0
+            ra = ra_map.get(r["team_id"], 0)
             played = wins + losses
-            pct    = wins / played if played else 0.0
+            pct = wins / played if played else 0.0
             gb_val = ((leader_wins - wins) + (losses - leader_losses)) / 2
-            gb     = "—" if rank == 1 else (f"{gb_val:.1f}" if gb_val != int(gb_val) else str(int(gb_val)))
+            gb = (
+                "—"
+                if rank == 1
+                else (f"{gb_val:.1f}" if gb_val != int(gb_val) else str(int(gb_val)))
+            )
             recent = team_recent.get(r["team_id"], [])
-            teams.append({
-                "rank":         rank,
-                "team_id":      r["team_id"],
-                "city":         r["city"],
-                "mascot":       r["mascot"],
-                "wins":         wins,
-                "losses":       losses,
-                "pct":          f"{pct:.3f}",
-                "gb":           gb,
-                "streak":       calc_streak(recent),
-                "is_human":     r["team_id"] in human_team_ids,
-                "is_mine":      r["team_id"] == my_team_id,
-            })
+            teams.append(
+                {
+                    "rank": rank,
+                    "team_id": r["team_id"],
+                    "city": r["city"],
+                    "mascot": r["mascot"],
+                    "wins": wins,
+                    "losses": losses,
+                    "pct": f"{pct:.3f}",
+                    "gb": gb,
+                    "streak": calc_streak(recent),
+                    "is_human": r["team_id"] in human_team_ids,
+                    "is_mine": r["team_id"] == my_team_id,
+                }
+            )
 
         # ── My next 3 upcoming games ──────────────────────────────────────────
         upcoming = []
@@ -1192,13 +1369,15 @@ def standings(
             ).fetchall()
             for g_row in up_rows:
                 is_home = g_row["home_team_id"] == my_team_id
-                opp_city   = g_row["away_city"]   if is_home else g_row["home_city"]
+                opp_city = g_row["away_city"] if is_home else g_row["home_city"]
                 opp_mascot = g_row["away_mascot"] if is_home else g_row["home_mascot"]
-                upcoming.append({
-                    "date":       g_row["game_date"],
-                    "home_away":  "vs" if is_home else "@",
-                    "opponent":   f"{opp_city} {opp_mascot}",
-                })
+                upcoming.append(
+                    {
+                        "date": g_row["game_date"],
+                        "home_away": "vs" if is_home else "@",
+                        "opponent": f"{opp_city} {opp_mascot}",
+                    }
+                )
 
         # ── My last 3 completed games ─────────────────────────────────────────
         recent_games = []
@@ -1218,20 +1397,22 @@ def standings(
             ).fetchall()
             for g_row in rg_rows:
                 is_home = g_row["home_team_id"] == my_team_id
-                my_score  = g_row["home_score"] if is_home else g_row["away_score"]
+                my_score = g_row["home_score"] if is_home else g_row["away_score"]
                 opp_score = g_row["away_score"] if is_home else g_row["home_score"]
-                opp_city   = g_row["away_city"]   if is_home else g_row["home_city"]
+                opp_city = g_row["away_city"] if is_home else g_row["home_city"]
                 opp_mascot = g_row["away_mascot"] if is_home else g_row["home_mascot"]
                 won = (my_score or 0) > (opp_score or 0)
-                recent_games.append({
-                    "game_id":   g_row["game_id"],
-                    "date":      g_row["game_date"],
-                    "home_away": "vs" if is_home else "@",
-                    "opponent":  f"{opp_city} {opp_mascot}",
-                    "my_score":  my_score,
-                    "opp_score": opp_score,
-                    "result":    "W" if won else "L",
-                })
+                recent_games.append(
+                    {
+                        "game_id": g_row["game_id"],
+                        "date": g_row["game_date"],
+                        "home_away": "vs" if is_home else "@",
+                        "opponent": f"{opp_city} {opp_mascot}",
+                        "my_score": my_score,
+                        "opp_score": opp_score,
+                        "result": "W" if won else "L",
+                    }
+                )
 
         # ── Injury report ─────────────────────────────────────────────────────
         injuries = []
@@ -1249,22 +1430,29 @@ def standings(
             injuries = [dict(r) for r in inj_rows]
 
     else:
-        upcoming = []; recent_games = []; injuries = []
+        upcoming = []
+        recent_games = []
+        injuries = []
 
-    ctx["teams"]        = teams
-    ctx["games_played"] = sum(t["wins"] + t["losses"] for t in teams) // 2 if teams else 0
-    ctx["upcoming"]     = upcoming
+    ctx["teams"] = teams
+    ctx["games_played"] = (
+        sum(t["wins"] + t["losses"] for t in teams) // 2 if teams else 0
+    )
+    ctx["upcoming"] = upcoming
     ctx["recent_games"] = recent_games
-    ctx["injuries"]     = injuries
-    ctx["my_team_id"]   = my_team_id
+    ctx["injuries"] = injuries
+    ctx["my_team_id"] = my_team_id
     return _respond(request, "dashboard/partials/standings.html", ctx)
 
 
 # ── Tab: Leaders ───────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/leaders", response_class=HTMLResponse)
 def leaders(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     category: str = "batting",
     gm_session: str | None = Cookie(default=None),
 ):
@@ -1274,15 +1462,21 @@ def leaders(
 
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "leaders")
-    season_id  = ctx["season_id"]
+    season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
     def top(rows, key, n=10, asc=False):
         return sorted(rows, key=lambda r: r[key] or 0, reverse=not asc)[:n]
 
-    def fmt_avg(v): return f"{v:.3f}" if v else ".000"
-    def fmt_era(v): return f"{v:.2f}" if v else "0.00"
-    def ip_str(outs): o = outs or 0; return f"{o//3}.{o%3}"
+    def fmt_avg(v):
+        return f"{v:.3f}" if v else ".000"
+
+    def fmt_era(v):
+        return f"{v:.2f}" if v else "0.00"
+
+    def ip_str(outs):
+        o = outs or 0
+        return f"{o//3}.{o%3}"
 
     bat_cats = []
     pit_cats = []
@@ -1296,8 +1490,8 @@ def leaders(
         ).fetchone()
         team_games = tg_row["tg"] or 1
 
-        min_ab   = int(3.1 * team_games)   # qualify for rate stats
-        min_outs = int(3 * team_games)      # 1 IP per team game
+        min_ab = int(3.1 * team_games)  # qualify for rate stats
+        min_outs = int(3 * team_games)  # 1 IP per team game
 
         # ── Batting: one query, compute rate stats, build all categories ────────
         bat_rows = db.execute(
@@ -1317,66 +1511,99 @@ def leaders(
 
         batters = []
         for r in bat_rows:
-            ab  = r["bat_ab"] or 0
-            h   = r["bat_hits"] or 0
-            d   = r["bat_doubles"] or 0
-            tr  = r["bat_triples"] or 0
-            hr  = r["bat_home_runs"] or 0
+            ab = r["bat_ab"] or 0
+            h = r["bat_hits"] or 0
+            d = r["bat_doubles"] or 0
+            tr = r["bat_triples"] or 0
+            hr = r["bat_home_runs"] or 0
             rbi = r["bat_rbi"] or 0
-            runs= r["bat_runs"] or 0
-            bb  = r["bat_walks"] or 0
-            k   = r["bat_strike_outs"] or 0
-            sb  = r["bat_stolen_bases"] or 0
+            runs = r["bat_runs"] or 0
+            bb = r["bat_walks"] or 0
+            k = r["bat_strike_outs"] or 0
+            sb = r["bat_stolen_bases"] or 0
             hbp = r["bat_hbp"] or 0
-            sf  = r["bat_sac_flys"] or 0
+            sf = r["bat_sac_flys"] or 0
             avg = h / ab if ab else 0.0
             obp_d = ab + bb + hbp + sf
             obp = (h + bb + hbp) / obp_d if obp_d else 0.0
-            tb  = h - d - tr - hr + 2*d + 3*tr + 4*hr
+            tb = h - d - tr - hr + 2 * d + 3 * tr + 4 * hr
             slg = tb / ab if ab else 0.0
             qualifies = ab >= min_ab
             ab_k = ab / k if k else 0.0
-            batters.append({
-                "player_id": r["player_id"],
-                "name":  f"{r['first_name']} {r['last_name']}",
-                "team":  f"{r['city']} {r['mascot']}",
-                "team_id": r["team_id"],
-                "is_mine": r["team_id"] == my_team_id,
-                "qualifies": qualifies,
-                "AVG": avg, "HR": hr, "RBI": rbi, "R": runs, "H": h,
-                "SB": sb, "OBP": obp, "SLG": slg, "OPS": obp+slg,
-                "2B": d, "3B": tr, "BB": bb, "K": k, "AB/K": ab_k,
-            })
+            batters.append(
+                {
+                    "player_id": r["player_id"],
+                    "name": f"{r['first_name']} {r['last_name']}",
+                    "team": f"{r['city']} {r['mascot']}",
+                    "team_id": r["team_id"],
+                    "is_mine": r["team_id"] == my_team_id,
+                    "qualifies": qualifies,
+                    "AVG": avg,
+                    "HR": hr,
+                    "RBI": rbi,
+                    "R": runs,
+                    "H": h,
+                    "SB": sb,
+                    "OBP": obp,
+                    "SLG": slg,
+                    "OPS": obp + slg,
+                    "2B": d,
+                    "3B": tr,
+                    "BB": bb,
+                    "K": k,
+                    "AB/K": ab_k,
+                }
+            )
 
         def bat_card(label, key, pool=None, asc=False, fmt=None):
-            srt = sorted(pool if pool is not None else batters, key=lambda r: r[key], reverse=not asc)[:10]
+            srt = sorted(
+                pool if pool is not None else batters,
+                key=lambda r: r[key],
+                reverse=not asc,
+            )[:10]
             rows = []
             for i, r in enumerate(srt, 1):
                 val = r[key]
-                disp = fmt(val) if fmt else str(int(val)) if isinstance(val, float) and val == int(val) else (f"{val:.3f}" if isinstance(val, float) else str(val))
-                rows.append({"rank": i, "name": r["name"], "team": r["team"],
-                             "player_id": r["player_id"], "is_mine": r["is_mine"], "val": disp})
+                disp = (
+                    fmt(val)
+                    if fmt
+                    else (
+                        str(int(val))
+                        if isinstance(val, float) and val == int(val)
+                        else (f"{val:.3f}" if isinstance(val, float) else str(val))
+                    )
+                )
+                rows.append(
+                    {
+                        "rank": i,
+                        "name": r["name"],
+                        "team": r["team"],
+                        "player_id": r["player_id"],
+                        "is_mine": r["is_mine"],
+                        "val": disp,
+                    }
+                )
             return {"label": label, "rows": rows}
 
         qualified = [b for b in batters if b["qualifies"]]
-        all_bat   = batters  # no AB minimum for counting stats
+        all_bat = batters  # no AB minimum for counting stats
 
         def bat_card_q(label, key, pool=None, asc=False, fmt=None):
             return bat_card(label, key, pool=pool or qualified, asc=asc, fmt=fmt)
 
         bat_cats = [
-            bat_card_q("AVG",  "AVG",  fmt=lambda v: f"{v:.3f}"),
-            bat_card("HR",     "HR",   pool=all_bat),
-            bat_card("RBI",    "RBI",  pool=all_bat),
-            bat_card("R",      "R",    pool=all_bat),
-            bat_card("H",      "H",    pool=all_bat),
-            bat_card("SB",     "SB",   pool=all_bat),
-            bat_card_q("OBP",  "OBP",  fmt=lambda v: f"{v:.3f}"),
-            bat_card_q("SLG",  "SLG",  fmt=lambda v: f"{v:.3f}"),
-            bat_card_q("OPS",  "OPS",  fmt=lambda v: f"{v:.3f}"),
-            bat_card("2B",     "2B",   pool=all_bat),
-            bat_card("3B",     "3B",   pool=all_bat),
-            bat_card("BB",     "BB",   pool=all_bat),
+            bat_card_q("AVG", "AVG", fmt=lambda v: f"{v:.3f}"),
+            bat_card("HR", "HR", pool=all_bat),
+            bat_card("RBI", "RBI", pool=all_bat),
+            bat_card("R", "R", pool=all_bat),
+            bat_card("H", "H", pool=all_bat),
+            bat_card("SB", "SB", pool=all_bat),
+            bat_card_q("OBP", "OBP", fmt=lambda v: f"{v:.3f}"),
+            bat_card_q("SLG", "SLG", fmt=lambda v: f"{v:.3f}"),
+            bat_card_q("OPS", "OPS", fmt=lambda v: f"{v:.3f}"),
+            bat_card("2B", "2B", pool=all_bat),
+            bat_card("3B", "3B", pool=all_bat),
+            bat_card("BB", "BB", pool=all_bat),
             bat_card_q("AB/K", "AB/K", fmt=lambda v: f"{v:.1f}"),
         ]
 
@@ -1399,60 +1626,79 @@ def leaders(
         pitchers = []
         for r in pit_rows:
             outs = r["pitch_outs"] or 0
-            er   = r["pitch_earned_runs"] or 0
-            ph   = r["pitch_hits"] or 0
-            pbb  = r["pitch_walks"] or 0
-            pk   = r["pitch_strike_outs"] or 0
-            hr   = r["pitch_home_runs"] or 0
+            er = r["pitch_earned_runs"] or 0
+            ph = r["pitch_hits"] or 0
+            pbb = r["pitch_walks"] or 0
+            pk = r["pitch_strike_outs"] or 0
+            hr = r["pitch_home_runs"] or 0
             ip_f = outs / 3
-            era  = (er * 27) / outs if outs else 0.0
+            era = (er * 27) / outs if outs else 0.0
             whip = (pbb + ph) / ip_f if ip_f else 0.0
             qualifies_p = outs >= min_outs
-            bb9  = (pbb * 27) / outs if outs else 0.0
-            hr9  = (hr  * 27) / outs if outs else 0.0
-            pitchers.append({
-                "player_id": r["player_id"],
-                "name":  f"{r['first_name']} {r['last_name']}",
-                "team":  f"{r['city']} {r['mascot']}",
-                "team_id": r["team_id"],
-                "is_mine": r["team_id"] == my_team_id,
-                "qualifies": qualifies_p,
-                "ERA": era, "WHIP": whip,
-                "W":   r["pitch_wins"] or 0,
-                "K":   pk, "SV": r["pitch_saves"] or 0,
-                "IP":  ip_f, "BB/9": bb9, "HR/9": hr9,
-            })
+            bb9 = (pbb * 27) / outs if outs else 0.0
+            hr9 = (hr * 27) / outs if outs else 0.0
+            pitchers.append(
+                {
+                    "player_id": r["player_id"],
+                    "name": f"{r['first_name']} {r['last_name']}",
+                    "team": f"{r['city']} {r['mascot']}",
+                    "team_id": r["team_id"],
+                    "is_mine": r["team_id"] == my_team_id,
+                    "qualifies": qualifies_p,
+                    "ERA": era,
+                    "WHIP": whip,
+                    "W": r["pitch_wins"] or 0,
+                    "K": pk,
+                    "SV": r["pitch_saves"] or 0,
+                    "IP": ip_f,
+                    "BB/9": bb9,
+                    "HR/9": hr9,
+                }
+            )
 
         def pit_card(label, key, pool=None, asc=False, fmt=None):
-            srt = sorted(pool if pool is not None else pitchers, key=lambda r: r[key], reverse=not asc)[:10]
+            srt = sorted(
+                pool if pool is not None else pitchers,
+                key=lambda r: r[key],
+                reverse=not asc,
+            )[:10]
             rows = []
             for i, r in enumerate(srt, 1):
                 val = r[key]
                 if fmt:
                     disp = fmt(val)
                 elif key == "IP":
-                    o = int(val * 3); disp = f"{o//3}.{o%3}"
+                    o = int(val * 3)
+                    disp = f"{o//3}.{o%3}"
                 else:
                     disp = str(int(val)) if val == int(val) else f"{val:.2f}"
-                rows.append({"rank": i, "name": r["name"], "team": r["team"],
-                             "player_id": r["player_id"], "is_mine": r["is_mine"], "val": disp})
+                rows.append(
+                    {
+                        "rank": i,
+                        "name": r["name"],
+                        "team": r["team"],
+                        "player_id": r["player_id"],
+                        "is_mine": r["is_mine"],
+                        "val": disp,
+                    }
+                )
             return {"label": label, "rows": rows}
 
-        q_pit  = [p for p in pitchers if p["qualifies"]]
+        q_pit = [p for p in pitchers if p["qualifies"]]
         all_pit = pitchers
 
         def pit_card_q(label, key, asc=False, fmt=None):
             return pit_card(label, key, pool=q_pit, asc=asc, fmt=fmt)
 
         pit_cats = [
-            pit_card_q("ERA",  "ERA",  asc=True,  fmt=lambda v: f"{v:.2f}"),
-            pit_card_q("WHIP", "WHIP", asc=True,  fmt=lambda v: f"{v:.2f}"),
-            pit_card("W",      "W",    pool=all_pit),
-            pit_card("K",      "K",    pool=all_pit),
-            pit_card("SV",     "SV",   pool=all_pit),
-            pit_card_q("IP",   "IP"),
-            pit_card_q("BB/9", "BB/9", asc=True,  fmt=lambda v: f"{v:.2f}"),
-            pit_card_q("HR/9", "HR/9", asc=True,  fmt=lambda v: f"{v:.2f}"),
+            pit_card_q("ERA", "ERA", asc=True, fmt=lambda v: f"{v:.2f}"),
+            pit_card_q("WHIP", "WHIP", asc=True, fmt=lambda v: f"{v:.2f}"),
+            pit_card("W", "W", pool=all_pit),
+            pit_card("K", "K", pool=all_pit),
+            pit_card("SV", "SV", pool=all_pit),
+            pit_card_q("IP", "IP"),
+            pit_card_q("BB/9", "BB/9", asc=True, fmt=lambda v: f"{v:.2f}"),
+            pit_card_q("HR/9", "HR/9", asc=True, fmt=lambda v: f"{v:.2f}"),
         ]
 
     ctx["category"] = category
@@ -1463,9 +1709,12 @@ def leaders(
 
 # ── Tab: Roster ────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/roster", response_class=HTMLResponse)
 def roster(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -1497,19 +1746,19 @@ def roster(
             if ratings:
                 if g.get("player_type") == "pitcher":
                     best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
-                    g["overall"]  = skill_to_grade(best_p) if best_p else g["overall"]
+                    g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
                     g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
                     g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
                 else:
                     g["overall"] = skill_to_grade(ratings.get("overall_player"))
                 g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
                 g["best_def_label"] = ratings.get("best_def_label", "DEF")
-                g["if_grade"]       = skill_to_grade(ratings.get("if", 0))
-                g["of_grade"]       = skill_to_grade(ratings.get("of", 0))
-                g["c_grade"]        = skill_to_grade(ratings.get("c", 0))
-                g["b1_grade"]       = skill_to_grade(ratings.get("1b", 0))
+                g["if_grade"] = skill_to_grade(ratings.get("if", 0))
+                g["of_grade"] = skill_to_grade(ratings.get("of", 0))
+                g["c_grade"] = skill_to_grade(ratings.get("c", 0))
+                g["b1_grade"] = skill_to_grade(ratings.get("1b", 0))
             g["base_running"] = skill_to_grade(skills.get("base_running"))
-            g["bunting"]      = skill_to_grade(skills.get("bunting"))
+            g["bunting"] = skill_to_grade(skills.get("bunting"))
             g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
             players.append(g)
 
@@ -1522,9 +1771,12 @@ def roster(
 
 # ── Tab: Lineup ────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/lineup", response_class=HTMLResponse)
 def lineup(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -1535,8 +1787,10 @@ def lineup(
     ctx = _shell_ctx(request, db, league_id, user, gm, "lineup")
 
     if not gm or not gm["team_id"]:
-        ctx["hitters"] = []; ctx["pitchers"] = []
-        ctx["saved_lineup"] = []; ctx["saved_rotation"] = []
+        ctx["hitters"] = []
+        ctx["pitchers"] = []
+        ctx["saved_lineup"] = []
+        ctx["saved_rotation"] = []
         ctx["saved_bullpen"] = []
         return _respond(request, "dashboard/partials/lineup.html", ctx)
 
@@ -1553,10 +1807,13 @@ def lineup(
         (team_id,),
     ).fetchall()
 
-    hitters = []; pitchers = []
+    hitters = []
+    pitchers = []
     for row in rows:
         d = dict(row)
-        sk = db.execute("SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)).fetchone()
+        sk = db.execute(
+            "SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)
+        ).fetchone()
         skills = dict(sk) if sk else {}
         grades = player_row_to_grades(d, skills, d["status"])
         ratings = _compute_ratings(skills, d.get("throws", "R"))
@@ -1564,19 +1821,19 @@ def lineup(
         if ratings:
             if g.get("player_type") == "pitcher":
                 best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
-                g["overall"]  = skill_to_grade(best_p) if best_p else g["overall"]
+                g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
                 g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
                 g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
             else:
-                g["overall"]          = skill_to_grade(ratings.get("overall_player"))
-                g["leadoff_grade"]    = skill_to_grade(ratings.get("lead_off", 0))
-                g["power_h_grade"]    = skill_to_grade(ratings.get("power_hitter", 0))
-                g["contact_h_grade"]  = skill_to_grade(ratings.get("contact_hitter", 0))
+                g["overall"] = skill_to_grade(ratings.get("overall_player"))
+                g["leadoff_grade"] = skill_to_grade(ratings.get("lead_off", 0))
+                g["power_h_grade"] = skill_to_grade(ratings.get("power_hitter", 0))
+                g["contact_h_grade"] = skill_to_grade(ratings.get("contact_hitter", 0))
             g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
             g["best_def_label"] = ratings.get("best_def_label", "DEF")
         # Raw skill grades not in PlayerGrades — needed for sort
         g["base_running"] = skill_to_grade(skills.get("base_running"))
-        g["bunting"]      = skill_to_grade(skills.get("bunting"))
+        g["bunting"] = skill_to_grade(skills.get("bunting"))
         g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
         if g.get("player_type") == "pitcher":
             pitchers.append(g)
@@ -1591,8 +1848,14 @@ def lineup(
            ORDER BY batting_order""",
         (gm["id"],),
     ).fetchall()
-    saved_lineup = [{"player_id": r["player_id"], "batting_order": r["batting_order"],
-                     "position": r["position"]} for r in prefs]
+    saved_lineup = [
+        {
+            "player_id": r["player_id"],
+            "batting_order": r["batting_order"],
+            "position": r["position"],
+        }
+        for r in prefs
+    ]
 
     # Load saved rotation
     saved_rotation = []
@@ -1618,20 +1881,23 @@ def lineup(
     injured_ids = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:
         p["injured"] = p["player_id"] in injured_ids
-    ctx["hitters"]        = hitters
-    ctx["pitchers"]       = pitchers
-    ctx["saved_lineup"]   = saved_lineup
+    ctx["hitters"] = hitters
+    ctx["pitchers"] = pitchers
+    ctx["saved_lineup"] = saved_lineup
     ctx["saved_rotation"] = saved_rotation
-    ctx["saved_bullpen"]  = saved_bullpen
+    ctx["saved_bullpen"] = saved_bullpen
     return _respond(request, "dashboard/partials/lineup.html", ctx)
 
 
 @router.put("/leagues/{league_id}/lineup/save")
 async def save_lineup(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     from fastapi.responses import JSONResponse
+
     user = _resolve_user(db, gm_session)
     if not user:
         return JSONResponse({"detail": "Unauthorized"}, status_code=401)
@@ -1641,21 +1907,27 @@ async def save_lineup(
         return JSONResponse({"detail": "No team"}, status_code=400)
 
     body = await request.json()
-    lineup   = body.get("lineup", [])    # [{player_id, batting_order, position}]
+    lineup = body.get("lineup", [])  # [{player_id, batting_order, position}]
     rotation = body.get("rotation", [])  # [player_id, ...] in order
-    bullpen  = body.get("bullpen", {})   # {player_id: role}
+    bullpen = body.get("bullpen", {})  # {player_id: role}
 
     # Validate lineup: 9 slots, no duplicate positions
     if len(lineup) > 9:
-        return JSONResponse({"detail": "Lineup cannot exceed 9 batters"}, status_code=422)
+        return JSONResponse(
+            {"detail": "Lineup cannot exceed 9 batters"}, status_code=422
+        )
     positions_used = [s["position"] for s in lineup if s.get("position")]
     if len(positions_used) != len(set(positions_used)):
         dupes = [p for p in positions_used if positions_used.count(p) > 1]
-        return JSONResponse({"detail": f"Duplicate positions: {', '.join(set(dupes))}"}, status_code=422)
+        return JSONResponse(
+            {"detail": f"Duplicate positions: {', '.join(set(dupes))}"}, status_code=422
+        )
 
     # Validate rotation: max 6
     if len(rotation) > 6:
-        return JSONResponse({"detail": "Rotation cannot exceed 6 starters"}, status_code=422)
+        return JSONResponse(
+            {"detail": "Rotation cannot exceed 6 starters"}, status_code=422
+        )
 
     season_id = ctx_season_id = db.execute(
         """SELECT s.id FROM seasons s
@@ -1667,11 +1939,16 @@ async def save_lineup(
 
     # Use season start date so rotation is always visible to sim
     import datetime
+
     season_start_row = db.execute(
         "SELECT MIN(game_date) as start FROM games WHERE season_id = ?",
         (season_id,),
     ).fetchone()
-    effective_date = season_start_row["start"] if season_start_row and season_start_row["start"] else "2000-01-01"
+    effective_date = (
+        season_start_row["start"]
+        if season_start_row and season_start_row["start"]
+        else "2000-01-01"
+    )
 
     # Save batting lineup to gm_lineup_preferences
     db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = ?", (gm["id"],))
@@ -1719,9 +1996,12 @@ async def save_lineup(
 
 # ── Tab: Strategy ──────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
 def strategy(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -1731,9 +2011,11 @@ def strategy(
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "strategy")
 
-    profile_row = db.execute(
-        "SELECT * FROM gm_profiles WHERE gm_id = ?", (gm["id"],)
-    ).fetchone() if gm else None
+    profile_row = (
+        db.execute("SELECT * FROM gm_profiles WHERE gm_id = ?", (gm["id"],)).fetchone()
+        if gm
+        else None
+    )
 
     _L = ["traditional", "analytics", "speed-first", "power-first"]
     _S = ["conservative", "standard", "aggressive"]
@@ -1744,25 +2026,32 @@ def strategy(
     _N = ["deep-pen", "starter-heavy"]
 
     def idx(lst, val, default=0):
-        try:    return lst.index(val)
-        except: return default
+        try:
+            return lst.index(val)
+        except:
+            return default
 
     if profile_row:
         p = dict(profile_row)
         ctx["profile"] = {
-            "lineup_style_index":     idx(_L, p.get("lineup_style",     "analytics"),         1),
-            "steal_aggression_index": idx(_S, p.get("steal_aggression", "standard"),           1),
-            "sac_bunt_index":         idx(_B, p.get("sac_bunt",         "situational"),        1),
-            "platoon_usage_index":    idx(_P, p.get("platoon_usage",    "none"),               0),
-            "starter_usage_index":    idx(_U, p.get("starter_usage",    "pitch-count-strict"), 1),
-            "closer_usage_index":     idx(_C, p.get("closer_usage",     "saves-only"),         0),
-            "bullpen_pref_index":     idx(_N, p.get("bullpen_pref",     "deep-pen"),           0),
+            "lineup_style_index": idx(_L, p.get("lineup_style", "analytics"), 1),
+            "steal_aggression_index": idx(_S, p.get("steal_aggression", "standard"), 1),
+            "sac_bunt_index": idx(_B, p.get("sac_bunt", "situational"), 1),
+            "platoon_usage_index": idx(_P, p.get("platoon_usage", "none"), 0),
+            "starter_usage_index": idx(
+                _U, p.get("starter_usage", "pitch-count-strict"), 1
+            ),
+            "closer_usage_index": idx(_C, p.get("closer_usage", "saves-only"), 0),
+            "bullpen_pref_index": idx(_N, p.get("bullpen_pref", "deep-pen"), 0),
         }
     else:
         ctx["profile"] = {
-            "lineup_style_index": 1, "steal_aggression_index": 1,
-            "sac_bunt_index": 1,     "platoon_usage_index": 0,
-            "starter_usage_index": 1,"closer_usage_index": 0,
+            "lineup_style_index": 1,
+            "steal_aggression_index": 1,
+            "sac_bunt_index": 1,
+            "platoon_usage_index": 0,
+            "starter_usage_index": 1,
+            "closer_usage_index": 0,
             "bullpen_pref_index": 0,
         }
 
@@ -1771,7 +2060,9 @@ def strategy(
 
 @router.post("/leagues/{league_id}/strategy")
 async def save_strategy(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -1784,13 +2075,13 @@ async def save_strategy(
 
     form = await request.form()
     _MAPS = {
-        "lineup_style":     ["traditional", "analytics", "speed-first", "power-first"],
+        "lineup_style": ["traditional", "analytics", "speed-first", "power-first"],
         "steal_aggression": ["conservative", "standard", "aggressive"],
-        "sac_bunt":         ["never", "situational", "frequent"],
-        "platoon_usage":    ["none", "vs-handedness", "aggressive"],
-        "starter_usage":    ["let-them-work", "pitch-count-strict", "matchup-based"],
-        "closer_usage":     ["saves-only", "high-leverage", "best-available"],
-        "bullpen_pref":     ["deep-pen", "starter-heavy"],
+        "sac_bunt": ["never", "situational", "frequent"],
+        "platoon_usage": ["none", "vs-handedness", "aggressive"],
+        "starter_usage": ["let-them-work", "pitch-count-strict", "matchup-based"],
+        "closer_usage": ["saves-only", "high-leverage", "best-available"],
+        "bullpen_pref": ["deep-pen", "starter-heavy"],
     }
     updates = {}
     for field, options in _MAPS.items():
@@ -1810,9 +2101,12 @@ async def save_strategy(
 
 # ── Tab: Schedule ──────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/schedule", response_class=HTMLResponse)
 def schedule(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -1821,11 +2115,11 @@ def schedule(
 
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "schedule")
-    season_id  = ctx["season_id"]
+    season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
     upcoming = []
-    recent   = []
+    recent = []
 
     if season_id and my_team_id:
         # Upcoming games — all remaining for my team
@@ -1843,13 +2137,15 @@ def schedule(
         ).fetchall()
         for r in up_rows:
             is_home = r["home_team_id"] == my_team_id
-            upcoming.append({
-                "date":        r["game_date"],
-                "home_away":   "vs" if is_home else "@",
-                "opp_city":    r["away_city"]   if is_home else r["home_city"],
-                "opp_mascot":  r["away_mascot"] if is_home else r["home_mascot"],
-                "is_home":     is_home,
-            })
+            upcoming.append(
+                {
+                    "date": r["game_date"],
+                    "home_away": "vs" if is_home else "@",
+                    "opp_city": r["away_city"] if is_home else r["home_city"],
+                    "opp_mascot": r["away_mascot"] if is_home else r["home_mascot"],
+                    "is_home": is_home,
+                }
+            )
 
         # Recent results — all completed
         rec_rows = db.execute(
@@ -1866,33 +2162,42 @@ def schedule(
             (season_id, my_team_id, my_team_id),
         ).fetchall()
         for r in rec_rows:
-            is_home  = r["home_team_id"] == my_team_id
-            my_score  = r["home_score"] if is_home else r["away_score"]
+            is_home = r["home_team_id"] == my_team_id
+            my_score = r["home_score"] if is_home else r["away_score"]
             opp_score = r["away_score"] if is_home else r["home_score"]
             won = (my_score or 0) > (opp_score or 0)
-            extra = f" ({r['innings_played']})" if r["innings_played"] and r["innings_played"] != 9 else ""
-            recent.append({
-                "game_id":    r["game_id"],
-                "date":       r["game_date"],
-                "home_away":  "vs" if is_home else "@",
-                "opp_city":   r["away_city"]   if is_home else r["home_city"],
-                "opp_mascot": r["away_mascot"] if is_home else r["home_mascot"],
-                "my_score":   my_score,
-                "opp_score":  opp_score,
-                "result":     "W" if won else "L",
-                "extra":      extra,
-            })
+            extra = (
+                f" ({r['innings_played']})"
+                if r["innings_played"] and r["innings_played"] != 9
+                else ""
+            )
+            recent.append(
+                {
+                    "game_id": r["game_id"],
+                    "date": r["game_date"],
+                    "home_away": "vs" if is_home else "@",
+                    "opp_city": r["away_city"] if is_home else r["home_city"],
+                    "opp_mascot": r["away_mascot"] if is_home else r["home_mascot"],
+                    "my_score": my_score,
+                    "opp_score": opp_score,
+                    "result": "W" if won else "L",
+                    "extra": extra,
+                }
+            )
 
     ctx["upcoming"] = upcoming
-    ctx["recent"]   = recent
+    ctx["recent"] = recent
     return _respond(request, "dashboard/partials/schedule.html", ctx)
 
 
 # ── Tab: Stats ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/stats", response_class=HTMLResponse)
 def stats(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     team_id: str | None = None,
     gm_session: str | None = Cookie(default=None),
 ):
@@ -1902,7 +2207,7 @@ def stats(
 
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "stats")
-    season_id  = ctx["season_id"]
+    season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
     # Default to user's team
@@ -1919,7 +2224,7 @@ def stats(
         (league_id,),
     ).fetchall()
 
-    batters  = []
+    batters = []
     pitchers = []
     team_games = 0
 
@@ -1933,8 +2238,8 @@ def stats(
             (season_id, selected_team_id),
         ).fetchone()
         team_games = tg_row["tg"] or 0
-        min_ab   = int(3.1 * team_games)
-        min_outs = int(3   * team_games)
+        min_ab = int(3.1 * team_games)
+        min_outs = int(3 * team_games)
 
         rows = db.execute(
             """SELECT p.id as player_id, p.first_name, p.last_name, pss.*
@@ -1947,93 +2252,138 @@ def stats(
 
         for r in rows:
             s = dict(r)
-            ab   = s.get("bat_ab") or 0
-            h    = s.get("bat_hits") or 0
-            d    = s.get("bat_doubles") or 0
-            tr   = s.get("bat_triples") or 0
-            hr   = s.get("bat_home_runs") or 0
-            rbi  = s.get("bat_rbi") or 0
+            ab = s.get("bat_ab") or 0
+            h = s.get("bat_hits") or 0
+            d = s.get("bat_doubles") or 0
+            tr = s.get("bat_triples") or 0
+            hr = s.get("bat_home_runs") or 0
+            rbi = s.get("bat_rbi") or 0
             runs = s.get("bat_runs") or 0
-            bb   = s.get("bat_walks") or 0
-            k    = s.get("bat_strike_outs") or 0
-            sb   = s.get("bat_stolen_bases") or 0
-            hbp  = s.get("bat_hbp") or 0
-            sf   = s.get("bat_sac_flys") or 0
-            g    = s.get("bat_games_played") or 0
+            bb = s.get("bat_walks") or 0
+            k = s.get("bat_strike_outs") or 0
+            sb = s.get("bat_stolen_bases") or 0
+            hbp = s.get("bat_hbp") or 0
+            sf = s.get("bat_sac_flys") or 0
+            g = s.get("bat_games_played") or 0
 
             if g > 0 or ab > 0:
                 avg = round(h / ab, 3) if ab else 0.0
                 obp_d = ab + bb + hbp + sf
-                obp   = round((h + bb + hbp) / obp_d, 3) if obp_d else 0.0
-                tb    = h - d - tr - hr + 2*d + 3*tr + 4*hr
-                slg   = round(tb / ab, 3) if ab else 0.0
+                obp = round((h + bb + hbp) / obp_d, 3) if obp_d else 0.0
+                tb = h - d - tr - hr + 2 * d + 3 * tr + 4 * hr
+                slg = round(tb / ab, 3) if ab else 0.0
                 qualifies_bat = ab >= min_ab
-                batters.append({
-                    "player_id": s["player_id"],
-                    "name":  f"{s['first_name']} {s['last_name']}",
-                    "G": g, "AB": ab, "H": h, "2B": d, "3B": tr,
-                    "HR": hr, "RBI": rbi, "R": runs, "BB": bb,
-                    "K": k, "SB": sb,
-                    "AVG": avg, "OBP": obp, "SLG": slg, "OPS": round(obp+slg, 3),
-                    "qualified": qualifies_bat,
-                })
+                batters.append(
+                    {
+                        "player_id": s["player_id"],
+                        "name": f"{s['first_name']} {s['last_name']}",
+                        "G": g,
+                        "AB": ab,
+                        "H": h,
+                        "2B": d,
+                        "3B": tr,
+                        "HR": hr,
+                        "RBI": rbi,
+                        "R": runs,
+                        "BB": bb,
+                        "K": k,
+                        "SB": sb,
+                        "AVG": avg,
+                        "OBP": obp,
+                        "SLG": slg,
+                        "OPS": round(obp + slg, 3),
+                        "qualified": qualifies_bat,
+                    }
+                )
 
             outs = s.get("pitch_outs") or 0
-            pg   = s.get("pitch_games_played") or 0
+            pg = s.get("pitch_games_played") or 0
             if pg > 0 or outs > 0:
-                er   = s.get("pitch_earned_runs") or 0
-                ph   = s.get("pitch_hits") or 0
-                pbb  = s.get("pitch_walks") or 0
-                pk   = s.get("pitch_strike_outs") or 0
-                phr  = s.get("pitch_home_runs") or 0
-                w    = s.get("pitch_wins") or 0
-                l    = s.get("pitch_losses") or 0
-                sv   = s.get("pitch_saves") or 0
+                er = s.get("pitch_earned_runs") or 0
+                ph = s.get("pitch_hits") or 0
+                pbb = s.get("pitch_walks") or 0
+                pk = s.get("pitch_strike_outs") or 0
+                phr = s.get("pitch_home_runs") or 0
+                w = s.get("pitch_wins") or 0
+                l = s.get("pitch_losses") or 0
+                sv = s.get("pitch_saves") or 0
                 ip_f = outs / 3
-                era  = round((er * 27) / outs, 2) if outs else 0.0
+                era = round((er * 27) / outs, 2) if outs else 0.0
                 whip = round((pbb + ph) / ip_f, 2) if ip_f else 0.0
-                bb9  = round((pbb * 27) / outs, 2) if outs else 0.0
-                hr9  = round((phr * 27) / outs, 2) if outs else 0.0
-                gs   = s.get("pitch_games_started") or 0
+                bb9 = round((pbb * 27) / outs, 2) if outs else 0.0
+                hr9 = round((phr * 27) / outs, 2) if outs else 0.0
+                gs = s.get("pitch_games_started") or 0
                 ip_disp = f"{outs//3}.{outs%3}"
                 qualifies_pit = outs >= min_outs
-                pitchers.append({
-                    "player_id": s["player_id"],
-                    "name": f"{s['first_name']} {s['last_name']}",
-                    "G": pg, "GS": gs, "W": w, "L": l, "SV": sv,
-                    "IP": ip_disp, "IP_val": ip_f,
-                    "H": ph, "ER": er, "BB": pbb, "K": pk, "HR": phr,
-                    "ERA": era, "WHIP": whip, "BB9": bb9, "HR9": hr9,
-                    "qualified": qualifies_pit,
-                })
+                pitchers.append(
+                    {
+                        "player_id": s["player_id"],
+                        "name": f"{s['first_name']} {s['last_name']}",
+                        "G": pg,
+                        "GS": gs,
+                        "W": w,
+                        "L": l,
+                        "SV": sv,
+                        "IP": ip_disp,
+                        "IP_val": ip_f,
+                        "H": ph,
+                        "ER": er,
+                        "BB": pbb,
+                        "K": pk,
+                        "HR": phr,
+                        "ERA": era,
+                        "WHIP": whip,
+                        "BB9": bb9,
+                        "HR9": hr9,
+                        "qualified": qualifies_pit,
+                    }
+                )
 
-    ctx.update({
-        "all_teams":        [dict(t) for t in all_teams],
-        "selected_team_id": selected_team_id,
-        "team_games":       team_games,
-        "batters":          batters,
-        "pitchers":         pitchers,
-    })
+    ctx.update(
+        {
+            "all_teams": [dict(t) for t in all_teams],
+            "selected_team_id": selected_team_id,
+            "team_games": team_games,
+            "batters": batters,
+            "pitchers": pitchers,
+        }
+    )
     return _respond(request, "dashboard/partials/stats.html", ctx)
 
 
 # ── Tab: Playoffs ──────────────────────────────────────────────────────────────
 
+
 def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     """Load full bracket state for template rendering."""
-    from src.league.playoffs.play_playoffs import get_series_id, get_series_winner, series_is_decided
+    from src.league.playoffs.play_playoffs import (
+        get_series_id,
+        get_series_winner,
+        series_is_decided,
+    )
 
     ROUND_DEFS = [
-        {"name": "Round 1",    "series_names": ["1v8", "2v7", "3v6", "4v5"],    "best_of": 5},
-        {"name": "Semifinals", "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"], "best_of": 7},
-        {"name": "Finals",     "series_names": ["Finals"],                       "best_of": 7},
+        {"name": "Round 1", "series_names": ["1v8", "2v7", "3v6", "4v5"], "best_of": 5},
+        {
+            "name": "Semifinals",
+            "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"],
+            "best_of": 7,
+        },
+        {"name": "Finals", "series_names": ["Finals"], "best_of": 7},
     ]
 
     def load_series(series_name, best_of):
         sid = get_series_id(db, season_id, series_name)
         if not sid:
-            return {"name": series_name, "series_id": None, "best_of": best_of,
-                    "teams": [], "games_played": 0, "decided": False, "winner_id": None}
+            return {
+                "name": series_name,
+                "series_id": None,
+                "best_of": best_of,
+                "teams": [],
+                "games_played": 0,
+                "decided": False,
+                "winner_id": None,
+            }
 
         games = db.execute(
             """SELECT id, game_date, home_team_id, away_team_id,
@@ -2052,83 +2402,101 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
 
         teams = []
         for tid in team_ids:
-            row = db.execute("SELECT city, mascot FROM teams WHERE id = ?", (tid,)).fetchone()
+            row = db.execute(
+                "SELECT city, mascot FROM teams WHERE id = ?", (tid,)
+            ).fetchone()
             if row:
                 wins = sum(1 for g in games if g["completed"] and g["winner_id"] == tid)
-                teams.append({
-                    "team_id": tid,
-                    "name":    f"{row['city']} {row['mascot']}",
-                    "wins":    wins,
-                    "is_mine": tid == my_team_id,
-                })
+                teams.append(
+                    {
+                        "team_id": tid,
+                        "name": f"{row['city']} {row['mascot']}",
+                        "wins": wins,
+                        "is_mine": tid == my_team_id,
+                    }
+                )
 
         wins_needed = {5: 3, 7: 4}[best_of]
-        winner_id = next((t["team_id"] for t in teams if t["wins"] >= wins_needed), None)
+        winner_id = next(
+            (t["team_id"] for t in teams if t["wins"] >= wins_needed), None
+        )
         games_played = sum(1 for g in games if g["completed"])
 
         return {
-            "name":        series_name,
-            "series_id":   sid,
-            "best_of":     best_of,
+            "name": series_name,
+            "series_id": sid,
+            "best_of": best_of,
             "wins_needed": wins_needed,
-            "teams":       teams,
+            "teams": teams,
             "games_played": games_played,
-            "decided":     winner_id is not None,
-            "winner_id":   winner_id,
+            "decided": winner_id is not None,
+            "winner_id": winner_id,
         }
 
     rounds = []
     for rd in ROUND_DEFS:
         series_list = [load_series(sn, rd["best_of"]) for sn in rd["series_names"]]
-        rounds.append({
-            "name":    rd["name"],
-            "best_of": rd["best_of"],
-            "series":  series_list,
-            "decided": all(s["decided"] for s in series_list),
-        })
+        rounds.append(
+            {
+                "name": rd["name"],
+                "best_of": rd["best_of"],
+                "series": series_list,
+                "decided": all(s["decided"] for s in series_list),
+            }
+        )
     return rounds
 
 
 @router.get("/leagues/{league_id}/playoffs", response_class=HTMLResponse)
 def playoffs(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
     if not user:
         return RedirectResponse("/")
-    gm  = _resolve_gm(db, user["id"], league_id)
+    gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "playoffs")
 
-    season_id  = ctx["season_id"]
+    season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
-    bracket  = _load_bracket(db, season_id, my_team_id) if season_id else []
+    bracket = _load_bracket(db, season_id, my_team_id) if season_id else []
     champion = None
     if bracket and bracket[-1]["decided"]:
         finals = bracket[-1]["series"][0]
-        champion = next((t for t in finals["teams"] if t["team_id"] == finals["winner_id"]), None)
+        champion = next(
+            (t for t in finals["teams"] if t["team_id"] == finals["winner_id"]), None
+        )
 
-    ctx.update({
-        "bracket":   bracket,
-        "champion":  champion,
-        "my_team_id": my_team_id,
-    })
+    ctx.update(
+        {
+            "bracket": bracket,
+            "champion": champion,
+            "my_team_id": my_team_id,
+        }
+    )
     return _respond(request, "dashboard/partials/playoffs.html", ctx)
 
 
 @router.post("/leagues/{league_id}/playoffs/sim")
 def sim_playoff_route(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     mode: str = "game",
     gm_session: str | None = Cookie(default=None),
 ):
     from fastapi.responses import JSONResponse
+
     user = _resolve_user(db, gm_session)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
     from src.api.services.sim_playoff import sim_playoff
+
     result = sim_playoff(league_id, db, mode=mode)
 
     league_state = db.execute(
@@ -2140,9 +2508,13 @@ def sim_playoff_route(
 
 # ── Game detail ────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/games/{game_id}/panel", response_class=HTMLResponse)
 def game_panel(
-    request: Request, league_id: str, game_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    game_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -2199,7 +2571,8 @@ def game_panel(
     ).fetchall()
 
     # Format pitching IP
-    def fmt_ip(outs): return f"{outs//3}.{outs%3}"
+    def fmt_ip(outs):
+        return f"{outs//3}.{outs%3}"
 
     home_bat = [dict(r) for r in bat_rows if r["team_id"] == game["home_team_id"]]
     away_bat = [dict(r) for r in bat_rows if r["team_id"] == game["away_team_id"]]
@@ -2218,6 +2591,7 @@ def game_panel(
         (game_id,),
     ).fetchall()
     import json as _json
+
     events_out = []
     for e in events:
         ed = dict(e)
@@ -2231,32 +2605,39 @@ def game_panel(
         events_out.append(ed)
 
     ctx = _shell_ctx(request, db, league_id, user, gm)
-    ctx.update({
-        "game":      game,
-        "home_bat":  home_bat,
-        "away_bat":  away_bat,
-        "home_pit":  home_pit,
-        "away_pit":  away_pit,
-        "events":    events_out,
-        "my_team_id": my_team_id,
-        "fmt_ip":    fmt_ip,
-    })
-    return templates.TemplateResponse(request, "dashboard/partials/game_panel_content.html", ctx)
+    ctx.update(
+        {
+            "game": game,
+            "home_bat": home_bat,
+            "away_bat": away_bat,
+            "home_pit": home_pit,
+            "away_pit": away_pit,
+            "events": events_out,
+            "my_team_id": my_team_id,
+            "fmt_ip": fmt_ip,
+        }
+    )
+    return templates.TemplateResponse(
+        request, "dashboard/partials/game_panel_content.html", ctx
+    )
 
 
 # ── Season Summary ─────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/season-summary", response_class=HTMLResponse)
 def season_summary(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
     if not user:
         return RedirectResponse("/")
-    gm  = _resolve_gm(db, user["id"], league_id)
+    gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm)
-    season_id  = ctx["season_id"]
+    season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
     # My team record
@@ -2301,8 +2682,15 @@ def season_summary(
     # My playoff result
     my_playoff_result = None
     if my_team_id and season_id:
-        for series_name, best_of in [("Finals", 7), ("[1,8]v[4,5]", 7), ("[2,7]v[3,6]", 7),
-                                      ("1v8", 5), ("2v7", 5), ("3v6", 5), ("4v5", 5)]:
+        for series_name, best_of in [
+            ("Finals", 7),
+            ("[1,8]v[4,5]", 7),
+            ("[2,7]v[3,6]", 7),
+            ("1v8", 5),
+            ("2v7", 5),
+            ("3v6", 5),
+            ("4v5", 5),
+        ]:
             sid = db.execute(
                 "SELECT id FROM series WHERE season_id = ? AND name = ?",
                 (season_id, series_name),
@@ -2344,9 +2732,12 @@ def season_summary(
             (league_id, season_id),
         ).fetchone()
         if br:
-            bat_leader = {"name": f"{br['first_name']} {br['last_name']}",
-                          "team": f"{br['city']} {br['mascot']}",
-                          "stat": f"{br['avg']:.3f}", "label": "AVG"}
+            bat_leader = {
+                "name": f"{br['first_name']} {br['last_name']}",
+                "team": f"{br['city']} {br['mascot']}",
+                "stat": f"{br['avg']:.3f}",
+                "label": "AVG",
+            }
 
         pr = db.execute(
             """SELECT p.first_name, p.last_name, t.city, t.mascot,
@@ -2360,58 +2751,76 @@ def season_summary(
             (league_id, season_id),
         ).fetchone()
         if pr:
-            pit_leader = {"name": f"{pr['first_name']} {pr['last_name']}",
-                          "team": f"{pr['city']} {pr['mascot']}",
-                          "stat": f"{pr['era']:.2f}", "label": "ERA"}
+            pit_leader = {
+                "name": f"{pr['first_name']} {pr['last_name']}",
+                "team": f"{pr['city']} {pr['mascot']}",
+                "stat": f"{pr['era']:.2f}",
+                "label": "ERA",
+            }
 
     # Season year
     season_year = None
     if season_id:
-        sy = db.execute("SELECT year FROM seasons WHERE id = ?", (season_id,)).fetchone()
+        sy = db.execute(
+            "SELECT year FROM seasons WHERE id = ?", (season_id,)
+        ).fetchone()
         season_year = sy["year"] if sy else None
 
-    ctx.update({
-        "my_record":        my_record,
-        "champion":         champion,
-        "my_playoff_result": my_playoff_result,
-        "bat_leader":       bat_leader,
-        "pit_leader":       pit_leader,
-        "season_year":      season_year,
-        "my_team_name":     ctx.get("team_name", ""),
-    })
+    ctx.update(
+        {
+            "my_record": my_record,
+            "champion": champion,
+            "my_playoff_result": my_playoff_result,
+            "bat_leader": bat_leader,
+            "pit_leader": pit_leader,
+            "season_year": season_year,
+            "my_team_name": ctx.get("team_name", ""),
+        }
+    )
     return _respond(request, "dashboard/partials/season_summary.html", ctx)
 
 
 @router.post("/leagues/{league_id}/offseason/begin")
 def begin_offseason(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     from fastapi.responses import JSONResponse
+
     user = _resolve_user(db, gm_session)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
     from src.api.services.offseason_service import run_offseason
+
     try:
         result = run_offseason(league_id, db)
         return JSONResponse({"ok": True, **result})
     except Exception as e:
         import traceback
-        return JSONResponse({"ok": False, "error": str(e), "detail": traceback.format_exc()}, status_code=500)
+
+        return JSONResponse(
+            {"ok": False, "error": str(e), "detail": traceback.format_exc()},
+            status_code=500,
+        )
 
 
 # ── History ─────────────────────────────────────────────────────────────────────
 
+
 @router.get("/leagues/{league_id}/history", response_class=HTMLResponse)
 def history(
-    request: Request, league_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
     if not user:
         return RedirectResponse("/")
-    gm  = _resolve_gm(db, user["id"], league_id)
+    gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm)
     my_team_id = gm["team_id"] if gm else None
 
@@ -2459,14 +2868,16 @@ def history(
             if r and (r["w"] or r["l"]):
                 my_w, my_l = r["w"] or 0, r["l"] or 0
 
-        history_rows.append({
-            "season_id":    s["id"],
-            "year":         s["year"],
-            "name":         s["name"],
-            "champion":     champion_name,
-            "my_w":         my_w,
-            "my_l":         my_l,
-        })
+        history_rows.append(
+            {
+                "season_id": s["id"],
+                "year": s["year"],
+                "name": s["name"],
+                "champion": champion_name,
+                "my_w": my_w,
+                "my_l": my_l,
+            }
+        )
 
     ctx["history_rows"] = history_rows
     return _respond(request, "dashboard/partials/history.html", ctx)
@@ -2474,9 +2885,15 @@ def history(
 
 # ── Player panel (slide-in) ────────────────────────────────────────────────────
 
-@router.get("/leagues/{league_id}/players/{player_id}/panel", response_class=HTMLResponse)
+
+@router.get(
+    "/leagues/{league_id}/players/{player_id}/panel", response_class=HTMLResponse
+)
 def player_panel(
-    request: Request, league_id: str, player_id: str, db: DB,
+    request: Request,
+    league_id: str,
+    player_id: str,
+    db: DB,
     compare: str | None = None,
     gm_session: str | None = Cookie(default=None),
 ):
@@ -2490,9 +2907,13 @@ def player_panel(
         p = db.execute("SELECT * FROM players WHERE id = ?", (pid,)).fetchone()
         if not p:
             return None
-        sk  = db.execute("SELECT * FROM player_skills WHERE player_id = ?", (pid,)).fetchone()
-        st  = db.execute("SELECT status FROM player_status WHERE player_id = ?", (pid,)).fetchone()
-        en  = db.execute(
+        sk = db.execute(
+            "SELECT * FROM player_skills WHERE player_id = ?", (pid,)
+        ).fetchone()
+        st = db.execute(
+            "SELECT status FROM player_status WHERE player_id = ?", (pid,)
+        ).fetchone()
+        en = db.execute(
             "SELECT * FROM player_energy WHERE player_id = ? AND league_id = ?",
             (pid, league_id),
         ).fetchone()
@@ -2506,9 +2927,10 @@ def player_panel(
             (pid,),
         ).fetchone()
 
-
         skills = dict(sk) if sk else {}
-        grades = player_row_to_grades(dict(p), skills, st["status"] if st else "unassigned")
+        grades = player_row_to_grades(
+            dict(p), skills, st["status"] if st else "unassigned"
+        )
         ratings = _compute_ratings(skills, dict(p).get("throws", "R"))
 
         # Season stats — find current season for this league
@@ -2526,58 +2948,64 @@ def player_panel(
             ).fetchone()
             if stats_row:
                 s = dict(stats_row)
-                is_pitcher = (grades.player_type == "pitcher")
+                is_pitcher = grades.player_type == "pitcher"
                 if is_pitcher and s.get("pitch_games_played", 0) > 0:
                     outs = s.get("pitch_outs", 0) or 0
                     ip = outs // 3 + (outs % 3) / 10
                     er = s.get("pitch_earned_runs", 0) or 0
                     era = round((er * 27) / outs, 2) if outs > 0 else 0.0
                     walks = s.get("pitch_walks", 0) or 0
-                    hits  = s.get("pitch_hits", 0) or 0
-                    whip  = round((walks + hits) / (outs / 3), 2) if outs > 0 else 0.0
+                    hits = s.get("pitch_hits", 0) or 0
+                    whip = round((walks + hits) / (outs / 3), 2) if outs > 0 else 0.0
                     stats = {
-                        "G":  s.get("pitch_games_played", 0),
+                        "G": s.get("pitch_games_played", 0),
                         "GS": s.get("pitch_games_started", 0),
-                        "W":  s.get("pitch_wins", 0),
-                        "L":  s.get("pitch_losses", 0),
+                        "W": s.get("pitch_wins", 0),
+                        "L": s.get("pitch_losses", 0),
                         "SV": s.get("pitch_saves", 0),
                         "IP": round(ip, 1),
-                        "H":  hits,
+                        "H": hits,
                         "ER": er,
                         "BB": walks,
-                        "K":  s.get("pitch_strike_outs", 0),
+                        "K": s.get("pitch_strike_outs", 0),
                         "ERA": era,
                         "WHIP": whip,
                     }
                 elif not is_pitcher and s.get("bat_games_played", 0) > 0:
-                    ab   = s.get("bat_ab", 0) or 0
+                    ab = s.get("bat_ab", 0) or 0
                     hits = s.get("bat_hits", 0) or 0
-                    bb   = s.get("bat_walks", 0) or 0
-                    hbp  = s.get("bat_hbp", 0) or 0
-                    sf   = s.get("bat_sac_flys", 0) or 0
-                    avg  = round(hits / ab, 3) if ab > 0 else 0.0
+                    bb = s.get("bat_walks", 0) or 0
+                    hbp = s.get("bat_hbp", 0) or 0
+                    sf = s.get("bat_sac_flys", 0) or 0
+                    avg = round(hits / ab, 3) if ab > 0 else 0.0
                     obp_denom = ab + bb + hbp + sf
-                    obp  = round((hits + bb + hbp) / obp_denom, 3) if obp_denom > 0 else 0.0
-                    tb   = (hits
-                            - (s.get("bat_doubles",0) or 0)
-                            - (s.get("bat_triples",0) or 0)
-                            - (s.get("bat_home_runs",0) or 0)
-                            + 2*(s.get("bat_doubles",0) or 0)
-                            + 3*(s.get("bat_triples",0) or 0)
-                            + 4*(s.get("bat_home_runs",0) or 0))
-                    slg  = round(tb / ab, 3) if ab > 0 else 0.0
+                    obp = (
+                        round((hits + bb + hbp) / obp_denom, 3)
+                        if obp_denom > 0
+                        else 0.0
+                    )
+                    tb = (
+                        hits
+                        - (s.get("bat_doubles", 0) or 0)
+                        - (s.get("bat_triples", 0) or 0)
+                        - (s.get("bat_home_runs", 0) or 0)
+                        + 2 * (s.get("bat_doubles", 0) or 0)
+                        + 3 * (s.get("bat_triples", 0) or 0)
+                        + 4 * (s.get("bat_home_runs", 0) or 0)
+                    )
+                    slg = round(tb / ab, 3) if ab > 0 else 0.0
                     stats = {
-                        "G":   s.get("bat_games_played", 0),
-                        "AB":  ab,
-                        "H":   hits,
-                        "2B":  s.get("bat_doubles", 0),
-                        "3B":  s.get("bat_triples", 0),
-                        "HR":  s.get("bat_home_runs", 0),
+                        "G": s.get("bat_games_played", 0),
+                        "AB": ab,
+                        "H": hits,
+                        "2B": s.get("bat_doubles", 0),
+                        "3B": s.get("bat_triples", 0),
+                        "HR": s.get("bat_home_runs", 0),
                         "RBI": s.get("bat_rbi", 0),
-                        "R":   s.get("bat_runs", 0),
-                        "BB":  bb,
-                        "K":   s.get("bat_strike_outs", 0),
-                        "SB":  s.get("bat_stolen_bases", 0),
+                        "R": s.get("bat_runs", 0),
+                        "BB": bb,
+                        "K": s.get("bat_strike_outs", 0),
+                        "SB": s.get("bat_stolen_bases", 0),
                         "AVG": avg,
                         "OBP": obp,
                         "SLG": slg,
@@ -2587,13 +3015,19 @@ def player_panel(
         # Overall: prospect rating for undrafted, position-aware rating for rostered
         status = st["status"] if st else "unassigned"
         if status in ("prospect", "unassigned", "free_agent"):
-            overall_grade = skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
+            overall_grade = (
+                skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
+            )
         elif grades.player_type == "pitcher":
             # Pitchers: best of SP/RP rating — overall_player is offense-based and useless
             best_p = max(ratings.get("sp", 0), ratings.get("rp", 0)) if ratings else 0
             overall_grade = skill_to_grade(best_p) if best_p else grades.overall
         else:
-            overall_grade = skill_to_grade(ratings.get("overall_player")) if ratings else grades.overall
+            overall_grade = (
+                skill_to_grade(ratings.get("overall_player"))
+                if ratings
+                else grades.overall
+            )
 
         grade_map = _ratings_to_grade_map(grades, skills, ratings)
 
@@ -2604,39 +3038,41 @@ def player_panel(
         energy = None
         if en:
             energy = {
-                "current":             round(en["current_energy"] * 100),
-                "max":                 round(en["max_energy"] * 100),
-                "consecutive_days":    en["consecutive_days"],
-                "last_game_date":      en["last_game_date"],
+                "current": round(en["current_energy"] * 100),
+                "max": round(en["max_energy"] * 100),
+                "consecutive_days": en["consecutive_days"],
+                "last_game_date": en["last_game_date"],
                 "season_games_played": en["season_games_played"],
             }
 
         return {
             **grades.model_dump(),
-            "player_id":      pid,
-            "team_city":      team["city"]   if team else "—",
-            "team_mascot":    team["mascot"] if team else "",
-            "grades":         grade_map,
-            "overall_grade":  overall_grade,
+            "player_id": pid,
+            "team_city": team["city"] if team else "—",
+            "team_mascot": team["mascot"] if team else "",
+            "grades": grade_map,
+            "overall_grade": overall_grade,
             "best_def_grade": best_def_grade,
             "best_def_label": best_def_label,
-            "energy":         energy,
-            "injury_log":     [dict(r) for r in inj],
-            "stats":          stats,
+            "energy": energy,
+            "injury_log": [dict(r) for r in inj],
+            "stats": stats,
         }
 
     ctx = _shell_ctx(request, db, league_id, user, gm)
-    ctx["player"]         = _load(player_id)
+    ctx["player"] = _load(player_id)
     ctx["compare_player"] = _load(compare) if compare else None
-    return templates.TemplateResponse(request, "dashboard/partials/player_panel.html", ctx)
-
-
-
+    return templates.TemplateResponse(
+        request, "dashboard/partials/player_panel.html", ctx
+    )
 
 
 @router.get("/leagues/{league_id}/history/{year}/", response_class=HTMLResponse)
 def season_summary(
-    request: Request, league_id: str, year: int, db: DB,
+    request: Request,
+    league_id: str,
+    year: int,
+    db: DB,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -2658,12 +3094,16 @@ def season_summary(
             (gm["id"], season["id"]),
         ).fetchone()
 
-    return templates.TemplateResponse(request, "history/season.html", {
-                "league_id":     league_id,
-        "year":          year,
-        "season":        dict(season)     if season     else None,
-        "gm_evaluation": dict(evaluation) if evaluation else None,
-        "standings":     [],
-        "stat_leaders":  {},
-        "win_trend":     [],
-    })
+    return templates.TemplateResponse(
+        request,
+        "history/season.html",
+        {
+            "league_id": league_id,
+            "year": year,
+            "season": dict(season) if season else None,
+            "gm_evaluation": dict(evaluation) if evaluation else None,
+            "standings": [],
+            "stat_leaders": {},
+            "win_trend": [],
+        },
+    )

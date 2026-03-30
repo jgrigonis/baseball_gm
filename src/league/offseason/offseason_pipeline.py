@@ -267,6 +267,7 @@ class OffseasonPipeline:
 
     def _reset_pitcher_state(self) -> None:
         from src.db.repositories.pitcher_state import PitcherStateRepository
+
         repo = PitcherStateRepository(self.conn)
         count = repo.clear_all()
         print(f"  Cleared pitcher state for {count} pitchers")
@@ -294,12 +295,33 @@ class OffseasonPipeline:
         else:
             if age < 30:
                 return False
-            pitching_skills = ["accuracy", "stamina", "recovery", "ground_balls", "strikes"]
-            batting_skills = ["contact", "power", "eye", "speed", "base_running", "arm", "outfield", "infield", "catching"]
+            pitching_skills = [
+                "accuracy",
+                "stamina",
+                "recovery",
+                "ground_balls",
+                "strikes",
+            ]
+            batting_skills = [
+                "contact",
+                "power",
+                "eye",
+                "speed",
+                "base_running",
+                "arm",
+                "outfield",
+                "infield",
+                "catching",
+            ]
             skill_dict = skills.as_dict()
-            is_pitcher = skill_dict.get("stamina", 0) > 40 or skill_dict.get("strikes", 0) > 40
+            is_pitcher = (
+                skill_dict.get("stamina", 0) > 40 or skill_dict.get("strikes", 0) > 40
+            )
             if is_pitcher:
-                peak = max(skill_dict.get(k, 0) for k in ["strikes", "stamina", "recovery", "ground_balls"])
+                peak = max(
+                    skill_dict.get(k, 0)
+                    for k in ["strikes", "stamina", "recovery", "ground_balls"]
+                )
                 if peak >= 75:
                     return False
             else:
@@ -341,8 +363,11 @@ def main():
     conn = get_connection(args.db)
 
     setup_logger(
-        name="offseason", level=logging.INFO,
-        console_level=logging.WARNING, log_id="offseason", log_to_file=True,
+        name="offseason",
+        level=logging.INFO,
+        console_level=logging.WARNING,
+        log_id="offseason",
+        log_to_file=True,
     )
 
     seed = args.seed if args.seed is not None else random.randint(0, 999999)

@@ -825,17 +825,22 @@ class Game:
                     injury_types.multiply("surgery", FATIGUE_MULTIPLIER)
 
                 severity = injury_types.choose()
-                self.new_injuries.append(
-                    (player.id, severity, activity)
-                )
+                self.new_injuries.append((player.id, severity, activity))
                 if self.event_logger:
                     team_id = (
-                        self.bat_team.record.id if activity == "batting"
-                        else self.pitch_team.record.id if activity == "pitching"
-                        else next(
-                            (t.record.id for t in [self.bat_team, self.pitch_team]
-                            if any(s.player.id == player.id for s in t.lineup)),
+                        self.bat_team.record.id
+                        if activity == "batting"
+                        else (
                             self.pitch_team.record.id
+                            if activity == "pitching"
+                            else next(
+                                (
+                                    t.record.id
+                                    for t in [self.bat_team, self.pitch_team]
+                                    if any(s.player.id == player.id for s in t.lineup)
+                                ),
+                                self.pitch_team.record.id,
+                            )
                         )
                     )
                     self.event_logger.injury(
@@ -867,7 +872,9 @@ class Game:
                                 self.logger.info(
                                     f"↔️ {sub.name} enters for {player.name}"
                                 )
-                                self.logger.info(f"↔️ {sub.name} enters for {player.name}")
+                                self.logger.info(
+                                    f"↔️ {sub.name} enters for {player.name}"
+                                )
                                 if self.event_logger:
                                     self.event_logger.substitution(
                                         team_id=team.record.id,

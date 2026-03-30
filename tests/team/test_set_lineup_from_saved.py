@@ -11,10 +11,10 @@ Run with:
 import pytest
 from unittest.mock import MagicMock
 
-
 # ---------------------------------------------------------------------------
 # Minimal stubs so we don't need the full game stack
 # ---------------------------------------------------------------------------
+
 
 def make_player(pid, ratings=None, is_injured=False):
     """Create a minimal PlayerInGame-like mock."""
@@ -32,6 +32,7 @@ def make_player(pid, ratings=None, is_injured=False):
 
 def make_lineup_slot(player, position):
     from src.team.lineup_slot import LineupSlot
+
     return LineupSlot(player, position)
 
 
@@ -59,6 +60,7 @@ def make_team(players, pitcher=None):
 # Helper: build saved_lineup dicts
 # ---------------------------------------------------------------------------
 
+
 def saved_slot(pid, batting_order, position):
     return {"player_id": pid, "batting_order": batting_order, "position": position}
 
@@ -66,6 +68,7 @@ def saved_slot(pid, batting_order, position):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestSetLineupFromSaved:
 
@@ -97,13 +100,13 @@ class TestSetLineupFromSaved:
         saved = [
             saved_slot("inj1", 1, "c"),
             saved_slot("inj2", 2, "ss"),
-            saved_slot("h1",   3, "3b"),
-            saved_slot("h2",   4, "lf"),
-            saved_slot("h3",   5, "cf"),
+            saved_slot("h1", 3, "3b"),
+            saved_slot("h2", 4, "lf"),
+            saved_slot("h3", 5, "cf"),
             saved_slot("inj3", 6, "1b"),
-            saved_slot("h4",   7, "rf"),
+            saved_slot("h4", 7, "rf"),
             saved_slot("inj4", 8, "2b"),
-            saved_slot("h5",   9, "dh"),
+            saved_slot("h5", 9, "dh"),
         ]
         available = healthy  # only healthy players available
 
@@ -144,22 +147,22 @@ class TestSetLineupFromSaved:
         and player A also appears in saved slot 6, they must NOT appear twice.
         """
         player_a = make_player("A", ratings={"c": 99})  # best catcher, also in slot 6
-        injured  = make_player("inj", is_injured=True)
-        others   = [make_player(f"o{i}") for i in range(7)]
-        pitcher  = make_player("pitcher")
+        injured = make_player("inj", is_injured=True)
+        others = [make_player(f"o{i}") for i in range(7)]
+        pitcher = make_player("pitcher")
         all_players = [player_a, injured] + others + [pitcher]
         team = make_team(all_players, pitcher=pitcher)
 
         saved = [
-            saved_slot("inj", 1, "c"),   # injured — A will be chosen as sub
-            saved_slot("o0",  2, "ss"),
-            saved_slot("o1",  3, "3b"),
-            saved_slot("o2",  4, "lf"),
-            saved_slot("o3",  5, "cf"),
-            saved_slot("A",   6, "1b"),  # A's original slot — must NOT be added again
-            saved_slot("o4",  7, "rf"),
-            saved_slot("o5",  8, "2b"),
-            saved_slot("o6",  9, "dh"),
+            saved_slot("inj", 1, "c"),  # injured — A will be chosen as sub
+            saved_slot("o0", 2, "ss"),
+            saved_slot("o1", 3, "3b"),
+            saved_slot("o2", 4, "lf"),
+            saved_slot("o3", 5, "cf"),
+            saved_slot("A", 6, "1b"),  # A's original slot — must NOT be added again
+            saved_slot("o4", 7, "rf"),
+            saved_slot("o5", 8, "2b"),
+            saved_slot("o6", 9, "dh"),
         ]
         available = [player_a] + others
 
@@ -172,20 +175,20 @@ class TestSetLineupFromSaved:
     def test_four_injuries_still_produces_nine_players(self):
         """4 injured position players — lineup is still filled to 9."""
         injured = [make_player(f"inj{i}", is_injured=True) for i in range(4)]
-        healthy = [make_player(f"h{i}",   ratings={"dh": 50}) for i in range(9)]
+        healthy = [make_player(f"h{i}", ratings={"dh": 50}) for i in range(9)]
         pitcher = make_player("pitcher")
         team = make_team(injured + healthy + [pitcher], pitcher=pitcher)
 
         saved = [
             saved_slot("inj0", 1, "c"),
             saved_slot("inj1", 2, "ss"),
-            saved_slot("h0",   3, "3b"),
-            saved_slot("h1",   4, "lf"),
-            saved_slot("h2",   5, "cf"),
+            saved_slot("h0", 3, "3b"),
+            saved_slot("h1", 4, "lf"),
+            saved_slot("h2", 5, "cf"),
             saved_slot("inj2", 6, "1b"),
-            saved_slot("h3",   7, "rf"),
+            saved_slot("h3", 7, "rf"),
             saved_slot("inj3", 8, "2b"),
-            saved_slot("h4",   9, "dh"),
+            saved_slot("h4", 9, "dh"),
         ]
         available = healthy
 

@@ -39,7 +39,6 @@ from pathlib import Path
 from src.db.connection import get_connection
 from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 
-
 DEFAULT_DB = "cli.db"
 DEFAULT_YEAR = 2025
 
@@ -48,11 +47,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cligr",
         description="Baseball GM simulation CLI runner",
-    epilog="Run `python cligr.py COMMAND --help` for help on a specific command.",
+        epilog="Run `python cligr.py COMMAND --help` for help on a specific command.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--db", "-d",
+        "--db",
+        "-d",
         default=DEFAULT_DB,
         help=f"DB filename (default: {DEFAULT_DB})",
     )
@@ -67,27 +67,34 @@ def build_parser() -> argparse.ArgumentParser:
         description="Clear one or more resources. Multiple flags can be combined.",
     )
     clear.add_argument(
-        "--logs", action="store_true",
+        "--logs",
+        action="store_true",
         help="Delete all log files in logs/",
     )
     clear.add_argument(
-        "--temp", action="store_true",
+        "--temp",
+        action="store_true",
         help="Delete all files in temp_files/",
     )
     clear.add_argument(
-        "--db", dest="clear_db", action="store_true",
+        "--db",
+        dest="clear_db",
+        action="store_true",
         help="Delete the DB file specified by the top-level --db flag",
     )
     clear.add_argument(
-        "--teams", action="store_true",
+        "--teams",
+        action="store_true",
         help="Delete team files for a league (use --league-id or pick interactively)",
     )
     clear.add_argument(
-        "--league-id", "-l",
+        "--league-id",
+        "-l",
         help="League ID for --teams (omit for interactive picker)",
     )
     clear.add_argument(
-        "--all-teams", action="store_true",
+        "--all-teams",
+        action="store_true",
         help="⚠ Delete ALL team files for ALL leagues (destructive)",
     )
 
@@ -98,43 +105,59 @@ def build_parser() -> argparse.ArgumentParser:
         description="Destroys the existing DB, bootstraps a new league, and runs seasons.",
     )
     new.add_argument(
-        "--year", "-y", type=int, default=DEFAULT_YEAR,
+        "--year",
+        "-y",
+        type=int,
+        default=DEFAULT_YEAR,
         help=f"Starting season year (default: {DEFAULT_YEAR})",
     )
     new.add_argument(
-        "--num-years", "-n", type=int, default=1,
+        "--num-years",
+        "-n",
+        type=int,
+        default=1,
         help="Number of seasons to simulate (default: 1)",
     )
     new.add_argument(
-        "--seed", "-s", type=int, default=None,
+        "--seed",
+        "-s",
+        type=int,
+        default=None,
         help="Random seed for reproducibility",
     )
     new.add_argument(
-        "--logs", action="store_true",
+        "--logs",
+        action="store_true",
         help="Write season-level log files",
     )
     new.add_argument(
-        "--game-logs", action="store_true",
+        "--game-logs",
+        action="store_true",
         help="Write per-game log files (verbose, slow)",
     )
     new.add_argument(
-        "--reports", action="store_true",
+        "--reports",
+        action="store_true",
         help="Generate leaderboard and totals reports after each season",
     )
     new.add_argument(
-        "--yes", action="store_true",
+        "--yes",
+        action="store_true",
         help="Skip the destructive-action confirmation prompt",
     )
     new.add_argument(
-        "--clear-db", action="store_true",
+        "--clear-db",
+        action="store_true",
         help="Skip DB deletion confirmation prompt",
     )
     new.add_argument(
-        "--clear-logs", action="store_true",
+        "--clear-logs",
+        action="store_true",
         help="Clear logs before starting",
     )
     new.add_argument(
-        "--clear-temp", action="store_true",
+        "--clear-temp",
+        action="store_true",
         help="Clear temp files before starting",
     )
 
@@ -145,31 +168,44 @@ def build_parser() -> argparse.ArgumentParser:
         description="Bootstraps the next year's manifest and plays through the season.",
     )
     run.add_argument(
-        "--year", "-y", type=int, default=2026,
+        "--year",
+        "-y",
+        type=int,
+        default=2026,
         help="Season year to run (default: 2026)",
     )
     run.add_argument(
-        "--num-years", "-n", type=int, default=1,
+        "--num-years",
+        "-n",
+        type=int,
+        default=1,
         help="Number of seasons to simulate (default: 1)",
     )
     run.add_argument(
-        "--league-id", "-l",
+        "--league-id",
+        "-l",
         help="League ID (default: auto-detect from DB)",
     )
     run.add_argument(
-        "--seed", "-s", type=int, default=None,
+        "--seed",
+        "-s",
+        type=int,
+        default=None,
         help="Random seed for reproducibility",
     )
     run.add_argument(
-        "--logs", action="store_true",
+        "--logs",
+        action="store_true",
         help="Write season-level log files",
     )
     run.add_argument(
-        "--game-logs", action="store_true",
+        "--game-logs",
+        action="store_true",
         help="Write per-game log files (verbose, slow)",
     )
     run.add_argument(
-        "--reports", action="store_true",
+        "--reports",
+        action="store_true",
         help="Generate leaderboard and totals reports after each season",
     )
 
@@ -180,23 +216,32 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run leaderboards, league totals, and league leaders for a given year.",
     )
     rpt.add_argument(
-        "--year", "-y", type=int, default=None,
+        "--year",
+        "-y",
+        type=int,
+        default=None,
         help="Single season year to report on",
     )
     rpt.add_argument(
-        "--start-year", type=int, default=None,
+        "--start-year",
+        type=int,
+        default=None,
         help="Start year for a range of seasons",
     )
     rpt.add_argument(
-        "--end-year", type=int, default=None,
+        "--end-year",
+        type=int,
+        default=None,
         help="End year for a range of seasons",
     )
     rpt.add_argument(
-        "--league-id", "-l",
+        "--league-id",
+        "-l",
         help="League ID (default: auto-detect from DB)",
     )
     rpt.add_argument(
-        "--logs", action="store_true",
+        "--logs",
+        action="store_true",
         help="Write output to log files",
     )
 
@@ -204,6 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 # ── Directory helpers ──────────────────────────────────────────────────────────
+
 
 def _project_root() -> Path:
     """Resolve the project root (parent of scripts/)."""
@@ -228,6 +274,7 @@ def _team_files_dir() -> Path:
 
 
 # ── Clear helpers ───────────────────────────────────────────────────────────────
+
 
 def clear_logs() -> None:
     d = _logs_dir()
@@ -330,8 +377,8 @@ def pick_league_interactively(db_filename: str) -> str | None:
         return None
 
 
-
 # ── Season helpers ──────────────────────────────────────────────────────────────
+
 
 def _get_conn(db_filename: str):
     return get_connection(db_filename)
@@ -354,8 +401,11 @@ def _bootstrap_first_season(db_filename: str, year: int, seed: int | None):
     from src.db.repositories.league_repo import LeagueRepository
     from src.league.bootstrap import LeagueBootstrapper
     from src.league.manifest_helper import (
-        load_manifest, validate_manifest_structure, validate_manifest_uniqueness,
-        find_missing_team_files, create_team_files,
+        load_manifest,
+        validate_manifest_structure,
+        validate_manifest_uniqueness,
+        find_missing_team_files,
+        create_team_files,
     )
     from src.league.schedule import ScheduleGenerator, save_schedule_to_db
     from src.util.locations import MANIFEST_FILES_DIR
@@ -412,7 +462,9 @@ def _bootstrap_first_season(db_filename: str, year: int, seed: int | None):
     return conn, league_id, season_id, [t.id for t in teams]
 
 
-def _create_next_season_cli(conn, league_id: str, current_season_id: str, next_year: int):
+def _create_next_season_cli(
+    conn, league_id: str, current_season_id: str, next_year: int
+):
     """
     Create the next season record directly in DB (same teams, new schedule).
     Returns (new_season_id, team_ids).
@@ -440,18 +492,25 @@ def _create_next_season_cli(conn, league_id: str, current_season_id: str, next_y
     ).fetchone()
     if existing:
         season_id = existing["season_id"]
-        team_ids = [r["team_id"] for r in conn.execute(
-            "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
-            (league_id, season_id),
-        ).fetchall()]
+        team_ids = [
+            r["team_id"]
+            for r in conn.execute(
+                "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
+                (league_id, season_id),
+            ).fetchall()
+        ]
         print(f"  Season {next_year} already exists")
         return season_id, team_ids
 
     season_id = str(_uuid.uuid4())
-    conn.execute("INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
-                 (season_id, next_year, new_name))
-    conn.execute("INSERT INTO league_seasons (league_id, season_id) VALUES (?, ?)",
-                 (league_id, season_id))
+    conn.execute(
+        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        (season_id, next_year, new_name),
+    )
+    conn.execute(
+        "INSERT INTO league_seasons (league_id, season_id) VALUES (?, ?)",
+        (league_id, season_id),
+    )
 
     team_rows = conn.execute(
         "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
@@ -480,9 +539,11 @@ def _create_next_season_cli(conn, league_id: str, current_season_id: str, next_y
     from src.league.bootstrap import LeagueBootstrapper
     from src.db.repositories.player_status_repo import PlayerStatusRepository
     import dataclasses as _dc
+
     status_repo = PlayerStatusRepository(conn)
     boot = LeagueBootstrapper(conn, rng=rng)
     from src.db.repositories.team_repo import TeamRepository
+
     team_repo = TeamRepository(conn)
     teams = [team_repo.get(tid) for tid in team_ids]
     teams = [t for t in teams if t]
@@ -494,7 +555,9 @@ def _create_next_season_cli(conn, league_id: str, current_season_id: str, next_y
     return season_id, team_ids
 
 
-def _play_regular_season(conn, season_id: str, league_id: str, seed: int | None, game_logs: bool):
+def _play_regular_season(
+    conn, season_id: str, league_id: str, seed: int | None, game_logs: bool
+):
     """Play all incomplete regular season games."""
     import random
     from argparse import Namespace
@@ -504,11 +567,13 @@ def _play_regular_season(conn, season_id: str, league_id: str, seed: int | None,
     from src.db.repositories.team_rotations_repo import TeamRotationsRepository
     from src.league.play_season import play_game
 
-    league_row = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league_row = conn.execute(
+        "SELECT mode FROM leagues WHERE id = ?", (league_id,)
+    ).fetchone()
     league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
 
-    game_repo      = GameRepository(conn)
-    team_repo      = TeamRepository(conn)
+    game_repo = GameRepository(conn)
+    team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
@@ -529,11 +594,17 @@ def _play_regular_season(conn, season_id: str, league_id: str, seed: int | None,
         game_dict = dict(game_info)
         try:
             play_game(
-                conn=conn, args=args,
-                team_repo=team_repo, game_repo=game_repo,
-                team_game_repo=team_game_repo, rotations_repo=rotations_repo,
-                season_id=season_id, game_info=game_dict, rng=rng,
-                league_id=league_id, league_mode=league_mode,
+                conn=conn,
+                args=args,
+                team_repo=team_repo,
+                game_repo=game_repo,
+                team_game_repo=team_game_repo,
+                rotations_repo=rotations_repo,
+                season_id=season_id,
+                game_info=game_dict,
+                rng=rng,
+                league_id=league_id,
+                league_mode=league_mode,
             )
             completed += 1
             try:
@@ -554,6 +625,7 @@ def _play_regular_season(conn, season_id: str, league_id: str, seed: int | None,
     # Final stats rollup
     try:
         from src.league.offseason.build_season_stats import build_season, ensure_table
+
         ensure_table(conn)
         n = build_season(conn, season_id)
         print(f"  Stats rollup: {n} rows")
@@ -566,7 +638,11 @@ def _play_regular_season(conn, season_id: str, league_id: str, seed: int | None,
 def _setup_playoffs(conn, season_id: str, year: int):
     """Seed top 8, build bracket, demote extra starters."""
     import datetime
-    from src.league.playoffs.setup_playoffs import get_top_8, build_bracket, demote_extra_starters
+    from src.league.playoffs.setup_playoffs import (
+        get_top_8,
+        build_bracket,
+        demote_extra_starters,
+    )
 
     existing = conn.execute(
         "SELECT COUNT(*) FROM series WHERE season_id = ?", (season_id,)
@@ -581,6 +657,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
         (season_id,),
     ).fetchone()
     from datetime import date, timedelta
+
     playoff_start = (
         date.fromisoformat(last_game["d"]) + timedelta(days=5)
         if last_game and last_game["d"]
@@ -591,7 +668,9 @@ def _setup_playoffs(conn, season_id: str, year: int):
     print(f"  Playoff bracket ready. Start date: {playoff_start}")
 
 
-def _play_playoffs(conn, season_id: str, league_id: str, seed: int | None, game_logs: bool):
+def _play_playoffs(
+    conn, season_id: str, league_id: str, seed: int | None, game_logs: bool
+):
     """Play the full playoff bracket to completion."""
     import random
     from argparse import Namespace
@@ -600,18 +679,26 @@ def _play_playoffs(conn, season_id: str, league_id: str, seed: int | None, game_
     from src.db.repositories.team_repo import TeamRepository
     from src.db.repositories.team_rotations_repo import TeamRotationsRepository
     from src.league.playoffs.play_playoffs import (
-        get_seeds, get_series_id, play_series, generate_round_games,
-        original_seed, _HOME_MAP_BO7, _SEMI_OFFSETS, _FINAL_OFFSETS,
+        get_seeds,
+        get_series_id,
+        play_series,
+        generate_round_games,
+        original_seed,
+        _HOME_MAP_BO7,
+        _SEMI_OFFSETS,
+        _FINAL_OFFSETS,
     )
 
-    league_row = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league_row = conn.execute(
+        "SELECT mode FROM leagues WHERE id = ?", (league_id,)
+    ).fetchone()
     league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
 
-    rng  = random.Random(seed)
+    rng = random.Random(seed)
     args = Namespace(logs=game_logs, season_id=season_id)
 
-    game_repo      = GameRepository(conn)
-    team_repo      = TeamRepository(conn)
+    game_repo = GameRepository(conn)
+    team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
@@ -625,15 +712,29 @@ def _play_playoffs(conn, season_id: str, league_id: str, seed: int | None, game_
         (season_id,),
     ).fetchone()
     from datetime import date
-    playoff_start = date.fromisoformat(first_game["game_date"]) if first_game else date.today()
+
+    playoff_start = (
+        date.fromisoformat(first_game["game_date"]) if first_game else date.today()
+    )
 
     print("  Playing Round 1...")
     r1_winners = {}
     for name, hi, lo in [("1v8", 1, 8), ("2v7", 2, 7), ("3v6", 3, 6), ("4v5", 4, 5)]:
         sid = get_series_id(conn, season_id, name)
-        winner = play_series(conn, args, team_repo, game_repo, team_game_repo,
-                             rotations_repo, sid, name, best_of=5, rng=rng,
-                             league_id=league_id, league_mode=league_mode)
+        winner = play_series(
+            conn,
+            args,
+            team_repo,
+            game_repo,
+            team_game_repo,
+            rotations_repo,
+            sid,
+            name,
+            best_of=5,
+            rng=rng,
+            league_id=league_id,
+            league_mode=league_mode,
+        )
         r1_winners[name] = winner
 
     print("  Playing Semifinals...")
@@ -645,25 +746,56 @@ def _play_playoffs(conn, season_id: str, league_id: str, seed: int | None, game_
         sid = get_series_id(conn, season_id, name)
         sa, sb = original_seed(seeds, team_a), original_seed(seeds, team_b)
         high = team_a if sa < sb else team_b
-        low  = team_b if sa < sb else team_a
-        generate_round_games(conn, season_id, sid, high, low,
-                             _HOME_MAP_BO7, playoff_start, _SEMI_OFFSETS)
-        winner = play_series(conn, args, team_repo, game_repo, team_game_repo,
-                             rotations_repo, sid, name, best_of=7, rng=rng,
-                             league_id=league_id, league_mode=league_mode)
+        low = team_b if sa < sb else team_a
+        generate_round_games(
+            conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, _SEMI_OFFSETS
+        )
+        winner = play_series(
+            conn,
+            args,
+            team_repo,
+            game_repo,
+            team_game_repo,
+            rotations_repo,
+            sid,
+            name,
+            best_of=7,
+            rng=rng,
+            league_id=league_id,
+            league_mode=league_mode,
+        )
         semi_winners.append((winner, original_seed(seeds, winner)))
 
     print("  Playing Finals...")
     fa, sa = semi_winners[0]
     fb, sb = semi_winners[1]
     high = fa if sa < sb else fb
-    low  = fb if sa < sb else fa
+    low = fb if sa < sb else fa
     finals_id = get_series_id(conn, season_id, "Finals")
-    generate_round_games(conn, season_id, finals_id, high, low,
-                         _HOME_MAP_BO7, playoff_start, _FINAL_OFFSETS)
-    champion = play_series(conn, args, team_repo, game_repo, team_game_repo,
-                           rotations_repo, finals_id, "Finals", best_of=7, rng=rng,
-                           league_id=league_id, league_mode=league_mode)
+    generate_round_games(
+        conn,
+        season_id,
+        finals_id,
+        high,
+        low,
+        _HOME_MAP_BO7,
+        playoff_start,
+        _FINAL_OFFSETS,
+    )
+    champion = play_series(
+        conn,
+        args,
+        team_repo,
+        game_repo,
+        team_game_repo,
+        rotations_repo,
+        finals_id,
+        "Finals",
+        best_of=7,
+        rng=rng,
+        league_id=league_id,
+        league_mode=league_mode,
+    )
 
     champ_name = conn.execute(
         "SELECT city || ' ' || mascot AS name FROM teams WHERE id = ?", (champion,)
@@ -688,10 +820,13 @@ def _make_logger(name: str, enabled: bool):
         return None
     import logging
     from src.util.logger import setup_logger
+
     return setup_logger(
-        name=name, level=logging.INFO,
+        name=name,
+        level=logging.INFO,
         console_level=logging.WARNING,
-        log_id=name, log_to_file=True,
+        log_id=name,
+        log_to_file=True,
     )
 
 
@@ -713,8 +848,12 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     # --- Leaderboards (view_leaderboards) ---
     print("  Leaderboards...")
     try:
-        from src.league.statistics.view_leaderboards import show_all_leaderboards, calculate_min_pa
+        from src.league.statistics.view_leaderboards import (
+            show_all_leaderboards,
+            calculate_min_pa,
+        )
         from src.stats.loader import StatsLoader
+
         logger = _make_logger("view_leaderboards", logs)
 
         min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
@@ -728,7 +867,11 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     # --- League Totals ---
     print("  League Totals...")
     try:
-        from src.league.statistics.league_totals import fetch_totals, display as display_totals
+        from src.league.statistics.league_totals import (
+            fetch_totals,
+            display as display_totals,
+        )
+
         logger = _make_logger("league_totals", logs)
         totals = fetch_totals(conn, season_id)
         display_totals(totals, season_label, logger=logger)
@@ -738,7 +881,11 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     # --- League Leaders ---
     print("  League Leaders...")
     try:
-        from src.league.statistics.league_leaders import fetch_leaders, display as display_leaders
+        from src.league.statistics.league_leaders import (
+            fetch_leaders,
+            display as display_leaders,
+        )
+
         logger = _make_logger("league_leaders", logs)
         with StatsLoader(str(db_path)) as loader:
             all_players = loader.load_season_players_with_stats(season_id)
@@ -750,8 +897,9 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     conn.close()
 
 
-def _run_one_season(conn, db_filename: str, season_id: str, league_id: str,
-                    year: int, args) -> None:
+def _run_one_season(
+    conn, db_filename: str, season_id: str, league_id: str, year: int, args
+) -> None:
     """Play one complete season: regular season → reports → playoffs → offseason."""
     print(f"\n{'='*60}")
     print(f"  Season {year}  (season_id={season_id[:8]}...)")
@@ -775,10 +923,13 @@ def _run_one_season(conn, db_filename: str, season_id: str, league_id: str,
 
 # ── Command handlers (new-league, run-season) ───────────────────────────────────
 
+
 def cmd_new_league(args) -> None:
     if not args.yes and not args.clear_db:
         db_p = _db_path(args.db)
-        msg = f"⚠️  This will destroy {db_p} and create a fresh league. Continue? [y/N] "
+        msg = (
+            f"⚠️  This will destroy {db_p} and create a fresh league. Continue? [y/N] "
+        )
         if input(msg).strip().lower() not in ("y", "yes"):
             print("Aborted.")
             return
@@ -792,7 +943,9 @@ def cmd_new_league(args) -> None:
     clear_db(args.db)
 
     print(f"\n🏟️  Creating new league — Year {args.year}")
-    conn, league_id, season_id, _ = _bootstrap_first_season(args.db, args.year, args.seed)
+    conn, league_id, season_id, _ = _bootstrap_first_season(
+        args.db, args.year, args.seed
+    )
 
     current_season_id = season_id
     for n in range(args.num_years):
@@ -845,7 +998,7 @@ def cmd_run_season(args) -> None:
         sys.exit(1)
 
     current_season_id = season_row["id"]
-    current_year     = season_row["year"]
+    current_year = season_row["year"]
 
     # If a specific year was requested, use that
     start_year = args.year or current_year
@@ -865,12 +1018,16 @@ def cmd_run_season(args) -> None:
 
     print(f"\n✅ Done — {args.num_years} season(s) complete.")
 
+
 # ── Clear handler ──────────────────────────────────────────────────────────────
+
 
 def cmd_clear(args) -> None:
     if not any([args.logs, args.temp, args.clear_db, args.teams, args.all_teams]):
-        print("Nothing to clear — specify at least one of: "
-              "--logs, --temp, --db, --teams, --all-teams")
+        print(
+            "Nothing to clear — specify at least one of: "
+            "--logs, --temp, --db, --teams, --all-teams"
+        )
         return
 
     if args.all_teams:
@@ -957,6 +1114,7 @@ def cmd_reports(args) -> None:
 
         if range_mode:
             import io, contextlib
+
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 _run_reports(args.db, season_id, logs=args.logs)
@@ -964,11 +1122,17 @@ def cmd_reports(args) -> None:
             print(output, end="")  # still show on screen
 
             # Append to per-report temp files
-            leaders_path = _temp_dir() / f"league_leaders_{args.start_year}_{args.end_year}.txt"
-            totals_path  = _temp_dir() / f"league_totals_{args.start_year}_{args.end_year}.txt"
+            leaders_path = (
+                _temp_dir() / f"league_leaders_{args.start_year}_{args.end_year}.txt"
+            )
+            totals_path = (
+                _temp_dir() / f"league_totals_{args.start_year}_{args.end_year}.txt"
+            )
             # Split output at section boundaries and write to respective files
             # Simpler: write everything to a combined file, plus individual files
-            combined_path = _temp_dir() / f"reports_{args.start_year}_{args.end_year}.txt"
+            combined_path = (
+                _temp_dir() / f"reports_{args.start_year}_{args.end_year}.txt"
+            )
             with open(combined_path, "a") as f:
                 f.write(f"\n=== {year} ===\n")
                 f.write(output)

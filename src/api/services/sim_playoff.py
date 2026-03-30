@@ -37,9 +37,13 @@ from src.league.play_season import play_game
 # ---------------------------------------------------------------------------
 
 ROUND_DEFS = [
-    {"name": "Round 1",    "series_names": ["1v8", "2v7", "3v6", "4v5"],    "best_of": 5},
-    {"name": "Semifinals", "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"], "best_of": 7},
-    {"name": "Finals",     "series_names": ["Finals"],                       "best_of": 7},
+    {"name": "Round 1", "series_names": ["1v8", "2v7", "3v6", "4v5"], "best_of": 5},
+    {
+        "name": "Semifinals",
+        "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"],
+        "best_of": 7,
+    },
+    {"name": "Finals", "series_names": ["Finals"], "best_of": 7},
 ]
 
 
@@ -53,6 +57,7 @@ class SimConfig:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_season_id(conn, league_id: str) -> str | None:
     row = conn.execute(
@@ -73,7 +78,9 @@ def _get_playoff_start(conn, season_id: str) -> date:
     return date.fromisoformat(row["game_date"]) if row else date.today()
 
 
-def _ensure_round_games(conn, season_id: str, round_idx: int, seeds: list[dict]) -> None:
+def _ensure_round_games(
+    conn, season_id: str, round_idx: int, seeds: list[dict]
+) -> None:
     """Generate games for semis or finals once prior round is decided."""
     playoff_start = _get_playoff_start(conn, season_id)
 
@@ -100,9 +107,16 @@ def _ensure_round_games(conn, season_id: str, round_idx: int, seeds: list[dict])
             seed_a = original_seed(seeds, team_a)
             seed_b = original_seed(seeds, team_b)
             high = team_a if seed_a < seed_b else team_b
-            low  = team_b if seed_a < seed_b else team_a
+            low = team_b if seed_a < seed_b else team_a
             generate_round_games(
-                conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, _SEMI_OFFSETS
+                conn,
+                season_id,
+                sid,
+                high,
+                low,
+                _HOME_MAP_BO7,
+                playoff_start,
+                _SEMI_OFFSETS,
             )
 
     elif round_idx == 2:  # Finals
@@ -125,19 +139,30 @@ def _ensure_round_games(conn, season_id: str, round_idx: int, seeds: list[dict])
             a, sa = semi_winners[0]
             b, sb = semi_winners[1]
             high = a if sa < sb else b
-            low  = b if sa < sb else a
+            low = b if sa < sb else a
             generate_round_games(
-                conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, _FINAL_OFFSETS
+                conn,
+                season_id,
+                sid,
+                high,
+                low,
+                _HOME_MAP_BO7,
+                playoff_start,
+                _FINAL_OFFSETS,
             )
 
 
 def _play_one_game(
-    conn, season_id: str, league_id: str, league_mode: str,
-    series_id: str, rng: random.Random
+    conn,
+    season_id: str,
+    league_id: str,
+    league_mode: str,
+    series_id: str,
+    rng: random.Random,
 ) -> object | None:
     """Play the next unplayed game in a series. Returns result or None."""
-    game_repo      = GameRepository(conn)
-    team_repo      = TeamRepository(conn)
+    game_repo = GameRepository(conn)
+    team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
     args = SimConfig()
@@ -153,10 +178,10 @@ def _play_one_game(
                 rotations_repo=rotations_repo,
                 season_id=season_id,
                 game_info={
-                    "game_id":      g["id"],
+                    "game_id": g["id"],
                     "home_team_id": g["home_team_id"],
                     "away_team_id": g["away_team_id"],
-                    "completed":    g["completed"],
+                    "completed": g["completed"],
                 },
                 rng=rng,
                 league_id=league_id,
@@ -182,6 +207,7 @@ def _play_series_to_end(
 # Main entry point
 # ---------------------------------------------------------------------------
 
+
 def sim_playoff(
     league_id: str,
     conn: sqlite3.Connection,
@@ -192,23 +218,21 @@ def sim_playoff(
     mode: "game" | "series" | "round" | "all"
     Returns summary dict.
     """
-    league = conn.execute(
-        "SELECT * FROM leagues WHERE id = ?", (league_id,)
-    ).fetchone()
+    league = conn.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] != "playoffs":
         raise ValueError(f"League is in state '{league['state']}' — not in playoffs")
 
-    season_id   = _get_season_id(conn, league_id)
+    season_id = _get_season_id(conn, league_id)
     league_mode = dict(league).get("mode", "blitz") or "blitz"
-    seeds       = get_seeds(conn, season_id)
-    rng         = random.Random()
+    seeds = get_seeds(conn, season_id)
+    rng = random.Random()
 
-    games_played   = 0
-    results        = []
-    current_round  = None
-    champion       = None
+    games_played = 0
+    results = []
+    current_round = None
+    champion = None
 
     for round_idx, round_def in enumerate(ROUND_DEFS):
         # Generate games for this round if needed
@@ -217,7 +241,9 @@ def sim_playoff(
 
         # Check if round is already complete
         round_complete = all(
-            series_is_decided(conn, get_series_id(conn, season_id, sn), round_def["best_of"])
+            series_is_decided(
+                conn, get_series_id(conn, season_id, sn), round_def["best_of"]
+            )
             for sn in round_def["series_names"]
             if get_series_id(conn, season_id, sn)
         )
@@ -231,7 +257,9 @@ def sim_playoff(
             for sn in round_def["series_names"]:
                 sid = get_series_id(conn, season_id, sn)
                 if sid and not series_is_decided(conn, sid, round_def["best_of"]):
-                    r = _play_one_game(conn, season_id, league_id, league_mode, sid, rng)
+                    r = _play_one_game(
+                        conn, season_id, league_id, league_mode, sid, rng
+                    )
                     if r:
                         games_played += 1
                         results.append({"series": sn, "result": str(r)})
@@ -244,7 +272,13 @@ def sim_playoff(
                 sid = get_series_id(conn, season_id, sn)
                 if sid and not series_is_decided(conn, sid, round_def["best_of"]):
                     rs = _play_series_to_end(
-                        conn, season_id, league_id, league_mode, sid, round_def["best_of"], rng
+                        conn,
+                        season_id,
+                        league_id,
+                        league_mode,
+                        sid,
+                        round_def["best_of"],
+                        rng,
                     )
                     games_played += len(rs)
                     results.extend({"series": sn, "result": r} for r in rs)
@@ -258,7 +292,13 @@ def sim_playoff(
                 if not sid:
                     continue
                 rs = _play_series_to_end(
-                    conn, season_id, league_id, league_mode, sid, round_def["best_of"], rng
+                    conn,
+                    season_id,
+                    league_id,
+                    league_mode,
+                    sid,
+                    round_def["best_of"],
+                    rng,
                 )
                 games_played += len(rs)
                 results.extend({"series": sn, "result": r} for r in rs)
@@ -277,8 +317,8 @@ def sim_playoff(
         conn.commit()
 
     return {
-        "games_played":  games_played,
-        "results":       results,
+        "games_played": games_played,
+        "results": results,
         "current_round": current_round,
-        "champion":      champion,
+        "champion": champion,
     }

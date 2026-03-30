@@ -352,8 +352,7 @@ def main():
     seeds = get_seeds(conn, sid)
 
     league_row = conn.execute(
-        "SELECT league_id FROM league_seasons WHERE season_id = ? LIMIT 1",
-        (sid,)
+        "SELECT league_id FROM league_seasons WHERE season_id = ? LIMIT 1", (sid,)
     ).fetchone()
     league_id = league_row["league_id"] if league_row else ""
     lr = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()

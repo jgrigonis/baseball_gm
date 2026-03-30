@@ -11,7 +11,9 @@ def parse_args():
         description="List all seasons in a league database."
     )
     parser.add_argument(
-        "--db", "-d", default="cli.db",
+        "--db",
+        "-d",
+        default="cli.db",
         help="DB filename (default: cli.db)",
     )
     return parser.parse_args()

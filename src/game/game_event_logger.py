@@ -155,8 +155,15 @@ class GameEventLogger:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    self.game_id, inning, half, team_id, event_type,
-                    player_id, player_id_2, reason, detail,
+                    self.game_id,
+                    inning,
+                    half,
+                    team_id,
+                    event_type,
+                    player_id,
+                    player_id_2,
+                    reason,
+                    detail,
                 ),
             )
             self.conn.commit()
