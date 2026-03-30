@@ -35,13 +35,15 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
+from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
 from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 
 DEFAULT_DB = "cli.db"
 DEFAULT_YEAR = 2025
-
+NUM_YEARS = 50 # The maximum number of years to expect manifest files for
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -110,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_YEAR,
         help=f"Starting season year (default: {DEFAULT_YEAR})",
+    )
+    new.add_argument(
+        "--manifest",
+        "-m",
+        default="world_league",
+        help="Manifest file prefix (default: world_league)",
     )
     new.add_argument(
         "--num-years",
@@ -384,7 +392,7 @@ def _get_conn(db_filename: str):
     return get_connection(db_filename)
 
 
-def _bootstrap_first_season(db_filename: str, year: int, seed: int | None):
+def _bootstrap_first_season(db_filename: str, year: int | None, manifest_filename: str | None, seed: int | None):
     """
     Initialise the DB, create a fresh league, and return
     (conn, league_id, season_id, team_ids).
@@ -413,8 +421,22 @@ def _bootstrap_first_season(db_filename: str, year: int, seed: int | None):
     conn = get_connection(db_filename)
     init_db(conn)
 
+    if year is None:
+        year = "2025"
+    
+    if manifest_filename is None:
+        manifest_filename = "world_league"
+    
+    margs = argparse.Namespace(
+        file = manifest_filename,
+        year = year,
+        number = NUM_YEARS,
+        overwrite = False
+    )
+    create_manifests(margs)
+
     rng = random.Random(seed)
-    manifest_path = Path(MANIFEST_FILES_DIR) / f"world_league-{year}.json"
+    manifest_path = Path(MANIFEST_FILES_DIR) / f"{manifest_filename}-{year}.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest not found: {manifest_path}")
 
@@ -944,7 +966,7 @@ def cmd_new_league(args) -> None:
 
     print(f"\n🏟️  Creating new league — Year {args.year}")
     conn, league_id, season_id, _ = _bootstrap_first_season(
-        args.db, args.year, args.seed
+        args.db, args.year, args.manifest, args.seed
     )
 
     current_season_id = season_id

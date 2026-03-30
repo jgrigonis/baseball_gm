@@ -279,7 +279,7 @@ class SnakeDraft:
         """Write draft_results.csv."""
         out_dir = Path(TEAM_FILES_DIR) / str(year)
         if league_id:
-            out_dir = out_dir = out_dir / league_id
+            out_dir = Path(TEAM_FILES_DIR) / str(year) / league_id
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "draft_results.csv"
 

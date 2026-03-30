@@ -61,7 +61,7 @@ class OffseasonPipeline:
             print("  Skipping draft generation (already done)")
 
         if not self._is_done(season_id, "run_draft"):
-            self._run_draft(season_id)
+            self._run_draft(season_id, league_id)
             self._mark_done(season_id, "run_draft")
         else:
             print("  Skipping run draft (already done)")
@@ -171,7 +171,10 @@ class OffseasonPipeline:
                 retired.append(player)
 
         if retired:
-            out_dir = Path(TEAM_FILES_DIR) / str(self.year)
+            if self.league_id:
+                out_dir = Path(TEAM_FILES_DIR) / str(self.year) / self.league_id
+            else:
+                out_dir = Path(TEAM_FILES_DIR) / str(self.year)
             out_dir.mkdir(parents=True, exist_ok=True)
             path = out_dir / "retired.csv"
             rows = [p.to_csv_dict() for p in retired]
@@ -277,9 +280,9 @@ class OffseasonPipeline:
         total = generator.run(season_id, self.year, league_id=self.league_id)
         print(f"  Draft pool ready: {total} draftable players")
 
-    def _run_draft(self, season_id: str) -> None:
+    def _run_draft(self, season_id: str, league_id: str) -> None:
         draft = SnakeDraft(self.conn, self.rng)
-        picks = draft.run(season_id, self.year)
+        picks = draft.run(season_id, self.year, league_id)
         print(f"  Draft complete: {len(picks)} total picks")
 
     def _trim_rosters(self, season_id: str) -> None:
