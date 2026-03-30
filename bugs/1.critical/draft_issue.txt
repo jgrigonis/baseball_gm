@@ -1,0 +1,580 @@
+2034 results:
+
+1	London Lions YOU	101	73	0.580	—	L1
+2	Dubai Falcons	101	73	0.580	0	W2
+3	Sydney Sharks	100	74	0.575	1	W1
+4	Istanbul Sultans	100	74	0.575	1	W1
+5	Buenos Aires Matadors	100	74	0.575	1	W1
+6	Jakarta Garudas	97	77	0.557	4	W5
+7	Paris Musketeers	97	77	0.557	4	L1
+8	Amsterdam Captains	96	78	0.552	5	W2
+9	Frankfurt Eagles	95	79	0.546	6	W1
+10	Mexico City Aztecs	94	80	0.540	7	W1
+11	Vienna Maestros	94	80	0.540	7	L1
+12	Dublin Shamrocks	92	82	0.529	9	W1
+13	Chicago Blizzards	91	83	0.523	10	W1
+14	Seoul White Tigers	91	83	0.523	10	L2
+15	Mumbai Mariners	90	84	0.517	11	L1
+16	Singapore Merlions	87	87	0.500	14	L3
+17	Warsaw Hussars	87	87	0.500	14	L1
+18	Bangkok Guardians	86	88	0.494	15	W1
+19	New York Titans	83	91	0.477	18	W2
+20	San Francisco Seals	80	94	0.460	21	W1
+21	São Paulo Bandeirantes	79	95	0.454	22	L2
+22	Toronto Sentinels	78	96	0.448	23	L4
+23	Tokyo Samurai	78	96	0.448	23	W2
+24	Madrid Conquistadors	78	96	0.448	23	L4
+25	Shanghai Phoenix	76	98	0.437	25	W3
+26	Beijing Dragons	76	98	0.437	25	L2
+27	Hong Kong Harbor Kings	75	99	0.431	26	W2
+28	Milan Serpents	73	101	0.420	28	W1
+29	Lisbon Navigators	72	102	0.414	29	L1
+30	Los Angeles Stars	63	111	0.362	38	W1
+
+Aging players, generating prospects, preparing draft…
+
+Actual draft order:
+
+#1
+VICTOR ALDRIDGE
+sp · London Lions
+#2
+PATRICK BULLE
+rp · Dublin Shamrocks · auto
+#3
+ALBERT BARRICK
+rf · Toronto Sentinels · auto
+#4
+SEAN LOGIUDICE
+sp · Milan Serpents · auto
+#5
+MARVIN BEGLEY
+rp · Frankfurt Eagles · auto
+#6
+RAYMOND EVANS
+rp · Shanghai Phoenix · auto
+#7
+JAMES ARCHER
+sp · Bangkok Guardians · auto
+#8
+MICHAEL PITTMAN
+rp · Chicago Blizzards · auto
+#9
+WILLIAM PEREZ
+lf · Dubai Falcons · auto
+#10
+DENNY SNIDER
+sp · Singapore Merlions · auto
+#11
+DAVID MATEJA
+cf · Jakarta Garudas · auto
+#12
+NORMAN HODGES
+rp · Hong Kong Harbor Kings · auto
+#13
+RUSSEL PHILO
+sp · Paris Musketeers · auto
+#14
+BOB COLLINS
+cf · Tokyo Samurai · auto
+#15
+ELWOOD BROOKS
+lf · Beijing Dragons · auto
+#16
+DAVID MATTHEWS
+rp · Mumbai Mariners · auto
+#17
+JUAN KENNON
+sp · New York Titans · auto
+#18
+EUGENE BENITEZ
+sp · Warsaw Hussars · auto
+#19
+RAFAEL BRAUMAN
+sp · Sydney Sharks · auto
+#20
+PEDRO BURRELL
+ss · Istanbul Sultans · auto
+#21
+SEAN BEER
+c · Mexico City Aztecs · auto
+#22
+JAKE DAVIS
+rf · Buenos Aires Matadors · auto
+#23
+ROY CANTERBURY
+lf · Amsterdam Captains · auto
+#24
+JAMES GIBSON
+rp · Los Angeles Stars · auto
+#25
+ARIEL MARRON
+rf · Vienna Maestros · auto
+#26
+BRIAN BRECEDA
+sp · San Francisco Seals · auto
+#27
+WILLIAM LOPEZ
+rf · Lisbon Navigators · auto
+#28
+ROBERT MANI
+rp · Seoul White Tigers · auto
+#29
+WILBERT VEGA
+sp · São Paulo Bandeirantes · auto
+#30
+LUTHER HOOD
+sp · Madrid Conquistadors · auto
+
+
+When the season starts, interestingly, the rankings seem to be in the 
+same order as the draft, even though there are zero games played:
+
+
+#	Team	W	L	PCT	GB	Streak
+1	London Lions YOU	0	0	0.000	—	—
+2	Dublin Shamrocks	0	0	0.000	0	—
+3	Toronto Sentinels	0	0	0.000	0	—
+4	Milan Serpents	0	0	0.000	0	—
+5	Frankfurt Eagles	0	0	0.000	0	—
+6	Shanghai Phoenix	0	0	0.000	0	—
+7	Bangkok Guardians	0	0	0.000	0	—
+8	Chicago Blizzards	0	0	0.000	0	—
+9	Dubai Falcons	0	0	0.000	0	—
+10	Singapore Merlions	0	0	0.000	0	—
+11	Jakarta Garudas	0	0	0.000	0	—
+12	Hong Kong Harbor Kings	0	0	0.000	0	—
+13	Paris Musketeers	0	0	0.000	0	—
+14	Tokyo Samurai	0	0	0.000	0	—
+15	Beijing Dragons	0	0	0.000	0	—
+16	Mumbai Mariners	0	0	0.000	0	—
+17	New York Titans	0	0	0.000	0	—
+18	Warsaw Hussars	0	0	0.000	0	—
+19	Sydney Sharks	0	0	0.000	0	—
+20	Istanbul Sultans	0	0	0.000	0	—
+21	Mexico City Aztecs	0	0	0.000	0	—
+22	Buenos Aires Matadors	0	0	0.000	0	—
+23	Amsterdam Captains	0	0	0.000	0	—
+24	Los Angeles Stars	0	0	0.000	0	—
+25	Vienna Maestros	0	0	0.000	0	—
+26	San Francisco Seals	0	0	0.000	0	—
+27	Lisbon Navigators	0	0	0.000	0	—
+28	Seoul White Tigers	0	0	0.000	0	—
+29	São Paulo Bandeirantes	0	0	0.000	0	—
+30	Madrid Conquistadors	0	0	0.000	0	—
+
+2035 Results:
+
+#	Team	W	L	PCT	GB	Streak
+1	Sydney Sharks	104	70	0.598	—	L1
+2	Mexico City Aztecs	103	71	0.592	1	W3
+3	New York Titans	96	78	0.552	8	W1
+4	Chicago Blizzards	95	79	0.546	9	W1
+5	Mumbai Mariners	95	79	0.546	9	L1
+6	Madrid Conquistadors	95	79	0.546	9	W1
+7	Vienna Maestros	94	80	0.540	10	L1
+8	Bangkok Guardians	93	81	0.534	11	L5
+9	Jakarta Garudas	92	82	0.529	12	W7
+10	Dublin Shamrocks	89	85	0.511	15	W1
+11	Milan Serpents	89	85	0.511	15	W4
+12	Istanbul Sultans	88	86	0.506	16	L1
+13	Frankfurt Eagles	86	88	0.494	18	W2
+14	Dubai Falcons	86	88	0.494	18	L1
+15	Hong Kong Harbor Kings	86	88	0.494	18	L4
+16	Paris Musketeers	86	88	0.494	18	L2
+17	São Paulo Bandeirantes	86	88	0.494	18	W1
+18	Buenos Aires Matadors	85	89	0.489	19	W2
+19	Toronto Sentinels	84	90	0.483	20	L1
+20	Singapore Merlions	84	90	0.483	20	W2
+21	Tokyo Samurai	83	91	0.477	21	W2
+22	Warsaw Hussars	83	91	0.477	21	L1
+23	London Lions YOU	82	92	0.471	22	L2
+24	Amsterdam Captains	82	92	0.471	22	L2
+25	Seoul White Tigers	81	93	0.466	23	L3
+26	Beijing Dragons	80	94	0.460	24	L2
+27	San Francisco Seals	79	95	0.454	25	L1
+28	Lisbon Navigators	76	98	0.437	28	W3
+29	Shanghai Phoenix	74	100	0.425	30	W1
+30	Los Angeles Stars	74	100	0.425	30	W1
+
+2036 Draft results:
+It's the same order again.
+
+Round 1
+#1
+JAMES ROGERS
+sp · London Lions
+#2
+GRANT BRUNSON
+rp · Dublin Shamrocks · auto
+#3
+MICHAEL HOSEY
+sp · Toronto Sentinels · auto
+#4
+PAUL LEE
+rp · Milan Serpents · auto
+#5
+LOUIS BAUMAN
+sp · Frankfurt Eagles · auto
+#6
+WILLIAM CEREZO
+of · Shanghai Phoenix · auto
+#7
+DAVID WELSH
+of · Bangkok Guardians · auto
+#8
+ROBERT RUIZ
+sp · Chicago Blizzards · auto
+#9
+FRANK LARSON
+c · Dubai Falcons · auto
+#10
+JOSEPH FOLLETT
+rp · Singapore Merlions · auto
+#11
+BILLY ISOM
+rp · Jakarta Garudas · auto
+#12
+DAMON LAWRENCE
+rf · Hong Kong Harbor Kings · auto
+#13
+DONALD BRYAN
+sp · Paris Musketeers · auto
+#14
+ANDREW AVALOS
+sp · Tokyo Samurai · auto
+#15
+DANNY ANDERSON
+rp · Beijing Dragons · auto
+#16
+ERIK JOHNSON
+rf · Mumbai Mariners · auto
+#17
+JAMES PENNINGTON
+rp · New York Titans · auto
+#18
+DAVID ROBINSON
+sp · Warsaw Hussars · auto
+#19
+CLIFFORD CULVER
+lf · Sydney Sharks · auto
+#20
+JOSEPH MORGAN
+of · Istanbul Sultans · auto
+#21
+JOHN BROWN
+rf · Mexico City Aztecs · auto
+#22
+SHAWN LEWIS
+rf · Buenos Aires Matadors · auto
+#23
+ROBERTO JONES
+dh · Amsterdam Captains · auto
+#24
+JOHN MONTGOMERY
+sp · Los Angeles Stars · auto
+#25
+DAVIS JOHNSON
+sp · Vienna Maestros · auto
+#26
+JAMES ALLEN
+sp · San Francisco Seals · auto
+#27
+BOBBY RUIS
+cf · Lisbon Navigators · auto
+#28
+DEANGELO MARTIN
+c · Seoul White Tigers · auto
+#29
+BENJAMIN JONES
+c · São Paulo Bandeirantes · auto
+#30
+JOHN MARTIN
+of · Madrid Conquistadors · auto
+
+After season, web console:
+
+Running offseason pipeline for 7212bd37-475d-400a-a03c-ab0a7e9f8b6c (season da61a27d-f12d-4742-abe0-9fd3f1a4d3a3)...
+season id: da61a27d-f12d-4742-abe0-9fd3f1a4d3a3
+  Aged 33930 players
+  Retired 17210 players → team_files/2037/retired.csv
+  Found 301 existing undrafted prospects
+  Generated 650 new prospects
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/draft.csv (951 players)
+  Draft pool ready: 951 draftable players
+  Skipping run draft (already done)
+  Trimmed 526 players across 30 teams
+  Cleared pitcher state for 0 pitchers
+  Cleared player energy for 0 players
+  Cleared 1490 existing rows for season da61a27d-f12d-4742-abe0-9fd3f1a4d3a3
+  Built season stats rollup: 1691 rows
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/london.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/dublin.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/toronto.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/milan.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/frankfurt.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/shanghai.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/bangkok.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/chicago.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/dubai.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/singapore.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/jakarta.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/hong_kong.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/paris.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/tokyo.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/beijing.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/mumbai.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/new_york.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/warsaw.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/sydney.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/istanbul.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/mexico_city.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/buenos_aires.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/amsterdam.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/los_angeles.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/vienna.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/san_francisco.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/lisbon.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/seoul.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/sao_paulo.csv
+  Wrote team_files/2037/7212bd37-475d-400a-a03c-ab0a7e9f8b6c/madrid.csv
+Warning: No pitchers found for team London Lions, skipping rotation.
+  Created season 2037: faccc75d-916a-4838-8416-8ce62c5bcc95 (30 teams)
+Saved 2610 games to schedule
+  Schedule generated: 2610 games
+  Offseason complete → state=draft, season faccc75d-916a-4838-8416-8ce62c5bcc95
+
+Draft execution failed:
+
+Traceback (most recent call last):
+  File "/Users/josh/Code/baseball_gm/src/api/routers/web.py", line 843, in execute_draft
+    execute_blitz_draft(draft["id"], db)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/josh/Code/baseball_gm/src/api/services/draft_execute.py", line 184, in execute_blitz_draft
+    picks = blitz.run(season_id=season_id, year=year)
+  File "/Users/josh/Code/baseball_gm/src/league/offseason/snake_draft.py", line 69, in run
+    draft_order = self._build_draft_order(season_id)
+  File "/Users/josh/Code/baseball_gm/src/league/offseason/snake_draft.py", line 148, in _build_draft_order
+    raise RuntimeError("There are no teams with games")
+RuntimeError: There are no teams with games
+
+Boom, got it.
+
+Like 184 of draft_execute...
+
+We are inserting into drafts in 2 places, 1 here:
+
+Line 154 of league_start.py
+
+    # ── 7. Create draft ───────────────────────────────────────────────────────
+    draft_id = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (?, ?, ?, ?, 'pending')",
+        (
+            draft_id,
+            league_id,
+            season_id,
+            "preference" if league["mode"] == "blitz" else "interactive",
+        ),
+    )
+
+The other here:
+
+Line 179 of offseason_service.py
+
+    if not existing_draft:
+        draft_id     = str(uuid.uuid4())
+        draft_format = "preference" if league_mode == "blitz" else "interactive"
+        conn.execute(
+            "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (?, ?, ?, ?, 'pending')",
+            (draft_id, league_id, new_season_id, draft_format),
+        )
+        conn.commit()
+    else:
+        draft_id = existing_draft["id"]
+
+
+I tried changing:
+
+            "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (?, ?, ?, ?, 'pending')",
+            (draft_id, league_id, new_season_id, draft_format),
+
+            to 
+
+                        "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (?, ?, ?, ?, 'pending')",
+            (draft_id, league_id, season_id, draft_format),
+
+✗ Error: UNIQUE constraint failed: drafts.league_id, drafts.season_id
+
+It seems that this was already doing the right thing.
+
+When we do blitz.run we are calling it with the "new" season_id already, so 
+this won't do the right thing:
+
+draft_order = self._build_draft_order(season_id)
+
+This all goes down here:
+
+def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
+    """
+    Run the full blitz preference-list draft end-to-end.
+    Assumes DraftGenerator has already been run (prospect pool exists).
+    """
+    draft = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+
+    if not draft:
+        raise ValueError(f"Draft {draft_id} not found.")
+    if draft["state"] != "pending":
+        raise ValueError(f"Draft is already in state '{draft['state']}'.")
+    if draft["format"] != "preference":
+        raise ValueError("execute_blitz_draft only handles preference-format drafts.")
+
+    league_id = draft["league_id"]
+    season_id = draft["season_id"]
+
+    conn.execute("UPDATE drafts SET state = 'open' WHERE id = ?", (draft_id,))
+    conn.commit()
+
+    # Load all human GM team IDs first
+    human_team_ids = {
+        row["team_id"]
+        for row in conn.execute(
+            "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
+            (league_id,),
+        ).fetchall()
+    }
+    # Load preference lists keyed by team_id (human GMs only)
+    pref_rows = conn.execute(
+        """
+        SELECT g.team_id, dp.player_id, dp.rank
+        FROM draft_preferences dp
+        JOIN gms g ON g.id = dp.gm_id
+        WHERE dp.draft_id = ?
+          AND g.league_id = ?
+          AND g.is_ai = 0
+          AND g.team_id IS NOT NULL
+        ORDER BY g.team_id, dp.rank
+        """,
+        (draft_id, league_id),
+    ).fetchall()
+
+    gm_preferences: dict[str, list[str]] = {tid: [] for tid in human_team_ids}
+    for row in pref_rows:
+        gm_preferences.setdefault(row["team_id"], []).append(row["player_id"])
+
+    year = _season_year(conn, season_id)
+    blitz = BlitzDraft(conn, gm_preferences=gm_preferences)
+    picks = blitz.run(season_id=season_id, year=year)
+
+But we don't have access to the prior season_id here.
+
+I don't know how this works in the CLI version, but I am going to verify it does.
+
+First season and startup:
+
+  League: 858ed3cb4c3e4a32b9ee1c9b9581a4e3
+  Season: dccbba4939814be1a55e08a155263c1d
+
+I realize one major difference is we START the thing off with a draft in the UI version
+In the command line version, the draft doesn't happen until after the first season.
+
+Here's how season 1 finished.
+
+============================================================
+TEAM                               W     L     PCT     RS
+============================================================
+Lisbon Navigators                104    70   0.598    661
+Tokyo Samurai                    103    71   0.592    578
+Shanghai Phoenix                 103    71   0.592    623
+Dublin Shamrocks                 100    74   0.575    648
+Hong Kong Harbor Kings           100    74   0.575    638
+Los Angeles Stars                100    74   0.575    623
+New York Titans                   98    76   0.563    577
+Bangkok Guardians                 92    82   0.529    618
+Beijing Dragons                   92    82   0.529    600
+Paris Musketeers                  92    82   0.529    600
+Milan Serpents                    92    82   0.529    563
+San Francisco Seals               91    83   0.523    598
+Seoul White Tigers                90    84   0.517    618
+Chicago Blizzards                 90    84   0.517    631
+São Paulo Bandeirantes            89    85   0.511    577
+Dubai Falcons                     87    87   0.500    516
+Frankfurt Eagles                  87    87   0.500    521
+Madrid Conquistadors              85    89   0.489    577
+Vienna Maestros                   84    90   0.483    579
+Mumbai Mariners                   80    94   0.460    639
+Jakarta Garudas                   80    94   0.460    564
+London Lions                      79    95   0.454    560
+Buenos Aires Matadors             79    95   0.454    524
+Amsterdam Captains                77    97   0.443    573
+Warsaw Hussars                    77    97   0.443    500
+Toronto Sentinels                 75    99   0.431    546
+Singapore Merlions                74   100   0.425    545
+Istanbul Sultans                  71   103   0.408    545
+Sydney Sharks                     70   104   0.402    544
+Mexico City Aztecs                69   105   0.397    515
+============================================================
+
+This is after run-season for 1 year.
+
+🏆 Champion: Frankfurt Eagles
+  Running offseason pipeline...
+season id: c3cc0e4b-e6ee-4e86-8eab-253af365cb8a
+  Aged 1430 players
+  Retired 32 players → team_files/2027/retired.csv
+  Found 49 existing undrafted prospects
+  Generated 650 new prospects
+  Wrote team_files/2027/858ed3cb4c3e4a32b9ee1c9b9581a4e3/draft.csv (699 players)
+  Draft pool ready: 699 draftable players
+  Draft order: 30 teams
+  Draft pool: 699 players available
+  Completed 600 picks across 20 rounds
+  Reassigned rosters for 30 teams
+  Wrote team_files/2027/draft_results.csv
+  Draft complete: 600 total picks
+  Trimmed 0 players across 30 teams
+  Cleared pitcher state for 0 pitchers
+  Cleared player energy for 0 players
+  Cleared 1094 existing rows for season c3cc0e4b-e6ee-4e86-8eab-253af365cb8a
+  Built season stats rollup: 1273 rows
+
+Note that the draft results is going to the wrong location
+
+This was there:
+
+Round,Pick,Team,Player,Age,Position,Prospect Rating
+1,1,Amsterdam Captains,PERRY GRACE,20,sp,80
+1,2,Toronto Sentinels,ADAM DON,21,rp,75
+1,3,Dubai Falcons,JOHN WOLFE,21,lf,74
+1,4,Sydney Sharks,DAVID HOUSER,21,sp,73
+1,5,Dublin Shamrocks,PATRICK GRIFFIN,20,rf,72
+1,6,Istanbul Sultans,DAVID KEITH,21,sp,71
+1,7,Vienna Maestros,DAVID HERRERA,22,rp,71
+1,8,Warsaw Hussars,ERIC BUFFINGTON,21,sp,71
+1,9,Milan Serpents,JOHN HILLMAN,21,rp,70
+1,10,Mexico City Aztecs,MANUEL BASSETT,21,rf,70
+1,11,Los Angeles Stars,JOSE YARBROUGH,21,lf,70
+1,12,Hong Kong Harbor Kings,RAYMOND SIKET,22,cf,69
+1,13,Jakarta Garudas,DAVID LIEBERMAN,21,cf,69
+1,14,Madrid Conquistadors,BRUCE CRUZ,22,rp,69
+1,15,Mumbai Mariners,ROBERT SHARPEY,22,of,69
+1,16,London Lions,BRANDON ANTUNES,20,c,69
+1,17,Seoul White Tigers,MARC KINSLER,22,sp,69
+1,18,Buenos Aires Matadors,JIM PRIDE,22,sp,68
+1,19,Lisbon Navigators,ROBERT SMITH,21,rf,68
+1,20,Bangkok Guardians,MICHAEL COYLE,21,rp,68
+1,21,São Paulo Bandeirantes,JESSE BECERRA,21,sp,68
+1,22,Chicago Blizzards,HENRY NAVA,19,sp,68
+1,23,San Francisco Seals,CHARLES SOGOL,20,3b,67
+1,24,New York Titans,JEREMY MARKS,21,sp,67
+1,25,Shanghai Phoenix,DONNY SMITH,22,sp,67
+1,26,Tokyo Samurai,JUAN VILLA,21,dh,67
+1,27,Singapore Merlions,STEVEN OWENS,22,3b,67
+1,28,Frankfurt Eagles,JOHN GUY,18,sp,67
+1,29,Beijing Dragons,ERNEST WONG,21,c,67
+1,30,Paris Musketeers,ROBERT PIPPEN,22,cf,67
+
+Unfortunately, I had a parallel league running and I can't trust this
+
+
+
