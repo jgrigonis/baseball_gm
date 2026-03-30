@@ -5,8 +5,6 @@ Show when a player returns from IL
 
 On lineup tab
 
-When a player has a position like C say it could show Catcher rating
-Either in the drop down next to C or in the rectangle
 pitchers should have sort by overall rating
 
 

@@ -211,11 +211,16 @@ if (Object.keys(SAVED_BP).length > 0) window.bullpen = {...SAVED_BP};
 function findHitter(pid)  { return ALL_HITTERS.find(p => p.player_id === pid); }
 function findPitcher(pid) { return ALL_PITCHERS.find(p => p.player_id === pid); }
 
-function hitterSkillsHtml(p) {
+function hitterSkillsHtml(p, assignedPos) {
+  // DH has no defensive rating — show best_def instead
+  const isDH     = assignedPos === 'dh';
+  const defKey   = (assignedPos && !isDH) ? 'pos_' + assignedPos : null;
+  const defGrade = (defKey && p[defKey]) ? p[defKey] : p.best_def_grade;
+  const defLabel = isDH ? (p.best_def_label || 'DEF') : (assignedPos ? assignedPos.toUpperCase() : (p.best_def_label || 'DEF'));
   const skills = [
     ['OVL',p.overall],['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
     ['BR',p.base_running],
-    [p.best_def_label||'DEF', p.best_def_grade],
+    [defLabel, defGrade],
   ].filter(([,v])=>v).map(([k,v])=>
     `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
   ).join('');
@@ -276,10 +281,10 @@ function renderBattingOrder() {
         <div style="flex:1;min-width:0;">
           <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
                style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
-          <div class="lu-skills">${hitterSkillsHtml(p)}</div>
+          <div class="lu-skills">${hitterSkillsHtml(p, slot.position)}</div>
         </div>
         <select class="lu-pos-select${dupes.has(slot.position)?' error':''}"
-                onchange="setPosition(${i},this.value)">${posOpts}</select>
+                onchange="setPosition(${i},this.value);renderBattingOrder()">${posOpts}</select>
         <button class="lu-remove" onclick="removeFromLineup(${i})">×</button>`;
       row.draggable = true;
       row.addEventListener('dragstart', e => {

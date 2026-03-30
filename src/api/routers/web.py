@@ -1602,6 +1602,9 @@ def lineup(
                 g["contact_h_grade"]  = skill_to_grade(ratings.get("contact_hitter", 0))
             g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
             g["best_def_label"] = ratings.get("best_def_label", "DEF")
+            # Per-position ratings for assigned-position display
+            for pos in ("c", "1b", "2b", "3b", "ss", "lf", "cf", "rf", "of", "if", "dh"):
+                g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
         # Raw skill grades not in PlayerGrades — needed for sort
         g["base_running"] = skill_to_grade(skills.get("base_running"))
         g["bunting"]      = skill_to_grade(skills.get("bunting"))
