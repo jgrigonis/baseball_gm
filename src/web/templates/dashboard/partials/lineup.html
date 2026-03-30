@@ -213,7 +213,7 @@ function findPitcher(pid) { return ALL_PITCHERS.find(p => p.player_id === pid); 
 
 function hitterSkillsHtml(p) {
   const skills = [
-    ['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
+    ['OVL',p.overall],['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
     ['BR',p.base_running],
     [p.best_def_label||'DEF', p.best_def_grade],
   ].filter(([,v])=>v).map(([k,v])=>
