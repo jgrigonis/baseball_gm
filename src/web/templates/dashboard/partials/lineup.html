@@ -212,22 +212,34 @@ function findHitter(pid)  { return ALL_HITTERS.find(p => p.player_id === pid); }
 function findPitcher(pid) { return ALL_PITCHERS.find(p => p.player_id === pid); }
 
 function hitterSkillsHtml(p) {
-  return [
+  const skills = [
     ['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
     ['BR',p.base_running],
     [p.best_def_label||'DEF', p.best_def_grade],
   ].filter(([,v])=>v).map(([k,v])=>
     `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
-  ).join('') + ` <span style="color:var(--muted);font-size:10px;">${p.bats||'?'}/${p.throws||'?'}</span>`;
+  ).join('');
+  const ht = p.bats ? `<span style="color:var(--muted);font-size:10px;">${p.bats}/${p.throws||'?'}</span>` : '';
+  const stats = p.stat_avg != null
+    ? `<span style="color:var(--amber);font-weight:600;">${p.stat_avg}</span>`
+    + `<span style="color:var(--text-dim);margin-left:4px;">${p.stat_hr}HR</span>`
+    : '';
+  return skills + ' ' + ht + (stats ? ' &nbsp;' + stats : '');
 }
 
 function pitcherSkillsHtml(p) {
-  return [
+  const skills = [
     ['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],
     ['GB',p.ground_balls],
   ].filter(([,v])=>v).map(([k,v])=>
     `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
-  ).join('') + ` <span style="color:var(--muted);font-size:10px;">${p.throws||'?'}</span>`;
+  ).join('');
+  const ht = `<span style="color:var(--muted);font-size:10px;">${p.throws||'?'}</span>`;
+  const stats = p.stat_era != null
+    ? `<span style="color:var(--amber);font-weight:600;">${p.stat_era} ERA</span>`
+    + `<span style="color:var(--text-dim);margin-left:4px;">${p.stat_ip} IP</span>`
+    : '';
+  return skills + ' ' + ht + (stats ? ' &nbsp;' + stats : '');
 }
 
 function usedPositions()  { return new Set(lineup.filter(Boolean).map(s=>s.position).filter(Boolean)); }
