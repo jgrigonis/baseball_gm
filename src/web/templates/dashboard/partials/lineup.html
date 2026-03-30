@@ -540,9 +540,10 @@ function showFeedback(msg, color) {
   setTimeout(() => { if(fb.textContent===msg) fb.textContent=''; }, 4000);
 }
 
-window.setPosition    = setPosition;
-window.addToRotation  = addToRotation;
-window.removeFromRotation = removeFromRotation;
+window.setPosition         = setPosition;
+window.addToRotation       = addToRotation;
+window.removeFromRotation  = removeFromRotation;
+window.renderBattingOrder  = renderBattingOrder;
 renderBattingOrder();
 renderBench();
 renderRotation(); // renderBullpen called inside renderRotation
