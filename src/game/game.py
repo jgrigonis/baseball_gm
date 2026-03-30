@@ -22,6 +22,7 @@ import logging
 import random
 
 from src.db.repositories.pitcher_state import PitcherState
+from src.db.repositories.player_energy import PlayerEnergyState
 from src.game.inning import Inning
 from src.game.count import Count
 from src.game.bases import Bases
@@ -145,9 +146,11 @@ class Game:
         pauses: bool = False,
         pitcher_states: dict[str, "PitcherState"] | None = None,
         game_date: "date | None" = None,
-        player_energy_states: dict | None = None,
+        player_energy_states: dict[str, "PlayerEnergyState"] | None = None,
         injured_ids: set[str] | None = None,
         event_logger: "GameEventLogger | None" = None,
+        home_eligible: set[str] | None = None,
+        away_eligible: set[str] | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -156,10 +159,17 @@ class Game:
             home_team: Home team
             away_team: Away team
             rng: Random number generator (default: new Random())
-            log_level: Logging level (default: INFO)
-            console_level: Log level for the console (default: INFO)
+            logger: The log handler to use
             intent_generator: Intent generator (default: new IntentGenerator)
             resolver: Event resolver (default: new Resolver)
+            pauses: Whether or not to pause at every opportunity in CLI version (default: False)
+            pitcher_states: A dictionary of PitcherStates (default: None)
+            game_date: The in game date of the game (default: None)
+            player_energy_states: A dictionary of PlayerEnergyStates (default: None)
+            injured_ids: A set of player_ids of injured players (default: None)
+            event_logger: The GameEventLogger to write to (default: None)
+            home_eligible: A set of player_ids eligible to play on the home team (default: None)
+            away_eligible: A set of player_ids eligible to play on the away team (default: None)
 
         Raises:
             ValueError: If teams are invalid/missing
@@ -175,6 +185,8 @@ class Game:
         self.away = away_team
         self.bat_team = self.away  # Away bats first
         self.pitch_team = self.home
+        self.home_eligible = home_eligible
+        self.away_eligible = away_eligible
 
         # setup a name shortcut
         self.home.name = self.home.record.mascot
@@ -998,6 +1010,8 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
+                self.home_eligible,
+                self.away_eligible,
                 pitcher_states=self.pitcher_states,
                 game_date=self.game_date,
                 rng=self.rng,
@@ -1042,6 +1056,8 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
+                self.home_eligible,
+                self.away_eligible,
                 pitcher_states=self.pitcher_states,
                 game_date=self.game_date,
                 rng=self.rng,

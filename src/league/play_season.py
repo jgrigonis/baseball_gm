@@ -252,7 +252,8 @@ def play_game(
     injury_repo.tick_all(all_player_ids)
     injured_ids = {pid for pid in all_player_ids if injury_repo.is_injured(pid)}
 
-    # Roster eligibility — blitz: no restriction (all non-injured eligible)
+    # Roster eligibility (non-injured eligible)
+    # Blitz: 26man and 40man can play 
     # Long form: only 26man players can play
     if blitz:
         home_eligible = None
@@ -275,6 +276,8 @@ def play_game(
         player_energy_states=player_energy_states,
         injured_ids=injured_ids,
         event_logger=event_logger,
+        home_eligible=home_eligible,
+        away_eligible=away_eligible,
     )
 
     home_team.set_lineup(

@@ -737,6 +737,8 @@ class GameStrategy:
         current_pitcher: PlayerInGame,
         inning: Inning,
         score: Score,
+        home_eligible: set[str] | None = None,
+        away_eligible: set[str] | None = None,
         pitcher_states: dict[str, PitcherState] | None = None,
         game_date: date | None = None,
         rng: random.Random | None = None,
@@ -758,8 +760,14 @@ class GameStrategy:
         score_diff = abs(score.differential)
         inning_num = inning.number
         close_game = score_diff <= 2
+        if inning.top:
+            eligible = home_eligible
+        else:
+            eligible = away_eligible
 
-        def _is_available(p: PlayerInGame) -> bool:
+        def _is_available(p: PlayerInGame, eligible: bool | None = None) -> bool:
+            if eligible is not None and p not in eligible:
+                return False
             state = (pitcher_states or {}).get(p.id)
             if not state or not state.last_game_date or not game_date:
                 return True  # no history, assume rested
@@ -800,7 +808,7 @@ class GameStrategy:
             and p.pitcher_fatigue is not None
             and p.current_position is None
             and not p.is_injured
-            and _is_available(p)
+            and _is_available(p, eligible=eligible)
         ]
 
         if not available:
