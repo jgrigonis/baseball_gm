@@ -1076,12 +1076,25 @@ async def sim_games(
         sim_next_day(league_id, db)
 
     league_state_row = db.execute("SELECT state FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    # Get updated current date for topbar
+    current_season_id = db.execute(
+        """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+    current_date = _current_league_date(
+        db,
+        current_season_id["id"] if current_season_id else None,
+        league_state_row["state"] if league_state_row else "lobby",
+    )
+
     return JSONResponse({
         "days_simmed":      days_simmed,
         "games_played":     games_played,
         "games_remaining":  new_remaining,
         "last_date":        results[-1]["game_date"] if results else None,
         "league_state":     league_state_row["state"] if league_state_row else None,
+        "current_date":     current_date,
         "new_injuries":     all_new_injuries,
         "returned":         all_returned,
     })

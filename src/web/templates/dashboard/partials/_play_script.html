@@ -95,6 +95,12 @@ async function schedSim(count) {
         window._simStop = true;
       }
 
+      // Update topbar date
+      if (d.current_date) {
+        var dateEl = document.querySelector('.topbar-date');
+        if (dateEl) dateEl.textContent = d.current_date;
+      }
+
       // Update topbar state badge if league state changed
       if (d.league_state) {
         var badge = document.querySelector('.topbar-state');
