@@ -3,10 +3,6 @@ UI updates
 Need to make it more obvious when a new injury occurs
 Show when a player returns from IL 
 
-On lineup tab
-
-pitchers should have sort by overall rating
-
 
 Roster tab needs far more stats on rectangles
 Injured players should show number of games remaining 

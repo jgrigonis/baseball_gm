@@ -189,16 +189,22 @@ function renderTable() {
       + ' onmouseover="this.style.background=\'var(--bg-3)\'"'
       + ' onmouseout="this.style.background=\'\'">';
     cols.forEach(function(col) {
-      var val = fmtVal(row[col.key], col.fmt);
+      var isName = col.key === 'name';
       var isRate = col.rate;
-      // Dim unqualified rate stats
       var unqual = isRate && !row.qualified;
       var color = unqual ? 'var(--text-dim)' : (isRate ? 'var(--amber)' : '');
       var title = unqual ? ' title="Below qualification threshold"' : '';
-      var style = 'text-align:' + (col.key==='name'?'left':'right') + ';font-family:var(--font-mono);';
+      var style = 'text-align:' + (isName?'left':'right') + ';font-family:var(--font-mono);';
       if (color) style += 'color:' + color + ';';
       if (unqual) style += 'font-style:italic;';
       if (isRate && !unqual) style += 'font-weight:600;';
+      var val = fmtVal(row[col.key], col.fmt);
+      if (isName && row.injured) {
+        var ilLabel = row.injury_days
+          ? ' <span style="font-size:10px;color:var(--red);">IL (' + row.injury_days + 'g)</span>'
+          : ' <span style="font-size:10px;color:var(--red);">IL</span>';
+        val = '<span style="color:var(--red);">' + val + '</span>' + ilLabel;
+      }
       bodyHtml += '<td style="' + style + '"' + title + '>' + val + '</td>';
     });
     bodyHtml += '</tr>';

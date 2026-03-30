@@ -2074,6 +2074,17 @@ def stats(
                     "qualified": qualifies_pit,
                 })
 
+    # Attach injury status to each player row
+    if selected_team_id:
+        injured_map = _injured_player_ids(db, selected_team_id, league_id)
+        for p in batters + pitchers:
+            p["injured"]     = p["player_id"] in injured_map
+            p["injury_days"] = injured_map.get(p["player_id"])
+    else:
+        for p in batters + pitchers:
+            p["injured"]     = False
+            p["injury_days"] = None
+
     ctx.update({
         "all_teams":        [dict(t) for t in all_teams],
         "selected_team_id": selected_team_id,
