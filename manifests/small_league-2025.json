@@ -32,6 +32,16 @@
         "csv": "san_francisco.csv",
         "city": "San Francisco",
         "mascot": "Seals"
+      },
+      {
+        "csv": "portland.csv",
+        "city": "Portland",
+        "mascot": "Weirdos"
+      },
+      {
+        "csv": "seattle.csv",
+        "city": "Seattle",
+        "mascot": "Rain"
       }
     ]
   }
