@@ -137,6 +137,8 @@
 .r-ovr{font-family:var(--font-mono);font-size:14px;font-weight:600;min-width:28px;}
 .r-name{font-family:var(--font-sans);font-weight:600;font-size:13px;color:var(--text-hi);}
 .r-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:1px;}
+.r-stats{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;}
+.r-stat-val{white-space:nowrap;}
 .r-grades{font-family:var(--font-mono);font-size:11px;display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;}
 .r-grades .gl{color:var(--text-dim);margin-right:1px;}
 </style>
@@ -288,10 +290,18 @@ function makeCard(p) {
     <span class="r-ovr ${gradeClass(p.overall)}">${p.overall}</span>
     <div>
       <div class="r-name" style="color:${p.injured ? 'var(--red)' : ''}">
-        ${p.first_name} ${p.last_name}${p.injured ? ' <span style="font-size:10px;color:var(--red);">IL</span>' : ''}
+        ${p.first_name} ${p.last_name}${p.injured ? ` <span style="font-size:10px;color:var(--red);">IL${p.injury_days ? ' (' + p.injury_days + 'g)' : ''}</span>` : ''}
       </div>
       <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
       <div class="r-grades">${gradesHtml}</div>
+      ${p.player_type !== 'pitcher'
+        ? (p.stat_avg != null
+            ? `<div class="r-stats"><span class="r-stat-val">${p.stat_g}G</span> <span class="r-stat-val" style="color:var(--amber);">${p.stat_avg}</span> <span class="r-stat-val">${p.stat_hr}HR</span> <span class="r-stat-val">${p.stat_rbi}RBI</span></div>`
+            : '')
+        : (p.stat_era != null
+            ? `<div class="r-stats"><span class="r-stat-val">${p.stat_gs}GS</span> <span class="r-stat-val" style="color:var(--amber);">${p.stat_era} ERA</span> <span class="r-stat-val">${p.stat_ip} IP</span> <span class="r-stat-val">${p.stat_w}W ${p.stat_l}L</span> <span class="r-stat-val">${p.stat_sv}SV</span></div>`
+            : '')
+      }
     </div>`;
 
   let _downId = null;

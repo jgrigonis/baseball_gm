@@ -1544,9 +1544,42 @@ def roster(
             g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
             players.append(g)
 
+    # Season stats for display on roster cards
+    season_id = ctx.get("season_id")
+    if season_id and gm and gm["team_id"]:
+        stat_rows = db.execute(
+            """SELECT player_id,
+                      bat_games_played, bat_hits, bat_ab, bat_home_runs, bat_rbi,
+                      pitch_games_started, pitch_outs, pitch_earned_runs,
+                      pitch_wins, pitch_losses, pitch_saves
+               FROM player_season_stats
+               WHERE season_id = ? AND is_postseason = 0
+                 AND player_id IN (
+                     SELECT player_id FROM team_players WHERE team_id = ?
+                 )""",
+            (season_id, gm["team_id"]),
+        ).fetchall()
+        stats_map = {r["player_id"]: r for r in stat_rows}
+        for p in players:
+            s = stats_map.get(p["player_id"])
+            if s and p.get("player_type") != "pitcher":
+                ab = s["bat_ab"] or 0
+                p["stat_g"]   = s["bat_games_played"] or 0
+                p["stat_avg"] = f"{s['bat_hits']/ab:.3f}" if ab else None
+                p["stat_hr"]  = s["bat_home_runs"] or 0
+                p["stat_rbi"] = s["bat_rbi"] or 0
+            elif s and p.get("player_type") == "pitcher":
+                outs = s["pitch_outs"] or 0
+                p["stat_gs"]  = s["pitch_games_started"] or 0
+                p["stat_ip"]  = f"{outs//3}.{outs%3}" if outs else None
+                p["stat_era"] = f"{(s['pitch_earned_runs']*27)/outs:.2f}" if outs else None
+                p["stat_w"]   = s["pitch_wins"] or 0
+                p["stat_l"]   = s["pitch_losses"] or 0
+                p["stat_sv"]  = s["pitch_saves"] or 0
+
     injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None, league_id)
     for p in players:
-        p["injured"] = p["player_id"] in injured_ids
+        p["injured"]     = p["player_id"] in injured_ids
         p["injury_days"] = injured_ids.get(p["player_id"])
     ctx["players"] = players
     return _respond(request, "dashboard/partials/roster.html", ctx)

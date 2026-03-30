@@ -4,10 +4,6 @@ Need to make it more obvious when a new injury occurs
 Show when a player returns from IL 
 
 
-Roster tab needs far more stats on rectangles
-Injured players should show number of games remaining 
-
-
 Maybe play until injury or recover from injury
 
 On player detail page, ERA should always show 2 sig figs
