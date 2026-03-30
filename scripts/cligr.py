@@ -180,8 +180,16 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run leaderboards, league totals, and league leaders for a given year.",
     )
     rpt.add_argument(
-        "--year", "-y", type=int, default=2025,
-        help="Season year to report on (default: 2025)",
+        "--year", "-y", type=int, default=None,
+        help="Single season year to report on",
+    )
+    rpt.add_argument(
+        "--start-year", type=int, default=None,
+        help="Start year for a range of seasons",
+    )
+    rpt.add_argument(
+        "--end-year", type=int, default=None,
+        help="End year for a range of seasons",
     )
     rpt.add_argument(
         "--league-id", "-l",
@@ -877,6 +885,22 @@ def cmd_clear(args) -> None:
         clear_temp()
 
 
+def _resolve_league(conn, db_filename, league_id_arg):
+    """Return league_id, prompting if needed."""
+    if league_id_arg:
+        return league_id_arg
+    rows = conn.execute("SELECT id, name FROM leagues ORDER BY rowid").fetchall()
+    if not rows:
+        print("❌ No leagues found in DB.")
+        sys.exit(1)
+    if len(rows) == 1:
+        return rows[0]["id"]
+    league_id = pick_league_interactively(db_filename)
+    if not league_id:
+        sys.exit(0)
+    return league_id
+
+
 def cmd_reports(args) -> None:
     db_p = _db_path(args.db)
     if not db_p.exists():
@@ -884,36 +908,63 @@ def cmd_reports(args) -> None:
         sys.exit(1)
 
     conn = get_connection(args.db)
+    league_id = _resolve_league(conn, args.db, args.league_id)
 
-    # Resolve league
-    league_id = args.league_id
-    if not league_id:
-        rows = conn.execute("SELECT id, name FROM leagues ORDER BY rowid").fetchall()
-        if not rows:
-            print("❌ No leagues found in DB.")
-            sys.exit(1)
-        if len(rows) == 1:
-            league_id = rows[0]["id"]
-        else:
-            league_id = pick_league_interactively(args.db)
-            if not league_id:
-                sys.exit(0)
-
-    # Look up season_id by year
-    row = conn.execute(
-        """SELECT s.id FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? AND s.year = ?""",
-        (league_id, args.year),
-    ).fetchone()
-    if not row:
-        print(f"❌ No season found for year {args.year} in league {league_id[:8]}...")
+    # Determine year range
+    if args.start_year and args.end_year:
+        years = list(range(args.start_year, args.end_year + 1))
+    elif args.start_year or args.end_year:
+        print("❌ Provide both --start-year and --end-year for a range.")
+        sys.exit(1)
+    elif args.year:
+        years = [args.year]
+    else:
+        print("❌ Provide --year or --start-year/--end-year.")
         sys.exit(1)
 
-    season_id = row["id"]
-    print(f"\n📊 Reports for {args.year} (season {season_id[:8]}...)")
-    _run_reports(args.db, season_id, logs=args.logs)
-    print("✅ Done.")
+    # Range mode: capture output to temp_files/
+    range_mode = len(years) > 1
+    if range_mode:
+        _temp_dir().mkdir(parents=True, exist_ok=True)
+
+    for year in years:
+        row = conn.execute(
+            """SELECT s.id FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = ? AND s.year = ?""",
+            (league_id, year),
+        ).fetchone()
+        if not row:
+            print(f"⚠️  No season found for year {year} — skipping")
+            continue
+
+        season_id = row["id"]
+        print(f"\n📊 Reports for {year} (season {season_id[:8]}...)")
+
+        if range_mode:
+            import io, contextlib
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                _run_reports(args.db, season_id, logs=args.logs)
+            output = buf.getvalue()
+            print(output, end="")  # still show on screen
+
+            # Append to per-report temp files
+            leaders_path = _temp_dir() / f"league_leaders_{args.start_year}_{args.end_year}.txt"
+            totals_path  = _temp_dir() / f"league_totals_{args.start_year}_{args.end_year}.txt"
+            # Split output at section boundaries and write to respective files
+            # Simpler: write everything to a combined file, plus individual files
+            combined_path = _temp_dir() / f"reports_{args.start_year}_{args.end_year}.txt"
+            with open(combined_path, "a") as f:
+                f.write(f"\n=== {year} ===\n")
+                f.write(output)
+        else:
+            _run_reports(args.db, season_id, logs=args.logs)
+
+    if range_mode:
+        print(f"\n✅ Done — output saved to {combined_path}")
+    else:
+        print("\n✅ Done.")
 
 
 def main():
