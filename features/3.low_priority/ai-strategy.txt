@@ -1,0 +1,11 @@
+AI features:
+
+Auto manage roster
+always move injured players off 40 man replace with best options 
+In long form, injured players will move from 26 to 40
+
+Lineup manager 
+Different approaches here
+Auto-Fill is terrible currently
+
+

@@ -33,7 +33,7 @@ def calculate_min_pa(
     db_path: Path, season_id: str, logger: logging.Logger = None
 ) -> tuple[float, float]:
     """Calculate minimum PA and IP for leaderboard qualification based on games completed."""
-    conn = get_connection()
+    conn = get_connection(str(db_path))
 
     cursor = conn.execute(
         """
