@@ -275,7 +275,7 @@ function renderBattingOrder() {
         <div class="lu-num">${i+1}</div>
         <div style="flex:1;min-width:0;">
           <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
-               style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+               style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
           <div class="lu-skills">${hitterSkillsHtml(p)}</div>
         </div>
         <select class="lu-pos-select${dupes.has(slot.position)?' error':''}"
@@ -378,7 +378,7 @@ function renderBench() {
          ondragstart="event.dataTransfer.setData('source','bench');event.dataTransfer.setData('pid','${p.player_id}');event.stopPropagation();">
       <span class="lu-grade ${gradeClass(p.overall)}">${p.overall}</span>
       <div style="flex:1;min-width:0;">
-        <div class="lu-name" style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+        <div class="lu-name" style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
         <div class="lu-skills">${hitterSkillsHtml(p)}</div>
       </div>
       <span onclick="event.stopPropagation();openPlayerPanel('${p.player_id}')"
@@ -402,7 +402,7 @@ function renderRotation() {
       <div class="rot-num">${i+1}</div>
       <div>
         <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
-             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
         <div class="lu-skills">${pitcherSkillsHtml(p)}</div>
       </div>
       <button class="lu-remove" onclick="removeFromRotation(${i})">×</button>`;
@@ -465,7 +465,7 @@ function renderBullpen() {
     return `<div class="bp-row">
       <div>
         <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
-             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?' <span style="font-size:10px;color:var(--red);">IL</span>':''}</div>
+             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
         <div class="lu-skills">${pitcherSkillsHtml(p)}</div>
       </div>
       <button class="add-sp-btn" onclick="addToRotation('${p.player_id}')"

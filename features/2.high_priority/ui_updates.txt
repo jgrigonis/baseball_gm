@@ -4,7 +4,7 @@ Need to make it more obvious when a new injury occurs
 Show when a player returns from IL 
 
 On lineup tab
-Injured players should show number of games remaining 
+
 In the batting order they need an ovl stat since they lose that and it's a number 
 When a player has a position like C say it could show Catcher rating
 Either in the drop down next to C or in the rectangle

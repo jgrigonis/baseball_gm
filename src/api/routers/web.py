@@ -156,18 +156,18 @@ def _resolve_gm(
 
 
 
-def _injured_player_ids(db, team_id: str, league_id: str = "") -> set:
-    """Return set of player_ids currently on IL for a team in this league."""
+def _injured_player_ids(db, team_id: str, league_id: str = "") -> dict:
+    """Return dict of {player_id: games_remaining} for players on IL for a team."""
     if not team_id:
-        return set()
+        return {}
     rows = db.execute(
-        """SELECT pi.player_id FROM player_injuries pi
+        """SELECT pi.player_id, pi.games_remaining FROM player_injuries pi
            JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
            WHERE pi.games_remaining > 0
              AND (pi.league_id = ? OR pi.league_id = '')""",
         (team_id, league_id),
     ).fetchall()
-    return {r["player_id"] for r in rows}
+    return {r["player_id"]: r["games_remaining"] for r in rows}
 
 
 def _games_remaining(db, season_id: str | None) -> int:
@@ -1543,6 +1543,7 @@ def roster(
     injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None, league_id)
     for p in players:
         p["injured"] = p["player_id"] in injured_ids
+        p["injury_days"] = injured_ids.get(p["player_id"])
     ctx["players"] = players
     return _respond(request, "dashboard/partials/roster.html", ctx)
 
@@ -1673,9 +1674,10 @@ def lineup(
                 p["stat_era"] = None
                 p["stat_ip"]  = None
 
-    injured_ids = _injured_player_ids(db, team_id, league_id)
+    injured_map = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:
-        p["injured"] = p["player_id"] in injured_ids
+        p["injured"]      = p["player_id"] in injured_map
+        p["injury_days"]  = injured_map.get(p["player_id"])
     ctx["hitters"]        = hitters
     ctx["pitchers"]       = pitchers
     ctx["saved_lineup"]   = saved_lineup
