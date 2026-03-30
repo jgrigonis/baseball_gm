@@ -2075,6 +2075,8 @@ def stats(
                 tb    = h - d - tr - hr + 2*d + 3*tr + 4*hr
                 slg   = round(tb / ab, 3) if ab else 0.0
                 qualifies_bat = ab >= min_ab
+                ab_k  = round(ab / k, 2) if k else None
+                hr_ab = round(hr / ab, 3) if ab else None
                 batters.append({
                     "player_id": s["player_id"],
                     "name":  f"{s['first_name']} {s['last_name']}",
@@ -2082,6 +2084,7 @@ def stats(
                     "HR": hr, "RBI": rbi, "R": runs, "BB": bb,
                     "K": k, "SB": sb,
                     "AVG": avg, "OBP": obp, "SLG": slg, "OPS": round(obp+slg, 3),
+                    "AB_K": ab_k, "HR_AB": hr_ab,
                     "qualified": qualifies_bat,
                 })
 

@@ -87,6 +87,8 @@ var BAT_COLS = [
   {key:'OBP',   label:'OBP',     fmt:'avg',   rate:true},
   {key:'SLG',   label:'SLG',     fmt:'avg',   rate:true},
   {key:'OPS',   label:'OPS',     fmt:'avg',   rate:true},
+  {key:'AB_K',  label:'AB/K',    fmt:'era',   rate:true, asc:false},
+  {key:'HR_AB', label:'HR/AB',   fmt:'avg',   rate:true, asc:false},
 ];
 
 var PIT_COLS = [
@@ -119,6 +121,8 @@ function fmtVal(val, fmt) {
 function sortVal(row, key) {
   if (key === 'name') return row.name || '';
   if (key === 'IP')   return row.IP_val || 0;
+  if (key === 'AB_K') return row.AB_K || 0;
+  if (key === 'HR_AB') return row.HR_AB || 0;
   var v = row[key];
   return (v === null || v === undefined) ? -999 : v;
 }
