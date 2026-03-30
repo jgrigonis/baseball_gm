@@ -240,8 +240,28 @@ def _shell_ctx(
                    WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
                 (league_id,),
             ).fetchone()
+    elif league_state_for_season in ("playoffs", "offseason"):
+        # During playoffs/offseason, use the season that has series records
+        season = db.execute(
+            """SELECT s.* FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = ?
+                 AND EXISTS (
+                   SELECT 1 FROM series sr WHERE sr.season_id = s.id
+                 )
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        # Fallback to newest if no series yet
+        if season is None:
+            season = db.execute(
+                """SELECT s.* FROM seasons s
+                   JOIN league_seasons ls ON ls.season_id = s.id
+                   WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+                (league_id,),
+            ).fetchone()
     else:
-        # All other states: show the newest season (current active season)
+        # season/preseason: show the newest season (current active season)
         season = db.execute(
             """SELECT s.* FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
@@ -1193,7 +1213,7 @@ def standings(
                    JOIN teams at ON at.id = g.away_team_id
                    WHERE g.season_id = ? AND g.completed = 1
                      AND (g.home_team_id = ? OR g.away_team_id = ?)
-                   ORDER BY g.game_date DESC LIMIT 10""",
+                   ORDER BY g.game_date DESC LIMIT 5""",
                 (season_id, my_team_id, my_team_id),
             ).fetchall()
             for g_row in rg_rows:

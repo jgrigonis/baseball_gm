@@ -68,10 +68,8 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     if not next_date_row:
         # No more regular season games — set up playoffs if not already done
         existing_series = conn.execute(
-            """SELECT COUNT(*) FROM series s
-               JOIN league_seasons ls ON ls.season_id = s.season_id
-               WHERE ls.league_id = ?""",
-            (league_id,),
+            "SELECT COUNT(*) FROM series WHERE season_id = ?",
+            (season_id,),
         ).fetchone()[0]
 
         if existing_series == 0:
