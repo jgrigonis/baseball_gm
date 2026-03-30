@@ -179,7 +179,7 @@ function gradeClass(g) {
 
 let lineup   = Array(9).fill(null);  // fixed 9 slots, null = empty
 let rotation = [];
-let bullpen  = {};
+window.bullpen = {};
 
 // Purge slots whose player is no longer on the 40-man — only called at init
 function purgeLineup() {
@@ -206,7 +206,7 @@ if (SAVED_ROT.length > 0) {
   rotation = [...SAVED_ROT];
   purgeRotation();
 }
-if (Object.keys(SAVED_BP).length > 0) bullpen = {...SAVED_BP};
+if (Object.keys(SAVED_BP).length > 0) window.bullpen = {...SAVED_BP};
 
 function findHitter(pid)  { return ALL_HITTERS.find(p => p.player_id === pid); }
 function findPitcher(pid) { return ALL_PITCHERS.find(p => p.player_id === pid); }
@@ -446,7 +446,7 @@ function renderBullpen() {
   }
 
   el.innerHTML = bpPitchers.map(p => {
-    const role = bullpen[p.player_id] || '';
+    const role = window.bullpen[p.player_id] || '';
     const roleOpts = ['', ...ROLES].map(r =>
       `<option value="${r}" ${role===r?'selected':''}>${r || '— unassigned —'}</option>`
     ).join('');
@@ -507,12 +507,12 @@ async function saveLineup() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         lineup:   lineup.map((s,i) => ({player_id:s.player_id, batting_order:i+1, position:s.position})),
-        rotation, bullpen,
+        rotation, bullpen: window.bullpen,
       }),
     });
     if (res.ok) showFeedback('✓ Saved', 'var(--green)');
     else { const d = await res.json().catch(()=>({})); showFeedback('✗ '+(d.detail||'Error'), 'var(--red)'); }
-  } catch(e) { showFeedback('✗ Lineup error', 'var(--red)'); }
+  } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
   finally { btn.disabled=false; btn.textContent='Save Lineup'; }
 }
 

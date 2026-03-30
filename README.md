@@ -21,6 +21,9 @@ On windows you should also do this in a powershell as an admin:
 
 [System.Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Machine")
 
+A handy script alias for your .zshrc file:
+alias cligr='python scripts/cligr.py'
+
 ### Editor Notes
 
 To get rid of syntax highlight errors in the .html files

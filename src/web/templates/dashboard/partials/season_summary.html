@@ -108,7 +108,7 @@ function beginOffseason() {
   var status = document.getElementById('offseason-status');
   btn.disabled = true;
   btn.textContent = 'Running offseason…';
-  status.textContent = 'Aging players, generating prospects, running AI draft…';
+  status.textContent = 'Aging players, generating prospects, preparing draft…';
 
   fetch('/leagues/' + LEAGUE_ID + '/offseason/begin', {method: 'POST'})
     .then(function(r){ return r.json(); })

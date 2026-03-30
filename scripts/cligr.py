@@ -475,6 +475,20 @@ def _create_next_season_cli(conn, league_id: str, current_season_id: str, next_y
         home_and_away=True,
     )
     save_schedule_to_db(conn, schedule)
+
+    # Bootstrap rotations and bullpen roles for each team in the new season
+    from src.league.bootstrap import LeagueBootstrapper
+    from src.db.repositories.player_status_repo import PlayerStatusRepository
+    import dataclasses as _dc
+    status_repo = PlayerStatusRepository(conn)
+    boot = LeagueBootstrapper(conn, rng=rng)
+    from src.db.repositories.team_repo import TeamRepository
+    team_repo = TeamRepository(conn)
+    teams = [team_repo.get(tid) for tid in team_ids]
+    teams = [t for t in teams if t]
+    boot._bootstrap_rotations(teams, season_id, start_date)
+    print(f"  Rotations bootstrapped for {len(teams)} teams")
+
     conn.commit()
     print(f"  Created season {next_year}: {len(schedule)} games scheduled")
     return season_id, team_ids
@@ -699,7 +713,7 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     # --- Leaderboards (view_leaderboards) ---
     print("  Leaderboards...")
     try:
-        from scripts.view_leaderboards import show_all_leaderboards, calculate_min_pa
+        from src.league.statistics.view_leaderboards import show_all_leaderboards, calculate_min_pa
         from src.stats.loader import StatsLoader
         logger = _make_logger("view_leaderboards", logs)
 
@@ -714,7 +728,7 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     # --- League Totals ---
     print("  League Totals...")
     try:
-        from scripts.league_totals import fetch_totals, display as display_totals
+        from src.league.statistics.league_totals import fetch_totals, display as display_totals
         logger = _make_logger("league_totals", logs)
         totals = fetch_totals(conn, season_id)
         display_totals(totals, season_label, logger=logger)
@@ -724,7 +738,7 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     # --- League Leaders ---
     print("  League Leaders...")
     try:
-        from scripts.league_leaders import fetch_leaders, display as display_leaders
+        from src.league.statistics.league_leaders import fetch_leaders, display as display_leaders
         logger = _make_logger("league_leaders", logs)
         with StatsLoader(str(db_path)) as loader:
             all_players = loader.load_season_players_with_stats(season_id)

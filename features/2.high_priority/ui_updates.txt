@@ -1,0 +1,29 @@
+UI updates
+
+Need to make it more obvious when a new injury occurs
+Show when a player returns from IL 
+
+In lineup tab, hitters should have stats on their rectangle
+avg, hr
+pitchers should have stats too 
+era, IP 
+Injured players should show number of games remaining 
+In the batting order they need an ovl stat since they lose that and it's a number 
+When a player has a position like C say it could show Catcher rating
+Either in the drop down next to C or in the rectangle
+pitchers should have sort by overall rating
+
+
+Roster tab needs far more stats on rectangles
+Injured players should show number of games remaining 
+
+
+Maybe play until injury or recover from injury
+
+On player detail page, ERA should always show 2 sig figs
+
+Current league date should be visible somewhere.
+Probably just to the right of Season on top bar
+
+The stats page should have K/BB and HR/AB for hitters
+
