@@ -181,7 +181,7 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
 
     year = _season_year(conn, season_id)
     blitz = BlitzDraft(conn, gm_preferences=gm_preferences)
-    picks = blitz.run(season_id=season_id, year=year)
+    picks = blitz.run(season_id=season_id, year=year, league_id=league_id)
 
     # Record into draft_picks table
     now = datetime.now(UTC).isoformat()

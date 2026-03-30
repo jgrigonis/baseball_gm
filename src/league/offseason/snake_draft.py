@@ -54,7 +54,7 @@ class SnakeDraft:
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
 
-    def run(self, season_id: str, year: int) -> list[DraftPick]:
+    def run(self, season_id: str, year: int, league_id: str | None = None) -> list[DraftPick]:
         """
         Execute the snake draft.
 
@@ -88,7 +88,7 @@ class SnakeDraft:
         self._reassign_rosters(draft_order)
 
         # 6. Write draft results CSV
-        self._write_results(picks, year)
+        self._write_results(picks, year, league_id)
 
         return picks
 
@@ -143,6 +143,9 @@ class SnakeDraft:
                 teams_without_games.append(entry)
             else:
                 teams_with_games.append(entry)
+
+        if teams_with_games == []:
+            print(f"WARNING: There are no teams with games in season {season_id}")
 
         teams_with_games.sort(key=lambda t: t["win_pct"])
         return teams_with_games + teams_without_games
@@ -272,9 +275,11 @@ class SnakeDraft:
     # Output
     # -----------------------------------------------------------------------
 
-    def _write_results(self, picks: list[DraftPick], year: int) -> None:
+    def _write_results(self, picks: list[DraftPick], year: int, league_id: str | None = None) -> None:
         """Write draft_results.csv."""
         out_dir = Path(TEAM_FILES_DIR) / str(year)
+        if league_id:
+            out_dir = out_dir = out_dir / league_id
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "draft_results.csv"
 
