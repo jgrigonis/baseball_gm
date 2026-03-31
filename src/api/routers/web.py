@@ -2389,6 +2389,7 @@ def game_panel(
 @router.get("/leagues/{league_id}/season-summary", response_class=HTMLResponse)
 def season_summary(
     request: Request, league_id: str, db: DB,
+    season_id: str | None = None,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -2396,8 +2397,19 @@ def season_summary(
         return RedirectResponse("/")
     gm  = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm)
-    season_id  = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
+
+    # Use explicit season_id (from history link) or fall back to last season with series
+    if not season_id:
+        row = db.execute(
+            """SELECT s.id FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = ?
+                 AND EXISTS (SELECT 1 FROM series sr WHERE sr.season_id = s.id)
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        season_id = row["id"] if row else ctx["season_id"]
 
     # My team record
     my_record = None
@@ -2469,9 +2481,24 @@ def season_summary(
                     my_playoff_result = f"Eliminated in {series_name}"
                 break
 
-    # Stat leaders (top batting AVG, ERA)
+    # Stat leaders — compute qualification thresholds from actual games played
     bat_leader = pit_leader = None
     if season_id:
+        games_row = db.execute(
+            """SELECT COUNT(*) as g FROM games
+               WHERE season_id = ? AND completed = 1 AND series_id IS NULL""",
+            (season_id,),
+        ).fetchone()
+        num_teams_row = db.execute(
+            "SELECT COUNT(DISTINCT team_id) as n FROM league_season_teams WHERE season_id = ?",
+            (season_id,),
+        ).fetchone()
+        num_teams   = (num_teams_row["n"] or 30)
+        games_total = games_row["g"] or 0
+        games_per_team = (games_total * 2) / num_teams if num_teams else 0
+        min_ab   = int(3.1 * games_per_team)
+        min_outs = int(3   * games_per_team)
+
         br = db.execute(
             """SELECT p.first_name, p.last_name, t.city, t.mascot,
                       CAST(pss.bat_hits AS REAL)/NULLIF(pss.bat_ab,0) as avg
@@ -2479,9 +2506,9 @@ def season_summary(
                JOIN players p ON p.id = pss.player_id
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=?
-               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.bat_ab >= 300
+               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.bat_ab >= ?
                ORDER BY avg DESC LIMIT 1""",
-            (league_id, season_id),
+            (league_id, season_id, min_ab),
         ).fetchone()
         if br:
             bat_leader = {"name": f"{br['first_name']} {br['last_name']}",
@@ -2495,9 +2522,9 @@ def season_summary(
                JOIN players p ON p.id = pss.player_id
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=?
-               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.pitch_outs >= 300
+               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.pitch_outs >= ?
                ORDER BY era ASC LIMIT 1""",
-            (league_id, season_id),
+            (league_id, season_id, min_outs),
         ).fetchone()
         if pr:
             pit_leader = {"name": f"{pr['first_name']} {pr['last_name']}",
