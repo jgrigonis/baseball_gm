@@ -1,0 +1,16 @@
+Scheduler needs improvement.
+
+Currently, we don't even seem to run series against teams
+We should be using 3-4 game repeated sets of games
+
+Also, need to be able to deal with variable league sizes
+Maybe we can't affix to an exact number of games per team
+but we could do some multiplier to get closer to desired
+amount
+
+If you have 30 teams, for a perfectly symmetrical league
+You can have a number of games that is a multiple of 29
+
+29, 58, 87, 116, 145, 174
+
+Otherwise you have to do some type of asymmetrical games 
