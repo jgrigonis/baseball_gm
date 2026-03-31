@@ -448,14 +448,113 @@ class TeamRotationsRepository:
         player1_order = player1_entry["rotation_order"]
         player2_order = player2_entry["rotation_order"]
 
-        # Swap the rotation orders
-        self.update_rotation(
-            team_id, season_id, player1_id, player2_order, effective_date
-        )
-        self.update_rotation(
-            team_id, season_id, player2_id, player1_order, effective_date
-        )
+        # Swap via a temporary order to avoid any ambiguity mid-swap
+        TEMP_ORDER = 9999
+        self.update_rotation(team_id, season_id, player1_id, TEMP_ORDER, effective_date)
+        self.update_rotation(team_id, season_id, player2_id, player1_order, effective_date)
+        self.update_rotation(team_id, season_id, player1_id, player2_order, effective_date)
 
+    def get_scheduled_starter(
+        self,
+        team_id: str,
+        season_id: str,
+        series_id: str = "",
+    ) -> str | None:
+        """
+        Return the player_id of the scheduled next starter for this team,
+        based on the rotation pointer. Creates the pointer at order 1 if
+        it doesn't exist yet. Returns None if the team has no active rotation.
+        """
+        # Ensure pointer row exists
+        self.conn.execute(
+            """
+            INSERT OR IGNORE INTO team_rotation_pointer
+                (team_id, season_id, series_id, next_order)
+            VALUES (?, ?, ?, 1)
+            """,
+            (team_id, season_id, series_id),
+        )
+        self.conn.commit()
+
+        row = self.conn.execute(
+            """
+            SELECT next_order
+            FROM team_rotation_pointer
+            WHERE team_id = ? AND season_id = ? AND series_id = ?
+            """,
+            (team_id, season_id, series_id),
+        ).fetchone()
+
+        next_order = row["next_order"]
+
+        starter = self.conn.execute(
+            """
+            SELECT player_id
+            FROM team_rotations
+            WHERE team_id = ?
+            AND season_id = ?
+            AND rotation_order = ?
+            AND end_date IS NULL
+            LIMIT 1
+            """,
+            (team_id, season_id, next_order),
+        ).fetchone()
+
+        return starter["player_id"] if starter else None
+
+
+    def advance_rotation_pointer(
+        self,
+        team_id: str,
+        season_id: str,
+        series_id: str = "",
+    ) -> None:
+        """
+        Advance the rotation pointer to the next actual rotation_order slot,
+        wrapping around. Safe against gaps caused by remove_from_rotation.
+        No-op if the team has no active rotation entries.
+        """
+        # Get actual sorted rotation_orders (may have gaps after removals)
+        order_rows = self.conn.execute(
+            """
+            SELECT rotation_order FROM team_rotations
+            WHERE team_id = ? AND season_id = ? AND end_date IS NULL
+            ORDER BY rotation_order
+            """,
+            (team_id, season_id),
+        ).fetchall()
+
+        orders = [r[0] for r in order_rows]
+        if not orders:
+            return
+
+        pointer_row = self.conn.execute(
+            """
+            SELECT next_order
+            FROM team_rotation_pointer
+            WHERE team_id = ? AND season_id = ? AND series_id = ?
+            """,
+            (team_id, season_id, series_id),
+        ).fetchone()
+
+        current = pointer_row["next_order"] if pointer_row else orders[0]
+
+        # Find the next order after current in the actual list, wrapping around
+        orders_after = [o for o in orders if o > current]
+        new_order = orders_after[0] if orders_after else orders[0]
+
+        self.conn.execute(
+            """
+            INSERT INTO team_rotation_pointer
+                (team_id, season_id, series_id, next_order, updated_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+            ON CONFLICT (team_id, season_id, series_id)
+            DO UPDATE SET next_order = excluded.next_order,
+                        updated_at = excluded.updated_at
+            """,
+            (team_id, season_id, series_id, new_order),
+        )
+        self.conn.commit()
 
 # get_rotation_history(team_id, season_id, player_id=None)
 

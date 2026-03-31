@@ -182,6 +182,20 @@ CREATE TABLE IF NOT EXISTS team_rotations (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS team_rotation_pointer (
+    team_id    TEXT    NOT NULL,
+    season_id  TEXT    NOT NULL,
+    series_id  TEXT    NOT NULL DEFAULT '',
+    next_order INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
+
+    PRIMARY KEY (team_id, season_id, series_id),
+    -- series_id = '' for regular season, series.id for playoffs
+    
+    FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS bullpen_roles (
     team_id TEXT NOT NULL,
     player_id TEXT NOT NULL,

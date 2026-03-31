@@ -14,7 +14,7 @@ from src.db.repositories import bullpen_roles_repo
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
-from src.db.repositories.pitcher_state import PitcherStateRepository
+from src.db.repositories.pitcher_state import PitcherStateRepository, MIN_ENERGY_STARTER
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
@@ -148,6 +148,62 @@ def _load_saved_lineup(conn, team_id: str, league_id: str) -> list[dict] | None:
     return [dict(r) for r in rows] if rows else None
 
 
+def _pick_starter(
+    rotations_repo: TeamRotationsRepository,
+    pitcher_repo: PitcherStateRepository,
+    team_id: str,
+    season_id: str,
+    game_date,
+    series_id: str = "",
+) -> str | None:
+    """
+    Get the scheduled starter from the rotation pointer, with energy check.
+    If the scheduled starter is too tired, walks forward through the rotation
+    to find a rested pitcher. Falls back to most-rested if all are tired.
+    Returns None if no rotation exists.
+    """
+    scheduled = rotations_repo.get_scheduled_starter(team_id, season_id, series_id)
+    if not scheduled:
+        return None
+
+    rotation = rotations_repo.get_current_rotation(team_id, season_id, game_date)
+    if not rotation:
+        return None
+
+    # Sort by rotation_order so we can walk forward from the scheduled slot
+    rotation_sorted = sorted(rotation, key=lambda r: r["rotation_order"])
+    orders = [r["rotation_order"] for r in rotation_sorted]
+
+    # Find index of scheduled starter in sorted rotation
+    scheduled_entry = next((r for r in rotation_sorted if r["player_id"] == scheduled), None)
+    if not scheduled_entry:
+        # Pointer landed on a gap — start from the beginning
+        start_idx = 0
+    else:
+        start_idx = orders.index(scheduled_entry["rotation_order"])
+
+    # Walk forward from scheduled starter, wrapping around
+    for i in range(len(rotation_sorted)):
+        idx = (start_idx + i) % len(rotation_sorted)
+        candidate = rotation_sorted[idx]
+        state = pitcher_repo.get_with_recovery(
+            player_id=candidate["player_id"],
+            game_date=game_date,
+            recovery_skill=50,
+        )
+        if state.current_energy >= MIN_ENERGY_STARTER:
+            return candidate["player_id"]
+
+    # All tired — return the most rested
+    best = max(
+        rotation_sorted,
+        key=lambda r: pitcher_repo.get_with_recovery(
+            r["player_id"], game_date, 50
+        ).current_energy,
+    )
+    return best["player_id"]
+
+
 def play_game(
     conn,
     args,
@@ -190,11 +246,13 @@ def play_game(
         if player.record.id in away_rotation_ids:
             player.is_starter = True
 
-    home_starter_id = rotations_repo.get_next_starter(
-        home_team.record.id, season_id, game_date
+    pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
+    series_id = game_info.get("series_id") or ""
+    home_starter_id = _pick_starter(
+        rotations_repo, pitcher_repo, home_team.record.id, season_id, game_date, series_id
     )
-    away_starter_id = rotations_repo.get_next_starter(
-        away_team.record.id, season_id, game_date
+    away_starter_id = _pick_starter(
+        rotations_repo, pitcher_repo, away_team.record.id, season_id, game_date, series_id
     )
 
     # Fallback: if no rotation set, pick the best pitcher by stamina
@@ -347,6 +405,9 @@ def play_game(
         else game_info["away_team_id"]
     )
     game_repo.save_result(game_info["game_id"], result, winner_id)
+    # Advance rotation pointers now that the game is saved
+    rotations_repo.advance_rotation_pointer(home_team.record.id, season_id, series_id)
+    rotations_repo.advance_rotation_pointer(away_team.record.id, season_id, series_id)
     team_game_repo.save_game_stats(
         game_info["game_id"],
         game_info["home_team_id"],
