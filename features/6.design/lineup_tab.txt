@@ -1,0 +1,5 @@
+lineup_tab
+
+I don't like the way drag works, 
+I don't like the arrow to see player sheets
+There should be little arrows to move players up or down

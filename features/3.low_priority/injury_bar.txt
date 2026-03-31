@@ -1,0 +1,3 @@
+injury bar
+
+The injury bar should link to the lineup tab
