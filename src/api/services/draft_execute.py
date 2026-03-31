@@ -180,8 +180,26 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
         gm_preferences.setdefault(row["team_id"], []).append(row["player_id"])
 
     year = _season_year(conn, season_id)
+
+    # _build_draft_order needs the PREVIOUS completed season for standings.
+    # The draft's season_id is the new (empty) season — find the last one with games.
+    prior_season_row = conn.execute(
+        """SELECT s.id FROM seasons s
+           JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ?
+             AND EXISTS (
+               SELECT 1 FROM games g
+               WHERE g.season_id = s.id AND g.completed = 1
+             )
+           ORDER BY s.year DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+    standings_season_id = prior_season_row["id"] if prior_season_row else season_id
+    if standings_season_id == season_id:
+        print("  WARNING: no prior completed season found for draft ordering — order will be arbitrary")
+
     blitz = BlitzDraft(conn, gm_preferences=gm_preferences)
-    picks = blitz.run(season_id=season_id, year=year, league_id=league_id)
+    picks = blitz.run(season_id=standings_season_id, year=year)
 
     # Record into draft_picks table
     now = datetime.now(UTC).isoformat()
