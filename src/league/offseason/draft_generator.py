@@ -38,8 +38,8 @@ AGE_DISTRIBUTION = [
     (22, 0.25),
 ]
 
-PITCHER_SHARE = 0.39
-POSITION_PLAYER_SHARE = 0.61
+PITCHER_SHARE         = 0.39  # This is a percentage of 1.0
+POSITION_PLAYER_SHARE = 0.61  # Unused
 
 PITCHER_POSITIONS = ["sp", "rp"]
 
