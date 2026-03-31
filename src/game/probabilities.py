@@ -118,7 +118,7 @@ PITCH_COUNT_THRESHOLD = 100
 CLOSER_ENTRANCE_PROB = 0.92
 
 # Injury/Fatigue
-INJURY_BASE_PROB = 0.0001  # per plate appearance
+INJURY_BASE_PROB = 0.0003  # per plate appearance
 FATIGUE_MULTIPLIER = 1.6  # injury multiplier for fatigued players
 LOW_ENERGY = 0.50  # threshold for low player energy
 BASE_ENERGY_DEPLETION = 0.035
