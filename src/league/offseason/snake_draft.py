@@ -112,12 +112,15 @@ class SnakeDraft:
         stat_rows = self.conn.execute(
             """
             SELECT tgs.team_id,
-                SUM(tgs.win)  AS wins,
-                SUM(tgs.loss) AS losses
+                COALESCE(SUM(tgs.win),  0) AS wins,
+                COALESCE(SUM(tgs.loss), 0) AS losses
             FROM team_game_stats tgs
             JOIN games g ON tgs.game_id = g.id
-            WHERE g.season_id = ?
+            WHERE g.season_id    = ?
+            AND g.completed    = 1
+            AND g.series_id IS NULL
             GROUP BY tgs.team_id
+            ORDER BY wins DESC, losses ASC
             """,
             (season_id,),
         ).fetchall()
