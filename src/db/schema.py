@@ -490,8 +490,8 @@ CREATE TABLE IF NOT EXISTS team_game_stats (
     runs INTEGER CHECK (runs >= 0),
     hits INTEGER CHECK (hits >= 0),
     errors INTEGER CHECK (errors >= 0),
-    win INTEGER CHECK (win IN (0, 1)),     -- 1 or 0
-    loss INTEGER CHECK (loss IN (0, 1)),    -- 1 or 0
+    win INTEGER CHECK (win IN (0, 1)) NOT NULL DEFAULT 0,     -- 1 or 0
+    loss INTEGER CHECK (loss IN (0, 1)) NOT NULL DEFAULT 0,    -- 1 or 0
 
     PRIMARY KEY (game_id, team_id),
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
