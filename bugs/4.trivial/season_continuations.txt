@@ -1,0 +1,5 @@
+The begin offseason and go to draft
+buttons hidden below the season summary on playoffs
+And only after you click through go to season summary
+is not ideal. That button should be more exposed, in 
+case the user leaves the playoff page, or quits at that point.
