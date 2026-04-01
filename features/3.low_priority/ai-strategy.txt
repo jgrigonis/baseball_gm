@@ -9,4 +9,4 @@ Different approaches here
 Auto-Fill is terrible currently
 
 Also see:
-pitcher_rotation_design.md
+team_rotation_redesign.txt

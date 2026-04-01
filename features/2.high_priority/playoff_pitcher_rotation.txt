@@ -4,4 +4,4 @@ Realistically, you should be assigning the next pitcher
 directly, also marking other "starters" as available, rest or emergency
 
 See:
-pitcher_rotation_design.md
+team_rotation_redesign.txt
