@@ -3,3 +3,9 @@ Your league page should show *which* season you are in
 Season 1, Season 2, etc.
 
 Instead of just STATE
+
+Also perhaps a nultiplayer indicator
+
+Maybe last played date 
+
+If we are going to delete unused leagues, they should have an expiration date 

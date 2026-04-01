@@ -1,1 +1,3 @@
 pitchers should have K/9
+
+On both leaders and stats tabs.

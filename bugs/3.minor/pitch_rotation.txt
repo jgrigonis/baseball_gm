@@ -3,3 +3,6 @@ pitch rotation
 If you delete p1 from the rotation and save, the pointer will be 
 pointing 1 higher, so if it was pointing at p2, now it's p3 
 and p2 was effectively skipped.
+
+See:
+pitcher_rotation_design.md
