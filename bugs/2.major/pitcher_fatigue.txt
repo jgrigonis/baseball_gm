@@ -3,3 +3,86 @@ We need to revisit pitcher fatigue
 I had the same guy starting pretty effectively every game
 
 This should not really be possibly. 
+
+league_id = b513247d-6c2e-45b2-a2de-bb815e04aa6b
+season_id = e195d4d62b214f1ab7084fa72119215a
+team_id = 0ae9b0ddbcd549469ece66053685f240
+
+My starting rotation:
+Robert Callahan 
+player_id: 4db1b0053cdb61718aca17f5247ef97a
+
+TALENT CAPS:
+  DU: 16   CL: 62   SP: 64   PO: 27   EY: 53   CT: 70   BR: 60   BU: 70
+  CA: 32   IF: 88   OF: 35   AR: 87   AC:100   ST: 81   RE: 66   GB: 60
+  KK: 78
+
+SKILLS:
+  DU: 14   CT: 41   PO: 21   EY: 44   SP: 40   BR: 55   BU: 49   CL: 48
+  CA: 29   IF: 67   OF: 32   AR: 69   AC:100   ST: 74   RE: 66   GB: 38
+  KK: 54
+
+
+Story
+04-01 threw 61 pitches
+current_energy = 0.5878
+max_energy = 0.9864
+3 IP, Loss, 3 hits, 5 ER, 2 BB, 3 K
+
+
+4 days rest
+
+
+04-06 threw 38 pitches 
+current_energy = 0.7432
+max_energy = 0.998
+Top 3 CHARLES TATE replaces ROBERT CALLAHAN — fatigue=good
+2.1 IP 3 hits, 0 ER, 1 BB, 2 K
+
+
+4 days rest 
+
+Pitcher	    IP	H	R	ER	BB	K	HR	Dec
+R. CALLAHAN	4.2	1	0	0	0	4	
+engy   max                pitches
+0.6892|0.994|1|2025-04-11|46
+Bot 5 THOMAS DAZEY replaces ROBERT CALLAHAN — fatigue=good
+
+
+
+Reduced the pitching rotation to only Robert Callahan 
+However, instead of honoring that, they just chose Ambrose Mckinney as the starter 
+3 times in a row, then injured for 4 games.
+Next it picked Norman Soderquist to start 
+for 3 games.
+Even though it was a 4g injury, ambrose mckinney returned in 3 BUG 
+Showed as returning AFTER the game, which means the extended play logic would 
+be wrong as well.
+
+The UI doesn't seem to write to team_rotations correctly.
+
+The dates are always YYYY-04-01
+The date isn't always easy to get, but we know it 
+
+Instead of deleting from the table when a pitcher is removed it should upsert the end_date 
+
+Updating the rotation will spam the table
+
+Even with the proper rotation saved in the team_rotations, with a single pitcher 
+in the rotation, it still starts the wrong player. 
+
+Reducing the rotation to 4 pitchers seems to work. 
+
+Reducing 4 to 3, then 3 to 2, then 2 to 1 actually worked to always start the one 
+
+It must be where the pointer is pointing that causes it to fail 
+
+There is an odditiy, if you remove p1 after p1 just pitched, it will go to p2, but that was *just*
+p3 so it skips p2 who is now p1. Probably solve this with a light on the next starter, but you 
+should be able to move it.
+
+
+Testing through th eUI keeps discovering more bugs, we should test through the cli.
+
+Create a test 
+with expected ranges
