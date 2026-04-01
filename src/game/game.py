@@ -1005,15 +1005,17 @@ class Game:
             self.score_differential,
             self.rng,
         ):
+            eligible = self.home_eligible if self.pitch_team == self.home else self.away_eligible
             pitcher = GameStrategy.select_relief_pitcher(
                 self.pitch_team,
                 self.current_pitcher,
                 self.inning,
                 self.score,
-                self.home_eligible,
-                self.away_eligible,
+                # self.home_eligible,
+                # self.away_eligible,
                 pitcher_states=self.pitcher_states,
                 game_date=self.game_date,
+                eligible_ids=eligible,
                 rng=self.rng,
             )
             if pitcher:
@@ -1051,15 +1053,17 @@ class Game:
                 f"hits={self.current_pitcher.game_stats.pitching.hits}, outs={self.current_pitcher.game_stats.pitching.outs}, pitches={self.current_pitcher.game_stats.pitching.pitch_count})"
             )
         if change > rnd:
+            eligible = self.home_eligible if self.pitch_team == self.home else self.away_eligible
             pitcher = GameStrategy.select_relief_pitcher(
                 self.pitch_team,
                 self.current_pitcher,
                 self.inning,
                 self.score,
-                self.home_eligible,
-                self.away_eligible,
+                # self.home_eligible,
+                # self.away_eligible,
                 pitcher_states=self.pitcher_states,
                 game_date=self.game_date,
+                eligible_ids=eligible,
                 rng=self.rng,
             )
             if pitcher:

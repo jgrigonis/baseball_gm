@@ -155,53 +155,109 @@ def _pick_starter(
     season_id: str,
     game_date,
     series_id: str = "",
-) -> str | None:
+    injured_ids: set | None = None,
+    team_players: list | None = None,
+    eligible_ids: set | None = None,
+) -> tuple[str | None, bool]:
     """
-    Get the scheduled starter from the rotation pointer, with energy check.
-    If the scheduled starter is too tired, walks forward through the rotation
-    to find a rested pitcher. Falls back to most-rested if all are tired.
-    Returns None if no rotation exists.
+    Returns (starter_id, should_advance_pointer).
+
+    Normal start (rotation pitcher healthy + rested):
+        (pitcher_id, True)  — advance pointer after game
+
+    Spot start (scheduled pitcher is injured):
+        (bullpen_pid, False) — use non-rotation pitcher, keep pointer on injured slot
+                               so the injured pitcher resumes their spot when healthy
+
+    No rotation or all pitchers unavailable:
+        (None, False) — caller falls back to stamina-based selection
     """
+    injured_ids   = injured_ids or set()
+    team_players  = team_players or []
+    def _eligible(pid: str) -> bool:
+        return eligible_ids is None or pid in eligible_ids
+
     scheduled = rotations_repo.get_scheduled_starter(team_id, season_id, series_id)
     if not scheduled:
-        return None
+        return None, False
 
     rotation = rotations_repo.get_current_rotation(team_id, season_id, game_date)
     if not rotation:
-        return None
+        return None, False
 
-    # Sort by rotation_order so we can walk forward from the scheduled slot
+    rotation_ids = {r["player_id"] for r in rotation}
+
+    # ── Scheduled pitcher is injured → spot start from bullpen ────────────────
+    if scheduled in injured_ids:
+        # Find bullpen candidates: pitchers not in rotation and not injured
+        bullpen = [
+            p for p in team_players
+            if p.pitcher_fatigue
+            and p.id not in rotation_ids
+            and p.id not in injured_ids
+            and _eligible(p.id)
+        ]
+        if bullpen:
+            # Filter to pitchers with enough energy to start, excluding closers
+            ready = [
+                p for p in bullpen
+                if pitcher_repo.get_with_recovery(
+                    p.id, game_date, p.skills.get("recovery", 50)
+                ).current_energy >= MIN_ENERGY_STARTER
+                and getattr(p, "bullpen_role", None) != "Closer"
+            ]
+            pool = ready if ready else bullpen  # fall back to full bullpen if none ready
+            # Pick highest effective stamina (stamina adjusted by fatigue) among eligible pitchers
+            best = max(pool, key=lambda p: p.get_effective_stat(p.skills.get("stamina", 0)))
+            return best.id, True   # advance pointer — D goes next, C reclaims slot when healthy
+
+        # No bullpen available — walk healthy rotation pitchers as last resort
+        # (still don't advance so the injured slot isn't lost)
+        healthy_rotation = sorted(
+            [r for r in rotation if r["player_id"] not in injured_ids],
+            key=lambda r: r["rotation_order"],
+        )
+        if not healthy_rotation:
+            return None, False
+        best_r = max(
+            healthy_rotation,
+            key=lambda r: pitcher_repo.get_with_recovery(
+                r["player_id"], game_date, 50
+            ).current_energy,
+        )
+        return best_r["player_id"], True
+
+    # ── Scheduled pitcher is healthy — check energy ───────────────────────────
     rotation_sorted = sorted(rotation, key=lambda r: r["rotation_order"])
     orders = [r["rotation_order"] for r in rotation_sorted]
-
-    # Find index of scheduled starter in sorted rotation
     scheduled_entry = next((r for r in rotation_sorted if r["player_id"] == scheduled), None)
-    if not scheduled_entry:
-        # Pointer landed on a gap — start from the beginning
-        start_idx = 0
-    else:
-        start_idx = orders.index(scheduled_entry["rotation_order"])
+    start_idx = orders.index(scheduled_entry["rotation_order"]) if scheduled_entry else 0
 
-    # Walk forward from scheduled starter, wrapping around
+    # Walk forward through healthy rotation pitchers looking for rested one
     for i in range(len(rotation_sorted)):
         idx = (start_idx + i) % len(rotation_sorted)
         candidate = rotation_sorted[idx]
+        if candidate["player_id"] in injured_ids:
+            continue
         state = pitcher_repo.get_with_recovery(
             player_id=candidate["player_id"],
             game_date=game_date,
             recovery_skill=50,
         )
         if state.current_energy >= MIN_ENERGY_STARTER:
-            return candidate["player_id"]
+            return candidate["player_id"], True
 
-    # All tired — return the most rested
+    # All healthy rotation pitchers tired — most rested healthy one
+    healthy = [r for r in rotation_sorted if r["player_id"] not in injured_ids]
+    if not healthy:
+        return None, False
     best = max(
-        rotation_sorted,
+        healthy,
         key=lambda r: pitcher_repo.get_with_recovery(
             r["player_id"], game_date, 50
         ).current_energy,
     )
-    return best["player_id"]
+    return best["player_id"], True
 
 
 def play_game(
@@ -246,18 +302,32 @@ def play_game(
         if player.record.id in away_rotation_ids:
             player.is_starter = True
 
+    # Roster eligibility: blitz=40man, long form=26man (handled inside _load_eligible_ids)
+    home_eligible = _load_eligible_ids(conn, home_team.record.id, league_id, blitz)
+    away_eligible = _load_eligible_ids(conn, away_team.record.id, league_id, blitz)
+
+    # Compute injured_ids first so _pick_starter can skip injured pitchers
+    all_player_ids = [p.id for p in home_team.players + away_team.players]
+    injury_repo = InjuryRepository(conn, league_id=league_id)
+    injury_repo.tick_all(all_player_ids)
+    injured_ids = {pid for pid in all_player_ids if injury_repo.is_injured(pid)}
+
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     series_id = game_info.get("series_id") or ""
-    home_starter_id = _pick_starter(
-        rotations_repo, pitcher_repo, home_team.record.id, season_id, game_date, series_id
+    home_starter_id, home_advance = _pick_starter(
+        rotations_repo, pitcher_repo, home_team.record.id, season_id, game_date, series_id,
+        injured_ids=injured_ids, team_players=list(home_team.players),
+        eligible_ids=home_eligible,
     )
-    away_starter_id = _pick_starter(
-        rotations_repo, pitcher_repo, away_team.record.id, season_id, game_date, series_id
+    away_starter_id, away_advance = _pick_starter(
+        rotations_repo, pitcher_repo, away_team.record.id, season_id, game_date, series_id,
+        injured_ids=injured_ids, team_players=list(away_team.players),
+        eligible_ids=away_eligible,
     )
 
-    # Fallback: if no rotation set, pick the best pitcher by stamina
+    # Fallback: if no rotation set, pick the best healthy pitcher by stamina
     def _best_pitcher_id(team: TeamInGame) -> str | None:
-        pitchers = [p for p in team.players if p.pitcher_fatigue]
+        pitchers = [p for p in team.players if p.pitcher_fatigue and p.id not in injured_ids]
         if not pitchers:
             return None
         return max(pitchers, key=lambda p: p.skills.get("stamina", 0)).id
@@ -290,12 +360,10 @@ def play_game(
         log_id=log_id, log_to_file=bool(args.logs),
     )
 
-    all_player_ids = [p.id for p in home_team.players + away_team.players]
     _ps_repo = PitcherStateRepository(conn)
     pitcher_states = {pid: _ps_repo.get(pid) for pid in all_player_ids}
 
     energy_repo = PlayerEnergyRepository(conn)
-    injury_repo = InjuryRepository(conn, league_id=league_id)
     player_energy_states = {
         p.id: energy_repo.get_with_recovery(
             p.id, game_date, durability=p.skills.get("durability", 50)
@@ -306,19 +374,6 @@ def play_game(
         state = player_energy_states.get(player.id)
         if state and player.player_energy:
             player.player_energy.set_energy(state.current_energy)
-
-    injury_repo.tick_all(all_player_ids)
-    injured_ids = {pid for pid in all_player_ids if injury_repo.is_injured(pid)}
-
-    # Roster eligibility (non-injured eligible)
-    # Blitz: 26man and 40man can play 
-    # Long form: only 26man players can play
-    if blitz:
-        home_eligible = None
-        away_eligible = None
-    else:
-        home_eligible = _load_eligible_ids(conn, home_team.record.id, league_id, blitz)
-        away_eligible = _load_eligible_ids(conn, away_team.record.id, league_id, blitz)
 
     home_saved = _load_saved_lineup(conn, home_team.record.id, league_id)
     away_saved = _load_saved_lineup(conn, away_team.record.id, league_id)
@@ -405,9 +460,10 @@ def play_game(
         else game_info["away_team_id"]
     )
     game_repo.save_result(game_info["game_id"], result, winner_id)
-    # Advance rotation pointers now that the game is saved
-    rotations_repo.advance_rotation_pointer(home_team.record.id, season_id, series_id)
-    rotations_repo.advance_rotation_pointer(away_team.record.id, season_id, series_id)
+    if home_advance:
+        rotations_repo.advance_rotation_pointer(home_team.record.id, season_id, series_id)
+    if away_advance:
+        rotations_repo.advance_rotation_pointer(away_team.record.id, season_id, series_id)
     team_game_repo.save_game_stats(
         game_info["game_id"],
         game_info["home_team_id"],

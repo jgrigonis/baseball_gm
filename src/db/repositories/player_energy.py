@@ -232,7 +232,7 @@ class PlayerEnergyRepository:
 
         return state
 
-    # THIS CODE IS NOT USED, BUT MAY BE USEFULE
+    # THIS CODE IS NOT USED, BUT MAY BE USEFUL
     # def days_until_ready(
     #     self,
     #     player_id: str,
@@ -264,7 +264,10 @@ class PlayerEnergyRepository:
     #         days += 1
 
     #     return days
+    # THIS CODE IS NOT USED, BUT MAY BE USEFUL
 
+
+    # We aren't using this code anywhere, we need to
     def get_players_needing_rest(
         self,
         player_ids: list[str],
