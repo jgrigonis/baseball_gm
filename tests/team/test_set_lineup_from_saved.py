@@ -90,7 +90,7 @@ class TestSetLineupFromSaved:
     def test_no_duplicate_players(self):
         """No player appears twice in the lineup regardless of injuries."""
         # 9 position players, 4 injured (slots 1,2,6,8)
-        healthy = [make_player(f"h{i}") for i in range(1, 6)]  # 5 healthy non-saved
+        healthy = [make_player(f"h{i}") for i in range(1, 15)]  # 14 healthy non-saved
         injured = [make_player(f"inj{i}", is_injured=True) for i in range(1, 5)]
         all_players = healthy + injured
         pitcher = make_player("pitcher")
@@ -129,9 +129,9 @@ class TestSetLineupFromSaved:
         # Only healthy player available
         available = [healthy]
 
-        # 7 more players needed to fill 9 slots — gap-fill will need more players
+        # 78 more players needed to fill 9 slots — gap-fill will need more players
         # For this test just verify no crash and sub appears
-        extra = [make_player(f"e{i}") for i in range(7)]
+        extra = [make_player(f"e{i}") for i in range(8)]
         available = [healthy] + extra
         team.players = [healthy, injured, pitcher] + extra
 
@@ -148,7 +148,7 @@ class TestSetLineupFromSaved:
         """
         player_a = make_player("A", ratings={"c": 99})  # best catcher, also in slot 6
         injured = make_player("inj", is_injured=True)
-        others = [make_player(f"o{i}") for i in range(7)]
+        others = [make_player(f"o{i}") for i in range(8)]
         pitcher = make_player("pitcher")
         all_players = [player_a, injured] + others + [pitcher]
         team = make_team(all_players, pitcher=pitcher)

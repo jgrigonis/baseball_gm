@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS offseason_steps (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
+-- 1 row per player
 CREATE TABLE IF NOT EXISTS team_rotations (
     team_id TEXT NOT NULL,
     season_id TEXT NOT NULL,

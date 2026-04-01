@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS players (
     last_name TEXT NOT NULL,
     bats TEXT NOT NULL,
     throws TEXT NOT NULL,
-    position TEXT
+    position TEXT,
+    league_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS player_skills (

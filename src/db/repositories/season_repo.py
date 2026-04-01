@@ -22,6 +22,12 @@ class SeasonRepository:
         self.conn = conn
 
     def create_season(self, year: int, name: str | None = None) -> str:
+        """
+        Create a season in the seasons table.
+
+        Will fail on duplicate.
+
+        """
         if name is None:
             name = f"Season{year}"
 

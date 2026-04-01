@@ -1,0 +1,76 @@
+team_rotations re-design
+
+UI gives a hint
+
+Here are my starter(s) in this order from 1 to N.
+A green light highlighting who goes next.
+
+User can delete pitchers from roation with a little x
+User can add to the rotation with a + on the pitchers in the bullpen
+by default they are added to the end of the rotation
+We should get rid of drag and drop
+Move pitchers with little carets, up or down
+The green light can be repositioned
+
+Nothing saves to the DB until the user presses save rotation
+
+Some caveats: nothing stops the user from bing stupid.
+They could fill their rotation with injured pitchers
+They could have a 1 pitcher rotation 
+They could have no rotation.
+
+Now, at game time, the AI may have to help decide on the starting pitcher.
+If the green light was pointing to an injured pitcher, there are a couple
+logical options:
+1. Skip that pitcher in the rotation (assuming there is anyone else in
+the rotation)
+2. Fill in with the best possible, healthy, non-fatigued bullpen pitcher who
+isn't the closer, who hasn't pitched in N days.
+
+In the AI Strategy panel the choice should toggle between 1 and 2.
+If they choose Option 1, there should be a slider to indicate how short
+you are willing to make the rotation from 1 to 5. So, if you put it on
+5, but you have a 5 man rotation, any injury will then jump to option 2.
+If you had it set to 3 with a 5 man rotation, you could continue rotating
+with 2 injured pitchers sitting out.
+
+Option 2 you set how many days rest you expect for your starter who is filling
+in. The idea is this covers when your whole starting rotation is injured for
+example, you don't want to crunsh your bullpen, you'd want to give them starter 
+type rest intervals.
+
+If no one meets the criteria for option 2 considering its N setting, you just go
+with the best current SP rating (accounting for fatigue)
+
+
+
+You give me an ordered list of player_ids, the team_id, season_id and today's date 
+
+I will look for any team_id + season_id matching records and if their end_date is NULL
+I give them today's date as the end date
+
+Then I will create new rows for each player_id in the list with today's date as the 
+effective_date and the end_date as NULL
+
+
+get_current_rotation is unchanged
+
+set_rotation is only for initiation and should throw the valueerror again
+
+get_next_starter might be dead if we use team_rotation_pointer table
+It's way too complicated, it should be dumb.
+
+remove_from_rotation is fine, this can create holes in the order, 1, 2, 4, 5
+
+add_to_rotation is fine
+
+swap_rotation_spots is fine
+
+get_scheduled_starter is fine
+
+advance_rotation_pointer is fine
+
+get_rotation_history
+
+Might be worth writing still
+

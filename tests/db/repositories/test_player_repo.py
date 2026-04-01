@@ -23,7 +23,8 @@ def db_connection():
             last_name TEXT NOT NULL,
             bats TEXT NOT NULL CHECK (bats IN ('L', 'R', 'S')),
             throws TEXT NOT NULL CHECK (throws IN ('L', 'R')),
-            position TEXT NOT NULL
+            position TEXT NOT NULL,
+            league_id  TEXT
         )
     """)
 

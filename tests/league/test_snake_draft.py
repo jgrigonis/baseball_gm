@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS league_season_teams (
 CREATE TABLE IF NOT EXISTS games (
     id TEXT PRIMARY KEY,
     season_id TEXT NOT NULL,
+    series_id TEXT,
     home_team_id TEXT NOT NULL,
     away_team_id TEXT NOT NULL,
     completed INTEGER DEFAULT 1
@@ -561,19 +562,19 @@ class TestSnakeDraftRun:
     def test_run_returns_picks(self, conn, draft, tmp_path):
         setup_basic_draft(conn, n_teams=4, n_prospects=200, season_id="s1")
         with patch("src.league.offseason.snake_draft.TEAM_FILES_DIR", tmp_path):
-            picks = draft.run("s1", 2027)
+            picks = draft.run_snake_draft("s1", 2027)
         assert len(picks) == ROUNDS * 4
 
     def test_run_writes_results_csv(self, conn, draft, tmp_path):
         setup_basic_draft(conn, n_teams=4, n_prospects=200)
         with patch("src.league.offseason.snake_draft.TEAM_FILES_DIR", tmp_path):
-            draft.run("s1", 2027)
+            draft.run_snake_draft("s1", 2027)
         assert (tmp_path / "2027" / "draft_results.csv").exists()
 
     def test_results_csv_has_correct_columns(self, conn, draft, tmp_path):
         setup_basic_draft(conn, n_teams=4, n_prospects=200)
         with patch("src.league.offseason.snake_draft.TEAM_FILES_DIR", tmp_path):
-            draft.run("s1", 2027)
+            draft.run_snake_draft("s1", 2027)
 
         with open(tmp_path / "2027" / "draft_results.csv", newline="") as f:
             headers = csv.DictReader(f).fieldnames
@@ -592,7 +593,7 @@ class TestSnakeDraftRun:
     def test_results_csv_row_count(self, conn, draft, tmp_path):
         setup_basic_draft(conn, n_teams=4, n_prospects=200)
         with patch("src.league.offseason.snake_draft.TEAM_FILES_DIR", tmp_path):
-            picks = draft.run("s1", 2027)
+            picks = draft.run_snake_draft("s1", 2027)
 
         with open(tmp_path / "2027" / "draft_results.csv", newline="") as f:
             rows = list(csv.DictReader(f))
@@ -607,7 +608,7 @@ class TestSnakeDraftRun:
         insert_game_result(conn, "s1", "t1", 50, 50)
 
         with patch("src.league.offseason.snake_draft.TEAM_FILES_DIR", tmp_path):
-            picks = draft.run("s1", 2027)
+            picks = draft.run_snake_draft("s1", 2027)
 
         assert picks == []
 
@@ -621,6 +622,6 @@ class TestSnakeDraftRun:
 
             draft = SnakeDraft(conn, rng)
             with patch("src.league.offseason.snake_draft.TEAM_FILES_DIR", tmp_path):
-                draft.run("s1", 2027)
+                draft.run_snake_draft("s1", 2027)
 
         assert mock_instance.assign.call_count == 4

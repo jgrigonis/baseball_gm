@@ -17,7 +17,7 @@ def db_connection():
     conn.execute("""
         CREATE TABLE games (
             id TEXT PRIMARY KEY,
-            date TEXT NOT NULL,
+            game_date TEXT NOT NULL,
             season_id TEXT NOT NULL,
             series_id TEXT,
             home_team_id TEXT NOT NULL,
@@ -47,7 +47,7 @@ def sample_game(db_connection):
     """Insert a sample game into database."""
     db_connection.execute(
         """
-        INSERT INTO games (id, date, season_id, home_team_id, away_team_id, completed)
+        INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         ("game-1", "2025-04-01", "season-1", "team-home", "team-away", 0),
@@ -62,7 +62,7 @@ def completed_game(db_connection):
     db_connection.execute(
         """
         INSERT INTO games (
-            id, date, season_id, home_team_id, away_team_id, 
+            id, game_date, season_id, home_team_id, away_team_id, 
             home_score, away_score, winner_id, innings_played, completed
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -259,7 +259,7 @@ class TestGameRepositoryGetSeasonGames:
             db_connection.execute(
                 """
                 INSERT INTO games (
-                    id, date, season_id, home_team_id, away_team_id, 
+                    id, game_date, season_id, home_team_id, away_team_id, 
                     completed, home_score, away_score
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -376,7 +376,7 @@ class TestGameRepositoryClearResult:
         assert row["season_id"] == "season-1"
         assert row["home_team_id"] == "team-home"
         assert row["away_team_id"] == "team-away"
-        assert row["date"] == "2025-04-02"
+        assert row["game_date"] == "2025-04-02"
 
     def test_clear_result_incomplete_game(self, game_repo, sample_game, db_connection):
         """Test clearing an already incomplete game (no-op)."""

@@ -99,51 +99,51 @@ class TestFatigueLevels:
 
 
 # ---------------------------------------------------------------------------
-# play_game
+# record_game
 # ---------------------------------------------------------------------------
 
 
 class TestPlayGame:
     def test_energy_decreases_after_game(self, catcher):
         before = catcher.energy
-        catcher.play_game()
+        catcher.record_game()
         assert catcher.energy < before
 
     def test_consecutive_days_increments(self, catcher):
-        catcher.play_game()
+        catcher.record_game()
         assert catcher.consecutive_days == 1
-        catcher.play_game()
+        catcher.record_game()
         assert catcher.consecutive_days == 2
 
     def test_season_games_increments(self, catcher):
-        catcher.play_game()
-        catcher.play_game()
+        catcher.record_game()
+        catcher.record_game()
         assert catcher.season_games_played == 2
 
     def test_partial_game_drains_less(self, catcher):
         full = PositionPlayerFatigue(position="C", durability=50)
         partial = PositionPlayerFatigue(position="C", durability=50)
-        full.play_game(innings_played=9)
-        partial.play_game(innings_played=3)
+        full.record_game(innings_played=9)
+        partial.record_game(innings_played=3)
         assert partial.energy > full.energy
 
     def test_innings_capped_at_nine(self, catcher):
         normal = PositionPlayerFatigue(position="C", durability=50)
         overcapped = PositionPlayerFatigue(position="C", durability=50)
-        normal.play_game(innings_played=9)
-        overcapped.play_game(innings_played=15)
+        normal.record_game(innings_played=9)
+        overcapped.record_game(innings_played=15)
         assert normal.energy == overcapped.energy
 
     def test_energy_never_goes_below_zero(self, catcher):
         catcher.set_energy(0.0)
-        catcher.play_game()
+        catcher.record_game()
         assert catcher.energy == 0.0
 
     def test_higher_durability_drains_less(self):
         avg = PositionPlayerFatigue(position="C", durability=50)
         elite = PositionPlayerFatigue(position="C", durability=80)
-        avg.play_game()
-        elite.play_game()
+        avg.record_game()
+        elite.record_game()
         assert elite.energy > avg.energy
 
     def test_streak_penalty_kicks_in_after_four(self, catcher):
@@ -151,7 +151,7 @@ class TestPlayGame:
         drain_per_game = []
         for _ in range(8):
             before = catcher.energy
-            catcher.play_game()
+            catcher.record_game()
             drain_per_game.append(before - catcher.energy)
 
         # First 4 games should have no streak penalty
@@ -165,13 +165,13 @@ class TestPlayGame:
     def test_catcher_drains_faster_than_outfielder(self):
         c = PositionPlayerFatigue(position="C", durability=50)
         lf = PositionPlayerFatigue(position="LF", durability=50)
-        c.play_game()
-        lf.play_game()
+        c.record_game()
+        lf.record_game()
         assert c.energy < lf.energy
 
     def test_dh_drains_slowest(self, dh, catcher):
-        dh.play_game()
-        catcher.play_game()
+        dh.record_game()
+        catcher.record_game()
         assert dh.energy > catcher.energy
 
 
@@ -187,8 +187,8 @@ class TestRestDay:
         assert catcher.energy > 0.5
 
     def test_consecutive_days_resets_on_rest(self, catcher):
-        catcher.play_game()
-        catcher.play_game()
+        catcher.record_game()
+        catcher.record_game()
         catcher.rest_day()
         assert catcher.consecutive_days == 0
 
@@ -243,13 +243,13 @@ class TestEndSeason:
 
     def test_consecutive_days_resets(self, catcher):
         for _ in range(10):
-            catcher.play_game()
+            catcher.record_game()
         catcher.end_season()
         assert catcher.consecutive_days == 0
 
     def test_season_games_resets(self, catcher):
         for _ in range(10):
-            catcher.play_game()
+            catcher.record_game()
         catcher.end_season()
         assert catcher.season_games_played == 0
 

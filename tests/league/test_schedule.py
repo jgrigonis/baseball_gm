@@ -285,7 +285,7 @@ class TestSaveScheduleToDB:
         conn.execute("""
             CREATE TABLE games (
                 id TEXT PRIMARY KEY,
-                date TEXT NOT NULL,
+                game_date TEXT NOT NULL,
                 season_id TEXT NOT NULL,
                 series_id TEXT,
                 home_team_id TEXT NOT NULL,
@@ -333,7 +333,7 @@ class TestSaveScheduleToDB:
         assert row["season_id"] == "season-1"
         assert row["home_team_id"] == "team-a"
         assert row["away_team_id"] == "team-b"
-        assert row["date"] == "2025-04-01"
+        assert row["game_date"] == "2025-04-01"
 
         # Check print output
         captured = capsys.readouterr()
@@ -412,5 +412,5 @@ class TestSaveScheduleToDB:
         assert row["season_id"] == "test-season"
         assert row["home_team_id"] == "home-team"
         assert row["away_team_id"] == "away-team"
-        assert row["date"] == "2025-12-25"
+        assert row["game_date"] == "2025-12-25"
         assert row["series_id"] is None

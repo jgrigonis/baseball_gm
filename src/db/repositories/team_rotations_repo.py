@@ -196,10 +196,10 @@ class TeamRotationsRepository:
         effective_date: str,
     ) -> None:
         """
-        Update a pitcher's rotation order.
+        Update a single pitcher's rotation order.
 
-        Ends the current assignment (sets end_date) and creates a new entry
-        with the new rotation_order.
+        Ends the current assignment (sets end_date) if it exists and 
+        creates a new entry with the new rotation_order.
 
         Args:
             team_id: Team identifier
@@ -207,9 +207,6 @@ class TeamRotationsRepository:
             player_id: Player to update
             new_rotation_order: New position in rotation (1-5)
             effective_date: When this change takes effect
-
-        Raises:
-            ValueError: If player is not in active rotation or if new_rotation_order is invalid
         """
         # Verify player is in current rotation
         cursor = self.conn.execute(
@@ -226,33 +223,27 @@ class TeamRotationsRepository:
             """,
             (team_id, season_id, player_id, effective_date, effective_date),
         )
-
         current = cursor.fetchone()
-        if not current:
-            raise ValueError(
-                f"Player {player_id} is not in active rotation for team {team_id} "
-                f"in season {season_id} as of {effective_date}"
+        if current:
+            current_order, current_effective_date = current
+
+            # Don't update if order hasn't changed
+            if current_order == new_rotation_order:
+                return
+
+            # End the current assignment
+            self.conn.execute(
+                """
+                UPDATE team_rotations
+                SET end_date = ?
+                WHERE team_id = ?
+                AND season_id = ?
+                AND player_id = ?
+                AND effective_date = ?
+                AND end_date IS NULL
+                """,
+                (effective_date, team_id, season_id, player_id, current_effective_date),
             )
-
-        current_order, current_effective_date = current
-
-        # Don't update if order hasn't changed
-        if current_order == new_rotation_order:
-            return
-
-        # End the current assignment
-        self.conn.execute(
-            """
-            UPDATE team_rotations
-            SET end_date = ?
-            WHERE team_id = ?
-            AND season_id = ?
-            AND player_id = ?
-            AND effective_date = ?
-            AND end_date IS NULL
-            """,
-            (effective_date, team_id, season_id, player_id, current_effective_date),
-        )
 
         # Create new entry with new rotation order
         self.conn.execute(
@@ -449,8 +440,9 @@ class TeamRotationsRepository:
         player2_order = player2_entry["rotation_order"]
 
         # Swap via a temporary order to avoid any ambiguity mid-swap
-        TEMP_ORDER = 9999
-        self.update_rotation(team_id, season_id, player1_id, TEMP_ORDER, effective_date)
+        # TEMP_ORDER = 9999
+        # TEMP_DATE = "9999-01-01"
+        # self.update_rotation(team_id, season_id, player1_id, TEMP_ORDER, TEMP_DATE)
         self.update_rotation(
             team_id, season_id, player2_id, player1_order, effective_date
         )

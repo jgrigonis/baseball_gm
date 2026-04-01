@@ -100,7 +100,7 @@ def db_connection():
     conn.execute("""
         CREATE TABLE games (
             id TEXT PRIMARY KEY,
-            date TEXT NOT NULL,
+            game_date TEXT NOT NULL,
             season_id TEXT NOT NULL,
             series_id TEXT
         )
@@ -734,7 +734,7 @@ class TestPlayerGameRepositoryLoadSeasonStats:
 
         for game in games:
             db_connection.execute(
-                "INSERT INTO games (id, date, season_id) VALUES (?, ?, ?)", game
+                "INSERT INTO games (id, game_date, season_id) VALUES (?, ?, ?)", game
             )
 
         db_connection.commit()
