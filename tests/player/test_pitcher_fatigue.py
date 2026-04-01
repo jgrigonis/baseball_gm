@@ -31,7 +31,17 @@ class TestPitcherFatigueInitialization:
 
 
 class TestFatigueLevel:
-    """Test fatigue level determination."""
+    """
+    Test fatigue level determination.
+
+    These tests rely on the thresholds in PitcherFatigue
+
+    FRESH_THRESHOLD = 0.85
+    GOOD_THRESHOLD = 0.65
+    TIRED_THRESHOLD = 0.40
+    EXHAUSTED_THRESHOLD = 0.01
+    
+    """
 
     def test_fresh_level(self):
         """Test FRESH fatigue level."""
@@ -132,25 +142,30 @@ class TestAddPitch:
         """Test that energy bottoms out at 0.0."""
         fatigue = PitcherFatigue(stamina=50)
 
-        # Throw 200 pitches (way more than needed to drain)
-        for _ in range(200):
+        # Throw 2000 pitches (way more than needed to drain)
+        for _ in range(2000):
             fatigue.add_pitch("fastball")
 
         assert fatigue.energy == 0.0
-        assert fatigue.pitches_thrown == 200
+        assert fatigue.pitches_thrown == 2000
 
     def test_unknown_pitch_type_uses_default(self):
         """Test that unknown pitch types use default drain rate."""
         fatigue = PitcherFatigue(stamina=50)
 
-        fatigue.add_pitch("screwball")  # Not in drain_rates dict
+        fatigue.add_pitch("goofy")  # Not in drain_rates dict
 
         # Should use default of 0.01
         assert fatigue.energy == pytest.approx(0.99, abs=0.001)
 
 
 class TestAddBatter:
-    """Test batter tracking."""
+    """
+    Test batter tracking.
+
+    Currently, we never use the add_batter function in the actual code.
+    
+    """
 
     def test_single_batter(self):
         """Test adding a single batter."""
@@ -211,7 +226,7 @@ class TestRealisticGameScenarios:
     """Test realistic game scenarios."""
 
     def test_complete_game_average_pitcher(self):
-        """Test average pitcher throwing a complete game."""
+        """Test average pitcher throwing a 100 pitch complete game."""
         fatigue = PitcherFatigue(stamina=50)
 
         # Average game: ~100 pitches, 27 batters

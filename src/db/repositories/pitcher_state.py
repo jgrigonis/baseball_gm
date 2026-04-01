@@ -25,9 +25,9 @@ is depleted and tapers as they approach full energy:
 daily_rate is derived from the pitcher's recovery skill so that a pitcher
 starting at 0.0 reaches 0.99 in:
 
-    recovery skill 100  →  3 days
-    recovery skill 50   →  4 days
-    recovery skill 1    →  5 days
+    recovery skill 100  →  4 days
+    recovery skill 50   →  5 days
+    recovery skill 1    →  6 days
 """
 
 from __future__ import annotations
@@ -44,9 +44,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _RECOVERY_THRESHOLD = 0.99  # "effectively full"
-_DAYS_AT_SKILL_MAX = 3.0  # recovery = 100
-_DAYS_AT_SKILL_MID = 4.0  # recovery = 50
-_DAYS_AT_SKILL_MIN = 5.0  # recovery = 1
+_DAYS_AT_SKILL_MAX = 4.0  # recovery = 100
+_DAYS_AT_SKILL_MID = 5.0  # recovery = 50
+_DAYS_AT_SKILL_MIN = 6.0  # recovery = 1
 
 MIN_ENERGY_STARTER = 0.75
 

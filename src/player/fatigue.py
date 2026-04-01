@@ -3,10 +3,21 @@ from src.player.fatigue_level import FatigueLevel
 
 
 def _cap_damage_threshold(stamina: int) -> int:
-    return 20 + (stamina // 5)  # ST=50 → 30, ST=100 → 40
+    """
+    Higher stamina gives a higher floor of pitches allowed
+    before the damage kicks in.
+
+    ST=50 → 30, ST=100 → 40
+    """
+    return 20 + (stamina // 5)  
 
 
 def _cap_damage_heavy(stamina: int) -> int:
+    """
+    The heavy threshold is just 30 pitches over the 
+    above calculation
+
+    """
     return _cap_damage_threshold(stamina) + 30
 
 
@@ -31,6 +42,11 @@ class PitcherFatigue:
     MOD_EXHAUSTED = 0.75
     MOD_ZERO = 0.5
 
+    FASTBALL_DRAIN = 0.01
+
+    CAP_DMG_LOW = 0.0008
+    CAP_DMG_HIGH = 0.0018
+
     def __post_init__(self):
         if self.stamina <= 0:
             raise ValueError(f"Stamina must be positive, got {self.stamina}")
@@ -51,16 +67,17 @@ class PitcherFatigue:
     def add_pitch(self, pitch_type: str = "fastball") -> None:
         self.pitches_thrown += 1
         drain_rates = {
-            "fastball": 0.01,
+            "fastball": self.FASTBALL_DRAIN,
             # "curveball": 0.005,
             # "slider": 0.004,
             # "changeup": 0.003,
             # "knuckleball": 0.002,
         }
-        drain = drain_rates.get(pitch_type, 0.01)
+        drain = drain_rates.get(pitch_type, self.FASTBALL_DRAIN)
         drain *= 50 / self.stamina
         self.energy = max(0.0, self.energy - drain)
 
+    # This is never called anywhere
     def add_batter(self) -> None:
         self.batters_faced += 1
 
@@ -89,11 +106,16 @@ class PitcherFatigue:
 
         if pitch_count < heavy:
             excess = pitch_count - threshold
-            base_damage = excess * 0.0008
+            base_damage = excess * self.CAP_DMG_LOW
         else:
             excess = pitch_count - threshold
-            base_damage = excess * 0.0018
+            base_damage = excess * self.CAP_DMG_HIGH
 
+        # 100 stamina = 0.500 stamina_factor
+        #  75 stamina = 0.625 stamina_factor
+        #  50 stamina = 0.750 stamina_factor
+        #  25 stamina = 0.875 stamina_factor
+        # Lower stamina, higher damage
         stamina_factor = 1.0 - (self.stamina / 100) * 0.5
         damage = base_damage * stamina_factor
         self.max_energy = max(0.25, self.max_energy - damage)
