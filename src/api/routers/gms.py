@@ -541,58 +541,6 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
                     "2B": row["D2"],
                     "3B": row["D3"],
                 }
-        # if row:
-        #     r = dict(row)
-        #     if is_pitcher:
-        #         ip = r["pitch_outs"] / 3 if r["pitch_outs"] else 0
-        #         er = r["pitch_earned_runs"]
-        #         era = round((er / ip) * 9, 2) if ip > 0 else None
-        #         k9 = round((r["pitch_strike_outs"] / ip) * 9, 2) if ip > 0 else None
-        #         bb9 = round((r["pitch_walks"] / ip) * 9, 2) if ip > 0 else None
-        #         whip = round((r["pitch_walks"] + r["pitch_hits"]) / ip, 3) if ip > 0 else None
-        #         stats = {
-        #             "type": "pitching",
-        #             "G":   r["pitch_games_played"],
-        #             "GS":  r["pitch_games_started"],
-        #             "W":   r["pitch_wins"],
-        #             "L":   r["pitch_losses"],
-        #             "SV":  r["pitch_saves"],
-        #             "IP":  round(ip, 1),
-        #             "ERA": era,
-        #             "WHIP": whip,
-        #             "K":   r["pitch_strike_outs"],
-        #             "BB":  r["pitch_walks"],
-        #             "K/9": k9,
-        #             "BB/9": bb9,
-        #         }
-        #     else:
-        #         ab = r["bat_ab"]
-        #         h  = r["bat_hits"]
-        #         avg = round(h / ab, 3) if ab > 0 else None
-        #         obp_num = h + r["bat_walks"] + r["bat_hbp"]
-        #         obp_den = ab + r["bat_walks"] + r["bat_hbp"] + r["bat_sac_flys"]
-        #         obp = round(obp_num / obp_den, 3) if obp_den > 0 else None
-        #         tb = h + r["bat_doubles"] + 2*r["bat_triples"] + 3*r["bat_home_runs"]
-        #         slg = round(tb / ab, 3) if ab > 0 else None
-        #         ops = round(obp + slg, 3) if obp and slg else None
-        #         stats = {
-        #             "type": "batting",
-        #             "G":   r["bat_games_played"],
-        #             "AB":  ab,
-        #             "AVG": avg,
-        #             "OBP": obp,
-        #             "SLG": slg,
-        #             "OPS": ops,
-        #             "H":   h,
-        #             "HR":  r["bat_home_runs"],
-        #             "RBI": r["bat_rbi"],
-        #             "R":   r["bat_runs"],
-        #             "BB":  r["bat_walks"],
-        #             "K":   r["bat_strike_outs"],
-        #             "SB":  r["bat_stolen_bases"],
-        #             "2B":  r["bat_doubles"],
-        #             "3B":  r["bat_triples"],
-        #         }
 
     return {
         "player_id": player_id,
