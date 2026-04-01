@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at TEXT NOT NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS players (
     id         TEXT PRIMARY KEY,
     first_name TEXT NOT NULL,
