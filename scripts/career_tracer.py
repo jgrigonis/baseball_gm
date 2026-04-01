@@ -513,7 +513,7 @@ def build_report(
 
 def main():
     args = parse_args()
-    directory = Path(args.dir) # team files dir
+    directory = Path(args.dir)  # team files dir
     db_file = args.db
 
     if not directory.exists():

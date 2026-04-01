@@ -451,8 +451,12 @@ class TeamRotationsRepository:
         # Swap via a temporary order to avoid any ambiguity mid-swap
         TEMP_ORDER = 9999
         self.update_rotation(team_id, season_id, player1_id, TEMP_ORDER, effective_date)
-        self.update_rotation(team_id, season_id, player2_id, player1_order, effective_date)
-        self.update_rotation(team_id, season_id, player1_id, player2_order, effective_date)
+        self.update_rotation(
+            team_id, season_id, player2_id, player1_order, effective_date
+        )
+        self.update_rotation(
+            team_id, season_id, player1_id, player2_order, effective_date
+        )
 
     def get_scheduled_starter(
         self,
@@ -501,7 +505,6 @@ class TeamRotationsRepository:
         ).fetchone()
 
         return starter["player_id"] if starter else None
-
 
     def advance_rotation_pointer(
         self,
@@ -555,6 +558,7 @@ class TeamRotationsRepository:
             (team_id, season_id, series_id, new_order),
         )
         self.conn.commit()
+
 
 # get_rotation_history(team_id, season_id, player_id=None)
 

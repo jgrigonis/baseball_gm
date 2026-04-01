@@ -49,7 +49,7 @@ def _create_next_season(
     Create the year N+1 season, link it to the existing league, copy teams.
     Returns (new_season_id, [team_ids]).
     """
-    current      = _get_season(conn, current_season_id)
+    current = _get_season(conn, current_season_id)
     current_name = current["name"] if current else f"Season {next_year - 1}"
 
     # Increment season number in name: "Season 1" → "Season 2"
@@ -85,6 +85,7 @@ def _create_next_season(
     import datetime as _dt
     from src.league.bootstrap import LeagueBootstrapper
     from src.db.repositories.team_repo import TeamRepository as _TeamRepo
+
     _rng = random.Random()
     _boot = LeagueBootstrapper(conn, rng=_rng)
     _team_repo = _TeamRepo(conn)
@@ -106,16 +107,18 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] not in ("offseason",):
-        raise ValueError(f"League must be in 'offseason' state, currently '{league['state']}'")
+        raise ValueError(
+            f"League must be in 'offseason' state, currently '{league['state']}'"
+        )
 
-    season_id   = _get_season_id(conn, league_id)
+    season_id = _get_season_id(conn, league_id)
     if not season_id:
         raise ValueError("No season found for this league")
 
     current_year = _get_season(conn, season_id)["year"]
-    next_year    = current_year + 1
-    league_mode  = dict(league).get("mode", "blitz") or "blitz"
-    rng          = random.Random()
+    next_year = current_year + 1
+    league_mode = dict(league).get("mode", "blitz") or "blitz"
+    rng = random.Random()
 
     # ── 1. Run offseason pipeline ─────────────────────────────────────────────
     # Pre-mark run_draft done so the pipeline skips it. The human-facing
@@ -136,7 +139,8 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
     if existing_next:
         new_season_id = existing_next["season_id"]
         team_ids = [
-            r["team_id"] for r in conn.execute(
+            r["team_id"]
+            for r in conn.execute(
                 "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
                 (league_id, new_season_id),
             ).fetchall()
@@ -155,8 +159,8 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
 
     if existing_games == 0:
         start_date = datetime.date(next_year, 4, 1)
-        scheduler  = ScheduleGenerator(rng=rng)
-        schedule   = scheduler.create_schedule(
+        scheduler = ScheduleGenerator(rng=rng)
+        schedule = scheduler.create_schedule(
             season_id=new_season_id,
             team_ids=team_ids,
             start_date=start_date,
@@ -177,7 +181,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
     ).fetchone()
 
     if not existing_draft:
-        draft_id     = str(uuid.uuid4())
+        draft_id = str(uuid.uuid4())
         draft_format = "preference" if league_mode == "blitz" else "interactive"
         conn.execute(
             "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (?, ?, ?, ?, 'pending')",
@@ -195,9 +199,9 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
 
     return {
         "prev_season_id": season_id,
-        "new_season_id":  new_season_id,
-        "new_year":       next_year,
-        "draft_id":       draft_id,
-        "game_count":     game_count,
-        "team_count":     len(team_ids),
+        "new_season_id": new_season_id,
+        "new_year": next_year,
+        "draft_id": draft_id,
+        "game_count": game_count,
+        "team_count": len(team_ids),
     }

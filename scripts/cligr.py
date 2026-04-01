@@ -43,7 +43,8 @@ from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 
 DEFAULT_DB = "cli.db"
 DEFAULT_YEAR = 2025
-NUM_YEARS = 50 # The maximum number of years to expect manifest files for
+NUM_YEARS = 50  # The maximum number of years to expect manifest files for
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -392,7 +393,9 @@ def _get_conn(db_filename: str):
     return get_connection(db_filename)
 
 
-def _bootstrap_first_season(db_filename: str, year: int | None, manifest_filename: str | None, seed: int | None):
+def _bootstrap_first_season(
+    db_filename: str, year: int | None, manifest_filename: str | None, seed: int | None
+):
     """
     Initialise the DB, create a fresh league, and return
     (conn, league_id, season_id, team_ids).
@@ -423,15 +426,12 @@ def _bootstrap_first_season(db_filename: str, year: int | None, manifest_filenam
 
     if year is None:
         year = "2025"
-    
+
     if manifest_filename is None:
         manifest_filename = "world_league"
-    
+
     margs = argparse.Namespace(
-        file = manifest_filename,
-        year = year,
-        number = NUM_YEARS,
-        overwrite = False
+        file=manifest_filename, year=year, number=NUM_YEARS, overwrite=False
     )
     create_manifests(margs)
 

@@ -77,6 +77,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
             try:
                 from src.league.playoffs.setup_playoffs import get_top_8, build_bracket
                 from datetime import date, timedelta
+
                 last_game = conn.execute(
                     """SELECT MAX(game_date) as d FROM games
                        WHERE season_id = ? AND completed = 1""",
@@ -91,6 +92,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 build_bracket(conn, season_id, seeds, playoff_start)
             except Exception as e:
                 import traceback
+
                 try:
                     conn.rollback()
                 except Exception:
@@ -98,15 +100,13 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 print(f"Playoff setup failed: {e}")
                 print(traceback.format_exc())
 
-        conn.execute(
-            "UPDATE leagues SET state = 'playoffs' WHERE id = ?", (league_id,)
-        )
+        conn.execute("UPDATE leagues SET state = 'playoffs' WHERE id = ?", (league_id,))
         conn.commit()
         return {
-            "game_date":    None,
+            "game_date": None,
             "games_played": 0,
             "league_state": "playoffs",
-            "message":      "Regular season complete — playoffs ready.",
+            "message": "Regular season complete — playoffs ready.",
         }
 
     game_date = next_date_row["game_date"]
@@ -177,7 +177,10 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                WHERE pi.games_remaining > 0 AND (pi.league_id = ? OR pi.league_id = '')""",
             (team_id, league_id),
         ).fetchall()
-        return {r["player_id"]: {"name": r["name"], "days": r["games_remaining"]} for r in rows}
+        return {
+            r["player_id"]: {"name": r["name"], "days": r["games_remaining"]}
+            for r in rows
+        }
 
     injured_before = _get_injured(gm_team_id)
 
@@ -215,6 +218,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
             )
         except Exception as e:
             import traceback
+
             # Rollback any dirty transaction so the next game starts clean
             try:
                 conn.rollback()

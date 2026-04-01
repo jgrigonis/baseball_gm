@@ -8,6 +8,7 @@ from src.util.locations import MANIFEST_FILES_DIR
 BASE_FILE = "world_league-2025.json"
 NUM_FILES = 50  # how many future manifests to create
 
+
 def parse_args():
     p = argparse.ArgumentParser(description="Create Manifest files for multiple years.")
     p.add_argument(
@@ -17,27 +18,22 @@ def parse_args():
         help="The number of new manifest files to create",
     )
     p.add_argument(
-        "--file",
-        "-f",
-        default=BASE_FILE,
-        help="The base filename to use as template"
+        "--file", "-f", default=BASE_FILE, help="The base filename to use as template"
     )
-    p.add_argument(
-        "--year",
-        "-y",
-        default=2025,
-        help="The base filename's year'"
-    )
+    p.add_argument("--year", "-y", default=2025, help="The base filename's year'")
     p.add_argument(
         "--overwrite",
         "-o",
         action="store_true",
-        help="Overwrite existing manifest files"
+        help="Overwrite existing manifest files",
     )
     return p.parse_args()
 
+
 def create_manifests(args):
-    with open(Path(MANIFEST_FILES_DIR) / str(args.file + "-" + str(args.year) + ".json")) as f:
+    with open(
+        Path(MANIFEST_FILES_DIR) / str(args.file + "-" + str(args.year) + ".json")
+    ) as f:
         data = json.load(f)
 
     base_year = data["season_year"]
@@ -61,12 +57,12 @@ def create_manifests(args):
                 json.dump(new_data, f, indent=2)
 
             print(f"Created {filename}")
-        
+
 
 def main():
     args = parse_args()
     create_manifests(args)
-    
+
 
 if __name__ == "__main__":
     main()

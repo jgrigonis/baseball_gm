@@ -31,11 +31,19 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
     parser.add_argument("--season-id", "-i", required=True, help="Season ID to play")
-    parser.add_argument("--seed", "-s", type=int, help="Random seed for reproducibility")
-    parser.add_argument("--force", "-f", action="store_true", help="Replay completed games")
+    parser.add_argument(
+        "--seed", "-s", type=int, help="Random seed for reproducibility"
+    )
+    parser.add_argument(
+        "--force", "-f", action="store_true", help="Replay completed games"
+    )
     parser.add_argument("--limit", "-l", type=int, help="Limit number of games to play")
-    parser.add_argument("--resume", "-r", action="store_true", help="Resume from last completed game")
-    parser.add_argument("--logs", action="store_true", help="Keep logfiles for each game")
+    parser.add_argument(
+        "--resume", "-r", action="store_true", help="Resume from last completed game"
+    )
+    parser.add_argument(
+        "--logs", action="store_true", help="Keep logfiles for each game"
+    )
     return parser.parse_args()
 
 
@@ -172,8 +180,9 @@ def _pick_starter(
     No rotation or all pitchers unavailable:
         (None, False) — caller falls back to stamina-based selection
     """
-    injured_ids   = injured_ids or set()
-    team_players  = team_players or []
+    injured_ids = injured_ids or set()
+    team_players = team_players or []
+
     def _eligible(pid: str) -> bool:
         return eligible_ids is None or pid in eligible_ids
 
@@ -191,7 +200,8 @@ def _pick_starter(
     if scheduled in injured_ids:
         # Find bullpen candidates: pitchers not in rotation and not injured
         bullpen = [
-            p for p in team_players
+            p
+            for p in team_players
             if p.pitcher_fatigue
             and p.id not in rotation_ids
             and p.id not in injured_ids
@@ -200,16 +210,25 @@ def _pick_starter(
         if bullpen:
             # Filter to pitchers with enough energy to start, excluding closers
             ready = [
-                p for p in bullpen
+                p
+                for p in bullpen
                 if pitcher_repo.get_with_recovery(
                     p.id, game_date, p.skills.get("recovery", 50)
-                ).current_energy >= MIN_ENERGY_STARTER
+                ).current_energy
+                >= MIN_ENERGY_STARTER
                 and getattr(p, "bullpen_role", None) != "Closer"
             ]
-            pool = ready if ready else bullpen  # fall back to full bullpen if none ready
+            pool = (
+                ready if ready else bullpen
+            )  # fall back to full bullpen if none ready
             # Pick highest effective stamina (stamina adjusted by fatigue) among eligible pitchers
-            best = max(pool, key=lambda p: p.get_effective_stat(p.skills.get("stamina", 0)))
-            return best.id, True   # advance pointer — D goes next, C reclaims slot when healthy
+            best = max(
+                pool, key=lambda p: p.get_effective_stat(p.skills.get("stamina", 0))
+            )
+            return (
+                best.id,
+                True,
+            )  # advance pointer — D goes next, C reclaims slot when healthy
 
         # No bullpen available — walk healthy rotation pitchers as last resort
         # (still don't advance so the injured slot isn't lost)
@@ -230,8 +249,12 @@ def _pick_starter(
     # ── Scheduled pitcher is healthy — check energy ───────────────────────────
     rotation_sorted = sorted(rotation, key=lambda r: r["rotation_order"])
     orders = [r["rotation_order"] for r in rotation_sorted]
-    scheduled_entry = next((r for r in rotation_sorted if r["player_id"] == scheduled), None)
-    start_idx = orders.index(scheduled_entry["rotation_order"]) if scheduled_entry else 0
+    scheduled_entry = next(
+        (r for r in rotation_sorted if r["player_id"] == scheduled), None
+    )
+    start_idx = (
+        orders.index(scheduled_entry["rotation_order"]) if scheduled_entry else 0
+    )
 
     # Walk forward through healthy rotation pitchers looking for rested one
     for i in range(len(rotation_sorted)):
@@ -274,7 +297,7 @@ def play_game(
     league_mode: str = "blitz",
 ):
     """Play a single game and save results."""
-    blitz = (league_mode == "blitz")
+    blitz = league_mode == "blitz"
 
     home_record = team_repo.get(game_info["home_team_id"])
     away_record = team_repo.get(game_info["away_team_id"])
@@ -315,19 +338,33 @@ def play_game(
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     series_id = game_info.get("series_id") or ""
     home_starter_id, home_advance = _pick_starter(
-        rotations_repo, pitcher_repo, home_team.record.id, season_id, game_date, series_id,
-        injured_ids=injured_ids, team_players=list(home_team.players),
+        rotations_repo,
+        pitcher_repo,
+        home_team.record.id,
+        season_id,
+        game_date,
+        series_id,
+        injured_ids=injured_ids,
+        team_players=list(home_team.players),
         eligible_ids=home_eligible,
     )
     away_starter_id, away_advance = _pick_starter(
-        rotations_repo, pitcher_repo, away_team.record.id, season_id, game_date, series_id,
-        injured_ids=injured_ids, team_players=list(away_team.players),
+        rotations_repo,
+        pitcher_repo,
+        away_team.record.id,
+        season_id,
+        game_date,
+        series_id,
+        injured_ids=injured_ids,
+        team_players=list(away_team.players),
         eligible_ids=away_eligible,
     )
 
     # Fallback: if no rotation set, pick the best healthy pitcher by stamina
     def _best_pitcher_id(team: TeamInGame) -> str | None:
-        pitchers = [p for p in team.players if p.pitcher_fatigue and p.id not in injured_ids]
+        pitchers = [
+            p for p in team.players if p.pitcher_fatigue and p.id not in injured_ids
+        ]
         if not pitchers:
             return None
         return max(pitchers, key=lambda p: p.skills.get("stamina", 0)).id
@@ -354,10 +391,13 @@ def play_game(
             player.bullpen_role = away_role_map[player.id]
 
     log_level = logging.INFO if args.logs else logging.WARNING
-    log_id    = game_info["game_id"] if args.logs else None
+    log_id = game_info["game_id"] if args.logs else None
     logger = setup_logger(
-        name="game", level=log_level, console_level=logging.WARNING,
-        log_id=log_id, log_to_file=bool(args.logs),
+        name="game",
+        level=log_level,
+        console_level=logging.WARNING,
+        log_id=log_id,
+        log_to_file=bool(args.logs),
     )
 
     _ps_repo = PitcherStateRepository(conn)
@@ -424,11 +464,13 @@ def play_game(
     )
     home_energy = (
         f"{home_starter.pitcher_fatigue.energy:.1f}"
-        if home_starter and home_starter.pitcher_fatigue else "N/A"
+        if home_starter and home_starter.pitcher_fatigue
+        else "N/A"
     )
     away_energy = (
         f"{away_starter.pitcher_fatigue.energy:.1f}"
-        if away_starter and away_starter.pitcher_fatigue else "N/A"
+        if away_starter and away_starter.pitcher_fatigue
+        else "N/A"
     )
     print(
         f"  ⚾ {away_team.record.mascot}"
@@ -461,9 +503,13 @@ def play_game(
     )
     game_repo.save_result(game_info["game_id"], result, winner_id)
     if home_advance:
-        rotations_repo.advance_rotation_pointer(home_team.record.id, season_id, series_id)
+        rotations_repo.advance_rotation_pointer(
+            home_team.record.id, season_id, series_id
+        )
     if away_advance:
-        rotations_repo.advance_rotation_pointer(away_team.record.id, season_id, series_id)
+        rotations_repo.advance_rotation_pointer(
+            away_team.record.id, season_id, series_id
+        )
     team_game_repo.save_game_stats(
         game_info["game_id"],
         game_info["home_team_id"],
@@ -481,19 +527,23 @@ def play_game(
             continue
         state = player_energy_states.get(player.id)
         if state:
-            state.current_energy      = fatigue.energy
-            state.max_energy          = fatigue.max_energy
-            state.consecutive_days    = fatigue.consecutive_days
+            state.current_energy = fatigue.energy
+            state.max_energy = fatigue.max_energy
+            state.consecutive_days = fatigue.consecutive_days
             state.season_games_played = fatigue.season_games_played
-            state.last_game_date      = game_date
+            state.last_game_date = game_date
 
     save_energy(conn, game_date, home_team, away_team, league_id=league_id)
     save_position_energy(conn, player_energy_states, league_id)
 
     for player_id, severity, activity in game.new_injuries:
         injury_repo.injure(
-            player_id, season_id, game_date,
-            severity=severity, activity=activity, rng=rng,
+            player_id,
+            season_id,
+            game_date,
+            severity=severity,
+            activity=activity,
+            rng=rng,
         )
 
     logger.info(home_team.output_defensive_stats())
@@ -512,8 +562,11 @@ def main():
     conn = get_connection(args.db)
 
     season_logger = setup_logger(
-        name="season", level=logging.INFO, console_level=logging.WARNING,
-        log_id="season", log_to_file=True,
+        name="season",
+        level=logging.INFO,
+        console_level=logging.WARNING,
+        log_id="season",
+        log_to_file=True,
     )
 
     league_row = conn.execute(
@@ -524,12 +577,14 @@ def main():
 
     league_mode = "blitz"
     if league_id:
-        lr = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()
+        lr = conn.execute(
+            "SELECT mode FROM leagues WHERE id = ?", (league_id,)
+        ).fetchone()
         if lr:
             league_mode = lr["mode"] or "blitz"
 
-    game_repo      = GameRepository(conn)
-    team_repo      = TeamRepository(conn)
+    game_repo = GameRepository(conn)
+    team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
@@ -565,14 +620,22 @@ def main():
 
         try:
             result = play_game(
-                conn, args, team_repo, game_repo, team_game_repo, rotations_repo,
-                args.season_id, game_info, rng,
-                league_id=league_id, league_mode=league_mode,
+                conn,
+                args,
+                team_repo,
+                game_repo,
+                team_game_repo,
+                rotations_repo,
+                args.season_id,
+                game_info,
+                rng,
+                league_id=league_id,
+                league_mode=league_mode,
             )
             completed += 1
             if completed % 10 == 0:
                 elapsed = (datetime.now() - start_time).total_seconds()
-                rate      = completed / elapsed if elapsed > 0 else 0
+                rate = completed / elapsed if elapsed > 0 else 0
                 remaining = (len(games) - completed) / rate if rate > 0 else 0
                 msg = (
                     f"[{i}/{len(games)}] ✅ {completed} games completed"
@@ -586,7 +649,9 @@ def main():
                 if args.logs:
                     season_logger.info(f"[{i}/{len(games)}] ✅ {result}")
         except Exception as e:
-            print(f"[{i}/{len(games)}] ❌ Error playing game {game_info['game_id']}: {e}")
+            print(
+                f"[{i}/{len(games)}] ❌ Error playing game {game_info['game_id']}: {e}"
+            )
             print(traceback.format_exc())
             continue
 

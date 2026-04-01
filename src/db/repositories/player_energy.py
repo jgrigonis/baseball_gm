@@ -266,7 +266,6 @@ class PlayerEnergyRepository:
     #     return days
     # THIS CODE IS NOT USED, BUT MAY BE USEFUL
 
-
     # We aren't using this code anywhere, we need to
     def get_players_needing_rest(
         self,

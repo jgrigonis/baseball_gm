@@ -54,7 +54,9 @@ class SnakeDraft:
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
 
-    def run_snake_draft(self, season_id: str, year: int, league_id: str | None = None) -> list[DraftPick]:
+    def run_snake_draft(
+        self, season_id: str, year: int, league_id: str | None = None
+    ) -> list[DraftPick]:
         """
         Execute the snake draft.
 
@@ -278,7 +280,9 @@ class SnakeDraft:
     # Output
     # -----------------------------------------------------------------------
 
-    def _write_results(self, picks: list[DraftPick], year: int, league_id: str | None = None) -> None:
+    def _write_results(
+        self, picks: list[DraftPick], year: int, league_id: str | None = None
+    ) -> None:
         """Write draft_results.csv."""
         out_dir = Path(TEAM_FILES_DIR) / str(year)
         if league_id:
