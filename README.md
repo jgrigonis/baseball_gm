@@ -64,6 +64,15 @@ Create a fun, interactive game, where you manage and run a baseball team.
 
 * Comprehensive gameplay, with everything
 
+
+### Development notes
+
+At the root of the project you can run `pytest` to run the unit tests
+
+You can run `black .` to update the code with black formatting standards
+
+You can run `./pyflake.sh` to run pyflakes against the src, tests and scripts directories.
+
 ---
 
 This project is licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE for details.
