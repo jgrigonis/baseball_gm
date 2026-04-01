@@ -26,7 +26,7 @@ async def history_index(request: Request, league_id: str):
 
 
 @router.get("/{year}/", response_class=HTMLResponse)
-async def season_summary(request: Request, league_id: str, year: int):
+async def history_season_summary_stub(request: Request, league_id: str, year: int):
     """
     Full summary for one season:
     - Final standings

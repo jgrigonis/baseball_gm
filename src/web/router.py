@@ -19,7 +19,7 @@ from src.api.database import get_db
 from src.api.schemas import skill_to_grade, player_row_to_grades
 
 from jinja2 import Environment, FileSystemLoader
-from starlette.responses import HTMLResponse
+# from starlette.responses import HTMLResponse
 
 # Templates are in src/web/templates/ relative to the project root
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -762,7 +762,7 @@ async def history_index(request: Request, league_id: str, db: DB):
     token, name, redir = _require_identity(request)
     if redir:
         return redir
-    gm_rows = db.execute(
+    gm = db.execute(
         "SELECT * FROM gms WHERE user_session = ? LIMIT 1", (token,)
     ).fetchone()
     seasons = db.execute(

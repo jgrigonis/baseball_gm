@@ -676,7 +676,7 @@ def start_league(
 
     try:
         _start(league_id, db)
-    except Exception as e:
+    except Exception:
         # Surface the error as a plain response so we can see what went wrong
         return HTMLResponse(
             f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
@@ -967,7 +967,7 @@ def execute_draft(
         from src.api.services.draft_execute import execute_blitz_draft
 
         execute_blitz_draft(draft["id"], db)
-    except Exception as e:
+    except Exception:
         return HTMLResponse(
             f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
             f"Draft execution failed:\n\n{traceback.format_exc()}</pre>",
@@ -1061,9 +1061,6 @@ def save_roster(
     gm_session: str | None = Cookie(default=None),
 ):
     """Save 40-man roster. Enforces the 40-player limit."""
-    from fastapi import Form as _Form
-    import json as _json
-
     user = _resolve_user(db, gm_session)
     if not user:
         return HTMLResponse("Unauthorized", status_code=401)
@@ -1075,7 +1072,7 @@ def save_roster(
     # Read JSON body
     import asyncio
 
-    body_bytes = (
+    _ = (
         asyncio.get_event_loop().run_until_complete(request.body())
         if hasattr(request, "_body")
         else None
@@ -1377,8 +1374,8 @@ def standings(
         for rank, r in enumerate(ranked, 1):
             wins = r["wins"] or 0
             losses = r["losses"] or 0
-            rs = r["runs_scored"] or 0
-            ra = ra_map.get(r["team_id"], 0)
+            _ = r["runs_scored"] or 0
+            _ = ra_map.get(r["team_id"], 0)
             played = wins + losses
             pct = wins / played if played else 0.0
             gb_val = ((leader_wins - wins) + (losses - leader_losses)) / 2
@@ -2071,16 +2068,13 @@ async def save_lineup(
             {"detail": "Rotation cannot exceed 6 starters"}, status_code=422
         )
 
-    season_id = ctx_season_id = db.execute(
+    season_id = db.execute(
         """SELECT s.id FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
            WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     season_id = season_id["id"] if season_id else None
-
-    # Use season start date so rotation is always visible to sim
-    import datetime
 
     season_start_row = db.execute(
         "SELECT MIN(game_date) as start FROM games WHERE season_id = ?",
@@ -2515,8 +2509,6 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     """Load full bracket state for template rendering."""
     from src.league.playoffs.play_playoffs import (
         get_series_id,
-        get_series_winner,
-        series_is_decided,
     )
 
     ROUND_DEFS = [
@@ -3252,7 +3244,7 @@ def player_panel(
 
 
 @router.get("/leagues/{league_id}/history/{year}/", response_class=HTMLResponse)
-def season_summary(
+def history_season_detail(
     request: Request,
     league_id: str,
     year: int,

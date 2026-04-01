@@ -82,7 +82,6 @@ def _create_next_season(
         )
 
     # Bootstrap rotations and bullpen roles for the new season
-    import datetime as _dt
     from src.league.bootstrap import LeagueBootstrapper
     from src.db.repositories.team_repo import TeamRepository as _TeamRepo
 

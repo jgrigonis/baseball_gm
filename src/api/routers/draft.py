@@ -87,7 +87,7 @@ def get_board(draft_id: str, db: DB) -> list[PlayerGrades]:
         ).fetchall()
     }
 
-    draft = _require_draft(draft_id, db)
+    _ = _require_draft(draft_id, db)
 
     all_players = db.execute(
         """

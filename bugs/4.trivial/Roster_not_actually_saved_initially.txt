@@ -1,0 +1,15 @@
+Roster not actually saved
+
+Start a new league
+Run the draft
+Go to Roster - DO NOT SAVE 
+Go to lineup
+Auto fill 
+Save Lineup 
+You will note you only have 26 available players 
+Go back to roster 
+If you fill to 40 it says already set to 40
+However, it's not saved like that 
+Effectively the roster page is showing 40 in the left column
+However, the lineup page can only see 26
+If you save the roster, it does solve the lineup problem

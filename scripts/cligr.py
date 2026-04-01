@@ -35,7 +35,6 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
@@ -329,7 +328,7 @@ def clear_all_teams() -> None:
         return
     shutil.rmtree(d)
     d.mkdir(parents=True, exist_ok=True)
-    print(f"  team_files/: cleared all team files")
+    print("  team_files/: cleared all team files")
 
 
 def clear_teams_for_league(league_id: str) -> None:
@@ -559,10 +558,7 @@ def _create_next_season_cli(
 
     # Bootstrap rotations and bullpen roles for each team in the new season
     from src.league.bootstrap import LeagueBootstrapper
-    from src.db.repositories.player_status_repo import PlayerStatusRepository
-    import dataclasses as _dc
 
-    status_repo = PlayerStatusRepository(conn)
     boot = LeagueBootstrapper(conn, rng=rng)
     from src.db.repositories.team_repo import TeamRepository
 
@@ -659,7 +655,6 @@ def _play_regular_season(
 
 def _setup_playoffs(conn, season_id: str, year: int):
     """Seed top 8, build bracket, demote extra starters."""
-    import datetime
     from src.league.playoffs.setup_playoffs import (
         get_top_8,
         build_bracket,
@@ -854,7 +849,6 @@ def _make_logger(name: str, enabled: bool):
 
 def _run_reports(db_filename: str, season_id: str, logs: bool = False):
     """Run leaderboard and stats reports by importing directly."""
-    from pathlib import Path as _Path
     from src.db.connection import get_connection as _get_conn
     from src.stats.loader import StatsLoader
 
@@ -874,8 +868,6 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
             show_all_leaderboards,
             calculate_min_pa,
         )
-        from src.stats.loader import StatsLoader
-
         logger = _make_logger("view_leaderboards", logs)
 
         min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
@@ -1144,12 +1136,12 @@ def cmd_reports(args) -> None:
             print(output, end="")  # still show on screen
 
             # Append to per-report temp files
-            leaders_path = (
-                _temp_dir() / f"league_leaders_{args.start_year}_{args.end_year}.txt"
-            )
-            totals_path = (
-                _temp_dir() / f"league_totals_{args.start_year}_{args.end_year}.txt"
-            )
+            # leaders_path = (
+            #     _temp_dir() / f"league_leaders_{args.start_year}_{args.end_year}.txt"
+            # )
+            # totals_path = (
+            #     _temp_dir() / f"league_totals_{args.start_year}_{args.end_year}.txt"
+            # )
             # Split output at section boundaries and write to respective files
             # Simpler: write everything to a combined file, plus individual files
             combined_path = (
