@@ -54,7 +54,7 @@ class SnakeDraft:
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
 
-    def run(self, season_id: str, year: int, league_id: str | None = None) -> list[DraftPick]:
+    def run_snake_draft(self, season_id: str, year: int, league_id: str | None = None) -> list[DraftPick]:
         """
         Execute the snake draft.
 

@@ -282,7 +282,7 @@ class OffseasonPipeline:
 
     def _run_draft(self, season_id: str, league_id: str) -> None:
         draft = SnakeDraft(self.conn, self.rng)
-        picks = draft.run(season_id, self.year, league_id)
+        picks = draft.run_snake_draft(season_id, self.year, league_id)
         print(f"  Draft complete: {len(picks)} total picks")
 
     def _trim_rosters(self, season_id: str) -> None:

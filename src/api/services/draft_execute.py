@@ -199,7 +199,7 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
         print("  WARNING: no prior completed season found for draft ordering — order will be arbitrary")
 
     blitz = BlitzDraft(conn, gm_preferences=gm_preferences)
-    picks = blitz.run(season_id=standings_season_id, year=year)
+    picks = blitz.run_snake_draft(season_id=standings_season_id, year=year, league_id=league_id)
 
     # Record into draft_picks table
     now = datetime.now(UTC).isoformat()
