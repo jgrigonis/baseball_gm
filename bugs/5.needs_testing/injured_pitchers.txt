@@ -4,3 +4,5 @@ Eligible pitchers.
 
 I've threaded through eligible pitchers, for blitz, and long form.
 Only eligible pitchers should be put in the game.
+
+This seems solved.
