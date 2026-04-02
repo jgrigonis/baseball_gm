@@ -9,12 +9,12 @@ def _cap_damage_threshold(stamina: int) -> int:
 
     ST=50 → 30, ST=100 → 40
     """
-    return 20 + (stamina // 5)  
+    return 20 + (stamina // 5)
 
 
 def _cap_damage_heavy(stamina: int) -> int:
     """
-    The heavy threshold is just 30 pitches over the 
+    The heavy threshold is just 30 pitches over the
     above calculation
 
     """

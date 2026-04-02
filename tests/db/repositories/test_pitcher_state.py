@@ -13,16 +13,15 @@ from src.db.repositories.pitcher_state import (
     MIN_ENERGY_STARTER,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def conn():
     conn = sqlite3.connect(":memory:")
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE pitcher_state (
             player_id TEXT,
             league_id TEXT,
@@ -33,8 +32,7 @@ def conn():
             consecutive_days INTEGER,
             PRIMARY KEY (player_id, league_id)
         )
-        """
-    )
+        """)
     return conn
 
 
@@ -46,6 +44,7 @@ def repo(conn):
 # ---------------------------------------------------------------------------
 # Recovery math tests
 # ---------------------------------------------------------------------------
+
 
 def test_daily_recovery_rate_bounds():
     low = _daily_recovery_rate(1)
@@ -73,6 +72,7 @@ def test_apply_recovery_caps_at_1():
 # ---------------------------------------------------------------------------
 # Availability logic
 # ---------------------------------------------------------------------------
+
 
 def test_availability_full_rest():
     state = PitcherState(
@@ -115,6 +115,7 @@ def test_availability_min_floor():
 # Repository: get / save
 # ---------------------------------------------------------------------------
 
+
 def test_save_and_get(repo):
     state = PitcherState(
         player_id="p1",
@@ -142,6 +143,7 @@ def test_get_missing_returns_none(repo):
 # ---------------------------------------------------------------------------
 # get_with_recovery
 # ---------------------------------------------------------------------------
+
 
 def test_get_with_recovery_no_history(repo):
     state = repo.get_with_recovery("p1", date.today())
@@ -190,6 +192,7 @@ def test_get_with_recovery_negative_days(repo):
 # get_available_pitchers
 # ---------------------------------------------------------------------------
 
+
 def test_get_available_pitchers(repo):
     today = date.today()
 
@@ -223,6 +226,7 @@ def test_get_available_pitchers(repo):
 # ---------------------------------------------------------------------------
 # update_after_game
 # ---------------------------------------------------------------------------
+
 
 def test_update_after_game_inserts(repo):
     today = date.today()
@@ -283,6 +287,7 @@ def test_update_after_game_consecutive_days(repo):
 # ---------------------------------------------------------------------------
 # delete / clear
 # ---------------------------------------------------------------------------
+
 
 def test_delete(repo):
     repo.save(PitcherState("p1", 0.5, 1.0))

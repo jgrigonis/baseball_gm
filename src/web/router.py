@@ -19,6 +19,7 @@ from src.api.database import get_db
 from src.api.schemas import skill_to_grade, player_row_to_grades
 
 from jinja2 import Environment, FileSystemLoader
+
 # from starlette.responses import HTMLResponse
 
 # Templates are in src/web/templates/ relative to the project root

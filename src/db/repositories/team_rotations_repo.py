@@ -198,7 +198,7 @@ class TeamRotationsRepository:
         """
         Update a single pitcher's rotation order.
 
-        Ends the current assignment (sets end_date) if it exists and 
+        Ends the current assignment (sets end_date) if it exists and
         creates a new entry with the new rotation_order.
 
         Args:

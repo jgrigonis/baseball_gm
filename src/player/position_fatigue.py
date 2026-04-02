@@ -99,7 +99,7 @@ class PositionPlayerFatigue:
     # ------------------------------------------------------------------
 
     # was play_game
-    # Only used in unit tests 
+    # Only used in unit tests
     def record_game(self, innings_played: int = 9) -> None:
         """
         Record a game played. Drain scales with innings and position.

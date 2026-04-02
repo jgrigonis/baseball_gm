@@ -40,7 +40,7 @@ class TestFatigueLevel:
     GOOD_THRESHOLD = 0.65
     TIRED_THRESHOLD = 0.40
     EXHAUSTED_THRESHOLD = 0.01
-    
+
     """
 
     def test_fresh_level(self):
@@ -164,7 +164,7 @@ class TestAddBatter:
     Test batter tracking.
 
     Currently, we never use the add_batter function in the actual code.
-    
+
     """
 
     def test_single_batter(self):

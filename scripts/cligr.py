@@ -868,6 +868,7 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
             show_all_leaderboards,
             calculate_min_pa,
         )
+
         logger = _make_logger("view_leaderboards", logs)
 
         min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
