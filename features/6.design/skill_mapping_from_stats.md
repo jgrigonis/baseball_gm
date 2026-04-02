@@ -1,3 +1,4 @@
+Can we look at a player's career history of stats and generate a player in our game?
 
 
 # 🟢 Tier 1 — Directly derivable (high confidence)

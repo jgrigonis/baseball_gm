@@ -57,7 +57,8 @@ Next it picked Norman Soderquist to start
 for 3 games.
 Even though it was a 4g injury, ambrose mckinney returned in 3 BUG 
 Showed as returning AFTER the game, which means the extended play logic would 
-be wrong as well.
+be wrong as well. BUG 
+see: injured_players_return.txt
 
 The UI doesn't seem to write to team_rotations correctly.
 

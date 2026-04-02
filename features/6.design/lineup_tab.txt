@@ -3,3 +3,12 @@ lineup_tab
 I don't like the way drag works, 
 I don't like the arrow to see player sheets
 There should be little arrows to move players up or down
+
+When you are sorting, it would be better if you could see how the people 
+already in the lineup ranked.
+
+We will need to rediesign the batting order setting tab.
+
+Might be nice to have a way to remove players from the 26man/40man directly here.
+
+Some indicator of what fielding position(s) is missing

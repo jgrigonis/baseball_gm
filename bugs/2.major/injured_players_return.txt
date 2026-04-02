@@ -1,0 +1,12 @@
+Players are returning 1 game before the banner.
+
+The tick is happening 1 too many times, or we aren't counting correctly.
+
+If a player is injured for 1g, they literally return in the next game.
+
+The solution seems to be just to reduce the reported injury by 1.
+
+Also, the returned bar should say returning and trigger at 1 game to go.
+That way you can adjust your lineup for the following game.
+
+No returning bar on 0g.
