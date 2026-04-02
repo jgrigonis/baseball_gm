@@ -1,7 +1,7 @@
 # tests/api/web/test_compute_ratings.py
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from src.api.routers.web import _compute_ratings
 
 
