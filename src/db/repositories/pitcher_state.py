@@ -209,9 +209,10 @@ class PitcherStateRepository:
             state.current_energy = 1.0
             return state
 
-        days_rest = (game_date - state.last_game_date).days
+        days_rest = max(0, (game_date - state.last_game_date).days - 1)
 
         # Energy: exponential approach toward max_energy (not 1.0)
+        # This will never hit with the max set above
         if days_rest < 0:
             logger.warning(
                 "Data inconsistency for pitcher %s: game_date %s is before "

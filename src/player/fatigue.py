@@ -7,15 +7,18 @@ def _cap_damage_threshold(stamina: int) -> int:
     Higher stamina gives a higher floor of pitches allowed
     before the damage kicks in.
 
-    ST=50 → 30, ST=100 → 40
+    ST=50 → 45 pitch floor, ST=100 → 70 pitch floor
+
     """
-    return 20 + (stamina // 5)
+    return 20 + stamina // 2
 
 
 def _cap_damage_heavy(stamina: int) -> int:
     """
     The heavy threshold is just 30 pitches over the
     above calculation
+
+    This seems fine for now, adjust second
 
     """
     return _cap_damage_threshold(stamina) + 30
@@ -91,8 +94,9 @@ class PitcherFatigue:
         }
         return modifiers[self.get_level()]
 
-    def set_energy(self, level: float) -> None:
-        self.energy = max(0.0, min(self.max_energy, level))
+    def set_energy(self, level: float, max_level: float) -> None:
+        self.energy = max(0.0, min(max_level, level))
+        self.max_energy = max_level
 
     # --- new post-outing methods ---
 

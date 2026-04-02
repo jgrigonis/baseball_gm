@@ -99,7 +99,7 @@ def load_energy(conn, game_repo, game_id, home_team, away_team, league_id=""):
             recovery_skill=player.skills["recovery"],
         )
         if player.pitcher_fatigue:
-            player.pitcher_fatigue.set_energy(state.current_energy)
+            player.pitcher_fatigue.set_energy(state.current_energy, state.max_energy)
     return game_date
 
 
@@ -413,7 +413,7 @@ def play_game(
     for player in home_team.position_players + away_team.position_players:
         state = player_energy_states.get(player.id)
         if state and player.player_energy:
-            player.player_energy.set_energy(state.current_energy)
+            player.player_energy.set_position_energy(state.current_energy, state.max_energy)
 
     home_saved = _load_saved_lineup(conn, home_team.record.id, league_id)
     away_saved = _load_saved_lineup(conn, away_team.record.id, league_id)
