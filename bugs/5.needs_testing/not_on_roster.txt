@@ -1,1 +1,4 @@
 pitcher not on the 40 man roster came in to game.
+
+This can happen if you run out of pitchers.
+It should not happen.
