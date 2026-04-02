@@ -1,4 +1,7 @@
 Roster page should be able to, just grab top players
+essentially, make your 40 man roster the top rated by overall
 
 It should work however you have it sorted, taking enough players
 to fill to 40
+
+We need to worry about 26 man roster also, for long form

@@ -1,12 +1,13 @@
 <script>
 (function() {
 
-function schedToggleDropdown() {
-  var dd = document.getElementById('sched-dropdown');
-  if (!dd) return;
-  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
-}
-window.schedToggleDropdown = schedToggleDropdown;
+// This should be dead code
+// function schedToggleDropdown() {
+//   var dd = document.getElementById('sched-dropdown');
+//   if (!dd) return;
+//   dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+// }
+// window.schedToggleDropdown = schedToggleDropdown;
 
 // Helpers that always look up fresh DOM refs
 function getBtn()  { return document.getElementById('sched-play-btn'); }
@@ -46,8 +47,9 @@ function setSimMode(simming) {
 if (typeof window._simStop === 'undefined') window._simStop = false;
 
 async function schedSim(count) {
-  var dd = document.getElementById('sched-dropdown');
-  if (dd) dd.style.display = 'none';
+  // more dead code
+  // var dd = document.getElementById('sched-dropdown');
+  // if (dd) dd.style.display = 'none';
 
   window._simStop = false;
   setSimMode(count !== 1);
@@ -83,10 +85,12 @@ async function schedSim(count) {
       // Build injury news
       var injNews = '';
       if (d.new_injuries && d.new_injuries.length > 0) {
-        injNews += d.new_injuries.map(function(i) { return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
+        // old way, ES6 arrow below // injNews += d.new_injuries.map(function(i) { return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
+        injNews += d.new_injuries.map(i => `🚑 ${i.name} (${i.days}g)`).join('  ');
       }
       if (d.returned && d.returned.length > 0) {
-        injNews += (injNews ? '  ' : '') + d.returned.map(function(i) { return '✅ ' + i.name + ' returned'; }).join('  ');
+        // old way, ES6 arrow below // injNews += (injNews ? '  ' : '') + d.returned.map(function(i) { return '✅ ' + i.name + ' returned'; }).join('  ');
+        injNews += (injNews ? '  ' : '') + d.returned.map(i => `✅ ${i.name} returned`).join('  ');
       }
       setInjuryNews(injNews);  // clears if empty, shows if not
 
@@ -157,12 +161,15 @@ function schedStop() {
 }
 window.schedStop = schedStop;
 
+// dead code
 // Close dropdown on outside click
-document.addEventListener('click', function(e) {
-  var wrap = document.getElementById('play-wrap');
-  var dd   = document.getElementById('sched-dropdown');
-  if (wrap && dd && !wrap.contains(e.target)) dd.style.display = 'none';
-});
+// document.addEventListener('click', function(e) {
+//   var wrap = document.getElementById('play-wrap');
+//   var dd   = document.getElementById('sched-dropdown');
+//   if (wrap && dd && !wrap.contains(e.target)) dd.style.display = 'none';
+// });
+// above code is dead
+
 
 })();
 </script>
