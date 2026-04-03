@@ -645,21 +645,21 @@ class GameStrategy:
 
         if pitcher.is_starter:
             if stats.runs == 0:
-                prob *= 0.33
+                prob *= 0.21
             elif stats.runs == 1:
-                prob *= 0.7
+                prob *= 0.52
             elif stats.runs == 2 and score_differential > 0:
-                prob *= 0.75
+                prob *= 0.61
             if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
                 if stats.hits == 0:
-                    prob *= 0.18
+                    prob *= 0.11
 
             # Modifier: Protect lead with starter (reduce probability of pulling them)
             if score_differential > 0 and stats.outs < 18:  # Haven't gone 6 innings yet
                 # Winning and starter hasn't gone 5 innings yet
-                prob *= 0.5  # Half as likely to pull
+                prob *= 0.33  # About 1/3 as likely to pull
             if stats.pitch_count >= PITCH_COUNT_THRESHOLD:
-                prob = max(prob, 0.75)
+                prob = max(prob, 0.72)
 
         elif pitcher.bullpen_role == "Closer":
             outs = stats.outs

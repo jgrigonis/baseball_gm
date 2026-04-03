@@ -67,6 +67,7 @@ class GameEventLogger:
         outgoing_id: str,
         outgoing_name: str,
         reason: str,
+        detail: str,
     ) -> None:
         """Record a pitching change and why it was made."""
         self._insert(
@@ -75,6 +76,7 @@ class GameEventLogger:
             player_id=incoming_id,
             player_id_2=outgoing_id,
             reason=f"{incoming_name} replaces {outgoing_name} — {reason}",
+            detail=detail,
         )
 
     def closer_called(

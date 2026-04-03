@@ -1093,6 +1093,7 @@ class Game:
                         outgoing_id=outgoing.id if outgoing else "",
                         outgoing_name=outgoing.name if outgoing else "",
                         reason=f"fatigue={level}",
+                        detail=f"change={change}",
                     )
             else:
                 self.logger.info("⚠️ No available pitchers!")
