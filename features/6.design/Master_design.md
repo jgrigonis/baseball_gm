@@ -7,27 +7,28 @@ multiple seasons. Supports both quick-play sessions (a full GM career in
 60-90 minutes with a group) and longer-form leagues where seasons unfold
 over days or weeks.
 
-The AI GM is a first-class participant — human GMs can drop in or out, and
+The AI GM is a first-class participant — human GMs can drop out, and
 the league continues either way.
 
 ---
 
 ## Sim Performance
 
-The engine runs at approximately **8 games per second**. A full 30-team,
-162-game season generates ~2,430 games, taking roughly **5 minutes of pure
-sim time**. This shapes everything about pacing:
+The sim engine runs at up to **8 games per second**. A full 30-team,
+174-game season generates ~2,610 games, taking roughly **5 minutes of pure
+sim time**. This sets the scale in terms of pacing:
 
 | Scope             | Games   | Sim time   |
 |-------------------|---------|------------|
-| 1 regular season  | 2,430   | ~5 min     |
+| 1 regular season  | 2,610   | ~5 min     |
 | + playoffs        | ~60     | ~8 sec     |
-| 5-season career   | ~12,500 | ~26 min    |
+| 5-season career   | ~13,000 | ~26 min    |
 | 8-season career   | ~20,000 | ~42 min    |
 | 25-season career  | ~62,000 | ~2 hrs     |
 
 Sim time is not a significant bottleneck in Blitz — **GM decision time is**.
-In the Long Form version, Simulation time is insignificant.
+In the Long Form version, Simulation time is insignificant, as the players
+(some human) are intended to take time for nearly every single game.
 ---
 
 ## Experience Modes
@@ -36,24 +37,25 @@ In the Long Form version, Simulation time is insignificant.
 - A full GM career spans **5–8 seasons**, matching real-world GM tenure
 - Real GMs typically last 3–4 years if underperforming; 8–10 if successful
 - 5 seasons of sim takes ~26 minutes — total session with draft and decisions
-  lands around **60–90 minutes**
-- League always runs at **~30 teams** — the full sim size
+  is aimed towards around **60–90 minutes**
+- League currently always runs at **~30 teams** — the full sim size
 - Human GMs range from **1 to 30** depending on who joins; AI fills the rest
-- Join with strangers or friends via a league code
+- Join with strangers (via future public lobby) or friends via a league code
 - Sim advances on a timer between phases — GMs who aren't ready get AI fallback
 - At career end: performance verdict, optionally start a new career
 
 ### Long Form ("Commissioner League")
-- A season unfolds over days or weeks (real time)
-- Sim engine advances on a schedule (e.g. one series per day)
+- A season unfolds over days or weeks
+- Sim engine advances on a schedule (e.g. one series per day, or 10 games)
 - GMs make decisions on their own schedule between sim runs
-- League runs at **~30 teams** — same sim size as Blitz
+- League generally runs at **~30 teams**
 - Human GMs range from 1 to 30; AI fills the rest
 - Higher stakes, more deliberate decision-making
 - A "career" plays out over weeks or months of real time
 
 **Both modes use the same sim engine and GM decision model.**
-The only difference is the pace at which the sim clock advances.
+The main difference is the pace at which the sim clock advances.
+Also, the intended stopping and adjustment points vary
 
 ---
 
@@ -65,7 +67,7 @@ League Created
     ▼
 Pre-Season
   ├── Draft (see Draft Format below)
-  ├── Set 26-man active roster from 40-man (or full roster in Long Form)
+  ├── Set 40-man active roster and/or 26-man (and adjust full roster)
   └── Set strategic profile
 
     │
@@ -73,15 +75,16 @@ Pre-Season
 Regular Season  (repeating — ~5 min sim per season)
   ├── [Between series]  Review upcoming opponent, adjust profile/lineup
   │                     Blitz: configurable window (see Decision Windows)
-  │                     Long form: hours to days
+  │                     Long form: hours to days. Can advance when all are ready.
   ├── [Sim runs]        Games execute automatically using GM profiles
-  └── [After series]    Review results, roster moves, 26-man adjustments
+  └── [After series]    Review results; lineup, strategy and roster adjustments
 
     │
     ▼
 Playoffs
   ├── Bracket announced
-  ├── [Between series]  Adjust rotation, lineup, profile, 26-man
+  ├── [Between series]  Adjust rotation, lineup, profile, roster
+  │                         Long form pauses after each game.  
   └── [Sim runs]        ~8 seconds per playoff round
 
     │
@@ -118,18 +121,17 @@ Different formats per mode, reflecting the time available:
 ## Roster Structure
 
 ### Blitz Mode
-- **26-man active roster** — players who appear in games
-- **40-man roster** — total organizational limit
-- Moves between 26-man and 40-man are unrestricted between series
-- No minor league depth — the 40-man is the full org
+- **40-man roster** — players who appear in games
+- Full Organization - Unlimited size.
+- Moves between 40-man are unrestricted between series
 
 ### Long Form / Scheduled Mode
-- **26-man active roster** — players who appear in games
+- **26-man active roster** — players who are allowed to appear in games
 - **40-man roster** — standard organizational threshold
 - **Full org roster** — up to 160 players (existing sim cap)
 - Players must be on the 40-man to be called up to the 26-man
 - Moving a player from full org → 40-man requires a roster move (limited
-  per series, exact number TBD)
+  per series, exact number TBD, may introduce waivers, free agency, etc)
 - Moving a player off the 40-man to make room follows MLB-style rules:
   outright waivers, DFA, release (details TBD for v1)
 
@@ -172,8 +174,38 @@ Standard 20-80 scouting scale mapped to letter grades with +/–:
 
 **Pitchers:** Stuff, Control, Stamina, Recovery, Overall
 
+Entire SKILLS found in positions.py:
+
+
+SKILLS: MappingProxyType[str, int] = MappingProxyType(
+    {
+        # Pitching
+        "accuracy": 50,  # Control, ability to hit spots
+        "stamina": 50,  # Pitch count capacity (50 = ~100 pitches)
+        "recovery": 50,  # Days to recover stamina (50 = 5 days)
+        "ground_balls": 50,  # Ground ball tendency
+        "strikes": 50,  # Swing-and-miss ability (stuff)
+        # General
+        "clutch": 50,  # Performance in high-pressure situations
+        "speed": 50,  # Running speed
+        "durability": 50,  # player durability
+        # Hitting
+        "power": 50,  # Home run power
+        "eye": 50,  # Plate discipline, walk rate
+        "contact": 50,  # Ability to make contact
+        "base_running": 50,  # Base running instincts
+        "bunting": 50,  # Bunting ability
+        # Defense
+        "catching": 50,  # Catcher-specific skills
+        "infield": 50,  # Infield defense
+        "outfield": 50,  # Outfield defense
+        "arm": 50,  # Throwing arm strength
+    }
+)
+
 ### Scouting Uncertainty (future)
 - Early in a career, grades have a ±1 letter uncertainty range
+    Some skills are easier to assess than others
 - Scouting improves as the player accumulates games
 - Adds hidden information tension during the draft
 
@@ -186,6 +218,8 @@ The core GM tool. A set of tendencies the AI uses to manage the team
 when the GM isn't making an explicit override. Changeable at any point
 between games.
 
+This is under construction:
+
 **Batting**
 - Lineup style: `traditional` | `analytics` | `speed-first` | `power-first`
 - Steal aggression: `conservative` | `standard` | `aggressive`
@@ -197,13 +231,12 @@ between games.
 - Bullpen depth preference: `deep-pen` | `starter-heavy`
 
 **Roster**
-- DH rule: on/off (league-wide setting, but profile stores preference)
 - Platoon usage: `none` | `vs-handedness` | `aggressive`
 
 ### Explicit Overrides (between series/games)
 - Set starting lineup for next game/series
 - Set starting pitcher
-- 26-man roster moves (call-ups, optioning down)
+- 26/40-man roster moves (call-ups, optioning down)
 - Set rotation order for a series
 
 ### In-Game (not player-controlled)
@@ -220,7 +253,7 @@ hit and run) are executed by the AI using the GM's strategic profile.
 The time GMs have between series to make decisions before the sim advances.
 
 ### Configurable per league
-- Commissioner sets a window range (e.g. 60–180 seconds)
+- Commissioner sets a window range (e.g. 30–180 seconds)
 - Before the league starts, each GM sets their **fastest comfortable pace**
 - The league runs at the **fastest pace all GMs agree to**
   (i.e. the minimum of all GM preferences)
@@ -235,7 +268,12 @@ The time GMs have between series to make decisions before the sim advances.
 ### Late-session behavior
 Window does not automatically shrink as the session progresses — the
 configured pace stays consistent. GMs who want faster play choose it
-upfront.
+upfront. Future implementation would be to change window based on a quorum.
+
+### Decision points
+- Also configurable is how often to set decision windows
+- Some standards are: Every 4 games, Every 10 games, twice per season, etc
+- Allow Blitz to approach, but not intersect with the Long Form version.
 
 ---
 
@@ -283,9 +321,11 @@ Each GM is evaluated at season end on:
 - Any player can create a league and share a join code
 - League creator becomes Commissioner (admin controls)
 - Empty GM slots filled by AI — league always runs at full size
+- Public Lobby. Can put a league in the public lobby, then anyone can join
+  simply with a click.
 
 ### Pace Control (Commissioner setting)
-- **Blitz**: sim advances on the agreed decision window timer
+- **Blitz**: sim advances on the agreed decision window timer and frequency
 - **Confirmed**: sim advances when all GMs confirm ready, or timeout expires
 - **Scheduled**: sim runs at fixed real-world times (e.g. one series per day
   at 8pm)
