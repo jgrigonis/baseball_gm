@@ -42,6 +42,8 @@ from src.game.probabilities import (
     HNR_FAVORABLE_COUNT_MOD,
     PITCH_COUNT_THRESHOLD,
     CLOSER_ENTRANCE_PROB,
+    PITCHER_CHANGE_PROB,
+    PITCHER_CHANGE_MULTIPLIERS,
 )
 from src.game.score import Score
 from src.player.fatigue import FatigueLevel
@@ -630,29 +632,21 @@ class GameStrategy:
         fatigue = pitcher.pitcher_fatigue
         fatigue_level = fatigue.get_level()
 
-        # Base probabilities by fatigue level
-        base_probs = {
-            FatigueLevel.FRESH: 0.01,  # Almost never pull a fresh pitcher
-            FatigueLevel.GOOD: 0.03,  # Rarely
-            FatigueLevel.TIRED: 0.15,  # Sometimes
-            FatigueLevel.EXHAUSTED: 0.40,  # Often
-            FatigueLevel.ZERO: 0.95,  # Almost always
-        }
 
-        prob = base_probs.get(fatigue_level, 0.5)
+        prob = PITCHER_CHANGE_PROB.get(fatigue_level, 0.5)
 
         stats = pitcher.game_stats.pitching
 
         if pitcher.is_starter:
             if stats.runs == 0:
-                prob *= 0.21
+                prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_0", 0.21)
             elif stats.runs == 1:
-                prob *= 0.52
+                prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_1", 0.52)
             elif stats.runs == 2 and score_differential > 0:
-                prob *= 0.61
+                prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_2_positive_diff", 0.61)
             if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
                 if stats.hits == 0:
-                    prob *= 0.11
+                    prob *= PITCHER_CHANGE_MULTIPLIERS.get("no_hits", 0.11)
 
             # Modifier: Protect lead with starter (reduce probability of pulling them)
             if score_differential > 0 and stats.outs < 18:  # Haven't gone 6 innings yet

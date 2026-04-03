@@ -149,3 +149,20 @@ INJURY_POSITION_WEIGHT = {
     "rf": 0.7,
     "dh": 0.0,
 }
+
+
+# Pitcher Change Probabilities
+PITCHER_CHANGE_PROB = {
+    "fresh": 0.01,
+    "good": 0.03,
+    "tired": 0.15,
+    "exhausted": 0.40,
+    "zero": 0.95,
+}
+
+PITCHER_CHANGE_MULTIPLIERS = {
+    "runs_0": 0.21,
+    "runs_1": 0.52,
+    "runs_2_positive_diff": 0.61,
+    "no_hits": 0.11,
+}
