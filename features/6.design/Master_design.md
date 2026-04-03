@@ -26,8 +26,8 @@ sim time**. This shapes everything about pacing:
 | 8-season career   | ~20,000 | ~42 min    |
 | 25-season career  | ~62,000 | ~2 hrs     |
 
-Sim time is not the bottleneck in Blitz — **GM decision time is**.
-
+Sim time is not a significant bottleneck in Blitz — **GM decision time is**.
+In the Long Form version, Simulation time is insignificant.
 ---
 
 ## Experience Modes

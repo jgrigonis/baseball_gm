@@ -1,0 +1,18 @@
+Batting and Pitching stat qualifiers need adjustments
+
+
+https://www.mlb.com/glossary/standard-stats/rate-stats-qualifiers
+
+For relief pitchers:
+
+0.5 IP for relief-pitcher specific reports
+
+For fielding:
+
+0.5 games for catchers; 0.67 games for infielders/outfielders; 
+1.0 IP for pitchers unless a pitcher with fewer innings 
+pitched has a better fielding percentage in more total chances
+
+
+Rookies (MLB regular season)	1.55 PA	0.5 IP
+

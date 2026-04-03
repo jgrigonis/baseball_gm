@@ -1,0 +1,6 @@
+Injury Bar
+
+Should show position.
+
+At a minimum show a (p) for pitcher.
+

@@ -12,3 +12,9 @@ We will need to rediesign the batting order setting tab.
 Might be nice to have a way to remove players from the 26man/40man directly here.
 
 Some indicator of what fielding position(s) is missing
+
+Probably need to separate from pitching.
+
+Have the whole sortable list of players on one side, the lineup in the other.
+The players stick in the sortable list, even if they are dragged into the lineup.
+Then another column for assigning positions
