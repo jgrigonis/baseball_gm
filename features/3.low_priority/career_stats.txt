@@ -1,6 +1,0 @@
-Career stats 
-
-We don't have a good way to look at the career stats for a 
-player.
-
-Should separate out playoff stats.
