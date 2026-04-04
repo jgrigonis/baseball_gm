@@ -1,0 +1,41 @@
+Roster page should be able to, just grab top players
+essentially, make your 40 man roster the top rated by overall
+
+It should work however you have it sorted, taking enough players
+to fill to 40
+
+This should be the behavior of Fill to 40.
+
+Verify that is the case.
+
+We need to worry about 26 man roster also, for long form. Basically, a third column
+But we can save that for later. The 40 man roster column would be allowed to hold
+40 minus NUMBER IN 26 MAN COLUMN.
+
+Simmilar to draft page:
+
+For pitchers GB should replace Fielding:
+STF, CTL, STA, REC, GB
+
+For hitters:
+Add Arm, so it should display:
+Contact, POW, EYE, SPD, Arm Fielding
+
+The biggest change is that the sorting/filtering criteria should be per column
+
+
+Similar to draft, clicking away from the roster page should save your exact setup
+including 40 man roster, it's search/filter critera, your org list and search/filter criteria 
+And for long form the 26 man 
+
+It should pop up some kind of warning that you haven't saved your roster if there is a difference
+between the saved roster and the displayed list. Perhaps it could give you a button to save
+in the warning.
+
+After you save your roster, a go to lineup button could appear.
+
+Eventually, we will need to handle interactions with the injured list here as well, but that
+is a bit of a redesign still. Basically, a 60 day IL effectively increases the 40 man roster size.
+The 10/15 day IL allows you to easily move between 26 and 40.
+
+Getting a player off the 40 man is more complicated by rules. For v1 we are ignoring most of this.

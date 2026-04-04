@@ -1,0 +1,7 @@
+The standings page is quite good.
+
+One addition would be to add Home/Away splits for teams.
+
+Also add L10 (Last 10), runs scored and runs against
+
+The PCT displayed doesn't need the leading 0.

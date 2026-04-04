@@ -4,9 +4,10 @@ team_rotation_redesign.txt
 
 UI gives a hint
 
-Player presents: are my starter(s) in this order from 1 to N.
+Player presents: here are my starter(s) in this order from 1 to N.
 A glow green light highlighting who goes next.
 At the bottom of the list is always a "drag player here" area similar to batting order 
+dragging players to that spot is effectively extending the rotation.
 
 User can delete pitchers from roation with a little x
 This will leave a gap in the rotation and replace with a "drag player here" box
@@ -20,6 +21,7 @@ by default the + will send them to the first open slot starting from the Top
 
 Move pitchers around in the rotation with little carets, up or down
 If you move a player with the green light, it follows him
+If you drag a pitcher in the rotation on another pitcher, it swaps their spots, e.g. p4 to p2.
 
 The green light can be repositioned by simply clicking a black radio button making it glow green 
 

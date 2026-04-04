@@ -1,0 +1,6 @@
+UI updates
+
+On player detail page, ERA should always show 2 sig figs
+
+We also need to be able to see career stats here. A toggle between 
+season and career.

@@ -1,3 +1,9 @@
+On the stats page, the header should be sticky.
+
+So when you scroll down, the header stays in place.
+
+
+you should be able to toggle to:
 Career stats 
 
 We don't have a good way to look at the career stats for a 
@@ -9,3 +15,4 @@ Could be as simple as a toggle on the player details page.
 Not sure how overloaded we want that. A breakout tab for a single
 player might be a good addition. Allow side by side comparisons 
 there as well.
+

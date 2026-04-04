@@ -1,0 +1,51 @@
+lineup_tab
+
+We need to separate the batting and pitching setups, they are both 
+complicated enough to live alone. They could be toggled at the top of 
+a single top level tab.
+
+See team_rotation_redesign for pitching.
+
+We will move to a 2 column view here.
+
+When you open it first, the entire available roster (40 man in blitz, 26 in long form)
+Is in the right most column. These players show numerous available details, similar to the existing bench view
+The main difference is dragging a player to a batting position does NOT remove them from the "bench" so 
+bench is renamed to "roster"
+
+The roster needs sorts similar to draft:
+It will have "Sort" set to "Overall" "then" set to "-" and then another "finally" set to "-"
+
+The big difference from the draft sort is that you will be able to sort by specific defensive positions
+Also of course you can sort by leadoff role, contact role and power role.
+Also each player box will display stats.
+
+
+The left column will be batting order, so 9 slots, fixed, similar to the empty batting order now.
+there will be another 9 slot table below the batting order
+for fielding positions.
+
+Players in the lineup will default to - in their position drop down. As you assign them to positions they
+will fill in the table below. You can't assign 2 players to the same position.
+
+There should be little arrows to move players up or down in the batting order.
+
+
+Might be nice to have a way to remove players from the 26man/40man directly here.
+
+gone are the little arrows to pop out the player detail page, because simply clicking on any player
+should do that.
+
+The roster column can keep the +Add button. This will drop them into the top most available batting slot.
+
+If you click away from the lineup tab or toggle to the pitching side of it, it's critical all sorts and 
+locations of players are saved.
+
+Save Lineup can be greyed out until a valid lineup exists, all 9 batting slots filled and all 8 fielding
+positions accounted for.
+
+Auto-Fill can work like it does now (terribly) but eventually we'll want it to utilize whatever setting the
+player has set in their strategy tab. 
+
+Eventually, we will need to deal with injured reserve here, but that is an entire redesign.
+

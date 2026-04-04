@@ -1,3 +1,5 @@
 playoff series need to be clickable
 
 At least a way to see game logs 
+
+You can see them in the schedule page

@@ -1,4 +1,0 @@
-UI updates
-
-On player detail page, ERA should always show 2 sig figs
-
