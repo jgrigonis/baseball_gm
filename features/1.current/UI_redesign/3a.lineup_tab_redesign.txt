@@ -46,8 +46,8 @@ The roster column can keep the +Add button. This will drop them into the top mos
 If you click away from the lineup tab or toggle to the pitching side of it, it's critical all sorts and 
 locations of players are saved.
 
-Save Lineup can be greyed out until a valid lineup exists, all 9 batting slots filled and all 8 fielding
-positions accounted for.
+Save Lineup can be greyed out until a valid lineup exists, all 9 batting slots filled and all 9 fielding
+positions accounted for. The DH would be a 9th fielding position available
 
 Auto-Fill can work like it does now (terribly) but eventually we'll want it to utilize whatever setting the
 player has set in their strategy tab. 

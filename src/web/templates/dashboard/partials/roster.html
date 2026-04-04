@@ -1,171 +1,352 @@
 {# templates/dashboard/partials/roster.html #}
 
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:16px 24px 12px;border-bottom:1px solid var(--border);pointer-events:all;">
-  <div class="page-header" style="margin-bottom:10px;">
+{# ── Sticky header ─────────────────────────────────────────────────────────── #}
+<div id="roster-header" style="position:sticky;top:0;z-index:10;background:var(--bg);
+     padding:14px 24px 10px;border-bottom:1px solid var(--border);">
+
+  <div class="page-header" style="margin-bottom:0;">
     <h1 class="page-title">Roster</h1>
-    <span id="forty-count" class="page-subtitle"></span>
+    <span id="forty-count" class="page-subtitle" style="margin-left:8px;"></span>
     <div class="spacer"></div>
     <span id="save-feedback"
-          style="font-family:var(--font-mono);font-size:11px;margin-right:12px;"></span>
-    <button class="btn btn-secondary" onclick="fillToForty()" style="margin-right:8px;">
-      Fill to 40
-    </button>
+          style="font-family:var(--font-mono);font-size:11px;margin-right:10px;"></span>
     <button class="btn btn-secondary" onclick="removeInjured()"
-            style="margin-right:8px;border-color:var(--red);color:var(--red);">
+            style="margin-right:6px;border-color:var(--red);color:var(--red);">
       Remove Injured
+    </button>
+    <button class="btn btn-secondary" onclick="fillToForty()" style="margin-right:6px;">
+      Fill to 40
     </button>
     <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
       Save Roster
     </button>
+    <a id="lineup-btn" href="/leagues/{{ league_id }}/lineup"
+       class="btn btn-secondary"
+       style="margin-left:8px;border-color:var(--green);color:var(--green);display:none;">
+      Go to Lineup →
+    </a>
   </div>
 
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;
-              padding-top:10px;border-top:1px solid var(--border);">
-    <div style="display:flex;align-items:center;gap:6px;
-                font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-      Sort
-      <select id="sort1" onchange="applySort()" style="width:auto;">
-        <option value="overall">Overall</option>
-        <optgroup label="Hitting">
-          <option value="contact">Contact</option>
-          <option value="power">Power</option>
-          <option value="eye">Eye</option>
-          <option value="speed">Speed</option>
-        </optgroup>
-        <optgroup label="Pitching">
-          <option value="stuff">Stuff</option>
-          <option value="control">Control</option>
-          <option value="stamina">Stamina</option>
-          <option value="recovery">Recovery</option>
-        </optgroup>
-        <optgroup label="Defense">
-          <option value="if">Infield (IF)</option>
-          <option value="of">Outfield (OF)</option>
-          <option value="c">Catcher (CA)</option>
-          <option value="1b">First Base</option>
-          <option value="arm">Arm</option>
-        </optgroup>
-      </select>
-      then
-      <select id="sort2" onchange="applySort()" style="width:auto;">
-        <option value="">—</option>
-        <option value="overall">Overall</option>
-        <optgroup label="Hitting">
-          <option value="contact">Contact</option>
-          <option value="power">Power</option>
-          <option value="eye">Eye</option>
-          <option value="speed">Speed</option>
-        </optgroup>
-        <optgroup label="Pitching">
-          <option value="stuff">Stuff</option>
-          <option value="control">Control</option>
-          <option value="stamina">Stamina</option>
-          <option value="recovery">Recovery</option>
-        </optgroup>
-        <optgroup label="Defense">
-          <option value="if">Infield (IF)</option>
-          <option value="of">Outfield (OF)</option>
-          <option value="c">Catcher (CA)</option>
-          <option value="1b">First Base</option>
-          <option value="arm">Arm</option>
-        </optgroup>
-      </select>
-    </div>
-    <button class="btn btn-secondary" onclick="toggleReverse()" id="reverse-btn"
-            style="font-size:11px;padding:5px 10px;">
-      ↑ Best first
+  {# Unsaved changes banner — hidden on first run via JS #}
+  <div id="unsaved-banner"
+       style="display:none;margin-top:8px;padding:6px 12px;
+              background:var(--amber-lo);border:1px solid var(--amber);
+              font-family:var(--font-mono);font-size:11px;color:var(--amber);
+              align-items:center;gap:10px;">
+    <span>⚠ Unsaved roster changes</span>
+    <button class="btn btn-secondary" onclick="saveRoster()"
+            style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
+      Save now
     </button>
-    <div style="display:flex;gap:12px;margin-left:auto;align-items:center;">
-      <label style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);
-                    font-size:11px;color:var(--text-dim);cursor:pointer;">
-        <input type="checkbox" id="show-healthy" checked onchange="render()"> Healthy
-      </label>
-      <label style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);
-                    font-size:11px;color:var(--red);cursor:pointer;">
-        <input type="checkbox" id="show-injured" checked onchange="render()"> Injured
-      </label>
-      <label style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);
-                    font-size:11px;color:var(--text-dim);cursor:pointer;">
-        <input type="checkbox" id="show-pitchers" checked onchange="render()"> Pitchers
-      </label>
-      <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">
-        Drag between columns · click to inspect
-      </span>
-    </div>
+    <button id="revert-btn" class="btn btn-secondary" onclick="revertToSaved()"
+            style="font-size:10px;padding:3px 8px;display:none;">
+      Revert to Saved
+    </button>
   </div>
+
 </div>
 
-<div style="padding:16px 24px 24px;">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+{# ── Two-column layout ─────────────────────────────────────────────────────── #}
+<div class="roster-cols">
 
-    <div>
-      <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
-                  text-transform:uppercase;color:var(--amber);margin-bottom:8px;">
-        40-Man Roster
-        <span style="color:var(--muted);font-size:9px;margin-left:8px;">drag players here</span>
+  {# ── Left: 40-Man ─────────────────────────────────────────────────────────── #}
+  <div class="roster-col-wrap">
+    <div class="roster-col-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+        <span class="r-col-label" style="color:var(--amber);">40-Man Roster</span>
+        <div style="display:flex;align-items:center;gap:3px;
+                    font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          <select id="forty-s1" onchange="render()" style="width:auto;font-size:10px;">
+            <option value="overall">Overall</option>
+            <optgroup label="Hitting">
+              <option value="contact">Contact</option>
+              <option value="power">Power</option>
+              <option value="eye">Eye</option>
+              <option value="speed">Speed</option>
+              <option value="arm">Arm</option>
+            </optgroup>
+            <optgroup label="Pitching">
+              <option value="stuff">Stuff</option>
+              <option value="control">Control</option>
+              <option value="stamina">Stamina</option>
+              <option value="recovery">Recovery</option>
+              <option value="ground_balls">GB</option>
+            </optgroup>
+            <optgroup label="Defense">
+              <option value="if">Infield</option>
+              <option value="of">Outfield</option>
+              <option value="c">Catcher</option>
+              <option value="1b">First Base</option>
+            </optgroup>
+          </select>
+          <select id="forty-s2" onchange="render()" style="width:auto;font-size:10px;">
+            <option value="">—</option>
+            <option value="overall">Overall</option>
+            <optgroup label="Hitting">
+              <option value="contact">Contact</option>
+              <option value="power">Power</option>
+              <option value="eye">Eye</option>
+              <option value="speed">Speed</option>
+              <option value="arm">Arm</option>
+            </optgroup>
+            <optgroup label="Pitching">
+              <option value="stuff">Stuff</option>
+              <option value="control">Control</option>
+              <option value="stamina">Stamina</option>
+              <option value="recovery">Recovery</option>
+              <option value="ground_balls">GB</option>
+            </optgroup>
+            <optgroup label="Defense">
+              <option value="if">Infield</option>
+              <option value="of">Outfield</option>
+              <option value="c">Catcher</option>
+              <option value="1b">First Base</option>
+            </optgroup>
+          </select>
+          <button class="r-rev-btn" id="forty-rev" onclick="toggleReverse('40')">↑</button>
+        </div>
       </div>
-      <div id="col-40man" class="roster-drop-col"
-           ondragover="colOver(event)" ondrop="colDrop(event,'40man')">
-        <div class="roster-col-empty" id="empty-40man" style="display:none;">Drop players here</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="r-filter-btn active" data-col="40" data-key="type" data-val=""
+                  onclick="setFilter(this,'40','type','')">All</button>
+          <button class="r-filter-btn" data-col="40" data-key="type" data-val="hitter"
+                  onclick="setFilter(this,'40','type','hitter')">Hit</button>
+          <button class="r-filter-btn" data-col="40" data-key="type" data-val="pitcher"
+                  onclick="setFilter(this,'40','type','pitcher')">Pit</button>
+        </div>
+        <span class="r-filter-sep"></span>
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="r-filter-btn active" data-col="40" data-key="health" data-val="all"
+                  onclick="setFilter(this,'40','health','all')">All</button>
+          <button class="r-filter-btn" data-col="40" data-key="health" data-val="healthy"
+                  onclick="setFilter(this,'40','health','healthy')">Healthy</button>
+          <button class="r-filter-btn" data-col="40" data-key="health" data-val="injured"
+                  onclick="setFilter(this,'40','health','injured')">Injured</button>
+        </div>
       </div>
     </div>
-
-    <div>
-      <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
-                  text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">
-        Organization
-        <span style="color:var(--muted);font-size:9px;margin-left:8px;">drag to 40-man</span>
+    <div id="col-40man" class="roster-drop-col">
+      <div class="drag-zone" id="zone-add"
+           ondragover="zoneOver(event,'add')" ondragleave="zoneLeave('add')"
+           ondrop="zoneDrop(event,'add')">
+        ⊕ Drop here to add to 40-man
       </div>
-      <div id="col-org" class="roster-drop-col"
-           ondragover="colOver(event)" ondrop="colDrop(event,'org')">
-        <div class="roster-col-empty" id="empty-org" style="display:none;">No players in org</div>
+      <div class="roster-col-empty" id="empty-40man" style="display:none;">
+        Drag players from your org
       </div>
     </div>
-
   </div>
+
+  {# ── Right: Organization ───────────────────────────────────────────────────── #}
+  <div class="roster-col-wrap">
+    <div class="roster-col-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+        <span class="r-col-label" style="color:var(--text-dim);">Organization</span>
+        <div style="display:flex;align-items:center;gap:3px;
+                    font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          <select id="org-s1" onchange="render()" style="width:auto;font-size:10px;">
+            <option value="overall">Overall</option>
+            <optgroup label="Hitting">
+              <option value="contact">Contact</option>
+              <option value="power">Power</option>
+              <option value="eye">Eye</option>
+              <option value="speed">Speed</option>
+              <option value="arm">Arm</option>
+            </optgroup>
+            <optgroup label="Pitching">
+              <option value="stuff">Stuff</option>
+              <option value="control">Control</option>
+              <option value="stamina">Stamina</option>
+              <option value="recovery">Recovery</option>
+              <option value="ground_balls">GB</option>
+            </optgroup>
+            <optgroup label="Defense">
+              <option value="if">Infield</option>
+              <option value="of">Outfield</option>
+              <option value="c">Catcher</option>
+              <option value="1b">First Base</option>
+            </optgroup>
+          </select>
+          <select id="org-s2" onchange="render()" style="width:auto;font-size:10px;">
+            <option value="">—</option>
+            <option value="overall">Overall</option>
+            <optgroup label="Hitting">
+              <option value="contact">Contact</option>
+              <option value="power">Power</option>
+              <option value="eye">Eye</option>
+              <option value="speed">Speed</option>
+              <option value="arm">Arm</option>
+            </optgroup>
+            <optgroup label="Pitching">
+              <option value="stuff">Stuff</option>
+              <option value="control">Control</option>
+              <option value="stamina">Stamina</option>
+              <option value="recovery">Recovery</option>
+              <option value="ground_balls">GB</option>
+            </optgroup>
+            <optgroup label="Defense">
+              <option value="if">Infield</option>
+              <option value="of">Outfield</option>
+              <option value="c">Catcher</option>
+              <option value="1b">First Base</option>
+            </optgroup>
+          </select>
+          <button class="r-rev-btn" id="org-rev" onclick="toggleReverse('org')">↑</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="r-filter-btn active" data-col="org" data-key="type" data-val=""
+                  onclick="setFilter(this,'org','type','')">All</button>
+          <button class="r-filter-btn" data-col="org" data-key="type" data-val="hitter"
+                  onclick="setFilter(this,'org','type','hitter')">Hit</button>
+          <button class="r-filter-btn" data-col="org" data-key="type" data-val="pitcher"
+                  onclick="setFilter(this,'org','type','pitcher')">Pit</button>
+        </div>
+        <span class="r-filter-sep"></span>
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="r-filter-btn active" data-col="org" data-key="health" data-val="all"
+                  onclick="setFilter(this,'org','health','all')">All</button>
+          <button class="r-filter-btn" data-col="org" data-key="health" data-val="healthy"
+                  onclick="setFilter(this,'org','health','healthy')">Healthy</button>
+          <button class="r-filter-btn" data-col="org" data-key="health" data-val="injured"
+                  onclick="setFilter(this,'org','health','injured')">Injured</button>
+        </div>
+      </div>
+    </div>
+    <div id="col-org" class="roster-drop-col">
+      <div class="drag-zone" id="zone-remove"
+           ondragover="zoneOver(event,'remove')" ondragleave="zoneLeave('remove')"
+           ondrop="zoneDrop(event,'remove')">
+        ⊖ Drop here to remove from 40-man
+      </div>
+      <div class="roster-col-empty" id="empty-org" style="display:none;">
+        No players in org
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <style>
-.roster-drop-col {
-  min-height:120px;
-  max-height:calc(100vh - 220px);
-  overflow-y:auto;
-  border:1px solid var(--border);
-  background:var(--bg-2);transition:border-color .15s,background .15s;
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+.roster-cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  padding: 12px 16px 0;
+  height: calc(100vh - var(--roster-hdr-h, 80px));
+  box-sizing: border-box; overflow: hidden;
 }
-.roster-drop-col.drag-target{border-color:var(--amber);background:var(--amber-lo);}
-.roster-col-empty{
-  padding:24px;text-align:center;
-  font-family:var(--font-mono);font-size:12px;color:var(--text-dim);
+.roster-col-wrap {
+  display: flex; flex-direction: column; min-height: 0;
+  border: 1px solid var(--border); background: var(--bg-2);
 }
-.r-card{
-  display:grid;grid-template-columns:auto 1fr;
-  gap:0 10px;align-items:center;
-  padding:8px 14px;border-bottom:1px solid var(--border);
-  cursor:grab;user-select:none;transition:background .08s;
+.roster-col-hdr {
+  flex-shrink: 0; padding: 8px 12px;
+  border-bottom: 1px solid var(--border); background: var(--bg-2);
 }
-.r-card:last-child{border-bottom:none;}
-.r-card:hover{background:var(--bg-3);}
-.r-card.dragging{opacity:.3;cursor:grabbing;}
-.r-ovr{font-family:var(--font-mono);font-size:14px;font-weight:600;min-width:28px;}
-.r-name{font-family:var(--font-sans);font-weight:600;font-size:13px;color:var(--text-hi);}
-.r-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:1px;}
-.r-stats{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;}
-.r-stat-val{white-space:nowrap;}
-.r-grades{font-family:var(--font-mono);font-size:11px;display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;}
-.r-grades .gl{color:var(--text-dim);margin-right:1px;}
+.roster-drop-col { flex: 1; overflow-y: auto; min-height: 0; }
+.roster-col-empty {
+  padding: 24px; text-align: center;
+  font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);
+}
+.r-col-label {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: .1em; text-transform: uppercase; font-weight: 600;
+}
+
+/* ── Filter controls ────────────────────────────────────────────────────────── */
+.r-filter-btn {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em;
+  text-transform: uppercase; padding: 3px 8px;
+  background: var(--bg-2); border: none; border-right: 1px solid var(--border);
+  color: var(--text-dim); cursor: pointer; transition: all .1s;
+}
+.r-filter-btn:last-child { border-right: none; }
+.r-filter-btn:hover { color: var(--text); background: var(--bg-3); }
+.r-filter-btn.active { color: var(--amber); background: var(--amber-lo); }
+/* Separator between type and health groups */
+.r-filter-sep {
+  display: inline-block; width: 1px; height: 18px;
+  background: var(--border); flex-shrink: 0;
+}
+.r-rev-btn {
+  background: var(--bg-3); border: 1px solid var(--border);
+  color: var(--text-dim); cursor: pointer; font-size: 11px;
+  padding: 2px 6px; transition: all .1s;
+}
+.r-rev-btn:hover { color: var(--text); }
+.r-rev-btn.reversed { color: var(--amber); border-color: var(--amber); }
+
+/* ── Drag zones ─────────────────────────────────────────────────────────────── */
+.drag-zone {
+  margin: 8px; padding: 9px 14px;
+  border: 1.5px dashed var(--border);
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--muted); text-align: center;
+  transition: border-color .12s, background .12s, color .12s;
+  cursor: default;
+}
+.drag-zone.drag-active {
+  border-color: var(--amber); background: var(--amber-lo); color: var(--amber);
+}
+
+/* ── Player cards ────────────────────────────────────────────────────────────── */
+.r-card {
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 0 10px; align-items: center;
+  padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--border);
+  cursor: grab; user-select: none; transition: background .08s;
+}
+.r-card:last-child { border-bottom: none; }
+.r-card:hover { background: var(--bg-3); }
+.r-card.dragging { opacity: .3; cursor: grabbing; }
+.r-card.drag-swap { background: var(--amber-lo); outline: 1px solid var(--amber); }
+.r-ovr  { font-family: var(--font-mono); font-size: 14px; font-weight: 600; min-width: 28px; }
+.r-name { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
+.r-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.r-grades {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;
+}
+.r-grades .gl { color: var(--muted); margin-right: 1px; }
+.r-stats {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;
+}
+.r-action-btn {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  border: 1px solid var(--border); background: var(--bg-3);
+  cursor: pointer; padding: 2px 7px; line-height: 1;
+  transition: all .1s; flex-shrink: 0;
+}
+.r-action-btn.add-btn  { color: var(--green); }
+.r-action-btn.add-btn:hover  { background: var(--green-dim); border-color: var(--green); }
+.r-action-btn.rem-btn  { color: var(--red); }
+.r-action-btn.rem-btn:hover  { background: rgba(255,80,80,.08); border-color: var(--red); }
 </style>
 
 <script>
-(function() {
-// Hoist exports first
-window.colOver=colOver;window.colDrop=colDrop;window.saveRoster=saveRoster;
-window.fillToForty=fillToForty;window.removeInjured=removeInjured;
-window.applySort=applySort;window.toggleReverse=toggleReverse;window.render=render;
+(function () {
 
-var LEAGUE_ID   = "{{ league_id }}";
+/* ── Hoist globals ──────────────────────────────────────────────────────────── */
+window.saveRoster    = saveRoster;
+window.fillToForty   = fillToForty;
+window.removeInjured = removeInjured;
+window.revertToSaved = revertToSaved;
+window.render        = render;
+window.setFilter     = setFilter;
+window.toggleReverse = toggleReverse;
+window.zoneOver      = zoneOver;
+window.zoneLeave     = zoneLeave;
+window.zoneDrop      = zoneDrop;
+window.addToRoster   = addToRoster;
+window.removeFromRoster = removeFromRoster;
+
+/* ── Data ───────────────────────────────────────────────────────────────────── */
+var  LEAGUE_ID    = "{{ league_id }}";
 const ALL_PLAYERS = {{ players | tojson }};
+const ROSTER_KEY  = `roster3_${LEAGUE_ID}`;
 
 const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
 function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
@@ -173,252 +354,407 @@ function gradeClass(g) {
   return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
 }
 
-// ── State ──────────────────────────────────────────────────────────────────────
-// Init 40-man: use saved status if any players are already assigned,
-// otherwise seed with the top 40 by overall grade.
-const savedForty = ALL_PLAYERS.filter(p => p.roster_status === '40man');
-const ROSTER_KEY = `roster_40man_${LEAGUE_ID}`;
-
-function saveToStorage() {
-  try { sessionStorage.setItem(ROSTER_KEY, JSON.stringify([...fortyMan])); } catch(e) {}
-}
-function loadFromStorage() {
-  try {
-    const s = sessionStorage.getItem(ROSTER_KEY);
-    if (!s) return null;
-    const ids = JSON.parse(s);
-    const valid = ids.filter(id => ALL_PLAYERS.some(p => p.player_id === id));
-    return valid.length > 0 ? valid : null;
-  } catch(e) { return null; }
-}
-
+/* ── State ──────────────────────────────────────────────────────────────────── */
+const SERVER_FORTY = new Set(
+  ALL_PLAYERS.filter(p => p.roster_status === '40man').map(p => p.player_id)
+);
+let lastSavedIds = new Set([...SERVER_FORTY]);
 let fortyMan;
-const stored = loadFromStorage();
-if (stored) {
-  fortyMan = new Set(stored);
-} else if (savedForty.length > 0) {
-  fortyMan = new Set(savedForty.map(p => p.player_id));
-} else {
-  const top40 = [...ALL_PLAYERS]
-    .sort((a, b) => gradeVal(a.overall) - gradeVal(b.overall))
-    .slice(0, 40)
-    .map(p => p.player_id);
-  fortyMan = new Set(top40);
-}
-let reversed  = false;
-let _dragging = null;
 
-// ── Sort ───────────────────────────────────────────────────────────────────────
-// For grades from ratings (IF, OF, CA, 1B, arm) we store them on the player object
-// The server puts them in ratings but not directly on the player grades model.
-// We handle sort keys: overall, contact, power, eye, speed, stuff, control,
-// stamina, recovery, arm — all come from PlayerGrades fields.
-// Defense keys if/of/c/1b come from best_def_grade matching best_def_label.
+let colState = {
+  '40':  { s1: 'overall', s2: '', reversed: false, type: '', health: 'all' },
+  'org': { s1: 'overall', s2: '', reversed: false, type: '', health: 'all' },
+};
 
+let _dragging     = null;
+let _draggingFrom = null;  // '40man' | 'org'
+
+/* ── Skill value ────────────────────────────────────────────────────────────── */
 function getSkillVal(p, key) {
-  // Defense composite ratings from ratings dict
   if (key === 'if')  return gradeVal(p.if_grade);
   if (key === 'of')  return gradeVal(p.of_grade);
   if (key === 'c')   return gradeVal(p.c_grade);
   if (key === '1b')  return gradeVal(p.b1_grade);
-  if (key === 'arm') return gradeVal(p.arm);
-  // Standard grade fields
-  return gradeVal(p[key]);
+  return gradeVal(p[key] || null);
 }
 
-function sortedPlayers(ids) {
-  const s1 = document.getElementById('sort1').value;
-  const s2 = document.getElementById('sort2').value;
-  const players = [...ids]
-    .map(id => ALL_PLAYERS.find(p => p.player_id === id))
-    .filter(Boolean);
+/* ── Grade / stat HTML ──────────────────────────────────────────────────────── */
+function playerGradesHtml(p) {
+  const pairs = p.player_type === 'pitcher'
+    ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],['GB',p.ground_balls]]
+    : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
+       ['ARM',p.arm],[p.best_def_label||'DEF',p.best_def_grade]];
+  return pairs.filter(([,v])=>v)
+    .map(([k,v])=>`<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`)
+    .join('');
+}
 
+function statsHtml(p) {
+  if (p.player_type !== 'pitcher' && p.stat_avg != null)
+    return `<div class="r-stats">
+      <span>${p.stat_g}G</span>
+      <span style="color:var(--amber);">${p.stat_avg}</span>
+      <span>${p.stat_hr}HR</span><span>${p.stat_rbi}RBI</span></div>`;
+  if (p.player_type === 'pitcher' && p.stat_era != null)
+    return `<div class="r-stats">
+      <span>${p.stat_gs}GS</span>
+      <span style="color:var(--amber);">${p.stat_era} ERA</span>
+      <span>${p.stat_ip}IP</span>
+      <span>${p.stat_w}W ${p.stat_l}L${p.stat_sv?' '+p.stat_sv+'SV':''}</span></div>`;
+  return '';
+}
+
+/* ── Sort ───────────────────────────────────────────────────────────────────── */
+function sortedPlayers(ids, colKey) {
+  const { s1, s2, reversed } = colState[colKey];
+  const players = ids.map(id => ALL_PLAYERS.find(p => p.player_id === id)).filter(Boolean);
   players.sort((a, b) => {
     const d1 = getSkillVal(a, s1) - getSkillVal(b, s1);
     if (d1 !== 0) return d1;
     if (s2) return getSkillVal(a, s2) - getSkillVal(b, s2);
     return 0;
   });
-
   if (reversed) players.reverse();
   return players;
 }
 
-function applySort() { render(); }
-
-function fillToForty() {
-  if (fortyMan.size >= 40) {
-    showFeedback('Already at 40', 'var(--text-dim)');
-    return;
-  }
-  // Use the current sort1 key to determine who to fill with
-  const sortKey = document.getElementById('sort1')?.value || 'overall';
-  const needed  = 40 - fortyMan.size;
-
-  const candidates = ALL_PLAYERS
-    .filter(p => !fortyMan.has(p.player_id) && !p.injured)
-    .sort((a, b) => getSkillVal(a, sortKey) - getSkillVal(b, sortKey))
-    .slice(0, needed);
-
-  candidates.forEach(p => fortyMan.add(p.player_id));
+/* ── Filters ────────────────────────────────────────────────────────────────── */
+function setFilter(btn, colKey, filterKey, val) {
+  // Deactivate siblings in the same group (same col + same key)
+  document.querySelectorAll(`.r-filter-btn[data-col="${colKey}"][data-key="${filterKey}"]`)
+    .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  colState[colKey][filterKey] = val;
   saveToStorage();
   render();
-  showFeedback(`Added ${candidates.length} player${candidates.length !== 1 ? 's' : ''}`, 'var(--green)');
+}
+
+function toggleReverse(colKey) {
+  colState[colKey].reversed = !colState[colKey].reversed;
+  const btn = document.getElementById(colKey === '40' ? 'forty-rev' : 'org-rev');
+  btn.classList.toggle('reversed', colState[colKey].reversed);
+  btn.textContent = colState[colKey].reversed ? '↓' : '↑';
+  saveToStorage();
+  render();
+}
+
+function isVisible(p, colKey) {
+  const { type, health } = colState[colKey];
+  if (type   && p.player_type !== type) return false;
+  if (health === 'healthy' && p.injured)  return false;
+  if (health === 'injured' && !p.injured) return false;
+  return true;
+}
+
+/* ── Fill / Remove Injured ──────────────────────────────────────────────────── */
+function fillToForty() {
+  if (fortyMan.size >= 40) { showFeedback('Already at 40', 'var(--text-dim)'); return; }
+  const { s1, s2 } = colState['40'];
+  const needed = 40 - fortyMan.size;
+  const candidates = ALL_PLAYERS
+    .filter(p => !fortyMan.has(p.player_id) && !p.injured)
+    .sort((a, b) => {
+      const d1 = getSkillVal(a, s1) - getSkillVal(b, s1);
+      if (d1 !== 0) return d1;
+      if (s2) return getSkillVal(a, s2) - getSkillVal(b, s2);
+      return 0;
+    }).slice(0, needed);
+  candidates.forEach(p => fortyMan.add(p.player_id));
+  commit();
+  showFeedback(`Added ${candidates.length} player${candidates.length!==1?'s':''}`, 'var(--green)');
 }
 
 function removeInjured() {
   const before = fortyMan.size;
   ALL_PLAYERS.filter(p => p.injured).forEach(p => fortyMan.delete(p.player_id));
   const removed = before - fortyMan.size;
-  saveToStorage();
-  render();
-  if (removed > 0) showFeedback(`Removed ${removed} injured player${removed !== 1 ? 's' : ''}`, 'var(--amber)');
-  else showFeedback('No injured players on 40-man', 'var(--text-dim)');
+  commit();
+  if (removed > 0) showFeedback(`Removed ${removed} injured`, 'var(--amber)');
+  else showFeedback('No injured on 40-man', 'var(--text-dim)');
 }
 
-function toggleReverse() {
-  reversed = !reversed;
-  const btn = document.getElementById('reverse-btn');
-  btn.textContent = reversed ? '↓ Worst first' : '↑ Best first';
-  render();
+/* ── +Add / −Remove buttons ─────────────────────────────────────────────────── */
+function addToRoster(pid) {
+  if (fortyMan.size >= 40) { showFeedback('Full (40 max)', 'var(--red)'); return; }
+  fortyMan.add(pid);
+  commit();
 }
 
-// ── Card rendering ─────────────────────────────────────────────────────────────
-function makeCard(p) {
-  const grades = p.player_type === 'pitcher'
-    ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery]]
-    : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
-  const defHtml = p.best_def_grade
-    ? `<span><span class="gl">${p.best_def_label}</span><span class="${gradeClass(p.best_def_grade)}">${p.best_def_grade}</span></span>`
-    : '';
-  const gradesHtml = grades.filter(([,v])=>v).map(([k,v])=>
-    `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
-  ).join('') + defHtml;
+function removeFromRoster(pid) {
+  fortyMan.delete(pid);
+  commit();
+}
 
+/* ── Revert ─────────────────────────────────────────────────────────────────── */
+function revertToSaved() {
+  fortyMan = new Set([...lastSavedIds]);
+  commit();
+  showFeedback('Reverted to saved', 'var(--text-dim)');
+}
+
+/* ── Unsaved tracking ───────────────────────────────────────────────────────── */
+function hasUnsavedChanges() {
+  if (fortyMan.size !== lastSavedIds.size) return true;
+  for (const id of fortyMan) { if (!lastSavedIds.has(id)) return true; }
+  return false;
+}
+
+function updateUnsavedBanner() {
+  const banner = document.getElementById('unsaved-banner');
+  if (!banner) return;
+  const dirty = hasUnsavedChanges();
+  banner.style.display = dirty ? 'flex' : 'none';
+  // Show revert button only if there's actually saved data to revert to
+  const revertBtn = document.getElementById('revert-btn');
+  if (revertBtn) revertBtn.style.display = (dirty && lastSavedIds.size > 0) ? 'inline-flex' : 'none';
+  measureHeader();
+}
+
+/* ── Card rendering ──────────────────────────────────────────────────────────── */
+function makeCard(p, isIn40) {
   const el = document.createElement('div');
   el.className = 'r-card';
   el.draggable = true;
   el.dataset.id = p.player_id;
   if (p.injured) el.style.borderLeft = '3px solid var(--red)';
+
+  const btnHtml = isIn40
+    ? `<button class="r-action-btn rem-btn" title="Remove from 40-man"
+               onclick="event.stopPropagation();removeFromRoster('${p.player_id}')">−</button>`
+    : `<button class="r-action-btn add-btn" title="Add to 40-man"
+               onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button>`;
+
   el.innerHTML = `
     <span class="r-ovr ${gradeClass(p.overall)}">${p.overall}</span>
-    <div>
-      <div class="r-name" style="color:${p.injured ? 'var(--red)' : ''}">
-        ${p.first_name} ${p.last_name}${p.injured ? ` <span style="font-size:10px;color:var(--red);">IL${p.injury_days ? ' (' + p.injury_days + 'g)' : ''}</span>` : ''}
+    <div style="min-width:0;">
+      <div class="r-name" style="color:${p.injured?'var(--red)':''};">
+        ${p.first_name} ${p.last_name}
+        ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
       </div>
       <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
-      <div class="r-grades">${gradesHtml}</div>
-      ${p.player_type !== 'pitcher'
-        ? (p.stat_avg != null
-            ? `<div class="r-stats"><span class="r-stat-val">${p.stat_g}G</span> <span class="r-stat-val" style="color:var(--amber);">${p.stat_avg}</span> <span class="r-stat-val">${p.stat_hr}HR</span> <span class="r-stat-val">${p.stat_rbi}RBI</span></div>`
-            : '')
-        : (p.stat_era != null
-            ? `<div class="r-stats"><span class="r-stat-val">${p.stat_gs}GS</span> <span class="r-stat-val" style="color:var(--amber);">${p.stat_era} ERA</span> <span class="r-stat-val">${p.stat_ip} IP</span> <span class="r-stat-val">${p.stat_w}W ${p.stat_l}L</span> <span class="r-stat-val">${p.stat_sv}SV</span></div>`
-            : '')
-      }
-    </div>`;
+      <div class="r-grades">${playerGradesHtml(p)}</div>
+      ${statsHtml(p)}
+    </div>
+    ${btnHtml}`;
 
+  /* Click to inspect */
   let _downId = null;
   el.addEventListener('mousedown', () => { _dragging = null; _downId = p.player_id; });
   el.addEventListener('mouseup', () => {
     if (!_dragging && _downId === p.player_id) openPlayerPanel(p.player_id);
     _downId = null;
   });
+
+  /* Drag start */
   el.addEventListener('dragstart', e => {
-    _dragging = p.player_id;
-    e.currentTarget.classList.add('dragging');
+    _dragging     = p.player_id;
+    _draggingFrom = isIn40 ? '40man' : 'org';
+    el.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
   });
-  el.addEventListener('dragend', e => {
-    e.currentTarget.classList.remove('dragging');
-    setTimeout(() => { _dragging = null; }, 0);
+  el.addEventListener('dragend', () => {
+    el.classList.remove('dragging');
+    document.querySelectorAll('.r-card.drag-swap').forEach(c => c.classList.remove('drag-swap'));
+    setTimeout(() => { _dragging = null; _draggingFrom = null; }, 0);
   });
+
+  /* Drop target: cross-column drop = swap */
+  el.addEventListener('dragover', e => {
+    if (!_dragging || _dragging === p.player_id) return;
+    const targetIn40 = isIn40;
+    const srcIn40    = _draggingFrom === '40man';
+    if (targetIn40 === srcIn40) return; // same column — no visual, not a valid swap target
+    e.preventDefault();
+    e.stopPropagation();
+    document.querySelectorAll('.r-card.drag-swap').forEach(c => c.classList.remove('drag-swap'));
+    el.classList.add('drag-swap');
+  });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-swap'));
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    el.classList.remove('drag-swap');
+    if (!_dragging || _dragging === p.player_id) return;
+    const targetIn40 = isIn40;
+    const srcIn40    = _draggingFrom === '40man';
+    if (targetIn40 === srcIn40) return;
+    // Swap: one goes in, one comes out
+    if (targetIn40) {
+      // dragging from org onto a 40-man card
+      fortyMan.delete(p.player_id);  // 40-man player leaves
+      fortyMan.add(_dragging);        // org player joins
+    } else {
+      // dragging from 40-man onto an org card
+      fortyMan.delete(_dragging);     // 40-man player leaves
+      fortyMan.add(p.player_id);      // org player joins
+    }
+    commit();
+  });
+
   return el;
 }
 
+/* ── Drag zones (simple add / remove) ──────────────────────────────────────── */
+function zoneOver(e, zoneName) {
+  if (!_dragging) return;
+  // Only accept compatible drags
+  if (zoneName === 'add'    && _draggingFrom !== 'org')   return;
+  if (zoneName === 'remove' && _draggingFrom !== '40man') return;
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById(zoneName === 'add' ? 'zone-add' : 'zone-remove')
+    .classList.add('drag-active');
+}
+
+function zoneLeave(zoneName) {
+  document.getElementById(zoneName === 'add' ? 'zone-add' : 'zone-remove')
+    .classList.remove('drag-active');
+}
+
+function zoneDrop(e, zoneName) {
+  e.preventDefault();
+  e.stopPropagation();
+  zoneLeave(zoneName);
+  if (!_dragging) return;
+  if (zoneName === 'add') {
+    if (_draggingFrom !== 'org') return;
+    if (fortyMan.size >= 40) { showFeedback('Full (40 max)', 'var(--red)'); return; }
+    fortyMan.add(_dragging);
+  } else {
+    if (_draggingFrom !== '40man') return;
+    fortyMan.delete(_dragging);
+  }
+  commit();
+}
+
+/* ── Render ──────────────────────────────────────────────────────────────────── */
 function render() {
-  const col40 = document.getElementById('col-40man');
+  colState['40'].s1  = document.getElementById('forty-s1')?.value || 'overall';
+  colState['40'].s2  = document.getElementById('forty-s2')?.value || '';
+  colState['org'].s1 = document.getElementById('org-s1')?.value   || 'overall';
+  colState['org'].s2 = document.getElementById('org-s2')?.value   || '';
+  saveToStorage();
+
+  const col40  = document.getElementById('col-40man');
   const colOrg = document.getElementById('col-org');
   col40.querySelectorAll('.r-card').forEach(c => c.remove());
   colOrg.querySelectorAll('.r-card').forEach(c => c.remove());
 
-  const showHealthy = document.getElementById('show-healthy').checked;
-  const showInjured = document.getElementById('show-injured').checked;
-  const showPitchers = document.getElementById('show-pitchers').checked;
-  function visible(p) {
-    if (p.player_type === 'pitcher' && !showPitchers) return false;
-    return p.injured ? showInjured : showHealthy;
-  }
-
   const orgIds = ALL_PLAYERS.map(p => p.player_id).filter(id => !fortyMan.has(id));
-  sortedPlayers([...fortyMan]).filter(visible).forEach(p => col40.appendChild(makeCard(p)));
-  sortedPlayers(orgIds).filter(visible).forEach(p => colOrg.appendChild(makeCard(p)));
+  const add40 = document.getElementById('zone-add');
+  const addOrg = document.getElementById('empty-org');
+
+  sortedPlayers([...fortyMan], '40').filter(p => isVisible(p,'40'))
+    .forEach(p => col40.appendChild(makeCard(p, true)));
+  sortedPlayers(orgIds, 'org').filter(p => isVisible(p,'org'))
+    .forEach(p => colOrg.appendChild(makeCard(p, false)));
 
   document.getElementById('empty-40man').style.display = fortyMan.size === 0 ? 'block' : 'none';
   document.getElementById('empty-org').style.display   = orgIds.length === 0  ? 'block' : 'none';
   document.getElementById('forty-count').textContent   = `${fortyMan.size} / 40`;
 }
 
-// ── Drag & Drop ────────────────────────────────────────────────────────────────
-function colOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  e.currentTarget.classList.add('drag-target');
-}
-
-document.addEventListener('dragover', e => {
-  document.querySelectorAll('.roster-drop-col').forEach(c => {
-    if (!c.contains(e.target)) c.classList.remove('drag-target');
-  });
-});
-
-function colDrop(e, col) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-target');
-  if (!_dragging) return;
-  if (col === '40man') {
-    if (fortyMan.size >= 40) {
-      showFeedback('40-man roster is full (40 max)', 'var(--red)');
-      return;
-    }
-    fortyMan.add(_dragging);
-  } else {
-    fortyMan.delete(_dragging);
-  }
+/* ── Commit helper (save + render + banner) ─────────────────────────────────── */
+function commit() {
   saveToStorage();
   render();
+  updateUnsavedBanner();
 }
 
-// ── Save ───────────────────────────────────────────────────────────────────────
+/* ── Save ────────────────────────────────────────────────────────────────────── */
 async function saveRoster() {
   const btn = document.getElementById('save-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const res = await fetch(`/leagues/${LEAGUE_ID}/roster/save`, {
       method: 'PUT',
-      headers: {'Content-Type':'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ forty_man: [...fortyMan] }),
     });
     if (res.ok) {
+      lastSavedIds = new Set([...fortyMan]);
       showFeedback('✓ Saved', 'var(--green)');
+      document.getElementById('unsaved-banner').style.display = 'none';
+      document.getElementById('lineup-btn').style.display = 'inline-flex';
+      measureHeader();
     } else {
       const d = await res.json().catch(()=>({}));
       showFeedback('✗ ' + (d.detail || 'Error'), 'var(--red)');
     }
-  } catch(err) {
-    showFeedback('✗ Network error', 'var(--red)');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Save Roster';
-  }
+  } catch (err) { showFeedback('✗ Network error', 'var(--red)'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Roster'; }
 }
 
 function showFeedback(msg, color) {
   const fb = document.getElementById('save-feedback');
   fb.textContent = msg; fb.style.color = color;
-  setTimeout(() => { if (fb.textContent === msg) fb.textContent = ''; }, 3000);
+  setTimeout(() => { if (fb.textContent === msg) fb.textContent = ''; }, 3500);
+}
+
+/* ── Storage ─────────────────────────────────────────────────────────────────── */
+function saveToStorage() {
+  try {
+    sessionStorage.setItem(ROSTER_KEY, JSON.stringify({ fortyMan: [...fortyMan], colState }));
+  } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = sessionStorage.getItem(ROSTER_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data.fortyMan)) return null;
+    const known = new Set(ALL_PLAYERS.map(p => p.player_id));
+    return { fortyMan: data.fortyMan.filter(id => known.has(id)), colState: data.colState || null };
+  } catch(e) { return null; }
+}
+
+function restoreColState(saved) {
+  if (!saved) return;
+  ['40','org'].forEach(col => {
+    if (!saved[col]) return;
+    const st = saved[col];
+    colState[col] = { ...colState[col], ...st };
+    const s1El  = document.getElementById(col === '40' ? 'forty-s1' : 'org-s1');
+    const s2El  = document.getElementById(col === '40' ? 'forty-s2' : 'org-s2');
+    const revEl = document.getElementById(col === '40' ? 'forty-rev' : 'org-rev');
+    if (s1El && st.s1) s1El.value = st.s1;
+    if (s2El) s2El.value = st.s2 || '';
+    if (revEl && st.reversed) { revEl.classList.add('reversed'); revEl.textContent = '↓'; }
+    // Restore filter button states
+    ['type','health'].forEach(key => {
+      const val = st[key] || (key === 'health' ? 'all' : '');
+      document.querySelectorAll(`.r-filter-btn[data-col="${col}"][data-key="${key}"]`)
+        .forEach(b => b.classList.toggle('active', b.dataset.val === val));
+    });
+  });
+}
+
+/* ── Measure header ──────────────────────────────────────────────────────────── */
+function measureHeader() {
+  const h = document.getElementById('roster-header')?.offsetHeight || 80;
+  document.documentElement.style.setProperty('--roster-hdr-h', h + 'px');
+}
+
+/* ── Init ────────────────────────────────────────────────────────────────────── */
+const stored = loadFromStorage();
+if (stored) {
+  fortyMan = new Set(stored.fortyMan);
+  restoreColState(stored.colState);
+} else if (SERVER_FORTY.size > 0) {
+  fortyMan = new Set([...SERVER_FORTY]);
+} else {
+  fortyMan = new Set(
+    ALL_PLAYERS.slice().sort((a,b) => gradeVal(a.overall) - gradeVal(b.overall))
+               .slice(0, 40).map(p => p.player_id)
+  );
 }
 
 render();
+updateUnsavedBanner();
+requestAnimationFrame(measureHeader);
+window.addEventListener('resize', measureHeader);
 
 })();
 </script>

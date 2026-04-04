@@ -1,182 +1,306 @@
 {# templates/dashboard/partials/draft.html #}
 
-{# ── Sticky header ─────────────────────────────────────────────────────────── #}
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
-
-  <div class="page-header" style="margin-bottom:12px;">
+{# ── Sticky page header ────────────────────────────────────────────────────── #}
+<div id="draft-header" style="position:sticky;top:0;z-index:10;background:var(--bg);
+     padding:16px 24px 12px;border-bottom:1px solid var(--border);">
+  <div class="page-header" style="margin-bottom:0;">
     <h1 class="page-title">Draft Board</h1>
     {% if draft_id %}
-      <span class="page-subtitle">{{ board|length }} prospects</span>
+      <span class="page-subtitle" style="margin-left:10px;">{{ board|length }} prospects</span>
       <div class="spacer"></div>
-      <button class="btn btn-secondary" onclick="resetOrder()" id="reset-btn"
-              style="opacity:0.4;" disabled>↺ Reset to Default</button>
-      <button class="btn btn-secondary" onclick="returnToSubmitted()" id="submitted-btn"
-              style="margin-left:8px;display:none;">⟳ Return to Submitted</button>
-      <button class="btn btn-primary" onclick="submitPrefs()" id="submit-btn"
+      <button class="btn btn-secondary" id="return-submitted-btn"
+              onclick="returnToSubmitted()" style="display:none;">⟳ Return to Submitted</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="submitPrefs()"
               style="margin-left:8px;">Submit Preferences</button>
-      <span id="submit-checkmark"
+      <span id="submit-check"
             style="font-family:var(--font-mono);font-size:13px;color:var(--green);
                    margin-left:8px;display:none;">✓</span>
       {% if draft_complete %}
-      <a href="/leagues/{{ league_id }}/draft/results"
-         class="btn btn-secondary" style="margin-left:16px;border-color:var(--green);color:var(--green);">
-        View Results →
-      </a>
+        <a href="/leagues/{{ league_id }}/draft/results"
+           class="btn btn-secondary"
+           style="margin-left:16px;border-color:var(--green);color:var(--green);">
+          View Results →
+        </a>
       {% else %}
-      <form method="POST" action="/leagues/{{ league_id }}/draft/execute"
-            style="margin-left:16px;display:inline;" onsubmit="onExecute(this)">
-        <button type="submit" id="execute-btn"
-                class="btn btn-secondary"
-                style="border-color:var(--green);color:var(--green);">
-          Run Draft ▶
-        </button>
-      </form>
+        <form method="POST" action="/leagues/{{ league_id }}/draft/execute"
+              style="margin-left:16px;display:inline;" onsubmit="onExecute(this)">
+          <button type="submit" id="execute-btn" class="btn btn-secondary"
+                  style="border-color:var(--green);color:var(--green);">
+            Run Draft ▶
+          </button>
+        </form>
       {% endif %}
     {% else %}
       <span class="page-subtitle" style="color:var(--text-dim);">Draft not yet open</span>
     {% endif %}
   </div>
-
-  {% if draft_id %}
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-    <div style="display:flex;gap:0;border:1px solid var(--border);">
-      <button class="type-btn active" onclick="setType(this,'')">All</button>
-      <button class="type-btn" onclick="setType(this,'hitter')">Hitters</button>
-      <button class="type-btn" onclick="setType(this,'pitcher')">Pitchers</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;
-                font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-      Sort
-      <select id="sort1" onchange="applySort()" style="width:auto;">
-        <option value="overall">Overall</option>
-        <optgroup label="Hitting">
-          <option value="contact">Contact</option>
-          <option value="power">Power</option>
-          <option value="eye">Eye</option>
-          <option value="speed">Speed</option>
-        </optgroup>
-        <optgroup label="Pitching">
-          <option value="stuff">Stuff</option>
-          <option value="control">Control</option>
-          <option value="stamina">Stamina</option>
-          <option value="recovery">Recovery</option>
-        </optgroup>
-      </select>
-      then
-      <select id="sort2" onchange="applySort()" style="width:auto;">
-        <option value="">—</option>
-        <option value="overall">Overall</option>
-        <optgroup label="Hitting">
-          <option value="contact">Contact</option>
-          <option value="power">Power</option>
-          <option value="eye">Eye</option>
-          <option value="speed">Speed</option>
-        </optgroup>
-        <optgroup label="Pitching">
-          <option value="stuff">Stuff</option>
-          <option value="control">Control</option>
-          <option value="stamina">Stamina</option>
-          <option value="recovery">Recovery</option>
-        </optgroup>
-      </select>
-    </div>
-    <span id="visible-count"
-          style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
-    <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:auto;">
-      Drag to reorder · click to inspect
-    </span>
-  </div>
-  {% endif %}
-
 </div>
 
 {% if draft_id %}
-<div style="padding:16px 24px 24px;">
-  <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start;">
 
-    <div class="card">
-      <div id="prospect-list"></div>
+{# ── Three-column layout ───────────────────────────────────────────────────── #}
+<div class="draft-cols">
+
+  {# ── Left: Draft Preferences ─────────────────────────────────────────────── #}
+  <div class="draft-col">
+    <div class="draft-col-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span class="col-label" style="color:var(--amber);">Draft Preferences</span>
+        <button class="btn btn-secondary" id="reset-btn" onclick="resetToDefault()"
+                style="font-size:11px;padding:4px 10px;opacity:0.4;" disabled>
+          ↺ Reset
+        </button>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">
+        drag to reorder · arrows to nudge · drag from Explore to promote
+      </div>
     </div>
+    <div class="draft-col-body" id="prefs-list"
+         ondragover="prefsZoneOver(event)" ondrop="prefsZoneDrop(event)">
+    </div>
+  </div>
 
-    {# Roster column: fixed max-height with its own scroll #}
-    <div style="position:sticky;top:calc(var(--draft-header-h, 120px) + 16px);
-                max-height:calc(100vh - var(--draft-header-h, 120px) - 32px);
-                display:flex;flex-direction:column;">
-      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;min-height:0;">
-        <div class="card-header" style="padding:8px 16px;flex-shrink:0;">
-          <span class="card-title">Your Roster</span>
-          <div class="spacer"></div>
-          <select id="roster-sort" onchange="renderRoster()"
-                  style="font-size:10px;padding:2px 4px;width:auto;background:var(--bg-3);
-                         border:1px solid var(--border);color:var(--text-dim);font-family:var(--font-mono);">
-            <option value="overall">Overall</option>
+  {# ── Middle: Explore / Sort ───────────────────────────────────────────────── #}
+  <div class="draft-col">
+    <div class="draft-col-hdr">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="type-btn active" onclick="setFilter(this,'')">All</button>
+          <button class="type-btn" onclick="setFilter(this,'hitter')">Hit</button>
+          <button class="type-btn" onclick="setFilter(this,'pitcher')">Pit</button>
+        </div>
+        <button class="btn btn-secondary" id="rev-btn" onclick="toggleReverse()"
+                style="font-size:11px;padding:4px 8px;">↑ Best</button>
+        <span id="explore-count"
+              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                     margin-left:2px;"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap;margin-top:7px;
+                  font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+        <span>Sort</span>
+        <select id="s1" onchange="applyExploreSort()" style="width:auto;font-size:10px;">
+          <option value="overall">Overall</option>
+          <optgroup label="Hitting">
             <option value="contact">Contact</option>
             <option value="power">Power</option>
             <option value="eye">Eye</option>
             <option value="speed">Speed</option>
+            <option value="arm">Arm</option>
+          </optgroup>
+          <optgroup label="Pitching">
+            <option value="stuff">Stuff</option>
+            <option value="control">Control</option>
+            <option value="stamina">Stamina</option>
+            <option value="recovery">Recovery</option>
+            <option value="ground_balls">GB</option>
+          </optgroup>
+        </select>
+        <span>then</span>
+        <select id="s2" onchange="applyExploreSort()" style="width:auto;font-size:10px;">
+          <option value="">—</option>
+          <option value="overall">Overall</option>
+          <optgroup label="Hitting">
+            <option value="contact">Contact</option>
+            <option value="power">Power</option>
+            <option value="eye">Eye</option>
+            <option value="speed">Speed</option>
+            <option value="arm">Arm</option>
+          </optgroup>
+          <optgroup label="Pitching">
+            <option value="stuff">Stuff</option>
+            <option value="control">Control</option>
+            <option value="stamina">Stamina</option>
+            <option value="recovery">Recovery</option>
+            <option value="ground_balls">GB</option>
+          </optgroup>
+        </select>
+        <span>then</span>
+        <select id="s3" onchange="applyExploreSort()" style="width:auto;font-size:10px;">
+          <option value="">—</option>
+          <option value="overall">Overall</option>
+          <optgroup label="Hitting">
+            <option value="contact">Contact</option>
+            <option value="power">Power</option>
+            <option value="eye">Eye</option>
+            <option value="speed">Speed</option>
+            <option value="arm">Arm</option>
+          </optgroup>
+          <optgroup label="Pitching">
+            <option value="stuff">Stuff</option>
+            <option value="control">Control</option>
+            <option value="stamina">Stamina</option>
+            <option value="recovery">Recovery</option>
+            <option value="ground_balls">GB</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    <div class="draft-col-body" id="explore-list"></div>
+  </div>
+
+  {# ── Right: Your Roster ───────────────────────────────────────────────────── #}
+  <div class="draft-col">
+    <div class="draft-col-hdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+        <span class="col-label" style="color:var(--text-dim);">Your Roster</span>
+        <div style="display:flex;align-items:center;gap:4px;
+                    font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+          <select id="roster-s1" onchange="renderRoster()" style="width:auto;">
+            <option value="overall">Overall</option>
+            <option value="contact">Contact</option>
+            <option value="power">Power</option>
+            <option value="stuff">Stuff</option>
+            <option value="control">Control</option>
+          </select>
+          <select id="roster-s2" onchange="renderRoster()" style="width:auto;">
+            <option value="">—</option>
+            <option value="overall">Overall</option>
+            <option value="contact">Contact</option>
+            <option value="power">Power</option>
             <option value="stuff">Stuff</option>
             <option value="control">Control</option>
           </select>
         </div>
-        <div id="roster-list" style="overflow-y:auto;flex:1;min-height:0;"></div>
       </div>
     </div>
-
+    <div class="draft-col-body" id="roster-list"></div>
   </div>
+
 </div>
 {% endif %}
 
 <style>
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+.draft-cols {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 280px;
+  gap: 12px;
+  padding: 12px 16px 0;
+  height: calc(100vh - var(--draft-hdr-h, 64px));
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.draft-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+}
+.draft-col-hdr {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.draft-col-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.col-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+/* ── Filter buttons ─────────────────────────────────────────────────────────── */
 .type-btn {
-  font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-  padding:5px 12px;background:var(--bg-2);border:none;border-right:1px solid var(--border);
-  color:var(--text-dim);cursor:pointer;transition:all .1s;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .05em;
+  text-transform: uppercase; padding: 4px 10px;
+  background: var(--bg-2); border: none; border-right: 1px solid var(--border);
+  color: var(--text-dim); cursor: pointer; transition: all .1s;
 }
-.type-btn:last-child{border-right:none;}
-.type-btn:hover{color:var(--text);background:var(--bg-3);}
-.type-btn.active{color:var(--amber);background:var(--amber-lo);}
-
-.prospect-row {
-  display:grid;grid-template-columns:auto 36px 1fr auto;
-  gap:0 10px;align-items:center;padding:8px 14px;
-  border-bottom:1px solid var(--border);cursor:grab;
-  transition:background .08s;user-select:none;
+.type-btn:last-child { border-right: none; }
+.type-btn:hover { color: var(--text); background: var(--bg-3); }
+.type-btn.active { color: var(--amber); background: var(--amber-lo); }
+/* ── Prefs column rows ──────────────────────────────────────────────────────── */
+.pref-row {
+  display: grid;
+  grid-template-columns: 28px 22px 1fr auto;
+  gap: 0 6px;
+  align-items: center;
+  padding: 7px 10px 7px 6px;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  transition: background .08s;
 }
-.prospect-row:last-child{border-bottom:none;}
-.prospect-row:hover{background:var(--bg-3);}
-.prospect-row.dragging{opacity:.3;cursor:grabbing;}
-.prospect-row.drag-over{border-top:2px solid var(--amber);margin-top:-1px;}
-
-.p-overall{font-family:var(--font-mono);font-size:15px;font-weight:600;min-width:28px;}
-.p-rank{font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:right;}
-.p-name{font-family:var(--font-sans);font-weight:600;font-size:13px;color:var(--text-hi);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.p-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:1px;}
-.p-grades{display:flex;gap:8px;font-family:var(--font-mono);font-size:11px;flex-wrap:wrap;}
-.p-grades .gl{color:var(--text-dim);margin-right:1px;}
-
-.roster-row{padding:7px 14px;border-bottom:1px solid var(--border);
-  cursor:pointer;transition:background .08s;}
-.roster-row:last-child{border-bottom:none;}
-.roster-row:hover{background:var(--bg-3);}
-.r-name{font-family:var(--font-sans);font-weight:600;font-size:12px;color:var(--text);}
-.r-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:2px;}
+.pref-row:last-child { border-bottom: none; }
+.pref-row:hover { background: var(--bg-3); }
+.pref-row.dragging { opacity: .3; cursor: grabbing; }
+.pref-row.drag-over { border-top: 2px solid var(--amber); margin-top: -1px; }
+.pref-rank {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--amber); text-align: right; font-weight: 600;
+}
+.pref-arrows { display: flex; flex-direction: column; gap: 1px; }
+.pref-arrow {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 10px; line-height: 1; padding: 1px 2px;
+}
+.pref-arrow:hover:not(:disabled) { color: var(--text); }
+.pref-arrow:disabled { opacity: .2; cursor: default; }
+/* ── Explore column rows ─────────────────────────────────────────────────────── */
+.exp-row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 0 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  transition: background .08s;
+}
+.exp-row:last-child { border-bottom: none; }
+.exp-row:hover { background: var(--bg-3); }
+.exp-row.dragging { opacity: .3; cursor: grabbing; }
+/* ── Roster column rows ──────────────────────────────────────────────────────── */
+.ros-row {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .08s;
+}
+.ros-row:last-child { border-bottom: none; }
+.ros-row:hover { background: var(--bg-3); }
+/* ── Shared player card internals ───────────────────────────────────────────── */
+.d-grade { font-family: var(--font-mono); font-size: 15px; font-weight: 600; min-width: 28px; }
+.d-name  { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
+.d-meta  { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.d-skills {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;
+}
+.d-skills .gl { color: var(--muted); margin-right: 1px; }
+/* ── Drop zone highlight ────────────────────────────────────────────────────── */
+.draft-col-body.drop-active { background: var(--amber-lo); }
 </style>
 
 <script>
-(function() {
-// Hoist exports first
-window.setType=setType;window.applySort=applySort;window.resetOrder=resetOrder;
-window.submitPrefs=submitPrefs;window.onExecute=onExecute;window.returnToSubmitted=returnToSubmitted;
-window.dStart=dStart;window.dOver=dOver;window.dDrop=dDrop;window.dEnd=dEnd;
+(function () {
 
+/* ── Hoist globals ──────────────────────────────────────────────────────────── */
+window.setFilter        = setFilter;
+window.applyExploreSort = applyExploreSort;
+window.toggleReverse    = toggleReverse;
+window.resetToDefault   = resetToDefault;
+window.returnToSubmitted= returnToSubmitted;
+window.submitPrefs      = submitPrefs;
+window.onExecute        = onExecute;
+window.prefsZoneOver    = prefsZoneOver;
+window.prefsZoneDrop    = prefsZoneDrop;
+window.renderRoster     = renderRoster;
+
+/* ── Data ───────────────────────────────────────────────────────────────────── */
 const DRAFT_ID    = "{{ draft_id }}";
-var LEAGUE_ID   = "{{ league_id }}";
-const ALL_PLAYERS = {{ board | tojson }};
-const ALL_ROSTER  = {{ players | tojson }};
+var   LEAGUE_ID   = "{{ league_id }}";
+const ALL_PLAYERS = {{ board       | tojson }};
+const ALL_ROSTER  = {{ players     | tojson }};
 const SAVED_PREFS = {{ preferences | tojson }};
-const STORAGE_KEY = `draft_order_${DRAFT_ID}`;
+const STORAGE_KEY = `draft3col_${DRAFT_ID}`;
 
 const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
 function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
@@ -184,352 +308,467 @@ function gradeClass(g) {
   return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
 }
 
-let order          = ALL_PLAYERS.map(p => p.player_id);
+/* ── State ──────────────────────────────────────────────────────────────────── */
+let prefOrder      = ALL_PLAYERS.map(p => p.player_id);
 let defaultOrder   = null;
 let submittedOrder = null;
-let typeFilter     = '';
 let dirty          = false;
 
-// ── Prospect list ──────────────────────────────────────────────────────────────
-function visible() {
-  return order
-    .map(id => ALL_PLAYERS.find(p => p.player_id === id))
-    .filter(p => p && (!typeFilter || p.player_type === typeFilter));
+let exploreFilter   = '';
+let exploreReversed = false;
+let exploreSort     = { s1: 'overall', s2: '', s3: '' };
+
+let dragId     = null;
+let dragSource = null;  // 'prefs' | 'explore'
+
+/* ── Grade helpers ──────────────────────────────────────────────────────────── */
+function skillVal(p, key) { return gradeVal(p[key] || null); }
+
+function playerGradesHtml(p) {
+  const pairs = p.player_type === 'pitcher'
+    ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],['GB',p.ground_balls]]
+    : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
+       ['ARM',p.arm],[p.best_def_label||'DEF',p.best_def_grade]];
+  return pairs.filter(([,v])=>v)
+    .map(([k,v])=>`<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`)
+    .join('');
 }
 
-function renderBoard() {
-  const players = visible();
-  const total = typeFilter
-    ? ALL_PLAYERS.filter(p => p.player_type === typeFilter).length
-    : ALL_PLAYERS.length;
+function playerMetaHtml(p) {
+  return `${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}`;
+}
 
-  document.getElementById('visible-count').textContent =
-    players.length !== total ? `${players.length} of ${total}` : `${players.length} players`;
+/* ── Default sort ───────────────────────────────────────────────────────────── */
+// Primary: overall
+// Secondary: best of (contact, stuff)
+// Tertiary: best of (power, control)
+function computeDefaultOrder() {
+  return ALL_PLAYERS.slice().sort((a, b) => {
+    const d1 = gradeVal(a.overall) - gradeVal(b.overall);
+    if (d1 !== 0) return d1;
+    const aS = Math.min(gradeVal(a.contact), gradeVal(a.stuff));
+    const bS = Math.min(gradeVal(b.contact), gradeVal(b.stuff));
+    const d2 = aS - bS;
+    if (d2 !== 0) return d2;
+    const aT = Math.min(gradeVal(a.power), gradeVal(a.control));
+    const bT = Math.min(gradeVal(b.power), gradeVal(b.control));
+    return aT - bT;
+  }).map(p => p.player_id);
+}
 
-  const html = players.map(p => {
-    const rank = order.indexOf(p.player_id) + 1;
-    const grades = p.player_type === 'pitcher'
-      ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery]]
-      : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
-    const defHtml = p.best_def_grade
-      ? `<span><span class="gl">${p.best_def_label}</span><span class="${gradeClass(p.best_def_grade)}">${p.best_def_grade}</span></span>`
-      : '';
-    const gradesHtml = grades.filter(([,v])=>v).map(([k,v])=>
-      `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
-    ).join('') + defHtml;
+/* ── Explore sort ───────────────────────────────────────────────────────────── */
+function computeExploreOrder() {
+  const { s1, s2, s3 } = exploreSort;
+  let players = ALL_PLAYERS.filter(p => !exploreFilter || p.player_type === exploreFilter);
+  players.sort((a, b) => {
+    const d1 = skillVal(a, s1) - skillVal(b, s1);
+    if (d1 !== 0) return d1;
+    if (s2) { const d2 = skillVal(a, s2) - skillVal(b, s2); if (d2 !== 0) return d2; }
+    if (s3) return skillVal(a, s3) - skillVal(b, s3);
+    return 0;
+  });
+  if (exploreReversed) players.reverse();
+  return players;
+}
 
-    return `<div class="prospect-row" draggable="true" data-id="${p.player_id}"
-                 ondragstart="dStart(event)" ondragover="dOver(event)"
-                 ondrop="dDrop(event)" ondragend="dEnd(event)"
->
-      <span class="p-overall ${gradeClass(p.overall)}">${p.overall}</span>
-      <div class="p-rank">${rank}</div>
-      <div>
-        <div class="p-name">${p.first_name} ${p.last_name}</div>
-        <div class="p-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
+/* ── Render: Preferences (left) ─────────────────────────────────────────────── */
+function renderPrefs() {
+  const el    = document.getElementById('prefs-list');
+  const total = prefOrder.length;
+  el.innerHTML = '';
+
+  prefOrder.forEach((pid, idx) => {
+    const p = ALL_PLAYERS.find(x => x.player_id === pid);
+    if (!p) return;
+
+    const row = document.createElement('div');
+    row.className  = 'pref-row';
+    row.dataset.pid = pid;
+    row.draggable  = true;
+
+    row.innerHTML = `
+      <div class="pref-rank">${idx + 1}</div>
+      <div class="pref-arrows">
+        <button class="pref-arrow" data-pid="${pid}" data-dir="up"
+                ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button class="pref-arrow" data-pid="${pid}" data-dir="down"
+                ${idx === total - 1 ? 'disabled' : ''}>▼</button>
       </div>
-      <div class="p-grades">${gradesHtml}</div>
-    </div>`;
-  }).join('') || `<div style="padding:24px;text-align:center;font-family:var(--font-mono);
-    font-size:12px;color:var(--text-dim);">No players match filter</div>`;
+      <div style="min-width:0;">
+        <div class="d-name" style="cursor:pointer;"
+             onclick="openPlayerPanel('${pid}')">${p.first_name} ${p.last_name}</div>
+        <div class="d-meta">${playerMetaHtml(p)}</div>
+        <div class="d-skills">${playerGradesHtml(p)}</div>
+      </div>
+      <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>`;
 
-  document.getElementById('prospect-list').innerHTML = html;
-}
+    /* drag within prefs */
+    row.addEventListener('dragstart', e => {
+      dragId = pid; dragSource = 'prefs';
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      dragId = null; dragSource = null;
+    });
 
-// ── Roster list ────────────────────────────────────────────────────────────────
-function renderRoster() {
-  const sortKey = document.getElementById('roster-sort')?.value || 'overall';
-  const sorted = [...ALL_ROSTER].sort((a, b) => {
-    const av = gradeVal(a[sortKey] || a.overall);
-    const bv = gradeVal(b[sortKey] || b.overall);
-    return av - bv;
+    /* drop target: insert before this row */
+    row.addEventListener('dragover', e => {
+      if (!dragId) return;
+      e.preventDefault();
+      document.querySelectorAll('.pref-row').forEach(r => r.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.querySelectorAll('.pref-row').forEach(r => r.classList.remove('drag-over'));
+      if (!dragId || dragId === pid) return;
+      insertPrefBefore(dragId, pid);
+    });
+
+    el.appendChild(row);
   });
 
+  /* arrow clicks via delegation */
+  el.onclick = (e) => {
+    const btn = e.target.closest('.pref-arrow');
+    if (!btn) return;
+    e.stopPropagation();
+    const pid = btn.dataset.pid;
+    const dir = btn.dataset.dir;
+    const i   = prefOrder.indexOf(pid);
+    if (i === -1) return;
+    if (dir === 'up'   && i > 0)                prefOrder.splice(i - 1, 0, prefOrder.splice(i, 1)[0]);
+    if (dir === 'down' && i < total - 1)        prefOrder.splice(i + 1, 0, prefOrder.splice(i, 1)[0]);
+    markDirty();
+    renderPrefs();
+  };
+
+  updateResetBtn();
+  updateCheckmark();
+}
+
+/* ── Render: Explore (middle) ─────────────────────────────────────────────────  */
+function renderExplore() {
+  const players = computeExploreOrder();
+  const total   = exploreFilter
+    ? ALL_PLAYERS.filter(p => p.player_type === exploreFilter).length
+    : ALL_PLAYERS.length;
+
+  document.getElementById('explore-count').textContent =
+    players.length !== total ? `${players.length} / ${total}` : `${players.length} players`;
+
+  const el = document.getElementById('explore-list');
+  el.innerHTML = '';
+  let _mouseDownId = null;
+
+  players.forEach(p => {
+    const row = document.createElement('div');
+    row.className   = 'exp-row';
+    row.dataset.pid = p.player_id;
+    row.draggable   = true;
+
+    row.innerHTML = `
+      <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+      <div style="min-width:0;">
+        <div class="d-name">${p.first_name} ${p.last_name}</div>
+        <div class="d-meta">${playerMetaHtml(p)}</div>
+        <div class="d-skills">${playerGradesHtml(p)}</div>
+      </div>`;
+
+    row.addEventListener('dragstart', e => {
+      dragId = p.player_id; dragSource = 'explore';
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      dragId = null; dragSource = null;
+    });
+
+    /* click to inspect (mousedown+up to survive drag-intent without firing) */
+    row.addEventListener('mousedown', () => { _mouseDownId = p.player_id; });
+    row.addEventListener('mouseup', () => {
+      if (!dragId && _mouseDownId === p.player_id) openPlayerPanel(p.player_id);
+      _mouseDownId = null;
+    });
+
+    el.appendChild(row);
+  });
+}
+
+/* ── Render: Roster (right) ──────────────────────────────────────────────────── */
+function renderRoster() {
+  const s1 = document.getElementById('roster-s1')?.value || 'overall';
+  const s2 = document.getElementById('roster-s2')?.value || '';
+
+  const sorted = ALL_ROSTER.slice().sort((a, b) => {
+    const d1 = skillVal(a, s1) - skillVal(b, s1);
+    if (d1 !== 0) return d1;
+    if (s2) return skillVal(a, s2) - skillVal(b, s2);
+    return 0;
+  });
+
+  const el = document.getElementById('roster-list');
   if (!sorted.length) {
-    document.getElementById('roster-list').innerHTML =
-      '<div style="padding:20px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">No roster yet</div>';
+    el.innerHTML = '<div style="padding:20px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">No roster yet</div>';
     return;
   }
 
-  const html = sorted.map(p => {
-    const grades = p.player_type === 'pitcher'
-      ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery]]
-      : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
-    const defHtml = p.best_def_grade
-      ? `<span class="gl">${p.best_def_label}</span><span class="${gradeClass(p.best_def_grade)}" style="margin-right:6px;">${p.best_def_grade}</span>`
-      : '';
-    const gradesHtml = grades.filter(([,v])=>v).map(([k,v])=>
-      `<span class="gl">${k}</span><span class="${gradeClass(v)}" style="margin-right:6px;">${v}</span>`
-    ).join('') + defHtml;
-
-    return `<div class="roster-row" onclick="openPlayerPanel('${p.player_id}')">
+  el.innerHTML = sorted.map(p => `
+    <div class="ros-row" onclick="openPlayerPanel('${p.player_id}')">
       <div style="display:flex;justify-content:space-between;align-items:baseline;">
-        <span class="r-name">${p.first_name} ${p.last_name}</span>
-        <span class="${gradeClass(p.overall)}" style="font-size:13px;font-weight:600;">${p.overall}</span>
+        <span style="font-family:var(--font-sans);font-weight:600;font-size:13px;
+                     color:var(--text-hi);">${p.first_name} ${p.last_name}</span>
+        <span class="${gradeClass(p.overall)}" style="font-size:13px;font-weight:600;
+              font-family:var(--font-mono);">${p.overall}</span>
       </div>
-      <div class="r-meta">
-        ${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age} · ${gradesHtml}
-      </div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('roster-list').innerHTML = html;
+      <div class="d-meta">${playerMetaHtml(p)}</div>
+      <div class="d-skills">${playerGradesHtml(p)}</div>
+    </div>`).join('');
 }
 
-// ── Filter & Sort ──────────────────────────────────────────────────────────────
-function setType(btn, type) {
+/* ── Pref manipulation ───────────────────────────────────────────────────────── */
+// Insert movedId before targetId in prefOrder (used for both sources)
+function insertPrefBefore(movedId, targetId) {
+  const si = prefOrder.indexOf(movedId);
+  if (si !== -1) prefOrder.splice(si, 1);
+  const ti = prefOrder.indexOf(targetId);
+  if (ti === -1) { prefOrder.push(movedId); }
+  else           { prefOrder.splice(ti, 0, movedId); }
+  markDirty();
+  renderPrefs();
+}
+
+// Append movedId to end (drop on empty space below list)
+function appendToPref(movedId) {
+  const si = prefOrder.indexOf(movedId);
+  if (si !== -1) prefOrder.splice(si, 1);
+  prefOrder.push(movedId);
+  markDirty();
+  renderPrefs();
+}
+
+/* ── Drop zone: prefs column background (append) ─────────────────────────────── */
+function prefsZoneOver(e) {
+  if (e.target.closest('.pref-row')) return;
+  if (!dragId) return;
+  e.preventDefault();
+  document.getElementById('prefs-list').classList.add('drop-active');
+}
+function prefsZoneDrop(e) {
+  if (e.target.closest('.pref-row')) return;
+  e.preventDefault();
+  document.getElementById('prefs-list').classList.remove('drop-active');
+  if (!dragId) return;
+  appendToPref(dragId);
+}
+document.addEventListener('dragend', () => {
+  document.getElementById('prefs-list')?.classList.remove('drop-active');
+  document.querySelectorAll('.pref-row').forEach(r => r.classList.remove('drag-over'));
+});
+
+/* ── Controls ────────────────────────────────────────────────────────────────── */
+const HITTING_KEYS  = new Set(['contact','power','eye','speed','arm']);
+const PITCHING_KEYS = new Set(['stuff','control','stamina','recovery','ground_balls']);
+
+function getSkillType(key) {
+  if (HITTING_KEYS.has(key))  return 'hitting';
+  if (PITCHING_KEYS.has(key)) return 'pitching';
+  return 'neutral';
+}
+
+// Grey out s2/s3 options that contradict the type locked in by s1
+function updateSortConstraints() {
+  const s1Type = getSkillType(document.getElementById('s1').value);
+  ['s2','s3'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const blockedSet = s1Type === 'hitting' ? PITCHING_KEYS
+                     : s1Type === 'pitching' ? HITTING_KEYS
+                     : null;
+    sel.querySelectorAll('option').forEach(o => {
+      const block = blockedSet && blockedSet.has(o.value);
+      o.disabled = block;
+      o.style.color = block ? 'var(--muted)' : '';
+    });
+    // If the currently selected value is now blocked, reset it
+    if (blockedSet && blockedSet.has(sel.value)) sel.value = '';
+  });
+}
+
+function setFilter(btn, type) {
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  typeFilter = type;
-  dirty = true;
+  exploreFilter = type;
   saveToStorage();
-  updateResetBtn();
-  updateCheckmark();
-  renderBoard();
+  renderExplore();
 }
 
-function getSkillVal(p, key) {
-  const map = {stuff:p.stuff,control:p.control,stamina:p.stamina,recovery:p.recovery,
-    contact:p.contact,power:p.power,eye:p.eye,speed:p.speed,overall:p.overall};
-  return gradeVal(map[key]);
-}
-
-function sortedOrder() {
-  const s1 = document.getElementById('sort1').value;
-  const s2 = document.getElementById('sort2').value;
-  const ids = ALL_PLAYERS.map(p => p.player_id);
-  ids.sort((aid, bid) => {
-    const a = ALL_PLAYERS.find(p => p.player_id === aid);
-    const b = ALL_PLAYERS.find(p => p.player_id === bid);
-    if (!a||!b) return 0;
-    const d1 = getSkillVal(a,s1) - getSkillVal(b,s1);
-    if (d1!==0) return d1;
-    if (s2) return getSkillVal(a,s2) - getSkillVal(b,s2);
-    return 0;
-  });
-  return ids;
-}
-
-function applySort() {
-  order = sortedOrder();
-  dirty = true;
+function applyExploreSort() {
+  updateSortConstraints();
+  exploreSort = {
+    s1: document.getElementById('s1').value,
+    s2: document.getElementById('s2').value,
+    s3: document.getElementById('s3').value,
+  };
   saveToStorage();
-  updateResetBtn();
-  updateCheckmark();
-  renderBoard();
+  renderExplore();
 }
 
-function resetOrder() {
-  // Reset UI controls first
-  typeFilter = '';
-  document.querySelectorAll('.type-btn').forEach(b => {
-    b.classList.toggle('active', b.getAttribute('onclick').includes("''"));
-  });
-  document.getElementById('sort1').value = 'overall';
-  document.getElementById('sort2').value = '';
-  // Recompute order from scratch using the reset sort
-  order = sortedOrder();
-  dirty = false;
+function toggleReverse() {
+  exploreReversed = !exploreReversed;
+  document.getElementById('rev-btn').textContent =
+    exploreReversed ? '↓ Worst first' : '↑ Best first';
   saveToStorage();
-  updateResetBtn();
-  updateCheckmark();
-  renderBoard();
+  renderExplore();
 }
 
-function returnToSubmitted() {
-  if (!submittedOrder) return;
-  order = [...submittedOrder];
-  dirty = false;
+/* ── Dirty / reset ───────────────────────────────────────────────────────────── */
+function markDirty() {
+  dirty = JSON.stringify(prefOrder) !== JSON.stringify(defaultOrder);
   saveToStorage();
-  updateResetBtn();
-  updateCheckmark();
-  renderBoard();
 }
 
 function updateResetBtn() {
   const btn = document.getElementById('reset-btn');
-  btn.disabled = !dirty;
+  if (!btn) return;
+  btn.disabled    = !dirty;
   btn.style.opacity = dirty ? '1' : '0.4';
 }
 
+function resetToDefault() {
+  prefOrder = [...defaultOrder];
+  dirty = false;
+  saveToStorage();
+  renderPrefs();
+}
+
 function updateCheckmark() {
-  const check = document.getElementById('submit-checkmark');
-  const subBtn = document.getElementById('submitted-btn');
+  const check  = document.getElementById('submit-check');
+  const retBtn = document.getElementById('return-submitted-btn');
   if (!submittedOrder) {
-    check.style.display = 'none';
-    if (subBtn) subBtn.style.display = 'none';
+    if (check)  check.style.display  = 'none';
+    if (retBtn) retBtn.style.display = 'none';
     return;
   }
-  const isSubmitted = JSON.stringify(order) === JSON.stringify(submittedOrder);
-  check.style.display = isSubmitted ? 'inline' : 'none';
-  if (subBtn) subBtn.style.display = !isSubmitted ? 'inline-block' : 'none';
+  const isMatch = JSON.stringify(prefOrder) === JSON.stringify(submittedOrder);
+  if (check)  check.style.display  = isMatch ? 'inline' : 'none';
+  if (retBtn) retBtn.style.display = !isMatch ? 'inline-block' : 'none';
 }
 
-// ── Drag ───────────────────────────────────────────────────────────────────────
-let dragId = null;
-
-function dStart(e) {
-  dragId = e.currentTarget.dataset.id;
-  e.currentTarget.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-}
-function dOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  document.querySelectorAll('.prospect-row').forEach(r => r.classList.remove('drag-over'));
-  e.currentTarget.classList.add('drag-over');
-}
-function dDrop(e) {
-  e.preventDefault();
-  const targetId = e.currentTarget.dataset.id;
-  if (!dragId || dragId === targetId) return;
-  const si = order.indexOf(dragId);
-  const ti = order.indexOf(targetId);
-  order.splice(si, 1);
-  order.splice(ti, 0, dragId);
-  dirty = true;
-  saveToStorage();
-  updateResetBtn();
-  updateCheckmark();
-  renderBoard();
-}
-function dEnd(e) {
-  e.currentTarget.classList.remove('dragging');
-  document.querySelectorAll('.prospect-row').forEach(r => r.classList.remove('drag-over'));
-  dragId = null;
+function returnToSubmitted() {
+  if (!submittedOrder) return;
+  prefOrder = [...submittedOrder];
+  markDirty();
+  renderPrefs();
 }
 
-// ── Storage ────────────────────────────────────────────────────────────────────
+/* ── Submit / execute ────────────────────────────────────────────────────────── */
+async function submitPrefs() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_ids: prefOrder }),
+    });
+    if (res.ok) {
+      submittedOrder = [...prefOrder];
+      saveToStorage();
+      updateCheckmark();
+    }
+  } catch (err) { console.error('Submit failed', err); }
+  finally { btn.disabled = false; btn.textContent = 'Submit Preferences'; }
+}
+
+function onExecute(form) {
+  const btn = document.getElementById('execute-btn');
+  btn.disabled = true; btn.textContent = 'Running…';
+}
+
+/* ── Storage ─────────────────────────────────────────────────────────────────── */
 function saveToStorage() {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      order,
-      typeFilter,
-      sort1: document.getElementById('sort1')?.value || 'overall',
-      sort2: document.getElementById('sort2')?.value || '',
-
+      prefOrder, submittedOrder,
+      exploreFilter, exploreSort, exploreReversed,
     }));
-  } catch(e) {}
+  } catch (e) {}
 }
 
 function loadFromStorage() {
   try {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
-    if (!saved) return null;
-    const data = JSON.parse(saved);
-    if (Array.isArray(data)) return { order: data };
-    const valid = data.order.filter(id => ALL_PLAYERS.some(p => p.player_id === id));
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data.prefOrder)) return null;
+    const known = new Set(ALL_PLAYERS.map(p => p.player_id));
+    const valid = data.prefOrder.filter(id => known.has(id));
     if (valid.length !== ALL_PLAYERS.length) return null;
-    return { ...data, order: valid };
-  } catch(e) { return null; }
+    return { ...data, prefOrder: valid };
+  } catch (e) { return null; }
 }
 
 function restoreUiState(data) {
-  if (data.typeFilter) {
-    typeFilter = data.typeFilter;
+  if (data.exploreFilter) {
+    exploreFilter = data.exploreFilter;
     document.querySelectorAll('.type-btn').forEach(b => {
-      b.classList.toggle('active', b.getAttribute('onclick').includes(`'${data.typeFilter}'`));
+      b.classList.toggle('active',
+        b.getAttribute('onclick').includes(`'${data.exploreFilter}'`));
     });
   }
-  if (data.sort1) document.getElementById('sort1').value = data.sort1;
-  if (data.sort2 !== undefined) document.getElementById('sort2').value = data.sort2;
-
-}
-
-// ── Submit ─────────────────────────────────────────────────────────────────────
-function onExecute(form) {
-  const btn = document.getElementById('execute-btn');
-  btn.disabled = true;
-  btn.textContent = 'Running…';
-}
-
-async function submitPrefs() {
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/preferences`, {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ player_ids: order }),
-    });
-    if (res.ok) {
-      submittedOrder = [...order];
-    }
-  } catch(err) {
-    console.error('Submit failed', err);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Submit Preferences';
+  if (data.exploreSort) {
+    exploreSort = data.exploreSort;
+    if (document.getElementById('s1')) document.getElementById('s1').value = exploreSort.s1 || 'overall';
+    if (document.getElementById('s2')) document.getElementById('s2').value = exploreSort.s2 || '';
+    if (document.getElementById('s3')) document.getElementById('s3').value = exploreSort.s3 || '';
   }
-  saveToStorage();
-  updateCheckmark();
-}
-
-// ── Measure sticky header height for roster positioning ────────────────────────
-function updateHeaderHeight() {
-  const h = document.querySelector('[style*="position:sticky"]')?.offsetHeight || 120;
-  document.documentElement.style.setProperty('--draft-header-h', h + 'px');
-}
-
-// ── Init ───────────────────────────────────────────────────────────────────────
-renderRoster();
-
-// ── Event delegation for prospect clicks ──────────────────────────────────────
-// Using mouseup instead of onclick because onclick is unreliable on
-// draggable elements — the browser can swallow it after any drag attempt.
-let _mouseDownId = null;
-document.getElementById('prospect-list').addEventListener('mousedown', e => {
-  const row = e.target.closest('.prospect-row');
-  _mouseDownId = row ? row.dataset.id : null;
-});
-document.getElementById('prospect-list').addEventListener('mouseup', e => {
-  if (dragId) return;  // mid-drag, ignore
-  const row = e.target.closest('.prospect-row');
-  if (row && row.dataset.id === _mouseDownId) {
-    console.log('[draft] opening panel for', row.dataset.id);
-    openPlayerPanel(row.dataset.id);
+  if (data.exploreReversed) {
+    exploreReversed = data.exploreReversed;
+    const btn = document.getElementById('rev-btn');
+    if (btn) btn.textContent = exploreReversed ? '↓ Worst first' : '↑ Best first';
   }
-  _mouseDownId = null;
-});
+}
 
-const storedData = loadFromStorage();
-if (storedData) {
-  order = storedData.order;
-  restoreUiState(storedData);
-  defaultOrder = sortedOrder();
-  dirty = JSON.stringify(order) !== JSON.stringify(defaultOrder);
-  updateResetBtn();
-  renderBoard();
+/* ── Measure header height ───────────────────────────────────────────────────── */
+function measureHeader() {
+  const h = document.getElementById('draft-header')?.offsetHeight || 64;
+  document.documentElement.style.setProperty('--draft-hdr-h', h + 'px');
+}
+
+/* ── Init ────────────────────────────────────────────────────────────────────── */
+defaultOrder = computeDefaultOrder();
+
+const stored = loadFromStorage();
+if (stored) {
+  prefOrder = stored.prefOrder;
+  if (stored.submittedOrder) submittedOrder = stored.submittedOrder;
+  restoreUiState(stored);
+  dirty = JSON.stringify(prefOrder) !== JSON.stringify(defaultOrder);
 } else if (SAVED_PREFS.length > 0) {
-  const prefSet = new Set(SAVED_PREFS);
-  const rest = order.filter(id => !prefSet.has(id));
-  order = [...SAVED_PREFS.filter(id => order.includes(id)), ...rest];
-  submittedOrder = [...order];
-  defaultOrder = sortedOrder();
-  dirty = true;
-  saveToStorage();
-  updateResetBtn();
-  updateCheckmark();
-  renderBoard();
+  const known   = new Set(prefOrder);
+  const rest    = prefOrder.filter(id => !SAVED_PREFS.includes(id));
+  prefOrder     = [...SAVED_PREFS.filter(id => known.has(id)), ...rest];
+  submittedOrder = [...prefOrder];
+  dirty = JSON.stringify(prefOrder) !== JSON.stringify(defaultOrder);
 } else {
-  applySort();
+  prefOrder = [...defaultOrder];
+  dirty = false;
 }
 
-// Measure after render so CSS var is set
-requestAnimationFrame(updateHeaderHeight);
+renderPrefs();
+renderExplore();
+renderRoster();
+updateSortConstraints();
+requestAnimationFrame(measureHeader);
+window.addEventListener('resize', measureHeader);
 
-
-// Expose to global scope for inline event handlers
-window.setType        = setType;
-window.applySort      = applySort;
-window.resetOrder     = resetOrder;
-window.submitPrefs       = submitPrefs;
-window.returnToSubmitted = returnToSubmitted;
-window.onExecute      = onExecute;
-window.dStart         = dStart;
-window.dOver          = dOver;
-window.dDrop          = dDrop;
-window.dEnd           = dEnd;
 })();
 </script>

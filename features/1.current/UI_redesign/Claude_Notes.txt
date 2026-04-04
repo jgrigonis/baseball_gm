@@ -1,0 +1,15 @@
+The three big UI rebuilds, ranked by scope
+1. Draft page — the smallest gap. Currently 2 columns (prospects + roster). Needs a 3rd column on the left (preferences). The key insight is that order in the current code is the preferences list — it's just not displayed as its own column. The middle column is essentially the current board with the sort controls. The drag-from-middle-to-left behavior is the main net-new piece. The "insert before" logic already exists in dDrop. This is probably a half-day rewrite.
+2. Lineup tab — medium scope, but there are two distinct problems:
+
+The current layout is batting order (left) + rotation/bullpen (right). The spec flips this entirely: batting order (left) + roster (right), with rotation living on a separate pitching toggle.
+The fielding summary table below the batting order is net-new. Right now position assignment is just a dropdown inline on each batting slot — there's no separate 9-row fielding table.
+The "Save greyed out until valid" behavior doesn't exist yet — currently save is always enabled.
+The good news: DH is already in POSITIONS, the position dropdown already works, and dupePositions() already catches conflicts.
+
+3. Rotation tab — the most self-contained rewrite. The current lineup.html rotation section is a simple drag-to-reorder list with no green light, no drag-slot placeholders, no delete-with-gap behavior. The spec's green light pointer maps directly onto the team_rotation_pointer table that already exists in the DB. The backend is ready; the frontend needs to be built mostly from scratch. The spec is the most detailed of all the notes, which helps.
+
+A few things worth flagging before you start
+The get_next_starter method in the rotation repo is flagged in your own spec as "too complicated, should be dead." You've already built get_scheduled_starter + advance_rotation_pointer which is the cleaner replacement. That swap should happen alongside the UI work so the frontend and backend are aligned.
+The lineup saveLineup() currently sends rotation and bullpen in the same payload as the batting lineup. Once pitching moves to its own tab, that save endpoint needs to be split or at least made aware that a pitching-only save and a batting-only save are separate operations.
+The fillToForty() in roster.html currently uses only sort1 to determine fill order, but ignores sort2. The spec says it should respect the current sort — that means applying the full two-key sort, which is a one-liner fix.

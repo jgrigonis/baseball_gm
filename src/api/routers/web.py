@@ -878,6 +878,8 @@ def draft_tab(
                 g["overall"] = skill_to_grade(ratings.get("prospect"))
                 g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
                 g["best_def_label"] = ratings.get("best_def_label", "DEF")
+            if g.get("player_type") == "pitcher":
+                g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
             board.append(g)
 
         prefs = []
@@ -925,6 +927,8 @@ def draft_tab(
                     g["overall"] = skill_to_grade(ratings.get("overall_player"))
                 g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
                 g["best_def_label"] = ratings.get("best_def_label", "DEF")
+            if g.get("player_type") == "pitcher":
+                g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
             players.append(g)
     ctx["players"] = players
 
