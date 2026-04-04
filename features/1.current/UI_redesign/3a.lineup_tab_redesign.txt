@@ -26,10 +26,15 @@ there will be another 9 slot table below the batting order
 for fielding positions.
 
 Players in the lineup will default to - in their position drop down. As you assign them to positions they
-will fill in the table below. You can't assign 2 players to the same position.
+will fill in the table below. You can't assign 2 players to the same position. The fielding table is 
+blank until you pick a position for a player in their drop down.
 
 There should be little arrows to move players up or down in the batting order.
 
+These lineup settings are used by the AI, this is the god tier lineup that AI will respect.
+
+The caveat is that as players become injured, AI will have to fill in the gaps, this happens during
+the live game sim, not on the lineup tab.
 
 Might be nice to have a way to remove players from the 26man/40man directly here.
 

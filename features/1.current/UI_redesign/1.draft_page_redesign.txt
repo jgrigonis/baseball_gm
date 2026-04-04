@@ -56,6 +56,32 @@ Charlie
 
 Making sure we don't create 2 Davids obviously.
 
+Another example
+
+On the left you have:
+
+Annie
+Becky
+Charlie
+David
+
+In the center you have:
+
+Annie
+Becky
+Charlie
+David
+
+If you drag Charlie to the left and drop him between Annie and Becky, the new order is:
+
+Annie
+Charlie
+Becky
+David 
+
+There are no swaps, we are setting an order here.
+
+
 The rightmost column should be your roster. This can be narrower, similar to the current draft screen with 2
 sorts, a primary and secondary sort. The existing draft sorts in our code on the roster don't actually work.
 
