@@ -19,12 +19,13 @@
     </div>
     {% if upcoming %}
     <table class="data-table" style="width:100%;">
-      <thead><tr><th>Date</th><th>Opponent</th><th style="text-align:center;">H/A</th></tr></thead>
+      <thead><tr><th>Date</th><th>Opponent</th><th style="text-align:center;">Record</th><th style="text-align:center;">H/A</th></tr></thead>
       <tbody>
         {% for g in upcoming %}
         <tr>
           <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;">{{ g.date }}</td>
           <td>{{ g.opp_city }} {{ g.opp_mascot }}</td>
+          <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ g.opp_record }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                      color:{% if g.is_home %}var(--green){% else %}var(--text-dim){% endif %};">
             {{ "HOME" if g.is_home else "AWAY" }}

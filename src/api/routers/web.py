@@ -2357,14 +2357,39 @@ def schedule(
                ORDER BY g.game_date""",
             (season_id, my_team_id, my_team_id),
         ).fetchall()
+        # Build opponent W-L record map for upcoming games
+        opp_team_ids = set()
+        for r in up_rows:
+            opp_id = r["away_team_id"] if r["home_team_id"] == my_team_id else r["home_team_id"]
+            opp_team_ids.add(opp_id)
+
+        opp_records: dict[str, str] = {}
+        if opp_team_ids:
+            placeholders = ",".join("?" * len(opp_team_ids))
+            wl_rows = db.execute(
+                f"""SELECT tgs.team_id,
+                           COALESCE(SUM(tgs.win),  0) as wins,
+                           COALESCE(SUM(tgs.loss), 0) as losses
+                    FROM team_game_stats tgs
+                    JOIN games g ON g.id = tgs.game_id
+                      AND g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
+                    WHERE tgs.team_id IN ({placeholders})
+                    GROUP BY tgs.team_id""",
+                (season_id, *opp_team_ids),
+            ).fetchall()
+            for wl in wl_rows:
+                opp_records[wl["team_id"]] = f"{wl['wins']}-{wl['losses']}"
+
         for r in up_rows:
             is_home = r["home_team_id"] == my_team_id
+            opp_id  = r["away_team_id"] if is_home else r["home_team_id"]
             upcoming.append(
                 {
                     "date": r["game_date"],
                     "home_away": "vs" if is_home else "@",
                     "opp_city": r["away_city"] if is_home else r["home_city"],
                     "opp_mascot": r["away_mascot"] if is_home else r["home_mascot"],
+                    "opp_record": opp_records.get(opp_id, "0-0"),
                     "is_home": is_home,
                 }
             )
