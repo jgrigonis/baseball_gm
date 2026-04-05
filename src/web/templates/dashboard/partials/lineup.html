@@ -253,7 +253,7 @@
 
 /* ── Batting order slots ────────────────────────────────────────────────────── */
 .lu-slot {
-  display: grid; grid-template-columns: 22px 28px 1fr auto auto 22px;
+  display: grid; grid-template-columns: 22px 28px 28px 1fr auto auto 22px;
   gap: 0 6px; align-items: center;
   padding: 6px 10px 6px 6px; border-bottom: 1px solid var(--border);
   cursor: grab; user-select: none; transition: background .08s;
@@ -534,6 +534,7 @@ function renderBattingOrder() {
           <button class="lu-arrow" data-idx="${i}" data-dir="up"  ${i===0?'disabled':''}>▲</button>
           <button class="lu-arrow" data-idx="${i}" data-dir="down" ${i===8?'disabled':''}>▼</button>
         </div>
+        <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
         <div style="min-width:0;">
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
@@ -671,9 +672,7 @@ function addToLineup(pid) {
   if (lineup.find(s => s && s.player_id === pid)) return;
   const emptyIdx = lineup.findIndex(s => s === null);
   if (emptyIdx === -1) { showFeedback('Lineup is full', 'var(--red)'); return; }
-  const used = usedPositions();
-  const pos  = POSITIONS.find(p => !used.has(p)) || 'dh';
-  lineup[emptyIdx] = { player_id: pid, position: pos };
+  lineup[emptyIdx] = { player_id: pid, position: '' };
   renderBattingOrder();
   renderRoster();
   updateSaveBattingBtn();
