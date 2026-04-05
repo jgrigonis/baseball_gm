@@ -1,0 +1,5 @@
+on the roster sheet 
+
+Don't show the 1B rating if it's the same as IF or OF.
+
+Show IF first, then OF, then CA, then 1B if they are all the same.
