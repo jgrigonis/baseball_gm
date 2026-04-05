@@ -213,15 +213,15 @@ class PitcherStateRepository:
 
         # Energy: exponential approach toward max_energy (not 1.0)
         # This will never hit with the max set above
-        if days_rest < 0:
-            logger.warning(
-                "Data inconsistency for pitcher %s: game_date %s is before "
-                "last_game_date %s. Returning fresh state.",
-                player_id,
-                game_date,
-                state.last_game_date,
-            )
-            return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
+        # if days_rest < 0:
+        #     logger.warning(
+        #         "Data inconsistency for pitcher %s: game_date %s is before "
+        #         "last_game_date %s. Returning fresh state.",
+        #         player_id,
+        #         game_date,
+        #         state.last_game_date,
+        #     )
+        #     return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
 
         rate = _daily_recovery_rate(recovery_skill)
         energy = state.current_energy

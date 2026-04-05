@@ -185,7 +185,7 @@ def test_get_with_recovery_negative_days(repo):
 
     state = repo.get_with_recovery("p1", game_date)
 
-    assert state.current_energy == 1.0  # fallback
+    assert state.current_energy == 0.2  # negative days becomes 0 days rest
 
 
 # ---------------------------------------------------------------------------
