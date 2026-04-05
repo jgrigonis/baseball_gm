@@ -482,7 +482,7 @@ function hitterStatsHtml(p) {
 }
 function pitcherStatsHtml(p) {
   return p.stat_era != null
-    ? `<span>${p.stat_gs}GS</span> <span style="color:var(--amber);">${p.stat_era} ERA</span> <span>${p.stat_ip}IP</span> <span>${p.stat_w}W ${p.stat_l}L</span>`
+    ? `<span>${p.stat_gs}GS</span> <span style="color:var(--amber);">${p.stat_era} ERA</span> <span>${p.stat_ip}IP</span> <span>${p.stat_w}W ${p.stat_l}L</span>${p.stat_sv ? ` <span>${p.stat_sv}SV</span>` : ''}`
     : '';
 }
 

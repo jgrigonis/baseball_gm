@@ -59,7 +59,7 @@ async function schedSim(count) {
   var daysSimmed = 0;
 
   while (!window._simStop) {
-    setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' games played)' : ''));
+    setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' league games played)' : ''));
 
     try {
       var res = await fetch('/leagues/{{ league_id }}/sim', {
