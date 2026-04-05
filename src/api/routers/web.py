@@ -1599,7 +1599,7 @@ def leaders(
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst
                  ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = ?
-               WHERE pss.season_id = ? AND pss.is_postseason = 0 AND pss.bat_ab >= 10""",
+               WHERE pss.season_id = ? AND pss.is_postseason = 0 AND pss.bat_ab >= 1""",
             (league_id, season_id),
         ).fetchall()
 

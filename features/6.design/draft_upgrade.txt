@@ -1,0 +1,3 @@
+draft show draft position
+
+the draft screen should show your draft order
