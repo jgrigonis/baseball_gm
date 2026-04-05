@@ -9,7 +9,7 @@ A glow green light highlighting who goes next.
 At the bottom of the list is always a "drag player here" area similar to batting order 
 dragging players to that spot is effectively extending the rotation.
 
-User can delete pitchers from roation with a little x
+User can delete pitchers from rotation with a little x
 This will leave a gap in the rotation and replace with a "drag player here" box
 If the x'd out pitcher had the green light, it looks for a new place, moving down and back to 1.
 If the x'd out player was the last in the rotation, the list shrinks leaving just 1 drag box at the bottom.

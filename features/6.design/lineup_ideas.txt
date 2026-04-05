@@ -7,3 +7,12 @@ On the roster side, could do the same, or put a | character to split
 
 The auto-fill for the batting order should not wipe out a partially filled
 out lineup, it should only fill in the gaps.
+
+On the pitching side, you should be able to drag a pitcher from the bullpen
+over an existing pitcher in the rotation
+
+We don't need the +SP button.
+
+If the x'd out pitcher had the green light, it looks for a new place, moving down and back to 1.
+
+Not following the original spec, it moves up first.
