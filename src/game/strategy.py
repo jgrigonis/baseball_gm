@@ -632,7 +632,6 @@ class GameStrategy:
         fatigue = pitcher.pitcher_fatigue
         fatigue_level = fatigue.get_level()
 
-
         prob = PITCHER_CHANGE_PROB.get(fatigue_level, 0.5)
 
         stats = pitcher.game_stats.pitching

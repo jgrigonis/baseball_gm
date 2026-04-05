@@ -992,7 +992,8 @@ class Game:
 
     def _consider_pitching_change(self, force: bool = False) -> None:
         """Evaluate and possibly make a pitching change. Called mid-inning and between innings.
-        If force=True (e.g. pitcher just got injured), skip the probability roll and change immediately."""
+        If force=True (e.g. pitcher just got injured), skip the probability roll and change immediately.
+        """
         if not self.current_pitcher:
             return
 
@@ -1045,9 +1046,13 @@ class Game:
 
         # ── Normal fatigue-based change ────────────────────────────────────
         rnd = self.rng.random()
-        change = GameStrategy.should_consider_pitching_change(
-            self.current_pitcher, self.inning, self.score_differential
-        ) if not force else 1.0  # injury forces the change
+        change = (
+            GameStrategy.should_consider_pitching_change(
+                self.current_pitcher, self.inning, self.score_differential
+            )
+            if not force
+            else 1.0
+        )  # injury forces the change
         if change > 0.2:
             self.logger.info(
                 f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
