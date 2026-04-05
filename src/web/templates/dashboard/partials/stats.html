@@ -43,7 +43,7 @@
   </div>
 </div>
 
-<div style="padding:12px 24px 32px;overflow-x:auto;">
+<div id="stats-scroll" style="padding:0 24px 32px;overflow-y:auto;overflow-x:auto;">
   <table id="stats-table" class="data-table" style="width:100%;white-space:nowrap;font-size:12px;">
     <thead id="stats-head"></thead>
     <tbody id="stats-body"></tbody>
@@ -169,8 +169,8 @@ function renderTable() {
     var arrow = sortKey === col.key ? (sortAsc ? ' ↑' : ' ↓') : '';
     var defaultAsc = col.asc !== undefined ? col.asc : (col.key === 'ERA' || col.key === 'BB9' || col.key === 'HR9' || col.key === 'WHIP');
     headHtml += '<th style="cursor:pointer;user-select:none;text-align:'
-      + (col.key==='name'?'left':'right') + ';white-space:nowrap;"'
-      + ' onclick="setSort(\'' + col.key + '\',' + defaultAsc + ')">'
+      + (col.key==='name'?'left':'right') + ';white-space:nowrap;position:sticky;top:0;z-index:3;background:var(--bg-2);box-shadow:0 1px 0 var(--border);"'
+      + ' onclick="setSort(\'' + col.key + '\',' + defaultAsc + ')">' 
       + col.label + arrow + '</th>';
   });
   headHtml += '</tr>';
@@ -223,6 +223,14 @@ function switchTeam(teamId) {
 }
 
 // Init
+function sizeStatsScroll() {
+  var wrapper = document.getElementById('stats-scroll');
+  if (!wrapper) return;
+  var top = wrapper.getBoundingClientRect().top;
+  wrapper.style.height = (window.innerHeight - top - 8) + 'px';
+}
+sizeStatsScroll();
+window.addEventListener('resize', sizeStatsScroll);
 renderTable();
 
 window.setSort       = setSort;

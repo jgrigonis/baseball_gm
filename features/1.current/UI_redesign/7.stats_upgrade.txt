@@ -1,6 +1,4 @@
-On the stats page, the header should be sticky.
-
-So when you scroll down, the header stays in place.
+Stats upgrade
 
 
 you should be able to toggle to:
