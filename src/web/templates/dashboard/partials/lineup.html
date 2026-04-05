@@ -451,7 +451,7 @@ function switchTab(tab) {
 function skillVal(p, key) { return gradeVal(p[key] || null); }
 
 function hitterGradesHtml(p, assignedPos) {
-  const hitPairs = [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
+  const hitPairs = [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],['ARM',p.arm]];
   const defPairs = [
     ['C',p.pos_c],['1B',p.pos_1b],['2B',p.pos_2b],['3B',p.pos_3b],
     ['SS',p.pos_ss],['LF',p.pos_lf],['CF',p.pos_cf],['RF',p.pos_rf],

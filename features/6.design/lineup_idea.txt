@@ -1,0 +1,6 @@
+lineup idea 
+
+On the batting order, might be cool to intentionally split the 
+attribute line so defensive ratings are on a second line
+
+On the roster side, could do the same, or put a | character to split 
