@@ -825,6 +825,15 @@ async function saveBatting() {
       battingSaved = true;
       showFeedback('✓ Batting saved', 'var(--green)');
       updateScheduleBtn();
+      // Clear stored lineup so the next page load reads fresh from the server
+      try {
+        const stored = sessionStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const data = JSON.parse(stored);
+          delete data.lineup;
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+      } catch(e) {}
     } else {
       const d = await res.json().catch(()=>({}));
       showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
@@ -1179,6 +1188,17 @@ async function saveRotation() {
       pitchingSaved = true;
       showFeedback('✓ Rotation saved', 'var(--green)');
       updateScheduleBtn();
+      // Clear stored rotation so the next page load reads fresh from the server
+      try {
+        const stored = sessionStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const data = JSON.parse(stored);
+          delete data.rotation;
+          delete data.pointerPid;
+          delete data.bullpen;
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+      } catch(e) {}
     } else {
       const d = await res.json().catch(()=>({}));
       showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
