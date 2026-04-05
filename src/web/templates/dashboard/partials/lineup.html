@@ -1312,7 +1312,6 @@ if (stored) {
   if (Array.isArray(stored.rotation)) {
     rotation = stored.rotation.filter(pid => pid === null || knownPitcherIds.has(pid));
   }
-  if (stored.pointerPid && knownPitcherIds.has(stored.pointerPid)) pointerPid = stored.pointerPid;
   if (stored.bullpen) bullpen = stored.bullpen;
   if (stored.rosterFilter) rosterFilter = stored.rosterFilter;
   // Restore filter button states
