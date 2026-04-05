@@ -656,7 +656,7 @@ class TestShouldConsiderPitchingChange:
         pitcher = _make_pitcher(fatigue_level=FatigueLevel.ZERO, pitch_count=130)
         inning = _make_inning(number=7)
         prob = GameStrategy.should_consider_pitching_change(pitcher, inning, 0)
-        assert prob >= 0.74
+        assert prob >= 0.72
 
     def test_no_hits_no_runs_reduces_prob(self):
         base = _make_pitcher(

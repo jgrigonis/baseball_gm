@@ -62,39 +62,39 @@ class TestInit:
 
 class TestFatigueLevels:
     def test_fresh_at_full_energy(self, catcher):
-        catcher.set_energy(1.0)
+        catcher.set_position_energy(1.0)
         assert catcher.get_level() == FatigueLevel.FRESH
 
     def test_fresh_at_threshold(self, catcher):
-        catcher.set_energy(0.85)
+        catcher.set_position_energy(0.85)
         assert catcher.get_level() == FatigueLevel.FRESH
 
     def test_good_below_fresh(self, catcher):
-        catcher.set_energy(0.84)
+        catcher.set_position_energy(0.84)
         assert catcher.get_level() == FatigueLevel.GOOD
 
     def test_good_at_threshold(self, catcher):
-        catcher.set_energy(0.65)
+        catcher.set_position_energy(0.65)
         assert catcher.get_level() == FatigueLevel.GOOD
 
     def test_tired_below_good(self, catcher):
-        catcher.set_energy(0.64)
+        catcher.set_position_energy(0.64)
         assert catcher.get_level() == FatigueLevel.TIRED
 
     def test_tired_at_threshold(self, catcher):
-        catcher.set_energy(0.40)
+        catcher.set_position_energy(0.40)
         assert catcher.get_level() == FatigueLevel.TIRED
 
     def test_exhausted_below_tired(self, catcher):
-        catcher.set_energy(0.39)
+        catcher.set_position_energy(0.39)
         assert catcher.get_level() == FatigueLevel.EXHAUSTED
 
     def test_exhausted_at_threshold(self, catcher):
-        catcher.set_energy(0.01)
+        catcher.set_position_energy(0.01)
         assert catcher.get_level() == FatigueLevel.EXHAUSTED
 
     def test_zero_below_exhausted(self, catcher):
-        catcher.set_energy(0.0)
+        catcher.set_position_energy(0.0)
         assert catcher.get_level() == FatigueLevel.ZERO
 
 
@@ -135,7 +135,7 @@ class TestPlayGame:
         assert normal.energy == overcapped.energy
 
     def test_energy_never_goes_below_zero(self, catcher):
-        catcher.set_energy(0.0)
+        catcher.set_position_energy(0.0)
         catcher.record_game()
         assert catcher.energy == 0.0
 
@@ -182,7 +182,7 @@ class TestPlayGame:
 
 class TestRestDay:
     def test_energy_increases_on_rest(self, catcher):
-        catcher.set_energy(0.5)
+        catcher.set_position_energy(0.5)
         catcher.rest_day()
         assert catcher.energy > 0.5
 
@@ -193,37 +193,37 @@ class TestRestDay:
         assert catcher.consecutive_days == 0
 
     def test_energy_never_exceeds_one(self, catcher):
-        catcher.set_energy(0.99)
+        catcher.set_position_energy(0.99)
         catcher.rest_day()
         assert catcher.energy <= 1.0
 
     def test_multiple_rest_days_recover_more(self, catcher):
-        catcher.set_energy(0.5)
+        catcher.set_position_energy(0.5)
         one_day = PositionPlayerFatigue(position="C", durability=50)
-        one_day.set_energy(0.5)
+        one_day.set_position_energy(0.5)
         two_day = PositionPlayerFatigue(position="C", durability=50)
-        two_day.set_energy(0.5)
+        two_day.set_position_energy(0.5)
 
         one_day.rest_day(days=1)
         two_day.rest_day(days=2)
         assert two_day.energy > one_day.energy
 
     def test_rest_at_full_energy_stays_at_one(self, catcher):
-        catcher.set_energy(1.0)
+        catcher.set_position_energy(1.0)
         catcher.rest_day()
         assert catcher.energy == pytest.approx(1.0)
 
     def test_diminishing_returns_on_rest(self, catcher):
         """Second rest day recovers less than the first."""
-        catcher.set_energy(0.4)
+        catcher.set_position_energy(0.4)
 
         day1 = PositionPlayerFatigue(position="C", durability=50)
-        day1.set_energy(0.4)
+        day1.set_position_energy(0.4)
         day1.rest_day(days=1)
         gain_day1 = day1.energy - 0.4
 
         day2 = PositionPlayerFatigue(position="C", durability=50)
-        day2.set_energy(day1.energy)
+        day2.set_position_energy(day1.energy)
         day2.rest_day(days=1)
         gain_day2 = day2.energy - day1.energy
 
@@ -237,7 +237,7 @@ class TestRestDay:
 
 class TestEndSeason:
     def test_energy_resets_to_full(self, catcher):
-        catcher.set_energy(0.3)
+        catcher.set_position_energy(0.3)
         catcher.end_season()
         assert catcher.energy == 1.0
 
@@ -261,26 +261,26 @@ class TestEndSeason:
 
 class TestStatModifier:
     def test_fresh_has_bonus(self, catcher):
-        catcher.set_energy(1.0)
+        catcher.set_position_energy(1.0)
         assert catcher.get_stat_modifier() > 1.0
 
     def test_good_is_neutral(self, catcher):
-        catcher.set_energy(0.70)
+        catcher.set_position_energy(0.70)
         assert catcher.get_stat_modifier() == pytest.approx(1.0)
 
     def test_tired_penalizes(self, catcher):
-        catcher.set_energy(0.50)
+        catcher.set_position_energy(0.50)
         assert catcher.get_stat_modifier() < 1.0
 
     def test_exhausted_penalizes_more_than_tired(self, catcher):
-        catcher.set_energy(0.50)
+        catcher.set_position_energy(0.50)
         tired_mod = catcher.get_stat_modifier()
-        catcher.set_energy(0.20)
+        catcher.set_position_energy(0.20)
         exhausted_mod = catcher.get_stat_modifier()
         assert exhausted_mod < tired_mod
 
     def test_zero_has_largest_penalty(self, catcher):
-        catcher.set_energy(0.0)
+        catcher.set_position_energy(0.0)
         assert catcher.get_stat_modifier() == pytest.approx(0.60)
 
 
@@ -291,45 +291,45 @@ class TestStatModifier:
 
 class TestInjuryRiskMultiplier:
     def test_fresh_reduces_risk(self, catcher):
-        catcher.set_energy(1.0)
+        catcher.set_position_energy(1.0)
         assert catcher.get_injury_risk_multiplier() < 1.0
 
     def test_good_is_baseline(self, catcher):
-        catcher.set_energy(0.70)
+        catcher.set_position_energy(0.70)
         assert catcher.get_injury_risk_multiplier() == pytest.approx(1.0)
 
     def test_tired_increases_risk(self, catcher):
-        catcher.set_energy(0.50)
+        catcher.set_position_energy(0.50)
         assert catcher.get_injury_risk_multiplier() > 1.0
 
     def test_risk_increases_with_fatigue(self, catcher):
-        catcher.set_energy(0.70)
+        catcher.set_position_energy(0.70)
         good_risk = catcher.get_injury_risk_multiplier()
-        catcher.set_energy(0.50)
+        catcher.set_position_energy(0.50)
         tired_risk = catcher.get_injury_risk_multiplier()
-        catcher.set_energy(0.20)
+        catcher.set_position_energy(0.20)
         exhausted_risk = catcher.get_injury_risk_multiplier()
         assert good_risk < tired_risk < exhausted_risk
 
     def test_zero_has_highest_risk(self, catcher):
-        catcher.set_energy(0.0)
+        catcher.set_position_energy(0.0)
         assert catcher.get_injury_risk_multiplier() == pytest.approx(3.0)
 
 
 # ---------------------------------------------------------------------------
-# set_energy
+# set_position_energy
 # ---------------------------------------------------------------------------
 
 
 class TestSetEnergy:
     def test_sets_valid_energy(self, catcher):
-        catcher.set_energy(0.5)
+        catcher.set_position_energy(0.5)
         assert catcher.energy == pytest.approx(0.5)
 
     def test_clamps_above_one(self, catcher):
-        catcher.set_energy(1.5)
+        catcher.set_position_energy(1.5)
         assert catcher.energy == pytest.approx(1.0)
 
     def test_clamps_below_zero(self, catcher):
-        catcher.set_energy(-0.5)
+        catcher.set_position_energy(-0.5)
         assert catcher.energy == pytest.approx(0.0)

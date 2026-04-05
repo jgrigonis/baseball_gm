@@ -178,7 +178,7 @@ class PositionPlayerFatigue:
         }
         return multipliers[level]
 
-    def set_position_energy(self, level: float, max_level: float) -> None:
+    def set_position_energy(self, level: float, max_level: float = 1.0) -> None:
         """Directly set energy (e.g. for testing or IL return)."""
         self.energy = max(0.0, min(max_level, level))
         self.max_energy = max_level
