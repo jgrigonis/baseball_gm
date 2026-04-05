@@ -1617,7 +1617,9 @@ def leaders(
             tb = h - d - tr - hr + 2 * d + 3 * tr + 4 * hr
             slg = tb / ab if ab else 0.0
             qualifies = ab >= min_ab
-            ab_k = ab / k if k else 0.0
+            ab_k  = ab / k  if k  else 0.0
+            ab_hr = ab / hr if hr else None
+            bb_k  = bb / k  if k  else None
             batters.append(
                 {
                     "player_id": r["player_id"],
@@ -1640,6 +1642,8 @@ def leaders(
                     "BB": bb,
                     "K": k,
                     "AB/K": ab_k,
+                    "AB/HR": ab_hr,
+                    "BB/K": bb_k,
                 }
             )
 
@@ -1680,19 +1684,21 @@ def leaders(
             return bat_card(label, key, pool=pool or qualified, asc=asc, fmt=fmt)
 
         bat_cats = [
-            bat_card_q("AVG", "AVG", fmt=lambda v: f"{v:.3f}"),
+            bat_card_q("AVG", "AVG", fmt=lambda v: f"{v:.3f}"[1:]),
             bat_card("HR", "HR", pool=all_bat),
             bat_card("RBI", "RBI", pool=all_bat),
             bat_card("R", "R", pool=all_bat),
             bat_card("H", "H", pool=all_bat),
             bat_card("SB", "SB", pool=all_bat),
-            bat_card_q("OBP", "OBP", fmt=lambda v: f"{v:.3f}"),
+            bat_card_q("OBP", "OBP", fmt=lambda v: f"{v:.3f}"[1:]),
             bat_card_q("SLG", "SLG", fmt=lambda v: f"{v:.3f}"),
             bat_card_q("OPS", "OPS", fmt=lambda v: f"{v:.3f}"),
             bat_card("2B", "2B", pool=all_bat),
             bat_card("3B", "3B", pool=all_bat),
             bat_card("BB", "BB", pool=all_bat),
-            bat_card_q("AB/K", "AB/K", fmt=lambda v: f"{v:.1f}"),
+            bat_card_q("AB/K",  "AB/K",  fmt=lambda v: f"{v:.1f}"),
+            bat_card("AB/HR", "AB/HR", pool=[b for b in qualified if b["AB/HR"] is not None], asc=True, fmt=lambda v: f"{v:.1f}"),
+            bat_card("BB/K",  "BB/K",  pool=[b for b in qualified if b["BB/K"]  is not None], fmt=lambda v: f"{v:.2f}"),
         ]
 
         # ── Pitching: one query, compute rate stats, build all categories ──────
