@@ -24,28 +24,31 @@
   {% else %}
 
   {# ── My team sidebar + main table ───────────────────────────────────── #}
-  <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start;">
+  <div class="standings-grid">
 
     {# ── Standings table ──────────────────────────────────────────────── #}
     <div class="card">
       <table class="data-table" style="width:100%;">
         <thead>
           <tr>
-            <th style="width:32px;">#</th>
+            <th style="width:28px;">#</th>
             <th>Team</th>
             <th style="text-align:center;">W</th>
             <th style="text-align:center;">L</th>
             <th style="text-align:center;">PCT</th>
             <th style="text-align:center;">GB</th>
+            <th style="text-align:center;">Home</th>
+            <th style="text-align:center;">Away</th>
+            <th style="text-align:center;">L10</th>
+            <th style="text-align:center;">RS</th>
+            <th style="text-align:center;">RA</th>
             <th style="text-align:center;">Streak</th>
           </tr>
         </thead>
         <tbody>
           {% for team in teams %}
           <tr class="{% if team.is_mine %}my-team{% elif team.is_human %}human-team{% endif %}">
-            <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">
-              {{ team.rank }}
-            </td>
+            <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">{{ team.rank }}</td>
             <td>
               <span style="font-family:var(--font-sans);font-weight:600;
                            color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
@@ -53,19 +56,27 @@
               </span>
               {% if team.is_mine %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--green);margin-left:6px;">YOU</span>{% endif %}
             </td>
-            <td style="text-align:center;font-family:var(--font-mono);">{{ team.wins }}</td>
-            <td style="text-align:center;font-family:var(--font-mono);">{{ team.losses }}</td>
-            <td style="text-align:center;font-family:var(--font-mono);">{{ team.pct }}</td>
-            <td style="text-align:center;font-family:var(--font-mono);color:var(--text-dim);">{{ team.gb }}</td>
-            <td style="text-align:center;">
+            <td class="tc mono">{{ team.wins }}</td>
+            <td class="tc mono">{{ team.losses }}</td>
+            <td class="tc mono">{{ team.pct }}</td>
+            <td class="tc mono dim">{{ team.gb }}</td>
+            <td class="tc mono dim">{{ team.home }}</td>
+            <td class="tc mono dim">{{ team.away }}</td>
+            <td class="tc mono">
+              {% set l10parts = team.l10.split('-') %}
+              <span style="color:{% if l10parts[0]|int > l10parts[1]|int %}var(--green){% elif l10parts[0]|int < l10parts[1]|int %}var(--red){% else %}var(--text-dim){% endif %};">
+                {{ team.l10 }}
+              </span>
+            </td>
+            <td class="tc mono">{{ team.rs }}</td>
+            <td class="tc mono dim">{{ team.ra }}</td>
+            <td class="tc">
               {% if team.streak and team.streak != '—' %}
               <span style="font-family:var(--font-mono);font-size:12px;
                            color:{% if team.streak.startswith('W') %}var(--green){% else %}var(--red){% endif %};">
                 {{ team.streak }}
               </span>
-              {% else %}
-              <span style="color:var(--muted);">—</span>
-              {% endif %}
+              {% else %}<span style="color:var(--muted);">—</span>{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -153,6 +164,11 @@
 <style>
 .human-team { background: var(--sky-dim) !important; }
 .my-team    { background: var(--green-dim) !important; }
+.tc   { text-align: center; }
+.mono { font-family: var(--font-mono); }
+.dim  { color: var(--text-dim); }
+/* Give the table more room; sidebar stays fixed */
+.standings-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
 </style>
 
 {% include "dashboard/partials/_play_script.html" %}

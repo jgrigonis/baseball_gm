@@ -1019,6 +1019,7 @@ def draft_results(
             (draft["id"],),
         ).fetchall()
 
+
         human_team_ids = {
             r["team_id"]
             for r in db.execute(
@@ -1327,6 +1328,28 @@ def standings(
         ).fetchall()
         ra_map = {r["team_id"]: r["runs_allowed"] or 0 for r in ra_rows}
 
+        # Home / Away splits
+        ha_rows = db.execute(
+            """SELECT
+                 tgs.team_id,
+                 SUM(CASE WHEN g.home_team_id = tgs.team_id AND tgs.win  = 1 THEN 1 ELSE 0 END) as home_wins,
+                 SUM(CASE WHEN g.home_team_id = tgs.team_id AND tgs.loss = 1 THEN 1 ELSE 0 END) as home_losses,
+                 SUM(CASE WHEN g.away_team_id = tgs.team_id AND tgs.win  = 1 THEN 1 ELSE 0 END) as away_wins,
+                 SUM(CASE WHEN g.away_team_id = tgs.team_id AND tgs.loss = 1 THEN 1 ELSE 0 END) as away_losses
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id
+                 AND g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
+               GROUP BY tgs.team_id""",
+            (season_id,),
+        ).fetchall()
+        ha_map = {
+            r["team_id"]: {
+                "hw": r["home_wins"]   or 0, "hl": r["home_losses"] or 0,
+                "aw": r["away_wins"]   or 0, "al": r["away_losses"] or 0,
+            }
+            for r in ha_rows
+        }
+
         human_team_ids = {
             r["team_id"]
             for r in db.execute(
@@ -1389,6 +1412,13 @@ def standings(
                 else (f"{gb_val:.1f}" if gb_val != int(gb_val) else str(int(gb_val)))
             )
             recent = team_recent.get(r["team_id"], [])
+            rs = r["runs_scored"] or 0
+            ra = ra_map.get(r["team_id"], 0)
+            ha = ha_map.get(r["team_id"], {"hw": 0, "hl": 0, "aw": 0, "al": 0})
+            l10_wins   = sum(1 for w in recent[:10] if w)
+            l10_losses = 10 - l10_wins if len(recent) >= 10 else len(recent) - l10_wins
+            pct_str = f"{pct:.3f}"
+            pct_str = pct_str[1:] if pct_str.startswith("0") else pct_str
             teams.append(
                 {
                     "rank": rank,
@@ -1397,9 +1427,14 @@ def standings(
                     "mascot": r["mascot"],
                     "wins": wins,
                     "losses": losses,
-                    "pct": f"{pct:.3f}",
+                    "pct": pct_str,
                     "gb": gb,
                     "streak": calc_streak(recent),
+                    "home": f"{ha['hw']}-{ha['hl']}",
+                    "away": f"{ha['aw']}-{ha['al']}",
+                    "l10": f"{l10_wins}-{l10_losses}",
+                    "rs": rs,
+                    "ra": ra,
                     "is_human": r["team_id"] in human_team_ids,
                     "is_mine": r["team_id"] == my_team_id,
                 }
