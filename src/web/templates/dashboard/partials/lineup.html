@@ -1112,7 +1112,12 @@ function autoFillRotation() {
     .filter(p => !p.injured && !inRot.has(p.player_id))
     .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall));
   const needed = Math.max(0, 5 - nonNullRotation().length);
-  candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
+  const toAdd = candidates.slice(0, needed);
+  toAdd.forEach(p => {
+    const gapIdx = rotation.indexOf(null);
+    if (gapIdx !== -1) rotation[gapIdx] = p.player_id;
+    else rotation.push(p.player_id);
+  });
   ensureValidPointer();
   renderRotation();
   renderBullpen();
