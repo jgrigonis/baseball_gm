@@ -516,7 +516,7 @@ function makeCard(p, isIn40) {
   el.className = 'r-card';
   el.draggable = true;
   el.dataset.id = p.player_id;
-  if (p.injured) el.style.borderLeft = '3px solid var(--red)';
+  if (p.injured) el.style.borderLeft = p.returning ? '3px solid #a07800' : '3px solid var(--red)';
 
   const btnHtml = isIn40
     ? `<button class="r-action-btn rem-btn" title="Remove from 40-man"
@@ -529,7 +529,7 @@ function makeCard(p, isIn40) {
     <div style="min-width:0;">
       <div class="r-name" style="color:${p.injured?'var(--red)':''};">
         ${p.first_name} ${p.last_name}
-        ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+        ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
       </div>
       <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
       <div class="r-grades">${playerGradesHtml(p)}</div>

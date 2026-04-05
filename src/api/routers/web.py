@@ -1515,7 +1515,13 @@ def standings(
                    ORDER BY pi.games_remaining DESC""",
                 (my_team_id, league_id),
             ).fetchall()
-            injuries = [dict(r) for r in inj_rows]
+            injuries = []
+            for r in inj_rows:
+                d = dict(r)
+                raw = d.get("games_remaining", 0) or 0
+                d["games_remaining"] = max(0, raw - 1)
+                d["returning"] = raw == 1
+                injuries.append(d)
 
     else:
         upcoming = []
@@ -1893,8 +1899,10 @@ def roster(
 
     injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None, league_id)
     for p in players:
-        p["injured"] = p["player_id"] in injured_ids
-        p["injury_days"] = injured_ids.get(p["player_id"])
+        raw_days = injured_ids.get(p["player_id"])
+        p["injured"]     = raw_days is not None
+        p["injury_days"] = max(0, raw_days - 1) if raw_days else None
+        p["returning"]   = raw_days == 1
     ctx["players"] = players
     return _respond(request, "dashboard/partials/roster.html", ctx)
 
@@ -2083,8 +2091,10 @@ def lineup(
 
     injured_map = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:
-        p["injured"] = p["player_id"] in injured_map
-        p["injury_days"] = injured_map.get(p["player_id"])
+        raw_days = injured_map.get(p["player_id"])
+        p["injured"]     = raw_days is not None
+        p["injury_days"] = max(0, raw_days - 1) if raw_days else None
+        p["returning"]   = raw_days == 1
     ctx["hitters"] = hitters
     ctx["pitchers"] = pitchers
     ctx["saved_lineup"] = saved_lineup
@@ -2600,12 +2610,15 @@ def stats(
     if selected_team_id:
         injured_map = _injured_player_ids(db, selected_team_id, league_id)
         for p in batters + pitchers:
-            p["injured"] = p["player_id"] in injured_map
-            p["injury_days"] = injured_map.get(p["player_id"])
+            raw_days = injured_map.get(p["player_id"])
+            p["injured"]     = raw_days is not None
+            p["injury_days"] = max(0, raw_days - 1) if raw_days else None
+            p["returning"]   = raw_days == 1
     else:
         for p in batters + pitchers:
-            p["injured"] = False
+            p["injured"]   = False
             p["injury_days"] = None
+            p["returning"] = False
 
     ctx.update(
         {
@@ -3338,6 +3351,17 @@ def player_panel(
                 "season_games_played": en["season_games_played"],
             }
 
+        # Injury status
+        inj_status = db.execute(
+            """SELECT games_remaining FROM player_injuries
+               WHERE player_id = ? AND games_remaining > 0
+               AND (league_id = ? OR league_id = '')
+               LIMIT 1""",
+            (pid, league_id),
+        ).fetchone()
+        raw_injury = inj_status["games_remaining"] if inj_status else None
+        display_days = max(0, raw_injury - 1) if raw_injury else None
+
         return {
             **grades.model_dump(),
             "player_id": pid,
@@ -3350,6 +3374,9 @@ def player_panel(
             "energy": energy,
             "injury_log": [dict(r) for r in inj],
             "stats": stats,
+            "injured": raw_injury is not None,
+            "games_remaining": display_days,
+            "returning": raw_injury == 1,
         }
 
     ctx = _shell_ctx(request, db, league_id, user, gm)

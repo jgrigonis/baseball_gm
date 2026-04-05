@@ -23,7 +23,13 @@
 {# ── Status badges ─────────────────────────────────────────────────────────── #}
 <div class="pd-badges">
  {% if player.injured %}
-   <span class="badge badge-injured">IL-{{ player.games_remaining }}</span>
+   {% if player.returning %}
+     <span class="badge" style="background:#1a1a05;border-color:#a07800;color:#f5c518;">
+       Returning next game
+     </span>
+   {% else %}
+     <span class="badge badge-injured">IL · {{ player.games_remaining }}g</span>
+   {% endif %}
  {% endif %}
  {% if player.energy %}
    {% if player.energy.current < 40 %}

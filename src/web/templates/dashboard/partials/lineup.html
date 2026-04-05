@@ -534,9 +534,9 @@ function renderBattingOrder() {
           <button class="lu-arrow" data-idx="${i}" data-dir="down" ${i===8?'disabled':''}>▼</button>
         </div>
         <div style="min-width:0;">
-          <div class="lu-name" style="cursor:pointer;color:${p.injured?'var(--red)':''};"
+          <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
-            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+            ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
           </div>
           <div class="lu-skills">${isHitter ? hitterGradesHtml(p, slot.position) : pitcherGradesHtml(p)}</div>
           ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
@@ -746,8 +746,8 @@ function renderRoster() {
     card.innerHTML = `
       <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
       <div style="min-width:0;">
-        <div class="lu-name" style="color:${p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}
-          ${p.injured?`<span style="font-size:10px;color:var(--red);">IL</span>`:''}
+        <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}
+          ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL</span>`:''}
         </div>
         <div class="lu-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
         <div class="lu-skills">${isHitter ? hitterGradesHtml(p, null) : pitcherGradesHtml(p)}</div>
@@ -910,9 +910,9 @@ function renderRotation() {
         <div class="rot-num">${slotNum}</div>
         <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
         <div style="min-width:0;">
-          <div class="lu-name" style="cursor:pointer;color:${p.injured?'var(--red)':''};"
+          <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
-            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+            ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
           </div>
           <div class="lu-skills">${pitcherGradesHtml(p)}</div>
           ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
@@ -1082,9 +1082,9 @@ function renderBullpen() {
       <div style="min-width:0;">
         <div style="display:flex;align-items:baseline;gap:8px;">
           <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
-          <span class="lu-name" style="cursor:pointer;color:${p.injured?'var(--red)':''};"
+          <span class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                 onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
-            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL</span>`:''}
+            ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL</span>`:''}
           </span>
         </div>
         <div class="lu-skills">${pitcherGradesHtml(p)}</div>
