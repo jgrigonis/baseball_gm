@@ -2200,9 +2200,10 @@ async def save_rotation(
             (gm["team_id"], season_id, pid, i + 1, effective_date),
         )
 
-    # Upsert rotation pointer
-    if pointer_pid and pointer_pid in rotation:
-        ptr_order = rotation.index(pointer_pid) + 1
+    # Upsert rotation pointer — default to first pitcher if none specified
+    effective_pointer = pointer_pid if (pointer_pid and pointer_pid in rotation) else (rotation[0] if rotation else None)
+    if effective_pointer:
+        ptr_order = rotation.index(effective_pointer) + 1
         db.execute(
             """INSERT INTO team_rotation_pointer
                    (team_id, season_id, series_id, next_order, updated_at)

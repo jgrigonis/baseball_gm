@@ -227,8 +227,8 @@ def _pick_starter(
             )
             return (
                 best.id,
-                True,
-            )  # advance pointer — D goes next, C reclaims slot when healthy
+                False,
+            )  # do NOT advance pointer — injured pitcher reclaims slot when healthy
 
         # No bullpen available — walk healthy rotation pitchers as last resort
         # (still don't advance so the injured slot isn't lost)
@@ -329,11 +329,12 @@ def play_game(
     home_eligible = _load_eligible_ids(conn, home_team.record.id, league_id, blitz)
     away_eligible = _load_eligible_ids(conn, away_team.record.id, league_id, blitz)
 
-    # Compute injured_ids first so _pick_starter can skip injured pitchers
+    # Build injured_ids BEFORE ticking so players finishing their last game of injury
+    # are still excluded from today's game (they return for the next game).
     all_player_ids = [p.id for p in home_team.players + away_team.players]
     injury_repo = InjuryRepository(conn, league_id=league_id)
-    injury_repo.tick_all(all_player_ids)
     injured_ids = {pid for pid in all_player_ids if injury_repo.is_injured(pid)}
+    injury_repo.tick_all(all_player_ids)
 
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     series_id = game_info.get("series_id") or ""

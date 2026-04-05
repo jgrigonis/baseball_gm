@@ -1034,6 +1034,8 @@ function addToRotation(pid) {
   const nullIdx = rotation.indexOf(null);
   if (nullIdx !== -1) rotation[nullIdx] = pid;
   else rotation.push(pid);
+  // Remove from bullpen role dict — they're a starter now
+  delete bullpen[pid];
   ensureValidPointer();
   renderRotation();
   renderBullpen();
@@ -1175,12 +1177,19 @@ async function saveRotation() {
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const compact = nonNullRotation();
+    const rotSet = new Set(compact);
+    // Strip any pitchers now in the rotation from the bullpen role dict
+    const cleanBullpen = Object.fromEntries(
+      Object.entries(bullpen).filter(([pid]) => !rotSet.has(pid))
+    );
+    // Ensure pointer is valid — default to first pitcher if unset
+    ensureValidPointer();
     const res = await fetch(`/leagues/${LEAGUE_ID}/rotation/save`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         rotation:    compact,
-        bullpen:     bullpen,
+        bullpen:     cleanBullpen,
         pointer_pid: pointerPid,
       }),
     });
