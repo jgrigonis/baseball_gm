@@ -99,6 +99,7 @@
          <span class="pd-stat-label">{{ key }}</span>
          <span class="pd-stat-val {% if key in ('AVG','OPS','ERA','WHIP') %}pd-stat-hi{% endif %}">
            {% if val is none %}—
+           {% elif key in ('ERA','WHIP') %}{{ "%.2f"|format(val) }}
            {% elif val is number and val < 1 and val > 0 %}{{ "%.3f"|format(val) }}
            {% else %}{{ val }}{% endif %}
          </span>
