@@ -1,488 +1,788 @@
 {# templates/dashboard/partials/lineup.html #}
 
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:16px 24px 12px;border-bottom:1px solid var(--border);pointer-events:all;">
-  <div class="page-header" style="margin-bottom:0;">
+{# ── Sticky header ─────────────────────────────────────────────────────────── #}
+<div id="lu-header" style="position:sticky;top:0;z-index:10;background:var(--bg);
+     padding:14px 24px 0;border-bottom:1px solid var(--border);">
+
+  <div class="page-header" style="margin-bottom:10px;">
     <h1 class="page-title">Lineup</h1>
     <div class="spacer"></div>
-    <span id="lu-feedback" style="font-family:var(--font-mono);font-size:11px;margin-right:12px;"></span>
-    <button class="btn btn-secondary" onclick="autoFill()" style="margin-right:8px;">Auto-fill</button>
-    <button class="btn btn-primary" onclick="saveLineup()" id="lu-save-btn">Save Lineup</button>
+    <span id="lu-feedback"
+          style="font-family:var(--font-mono);font-size:11px;margin-right:10px;"></span>
+    {# per-tab buttons rendered by JS into these slots #}
+    <span id="tab-buttons"></span>
+    <button class="btn btn-secondary" id="save-both-btn" onclick="saveBoth()"
+            style="margin-left:8px;">Save Both</button>
+    <a id="schedule-btn" href="/leagues/{{ league_id }}/schedule"
+       class="btn btn-secondary"
+       style="margin-left:8px;border-color:var(--green);color:var(--green);display:none;">
+      Go to Schedule →
+    </a>
+  </div>
+
+  {# Tab toggles #}
+  <div style="display:flex;gap:0;border-bottom:none;">
+    <button class="lu-tab active" id="tab-batting"   onclick="switchTab('batting')">
+      Batting Order
+    </button>
+    <button class="lu-tab"        id="tab-pitching"  onclick="switchTab('pitching')">
+      Pitching Rotation
+    </button>
   </div>
 </div>
 
-<div style="padding:16px 24px 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+{# ── Batting tab ───────────────────────────────────────────────────────────── #}
+<div id="pane-batting" class="lu-pane">
+  <div class="lu-cols">
 
-  {# ── LEFT ─────────────────────────────────────────────────────────────── #}
-  <div style="display:flex;flex-direction:column;gap:16px;">
-
-    <div class="card">
-      <div class="card-header" style="padding:8px 16px;">
-        <span class="card-title">Batting Order</span>
-        <span id="slot-count" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">0 / 9</span>
+    {# Left: batting order + fielding table #}
+    <div class="lu-col">
+      <div class="lu-col-hdr">
+        <span class="lu-col-label">Batting Order</span>
+        <span id="lu-slot-count"
+              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                     margin-left:8px;"></span>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" onclick="autoFill()"
+                style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
+        <button class="btn btn-secondary" onclick="clearLineup()"
+                style="font-size:11px;padding:4px 10px;margin-right:6px;border-color:var(--red);color:var(--red);">Clear All</button>
+        <button class="btn btn-primary" id="save-batting-btn" onclick="saveBatting()">
+          Save Batting
+        </button>
       </div>
-      <div id="batting-order"></div>
+      <div class="lu-col-body">
+        <div id="batting-order"></div>
+        <div style="padding:12px 14px 4px;font-family:var(--font-mono);font-size:10px;
+                    letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);
+                    border-top:1px solid var(--border);margin-top:4px;">
+          Fielding Positions
+        </div>
+        <div id="fielding-table"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="card-header" style="padding:8px 16px;gap:8px;flex-wrap:wrap;">
-        <span class="card-title">Bench</span>
-        <div style="display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">
-          <select id="bench-sort" onchange="renderBench()" style="width:auto;">
+    {# Right: roster #}
+    <div class="lu-col">
+      <div class="lu-col-hdr">
+        <span class="lu-col-label" style="color:var(--text-dim);">Roster</span>
+        <div class="spacer"></div>
+        <div style="display:flex;align-items:center;gap:3px;
+                    font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          <select id="bat-s1" onchange="renderRoster()" style="width:auto;font-size:10px;">
             <option value="overall">Overall</option>
-            <option value="contact">Contact</option>
-            <option value="power">Power</option>
-            <option value="eye">Eye</option>
-            <option value="speed">Speed</option>
-            <option value="base_running">Baserunning</option>
-            <option value="bunting">Bunting</option>
-            <option value="leadoff_grade">Leadoff role</option>
-            <option value="power_h_grade">Power role</option>
-            <option value="contact_h_grade">Contact role</option>
+            <optgroup label="Hitting">
+              <option value="contact">Contact</option>
+              <option value="power">Power</option>
+              <option value="eye">Eye</option>
+              <option value="speed">Speed</option>
+              <option value="arm">Arm</option>
+              <option value="leadoff_grade">Leadoff</option>
+              <option value="contact_h_grade">Contact role</option>
+              <option value="power_h_grade">Power role</option>
+            </optgroup>
+            <optgroup label="Defense">
+              <option value="pos_c">Catcher</option>
+              <option value="pos_1b">First Base</option>
+              <option value="pos_2b">Second Base</option>
+              <option value="pos_3b">Third Base</option>
+              <option value="pos_ss">Shortstop</option>
+              <option value="pos_lf">Left Field</option>
+              <option value="pos_cf">Center Field</option>
+              <option value="pos_rf">Right Field</option>
+            </optgroup>
+          </select>
+          <select id="bat-s2" onchange="renderRoster()" style="width:auto;font-size:10px;">
+            <option value="">—</option>
+            <option value="overall">Overall</option>
+            <optgroup label="Hitting">
+              <option value="contact">Contact</option>
+              <option value="power">Power</option>
+              <option value="eye">Eye</option>
+              <option value="speed">Speed</option>
+              <option value="arm">Arm</option>
+            </optgroup>
+            <optgroup label="Defense">
+              <option value="pos_c">Catcher</option>
+              <option value="pos_1b">First Base</option>
+              <option value="pos_2b">Second Base</option>
+              <option value="pos_3b">Third Base</option>
+              <option value="pos_ss">Shortstop</option>
+              <option value="pos_lf">Left Field</option>
+              <option value="pos_cf">Center Field</option>
+              <option value="pos_rf">Right Field</option>
+            </optgroup>
+          </select>
+          <select id="bat-s3" onchange="renderRoster()" style="width:auto;font-size:10px;">
+            <option value="">—</option>
+            <option value="overall">Overall</option>
+            <optgroup label="Hitting">
+              <option value="contact">Contact</option>
+              <option value="power">Power</option>
+              <option value="eye">Eye</option>
+              <option value="speed">Speed</option>
+            </optgroup>
           </select>
         </div>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:auto;">click to add</span>
       </div>
-      <div id="bench-list"></div>
+      <div style="display:flex;align-items:center;gap:5px;padding:6px 12px;
+                  border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-2);">
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="lu-filter active" data-key="type" data-val=""
+                  onclick="setRosterFilter(this,'type','')">All</button>
+          <button class="lu-filter" data-key="type" data-val="hitter"
+                  onclick="setRosterFilter(this,'type','hitter')">Hit</button>
+          <button class="lu-filter" data-key="type" data-val="pitcher"
+                  onclick="setRosterFilter(this,'type','pitcher')">Pit</button>
+        </div>
+        <span class="lu-filter-sep"></span>
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="lu-filter" data-key="health" data-val="all"
+                  onclick="setRosterFilter(this,'health','all')">All</button>
+          <button class="lu-filter active" data-key="health" data-val="healthy"
+                  onclick="setRosterFilter(this,'health','healthy')">Healthy</button>
+          <button class="lu-filter" data-key="health" data-val="injured"
+                  onclick="setRosterFilter(this,'health','injured')">Injured</button>
+        </div>
+      </div>
+      <div class="lu-col-body" id="roster-list"></div>
     </div>
 
   </div>
+</div>
 
-  {# ── RIGHT ────────────────────────────────────────────────────────────── #}
-  <div style="display:flex;flex-direction:column;gap:16px;">
+{# ── Pitching tab ──────────────────────────────────────────────────────────── #}
+<div id="pane-pitching" class="lu-pane" style="display:none;">
+  <div class="lu-cols">
 
-    <div class="card">
-      <div class="card-header" style="padding:8px 16px;">
-        <span class="card-title">Starting Rotation</span>
-        <span id="rot-count" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">0 / 6</span>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-left:auto;">drag to reorder</span>
+    {# Left: rotation #}
+    <div class="lu-col">
+      <div class="lu-col-hdr">
+        <span class="lu-col-label">Starting Rotation</span>
+        <span id="rot-count"
+              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                     margin-left:8px;"></span>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" onclick="autoFillRotation()"
+                style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
+        <button class="btn btn-secondary" onclick="clearRotation()"
+                style="font-size:11px;padding:4px 10px;margin-right:6px;border-color:var(--red);color:var(--red);">Clear</button>
+        <button class="btn btn-primary" id="save-rotation-btn" onclick="saveRotation()">
+          Save Rotation
+        </button>
       </div>
-      <div id="rotation-list"></div>
+      <div class="lu-col-body" id="rotation-list"></div>
     </div>
 
-    <div class="card">
-      <div class="card-header" style="padding:8px 16px;gap:8px;flex-wrap:wrap;">
-        <span class="card-title">Bullpen</span>
-        <div style="display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">
-          <select id="bullpen-sort" onchange="renderBullpen()" style="width:auto;">
+    {# Right: bullpen #}
+    <div class="lu-col">
+      <div class="lu-col-hdr">
+        <span class="lu-col-label" style="color:var(--text-dim);">Bullpen</span>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" onclick="autoAssignBullpen()"
+                style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto Assign</button>
+        <div style="display:flex;align-items:center;gap:3px;
+                    font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          <select id="bp-s1" onchange="renderBullpen()" style="width:auto;font-size:10px;">
             <option value="sp_grade">SP rating</option>
             <option value="rp_grade">RP rating</option>
             <option value="stuff">Stuff</option>
             <option value="control">Control</option>
             <option value="stamina">Stamina</option>
             <option value="recovery">Recovery</option>
-            <option value="ground_balls">GB tendency</option>
+            <option value="ground_balls">GB</option>
+          </select>
+          <select id="bp-s2" onchange="renderBullpen()" style="width:auto;font-size:10px;">
+            <option value="">—</option>
+            <option value="sp_grade">SP rating</option>
+            <option value="rp_grade">RP rating</option>
+            <option value="stuff">Stuff</option>
+            <option value="control">Control</option>
+            <option value="stamina">Stamina</option>
+            <option value="recovery">Recovery</option>
           </select>
         </div>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:auto;">assign roles</span>
       </div>
-      <div id="bullpen-list"></div>
+      <div class="lu-col-body" id="bullpen-list"></div>
     </div>
 
   </div>
 </div>
 
 <style>
-.lu-slot{
-  display:grid;grid-template-columns:22px 1fr auto auto;gap:0 8px;
-  align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+.lu-tab {
+  font-family: var(--font-mono); font-size: 12px; padding: 8px 18px;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--text-dim); cursor: pointer; transition: all .1s;
 }
-.lu-slot:last-child{border-bottom:none;}
-.lu-num{font-size:11px;color:var(--amber);font-weight:600;text-align:center;}
-.lu-pos-select{
-  background:var(--bg-3);border:1px solid var(--border);color:var(--text);
-  font-family:var(--font-mono);font-size:11px;padding:3px 6px;width:56px;
+.lu-tab:hover { color: var(--text); }
+.lu-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+.lu-pane { height: calc(100vh - var(--lu-hdr-h, 90px)); overflow: hidden; }
+.lu-cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  padding: 12px 16px 0; height: 100%; box-sizing: border-box; overflow: hidden;
 }
-.lu-pos-select.error{border-color:var(--red);}
-.lu-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px;}
-.lu-remove:hover{color:var(--red);}
-.lu-drag-row{cursor:grab;user-select:none;transition:background .08s;}
-.lu-drag-row:hover{background:var(--bg-3);}
-.lu-drag-row.dragging{opacity:.3;}
-.bench-row{
-  display:flex;align-items:center;gap:8px;
-  padding:7px 14px;border-bottom:1px solid var(--border);
-  cursor:pointer;transition:background .08s;
+.lu-col {
+  display: flex; flex-direction: column; min-height: 0;
+  border: 1px solid var(--border); background: var(--bg-2);
 }
-.bench-row:last-child{border-bottom:none;}
-.bench-row:hover{background:var(--bg-3);}
-.bench-add{color:var(--green);margin-left:auto;font-size:11px;font-family:var(--font-mono);flex-shrink:0;}
-.rot-slot{
-  display:grid;grid-template-columns:20px 1fr auto;gap:0 8px;
-  align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);
-  cursor:grab;user-select:none;transition:background .08s;
+.lu-col-hdr {
+  display: flex; align-items: center; flex-shrink: 0;
+  padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-2);
 }
-.rot-slot:last-child{border-bottom:none;}
-.rot-slot:hover{background:var(--bg-3);}
-.rot-slot.dragging{opacity:.3;}
-.rot-num{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);text-align:center;}
-.bp-row{
-  display:grid;grid-template-columns:1fr auto auto;gap:0 8px;
-  align-items:center;padding:7px 14px;border-bottom:1px solid var(--border);
+.lu-col-body { flex: 1; overflow-y: auto; min-height: 0; }
+.lu-col-label {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: .1em; text-transform: uppercase; font-weight: 600; color: var(--amber);
 }
-.bp-row:last-child{border-bottom:none;}
-.bp-role-select{
-  background:var(--bg-3);border:1px solid var(--border);color:var(--text);
-  font-family:var(--font-mono);font-size:11px;padding:3px 6px;
+
+/* ── Filter toggles ─────────────────────────────────────────────────────────── */
+.lu-filter {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  padding: 3px 8px; background: var(--bg-2); border: none;
+  border-right: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
 }
-.lu-grade{font-family:var(--font-mono);font-size:14px;font-weight:600;min-width:26px;}
-.lu-name{font-family:var(--font-sans);font-weight:600;font-size:13px;color:var(--text-hi);cursor:pointer;}
-.lu-skills{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;}
-.lu-skills .gl{color:var(--muted);margin-right:1px;}
-.add-sp-btn{
-  background:none;border:1px solid var(--green-dim);color:var(--green);
-  font-family:var(--font-mono);font-size:10px;padding:2px 6px;cursor:pointer;
-  flex-shrink:0;white-space:nowrap;
+.lu-filter:last-child { border-right: none; }
+.lu-filter:hover { background: var(--bg-3); color: var(--text); }
+.lu-filter.active { color: var(--amber); background: var(--amber-lo); }
+.lu-filter-sep {
+  display: inline-block; width: 1px; height: 16px;
+  background: var(--border); flex-shrink: 0;
 }
-.add-sp-btn:hover{background:var(--green-dim);}
-.add-sp-btn:disabled{opacity:.3;cursor:not-allowed;}
-.lu-empty-slot{
-  display:flex;align-items:center;gap:10px;
-  padding:5px 10px;border-bottom:1px solid var(--border);
-  transition:background .08s;
+
+/* ── Batting order slots ────────────────────────────────────────────────────── */
+.lu-slot {
+  display: grid; grid-template-columns: 22px 28px 1fr auto auto 22px;
+  gap: 0 6px; align-items: center;
+  padding: 6px 10px 6px 6px; border-bottom: 1px solid var(--border);
+  cursor: grab; user-select: none; transition: background .08s;
 }
-.lu-empty-slot.drag-over > div:last-child {
-  border-color:var(--green) !important;
-  background:var(--green-dim);
+.lu-slot:last-child { border-bottom: none; }
+.lu-slot:hover { background: var(--bg-3); }
+.lu-slot.dragging { opacity: .3; }
+.lu-slot.drag-swap-hi { background: var(--amber-lo); outline: 1px solid var(--amber); }
+.lu-empty-slot {
+  display: grid; grid-template-columns: 22px 1fr;
+  gap: 0 6px; align-items: center;
+  padding: 6px 10px 6px 6px; border-bottom: 1px solid var(--border);
 }
-.lu-drag-row.drag-over{background:var(--bg-3);}
-.bench-row[draggable]{cursor:grab;}
-.bench-row[draggable]:active{cursor:grabbing;}
+.lu-empty-slot.drag-swap-hi { background: var(--amber-lo); outline: 1px solid var(--amber); }
+.lu-num { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-align: right; font-weight: 600; }
+.lu-arrows { display: flex; flex-direction: column; gap: 1px; }
+.lu-arrow {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 9px; line-height: 1; padding: 1px 2px;
+}
+.lu-arrow:hover:not(:disabled) { color: var(--text); }
+.lu-arrow:disabled { opacity: .2; cursor: default; }
+.lu-pos-select {
+  background: var(--bg-3); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 4px; width: 52px;
+}
+.lu-pos-select.dupe { border-color: var(--red); }
+.lu-remove {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 14px; padding: 0 2px;
+}
+.lu-remove:hover { color: var(--red); }
+
+/* ── Fielding table ─────────────────────────────────────────────────────────── */
+.fd-row {
+  display: grid; grid-template-columns: 36px 1fr;
+  gap: 0 8px; padding: 4px 14px; border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 11px;
+}
+.fd-row:last-child { border-bottom: none; }
+.fd-pos { color: var(--amber); font-weight: 600; }
+.fd-name { color: var(--text-dim); }
+.fd-name.filled { color: var(--text-hi); font-family: var(--font-sans); }
+
+/* ── Roster cards ────────────────────────────────────────────────────────────── */
+.lu-roster-card {
+  display: grid; grid-template-columns: 28px 1fr auto;
+  gap: 0 8px; align-items: center;
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none; transition: background .08s;
+}
+.lu-roster-card:last-child { border-bottom: none; }
+.lu-roster-card:hover { background: var(--bg-3); }
+.lu-roster-card.in-lineup { opacity: .5; }
+.lu-add-btn {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  border: 1px solid var(--border); background: var(--bg-3);
+  color: var(--green); cursor: pointer; padding: 2px 7px;
+  transition: all .1s; flex-shrink: 0;
+}
+.lu-add-btn:hover { background: var(--green-dim); border-color: var(--green); }
+.lu-add-btn:disabled { opacity: .3; cursor: default; }
+
+/* ── Player card internals (shared) ─────────────────────────────────────────── */
+.lu-grade  { font-family: var(--font-mono); font-size: 14px; font-weight: 600; min-width: 28px; }
+.lu-name   { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
+.lu-meta   { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.lu-skills { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
+.lu-skills .gl { color: var(--muted); margin-right: 1px; }
+
+/* ── Rotation slots ──────────────────────────────────────────────────────────── */
+.rot-slot {
+  display: grid; grid-template-columns: 20px 22px 28px 1fr auto auto 22px;
+  gap: 0 6px; align-items: center;
+  padding: 7px 10px 7px 8px; border-bottom: 1px solid var(--border);
+  cursor: grab; user-select: none; transition: background .08s;
+}
+.rot-slot:hover { background: var(--bg-3); }
+.rot-slot.dragging { opacity: .3; }
+.rot-slot.drag-swap { background: var(--amber-lo); outline: 1px solid var(--amber); }
+.rot-num { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: right; }
+.rot-radio {
+  width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--muted);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: border-color .1s;
+}
+.rot-radio:hover { border-color: var(--text); }
+.rot-radio.active { border-color: var(--green); background: var(--green); box-shadow: 0 0 6px var(--green); }
+.rot-drag-zone {
+  margin: 4px 12px; padding: 8px;
+  border: 1.5px dashed var(--border);
+  font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  text-align: center; transition: border-color .12s, background .12s, color .12s;
+}
+.rot-drag-zone.drag-active { border-color: var(--amber); background: var(--amber-lo); color: var(--amber); }
+.rot-arrows { display: flex; flex-direction: column; gap: 1px; }
+.rot-arrow {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 9px; line-height: 1; padding: 1px 2px;
+}
+.rot-arrow:hover:not(:disabled) { color: var(--text); }
+.rot-arrow:disabled { opacity: .2; cursor: default; }
+
+/* ── Bullpen cards ───────────────────────────────────────────────────────────── */
+.bp-card {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 0 8px; align-items: center;
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+}
+.bp-card:last-child { border-bottom: none; }
+.bp-add-btn {
+  font-family: var(--font-mono); font-size: 10px;
+  border: 1px solid var(--green-dim); color: var(--green);
+  background: none; cursor: pointer; padding: 3px 7px; white-space: nowrap;
+}
+.bp-add-btn:hover { background: var(--green-dim); }
+.bp-role-select {
+  background: var(--bg-3); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 4px;
+}
 </style>
 
 <script>
-(function() {
-// Hoist exports first
-window.autoFill=autoFill;
-window.saveLineup=saveLineup;
-window.addToLineup=addToLineup;
-window.removeFromLineup=removeFromLineup;
-window.setPosition=setPosition;
-window.addToRotation=addToRotation;
-window.removeFromRotation=removeFromRotation;
-window.renderBench=renderBench;
-window.renderBullpen=renderBullpen;
+(function () {
 
-var LEAGUE_ID    = "{{ league_id }}";
-const ALL_HITTERS  = {{ hitters  | tojson }};
-const ALL_PITCHERS = {{ pitchers | tojson }};
-const SAVED_LINEUP = {{ saved_lineup   | tojson }};
-const SAVED_ROT    = {{ saved_rotation | tojson }};
-const SAVED_BP     = {{ saved_bullpen  | tojson }};
+/* ── Hoist globals ──────────────────────────────────────────────────────────── */
+window.switchTab       = switchTab;
+window.saveBatting     = saveBatting;
+window.saveRotation    = saveRotation;
+window.saveBoth        = saveBoth;
+window.autoFill        = autoFill;
+window.setPosition     = setPosition;
+window.removeFromLineup= removeFromLineup;
+window.addToLineup     = addToLineup;
+window.clearLineup      = clearLineup;
+window.renderRoster    = renderRoster;
+window.renderBullpen   = renderBullpen;
+window.addToRotation      = addToRotation;
+window.removeFromRotation  = removeFromRotation;
+window.setPointer          = setPointer;
+window.clearRotation       = clearRotation;
+window.autoFillRotation    = autoFillRotation;
+window.autoAssignBullpen   = autoAssignBullpen;
 
-const POSITIONS = ['c','1b','2b','ss','3b','lf','cf','rf','dh'];
+/* ── Data ───────────────────────────────────────────────────────────────────── */
+var  LEAGUE_ID      = "{{ league_id }}";
+const ALL_HITTERS   = {{ hitters   | tojson }};
+const ALL_PITCHERS  = {{ pitchers  | tojson }};
+const SAVED_LINEUP  = {{ saved_lineup  | tojson }};
+const SAVED_ROT     = {{ saved_rotation | tojson }};
+const SAVED_BP      = {{ saved_bullpen  | tojson }};
+const SAVED_POINTER = {{ saved_rotation_pointer | tojson }};
+const STORAGE_KEY   = `lineup2_${LEAGUE_ID}`;
+
+const POSITIONS = ['c','1b','2b','3b','ss','lf','cf','rf','dh'];
+const POS_LABEL = {c:'C',  '1b':'1B','2b':'2B','3b':'3B','ss':'SS',
+                   lf:'LF',cf:'CF',   rf:'RF',  dh:'DH'};
+
 const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
 function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
 function gradeClass(g) {
   return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
 }
 
-let lineup   = Array(9).fill(null);  // fixed 9 slots, null = empty
-let rotation = [];
-window.bullpen = {};
+/* ── Batting state ──────────────────────────────────────────────────────────── */
+let lineup = Array(9).fill(null); // {player_id, position} | null
 
-// Purge slots whose player is no longer on the 40-man — only called at init
-function purgeLineup() {
-  const known = new Set(ALL_HITTERS.map(p => p.player_id));
-  lineup = lineup.map(s => (s && known.has(s.player_id)) ? s : null);
-}
-function purgeRotation() {
-  const known = new Set(ALL_PITCHERS.map(p => p.player_id));
-  rotation = rotation.filter(id => known.has(id));
+/* ── Pitching state ─────────────────────────────────────────────────────────── */
+let rotation   = [];    // (player_id | null)[]  — nulls are drag zones
+let pointerPid = null;  // player_id of "next" starter
+let bullpen    = {};    // {player_id: role}
+
+/* ── Roster filter state ────────────────────────────────────────────────────── */
+let rosterFilter = { type: 'hitter', health: 'healthy' };
+
+/* ── Save flags ─────────────────────────────────────────────────────────────── */
+let battingSaved  = false;
+let pitchingSaved = false;
+
+/* ── Tab management ──────────────────────────────────────────────────────────── */
+let activeTab = 'batting';
+
+function switchTab(tab) {
+  saveToStorage();
+  activeTab = tab;
+  document.getElementById('pane-batting').style.display  = tab === 'batting'  ? '' : 'none';
+  document.getElementById('pane-pitching').style.display = tab === 'pitching' ? '' : 'none';
+  document.getElementById('tab-batting').classList.toggle('active',  tab === 'batting');
+  document.getElementById('tab-pitching').classList.toggle('active', tab === 'pitching');
+  measureHeader();
 }
 
-// Init
-if (SAVED_LINEUP.length > 0) {
-  const known = new Set(ALL_HITTERS.map(p => p.player_id));
-  SAVED_LINEUP.sort((a,b) => a.batting_order - b.batting_order).forEach(s => {
-    const idx = (s.batting_order - 1);
-    if (idx >= 0 && idx < 9 && known.has(s.player_id)) {
-      lineup[idx] = {player_id: s.player_id, position: s.position || 'dh'};
-    }
-  });
-  purgeLineup();
-}
-if (SAVED_ROT.length > 0) {
-  rotation = [...SAVED_ROT];
-  purgeRotation();
-}
-if (Object.keys(SAVED_BP).length > 0) window.bullpen = {...SAVED_BP};
+/* ── Grade helpers ──────────────────────────────────────────────────────────── */
+function skillVal(p, key) { return gradeVal(p[key] || null); }
 
+function hitterGradesHtml(p, assignedPos) {
+  const hitPairs = [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
+  const defPairs = [
+    ['C',p.pos_c],['1B',p.pos_1b],['2B',p.pos_2b],['3B',p.pos_3b],
+    ['SS',p.pos_ss],['LF',p.pos_lf],['CF',p.pos_cf],['RF',p.pos_rf],
+  ];
+  const hitHtml = hitPairs.filter(([,v])=>v)
+    .map(([k,v])=>`<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`)
+    .join('');
+  const aPos = (assignedPos||'').toUpperCase();
+  const defHtml = defPairs.filter(([,v])=>v)
+    .map(([k,v]) => {
+      const hi = k === aPos ? 'color:var(--amber);font-weight:700;' : '';
+      return `<span style="${hi}"><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`;
+    }).join('');
+  return hitHtml + (defHtml ? ' ' + defHtml : '');
+}
+
+function pitcherGradesHtml(p) {
+  return [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],['GB',p.ground_balls]]
+    .filter(([,v])=>v)
+    .map(([k,v])=>`<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`)
+    .join('');
+}
+
+function hitterStatsHtml(p) {
+  return p.stat_avg != null
+    ? `<span style="color:var(--amber);">${p.stat_avg}</span> <span>${p.stat_hr}HR</span>`
+    : '';
+}
+function pitcherStatsHtml(p) {
+  return p.stat_era != null
+    ? `<span>${p.stat_gs}GS</span> <span style="color:var(--amber);">${p.stat_era} ERA</span> <span>${p.stat_ip}IP</span> <span>${p.stat_w}W ${p.stat_l}L</span>`
+    : '';
+}
+
+/* ── Batting: helpers ────────────────────────────────────────────────────────── */
 function findHitter(pid)  { return ALL_HITTERS.find(p => p.player_id === pid); }
 function findPitcher(pid) { return ALL_PITCHERS.find(p => p.player_id === pid); }
+function findPlayer(pid)  { return findHitter(pid) || findPitcher(pid); }
 
-function hitterSkillsHtml(p, assignedPos) {
-  // DH has no defensive rating — show best_def instead
-  const isDH     = assignedPos === 'dh';
-  const defKey   = (assignedPos && !isDH) ? 'pos_' + assignedPos : null;
-  const defGrade = (defKey && p[defKey]) ? p[defKey] : p.best_def_grade;
-  const defLabel = isDH ? (p.best_def_label || 'DEF') : (assignedPos ? assignedPos.toUpperCase() : (p.best_def_label || 'DEF'));
-  const skills = [
-    ['OVL',p.overall],['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
-    ['BR',p.base_running],
-    [defLabel, defGrade],
-  ].filter(([,v])=>v).map(([k,v])=>
-    `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
-  ).join('');
-  const ht = p.bats ? `<span style="color:var(--muted);font-size:10px;">${p.bats}/${p.throws||'?'}</span>` : '';
-  const stats = p.stat_avg != null
-    ? `<span style="color:var(--amber);font-weight:600;">${p.stat_avg}</span>`
-    + `<span style="color:var(--text-dim);margin-left:4px;">${p.stat_hr}HR</span>`
-    : '';
-  return skills + ' ' + ht + (stats ? ' &nbsp;' + stats : '');
+function usedPositions() {
+  return new Set(lineup.filter(Boolean).map(s => s.position).filter(Boolean));
 }
-
-function pitcherSkillsHtml(p) {
-  const skills = [
-    ['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],
-    ['GB',p.ground_balls],
-  ].filter(([,v])=>v).map(([k,v])=>
-    `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`
-  ).join('');
-  const ht = `<span style="color:var(--muted);font-size:10px;">${p.throws||'?'}</span>`;
-  const stats = p.stat_era != null
-    ? `<span style="color:var(--amber);font-weight:600;">${p.stat_era} ERA</span>`
-    + `<span style="color:var(--text-dim);margin-left:4px;">${p.stat_ip} IP</span>`
-    + `<span style="color:var(--text-dim);margin-left:4px;">${p.stat_w}W ${p.stat_l}L${p.stat_sv ? ' ' + p.stat_sv + 'SV' : ''}</span>`
-    : '';
-  return skills + ' ' + ht + (stats ? ' &nbsp;' + stats : '');
-}
-
-function usedPositions()  { return new Set(lineup.filter(Boolean).map(s=>s.position).filter(Boolean)); }
 function dupePositions() {
-  const pos = lineup.filter(Boolean).map(s=>s.position).filter(Boolean);
-  return new Set(pos.filter((p,i) => pos.indexOf(p) !== i));
+  const pos = lineup.filter(Boolean).map(s => s.position).filter(p => p && p !== '');
+  return new Set(pos.filter((p, i) => pos.indexOf(p) !== i));
+}
+function lineupValid() {
+  const filled = lineup.filter(Boolean).length;
+  if (filled < 9) return false;
+  const pos = lineup.filter(Boolean).map(s => s.position).filter(p => p && p !== '');
+  return pos.length === 9 && new Set(pos).size === 9;
 }
 
-// ── Batting order ──────────────────────────────────────────────────────────────
-let _luDrag     = null;   // index being dragged within lineup
-let _benchDrag  = null;   // player_id being dragged from bench
+/* ── Batting: render ─────────────────────────────────────────────────────────── */
+let _luDrag = null, _benchDrag = null;
 
 function renderBattingOrder() {
-  const dupes   = dupePositions();
-  const el      = document.getElementById('batting-order');
-  el.innerHTML  = '';
-  const filled  = lineup.filter(Boolean).length;
+  const dupes  = dupePositions();
+  const el     = document.getElementById('batting-order');
+  const filled = lineup.filter(Boolean).length;
+  el.innerHTML = '';
 
   for (let i = 0; i < 9; i++) {
     const slot = lineup[i];
     const row  = document.createElement('div');
 
     if (slot) {
-      // ── Filled slot ──────────────────────────────────────────────────────
-      const p = findHitter(slot.player_id);
+      const p = findPlayer(slot.player_id);
       if (!p) { lineup[i] = null; continue; }
-      row.className = 'lu-slot lu-drag-row';
+      const isHitter = !!findHitter(slot.player_id);
+      row.className = 'lu-slot';
       row.dataset.idx = i;
-      const posOpts = POSITIONS.map(pos =>
-        `<option value="${pos}" ${slot.position===pos?'selected':''}>${pos.toUpperCase()}</option>`
-      ).join('');
+      const posOpts = `<option value="" ${!slot.position?'selected':''}>—</option>` +
+        POSITIONS.map(pos =>
+          `<option value="${pos}" ${slot.position===pos?'selected':''}>${pos.toUpperCase()}</option>`
+        ).join('');
       row.innerHTML = `
         <div class="lu-num">${i+1}</div>
-        <div style="flex:1;min-width:0;">
-          <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
-               style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
-          <div class="lu-skills">${hitterSkillsHtml(p, slot.position)}</div>
+        <div class="lu-arrows">
+          <button class="lu-arrow" data-idx="${i}" data-dir="up"  ${i===0?'disabled':''}>▲</button>
+          <button class="lu-arrow" data-idx="${i}" data-dir="down" ${i===8?'disabled':''}>▼</button>
         </div>
-        <select class="lu-pos-select${dupes.has(slot.position)?' error':''}"
-                onchange="setPosition(${i},this.value);renderBattingOrder()">${posOpts}</select>
+        <div style="min-width:0;">
+          <div class="lu-name" style="cursor:pointer;color:${p.injured?'var(--red)':''};"
+               onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+          </div>
+          <div class="lu-skills">${isHitter ? hitterGradesHtml(p, slot.position) : pitcherGradesHtml(p)}</div>
+          ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
+          ${!isHitter && p.stat_era!=null ? `<div class="lu-skills">${pitcherStatsHtml(p)}</div>` : ''}
+        </div>
+        <select class="lu-pos-select${dupes.has(slot.position)?' dupe':''}"
+                onchange="setPosition(${i},this.value)">${posOpts}</select>
+        <div></div>
         <button class="lu-remove" onclick="removeFromLineup(${i})">×</button>`;
+
       row.draggable = true;
       row.addEventListener('dragstart', e => {
         _luDrag = i; _benchDrag = null;
         row.classList.add('dragging');
         e.dataTransfer.setData('source', 'lineup');
-        e.dataTransfer.setData('idx', i);
         e.stopPropagation();
       });
+      row.addEventListener('dragend', () => { row.classList.remove('dragging'); _luDrag = null; });
     } else {
-      // ── Empty slot ───────────────────────────────────────────────────────
-      row.className = 'lu-slot lu-empty-slot';
+      row.className = 'lu-empty-slot';
       row.dataset.idx = i;
-      row.innerHTML = `<div class="lu-num" style="color:var(--muted);">${i+1}</div>
-        <div style="flex:1;border:1px dashed var(--border);border-radius:3px;height:32px;
+      row.innerHTML = `
+        <div class="lu-num" style="color:var(--muted);">${i+1}</div>
+        <div style="border:1px dashed var(--border);border-radius:3px;height:28px;
                     display:flex;align-items:center;padding-left:10px;
                     font-family:var(--font-mono);font-size:11px;color:var(--muted);">
           drag player here
         </div>`;
     }
 
-    // Both filled and empty accept drops
-    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
-    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.lu-slot,.lu-empty-slot').forEach(r => r.classList.remove('drag-swap-hi'));
+      row.classList.add('drag-swap-hi');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-swap-hi'));
     row.addEventListener('drop', e => {
       e.preventDefault();
-      row.classList.remove('drag-over');
+      e.stopPropagation();
+      document.querySelectorAll('.lu-slot,.lu-empty-slot').forEach(r => r.classList.remove('drag-swap-hi'));
       const src = e.dataTransfer.getData('source');
-      if (src === 'bench') {
+      if (src === 'roster') {
         const pid = e.dataTransfer.getData('pid');
         if (!pid) return;
-        // Remove from any existing slot first
-        const existing = lineup.findIndex(s => s && s.player_id === pid);
-        if (existing !== -1) lineup[existing] = null;
-        // If dropping on filled slot, swap to bench (just clear target first)
-        const displaced = lineup[i];
-        const used = usedPositions();
-        const pos = POSITIONS.find(p => !used.has(p)) || 'dh';
-        lineup[i] = {player_id: pid, position: pos};
-        renderBattingOrder();
-        renderBench();
+        const existingIdx = lineup.findIndex(s => s && s.player_id === pid);
+        if (existingIdx !== -1) {
+          // already in lineup: swap order positions, keep each player's assigned pos
+          [lineup[existingIdx], lineup[i]] = [lineup[i], lineup[existingIdx]];
+        } else {
+          // incoming from roster: take over this slot, inherit its position
+          const inheritedPos = slot ? slot.position : '';
+          lineup[i] = { player_id: pid, position: inheritedPos };
+        }
       } else if (src === 'lineup') {
-        const from = parseInt(e.dataTransfer.getData('idx'));
-        if (isNaN(from) || from === i) return;
-        // Swap the two slots (works for filled→empty, empty→filled, filled→filled)
-        [lineup[from], lineup[i]] = [lineup[i], lineup[from]];
-        renderBattingOrder();
+        const from = parseInt(e.dataTransfer.getData('idx') || _luDrag);
+        if (!isNaN(from) && from !== i) {
+          [lineup[from], lineup[i]] = [lineup[i], lineup[from]];
+        }
       }
+      renderBattingOrder();
+      renderRoster();
+      updateSaveBattingBtn();
     });
-    row.addEventListener('dragend', () => { row.classList.remove('dragging'); _luDrag = null; });
+
     el.appendChild(row);
   }
 
-  document.getElementById('slot-count').textContent = `${filled} / 9`;
+  // Arrow clicks via delegation
+  el.onclick = (e) => {
+    const btn = e.target.closest('.lu-arrow');
+    if (!btn) return;
+    e.stopPropagation();
+    const idx = parseInt(btn.dataset.idx);
+    const dir = btn.dataset.dir;
+    if (dir === 'up'   && idx > 0) [lineup[idx-1], lineup[idx]] = [lineup[idx], lineup[idx-1]];
+    if (dir === 'down' && idx < 8) [lineup[idx],   lineup[idx+1]] = [lineup[idx+1], lineup[idx]];
+    renderBattingOrder();
+    updateSaveBattingBtn();
+  };
+
+  document.getElementById('lu-slot-count').textContent = `${filled} / 9`;
+  renderFieldingTable();
+  updateSaveBattingBtn();
 }
 
-function setPosition(idx, pos) { if (lineup[idx]) lineup[idx].position = pos; renderBattingOrder(); }
+function renderFieldingTable() {
+  const el = document.getElementById('fielding-table');
+  // Build map: position -> {player, posGrade}
+  const posMap = {};
+  lineup.forEach(slot => {
+    if (slot && slot.position) {
+      const p = findPlayer(slot.player_id);
+      if (p) {
+        const posKey = 'pos_' + slot.position;
+        const grade  = slot.position === 'dh' ? null : (p[posKey] || null);
+        posMap[slot.position] = { player: p, grade };
+      }
+    }
+  });
+  el.innerHTML = POSITIONS.map(pos => {
+    const entry = posMap[pos];
+    if (!entry) {
+      return `<div class="fd-row"><span class="fd-pos">${POS_LABEL[pos]}</span><span class="fd-name">—</span></div>`;
+    }
+    const { player: p, grade } = entry;
+    const gradeHtml = grade
+      ? `<span class="${gradeClass(grade)}" style="font-family:var(--font-mono);font-size:11px;margin-left:4px;">${grade}</span>`
+      : '';
+    return `<div class="fd-row" style="cursor:pointer;" onclick="openPlayerPanel('${p.player_id}')">
+      <span class="fd-pos">${POS_LABEL[pos]}</span>
+      <span class="fd-name filled">${p.first_name} ${p.last_name}${gradeHtml}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ── Batting: position & slot management ─────────────────────────────────────── */
+function setPosition(idx, pos) {
+  if (lineup[idx]) lineup[idx].position = pos || '';
+  renderBattingOrder();
+  updateSaveBattingBtn();
+}
 
 function removeFromLineup(idx) {
   lineup[idx] = null;
   renderBattingOrder();
-  renderBench();
+  renderRoster();
+  updateSaveBattingBtn();
 }
 
 function addToLineup(pid) {
   if (lineup.find(s => s && s.player_id === pid)) return;
   const emptyIdx = lineup.findIndex(s => s === null);
-  if (emptyIdx === -1) { showFeedback('Lineup is full (9 max)', 'var(--red)'); return; }
+  if (emptyIdx === -1) { showFeedback('Lineup is full', 'var(--red)'); return; }
   const used = usedPositions();
-  const pos = POSITIONS.find(p => !used.has(p)) || 'dh';
-  lineup[emptyIdx] = {player_id: pid, position: pos};
+  const pos  = POSITIONS.find(p => !used.has(p)) || 'dh';
+  lineup[emptyIdx] = { player_id: pid, position: pos };
   renderBattingOrder();
-  renderBench();
+  renderRoster();
+  updateSaveBattingBtn();
 }
 
-// ── Bench ──────────────────────────────────────────────────────────────────────
-function getSortVal(p, key) {
-  return gradeVal(p[key]);
+function updateSaveBattingBtn() {
+  const btn = document.getElementById('save-batting-btn');
+  if (!btn) return;
+  const valid = lineupValid();
+  btn.disabled = !valid;
+  btn.title = valid ? '' : 'Fill all 9 batting slots and assign all 9 fielding positions first';
 }
 
-function renderBench() {
+function clearLineup() {
+  lineup = Array(9).fill(null);
+  renderBattingOrder();
+  renderRoster();
+  updateSaveBattingBtn();
+}
+
+/* ── Batting: roster column ──────────────────────────────────────────────────── */
+function setRosterFilter(btn, key, val) {
+  document.querySelectorAll(`.lu-filter[data-key="${key}"]`)
+    .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  rosterFilter[key] = val;
+  saveToStorage();
+  renderRoster();
+}
+
+function renderRoster() {
   const inLineup = new Set(lineup.filter(Boolean).map(s => s.player_id));
-  const sortKey  = document.getElementById('bench-sort').value;
-  const bench    = ALL_HITTERS
-    .filter(p => !inLineup.has(p.player_id))
-    .sort((a, b) => getSortVal(a, sortKey) - getSortVal(b, sortKey));
+  const s1 = document.getElementById('bat-s1')?.value || 'overall';
+  const s2 = document.getElementById('bat-s2')?.value || '';
+  const s3 = document.getElementById('bat-s3')?.value || '';
+  const { type, health } = rosterFilter;
 
-  const el = document.getElementById('bench-list');
-  if (!bench.length) {
-    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">All hitters in lineup</div>';
-    return;
-  }
-  el.innerHTML = bench.map(p => `
-    <div class="bench-row" draggable="true"
-         onclick="addToLineup('${p.player_id}')"
-         ondragstart="event.dataTransfer.setData('source','bench');event.dataTransfer.setData('pid','${p.player_id}');event.stopPropagation();">
-      <span class="lu-grade ${gradeClass(p.overall)}">${p.overall}</span>
-      <div style="flex:1;min-width:0;">
-        <div class="lu-name" style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
-        <div class="lu-skills">${hitterSkillsHtml(p)}</div>
-      </div>
-      <span onclick="event.stopPropagation();openPlayerPanel('${p.player_id}')"
-            style="font-size:11px;color:var(--text-dim);cursor:pointer;padding:0 4px;">↗</span>
-      <span class="bench-add">+ Add</span>
-    </div>`).join('');
-}
-
-// ── Rotation ───────────────────────────────────────────────────────────────────
-let _rotDrag = null;
-
-function renderRotation() {
-  const el = document.getElementById('rotation-list');
-  el.innerHTML = '';
-  rotation.forEach((pid, i) => {
-    const p = findPitcher(pid);
-    if (!p) return;
-    const row = document.createElement('div');
-    row.className = 'rot-slot';
-    row.innerHTML = `
-      <div class="rot-num">${i+1}</div>
-      <div>
-        <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
-             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
-        <div class="lu-skills">${pitcherSkillsHtml(p)}</div>
-      </div>
-      <button class="lu-remove" onclick="removeFromRotation(${i})">×</button>`;
-    row.draggable = true;
-    row.addEventListener('dragstart', e => { _rotDrag=i; row.classList.add('dragging'); e.stopPropagation(); });
-    row.addEventListener('dragover', e => e.preventDefault());
-    row.addEventListener('drop', e => {
-      e.preventDefault();
-      if (_rotDrag===null||_rotDrag===i) return;
-      const [m] = rotation.splice(_rotDrag,1); rotation.splice(i,0,m);
-      renderRotation();
-    });
-    row.addEventListener('dragend', () => { row.classList.remove('dragging'); _rotDrag=null; });
-    el.appendChild(row);
+  const allPlayers = [...ALL_HITTERS, ...ALL_PITCHERS];
+  let visible = allPlayers.filter(p => {
+    if (type   && p.player_type !== type) return false;
+    if (health === 'healthy' && p.injured) return false;
+    if (health === 'injured' && !p.injured) return false;
+    return true;
   });
-  document.getElementById('rot-count').textContent = `${rotation.length} / 6`;
-  renderBullpen();  // always re-render bullpen when rotation changes
-}
 
-function removeFromRotation(idx) {
-  rotation.splice(idx,1);
-  renderRotation();
-}
+  visible.sort((a, b) => {
+    const d1 = skillVal(a, s1) - skillVal(b, s1);
+    if (d1 !== 0) return d1;
+    if (s2) { const d2 = skillVal(a, s2) - skillVal(b, s2); if (d2 !== 0) return d2; }
+    if (s3) return skillVal(a, s3) - skillVal(b, s3);
+    return 0;
+  });
 
-function addToRotation(pid) {
-  if (rotation.length >= 6) { showFeedback('Rotation full (6 max)', 'var(--red)'); return; }
-  if (rotation.includes(pid)) return;
-  rotation.push(pid);
-  renderRotation();
-}
-
-// ── Bullpen ────────────────────────────────────────────────────────────────────
-const ROLES = ['Closer','Setup','Middle','Long','Specialist','Utility'];
-
-function getBullpenSortVal(p, key) {
-  if (key === 'sp_grade' || key === 'rp_grade') return gradeVal(p[key]);
-  return gradeVal(p[key]);
-}
-
-function renderBullpen() {
-  const inRot = new Set(rotation);
-  const sortKey = document.getElementById('bullpen-sort').value;
-  const rotFull = rotation.length >= 6;
-
-  const bpPitchers = ALL_PITCHERS
-    .filter(p => !inRot.has(p.player_id))
-    .sort((a, b) => getBullpenSortVal(a, sortKey) - getBullpenSortVal(b, sortKey));
-
-  const el = document.getElementById('bullpen-list');
-  if (!bpPitchers.length) {
-    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">All pitchers in rotation</div>';
+  const el = document.getElementById('roster-list');
+  if (!visible.length) {
+    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">No players match filter</div>';
     return;
   }
 
-  el.innerHTML = bpPitchers.map(p => {
-    const role = window.bullpen[p.player_id] || '';
-    const roleOpts = ['', ...ROLES].map(r =>
-      `<option value="${r}" ${role===r?'selected':''}>${r || '— unassigned —'}</option>`
-    ).join('');
-    return `<div class="bp-row">
-      <div>
-        <div class="lu-name" onclick="openPlayerPanel('${p.player_id}')"
-             style="color:${p.injured?'var(--red)':''}">${p.first_name} ${p.last_name}${p.injured?` <span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}</div>
-        <div class="lu-skills">${pitcherSkillsHtml(p)}</div>
+  el.innerHTML = '';
+  let _downId = null;
+
+  visible.forEach(p => {
+    const isIn = inLineup.has(p.player_id);
+    const isHitter = p.player_type === 'hitter';
+    const card = document.createElement('div');
+    card.className = `lu-roster-card${isIn ? ' in-lineup' : ''}`;
+    card.draggable = true;
+    card.dataset.pid = p.player_id;
+
+    card.innerHTML = `
+      <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+      <div style="min-width:0;">
+        <div class="lu-name" style="color:${p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}
+          ${p.injured?`<span style="font-size:10px;color:var(--red);">IL</span>`:''}
+        </div>
+        <div class="lu-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
+        <div class="lu-skills">${isHitter ? hitterGradesHtml(p, null) : pitcherGradesHtml(p)}</div>
+        ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
+        ${!isHitter && p.stat_era!=null ? `<div class="lu-skills">${pitcherStatsHtml(p)}</div>` : ''}
       </div>
-      <button class="add-sp-btn" onclick="addToRotation('${p.player_id}')"
-              ${rotFull ? 'disabled title="Rotation full"' : ''}>+ SP</button>
-      <select class="bp-role-select" onchange="bullpen['${p.player_id}']=this.value">${roleOpts}</select>
-    </div>`;
-  }).join('');
+      <button class="lu-add-btn" title="Add to lineup"
+              onclick="event.stopPropagation();addToLineup('${p.player_id}')"
+              ${isIn?'disabled':''}>+</button>`;
+
+    card.addEventListener('dragstart', e => {
+      _benchDrag = p.player_id; _luDrag = null;
+      e.dataTransfer.setData('source', 'roster');
+      e.dataTransfer.setData('pid', p.player_id);
+      e.stopPropagation();
+    });
+    card.addEventListener('mousedown', () => { _downId = p.player_id; });
+    card.addEventListener('mouseup', (e) => {
+      if (e.target.closest('button')) { _downId = null; return; }
+      if (_downId === p.player_id) openPlayerPanel(p.player_id);
+      _downId = null;
+    });
+
+    el.appendChild(card);
+  });
+
+  // Save sort state
+  saveToStorage();
 }
 
-// ── Auto-fill ──────────────────────────────────────────────────────────────────
+/* ── Batting: auto-fill ──────────────────────────────────────────────────────── */
 function autoFill() {
+  const used = new Set();
+  lineup = [];
+  const healthyHitters = ALL_HITTERS.filter(p => !p.injured);
   const pos_priority = {
     c:    p => p.best_def_label==='CA' ? gradeVal(p.best_def_grade) : 90,
     ss:   p => gradeVal(p.best_def_grade),
@@ -494,77 +794,522 @@ function autoFill() {
     rf:   p => gradeVal(p.overall),
     dh:   p => gradeVal(p.overall),
   };
-  const used = new Set();
-  lineup = [];
-  const healthyHitters  = ALL_HITTERS.filter(p => !p.injured);
-  const healthyPitchers = ALL_PITCHERS.filter(p => !p.injured);
   for (const pos of ['c','ss','cf','2b','3b','1b','lf','rf','dh']) {
     const best = healthyHitters
       .filter(p => !used.has(p.player_id))
       .sort((a,b) => pos_priority[pos](a) - pos_priority[pos](b))[0];
-    if (best) { lineup.push({player_id:best.player_id, position:pos}); used.add(best.player_id); }
+    if (best) { lineup.push({ player_id: best.player_id, position: pos }); used.add(best.player_id); }
+    else lineup.push(null);
   }
-  rotation = healthyPitchers
-    .sort((a,b) => gradeVal(a.sp_grade||a.overall) - gradeVal(b.sp_grade||b.overall))
-    .slice(0,5).map(p => p.player_id);
-
-  renderBattingOrder(); renderBench(); renderRotation();
+  renderBattingOrder();
+  renderRoster();
+  updateSaveBattingBtn();
 }
 
-// ── Save ───────────────────────────────────────────────────────────────────────
-async function saveLineup() {
-  const dupes = dupePositions();
-  if (dupes.size > 0) {
-    showFeedback('✗ Duplicate positions: ' + [...dupes].join(', '), 'var(--red)'); return;
-  }
-  const btn = document.getElementById('lu-save-btn');
+/* ── Batting: save ───────────────────────────────────────────────────────────── */
+async function saveBatting() {
+  if (!lineupValid()) return;
+  const btn = document.getElementById('save-batting-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const res = await fetch(`/leagues/${LEAGUE_ID}/lineup/save`, {
       method: 'PUT',
-      headers: {'Content-Type':'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        lineup:   lineup.map((s,i) => ({player_id:s.player_id, batting_order:i+1, position:s.position})),
-        rotation, bullpen: window.bullpen,
+        lineup: lineup
+          .map((s, i) => s ? { player_id: s.player_id, batting_order: i+1, position: s.position } : null)
+          .filter(Boolean),
       }),
     });
-    if (res.ok) showFeedback('✓ Saved', 'var(--green)');
-    else { const d = await res.json().catch(()=>({})); showFeedback('✗ '+(d.detail||'Error'), 'var(--red)'); }
+    if (res.ok) {
+      battingSaved = true;
+      showFeedback('✓ Batting saved', 'var(--green)');
+      updateScheduleBtn();
+    } else {
+      const d = await res.json().catch(()=>({}));
+      showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
+    }
   } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
-  finally { btn.disabled=false; btn.textContent='Save Lineup'; }
+  finally { btn.disabled = false; btn.textContent = 'Save Batting'; updateSaveBattingBtn(); }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   PITCHING TAB
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Rotation helpers ────────────────────────────────────────────────────────── */
+function nonNullRotation() { return rotation.filter(Boolean); }
+
+function rotationSlotNum(idx) {
+  // Sequential number counting only filled slots up to and including idx
+  let n = 0;
+  for (let i = 0; i <= idx; i++) { if (rotation[i] !== null) n++; }
+  return n;
+}
+
+function ensureValidPointer() {
+  const filled = nonNullRotation();
+  if (!filled.length) { pointerPid = null; return; }
+  if (!pointerPid || !filled.includes(pointerPid)) pointerPid = filled[0];
+}
+
+/* ── Rotation: render ────────────────────────────────────────────────────────── */
+let _rotDragIdx = null;
+
+function renderRotation() {
+  ensureValidPointer();
+  const el = document.getElementById('rotation-list');
+  el.innerHTML = '';
+
+  rotation.forEach((pid, idx) => {
+    if (pid === null) {
+      // Drag zone (gap)
+      const zone = document.createElement('div');
+      zone.className = 'rot-drag-zone';
+      zone.dataset.idx = idx;
+      zone.textContent = '— drag pitcher here —';
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-active'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-active'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-active');
+        const pid = e.dataTransfer.getData('rot-pid') || e.dataTransfer.getData('bp-pid');
+        if (!pid) return;
+        const fromIdx = e.dataTransfer.getData('rot-idx');
+        if (fromIdx !== '') {
+          // reorder: remove from old, insert at this idx
+          const fi = parseInt(fromIdx);
+          const [moved] = rotation.splice(fi, 1);
+          const newIdx = rotation.indexOf(null); // find first null after splice... not right
+          // Actually: just place at idx after adjusting
+          rotation[idx] = moved;
+          rotation[fi] = null; // put null where it came from... wait this is already null
+          // Simpler: just compact and rebuild won't work well here. Let me swap:
+        } else {
+          // from bullpen
+          if (!rotation.includes(pid)) rotation[idx] = pid;
+        }
+        renderRotation();
+        renderBullpen();
+      });
+      el.appendChild(zone);
+    } else {
+      const p = findPitcher(pid);
+      if (!p) { rotation[idx] = null; return; }
+      const slotNum = rotationSlotNum(idx);
+      const isPointer = pid === pointerPid;
+
+      const row = document.createElement('div');
+      row.className = 'rot-slot';
+      row.dataset.idx = idx;
+      row.draggable = true;
+
+      row.innerHTML = `
+        <div class="rot-radio${isPointer?' active':''}" title="Set as next starter"
+             onclick="setPointer('${pid}')"></div>
+        <div class="rot-num">${slotNum}</div>
+        <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+        <div style="min-width:0;">
+          <div class="lu-name" style="cursor:pointer;color:${p.injured?'var(--red)':''};"
+               onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+          </div>
+          <div class="lu-skills">${pitcherGradesHtml(p)}</div>
+          ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
+        </div>
+        <div class="rot-arrows">
+          <button class="rot-arrow" data-idx="${idx}" data-dir="up"
+                  ${idx===0||!rotation.slice(0,idx).some(x=>x!==null)?'disabled':''}>▲</button>
+          <button class="rot-arrow" data-idx="${idx}" data-dir="down"
+                  ${idx>=rotation.length-1||!rotation.slice(idx+1).some(x=>x!==null)?'disabled':''}>▼</button>
+        </div>
+        <div></div>
+        <button class="lu-remove" onclick="removeFromRotation(${idx})">×</button>`;
+
+      row.addEventListener('dragstart', e => {
+        _rotDragIdx = idx;
+        row.classList.add('dragging');
+        e.dataTransfer.setData('rot-pid', pid);
+        e.dataTransfer.setData('rot-idx', idx);
+        e.stopPropagation();
+      });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        _rotDragIdx = null;
+      });
+      row.addEventListener('dragover', e => {
+        const srcPid = _rotDragIdx !== null ? rotation[_rotDragIdx] : null;
+        if (!srcPid || srcPid === pid) return;
+        e.preventDefault();
+        document.querySelectorAll('.rot-slot.drag-swap').forEach(r => r.classList.remove('drag-swap'));
+        row.classList.add('drag-swap');
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('drag-swap'));
+      row.addEventListener('drop', e => {
+        e.preventDefault();
+        row.classList.remove('drag-swap');
+        if (_rotDragIdx === null || _rotDragIdx === idx) return;
+        // Swap
+        [rotation[_rotDragIdx], rotation[idx]] = [rotation[idx], rotation[_rotDragIdx]];
+        renderRotation();
+      });
+
+      el.appendChild(row);
+    }
+  });
+
+  // Arrow clicks via delegation
+  el.onclick = (e) => {
+    const btn = e.target.closest('.rot-arrow');
+    if (!btn) return;
+    e.stopPropagation();
+    const idx = parseInt(btn.dataset.idx);
+    const dir = btn.dataset.dir;
+    if (dir === 'up') {
+      // Find previous non-null index
+      for (let i = idx - 1; i >= 0; i--) {
+        if (rotation[i] !== null) {
+          [rotation[i], rotation[idx]] = [rotation[idx], rotation[i]];
+          break;
+        } else {
+          // Swap with null to move up through gaps
+          [rotation[i], rotation[idx]] = [rotation[idx], rotation[i]];
+          break;
+        }
+      }
+    } else {
+      for (let i = idx + 1; i < rotation.length; i++) {
+        [rotation[i], rotation[idx]] = [rotation[idx], rotation[i]];
+        break;
+      }
+    }
+    renderRotation();
+  };
+
+  // Always-present append zone at the bottom
+  const appendZone = document.createElement('div');
+  appendZone.className = 'rot-drag-zone';
+  appendZone.style.margin = '8px 12px';
+  appendZone.textContent = '+ drag pitcher here to extend rotation';
+  appendZone.addEventListener('dragover', e => { e.preventDefault(); appendZone.classList.add('drag-active'); });
+  appendZone.addEventListener('dragleave', () => appendZone.classList.remove('drag-active'));
+  appendZone.addEventListener('drop', e => {
+    e.preventDefault();
+    appendZone.classList.remove('drag-active');
+    const bpPid = e.dataTransfer.getData('bp-pid');
+    const rotPid = e.dataTransfer.getData('rot-pid');
+    const rotIdx = parseInt(e.dataTransfer.getData('rot-idx'));
+    if (bpPid && !rotation.includes(bpPid)) {
+      rotation.push(bpPid);
+    } else if (rotPid && !isNaN(rotIdx)) {
+      // Move rotation pitcher to end
+      rotation.splice(rotIdx, 1);
+      rotation.push(rotPid);
+    }
+    renderRotation();
+    renderBullpen();
+  });
+  el.appendChild(appendZone);
+
+  document.getElementById('rot-count').textContent = `${nonNullRotation().length} pitchers`;
+}
+
+function setPointer(pid) {
+  pointerPid = pid;
+  renderRotation();
+}
+
+function addToRotation(pid) {
+  if (rotation.includes(pid)) return;
+  // Fill first null slot, or append
+  const nullIdx = rotation.indexOf(null);
+  if (nullIdx !== -1) rotation[nullIdx] = pid;
+  else rotation.push(pid);
+  ensureValidPointer();
+  renderRotation();
+  renderBullpen();
+}
+
+function removeFromRotation(idx) {
+  const pid = rotation[idx];
+  const wasPointer = pid === pointerPid;
+  rotation[idx] = null;
+  // Trim trailing nulls (but keep at least the existing structure, just not trailing)
+  while (rotation.length > 0 && rotation[rotation.length - 1] === null) rotation.pop();
+  if (wasPointer) ensureValidPointer();
+  renderRotation();
+  renderBullpen();
+}
+
+/* ── Bullpen: render ─────────────────────────────────────────────────────────── */
+const ROLES = ['Closer','Setup','Middle','Long','Specialist','Utility'];
+
+function renderBullpen() {
+  const inRot = new Set(rotation.filter(Boolean));
+  const s1 = document.getElementById('bp-s1')?.value || 'sp_grade';
+  const s2 = document.getElementById('bp-s2')?.value || '';
+
+  const bpPitchers = ALL_PITCHERS
+    .filter(p => !inRot.has(p.player_id))
+    .sort((a, b) => {
+      const d1 = skillVal(a, s1) - skillVal(b, s1);
+      if (d1 !== 0) return d1;
+      if (s2) return skillVal(a, s2) - skillVal(b, s2);
+      return 0;
+    });
+
+  const el = document.getElementById('bullpen-list');
+  if (!bpPitchers.length) {
+    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">All pitchers in rotation</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  bpPitchers.forEach(p => {
+    const role = bullpen[p.player_id] || '';
+    const roleOpts = ['', ...ROLES]
+      .map(r => `<option value="${r}" ${role===r?'selected':''}>${r||'— role —'}</option>`)
+      .join('');
+
+    const card = document.createElement('div');
+    card.className = 'bp-card';
+    card.draggable = true;
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('bp-pid', p.player_id);
+      e.stopPropagation();
+    });
+    card.innerHTML = `
+      <div style="min-width:0;">
+        <div style="display:flex;align-items:baseline;gap:8px;">
+          <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+          <span class="lu-name" style="cursor:pointer;color:${p.injured?'var(--red)':''};"
+                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL</span>`:''}
+          </span>
+        </div>
+        <div class="lu-skills">${pitcherGradesHtml(p)}</div>
+        ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
+      </div>
+      <button class="bp-add-btn" onclick="addToRotation('${p.player_id}')">+ SP</button>
+      <select class="bp-role-select" onchange="bullpen['${p.player_id}']=this.value">${roleOpts}</select>`;
+
+    el.appendChild(card);
+  });
+}
+
+/* ── Pitching: clear / auto-fill / auto-assign ───────────────────────────────── */
+function clearRotation() {
+  rotation = [];
+  pointerPid = null;
+  renderRotation();
+  renderBullpen();
+}
+
+function autoFillRotation() {
+  const inRot = new Set(rotation.filter(Boolean));
+  const candidates = ALL_PITCHERS
+    .filter(p => !p.injured && !inRot.has(p.player_id))
+    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall));
+  const needed = Math.max(0, 5 - nonNullRotation().length);
+  candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
+  ensureValidPointer();
+  renderRotation();
+  renderBullpen();
+}
+
+function autoAssignBullpen() {
+  const inRot = new Set(rotation.filter(Boolean));
+  const bpPitchers = ALL_PITCHERS
+    .filter(p => !inRot.has(p.player_id));
+
+  // Sort helpers
+  const byStuff   = (a, b) => gradeVal(a.stuff   || a.overall) - gradeVal(b.stuff   || b.overall);
+  const bySP      = (a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall);
+  const byOverall = (a, b) => gradeVal(a.overall) - gradeVal(b.overall);
+
+  const assigned = new Set();
+  const newBullpen = {};
+
+  function pick(sorted, role) {
+    const p = sorted.find(p => !assigned.has(p.player_id));
+    if (p) { newBullpen[p.player_id] = role; assigned.add(p.player_id); }
+  }
+
+  // Closer: best Stuff
+  pick([...bpPitchers].sort(byStuff), 'Closer');
+  // Setup: second best Stuff
+  pick([...bpPitchers].sort(byStuff), 'Setup');
+  // Long: best SP rating remaining
+  pick([...bpPitchers].sort(bySP), 'Long');
+  // Middle: next best overall remaining
+  pick([...bpPitchers].sort(byOverall), 'Middle');
+  // Specialists: next 2 best overall
+  pick([...bpPitchers].sort(byOverall), 'Specialist');
+  pick([...bpPitchers].sort(byOverall), 'Specialist');
+  // Rest: Utility
+  bpPitchers.forEach(p => {
+    if (!assigned.has(p.player_id)) newBullpen[p.player_id] = 'Utility';
+  });
+
+  bullpen = newBullpen;
+  renderBullpen();
+}
+
+/* ── Pitching: save ──────────────────────────────────────────────────────────── */
+async function saveRotation() {
+  const btn = document.getElementById('save-rotation-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const compact = nonNullRotation();
+    const res = await fetch(`/leagues/${LEAGUE_ID}/rotation/save`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rotation:    compact,
+        bullpen:     bullpen,
+        pointer_pid: pointerPid,
+      }),
+    });
+    if (res.ok) {
+      pitchingSaved = true;
+      showFeedback('✓ Rotation saved', 'var(--green)');
+      updateScheduleBtn();
+    } else {
+      const d = await res.json().catch(()=>({}));
+      showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
+    }
+  } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Rotation'; }
+}
+
+/* ── Save both ───────────────────────────────────────────────────────────────── */
+async function saveBoth() {
+  await saveBatting();
+  await saveRotation();
+}
+
+/* ── Go to schedule ──────────────────────────────────────────────────────────── */
+function updateScheduleBtn() {
+  const btn = document.getElementById('schedule-btn');
+  if (btn) btn.style.display = (battingSaved && pitchingSaved) ? 'inline-flex' : 'none';
+}
+
+/* ── Feedback ────────────────────────────────────────────────────────────────── */
 function showFeedback(msg, color) {
   const fb = document.getElementById('lu-feedback');
-  fb.textContent=msg; fb.style.color=color;
-  setTimeout(() => { if(fb.textContent===msg) fb.textContent=''; }, 4000);
+  fb.textContent = msg; fb.style.color = color;
+  setTimeout(() => { if (fb.textContent === msg) fb.textContent = ''; }, 4000);
 }
 
-window.setPosition         = setPosition;
-window.addToRotation       = addToRotation;
-window.removeFromRotation  = removeFromRotation;
-window.renderBattingOrder  = renderBattingOrder;
-renderBattingOrder();
-renderBench();
-renderRotation(); // renderBullpen called inside renderRotation
+/* ── Storage ─────────────────────────────────────────────────────────────────── */
+function saveToStorage() {
+  try {
+    const s1  = document.getElementById('bat-s1')?.value  || 'overall';
+    const s2  = document.getElementById('bat-s2')?.value  || '';
+    const s3  = document.getElementById('bat-s3')?.value  || '';
+    const bs1 = document.getElementById('bp-s1')?.value   || 'sp_grade';
+    const bs2 = document.getElementById('bp-s2')?.value   || '';
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      lineup, rotation, pointerPid, bullpen,
+      rosterFilter, activeTab,
+      rosterSort: { s1, s2, s3 },
+      bullpenSort: { s1: bs1, s2: bs2 },
+    }));
+  } catch(e) {}
+}
 
-// ── Event delegation for player panel clicks ──────────────────────────────────
-// Inline onclick on draggable children is unreliable — use delegation instead
-let _luDownId = null;
-document.addEventListener('mousedown', e => {
-  const name = e.target.closest('.lu-name, .r-name');
-  if (name) { _luDownId = name.getAttribute('onclick') || name.dataset.pid || null; }
-}, {capture: false});
+function loadFromStorage() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
 
-document.addEventListener('mouseup', e => {
-  const name = e.target.closest('[onclick*="openPlayerPanel"]');
-  if (name && _luDownId) {
-    // Extract pid from onclick attribute
-    const match = (name.getAttribute('onclick') || '').match(/openPlayerPanel\('([^']+)'\)/);
-    if (match) { e.preventDefault(); openPlayerPanel(match[1]); }
+window.addEventListener('beforeunload', saveToStorage);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveToStorage(); });
+
+/* ── Measure header ──────────────────────────────────────────────────────────── */
+function measureHeader() {
+  const h = document.getElementById('lu-header')?.offsetHeight || 90;
+  document.documentElement.style.setProperty('--lu-hdr-h', h + 'px');
+}
+
+/* ── Init ────────────────────────────────────────────────────────────────────── */
+// Batting: load saved lineup
+const knownHitterIds  = new Set(ALL_HITTERS.map(p => p.player_id));
+const knownPitcherIds = new Set(ALL_PITCHERS.map(p => p.player_id));
+const knownAll = new Set([...knownHitterIds, ...knownPitcherIds]);
+
+if (SAVED_LINEUP.length > 0) {
+  SAVED_LINEUP.sort((a,b) => a.batting_order - b.batting_order).forEach(s => {
+    const idx = s.batting_order - 1;
+    if (idx >= 0 && idx < 9 && knownAll.has(s.player_id)) {
+      lineup[idx] = { player_id: s.player_id, position: s.position || '' };
+    }
+  });
+}
+
+// Pitching: load saved rotation, or auto-fill top 5 SP if nothing saved
+SAVED_ROT.filter(pid => knownPitcherIds.has(pid)).forEach(pid => rotation.push(pid));
+if (!rotation.length) {
+  // Auto-fill top 5 healthy SP-rated pitchers
+  ALL_PITCHERS
+    .filter(p => !p.injured)
+    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall))
+    .slice(0, 5)
+    .forEach(p => rotation.push(p.player_id));
+}
+if (Object.keys(SAVED_BP).length) bullpen = { ...SAVED_BP };
+if (SAVED_POINTER && knownPitcherIds.has(SAVED_POINTER)) pointerPid = SAVED_POINTER;
+else ensureValidPointer();
+
+// Restore from sessionStorage (overrides server data if present and valid)
+const stored = loadFromStorage();
+if (stored) {
+  // Validate and apply stored lineup
+  if (Array.isArray(stored.lineup) && stored.lineup.length === 9) {
+    const validLineup = stored.lineup.map(s =>
+      s && knownAll.has(s.player_id) ? s : null
+    );
+    lineup = validLineup;
   }
-  _luDownId = null;
-}, {capture: false});
+  // Validate and apply stored rotation
+  if (Array.isArray(stored.rotation)) {
+    rotation = stored.rotation.filter(pid => pid === null || knownPitcherIds.has(pid));
+  }
+  if (stored.pointerPid && knownPitcherIds.has(stored.pointerPid)) pointerPid = stored.pointerPid;
+  if (stored.bullpen) bullpen = stored.bullpen;
+  if (stored.rosterFilter) rosterFilter = stored.rosterFilter;
+  // Restore filter button states
+  ['type','health'].forEach(key => {
+    const val = rosterFilter[key] || (key === 'health' ? 'healthy' : '');
+    document.querySelectorAll(`.lu-filter[data-key="${key}"]`)
+      .forEach(b => b.classList.toggle('active', b.dataset.val === val));
+  });
+  // Restore sort selects
+  if (stored.rosterSort) {
+    if (document.getElementById('bat-s1')) document.getElementById('bat-s1').value = stored.rosterSort.s1||'overall';
+    if (document.getElementById('bat-s2')) document.getElementById('bat-s2').value = stored.rosterSort.s2||'';
+    if (document.getElementById('bat-s3')) document.getElementById('bat-s3').value = stored.rosterSort.s3||'';
+  }
+  if (stored.bullpenSort) {
+    if (document.getElementById('bp-s1')) document.getElementById('bp-s1').value = stored.bullpenSort.s1||'sp_grade';
+    if (document.getElementById('bp-s2')) document.getElementById('bp-s2').value = stored.bullpenSort.s2||'';
+  }
+  if (stored.activeTab && stored.activeTab !== 'batting') {
+    switchTab(stored.activeTab);
+  }
+}
+
+ensureValidPointer();
+renderBattingOrder();
+renderRoster();
+renderRotation();
+renderBullpen();
+updateSaveBattingBtn();
+requestAnimationFrame(measureHeader);
+window.addEventListener('resize', measureHeader);
 
 })();
 </script>

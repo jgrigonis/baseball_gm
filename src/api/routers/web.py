@@ -270,7 +270,7 @@ def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
             "stats",
             "strategy",
         ]
-    post = ["roster", "lineup", "standings", "schedule", "leaders", "stats", "strategy"]
+    post = ["roster", "lineup", "schedule", "standings", "leaders", "stats", "strategy"]
     if state not in ("season", "playoffs", "preseason", "offseason"):
         post.remove("schedule")
     if state in ("playoffs", "offseason"):
@@ -1982,12 +1982,30 @@ def lineup(
         ).fetchall()
         saved_bullpen = {r["player_id"]: r["role"] for r in bp}
 
+    # Load rotation pointer (green light position)
+    saved_rotation_pointer = None
+    if season_id and saved_rotation:
+        ptr_row = db.execute(
+            """SELECT next_order FROM team_rotation_pointer
+               WHERE team_id = ? AND season_id = ? AND series_id = ''""",
+            (team_id, season_id),
+        ).fetchone()
+        if ptr_row:
+            rot_at_ptr = db.execute(
+                """SELECT player_id FROM team_rotations
+                   WHERE team_id = ? AND season_id = ? AND rotation_order = ?
+                   AND end_date IS NULL""",
+                (team_id, season_id, ptr_row["next_order"]),
+            ).fetchone()
+            if rot_at_ptr:
+                saved_rotation_pointer = rot_at_ptr["player_id"]
+
     # Attach season stats to each player for display
     if season_id:
         stat_rows = db.execute(
             """SELECT player_id,
                       bat_ab, bat_hits, bat_home_runs,
-                      pitch_outs, pitch_earned_runs,
+                      pitch_games_started, pitch_outs, pitch_earned_runs,
                       pitch_wins, pitch_losses, pitch_saves
                FROM player_season_stats
                WHERE season_id = ? AND is_postseason = 0""",
@@ -2008,17 +2026,19 @@ def lineup(
             if s and (s["pitch_outs"] or 0) > 0:
                 outs = s["pitch_outs"]
                 era = (s["pitch_earned_runs"] * 27) / outs
+                p["stat_gs"]  = s["pitch_games_started"] or 0
                 p["stat_era"] = f"{era:.2f}"
-                p["stat_ip"] = f"{outs // 3}.{outs % 3}"
-                p["stat_w"] = s["pitch_wins"] or 0
-                p["stat_l"] = s["pitch_losses"] or 0
-                p["stat_sv"] = s["pitch_saves"] or 0
+                p["stat_ip"]  = f"{outs // 3}.{outs % 3}"
+                p["stat_w"]   = s["pitch_wins"] or 0
+                p["stat_l"]   = s["pitch_losses"] or 0
+                p["stat_sv"]  = s["pitch_saves"] or 0
             else:
+                p["stat_gs"]  = None
                 p["stat_era"] = None
-                p["stat_ip"] = None
-                p["stat_w"] = None
-                p["stat_l"] = None
-                p["stat_sv"] = None
+                p["stat_ip"]  = None
+                p["stat_w"]   = None
+                p["stat_l"]   = None
+                p["stat_sv"]  = None
 
     injured_map = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:
@@ -2029,6 +2049,7 @@ def lineup(
     ctx["saved_lineup"] = saved_lineup
     ctx["saved_rotation"] = saved_rotation
     ctx["saved_bullpen"] = saved_bullpen
+    ctx["saved_rotation_pointer"] = saved_rotation_pointer
     return _respond(request, "dashboard/partials/lineup.html", ctx)
 
 
@@ -2051,14 +2072,9 @@ async def save_lineup(
 
     body = await request.json()
     lineup = body.get("lineup", [])  # [{player_id, batting_order, position}]
-    rotation = body.get("rotation", [])  # [player_id, ...] in order
-    bullpen = body.get("bullpen", {})  # {player_id: role}
 
-    # Validate lineup: 9 slots, no duplicate positions
     if len(lineup) > 9:
-        return JSONResponse(
-            {"detail": "Lineup cannot exceed 9 batters"}, status_code=422
-        )
+        return JSONResponse({"detail": "Lineup cannot exceed 9 batters"}, status_code=422)
     positions_used = [s["position"] for s in lineup if s.get("position")]
     if len(positions_used) != len(set(positions_used)):
         dupes = [p for p in positions_used if positions_used.count(p) > 1]
@@ -2066,31 +2082,6 @@ async def save_lineup(
             {"detail": f"Duplicate positions: {', '.join(set(dupes))}"}, status_code=422
         )
 
-    # Validate rotation: max 6
-    if len(rotation) > 6:
-        return JSONResponse(
-            {"detail": "Rotation cannot exceed 6 starters"}, status_code=422
-        )
-
-    season_id = db.execute(
-        """SELECT s.id FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
-    season_id = season_id["id"] if season_id else None
-
-    season_start_row = db.execute(
-        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?",
-        (season_id,),
-    ).fetchone()
-    effective_date = (
-        season_start_row["start"]
-        if season_start_row and season_start_row["start"]
-        else "2000-01-01"
-    )
-
-    # Save batting lineup to gm_lineup_preferences
     db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = ?", (gm["id"],))
     for slot in lineup:
         db.execute(
@@ -2100,35 +2091,91 @@ async def save_lineup(
             (gm["id"], slot["player_id"], slot["batting_order"], slot.get("position")),
         )
 
-    # Save rotation to team_rotations
-    if season_id:
-        db.execute(
-            "DELETE FROM team_rotations WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
-            (gm["team_id"], season_id),
-        )
-        for i, pid in enumerate(rotation):
-            db.execute(
-                """INSERT INTO team_rotations
-                   (team_id, season_id, player_id, rotation_order, effective_date)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (gm["team_id"], season_id, pid, i + 1, effective_date),
-            )
+    db.commit()
+    return JSONResponse({"saved": True})
 
-    # Save bullpen roles
-    if season_id:
+
+@router.put("/leagues/{league_id}/rotation/save")
+async def save_rotation(
+    request: Request,
+    league_id: str,
+    db: DB,
+    gm_session: str | None = Cookie(default=None),
+):
+    from fastapi.responses import JSONResponse
+
+    user = _resolve_user(db, gm_session)
+    if not user:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+    gm = _resolve_gm(db, user["id"], league_id)
+    if not gm or not gm["team_id"]:
+        return JSONResponse({"detail": "No team"}, status_code=400)
+
+    body = await request.json()
+    rotation    = body.get("rotation", [])      # [player_id, ...] compacted
+    bullpen     = body.get("bullpen", {})        # {player_id: role}
+    pointer_pid = body.get("pointer_pid", None)  # player_id of "next" starter
+
+    season_id = db.execute(
+        """SELECT s.id FROM seasons s
+           JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+    season_id = season_id["id"] if season_id else None
+    if not season_id:
+        return JSONResponse({"detail": "No active season"}, status_code=400)
+
+    season_start_row = db.execute(
+        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?", (season_id,),
+    ).fetchone()
+    effective_date = (
+        season_start_row["start"]
+        if season_start_row and season_start_row["start"]
+        else "2000-01-01"
+    )
+
+    # Replace rotation
+    db.execute(
+        "DELETE FROM team_rotations WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
+        (gm["team_id"], season_id),
+    )
+    for i, pid in enumerate(rotation):
         db.execute(
-            "DELETE FROM bullpen_roles WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
-            (gm["team_id"], season_id),
+            """INSERT INTO team_rotations
+               (team_id, season_id, player_id, rotation_order, effective_date)
+               VALUES (?, ?, ?, ?, ?)""",
+            (gm["team_id"], season_id, pid, i + 1, effective_date),
         )
-        valid_roles = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
-        for pid, role in bullpen.items():
-            if role in valid_roles:
-                db.execute(
-                    """INSERT INTO bullpen_roles
-                       (team_id, player_id, season_id, role, effective_date)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (gm["team_id"], pid, season_id, role, effective_date),
-                )
+
+    # Upsert rotation pointer
+    if pointer_pid and pointer_pid in rotation:
+        ptr_order = rotation.index(pointer_pid) + 1
+        db.execute(
+            """INSERT INTO team_rotation_pointer
+                   (team_id, season_id, series_id, next_order, updated_at)
+               VALUES (?, ?, '', ?, datetime('now'))
+               ON CONFLICT (team_id, season_id, series_id)
+               DO UPDATE SET next_order = excluded.next_order,
+                             updated_at = excluded.updated_at""",
+            (gm["team_id"], season_id, ptr_order),
+        )
+
+    # Replace bullpen roles
+    db.execute(
+        "DELETE FROM bullpen_roles WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
+        (gm["team_id"], season_id),
+    )
+    valid_roles = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
+    for pid, role in bullpen.items():
+        if role in valid_roles:
+            db.execute(
+                """INSERT INTO bullpen_roles
+                   (team_id, player_id, season_id, role, effective_date)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (gm["team_id"], pid, season_id, role, effective_date),
+            )
 
     db.commit()
     return JSONResponse({"saved": True})
