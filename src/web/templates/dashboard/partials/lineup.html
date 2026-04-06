@@ -13,10 +13,10 @@
     <span id="tab-buttons"></span>
     <button class="btn btn-secondary" id="save-all-btn" onclick="saveAll()"
             style="margin-left:8px;">Save All Lineups</button>
-    <a id="schedule-btn" href="/leagues/{{ league_id }}/schedule"
+    <a id="schedule-btn" href="/leagues/{{ league_id }}/{% if is_playoffs %}playoffs{% else %}schedule{% endif %}"
        class="btn btn-secondary"
        style="margin-left:8px;border-color:var(--green);color:var(--green);display:none;">
-      Go to Schedule →
+      Go to {% if is_playoffs %}Playoffs{% else %}Schedule{% endif %} →
     </a>
   </div>
 

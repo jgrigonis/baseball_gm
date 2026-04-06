@@ -2101,6 +2101,9 @@ def lineup(
     ctx["saved_rotation"] = saved_rotation
     ctx["saved_bullpen"] = saved_bullpen
     ctx["saved_rotation_pointer"] = saved_rotation_pointer
+    # Tell template whether we're in playoffs so the nav button points the right way
+    league_row = db.execute("SELECT state FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    ctx["is_playoffs"] = (league_row and league_row["state"] == "playoffs")
     return _respond(request, "dashboard/partials/lineup.html", ctx)
 
 
