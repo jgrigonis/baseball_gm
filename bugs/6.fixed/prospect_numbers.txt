@@ -8,3 +8,7 @@ only grow by 50 a year.
 In less than 20 years, we should only have 1000 extra prospects.
 
 They must be getting added to the draft pool somehow.
+
+I can see the draft.csv files that are getting created, and they have nowhere
+near that many players in them.
+

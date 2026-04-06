@@ -167,7 +167,7 @@ class DraftGenerator:
                 FROM players p
                 JOIN player_status ps ON p.id = ps.player_id
                 LEFT JOIN team_players tp ON p.id = tp.player_id
-                WHERE ps.status IN ('prospect', 'unassigned')
+                WHERE ps.status = 'prospect'
                   AND tp.player_id IS NULL
                   AND (p.league_id = ? OR p.league_id IS NULL)
                 """,
@@ -179,7 +179,7 @@ class DraftGenerator:
                 FROM players p
                 JOIN player_status ps ON p.id = ps.player_id
                 LEFT JOIN team_players tp ON p.id = tp.player_id
-                WHERE ps.status IN ('prospect', 'unassigned')
+                WHERE ps.status = 'prospect'
                   AND tp.player_id IS NULL
                 """).fetchall()
 

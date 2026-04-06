@@ -856,7 +856,7 @@ def draft_tab(
         all_players = db.execute(
             """SELECT p.*, ps.status FROM players p
                JOIN player_status ps ON ps.player_id = p.id
-               WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
+               WHERE ps.status = 'prospect'
                AND p.league_id = ?
                ORDER BY p.last_name, p.first_name""",
             (league_id,),

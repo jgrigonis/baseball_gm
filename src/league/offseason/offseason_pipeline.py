@@ -56,6 +56,12 @@ class OffseasonPipeline:
         else:
             print("  Skipping retirement (already done)")
 
+        if not self._is_done(season_id, "clear_stale_prospects"):
+            self._clear_stale_prospects()
+            self._mark_done(season_id, "clear_stale_prospects")
+        else:
+            print("  Skipping stale prospect clear (already done)")
+
         if not self._is_done(season_id, "generate_draft"):
             self._generate_draft(season_id)
             self._mark_done(season_id, "generate_draft")
@@ -270,6 +276,34 @@ class OffseasonPipeline:
         count = repo.clear_season()
         print(f"  Cleared player energy for {count} players")
 
+    def _clear_stale_prospects(self) -> None:
+        """
+        Clear undrafted prospects who are too old to realistically be drafted.
+        Prospects aged 24+ who are still in the pool get marked free_agent
+        so they don't accumulate indefinitely across seasons.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT p.id
+            FROM players p
+            JOIN player_status ps ON p.id = ps.player_id
+            LEFT JOIN team_players tp ON p.id = tp.player_id
+            WHERE ps.status = 'prospect'
+              AND tp.player_id IS NULL
+            """
+        ).fetchall()
+
+        cleared = 0
+        for row in rows:
+            player = self.player_repo.look_up(row["id"])
+            if player and player.age >= 24:
+                self.player_status_repo.set_status(player.id, "free_agent")
+                cleared += 1
+
+        if cleared:
+            self.conn.commit()
+        print(f"  Cleared {cleared} stale prospects (age >= 24)")
+
     def _reset_pitcher_state(self, season_id: str) -> None:
         repo = PitcherStateRepository(self.conn)
         count = repo.clear_all()
@@ -280,7 +314,7 @@ class OffseasonPipeline:
         rot_repo = TeamRotationsRepository(self.conn)
         reset = rot_repo.reset_rotation_pointers(season_id)
         print(f"  Reset rotation pointers to sp1 for {reset} teams")
-  
+
     def _generate_draft(self, season_id: str) -> None:
         generator = DraftGenerator(self.conn, self.rng)
         total = generator.run(season_id, self.year, league_id=self.league_id)
