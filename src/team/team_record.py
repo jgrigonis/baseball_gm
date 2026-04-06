@@ -51,7 +51,8 @@ class TeamRecord:
     def assign_starting_rotation(self) -> list[str]:
         """Return player IDs of top 5 healthy pitchers by SP rating, ordered best to worst."""
         pitchers = [
-            p for p in self.players
+            p
+            for p in self.players
             if p.is_pitcher() and not getattr(p, "is_injured", False)
         ]
         pitchers.sort(
