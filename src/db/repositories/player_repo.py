@@ -286,6 +286,33 @@ class PlayerRepository:
             for row in rows
         ]
 
+    def get_players_in_league_season(
+        self, league_id: str, season_id: str
+    ) -> list[PlayerRecord]:
+        """Get all players on teams in the given league/season."""
+        rows = self.conn.execute(
+            """SELECT DISTINCT p.*, ps.*
+               FROM players p
+               JOIN player_skills ps ON p.id = ps.player_id
+               JOIN team_players tp ON tp.player_id = p.id
+               JOIN league_season_teams lst ON lst.team_id = tp.team_id
+               WHERE lst.league_id = ? AND lst.season_id = ?
+               ORDER BY p.last_name, p.first_name""",
+            (league_id, season_id),
+        ).fetchall()
+        return [
+            PlayerRecord(
+                id=row["id"],
+                first_name=row["first_name"],
+                last_name=row["last_name"],
+                bats=row["bats"],
+                throws=row["throws"],
+                position=row["position"],
+                skills=PlayerSkills.from_db_row(row),
+            )
+            for row in rows
+        ]
+
     def get_players_by_team(self, team_id: str) -> list[PlayerRecord]:
         rows = self.conn.execute(
             """

@@ -36,6 +36,7 @@ class OffseasonPipeline:
     def run(self, season_id: str, league_id: str | None = None) -> None:
         print(f"season id: {season_id}")
         self.league_id = league_id
+        self._current_season_id = season_id
         self._load_season_year(season_id)
 
         if not self._is_done(season_id, "archive"):
@@ -114,17 +115,28 @@ class OffseasonPipeline:
             print("  Skipping CSV export (already done)")
 
     def _archive(self, season_id: str) -> None:
-        """Snapshot all player skills at end of season."""
-        players = self.player_repo.get_all_players()
+        """Snapshot player skills at end of season, scoped to this league."""
+        if self.league_id:
+            players = self.player_repo.get_players_in_league_season(
+                self.league_id, season_id
+            )
+        else:
+            players = self.player_repo.get_all_players()
         for player in players:
             self.player_repo.snapshot_skills(player.id, season_id)
 
     def _age(self, season_id, rng):
-        """Age every player by one year and write back updated skills."""
+        """Age every player by one year and write back updated skills.
+        Scoped to players on teams in this league's season only."""
         cap_repo = TalentCapRepository(self.conn)
         energy_repo = PlayerEnergyRepository(self.conn)
 
-        players = self.player_repo.get_all_players()
+        if self.league_id:
+            players = self.player_repo.get_players_in_league_season(
+                self.league_id, season_id
+            )
+        else:
+            players = self.player_repo.get_all_players()
         player_ids = [p.id for p in players]
         all_caps = cap_repo.get_many(player_ids)
 
@@ -167,9 +179,15 @@ class OffseasonPipeline:
         print(f"  Aged {len(players)} players")
 
     def _retire(self, rng: random.Random) -> None:
-        """Evaluate all players for retirement."""
+        """Evaluate all players for retirement.
+        Scoped to players on teams in this league's season only."""
         team_repo = TeamRepository(self.conn)
-        players = self.player_repo.get_all_players()
+        if self.league_id:
+            players = self.player_repo.get_players_in_league_season(
+                self.league_id, self._current_season_id
+            )
+        else:
+            players = self.player_repo.get_all_players()
         retired = []
 
         for player in players:
