@@ -2,7 +2,7 @@
 import pytest
 
 from src.player.fatigue import PitcherFatigue, FatigueLevel
-from src.player.pitch_fatigue_constants import FASTBALL_DRAIN
+from src.player.player_constants import FASTBALL_DRAIN
 
 
 class TestPitcherFatigueInitialization:
