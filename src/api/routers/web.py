@@ -2722,7 +2722,7 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     )
 
     ROUND_DEFS = [
-        {"name": "Round 1", "series_names": ["1v8", "2v7", "3v6", "4v5"], "best_of": 5},
+        {"name": "Round 1", "series_names": ["1v8", "4v5", "2v7", "3v6"], "best_of": 5},
         {
             "name": "Semifinals",
             "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"],
