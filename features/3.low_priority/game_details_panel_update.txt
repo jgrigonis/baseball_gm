@@ -1,1 +1,6 @@
-In the game details panel, the moves involving my team should be highlighted or green.
+In the game details panel, the moves involving my team 
+should be highlighted or green.
+
+We should have an inning by inning box score similar to 
+in the inning class
+
