@@ -399,6 +399,15 @@ def sim_playoff(
         if pid not in injured_after
     ]
 
+    # Most recently played game date
+    last_game = conn.execute(
+        """SELECT MAX(g.game_date) as d FROM games g
+           JOIN series s ON g.series_id = s.id
+           WHERE s.season_id = ? AND g.completed = 1""",
+        (season_id,),
+    ).fetchone()
+    current_date = last_game["d"] if last_game and last_game["d"] else None
+
     return {
         "games_played": games_played,
         "results": results,
@@ -406,4 +415,5 @@ def sim_playoff(
         "champion": champion,
         "new_injuries": new_injuries,
         "returned": returned,
+        "current_date": current_date,
     }

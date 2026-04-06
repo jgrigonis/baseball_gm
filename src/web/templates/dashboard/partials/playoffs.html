@@ -236,6 +236,12 @@ function simPlayoffs(mode) {
       if (btn) { btn.disabled = false; btn.textContent = '▶ Sim  ▾'; }
       fb.textContent = d.games_played + ' game' + (d.games_played !== 1 ? 's' : '') + ' played';
 
+      // Update topbar date
+      if (d.current_date) {
+        var dateEl = document.querySelector('.topbar-date');
+        if (dateEl) dateEl.textContent = d.current_date;
+      }
+
       // Show injury / return news in the shell banner
       var injNews = '';
       if (d.new_injuries && d.new_injuries.length > 0)
