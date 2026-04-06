@@ -1,0 +1,1 @@
+In the game details panel, the moves involving my team should be highlighted or green.
