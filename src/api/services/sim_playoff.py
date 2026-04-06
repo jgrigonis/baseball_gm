@@ -234,6 +234,29 @@ def sim_playoff(
     current_round = None
     champion = None
 
+    # Track injuries for the GM's team so we can report new injuries / returns
+    gm_row = conn.execute(
+        "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
+        (league_id,),
+    ).fetchone()
+    gm_team_id = gm_row["team_id"] if gm_row else None
+
+    def _get_injured(team_id):
+        if not team_id:
+            return {}
+        rows = conn.execute(
+            """SELECT pi.player_id, pi.games_remaining,
+                      p.first_name || ' ' || p.last_name as name
+               FROM player_injuries pi
+               JOIN players p ON p.id = pi.player_id
+               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
+               WHERE pi.games_remaining > 0 AND (pi.league_id = ? OR pi.league_id = '')""",
+            (team_id, league_id),
+        ).fetchall()
+        return {r["player_id"]: {"name": r["name"], "days": r["games_remaining"]} for r in rows}
+
+    injured_before = _get_injured(gm_team_id)
+
     for round_idx, round_def in enumerate(ROUND_DEFS):
         # Generate games for this round if needed
         if round_idx > 0:
@@ -316,9 +339,24 @@ def sim_playoff(
         )
         conn.commit()
 
+    # Diff injuries to find new injuries and returns for GM's team
+    injured_after = _get_injured(gm_team_id)
+    new_injuries = [
+        {"name": v["name"], "days": v["days"]}
+        for pid, v in injured_after.items()
+        if pid not in injured_before
+    ]
+    returned = [
+        {"name": v["name"]}
+        for pid, v in injured_before.items()
+        if pid not in injured_after
+    ]
+
     return {
         "games_played": games_played,
         "results": results,
         "current_round": current_round,
         "champion": champion,
+        "new_injuries": new_injuries,
+        "returned": returned,
     }

@@ -236,6 +236,15 @@ function simPlayoffs(mode) {
     .then(function(d){
       if (btn) { btn.disabled = false; btn.textContent = '▶ Sim  ▾'; }
       fb.textContent = d.games_played + ' game' + (d.games_played !== 1 ? 's' : '') + ' played';
+
+      // Show injury / return news in the shell banner
+      var injNews = '';
+      if (d.new_injuries && d.new_injuries.length > 0)
+        injNews += d.new_injuries.map(function(i){ return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
+      if (d.returned && d.returned.length > 0)
+        injNews += (injNews ? '  ' : '') + d.returned.map(function(i){ return '✅ ' + i.name + ' returned'; }).join('  ');
+      if (typeof setInjuryNews === 'function') setInjuryNews(injNews);
+
       // Refresh bracket
       htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
     })
