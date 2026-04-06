@@ -66,7 +66,9 @@ def get_args():
 
 
 def get_top_8(conn, season_id: str) -> list[dict]:
-    """Return top 8 teams sorted by win%, then wins, for the given season."""
+    """Return top 8 teams sorted by win%, with H2H and RS tiebreakers."""
+    from src.league.statistics.print_standings import sort_standings
+
     rows = conn.execute(
         """
         SELECT
@@ -74,17 +76,13 @@ def get_top_8(conn, season_id: str) -> list[dict]:
             t.city || ' ' || t.mascot AS team_name,
             SUM(tgs.win)  AS wins,
             SUM(tgs.loss) AS losses,
-            ROUND(
-                CAST(SUM(tgs.win) AS REAL) / (SUM(tgs.win) + SUM(tgs.loss)),
-                4
-            ) AS win_pct
+            SUM(tgs.runs) AS runs_scored,
+            CAST(SUM(tgs.win) AS REAL) / (SUM(tgs.win) + SUM(tgs.loss)) AS win_pct
         FROM teams t
         JOIN team_game_stats tgs ON t.id = tgs.team_id
         JOIN games g ON tgs.game_id = g.id
         WHERE g.season_id = ? AND g.completed = 1
         GROUP BY t.id
-        ORDER BY win_pct DESC, wins DESC
-        LIMIT 8
         """,
         (season_id,),
     ).fetchall()
@@ -94,13 +92,13 @@ def get_top_8(conn, season_id: str) -> list[dict]:
             f"Need at least 8 teams with completed games; found {len(rows)}"
         )
 
-    return [dict(r) for r in rows]
+    sorted_rows = sort_standings(conn, season_id, [dict(r) for r in rows])
+    return sorted_rows[:8]
 
 
 # ---------------------------------------------------------------------------
 # Rotation management
 # ---------------------------------------------------------------------------
-
 
 def reset_rotation_pointers(conn, season_id: str) -> None:
     """Reset all rotation pointers for a season back to order 1."""
