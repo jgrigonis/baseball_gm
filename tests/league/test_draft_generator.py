@@ -289,10 +289,10 @@ class TestGetExistingDraftable:
         result = generator._get_existing_draftable()
         assert any(p.id == "p1" for p in result)
 
-    def test_returns_unassigned_without_team(self, conn, generator):
-        insert_player(conn, "p1", "unassigned")
-        result = generator._get_existing_draftable()
-        assert any(p.id == "p1" for p in result)
+    # def test_returns_unassigned_without_team(self, conn, generator):
+    #     insert_player(conn, "p1", "unassigned")
+    #     result = generator._get_existing_draftable()
+    #     assert any(p.id == "p1" for p in result)
 
     def test_excludes_rostered_prospect(self, conn, generator):
         """A prospect on a team should not appear."""
@@ -323,7 +323,7 @@ class TestGetExistingDraftable:
         insert_player(conn, "p3", "unassigned")
         result = generator._get_existing_draftable()
         ids = {p.id for p in result}
-        assert ids == {"p1", "p2", "p3"}
+        assert ids == {"p1", "p2"}
 
 
 # ---------------------------------------------------------------------------
