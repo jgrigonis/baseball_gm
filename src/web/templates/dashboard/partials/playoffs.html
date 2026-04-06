@@ -131,10 +131,12 @@
             {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
           </span>
           <div class="sc-dots">
-            {% for i in range(s.wins_needed) %}
-              {% if i < t.wins %}<div class="dot-win"></div>
-              {% else %}<div class="dot-empty"></div>{% endif %}
-            {% endfor %}
+            {% if not t.pending %}
+              {% for i in range(s.wins_needed) %}
+                {% if i < t.wins %}<div class="dot-win"></div>
+                {% else %}<div class="dot-empty"></div>{% endif %}
+              {% endfor %}
+            {% endif %}
           </div>
         </div>
         {% endfor %}
@@ -164,10 +166,12 @@
             {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
           </span>
           <div class="sc-dots">
-            {% for i in range(s.wins_needed) %}
-              {% if i < t.wins %}<div class="dot-win"></div>
-              {% else %}<div class="dot-empty"></div>{% endif %}
-            {% endfor %}
+            {% if not t.pending %}
+              {% for i in range(s.wins_needed) %}
+                {% if i < t.wins %}<div class="dot-win"></div>
+                {% else %}<div class="dot-empty"></div>{% endif %}
+              {% endfor %}
+            {% endif %}
           </div>
         </div>
         {% endfor %}
@@ -197,10 +201,12 @@
             {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
           </span>
           <div class="sc-dots">
-            {% for i in range(s.wins_needed) %}
-              {% if i < t.wins %}<div class="dot-win"></div>
-              {% else %}<div class="dot-empty"></div>{% endif %}
-            {% endfor %}
+            {% if not t.pending %}
+              {% for i in range(s.wins_needed) %}
+                {% if i < t.wins %}<div class="dot-win"></div>
+                {% else %}<div class="dot-empty"></div>{% endif %}
+              {% endfor %}
+            {% endif %}
           </div>
         </div>
         {% endfor %}

@@ -2731,6 +2731,18 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
         {"name": "Finals", "series_names": ["Finals"], "best_of": 7},
     ]
 
+    from src.league.playoffs.play_playoffs import get_series_winner as _gsw
+
+    # Map semifinal series name → which round-1 series feed into it
+    _SEMI_FEEDERS = {
+        "[1,8]v[4,5]": ("1v8", "4v5"),
+        "[2,7]v[3,6]": ("2v7", "3v6"),
+    }
+
+    def _team_name(tid):
+        r = db.execute("SELECT city, mascot FROM teams WHERE id = ?", (tid,)).fetchone()
+        return f"{r['city']} {r['mascot']}" if r else tid
+
     def load_series(series_name, best_of):
         sid = get_series_id(db, season_id, series_name)
         if not sid:
@@ -2759,21 +2771,29 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
                     team_ids.append(tid)
                     seen.add(tid)
 
+        # If this series has no games yet (prior round not fully complete),
+        # try to show the known winner(s) from the feeder round-1 series.
+        if not team_ids and series_name in _SEMI_FEEDERS:
+            for feeder_name in _SEMI_FEEDERS[series_name]:
+                feeder_sid = get_series_id(db, season_id, feeder_name)
+                if feeder_sid:
+                    w = _gsw(db, feeder_sid, 5)
+                    if w and w not in seen:
+                        team_ids.append(w)
+                        seen.add(w)
+
         teams = []
         for tid in team_ids:
-            row = db.execute(
-                "SELECT city, mascot FROM teams WHERE id = ?", (tid,)
-            ).fetchone()
-            if row:
-                wins = sum(1 for g in games if g["completed"] and g["winner_id"] == tid)
-                teams.append(
-                    {
-                        "team_id": tid,
-                        "name": f"{row['city']} {row['mascot']}",
-                        "wins": wins,
-                        "is_mine": tid == my_team_id,
-                    }
-                )
+            wins = sum(1 for g in games if g["completed"] and g["winner_id"] == tid)
+            teams.append(
+                {
+                    "team_id": tid,
+                    "name": _team_name(tid),
+                    "wins": wins,
+                    "is_mine": tid == my_team_id,
+                    "pending": len(games) == 0,
+                }
+            )
 
         wins_needed = {5: 3, 7: 4}[best_of]
         winner_id = next(
