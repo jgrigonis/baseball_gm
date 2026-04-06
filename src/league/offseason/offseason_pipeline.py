@@ -7,11 +7,13 @@ from pathlib import Path
 import random
 
 from src.db.connection import get_connection
+from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft
@@ -73,7 +75,7 @@ class OffseasonPipeline:
             print("  Skipping roster trim (already done)")
 
         if not self._is_done(season_id, "reset_pitcher_state"):
-            self._reset_pitcher_state()
+            self._reset_pitcher_state(season_id)
             self._mark_done(season_id, "reset_pitcher_state")
         else:
             print("  Skipping pitcher state reset (already done)")
@@ -268,13 +270,17 @@ class OffseasonPipeline:
         count = repo.clear_season()
         print(f"  Cleared player energy for {count} players")
 
-    def _reset_pitcher_state(self) -> None:
-        from src.db.repositories.pitcher_state import PitcherStateRepository
-
+    def _reset_pitcher_state(self, season_id: str) -> None:
         repo = PitcherStateRepository(self.conn)
         count = repo.clear_all()
         print(f"  Cleared pitcher state for {count} pitchers")
+        self._reset_rotation_pointers(season_id)
 
+    def _reset_rotation_pointers(self, season_id: str) -> None:
+        rot_repo = TeamRotationsRepository(self.conn)
+        reset = rot_repo.reset_rotation_pointers(season_id)
+        print(f"  Reset rotation pointers to sp1 for {reset} teams")
+  
     def _generate_draft(self, season_id: str) -> None:
         generator = DraftGenerator(self.conn, self.rng)
         total = generator.run(season_id, self.year, league_id=self.league_id)

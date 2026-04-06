@@ -20,6 +20,7 @@ import logging
 from datetime import date, timedelta
 
 from src.db.connection import get_connection
+from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.util.logger import setup_logger
 
 # ---------------------------------------------------------------------------
@@ -99,6 +100,12 @@ def get_top_8(conn, season_id: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Rotation management
 # ---------------------------------------------------------------------------
+
+def reset_rotation_pointers(conn, season_id: str) -> None:
+    """Reset all rotation pointers for a season back to order 1."""
+    rot_repo = TeamRotationsRepository(conn)
+    reset = rot_repo.reset_rotation_pointers(season_id)
+    print(f"  Reset rotation pointers to sp1 for {reset} teams")
 
 
 def demote_extra_starters(
@@ -323,6 +330,10 @@ def main():
     demote_extra_starters(
         conn, args.season_id, seeds, keep=args.short_rotation, logger=logger
     )
+
+    # 2.5 Reset rotation pointers
+    lines.append("\nResetting rotation pointers...")
+    reset_rotation_pointers(conn, args.season_id)
 
     # 3. Build bracket + pre-generate games
     lines.append("\nBuilding bracket...")

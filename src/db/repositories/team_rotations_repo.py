@@ -551,6 +551,34 @@ class TeamRotationsRepository:
         )
         self.conn.commit()
 
+    def reset_rotation_pointers(self, season_id: str) -> int:
+        """
+        Reset all rotation pointers for a season back to order 1.
+        Call at the start of each new season so game 1 always starts sp1.
+        Returns the number of rows upserted.
+        """
+        team_rows = self.conn.execute(
+            """SELECT DISTINCT team_id FROM team_rotations
+               WHERE season_id = ? AND end_date IS NULL""",
+            (season_id,),
+        ).fetchall()
+
+        count = 0
+        for row in team_rows:
+            self.conn.execute(
+                """INSERT INTO team_rotation_pointer
+                       (team_id, season_id, series_id, next_order, updated_at)
+                   VALUES (?, ?, '', 1, datetime('now'))
+                   ON CONFLICT (team_id, season_id, series_id)
+                   DO UPDATE SET next_order = 1,
+                                 updated_at = excluded.updated_at""",
+                (row[0], season_id),
+            )
+            count += 1
+
+        self.conn.commit()
+        return count
+
 
 # get_rotation_history(team_id, season_id, player_id=None)
 

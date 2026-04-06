@@ -8,5 +8,8 @@ Lineup manager
 Different approaches here
 Auto-Fill is terrible currently
 
+It should not overwrite existing lineup, just fill in holes and replace 
+injured players
+
 Also see:
 team_rotation_redesign.txt
