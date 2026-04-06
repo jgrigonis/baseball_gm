@@ -1,5 +1,4 @@
 # src/league/bootstrap.py
-import dataclasses
 from pathlib import Path
 import random
 
@@ -9,6 +8,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.player.player_evaluator import PlayerEvaluator
 from src.io.team_importer import TeamImporter
 
 
@@ -103,10 +103,13 @@ class LeagueBootstrapper:
             active_ids = set(self.status_repo.get_by_team_and_status(team.id, "26man"))
             active_players = [p for p in team.players if p.id in active_ids]
 
-            # Build a filtered team-like object the rotation logic can use
-            active_team = dataclasses.replace(team, players=tuple(active_players))
-
-            rotation = active_team.assign_starting_rotation()
+            # Inline rotation selection — avoid dataclasses.replace on slots=True frozen dataclass
+            pitchers = [p for p in active_players if p.is_pitcher()]
+            pitchers.sort(
+                key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),
+                reverse=True,
+            )
+            rotation = [p.id for p in pitchers[:5]]
             if not rotation:
                 print(
                     f"Warning: No pitchers found for team {team.name}, skipping rotation."
@@ -126,12 +129,16 @@ class LeagueBootstrapper:
                 (team.id, season_id),
             )
             self.conn.commit()
-            self._bootstrap_bullpen(active_team, rotation, season_id, start_date)
+            self._bootstrap_bullpen(team, active_players, rotation, season_id, start_date)
 
     def _bootstrap_bullpen(
-        self, team, rotation, season_id: str, start_date: str
+        self, team, active_players, rotation, season_id: str, start_date: str
     ) -> None:
-        roles = team.set_bullpen_roles(rotation)
+        relievers = [
+            p for p in active_players
+            if p.is_pitcher() and p.id not in set(rotation)
+        ]
+        roles = team.set_bullpen_roles(rotation, relievers=relievers)
         if not roles:
             print(
                 f"Warning: No pitchers found for team {team.name}, skipping bullpen roles."

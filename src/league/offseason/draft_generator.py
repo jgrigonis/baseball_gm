@@ -12,7 +12,6 @@ Steps:
 """
 
 import csv
-import dataclasses
 import random
 from pathlib import Path
 
@@ -20,6 +19,7 @@ from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.player.player_factory import PlayerFactory
+from src.player.player_record import PlayerRecord
 from src.player.player_skills import START_AGE
 from src.player.talent_caps import generate_talent_caps
 from src.util.locations import TEAM_FILES_DIR
@@ -151,7 +151,12 @@ class DraftGenerator:
             caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
             if age > START_AGE:
                 aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)
-                player = dataclasses.replace(player, skills=aged_skills, caps=caps)
+                player = PlayerRecord(
+                    id=player.id, first_name=player.first_name,
+                    last_name=player.last_name, bats=player.bats,
+                    throws=player.throws, position=player.position,
+                    skills=aged_skills, caps=caps,
+                )
             players.append(player)
         return players
 

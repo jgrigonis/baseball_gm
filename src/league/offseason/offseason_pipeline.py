@@ -1,7 +1,6 @@
 # src/league/offseason/offseason_pipeline.py
 import argparse
 import csv
-import dataclasses
 import datetime
 import logging
 from pathlib import Path
@@ -340,16 +339,11 @@ class OffseasonPipeline:
             active_ids = set(status_repo.get_by_team_and_status(team.id, "26man"))
             active_players = [p for p in team.players if p.id in active_ids]
 
-            # Tag injured players so assign_starting_rotation skips them
-            for p in active_players:
-                p.is_injured = p.id in injured_ids
-
-            # Pick top 5 healthy starters directly — avoid dataclasses.replace
-            # to prevent class identity issues with frozen dataclasses
+            # Pick top 5 healthy starters directly
             pitchers = [
                 p
                 for p in active_players
-                if p.is_pitcher() and not getattr(p, "is_injured", False)
+                if p.is_pitcher() and p.id not in injured_ids
             ]
             pitchers.sort(
                 key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),

@@ -8,7 +8,6 @@ TeamFactory.generate_team() → creates N players, ages each one to a
 """
 
 import csv
-import dataclasses
 import random
 from scipy.stats import skewnorm
 import uuid
@@ -172,7 +171,12 @@ class TeamFactory:
         player = self.player_factory.create(position=position)
         caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
         aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)
-        return dataclasses.replace(player, skills=aged_skills, caps=caps)
+        return PlayerRecord(
+            id=player.id, first_name=player.first_name,
+            last_name=player.last_name, bats=player.bats,
+            throws=player.throws, position=player.position,
+            skills=aged_skills, caps=caps,
+        )
 
     def _draw_roster_age(self, current_players: list[PlayerRecord]) -> int:
         """

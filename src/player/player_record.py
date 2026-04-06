@@ -29,7 +29,7 @@ ThrowingHand: TypeAlias = str  # "L" | "R"
 PositionCode: TypeAlias = str  # "ss" | "cf" | etc.
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class PlayerRecord:
     """
     Persistent, authoritative player data.
