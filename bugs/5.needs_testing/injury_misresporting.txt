@@ -31,3 +31,6 @@ DOUGLAS WILSON replaces MICHAEL HEATON — fatigue=exhausted
 Injured in the 4th, but not replaced until the 8th and clearly exhausted.
 
 Injured pitchers should be replaced immediately.
+
+This is almost fixed. The "Returning" status is confusing and we should 
+just put it back to 1g
