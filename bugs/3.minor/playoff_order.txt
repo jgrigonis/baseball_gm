@@ -3,7 +3,5 @@ playoffs are played in wrong order.
 It plays through an entire matchup before moving on to the
 next.
 
-It should be playing 1 game in each of the 4 brackets, each day.
-
-Play 1 series should be called play 1 round
-
+Play 1 series should be deleted play 1 round
+Play 1 Game should become Play 1 Day 

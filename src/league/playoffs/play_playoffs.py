@@ -63,9 +63,16 @@ _WINS_NEEDED = {5: 3, 7: 4}
 _HOME_MAP_BO5 = [True, True, False, False, True]
 _HOME_MAP_BO7 = [True, True, False, False, False, True, True]
 
-_R1_OFFSETS = [0, 2, 4, 6, 8]
-_SEMI_OFFSETS = [11, 13, 15, 17, 19, 21, 23]
-_FINAL_OFFSETS = [26, 28, 30, 32, 34, 36, 38]
+# Day offsets from playoff start (0-indexed)
+# Round 1 Group A (3v6, 4v5): days 1,3,5,7,9 → offsets 0,2,4,6,8
+_R1_A_OFFSETS = [0, 2, 4, 6, 8]  # 3v6, 4v5
+# Round 1 Group B (1v8, 2v7): days 2,4,6,8,10 → offsets 1,3,5,7,9
+_R1_B_OFFSETS = [1, 3, 5, 7, 9]  # 1v8, 2v7
+# Semifinals: two series alternate days starting day 7
+_SEMI_27_36_OFFSETS = [6, 8, 10, 12, 14, 16, 18]   # [2,7]v[3,6]
+_SEMI_18_45_OFFSETS = [7, 9, 11, 13, 15, 17, 19]   # [1,8]v[4,5]
+# Finals: consecutive days starting day 22
+_FINAL_OFFSETS = [21, 22, 23, 24, 25, 26, 27]
 
 
 def get_series_id(conn, season_id: str, name: str) -> str | None:
@@ -418,6 +425,12 @@ def main():
         high_seed_id = team_a if seed_a < seed_b else team_b
         low_seed_id = team_b if seed_a < seed_b else team_a
 
+        # Each semi series has its own offset schedule (alternating days)
+        semi_offsets = (
+            _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]"
+            else _SEMI_27_36_OFFSETS
+        )
+
         # Generate games now that teams are known
         generate_round_games(
             conn,
@@ -427,7 +440,7 @@ def main():
             low_seed_id,
             _HOME_MAP_BO7,
             playoff_start,
-            _SEMI_OFFSETS,
+            semi_offsets,
         )
 
         winner = play_series(

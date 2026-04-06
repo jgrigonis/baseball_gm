@@ -229,7 +229,9 @@ def _insert_games(conn, games: list[dict]) -> None:
 # ---------------------------------------------------------------------------
 
 # Day offsets relative to playoff start (every other day, 0-indexed)
-_R1_OFFSETS = [0, 2, 4, 6, 8]  # BO5 — 5 possible games
+# Round 1: two groups on alternating days
+_R1_A_OFFSETS = [0, 2, 4, 6, 8]  # 3v6, 4v5  (days 1,3,5,7,9)
+_R1_B_OFFSETS = [1, 3, 5, 7, 9]  # 1v8, 2v7  (days 2,4,6,8,10)
 
 
 def build_bracket(
@@ -252,15 +254,16 @@ def build_bracket(
     # ------------------------------------------------------------------
     # Round 1  (BO5)
     # ------------------------------------------------------------------
+    # Group A plays on odd playoff days (1,3,5,7,9), Group B on even (2,4,6,8,10)
     r1_matchups = [
-        ("1v8", 1, 8),
-        ("2v7", 2, 7),
-        ("3v6", 3, 6),
-        ("4v5", 4, 5),
+        ("3v6", 3, 6, _R1_A_OFFSETS),
+        ("4v5", 4, 5, _R1_A_OFFSETS),
+        ("1v8", 1, 8, _R1_B_OFFSETS),
+        ("2v7", 2, 7, _R1_B_OFFSETS),
     ]
 
     r1_series_ids = {}
-    for name, hi, lo in r1_matchups:
+    for name, hi, lo, offsets in r1_matchups:
         series_id = f"{sid}_{name}"
         r1_series_ids[name] = series_id
         _insert_series(conn, series_id, sid, name)
@@ -271,7 +274,7 @@ def build_bracket(
             low_seed_id=team(lo),
             home_map=_HOME_MAP_BO5,
             start_date=start_date,
-            offsets=_R1_OFFSETS,
+            offsets=offsets,
         )
         _insert_games(conn, games)
         log_print(
