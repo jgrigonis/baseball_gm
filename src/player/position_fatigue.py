@@ -1,17 +1,27 @@
 # src/player/position_fatigue.py
 
 from dataclasses import dataclass, field
-from enum import Enum
 
 from src.db.repositories.player_energy import _daily_recovery_rate
-
-
-class FatigueLevel(Enum):
-    FRESH = "fresh"
-    GOOD = "good"
-    TIRED = "tired"
-    EXHAUSTED = "exhausted"
-    ZERO = "zero"
+from src.player.fatigue_level import FatigueLevel
+from src.player.player_constants import (
+    FRESH_THRESHOLD,
+    GOOD_THRESHOLD,
+    TIRED_THRESHOLD,
+    EXHAUSTED_THRESHOLD,
+    BAT_FRESH,
+    BAT_GOOD,
+    BAT_TIRED,
+    BAT_EXHAUSTED,
+    BAT_ZERO,
+    STREAK_PENALTY,
+    STREAK_GAMES,
+    MOD_INJURY_FRESH,
+    MOD_INJURY_GOOD ,
+    MOD_INJURY_TIRED,
+    MOD_INJURY_EXHAUSTED,
+    MOD_INJURY_ZERO,
+)
 
 
 # Catchers drain fastest, middle infielders moderate, corners/OF lightest
@@ -50,12 +60,6 @@ class PositionPlayerFatigue:
     consecutive_days: int = 0  # Streak of days in lineup without a break
     season_games_played: int = 0
 
-    # Energy thresholds (mirrors PitcherFatigue)
-    FRESH_THRESHOLD: float = field(default=0.85, init=False, repr=False)
-    GOOD_THRESHOLD: float = field(default=0.65, init=False, repr=False)
-    TIRED_THRESHOLD: float = field(default=0.40, init=False, repr=False)
-    EXHAUSTED_THRESHOLD: float = field(default=0.01, init=False, repr=False)
-
     def __post_init__(self):
         if self.durability <= 0:
             raise ValueError(f"Durability must be positive, got {self.durability}")
@@ -70,13 +74,13 @@ class PositionPlayerFatigue:
 
     def get_level(self) -> FatigueLevel:
         """Determine current fatigue level."""
-        if self.energy >= self.FRESH_THRESHOLD:
+        if self.energy >= FRESH_THRESHOLD:
             return FatigueLevel.FRESH
-        elif self.energy >= self.GOOD_THRESHOLD:
+        elif self.energy >= GOOD_THRESHOLD:
             return FatigueLevel.GOOD
-        elif self.energy >= self.TIRED_THRESHOLD:
+        elif self.energy >= TIRED_THRESHOLD:
             return FatigueLevel.TIRED
-        elif self.energy >= self.EXHAUSTED_THRESHOLD:
+        elif self.energy >= EXHAUSTED_THRESHOLD:
             return FatigueLevel.EXHAUSTED
         return FatigueLevel.ZERO
 
@@ -86,11 +90,11 @@ class PositionPlayerFatigue:
         Mirrors PitcherFatigue.get_stat_modifier().
         """
         modifiers = {
-            FatigueLevel.FRESH: 1.03,  # Small bonus when fresh
-            FatigueLevel.GOOD: 1.0,
-            FatigueLevel.TIRED: 0.92,  # 8% worse
-            FatigueLevel.EXHAUSTED: 0.80,  # 20% worse
-            FatigueLevel.ZERO: 0.60,  # 40% worse
+            FatigueLevel.FRESH: BAT_FRESH,  # Small bonus when fresh
+            FatigueLevel.GOOD: BAT_GOOD,
+            FatigueLevel.TIRED: BAT_TIRED,  # 8% worse
+            FatigueLevel.EXHAUSTED: BAT_EXHAUSTED,  # 20% worse
+            FatigueLevel.ZERO: BAT_ZERO,  # 40% worse
         }
         return modifiers[self.get_level()]
 
@@ -117,7 +121,7 @@ class PositionPlayerFatigue:
 
         # Consecutive day penalty: each day in a long streak adds a small
         # extra drain (fatigue compounds — day 7+ hurts more than day 2)
-        streak_penalty = max(0, (self.consecutive_days - 4) * 0.005)
+        streak_penalty = max(0, (self.consecutive_days - STREAK_GAMES) * STREAK_PENALTY)
         drain += streak_penalty
 
         self.energy = max(0.0, self.energy - drain)
@@ -170,11 +174,11 @@ class PositionPlayerFatigue:
         """
         level = self.get_level()
         multipliers = {
-            FatigueLevel.FRESH: 0.80,  # Slightly protected
-            FatigueLevel.GOOD: 1.0,
-            FatigueLevel.TIRED: 1.40,
-            FatigueLevel.EXHAUSTED: 2.00,
-            FatigueLevel.ZERO: 3.00,
+            FatigueLevel.FRESH: MOD_INJURY_FRESH,
+            FatigueLevel.GOOD: MOD_INJURY_GOOD,
+            FatigueLevel.TIRED: MOD_INJURY_TIRED,
+            FatigueLevel.EXHAUSTED: MOD_INJURY_EXHAUSTED,
+            FatigueLevel.ZERO: MOD_INJURY_ZERO,
         }
         return multipliers[level]
 

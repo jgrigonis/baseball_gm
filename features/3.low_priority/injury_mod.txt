@@ -1,0 +1,9 @@
+Injury Mod
+
+We didn't actually wire in the injury multipliers
+
+If it applies to pitchers, we are likely going to overdo it.
+
+see the bottom of:
+
+# src/player/position_fatigue.py

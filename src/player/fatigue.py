@@ -49,22 +49,6 @@ class PitcherFatigue:
     max_energy: float = 1.0
     stamina: int = 50
 
-    # FRESH_THRESHOLD = 0.85
-    # GOOD_THRESHOLD = 0.65
-    # TIRED_THRESHOLD = 0.40
-    # EXHAUSTED_THRESHOLD = 0.01
-
-    # MOD_FRESH = 1.05
-    # MOD_GOOD = 1.0
-    # MOD_TIRED = 0.9
-    # MOD_EXHAUSTED = 0.75
-    # MOD_ZERO = 0.5
-
-    # FASTBALL_DRAIN = 0.008
-
-    # CAP_DMG_LOW = 0.0008
-    # CAP_DMG_HIGH = 0.0018
-
     def __post_init__(self):
         if self.stamina <= 0:
             raise ValueError(f"Stamina must be positive, got {self.stamina}")
