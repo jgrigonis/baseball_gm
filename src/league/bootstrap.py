@@ -118,6 +118,14 @@ class LeagueBootstrapper:
                 player_id_list=rotation,
                 effective_date=start_date,
             )
+            # Initialise the rotation pointer at sp1 so game 1 always starts correctly
+            self.conn.execute(
+                """INSERT OR IGNORE INTO team_rotation_pointer
+                       (team_id, season_id, series_id, next_order, updated_at)
+                   VALUES (?, ?, '', 1, datetime('now'))""",
+                (team.id, season_id),
+            )
+            self.conn.commit()
             self._bootstrap_bullpen(active_team, rotation, season_id, start_date)
 
     def _bootstrap_bullpen(
