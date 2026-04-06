@@ -7,4 +7,4 @@ class FatigueLevel(Enum):
     GOOD = "good"
     TIRED = "tired"
     EXHAUSTED = "exhausted"
-    ZERO = "ZERO"
+    ZERO = "zero"

@@ -630,7 +630,7 @@ class GameStrategy:
             return 0.0
 
         fatigue = pitcher.pitcher_fatigue
-        fatigue_level = fatigue.get_level()
+        fatigue_level = fatigue.get_level().value  # .value gives the plain string key
 
         prob = PITCHER_CHANGE_PROB.get(fatigue_level, 0.5)
 
