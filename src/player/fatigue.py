@@ -1,23 +1,21 @@
 from dataclasses import dataclass
 
 from src.player.fatigue_level import FatigueLevel
-from src.player.pitch_fatigue_constants import (
+from src.player.player_constants import (
     FRESH_THRESHOLD,
     GOOD_THRESHOLD,
     TIRED_THRESHOLD,
     EXHAUSTED_THRESHOLD,
-
     MOD_FRESH,
     MOD_GOOD,
     MOD_TIRED,
     MOD_EXHAUSTED,
     MOD_ZERO,
-
     FASTBALL_DRAIN,
-
     CAP_DMG_LOW,
     CAP_DMG_HIGH,
 )
+
 
 def _cap_damage_threshold(stamina: int) -> int:
     """

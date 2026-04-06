@@ -16,18 +16,17 @@ it does not belong here.
 """
 
 from dataclasses import dataclass
-
-# from src.player.player_record import PlayerRecord
-from src.player.player_skills import PlayerSkills
-from src.types.rows import CsvRow, DbRow
 from typing import TypeAlias
+
+from src.player.player_constants import VALID_ROLES, VALID_BATS, VALID_THROWS
+from src.player.player_skills import PlayerSkills
+from src.player.positions import ALL_POSITIONS, is_pitcher
+from src.types.rows import CsvRow, DbRow
 
 PlayerId: TypeAlias = str
 BattingSide: TypeAlias = str  # "L" | "R" | "S"
 ThrowingHand: TypeAlias = str  # "L" | "R"
 PositionCode: TypeAlias = str  # "ss" | "cf" | etc.
-
-VALID_ROLES = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
 
 
 @dataclass(slots=True, frozen=True)
@@ -48,9 +47,6 @@ class PlayerRecord:
 
     def __post_init__(self):
         """Validate player data after initialization."""
-        from src.player.positions import ALL_POSITIONS
-        from src.player.player_factory import VALID_BATS, VALID_THROWS
-
         if self.position not in ALL_POSITIONS:
             raise ValueError(
                 f"Invalid position: {self.position}. "
@@ -146,8 +142,6 @@ class PlayerRecord:
 
     def is_pitcher(self) -> bool:
         """True if player is a pitcher."""
-        from src.player.positions import is_pitcher
-
         return is_pitcher(self.position)
 
     def is_switch_hitter(self) -> bool:

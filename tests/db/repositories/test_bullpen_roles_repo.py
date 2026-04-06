@@ -9,8 +9,8 @@ from src.db.repositories.bullpen_roles_repo import (
     get_closer,
     update_role,
     remove_role,
-    VALID_ROLES,
 )
+from src.player.player_constants import VALID_ROLES
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -19,7 +19,8 @@ Roster (list of PlayerRecord.ids or full PlayerRecords)
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.player.player_record import PlayerRecord, VALID_ROLES
+from src.player.player_constants import VALID_ROLES
+from src.player.player_record import PlayerRecord
 from src.player.player_evaluator import PlayerEvaluator
 
 
@@ -61,9 +62,13 @@ class TeamRecord:
         )
         return [p.id for p in pitchers[:5]]
 
-    def set_bullpen_roles(self, rotation: list[str]) -> list[dict]:
+    def set_bullpen_roles(
+        self, rotation: list[str], relievers: list | None = None
+    ) -> list[dict]:
         """
         rotation: list of player IDs of the starting pitchers.
+        relievers: optional pre-filtered list of reliever PlayerRecords. If None,
+                   derived from self.players excluding rotation.
 
         Return a list of dicts, with keys:
             player_id (str)
@@ -81,7 +86,10 @@ class TeamRecord:
         roles = []
 
         # All pitchers not in the starting rotation
-        relievers = [p for p in self.players if p.is_pitcher() and p.id not in rotation]
+        if relievers is None:
+            relievers = [
+                p for p in self.players if p.is_pitcher() and p.id not in rotation
+            ]
 
         def stuff(p: PlayerRecord) -> float:
             s = p.skills

@@ -16,7 +16,7 @@ Enforces:
 from datetime import date
 from typing import Optional
 
-from src.player.player_record import VALID_ROLES
+from src.player.player_constants import VALID_ROLES
 
 # ---------------------------------------------------------------------------
 # Internal helpers

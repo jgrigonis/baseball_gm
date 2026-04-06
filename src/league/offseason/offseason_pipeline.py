@@ -22,6 +22,7 @@ from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft
 from src.league.offseason.build_season_stats import build_season, ensure_table
 from src.util.locations import TEAM_FILES_DIR
+from src.player.player_evaluator import PlayerEvaluator
 from src.util.logger import setup_logger
 
 
@@ -343,8 +344,18 @@ class OffseasonPipeline:
             for p in active_players:
                 p.is_injured = p.id in injured_ids
 
-            active_team = dataclasses.replace(team, players=tuple(active_players))
-            rotation = active_team.assign_starting_rotation()
+            # Pick top 5 healthy starters directly — avoid dataclasses.replace
+            # to prevent class identity issues with frozen dataclasses
+            pitchers = [
+                p
+                for p in active_players
+                if p.is_pitcher() and not getattr(p, "is_injured", False)
+            ]
+            pitchers.sort(
+                key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),
+                reverse=True,
+            )
+            rotation = [p.id for p in pitchers[:5]]
             if not rotation:
                 print(
                     f"  Warning: No healthy pitchers for {team.name}, skipping rotation rebuild."
@@ -374,8 +385,13 @@ class OffseasonPipeline:
                 (team.id, season_id),
             )
 
-            # Rebuild bullpen roles from scratch
-            roles = active_team.set_bullpen_roles(rotation)
+            # Rebuild bullpen roles from the active 26-man non-rotation pitchers
+            relievers = [
+                p
+                for p in active_players
+                if p.is_pitcher() and p.id not in set(rotation)
+            ]
+            roles = team.set_bullpen_roles(rotation, relievers=relievers)
             if roles:
                 set_roles(self.conn, team.id, season_id, roles, today)
 

@@ -34,6 +34,11 @@ import random
 import uuid
 
 import src.game.game_exceptions as game_exceptions
+from src.player.player_constants import (
+    VALID_BATS,
+    VALID_THROWS,
+    DEFAULT_LEFT_HANDED_PROB,
+)
 from src.player.positions import is_valid_affinity_position
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
@@ -48,10 +53,6 @@ from src.name_generator.names import NameGenerator
 import src.util.logger as _logger  # registers logging.Logger.trace
 
 _ = _logger  # noqa
-
-VALID_BATS = {"L", "R", "S"}
-VALID_THROWS = {"L", "R"}
-DEFAULT_LEFT_HANDED_PROB = 0.21  # Much higher than general population
 
 
 class PlayerFactory(object):

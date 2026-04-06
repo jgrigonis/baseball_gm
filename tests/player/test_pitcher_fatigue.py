@@ -4,6 +4,7 @@ import pytest
 from src.player.fatigue import PitcherFatigue, FatigueLevel
 from src.player.pitch_fatigue_constants import FASTBALL_DRAIN
 
+
 class TestPitcherFatigueInitialization:
     """Test PitcherFatigue initialization."""
 
@@ -119,7 +120,9 @@ class TestAddPitch:
         assert high_stamina.energy == pytest.approx(
             1.0 - (FASTBALL_DRAIN * 50 / 70 * 10), abs=0.001
         )
-        assert normal_stamina.energy == pytest.approx(1.0 - (FASTBALL_DRAIN * 10), abs=0.001)
+        assert normal_stamina.energy == pytest.approx(
+            1.0 - (FASTBALL_DRAIN * 10), abs=0.001
+        )
 
     def test_low_stamina_drains_faster(self):
         """Test that low stamina pitchers drain energy faster."""
