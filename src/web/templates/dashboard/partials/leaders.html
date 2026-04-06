@@ -4,31 +4,25 @@
   <div style="display:flex;align-items:center;gap:12px;">
     <h1 class="page-title">Leaders</h1>
     <div style="display:flex;gap:0;border:1px solid var(--border);">
-      <a href="?category=batting"
-         hx-get="/leagues/{{ league_id }}/leaders?category=batting"
-         hx-target="#tab-content" hx-swap="innerHTML"
-         style="padding:5px 16px;font-family:var(--font-mono);font-size:11px;
-                text-decoration:none;display:block;
-                background:{% if category == 'batting' %}var(--green-dim){% else %}transparent{% endif %};
-                color:{% if category == 'batting' %}var(--green){% else %}var(--text-dim){% endif %};">
+      <button id="lb-btn-bat" onclick="lbSwitch('batting')"
+              style="padding:5px 16px;font-family:var(--font-mono);font-size:11px;
+                     border:none;cursor:pointer;
+                     background:var(--green-dim);color:var(--green);">
         Batting
-      </a>
-      <a href="?category=pitching"
-         hx-get="/leagues/{{ league_id }}/leaders?category=pitching"
-         hx-target="#tab-content" hx-swap="innerHTML"
-         style="padding:5px 16px;font-family:var(--font-mono);font-size:11px;
-                text-decoration:none;display:block;border-left:1px solid var(--border);
-                background:{% if category == 'pitching' %}var(--green-dim){% else %}transparent{% endif %};
-                color:{% if category == 'pitching' %}var(--green){% else %}var(--text-dim){% endif %};">
+      </button>
+      <button id="lb-btn-pit" onclick="lbSwitch('pitching')"
+              style="padding:5px 16px;font-family:var(--font-mono);font-size:11px;
+                     border:none;border-left:1px solid var(--border);cursor:pointer;
+                     background:transparent;color:var(--text-dim);">
         Pitching
-      </a>
+      </button>
     </div>
   </div>
 </div>
 
-{% set cats = bat_cats if category == 'batting' else pit_cats %}
-
-{% if not cats %}
+{# ── Batting pane ──────────────────────────────────────────────────────────── #}
+<div id="lb-pane-batting">
+{% if not bat_cats %}
 <div style="padding:48px 0;text-align:center;font-family:var(--font-mono);
             font-size:13px;color:var(--text-dim);">
   Not enough games played yet.
@@ -38,8 +32,7 @@
             display:grid;
             grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
             gap:12px;">
-
-  {% for cat in cats %}
+  {% for cat in bat_cats %}
   <div class="card" style="min-width:0;">
     <div class="card-header" style="padding:8px 12px;">
       <span class="card-title" style="font-size:13px;letter-spacing:.06em;">{{ cat.label }}</span>
@@ -77,6 +70,75 @@
     {% endif %}
   </div>
   {% endfor %}
-
 </div>
 {% endif %}
+</div>
+
+{# ── Pitching pane ─────────────────────────────────────────────────────────── #}
+<div id="lb-pane-pitching" style="display:none;">
+{% if not pit_cats %}
+<div style="padding:48px 0;text-align:center;font-family:var(--font-mono);
+            font-size:13px;color:var(--text-dim);">
+  Not enough games played yet.
+</div>
+{% else %}
+<div style="padding:16px 24px 24px;
+            display:grid;
+            grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+            gap:12px;">
+  {% for cat in pit_cats %}
+  <div class="card" style="min-width:0;">
+    <div class="card-header" style="padding:8px 12px;">
+      <span class="card-title" style="font-size:13px;letter-spacing:.06em;">{{ cat.label }}</span>
+    </div>
+    {% if not cat.rows %}
+    <div style="padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">—</div>
+    {% else %}
+    {% for row in cat.rows %}
+    <div onclick="openPlayerPanel('{{ row.player_id }}')"
+         style="display:grid;grid-template-columns:20px 1fr auto;gap:6px;
+                align-items:baseline;padding:5px 12px;cursor:pointer;
+                border-top:{% if loop.first %}none{% else %}1px solid var(--border){% endif %};
+                background:{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %};
+                transition:background .08s;"
+         onmouseover="if(!{{ row.is_mine | lower }})this.style.background='var(--bg-3)'"
+         onmouseout="this.style.background='{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %}'">
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">{{ row.rank }}</span>
+      <div style="min-width:0;">
+        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
+                    color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ row.name }}
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ row.team }}
+        </div>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;
+                   color:{% if row.is_mine %}var(--green){% else %}var(--amber){% endif %};">
+        {{ row.val }}
+      </span>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+</div>
+
+<script>
+function lbSwitch(cat) {
+  var isBat = cat === 'batting';
+  document.getElementById('lb-pane-batting').style.display  = isBat ? '' : 'none';
+  document.getElementById('lb-pane-pitching').style.display = isBat ? 'none' : '';
+  var bb = document.getElementById('lb-btn-bat');
+  var bp = document.getElementById('lb-btn-pit');
+  bb.style.background = isBat ? 'var(--green-dim)' : 'transparent';
+  bb.style.color      = isBat ? 'var(--green)'    : 'var(--text-dim)';
+  bp.style.background = isBat ? 'transparent'     : 'var(--green-dim)';
+  bp.style.color      = isBat ? 'var(--text-dim)' : 'var(--green)';
+}
+window.lbSwitch = lbSwitch;
+</script>

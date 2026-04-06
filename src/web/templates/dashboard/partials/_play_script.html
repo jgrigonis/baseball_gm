@@ -138,11 +138,21 @@ async function schedSim(count) {
       var activeLink = document.querySelector('.tab-link.active');
       if (activeLink) {
         var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
+        // Remember any sub-pane state before swapping HTML
+        var lbPane = null;
+        var lbBatEl = document.getElementById('lb-pane-batting');
+        if (lbBatEl) lbPane = lbBatEl.style.display === 'none' ? 'pitching' : 'batting';
         try {
           var tabRes = await fetch(url, {headers: {'HX-Request': 'true'}});
           var html = await tabRes.text();
           var tc = document.getElementById('tab-content');
-          if (tc) tc.innerHTML = html;
+          if (tc) {
+            tc.innerHTML = html;
+            // Restore leaders pane if needed
+            if (lbPane && lbPane !== 'batting' && typeof lbSwitch === 'function') {
+              lbSwitch(lbPane);
+            }
+          }
         } catch(e) {}
       }
       // Only re-enter sim mode if we're continuing
