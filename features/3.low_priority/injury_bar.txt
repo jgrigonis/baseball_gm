@@ -1,3 +1,8 @@
 injury bar
 
 The injury bar should link to the lineup tab
+
+If the player is in the bullpen it should open the pitching half
+If the player is on the 40 man batting roster it should open batting order
+If the player is in the org bt not 40 man, it should open roster tab 
+
