@@ -2,11 +2,10 @@
 {# ── Stats Tab ─────────────────────────────────────────────────────────────── #}
 
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:12px 24px;border-bottom:1px solid var(--border);">
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <h1 class="page-title">Stats</h1>
+            padding:10px 24px;border-bottom:1px solid var(--border);">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;">
+    <h1 class="page-title" style="white-space:nowrap;">Stats</h1>
 
-    {# Team selector #}
     <select id="team-select" onchange="switchTeam(this.value)"
             style="font-family:var(--font-mono);font-size:12px;padding:4px 8px;">
       {% for t in all_teams %}
@@ -16,27 +15,45 @@
       {% endfor %}
     </select>
 
-    {# Batting / Pitching toggle #}
+    <select id="season-select" onchange="switchSeason(this.value)"
+            style="font-family:var(--font-mono);font-size:12px;padding:4px 8px;">
+      {% for s in all_seasons %}
+      <option value="{{ s.id }}" {% if s.id == selected_season_id %}selected{% endif %}>
+        {{ s.year }}
+      </option>
+      {% endfor %}
+    </select>
+
     <div style="display:flex;gap:0;border:1px solid var(--border);">
-      <button id="btn-bat" onclick="showCategory('batting')"
-              style="padding:5px 14px;font-family:var(--font-mono);font-size:11px;
-                     background:var(--green-dim);color:var(--green);border:none;cursor:pointer;">
-        Batting
+      <button onclick="switchPostseason(0)"
+              style="padding:4px 10px;font-family:var(--font-mono);font-size:11px;
+                     border:none;cursor:pointer;
+                     background:{% if not is_postseason %}var(--green-dim){% else %}transparent{% endif %};
+                     color:{% if not is_postseason %}var(--green){% else %}var(--text-dim){% endif %};">
+        Reg
       </button>
-      <button id="btn-pit" onclick="showCategory('pitching')"
-              style="padding:5px 14px;font-family:var(--font-mono);font-size:11px;
-                     background:transparent;color:var(--text-dim);border:none;cursor:pointer;
-                     border-left:1px solid var(--border);">
-        Pitching
+      <button onclick="switchPostseason(1)"
+              style="padding:4px 10px;font-family:var(--font-mono);font-size:11px;
+                     border:none;border-left:1px solid var(--border);cursor:pointer;
+                     background:{% if is_postseason %}var(--green-dim){% else %}transparent{% endif %};
+                     color:{% if is_postseason %}var(--green){% else %}var(--text-dim){% endif %};">
+        PO
       </button>
     </div>
 
-    {# Qualified toggle #}
-    <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);
-                  font-size:11px;color:var(--text-dim);cursor:pointer;">
-      <input type="checkbox" id="qual-toggle" onchange="renderTable()"
-             style="cursor:pointer;"> Qualified only
-    </label>
+    <div style="display:flex;gap:0;border:1px solid var(--border);">
+      <button id="btn-bat" onclick="showCategory('batting')"
+              style="padding:4px 10px;font-family:var(--font-mono);font-size:11px;
+                     background:var(--green-dim);color:var(--green);border:none;cursor:pointer;">
+        Bat
+      </button>
+      <button id="btn-pit" onclick="showCategory('pitching')"
+              style="padding:4px 10px;font-family:var(--font-mono);font-size:11px;
+                     background:transparent;color:var(--text-dim);border:none;cursor:pointer;
+                     border-left:1px solid var(--border);">
+        Pit
+      </button>
+    </div>
 
     <span id="stats-count" style="font-family:var(--font-mono);font-size:11px;
                                    color:var(--text-dim);margin-left:auto;"></span>
@@ -57,7 +74,8 @@
 <script>
 (function() {
 
-var LEAGUE_ID       = "{{ league_id }}";
+var LEAGUE_ID          = "{{ league_id }}";
+var STATS_POSTSEASON   = {{ "true" if is_postseason else "false" }};
 var MY_TEAM_ID      = "{{ my_team_id or '' }}";
 var TEAM_GAMES      = {{ team_games }};
 var MIN_AB          = Math.floor(3.1 * TEAM_GAMES);
@@ -69,7 +87,6 @@ var PITCHERS = {{ pitchers | tojson }};
 var category  = 'batting';
 var sortKey   = 'AVG';
 var sortAsc   = false;  // descending by default
-var qualOnly  = false;
 
 var BAT_COLS = [
   {key:'name',  label:'Player',  fmt:null,    rate:false, asc:true},
@@ -150,11 +167,9 @@ function setSort(key, defaultAsc) {
 }
 
 function renderTable() {
-  qualOnly = document.getElementById('qual-toggle').checked;
   var cols = category === 'batting' ? BAT_COLS : PIT_COLS;
   var rows = category === 'batting' ? BATTERS  : PITCHERS;
 
-  if (qualOnly) rows = rows.filter(r => r.qualified);
 
   rows = rows.slice().sort(function(a, b) {
     var av = sortVal(a, sortKey);
@@ -217,9 +232,20 @@ function renderTable() {
   document.getElementById('stats-body').innerHTML = bodyHtml;
 }
 
+function statsUrl(teamId, seasonId, ps) {
+  var t = teamId  || document.getElementById('team-select').value;
+  var s = seasonId|| document.getElementById('season-select').value;
+  var p = (ps !== undefined) ? ps : (STATS_POSTSEASON ? 1 : 0);
+  return '/leagues/' + LEAGUE_ID + '/stats?team_id=' + t + '&season_id=' + s + '&postseason=' + p;
+}
 function switchTeam(teamId) {
-  var url = '/leagues/' + LEAGUE_ID + '/stats?team_id=' + teamId;
-  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+  htmx.ajax('GET', statsUrl(teamId), {target: '#tab-content', swap: 'innerHTML'});
+}
+function switchSeason(seasonId) {
+  htmx.ajax('GET', statsUrl(null, seasonId), {target: '#tab-content', swap: 'innerHTML'});
+}
+function switchPostseason(ps) {
+  htmx.ajax('GET', statsUrl(null, null, ps), {target: '#tab-content', swap: 'innerHTML'});
 }
 
 // Init
@@ -236,6 +262,8 @@ renderTable();
 window.setSort       = setSort;
 window.showCategory  = showCategory;
 window.switchTeam    = switchTeam;
+window.switchSeason  = switchSeason;
+window.switchPostseason = switchPostseason;
 window.renderTable   = renderTable;
 
 })();

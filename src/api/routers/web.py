@@ -2514,6 +2514,8 @@ def stats(
     league_id: str,
     db: DB,
     team_id: str | None = None,
+    season_id: str | None = None,
+    postseason: int = 0,
     gm_session: str | None = Cookie(default=None),
 ):
     user = _resolve_user(db, gm_session)
@@ -2522,47 +2524,63 @@ def stats(
 
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, league_id, user, gm, "stats")
-    season_id = ctx["season_id"]
+    current_season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
+
+    # All seasons for this league, newest first
+    all_seasons = db.execute(
+        """SELECT s.id, s.year FROM seasons s
+           JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = ?
+           ORDER BY s.year DESC""",
+        (league_id,),
+    ).fetchall()
+
+    # Default to current season
+    selected_season_id = season_id or current_season_id
+    is_postseason = bool(postseason)
 
     # Default to user's team
     selected_team_id = team_id or my_team_id
 
-    # All teams in league for dropdown
+    # All teams for the selected season
     all_teams = db.execute(
-        """SELECT t.id, t.city, t.mascot
+        """SELECT DISTINCT t.id, t.city, t.mascot
            FROM teams t
            JOIN league_season_teams lst ON lst.team_id = t.id
-           JOIN league_seasons ls ON ls.season_id = lst.season_id
-           WHERE ls.league_id = ?
+           WHERE lst.league_id = ? AND lst.season_id = ?
            ORDER BY t.city""",
-        (league_id,),
-    ).fetchall()
+        (league_id, selected_season_id),
+    ).fetchall() if selected_season_id else []
+
+    # If selected team isn't in selected season's teams, reset to first available
+    team_ids_in_season = {t["id"] for t in all_teams}
+    if selected_team_id and selected_team_id not in team_ids_in_season:
+        selected_team_id = all_teams[0]["id"] if all_teams else None
 
     batters = []
     pitchers = []
     team_games = 0
+    ps_flag = 1 if is_postseason else 0
 
-    if season_id and selected_team_id:
+    if selected_season_id and selected_team_id:
         tg_row = db.execute(
             """SELECT MAX(bat_games_played) as tg FROM player_season_stats
-               WHERE season_id = ? AND is_postseason = 0
-                 AND player_id IN (
-                     SELECT player_id FROM team_players WHERE team_id = ?
-                 )""",
-            (season_id, selected_team_id),
+               WHERE season_id = ? AND is_postseason = ?
+                 AND team_id = ?""",
+            (selected_season_id, ps_flag, selected_team_id),
         ).fetchone()
         team_games = tg_row["tg"] or 0
-        min_ab = int(3.1 * team_games)
-        min_outs = int(3 * team_games)
+        min_ab = int(3.1 * team_games) if not is_postseason else 0
+        min_outs = int(3 * team_games) if not is_postseason else 0
 
         rows = db.execute(
             """SELECT p.id as player_id, p.first_name, p.last_name, pss.*
                FROM player_season_stats pss
                JOIN players p ON p.id = pss.player_id
-               WHERE pss.season_id = ? AND pss.is_postseason = 0
+               WHERE pss.season_id = ? AND pss.is_postseason = ?
                  AND pss.team_id = ?""",
-            (season_id, selected_team_id),
+            (selected_season_id, ps_flag, selected_team_id),
         ).fetchall()
 
         for r in rows:
@@ -2658,8 +2676,9 @@ def stats(
                     }
                 )
 
-    # Attach injury status to each player row
-    if selected_team_id:
+    # Attach injury status only for current season
+    is_current_season = (selected_season_id == current_season_id)
+    if selected_team_id and is_current_season:
         injured_map = _injured_player_ids(db, selected_team_id, league_id)
         for p in batters + pitchers:
             raw_days = injured_map.get(p["player_id"])
@@ -2668,14 +2687,23 @@ def stats(
             p["returning"]   = raw_days == 1
     else:
         for p in batters + pitchers:
-            p["injured"]   = False
+            p["injured"]     = False
             p["injury_days"] = None
-            p["returning"] = False
+            p["returning"]   = False
+
+    # Year label for selected season
+    selected_year = next(
+        (s["year"] for s in all_seasons if s["id"] == selected_season_id), None
+    )
 
     ctx.update(
         {
             "all_teams": [dict(t) for t in all_teams],
+            "all_seasons": [dict(s) for s in all_seasons],
             "selected_team_id": selected_team_id,
+            "selected_season_id": selected_season_id,
+            "selected_year": selected_year,
+            "is_postseason": is_postseason,
             "team_games": team_games,
             "batters": batters,
             "pitchers": pitchers,
