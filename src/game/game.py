@@ -1058,10 +1058,11 @@ class Game:
                 f"⚠️ Manager considering pitching change for {self.current_pitcher.name}"
             )
         self.logger.debug(f"Change probability: {change:.4f}")
-        self.logger.trace(
-            f"(fatigue={self.current_pitcher.pitcher_fatigue.get_level()}, runs={self.current_pitcher.game_stats.pitching.runs}, "
-            f"hits={self.current_pitcher.game_stats.pitching.hits}, outs={self.current_pitcher.game_stats.pitching.outs}, pitches={self.current_pitcher.game_stats.pitching.pitch_count})"
-        )
+        if self.current_pitcher.pitcher_fatigue:
+            self.logger.trace(
+                f"(fatigue={self.current_pitcher.pitcher_fatigue.get_level()}, runs={self.current_pitcher.game_stats.pitching.runs}, "
+                f"hits={self.current_pitcher.game_stats.pitching.hits}, outs={self.current_pitcher.game_stats.pitching.outs}, pitches={self.current_pitcher.game_stats.pitching.pitch_count})"
+            )
         if change > rnd and change >= 0.2:
             eligible = (
                 self.home_eligible
