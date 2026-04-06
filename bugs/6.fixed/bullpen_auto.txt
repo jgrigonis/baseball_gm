@@ -1,0 +1,3 @@
+bullpen auto assign should not assign injured players 
+
+Even worse, the bullpen roles don't save to DB

@@ -1135,8 +1135,8 @@ function autoFillRotation() {
 
 function autoAssignBullpen() {
   const inRot = new Set(rotation.filter(Boolean));
-  const bpPitchers = ALL_PITCHERS
-    .filter(p => !inRot.has(p.player_id));
+  const allBp = ALL_PITCHERS.filter(p => !inRot.has(p.player_id));
+  const healthy = allBp.filter(p => !p.injured);
 
   // Sort helpers
   const byStuff   = (a, b) => gradeVal(a.stuff   || a.overall) - gradeVal(b.stuff   || b.overall);
@@ -1152,20 +1152,21 @@ function autoAssignBullpen() {
   }
 
   // Closer: best Stuff
-  pick([...bpPitchers].sort(byStuff), 'Closer');
+  pick([...healthy].sort(byStuff), 'Closer');
   // Setup: second best Stuff
-  pick([...bpPitchers].sort(byStuff), 'Setup');
+  pick([...healthy].sort(byStuff), 'Setup');
   // Long: best SP rating remaining
-  pick([...bpPitchers].sort(bySP), 'Long');
+  pick([...healthy].sort(bySP), 'Long');
   // Middle: next best overall remaining
-  pick([...bpPitchers].sort(byOverall), 'Middle');
+  pick([...healthy].sort(byOverall), 'Middle');
   // Specialists: next 2 best overall
-  pick([...bpPitchers].sort(byOverall), 'Specialist');
-  pick([...bpPitchers].sort(byOverall), 'Specialist');
-  // Rest: Utility
-  bpPitchers.forEach(p => {
+  pick([...healthy].sort(byOverall), 'Specialist');
+  pick([...healthy].sort(byOverall), 'Specialist');
+  // Rest of healthy: Utility
+  healthy.forEach(p => {
     if (!assigned.has(p.player_id)) newBullpen[p.player_id] = 'Utility';
   });
+  // Injured players: leave unassigned (no role entry)
 
   bullpen = newBullpen;
   renderBullpen();
@@ -1204,7 +1205,6 @@ async function saveRotation() {
           const data = JSON.parse(stored);
           delete data.rotation;
           delete data.pointerPid;
-          delete data.bullpen;
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
       } catch(e) {}
@@ -1244,7 +1244,7 @@ function saveToStorage() {
     const bs1 = document.getElementById('bp-s1')?.value   || 'sp_grade';
     const bs2 = document.getElementById('bp-s2')?.value   || '';
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      lineup, rotation, pointerPid, bullpen,
+      lineup, rotation, pointerPid,
       rosterFilter, activeTab,
       rosterSort: { s1, s2, s3 },
       bullpenSort: { s1: bs1, s2: bs2 },
@@ -1312,7 +1312,6 @@ if (stored) {
   if (Array.isArray(stored.rotation)) {
     rotation = stored.rotation.filter(pid => pid === null || knownPitcherIds.has(pid));
   }
-  if (stored.bullpen) bullpen = stored.bullpen;
   if (stored.rosterFilter) rosterFilter = stored.rosterFilter;
   // Restore filter button states
   ['type','health'].forEach(key => {
