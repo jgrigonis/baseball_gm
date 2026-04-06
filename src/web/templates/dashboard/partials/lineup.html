@@ -11,8 +11,8 @@
           style="font-family:var(--font-mono);font-size:11px;margin-right:10px;"></span>
     {# per-tab buttons rendered by JS into these slots #}
     <span id="tab-buttons"></span>
-    <button class="btn btn-secondary" id="save-both-btn" onclick="saveBoth()"
-            style="margin-left:8px;">Save Both</button>
+    <button class="btn btn-secondary" id="save-all-btn" onclick="saveAll()"
+            style="margin-left:8px;">Save All Lineups</button>
     <a id="schedule-btn" href="/leagues/{{ league_id }}/schedule"
        class="btn btn-secondary"
        style="margin-left:8px;border-color:var(--green);color:var(--green);display:none;">
@@ -181,6 +181,8 @@
         <div class="spacer"></div>
         <button class="btn btn-secondary" onclick="autoAssignBullpen()"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto Assign</button>
+        <button class="btn btn-primary" id="save-bullpen-btn" onclick="saveBullpen()"
+                style="margin-right:6px;">Save Bullpen</button>
         <div style="display:flex;align-items:center;gap:3px;
                     font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
           <select id="bp-s1" onchange="renderBullpen()" style="width:auto;font-size:10px;">
@@ -383,7 +385,8 @@
 window.switchTab       = switchTab;
 window.saveBatting     = saveBatting;
 window.saveRotation    = saveRotation;
-window.saveBoth        = saveBoth;
+window.saveAll         = saveAll;
+window.saveBullpen     = saveBullpen;
 window.autoFill        = autoFill;
 window.setPosition     = setPosition;
 window.removeFromLineup= removeFromLineup;
@@ -398,6 +401,7 @@ window.clearRotation       = clearRotation;
 window.autoFillRotation    = autoFillRotation;
 window.autoAssignBullpen   = autoAssignBullpen;
 window.setRosterFilter     = setRosterFilter;
+window.setBullpenRole      = setBullpenRole;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 var  LEAGUE_ID      = "{{ league_id }}";
@@ -433,6 +437,7 @@ let rosterFilter = { type: 'hitter', health: 'healthy' };
 /* ── Save flags ─────────────────────────────────────────────────────────────── */
 let battingSaved  = false;
 let pitchingSaved = false;
+let bullpenSaved  = false;
 
 /* ── Tab management ──────────────────────────────────────────────────────────── */
 let activeTab = 'batting';
@@ -1055,6 +1060,11 @@ function removeFromRotation(idx) {
 /* ── Bullpen: render ─────────────────────────────────────────────────────────── */
 const ROLES = ['Closer','Setup','Middle','Long','Specialist','Utility'];
 
+function setBullpenRole(pid, role) {
+  if (role) bullpen[pid] = role;
+  else delete bullpen[pid];
+}
+
 function renderBullpen() {
   const inRot = new Set(rotation.filter(Boolean));
   const s1 = document.getElementById('bp-s1')?.value || 'sp_grade';
@@ -1102,7 +1112,7 @@ function renderBullpen() {
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
       </div>
       <button class="bp-add-btn" onclick="addToRotation('${p.player_id}')">+ SP</button>
-      <select class="bp-role-select" onchange="bullpen['${p.player_id}']=this.value">${roleOpts}</select>`;
+      <select class="bp-role-select" onchange="setBullpenRole('${p.player_id}',this.value)">${roleOpts}</select>`;
 
     el.appendChild(card);
   });
@@ -1178,11 +1188,6 @@ async function saveRotation() {
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const compact = nonNullRotation();
-    const rotSet = new Set(compact);
-    // Strip any pitchers now in the rotation from the bullpen role dict
-    const cleanBullpen = Object.fromEntries(
-      Object.entries(bullpen).filter(([pid]) => !rotSet.has(pid))
-    );
     // Ensure pointer is valid — default to first pitcher if unset
     ensureValidPointer();
     const res = await fetch(`/leagues/${LEAGUE_ID}/rotation/save`, {
@@ -1190,7 +1195,6 @@ async function saveRotation() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         rotation:    compact,
-        bullpen:     cleanBullpen,
         pointer_pid: pointerPid,
       }),
     });
@@ -1198,7 +1202,6 @@ async function saveRotation() {
       pitchingSaved = true;
       showFeedback('✓ Rotation saved', 'var(--green)');
       updateScheduleBtn();
-      // Clear stored rotation so the next page load reads fresh from the server
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY);
         if (stored) {
@@ -1216,16 +1219,43 @@ async function saveRotation() {
   finally { btn.disabled = false; btn.textContent = 'Save Rotation'; }
 }
 
-/* ── Save both ───────────────────────────────────────────────────────────────── */
-async function saveBoth() {
+/* ── Save bullpen ────────────────────────────────────────────────────────────── */
+async function saveBullpen() {
+  const btn = document.getElementById('save-bullpen-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const rotSet = new Set(nonNullRotation());
+    const cleanBullpen = Object.fromEntries(
+      Object.entries(bullpen).filter(([pid]) => !rotSet.has(pid))
+    );
+    const res = await fetch(`/leagues/${LEAGUE_ID}/bullpen/save`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bullpen: cleanBullpen }),
+    });
+    if (res.ok) {
+      bullpenSaved = true;
+      showFeedback('✓ Bullpen saved', 'var(--green)');
+      updateScheduleBtn();
+    } else {
+      const d = await res.json().catch(()=>({}));
+      showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
+    }
+  } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Save Bullpen'; } }
+}
+
+/* ── Save all ─────────────────────────────────────────────────────────────────── */
+async function saveAll() {
   await saveBatting();
   await saveRotation();
+  await saveBullpen();
 }
 
 /* ── Go to schedule ──────────────────────────────────────────────────────────── */
 function updateScheduleBtn() {
   const btn = document.getElementById('schedule-btn');
-  if (btn) btn.style.display = (battingSaved && pitchingSaved) ? 'inline-flex' : 'none';
+  if (btn) btn.style.display = (battingSaved && pitchingSaved && bullpenSaved) ? 'inline-flex' : 'none';
 }
 
 /* ── Feedback ────────────────────────────────────────────────────────────────── */
