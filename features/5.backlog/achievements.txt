@@ -1,6 +1,6 @@
 Achievements
 
-We should have several achievements and badges that players can earn
+We should have several achievements and badges that players (users) can earn
 
 Start a league
 Complete a blitz league 

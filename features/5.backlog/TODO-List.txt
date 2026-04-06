@@ -2,7 +2,6 @@
 # TODO chance for dropped 3rd strike.
 # TODO Steals, caught stealing, need error chance
 # TODO Make sure pickoffs are counted in fielding stats
-# TODO Track complete games, shutouts
 # TODO unit test for walk off home run, vs driving in multiple
 #      home run should score all runs, driving in on a triple for example
 #      should stop scoring once the winning run crosses the plate.

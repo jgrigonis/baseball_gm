@@ -6,3 +6,4 @@ Players can try to trade with GMs
 
 Can trade draft picks for players 
 
+This needs a full design spec
