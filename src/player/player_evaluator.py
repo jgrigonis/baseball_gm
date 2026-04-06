@@ -18,6 +18,7 @@ EXPECTED_RATINGS = {
     "p",
     "sp",
     "rp",
+    "cp",
     "lead_off",
     "contact_hitter",
     "power_hitter",
@@ -105,6 +106,12 @@ ROLE_WEIGHTS: dict[str, dict[str, int]] = {
         "ground_balls": 1,
         "strikes": 1,
         "clutch": 1,
+    },
+    "cp": {
+        "strikes": 4,
+        "clutch": 3,
+        "accuracy": 2,
+        "ground_balls": 1,
     },
     "lead_off": {
         "speed": 1,

@@ -49,8 +49,11 @@ class TeamRecord:
             raise TypeError("TeamRecord.players must be a tuple")
 
     def assign_starting_rotation(self) -> list[str]:
-        """Return player IDs of top 5 pitchers by SP rating, ordered best to worst."""
-        pitchers = [p for p in self.players if p.is_pitcher()]
+        """Return player IDs of top 5 healthy pitchers by SP rating, ordered best to worst."""
+        pitchers = [
+            p for p in self.players
+            if p.is_pitcher() and not getattr(p, "is_injured", False)
+        ]
         pitchers.sort(
             key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),
             reverse=True,

@@ -1,18 +1,21 @@
 # src/league/offseason/offseason_pipeline.py
 import argparse
 import csv
+import dataclasses
 import datetime
 import logging
 from pathlib import Path
 import random
 
 from src.db.connection import get_connection
+from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.bullpen_roles_repo import set_roles
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
@@ -83,6 +86,10 @@ class OffseasonPipeline:
         if not self._is_done(season_id, "reset_pitcher_state"):
             self._reset_pitcher_state(season_id)
             self._mark_done(season_id, "reset_pitcher_state")
+
+        if not self._is_done(season_id, "rebuild_rotations"):
+            self._rebuild_rotations(season_id)
+            self._mark_done(season_id, "rebuild_rotations")
         else:
             print("  Skipping pitcher state reset (already done)")
 
@@ -282,14 +289,16 @@ class OffseasonPipeline:
         Prospects aged 24+ who are still in the pool get marked free_agent
         so they don't accumulate indefinitely across seasons.
         """
-        rows = self.conn.execute("""
+        rows = self.conn.execute(
+            """
             SELECT p.id
             FROM players p
             JOIN player_status ps ON p.id = ps.player_id
             LEFT JOIN team_players tp ON p.id = tp.player_id
             WHERE ps.status = 'prospect'
               AND tp.player_id IS NULL
-            """).fetchall()
+            """
+        ).fetchall()
 
         cleared = 0
         for row in rows:
@@ -307,6 +316,73 @@ class OffseasonPipeline:
         count = repo.clear_all()
         print(f"  Cleared pitcher state for {count} pitchers")
         self._reset_rotation_pointers(season_id)
+
+    def _rebuild_rotations(self, season_id: str) -> None:
+        """
+        Rebuild starting rotations and bullpen roles for all teams at the start
+        of a new season. Picks the top 5 healthy pitchers by SP rating per team.
+        Respects 26-man roster only (same as bootstrap).
+        """
+        rot_repo = TeamRotationsRepository(self.conn)
+        status_repo = self.player_status_repo
+        inj_repo = InjuryRepository(self.conn, league_id=self.league_id or "")
+        team_repo = TeamRepository(self.conn)
+
+        teams = team_repo.get_teams_by_season(season_id)
+        injured_ids = {inj.player_id for inj in inj_repo.get_all_injured()}
+        today = datetime.date.today().isoformat()
+        rebuilt = 0
+
+        for team in teams:
+            if not team:
+                continue
+
+            # 26-man players only
+            active_ids = set(status_repo.get_by_team_and_status(team.id, "26man"))
+            active_players = [p for p in team.players if p.id in active_ids]
+
+            # Tag injured players so assign_starting_rotation skips them
+            for p in active_players:
+                p.is_injured = p.id in injured_ids
+
+            active_team = dataclasses.replace(team, players=tuple(active_players))
+            rotation = active_team.assign_starting_rotation()
+            if not rotation:
+                print(f"  Warning: No healthy pitchers for {team.name}, skipping rotation rebuild.")
+                continue
+
+            # Replace old rotation rows with fresh ones
+            self.conn.execute(
+                "DELETE FROM team_rotations WHERE team_id = ? AND season_id = ?",
+                (team.id, season_id),
+            )
+            for order, pid in enumerate(rotation, 1):
+                self.conn.execute(
+                    """INSERT INTO team_rotations
+                           (team_id, season_id, player_id, rotation_order, effective_date)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (team.id, season_id, pid, order, today),
+                )
+
+            # Reset pointer to SP1
+            self.conn.execute(
+                """INSERT INTO team_rotation_pointer
+                       (team_id, season_id, series_id, next_order, updated_at)
+                   VALUES (?, ?, '', 1, datetime('now'))
+                   ON CONFLICT (team_id, season_id, series_id)
+                   DO UPDATE SET next_order = 1, updated_at = datetime('now')""",
+                (team.id, season_id),
+            )
+
+            # Rebuild bullpen roles from scratch
+            roles = active_team.set_bullpen_roles(rotation)
+            if roles:
+                set_roles(self.conn, team.id, season_id, roles, today)
+
+            rebuilt += 1
+
+        self.conn.commit()
+        print(f"  Rebuilt rotations and bullpen roles for {rebuilt} teams")
 
     def _reset_rotation_pointers(self, season_id: str) -> None:
         rot_repo = TeamRotationsRepository(self.conn)
