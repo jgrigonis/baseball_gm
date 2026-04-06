@@ -1,6 +1,23 @@
 from dataclasses import dataclass
-from src.player.fatigue_level import FatigueLevel
 
+from src.player.fatigue_level import FatigueLevel
+from src.player.pitch_fatigue_constants import (
+    FRESH_THRESHOLD,
+    GOOD_THRESHOLD,
+    TIRED_THRESHOLD,
+    EXHAUSTED_THRESHOLD,
+
+    MOD_FRESH,
+    MOD_GOOD,
+    MOD_TIRED,
+    MOD_EXHAUSTED,
+    MOD_ZERO,
+
+    FASTBALL_DRAIN,
+
+    CAP_DMG_LOW,
+    CAP_DMG_HIGH,
+)
 
 def _cap_damage_threshold(stamina: int) -> int:
     """
@@ -34,21 +51,21 @@ class PitcherFatigue:
     max_energy: float = 1.0
     stamina: int = 50
 
-    FRESH_THRESHOLD = 0.85
-    GOOD_THRESHOLD = 0.65
-    TIRED_THRESHOLD = 0.40
-    EXHAUSTED_THRESHOLD = 0.01
+    # FRESH_THRESHOLD = 0.85
+    # GOOD_THRESHOLD = 0.65
+    # TIRED_THRESHOLD = 0.40
+    # EXHAUSTED_THRESHOLD = 0.01
 
-    MOD_FRESH = 1.05
-    MOD_GOOD = 1.0
-    MOD_TIRED = 0.9
-    MOD_EXHAUSTED = 0.75
-    MOD_ZERO = 0.5
+    # MOD_FRESH = 1.05
+    # MOD_GOOD = 1.0
+    # MOD_TIRED = 0.9
+    # MOD_EXHAUSTED = 0.75
+    # MOD_ZERO = 0.5
 
-    FASTBALL_DRAIN = 0.008
+    # FASTBALL_DRAIN = 0.008
 
-    CAP_DMG_LOW = 0.0008
-    CAP_DMG_HIGH = 0.0018
+    # CAP_DMG_LOW = 0.0008
+    # CAP_DMG_HIGH = 0.0018
 
     def __post_init__(self):
         if self.stamina <= 0:
@@ -57,26 +74,26 @@ class PitcherFatigue:
     # --- existing methods unchanged ---
 
     def get_level(self) -> FatigueLevel:
-        if self.energy >= self.FRESH_THRESHOLD:
+        if self.energy >= FRESH_THRESHOLD:
             return FatigueLevel.FRESH
-        elif self.energy >= self.GOOD_THRESHOLD:
+        elif self.energy >= GOOD_THRESHOLD:
             return FatigueLevel.GOOD
-        elif self.energy >= self.TIRED_THRESHOLD:
+        elif self.energy >= TIRED_THRESHOLD:
             return FatigueLevel.TIRED
-        elif self.energy >= self.EXHAUSTED_THRESHOLD:
+        elif self.energy >= EXHAUSTED_THRESHOLD:
             return FatigueLevel.EXHAUSTED
         return FatigueLevel.ZERO
 
     def add_pitch(self, pitch_type: str = "fastball") -> None:
         self.pitches_thrown += 1
         drain_rates = {
-            "fastball": self.FASTBALL_DRAIN,
+            "fastball": FASTBALL_DRAIN,
             # "curveball": 0.005,
             # "slider": 0.004,
             # "changeup": 0.003,
             # "knuckleball": 0.002,
         }
-        drain = drain_rates.get(pitch_type, self.FASTBALL_DRAIN)
+        drain = drain_rates.get(pitch_type, FASTBALL_DRAIN)
         drain *= 50 / self.stamina
         self.energy = max(0.0, self.energy - drain)
 
@@ -86,11 +103,11 @@ class PitcherFatigue:
 
     def get_stat_modifier(self) -> float:
         modifiers = {
-            FatigueLevel.FRESH: self.MOD_FRESH,
-            FatigueLevel.GOOD: self.MOD_GOOD,
-            FatigueLevel.TIRED: self.MOD_TIRED,
-            FatigueLevel.EXHAUSTED: self.MOD_EXHAUSTED,
-            FatigueLevel.ZERO: self.MOD_ZERO,
+            FatigueLevel.FRESH: MOD_FRESH,
+            FatigueLevel.GOOD: MOD_GOOD,
+            FatigueLevel.TIRED: MOD_TIRED,
+            FatigueLevel.EXHAUSTED: MOD_EXHAUSTED,
+            FatigueLevel.ZERO: MOD_ZERO,
         }
         return modifiers[self.get_level()]
 
@@ -110,10 +127,10 @@ class PitcherFatigue:
 
         if pitch_count < heavy:
             excess = pitch_count - threshold
-            base_damage = excess * self.CAP_DMG_LOW
+            base_damage = excess * CAP_DMG_LOW
         else:
             excess = pitch_count - threshold
-            base_damage = excess * self.CAP_DMG_HIGH
+            base_damage = excess * CAP_DMG_HIGH
 
         # 100 stamina = 0.500 stamina_factor
         #  75 stamina = 0.625 stamina_factor

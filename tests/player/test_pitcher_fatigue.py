@@ -1,8 +1,8 @@
 # tests/test_fatigue.py
-
 import pytest
-from src.player.fatigue import PitcherFatigue, FatigueLevel
 
+from src.player.fatigue import PitcherFatigue, FatigueLevel
+from src.player.pitch_fatigue_constants import FASTBALL_DRAIN
 
 class TestPitcherFatigueInitialization:
     """Test PitcherFatigue initialization."""
@@ -88,7 +88,7 @@ class TestAddPitch:
 
         assert fatigue.pitches_thrown == 1
         assert fatigue.energy < initial_energy
-        assert fatigue.energy == pytest.approx(0.99, abs=0.001)
+        assert fatigue.energy == pytest.approx(0.992, abs=0.001)
 
     def test_multiple_fastballs(self):
         """Test multiple fastball pitches."""
@@ -98,7 +98,7 @@ class TestAddPitch:
             fatigue.add_pitch("fastball")
 
         assert fatigue.pitches_thrown == 10
-        assert fatigue.energy == pytest.approx(0.90, abs=0.001)
+        assert fatigue.energy == pytest.approx(0.92, abs=0.001)
 
     def test_high_stamina_drains_slower(self):
         """Test that high stamina pitchers drain energy slower."""
@@ -113,13 +113,13 @@ class TestAddPitch:
         # High stamina should have more energy remaining
         assert high_stamina.energy > normal_stamina.energy
 
-        # Verify the math: drain = 0.01 * (50/stamina)
-        # High stamina: 0.01 * (50/70) = 0.00714 per pitch
-        # Normal: 0.01 * (50/50) = 0.01 per pitch
+        # Verify the math: drain = FASTBALL_DRAIN * (50/stamina)
+        # High stamina: FASTBALL_DRAIN * (50/70) = 0.00714 per pitch
+        # Normal: FASTBALL_DRAIN * (50/50) = FASTBALL_DRAIN per pitch
         assert high_stamina.energy == pytest.approx(
-            1.0 - (0.01 * 50 / 70 * 10), abs=0.001
+            1.0 - (FASTBALL_DRAIN * 50 / 70 * 10), abs=0.001
         )
-        assert normal_stamina.energy == pytest.approx(1.0 - (0.01 * 10), abs=0.001)
+        assert normal_stamina.energy == pytest.approx(1.0 - (FASTBALL_DRAIN * 10), abs=0.001)
 
     def test_low_stamina_drains_faster(self):
         """Test that low stamina pitchers drain energy faster."""
@@ -133,9 +133,9 @@ class TestAddPitch:
         # Low stamina should have less energy remaining
         assert low_stamina.energy < normal_stamina.energy
 
-        # Low stamina: 0.01 * (50/30) = 0.01667 per pitch
+        # Low stamina: FASTBALL_DRAIN * (50/30) = 0.01333 per pitch
         assert low_stamina.energy == pytest.approx(
-            1.0 - (0.01 * 50 / 30 * 10), abs=0.001
+            1.0 - (FASTBALL_DRAIN * 50 / 30 * 10), abs=0.001
         )
 
     def test_energy_cannot_go_negative(self):
@@ -155,8 +155,8 @@ class TestAddPitch:
 
         fatigue.add_pitch("goofy")  # Not in drain_rates dict
 
-        # Should use default of 0.01
-        assert fatigue.energy == pytest.approx(0.99, abs=0.001)
+        # Should use default of FASTBALL_DRAIN
+        assert fatigue.energy == pytest.approx(0.992, abs=0.001)
 
 
 class TestAddBatter:
@@ -226,19 +226,19 @@ class TestRealisticGameScenarios:
     """Test realistic game scenarios."""
 
     def test_complete_game_average_pitcher(self):
-        """Test average pitcher throwing a 100 pitch complete game."""
+        """Test average pitcher throwing a 125 pitch complete game."""
         fatigue = PitcherFatigue(stamina=50)
 
-        # Average game: ~100 pitches, 27 batters
-        for _ in range(100):
+        # Average game: ~125 pitches, 27 batters
+        for _ in range(125):
             fatigue.add_pitch("fastball")
 
         for _ in range(27):
             fatigue.add_batter()
 
-        assert fatigue.pitches_thrown == 100
+        assert fatigue.pitches_thrown == 125
         assert fatigue.batters_faced == 27
-        # After 100 pitches: 1.0 - (0.01 * 100) = 0.0
+        # After 125 pitches: 1.0 - (FASTBALL_DRAIN * 125) = 0.0
         assert fatigue.energy == 0.0
         assert fatigue.get_level() == FatigueLevel.ZERO
 
@@ -255,7 +255,7 @@ class TestRealisticGameScenarios:
 
         assert fatigue.pitches_thrown == 20
         # Energy should still be relatively high
-        expected_energy = 1.0 - (0.01 * 50 / 45 * 20)
+        expected_energy = 1.0 - (FASTBALL_DRAIN * 50 / 45 * 20)
         assert fatigue.energy == pytest.approx(expected_energy, abs=0.001)
         assert fatigue.get_level() in [FatigueLevel.FRESH, FatigueLevel.GOOD]
 
@@ -268,7 +268,7 @@ class TestRealisticGameScenarios:
             fatigue.add_pitch("fastball")
 
         # High stamina should still have some energy
-        expected_energy = 1.0 - (0.01 * 50 / 70 * 120)
+        expected_energy = 1.0 - (0.008 * 50 / 70 * 120)
         assert fatigue.energy == pytest.approx(expected_energy, abs=0.001)
         # Should still be above exhausted level with high stamina
         assert fatigue.energy > 0.0
@@ -318,7 +318,7 @@ class TestEdgeCases:
             fatigue.add_pitch("fastball")
 
         # 100 pitches * 0.01 * (50/100) = 0.50 energy drained
-        assert fatigue.energy == pytest.approx(0.50, abs=0.001)
+        assert fatigue.energy == pytest.approx(0.60, abs=0.001)
         assert fatigue.get_level() == FatigueLevel.TIRED
 
     def test_pitcher_at_threshold_boundary(self):
