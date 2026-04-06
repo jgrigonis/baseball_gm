@@ -69,8 +69,8 @@ _R1_A_OFFSETS = [0, 2, 4, 6, 8]  # 3v6, 4v5
 # Round 1 Group B (1v8, 2v7): days 2,4,6,8,10 → offsets 1,3,5,7,9
 _R1_B_OFFSETS = [1, 3, 5, 7, 9]  # 1v8, 2v7
 # Semifinals: two series alternate days starting day 7
-_SEMI_27_36_OFFSETS = [6, 8, 10, 12, 14, 16, 18]   # [2,7]v[3,6]
-_SEMI_18_45_OFFSETS = [7, 9, 11, 13, 15, 17, 19]   # [1,8]v[4,5]
+_SEMI_27_36_OFFSETS = [6, 8, 10, 12, 14, 16, 18]  # [2,7]v[3,6]
+_SEMI_18_45_OFFSETS = [7, 9, 11, 13, 15, 17, 19]  # [1,8]v[4,5]
 # Finals: consecutive days starting day 22
 _FINAL_OFFSETS = [21, 22, 23, 24, 25, 26, 27]
 
@@ -427,8 +427,7 @@ def main():
 
         # Each semi series has its own offset schedule (alternating days)
         semi_offsets = (
-            _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]"
-            else _SEMI_27_36_OFFSETS
+            _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]" else _SEMI_27_36_OFFSETS
         )
 
         # Generate games now that teams are known

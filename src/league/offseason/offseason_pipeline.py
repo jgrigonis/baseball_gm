@@ -282,16 +282,14 @@ class OffseasonPipeline:
         Prospects aged 24+ who are still in the pool get marked free_agent
         so they don't accumulate indefinitely across seasons.
         """
-        rows = self.conn.execute(
-            """
+        rows = self.conn.execute("""
             SELECT p.id
             FROM players p
             JOIN player_status ps ON p.id = ps.player_id
             LEFT JOIN team_players tp ON p.id = tp.player_id
             WHERE ps.status = 'prospect'
               AND tp.player_id IS NULL
-            """
-        ).fetchall()
+            """).fetchall()
 
         cleared = 0
         for row in rows:

@@ -101,6 +101,7 @@ def get_top_8(conn, season_id: str) -> list[dict]:
 # Rotation management
 # ---------------------------------------------------------------------------
 
+
 def reset_rotation_pointers(conn, season_id: str) -> None:
     """Reset all rotation pointers for a season back to order 1."""
     rot_repo = TeamRotationsRepository(conn)

@@ -38,14 +38,23 @@ from src.league.play_season import play_game
 # ---------------------------------------------------------------------------
 
 ROUND_DEFS = [
-    {"name": "Round 1",  "series_names": ["1v8", "2v7", "3v6", "4v5"], "best_of": 5},
-    {"name": "Semifinals", "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"], "best_of": 7},
-    {"name": "Finals",   "series_names": ["Finals"], "best_of": 7},
+    {"name": "Round 1", "series_names": ["1v8", "2v7", "3v6", "4v5"], "best_of": 5},
+    {
+        "name": "Semifinals",
+        "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"],
+        "best_of": 7,
+    },
+    {"name": "Finals", "series_names": ["Finals"], "best_of": 7},
 ]
 
 SERIES_BEST_OF = {
-    "1v8": 5, "2v7": 5, "3v6": 5, "4v5": 5,
-    "[1,8]v[4,5]": 7, "[2,7]v[3,6]": 7, "Finals": 7,
+    "1v8": 5,
+    "2v7": 5,
+    "3v6": 5,
+    "4v5": 5,
+    "[1,8]v[4,5]": 7,
+    "[2,7]v[3,6]": 7,
+    "Finals": 7,
 }
 
 
@@ -112,8 +121,7 @@ def _ensure_round_games(
             low = team_b if seed_a < seed_b else team_a
             # Each semi series gets its own offset schedule
             semi_offsets = (
-                _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]"
-                else _SEMI_27_36_OFFSETS
+                _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]" else _SEMI_27_36_OFFSETS
             )
             generate_round_games(
                 conn,
@@ -197,8 +205,6 @@ def _play_one_game(
     return None
 
 
-
-
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -249,7 +255,10 @@ def sim_playoff(
                WHERE pi.games_remaining > 0 AND (pi.league_id = ? OR pi.league_id = '')""",
             (team_id, league_id),
         ).fetchall()
-        return {r["player_id"]: {"name": r["name"], "days": r["games_remaining"]} for r in rows}
+        return {
+            r["player_id"]: {"name": r["name"], "days": r["games_remaining"]}
+            for r in rows
+        }
 
     injured_before = _get_injured(gm_team_id)
 
@@ -305,6 +314,7 @@ def sim_playoff(
             return []
         # Find first date with at least one undecided series game
         from itertools import groupby
+
         for date_key, group in groupby(rows2, key=lambda r: r["game_date"]):
             day = [dict(r) for r in group if r["series_id"] not in decided_sids]
             if day:
@@ -335,7 +345,9 @@ def sim_playoff(
             # Skip if series already decided (early exit)
             if series_is_decided(conn, g["series_id"], best_of):
                 continue
-            r = _play_one_game(conn, season_id, league_id, league_mode, g["series_id"], rng)
+            r = _play_one_game(
+                conn, season_id, league_id, league_mode, g["series_id"], rng
+            )
             if r:
                 results.append({"series": g["series_name"], "result": str(r)})
                 count += 1
@@ -358,7 +370,11 @@ def sim_playoff(
                 break
         if current_round_def:
             while not all(
-                series_is_decided(conn, get_series_id(conn, season_id, sn), current_round_def["best_of"])
+                series_is_decided(
+                    conn,
+                    get_series_id(conn, season_id, sn),
+                    current_round_def["best_of"],
+                )
                 for sn in current_round_def["series_names"]
                 if get_series_id(conn, season_id, sn)
             ):

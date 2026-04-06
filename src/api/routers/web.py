@@ -1019,7 +1019,6 @@ def draft_results(
             (draft["id"],),
         ).fetchall()
 
-
         human_team_ids = {
             r["team_id"]
             for r in db.execute(
@@ -1344,8 +1343,10 @@ def standings(
         ).fetchall()
         ha_map = {
             r["team_id"]: {
-                "hw": r["home_wins"]   or 0, "hl": r["home_losses"] or 0,
-                "aw": r["away_wins"]   or 0, "al": r["away_losses"] or 0,
+                "hw": r["home_wins"] or 0,
+                "hl": r["home_losses"] or 0,
+                "aw": r["away_wins"] or 0,
+                "al": r["away_losses"] or 0,
             }
             for r in ha_rows
         }
@@ -1415,7 +1416,7 @@ def standings(
             rs = r["runs_scored"] or 0
             ra = ra_map.get(r["team_id"], 0)
             ha = ha_map.get(r["team_id"], {"hw": 0, "hl": 0, "aw": 0, "al": 0})
-            l10_wins   = sum(1 for w in recent[:10] if w)
+            l10_wins = sum(1 for w in recent[:10] if w)
             l10_losses = 10 - l10_wins if len(recent) >= 10 else len(recent) - l10_wins
             pct_str = f"{pct:.3f}"
             pct_str = pct_str[1:] if pct_str.startswith("0") else pct_str
@@ -1623,9 +1624,9 @@ def leaders(
             tb = h - d - tr - hr + 2 * d + 3 * tr + 4 * hr
             slg = tb / ab if ab else 0.0
             qualifies = ab >= min_ab
-            ab_k  = ab / k  if k  else 0.0
+            ab_k = ab / k if k else 0.0
             ab_hr = ab / hr if hr else None
-            bb_k  = bb / k  if k  else None
+            bb_k = bb / k if k else None
             batters.append(
                 {
                     "player_id": r["player_id"],
@@ -1702,9 +1703,20 @@ def leaders(
             bat_card("2B", "2B", pool=all_bat),
             bat_card("3B", "3B", pool=all_bat),
             bat_card("BB", "BB", pool=all_bat),
-            bat_card_q("AB/K",  "AB/K",  fmt=lambda v: f"{v:.1f}"),
-            bat_card("AB/HR", "AB/HR", pool=[b for b in qualified if b["AB/HR"] is not None], asc=True, fmt=lambda v: f"{v:.1f}"),
-            bat_card("BB/K",  "BB/K",  pool=[b for b in qualified if b["BB/K"]  is not None], fmt=lambda v: f"{v:.2f}"),
+            bat_card_q("AB/K", "AB/K", fmt=lambda v: f"{v:.1f}"),
+            bat_card(
+                "AB/HR",
+                "AB/HR",
+                pool=[b for b in qualified if b["AB/HR"] is not None],
+                asc=True,
+                fmt=lambda v: f"{v:.1f}",
+            ),
+            bat_card(
+                "BB/K",
+                "BB/K",
+                pool=[b for b in qualified if b["BB/K"] is not None],
+                fmt=lambda v: f"{v:.2f}",
+            ),
         ]
 
         # ── Pitching: one query, compute rate stats, build all categories ──────
@@ -1737,7 +1749,7 @@ def leaders(
             qualifies_p = outs >= min_outs
             bb9 = (pbb * 27) / outs if outs else 0.0
             hr9 = (hr * 27) / outs if outs else 0.0
-            k9  = (pk  * 27) / outs if outs else 0.0
+            k9 = (pk * 27) / outs if outs else 0.0
             pitchers.append(
                 {
                     "player_id": r["player_id"],
@@ -1801,7 +1813,7 @@ def leaders(
             pit_card_q("IP", "IP"),
             pit_card_q("BB/9", "BB/9", asc=True, fmt=lambda v: f"{v:.2f}"),
             pit_card_q("HR/9", "HR/9", asc=True, fmt=lambda v: f"{v:.2f}"),
-            pit_card_q("K/9",  "K/9",            fmt=lambda v: f"{v:.2f}"),
+            pit_card_q("K/9", "K/9", fmt=lambda v: f"{v:.2f}"),
         ]
 
     ctx["category"] = category
@@ -1903,9 +1915,9 @@ def roster(
     injured_ids = _injured_player_ids(db, gm["team_id"] if gm else None, league_id)
     for p in players:
         raw_days = injured_ids.get(p["player_id"])
-        p["injured"]     = raw_days is not None
+        p["injured"] = raw_days is not None
         p["injury_days"] = max(0, raw_days - 1) if raw_days else None
-        p["returning"]   = raw_days == 1
+        p["returning"] = raw_days == 1
     ctx["players"] = players
     return _respond(request, "dashboard/partials/roster.html", ctx)
 
@@ -2078,26 +2090,26 @@ def lineup(
             if s and (s["pitch_outs"] or 0) > 0:
                 outs = s["pitch_outs"]
                 era = (s["pitch_earned_runs"] * 27) / outs
-                p["stat_gs"]  = s["pitch_games_started"] or 0
+                p["stat_gs"] = s["pitch_games_started"] or 0
                 p["stat_era"] = f"{era:.2f}"
-                p["stat_ip"]  = f"{outs // 3}.{outs % 3}"
-                p["stat_w"]   = s["pitch_wins"] or 0
-                p["stat_l"]   = s["pitch_losses"] or 0
-                p["stat_sv"]  = s["pitch_saves"] or 0
+                p["stat_ip"] = f"{outs // 3}.{outs % 3}"
+                p["stat_w"] = s["pitch_wins"] or 0
+                p["stat_l"] = s["pitch_losses"] or 0
+                p["stat_sv"] = s["pitch_saves"] or 0
             else:
-                p["stat_gs"]  = None
+                p["stat_gs"] = None
                 p["stat_era"] = None
-                p["stat_ip"]  = None
-                p["stat_w"]   = None
-                p["stat_l"]   = None
-                p["stat_sv"]  = None
+                p["stat_ip"] = None
+                p["stat_w"] = None
+                p["stat_l"] = None
+                p["stat_sv"] = None
 
     injured_map = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:
         raw_days = injured_map.get(p["player_id"])
-        p["injured"]     = raw_days is not None
+        p["injured"] = raw_days is not None
         p["injury_days"] = max(0, raw_days - 1) if raw_days else None
-        p["returning"]   = raw_days == 1
+        p["returning"] = raw_days == 1
     ctx["hitters"] = hitters
     ctx["pitchers"] = pitchers
     ctx["saved_lineup"] = saved_lineup
@@ -2105,8 +2117,10 @@ def lineup(
     ctx["saved_bullpen"] = saved_bullpen
     ctx["saved_rotation_pointer"] = saved_rotation_pointer
     # Tell template whether we're in playoffs so the nav button points the right way
-    league_row = db.execute("SELECT state FROM leagues WHERE id = ?", (league_id,)).fetchone()
-    ctx["is_playoffs"] = (league_row and league_row["state"] == "playoffs")
+    league_row = db.execute(
+        "SELECT state FROM leagues WHERE id = ?", (league_id,)
+    ).fetchone()
+    ctx["is_playoffs"] = league_row and league_row["state"] == "playoffs"
     return _respond(request, "dashboard/partials/lineup.html", ctx)
 
 
@@ -2131,7 +2145,9 @@ async def save_lineup(
     lineup = body.get("lineup", [])  # [{player_id, batting_order, position}]
 
     if len(lineup) > 9:
-        return JSONResponse({"detail": "Lineup cannot exceed 9 batters"}, status_code=422)
+        return JSONResponse(
+            {"detail": "Lineup cannot exceed 9 batters"}, status_code=422
+        )
     positions_used = [s["position"] for s in lineup if s.get("position")]
     if len(positions_used) != len(set(positions_used)):
         dupes = [p for p in positions_used if positions_used.count(p) > 1]
@@ -2170,7 +2186,7 @@ async def save_rotation(
         return JSONResponse({"detail": "No team"}, status_code=400)
 
     body = await request.json()
-    rotation    = body.get("rotation", [])
+    rotation = body.get("rotation", [])
     pointer_pid = body.get("pointer_pid", None)
 
     season_id = db.execute(
@@ -2184,7 +2200,8 @@ async def save_rotation(
         return JSONResponse({"detail": "No active season"}, status_code=400)
 
     season_start_row = db.execute(
-        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?", (season_id,),
+        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?",
+        (season_id,),
     ).fetchone()
     effective_date = (
         season_start_row["start"]
@@ -2206,7 +2223,11 @@ async def save_rotation(
         )
 
     # Upsert rotation pointer — default to first pitcher if none specified
-    effective_pointer = pointer_pid if (pointer_pid and pointer_pid in rotation) else (rotation[0] if rotation else None)
+    effective_pointer = (
+        pointer_pid
+        if (pointer_pid and pointer_pid in rotation)
+        else (rotation[0] if rotation else None)
+    )
     if effective_pointer:
         ptr_order = rotation.index(effective_pointer) + 1
         db.execute(
@@ -2263,7 +2284,8 @@ async def save_bullpen(
         return JSONResponse({"detail": "No active season"}, status_code=400)
 
     season_start_row = db.execute(
-        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?", (season_id,),
+        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?",
+        (season_id,),
     ).fetchone()
     effective_date = (
         season_start_row["start"]
@@ -2434,7 +2456,11 @@ def schedule(
         # Build opponent W-L record map for upcoming games
         opp_team_ids = set()
         for r in up_rows:
-            opp_id = r["away_team_id"] if r["home_team_id"] == my_team_id else r["home_team_id"]
+            opp_id = (
+                r["away_team_id"]
+                if r["home_team_id"] == my_team_id
+                else r["home_team_id"]
+            )
             opp_team_ids.add(opp_id)
 
         opp_records: dict[str, str] = {}
@@ -2456,7 +2482,7 @@ def schedule(
 
         for r in up_rows:
             is_home = r["home_team_id"] == my_team_id
-            opp_id  = r["away_team_id"] if is_home else r["home_team_id"]
+            opp_id = r["away_team_id"] if is_home else r["home_team_id"]
             upcoming.append(
                 {
                     "date": r["game_date"],
@@ -2550,14 +2576,18 @@ def stats(
     selected_team_id = team_id or my_team_id
 
     # All teams for the selected season
-    all_teams = db.execute(
-        """SELECT DISTINCT t.id, t.city, t.mascot
+    all_teams = (
+        db.execute(
+            """SELECT DISTINCT t.id, t.city, t.mascot
            FROM teams t
            JOIN league_season_teams lst ON lst.team_id = t.id
            WHERE lst.league_id = ? AND lst.season_id = ?
            ORDER BY t.city""",
-        (league_id, selected_season_id),
-    ).fetchall() if selected_season_id else []
+            (league_id, selected_season_id),
+        ).fetchall()
+        if selected_season_id
+        else []
+    )
 
     # If selected team isn't in selected season's teams, reset to first available
     team_ids_in_season = {t["id"] for t in all_teams}
@@ -2655,7 +2685,7 @@ def stats(
                 whip = round((pbb + ph) / ip_f, 2) if ip_f else 0.0
                 bb9 = round((pbb * 27) / outs, 2) if outs else 0.0
                 hr9 = round((phr * 27) / outs, 2) if outs else 0.0
-                k9  = round((pk  * 27) / outs, 2) if outs else 0.0
+                k9 = round((pk * 27) / outs, 2) if outs else 0.0
                 gs = s.get("pitch_games_started") or 0
                 ip_disp = f"{outs//3}.{outs%3}"
                 qualifies_pit = outs >= min_outs
@@ -2679,25 +2709,25 @@ def stats(
                         "WHIP": whip,
                         "BB9": bb9,
                         "HR9": hr9,
-                        "K9":  k9,
+                        "K9": k9,
                         "qualified": qualifies_pit,
                     }
                 )
 
     # Attach injury status only for current season
-    is_current_season = (selected_season_id == current_season_id)
+    is_current_season = selected_season_id == current_season_id
     if selected_team_id and is_current_season:
         injured_map = _injured_player_ids(db, selected_team_id, league_id)
         for p in batters + pitchers:
             raw_days = injured_map.get(p["player_id"])
-            p["injured"]     = raw_days is not None
+            p["injured"] = raw_days is not None
             p["injury_days"] = max(0, raw_days - 1) if raw_days else None
-            p["returning"]   = raw_days == 1
+            p["returning"] = raw_days == 1
     else:
         for p in batters + pitchers:
-            p["injured"]     = False
+            p["injured"] = False
             p["injury_days"] = None
-            p["returning"]   = False
+            p["returning"] = False
 
     # Year label for selected season
     selected_year = next(
