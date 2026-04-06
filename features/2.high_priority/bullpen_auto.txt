@@ -1,0 +1,1 @@
+bullpen auto assign should not assign injured players 
