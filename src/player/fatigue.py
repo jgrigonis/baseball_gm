@@ -45,7 +45,7 @@ class PitcherFatigue:
     MOD_EXHAUSTED = 0.75
     MOD_ZERO = 0.5
 
-    FASTBALL_DRAIN = 0.01
+    FASTBALL_DRAIN = 0.008
 
     CAP_DMG_LOW = 0.0008
     CAP_DMG_HIGH = 0.0018
