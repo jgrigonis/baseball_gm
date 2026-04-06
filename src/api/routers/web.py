@@ -1737,6 +1737,7 @@ def leaders(
             qualifies_p = outs >= min_outs
             bb9 = (pbb * 27) / outs if outs else 0.0
             hr9 = (hr * 27) / outs if outs else 0.0
+            k9  = (pk  * 27) / outs if outs else 0.0
             pitchers.append(
                 {
                     "player_id": r["player_id"],
@@ -1753,6 +1754,7 @@ def leaders(
                     "IP": ip_f,
                     "BB/9": bb9,
                     "HR/9": hr9,
+                    "K/9": k9,
                 }
             )
 
@@ -1799,6 +1801,7 @@ def leaders(
             pit_card_q("IP", "IP"),
             pit_card_q("BB/9", "BB/9", asc=True, fmt=lambda v: f"{v:.2f}"),
             pit_card_q("HR/9", "HR/9", asc=True, fmt=lambda v: f"{v:.2f}"),
+            pit_card_q("K/9",  "K/9",            fmt=lambda v: f"{v:.2f}"),
         ]
 
     ctx["category"] = category
@@ -2652,6 +2655,7 @@ def stats(
                 whip = round((pbb + ph) / ip_f, 2) if ip_f else 0.0
                 bb9 = round((pbb * 27) / outs, 2) if outs else 0.0
                 hr9 = round((phr * 27) / outs, 2) if outs else 0.0
+                k9  = round((pk  * 27) / outs, 2) if outs else 0.0
                 gs = s.get("pitch_games_started") or 0
                 ip_disp = f"{outs//3}.{outs%3}"
                 qualifies_pit = outs >= min_outs
@@ -2675,6 +2679,7 @@ def stats(
                         "WHIP": whip,
                         "BB9": bb9,
                         "HR9": hr9,
+                        "K9":  k9,
                         "qualified": qualifies_pit,
                     }
                 )

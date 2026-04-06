@@ -7,3 +7,7 @@ We also know the schedule well in advance, so if you are in to the next round
 but the parallel series is not complete, put your team vs TBD and put the date.
 
 The future boxes don't fill in with teams until after game 1
+
+Upcoming Games should not show if you lost 
+a short series. Need to clear them.
+
