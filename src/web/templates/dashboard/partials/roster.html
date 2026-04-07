@@ -537,11 +537,11 @@ function makeCard(p, isIn40) {
     </div>
     ${btnHtml}`;
 
-  /* Click to inspect */
+  /* Click to inspect — but not when clicking the action button */
   let _downId = null;
-  el.addEventListener('mousedown', () => { _dragging = null; _downId = p.player_id; });
-  el.addEventListener('mouseup', () => {
-    if (!_dragging && _downId === p.player_id) openPlayerPanel(p.player_id);
+  el.addEventListener('mousedown', e => { _dragging = null; _downId = e.target.closest('button') ? null : p.player_id; });
+  el.addEventListener('mouseup', e => {
+    if (!_dragging && _downId === p.player_id && !e.target.closest('button')) openPlayerPanel(p.player_id);
     _downId = null;
   });
 
