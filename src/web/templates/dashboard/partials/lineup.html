@@ -379,6 +379,8 @@
   background: none; cursor: pointer; padding: 3px 7px; white-space: nowrap;
 }
 .bp-add-btn:hover { background: var(--green-dim); }
+.bp-card.in-rotation { opacity: 0.45; cursor: default; }
+.bp-card.in-rotation:hover { background: var(--bg-2); }
 .bp-role-select {
   background: var(--bg-3); border: 1px solid var(--border); color: var(--text);
   font-family: var(--font-mono); font-size: 10px; padding: 2px 4px;
@@ -408,6 +410,7 @@ window.clearRotation       = clearRotation;
 window.autoFillRotation    = autoFillRotation;
 window.autoAssignBullpen   = autoAssignBullpen;
 window.setRosterFilter     = setRosterFilter;
+window.handleBullpenRoleChange = handleBullpenRoleChange;
 window.setBullpenRole      = setBullpenRole;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
@@ -1096,35 +1099,36 @@ function renderBullpen() {
   const s1 = document.getElementById('bp-s1')?.value || 'sp_grade';
   const s2 = document.getElementById('bp-s2')?.value || '';
 
-  const bpPitchers = ALL_PITCHERS
-    .filter(p => !inRot.has(p.player_id))
-    .sort((a, b) => {
-      const d1 = skillVal(a, s1) - skillVal(b, s1);
-      if (d1 !== 0) return d1;
-      if (s2) return skillVal(a, s2) - skillVal(b, s2);
-      return 0;
-    });
+  const allPitchers = ALL_PITCHERS.slice().sort((a, b) => {
+    const d1 = skillVal(a, s1) - skillVal(b, s1);
+    if (d1 !== 0) return d1;
+    if (s2) return skillVal(a, s2) - skillVal(b, s2);
+    return 0;
+  });
 
   const el = document.getElementById('bullpen-list');
-  if (!bpPitchers.length) {
-    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">All pitchers in rotation</div>';
+  if (!allPitchers.length) {
+    el.innerHTML = '<div style="padding:16px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">No pitchers</div>';
     return;
   }
 
   el.innerHTML = '';
-  bpPitchers.forEach(p => {
-    const role = bullpen[p.player_id] || '';
-    const roleOpts = ['', ...ROLES]
+  allPitchers.forEach(p => {
+    const isStarter = inRot.has(p.player_id);
+    const role = isStarter ? 'Starter' : (bullpen[p.player_id] || '');
+    const roleOpts = (isStarter ? ['Starter'] : ['', ...ROLES])
       .map(r => `<option value="${r}" ${role===r?'selected':''}>${r||'— role —'}</option>`)
       .join('');
 
     const card = document.createElement('div');
-    card.className = 'bp-card';
-    card.draggable = true;
-    card.addEventListener('dragstart', e => {
-      e.dataTransfer.setData('bp-pid', p.player_id);
-      e.stopPropagation();
-    });
+    card.className = 'bp-card' + (isStarter ? ' in-rotation' : '');
+    card.draggable = !isStarter;
+    if (!isStarter) {
+      card.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('bp-pid', p.player_id);
+        e.stopPropagation();
+      });
+    }
     card.innerHTML = `
       <div style="min-width:0;">
         <div style="display:flex;align-items:baseline;gap:8px;">
@@ -1137,11 +1141,32 @@ function renderBullpen() {
         <div class="lu-skills">${pitcherGradesHtml(p)}</div>
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
       </div>
-
-      <select class="bp-role-select" onchange="setBullpenRole('${p.player_id}',this.value)">${roleOpts}</select>`;
+      <select class="bp-role-select" onchange="handleBullpenRoleChange('${p.player_id}',this.value)">${roleOpts}</select>`;
 
     el.appendChild(card);
   });
+}
+
+function handleBullpenRoleChange(pid, role) {
+  if (role === 'Starter') {
+    // Move to rotation
+    if (!rotation.includes(pid)) {
+      rotation.push(pid);
+      delete bullpen[pid];
+      ensureValidPointer();
+      renderRotation();
+    }
+  } else {
+    // Remove from rotation if they were a starter
+    const idx = rotation.indexOf(pid);
+    if (idx !== -1) {
+      rotation.splice(idx, 1);
+      ensureValidPointer();
+      renderRotation();
+    }
+    setBullpenRole(pid, role);
+  }
+  renderBullpen();
 }
 
 /* ── Pitching: clear / auto-fill / auto-assign ───────────────────────────────── */
@@ -1153,17 +1178,18 @@ function clearRotation() {
 }
 
 function autoFillRotation() {
-  const inRot = new Set(rotation.filter(Boolean));
+  // Remove injured pitchers from rotation
+  rotation = rotation.filter(pid => {
+    const p = ALL_PITCHERS.find(x => x.player_id === pid);
+    return p && !p.injured;
+  });
+
+  const inRot = new Set(rotation);
   const candidates = ALL_PITCHERS
     .filter(p => !p.injured && !inRot.has(p.player_id))
     .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall));
-  const needed = Math.max(0, 5 - nonNullRotation().length);
-  const toAdd = candidates.slice(0, needed);
-  toAdd.forEach(p => {
-    const gapIdx = rotation.indexOf(null);
-    if (gapIdx !== -1) rotation[gapIdx] = p.player_id;
-    else rotation.push(p.player_id);
-  });
+  const needed = Math.max(0, 5 - rotation.length);
+  candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
   ensureValidPointer();
   renderRotation();
   renderBullpen();

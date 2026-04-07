@@ -10,7 +10,7 @@ It will remove injured from the lineup.
 The pitching rotation is quite different, if you have 5 pitchers in the rotation 
 it won't change it, even if some are injured.
 
-The pitching side should also keep dulled out pitchers in the roation visible in 
+The pitching side should also keep dulled out pitchers in the rotation visible in 
 the bullpen for sorting
 
 They should have starter in their drop down.
