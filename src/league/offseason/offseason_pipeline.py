@@ -426,9 +426,12 @@ class OffseasonPipeline:
         """Persist the draft order and pick rights for this draft."""
         from src.league.offseason.snake_draft import write_draft_order
 
+        # The draft record belongs to the NEW season (created by offseason_service),
+        # not the completed season passed in as season_id. Find the newest pending draft.
         row = self.conn.execute(
-            "SELECT id FROM drafts WHERE league_id = ? AND season_id = ?",
-            (league_id, season_id),
+            """SELECT id FROM drafts WHERE league_id = ?
+               ORDER BY created_at DESC LIMIT 1""",
+            (league_id,),
         ).fetchone()
         if not row:
             print("  WARNING: no draft record found, skipping draft_order write")
