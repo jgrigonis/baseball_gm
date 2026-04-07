@@ -1,0 +1,25 @@
+Phase 1 — Fix the foundation (do this first):
+
+Create a shared conftest.py fixture that spins up a 
+DB using the real schema.py — whether SQLite now or 
+Postgres later, tests use the same DDL as production
+
+This alone fixes schema drift and makes the Postgres 
+switch a one-line change in conftest.py
+
+Phase 2 — Add integration tests for the pipelines:
+
+test_offseason_pipeline.py — run a full offseason, 
+verify draft_order written, verify stats archived
+
+test_league_start.py — verify draft_order randomized 
+correctly, all teams assigned
+
+test_play_season.py — play a few games, verify 
+rotation pointer advances, injuries tick correctly
+
+test_draft_execute.py — verify stored order is 
+used, picks match draft_order
+
+Phase 3 — Then do the Postgres migration — at that 
+point you change the fixture and run the whole suite.
