@@ -16,3 +16,10 @@ pitched has a better fielding percentage in more total chances
 
 Rookies (MLB regular season)	1.55 PA	0.5 IP
 
+Several MLB teams have operated without a "qualified" starting 
+pitcher (minimum 162 innings) in recent seasons, a trend driven 
+by injury prevention, the use of "openers," and analytics favoring 
+shorter outings. As of 2022, 30% of MLB teams (9 of 30) did not 
+have a single pitcher reach the ERA qualifying mark, illustrating 
+a widespread shift away from traditional, high-volume starters.
+
