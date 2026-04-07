@@ -172,10 +172,14 @@ class TeamFactory:
         caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
         aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)
         return PlayerRecord(
-            id=player.id, first_name=player.first_name,
-            last_name=player.last_name, bats=player.bats,
-            throws=player.throws, position=player.position,
-            skills=aged_skills, caps=caps,
+            id=player.id,
+            first_name=player.first_name,
+            last_name=player.last_name,
+            bats=player.bats,
+            throws=player.throws,
+            position=player.position,
+            skills=aged_skills,
+            caps=caps,
         )
 
     def _draw_roster_age(self, current_players: list[PlayerRecord]) -> int:

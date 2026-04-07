@@ -793,5 +793,3 @@ CREATE INDEX IF NOT EXISTS idx_pick_rights_owner
     ON draft_pick_rights(current_owner_id);
 
 """
-
-

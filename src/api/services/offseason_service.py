@@ -191,8 +191,11 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
         # Write draft order — standings-based for season 2+, randomized for first season
         from src.league.offseason.snake_draft import write_draft_order
         from src.league.offseason.snake_draft import SnakeDraft as _SnakeDraft
+
         snake = _SnakeDraft(conn, rng)
-        draft_order = snake._build_draft_order(season_id)  # season_id = completed season
+        draft_order = snake._build_draft_order(
+            season_id
+        )  # season_id = completed season
         ordered_ids = [e["team_id"] for e in draft_order]
         write_draft_order(conn, draft_id, league_id, next_year, ordered_ids)
         print(f"  Draft order stored: {len(ordered_ids)} teams")

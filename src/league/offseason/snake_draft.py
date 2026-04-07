@@ -34,7 +34,9 @@ from src.util.locations import TEAM_FILES_DIR
 ROUNDS = 20
 
 
-def write_draft_order(conn, draft_id: str, league_id: str, draft_year: int, ordered_team_ids: list[str]) -> None:
+def write_draft_order(
+    conn, draft_id: str, league_id: str, draft_year: int, ordered_team_ids: list[str]
+) -> None:
     """
     Persist the draft order and default pick rights for a draft.
     ordered_team_ids should be in pick order (index 0 = picks first).
@@ -59,7 +61,6 @@ def write_draft_order(conn, draft_id: str, league_id: str, draft_year: int, orde
                 (league_id, draft_year, rnd, tid, tid),
             )
     conn.commit()
-
 
 
 @dataclass

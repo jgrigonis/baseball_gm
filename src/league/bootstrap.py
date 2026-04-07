@@ -129,14 +129,15 @@ class LeagueBootstrapper:
                 (team.id, season_id),
             )
             self.conn.commit()
-            self._bootstrap_bullpen(team, active_players, rotation, season_id, start_date)
+            self._bootstrap_bullpen(
+                team, active_players, rotation, season_id, start_date
+            )
 
     def _bootstrap_bullpen(
         self, team, active_players, rotation, season_id: str, start_date: str
     ) -> None:
         relievers = [
-            p for p in active_players
-            if p.is_pitcher() and p.id not in set(rotation)
+            p for p in active_players if p.is_pitcher() and p.id not in set(rotation)
         ]
         roles = team.set_bullpen_roles(rotation, relievers=relievers)
         if not roles:

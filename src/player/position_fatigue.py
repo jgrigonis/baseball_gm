@@ -17,12 +17,11 @@ from src.player.player_constants import (
     STREAK_PENALTY,
     STREAK_GAMES,
     MOD_INJURY_FRESH,
-    MOD_INJURY_GOOD ,
+    MOD_INJURY_GOOD,
     MOD_INJURY_TIRED,
     MOD_INJURY_EXHAUSTED,
     MOD_INJURY_ZERO,
 )
-
 
 # Catchers drain fastest, middle infielders moderate, corners/OF lightest
 POSITION_DRAIN_RATES = {

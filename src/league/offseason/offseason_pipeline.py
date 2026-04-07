@@ -359,9 +359,7 @@ class OffseasonPipeline:
 
             # Pick top 5 healthy starters directly
             pitchers = [
-                p
-                for p in active_players
-                if p.is_pitcher() and p.id not in injured_ids
+                p for p in active_players if p.is_pitcher() and p.id not in injured_ids
             ]
             pitchers.sort(
                 key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),
@@ -422,7 +420,9 @@ class OffseasonPipeline:
         total = generator.run(season_id, self.year, league_id=self.league_id)
         print(f"  Draft pool ready: {total} draftable players")
 
-    def _write_draft_order(self, season_id: str, league_id: str, draft_order: list[dict]) -> None:
+    def _write_draft_order(
+        self, season_id: str, league_id: str, draft_order: list[dict]
+    ) -> None:
         """Persist the draft order and pick rights for this draft."""
         from src.league.offseason.snake_draft import write_draft_order
 

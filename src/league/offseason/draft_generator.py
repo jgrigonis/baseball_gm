@@ -152,10 +152,14 @@ class DraftGenerator:
             if age > START_AGE:
                 aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)
                 player = PlayerRecord(
-                    id=player.id, first_name=player.first_name,
-                    last_name=player.last_name, bats=player.bats,
-                    throws=player.throws, position=player.position,
-                    skills=aged_skills, caps=caps,
+                    id=player.id,
+                    first_name=player.first_name,
+                    last_name=player.last_name,
+                    bats=player.bats,
+                    throws=player.throws,
+                    position=player.position,
+                    skills=aged_skills,
+                    caps=caps,
                 )
             players.append(player)
         return players
