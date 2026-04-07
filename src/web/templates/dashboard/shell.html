@@ -195,7 +195,9 @@ window.closeGamePanel = function() {
 <div id="sim-injury-news"
      style="display:none;padding:5px 24px;
             background:var(--bg-2);border-bottom:1px solid var(--border);
-            font-family:var(--font-mono);font-size:11px;color:var(--amber);"></div>
+            font-family:var(--font-mono);font-size:11px;color:var(--amber);
+            cursor:pointer;"
+     onclick="var links=document.querySelectorAll('.tab-link');for(var i=0;i<links.length;i++){if(links[i].textContent.trim().toLowerCase().indexOf('lineup')!==-1){setActiveTab(links[i]);links[i].click();break;}}"></div>
 <div id="tab-content" class="tab-fade">
   {% if tab_template %}{% include tab_template %}{% endif %}
 </div>

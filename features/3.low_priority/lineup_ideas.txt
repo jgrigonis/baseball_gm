@@ -15,4 +15,4 @@ We don't need the +SP button.
 
 If the x'd out pitcher had the green light, it looks for a new place, moving down and back to 1.
 
-Not following the original spec, it moves up first.
+Currently not following the original spec, it moves up first.

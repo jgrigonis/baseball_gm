@@ -1364,6 +1364,10 @@ if (stored) {
   }
 }
 
+// Read ?tab= URL param to open correct tab on load
+const _urlTab = new URLSearchParams(window.location.search).get('tab');
+if (_urlTab === 'pitching') switchTab('pitching');
+
 ensureValidPointer();
 renderBattingOrder();
 renderRoster();
