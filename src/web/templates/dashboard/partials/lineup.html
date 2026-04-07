@@ -344,6 +344,13 @@
 }
 .rot-radio:hover { border-color: var(--text); }
 .rot-radio.active { border-color: var(--green); background: var(--green); box-shadow: 0 0 6px var(--green); }
+.rot-insert-line {
+  height: 6px; margin: 0 8px; border-radius: 3px;
+  transition: background .1s, height .1s;
+}
+.rot-insert-line.drag-active {
+  height: 4px; background: var(--amber); box-shadow: 0 0 6px var(--amber);
+}
 .rot-drag-zone {
   margin: 4px 12px; padding: 8px;
   border: 1.5px dashed var(--border);
@@ -455,7 +462,15 @@ function switchTab(tab) {
 /* ── Grade helpers ──────────────────────────────────────────────────────────── */
 function skillVal(p, key) { return gradeVal(p[key] || null); }
 
-function hitterGradesHtml(p, assignedPos) {
+function _battingSlotGrades(isHitter, p, assignedPos) {
+  if (!isHitter) return '<div class="lu-skills">' + pitcherGradesHtml(p) + '</div>';
+  const parts = hitterGradesHtml(p, assignedPos, true);
+  const h = parts[0], d = parts[1];
+  return '<div class="lu-skills">' + h + '</div>' + (d ? '<div class="lu-skills" style="margin-top:1px;">' + d + '</div>' : '');
+}
+
+function hitterGradesHtml(p, assignedPos, split) {
+  // split=true → two separate strings [hitHtml, defHtml]; split=false → combined with pipe
   const hitPairs = [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],['ARM',p.arm]];
   const defPairs = [
     ['C',p.pos_c],['1B',p.pos_1b],['2B',p.pos_2b],['3B',p.pos_3b],
@@ -467,10 +482,14 @@ function hitterGradesHtml(p, assignedPos) {
   const aPos = (assignedPos||'').toUpperCase();
   const defHtml = defPairs.filter(([,v])=>v)
     .map(([k,v]) => {
-      const hi = k === aPos ? 'color:var(--amber);font-weight:700;' : '';
-      return `<span style="${hi}"><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`;
+      const isAssigned = k === aPos;
+      return isAssigned
+        ? `<span><span class="gl">${k}</span><span class="${gradeClass(v)}" style="color:var(--sky);font-weight:700;">${v}</span></span>`
+        : `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`;
     }).join('');
-  return hitHtml + (defHtml ? ' ' + defHtml : '');
+  if (split) return [hitHtml, defHtml];
+  const sep = hitHtml && defHtml ? '<span style="color:var(--border);margin:0 4px;">|</span>' : '';
+  return hitHtml + sep + defHtml;
 }
 
 function pitcherGradesHtml(p) {
@@ -543,9 +562,10 @@ function renderBattingOrder() {
         <div style="min-width:0;">
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.bats}/${p.throws}</span>
             ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
           </div>
-          <div class="lu-skills">${isHitter ? hitterGradesHtml(p, slot.position) : pitcherGradesHtml(p)}</div>
+          ${_battingSlotGrades(isHitter, p, slot.position)}
           ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
           ${!isHitter && p.stat_era!=null ? `<div class="lu-skills">${pitcherStatsHtml(p)}</div>` : ''}
         </div>
@@ -785,8 +805,6 @@ function renderRoster() {
 
 /* ── Batting: auto-fill ──────────────────────────────────────────────────────── */
 function autoFill() {
-  const used = new Set();
-  lineup = [];
   const healthyHitters = ALL_HITTERS.filter(p => !p.injured);
   const pos_priority = {
     c:    p => p.best_def_label==='CA' ? gradeVal(p.best_def_grade) : 90,
@@ -799,12 +817,27 @@ function autoFill() {
     rf:   p => gradeVal(p.overall),
     dh:   p => gradeVal(p.overall),
   };
-  for (const pos of ['c','ss','cf','2b','3b','1b','lf','rf','dh']) {
+  // Keep healthy filled slots; clear injured slots and true nulls
+  const used = new Set(
+    lineup.filter(s => s && !ALL_HITTERS.find(p => p.player_id === s.player_id && p.injured))
+          .map(s => s ? s.player_id : null).filter(Boolean)
+  );
+  for (let i = 0; i < 9; i++) {
+    const s = lineup[i];
+    if (s) {
+      const p = ALL_HITTERS.find(x => x.player_id === s.player_id);
+      if (p && p.injured) lineup[i] = null;  // clear injured
+    }
+  }
+  // Fill nulls with best available
+  const posOrder = ['c','ss','cf','2b','3b','1b','lf','rf','dh'];
+  for (let i = 0; i < 9; i++) {
+    if (lineup[i]) continue;  // already filled with healthy player
+    const pos = posOrder[i] || 'dh';
     const best = healthyHitters
       .filter(p => !used.has(p.player_id))
       .sort((a,b) => pos_priority[pos](a) - pos_priority[pos](b))[0];
-    if (best) { lineup.push({ player_id: best.player_id, position: pos }); used.add(best.player_id); }
-    else lineup.push(null);
+    if (best) { lineup[i] = { player_id: best.player_id, position: pos }; used.add(best.player_id); }
   }
   renderBattingOrder();
   renderRoster();
@@ -870,162 +903,150 @@ function ensureValidPointer() {
 /* ── Rotation: render ────────────────────────────────────────────────────────── */
 let _rotDragIdx = null;
 
+function _makeInsertLine(insertIdx) {
+  /* A thin drop-line that inserts a pitcher before insertIdx */
+  const line = document.createElement('div');
+  line.className = 'rot-insert-line';
+  line.dataset.insertIdx = insertIdx;
+  line.addEventListener('dragover', e => {
+    const hasPid = e.dataTransfer.types.includes('rot-pid') || e.dataTransfer.types.includes('bp-pid');
+    if (!hasPid) return;
+    e.preventDefault();
+    document.querySelectorAll('.rot-insert-line').forEach(l => l.classList.remove('drag-active'));
+    line.classList.add('drag-active');
+  });
+  line.addEventListener('dragleave', e => {
+    if (!line.contains(e.relatedTarget)) line.classList.remove('drag-active');
+  });
+  line.addEventListener('drop', e => {
+    e.preventDefault();
+    document.querySelectorAll('.rot-insert-line').forEach(l => l.classList.remove('drag-active'));
+    const bpPid  = e.dataTransfer.getData('bp-pid');
+    const rotPid = e.dataTransfer.getData('rot-pid');
+    const rotIdx = parseInt(e.dataTransfer.getData('rot-idx'));
+    const compact = rotation.filter(Boolean);
+    if (bpPid && !compact.includes(bpPid)) {
+      compact.splice(insertIdx, 0, bpPid);
+      delete bullpen[bpPid];
+    } else if (rotPid && !isNaN(rotIdx)) {
+      const srcPos = compact.indexOf(rotPid);
+      if (srcPos === -1) return;
+      compact.splice(srcPos, 1);
+      const destPos = srcPos < insertIdx ? insertIdx - 1 : insertIdx;
+      compact.splice(destPos, 0, rotPid);
+    }
+    rotation = compact;
+    ensureValidPointer();
+    renderRotation();
+    renderBullpen();
+  });
+  return line;
+}
+
 function renderRotation() {
   ensureValidPointer();
   const el = document.getElementById('rotation-list');
   el.innerHTML = '';
+  const compact = rotation.filter(Boolean);
 
-  rotation.forEach((pid, idx) => {
-    if (pid === null) {
-      // Drag zone (gap)
-      const zone = document.createElement('div');
-      zone.className = 'rot-drag-zone';
-      zone.dataset.idx = idx;
-      zone.textContent = '— drag pitcher here —';
-      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-active'); });
-      zone.addEventListener('dragleave', () => zone.classList.remove('drag-active'));
-      zone.addEventListener('drop', e => {
-        e.preventDefault();
-        zone.classList.remove('drag-active');
-        const pid = e.dataTransfer.getData('rot-pid') || e.dataTransfer.getData('bp-pid');
-        if (!pid) return;
-        const fromIdx = e.dataTransfer.getData('rot-idx');
-        if (fromIdx !== '') {
-          // reorder: remove from old, insert at this idx
-          const fi = parseInt(fromIdx);
-          const [moved] = rotation.splice(fi, 1);
-          const newIdx = rotation.indexOf(null); // find first null after splice... not right
-          // Actually: just place at idx after adjusting
-          rotation[idx] = moved;
-          rotation[fi] = null; // put null where it came from... wait this is already null
-          // Simpler: just compact and rebuild won't work well here. Let me swap:
-        } else {
-          // from bullpen
-          if (!rotation.includes(pid)) rotation[idx] = pid;
-        }
-        renderRotation();
-        renderBullpen();
-      });
-      el.appendChild(zone);
-    } else {
-      const p = findPitcher(pid);
-      if (!p) { rotation[idx] = null; return; }
-      const slotNum = rotationSlotNum(idx);
-      const isPointer = pid === pointerPid;
+  compact.forEach((pid, slotIdx) => {
+    // Insert line before each slot
+    el.appendChild(_makeInsertLine(slotIdx));
 
-      const row = document.createElement('div');
-      row.className = 'rot-slot';
-      row.dataset.idx = idx;
-      row.draggable = true;
+    const p = findPitcher(pid);
+    if (!p) return;
+    const isPointer = pid === pointerPid;
 
-      row.innerHTML = `
-        <div class="rot-radio${isPointer?' active':''}" title="Set as next starter"
-             onclick="setPointer('${pid}')"></div>
-        <div class="rot-num">${slotNum}</div>
-        <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
-        <div style="min-width:0;">
-          <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
-               onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
-            ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
-          </div>
-          <div class="lu-skills">${pitcherGradesHtml(p)}</div>
-          ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
+    const row = document.createElement('div');
+    row.className = 'rot-slot';
+    row.dataset.idx = slotIdx;
+    row.draggable = true;
+
+    row.innerHTML = `
+      <div class="rot-radio${isPointer?' active':''}" title="Set as next starter"
+           onclick="setPointer('${pid}')"></div>
+      <div class="rot-num">${slotIdx + 1}</div>
+      <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+      <div style="min-width:0;">
+        <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
+             onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+          ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
         </div>
-        <div class="rot-arrows">
-          <button class="rot-arrow" data-idx="${idx}" data-dir="up"
-                  ${idx===0||!rotation.slice(0,idx).some(x=>x!==null)?'disabled':''}>▲</button>
-          <button class="rot-arrow" data-idx="${idx}" data-dir="down"
-                  ${idx>=rotation.length-1||!rotation.slice(idx+1).some(x=>x!==null)?'disabled':''}>▼</button>
-        </div>
-        <div></div>
-        <button class="lu-remove" onclick="removeFromRotation(${idx})">×</button>`;
+        <div class="lu-skills">${pitcherGradesHtml(p)}</div>
+        ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
+      </div>
+      <div class="rot-arrows">
+        <button class="rot-arrow" data-idx="${slotIdx}" data-dir="up" ${slotIdx===0?'disabled':''}>▲</button>
+        <button class="rot-arrow" data-idx="${slotIdx}" data-dir="down" ${slotIdx===compact.length-1?'disabled':''}>▼</button>
+      </div>
+      <div></div>
+      <button class="lu-remove" onclick="removeFromRotation(${slotIdx})">×</button>`;
 
-      row.addEventListener('dragstart', e => {
-        _rotDragIdx = idx;
-        row.classList.add('dragging');
-        e.dataTransfer.setData('rot-pid', pid);
-        e.dataTransfer.setData('rot-idx', idx);
-        e.stopPropagation();
-      });
-      row.addEventListener('dragend', () => {
-        row.classList.remove('dragging');
-        _rotDragIdx = null;
-      });
-      row.addEventListener('dragover', e => {
-        const srcPid = _rotDragIdx !== null ? rotation[_rotDragIdx] : null;
-        if (!srcPid || srcPid === pid) return;
-        e.preventDefault();
-        document.querySelectorAll('.rot-slot.drag-swap').forEach(r => r.classList.remove('drag-swap'));
-        row.classList.add('drag-swap');
-      });
-      row.addEventListener('dragleave', () => row.classList.remove('drag-swap'));
-      row.addEventListener('drop', e => {
-        e.preventDefault();
-        row.classList.remove('drag-swap');
-        if (_rotDragIdx === null || _rotDragIdx === idx) return;
-        // Swap
-        [rotation[_rotDragIdx], rotation[idx]] = [rotation[idx], rotation[_rotDragIdx]];
-        renderRotation();
-      });
+    // Drag from rotation
+    row.addEventListener('dragstart', e => {
+      _rotDragIdx = slotIdx;
+      row.classList.add('dragging');
+      e.dataTransfer.setData('rot-pid', pid);
+      e.dataTransfer.setData('rot-idx', slotIdx);
+      e.stopPropagation();
+    });
+    row.addEventListener('dragend', () => { row.classList.remove('dragging'); _rotDragIdx = null; });
 
-      el.appendChild(row);
-    }
+    // Drop on existing slot = swap (from rotation) or replace (from bullpen)
+    row.addEventListener('dragover', e => {
+      const isBp  = e.dataTransfer.types.includes('bp-pid');
+      const isRot = _rotDragIdx !== null && _rotDragIdx !== slotIdx;
+      if (!isBp && !isRot) return;
+      e.preventDefault();
+      document.querySelectorAll('.rot-slot.drag-swap').forEach(r => r.classList.remove('drag-swap'));
+      row.classList.add('drag-swap');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-swap'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.classList.remove('drag-swap');
+      const bpPid  = e.dataTransfer.getData('bp-pid');
+      const rotPid = e.dataTransfer.getData('rot-pid');
+      const rotIdx = parseInt(e.dataTransfer.getData('rot-idx'));
+      const compact2 = rotation.filter(Boolean);
+      if (bpPid) {
+        // Bullpen → swap with this slot; displaced goes to bullpen
+        const destPos = compact2.indexOf(pid);
+        compact2[destPos] = bpPid;
+        delete bullpen[bpPid];
+      } else if (rotPid && !isNaN(rotIdx) && rotIdx !== slotIdx) {
+        // Rotation → rotation swap
+        const a = compact2.indexOf(rotPid);
+        const b = compact2.indexOf(pid);
+        [compact2[a], compact2[b]] = [compact2[b], compact2[a]];
+      }
+      rotation = compact2;
+      ensureValidPointer();
+      renderRotation();
+      renderBullpen();
+    });
+
+    el.appendChild(row);
   });
+
+  // Insert line after last slot (append position)
+  el.appendChild(_makeInsertLine(compact.length));
 
   // Arrow clicks via delegation
   el.onclick = (e) => {
     const btn = e.target.closest('.rot-arrow');
     if (!btn) return;
     e.stopPropagation();
-    const idx = parseInt(btn.dataset.idx);
-    const dir = btn.dataset.dir;
-    if (dir === 'up') {
-      // Find previous non-null index
-      for (let i = idx - 1; i >= 0; i--) {
-        if (rotation[i] !== null) {
-          [rotation[i], rotation[idx]] = [rotation[idx], rotation[i]];
-          break;
-        } else {
-          // Swap with null to move up through gaps
-          [rotation[i], rotation[idx]] = [rotation[idx], rotation[i]];
-          break;
-        }
-      }
-    } else {
-      for (let i = idx + 1; i < rotation.length; i++) {
-        [rotation[i], rotation[idx]] = [rotation[idx], rotation[i]];
-        break;
-      }
-    }
+    const idx  = parseInt(btn.dataset.idx);
+    const dir  = btn.dataset.dir;
+    const c = rotation.filter(Boolean);
+    if (dir === 'up'   && idx > 0)          [c[idx-1], c[idx]] = [c[idx], c[idx-1]];
+    if (dir === 'down' && idx < c.length-1) [c[idx],   c[idx+1]] = [c[idx+1], c[idx]];
+    rotation = c;
     renderRotation();
   };
 
-  // Always-present append zone at the bottom
-  const appendZone = document.createElement('div');
-  appendZone.className = 'rot-drag-zone';
-  appendZone.style.margin = '8px 12px';
-  appendZone.textContent = '+ drag pitcher here to extend rotation';
-  appendZone.addEventListener('dragover', e => { e.preventDefault(); appendZone.classList.add('drag-active'); });
-  appendZone.addEventListener('dragleave', () => appendZone.classList.remove('drag-active'));
-  appendZone.addEventListener('drop', e => {
-    e.preventDefault();
-    appendZone.classList.remove('drag-active');
-    const bpPid = e.dataTransfer.getData('bp-pid');
-    const rotPid = e.dataTransfer.getData('rot-pid');
-    const rotIdx = parseInt(e.dataTransfer.getData('rot-idx'));
-    if (bpPid && !rotation.includes(bpPid)) {
-      rotation.push(bpPid);
-    } else if (rotPid && !isNaN(rotIdx)) {
-      // Move rotation pitcher to end
-      rotation.splice(rotIdx, 1);
-      rotation.push(rotPid);
-    }
-    renderRotation();
-    renderBullpen();
-  });
-  el.appendChild(appendZone);
-
-  document.getElementById('rot-count').textContent = `${nonNullRotation().length} pitchers`;
+  document.getElementById('rot-count').textContent = `${compact.length} pitchers`;
 }
 
 function setPointer(pid) {
@@ -1035,11 +1056,7 @@ function setPointer(pid) {
 
 function addToRotation(pid) {
   if (rotation.includes(pid)) return;
-  // Fill first null slot, or append
-  const nullIdx = rotation.indexOf(null);
-  if (nullIdx !== -1) rotation[nullIdx] = pid;
-  else rotation.push(pid);
-  // Remove from bullpen role dict — they're a starter now
+  rotation.push(pid);
   delete bullpen[pid];
   ensureValidPointer();
   renderRotation();
@@ -1047,12 +1064,21 @@ function addToRotation(pid) {
 }
 
 function removeFromRotation(idx) {
-  const pid = rotation[idx];
+  const compact = rotation.filter(Boolean);
+  const pid = compact[idx];
+  if (!pid) return;
   const wasPointer = pid === pointerPid;
-  rotation[idx] = null;
-  // Trim trailing nulls (but keep at least the existing structure, just not trailing)
-  while (rotation.length > 0 && rotation[rotation.length - 1] === null) rotation.pop();
-  if (wasPointer) ensureValidPointer();
+  compact.splice(idx, 1);
+  rotation = compact;
+  if (wasPointer) {
+    // Move pointer down; wrap to index 0 if past end
+    if (rotation.length) {
+      const nextIdx = idx < rotation.length ? idx : 0;
+      pointerPid = rotation[nextIdx];
+    } else {
+      pointerPid = null;
+    }
+  }
   renderRotation();
   renderBullpen();
 }
@@ -1111,7 +1137,7 @@ function renderBullpen() {
         <div class="lu-skills">${pitcherGradesHtml(p)}</div>
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
       </div>
-      <button class="bp-add-btn" onclick="addToRotation('${p.player_id}')">+ SP</button>
+
       <select class="bp-role-select" onchange="setBullpenRole('${p.player_id}',this.value)">${roleOpts}</select>`;
 
     el.appendChild(card);
@@ -1340,7 +1366,7 @@ if (stored) {
   }
   // Validate and apply stored rotation
   if (Array.isArray(stored.rotation)) {
-    rotation = stored.rotation.filter(pid => pid === null || knownPitcherIds.has(pid));
+    rotation = stored.rotation.filter(pid => pid && knownPitcherIds.has(pid));
   }
   if (stored.rosterFilter) rosterFilter = stored.rosterFilter;
   // Restore filter button states
