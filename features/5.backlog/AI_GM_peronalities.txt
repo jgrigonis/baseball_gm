@@ -1,7 +1,0 @@
-AI GMs could have personalities
-
-Once we set up the various AI "profiles" that a user would set for themselves
-to run for themselves, when we are creating AI GMs to play against, they could
-be given different profiles. Each one could have a "Name"
-
-It would also be interesting to keep historic data on how they perform.

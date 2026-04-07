@@ -1,0 +1,52 @@
+AI GMs could have personalities
+
+Once we set up the various AI "profiles" that a user would set for themselves
+to run for themselves, when we are creating AI GMs to play against, they could
+be given different profiles. Each one could have a "Name"
+
+It would also be interesting to keep historic data on how they perform.
+
+We can definitely improve some of these, but...
+
+A list of GM names:
+
+ELVIN SPIRK 
+SEAN PIPER 
+DANIEL RIVERA
+JUAN NAVARRO 
+BRIAN EVERS 
+JEFF LAFROMBOISE
+JAMES CLARK
+JOHN ADA
+CHARLES KOWALCZYK
+SETH NEMARD
+FRANK WRIGHT
+BENJAMIN STEPHENS
+JEFFREY WALSH
+CHRISTOPHER STARK
+JAMES KIM
+MATTHEW HARRIS
+RYAN PARKER
+CHRISTOPHER CHEN
+DANIEL WU
+WILLIAM ODELL
+JEREMY MARRERO
+FERDERICK VASSEY
+DAVID HAWKINS
+JIMMY ZINCK
+ELMER YARD
+DANIEL SCOTT
+DEREK NAGY
+CHARLES MARTINEZ
+DOUGLAS CROSBY
+JAMES GOETZINGER
+ROBERT MARINO
+FRANK SANDERS
+BRYAN TAYLOR
+MATTHEW HAWKINS
+JAMES DIAZ
+ANTHONY STERN
+JOHN HILL
+KENNETH HUMMEL
+KYLE JENKINS
+EARL GROVE
