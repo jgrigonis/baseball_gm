@@ -188,21 +188,14 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
         )
         conn.commit()
 
-        # For the very first draft, no standings exist yet — randomize order.
-        # Subsequent drafts get their order from offseason_pipeline._run_draft.
-        has_prior_season = conn.execute(
-            """SELECT COUNT(*) FROM games g
-               JOIN league_season_teams lst ON lst.team_id IN (g.home_team_id, g.away_team_id)
-               WHERE lst.league_id = ? AND g.completed = 1""",
-            (league_id,),
-        ).fetchone()[0]
-
-        if not has_prior_season:
-            from src.league.offseason.snake_draft import write_draft_order
-            shuffled = team_ids[:]
-            rng.shuffle(shuffled)
-            write_draft_order(conn, draft_id, league_id, next_year, shuffled)
-            print(f"  First draft: randomized pick order for {len(shuffled)} teams")
+        # Write draft order — standings-based for season 2+, randomized for first season
+        from src.league.offseason.snake_draft import write_draft_order
+        from src.league.offseason.snake_draft import SnakeDraft as _SnakeDraft
+        snake = _SnakeDraft(conn, rng)
+        draft_order = snake._build_draft_order(season_id)  # season_id = completed season
+        ordered_ids = [e["team_id"] for e in draft_order]
+        write_draft_order(conn, draft_id, league_id, next_year, ordered_ids)
+        print(f"  Draft order stored: {len(ordered_ids)} teams")
     else:
         draft_id = existing_draft["id"]
 
