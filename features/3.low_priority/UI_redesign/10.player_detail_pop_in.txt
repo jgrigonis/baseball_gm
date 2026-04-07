@@ -1,5 +1,0 @@
-UI updates
-
-
-We also need to be able to see career stats here. A toggle between 
-season and career.

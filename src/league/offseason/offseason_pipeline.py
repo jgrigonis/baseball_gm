@@ -422,9 +422,28 @@ class OffseasonPipeline:
         total = generator.run(season_id, self.year, league_id=self.league_id)
         print(f"  Draft pool ready: {total} draftable players")
 
+    def _write_draft_order(self, season_id: str, league_id: str, draft_order: list[dict]) -> None:
+        """Persist the draft order and pick rights for this draft."""
+        from src.league.offseason.snake_draft import write_draft_order
+
+        row = self.conn.execute(
+            "SELECT id FROM drafts WHERE league_id = ? AND season_id = ?",
+            (league_id, season_id),
+        ).fetchone()
+        if not row:
+            print("  WARNING: no draft record found, skipping draft_order write")
+            return
+
+        ordered_ids = [e["team_id"] for e in draft_order]
+        write_draft_order(self.conn, row["id"], league_id, self.year, ordered_ids)
+        print(f"  Draft order stored: {len(draft_order)} teams")
+
     def _run_draft(self, season_id: str, league_id: str) -> None:
-        draft = SnakeDraft(self.conn, self.rng)
-        picks = draft.run_snake_draft(season_id, self.year, league_id)
+        snake = SnakeDraft(self.conn, self.rng)
+        # Build order first so we can persist it before the draft runs
+        draft_order = snake._build_draft_order(season_id)
+        self._write_draft_order(season_id, league_id, draft_order)
+        picks = snake.run_snake_draft_with_order(draft_order, self.year, league_id)
         print(f"  Draft complete: {len(picks)} total picks")
 
     def _trim_rosters(self, season_id: str) -> None:

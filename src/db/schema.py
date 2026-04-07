@@ -525,6 +525,39 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+-- ── Draft order & pick rights ────────────────────────────────────────────────
+
+-- Records the finalized pick order for each executed draft.
+-- Written once by the offseason pipeline, never mutated.
+CREATE TABLE IF NOT EXISTS draft_order (
+    draft_id      TEXT    NOT NULL,
+    team_id       TEXT    NOT NULL,
+    pick_position INTEGER NOT NULL,   -- 1-based; 1 = picks first in round 1
+
+    PRIMARY KEY (draft_id, team_id),
+    FOREIGN KEY (draft_id) REFERENCES drafts(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id)  REFERENCES teams(id)
+);
+CREATE INDEX IF NOT EXISTS idx_draft_order_draft ON draft_order(draft_id);
+
+-- Tracks current ownership of each pick slot.
+-- Written by the pipeline alongside draft_order.
+-- current_owner_id == original_team_id until a trade changes it.
+-- draft_year + league_id identify the draft without requiring a draft_id FK,
+-- allowing future-season picks to be traded before the draft record exists.
+CREATE TABLE IF NOT EXISTS draft_pick_rights (
+    league_id         TEXT    NOT NULL,
+    draft_year        INTEGER NOT NULL,
+    round             INTEGER NOT NULL,
+    original_team_id  TEXT    NOT NULL,
+    current_owner_id  TEXT    NOT NULL,
+
+    PRIMARY KEY (league_id, draft_year, original_team_id, round),
+    FOREIGN KEY (league_id)        REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (original_team_id) REFERENCES teams(id),
+    FOREIGN KEY (current_owner_id) REFERENCES teams(id)
+);
+
 -- ── GM / Identity layer ───────────────────────────────────────────────────────
 --
 -- users: one row per human across all leagues and sessions.
@@ -753,4 +786,12 @@ CREATE INDEX IF NOT EXISTS idx_game_events_type
  
 CREATE INDEX IF NOT EXISTS idx_game_events_player
     ON game_events(player_id);
+
+CREATE INDEX IF NOT EXISTS idx_pick_rights_league_year
+    ON draft_pick_rights(league_id, draft_year);
+CREATE INDEX IF NOT EXISTS idx_pick_rights_owner
+    ON draft_pick_rights(current_owner_id);
+
 """
+
+

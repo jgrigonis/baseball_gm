@@ -181,29 +181,35 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
 
     year = _season_year(conn, season_id)
 
-    # _build_draft_order needs the PREVIOUS completed season for standings.
-    # The draft's season_id is the new (empty) season — find the last one with games.
-    prior_season_row = conn.execute(
-        """SELECT s.id FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ?
-             AND EXISTS (
-               SELECT 1 FROM games g
-               WHERE g.season_id = s.id AND g.completed = 1
-             )
-           ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
-    standings_season_id = prior_season_row["id"] if prior_season_row else season_id
-    if standings_season_id == season_id:
-        print(
-            "  WARNING: no prior completed season found for draft ordering — order will be arbitrary"
-        )
+    # Read the pre-stored draft order from draft_order table (written by
+    # league_start or offseason_pipeline — never recompute from standings here)
+    stored_order = conn.execute(
+        """SELECT team_id FROM draft_order WHERE draft_id = ? ORDER BY pick_position""",
+        (draft_id,),
+    ).fetchall()
 
     blitz = BlitzDraft(conn, gm_preferences=gm_preferences)
-    picks = blitz.run_snake_draft(
-        season_id=standings_season_id, year=year, league_id=league_id
-    )
+
+    if stored_order:
+        draft_order = [{"team_id": r["team_id"], "team_name": ""} for r in stored_order]
+        picks = blitz.run_snake_draft_with_order(draft_order, year, league_id)
+    else:
+        # Fallback for legacy DBs without draft_order rows
+        prior_season_row = conn.execute(
+            """SELECT s.id FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = ?
+                 AND EXISTS (
+                   SELECT 1 FROM games g
+                   WHERE g.season_id = s.id AND g.completed = 1
+                 )
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        standings_season_id = prior_season_row["id"] if prior_season_row else season_id
+        picks = blitz.run_snake_draft(
+            season_id=standings_season_id, year=year, league_id=league_id
+        )
 
     # Record into draft_picks table
     now = datetime.now(UTC).isoformat()

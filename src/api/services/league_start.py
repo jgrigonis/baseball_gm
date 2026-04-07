@@ -163,6 +163,12 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
         ),
     )
 
+    # Write draft order using a separate shuffle from GM assignment
+    from src.league.offseason.snake_draft import write_draft_order
+    draft_order_ids = team_ids_all[:]
+    rng.shuffle(draft_order_ids)
+    write_draft_order(conn, draft_id, league_id, year, draft_order_ids)
+
     # ── 8. Advance league state → draft ──────────────────────────────────────
     conn.execute("UPDATE leagues SET state = 'draft' WHERE id = ?", (league_id,))
     conn.commit()

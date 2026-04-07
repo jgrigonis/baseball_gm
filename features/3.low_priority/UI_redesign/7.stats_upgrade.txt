@@ -3,6 +3,7 @@ Stats upgrade
 
 you should be able to toggle to:
 Career stats 
+on the player detail page.
 
 We don't have a good way to look at the career stats for a 
 player.
@@ -12,8 +13,10 @@ Should separate out playoff stats.
 Could be as simple as a toggle on the player details page.
 Not sure how overloaded we want that. 
 
-A breakout tab for a single
-player might be a good addition. Allow side by side comparisons 
+A breakout tab for a single player might be a good addition. 
+Allow side by side comparisons 
 there as well. We can defer this until v2, lower prio.
+
+This is to be designed
 
 

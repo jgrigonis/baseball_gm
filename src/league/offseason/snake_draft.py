@@ -34,6 +34,34 @@ from src.util.locations import TEAM_FILES_DIR
 ROUNDS = 20
 
 
+def write_draft_order(conn, draft_id: str, league_id: str, draft_year: int, ordered_team_ids: list[str]) -> None:
+    """
+    Persist the draft order and default pick rights for a draft.
+    ordered_team_ids should be in pick order (index 0 = picks first).
+    Safe to call on a fresh draft — clears any existing rows first.
+    """
+    conn.execute("DELETE FROM draft_order WHERE draft_id = ?", (draft_id,))
+    conn.execute(
+        "DELETE FROM draft_pick_rights WHERE league_id = ? AND draft_year = ?",
+        (league_id, draft_year),
+    )
+    for pos, tid in enumerate(ordered_team_ids, 1):
+        conn.execute(
+            "INSERT INTO draft_order (draft_id, team_id, pick_position) VALUES (?, ?, ?)",
+            (draft_id, tid, pos),
+        )
+    for tid in ordered_team_ids:
+        for rnd in range(1, ROUNDS + 1):
+            conn.execute(
+                """INSERT INTO draft_pick_rights
+                   (league_id, draft_year, round, original_team_id, current_owner_id)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (league_id, draft_year, rnd, tid, tid),
+            )
+    conn.commit()
+
+
+
 @dataclass
 class DraftPick:
     round: int
@@ -57,21 +85,27 @@ class SnakeDraft:
     def run_snake_draft(
         self, season_id: str, year: int, league_id: str | None = None
     ) -> list[DraftPick]:
+        """Legacy entry point — builds order from standings then runs draft."""
+        draft_order = self._build_draft_order(season_id)
+        return self.run_snake_draft_with_order(draft_order, year, league_id)
+
+    def run_snake_draft_with_order(
+        self,
+        draft_order: list[dict],
+        year: int,
+        league_id: str | None = None,
+    ) -> list[DraftPick]:
         """
-        Execute the snake draft.
+        Execute the snake draft using a pre-built (and already persisted) draft order.
 
         Args:
-            season_id: The season that just ended (for standings)
-            year: Draft year (for output path)
-
-        Returns:
-            List of DraftPick results
+            draft_order: Ordered list of team dicts from _build_draft_order or draft_order table
+            year:        Draft year (for output path)
+            league_id:   League scoping
         """
-        # 1. Build draft order (worst record first)
-        draft_order = self._build_draft_order(season_id)
         print(f"  Draft order: {len(draft_order)} teams")
 
-        # 2. Load draft pool — all players with status 'prospect' and no team
+        # 1. Load draft pool
         pool = self._load_draft_pool()
         print(f"  Draft pool: {len(pool)} players available")
 
@@ -79,17 +113,17 @@ class SnakeDraft:
             print("  WARNING: Empty draft pool, skipping draft")
             return []
 
-        # 3. Pre-compute prospect ratings
+        # 2. Pre-compute prospect ratings
         rated = self._rate_pool(pool)
 
-        # 4. Run snake draft
+        # 3. Run snake — respects current_owner_id from draft_pick_rights if available
         picks = self._run_snake(draft_order, rated)
         print(f"  Completed {len(picks)} picks across {ROUNDS} rounds")
 
-        # 5. Re-run RosterAssigner for each team
+        # 4. Re-run RosterAssigner for each team
         self._reassign_rosters(draft_order)
 
-        # 6. Write draft results CSV
+        # 5. Write draft results CSV
         self._write_results(picks, year, league_id)
 
         return picks

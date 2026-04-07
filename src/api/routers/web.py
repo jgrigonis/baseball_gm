@@ -891,13 +891,28 @@ def draft_tab(
                 (draft["id"], gm["id"]),
             ).fetchall()
 
+        # Pick position from stored draft_order (written by pipeline)
+        pick_position = None
+        if gm and gm["team_id"]:
+            try:
+                pos_row = db.execute(
+                    "SELECT pick_position FROM draft_order WHERE draft_id = ? AND team_id = ?",
+                    (draft["id"], gm["team_id"]),
+                ).fetchone()
+                if pos_row:
+                    pick_position = pos_row["pick_position"]
+            except Exception:
+                pass  # table doesn't exist yet on older DBs
+
         ctx["draft_id"] = draft["id"]
         ctx["board"] = board
         ctx["preferences"] = [r["player_id"] for r in prefs]
+        ctx["pick_position"] = pick_position
     else:
         ctx["draft_id"] = None
         ctx["board"] = []
         ctx["preferences"] = []
+        ctx["pick_position"] = None
 
     # Load GM's current roster for the right-hand column
     players = []
