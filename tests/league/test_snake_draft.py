@@ -25,109 +25,99 @@ from src.league.offseason.snake_draft import SnakeDraft, ROUNDS
 # Schema
 # ---------------------------------------------------------------------------
 
-# MINIMAL_SCHEMA = """
-# PRAGMA foreign_keys = ON;
+MINIMAL_SCHEMA = """
+PRAGMA foreign_keys = ON;
 
-# CREATE TABLE IF NOT EXISTS players (
-#     id TEXT PRIMARY KEY,
-#     first_name TEXT NOT NULL,
-#     last_name TEXT NOT NULL,
-#     bats TEXT NOT NULL,
-#     throws TEXT NOT NULL,
-#     position TEXT
-# );
+CREATE TABLE IF NOT EXISTS players (
+    id TEXT PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    bats TEXT NOT NULL,
+    throws TEXT NOT NULL,
+    position TEXT
+);
 
-# CREATE TABLE IF NOT EXISTS player_skills (
-#     player_id TEXT PRIMARY KEY,
-#     age INTEGER NOT NULL DEFAULT 17,
-#     clutch INTEGER NOT NULL DEFAULT 50,
-#     speed INTEGER NOT NULL DEFAULT 50,
-#     power INTEGER NOT NULL DEFAULT 50,
-#     eye INTEGER NOT NULL DEFAULT 50,
-#     contact INTEGER NOT NULL DEFAULT 50,
-#     base_running INTEGER NOT NULL DEFAULT 50,
-#     bunting INTEGER NOT NULL DEFAULT 50,
-#     catching INTEGER NOT NULL DEFAULT 50,
-#     infield INTEGER NOT NULL DEFAULT 50,
-#     outfield INTEGER NOT NULL DEFAULT 50,
-#     arm INTEGER NOT NULL DEFAULT 50,
-#     accuracy INTEGER NOT NULL DEFAULT 50,
-#     stamina INTEGER NOT NULL DEFAULT 50,
-#     recovery INTEGER NOT NULL DEFAULT 50,
-#     ground_balls INTEGER NOT NULL DEFAULT 50,
-#     strikes INTEGER NOT NULL DEFAULT 50,
-#     updated_at TEXT
-# );
+CREATE TABLE IF NOT EXISTS player_skills (
+    player_id TEXT PRIMARY KEY,
+    age INTEGER NOT NULL DEFAULT 17,
+    clutch INTEGER NOT NULL DEFAULT 50,
+    speed INTEGER NOT NULL DEFAULT 50,
+    power INTEGER NOT NULL DEFAULT 50,
+    eye INTEGER NOT NULL DEFAULT 50,
+    contact INTEGER NOT NULL DEFAULT 50,
+    base_running INTEGER NOT NULL DEFAULT 50,
+    bunting INTEGER NOT NULL DEFAULT 50,
+    catching INTEGER NOT NULL DEFAULT 50,
+    infield INTEGER NOT NULL DEFAULT 50,
+    outfield INTEGER NOT NULL DEFAULT 50,
+    arm INTEGER NOT NULL DEFAULT 50,
+    accuracy INTEGER NOT NULL DEFAULT 50,
+    stamina INTEGER NOT NULL DEFAULT 50,
+    recovery INTEGER NOT NULL DEFAULT 50,
+    ground_balls INTEGER NOT NULL DEFAULT 50,
+    strikes INTEGER NOT NULL DEFAULT 50,
+    updated_at TEXT
+);
 
-# CREATE TABLE IF NOT EXISTS player_status (
-#     player_id TEXT PRIMARY KEY,
-#     status TEXT NOT NULL CHECK (status IN (
-#         'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
-#     )),
-#     since TEXT NOT NULL
-# );
+CREATE TABLE IF NOT EXISTS player_status (
+    player_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN (
+        'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
+    )),
+    since TEXT NOT NULL
+);
 
-# CREATE TABLE IF NOT EXISTS teams (
-#     id TEXT PRIMARY KEY,
-#     city TEXT NOT NULL,
-#     mascot TEXT NOT NULL
-# );
+CREATE TABLE IF NOT EXISTS teams (
+    id TEXT PRIMARY KEY,
+    city TEXT NOT NULL,
+    mascot TEXT NOT NULL
+);
 
-# CREATE TABLE IF NOT EXISTS team_players (
-#     team_id TEXT NOT NULL,
-#     player_id TEXT NOT NULL,
-#     PRIMARY KEY (team_id, player_id)
-# );
+CREATE TABLE IF NOT EXISTS team_players (
+    team_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    PRIMARY KEY (team_id, player_id)
+);
 
-# CREATE TABLE IF NOT EXISTS seasons (
-#     id TEXT PRIMARY KEY,
-#     year INTEGER
-# );
+CREATE TABLE IF NOT EXISTS seasons (
+    id TEXT PRIMARY KEY,
+    year INTEGER
+);
 
-# CREATE TABLE IF NOT EXISTS leagues (
-#     id TEXT PRIMARY KEY,
-#     name TEXT NOT NULL
-# );
+CREATE TABLE IF NOT EXISTS leagues (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+);
 
-# CREATE TABLE IF NOT EXISTS league_season_teams (
-#     league_id TEXT NOT NULL,
-#     season_id TEXT NOT NULL,
-#     team_id TEXT NOT NULL,
-#     PRIMARY KEY (league_id, season_id, team_id)
-# );
+CREATE TABLE IF NOT EXISTS league_season_teams (
+    league_id TEXT NOT NULL,
+    season_id TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    PRIMARY KEY (league_id, season_id, team_id)
+);
 
-# CREATE TABLE IF NOT EXISTS games (
-#     id TEXT PRIMARY KEY,
-#     season_id TEXT NOT NULL,
-#     series_id TEXT,
-#     home_team_id TEXT NOT NULL,
-#     away_team_id TEXT NOT NULL,
-#     completed INTEGER DEFAULT 1
-# );
+CREATE TABLE IF NOT EXISTS games (
+    id TEXT PRIMARY KEY,
+    season_id TEXT NOT NULL,
+    series_id TEXT,
+    home_team_id TEXT NOT NULL,
+    away_team_id TEXT NOT NULL,
+    completed INTEGER DEFAULT 1
+);
 
-# CREATE TABLE IF NOT EXISTS team_game_stats (
-#     game_id TEXT NOT NULL,
-#     team_id TEXT NOT NULL,
-#     win INTEGER,
-#     loss INTEGER,
-#     PRIMARY KEY (game_id, team_id)
-# );
-# """
+CREATE TABLE IF NOT EXISTS team_game_stats (
+    game_id TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    win INTEGER,
+    loss INTEGER,
+    PRIMARY KEY (game_id, team_id)
+);
+"""
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-# @pytest.fixture
-# def conn():
-#     connection = sqlite3.connect(":memory:")
-#     connection.row_factory = sqlite3.Row
-#     connection.execute("PRAGMA foreign_keys = ON")
-#     connection.executescript(MINIMAL_SCHEMA)
-#     yield connection
-#     connection.close()
 
 
 @pytest.fixture
@@ -157,17 +147,13 @@ def insert_team(db_conn, team_id, city="Test", mascot="Team"):
 
 def insert_season(db_conn, season_id, year=2026):
     db_conn.execute(
-        "INSERT OR IGNORE INTO seasons (id, year) VALUES (?, ?)",
-        (season_id, year),
+        "INSERT OR IGNORE INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        (season_id, year, f"Season {year}"),
     )
     db_conn.commit()
 
 
 def insert_league_season_team(db_conn, season_id, team_id, league_id="league-1"):
-    db_conn.execute(
-        "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-        (team_id, "CITY", "MASCOT"),
-    )
     db_conn.execute(
         "INSERT OR IGNORE INTO leagues (id, name) VALUES (?, ?)",
         (league_id, "Test League"),
@@ -187,17 +173,13 @@ def insert_game_result(db_conn, season_id, team_id, wins, losses):
     """Insert game rows to represent a team's record."""
     db_conn.execute(
         "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-        (team_id, "CITY", "MASCOT"),
-    )
-    db_conn.execute(
-        "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-        ("dummy", "CITY", "MASCOT"),
+        ("dummy", "Dummy", "Dummies"),
     )
     for i in range(wins):
         game_id = f"game-{team_id}-w{i}"
         db_conn.execute(
-            "INSERT OR IGNORE INTO games (id, season_id, home_team_id, away_team_id) VALUES (?, ?, ?, ?)",
-            (game_id, season_id, team_id, "dummy"),
+            "INSERT OR IGNORE INTO games (id, game_date, season_id, home_team_id, away_team_id, completed) VALUES (?, ?, ?, ?, ?, ?)",
+            (game_id, "2025-04-01", season_id, team_id, "dummy", 1),
         )
         db_conn.execute(
             "INSERT OR IGNORE INTO team_game_stats (game_id, team_id, win, loss) VALUES (?, ?, 1, 0)",
@@ -206,8 +188,8 @@ def insert_game_result(db_conn, season_id, team_id, wins, losses):
     for i in range(losses):
         game_id = f"game-{team_id}-l{i}"
         db_conn.execute(
-            "INSERT OR IGNORE INTO games (id, season_id, home_team_id, away_team_id) VALUES (?, ?, ?, ?)",
-            (game_id, season_id, team_id, "dummy"),
+            "INSERT OR IGNORE INTO games (id, game_date, season_id, home_team_id, away_team_id, completed) VALUES (?, ?, ?, ?, ?, ?)",
+            (game_id, "2025-04-01", season_id, team_id, "dummy", 1),
         )
         db_conn.execute(
             "INSERT OR IGNORE INTO team_game_stats (game_id, team_id, win, loss) VALUES (?, ?, 0, 1)",
@@ -225,13 +207,14 @@ def insert_prospect(db_conn, player_id, team_id=None, rating_skills=None):
     skills = rating_skills or {}
     db_conn.execute(
         """INSERT OR IGNORE INTO player_skills
-           (player_id, age, strikes, stamina, recovery, accuracy, clutch,
+           (player_id, age, durability, strikes, stamina, recovery, accuracy, clutch,
             speed, power, arm, eye, contact, base_running,
             bunting, catching, infield, outfield, ground_balls)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             player_id,
             20,
+            skills.get("durability", 80),
             skills.get("strikes", 50),
             skills.get("stamina", 50),
             skills.get("recovery", 50),
@@ -372,7 +355,7 @@ class TestLoadDraftPool:
             "INSERT INTO players (id, first_name, last_name, bats, throws) VALUES ('fa1','A','B','R','R')"
         )
         db_conn.execute(
-            "INSERT INTO player_skills (player_id, age, clutch, speed, power, eye, contact, base_running, bunting, catching, infield, outfield, arm, accuracy, stamina, recovery, ground_balls, strikes) VALUES ('fa1',30,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50)"
+            "INSERT INTO player_skills (player_id, age, durability, clutch, speed, power, eye, contact, base_running, bunting, catching, infield, outfield, arm, accuracy, stamina, recovery, ground_balls, strikes) VALUES ('fa1',30,80,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50)"
         )
         db_conn.execute(
             "INSERT INTO player_status (player_id, status, since) VALUES ('fa1','free_agent','2025-01-01')"
