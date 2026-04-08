@@ -15,6 +15,7 @@ to list all databases
 
 create database baseball_manager;
 
+It is setup to run at boot time.
 
 
 On Macbook I instead:
