@@ -16,96 +16,10 @@ import pytest
 
 from src.league.offseason.roster_trimmer import RosterTrimmer, MINORS_LIMIT
 
-# ---------------------------------------------------------------------------
-# Schema
-# ---------------------------------------------------------------------------
-
-# MINIMAL_SCHEMA = """
-# PRAGMA foreign_keys = ON;
-
-# CREATE TABLE IF NOT EXISTS players (
-#     id TEXT PRIMARY KEY,
-#     first_name TEXT NOT NULL,
-#     last_name TEXT NOT NULL,
-#     bats TEXT NOT NULL,
-#     throws TEXT NOT NULL,
-#     position TEXT
-# );
-
-# CREATE TABLE IF NOT EXISTS player_skills (
-#     player_id TEXT PRIMARY KEY,
-#     age INTEGER NOT NULL DEFAULT 17,
-#     clutch INTEGER NOT NULL DEFAULT 50,
-#     speed INTEGER NOT NULL DEFAULT 50,
-#     power INTEGER NOT NULL DEFAULT 50,
-#     eye INTEGER NOT NULL DEFAULT 50,
-#     contact INTEGER NOT NULL DEFAULT 50,
-#     base_running INTEGER NOT NULL DEFAULT 50,
-#     bunting INTEGER NOT NULL DEFAULT 50,
-#     catching INTEGER NOT NULL DEFAULT 50,
-#     infield INTEGER NOT NULL DEFAULT 50,
-#     outfield INTEGER NOT NULL DEFAULT 50,
-#     arm INTEGER NOT NULL DEFAULT 50,
-#     accuracy INTEGER NOT NULL DEFAULT 50,
-#     stamina INTEGER NOT NULL DEFAULT 50,
-#     recovery INTEGER NOT NULL DEFAULT 50,
-#     ground_balls INTEGER NOT NULL DEFAULT 50,
-#     strikes INTEGER NOT NULL DEFAULT 50,
-#     updated_at TEXT
-# );
-
-# CREATE TABLE IF NOT EXISTS player_status (
-#     player_id TEXT PRIMARY KEY,
-#     status TEXT NOT NULL CHECK (status IN (
-#         'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
-#     )),
-#     since TEXT NOT NULL
-# );
-
-# CREATE TABLE IF NOT EXISTS teams (
-#     id TEXT PRIMARY KEY,
-#     city TEXT NOT NULL,
-#     mascot TEXT NOT NULL
-# );
-
-# CREATE TABLE IF NOT EXISTS team_players (
-#     team_id TEXT NOT NULL,
-#     player_id TEXT NOT NULL,
-#     PRIMARY KEY (team_id, player_id)
-# );
-
-# CREATE TABLE IF NOT EXISTS seasons (
-#     id TEXT PRIMARY KEY,
-#     year INTEGER
-# );
-
-# CREATE TABLE IF NOT EXISTS leagues (
-#     id TEXT PRIMARY KEY,
-#     name TEXT NOT NULL
-# );
-
-# CREATE TABLE IF NOT EXISTS league_season_teams (
-#     league_id TEXT NOT NULL,
-#     season_id TEXT NOT NULL,
-#     team_id TEXT NOT NULL,
-#     PRIMARY KEY (league_id, season_id, team_id)
-# );
-# """
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-# @pytest.fixture
-# def conn():
-#     connection = sqlite3.connect(":memory:")
-#     connection.row_factory = sqlite3.Row
-#     connection.execute("PRAGMA foreign_keys = ON")
-#     connection.executescript(MINIMAL_SCHEMA)
-#     yield connection
-#     connection.close()
 
 
 @pytest.fixture
@@ -128,7 +42,7 @@ def _next_id():
 
 def setup_season(db_conn, season_id="s1", team_ids=("t1",)):
     db_conn.execute(
-        "INSERT OR IGNORE INTO seasons (id, year) VALUES (?, 2026)", (season_id,)
+        "INSERT OR IGNORE INTO seasons (id, year, name) VALUES (?, 2026, 'Season 2026')", (season_id,)
     )
     db_conn.execute(
         "INSERT OR IGNORE INTO leagues (id, name) VALUES ('lg1', 'Test League')"
@@ -397,7 +311,7 @@ class TestRosterTrimmerRun:
 
     def test_no_teams_in_season(self, db_conn, trimmer):
         """Should handle a season with no teams gracefully."""
-        db_conn.execute("INSERT INTO seasons (id, year) VALUES ('s1', 2026)")
+        db_conn.execute("INSERT INTO seasons (id, year, name) VALUES ('s1', 2026, 'Season 2026')")
         db_conn.execute("INSERT INTO leagues (id, name) VALUES ('lg1', 'Test')")
         db_conn.commit()
         total = trimmer.run("s1")

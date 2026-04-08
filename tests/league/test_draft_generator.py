@@ -27,100 +27,10 @@ from src.league.offseason.draft_generator import (
     _age_distribution_positions,
 )
 
-# ---------------------------------------------------------------------------
-# Schema
-# ---------------------------------------------------------------------------
-
-# MINIMAL_SCHEMA = """
-# CREATE TABLE IF NOT EXISTS players (
-#     id TEXT PRIMARY KEY,
-#     first_name TEXT NOT NULL,
-#     last_name TEXT NOT NULL,
-#     bats TEXT NOT NULL,
-#     throws TEXT NOT NULL,
-#     position TEXT,
-#     league_id TEXT
-# );
-
-# CREATE TABLE IF NOT EXISTS player_skills (
-#     player_id TEXT PRIMARY KEY,
-#     age INTEGER NOT NULL DEFAULT 17,
-#     clutch INTEGER NOT NULL DEFAULT 50,
-#     speed INTEGER NOT NULL DEFAULT 50,
-#     power INTEGER NOT NULL DEFAULT 50,
-#     eye INTEGER NOT NULL DEFAULT 50,
-#     contact INTEGER NOT NULL DEFAULT 50,
-#     base_running INTEGER NOT NULL DEFAULT 50,
-#     bunting INTEGER NOT NULL DEFAULT 50,
-#     catching INTEGER NOT NULL DEFAULT 50,
-#     infield INTEGER NOT NULL DEFAULT 50,
-#     outfield INTEGER NOT NULL DEFAULT 50,
-#     arm INTEGER NOT NULL DEFAULT 50,
-#     accuracy INTEGER NOT NULL DEFAULT 50,
-#     stamina INTEGER NOT NULL DEFAULT 50,
-#     recovery INTEGER NOT NULL DEFAULT 50,
-#     ground_balls INTEGER NOT NULL DEFAULT 50,
-#     strikes INTEGER NOT NULL DEFAULT 50,
-#     durability INTEGER NOT NULL DEFAULT 50,
-#     updated_at TEXT,
-#     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-# );
-
-# CREATE TABLE IF NOT EXISTS player_talent_caps (
-#     player_id    TEXT PRIMARY KEY,
-#     clutch       INTEGER NOT NULL DEFAULT 100,
-#     speed        INTEGER NOT NULL DEFAULT 100,
-#     durability   INTEGER NOT NULL DEFAULT 100,
-#     power        INTEGER NOT NULL DEFAULT 100,
-#     eye          INTEGER NOT NULL DEFAULT 100,
-#     contact      INTEGER NOT NULL DEFAULT 100,
-#     base_running INTEGER NOT NULL DEFAULT 100,
-#     bunting      INTEGER NOT NULL DEFAULT 100,
-#     catching     INTEGER NOT NULL DEFAULT 100,
-#     infield      INTEGER NOT NULL DEFAULT 100,
-#     outfield     INTEGER NOT NULL DEFAULT 100,
-#     arm          INTEGER NOT NULL DEFAULT 100,
-#     accuracy     INTEGER NOT NULL DEFAULT 100,
-#     stamina      INTEGER NOT NULL DEFAULT 100,
-#     recovery     INTEGER NOT NULL DEFAULT 100,
-#     ground_balls INTEGER NOT NULL DEFAULT 100,
-#     strikes      INTEGER NOT NULL DEFAULT 100,
-#     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-# );
-
-# CREATE TABLE IF NOT EXISTS player_status (
-#     player_id TEXT PRIMARY KEY,
-#     status TEXT NOT NULL CHECK (status IN (
-#         'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
-#     )),
-#     since TEXT NOT NULL
-# );
-
-# CREATE TABLE IF NOT EXISTS teams (
-#     id TEXT PRIMARY KEY
-# );
-
-# CREATE TABLE IF NOT EXISTS team_players (
-#     team_id TEXT NOT NULL,
-#     player_id TEXT NOT NULL,
-#     PRIMARY KEY (team_id, player_id)
-# );
-# """
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-# @pytest.fixture
-# def conn():
-#     connection = sqlite3.connect(":memory:")
-#     connection.row_factory = sqlite3.Row
-#     connection.execute("PRAGMA foreign_keys = ON")
-#     connection.executescript(MINIMAL_SCHEMA)
-#     yield connection
-#     connection.close()
 
 
 @pytest.fixture

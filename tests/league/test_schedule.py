@@ -273,29 +273,6 @@ class TestScheduleGenerator:
 class TestSaveScheduleToDB:
     """Test save_schedule_to_db function."""
 
-    # @pytest.fixture
-    # def db_conn(self):
-    #     """Create in-memory SQLite database."""
-    #     conn = sqlite3.connect(":memory:")
-    #     conn.row_factory = sqlite3.Row
-    #     conn.execute("PRAGMA foreign_keys = ON")
-
-    #     # Create games table
-    #     conn.execute("""
-    #         CREATE TABLE games (
-    #             id TEXT PRIMARY KEY,
-    #             game_date TEXT NOT NULL,
-    #             season_id TEXT NOT NULL,
-    #             series_id TEXT,
-    #             home_team_id TEXT NOT NULL,
-    #             away_team_id TEXT NOT NULL,
-    #             created_at TEXT DEFAULT (datetime('now'))
-    #         )
-    #     """)
-
-    #     yield conn
-    #     conn.close()
-
     def test_save_empty_schedule(self, db_conn, capsys):
         """Test saving empty schedule."""
         save_schedule_to_db(db_conn, [])
