@@ -14,3 +14,11 @@ psql -U postgres
 to list all databases
 
 create database baseball_manager;
+
+
+
+On Macbook I instead:
+
+brew install postgresql 
+
+
