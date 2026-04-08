@@ -1,3 +1,9 @@
+0.5.1
+-----
+
+- Now with a full set of unit tests
+
+
 0.5.0
 -----
 
