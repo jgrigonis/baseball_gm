@@ -81,5 +81,8 @@ Every player gets a rating at each batting order position
 Then you do the Hungarian Algorithm on the matrix
 9 rows, N columns
 
+Here's an entire thesis or something on the process
+https://www.ufs.ac.za/docs/librariesprovider22/mathematical-statistics-and-actuarial-science-documents/technical-reports-documents/teg419-2070-eng.pdf?sfvrsn=0
+
 
 
