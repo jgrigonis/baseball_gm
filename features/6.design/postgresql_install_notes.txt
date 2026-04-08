@@ -27,3 +27,9 @@ To start postgresql@18 now and restart at login:
   brew services start postgresql@18
 Or, if you don't want/need a background service you can just run:
   LC_ALL="en_US.UTF-8" /opt/homebrew/opt/postgresql@18/bin/postgres -D /opt/homebrew/var/postgresql@18
+
+
+psql postgres
+
+connects
+
