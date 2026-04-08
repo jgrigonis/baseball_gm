@@ -1,0 +1,77 @@
+Auto Fill lineup algorithms
+
+Balanced
+
+Best Leadoff hitter is #1
+
+Best contact hitter is #2
+
+Best overall offense is #3
+
+Best Power hitter is #4
+
+
+
+Find the best SS, if they aren't already in and put them at 8
+
+Find the best CF, if they aren't already in, and put them at 9
+
+If you don't have a catcher, find a catcher 
+
+If you don't have a 2b, find one 
+
+Now fill the rest with best overalls
+
+Figure out the positions
+
+Gemini answer:
+
+Building a baseball lineup and defensive scheme from player 
+ratings typically involves a two-stage process: assigning 
+players to the field based on positional weights and then 
+ordering them in the batting lineup using sabermetric sequencing. 
+
+1. Defensive Assignment: The "Middle-Out" Algorithm
+The most effective way to assign positions is to prioritize 
+the "premium" defensive spots—Catcher, Shortstop, and Center 
+Field—and fill the rest based on what remains. 
+
+Step 1: Calculate "Position Fit" Scores. For every player, 
+calculate a score for each position by multiplying their 
+ratings by specific weights:
+
+Catcher: (Catching * 0.7) + (Arm * 0.3)
+Shortstop: (Infield * 0.6) + (Arm * 0.3) + (Speed * 0.1)
+Center Field: (Outfield * 0.5) + (Speed * 0.5)
+3rd Base: (Infield * 0.4) + (Arm * 0.6)
+2nd Base: (Infield * 0.8) + (Speed * 0.2) (Lower arm requirement than SS)
+Right Field: (Outfield * 0.6) + (Arm * 0.4)
+Left Field: (Outfield * 0.8) + (Speed * 0.2)
+1st Base: (Infield * 0.5) + (Power * 0.5) 
+(Often used to "hide" a power hitter with weaker range)
+Step 2: Solve as an Assignment Problem. Use the Hungarian Algorithm 
+or a greedy search to maximize the total "Position Fit" across 
+all 8 fielders. 
+
+2. Batting Order: The "Run-Maximization" Sequence
+Modern sabermetrics suggests placing your best hitters in 
+the #1, #2, and #4 spots to maximize their plate appearances 
+and run-scoring potential. 
+
+Spot 	Role	Primary Ratings Focus
+#1	Leadoff	Eye, Speed, Contact (Get on base and run)
+#2	Best All-Around	Contact, Eye, Power (The highest overall hitter)
+#3	High Consistency	Contact, Eye (Avoid strikeouts before the cleanup hitter)
+#4	Cleanup	Power, Contact, Clutch (Drive in runners)
+#5	Second Power	Power, Clutch (Drive in any remaining runners)
+#6	Second Leadoff	Eye, Speed (Start a "new" rally)
+#7-8	Bottom Order	Bunting, Contact (Weakest remaining hitters)
+#9	Wrap-around	Speed, Eye (Acts as a second leadoff for the top of the order)
+
+3. Integrated Tooling
+tools like Baseball-Calculators.com or Seqnzr 
+use simulation-based algorithms to test thousands of lineup iterations to 
+see which one averages the most runs per game. 
+
+
+
