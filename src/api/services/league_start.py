@@ -16,8 +16,11 @@ from src.league.manifest_helper import (
     validate_manifest_uniqueness,
 )
 from src.league.offseason.draft_generator import DraftGenerator
+# Write draft order using a separate shuffle from GM assignment
+from src.league.offseason.snake_draft import write_draft_order
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import MANIFEST_FILES_DIR
+
 
 _MANIFEST_FILENAME = "world_league-2025.json"
 
@@ -163,8 +166,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
         ),
     )
 
-    # Write draft order using a separate shuffle from GM assignment
-    from src.league.offseason.snake_draft import write_draft_order
+
 
     draft_order_ids = team_ids_all[:]
     rng.shuffle(draft_order_ids)

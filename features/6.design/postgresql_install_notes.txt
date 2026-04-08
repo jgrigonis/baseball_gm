@@ -1,0 +1,16 @@
+postgresql install notes:
+
+Installed from EDB Installer on MacOS.
+
+Added this to the .zshrc file:
+
+export PATH="/Library/PostgreSQL/18/bin:$PATH"
+
+Then I was able to run the following commands:
+
+psql -U postgres
+
+\l 
+to list all databases
+
+create database baseball_manager;
