@@ -23,3 +23,17 @@ used, picks match draft_order
 
 Phase 3 — Then do the Postgres migration — at that 
 point you change the fixture and run the whole suite.
+
+connection.py — swap to psycopg3, keep the same interface
+
+init.py — fix executescript and verify_schema
+
+schema.py — fix DDL syntax
+
+Placeholder pass — ? → %s across all repo files
+
+Upserts — INSERT OR IGNORE / INSERT OR REPLACE
+
+rowid fixes — replace with created_at DESC
+
+conftest.py — swap db_conn to use psycopg3
