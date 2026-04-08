@@ -73,5 +73,13 @@ tools like Baseball-Calculators.com or Seqnzr
 use simulation-based algorithms to test thousands of lineup iterations to 
 see which one averages the most runs per game. 
 
+Further thought:
+
+Every player gets a rating at each specific fielding position
+Every player gets a rating at each batting order position 
+
+Then you do the Hungarian Algorithm on the matrix
+9 rows, N columns
+
 
 

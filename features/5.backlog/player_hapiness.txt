@@ -19,3 +19,8 @@ Preferred Teammates - some may prefer to play with some
     players and dislike others
 
 Most likely won't implement all these any time soon.
+
+Moving to the bottom of the lineup or bench can impact
+certain players more than others.
+
+Not playing in their desired position could impact some.
