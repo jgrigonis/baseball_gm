@@ -2,43 +2,43 @@
 """Unit tests for TeamRotationsRepository."""
 
 import pytest
-import sqlite3
+
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.schema import SCHEMA_SQL
 
 
-@pytest.fixture
-def db_conn():
-    """Create an in-memory SQLite database for testing."""
-    conn = sqlite3.connect(":memory:")
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.executescript(SCHEMA_SQL)
+# @pytest.fixture
+# def db_conn():
+#     """Create an in-memory SQLite database for testing."""
+#     conn = sqlite3.connect(":memory:")
+#     conn.execute("PRAGMA foreign_keys = ON")
+#     conn.executescript(SCHEMA_SQL)
 
-    # Insert test data
-    conn.execute(
-        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)", ("S1", 2024, "Season1")
-    )
-    conn.execute(
-        "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-        ("BOS", "Boston", "Red Sox"),
-    )
+#     # Insert test data
+#     conn.execute(
+#         "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)", ("S1", 2024, "Season1")
+#     )
+#     conn.execute(
+#         "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
+#         ("BOS", "Boston", "Red Sox"),
+#     )
 
-    # Insert test players
-    for i in range(1, 8):
-        player_id = f"P{i:03d}"
-        conn.execute(
-            """INSERT INTO players (id, first_name, last_name, bats, throws, position)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (player_id, f"First{i}", f"Last{i}", "R", "R", "P"),
-        )
-        conn.execute(
-            "INSERT INTO team_players (team_id, player_id) VALUES (?, ?)",
-            ("BOS", player_id),
-        )
+#     # Insert test players
+#     for i in range(1, 8):
+#         player_id = f"P{i:03d}"
+#         conn.execute(
+#             """INSERT INTO players (id, first_name, last_name, bats, throws, position)
+#                VALUES (?, ?, ?, ?, ?, ?)""",
+#             (player_id, f"First{i}", f"Last{i}", "R", "R", "P"),
+#         )
+#         conn.execute(
+#             "INSERT INTO team_players (team_id, player_id) VALUES (?, ?)",
+#             ("BOS", player_id),
+#         )
 
-    conn.commit()
-    yield conn
-    conn.close()
+#     conn.commit()
+#     yield conn
+#     conn.close()
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def repo(db_conn):
 
 
 class TestSetRotation:
-    def test_set_rotation_success(self, repo, db_conn):
+    def test_set_rotation_success(self, repo, db_conn, db_seed):
         """Test setting a new rotation."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -63,9 +63,9 @@ class TestSetRotation:
         rows = cursor.fetchall()
 
         assert len(rows) == 5
-        assert rows[0] == ("P001", 1)
-        assert rows[1] == ("P002", 2)
-        assert rows[4] == ("P005", 5)
+        assert (rows[0]["player_id"], rows[0]["rotation_order"]) == ("P001", 1)
+        assert (rows[1]["player_id"], rows[1]["rotation_order"])  == ("P002", 2)
+        assert (rows[4]["player_id"], rows[4]["rotation_order"])  == ("P005", 5)
 
     # This no longer should raise.
     # def test_set_rotation_already_exists(self, repo):
@@ -79,7 +79,7 @@ class TestSetRotation:
 
 
 class TestGetCurrentRotation:
-    def test_get_current_rotation_success(self, repo):
+    def test_get_current_rotation_success(self, repo, db_seed):
         """Test getting current rotation."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -97,7 +97,7 @@ class TestGetCurrentRotation:
         rotation = repo.get_current_rotation("BOS", "S1", "2024-04-01")
         assert rotation == []
 
-    def test_get_current_rotation_respects_effective_date(self, repo):
+    def test_get_current_rotation_respects_effective_date(self, repo, db_seed):
         """Test that rotation respects effective_date."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -110,7 +110,7 @@ class TestGetCurrentRotation:
         rotation = repo.get_current_rotation("BOS", "S1", "2024-04-15")
         assert len(rotation) == 5
 
-    def test_get_current_rotation_respects_end_date(self, repo, db_conn):
+    def test_get_current_rotation_respects_end_date(self, repo, db_conn, db_seed):
         """Test that rotation respects end_date."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -135,7 +135,7 @@ class TestGetCurrentRotation:
 
 
 class TestGetNextStarter:
-    def test_get_next_starter_no_previous_games(self, repo):
+    def test_get_next_starter_no_previous_games(self, repo, db_seed):
         """Test getting next starter when no games have been played."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -143,7 +143,7 @@ class TestGetNextStarter:
         next_starter = repo.get_next_starter("BOS", "S1", "2024-04-15")
         assert next_starter == "P001"
 
-    def test_get_next_starter_with_previous_game(self, repo, db_conn):
+    def test_get_next_starter_with_previous_game(self, repo, db_conn, db_seed):
         """Test getting next starter after a game has been played."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -172,7 +172,7 @@ class TestGetNextStarter:
         next_starter = repo.get_next_starter("BOS", "S1", "2024-04-03")
         assert next_starter == "P002"
 
-    def test_get_next_starter_wraps_around(self, repo, db_conn):
+    def test_get_next_starter_wraps_around(self, repo, db_conn, db_seed):
         """Test that rotation wraps from 5 back to 1."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -205,7 +205,7 @@ class TestGetNextStarter:
 
 
 class TestUpdateRotation:
-    def test_update_rotation_success(self, repo, db_conn):
+    def test_update_rotation_success(self, repo, db_conn, db_seed):
         """Test updating a pitcher's rotation order."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -232,7 +232,7 @@ class TestUpdateRotation:
         assert row[0] == 1
         assert row[1] is None
 
-    def test_update_rotation_same_order_no_change(self, repo, db_conn):
+    def test_update_rotation_same_order_no_change(self, repo, db_conn, db_seed):
         """Test that updating to same order does nothing."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -258,7 +258,7 @@ class TestUpdateRotation:
 
 
 class TestRemoveFromRotation:
-    def test_remove_from_rotation_success(self, repo, db_conn):
+    def test_remove_from_rotation_success(self, repo, db_conn, db_seed):
         """Test removing a pitcher from rotation."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -279,7 +279,7 @@ class TestRemoveFromRotation:
         player_ids_in_rotation = [p["player_id"] for p in rotation]
         assert "P003" not in player_ids_in_rotation
 
-    def test_remove_from_rotation_not_in_rotation(self, repo):
+    def test_remove_from_rotation_not_in_rotation(self, repo, db_seed):
         """Test removing a player not in rotation raises error."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -289,7 +289,7 @@ class TestRemoveFromRotation:
 
 
 class TestAddToRotation:
-    def test_add_to_rotation_success(self, repo):
+    def test_add_to_rotation_success(self, repo, db_seed):
         """Test adding a new pitcher to rotation."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -302,7 +302,7 @@ class TestAddToRotation:
         assert rotation[5]["player_id"] == "P006"
         assert rotation[5]["rotation_order"] == 6
 
-    def test_add_to_rotation_shifts_existing(self, repo):
+    def test_add_to_rotation_shifts_existing(self, repo, db_seed):
         """Test adding pitcher shifts existing pitchers down."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -327,7 +327,7 @@ class TestAddToRotation:
         p005_entry = next(p for p in rotation if p["player_id"] == "P005")
         assert p005_entry["rotation_order"] == 6
 
-    def test_add_to_rotation_already_in_rotation(self, repo):
+    def test_add_to_rotation_already_in_rotation(self, repo, db_seed):
         """Test adding a player already in rotation raises error."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -337,7 +337,7 @@ class TestAddToRotation:
 
 
 class TestSwapRotationSpots:
-    def test_swap_rotation_spots_success(self, repo):
+    def test_swap_rotation_spots_success(self, repo, db_seed):
         """Test swapping two pitchers' rotation spots."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -353,7 +353,7 @@ class TestSwapRotationSpots:
         p005_entry = next(p for p in rotation if p["player_id"] == "P005")
         assert p005_entry["rotation_order"] == 1
 
-    def test_swap_rotation_spots_player1_not_in_rotation(self, repo):
+    def test_swap_rotation_spots_player1_not_in_rotation(self, repo, db_seed):
         """Test swapping when player1 not in rotation raises error."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")
@@ -361,7 +361,7 @@ class TestSwapRotationSpots:
         with pytest.raises(ValueError, match="P006 is not in active rotation"):
             repo.swap_rotation_spots("BOS", "S1", "P006", "P001", "2024-05-01")
 
-    def test_swap_rotation_spots_player2_not_in_rotation(self, repo):
+    def test_swap_rotation_spots_player2_not_in_rotation(self, repo, db_seed):
         """Test swapping when player2 not in rotation raises error."""
         player_ids = ["P001", "P002", "P003", "P004", "P005"]
         repo.set_rotation("BOS", "S1", player_ids, "2024-04-01")

@@ -1,6 +1,5 @@
 # tests/db/repositories/test_player_repo.py
 import pytest
-import sqlite3
 from datetime import datetime
 
 from src.db.repositories.player_repo import PlayerRepository
@@ -8,89 +7,89 @@ from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
 
+# @pytest.fixture
+# def db_connection():
+#     """Create in-memory SQLite database with player tables."""
+#     conn = sqlite3.connect(":memory:")
+#     conn.row_factory = sqlite3.Row
+#     conn.execute("PRAGMA foreign_keys = ON")
+
+#     # Create players table
+#     conn.execute("""
+#         CREATE TABLE players (
+#             id TEXT PRIMARY KEY,
+#             first_name TEXT NOT NULL,
+#             last_name TEXT NOT NULL,
+#             bats TEXT NOT NULL CHECK (bats IN ('L', 'R', 'S')),
+#             throws TEXT NOT NULL CHECK (throws IN ('L', 'R')),
+#             position TEXT NOT NULL,
+#             league_id  TEXT
+#         )
+#     """)
+
+#     # Create player_skills table
+#     conn.execute("""
+#         CREATE TABLE player_skills (
+#             player_id TEXT PRIMARY KEY,
+#             age INTEGER NOT NULL DEFAULT 17,            clutch INTEGER NOT NULL,
+#             speed INTEGER NOT NULL,
+#             power INTEGER NOT NULL,
+#             eye INTEGER NOT NULL,
+#             contact INTEGER NOT NULL,
+#             base_running INTEGER NOT NULL,
+#             bunting INTEGER NOT NULL,
+#             catching INTEGER NOT NULL,
+#             infield INTEGER NOT NULL,
+#             outfield INTEGER NOT NULL,
+#             arm INTEGER NOT NULL,
+#             accuracy INTEGER NOT NULL,
+#             stamina INTEGER NOT NULL,
+#             recovery INTEGER NOT NULL,
+#             ground_balls INTEGER NOT NULL,
+#             strikes INTEGER NOT NULL,
+#             durability INTEGER NOT NULL,
+#             updated_at TEXT NOT NULL,
+#             FOREIGN KEY (player_id) REFERENCES players(id)
+#         )
+#     """)
+
+#     # Create player_skills_history table
+#     conn.execute("""
+#         CREATE TABLE player_skills_history (
+#             player_id TEXT NOT NULL,
+#             season_id TEXT NOT NULL,
+#             age INTEGER NOT NULL DEFAULT 17,
+#             clutch INTEGER NOT NULL,
+#             speed INTEGER NOT NULL,
+#             power INTEGER NOT NULL,
+#             eye INTEGER NOT NULL,
+#             contact INTEGER NOT NULL,
+#             base_running INTEGER NOT NULL,
+#             bunting INTEGER NOT NULL,
+#             catching INTEGER NOT NULL,
+#             infield INTEGER NOT NULL,
+#             outfield INTEGER NOT NULL,
+#             arm INTEGER NOT NULL,
+#             accuracy INTEGER NOT NULL,
+#             stamina INTEGER NOT NULL,
+#             recovery INTEGER NOT NULL,
+#             ground_balls INTEGER NOT NULL,
+#             strikes INTEGER NOT NULL,
+#             durability INTEGER NOT NULL,
+#             recorded_at TEXT NOT NULL,
+#             PRIMARY KEY (player_id, season_id),
+#             FOREIGN KEY (player_id) REFERENCES players(id)
+#         )
+#     """)
+
+#     yield conn
+#     conn.close()
+
+
 @pytest.fixture
-def db_connection():
-    """Create in-memory SQLite database with player tables."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-
-    # Create players table
-    conn.execute("""
-        CREATE TABLE players (
-            id TEXT PRIMARY KEY,
-            first_name TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            bats TEXT NOT NULL CHECK (bats IN ('L', 'R', 'S')),
-            throws TEXT NOT NULL CHECK (throws IN ('L', 'R')),
-            position TEXT NOT NULL,
-            league_id  TEXT
-        )
-    """)
-
-    # Create player_skills table
-    conn.execute("""
-        CREATE TABLE player_skills (
-            player_id TEXT PRIMARY KEY,
-            age INTEGER NOT NULL DEFAULT 17,            clutch INTEGER NOT NULL,
-            speed INTEGER NOT NULL,
-            power INTEGER NOT NULL,
-            eye INTEGER NOT NULL,
-            contact INTEGER NOT NULL,
-            base_running INTEGER NOT NULL,
-            bunting INTEGER NOT NULL,
-            catching INTEGER NOT NULL,
-            infield INTEGER NOT NULL,
-            outfield INTEGER NOT NULL,
-            arm INTEGER NOT NULL,
-            accuracy INTEGER NOT NULL,
-            stamina INTEGER NOT NULL,
-            recovery INTEGER NOT NULL,
-            ground_balls INTEGER NOT NULL,
-            strikes INTEGER NOT NULL,
-            durability INTEGER NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (player_id) REFERENCES players(id)
-        )
-    """)
-
-    # Create player_skills_history table
-    conn.execute("""
-        CREATE TABLE player_skills_history (
-            player_id TEXT NOT NULL,
-            season_id TEXT NOT NULL,
-            age INTEGER NOT NULL DEFAULT 17,
-            clutch INTEGER NOT NULL,
-            speed INTEGER NOT NULL,
-            power INTEGER NOT NULL,
-            eye INTEGER NOT NULL,
-            contact INTEGER NOT NULL,
-            base_running INTEGER NOT NULL,
-            bunting INTEGER NOT NULL,
-            catching INTEGER NOT NULL,
-            infield INTEGER NOT NULL,
-            outfield INTEGER NOT NULL,
-            arm INTEGER NOT NULL,
-            accuracy INTEGER NOT NULL,
-            stamina INTEGER NOT NULL,
-            recovery INTEGER NOT NULL,
-            ground_balls INTEGER NOT NULL,
-            strikes INTEGER NOT NULL,
-            durability INTEGER NOT NULL,
-            recorded_at TEXT NOT NULL,
-            PRIMARY KEY (player_id, season_id),
-            FOREIGN KEY (player_id) REFERENCES players(id)
-        )
-    """)
-
-    yield conn
-    conn.close()
-
-
-@pytest.fixture
-def player_repo(db_connection):
+def player_repo(db_conn):
     """Create PlayerRepository instance."""
-    return PlayerRepository(db_connection)
+    return PlayerRepository(db_conn)
 
 
 @pytest.fixture
@@ -119,7 +118,7 @@ def sample_skills():
 class TestPlayerRepositoryInsert:
     """Test insert() method."""
 
-    def test_insert_new_player(self, player_repo, db_connection, sample_skills):
+    def test_insert_new_player(self, player_repo, db_conn, sample_skills):
         """Test inserting a new player."""
         player_repo.insert(
             id="player-1",
@@ -132,7 +131,7 @@ class TestPlayerRepositoryInsert:
         )
 
         # Verify player identity
-        identity_row = db_connection.execute(
+        identity_row = db_conn.execute(
             "SELECT * FROM players WHERE id = ?", ("player-1",)
         ).fetchone()
 
@@ -144,7 +143,7 @@ class TestPlayerRepositoryInsert:
         assert identity_row["position"] == "OF"  # Changed from "of" to "OF"
 
         # Verify skills
-        skills_row = db_connection.execute(
+        skills_row = db_conn.execute(
             "SELECT * FROM player_skills WHERE player_id = ?", ("player-1",)
         ).fetchone()
 
@@ -153,7 +152,7 @@ class TestPlayerRepositoryInsert:
         assert skills_row["speed"] == 80
         assert skills_row["power"] == 70
 
-    def test_insert_idempotent(self, player_repo, db_connection, sample_skills):
+    def test_insert_idempotent(self, player_repo, db_conn, sample_skills):
         """Test that insert is idempotent (INSERT OR REPLACE)."""
         # Insert first time
         player_repo.insert(
@@ -178,21 +177,21 @@ class TestPlayerRepositoryInsert:
         )
 
         # Should only have one player
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM players"
         ).fetchone()["count"]
 
         assert count == 1
 
         # Should have updated name
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT first_name FROM players WHERE id = ?", ("player-1",)
         ).fetchone()
 
         # Should have kept original name (identity is immutable)
         assert row["first_name"] == "Mike"
 
-    def test_insert_multiple_players(self, player_repo, db_connection, sample_skills):
+    def test_insert_multiple_players(self, player_repo, db_conn, sample_skills):
         """Test inserting multiple players."""
         players = [
             ("player-1", "Mike", "Trout", "r", "r", "rf"),
@@ -203,14 +202,14 @@ class TestPlayerRepositoryInsert:
         for player in players:
             player_repo.insert(*player, skills=sample_skills)
 
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM players"
         ).fetchone()["count"]
 
         assert count == 3
 
     def test_insert_different_handedness(
-        self, player_repo, db_connection, sample_skills
+        self, player_repo, db_conn, sample_skills
     ):
         """Test inserting players with different batting/throwing hands."""
         # Right-handed batter
@@ -230,7 +229,7 @@ class TestPlayerRepositoryInsert:
         # Switch hitter
         player_repo.insert("p3", "Third", "Player", "S", "R", "c", sample_skills)
 
-        rows = db_connection.execute(
+        rows = db_conn.execute(
             "SELECT id, bats FROM players ORDER BY id"
         ).fetchall()
 
@@ -238,7 +237,7 @@ class TestPlayerRepositoryInsert:
         assert rows[1]["bats"] == "L"
         assert rows[2]["bats"] == "S"
 
-    def test_insert_creates_timestamp(self, player_repo, db_connection, sample_skills):
+    def test_insert_creates_timestamp(self, player_repo, db_conn, sample_skills):
         """Test that insert creates a timestamp."""
         before = datetime.now()
 
@@ -246,7 +245,7 @@ class TestPlayerRepositoryInsert:
 
         after = datetime.now()
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT updated_at FROM player_skills WHERE player_id = ?", ("p1",)
         ).fetchone()
 
@@ -263,7 +262,7 @@ class TestPlayerRepositoryInsert:
 class TestPlayerRepositoryUpdateSkills:
     """Test update_skills() method."""
 
-    def test_update_skills(self, player_repo, db_connection, sample_skills):
+    def test_update_skills(self, player_repo, db_conn, sample_skills):
         """Test updating player skills."""
         # Insert player first
         player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
@@ -292,7 +291,7 @@ class TestPlayerRepositoryUpdateSkills:
         player_repo.update_skills("p1", new_skills)
 
         # Verify updated
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM player_skills WHERE player_id = ?", ("p1",)
         ).fetchone()
 
@@ -302,13 +301,13 @@ class TestPlayerRepositoryUpdateSkills:
         assert row["contact"] == 90
 
     def test_update_skills_creates_new_timestamp(
-        self, player_repo, db_connection, sample_skills
+        self, player_repo, db_conn, sample_skills
     ):
         """Test that updating skills creates a new timestamp."""
         player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
 
         # Get original timestamp
-        original_ts = db_connection.execute(
+        original_ts = db_conn.execute(
             "SELECT updated_at FROM player_skills WHERE player_id = ?", ("p1",)
         ).fetchone()["updated_at"]
 
@@ -323,14 +322,14 @@ class TestPlayerRepositoryUpdateSkills:
         player_repo.update_skills("p1", new_skills)
 
         # Get new timestamp
-        new_ts = db_connection.execute(
+        new_ts = db_conn.execute(
             "SELECT updated_at FROM player_skills WHERE player_id = ?", ("p1",)
         ).fetchone()["updated_at"]
 
         # Timestamps should be different
         assert new_ts != original_ts
 
-    def test_update_skills_idempotent(self, player_repo, db_connection, sample_skills):
+    def test_update_skills_idempotent(self, player_repo, db_conn, sample_skills):
         """Test that update_skills is idempotent."""
         player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
 
@@ -341,7 +340,7 @@ class TestPlayerRepositoryUpdateSkills:
             player_repo.update_skills("p1", new_skills)
 
         # Should only have one record
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_skills WHERE player_id = ?", ("p1",)
         ).fetchone()["count"]
 
@@ -351,7 +350,7 @@ class TestPlayerRepositoryUpdateSkills:
 class TestPlayerRepositorySnapshotSkills:
     """Test snapshot_skills() method."""
 
-    def test_snapshot_skills(self, player_repo, db_connection, sample_skills):
+    def test_snapshot_skills(self, player_repo, db_conn, sample_skills, db_seed):
         """Test taking a snapshot of player skills."""
         # Insert player
         player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
@@ -360,7 +359,7 @@ class TestPlayerRepositorySnapshotSkills:
         player_repo.snapshot_skills("p1", "season-2025")
 
         # Verify snapshot exists
-        row = db_connection.execute(
+        row = db_conn.execute(
             """
             SELECT * FROM player_skills_history 
             WHERE player_id = ? AND season_id = ?
@@ -374,7 +373,7 @@ class TestPlayerRepositorySnapshotSkills:
         assert row["power"] == 70
 
     def test_snapshot_skills_multiple_seasons(
-        self, player_repo, db_connection, sample_skills
+        self, player_repo, db_conn, sample_skills, db_seed
     ):
         """Test taking snapshots for multiple seasons."""
         player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
@@ -391,7 +390,7 @@ class TestPlayerRepositorySnapshotSkills:
             player_repo.snapshot_skills("p1", season)
 
         # Verify all snapshots exist
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_skills_history WHERE player_id = ?",
             ("p1",),
         ).fetchone()["count"]
@@ -399,7 +398,7 @@ class TestPlayerRepositorySnapshotSkills:
         assert count == 3
 
     def test_snapshot_skills_idempotent(
-        self, player_repo, db_connection, sample_skills
+        self, player_repo, db_conn, sample_skills, db_seed
     ):
         """Test that snapshot_skills is idempotent (INSERT OR REPLACE)."""
         player_repo.insert("p1", "First", "Player", "R", "R", "1b", sample_skills)
@@ -415,7 +414,7 @@ class TestPlayerRepositorySnapshotSkills:
         player_repo.snapshot_skills("p1", "season-2025")
 
         # Should only have one snapshot
-        count = db_connection.execute(
+        count = db_conn.execute(
             """
             SELECT COUNT(*) as count FROM player_skills_history 
             WHERE player_id = ? AND season_id = ?
@@ -426,7 +425,7 @@ class TestPlayerRepositorySnapshotSkills:
         assert count == 1
 
         # Should have updated skills
-        row = db_connection.execute(
+        row = db_conn.execute(
             """
             SELECT speed FROM player_skills_history 
             WHERE player_id = ? AND season_id = ?
@@ -437,13 +436,13 @@ class TestPlayerRepositorySnapshotSkills:
         assert row["speed"] == 85
 
     def test_snapshot_skills_creates_timestamp(
-        self, player_repo, db_connection, sample_skills
+        self, player_repo, db_conn, sample_skills, db_seed
     ):
         """Test that snapshot creates a timestamp."""
         player_repo.insert("p1", "First", "Player", "r", "r", "1B", sample_skills)
         player_repo.snapshot_skills("p1", "season-2025")
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             """
             SELECT recorded_at FROM player_skills_history
             WHERE player_id = ? AND season_id = ?
@@ -490,17 +489,17 @@ class TestPlayerRepositoryLookUp:
 
         assert record is None
 
-    def test_look_up_player_without_skills(self, player_repo, db_connection):
+    def test_look_up_player_without_skills(self, player_repo, db_conn):
         """Test looking up a player who has no skills (error case)."""
         # Manually insert player without skills - use UPPERCASE
-        db_connection.execute(
+        db_conn.execute(
             """
             INSERT INTO players (id, first_name, last_name, bats, throws, position)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             ("p1", "Mike", "Trout", "R", "R", "of"),  # Changed to uppercase
         )
-        db_connection.commit()
+        db_conn.commit()
 
         # Should raise ValueError
         with pytest.raises(ValueError, match="Player p1 has no skills record"):
@@ -532,7 +531,7 @@ class TestPlayerRepositoryGetSkillHistory:
 
         assert history == []
 
-    def test_get_skill_history_single_season(self, player_repo, sample_skills):
+    def test_get_skill_history_single_season(self, player_repo, sample_skills, db_seed):
         """Test getting history with one snapshot."""
         player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
         player_repo.snapshot_skills("p1", "season-2025")
@@ -544,7 +543,7 @@ class TestPlayerRepositoryGetSkillHistory:
         assert history[0]["clutch"] == 75
         assert history[0]["speed"] == 80
 
-    def test_get_skill_history_multiple_seasons(self, player_repo, sample_skills):
+    def test_get_skill_history_multiple_seasons(self, player_repo, sample_skills, db_seed):
         """Test getting history with multiple snapshots."""
         player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
 
@@ -563,7 +562,7 @@ class TestPlayerRepositoryGetSkillHistory:
         assert history[1]["season_id"] == "season-2024"
         assert history[2]["season_id"] == "season-2025"
 
-    def test_get_skill_history_ordered(self, player_repo, sample_skills):
+    def test_get_skill_history_ordered(self, player_repo, sample_skills, db_seed):
         """Test that history is ordered by season_id."""
         player_repo.insert("p1", "Mike", "Trout", "r", "r", "rf", sample_skills)
 
@@ -578,7 +577,7 @@ class TestPlayerRepositoryGetSkillHistory:
         season_ids = [h["season_id"] for h in history]
         assert season_ids == sorted(season_ids)
 
-    def test_get_skill_history_shows_progression(self, player_repo, sample_skills):
+    def test_get_skill_history_shows_progression(self, player_repo, sample_skills, db_seed):
         """Test that history shows skill progression over time."""
         player_repo.insert("p1", "Mike", "Trout", "R", "R", "of", sample_skills)
 
@@ -693,7 +692,7 @@ class TestPlayerRepositoryGetAllPlayers:
 class TestPlayerRepositoryIntegration:
     """Integration tests for typical workflows."""
 
-    def test_full_player_lifecycle(self, player_repo, sample_skills):
+    def test_full_player_lifecycle(self, player_repo, sample_skills, db_seed):
         """Test complete player lifecycle: create, update, snapshot."""
         # Create player
         player_repo.insert("p1", "Mike", "Trout", "R", "R", "rf", sample_skills)

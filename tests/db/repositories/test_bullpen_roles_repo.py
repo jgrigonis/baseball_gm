@@ -1,6 +1,5 @@
 # tests/db/repositories/test_bullpen_roles_repo.py
 
-import sqlite3
 import pytest
 
 from src.db.repositories.bullpen_roles_repo import (
@@ -24,78 +23,45 @@ OTHER_SEASON_ID = "season-2"
 
 
 @pytest.fixture
-def conn():
-    """In-memory SQLite database with the minimal schema needed for these tests."""
-    db = sqlite3.connect(":memory:")
-    db.row_factory = sqlite3.Row
-    db.execute("PRAGMA foreign_keys = ON")
-    db.executescript("""
-        PRAGMA foreign_keys = ON;
-
-        CREATE TABLE teams (
-            id TEXT PRIMARY KEY,
-            city TEXT NOT NULL,
-            mascot TEXT NOT NULL
-        );
-
-        CREATE TABLE seasons (
-            id TEXT PRIMARY KEY,
-            year INTEGER,
-            name TEXT
-        );
-
-        CREATE TABLE players (
-            id TEXT PRIMARY KEY,
-            first_name TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            bats TEXT NOT NULL,
-            throws TEXT NOT NULL
-        );
-
-        CREATE TABLE team_rotations (
-            team_id TEXT NOT NULL,
-            season_id TEXT NOT NULL,
-            player_id TEXT NOT NULL,
-            rotation_order INTEGER NOT NULL,
-            effective_date TEXT NOT NULL,
-            end_date TEXT,
-            PRIMARY KEY (team_id, season_id, player_id, effective_date)
-        );
-
-        CREATE TABLE bullpen_roles (
-            team_id TEXT NOT NULL,
-            player_id TEXT NOT NULL,
-            season_id TEXT NOT NULL,
-            role TEXT NOT NULL,
-            effective_date TEXT NOT NULL,
-            end_date TEXT,
-            PRIMARY KEY (team_id, player_id, season_id, effective_date)
-        );
-    """)
-
-    # Seed baseline rows
-    db.executescript(f"""
-        INSERT INTO teams VALUES ('{TEAM_ID}', 'Springfield', 'Isotopes');
-        INSERT INTO teams VALUES ('{OTHER_TEAM_ID}', 'Shelbyville', 'Sharks');
-
-        INSERT INTO seasons VALUES ('{SEASON_ID}', 2024, 'Season1');
-        INSERT INTO seasons VALUES ('{OTHER_SEASON_ID}', 2025, 'Season2');
-
-        -- Bullpen players
-        INSERT INTO players VALUES ('p1', 'Alice', 'Smith', 'R', 'R');
-        INSERT INTO players VALUES ('p2', 'Bob', 'Jones', 'L', 'L');
-        INSERT INTO players VALUES ('p3', 'Carol', 'White', 'R', 'R');
-        INSERT INTO players VALUES ('p4', 'Dave', 'Brown', 'R', 'R');
-        INSERT INTO players VALUES ('p5', 'Eve', 'Davis', 'L', 'L');
-
-        -- Starter (in rotation, should never get a bullpen role)
-        INSERT INTO players VALUES ('starter-1', 'Frank', 'Miller', 'R', 'R');
-        INSERT INTO team_rotations VALUES
-            ('{TEAM_ID}', '{SEASON_ID}', 'starter-1', 1, '2024-04-01', NULL);
-    """)
-
-    yield db
-    db.close()
+def conn(db_conn):
+    """Seed baseline rows into the shared db_conn fixture."""
+    db_conn.execute(
+        "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
+        (TEAM_ID, "Springfield", "Isotopes"),
+    )
+    db_conn.execute(
+        "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
+        (OTHER_TEAM_ID, "Shelbyville", "Sharks"),
+    )
+    db_conn.execute(
+        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        (SEASON_ID, 2024, "Season1"),
+    )
+    db_conn.execute(
+        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        (OTHER_SEASON_ID, 2025, "Season2"),
+    )
+    for pid, first, last, bats, throws in [
+        ("p1", "Alice", "Smith", "R", "R"),
+        ("p2", "Bob", "Jones", "L", "L"),
+        ("p3", "Carol", "White", "R", "R"),
+        ("p4", "Dave", "Brown", "R", "R"),
+        ("p5", "Eve", "Davis", "L", "L"),
+        ("starter-1", "Frank", "Miller", "R", "R"),
+    ]:
+        db_conn.execute(
+            "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (pid, first, last, bats, throws, "rp"),
+        )
+    db_conn.execute(
+        "INSERT INTO team_rotations"
+        " (team_id, season_id, player_id, rotation_order, effective_date)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (TEAM_ID, SEASON_ID, "starter-1", 1, "2024-04-01"),
+    )
+    db_conn.commit()
+    yield db_conn
 
 
 # ---------------------------------------------------------------------------

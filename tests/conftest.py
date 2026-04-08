@@ -42,6 +42,175 @@ def db_conn():
     yield conn
     conn.close()
 
+@pytest.fixture
+def db_conn_factory():
+    """Factory that creates fresh initialised DB connections. Use when a test
+    needs more than one independent connection."""
+    conns = []
+    def _make():
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        init_db(conn)
+        conns.append(conn)
+        return conn
+    yield _make
+    for c in conns:
+        c.close()
+
+
+@pytest.fixture
+def db_seed(db_conn):
+    """
+    Baseline rows that satisfy FK constraints for most repo tests.
+    Inserts: 1 league, 2 seasons, 4 teams, 5 games, 2 players.
+    Returns the db_conn so tests can add more rows on top.
+    """
+    # Leagues
+    db_conn.execute(
+        """
+        INSERT INTO leagues (id, name, state)
+        VALUES (?, ?, ?)
+        """,
+        ("league-1", "League 1", "season"),
+    )
+    # Seasons
+    db_conn.executemany(
+        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        [
+            ("season-1", 2025, "Season 1"), 
+            ("season-2", 2026, "Season 2"),
+            ("season-10", 2026, "Season 2"),
+            ("season-11", 2026, "Season 2"),
+            ("season-2023", 2023, "Season 1"),
+            ("season-2024", 2024, "Season 2"),
+            ("season-2025", 2025, "Season 3"),
+            ("season-2026", 2026, "Season 4"),
+            ("S1", 2026, "Season 1"),
+            ("test-season", 2026, "Season 1"),
+            ("season-3025", 2025, "Season 3"),
+        ],
+    )
+    # Teams
+    db_conn.executemany(
+        "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
+        [
+            ("team-1",    "City 1",    "Team 1"),
+            ("team-2",    "City 2",    "Team 2"),
+            ("team-home", "Home City", "Homers"),
+            ("team-away", "Away City", "Visitors"),
+            ("home-team", "Home City", "Homers"),
+            ("away-team", "Away City", "Visitors"),
+            ("BOS", "Boston", "Rots"),
+            ("home-11",    "home",    "home"),
+            ("home-12",    "home",    "home"),
+            ("home-13",    "home",    "home"),
+            ("home-14",    "home",    "home"),
+            ("home-15",    "home",    "home"),
+            ("away-11",    "away",    "away"),
+            ("away-12",    "away",    "away"),
+            ("away-13",    "away",    "away"),
+            ("away-14",    "away",    "away"),
+            ("away-15",    "away",    "away"),
+            ("team-a",    "away",    "away"),
+            ("team-b",    "away",    "away"),
+            ("team-c",    "away",    "away"),
+            ("team-d",    "away",    "away"),
+        ],
+    )
+    # Players
+    db_conn.executemany(
+        "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
+        " VALUES (?, ?, ?, ?, ?, ?)",
+        [
+            ("p1", "John", "Doe",  "R", "R", "cf"),
+            ("p2", "Jane", "Doe",  "L", "L", "ss"),
+            ("player-0", "Joe", "Doe",  "R", "R", "cf"),
+            ("player-1", "John", "Doe",  "R", "R", "cf"),
+            ("player-2", "Jane", "Doe",  "L", "L", "ss"),
+            ("player-3", "John", "Doe",  "R", "R", "cf"),
+            ("player-4", "Jane", "Doe",  "L", "L", "ss"),
+            ("P001", "Jane", "Doe",  "L", "L", "ss"),
+            ("P002", "Jane", "Doe",  "L", "L", "ss"),
+            ("P003", "Jane", "Doe",  "L", "L", "ss"),
+            ("P004", "Jane", "Doe",  "L", "L", "ss"),
+            ("P005", "Jane", "Doe",  "L", "L", "ss"),
+            ("P006", "Jane", "Doe",  "L", "L", "ss"),
+        ],
+    )
+    # Games (season-1, using team-home vs team-away)
+    db_conn.executemany(
+        "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)"
+        " VALUES (?, ?, ?, ?, ?, ?)",
+        [(f"game-{i}", f"2025-04-{i+1:02d}", "season-1", "team-home", "team-away", 0)
+         for i in range(5)],
+    )
+    db_conn.commit()
+    return db_conn
+
+# def insert_more_teams(db_conn):
+#     teams = [
+#         ("home-1", "Home Team", "Home Team"),
+#         ("away-1", "Away Team", "Away Team"),
+#         ("home-2", "Home Team", "Home Team"),
+#         ("away-2", "Away Team", "Away Team"),
+#         ("home-3", "Home Team", "Home Team"),
+#         ("away-3", "Away Team", "Away Team"),
+#         ("home-4", "Home Team", "Home Team"),
+#         ("away-4", "Away Team", "Away Team"),
+#         ("home-5", "Home Team", "Home Team"),
+#         ("away-5", "Away Team", "Away Team"),
+#     ]
+#     for team in teams:
+#         db_conn.execute(
+#             """
+#             INSERT INTO teams (id, city, mascot)
+#             VALUES (?, ?, ?)
+#             """,
+#             team,
+#         )
+
+# def insert_games(db_conn):
+#     db_conn.execute(
+#         """
+#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
+#         VALUES (?, ?, ?, ?, ?, ?, ?)
+#         """,
+#         ("game-0", "2025-04-01", "season-1", None, "team-home", "team-away", 0),
+#     )
+#     db_conn.execute(
+#         """
+#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
+#         VALUES (?, ?, ?, ?, ?, ?, ?)
+#         """,
+#         ("game-1", "2025-04-02", "season-1", None, "team-home", "team-away", 0),
+#     )
+#     db_conn.execute(
+#         """
+#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
+#         VALUES (?, ?, ?, ?, ?, ?, ?)
+#         """,
+#         ("game-2", "2025-04-03", "season-1", None, "team-home", "team-away", 0),
+#     )
+#     db_conn.execute(
+#         """
+#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
+#         VALUES (?, ?, ?, ?, ?, ?, ?)
+#         """,
+#         ("game-3", "2025-04-04", "season-1", None, "team-home", "team-away", 0),
+#     )
+#     db_conn.execute(
+#         """
+#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
+#         VALUES (?, ?, ?, ?, ?, ?, ?)
+#         """,
+#         ("game-4", "2025-04-05", "season-1", None, "team-home", "team-away", 0),
+#     )
+#     db_conn.commit()
+#     return ["game-0", "game-1", "game-2"]
+
+
+    
+
 
 # ── Repository fixtures ───────────────────────────────────────────────────────
 

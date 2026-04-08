@@ -1,41 +1,40 @@
 # tests/db/repositories/test_season_repo.py
 import pytest
-import sqlite3
 
 from src.db.repositories.season_repo import SeasonRepository
 
 
+# @pytest.fixture
+# def db_conn():
+#     """Create in-memory SQLite database with seasons table."""
+#     conn = sqlite3.connect(":memory:")
+#     conn.row_factory = sqlite3.Row
+#     conn.execute("PRAGMA foreign_keys = ON")
+
+#     # Create seasons table
+#     conn.execute("""
+#         CREATE TABLE seasons (
+#             id TEXT PRIMARY KEY,
+#             year INTEGER NOT NULL,
+#             name TEXT NOT NULL,
+#             UNIQUE(year, name)
+#         )
+#     """)
+
+#     yield conn
+#     conn.close()
+
+
 @pytest.fixture
-def db_connection():
-    """Create in-memory SQLite database with seasons table."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-
-    # Create seasons table
-    conn.execute("""
-        CREATE TABLE seasons (
-            id TEXT PRIMARY KEY,
-            year INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            UNIQUE(year, name)
-        )
-    """)
-
-    yield conn
-    conn.close()
-
-
-@pytest.fixture
-def season_repo(db_connection):
+def season_repo(db_conn):
     """Create SeasonRepository instance."""
-    return SeasonRepository(db_connection)
+    return SeasonRepository(db_conn)
 
 
 class TestSeasonRepositoryCreateSeason:
     """Test create_season() method."""
 
-    def test_create_new_season(self, season_repo, db_connection):
+    def test_create_new_season(self, season_repo, db_conn):
         """Test creating a new season."""
         season_id = season_repo.create_season(2025)
 
@@ -44,7 +43,7 @@ class TestSeasonRepositoryCreateSeason:
         assert len(season_id) == 32  # UUID hex string
 
         # Verify in database
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM seasons WHERE id = ?", (season_id,)
         ).fetchone()
 
@@ -52,11 +51,11 @@ class TestSeasonRepositoryCreateSeason:
         assert row["year"] == 2025
         assert row["name"] == "Season2025"
 
-    def test_create_season_with_custom_name(self, season_repo, db_connection):
+    def test_create_season_with_custom_name(self, season_repo, db_conn):
         """Test creating a season with custom name."""
         season_id = season_repo.create_season(2025, "Spring Season")
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM seasons WHERE id = ?", (season_id,)
         ).fetchone()
 
@@ -75,7 +74,7 @@ class TestSeasonRepositoryCreateSeason:
     #     # Should return the same ID
     #     assert season_id_1 == season_id_2
 
-    def test_create_multiple_seasons_same_year(self, season_repo, db_connection):
+    def test_create_multiple_seasons_same_year(self, season_repo, db_conn):
         """Test creating multiple seasons for the same year with different names."""
         spring_id = season_repo.create_season(2025, "Spring")
         fall_id = season_repo.create_season(2025, "Fall")
@@ -83,7 +82,7 @@ class TestSeasonRepositoryCreateSeason:
         assert spring_id != fall_id
 
         # Verify both exist
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM seasons WHERE year = ?", (2025,)
         ).fetchone()["count"]
 
@@ -100,24 +99,24 @@ class TestSeasonRepositoryCreateSeason:
         assert season_2025 != season_2026
         assert season_2024 != season_2026
 
-    def test_create_season_default_name_format(self, season_repo, db_connection):
+    def test_create_season_default_name_format(self, season_repo, db_conn):
         """Test that default name follows 'Season{year}' format."""
         season_id = season_repo.create_season(2025)
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT name FROM seasons WHERE id = ?", (season_id,)
         ).fetchone()
 
         assert row["name"] == "Season2025"
 
-    def test_create_season_commits_to_db(self, season_repo, db_connection):
+    def test_create_season_commits_to_db(self, season_repo, db_conn):
         """Test that season is committed to database."""
         season_id = season_repo.create_season(2025)
 
         # Close and reopen connection to verify commit
-        db_connection.commit()
+        db_conn.commit()
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM seasons WHERE id = ?", (season_id,)
         ).fetchone()
 
@@ -310,7 +309,7 @@ class TestSeasonRepositoryExists:
 class TestSeasonRepositoryDeleteSeason:
     """Test delete_season() method."""
 
-    def test_delete_existing_season(self, season_repo, db_connection):
+    def test_delete_existing_season(self, season_repo, db_conn):
         """Test deleting an existing season."""
         season_id = season_repo.create_season(2025)
 
@@ -328,20 +327,20 @@ class TestSeasonRepositoryDeleteSeason:
         # Should not raise an error
         season_repo.delete_season("nonexistent-id")
 
-    def test_delete_season_removes_from_database(self, season_repo, db_connection):
+    def test_delete_season_removes_from_database(self, season_repo, db_conn):
         """Test that delete actually removes from database."""
         season_id = season_repo.create_season(2025)
 
         season_repo.delete_season(season_id)
 
         # Query database directly
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM seasons WHERE id = ?", (season_id,)
         ).fetchone()
 
         assert row is None
 
-    def test_delete_one_of_multiple_seasons(self, season_repo, db_connection):
+    def test_delete_one_of_multiple_seasons(self, season_repo, db_conn):
         """Test deleting one season doesn't affect others."""
         s1 = season_repo.create_season(2024)
         s2 = season_repo.create_season(2025)
@@ -356,7 +355,7 @@ class TestSeasonRepositoryDeleteSeason:
         assert season_repo.exists(s3)
 
         # Count should be 2
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM seasons"
         ).fetchone()["count"]
 

@@ -1,119 +1,118 @@
 # tests/db/repositories/test_player_games_repo.py
 import pytest
-import sqlite3
 
 from src.db.repositories.player_games import PlayerGameRepository
 from src.stats.stats import Stats
 from src.stats.fielding_stats import FieldingStats
 
 
+# @pytest.fixture
+# def db_conn():
+#     """Create in-memory SQLite database with required tables."""
+#     conn = sqlite3.connect(":memory:")
+#     conn.row_factory = sqlite3.Row
+#     conn.execute("PRAGMA foreign_keys = ON")
+
+#     # Create player_game_stats table
+#     conn.execute("""
+#         CREATE TABLE player_game_stats (
+#             game_id TEXT NOT NULL,
+#             player_id TEXT NOT NULL,
+#             team_id TEXT NOT NULL,
+#             opponent_team_id TEXT NOT NULL,
+
+#             -- Batting
+#             bat_game_played INTEGER DEFAULT 1 CHECK (bat_game_played IN (0, 1)),
+#             bat_game_started INTEGER DEFAULT 0 CHECK (bat_game_started IN (0, 1)),
+#             bat_ab INTEGER CHECK (bat_ab >= 0),
+#             bat_hits INTEGER CHECK (bat_hits >= 0),
+#             bat_doubles INTEGER CHECK (bat_doubles >= 0),
+#             bat_triples INTEGER CHECK (bat_triples >= 0),
+#             bat_home_runs INTEGER CHECK (bat_home_runs >= 0),
+#             bat_rbi INTEGER CHECK (bat_rbi >= 0),
+#             bat_runs INTEGER CHECK (bat_runs >= 0),
+#             bat_walks INTEGER CHECK (bat_walks >= 0),
+#             bat_strike_outs INTEGER CHECK (bat_strike_outs >= 0),
+#             bat_hbp INTEGER CHECK (bat_hbp >= 0),
+#             bat_sac_flys INTEGER CHECK (bat_sac_flys >= 0),
+#             bat_sac_bunts INTEGER CHECK (bat_sac_bunts >= 0),
+#             bat_gdp INTEGER CHECK (bat_gdp >= 0),
+#             bat_gtp INTEGER CHECK (bat_gtp >= 0),
+#             bat_stolen_bases INTEGER CHECK (bat_stolen_bases >= 0),
+#             bat_caught_stealing INTEGER CHECK (bat_caught_stealing >= 0),
+
+#             -- Pitching
+#             pitch_game_played INTEGER DEFAULT 0 CHECK (pitch_game_played IN (0, 1)),
+#             pitch_game_started INTEGER DEFAULT 0 CHECK (pitch_game_started IN (0, 1)),
+#             pitch_complete_game INTEGER DEFAULT 0 CHECK (pitch_complete_game IN (0, 1)),
+#             pitch_shutout INTEGER DEFAULT 0 CHECK (pitch_shutout IN (0, 1)),
+#             pitch_win INTEGER DEFAULT 0 CHECK (pitch_win IN (0, 1)),
+#             pitch_loss INTEGER DEFAULT 0 CHECK (pitch_loss IN (0, 1)),
+#             pitch_save INTEGER DEFAULT 0 CHECK (pitch_save IN (0, 1)),
+#             pitch_hold INTEGER DEFAULT 0 CHECK (pitch_hold IN (0, 1)),
+#             pitch_outs INTEGER CHECK (pitch_outs >= 0),
+#             pitch_hits INTEGER CHECK (pitch_hits >= 0),
+#             pitch_runs INTEGER CHECK (pitch_runs >= 0),
+#             pitch_earned_runs INTEGER CHECK (pitch_earned_runs >= 0),
+#             pitch_home_runs INTEGER CHECK (pitch_home_runs >= 0),
+#             pitch_walks INTEGER CHECK (pitch_walks >= 0),
+#             pitch_strike_outs INTEGER CHECK (pitch_strike_outs >= 0),
+#             pitch_hit_batters INTEGER CHECK (pitch_hit_batters >= 0),
+#             pitch_doubles INTEGER DEFAULT 0 CHECK (pitch_doubles >= 0),
+#             pitch_triples INTEGER DEFAULT 0 CHECK (pitch_triples >= 0),
+#             pitch_pickoffs INTEGER DEFAULT 0 CHECK (pitch_pickoffs >= 0),
+#             pitch_balks INTEGER DEFAULT 0 CHECK (pitch_balks >= 0),
+#             pitch_wild_pitches INTEGER DEFAULT 0 CHECK (pitch_wild_pitches >= 0),
+#             pitch_count INTEGER CHECK (pitch_count >= 0),
+
+#             -- Fielding
+#             field_putouts INTEGER CHECK (field_putouts >= 0),
+#             field_assists INTEGER CHECK (field_assists >= 0),
+#             field_errors INTEGER CHECK (field_errors >= 0),
+#             passed_balls INTEGER CHECK (passed_balls >= 0),
+#             catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
+#             catcher_cs INTEGER CHECK (catcher_cs >= 0),
+#             catcher_sb INTEGER CHECK (catcher_sb >= 0),
+
+#             PRIMARY KEY (game_id, player_id)
+#         )
+#     """)
+
+#     # Create player_game_fielding table
+#     conn.execute("""
+#         CREATE TABLE player_game_fielding (
+#             game_id   TEXT NOT NULL,
+#             player_id TEXT NOT NULL,
+#             position  TEXT NOT NULL,
+#             putouts   INTEGER DEFAULT 0 CHECK (putouts >= 0),
+#             assists   INTEGER DEFAULT 0 CHECK (assists >= 0),
+#             errors    INTEGER DEFAULT 0 CHECK (errors >= 0),
+#             passed_balls          INTEGER CHECK (passed_balls >= 0),
+#             catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
+#             catcher_cs            INTEGER CHECK (catcher_cs >= 0),
+#             catcher_sb            INTEGER CHECK (catcher_sb >= 0),
+#             PRIMARY KEY (game_id, player_id, position)
+#         )
+#     """)
+
+#     # Create games table for joins
+#     conn.execute("""
+#         CREATE TABLE games (
+#             id TEXT PRIMARY KEY,
+#             game_date TEXT NOT NULL,
+#             season_id TEXT NOT NULL,
+#             series_id TEXT
+#         )
+#     """)
+
+#     yield conn
+#     conn.close()
+
+
 @pytest.fixture
-def db_connection():
-    """Create in-memory SQLite database with required tables."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-
-    # Create player_game_stats table
-    conn.execute("""
-        CREATE TABLE player_game_stats (
-            game_id TEXT NOT NULL,
-            player_id TEXT NOT NULL,
-            team_id TEXT NOT NULL,
-            opponent_team_id TEXT NOT NULL,
-
-            -- Batting
-            bat_game_played INTEGER DEFAULT 1 CHECK (bat_game_played IN (0, 1)),
-            bat_game_started INTEGER DEFAULT 0 CHECK (bat_game_started IN (0, 1)),
-            bat_ab INTEGER CHECK (bat_ab >= 0),
-            bat_hits INTEGER CHECK (bat_hits >= 0),
-            bat_doubles INTEGER CHECK (bat_doubles >= 0),
-            bat_triples INTEGER CHECK (bat_triples >= 0),
-            bat_home_runs INTEGER CHECK (bat_home_runs >= 0),
-            bat_rbi INTEGER CHECK (bat_rbi >= 0),
-            bat_runs INTEGER CHECK (bat_runs >= 0),
-            bat_walks INTEGER CHECK (bat_walks >= 0),
-            bat_strike_outs INTEGER CHECK (bat_strike_outs >= 0),
-            bat_hbp INTEGER CHECK (bat_hbp >= 0),
-            bat_sac_flys INTEGER CHECK (bat_sac_flys >= 0),
-            bat_sac_bunts INTEGER CHECK (bat_sac_bunts >= 0),
-            bat_gdp INTEGER CHECK (bat_gdp >= 0),
-            bat_gtp INTEGER CHECK (bat_gtp >= 0),
-            bat_stolen_bases INTEGER CHECK (bat_stolen_bases >= 0),
-            bat_caught_stealing INTEGER CHECK (bat_caught_stealing >= 0),
-
-            -- Pitching
-            pitch_game_played INTEGER DEFAULT 0 CHECK (pitch_game_played IN (0, 1)),
-            pitch_game_started INTEGER DEFAULT 0 CHECK (pitch_game_started IN (0, 1)),
-            pitch_complete_game INTEGER DEFAULT 0 CHECK (pitch_complete_game IN (0, 1)),
-            pitch_shutout INTEGER DEFAULT 0 CHECK (pitch_shutout IN (0, 1)),
-            pitch_win INTEGER DEFAULT 0 CHECK (pitch_win IN (0, 1)),
-            pitch_loss INTEGER DEFAULT 0 CHECK (pitch_loss IN (0, 1)),
-            pitch_save INTEGER DEFAULT 0 CHECK (pitch_save IN (0, 1)),
-            pitch_hold INTEGER DEFAULT 0 CHECK (pitch_hold IN (0, 1)),
-            pitch_outs INTEGER CHECK (pitch_outs >= 0),
-            pitch_hits INTEGER CHECK (pitch_hits >= 0),
-            pitch_runs INTEGER CHECK (pitch_runs >= 0),
-            pitch_earned_runs INTEGER CHECK (pitch_earned_runs >= 0),
-            pitch_home_runs INTEGER CHECK (pitch_home_runs >= 0),
-            pitch_walks INTEGER CHECK (pitch_walks >= 0),
-            pitch_strike_outs INTEGER CHECK (pitch_strike_outs >= 0),
-            pitch_hit_batters INTEGER CHECK (pitch_hit_batters >= 0),
-            pitch_doubles INTEGER DEFAULT 0 CHECK (pitch_doubles >= 0),
-            pitch_triples INTEGER DEFAULT 0 CHECK (pitch_triples >= 0),
-            pitch_pickoffs INTEGER DEFAULT 0 CHECK (pitch_pickoffs >= 0),
-            pitch_balks INTEGER DEFAULT 0 CHECK (pitch_balks >= 0),
-            pitch_wild_pitches INTEGER DEFAULT 0 CHECK (pitch_wild_pitches >= 0),
-            pitch_count INTEGER CHECK (pitch_count >= 0),
-
-            -- Fielding
-            field_putouts INTEGER CHECK (field_putouts >= 0),
-            field_assists INTEGER CHECK (field_assists >= 0),
-            field_errors INTEGER CHECK (field_errors >= 0),
-            passed_balls INTEGER CHECK (passed_balls >= 0),
-            catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
-            catcher_cs INTEGER CHECK (catcher_cs >= 0),
-            catcher_sb INTEGER CHECK (catcher_sb >= 0),
-
-            PRIMARY KEY (game_id, player_id)
-        )
-    """)
-
-    # Create player_game_fielding table
-    conn.execute("""
-        CREATE TABLE player_game_fielding (
-            game_id   TEXT NOT NULL,
-            player_id TEXT NOT NULL,
-            position  TEXT NOT NULL,
-            putouts   INTEGER DEFAULT 0 CHECK (putouts >= 0),
-            assists   INTEGER DEFAULT 0 CHECK (assists >= 0),
-            errors    INTEGER DEFAULT 0 CHECK (errors >= 0),
-            passed_balls          INTEGER CHECK (passed_balls >= 0),
-            catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
-            catcher_cs            INTEGER CHECK (catcher_cs >= 0),
-            catcher_sb            INTEGER CHECK (catcher_sb >= 0),
-            PRIMARY KEY (game_id, player_id, position)
-        )
-    """)
-
-    # Create games table for joins
-    conn.execute("""
-        CREATE TABLE games (
-            id TEXT PRIMARY KEY,
-            game_date TEXT NOT NULL,
-            season_id TEXT NOT NULL,
-            series_id TEXT
-        )
-    """)
-
-    yield conn
-    conn.close()
-
-
-@pytest.fixture
-def player_repo(db_connection):
+def player_repo(db_conn):
     """Create PlayerGameRepository instance."""
-    return PlayerGameRepository(db_connection)
+    return PlayerGameRepository(db_conn)
 
 
 @pytest.fixture
@@ -194,7 +193,7 @@ def sample_fielding_positions_two_way():
 class TestPlayerGameRepositoryInsert:
     """Test insert() method."""
 
-    def test_insert_basic(self, player_repo, db_connection, sample_stats):
+    def test_insert_basic(self, player_repo, db_conn, sample_stats, db_seed):
         """Test inserting player game stats."""
         player_repo.insert(
             game_id="game-1",
@@ -205,7 +204,7 @@ class TestPlayerGameRepositoryInsert:
         )
 
         # Verify in database
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM player_game_stats WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchone()
@@ -216,11 +215,11 @@ class TestPlayerGameRepositoryInsert:
         assert row["team_id"] == "team-1"
         assert row["opponent_team_id"] == "team-2"
 
-    def test_insert_batting_stats(self, player_repo, db_connection, sample_stats):
+    def test_insert_batting_stats(self, player_repo, db_conn, sample_stats, db_seed):
         """Test that batting stats are correctly inserted."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM player_game_stats WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchone()
@@ -235,11 +234,11 @@ class TestPlayerGameRepositoryInsert:
         assert row["bat_strike_outs"] == 1
         assert row["bat_stolen_bases"] == 1
 
-    def test_insert_pitching_stats(self, player_repo, db_connection, sample_stats):
+    def test_insert_pitching_stats(self, player_repo, db_conn, sample_stats, db_seed):
         """Test that pitching stats are correctly inserted."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM player_game_stats WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchone()
@@ -252,11 +251,11 @@ class TestPlayerGameRepositoryInsert:
         assert row["pitch_strike_outs"] == 8
         assert row["pitch_count"] == 95
 
-    def test_insert_fielding_stats(self, player_repo, db_connection, sample_stats):
+    def test_insert_fielding_stats(self, player_repo, db_conn, sample_stats, db_seed):
         """Test that fielding stats are correctly inserted."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM player_game_stats WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchone()
@@ -265,7 +264,7 @@ class TestPlayerGameRepositoryInsert:
         assert row["field_assists"] == 1
         assert row["field_errors"] == 0
 
-    def test_insert_idempotent(self, player_repo, db_connection, sample_stats):
+    def test_insert_idempotent(self, player_repo, db_conn, sample_stats, db_seed):
         """Test that insert is idempotent (INSERT OR REPLACE)."""
         # Insert first time
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
@@ -277,28 +276,28 @@ class TestPlayerGameRepositoryInsert:
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
         # Should only have one row with updated stats
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_game_stats WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchone()["count"]
 
         assert count == 1
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT bat_hits FROM player_game_stats WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchone()
 
         assert row["bat_hits"] == 3
 
-    def test_insert_zero_stats(self, player_repo, db_connection):
+    def test_insert_zero_stats(self, player_repo, db_conn, db_seed):
         """Test inserting a player with zero stats (e.g., defensive sub)."""
         stats = Stats()
         # All stats default to 0
 
         player_repo.insert("game-1", "player-1", "team-1", "team-2", stats)
 
-        row = db_connection.execute(
+        row = db_conn.execute(
             "SELECT * FROM player_game_stats WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchone()
@@ -309,7 +308,7 @@ class TestPlayerGameRepositoryInsert:
         assert row["field_putouts"] == 0
 
     def test_insert_multiple_players_same_game(
-        self, player_repo, db_connection, sample_stats
+        self, player_repo, db_conn, sample_stats, db_seed
     ):
         """Test inserting multiple players for the same game."""
         for i in range(5):
@@ -321,7 +320,7 @@ class TestPlayerGameRepositoryInsert:
                 stats=sample_stats,
             )
 
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_game_stats WHERE game_id = ?",
             ("game-1",),
         ).fetchone()["count"]
@@ -333,7 +332,7 @@ class TestPlayerGameRepositoryFieldingPositions:
     """Test insert() with fielding_positions parameter."""
 
     def test_insert_single_fielding_position(
-        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+        self, player_repo, db_conn, sample_stats, sample_fielding_positions, db_seed
     ):
         """Test inserting stats with a single fielding position."""
         player_repo.insert(
@@ -345,7 +344,7 @@ class TestPlayerGameRepositoryFieldingPositions:
             fielding_positions=sample_fielding_positions,
         )
 
-        rows = db_connection.execute(
+        rows = db_conn.execute(
             "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchall()
@@ -359,9 +358,10 @@ class TestPlayerGameRepositoryFieldingPositions:
     def test_insert_two_way_player(
         self,
         player_repo,
-        db_connection,
+        db_conn,
         sample_stats,
         sample_fielding_positions_two_way,
+        db_seed,
     ):
         """Test inserting stats for a two-way player (e.g., 1b who also pitched)."""
         player_repo.insert(
@@ -373,7 +373,7 @@ class TestPlayerGameRepositoryFieldingPositions:
             fielding_positions=sample_fielding_positions_two_way,
         )
 
-        rows = db_connection.execute(
+        rows = db_conn.execute(
             """
             SELECT * FROM player_game_fielding
             WHERE game_id = ? AND player_id = ?
@@ -395,7 +395,7 @@ class TestPlayerGameRepositoryFieldingPositions:
         assert positions["p"]["errors"] == 1
 
     def test_insert_no_fielding_positions(
-        self, player_repo, db_connection, sample_stats
+        self, player_repo, db_conn, sample_stats, db_seed
     ):
         """Test that omitting fielding_positions writes nothing to player_game_fielding."""
         player_repo.insert(
@@ -406,7 +406,7 @@ class TestPlayerGameRepositoryFieldingPositions:
             stats=sample_stats,
         )
 
-        rows = db_connection.execute(
+        rows = db_conn.execute(
             "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchall()
@@ -414,7 +414,7 @@ class TestPlayerGameRepositoryFieldingPositions:
         assert len(rows) == 0
 
     def test_insert_fielding_positions_idempotent(
-        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+        self, player_repo, db_conn, sample_stats, sample_fielding_positions, db_seed
     ):
         """Test that re-inserting fielding positions replaces rather than duplicates."""
         player_repo.insert(
@@ -441,7 +441,7 @@ class TestPlayerGameRepositoryFieldingPositions:
             fielding_positions=[("ss", updated_fs)],
         )
 
-        rows = db_connection.execute(
+        rows = db_conn.execute(
             "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchall()
@@ -452,7 +452,7 @@ class TestPlayerGameRepositoryFieldingPositions:
         assert rows[0]["errors"] == 1
 
     def test_fielding_positions_isolated_per_player(
-        self, player_repo, db_connection, sample_stats
+        self, player_repo, db_conn, sample_stats, db_seed
     ):
         """Test that fielding positions are correctly isolated per player."""
         ss_stats = FieldingStats()
@@ -480,12 +480,12 @@ class TestPlayerGameRepositoryFieldingPositions:
             fielding_positions=[("cf", cf_stats)],
         )
 
-        p1_rows = db_connection.execute(
+        p1_rows = db_conn.execute(
             "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-1"),
         ).fetchall()
 
-        p2_rows = db_connection.execute(
+        p2_rows = db_conn.execute(
             "SELECT * FROM player_game_fielding WHERE game_id = ? AND player_id = ?",
             ("game-1", "player-2"),
         ).fetchall()
@@ -501,13 +501,13 @@ class TestPlayerGameRepositoryDeleteGameStats:
     """Test delete_game_stats() cleans up both tables."""
 
     def test_delete_cleans_player_game_stats(
-        self, player_repo, db_connection, sample_stats
+        self, player_repo, db_conn, sample_stats, db_seed
     ):
         """Test that delete_game_stats removes rows from player_game_stats."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
         player_repo.delete_game_stats("game-1")
 
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_game_stats WHERE game_id = ?",
             ("game-1",),
         ).fetchone()["count"]
@@ -515,7 +515,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
         assert count == 0
 
     def test_delete_cleans_player_game_fielding(
-        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+        self, player_repo, db_conn, sample_stats, sample_fielding_positions, db_seed
     ):
         """Test that delete_game_stats removes rows from player_game_fielding."""
         player_repo.insert(
@@ -528,7 +528,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
         )
         player_repo.delete_game_stats("game-1")
 
-        count = db_connection.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_game_fielding WHERE game_id = ?",
             ("game-1",),
         ).fetchone()["count"]
@@ -536,7 +536,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
         assert count == 0
 
     def test_delete_only_affects_specified_game(
-        self, player_repo, db_connection, sample_stats, sample_fielding_positions
+        self, player_repo, db_conn, sample_stats, sample_fielding_positions, db_seed
     ):
         """Test that delete_game_stats only removes data for the specified game."""
         player_repo.insert(
@@ -558,12 +558,12 @@ class TestPlayerGameRepositoryDeleteGameStats:
 
         player_repo.delete_game_stats("game-1")
 
-        game1_count = db_connection.execute(
+        game1_count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_game_fielding WHERE game_id = ?",
             ("game-1",),
         ).fetchone()["count"]
 
-        game2_count = db_connection.execute(
+        game2_count = db_conn.execute(
             "SELECT COUNT(*) as count FROM player_game_fielding WHERE game_id = ?",
             ("game-2",),
         ).fetchone()["count"]
@@ -575,7 +575,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
 class TestPlayerGameRepositoryGetForGame:
     """Test get_for_game() method."""
 
-    def test_get_for_game_existing(self, player_repo, sample_stats):
+    def test_get_for_game_existing(self, player_repo, sample_stats, db_seed):
         """Test getting stats for an existing player in a game."""
         # Insert stats
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
@@ -586,7 +586,7 @@ class TestPlayerGameRepositoryGetForGame:
         assert retrieved is not None
         assert isinstance(retrieved, Stats)
 
-    def test_get_for_game_batting_stats(self, player_repo, sample_stats):
+    def test_get_for_game_batting_stats(self, player_repo, sample_stats, db_seed):
         """Test that batting stats are correctly retrieved."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
@@ -599,7 +599,7 @@ class TestPlayerGameRepositoryGetForGame:
         assert retrieved.batting.rbi == 3
         assert retrieved.batting.runs == 2
 
-    def test_get_for_game_pitching_stats(self, player_repo, sample_stats):
+    def test_get_for_game_pitching_stats(self, player_repo, sample_stats, db_seed):
         """Test that pitching stats are correctly retrieved."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
@@ -611,7 +611,7 @@ class TestPlayerGameRepositoryGetForGame:
         assert retrieved.pitching.strike_outs == 8
         assert retrieved.pitching.pitch_count == 95
 
-    def test_get_for_game_fielding_stats(self, player_repo, sample_stats):
+    def test_get_for_game_fielding_stats(self, player_repo, sample_stats, db_seed):
         """Test that fielding stats are correctly retrieved."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
@@ -628,7 +628,7 @@ class TestPlayerGameRepositoryGetForGame:
 
         assert retrieved is None
 
-    def test_get_for_game_wrong_player(self, player_repo, sample_stats):
+    def test_get_for_game_wrong_player(self, player_repo, sample_stats, db_seed):
         """Test getting stats with wrong player ID."""
         player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
 
@@ -636,11 +636,11 @@ class TestPlayerGameRepositoryGetForGame:
 
         assert retrieved is None
 
-    def test_get_for_game_wrong_game(self, player_repo, sample_stats):
+    def test_get_for_game_wrong_game(self, player_repo, sample_stats, db_seed):
         """Test getting stats with wrong game ID."""
-        player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
+        player_repo.insert("game-1", "p1", "team-1", "team-2", sample_stats)
 
-        retrieved = player_repo.get_for_game("game-2", "player-1")
+        retrieved = player_repo.get_for_game("game-2", "p1")
 
         assert retrieved is None
 
@@ -648,24 +648,24 @@ class TestPlayerGameRepositoryGetForGame:
 class TestPlayerGameRepositoryFetchPlayerGames:
     """Test fetch_player_games() method."""
 
-    def test_fetch_player_games_single(self, player_repo, sample_stats):
+    def test_fetch_player_games_single(self, player_repo, sample_stats, db_seed):
         """Test fetching games for a player with one game."""
-        player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
+        player_repo.insert("game-1", "p1", "team-1", "team-2", sample_stats)
 
-        games = player_repo.fetch_player_games("player-1")
+        games = player_repo.fetch_player_games("p1")
 
         assert len(games) == 1
         assert isinstance(games[0], Stats)
         assert games[0].batting.hits == 2
 
-    def test_fetch_player_games_multiple(self, player_repo, sample_stats):
+    def test_fetch_player_games_multiple(self, player_repo, sample_stats, db_seed):
         """Test fetching games for a player with multiple games."""
         for i in range(5):
             player_repo.insert(
-                f"game-{i}", "player-1", "team-1", "team-2", sample_stats
+                f"game-{i}", "p1", "team-1", "team-2", sample_stats
             )
 
-        games = player_repo.fetch_player_games("player-1")
+        games = player_repo.fetch_player_games("p1")
 
         assert len(games) == 5
         assert all(isinstance(g, Stats) for g in games)
@@ -676,28 +676,28 @@ class TestPlayerGameRepositoryFetchPlayerGames:
 
         assert games == []
 
-    def test_fetch_player_games_ordered(self, player_repo, sample_stats, db_connection):
+    def test_fetch_player_games_ordered(self, player_games_repo, sample_stats, db_seed):
         """Test that games are ordered by game_id."""
         # Insert in reverse order
         for i in reversed(range(5)):
-            player_repo.insert(
-                f"game-{i}", "player-1", "team-1", "team-2", sample_stats
+            player_games_repo.insert(
+                f"game-{i}", "p1", "team-1", "team-2", sample_stats
             )
 
-        games = player_repo.fetch_player_games("player-1")
+        games = player_games_repo.fetch_player_games("p1")
 
         # Should be ordered by game_id (alphabetically)
         assert len(games) == 5
 
-    def test_fetch_player_games_different_stats(self, player_repo):
+    def test_fetch_player_games_different_stats(self, player_games_repo, db_seed):
         """Test fetching games with varying stats."""
         for i in range(3):
             stats = Stats()
             stats.batting.hits = i
             stats.batting.at_bats = 4
-            player_repo.insert(f"game-{i}", "player-1", "team-1", "team-2", stats)
+            player_games_repo.insert(f"game-{i}", "p1", "team-1", "team-2", stats)
 
-        games = player_repo.fetch_player_games("player-1")
+        games = player_games_repo.fetch_player_games("p1")
 
         assert len(games) == 3
         # Verify each game has different hits
@@ -705,39 +705,39 @@ class TestPlayerGameRepositoryFetchPlayerGames:
         assert set(hits) == {0, 1, 2}
 
     def test_fetch_player_games_only_for_specific_player(
-        self, player_repo, sample_stats
+        self, player_games_repo, sample_stats, db_seed
     ):
         """Test that fetch_player_games only returns games for specified player."""
         # Insert games for multiple players
-        player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
-        player_repo.insert("game-1", "player-2", "team-1", "team-2", sample_stats)
-        player_repo.insert("game-2", "player-1", "team-1", "team-2", sample_stats)
+        player_games_repo.insert("game-1", "p1", "team-1", "team-2", sample_stats)
+        player_games_repo.insert("game-1", "p2", "team-1", "team-2", sample_stats)
+        player_games_repo.insert("game-2", "p1", "team-1", "team-2", sample_stats)
 
-        games = player_repo.fetch_player_games("player-1")
+        games = player_games_repo.fetch_player_games("p1")
 
-        assert len(games) == 2  # Only player-1's games
+        assert len(games) == 2  # Only p1's games
 
 
 class TestPlayerGameRepositoryLoadSeasonStats:
     """Test load_season_stats() method."""
 
     @pytest.fixture
-    def season_setup(self, db_connection):
+    def season_setup(self, db_conn, db_seed):
         """Setup games for a season."""
         # Insert games
         games = [
-            ("game-1", "2025-04-01", "season-1"),
-            ("game-2", "2025-04-02", "season-1"),
-            ("game-3", "2025-04-03", "season-1"),
-            ("game-4", "2025-04-04", "season-2"),
+            ("game-11", "2025-04-01", "season-1", "team-1", "team-2"),
+            ("game-12", "2025-04-02", "season-1", "team-1", "team-2"),
+            ("game-13", "2025-04-03", "season-1", "team-1", "team-2"),
+            ("game-14", "2025-04-04", "season-2", "team-1", "team-2"),
         ]
 
         for game in games:
-            db_connection.execute(
-                "INSERT INTO games (id, game_date, season_id) VALUES (?, ?, ?)", game
+            db_conn.execute(
+                "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id) VALUES (?, ?, ?, ?, ?)", game
             )
 
-        db_connection.commit()
+        db_conn.commit()
 
     def test_load_season_stats_basic(self, player_repo, season_setup):
         """Test loading season stats."""
@@ -785,17 +785,17 @@ class TestPlayerGameRepositoryLoadSeasonStats:
         assert season_stats.stats.batting.home_runs == 2
         assert season_stats.stats.batting.at_bats == 12
 
-    def test_load_season_stats_different_season(self, player_repo, season_setup):
+    def test_load_season_stats_different_season(self, player_repo, season_setup, db_seed):
         """Test loading stats for different seasons."""
         # Insert stats for season-1
         stats1 = Stats()
         stats1.batting.hits = 2
-        player_repo.insert("game-1", "player-1", "team-1", "team-2", stats1)
+        player_repo.insert("game-11", "player-1", "team-1", "team-2", stats1)
 
         # Insert stats for season-2
         stats2 = Stats()
         stats2.batting.hits = 3
-        player_repo.insert("game-4", "player-1", "team-1", "team-2", stats2)
+        player_repo.insert("game-14", "player-1", "team-1", "team-2", stats2)
 
         # Load season-1 stats
         season1_stats = player_repo.load_season_stats("player-1", "season-1")
@@ -848,11 +848,11 @@ class TestPlayerGameRepositoryLoadSeasonStats:
 class TestPlayerGameRepositoryRowToStats:
     """Test _row_to_stats() mapping method."""
 
-    def test_row_to_stats_round_trip(self, player_repo, sample_stats):
+    def test_row_to_stats_round_trip(self, player_games_repo, sample_stats, db_seed):
         """Test that insert then get preserves all stats."""
-        player_repo.insert("game-1", "player-1", "team-1", "team-2", sample_stats)
+        player_games_repo.insert("game-1", "p1", "team-1", "team-2", sample_stats)
 
-        retrieved = player_repo.get_for_game("game-1", "player-1")
+        retrieved = player_games_repo.get_for_game("game-1", "p1")
 
         # Batting
         assert retrieved.batting.at_bats == sample_stats.batting.at_bats
@@ -877,15 +877,15 @@ class TestPlayerGameRepositoryRowToStats:
         assert retrieved.fielding.assists == sample_stats.fielding.assists
         assert retrieved.fielding.errors == sample_stats.fielding.errors
 
-    def test_row_to_stats_calculates_chances(self, player_repo):
+    def test_row_to_stats_calculates_chances(self, player_games_repo, db_seed):
         """Test that fielding chances are calculated correctly."""
         stats = Stats()
         stats.fielding.putouts = 5
         stats.fielding.assists = 3
         stats.fielding.errors = 2
 
-        player_repo.insert("game-1", "player-1", "team-1", "team-2", stats)
+        player_games_repo.insert("game-1", "p1", "team-1", "team-2", stats)
 
-        retrieved = player_repo.get_for_game("game-1", "player-1")
+        retrieved = player_games_repo.get_for_game("game-1", "p1")
 
         assert retrieved.fielding.chances == 10  # 5 + 3 + 2

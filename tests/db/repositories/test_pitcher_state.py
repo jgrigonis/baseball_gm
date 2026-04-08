@@ -1,7 +1,5 @@
 # tests/db/repositories/test_pitcher_state.py
-import sqlite3
 from datetime import date, timedelta
-
 import pytest
 
 from src.db.repositories.pitcher_state import (
@@ -18,27 +16,27 @@ from src.db.repositories.pitcher_state import (
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def conn():
-    conn = sqlite3.connect(":memory:")
-    conn.execute("""
-        CREATE TABLE pitcher_state (
-            player_id TEXT,
-            league_id TEXT,
-            current_energy REAL,
-            max_energy REAL,
-            last_game_date TEXT,
-            last_pitch_count INTEGER,
-            consecutive_days INTEGER,
-            PRIMARY KEY (player_id, league_id)
-        )
-        """)
-    return conn
+# @pytest.fixture
+# def conn():
+#     conn = sqlite3.connect(":memory:")
+#     conn.execute("""
+#         CREATE TABLE pitcher_state (
+#             player_id TEXT,
+#             league_id TEXT,
+#             current_energy REAL,
+#             max_energy REAL,
+#             last_game_date TEXT,
+#             last_pitch_count INTEGER,
+#             consecutive_days INTEGER,
+#             PRIMARY KEY (player_id, league_id)
+#         )
+#         """)
+#     return conn
 
 
 @pytest.fixture
-def repo(conn):
-    return PitcherStateRepository(conn, league_id="test")
+def repo(db_conn):
+    return PitcherStateRepository(db_conn, league_id="test")
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +84,7 @@ def test_availability_full_rest():
     assert availability_weight(state, date.today()) == 1.0
 
 
-def test_availability_partial_rest():
+def test_availability_partial_rest(db_conn, db_seed):
     state = PitcherState(
         player_id="p1",
         current_energy=0.5,
@@ -99,7 +97,7 @@ def test_availability_partial_rest():
     assert 0.05 <= weight < 1.0
 
 
-def test_availability_min_floor():
+def test_availability_min_floor(db_conn, db_seed):
     state = PitcherState(
         player_id="p1",
         current_energy=0.5,
@@ -116,7 +114,7 @@ def test_availability_min_floor():
 # ---------------------------------------------------------------------------
 
 
-def test_save_and_get(repo):
+def test_save_and_get(repo, db_conn, db_seed):
     state = PitcherState(
         player_id="p1",
         current_energy=0.5,
@@ -145,16 +143,15 @@ def test_get_missing_returns_none(repo):
 # ---------------------------------------------------------------------------
 
 
-def test_get_with_recovery_no_history(repo):
+def test_get_with_recovery_no_history(repo, db_conn, db_seed):
     state = repo.get_with_recovery("p1", date.today())
 
     assert state.current_energy == 1.0
     assert state.max_energy == 1.0
 
 
-def test_get_with_recovery_applies_rest(repo):
+def test_get_with_recovery_applies_rest(repo, db_conn, db_seed):
     game_date = date(2026, 1, 10)
-
     repo.save(
         PitcherState(
             player_id="p1",
@@ -171,9 +168,8 @@ def test_get_with_recovery_applies_rest(repo):
     assert state.current_energy <= state.max_energy
 
 
-def test_get_with_recovery_negative_days(repo):
+def test_get_with_recovery_negative_days(repo, db_conn, db_seed):
     game_date = date(2026, 1, 10)
-
     repo.save(
         PitcherState(
             player_id="p1",
@@ -193,9 +189,8 @@ def test_get_with_recovery_negative_days(repo):
 # ---------------------------------------------------------------------------
 
 
-def test_get_available_pitchers(repo):
+def test_get_available_pitchers(repo, db_conn, db_seed):
     today = date.today()
-
     repo.save(
         PitcherState(
             player_id="p1",
@@ -228,7 +223,7 @@ def test_get_available_pitchers(repo):
 # ---------------------------------------------------------------------------
 
 
-def test_update_after_game_inserts(repo):
+def test_update_after_game_inserts(repo, db_conn, db_seed):
     today = date.today()
 
     repo.update_after_game(
@@ -245,7 +240,7 @@ def test_update_after_game_inserts(repo):
     assert state.consecutive_days == 1
 
 
-def test_update_after_game_no_pitch_noop(repo):
+def test_update_after_game_no_pitch_noop(repo, db_conn, db_seed):
     today = date.today()
 
     repo.update_after_game(
@@ -259,7 +254,7 @@ def test_update_after_game_no_pitch_noop(repo):
     assert repo.get("p1") is None
 
 
-def test_update_after_game_consecutive_days(repo):
+def test_update_after_game_consecutive_days(repo, db_conn, db_seed):
     today = date.today()
 
     repo.save(
@@ -289,14 +284,14 @@ def test_update_after_game_consecutive_days(repo):
 # ---------------------------------------------------------------------------
 
 
-def test_delete(repo):
+def test_delete(repo, db_conn, db_seed):
     repo.save(PitcherState("p1", 0.5, 1.0))
 
     assert repo.delete("p1") is True
     assert repo.get("p1") is None
 
 
-def test_clear_all(repo):
+def test_clear_all(repo, db_conn, db_seed):
     repo.save(PitcherState("p1", 0.5, 1.0))
     repo.save(PitcherState("p2", 0.5, 1.0))
 

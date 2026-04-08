@@ -14,7 +14,6 @@ Tests cover:
 
 import csv
 import random
-import sqlite3
 from unittest.mock import patch
 
 import pytest
@@ -32,81 +31,81 @@ from src.league.offseason.draft_generator import (
 # Schema
 # ---------------------------------------------------------------------------
 
-MINIMAL_SCHEMA = """
-CREATE TABLE IF NOT EXISTS players (
-    id TEXT PRIMARY KEY,
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    bats TEXT NOT NULL,
-    throws TEXT NOT NULL,
-    position TEXT,
-    league_id TEXT
-);
+# MINIMAL_SCHEMA = """
+# CREATE TABLE IF NOT EXISTS players (
+#     id TEXT PRIMARY KEY,
+#     first_name TEXT NOT NULL,
+#     last_name TEXT NOT NULL,
+#     bats TEXT NOT NULL,
+#     throws TEXT NOT NULL,
+#     position TEXT,
+#     league_id TEXT
+# );
 
-CREATE TABLE IF NOT EXISTS player_skills (
-    player_id TEXT PRIMARY KEY,
-    age INTEGER NOT NULL DEFAULT 17,
-    clutch INTEGER NOT NULL DEFAULT 50,
-    speed INTEGER NOT NULL DEFAULT 50,
-    power INTEGER NOT NULL DEFAULT 50,
-    eye INTEGER NOT NULL DEFAULT 50,
-    contact INTEGER NOT NULL DEFAULT 50,
-    base_running INTEGER NOT NULL DEFAULT 50,
-    bunting INTEGER NOT NULL DEFAULT 50,
-    catching INTEGER NOT NULL DEFAULT 50,
-    infield INTEGER NOT NULL DEFAULT 50,
-    outfield INTEGER NOT NULL DEFAULT 50,
-    arm INTEGER NOT NULL DEFAULT 50,
-    accuracy INTEGER NOT NULL DEFAULT 50,
-    stamina INTEGER NOT NULL DEFAULT 50,
-    recovery INTEGER NOT NULL DEFAULT 50,
-    ground_balls INTEGER NOT NULL DEFAULT 50,
-    strikes INTEGER NOT NULL DEFAULT 50,
-    durability INTEGER NOT NULL DEFAULT 50,
-    updated_at TEXT,
-    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-);
+# CREATE TABLE IF NOT EXISTS player_skills (
+#     player_id TEXT PRIMARY KEY,
+#     age INTEGER NOT NULL DEFAULT 17,
+#     clutch INTEGER NOT NULL DEFAULT 50,
+#     speed INTEGER NOT NULL DEFAULT 50,
+#     power INTEGER NOT NULL DEFAULT 50,
+#     eye INTEGER NOT NULL DEFAULT 50,
+#     contact INTEGER NOT NULL DEFAULT 50,
+#     base_running INTEGER NOT NULL DEFAULT 50,
+#     bunting INTEGER NOT NULL DEFAULT 50,
+#     catching INTEGER NOT NULL DEFAULT 50,
+#     infield INTEGER NOT NULL DEFAULT 50,
+#     outfield INTEGER NOT NULL DEFAULT 50,
+#     arm INTEGER NOT NULL DEFAULT 50,
+#     accuracy INTEGER NOT NULL DEFAULT 50,
+#     stamina INTEGER NOT NULL DEFAULT 50,
+#     recovery INTEGER NOT NULL DEFAULT 50,
+#     ground_balls INTEGER NOT NULL DEFAULT 50,
+#     strikes INTEGER NOT NULL DEFAULT 50,
+#     durability INTEGER NOT NULL DEFAULT 50,
+#     updated_at TEXT,
+#     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+# );
 
-CREATE TABLE IF NOT EXISTS player_talent_caps (
-    player_id    TEXT PRIMARY KEY,
-    clutch       INTEGER NOT NULL DEFAULT 100,
-    speed        INTEGER NOT NULL DEFAULT 100,
-    durability   INTEGER NOT NULL DEFAULT 100,
-    power        INTEGER NOT NULL DEFAULT 100,
-    eye          INTEGER NOT NULL DEFAULT 100,
-    contact      INTEGER NOT NULL DEFAULT 100,
-    base_running INTEGER NOT NULL DEFAULT 100,
-    bunting      INTEGER NOT NULL DEFAULT 100,
-    catching     INTEGER NOT NULL DEFAULT 100,
-    infield      INTEGER NOT NULL DEFAULT 100,
-    outfield     INTEGER NOT NULL DEFAULT 100,
-    arm          INTEGER NOT NULL DEFAULT 100,
-    accuracy     INTEGER NOT NULL DEFAULT 100,
-    stamina      INTEGER NOT NULL DEFAULT 100,
-    recovery     INTEGER NOT NULL DEFAULT 100,
-    ground_balls INTEGER NOT NULL DEFAULT 100,
-    strikes      INTEGER NOT NULL DEFAULT 100,
-    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-);
+# CREATE TABLE IF NOT EXISTS player_talent_caps (
+#     player_id    TEXT PRIMARY KEY,
+#     clutch       INTEGER NOT NULL DEFAULT 100,
+#     speed        INTEGER NOT NULL DEFAULT 100,
+#     durability   INTEGER NOT NULL DEFAULT 100,
+#     power        INTEGER NOT NULL DEFAULT 100,
+#     eye          INTEGER NOT NULL DEFAULT 100,
+#     contact      INTEGER NOT NULL DEFAULT 100,
+#     base_running INTEGER NOT NULL DEFAULT 100,
+#     bunting      INTEGER NOT NULL DEFAULT 100,
+#     catching     INTEGER NOT NULL DEFAULT 100,
+#     infield      INTEGER NOT NULL DEFAULT 100,
+#     outfield     INTEGER NOT NULL DEFAULT 100,
+#     arm          INTEGER NOT NULL DEFAULT 100,
+#     accuracy     INTEGER NOT NULL DEFAULT 100,
+#     stamina      INTEGER NOT NULL DEFAULT 100,
+#     recovery     INTEGER NOT NULL DEFAULT 100,
+#     ground_balls INTEGER NOT NULL DEFAULT 100,
+#     strikes      INTEGER NOT NULL DEFAULT 100,
+#     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+# );
 
-CREATE TABLE IF NOT EXISTS player_status (
-    player_id TEXT PRIMARY KEY,
-    status TEXT NOT NULL CHECK (status IN (
-        'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
-    )),
-    since TEXT NOT NULL
-);
+# CREATE TABLE IF NOT EXISTS player_status (
+#     player_id TEXT PRIMARY KEY,
+#     status TEXT NOT NULL CHECK (status IN (
+#         'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
+#     )),
+#     since TEXT NOT NULL
+# );
 
-CREATE TABLE IF NOT EXISTS teams (
-    id TEXT PRIMARY KEY
-);
+# CREATE TABLE IF NOT EXISTS teams (
+#     id TEXT PRIMARY KEY
+# );
 
-CREATE TABLE IF NOT EXISTS team_players (
-    team_id TEXT NOT NULL,
-    player_id TEXT NOT NULL,
-    PRIMARY KEY (team_id, player_id)
-);
-"""
+# CREATE TABLE IF NOT EXISTS team_players (
+#     team_id TEXT NOT NULL,
+#     player_id TEXT NOT NULL,
+#     PRIMARY KEY (team_id, player_id)
+# );
+# """
 
 
 # ---------------------------------------------------------------------------
@@ -114,14 +113,14 @@ CREATE TABLE IF NOT EXISTS team_players (
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def conn():
-    connection = sqlite3.connect(":memory:")
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    connection.executescript(MINIMAL_SCHEMA)
-    yield connection
-    connection.close()
+# @pytest.fixture
+# def conn():
+#     connection = sqlite3.connect(":memory:")
+#     connection.row_factory = sqlite3.Row
+#     connection.execute("PRAGMA foreign_keys = ON")
+#     connection.executescript(MINIMAL_SCHEMA)
+#     yield connection
+#     connection.close()
 
 
 @pytest.fixture
@@ -130,8 +129,8 @@ def rng():
 
 
 @pytest.fixture
-def generator(conn, rng):
-    return DraftGenerator(conn, rng)
+def generator(db_conn, rng):
+    return DraftGenerator(db_conn, rng)
 
 
 @pytest.fixture
@@ -144,27 +143,33 @@ def tmp_dir(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def insert_player(conn, player_id, status, team_id=None):
+def insert_player(db_conn, player_id, status, team_id=None):
     """Insert a minimal player with status, optionally on a team."""
-    conn.execute(
+
+    if team_id:
+        db_conn.execute(
+            "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
+            (team_id, "City", "Mascot"),
+        )
+    db_conn.execute(
         "INSERT INTO players (id, first_name, last_name, bats, throws, position) VALUES (?,?,?,?,?,?)",
         (player_id, "Test", "Player", "R", "R", "of"),
     )
-    conn.execute(
-        "INSERT INTO player_skills (player_id, age) VALUES (?, ?)",
-        (player_id, 20),
+    db_conn.execute(
+        "INSERT INTO player_skills (player_id, age, durability, clutch, speed, power, eye, contact, base_running, bunting, catching, infield, outfield, arm, accuracy, stamina, recovery, ground_balls, strikes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (player_id, 20, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60),
     )
-    conn.execute(
+    db_conn.execute(
         "INSERT INTO player_status (player_id, status, since) VALUES (?, ?, '2025-01-01')",
         (player_id, status),
     )
     if team_id:
-        conn.execute("INSERT OR IGNORE INTO teams (id) VALUES (?)", (team_id,))
-        conn.execute(
+        db_conn.execute("INSERT OR IGNORE INTO teams (id) VALUES (?)", (team_id,))
+        db_conn.execute(
             "INSERT INTO team_players (team_id, player_id) VALUES (?, ?)",
             (team_id, player_id),
         )
-    conn.commit()
+    db_conn.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -284,43 +289,43 @@ class TestGenerateProspects:
 
 
 class TestGetExistingDraftable:
-    def test_returns_prospect_without_team(self, conn, generator):
-        insert_player(conn, "p1", "prospect")
+    def test_returns_prospect_without_team(self, db_conn, generator):
+        insert_player(db_conn, "p1", "prospect")
         result = generator._get_existing_draftable()
         assert any(p.id == "p1" for p in result)
 
-    # def test_returns_unassigned_without_team(self, conn, generator):
-    #     insert_player(conn, "p1", "unassigned")
+    # def test_returns_unassigned_without_team(self, db_conn, generator):
+    #     insert_player(db_conn, "p1", "unassigned")
     #     result = generator._get_existing_draftable()
     #     assert any(p.id == "p1" for p in result)
 
-    def test_excludes_rostered_prospect(self, conn, generator):
+    def test_excludes_rostered_prospect(self, db_conn, generator):
         """A prospect on a team should not appear."""
-        insert_player(conn, "p1", "prospect", team_id="team1")
+        insert_player(db_conn, "p1", "prospect", team_id="team1")
         result = generator._get_existing_draftable()
         assert not any(p.id == "p1" for p in result)
 
-    def test_excludes_free_agent(self, conn, generator):
+    def test_excludes_free_agent(self, db_conn, generator):
         """Free agents (retired) should not appear."""
-        insert_player(conn, "p1", "free_agent")
+        insert_player(db_conn, "p1", "free_agent")
         result = generator._get_existing_draftable()
         assert not any(p.id == "p1" for p in result)
 
-    def test_excludes_26man_player(self, conn, generator):
-        insert_player(conn, "p1", "26man", team_id="team1")
+    def test_excludes_26man_player(self, db_conn, generator):
+        insert_player(db_conn, "p1", "26man", team_id="team1")
         result = generator._get_existing_draftable()
         assert not any(p.id == "p1" for p in result)
 
-    def test_returns_empty_when_none_draftable(self, conn, generator):
-        insert_player(conn, "p1", "free_agent")
-        insert_player(conn, "p2", "26man", team_id="team1")
+    def test_returns_empty_when_none_draftable(self, db_conn, generator):
+        insert_player(db_conn, "p1", "free_agent")
+        insert_player(db_conn, "p2", "26man", team_id="team1")
         result = generator._get_existing_draftable()
         assert result == []
 
-    def test_returns_multiple_prospects(self, conn, generator):
-        insert_player(conn, "p1", "prospect")
-        insert_player(conn, "p2", "prospect")
-        insert_player(conn, "p3", "unassigned")
+    def test_returns_multiple_prospects(self, db_conn, generator):
+        insert_player(db_conn, "p1", "prospect")
+        insert_player(db_conn, "p2", "prospect")
+        insert_player(db_conn, "p3", "unassigned")
         result = generator._get_existing_draftable()
         ids = {p.id for p in result}
         assert ids == {"p1", "p2"}
@@ -332,39 +337,39 @@ class TestGetExistingDraftable:
 
 
 class TestDraftGeneratorRun:
-    def test_inserts_new_players_into_db(self, conn, generator, tmp_path):
+    def test_inserts_new_players_into_db(self, db_conn, generator, tmp_path):
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             generator.run("season-1", 2026)
 
-        count = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+        count = db_conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
         assert count == DRAFT_POOL_SIZE
 
-    def test_new_players_have_prospect_status(self, conn, generator, tmp_path):
+    def test_new_players_have_prospect_status(self, db_conn, generator, tmp_path):
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             generator.run("season-1", 2026)
 
-        count = conn.execute(
+        count = db_conn.execute(
             "SELECT COUNT(*) FROM player_status WHERE status = 'prospect'"
         ).fetchone()[0]
         assert count == DRAFT_POOL_SIZE
 
-    def test_existing_prospects_included_in_csv(self, conn, generator, tmp_path):
-        insert_player(conn, "existing-p1", "prospect")
+    def test_existing_prospects_included_in_csv(self, db_conn, generator, tmp_path):
+        insert_player(db_conn, "existing-p1", "prospect")
 
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             total = generator.run("season-1", 2026)
 
         assert total == DRAFT_POOL_SIZE + 1
 
-    def test_existing_rostered_excluded_from_csv(self, conn, generator, tmp_path):
-        insert_player(conn, "rostered-p1", "26man", team_id="team1")
+    def test_existing_rostered_excluded_from_csv(self, db_conn, generator, tmp_path):
+        insert_player(db_conn, "rostered-p1", "26man", team_id="team1")
 
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             total = generator.run("season-1", 2026)
 
         assert total == DRAFT_POOL_SIZE
 
-    def test_no_double_counting(self, conn, generator, tmp_path):
+    def test_no_double_counting(self, db_conn, generator, tmp_path):
         """New players inserted before existing query — no overlap."""
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             total = generator.run("season-1", 2026)
@@ -372,14 +377,14 @@ class TestDraftGeneratorRun:
         # Should be exactly DRAFT_POOL_SIZE with no existing players
         assert total == DRAFT_POOL_SIZE
 
-    def test_draft_csv_created(self, conn, generator, tmp_path):
+    def test_draft_csv_created(self, db_conn, generator, tmp_path):
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             generator.run("season-1", 2026)
 
         csv_path = tmp_path / "2026" / "draft.csv"
         assert csv_path.exists()
 
-    def test_draft_csv_has_correct_row_count(self, conn, generator, tmp_path):
+    def test_draft_csv_has_correct_row_count(self, db_conn, generator, tmp_path):
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             total = generator.run("season-1", 2026)
 
@@ -390,7 +395,7 @@ class TestDraftGeneratorRun:
 
         assert len(rows) == total
 
-    def test_draft_csv_has_required_columns(self, conn, generator, tmp_path):
+    def test_draft_csv_has_required_columns(self, db_conn, generator, tmp_path):
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             generator.run("season-1", 2026)
 
@@ -402,28 +407,23 @@ class TestDraftGeneratorRun:
         for col in ["Name", "Age", "ID", "PS", "B", "T"]:
             assert col in headers, f"Missing column: {col}"
 
-    def test_returns_total_count(self, conn, generator, tmp_path):
+    def test_returns_total_count(self, db_conn, generator, tmp_path):
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             total = generator.run("season-1", 2026)
 
         assert total == DRAFT_POOL_SIZE
 
-    def test_deterministic_with_same_seed(self, conn, tmp_path):
+    def test_deterministic_with_same_seed(self, db_conn, db_conn_factory, tmp_path):
         """Same seed should produce same player IDs."""
-        conn2 = sqlite3.connect(":memory:")
-        conn2.row_factory = sqlite3.Row
-        conn2.execute("PRAGMA foreign_keys = ON")
-        conn2.executescript(MINIMAL_SCHEMA)
+        conn2 = db_conn_factory()
 
-        gen1 = DraftGenerator(conn, random.Random(99))
+        gen1 = DraftGenerator(db_conn, random.Random(99))
         gen2 = DraftGenerator(conn2, random.Random(99))
 
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
             gen1.run("season-1", 2026)
             gen2.run("season-1", 2026)
 
-        ids1 = {r["id"] for r in conn.execute("SELECT id FROM players").fetchall()}
+        ids1 = {r["id"] for r in db_conn.execute("SELECT id FROM players").fetchall()}
         ids2 = {r["id"] for r in conn2.execute("SELECT id FROM players").fetchall()}
         assert ids1 == ids2
-
-        conn2.close()
