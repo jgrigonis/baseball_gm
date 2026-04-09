@@ -1,0 +1,16 @@
+Although we are showing letter grades instead of 
+exact numbers, we aren't fuzzing them.
+In order to do so, we'd need a per-gm table of 
+fuzzed ratings. 
+
+One consideration is that human GMs could collaborate
+to compare ratings and determine which are accurate.
+
+Already an issue is that sorts seem to go off numbers 
+rather than displayed letter grades, but I can't confirm this. 
+The most obvious situation is with the draft, which displays
+one order, but obviously with many tied ratings, but the draft 
+takes place in another order. This is fine and expected as the 
+computer can see the numbers, but the human GM is also getting 
+the advantage of this without saving their preferences and 
+leaving it as default.

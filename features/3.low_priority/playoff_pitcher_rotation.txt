@@ -7,3 +7,5 @@ Still didn't test this, as the rotation landed on sp1 by random luck
 
 There should be a set lineup button on the playoffs page if
 you are in the playoffs.
+
+I don't think this reliably works for playoffs.

@@ -8,8 +8,11 @@ Lineup manager
 Different approaches here
 Auto-Fill is terrible currently
 
+If you have batting order set, but positions unset, auto-fill 
+should be able to plug in the positions.
+
 It should not overwrite existing lineup, just fill in holes and replace 
 injured players
 
 Also see:
-team_rotation_redesign.txt
+team_rotation_redesign.txt (moved to completed)

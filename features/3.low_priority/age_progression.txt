@@ -2,3 +2,4 @@ Show aging progression
 
 There should be a screen that shows players age progression as they age.
 
+See player_tab.txt
