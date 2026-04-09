@@ -833,7 +833,7 @@ function autoFill() {
     }
   }
   // Fill nulls with best available
-  const posOrder = ['c','ss','cf','2b','3b','1b','lf','rf','dh'];
+  const posOrder = ['ss','cf','2b','3b','1b','lf','c','rf','dh'];
   for (let i = 0; i < 9; i++) {
     if (lineup[i]) continue;  // already filled with healthy player
     const pos = posOrder[i] || 'dh';
