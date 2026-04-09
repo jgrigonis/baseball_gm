@@ -14,20 +14,38 @@ from pydantic import BaseModel, Field, model_validator
 # The sim engine stores skills as integers (roughly 0-100).
 # GMs see A+-F letter grades; raw numbers are debug-only.
 
+# Fixed version
+# _GRADE_THRESHOLDS: list[tuple[int, str]] = [
+#     (73, "A+"),
+#     (69, "A"),
+#     (65, "A-"),
+#     (61, "B+"),
+#     (57, "B"),
+#     (53, "B-"),
+#     (49, "C+"),
+#     (45, "C"),
+#     (41, "C-"),
+#     (37, "D+"),
+#     (33, "D"),
+#     (29, "D-"),
+#     (25, "F"),
+# ]
+
+# testing version
 _GRADE_THRESHOLDS: list[tuple[int, str]] = [
-    (75, "A+"),
-    (70, "A"),
-    (65, "A-"),
-    (60, "B+"),
+    (67, "A+"),
+    (64, "A"),
+    (61, "A-"),
+    (58, "B+"),
     (55, "B"),
-    (50, "B-"),
-    (45, "C+"),
-    (40, "C"),
-    (35, "C-"),
-    (30, "D+"),
-    (25, "D"),
-    (20, "D-"),
-    (0, "F"),
+    (52, "B-"),
+    (49, "C+"),
+    (46, "C"),
+    (43, "C-"),
+    (40, "D+"),
+    (37, "D"),
+    (34, "D-"),
+    (31, "F"),
 ]
 
 
