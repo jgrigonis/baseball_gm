@@ -1,4 +1,4 @@
-Minor fixes
+Easy fixes
 
 lineup tab on pitching side 
 sorts should include overall 

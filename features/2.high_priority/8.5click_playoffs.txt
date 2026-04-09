@@ -3,3 +3,8 @@ playoff series need to be clickable
 At least a way to see game logs 
 
 You can see them in the schedule page
+
+Clicking a larger playoff box doesn't really have a good landing spot currently.
+
+For now, the only thing that makes sense is clicking the little green dots to
+bring up a game detail pop in.
