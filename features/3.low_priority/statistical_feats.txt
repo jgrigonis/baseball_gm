@@ -1,7 +1,0 @@
-More statistical feats to track
-
-Most team wins in a row
-Most team losses in a row
-Most games in a row with a hit for batter
-Most games in a row with a home run for a hitter
-most pitching wins in a row

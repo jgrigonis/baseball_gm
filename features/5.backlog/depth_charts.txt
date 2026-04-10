@@ -1,9 +1,0 @@
-
-
-depth charts
-
-It would be cool to setup depth charts per position, even to include platoon
-details, for example, set a backup catcher, who starts every 4 games to give 
-the main catcher a break.
-
-

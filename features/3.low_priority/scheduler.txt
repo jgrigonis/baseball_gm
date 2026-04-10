@@ -1,7 +1,0 @@
-scheduler updates
-
-The scheduler should handle many different things
-
-3/4 game series, small leagues, etc.
-
-divisions, league separation.

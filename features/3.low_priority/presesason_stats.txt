@@ -1,3 +1,0 @@
-presesason_stats
-
-During preseason, the stats should show from last season, but make it clear that it is last season.

@@ -1,0 +1,38 @@
+
+npm install --save-dev chromatic @chromatic-com/cypress
+
+Install the chromatic / cypress tool
+
+
+Add the following to your cypress/support/e2e.js file:
+
+// cypress/support/e2e.js
+import "@chromatic-com/cypress/support";
+
+
+Then, install the Chromatic plugin in via the cypress.config.js file:
+
+// cypress.config.js
+const { defineConfig } = require("cypress");
+const { installPlugin } = require("@chromatic-com/cypress");
+
+module.exports = defineConfig({
+  e2e: {
+    setupNodeEvents(on, config) {
+      installPlugin(on, config);
+    },
+  },
+});
+
+
+On the command line, in your project directory, run the following command:
+
+ELECTRON_EXTRA_LAUNCH_ARGS=--remote-debugging-port=9222 npx cypress run
+
+Run a Chromatic build through the CLI
+This results in tests that allow you to approve changes at a glance using Chromatic.
+
+npx chromatic --cypress --project-token=chpt_85647aa307739a3
+
+
+Not actually going to use this, as npm isn't even a dependency yet.

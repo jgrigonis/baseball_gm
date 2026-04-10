@@ -1,3 +1,0 @@
-Players in Season Summary should be clickable.
-
-Show player details for them.

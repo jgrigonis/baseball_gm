@@ -1,6 +1,0 @@
-Summary Enhancements.
-
-Show the draft results for that season
-Show the standings for that season
-Show the leaders for that season
-Show the playoff results 

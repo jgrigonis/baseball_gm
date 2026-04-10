@@ -1,7 +1,0 @@
-Easy fixes
-
-lineup tab on pitching side 
-sorts should include overall 
-
-both sides of lineup should have an unsaved banner
-like the roster page.

@@ -1,8 +1,0 @@
-Lobby could show GMs as AI, until players join.
-
-Hover over settings to explain more
-
-Rename league here
-
-Make a game publically visible
-We'll need to build a public game browser

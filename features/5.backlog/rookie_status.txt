@@ -1,4 +1,0 @@
-Rookie status
-
-Display a little (R) next to the player's name if they are a rookie.
-

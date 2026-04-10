@@ -1,3 +1,0 @@
-There should be a way to rename players
-Also, rename Teams
-Also create custom players, but only in single player.
