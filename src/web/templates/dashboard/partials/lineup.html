@@ -566,7 +566,7 @@ function renderBattingOrder() {
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.bats}/${p.throws}</span>
-            ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
           </div>
           ${_battingSlotGrades(isHitter, p, slot.position)}
           ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
@@ -775,7 +775,7 @@ function renderRoster() {
       <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
       <div style="min-width:0;">
         <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}
-          ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+          ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
         </div>
         <div class="lu-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
         <div class="lu-skills">${isHitter ? hitterGradesHtml(p, null) : pitcherGradesHtml(p)}</div>
@@ -973,7 +973,7 @@ function renderRotation() {
       <div style="min-width:0;">
         <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
              onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
-          ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+          ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
         </div>
         <div class="lu-skills">${pitcherGradesHtml(p)}</div>
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
@@ -1135,7 +1135,7 @@ function renderBullpen() {
           <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
           <span class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                 onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
-            ${p.returning?`<span style="font-size:10px;color:#f5c518;">Returning</span>`:p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+            ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
           </span>
         </div>
         <div class="lu-skills">${pitcherGradesHtml(p)}</div>

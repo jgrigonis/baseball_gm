@@ -1548,8 +1548,7 @@ def standings(
             for r in inj_rows:
                 d = dict(r)
                 raw = d.get("games_remaining", 0) or 0
-                d["games_remaining"] = max(0, raw - 1)
-                d["returning"] = raw == 1
+                d["games_remaining"] = raw
                 injuries.append(d)
 
     else:
@@ -1944,8 +1943,8 @@ def roster(
     for p in players:
         raw_days = injured_ids.get(p["player_id"])
         p["injured"] = raw_days is not None
-        p["injury_days"] = max(0, raw_days - 1) if raw_days else None
-        p["returning"] = raw_days == 1
+        p["injury_days"] = raw_days if raw_days else None
+        p["returning"] = False
     ctx["players"] = players
     return _respond(request, "dashboard/partials/roster.html", ctx)
 
@@ -2136,8 +2135,8 @@ def lineup(
     for p in hitters + pitchers:
         raw_days = injured_map.get(p["player_id"])
         p["injured"] = raw_days is not None
-        p["injury_days"] = max(0, raw_days - 1) if raw_days else None
-        p["returning"] = raw_days == 1
+        p["injury_days"] = raw_days if raw_days else None
+        p["returning"] = False
     ctx["hitters"] = hitters
     ctx["pitchers"] = pitchers
     ctx["saved_lineup"] = saved_lineup
@@ -2749,8 +2748,8 @@ def stats(
         for p in batters + pitchers:
             raw_days = injured_map.get(p["player_id"])
             p["injured"] = raw_days is not None
-            p["injury_days"] = max(0, raw_days - 1) if raw_days else None
-            p["returning"] = raw_days == 1
+            p["injury_days"] = raw_days if raw_days else None
+            p["returning"] = False
     else:
         for p in batters + pitchers:
             p["injured"] = False
@@ -3526,7 +3525,6 @@ def player_panel(
             (pid, league_id),
         ).fetchone()
         raw_injury = inj_status["games_remaining"] if inj_status else None
-        display_days = max(0, raw_injury - 1) if raw_injury else None
 
         return {
             **grades.model_dump(),
@@ -3541,8 +3539,8 @@ def player_panel(
             "injury_log": [dict(r) for r in inj],
             "stats": stats,
             "injured": raw_injury is not None,
-            "games_remaining": display_days,
-            "returning": raw_injury == 1,
+            "games_remaining": raw_injury,
+            "returning": False,
         }
 
     ctx = _shell_ctx(request, db, league_id, user, gm)

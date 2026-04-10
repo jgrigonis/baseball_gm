@@ -146,9 +146,7 @@
                onmouseover="this.style.background='var(--bg-3)'"
                onmouseout="this.style.background=''">
             <span style="color:var(--text);">{{ inj.first_name }} {{ inj.last_name }}</span>
-            {% if inj.returning %}
-            <span style="color:#f5c518;font-size:11px;">Returning</span>
-            {% else %}
+            {% if inj.games_remaining %}
             <span style="color:var(--red);font-size:11px;">IL · {{ inj.games_remaining }}g</span>
             {% endif %}
           </div>
