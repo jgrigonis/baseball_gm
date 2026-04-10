@@ -1,2 +1,0 @@
-These are major bugs.
-
