@@ -27,6 +27,7 @@ dev = [
   "uvicorn[standard]",
   "jinja2 @ git+https://github.com/pallets/jinja2.git",
   "python-multipart",
+  "psycopg[binary]",
 ]
 
 [tool.pytest.ini_options]
