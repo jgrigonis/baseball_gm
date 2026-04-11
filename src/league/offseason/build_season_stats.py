@@ -188,7 +188,10 @@ GROUP BY
 
 def ensure_table(conn) -> None:
     """Create player_season_stats and its indexes if they don't exist."""
-    conn.executescript(CREATE_TABLE_SQL)
+    for stmt in CREATE_TABLE_SQL.split(";"):
+        stmt = stmt.strip()
+        if stmt:
+            conn.execute(stmt)
     conn.commit()
 
 
@@ -242,7 +245,7 @@ def build_all(conn) -> int:
 def get_all_season_ids(conn) -> list[tuple[str, int]]:
     """Return all (season_id, year) pairs ordered by year."""
     rows = conn.execute("SELECT id, year FROM seasons ORDER BY year").fetchall()
-    return [(r[0], r[1]) for r in rows]
+    return [(r["id"], r["year"]) for r in rows]
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
