@@ -16,17 +16,14 @@ from src.league.manifest_helper import (
     validate_manifest_uniqueness,
 )
 from src.league.offseason.draft_generator import DraftGenerator
-# Write draft order using a separate shuffle from GM assignment
-from src.league.offseason.snake_draft import write_draft_order
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import MANIFEST_FILES_DIR
-
 
 _MANIFEST_FILENAME = "world_league-2025.json"
 
 
 def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
-    league = conn.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
 
     if not league:
         raise ValueError(f"League {league_id} not found.")
@@ -69,22 +66,22 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
     # Player IDs are deterministic (CSV hashes) and reused across leagues.
     # Delete only rows scoped to THIS league_id so other leagues are unaffected.
     conn.execute(
-        "DELETE FROM player_injuries WHERE league_id = ?",
+        "DELETE FROM player_injuries WHERE league_id = %s",
         (league_id,),
     )
     conn.execute(
-        "DELETE FROM player_energy WHERE league_id = ?",
+        "DELETE FROM player_energy WHERE league_id = %s",
         (league_id,),
     )
     conn.execute(
-        "DELETE FROM pitcher_state WHERE league_id = ?",
+        "DELETE FROM pitcher_state WHERE league_id = %s",
         (league_id,),
     )
     conn.commit()
 
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)
+        "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
     ).fetchone()[0]
 
     if existing_games == 0:
@@ -103,7 +100,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
 
     # ── 5. Fill AI GMs + assign all GMs to teams ─────────────────────────────
     human_gms = conn.execute(
-        "SELECT * FROM gms WHERE league_id = ? AND is_ai = 0 ORDER BY created_at",
+        "SELECT * FROM gms WHERE league_id = %s AND is_ai = 0 ORDER BY created_at",
         (league_id,),
     ).fetchall()
 
@@ -112,22 +109,22 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
 
     assigned_teams = set()
     for gm, team_id in zip(human_gms, team_ids_all):
-        conn.execute("UPDATE gms SET team_id = ? WHERE id = ?", (team_id, gm["id"]))
+        conn.execute("UPDATE gms SET team_id = %s WHERE id = %s", (team_id, gm["id"]))
         assigned_teams.add(team_id)
 
     for team_id in [tid for tid in team_ids_all if tid not in assigned_teams]:
         ai_gm_id = str(uuid.uuid4())
         conn.execute(
-            "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (?, ?, ?, 'AI Manager', 1)",
+            "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', 1)",
             (ai_gm_id, league_id, team_id),
         )
-        conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (ai_gm_id,))
+        conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (ai_gm_id,))
 
     human_gm_team = conn.execute(
         """
         SELECT t.city, t.mascot FROM gms g
         JOIN teams t ON t.id = g.team_id
-        WHERE g.league_id = ? AND g.is_ai = 0
+        WHERE g.league_id = %s AND g.is_ai = 0
         LIMIT 1
         """,
         (league_id,),
@@ -143,7 +140,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
             LEFT JOIN team_players tp ON tp.player_id = p.id
             WHERE ps.status = 'prospect'
               AND tp.player_id IS NULL
-              AND p.league_id = ?
+              AND p.league_id = %s
         )
     """,
         (league_id,),
@@ -157,7 +154,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
     # ── 7. Create draft ───────────────────────────────────────────────────────
     draft_id = str(uuid.uuid4())
     conn.execute(
-        "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (?, ?, ?, ?, 'pending')",
+        "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (%s, %s, %s, %s, 'pending')",
         (
             draft_id,
             league_id,
@@ -166,14 +163,15 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
         ),
     )
 
-
+    # Write draft order using a separate shuffle from GM assignment
+    from src.league.offseason.snake_draft import write_draft_order
 
     draft_order_ids = team_ids_all[:]
     rng.shuffle(draft_order_ids)
     write_draft_order(conn, draft_id, league_id, year, draft_order_ids)
 
     # ── 8. Advance league state → draft ──────────────────────────────────────
-    conn.execute("UPDATE leagues SET state = 'draft' WHERE id = ?", (league_id,))
+    conn.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (league_id,))
     conn.commit()
 
     return {

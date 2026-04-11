@@ -147,7 +147,7 @@ class OffseasonPipeline:
             if energy_state is not None:
                 games = energy_state.season_games_played
                 result = self.conn.execute(
-                    "SELECT COUNT(*) FROM player_injury_log WHERE player_id = ? AND season_id = ?",
+                    "SELECT COUNT(*) FROM player_injury_log WHERE player_id = %s AND season_id = %s",
                     (player.id, season_id),
                 ).fetchone()
                 injuries = result[0] if result else 0
@@ -197,7 +197,7 @@ class OffseasonPipeline:
             if self._should_retire(player.age, player.skills, is_unrostered, rng):
                 self.player_status_repo.set_status(player.id, "free_agent")
                 row = self.conn.execute(
-                    "SELECT team_id FROM team_players WHERE player_id = ?", (player.id,)
+                    "SELECT team_id FROM team_players WHERE player_id = %s", (player.id,)
                 ).fetchone()
                 if row:
                     team_repo.remove_player(row["team_id"], player.id)
@@ -227,7 +227,7 @@ class OffseasonPipeline:
                 """SELECT t.id, t.source_csv
                    FROM teams t
                    JOIN league_season_teams lst ON lst.team_id = t.id
-                   WHERE lst.season_id = ? AND lst.league_id = ?""",
+                   WHERE lst.season_id = %s AND lst.league_id = %s""",
                 (season_id, self.league_id),
             ).fetchall()
             out_dir = Path(TEAM_FILES_DIR) / str(self.year) / self.league_id
@@ -236,7 +236,7 @@ class OffseasonPipeline:
                 """SELECT t.id, t.source_csv
                    FROM teams t
                    JOIN league_season_teams lst ON lst.team_id = t.id
-                   WHERE lst.season_id = ?""",
+                   WHERE lst.season_id = %s""",
                 (season_id,),
             ).fetchall()
             out_dir = Path(TEAM_FILES_DIR) / str(self.year)
@@ -268,7 +268,7 @@ class OffseasonPipeline:
 
     def _is_done(self, season_id: str, step: str) -> bool:
         row = self.conn.execute(
-            "SELECT 1 FROM offseason_steps WHERE season_id = ? AND step = ?",
+            "SELECT 1 FROM offseason_steps WHERE season_id = %s AND step = %s",
             (season_id, step),
         ).fetchone()
         return row is not None
@@ -276,21 +276,21 @@ class OffseasonPipeline:
     def _mark_done(self, season_id: str, step: str) -> None:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         self.conn.execute(
-            "INSERT OR IGNORE INTO offseason_steps (season_id, step, completed_at) VALUES (?, ?, ?)",
+            "INSERT INTO offseason_steps (season_id, step, completed_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
             (season_id, step, now),
         )
         self.conn.commit()
 
     def _playoffs_complete(self, season_id: str) -> bool:
         finals = self.conn.execute(
-            "SELECT id FROM series WHERE season_id = ? AND name = 'Finals'",
+            "SELECT id FROM series WHERE season_id = %s AND name = 'Finals'",
             (season_id,),
         ).fetchone()
         if finals is None:
             return False
         row = self.conn.execute(
             """SELECT COUNT(*) AS wins FROM games
-               WHERE series_id = ? AND completed = 1
+               WHERE series_id = %s AND completed = 1
                GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
             (finals["id"],),
         ).fetchone()
@@ -374,14 +374,14 @@ class OffseasonPipeline:
 
             # Replace old rotation rows with fresh ones
             self.conn.execute(
-                "DELETE FROM team_rotations WHERE team_id = ? AND season_id = ?",
+                "DELETE FROM team_rotations WHERE team_id = %s AND season_id = %s",
                 (team.id, season_id),
             )
             for order, pid in enumerate(rotation, 1):
                 self.conn.execute(
                     """INSERT INTO team_rotations
                            (team_id, season_id, player_id, rotation_order, effective_date)
-                       VALUES (?, ?, ?, ?, ?)""",
+                       VALUES (%s, %s, %s, %s, %s)""",
                     (team.id, season_id, pid, order, today),
                 )
 
@@ -389,7 +389,7 @@ class OffseasonPipeline:
             self.conn.execute(
                 """INSERT INTO team_rotation_pointer
                        (team_id, season_id, series_id, next_order, updated_at)
-                   VALUES (?, ?, '', 1, datetime('now'))
+                   VALUES (%s, %s, '', 1, datetime('now'))
                    ON CONFLICT (team_id, season_id, series_id)
                    DO UPDATE SET next_order = 1, updated_at = datetime('now')""",
                 (team.id, season_id),
@@ -429,7 +429,7 @@ class OffseasonPipeline:
         # The draft record belongs to the NEW season (created by offseason_service),
         # not the completed season passed in as season_id. Find the newest pending draft.
         row = self.conn.execute(
-            """SELECT id FROM drafts WHERE league_id = ?
+            """SELECT id FROM drafts WHERE league_id = %s
                ORDER BY created_at DESC LIMIT 1""",
             (league_id,),
         ).fetchone()
@@ -508,7 +508,7 @@ class OffseasonPipeline:
 
     def _load_season_year(self, season_id: str) -> int:
         row = self.conn.execute(
-            "SELECT year FROM seasons WHERE id = ?", (season_id,)
+            "SELECT year FROM seasons WHERE id = %s", (season_id,)
         ).fetchone()
         if row is None:
             raise ValueError(f"Season {season_id} not found")

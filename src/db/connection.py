@@ -1,14 +1,25 @@
 # src/db/connection.py
-import sqlite3
-from pathlib import Path
-from src.util.locations import LEAGUE_FILES_DIR
+import os
+import psycopg
+from psycopg.rows import dict_row
 
 
-def get_connection(db: str | Path = "league.db") -> sqlite3.Connection:
-    p = Path(db)
-    path = Path(LEAGUE_FILES_DIR) / p if p.parent == Path(".") else p
-    conn = sqlite3.connect(path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
+def get_connection(db: str | None = None) -> psycopg.Connection:
+    """
+    Return a psycopg3 connection.
+
+    Connection URL is read from DATABASE_URL environment variable.
+    The `db` parameter is accepted for backwards compatibility but ignored —
+    all configuration is done via DATABASE_URL.
+
+    dict_row factory means rows support both row["column"] and row.get("column"),
+    matching the old sqlite3.Row behaviour everywhere in the codebase.
+    """
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set. "
+            "Example: postgresql://user@localhost/baseball_manager"
+        )
+    conn = psycopg.connect(url, row_factory=dict_row)
     return conn

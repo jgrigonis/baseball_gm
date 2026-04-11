@@ -40,8 +40,8 @@ def _get_active_rotation_player_ids(conn, team_id: str, season_id: str) -> set[s
         """
         SELECT player_id
         FROM team_rotations
-        WHERE team_id = ?
-          AND season_id = ?
+        WHERE team_id = %s
+          AND season_id = %s
           AND end_date IS NULL
         """,
         (team_id, season_id),
@@ -55,8 +55,8 @@ def _get_active_bullpen_player_ids(conn, team_id: str, season_id: str) -> set[st
         """
         SELECT player_id
         FROM bullpen_roles
-        WHERE team_id = ?
-          AND season_id = ?
+        WHERE team_id = %s
+          AND season_id = %s
           AND end_date IS NULL
         """,
         (team_id, season_id),
@@ -71,10 +71,10 @@ def _close_active_role(
     conn.execute(
         """
         UPDATE bullpen_roles
-        SET end_date = ?
-        WHERE team_id = ?
-          AND player_id = ?
-          AND season_id = ?
+        SET end_date = %s
+        WHERE team_id = %s
+          AND player_id = %s
+          AND season_id = %s
           AND end_date IS NULL
         """,
         (end_date, team_id, player_id, season_id),
@@ -137,9 +137,9 @@ def set_roles(
     conn.execute(
         """
         UPDATE bullpen_roles
-        SET end_date = ?
-        WHERE team_id = ?
-          AND season_id = ?
+        SET end_date = %s
+        WHERE team_id = %s
+          AND season_id = %s
           AND end_date IS NULL
         """,
         (effective_date, team_id, season_id),
@@ -149,7 +149,7 @@ def set_roles(
     conn.executemany(
         """
         INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date, end_date)
-        VALUES (?, ?, ?, ?, ?, NULL)
+        VALUES (%s, %s, %s, %s, %s, NULL)
         """,
         [
             (team_id, entry["player_id"], season_id, entry["role"], effective_date)
@@ -170,8 +170,8 @@ def get_current_roles(conn, team_id: str, season_id: str) -> list[dict]:
         """
         SELECT team_id, player_id, season_id, role, effective_date
         FROM bullpen_roles
-        WHERE team_id = ?
-          AND season_id = ?
+        WHERE team_id = %s
+          AND season_id = %s
           AND end_date IS NULL
         ORDER BY role, player_id
         """,
@@ -192,8 +192,8 @@ def get_closer(conn, team_id: str, season_id: str) -> Optional[dict]:
         """
         SELECT team_id, player_id, season_id, role, effective_date
         FROM bullpen_roles
-        WHERE team_id = ?
-          AND season_id = ?
+        WHERE team_id = %s
+          AND season_id = %s
           AND role = 'Closer'
           AND end_date IS NULL
         LIMIT 1
@@ -241,9 +241,9 @@ def update_role(
     cursor = conn.execute(
         """
         SELECT role FROM bullpen_roles
-        WHERE team_id = ?
-          AND player_id = ?
-          AND season_id = ?
+        WHERE team_id = %s
+          AND player_id = %s
+          AND season_id = %s
           AND end_date IS NULL
         LIMIT 1
         """,
@@ -260,7 +260,7 @@ def update_role(
     conn.execute(
         """
         INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date, end_date)
-        VALUES (?, ?, ?, ?, ?, NULL)
+        VALUES (%s, %s, %s, %s, %s, NULL)
         """,
         (team_id, player_id, season_id, new_role, effective_date),
     )
@@ -284,10 +284,10 @@ def remove_role(
     cursor = conn.execute(
         """
         UPDATE bullpen_roles
-        SET end_date = ?
-        WHERE team_id = ?
-          AND player_id = ?
-          AND season_id = ?
+        SET end_date = %s
+        WHERE team_id = %s
+          AND player_id = %s
+          AND season_id = %s
           AND end_date IS NULL
         """,
         (end_date, team_id, player_id, season_id),

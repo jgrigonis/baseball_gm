@@ -33,7 +33,7 @@ def _make_join_code(db: sqlite3.Connection) -> str:
     for _ in range(20):  # give up after 20 collisions (astronomically unlikely)
         code = "".join(random.choices(_JOIN_CODE_CHARS, k=_JOIN_CODE_LEN))
         exists = db.execute(
-            "SELECT 1 FROM leagues WHERE join_code = ?", (code,)
+            "SELECT 1 FROM leagues WHERE join_code = %s", (code,)
         ).fetchone()
         if not exists:
             return code
@@ -63,7 +63,7 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
         INSERT INTO leagues (
             id, name, join_code, mode, num_teams, decision_window_sec,
             reentry_enabled, pace_control, state
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'lobby')
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'lobby')
         """,
         (
             league_id,
@@ -80,7 +80,7 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
     # Upsert user row for this session token
     db.execute(
         """INSERT INTO users (id, session_token, display_name)
-           VALUES (?, ?, ?)
+           VALUES (%s, %s, %s)
            ON CONFLICT (session_token) DO UPDATE SET display_name = excluded.display_name""",
         (
             str(__import__("uuid").uuid4()),
@@ -89,22 +89,22 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
         ),
     )
     user = db.execute(
-        "SELECT id FROM users WHERE session_token = ?", (session_token,)
+        "SELECT id FROM users WHERE session_token = %s", (session_token,)
     ).fetchone()
     db.execute(
-        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, 0)",
         (gm_id, league_id, user["id"], body.commissioner_display_name),
     )
 
     # Create default strategic profile for commissioner
-    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
+    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
 
     db.execute(
-        "UPDATE leagues SET commissioner_gm_id = ? WHERE id = ?", (gm_id, league_id)
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm_id, league_id)
     )
 
-    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
-    gm = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
+    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    gm = db.execute("SELECT * FROM gms WHERE id = %s", (gm_id,)).fetchone()
 
     return {
         "league": _league_row(league),
@@ -119,7 +119,7 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
 def get_league(join_code: str, db: DB) -> LeagueResponse:
     """Look up a league by its join code."""
     row = db.execute(
-        "SELECT * FROM leagues WHERE join_code = ?", (join_code.upper(),)
+        "SELECT * FROM leagues WHERE join_code = %s", (join_code.upper(),)
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="League not found.")
@@ -133,13 +133,13 @@ def get_league(join_code: str, db: DB) -> LeagueResponse:
 def list_gms(join_code: str, db: DB) -> list[dict]:
     """List all GMs in a league (human and AI), without session tokens."""
     league = db.execute(
-        "SELECT id FROM leagues WHERE join_code = ?", (join_code.upper(),)
+        "SELECT id FROM leagues WHERE join_code = %s", (join_code.upper(),)
     ).fetchone()
     if not league:
         raise HTTPException(status_code=404, detail="League not found.")
 
     rows = db.execute(
-        "SELECT * FROM gms WHERE league_id = ? ORDER BY created_at",
+        "SELECT * FROM gms WHERE league_id = %s ORDER BY created_at",
         (league["id"],),
     ).fetchall()
 
@@ -156,7 +156,7 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
     their session token — store it, it won't be shown again.
     """
     league = db.execute(
-        "SELECT * FROM leagues WHERE join_code = ?", (join_code.upper(),)
+        "SELECT * FROM leagues WHERE join_code = %s", (join_code.upper(),)
     ).fetchone()
     if not league:
         raise HTTPException(status_code=404, detail="League not found.")
@@ -169,7 +169,7 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
 
     # Count current human GMs — cap at num_teams
     human_count = db.execute(
-        "SELECT COUNT(*) FROM gms WHERE league_id = ? AND is_ai = 0",
+        "SELECT COUNT(*) FROM gms WHERE league_id = %s AND is_ai = 0",
         (league["id"],),
     ).fetchone()[0]
 
@@ -185,21 +185,21 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
     # Upsert user row for this session token
     db.execute(
         """INSERT INTO users (id, session_token, display_name)
-           VALUES (?, ?, ?)
+           VALUES (%s, %s, %s)
            ON CONFLICT (session_token) DO UPDATE SET display_name = excluded.display_name""",
         (str(__import__("uuid").uuid4()), session_token, body.display_name),
     )
     user = db.execute(
-        "SELECT id FROM users WHERE session_token = ?", (session_token,)
+        "SELECT id FROM users WHERE session_token = %s", (session_token,)
     ).fetchone()
     db.execute(
-        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, 0)",
         (gm_id, league["id"], user["id"], body.display_name),
     )
 
-    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
+    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
 
-    gm = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
+    gm = db.execute("SELECT * FROM gms WHERE id = %s", (gm_id,)).fetchone()
     return GMResponse(**{**_gm_row(gm), "user_session": session_token})
 
 
@@ -217,7 +217,7 @@ def start_league(
     fills AI GM slots, and opens the draft. League state advances to 'draft'.
     """
     # Verify caller is the commissioner
-    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     if not league:
         raise HTTPException(status_code=404, detail="League not found.")
 

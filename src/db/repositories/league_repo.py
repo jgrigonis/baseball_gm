@@ -33,7 +33,7 @@ class LeagueRepository:
         # Create new league
         league_id = uuid.uuid4().hex
         self.conn.execute(
-            "INSERT INTO leagues (id, name) VALUES (?, ?)", (league_id, name)
+            "INSERT INTO leagues (id, name) VALUES (%s, %s)", (league_id, name)
         )
         self.conn.commit()
         return league_id
@@ -41,7 +41,7 @@ class LeagueRepository:
     def _get_league_id_by_name(self, name: str) -> str | None:
         """Helper: Get league ID by name."""
         row = self.conn.execute(
-            "SELECT id FROM leagues WHERE name = ?", (name,)
+            "SELECT id FROM leagues WHERE name = %s", (name,)
         ).fetchone()
 
         return row["id"] if row else None
@@ -57,8 +57,9 @@ class LeagueRepository:
         """
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO league_seasons (league_id, season_id)
-            VALUES (?, ?)
+            INSERT INTO league_seasons (league_id, season_id)
+            VALUES (%s, %s)
+            ON CONFLICT DO NOTHING
             """,
             (league_id, season_id),
         )
@@ -79,8 +80,9 @@ class LeagueRepository:
         """
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id)
-            VALUES (?, ?, ?)
+            INSERT INTO league_season_teams (league_id, season_id, team_id)
+            VALUES (%s, %s, %s)
+            ON CONFLICT DO NOTHING
             """,
             (league_id, season_id, team_id),
         )
@@ -100,7 +102,7 @@ class LeagueRepository:
         row = self.conn.execute(
             """
             SELECT 1 FROM league_seasons
-            WHERE league_id = ? AND season_id = ?
+            WHERE league_id = %s AND season_id = %s
             """,
             (league_id, season_id),
         ).fetchone()
@@ -121,7 +123,7 @@ class LeagueRepository:
         rows = self.conn.execute(
             """
             SELECT team_id FROM league_season_teams
-            WHERE league_id = ? AND season_id = ?
+            WHERE league_id = %s AND season_id = %s
             ORDER BY team_id
             """,
             (league_id, season_id),

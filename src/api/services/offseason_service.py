@@ -31,14 +31,14 @@ from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 
 def _get_season_id(conn, league_id: str) -> str | None:
     row = conn.execute(
-        "SELECT season_id FROM league_seasons WHERE league_id = ? ORDER BY rowid DESC LIMIT 1",
+        "SELECT season_id FROM league_seasons WHERE league_id = %s ORDER BY rowid DESC LIMIT 1",
         (league_id,),
     ).fetchone()
     return row["season_id"] if row else None
 
 
 def _get_season(conn, season_id: str) -> dict | None:
-    row = conn.execute("SELECT * FROM seasons WHERE id = ?", (season_id,)).fetchone()
+    row = conn.execute("SELECT * FROM seasons WHERE id = %s", (season_id,)).fetchone()
     return dict(row) if row else None
 
 
@@ -61,23 +61,23 @@ def _create_next_season(
 
     new_season_id = str(uuid.uuid4())
     conn.execute(
-        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
         (new_season_id, next_year, new_name),
     )
     conn.execute(
-        "INSERT INTO league_seasons (league_id, season_id) VALUES (?, ?)",
+        "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)",
         (league_id, new_season_id),
     )
 
     # Copy teams from current season
     team_rows = conn.execute(
-        "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
+        "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
         (league_id, current_season_id),
     ).fetchall()
     team_ids = [r["team_id"] for r in team_rows]
     for tid in team_ids:
         conn.execute(
-            "INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id) VALUES (?, ?, ?)",
+            "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
             (league_id, new_season_id, tid),
         )
 
@@ -102,7 +102,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
     Run the full offseason for a league and return to draft state.
     Idempotent — pipeline skips completed steps; season creation is guarded.
     """
-    league = conn.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] not in ("offseason",):
@@ -131,7 +131,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
     existing_next = conn.execute(
         """SELECT ls.season_id FROM league_seasons ls
            JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = ? AND s.year = ?""",
+           WHERE ls.league_id = %s AND s.year = %s""",
         (league_id, next_year),
     ).fetchone()
 
@@ -140,7 +140,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
         team_ids = [
             r["team_id"]
             for r in conn.execute(
-                "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
+                "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
                 (league_id, new_season_id),
             ).fetchall()
         ]
@@ -153,7 +153,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
 
     # ── 3. Generate schedule ──────────────────────────────────────────────────
     existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = ?", (new_season_id,)
+        "SELECT COUNT(*) FROM games WHERE season_id = %s", (new_season_id,)
     ).fetchone()[0]
 
     if existing_games == 0:
@@ -175,7 +175,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
 
     # ── 4. Create draft record ────────────────────────────────────────────────
     existing_draft = conn.execute(
-        "SELECT id FROM drafts WHERE league_id = ? AND season_id = ?",
+        "SELECT id FROM drafts WHERE league_id = %s AND season_id = %s",
         (league_id, new_season_id),
     ).fetchone()
 
@@ -183,7 +183,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
         draft_id = str(uuid.uuid4())
         draft_format = "preference" if league_mode == "blitz" else "interactive"
         conn.execute(
-            "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (?, ?, ?, ?, 'pending')",
+            "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (%s, %s, %s, %s, 'pending')",
             (draft_id, league_id, new_season_id, draft_format),
         )
         conn.commit()
@@ -203,7 +203,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
         draft_id = existing_draft["id"]
 
     # ── 5. Transition league state → draft ────────────────────────────────────
-    conn.execute("UPDATE leagues SET state = 'draft' WHERE id = ?", (league_id,))
+    conn.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (league_id,))
     conn.commit()
 
     print(f"  Offseason complete → state=draft, season {new_season_id}")

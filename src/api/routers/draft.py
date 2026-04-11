@@ -33,7 +33,7 @@ def _resolve_gm(db: sqlite3.Connection, x_gm_session: str | None) -> sqlite3.Row
     if not x_gm_session:
         raise HTTPException(status_code=401, detail="X-GM-Session header required.")
     gm = db.execute(
-        "SELECT * FROM gms WHERE user_session = ?", (x_gm_session,)
+        "SELECT * FROM gms WHERE user_session = %s", (x_gm_session,)
     ).fetchone()
     if not gm:
         raise HTTPException(status_code=403, detail="Invalid session token.")
@@ -45,7 +45,7 @@ def _resolve_gm(db: sqlite3.Connection, x_gm_session: str | None) -> sqlite3.Row
 
 @router.get("/{draft_id}")
 def get_draft(draft_id: str, db: DB) -> DraftResponse:
-    row = db.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+    row = db.execute("SELECT * FROM drafts WHERE id = %s", (draft_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Draft not found.")
     return DraftResponse(**dict(row))
@@ -59,7 +59,7 @@ def get_picks(draft_id: str, db: DB) -> list[DraftPickResponse]:
     """All picks made so far, in pick order."""
     _require_draft(draft_id, db)
     rows = db.execute(
-        "SELECT * FROM draft_picks WHERE draft_id = ? ORDER BY pick_number",
+        "SELECT * FROM draft_picks WHERE draft_id = %s ORDER BY pick_number",
         (draft_id,),
     ).fetchall()
     return [
@@ -83,7 +83,7 @@ def get_board(draft_id: str, db: DB) -> list[PlayerGrades]:
     picked_ids = {
         r["player_id"]
         for r in db.execute(
-            "SELECT player_id FROM draft_picks WHERE draft_id = ?", (draft_id,)
+            "SELECT player_id FROM draft_picks WHERE draft_id = %s", (draft_id,)
         ).fetchall()
     }
 
@@ -95,7 +95,7 @@ def get_board(draft_id: str, db: DB) -> list[PlayerGrades]:
         FROM players p
         JOIN player_status ps ON ps.player_id = p.id
         WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
-        AND p.league_id = (SELECT league_id FROM drafts WHERE id = ?)
+        AND p.league_id = (SELECT league_id FROM drafts WHERE id = %s)
         ORDER BY p.last_name, p.first_name
         """,
         (draft_id,),
@@ -106,7 +106,7 @@ def get_board(draft_id: str, db: DB) -> list[PlayerGrades]:
         if row["id"] in picked_ids:
             continue
         skills_row = db.execute(
-            "SELECT * FROM player_skills WHERE player_id = ?", (row["id"],)
+            "SELECT * FROM player_skills WHERE player_id = %s", (row["id"],)
         ).fetchone()
         skills = dict(skills_row) if skills_row else {}
         board.append(
@@ -143,17 +143,17 @@ def submit_preferences(
 
     # Validate all player IDs exist
     for pid in body.player_ids:
-        exists = db.execute("SELECT 1 FROM players WHERE id = ?", (pid,)).fetchone()
+        exists = db.execute("SELECT 1 FROM players WHERE id = %s", (pid,)).fetchone()
         if not exists:
             raise HTTPException(status_code=422, detail=f"Unknown player id: {pid}")
 
     # Replace existing preferences atomically
     db.execute(
-        "DELETE FROM draft_preferences WHERE gm_id = ? AND draft_id = ?",
+        "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
         (gm["id"], draft_id),
     )
     db.executemany(
-        "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (?, ?, ?, ?)",
+        "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
         [
             (gm["id"], draft_id, pid, rank + 1)
             for rank, pid in enumerate(body.player_ids)
@@ -183,7 +183,7 @@ def get_preferences(
     rows = db.execute(
         """
         SELECT player_id FROM draft_preferences
-        WHERE gm_id = ? AND draft_id = ?
+        WHERE gm_id = %s AND draft_id = %s
         ORDER BY rank
         """,
         (gm["id"], draft_id),
@@ -231,7 +231,7 @@ def make_pick(
 
     # Verify player is available
     already_picked = db.execute(
-        "SELECT 1 FROM draft_picks WHERE draft_id = ? AND player_id = ?",
+        "SELECT 1 FROM draft_picks WHERE draft_id = %s AND player_id = %s",
         (draft_id, player_id),
     ).fetchone()
     if already_picked:
@@ -239,7 +239,7 @@ def make_pick(
 
     pick_number = draft["current_pick"]
     num_teams = db.execute(
-        "SELECT num_teams FROM leagues WHERE id = ?", (draft["league_id"],)
+        "SELECT num_teams FROM leagues WHERE id = %s", (draft["league_id"],)
     ).fetchone()["num_teams"]
     round_number = ((pick_number - 1) // num_teams) + 1
 
@@ -247,17 +247,17 @@ def make_pick(
         """
         INSERT INTO draft_picks
             (draft_id, pick_number, round, gm_id, team_id, player_id, auto_picked)
-        VALUES (?, ?, ?, ?, ?, ?, 0)
+        VALUES (%s, %s, %s, %s, %s, %s, 0)
         """,
         (draft_id, pick_number, round_number, gm["id"], gm["team_id"], player_id),
     )
     db.execute(
-        "UPDATE drafts SET current_pick = current_pick + 1 WHERE id = ?",
+        "UPDATE drafts SET current_pick = current_pick + 1 WHERE id = %s",
         (draft_id,),
     )
 
     row = db.execute(
-        "SELECT * FROM draft_picks WHERE draft_id = ? AND pick_number = ?",
+        "SELECT * FROM draft_picks WHERE draft_id = %s AND pick_number = %s",
         (draft_id, pick_number),
     ).fetchone()
     return DraftPickResponse(**{**dict(row), "auto_picked": False})
@@ -279,10 +279,10 @@ def execute_draft(
     draft = _require_draft(draft_id, db)
 
     league = db.execute(
-        "SELECT * FROM leagues WHERE id = ?", (draft["league_id"],)
+        "SELECT * FROM leagues WHERE id = %s", (draft["league_id"],)
     ).fetchone()
     commissioner = db.execute(
-        "SELECT * FROM gms WHERE id = ?", (league["commissioner_gm_id"],)
+        "SELECT * FROM gms WHERE id = %s", (league["commissioner_gm_id"],)
     ).fetchone()
     if not commissioner or commissioner["user_session"] != x_gm_session:
         raise HTTPException(
@@ -301,7 +301,7 @@ def execute_draft(
 
 
 def _require_draft(draft_id: str, db: sqlite3.Connection) -> sqlite3.Row:
-    row = db.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+    row = db.execute("SELECT * FROM drafts WHERE id = %s", (draft_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Draft not found.")
     return row
@@ -317,7 +317,7 @@ def _gm_on_the_clock(draft: sqlite3.Row, db: sqlite3.Connection) -> str | None:
 
     # Ordered list of GMs (human + AI, in join order)
     gms = db.execute(
-        "SELECT id FROM gms WHERE league_id = ? ORDER BY created_at",
+        "SELECT id FROM gms WHERE league_id = %s ORDER BY created_at",
         (league_id,),
     ).fetchall()
 

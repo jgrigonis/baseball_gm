@@ -113,14 +113,14 @@ def main():
     print(f"Teams imported: {len(teams)}")
 
     existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)
+        "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
     ).fetchone()[0]
 
     if existing_games > 0 and not args.regenerate_schedule:
         print(f"Schedule already exists: {existing_games} games")
         return
     elif existing_games > 0 and args.regenerate_schedule:
-        conn.execute("DELETE FROM games WHERE season_id = ?", (season_id,))
+        conn.execute("DELETE FROM games WHERE season_id = %s", (season_id,))
         conn.commit()
         print(f"Deleted {existing_games} existing games")
 

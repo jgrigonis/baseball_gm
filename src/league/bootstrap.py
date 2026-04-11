@@ -49,7 +49,7 @@ class LeagueBootstrapper:
             # Use the provided ID — skip create_league entirely
             # Verify it exists
             row = self.conn.execute(
-                "SELECT id FROM leagues WHERE id = ?", (league_id,)
+                "SELECT id FROM leagues WHERE id = %s", (league_id,)
             ).fetchone()
             if not row:
                 raise ValueError(f"League {league_id} not found in database.")
@@ -123,9 +123,11 @@ class LeagueBootstrapper:
             )
             # Initialise the rotation pointer at sp1 so game 1 always starts correctly
             self.conn.execute(
-                """INSERT OR IGNORE INTO team_rotation_pointer
+                """INSERT INTO team_rotation_pointer
                        (team_id, season_id, series_id, next_order, updated_at)
-                   VALUES (?, ?, '', 1, datetime('now'))""",
+                   VALUES (%s, %s, '', 1, NOW())
+                   ON CONFLICT (team_id, season_id, series_id) DO UPDATE
+                       SET next_order = 1, updated_at = NOW()""",
                 (team.id, season_id),
             )
             self.conn.commit()

@@ -26,7 +26,7 @@ def sim_next(
     # Verify caller is a GM in this league
     if x_gm_session:
         gm = db.execute(
-            "SELECT * FROM gms WHERE user_session = ? AND league_id = ?",
+            "SELECT * FROM gms WHERE user_session = %s AND league_id = %s",
             (x_gm_session, league_id),
         ).fetchone()
         if not gm:

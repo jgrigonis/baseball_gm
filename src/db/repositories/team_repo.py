@@ -49,7 +49,7 @@ class TeamRepository:
             INSERT INTO teams (
                 id, city, mascot, source_csv, source_hash
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
             """,
             (team_id, city, mascot, source_csv, source_hash),
         )
@@ -63,8 +63,9 @@ class TeamRepository:
         """
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id)
-            VALUES (?, ?, ?)
+            INSERT INTO league_season_teams (league_id, season_id, team_id)
+            VALUES (%s, %s, %s)
+            ON CONFLICT DO NOTHING
             """,
             (league_id, season_id, team_id),
         )
@@ -80,8 +81,9 @@ class TeamRepository:
         """
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO team_players (team_id, player_id)
-            VALUES (?, ?)
+            INSERT INTO team_players (team_id, player_id)
+            VALUES (%s, %s)
+            ON CONFLICT DO NOTHING
             """,
             (team_id, player_id),
         )
@@ -94,7 +96,7 @@ class TeamRepository:
             """
             SELECT *
             FROM teams
-            WHERE id = ?
+            WHERE id = %s
             """,
             (team_id,),
         ).fetchone()
@@ -121,7 +123,7 @@ class TeamRepository:
             """
             SELECT *
             FROM teams
-            WHERE city = ? AND mascot = ?
+            WHERE city = %s AND mascot = %s
             """,
             (city, mascot),
         ).fetchone()
@@ -137,7 +139,7 @@ class TeamRepository:
             """
             SELECT 1
             FROM league_season_teams
-            WHERE league_id = ? AND season_id = ? AND team_id = ?
+            WHERE league_id = %s AND season_id = %s AND team_id = %s
             """,
             (league_id, season_id, team_id),
         ).fetchone()
@@ -149,7 +151,7 @@ class TeamRepository:
             """
             SELECT 1
             FROM team_players
-            WHERE team_id = ?
+            WHERE team_id = %s
             LIMIT 1
             """,
             (team_id,),
@@ -178,7 +180,7 @@ class TeamRepository:
             FROM players p
             JOIN team_players tp ON p.id = tp.player_id
             JOIN player_skills ps ON p.id = ps.player_id
-            WHERE tp.team_id = ?
+            WHERE tp.team_id = %s
             """,
             (team_id,),
         ).fetchall()
@@ -202,7 +204,7 @@ class TeamRepository:
             """
             SELECT t.id FROM teams t
             JOIN league_season_teams lst ON t.id = lst.team_id
-            WHERE lst.season_id = ?
+            WHERE lst.season_id = %s
             """,
             (season_id,),
         )
@@ -212,7 +214,7 @@ class TeamRepository:
     def remove_player(self, team_id: str, player_id: str) -> None:
         """Remove a player from a team's roster."""
         self.conn.execute(
-            "DELETE FROM team_players WHERE team_id = ? AND player_id = ?",
+            "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
             (team_id, player_id),
         )
         self.conn.commit()

@@ -81,7 +81,7 @@ def get_top_8(conn, season_id: str) -> list[dict]:
         FROM teams t
         JOIN team_game_stats tgs ON t.id = tgs.team_id
         JOIN games g ON tgs.game_id = g.id
-        WHERE g.season_id = ? AND g.completed = 1
+        WHERE g.season_id = %s AND g.completed = 1
         GROUP BY t.id
         """,
         (season_id,),
@@ -125,7 +125,7 @@ def demote_extra_starters(
             """
             SELECT player_id, rotation_order
             FROM team_rotations
-            WHERE team_id = ? AND season_id = ? AND end_date IS NULL
+            WHERE team_id = %s AND season_id = %s AND end_date IS NULL
             ORDER BY rotation_order
             """,
             (team_id, season_id),
@@ -138,8 +138,8 @@ def demote_extra_starters(
             conn.execute(
                 """
                 UPDATE team_rotations
-                SET end_date = ?
-                WHERE team_id = ? AND season_id = ? AND player_id = ? AND end_date IS NULL
+                SET end_date = %s
+                WHERE team_id = %s AND season_id = %s AND player_id = %s AND end_date IS NULL
                 """,
                 (today, team_id, season_id, player_id),
             )
@@ -148,8 +148,8 @@ def demote_extra_starters(
             conn.execute(
                 """
                 UPDATE bullpen_roles
-                SET end_date = ?
-                WHERE team_id = ? AND season_id = ? AND player_id = ? AND end_date IS NULL
+                SET end_date = %s
+                WHERE team_id = %s AND season_id = %s AND player_id = %s AND end_date IS NULL
                 """,
                 (today, team_id, season_id, player_id),
             )
@@ -158,7 +158,7 @@ def demote_extra_starters(
             conn.execute(
                 """
                 INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date)
-                VALUES (?, ?, ?, 'Long', ?)
+                VALUES (%s, %s, %s, 'Long', %s)
                 """,
                 (team_id, player_id, season_id, today),
             )
@@ -209,7 +209,7 @@ def _series_games(
 
 def _insert_series(conn, series_id: str, season_id: str, name: str) -> None:
     conn.execute(
-        "INSERT OR IGNORE INTO series (id, season_id, name) VALUES (?, ?, ?)",
+        "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         (series_id, season_id, name),
     )
 
@@ -217,8 +217,9 @@ def _insert_series(conn, series_id: str, season_id: str, name: str) -> None:
 def _insert_games(conn, games: list[dict]) -> None:
     conn.executemany(
         """
-        INSERT OR IGNORE INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
-        VALUES (:id, :game_date, :season_id, :series_id, :home_team_id, :away_team_id)
+        INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
+        VALUES (%(id)s, %(game_date)s, %(season_id)s, %(series_id)s, %(home_team_id)s, %(away_team_id)s)
+        ON CONFLICT DO NOTHING
         """,
         games,
     )

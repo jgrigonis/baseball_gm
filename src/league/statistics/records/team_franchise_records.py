@@ -201,7 +201,7 @@ def game_records_query(
     if args.regular_season:
         clauses.append("g.series_id IS NULL")
     if team_id:
-        clauses.append("pgs.team_id = ?")
+        clauses.append("pgs.team_id = %s")
         params.append(team_id)
     if innings_filter == 9:
         clauses.append("g.innings_played = 9")
@@ -238,7 +238,7 @@ def get_game_9inn_best(conn, args, agg_expr, team_id=None, pitching=False):
     if args.regular_season:
         clauses.append("g.series_id IS NULL")
     if team_id:
-        clauses.append("pgs.team_id = ?")
+        clauses.append("pgs.team_id = %s")
         params.append(team_id)
     if pitching:
         clauses.append("pgs.pitch_game_played = 1")
@@ -265,7 +265,7 @@ def game_records_extra_query(
     if args.regular_season:
         clauses.append("g.series_id IS NULL")
     if team_id:
-        clauses.append("pgs.team_id = ?")
+        clauses.append("pgs.team_id = %s")
         params.append(team_id)
     if pitching:
         clauses.append("pgs.pitch_game_played = 1")
@@ -304,7 +304,7 @@ def season_records_query(
     Returns (team_name, season_year, value).
     """
     ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
-    team_filter = "AND pss.team_id = ?" if team_id else ""
+    team_filter = "AND pss.team_id = %s" if team_id else ""
     params = [team_id] if team_id else []
 
     sql = f"""
@@ -341,7 +341,7 @@ def series_records_query(
     clauses = ["g.series_id IS NOT NULL", "g.completed = 1"]
     params = []
     if team_id:
-        clauses.append("pgs.team_id = ?")
+        clauses.append("pgs.team_id = %s")
         params.append(team_id)
     if pitching:
         clauses.append("pgs.pitch_game_played = 1")

@@ -150,7 +150,7 @@ class PlayerEnergyRepository:
             SELECT player_id, current_energy, max_energy, last_game_date,
                    consecutive_days, season_games_played
             FROM player_energy
-            WHERE player_id = ? AND league_id = ?
+            WHERE player_id = %s AND league_id = %s
             """,
             (player_id, self.league_id),
         )
@@ -326,7 +326,7 @@ class PlayerEnergyRepository:
             """
             INSERT INTO player_energy
                 (player_id, league_id, current_energy, max_energy, last_game_date, consecutive_days, season_games_played)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(player_id, league_id) DO UPDATE SET
                 current_energy       = excluded.current_energy,
                 max_energy           = excluded.max_energy,
@@ -391,14 +391,14 @@ class PlayerEnergyRepository:
         cursor = self.conn.cursor()
 
         if player_ids is not None:
-            placeholders = ",".join("?" * len(player_ids))
+            placeholders = ",".join("%s" * len(player_ids))
             cursor.execute(
-                f"DELETE FROM player_energy WHERE league_id = ? AND player_id IN ({placeholders})",
+                f"DELETE FROM player_energy WHERE league_id = %s AND player_id IN ({placeholders})",
                 [self.league_id] + list(player_ids),
             )
         else:
             cursor.execute(
-                "DELETE FROM player_energy WHERE league_id = ?", (self.league_id,)
+                "DELETE FROM player_energy WHERE league_id = %s", (self.league_id,)
             )
 
         deleted = cursor.rowcount
@@ -409,7 +409,7 @@ class PlayerEnergyRepository:
         """Delete a single player's energy row. Returns True if a row was removed."""
         cursor = self.conn.cursor()
         cursor.execute(
-            "DELETE FROM player_energy WHERE player_id = ? AND league_id = ?",
+            "DELETE FROM player_energy WHERE player_id = %s AND league_id = %s",
             (player_id, self.league_id),
         )
         deleted = cursor.rowcount > 0

@@ -39,7 +39,7 @@ def calculate_min_pa(
         """
         SELECT COUNT(DISTINCT team_id) as num_teams
         FROM league_season_teams
-        WHERE season_id = ?
+        WHERE season_id = %s
         """,
         (season_id,),
     )
@@ -49,7 +49,7 @@ def calculate_min_pa(
         """
         SELECT COUNT(*) as games_completed
         FROM games
-        WHERE season_id = ? AND completed = 1 AND series_id IS NULL
+        WHERE season_id = %s AND completed = 1 AND series_id IS NULL
         """,
         (season_id,),
     )

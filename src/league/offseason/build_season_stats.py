@@ -195,7 +195,7 @@ def ensure_table(conn) -> None:
 def delete_season(conn, season_id: str) -> int:
     """Delete existing rollup rows for a season. Returns rows deleted."""
     cur = conn.execute(
-        "DELETE FROM player_season_stats WHERE season_id = ?", (season_id,)
+        "DELETE FROM player_season_stats WHERE season_id = %s", (season_id,)
     )
     conn.commit()
     return cur.rowcount
@@ -218,7 +218,7 @@ def build_season(conn, season_id: str) -> int:
     if deleted:
         print(f"  Cleared {deleted} existing rows for season {season_id}")
 
-    sql = INSERT_SQL.format(where_clause="WHERE g.season_id = ?")
+    sql = INSERT_SQL.format(where_clause="WHERE g.season_id = %s")
     cur = conn.execute(sql, (season_id,))
     conn.commit()
     return cur.rowcount
@@ -295,7 +295,7 @@ def main():
         season_id = args.season_id
         # Verify the season exists
         row = conn.execute(
-            "SELECT year FROM seasons WHERE id = ?", (season_id,)
+            "SELECT year FROM seasons WHERE id = %s", (season_id,)
         ).fetchone()
         if not row:
             print(f"Error: season '{season_id}' not found in database")

@@ -33,7 +33,7 @@ class SeasonRepository:
 
         season_id = uuid.uuid4().hex
         self.conn.execute(
-            "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
+            "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
             (season_id, year, name),
         )
         self.conn.commit()
@@ -42,7 +42,7 @@ class SeasonRepository:
     # def _get_season_id(self, year: int, name: str) -> str | None:
     #     """Helper: Get season ID by year and name."""
     #     row = self.conn.execute(
-    #         "SELECT id FROM seasons WHERE year = ? AND name = ?", (year, name)
+    #         "SELECT id FROM seasons WHERE year = %s AND name = %s", (year, name)
     #     ).fetchone()
 
     #     return row["id"] if row else None
@@ -58,7 +58,7 @@ class SeasonRepository:
             Dictionary with season info, or None if not found
         """
         row = self.conn.execute(
-            "SELECT * FROM seasons WHERE id = ?", (season_id,)
+            "SELECT * FROM seasons WHERE id = %s", (season_id,)
         ).fetchone()
 
         if not row:
@@ -77,7 +77,7 @@ class SeasonRepository:
             List of season dictionaries
         """
         rows = self.conn.execute(
-            "SELECT * FROM seasons WHERE year = ? ORDER BY name", (year,)
+            "SELECT * FROM seasons WHERE year = %s ORDER BY name", (year,)
         ).fetchall()
 
         return [
@@ -110,7 +110,7 @@ class SeasonRepository:
             True if season exists, False otherwise
         """
         row = self.conn.execute(
-            "SELECT 1 FROM seasons WHERE id = ?", (season_id,)
+            "SELECT 1 FROM seasons WHERE id = %s", (season_id,)
         ).fetchone()
 
         return row is not None
@@ -126,5 +126,5 @@ class SeasonRepository:
             This will cascade delete related games, stats, etc.
             depending on your foreign key constraints.
         """
-        self.conn.execute("DELETE FROM seasons WHERE id = ?", (season_id,))
+        self.conn.execute("DELETE FROM seasons WHERE id = %s", (season_id,))
         self.conn.commit()

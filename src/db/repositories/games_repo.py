@@ -22,7 +22,7 @@ class GameRepository:
         """Load game information from database."""
         row = self.conn.execute(
             """
-            SELECT * FROM games WHERE id = ?
+            SELECT * FROM games WHERE id = %s
             """,
             (game_id,),
         ).fetchone()
@@ -51,8 +51,8 @@ class GameRepository:
         self.conn.execute(
             """
             UPDATE games 
-            SET home_score = ?, away_score = ?, winner_id = ?, innings_played = ?, completed = 1, updated_at = ?
-            WHERE id = ?
+            SET home_score = %s, away_score = %s, winner_id = %s, innings_played = %s, completed = 1, updated_at = %s
+            WHERE id = %s
             """,
             (
                 result.home_score,
@@ -73,7 +73,7 @@ class GameRepository:
         regular_season_only: bool = False,
     ) -> list[dict]:
         """Get all games for a season."""
-        conditions = ["season_id = ?"]
+        conditions = ["season_id = %s"]
         params = [season_id]
 
         if completed_only:
@@ -116,8 +116,8 @@ class GameRepository:
             """
             UPDATE games 
             SET home_score = NULL, away_score = NULL, winner_id = NULL, 
-                innings_played = NULL, completed = 0, updated_at = ?
-            WHERE id = ?
+                innings_played = NULL, completed = 0, updated_at = %s
+            WHERE id = %s
             """,
             (
                 now,
@@ -129,7 +129,7 @@ class GameRepository:
     def is_completed(self, game_id: str) -> bool:
         """Check if game is completed."""
         row = self.conn.execute(
-            "SELECT completed FROM games WHERE id = ?", (game_id,)
+            "SELECT completed FROM games WHERE id = %s", (game_id,)
         ).fetchone()
 
         if not row:

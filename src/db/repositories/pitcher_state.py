@@ -159,7 +159,7 @@ class PitcherStateRepository:
             SELECT player_id, current_energy, max_energy, last_game_date,
                    last_pitch_count, consecutive_days
             FROM pitcher_state
-            WHERE player_id = ? AND league_id = ?
+            WHERE player_id = %s AND league_id = %s
             """,
             (player_id, self.league_id),
         )
@@ -323,7 +323,7 @@ class PitcherStateRepository:
             INSERT INTO pitcher_state
                 (player_id, league_id, current_energy, max_energy,
                  last_game_date, last_pitch_count, consecutive_days)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(player_id, league_id) DO UPDATE SET
                 current_energy   = excluded.current_energy,
                 max_energy       = excluded.max_energy,
@@ -394,7 +394,7 @@ class PitcherStateRepository:
         """
         cursor = self.conn.cursor()
         cursor.execute(
-            "DELETE FROM pitcher_state WHERE player_id = ? AND league_id = ?",
+            "DELETE FROM pitcher_state WHERE player_id = %s AND league_id = %s",
             (player_id, self.league_id),
         )
         deleted = cursor.rowcount > 0
@@ -405,7 +405,7 @@ class PitcherStateRepository:
         """Delete all pitcher state rows. Call between seasons. Returns row count deleted."""
         cursor = self.conn.cursor()
         cursor.execute(
-            "DELETE FROM pitcher_state WHERE league_id = ?",
+            "DELETE FROM pitcher_state WHERE league_id = %s",
             (self.league_id,),
         )
         deleted = cursor.rowcount

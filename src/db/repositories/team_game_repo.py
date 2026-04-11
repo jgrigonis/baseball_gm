@@ -46,9 +46,12 @@ class TeamGameRepository:
         """
         self.conn.execute(
             """
-            INSERT OR REPLACE INTO team_game_stats (
+            INSERT INTO team_game_stats (
                 game_id, team_id, runs, hits, errors, win, loss
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (game_id, team_id) DO UPDATE SET
+                runs = EXCLUDED.runs, hits = EXCLUDED.hits,
+                errors = EXCLUDED.errors, win = EXCLUDED.win, loss = EXCLUDED.loss
             """,
             (game_id, team_id, runs, hits, errors, 1 if won else 0, 0 if won else 1),
         )
@@ -109,7 +112,7 @@ class TeamGameRepository:
         row = self.conn.execute(
             """
             SELECT * FROM team_game_stats
-            WHERE game_id = ? AND team_id = ?
+            WHERE game_id = %s AND team_id = %s
             """,
             (game_id, team_id),
         ).fetchone()
@@ -140,7 +143,7 @@ class TeamGameRepository:
         rows = self.conn.execute(
             """
             SELECT * FROM team_game_stats
-            WHERE game_id = ?
+            WHERE game_id = %s
             ORDER BY win DESC
             """,
             (game_id,),
@@ -181,7 +184,7 @@ class TeamGameRepository:
                 SUM(errors) as errors
             FROM team_game_stats tgs
             JOIN games g ON tgs.game_id = g.id
-            WHERE g.season_id = ? AND tgs.team_id = ? AND g.completed = 1
+            WHERE g.season_id = %s AND tgs.team_id = %s AND g.completed = 1
             """,
             (season_id, team_id),
         ).fetchone()
@@ -203,7 +206,7 @@ class TeamGameRepository:
         Args:
             game_id: Game ID
         """
-        self.conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (game_id,))
+        self.conn.execute("DELETE FROM team_game_stats WHERE game_id = %s", (game_id,))
         self.conn.commit()
 
     def get_standings(self, season_id: str) -> list[dict]:
@@ -228,7 +231,7 @@ class TeamGameRepository:
             FROM teams t
             JOIN team_game_stats tgs ON t.id = tgs.team_id
             JOIN games g ON tgs.game_id = g.id
-            WHERE g.season_id = ? AND g.completed = 1
+            WHERE g.season_id = %s AND g.completed = 1
             GROUP BY t.id
             ORDER BY win_pct DESC, wins DESC
             """,
@@ -275,13 +278,13 @@ class TeamGameRepository:
         row = self.conn.execute(
             """
             SELECT 
-                SUM(CASE WHEN tgs.team_id = ? THEN tgs.runs ELSE 0 END) as runs_scored,
-                SUM(CASE WHEN tgs.team_id != ? THEN tgs.runs ELSE 0 END) as runs_allowed
+                SUM(CASE WHEN tgs.team_id = %s THEN tgs.runs ELSE 0 END) as runs_scored,
+                SUM(CASE WHEN tgs.team_id != %s THEN tgs.runs ELSE 0 END) as runs_allowed
             FROM team_game_stats tgs
             JOIN games g ON tgs.game_id = g.id
-            WHERE g.season_id = ? AND g.completed = 1 
+            WHERE g.season_id = %s AND g.completed = 1 
                 AND g.id IN (
-                    SELECT game_id FROM team_game_stats WHERE team_id = ?
+                    SELECT game_id FROM team_game_stats WHERE team_id = %s
                 )
             """,
             (team_id, team_id, season_id, team_id),

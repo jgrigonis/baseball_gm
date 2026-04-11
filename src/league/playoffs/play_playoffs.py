@@ -1,3 +1,4 @@
+# src/league/playoffs/play_playoffs.py
 """
 src/league/playoffs/play_playoffs.py
 
@@ -69,15 +70,15 @@ _R1_A_OFFSETS = [0, 2, 4, 6, 8]  # 3v6, 4v5
 # Round 1 Group B (1v8, 2v7): days 2,4,6,8,10 → offsets 1,3,5,7,9
 _R1_B_OFFSETS = [1, 3, 5, 7, 9]  # 1v8, 2v7
 # Semifinals: two series alternate days starting day 7
-_SEMI_27_36_OFFSETS = [6, 8, 10, 12, 14, 16, 18]  # [2,7]v[3,6]
-_SEMI_18_45_OFFSETS = [7, 9, 11, 13, 15, 17, 19]  # [1,8]v[4,5]
+_SEMI_27_36_OFFSETS = [6, 8, 10, 12, 14, 16, 18]   # [2,7]v[3,6]
+_SEMI_18_45_OFFSETS = [7, 9, 11, 13, 15, 17, 19]   # [1,8]v[4,5]
 # Finals: consecutive days starting day 22
 _FINAL_OFFSETS = [21, 22, 23, 24, 25, 26, 27]
 
 
 def get_series_id(conn, season_id: str, name: str) -> str | None:
     row = conn.execute(
-        "SELECT id FROM series WHERE season_id = ? AND name = ?",
+        "SELECT id FROM series WHERE season_id = %s AND name = %s",
         (season_id, name),
     ).fetchone()
     return row["id"] if row else None
@@ -89,7 +90,7 @@ def get_series_games(conn, series_id: str) -> list[dict]:
         SELECT id, game_date, home_team_id, away_team_id, completed,
                home_score, away_score, winner_id
         FROM games
-        WHERE series_id = ?
+        WHERE series_id = %s
         ORDER BY game_date
         """,
         (series_id,),
@@ -106,7 +107,7 @@ def get_series_winner(conn, series_id: str, best_of: int) -> str | None:
         """
         SELECT winner_id, COUNT(*) AS wins
         FROM games
-        WHERE series_id = ? AND completed = 1
+        WHERE series_id = %s AND completed = 1
         GROUP BY winner_id
         """,
         (series_id,),
@@ -130,7 +131,7 @@ def print_series_result(
         """
         SELECT winner_id, COUNT(*) AS wins
         FROM games
-        WHERE series_id = ? AND completed = 1
+        WHERE series_id = %s AND completed = 1
         GROUP BY winner_id
         ORDER BY wins DESC
         """,
@@ -139,18 +140,18 @@ def print_series_result(
 
     win_map = {r["winner_id"]: r["wins"] for r in rows}
     series = conn.execute(
-        "SELECT name FROM series WHERE id = ?", (series_id,)
+        "SELECT name FROM series WHERE id = %s", (series_id,)
     ).fetchone()
 
     # Get both team names
     game = conn.execute(
-        "SELECT home_team_id, away_team_id FROM games WHERE series_id = ? LIMIT 1",
+        "SELECT home_team_id, away_team_id FROM games WHERE series_id = %s LIMIT 1",
         (series_id,),
     ).fetchone()
 
     def team_name(tid):
         row = conn.execute(
-            "SELECT city || ' ' || mascot AS name FROM teams WHERE id = ?", (tid,)
+            "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (tid,)
         ).fetchone()
         return row["name"] if row else tid
 
@@ -201,9 +202,10 @@ def generate_round_games(
 
     conn.executemany(
         """
-        INSERT OR IGNORE INTO games
+        INSERT INTO games
             (id, game_date, season_id, series_id, home_team_id, away_team_id)
-        VALUES (:id, :game_date, :season_id, :series_id, :home_team_id, :away_team_id)
+        VALUES (%(id)s, %(game_date)s, %(season_id)s, %(series_id)s, %(home_team_id)s, %(away_team_id)s)
+        ON CONFLICT DO NOTHING
         """,
         games,
     )
@@ -323,7 +325,7 @@ def get_seeds(conn, season_id: str) -> list[dict]:
 
         # Game 1 home = high seed (home_map[0] = True)
         game = conn.execute(
-            "SELECT home_team_id, away_team_id FROM games WHERE series_id = ? ORDER BY game_date LIMIT 1",
+            "SELECT home_team_id, away_team_id FROM games WHERE series_id = %s ORDER BY game_date LIMIT 1",
             (series_id,),
         ).fetchone()
 
@@ -359,10 +361,10 @@ def main():
     seeds = get_seeds(conn, sid)
 
     league_row = conn.execute(
-        "SELECT league_id FROM league_seasons WHERE season_id = ? LIMIT 1", (sid,)
+        "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1", (sid,)
     ).fetchone()
     league_id = league_row["league_id"] if league_row else ""
-    lr = conn.execute("SELECT mode FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    lr = conn.execute("SELECT mode FROM leagues WHERE id = %s", (league_id,)).fetchone()
     league_mode = dict(lr).get("mode", "blitz") if lr else "blitz"
 
     # Infer playoff start date from first R1 game
@@ -370,7 +372,7 @@ def main():
         """
         SELECT g.game_date FROM games g
         JOIN series s ON g.series_id = s.id
-        WHERE s.season_id = ? AND s.name IN ('1v8','2v7','3v6','4v5')
+        WHERE s.season_id = %s AND s.name IN ('1v8','2v7','3v6','4v5')
         ORDER BY g.game_date LIMIT 1
         """,
         (sid,),
@@ -427,7 +429,8 @@ def main():
 
         # Each semi series has its own offset schedule (alternating days)
         semi_offsets = (
-            _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]" else _SEMI_27_36_OFFSETS
+            _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]"
+            else _SEMI_27_36_OFFSETS
         )
 
         # Generate games now that teams are known
@@ -496,7 +499,7 @@ def main():
     )
 
     champ_name = conn.execute(
-        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = ?", (champion,)
+        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (champion,)
     ).fetchone()["name"]
 
     lines = []

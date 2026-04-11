@@ -17,7 +17,7 @@ class LineupRepository:
     ) -> None:
         cursor = self.conn.cursor()
         cursor.execute(
-            "DELETE FROM game_lineup_slots WHERE game_id = ? AND team_id = ?",
+            "DELETE FROM game_lineup_slots WHERE game_id = %s AND team_id = %s",
             (game_id, team_id),
         )
 
@@ -26,7 +26,7 @@ class LineupRepository:
                 """
                 INSERT INTO game_lineup_slots
                     (game_id, team_id, player_id, position, batting_order, is_pitcher)
-                VALUES (?, ?, ?, ?, ?, 0)
+                VALUES (%s, %s, %s, %s, %s, 0)
                 """,
                 (game_id, team_id, slot.player.id, slot.position, order),
             )
@@ -36,7 +36,7 @@ class LineupRepository:
                 """
                 INSERT INTO game_lineup_slots
                     (game_id, team_id, player_id, position, batting_order, is_pitcher)
-                VALUES (?, ?, ?, 'p', NULL, 1)
+                VALUES (%s, %s, %s, 'p', NULL, 1)
                 """,
                 (game_id, team_id, pitcher.id),
             )
@@ -51,7 +51,7 @@ class LineupRepository:
                    ls.position, ls.batting_order, ls.is_pitcher
             FROM game_lineup_slots ls
             JOIN players p ON ls.player_id = p.id
-            WHERE ls.game_id = ? AND ls.team_id = ?
+            WHERE ls.game_id = %s AND ls.team_id = %s
             ORDER BY ls.is_pitcher, ls.batting_order
             """,
             (game_id, team_id),

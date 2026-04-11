@@ -42,14 +42,14 @@ def write_draft_order(
     ordered_team_ids should be in pick order (index 0 = picks first).
     Safe to call on a fresh draft — clears any existing rows first.
     """
-    conn.execute("DELETE FROM draft_order WHERE draft_id = ?", (draft_id,))
+    conn.execute("DELETE FROM draft_order WHERE draft_id = %s", (draft_id,))
     conn.execute(
-        "DELETE FROM draft_pick_rights WHERE league_id = ? AND draft_year = ?",
+        "DELETE FROM draft_pick_rights WHERE league_id = %s AND draft_year = %s",
         (league_id, draft_year),
     )
     for pos, tid in enumerate(ordered_team_ids, 1):
         conn.execute(
-            "INSERT INTO draft_order (draft_id, team_id, pick_position) VALUES (?, ?, ?)",
+            "INSERT INTO draft_order (draft_id, team_id, pick_position) VALUES (%s, %s, %s)",
             (draft_id, tid, pos),
         )
     for tid in ordered_team_ids:
@@ -57,7 +57,7 @@ def write_draft_order(
             conn.execute(
                 """INSERT INTO draft_pick_rights
                    (league_id, draft_year, round, original_team_id, current_owner_id)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   VALUES (%s, %s, %s, %s, %s)""",
                 (league_id, draft_year, rnd, tid, tid),
             )
     conn.commit()
@@ -140,7 +140,7 @@ class SnakeDraft:
             SELECT DISTINCT lst.team_id, t.city, t.mascot
             FROM league_season_teams lst
             JOIN teams t ON lst.team_id = t.id
-            WHERE lst.season_id = ?
+            WHERE lst.season_id = %s
             """,
             (season_id,),
         ).fetchall()
@@ -153,7 +153,7 @@ class SnakeDraft:
                 COALESCE(SUM(tgs.loss), 0) AS losses
             FROM team_game_stats tgs
             JOIN games g ON tgs.game_id = g.id
-            WHERE g.season_id    = ?
+            WHERE g.season_id    = %s
             AND g.completed    = 1
             AND g.series_id IS NULL
             GROUP BY tgs.team_id
@@ -256,7 +256,7 @@ class SnakeDraft:
 
                 # Add to team_players
                 self.conn.execute(
-                    "INSERT OR IGNORE INTO team_players (team_id, player_id) VALUES (?, ?)",
+                    "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                     (team_id, player.id),
                 )
                 # Set status to minors
@@ -293,7 +293,7 @@ class SnakeDraft:
             team_id = team_entry["team_id"]
 
             player_ids = self.conn.execute(
-                "SELECT player_id FROM team_players WHERE team_id = ?",
+                "SELECT player_id FROM team_players WHERE team_id = %s",
                 (team_id,),
             ).fetchall()
 

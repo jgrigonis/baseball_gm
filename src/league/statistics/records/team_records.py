@@ -123,7 +123,7 @@ def games_per_team_cte(regular_season):
 
 def single_game_bat_query(conn, args, team_id, field, innings_filter=None, top=5):
     clauses, params = game_clauses(args)
-    clauses.append("pgs.team_id = ?")
+    clauses.append("pgs.team_id = %s")
     params.append(team_id)
     if innings_filter == 9:
         clauses.append("g.innings_played = 9")
@@ -153,7 +153,7 @@ def single_game_pitch_query(
     conn, args, team_id, field, innings_filter=None, top=5, fmt_fn=None
 ):
     clauses, params = game_clauses(args)
-    clauses.append("pgs.team_id = ?")
+    clauses.append("pgs.team_id = %s")
     clauses.append("pgs.pitch_game_played = 1")
     params.append(team_id)
     if innings_filter == 9:
@@ -186,7 +186,7 @@ def single_game_pitch_query(
 def get_9inn_best(conn, args, team_id, field, pitching=False):
     """Top value in 9-inning games — used as floor for extra-inning display."""
     clauses, params = game_clauses(args)
-    clauses.append("pgs.team_id = ?")
+    clauses.append("pgs.team_id = %s")
     clauses.append("g.innings_played = 9")
     params.append(team_id)
     if pitching:
@@ -245,10 +245,10 @@ def run_single_game_batting(args, conn, team_id):
     for name, field, val_label in SINGLE_GAME_BAT:
         nine_best = get_9inn_best(conn, args, team_id, field)
         clauses, params = game_clauses(args)
-        clauses.append("pgs.team_id = ?")
+        clauses.append("pgs.team_id = %s")
         clauses.append("g.innings_played > 9")
         if nine_best is not None:
-            clauses.append(f"{field} > ?")
+            clauses.append(f"{field} > %s")
             params.extend([team_id, nine_best])
         else:
             params.append(team_id)
@@ -284,11 +284,11 @@ def run_single_game_pitching(args, conn, team_id):
     for name, field, val_label in SINGLE_GAME_PITCH:
         nine_best = get_9inn_best(conn, args, team_id, field, pitching=True)
         clauses, params = game_clauses(args)
-        clauses.append("pgs.team_id = ?")
+        clauses.append("pgs.team_id = %s")
         clauses.append("pgs.pitch_game_played = 1")
         clauses.append("g.innings_played > 9")
         if nine_best is not None:
-            clauses.append(f"{field} > ?")
+            clauses.append(f"{field} > %s")
             params.extend([team_id, nine_best])
         else:
             params.append(team_id)
@@ -312,11 +312,11 @@ def run_single_game_pitching(args, conn, team_id):
     # IP in extra innings
     nine_best_outs = get_9inn_best(conn, args, team_id, "pgs.pitch_outs", pitching=True)
     clauses, params = game_clauses(args)
-    clauses.append("pgs.team_id = ?")
+    clauses.append("pgs.team_id = %s")
     clauses.append("pgs.pitch_game_played = 1")
     clauses.append("g.innings_played > 9")
     if nine_best_outs is not None:
-        clauses.append("pgs.pitch_outs > ?")
+        clauses.append("pgs.pitch_outs > %s")
         params.extend([team_id, nine_best_outs])
     else:
         params.append(team_id)
@@ -420,7 +420,7 @@ def season_counting(conn, args, team_id, expr, bat_or_pitch="bat", fmt_fn=None):
         FROM player_season_stats pss
         JOIN players p ON pss.player_id = p.id
         JOIN seasons s ON pss.season_id = s.id
-        WHERE pss.team_id = ?
+        WHERE pss.team_id = %s
           AND pss.{bat_or_pitch}_games_played > 0
           {ps_filter}
         GROUP BY pss.player_id, pss.season_id
@@ -445,7 +445,7 @@ def season_rate_desc(conn, args, team_id, expr, qualify_expr, fmt=".3f"):
         JOIN players p ON pss.player_id = p.id
         JOIN seasons s ON pss.season_id = s.id
         JOIN games_per_team gpt ON gpt.season_id = pss.season_id
-        WHERE pss.team_id = ?
+        WHERE pss.team_id = %s
           AND pss.bat_games_played > 0
           {ps_filter}
         GROUP BY pss.player_id, pss.season_id
@@ -471,7 +471,7 @@ def season_rate_asc(conn, args, team_id, expr, qualify_expr, fmt=".2f"):
         JOIN players p ON pss.player_id = p.id
         JOIN seasons s ON pss.season_id = s.id
         JOIN games_per_team gpt ON gpt.season_id = pss.season_id
-        WHERE pss.team_id = ?
+        WHERE pss.team_id = %s
           AND pss.pitch_games_played > 0
           {ps_filter}
         GROUP BY pss.player_id, pss.season_id

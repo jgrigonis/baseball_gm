@@ -115,7 +115,7 @@ def fetch_totals(conn, season_id: str) -> dict:
         """
         SELECT COUNT(*) as games
         FROM games
-        WHERE season_id = ? AND completed = 1
+        WHERE season_id = %s AND completed = 1
         """,
         (season_id,),
     )
@@ -153,7 +153,7 @@ def fetch_totals(conn, season_id: str) -> dict:
             SUM(pgs.passed_balls)                                       as passed_balls
         FROM player_game_stats pgs
         JOIN games g ON g.id = pgs.game_id
-        WHERE g.season_id = ? AND g.completed = 1
+        WHERE g.season_id = %s AND g.completed = 1
         """,
         (season_id,),
     )

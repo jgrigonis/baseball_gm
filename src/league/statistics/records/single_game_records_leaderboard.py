@@ -81,11 +81,11 @@ def build_game_filter(args):
     if args.regular_season:
         clauses.append("g.series_id IS NULL")
     elif hasattr(args, "series") and args.series:
-        clauses.append("g.series_id = ?")
+        clauses.append("g.series_id = %s")
         params.append(args.series)
 
     if args.season:
-        clauses.append("s.year = ?")
+        clauses.append("s.year = %s")
         params.append(args.season)
 
     return clauses, params

@@ -163,7 +163,7 @@ SELECT id, city, mascot FROM teams ORDER BY city, mascot
 
 def get_team_name(conn, team_id: str) -> str:
     row = conn.execute(
-        "SELECT city, mascot FROM teams WHERE id = ?", (team_id,)
+        "SELECT city, mascot FROM teams WHERE id = %s", (team_id,)
     ).fetchone()
     return f"{row['city']} {row['mascot']}" if row else team_id
 

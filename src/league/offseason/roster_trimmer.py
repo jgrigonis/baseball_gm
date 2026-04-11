@@ -43,7 +43,7 @@ class RosterTrimmer:
         team_rows = self.conn.execute(
             """
             SELECT DISTINCT team_id FROM league_season_teams
-            WHERE season_id = ?
+            WHERE season_id = %s
             """,
             (season_id,),
         ).fetchall()
@@ -69,7 +69,7 @@ class RosterTrimmer:
             FROM players p
             JOIN team_players tp ON p.id = tp.player_id
             JOIN player_status ps ON p.id = ps.player_id
-            WHERE tp.team_id = ?
+            WHERE tp.team_id = %s
               AND ps.status = 'minors'
             """,
             (team_id,),
@@ -98,7 +98,7 @@ class RosterTrimmer:
             self.status_repo.set_status(player.id, "free_agent")
             # Remove from team
             self.conn.execute(
-                "DELETE FROM team_players WHERE team_id = ? AND player_id = ?",
+                "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
                 (team_id, player.id),
             )
 

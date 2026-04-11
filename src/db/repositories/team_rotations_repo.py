@@ -34,7 +34,7 @@ class TeamRotationsRepository:
         existing = self.conn.execute(
             """
             SELECT COUNT(*) FROM team_rotations
-            WHERE team_id = ? AND season_id = ? AND end_date IS NULL
+            WHERE team_id = %s AND season_id = %s AND end_date IS NULL
             """,
             (team_id, season_id),
         ).fetchone()[0]
@@ -52,7 +52,7 @@ class TeamRotationsRepository:
                 INSERT INTO team_rotations (
                     team_id, season_id, player_id, rotation_order, effective_date, end_date
                 )
-                VALUES (?, ?, ?, ?, ?, NULL)
+                VALUES (%s, %s, %s, %s, %s, NULL)
                 """,
                 (team_id, season_id, player_id, order, effective_date),
             )
@@ -83,10 +83,10 @@ class TeamRotationsRepository:
             """
             SELECT player_id, rotation_order, effective_date, end_date
             FROM team_rotations
-            WHERE team_id = ?
-            AND season_id = ?
-            AND effective_date <= ?
-            AND (end_date IS NULL OR end_date > ?)
+            WHERE team_id       = %s
+            AND season_id       = %s
+            AND effective_date <= %s
+            AND (end_date IS NULL OR end_date > %s)
             ORDER BY rotation_order
             """,
             (team_id, season_id, as_of_date, as_of_date),
@@ -141,16 +141,16 @@ class TeamRotationsRepository:
             JOIN team_rotations tr ON pgs.player_id = tr.player_id 
                 AND g.season_id = tr.season_id
                 AND pgs.team_id = tr.team_id
-            WHERE pgs.team_id = ?
-            AND g.season_id = ?
+            WHERE pgs.team_id = %s
+            AND g.season_id   = %s
             AND pgs.pitch_game_started = 1
             AND pgs.player_id IN ({})
-            AND g.game_date <= ?
+            AND g.game_date <= %s
             AND tr.effective_date <= g.game_date
             AND (tr.end_date IS NULL OR tr.end_date > g.game_date)
             ORDER BY g.game_date DESC, g.id DESC
             LIMIT 1
-            """.format(",".join("?" * len(rotation_player_ids))),
+            """.format(",".join("%s" * len(rotation_player_ids))),
             (team_id, season_id, *rotation_player_ids, current_date),
         )
 
@@ -213,11 +213,11 @@ class TeamRotationsRepository:
             """
             SELECT rotation_order, effective_date
             FROM team_rotations
-            WHERE team_id = ?
-            AND season_id = ?
-            AND player_id = ?
-            AND effective_date <= ?
-            AND (end_date IS NULL OR end_date > ?)
+            WHERE team_id       = %s
+            AND season_id       = %s
+            AND player_id       = %s
+            AND effective_date <= %s
+            AND (end_date IS NULL OR end_date > %s)
             ORDER BY effective_date DESC
             LIMIT 1
             """,
@@ -235,11 +235,11 @@ class TeamRotationsRepository:
             self.conn.execute(
                 """
                 UPDATE team_rotations
-                SET end_date = ?
-                WHERE team_id = ?
-                AND season_id = ?
-                AND player_id = ?
-                AND effective_date = ?
+                SET end_date       = %s
+                WHERE team_id      = %s
+                AND season_id      = %s
+                AND player_id      = %s
+                AND effective_date = %s
                 AND end_date IS NULL
                 """,
                 (effective_date, team_id, season_id, player_id, current_effective_date),
@@ -251,7 +251,7 @@ class TeamRotationsRepository:
             INSERT INTO team_rotations (
                 team_id, season_id, player_id, rotation_order, effective_date, end_date
             )
-            VALUES (?, ?, ?, ?, ?, NULL)
+            VALUES (%s, %s, %s, %s, %s, NULL)
             """,
             (team_id, season_id, player_id, new_rotation_order, effective_date),
         )
@@ -281,11 +281,11 @@ class TeamRotationsRepository:
             """
             SELECT effective_date
             FROM team_rotations
-            WHERE team_id = ?
-            AND season_id = ?
-            AND player_id = ?
-            AND effective_date <= ?
-            AND (end_date IS NULL OR end_date > ?)
+            WHERE team_id       = %s
+            AND season_id       = %s
+            AND player_id       = %s
+            AND effective_date <= %s
+            AND (end_date IS NULL OR end_date > %s)
             ORDER BY effective_date DESC
             LIMIT 1
             """,
@@ -305,11 +305,11 @@ class TeamRotationsRepository:
         self.conn.execute(
             """
             UPDATE team_rotations
-            SET end_date = ?
-            WHERE team_id = ?
-            AND season_id = ?
-            AND player_id = ?
-            AND effective_date = ?
+            SET end_date       = %s
+            WHERE team_id      = %s
+            AND season_id      = %s
+            AND player_id      = %s
+            AND effective_date = %s
             AND end_date IS NULL
             """,
             (effective_date, team_id, season_id, player_id, current_effective_date),
@@ -345,11 +345,11 @@ class TeamRotationsRepository:
         existing = self.conn.execute(
             """
             SELECT COUNT(*) FROM team_rotations
-            WHERE team_id = ?
-            AND season_id = ?
-            AND player_id = ?
-            AND effective_date <= ?
-            AND (end_date IS NULL OR end_date > ?)
+            WHERE team_id       = %s
+            AND season_id       = %s
+            AND player_id       = %s
+            AND effective_date <= %s
+            AND (end_date IS NULL OR end_date > %s)
             """,
             (team_id, season_id, player_id, effective_date, effective_date),
         ).fetchone()[0]
@@ -384,7 +384,7 @@ class TeamRotationsRepository:
             INSERT INTO team_rotations (
                 team_id, season_id, player_id, rotation_order, effective_date, end_date
             )
-            VALUES (?, ?, ?, ?, ?, NULL)
+            VALUES (%s, %s, %s, %s, %s, NULL)
             """,
             (team_id, season_id, player_id, rotation_order, effective_date),
         )
@@ -466,7 +466,7 @@ class TeamRotationsRepository:
             """
             INSERT OR IGNORE INTO team_rotation_pointer
                 (team_id, season_id, series_id, next_order)
-            VALUES (?, ?, ?, 1)
+            VALUES (%s, %s, %s, 1)
             """,
             (team_id, season_id, series_id),
         )
@@ -476,7 +476,7 @@ class TeamRotationsRepository:
             """
             SELECT next_order
             FROM team_rotation_pointer
-            WHERE team_id = ? AND season_id = ? AND series_id = ?
+            WHERE team_id = %s AND season_id = %s AND series_id = %s
             """,
             (team_id, season_id, series_id),
         ).fetchone()
@@ -487,9 +487,9 @@ class TeamRotationsRepository:
             """
             SELECT player_id
             FROM team_rotations
-            WHERE team_id = ?
-            AND season_id = ?
-            AND rotation_order = ?
+            WHERE team_id      = %s
+            AND season_id      = %s
+            AND rotation_order = %s
             AND end_date IS NULL
             LIMIT 1
             """,
@@ -513,7 +513,7 @@ class TeamRotationsRepository:
         order_rows = self.conn.execute(
             """
             SELECT rotation_order FROM team_rotations
-            WHERE team_id = ? AND season_id = ? AND end_date IS NULL
+            WHERE team_id = %s AND season_id = %s AND end_date IS NULL
             ORDER BY rotation_order
             """,
             (team_id, season_id),
@@ -527,7 +527,7 @@ class TeamRotationsRepository:
             """
             SELECT next_order
             FROM team_rotation_pointer
-            WHERE team_id = ? AND season_id = ? AND series_id = ?
+            WHERE team_id = %s AND season_id = %s AND series_id = %s
             """,
             (team_id, season_id, series_id),
         ).fetchone()
@@ -542,7 +542,7 @@ class TeamRotationsRepository:
             """
             INSERT INTO team_rotation_pointer
                 (team_id, season_id, series_id, next_order, updated_at)
-            VALUES (?, ?, ?, ?, datetime('now'))
+            VALUES (%s, %s, %s, %s, datetime('now'))
             ON CONFLICT (team_id, season_id, series_id)
             DO UPDATE SET next_order = excluded.next_order,
                         updated_at = excluded.updated_at
@@ -559,7 +559,7 @@ class TeamRotationsRepository:
         """
         team_rows = self.conn.execute(
             """SELECT DISTINCT team_id FROM team_rotations
-               WHERE season_id = ? AND end_date IS NULL""",
+               WHERE season_id = %s AND end_date IS NULL""",
             (season_id,),
         ).fetchall()
 
@@ -568,7 +568,7 @@ class TeamRotationsRepository:
             self.conn.execute(
                 """INSERT INTO team_rotation_pointer
                        (team_id, season_id, series_id, next_order, updated_at)
-                   VALUES (?, ?, '', 1, datetime('now'))
+                   VALUES (%s, %s, '', 1, datetime('now'))
                    ON CONFLICT (team_id, season_id, series_id)
                    DO UPDATE SET next_order = 1,
                                  updated_at = excluded.updated_at""",

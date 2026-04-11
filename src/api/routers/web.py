@@ -209,7 +209,7 @@ def _resolve_user(db: sqlite3.Connection, token: str | None) -> sqlite3.Row | No
     if not token:
         return None
     return db.execute(
-        "SELECT * FROM users WHERE session_token = ?", (token,)
+        "SELECT * FROM users WHERE session_token = %s", (token,)
     ).fetchone()
 
 
@@ -218,7 +218,7 @@ def _resolve_gm(
 ) -> sqlite3.Row | None:
     """Return the gms row for this user in this league, or None."""
     return db.execute(
-        "SELECT * FROM gms WHERE user_id = ? AND league_id = ?",
+        "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
         (user_id, league_id),
     ).fetchone()
 
@@ -229,9 +229,9 @@ def _injured_player_ids(db, team_id: str, league_id: str = "") -> dict:
         return {}
     rows = db.execute(
         """SELECT pi.player_id, pi.games_remaining FROM player_injuries pi
-           JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
+           JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
            WHERE pi.games_remaining > 0
-             AND (pi.league_id = ? OR pi.league_id = '')""",
+             AND (pi.league_id = %s OR pi.league_id = '')""",
         (team_id, league_id),
     ).fetchall()
     return {r["player_id"]: r["games_remaining"] for r in rows}
@@ -241,7 +241,7 @@ def _games_remaining(db, season_id: str | None) -> int:
     if not season_id:
         return 0
     row = db.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = ? AND completed = 0",
+        "SELECT COUNT(*) FROM games WHERE season_id = %s AND completed = 0",
         (season_id,),
     ).fetchone()
     return row[0] if row else 0
@@ -251,7 +251,7 @@ def _draft_is_complete(db, league_id: str) -> bool:
     row = db.execute(
         """SELECT d.state FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     return bool(row and row["state"] == "complete")
@@ -285,21 +285,21 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
         return None
     # Next unplayed regular season game
     row = db.execute(
-        "SELECT game_date FROM games WHERE season_id = ? AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
+        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
         (season_id,),
     ).fetchone()
     if row:
         return row["game_date"]
     # Playoffs: next unplayed playoff game
     row = db.execute(
-        "SELECT game_date FROM games WHERE season_id = ? AND completed = 0 ORDER BY game_date ASC LIMIT 1",
+        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 ORDER BY game_date ASC LIMIT 1",
         (season_id,),
     ).fetchone()
     if row:
         return row["game_date"]
     # All done — last played date
     row = db.execute(
-        "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND completed = 1",
+        "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
         (season_id,),
     ).fetchone()
     return row["d"] if row else None
@@ -313,11 +313,11 @@ def _shell_ctx(
     gm: sqlite3.Row | None,
     active_tab: str | None = None,
 ) -> dict:
-    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     team = None
     if gm and gm["team_id"]:
         team = db.execute(
-            "SELECT city, mascot FROM teams WHERE id = ?", (gm["team_id"],)
+            "SELECT city, mascot FROM teams WHERE id = %s", (gm["team_id"],)
         ).fetchone()
 
     league_state_for_season = league["state"] if league else "lobby"
@@ -328,7 +328,7 @@ def _shell_ctx(
         season = db.execute(
             """SELECT s.* FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = ?
+               WHERE ls.league_id = %s
                  AND EXISTS (
                    SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 1
                  )
@@ -340,7 +340,7 @@ def _shell_ctx(
             season = db.execute(
                 """SELECT s.* FROM seasons s
                    JOIN league_seasons ls ON ls.season_id = s.id
-                   WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+                   WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
                 (league_id,),
             ).fetchone()
     elif league_state_for_season in ("playoffs", "offseason"):
@@ -348,7 +348,7 @@ def _shell_ctx(
         season = db.execute(
             """SELECT s.* FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = ?
+               WHERE ls.league_id = %s
                  AND EXISTS (
                    SELECT 1 FROM series sr WHERE sr.season_id = s.id
                  )
@@ -360,7 +360,7 @@ def _shell_ctx(
             season = db.execute(
                 """SELECT s.* FROM seasons s
                    JOIN league_seasons ls ON ls.season_id = s.id
-                   WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+                   WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
                 (league_id,),
             ).fetchone()
     else:
@@ -368,7 +368,7 @@ def _shell_ctx(
         season = db.execute(
             """SELECT s.* FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+               WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
             (league_id,),
         ).fetchone()
 
@@ -437,7 +437,7 @@ def create_guest(
     existing_token = request.cookies.get("gm_session")
     if existing_token:
         existing = db.execute(
-            "SELECT * FROM users WHERE session_token = ?", (existing_token,)
+            "SELECT * FROM users WHERE session_token = %s", (existing_token,)
         ).fetchone()
         if existing:
             return RedirectResponse("/leagues/", status_code=302)
@@ -445,7 +445,7 @@ def create_guest(
     token = uuid.uuid4().hex + uuid.uuid4().hex
     user_id = str(uuid.uuid4())
     db.execute(
-        "INSERT INTO users (id, session_token, display_name) VALUES (?, ?, ?)",
+        "INSERT INTO users (id, session_token, display_name) VALUES (%s, %s, %s)",
         (user_id, token, display_name or "Guest"),
     )
     db.commit()
@@ -479,14 +479,14 @@ def reclaim_league(
     gm = db.execute(
         """SELECT g.id FROM gms g
            JOIN users u ON u.id = g.user_id
-           WHERE g.league_id = ? AND u.display_name = ? AND g.is_ai = 0
+           WHERE g.league_id = %s AND u.display_name = %s AND g.is_ai = 0
            LIMIT 1""",
         (league_id, user["display_name"]),
     ).fetchone()
 
     if gm:
         db.execute(
-            "UPDATE gms SET user_id = ? WHERE id = ?",
+            "UPDATE gms SET user_id = %s WHERE id = %s",
             (user["id"], gm["id"]),
         )
         db.commit()
@@ -518,11 +518,11 @@ def leagues_index(
     # gets reassigned to the current user. This handles the common case where
     # the browser cookie was cleared and a new guest identity was created.
     db.execute(
-        """UPDATE gms SET user_id = ?
+        """UPDATE gms SET user_id = %s
            WHERE is_ai = 0
-             AND user_id != ?
+             AND user_id != %s
              AND user_id IN (
-               SELECT id FROM users WHERE display_name = ?
+               SELECT id FROM users WHERE display_name = %s
              )""",
         (user["id"], user["id"], user["display_name"]),
     )
@@ -531,7 +531,7 @@ def leagues_index(
     rows = db.execute(
         """SELECT l.* FROM leagues l
            JOIN gms g ON g.league_id = l.id
-           WHERE g.user_id = ? AND g.is_ai = 0
+           WHERE g.user_id = %s AND g.is_ai = 0
            ORDER BY l.created_at DESC""",
         (user["id"],),
     ).fetchall()
@@ -576,7 +576,7 @@ def create_league(
         """INSERT INTO leagues
              (id, name, join_code, mode, num_teams, decision_window_sec,
               draft_window_sec, reentry_enabled, pace_control, state)
-           VALUES (?, ?, ?, ?, 30, ?, ?, ?, 'timer', 'lobby')""",
+           VALUES (%s, %s, %s, %s, 30, %s, %s, %s, 'timer', 'lobby')""",
         (
             league_id,
             name,
@@ -588,12 +588,12 @@ def create_league(
         ),
     )
     db.execute(
-        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, 0)",
         (gm_id, league_id, user["id"], user["display_name"]),
     )
-    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
+    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
     db.execute(
-        "UPDATE leagues SET commissioner_gm_id = ? WHERE id = ?", (gm_id, league_id)
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm_id, league_id)
     )
     db.commit()
 
@@ -614,7 +614,7 @@ def join_league(
     import uuid as _uuid
 
     league = db.execute(
-        "SELECT * FROM leagues WHERE join_code = ?", (join_code.upper(),)
+        "SELECT * FROM leagues WHERE join_code = %s", (join_code.upper(),)
     ).fetchone()
     if not league:
         return templates.TemplateResponse(
@@ -627,7 +627,7 @@ def join_league(
 
     # Check if already a member
     existing = db.execute(
-        "SELECT id FROM gms WHERE league_id = ? AND user_id = ?",
+        "SELECT id FROM gms WHERE league_id = %s AND user_id = %s",
         (league["id"], user["id"]),
     ).fetchone()
     if existing:
@@ -635,10 +635,10 @@ def join_league(
 
     gm_id = str(_uuid.uuid4())
     db.execute(
-        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (?, ?, ?, ?, 0)",
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, 0)",
         (gm_id, league["id"], user["id"], user["display_name"]),
     )
-    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
+    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
     db.commit()
 
     return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
@@ -667,7 +667,7 @@ def start_league(
     if not gm:
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
-    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     if not league or league["commissioner_gm_id"] != gm["id"]:
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
@@ -715,7 +715,7 @@ async def save_draft_preferences(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     if not draft:
@@ -730,16 +730,16 @@ async def save_draft_preferences(
 
     # Validate all IDs exist
     for pid in player_ids:
-        if not db.execute("SELECT 1 FROM players WHERE id = ?", (pid,)).fetchone():
+        if not db.execute("SELECT 1 FROM players WHERE id = %s", (pid,)).fetchone():
             return JSONResponse({"detail": f"Unknown player: {pid}"}, status_code=422)
 
     # Replace existing preferences atomically
     db.execute(
-        "DELETE FROM draft_preferences WHERE gm_id = ? AND draft_id = ?",
+        "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
         (gm["id"], draft["id"]),
     )
     db.executemany(
-        "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (?, ?, ?, ?)",
+        "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
         [(gm["id"], draft["id"], pid, rank + 1) for rank, pid in enumerate(player_ids)],
     )
     db.commit()
@@ -761,7 +761,7 @@ def dashboard(
     if not user:
         return RedirectResponse("/")
 
-    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     if not league:
         return RedirectResponse("/leagues/")
 
@@ -777,7 +777,7 @@ def dashboard(
     if state == "evaluation":
         season = db.execute(
             """SELECT s.year FROM seasons s JOIN league_seasons ls
-               ON ls.season_id = s.id WHERE ls.league_id = ?
+               ON ls.season_id = s.id WHERE ls.league_id = %s
                ORDER BY s.year DESC LIMIT 1""",
             (league_id,),
         ).fetchone()
@@ -787,12 +787,12 @@ def dashboard(
 
 
 def _lobby(request, league_id, db, user, gm):
-    league = db.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     gms = db.execute(
         """SELECT g.id, g.display_name, g.is_ai, g.is_away, g.team_id,
                   t.city, t.mascot
            FROM gms g LEFT JOIN teams t ON t.id = g.team_id
-           WHERE g.league_id = ? ORDER BY g.created_at""",
+           WHERE g.league_id = %s ORDER BY g.created_at""",
         (league_id,),
     ).fetchall()
     return templates.TemplateResponse(
@@ -839,7 +839,7 @@ def draft_tab(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -847,7 +847,7 @@ def draft_tab(
         picked_ids = {
             r["player_id"]
             for r in db.execute(
-                "SELECT player_id FROM draft_picks WHERE draft_id = ?",
+                "SELECT player_id FROM draft_picks WHERE draft_id = %s",
                 (draft["id"],),
             ).fetchall()
         }
@@ -857,7 +857,7 @@ def draft_tab(
             """SELECT p.*, ps.status FROM players p
                JOIN player_status ps ON ps.player_id = p.id
                WHERE ps.status = 'prospect'
-               AND p.league_id = ?
+               AND p.league_id = %s
                ORDER BY p.last_name, p.first_name""",
             (league_id,),
         ).fetchall()
@@ -867,7 +867,7 @@ def draft_tab(
             if row["id"] in picked_ids:
                 continue
             skills_row = db.execute(
-                "SELECT * FROM player_skills WHERE player_id = ?", (row["id"],)
+                "SELECT * FROM player_skills WHERE player_id = %s", (row["id"],)
             ).fetchone()
             skills = dict(skills_row) if skills_row else {}
             grades = player_row_to_grades(dict(row), skills, row["status"])
@@ -886,7 +886,7 @@ def draft_tab(
         if gm:
             prefs = db.execute(
                 """SELECT dp.player_id FROM draft_preferences dp
-                   WHERE dp.draft_id = ? AND dp.gm_id = ?
+                   WHERE dp.draft_id = %s AND dp.gm_id = %s
                    ORDER BY dp.rank""",
                 (draft["id"], gm["id"]),
             ).fetchall()
@@ -896,7 +896,7 @@ def draft_tab(
         if gm and gm["team_id"]:
             try:
                 pos_row = db.execute(
-                    "SELECT pick_position FROM draft_order WHERE draft_id = ? AND team_id = ?",
+                    "SELECT pick_position FROM draft_order WHERE draft_id = %s AND team_id = %s",
                     (draft["id"], gm["team_id"]),
                 ).fetchone()
                 if pos_row:
@@ -920,7 +920,7 @@ def draft_tab(
         roster_rows = db.execute(
             """SELECT p.*, ps.status
                FROM players p
-               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
                JOIN player_status ps ON ps.player_id = p.id
                ORDER BY ps.status, p.last_name""",
             (gm["team_id"],),
@@ -928,7 +928,7 @@ def draft_tab(
         for row in roster_rows:
             d = dict(row)
             skills_row = db.execute(
-                "SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)
+                "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
             ).fetchone()
             skills = dict(skills_row) if skills_row else {}
             grades = player_row_to_grades(d, skills, d["status"])
@@ -969,7 +969,7 @@ def execute_draft(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -1014,7 +1014,7 @@ def draft_results(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = ? ORDER BY ls.rowid DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -1029,7 +1029,7 @@ def draft_results(
                FROM draft_picks dp
                JOIN players p ON p.id = dp.player_id
                JOIN teams t ON t.id = dp.team_id
-               WHERE dp.draft_id = ?
+               WHERE dp.draft_id = %s
                ORDER BY dp.pick_number""",
             (draft["id"],),
         ).fetchall()
@@ -1037,7 +1037,7 @@ def draft_results(
         human_team_ids = {
             r["team_id"]
             for r in db.execute(
-                "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
+                "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
                 (league_id,),
             ).fetchall()
         }
@@ -1057,7 +1057,7 @@ def draft_results(
                     "player_id": pick["player_id"],
                     "team_name": f"{pick['city']} {pick['mascot']}",
                     "player_name": f"{pick['first_name']} {pick['last_name']}",
-                    "position": pick["position"] or "?",
+                    "position": pick["position"] or "%s",
                     "auto_picked": bool(pick["auto_picked"]),
                     "is_mine": is_mine,
                     "is_human": is_human,
@@ -1146,7 +1146,7 @@ def save_roster_put(
     team_player_ids = {
         r["player_id"]
         for r in db.execute(
-            "SELECT player_id FROM team_players WHERE team_id = ?", (team_id,)
+            "SELECT player_id FROM team_players WHERE team_id = %s", (team_id,)
         ).fetchall()
     }
     for pid in forty_man_ids:
@@ -1161,16 +1161,16 @@ def save_roster_put(
     for pid in team_player_ids:
         new_status = "40man" if pid in forty_set else "minors"
         existing = db.execute(
-            "SELECT status FROM player_status WHERE player_id = ?", (pid,)
+            "SELECT status FROM player_status WHERE player_id = %s", (pid,)
         ).fetchone()
         if existing:
             db.execute(
-                "UPDATE player_status SET status = ? WHERE player_id = ?",
+                "UPDATE player_status SET status = %s WHERE player_id = %s",
                 (new_status, pid),
             )
         else:
             db.execute(
-                "INSERT INTO player_status (player_id, status, since) VALUES (?, ?, datetime('now'))",
+                "INSERT INTO player_status (player_id, status, since) VALUES (%s, %s, datetime('now'))",
                 (pid, new_status),
             )
 
@@ -1208,11 +1208,11 @@ async def sim_games(
         (
             db.execute(
                 """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
                 (league_id,),
             ).fetchone()["id"]
             if db.execute(
-                "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
+                "SELECT 1 FROM league_seasons WHERE league_id = %s", (league_id,)
             ).fetchone()
             else None
         ),
@@ -1241,11 +1241,11 @@ async def sim_games(
         (
             db.execute(
                 """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
                 (league_id,),
             ).fetchone()["id"]
             if db.execute(
-                "SELECT 1 FROM league_seasons WHERE league_id = ?", (league_id,)
+                "SELECT 1 FROM league_seasons WHERE league_id = %s", (league_id,)
             ).fetchone()
             else None
         ),
@@ -1256,12 +1256,12 @@ async def sim_games(
         sim_next_day(league_id, db)
 
     league_state_row = db.execute(
-        "SELECT state FROM leagues WHERE id = ?", (league_id,)
+        "SELECT state FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     # Get updated current date for topbar
     current_season_id = db.execute(
         """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     current_date = _current_league_date(
@@ -1315,14 +1315,14 @@ def standings(
                FROM teams t
                JOIN league_season_teams lst
                  ON lst.team_id = t.id
-                 AND lst.league_id = ?
-                 AND lst.season_id = ?
+                 AND lst.league_id = %s
+                 AND lst.season_id = %s
                LEFT JOIN (
                  SELECT tgs2.team_id, tgs2.win, tgs2.loss, tgs2.runs
                  FROM team_game_stats tgs2
                  JOIN games g2
                    ON g2.id = tgs2.game_id
-                   AND g2.season_id = ?
+                   AND g2.season_id = %s
                    AND g2.completed = 1
                    AND g2.series_id IS NULL
                ) tgs ON tgs.team_id = t.id
@@ -1334,7 +1334,7 @@ def standings(
         ra_rows = db.execute(
             """SELECT tgs.team_id, SUM(opp.runs) as runs_allowed
                FROM team_game_stats tgs
-               JOIN games g ON g.id = tgs.game_id AND g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
+               JOIN games g ON g.id = tgs.game_id AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
                JOIN team_game_stats opp
                  ON opp.game_id = g.id AND opp.team_id != tgs.team_id
                GROUP BY tgs.team_id""",
@@ -1352,7 +1352,7 @@ def standings(
                  SUM(CASE WHEN g.away_team_id = tgs.team_id AND tgs.loss = 1 THEN 1 ELSE 0 END) as away_losses
                FROM team_game_stats tgs
                JOIN games g ON g.id = tgs.game_id
-                 AND g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
+                 AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
                GROUP BY tgs.team_id""",
             (season_id,),
         ).fetchall()
@@ -1369,7 +1369,7 @@ def standings(
         human_team_ids = {
             r["team_id"]
             for r in db.execute(
-                "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
+                "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
                 (league_id,),
             ).fetchall()
         }
@@ -1379,7 +1379,7 @@ def standings(
             """SELECT tgs.team_id, tgs.win, g.game_date
                FROM team_game_stats tgs
                JOIN games g ON g.id = tgs.game_id
-               WHERE g.season_id = ? AND g.completed = 1
+               WHERE g.season_id = %s AND g.completed = 1
                ORDER BY g.game_date DESC""",
             (season_id,),
         ).fetchall()
@@ -1479,8 +1479,8 @@ def standings(
                    FROM games g
                    JOIN teams ht ON ht.id = g.home_team_id
                    JOIN teams at ON at.id = g.away_team_id
-                   WHERE g.season_id = ? AND g.completed = 0
-                     AND (g.home_team_id = ? OR g.away_team_id = ?)
+                   WHERE g.season_id = %s AND g.completed = 0
+                     AND (g.home_team_id = %s OR g.away_team_id = %s)
                    ORDER BY g.game_date LIMIT 3""",
                 (season_id, my_team_id, my_team_id),
             ).fetchall()
@@ -1507,8 +1507,8 @@ def standings(
                    FROM games g
                    JOIN teams ht ON ht.id = g.home_team_id
                    JOIN teams at ON at.id = g.away_team_id
-                   WHERE g.season_id = ? AND g.completed = 1
-                     AND (g.home_team_id = ? OR g.away_team_id = ?)
+                   WHERE g.season_id = %s AND g.completed = 1
+                     AND (g.home_team_id = %s OR g.away_team_id = %s)
                    ORDER BY g.game_date DESC LIMIT 5""",
                 (season_id, my_team_id, my_team_id),
             ).fetchall()
@@ -1538,9 +1538,9 @@ def standings(
                 """SELECT p.id as player_id, p.first_name, p.last_name, pi.games_remaining
                    FROM player_injuries pi
                    JOIN players p ON p.id = pi.player_id
-                   JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+                   JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
                    WHERE pi.games_remaining > 0
-                     AND (pi.league_id = ? OR pi.league_id = '')
+                     AND (pi.league_id = %s OR pi.league_id = '')
                    ORDER BY pi.games_remaining DESC""",
                 (my_team_id, league_id),
             ).fetchall()
@@ -1607,7 +1607,7 @@ def leaders(
         # Team games played — basis for qualification thresholds
         tg_row = db.execute(
             """SELECT MAX(bat_games_played) as tg FROM player_season_stats
-               WHERE season_id = ? AND is_postseason = 0""",
+               WHERE season_id = %s AND is_postseason = 0""",
             (season_id,),
         ).fetchone()
         team_games = tg_row["tg"] or 1
@@ -1626,8 +1626,8 @@ def leaders(
                JOIN players p ON p.id = pss.player_id
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = ?
-               WHERE pss.season_id = ? AND pss.is_postseason = 0 AND pss.bat_ab >= 1""",
+                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
+               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.bat_ab >= 1""",
             (league_id, season_id),
         ).fetchall()
 
@@ -1757,8 +1757,8 @@ def leaders(
                JOIN players p ON p.id = pss.player_id
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = ?
-               WHERE pss.season_id = ? AND pss.is_postseason = 0 AND pss.pitch_outs >= 9""",
+                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
+               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.pitch_outs >= 9""",
             (league_id, season_id),
         ).fetchall()
 
@@ -1871,7 +1871,7 @@ def roster(
         rows = db.execute(
             """SELECT p.*, ps.status
                FROM players p
-               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
                JOIN player_status ps ON ps.player_id = p.id
                ORDER BY ps.status, p.last_name""",
             (gm["team_id"],),
@@ -1879,7 +1879,7 @@ def roster(
         for row in rows:
             d = dict(row)
             skills_row = db.execute(
-                "SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)
+                "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
             ).fetchone()
             skills = dict(skills_row) if skills_row else {}
             grades = player_row_to_grades(d, skills, d["status"])
@@ -1913,9 +1913,9 @@ def roster(
                       pitch_games_started, pitch_outs, pitch_earned_runs,
                       pitch_wins, pitch_losses, pitch_saves
                FROM player_season_stats
-               WHERE season_id = ? AND is_postseason = 0
+               WHERE season_id = %s AND is_postseason = 0
                  AND player_id IN (
-                     SELECT player_id FROM team_players WHERE team_id = ?
+                     SELECT player_id FROM team_players WHERE team_id = %s
                  )""",
             (season_id, gm["team_id"]),
         ).fetchall()
@@ -1980,7 +1980,7 @@ def lineup(
     # Load all 40-man players with grades
     rows = db.execute(
         """SELECT p.*, ps.status FROM players p
-           JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = ?
+           JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
            JOIN player_status ps ON ps.player_id = p.id
            WHERE ps.status IN ('26man', '40man')
            ORDER BY p.last_name""",
@@ -1992,7 +1992,7 @@ def lineup(
     for row in rows:
         d = dict(row)
         sk = db.execute(
-            "SELECT * FROM player_skills WHERE player_id = ?", (d["id"],)
+            "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
         ).fetchone()
         skills = dict(sk) if sk else {}
         grades = player_row_to_grades(d, skills, d["status"])
@@ -2039,7 +2039,7 @@ def lineup(
     saved_lineup = []
     prefs = db.execute(
         """SELECT player_id, batting_order, position FROM gm_lineup_preferences
-           WHERE gm_id = ? AND batting_order IS NOT NULL
+           WHERE gm_id = %s AND batting_order IS NOT NULL
            ORDER BY batting_order""",
         (gm["id"],),
     ).fetchall()
@@ -2057,7 +2057,7 @@ def lineup(
     if season_id:
         rot = db.execute(
             """SELECT player_id, rotation_order FROM team_rotations
-               WHERE team_id = ? AND season_id = ? AND end_date IS NULL
+               WHERE team_id = %s AND season_id = %s AND end_date IS NULL
                ORDER BY rotation_order""",
             (team_id, season_id),
         ).fetchall()
@@ -2068,7 +2068,7 @@ def lineup(
     if season_id:
         bp = db.execute(
             """SELECT player_id, role FROM bullpen_roles
-               WHERE team_id = ? AND season_id = ? AND end_date IS NULL""",
+               WHERE team_id = %s AND season_id = %s AND end_date IS NULL""",
             (team_id, season_id),
         ).fetchall()
         saved_bullpen = {r["player_id"]: r["role"] for r in bp}
@@ -2078,13 +2078,13 @@ def lineup(
     if season_id and saved_rotation:
         ptr_row = db.execute(
             """SELECT next_order FROM team_rotation_pointer
-               WHERE team_id = ? AND season_id = ? AND series_id = ''""",
+               WHERE team_id = %s AND season_id = %s AND series_id = ''""",
             (team_id, season_id),
         ).fetchone()
         if ptr_row:
             rot_at_ptr = db.execute(
                 """SELECT player_id FROM team_rotations
-                   WHERE team_id = ? AND season_id = ? AND rotation_order = ?
+                   WHERE team_id = %s AND season_id = %s AND rotation_order = %s
                    AND end_date IS NULL""",
                 (team_id, season_id, ptr_row["next_order"]),
             ).fetchone()
@@ -2099,7 +2099,7 @@ def lineup(
                       pitch_games_started, pitch_outs, pitch_earned_runs,
                       pitch_wins, pitch_losses, pitch_saves
                FROM player_season_stats
-               WHERE season_id = ? AND is_postseason = 0""",
+               WHERE season_id = %s AND is_postseason = 0""",
             (season_id,),
         ).fetchall()
         stats_map = {r["player_id"]: r for r in stat_rows}
@@ -2145,7 +2145,7 @@ def lineup(
     ctx["saved_rotation_pointer"] = saved_rotation_pointer
     # Tell template whether we're in playoffs so the nav button points the right way
     league_row = db.execute(
-        "SELECT state FROM leagues WHERE id = ?", (league_id,)
+        "SELECT state FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     ctx["is_playoffs"] = league_row and league_row["state"] == "playoffs"
     return _respond(request, "dashboard/partials/lineup.html", ctx)
@@ -2182,12 +2182,12 @@ async def save_lineup(
             {"detail": f"Duplicate positions: {', '.join(set(dupes))}"}, status_code=422
         )
 
-    db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = ?", (gm["id"],))
+    db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = %s", (gm["id"],))
     for slot in lineup:
         db.execute(
             """INSERT INTO gm_lineup_preferences
                (gm_id, player_id, batting_order, position, is_starter, updated_at)
-               VALUES (?, ?, ?, ?, 1, datetime('now'))""",
+               VALUES (%s, %s, %s, %s, 1, datetime('now'))""",
             (gm["id"], slot["player_id"], slot["batting_order"], slot.get("position")),
         )
 
@@ -2219,7 +2219,7 @@ async def save_rotation(
     season_id = db.execute(
         """SELECT s.id FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     season_id = season_id["id"] if season_id else None
@@ -2227,7 +2227,7 @@ async def save_rotation(
         return JSONResponse({"detail": "No active season"}, status_code=400)
 
     season_start_row = db.execute(
-        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?",
+        "SELECT MIN(game_date) as start FROM games WHERE season_id = %s",
         (season_id,),
     ).fetchone()
     effective_date = (
@@ -2238,14 +2238,14 @@ async def save_rotation(
 
     # Replace rotation
     db.execute(
-        "DELETE FROM team_rotations WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
+        "DELETE FROM team_rotations WHERE team_id = %s AND season_id = %s AND end_date IS NULL",
         (gm["team_id"], season_id),
     )
     for i, pid in enumerate(rotation):
         db.execute(
             """INSERT INTO team_rotations
                (team_id, season_id, player_id, rotation_order, effective_date)
-               VALUES (?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s)""",
             (gm["team_id"], season_id, pid, i + 1, effective_date),
         )
 
@@ -2260,7 +2260,7 @@ async def save_rotation(
         db.execute(
             """INSERT INTO team_rotation_pointer
                    (team_id, season_id, series_id, next_order, updated_at)
-               VALUES (?, ?, '', ?, datetime('now'))
+               VALUES (%s, %s, '', %s, datetime('now'))
                ON CONFLICT (team_id, season_id, series_id)
                DO UPDATE SET next_order = excluded.next_order,
                              updated_at = excluded.updated_at""",
@@ -2269,9 +2269,9 @@ async def save_rotation(
 
     # Remove bullpen roles for any pitcher now in the rotation
     if rotation:
-        placeholders = ",".join("?" * len(rotation))
+        placeholders = ",".join("%s" * len(rotation))
         db.execute(
-            f"DELETE FROM bullpen_roles WHERE team_id = ? AND season_id = ? "
+            f"DELETE FROM bullpen_roles WHERE team_id = %s AND season_id = %s "
             f"AND end_date IS NULL AND player_id IN ({placeholders})",
             (gm["team_id"], season_id, *rotation),
         )
@@ -2303,7 +2303,7 @@ async def save_bullpen(
     season_id = db.execute(
         """SELECT s.id FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? ORDER BY s.year DESC LIMIT 1""",
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     season_id = season_id["id"] if season_id else None
@@ -2311,7 +2311,7 @@ async def save_bullpen(
         return JSONResponse({"detail": "No active season"}, status_code=400)
 
     season_start_row = db.execute(
-        "SELECT MIN(game_date) as start FROM games WHERE season_id = ?",
+        "SELECT MIN(game_date) as start FROM games WHERE season_id = %s",
         (season_id,),
     ).fetchone()
     effective_date = (
@@ -2322,7 +2322,7 @@ async def save_bullpen(
 
     # Replace bullpen roles
     db.execute(
-        "DELETE FROM bullpen_roles WHERE team_id = ? AND season_id = ? AND end_date IS NULL",
+        "DELETE FROM bullpen_roles WHERE team_id = %s AND season_id = %s AND end_date IS NULL",
         (gm["team_id"], season_id),
     )
     valid_roles = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
@@ -2331,7 +2331,7 @@ async def save_bullpen(
             db.execute(
                 """INSERT INTO bullpen_roles
                    (team_id, player_id, season_id, role, effective_date)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   VALUES (%s, %s, %s, %s, %s)""",
                 (gm["team_id"], pid, season_id, role, effective_date),
             )
 
@@ -2357,7 +2357,7 @@ def strategy(
     ctx = _shell_ctx(request, db, league_id, user, gm, "strategy")
 
     profile_row = (
-        db.execute("SELECT * FROM gm_profiles WHERE gm_id = ?", (gm["id"],)).fetchone()
+        db.execute("SELECT * FROM gm_profiles WHERE gm_id = %s", (gm["id"],)).fetchone()
         if gm
         else None
     )
@@ -2433,9 +2433,9 @@ async def save_strategy(
         i = int(form.get(field, 0))
         updates[field] = options[min(i, len(options) - 1)]
 
-    set_clause = ", ".join(f"{col} = ?" for col in updates)
+    set_clause = ", ".join(f"{col} = %s" for col in updates)
     db.execute(
-        f"UPDATE gm_profiles SET {set_clause}, updated_at = datetime('now') WHERE gm_id = ?",
+        f"UPDATE gm_profiles SET {set_clause}, updated_at = datetime('now') WHERE gm_id = %s",
         [*updates.values(), gm["id"]],
     )
     db.commit()
@@ -2475,8 +2475,8 @@ def schedule(
                FROM games g
                JOIN teams ht ON ht.id = g.home_team_id
                JOIN teams at ON at.id = g.away_team_id
-               WHERE g.season_id = ? AND g.completed = 0
-                 AND (g.home_team_id = ? OR g.away_team_id = ?)
+               WHERE g.season_id = %s AND g.completed = 0
+                 AND (g.home_team_id = %s OR g.away_team_id = %s)
                ORDER BY g.game_date""",
             (season_id, my_team_id, my_team_id),
         ).fetchall()
@@ -2492,14 +2492,14 @@ def schedule(
 
         opp_records: dict[str, str] = {}
         if opp_team_ids:
-            placeholders = ",".join("?" * len(opp_team_ids))
+            placeholders = ",".join("%s" * len(opp_team_ids))
             wl_rows = db.execute(
                 f"""SELECT tgs.team_id,
                            COALESCE(SUM(tgs.win),  0) as wins,
                            COALESCE(SUM(tgs.loss), 0) as losses
                     FROM team_game_stats tgs
                     JOIN games g ON g.id = tgs.game_id
-                      AND g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
+                      AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
                     WHERE tgs.team_id IN ({placeholders})
                     GROUP BY tgs.team_id""",
                 (season_id, *opp_team_ids),
@@ -2530,8 +2530,8 @@ def schedule(
                FROM games g
                JOIN teams ht ON ht.id = g.home_team_id
                JOIN teams at ON at.id = g.away_team_id
-               WHERE g.season_id = ? AND g.completed = 1
-                 AND (g.home_team_id = ? OR g.away_team_id = ?)
+               WHERE g.season_id = %s AND g.completed = 1
+                 AND (g.home_team_id = %s OR g.away_team_id = %s)
                ORDER BY g.game_date DESC""",
             (season_id, my_team_id, my_team_id),
         ).fetchall()
@@ -2590,7 +2590,7 @@ def stats(
     all_seasons = db.execute(
         """SELECT s.id, s.year FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ?
+           WHERE ls.league_id = %s
            ORDER BY s.year DESC""",
         (league_id,),
     ).fetchall()
@@ -2608,7 +2608,7 @@ def stats(
             """SELECT DISTINCT t.id, t.city, t.mascot
            FROM teams t
            JOIN league_season_teams lst ON lst.team_id = t.id
-           WHERE lst.league_id = ? AND lst.season_id = ?
+           WHERE lst.league_id = %s AND lst.season_id = %s
            ORDER BY t.city""",
             (league_id, selected_season_id),
         ).fetchall()
@@ -2629,8 +2629,8 @@ def stats(
     if selected_season_id and selected_team_id:
         tg_row = db.execute(
             """SELECT MAX(bat_games_played) as tg FROM player_season_stats
-               WHERE season_id = ? AND is_postseason = ?
-                 AND team_id = ?""",
+               WHERE season_id = %s AND is_postseason = %s
+                 AND team_id = %s""",
             (selected_season_id, ps_flag, selected_team_id),
         ).fetchone()
         team_games = tg_row["tg"] or 0
@@ -2641,8 +2641,8 @@ def stats(
             """SELECT p.id as player_id, p.first_name, p.last_name, pss.*
                FROM player_season_stats pss
                JOIN players p ON p.id = pss.player_id
-               WHERE pss.season_id = ? AND pss.is_postseason = ?
-                 AND pss.team_id = ?""",
+               WHERE pss.season_id = %s AND pss.is_postseason = %s
+                 AND pss.team_id = %s""",
             (selected_season_id, ps_flag, selected_team_id),
         ).fetchall()
 
@@ -2805,7 +2805,7 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     }
 
     def _team_name(tid):
-        r = db.execute("SELECT city, mascot FROM teams WHERE id = ?", (tid,)).fetchone()
+        r = db.execute("SELECT city, mascot FROM teams WHERE id = %s", (tid,)).fetchone()
         return f"{r['city']} {r['mascot']}" if r else tid
 
     def load_series(series_name, best_of):
@@ -2824,7 +2824,7 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
         games = db.execute(
             """SELECT id, game_date, home_team_id, away_team_id,
                       completed, home_score, away_score, winner_id
-               FROM games WHERE series_id = ? ORDER BY game_date""",
+               FROM games WHERE series_id = %s ORDER BY game_date""",
             (sid,),
         ).fetchall()
 
@@ -2944,7 +2944,7 @@ def sim_playoff_route(
     result = sim_playoff(league_id, db, mode=mode)
 
     league_state = db.execute(
-        "SELECT state FROM leagues WHERE id = ?", (league_id,)
+        "SELECT state FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()["state"]
     result["league_state"] = league_state
     return JSONResponse(result)
@@ -2974,7 +2974,7 @@ def game_panel(
            FROM games g
            JOIN teams ht ON ht.id = g.home_team_id
            JOIN teams at ON at.id = g.away_team_id
-           WHERE g.id = ?""",
+           WHERE g.id = %s""",
         (game_id,),
     ).fetchone()
     if not game:
@@ -2993,7 +2993,7 @@ def game_panel(
                   pgs.bat_game_started as started
            FROM player_game_stats pgs
            JOIN players p ON p.id = pgs.player_id
-           WHERE pgs.game_id = ? AND pgs.bat_ab > 0
+           WHERE pgs.game_id = %s AND pgs.bat_ab > 0
            ORDER BY pgs.team_id, pgs.bat_game_started DESC, p.last_name""",
         (game_id,),
     ).fetchall()
@@ -3009,7 +3009,7 @@ def game_panel(
                   pgs.pitch_game_started as started
            FROM player_game_stats pgs
            JOIN players p ON p.id = pgs.player_id
-           WHERE pgs.game_id = ? AND pgs.pitch_outs > 0
+           WHERE pgs.game_id = %s AND pgs.pitch_outs > 0
            ORDER BY pgs.team_id, pgs.pitch_game_started DESC, pgs.pitch_outs DESC""",
         (game_id,),
     ).fetchall()
@@ -3030,7 +3030,7 @@ def game_panel(
         """SELECT ge.event_type, ge.inning, ge.half, ge.reason,
                   ge.detail, ge.team_id
            FROM game_events ge
-           WHERE ge.game_id = ?
+           WHERE ge.game_id = %s
            ORDER BY ge.id""",
         (game_id,),
     ).fetchall()
@@ -3089,7 +3089,7 @@ def season_summary(
         row = db.execute(
             """SELECT s.id FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = ?
+               WHERE ls.league_id = %s
                  AND EXISTS (SELECT 1 FROM series sr WHERE sr.season_id = s.id)
                ORDER BY s.year DESC LIMIT 1""",
             (league_id,),
@@ -3103,7 +3103,7 @@ def season_summary(
             """SELECT SUM(tgs.win) as w, SUM(tgs.loss) as l
                FROM team_game_stats tgs
                JOIN games g ON g.id = tgs.game_id
-               WHERE tgs.team_id = ? AND g.season_id = ? AND g.series_id IS NULL""",
+               WHERE tgs.team_id = %s AND g.season_id = %s AND g.series_id IS NULL""",
             (my_team_id, season_id),
         ).fetchone()
         if r:
@@ -3113,19 +3113,19 @@ def season_summary(
     champion = None
     if season_id:
         finals = db.execute(
-            "SELECT id FROM series WHERE season_id = ? AND name = 'Finals'",
+            "SELECT id FROM series WHERE season_id = %s AND name = 'Finals'",
             (season_id,),
         ).fetchone()
         if finals:
             champ_row = db.execute(
                 """SELECT winner_id, COUNT(*) as wins FROM games
-                   WHERE series_id = ? AND completed = 1
+                   WHERE series_id = %s AND completed = 1
                    GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
                 (finals["id"],),
             ).fetchone()
             if champ_row and champ_row["wins"] >= 4:
                 t = db.execute(
-                    "SELECT city, mascot FROM teams WHERE id = ?",
+                    "SELECT city, mascot FROM teams WHERE id = %s",
                     (champ_row["winner_id"],),
                 ).fetchone()
                 if t:
@@ -3148,21 +3148,21 @@ def season_summary(
             ("4v5", 5),
         ]:
             sid = db.execute(
-                "SELECT id FROM series WHERE season_id = ? AND name = ?",
+                "SELECT id FROM series WHERE season_id = %s AND name = %s",
                 (season_id, series_name),
             ).fetchone()
             if not sid:
                 continue
             appeared = db.execute(
-                """SELECT 1 FROM games WHERE series_id = ?
-                   AND (home_team_id = ? OR away_team_id = ?) LIMIT 1""",
+                """SELECT 1 FROM games WHERE series_id = %s
+                   AND (home_team_id = %s OR away_team_id = %s) LIMIT 1""",
                 (sid["id"], my_team_id, my_team_id),
             ).fetchone()
             if appeared:
                 wins_needed = {5: 3, 7: 4}[best_of]
                 wins_row = db.execute(
                     """SELECT winner_id, COUNT(*) as wins FROM games
-                       WHERE series_id = ? AND completed = 1 AND winner_id = ?
+                       WHERE series_id = %s AND completed = 1 AND winner_id = %s
                        GROUP BY winner_id""",
                     (sid["id"], my_team_id),
                 ).fetchone()
@@ -3178,11 +3178,11 @@ def season_summary(
     if season_id:
         games_row = db.execute(
             """SELECT COUNT(*) as g FROM games
-               WHERE season_id = ? AND completed = 1 AND series_id IS NULL""",
+               WHERE season_id = %s AND completed = 1 AND series_id IS NULL""",
             (season_id,),
         ).fetchone()
         num_teams_row = db.execute(
-            "SELECT COUNT(DISTINCT team_id) as n FROM league_season_teams WHERE season_id = ?",
+            "SELECT COUNT(DISTINCT team_id) as n FROM league_season_teams WHERE season_id = %s",
             (season_id,),
         ).fetchone()
         num_teams = num_teams_row["n"] or 30
@@ -3197,8 +3197,8 @@ def season_summary(
                FROM player_season_stats pss
                JOIN players p ON p.id = pss.player_id
                JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=?
-               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.bat_ab >= ?
+               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=%s
+               WHERE pss.season_id=%s AND pss.is_postseason=0 AND pss.bat_ab >= %s
                ORDER BY avg DESC LIMIT 1""",
             (league_id, season_id, min_ab),
         ).fetchone()
@@ -3216,8 +3216,8 @@ def season_summary(
                FROM player_season_stats pss
                JOIN players p ON p.id = pss.player_id
                JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=?
-               WHERE pss.season_id=? AND pss.is_postseason=0 AND pss.pitch_outs >= ?
+               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=%s
+               WHERE pss.season_id=%s AND pss.is_postseason=0 AND pss.pitch_outs >= %s
                ORDER BY era ASC LIMIT 1""",
             (league_id, season_id, min_outs),
         ).fetchone()
@@ -3233,7 +3233,7 @@ def season_summary(
     season_year = None
     if season_id:
         sy = db.execute(
-            "SELECT year FROM seasons WHERE id = ?", (season_id,)
+            "SELECT year FROM seasons WHERE id = %s", (season_id,)
         ).fetchone()
         season_year = sy["year"] if sy else None
 
@@ -3299,7 +3299,7 @@ def history(
         """SELECT s.id, s.year, s.name
            FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ?
+           WHERE ls.league_id = %s
            ORDER BY s.year DESC""",
         (league_id,),
     ).fetchall()
@@ -3308,20 +3308,20 @@ def history(
     for s in seasons:
         # Champion
         finals = db.execute(
-            "SELECT id FROM series WHERE season_id = ? AND name = 'Finals'",
+            "SELECT id FROM series WHERE season_id = %s AND name = 'Finals'",
             (s["id"],),
         ).fetchone()
         champion_name = None
         if finals:
             champ = db.execute(
                 """SELECT winner_id, COUNT(*) as wins FROM games
-                   WHERE series_id = ? AND completed=1
+                   WHERE series_id = %s AND completed=1
                    GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
                 (finals["id"],),
             ).fetchone()
             if champ and champ["wins"] >= 4:
                 t = db.execute(
-                    "SELECT city, mascot FROM teams WHERE id = ?", (champ["winner_id"],)
+                    "SELECT city, mascot FROM teams WHERE id = %s", (champ["winner_id"],)
                 ).fetchone()
                 if t:
                     champion_name = f"{t['city']} {t['mascot']}"
@@ -3333,7 +3333,7 @@ def history(
                 """SELECT SUM(tgs.win) as w, SUM(tgs.loss) as l
                    FROM team_game_stats tgs
                    JOIN games g ON g.id=tgs.game_id
-                   WHERE tgs.team_id=? AND g.season_id=? AND g.series_id IS NULL""",
+                   WHERE tgs.team_id=%s AND g.season_id=%s AND g.series_id IS NULL""",
                 (my_team_id, s["id"]),
             ).fetchone()
             if r and (r["w"] or r["l"]):
@@ -3375,26 +3375,26 @@ def player_panel(
     gm = _resolve_gm(db, user["id"], league_id)
 
     def _load(pid: str) -> dict | None:
-        p = db.execute("SELECT * FROM players WHERE id = ?", (pid,)).fetchone()
+        p = db.execute("SELECT * FROM players WHERE id = %s", (pid,)).fetchone()
         if not p:
             return None
         sk = db.execute(
-            "SELECT * FROM player_skills WHERE player_id = ?", (pid,)
+            "SELECT * FROM player_skills WHERE player_id = %s", (pid,)
         ).fetchone()
         st = db.execute(
-            "SELECT status FROM player_status WHERE player_id = ?", (pid,)
+            "SELECT status FROM player_status WHERE player_id = %s", (pid,)
         ).fetchone()
         en = db.execute(
-            "SELECT * FROM player_energy WHERE player_id = ? AND league_id = ?",
+            "SELECT * FROM player_energy WHERE player_id = %s AND league_id = %s",
             (pid, league_id),
         ).fetchone()
         inj = db.execute(
-            "SELECT * FROM player_injury_log WHERE player_id = ? ORDER BY injury_date DESC LIMIT 5",
+            "SELECT * FROM player_injury_log WHERE player_id = %s ORDER BY injury_date DESC LIMIT 5",
             (pid,),
         ).fetchall()
         team = db.execute(
             """SELECT t.city, t.mascot FROM teams t
-               JOIN team_players tp ON tp.team_id = t.id WHERE tp.player_id = ?""",
+               JOIN team_players tp ON tp.team_id = t.id WHERE tp.player_id = %s""",
             (pid,),
         ).fetchone()
 
@@ -3406,7 +3406,7 @@ def player_panel(
 
         # Season stats — find current season for this league
         season_row = db.execute(
-            """SELECT season_id FROM league_seasons WHERE league_id = ?
+            """SELECT season_id FROM league_seasons WHERE league_id = %s
                ORDER BY rowid DESC LIMIT 1""",
             (league_id,),
         ).fetchone()
@@ -3414,7 +3414,7 @@ def player_panel(
         if season_row:
             stats_row = db.execute(
                 """SELECT * FROM player_season_stats
-                   WHERE player_id = ? AND season_id = ? AND is_postseason = 0""",
+                   WHERE player_id = %s AND season_id = %s AND is_postseason = 0""",
                 (pid, season_row["season_id"]),
             ).fetchone()
             if stats_row:
@@ -3503,7 +3503,7 @@ def player_panel(
         grade_map = _ratings_to_grade_map(grades, skills, ratings)
 
         # Best defensive grade for card display
-        best_def_grade = skill_to_grade(ratings.get("best_def")) if ratings else "?"
+        best_def_grade = skill_to_grade(ratings.get("best_def")) if ratings else "%s"
         best_def_label = ratings.get("best_def_label", "DEF") if ratings else "DEF"
 
         energy = None
@@ -3519,8 +3519,8 @@ def player_panel(
         # Injury status
         inj_status = db.execute(
             """SELECT games_remaining FROM player_injuries
-               WHERE player_id = ? AND games_remaining > 0
-               AND (league_id = ? OR league_id = '')
+               WHERE player_id = %s AND games_remaining > 0
+               AND (league_id = %s OR league_id = '')
                LIMIT 1""",
             (pid, league_id),
         ).fetchone()
@@ -3567,14 +3567,14 @@ def history_season_detail(
 
     season = db.execute(
         """SELECT s.* FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ? AND s.year = ?""",
+           WHERE ls.league_id = %s AND s.year = %s""",
         (league_id, year),
     ).fetchone()
 
     evaluation = None
     if season and gm:
         evaluation = db.execute(
-            "SELECT * FROM gm_season_evaluations WHERE gm_id = ? AND season_id = ?",
+            "SELECT * FROM gm_season_evaluations WHERE gm_id = %s AND season_id = %s",
             (gm["id"], season["id"]),
         ).fetchone()
 

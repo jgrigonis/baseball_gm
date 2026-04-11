@@ -34,7 +34,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
 
     Returns a summary dict with date, games played, and results.
     """
-    league = conn.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     if not league:
         raise ValueError(f"League {league_id} not found.")
 
@@ -45,7 +45,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     season_id = conn.execute(
         """
         SELECT season_id FROM league_seasons
-        WHERE league_id = ?
+        WHERE league_id = %s
         ORDER BY rowid DESC LIMIT 1
         """,
         (league_id,),
@@ -58,7 +58,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     next_date_row = conn.execute(
         """
         SELECT game_date FROM games
-        WHERE season_id = ? AND completed = 0
+        WHERE season_id = %s AND completed = 0
         ORDER BY game_date ASC
         LIMIT 1
         """,
@@ -68,7 +68,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     if not next_date_row:
         # No more regular season games — set up playoffs if not already done
         existing_series = conn.execute(
-            "SELECT COUNT(*) FROM series WHERE season_id = ?",
+            "SELECT COUNT(*) FROM series WHERE season_id = %s",
             (season_id,),
         ).fetchone()[0]
 
@@ -80,7 +80,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
 
                 last_game = conn.execute(
                     """SELECT MAX(game_date) as d FROM games
-                       WHERE season_id = ? AND completed = 1""",
+                       WHERE season_id = %s AND completed = 1""",
                     (season_id,),
                 ).fetchone()
                 playoff_start = (
@@ -100,7 +100,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 print(f"Playoff setup failed: {e}")
                 print(traceback.format_exc())
 
-        conn.execute("UPDATE leagues SET state = 'playoffs' WHERE id = ?", (league_id,))
+        conn.execute("UPDATE leagues SET state = 'playoffs' WHERE id = %s", (league_id,))
         conn.commit()
         return {
             "game_date": None,
@@ -117,7 +117,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         SELECT id as game_id, home_team_id, away_team_id, completed,
                season_id, game_date
         FROM games
-        WHERE season_id = ? AND game_date = ? AND completed = 0
+        WHERE season_id = %s AND game_date = %s AND completed = 0
         """,
         (season_id, game_date),
     ).fetchall()
@@ -131,7 +131,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         team_ids.add(g["home_team_id"])
         team_ids.add(g["away_team_id"])
 
-    placeholders = ",".join("?" * len(team_ids))
+    placeholders = ",".join("%s" * len(team_ids))
     name_rows = conn.execute(
         f"SELECT id, city, mascot FROM teams WHERE id IN ({placeholders})",
         list(team_ids),
@@ -140,7 +140,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
 
     # Advance league state to 'season' if still in preseason
     if league["state"] == "preseason":
-        conn.execute("UPDATE leagues SET state = 'season' WHERE id = ?", (league_id,))
+        conn.execute("UPDATE leagues SET state = 'season' WHERE id = %s", (league_id,))
         conn.commit()
 
     # Set up repos
@@ -160,7 +160,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
 
     # Snapshot GM team injuries before this day to detect changes
     gm_team_id = conn.execute(
-        "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
+        "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
         (league_id,),
     ).fetchone()
     gm_team_id = gm_team_id["team_id"] if gm_team_id else None
@@ -173,8 +173,8 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                       p.first_name || ' ' || p.last_name as name
                FROM player_injuries pi
                JOIN players p ON p.id = pi.player_id
-               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
-               WHERE pi.games_remaining > 0 AND (pi.league_id = ? OR pi.league_id = '')""",
+               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
+               WHERE pi.games_remaining > 0 AND (pi.league_id = %s OR pi.league_id = '')""",
             (team_id, league_id),
         ).fetchall()
         return {

@@ -29,22 +29,23 @@ class TalentCapRepository:
         Insert talent caps for a newly created player.
 
         Should only be called once per player. Silently ignores duplicate
-        inserts (INSERT OR IGNORE) so re-running generation is safe.
+        inserts (INSERT) so re-running generation is safe.
 
         Args:
             player_id: Player UUID
             caps:      Dict mapping skill name → cap value
         """
         cols = ", ".join(_SKILLS)
-        placeholders = ", ".join("?" for _ in _SKILLS)
+        placeholders = ", ".join("%s" for _ in _SKILLS)
         values = tuple(caps.get(sk, 50) for sk in _SKILLS)
 
         self.conn.execute(
             f"""
-            INSERT OR IGNORE INTO player_talent_caps
+            INSERT INTO player_talent_caps
                 (player_id, {cols})
             VALUES
-                (?, {placeholders})
+                (%s, {placeholders})
+            ON CONFLICT DO NOTHING
             """,
             (player_id, *values),
         )
@@ -58,7 +59,7 @@ class TalentCapRepository:
             records: List of (player_id, caps_dict) tuples
         """
         cols = ", ".join(_SKILLS)
-        placeholders = ", ".join("?" for _ in _SKILLS)
+        placeholders = ", ".join("%s" for _ in _SKILLS)
 
         rows = [
             (player_id, *tuple(caps.get(sk, 50) for sk in _SKILLS))
@@ -67,10 +68,11 @@ class TalentCapRepository:
 
         self.conn.executemany(
             f"""
-            INSERT OR IGNORE INTO player_talent_caps
+            INSERT INTO player_talent_caps
                 (player_id, {cols})
             VALUES
-                (?, {placeholders})
+                (%s, {placeholders})
+            ON CONFLICT DO NOTHING
             """,
             rows,
         )
@@ -93,7 +95,7 @@ class TalentCapRepository:
             without caps in the DB still age correctly.
         """
         row = self.conn.execute(
-            "SELECT * FROM player_talent_caps WHERE player_id = ?",
+            "SELECT * FROM player_talent_caps WHERE player_id = %s",
             (player_id,),
         ).fetchone()
 
@@ -121,7 +123,7 @@ class TalentCapRepository:
 
         for i in range(0, len(player_ids), chunk_size):
             chunk = player_ids[i : i + chunk_size]
-            placeholders = ",".join("?" for _ in chunk)
+            placeholders = ",".join("%s" for _ in chunk)
             rows = self.conn.execute(
                 f"SELECT * FROM player_talent_caps WHERE player_id IN ({placeholders})",
                 chunk,
@@ -134,7 +136,7 @@ class TalentCapRepository:
     def exists(self, player_id: str) -> bool:
         """Check whether caps exist for a player."""
         row = self.conn.execute(
-            "SELECT 1 FROM player_talent_caps WHERE player_id = ?",
+            "SELECT 1 FROM player_talent_caps WHERE player_id = %s",
             (player_id,),
         ).fetchone()
         return row is not None

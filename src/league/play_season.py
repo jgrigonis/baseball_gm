@@ -48,20 +48,20 @@ def get_args():
 
 
 def clear_game_data(conn, game_id: str):
-    conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
-    conn.execute("DELETE FROM team_game_stats WHERE game_id = ?", (game_id,))
-    conn.execute("DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,))
-    conn.execute("DELETE FROM game_lineup_slots WHERE game_id = ?", (game_id,))
+    conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
+    conn.execute("DELETE FROM team_game_stats WHERE game_id = %s", (game_id,))
+    conn.execute("DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,))
+    conn.execute("DELETE FROM game_lineup_slots WHERE game_id = %s", (game_id,))
     conn.execute(
-        "UPDATE games SET home_score=NULL,away_score=NULL,winner_id=NULL,innings_played=NULL,completed=0 WHERE id=?",
+        "UPDATE games SET home_score=NULL,away_score=NULL,winner_id=NULL,innings_played=NULL,completed=0 WHERE id=%s",
         (game_id,),
     )
     conn.commit()
 
 
 def save_player_stats(conn, game_id, home_team, away_team):
-    conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
-    conn.execute("DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,))
+    conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
+    conn.execute("DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,))
     conn.commit()
     player_repo = PlayerGameRepository(conn)
     for team, opp in [(home_team, away_team), (away_team, home_team)]:
@@ -132,7 +132,7 @@ def _load_eligible_ids(conn, team_id: str, league_id: str, blitz: bool) -> set[s
     rows = conn.execute(
         f"""SELECT ps.player_id FROM player_status ps
             JOIN team_players tp ON tp.player_id = ps.player_id
-            WHERE tp.team_id = ? AND ps.status IN ({statuses})""",
+            WHERE tp.team_id = %s AND ps.status IN ({statuses})""",
         (team_id,),
     ).fetchall()
     return {r["player_id"] for r in rows}
@@ -141,7 +141,7 @@ def _load_eligible_ids(conn, team_id: str, league_id: str, blitz: bool) -> set[s
 def _load_saved_lineup(conn, team_id: str, league_id: str) -> list[dict] | None:
     """Load human GM's saved lineup preferences, or None if AI team / none saved."""
     gm = conn.execute(
-        "SELECT id FROM gms WHERE team_id = ? AND league_id = ? AND is_ai = 0 LIMIT 1",
+        "SELECT id FROM gms WHERE team_id = %s AND league_id = %s AND is_ai = 0 LIMIT 1",
         (team_id, league_id),
     ).fetchone()
     if not gm:
@@ -149,7 +149,7 @@ def _load_saved_lineup(conn, team_id: str, league_id: str) -> list[dict] | None:
     rows = conn.execute(
         """SELECT player_id, batting_order, position
            FROM gm_lineup_preferences
-           WHERE gm_id = ?
+           WHERE gm_id = %s
            ORDER BY batting_order""",
         (gm["id"],),
     ).fetchall()
@@ -414,9 +414,7 @@ def play_game(
     for player in home_team.position_players + away_team.position_players:
         state = player_energy_states.get(player.id)
         if state and player.player_energy:
-            player.player_energy.set_position_energy(
-                state.current_energy, state.max_energy
-            )
+            player.player_energy.set_position_energy(state.current_energy, state.max_energy)
 
     home_saved = _load_saved_lineup(conn, home_team.record.id, league_id)
     away_saved = _load_saved_lineup(conn, away_team.record.id, league_id)
@@ -573,7 +571,7 @@ def main():
     )
 
     league_row = conn.execute(
-        "SELECT league_id FROM league_seasons WHERE season_id = ? LIMIT 1",
+        "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1",
         (args.season_id,),
     ).fetchone()
     league_id = league_row["league_id"] if league_row else ""
@@ -581,7 +579,7 @@ def main():
     league_mode = "blitz"
     if league_id:
         lr = conn.execute(
-            "SELECT mode FROM leagues WHERE id = ?", (league_id,)
+            "SELECT mode FROM leagues WHERE id = %s", (league_id,)
         ).fetchone()
         if lr:
             league_mode = lr["mode"] or "blitz"

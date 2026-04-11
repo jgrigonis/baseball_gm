@@ -21,7 +21,7 @@ class PlayerStatusRepository:
         self.conn.execute(
             """
             INSERT INTO player_status (player_id, status, since)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
             ON CONFLICT(player_id) DO UPDATE SET
                 status = excluded.status,
                 since  = excluded.since
@@ -33,7 +33,7 @@ class PlayerStatusRepository:
     def get_status(self, player_id: str) -> str | None:
         """Return the current status for a player, or None if not found."""
         row = self.conn.execute(
-            "SELECT status FROM player_status WHERE player_id = ?",
+            "SELECT status FROM player_status WHERE player_id = %s",
             (player_id,),
         ).fetchone()
         return row["status"] if row else None
@@ -41,7 +41,7 @@ class PlayerStatusRepository:
     def get_by_status(self, status: str) -> list[str]:
         """Return all player_ids with a given status."""
         rows = self.conn.execute(
-            "SELECT player_id FROM player_status WHERE status = ?",
+            "SELECT player_id FROM player_status WHERE status = %s",
             (status,),
         ).fetchall()
         return [r["player_id"] for r in rows]
@@ -53,7 +53,7 @@ class PlayerStatusRepository:
             SELECT tp.player_id
             FROM team_players tp
             JOIN player_status ps ON tp.player_id = ps.player_id
-            WHERE tp.team_id = ? AND ps.status = ?
+            WHERE tp.team_id = %s AND ps.status = %s
             """,
             (team_id, status),
         ).fetchall()
@@ -71,7 +71,7 @@ class PlayerStatusRepository:
         self.conn.executemany(
             """
             INSERT INTO player_status (player_id, status, since)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
             ON CONFLICT(player_id) DO UPDATE SET
                 status = excluded.status,
                 since  = excluded.since

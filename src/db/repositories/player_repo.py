@@ -69,10 +69,11 @@ class PlayerRepository:
         # Insert identity
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO players (
+            INSERT INTO players (
                 id, first_name, last_name, bats, throws, position, league_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
             """,
             (id, first_name, last_name, bats, throws, position, league_id),
         )
@@ -96,13 +97,23 @@ class PlayerRepository:
 
         self.conn.execute(
             """
-            INSERT OR REPLACE INTO player_skills (
-                player_id, age, clutch, speed, power, eye, contact, 
-                base_running, bunting, catching, infield, outfield, 
+            INSERT INTO player_skills (
+                player_id, age, clutch, speed, power, eye, contact,
+                base_running, bunting, catching, infield, outfield,
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
                 durability, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (player_id) DO UPDATE SET
+                age = EXCLUDED.age, clutch = EXCLUDED.clutch, speed = EXCLUDED.speed,
+                power = EXCLUDED.power, eye = EXCLUDED.eye, contact = EXCLUDED.contact,
+                base_running = EXCLUDED.base_running, bunting = EXCLUDED.bunting,
+                catching = EXCLUDED.catching, infield = EXCLUDED.infield,
+                outfield = EXCLUDED.outfield, arm = EXCLUDED.arm,
+                accuracy = EXCLUDED.accuracy, stamina = EXCLUDED.stamina,
+                recovery = EXCLUDED.recovery, ground_balls = EXCLUDED.ground_balls,
+                strikes = EXCLUDED.strikes, durability = EXCLUDED.durability,
+                updated_at = EXCLUDED.updated_at
             """,
             (
                 player_id,
@@ -143,7 +154,7 @@ class PlayerRepository:
 
         self.conn.execute(
             """
-            INSERT OR REPLACE INTO player_skills_history (
+            INSERT INTO player_skills_history (
                 player_id, season_id,
                 age, clutch, speed, power, eye, contact,
                 base_running, bunting, catching, infield, outfield,
@@ -151,13 +162,23 @@ class PlayerRepository:
                 durability, recorded_at
             )
             SELECT 
-                player_id, ?, 
+                player_id, %s, 
                 age, clutch, speed, power, eye, contact,
                 base_running, bunting, catching, infield, outfield,
                 arm, accuracy, stamina, recovery, ground_balls, strikes,
-                durability, ?
+                durability, %s
             FROM player_skills
-            WHERE player_id = ?
+            WHERE player_id = %s
+            ON CONFLICT (player_id, season_id) DO UPDATE SET
+                age = EXCLUDED.age, clutch = EXCLUDED.clutch, speed = EXCLUDED.speed,
+                power = EXCLUDED.power, eye = EXCLUDED.eye, contact = EXCLUDED.contact,
+                base_running = EXCLUDED.base_running, bunting = EXCLUDED.bunting,
+                catching = EXCLUDED.catching, infield = EXCLUDED.infield,
+                outfield = EXCLUDED.outfield, arm = EXCLUDED.arm,
+                accuracy = EXCLUDED.accuracy, stamina = EXCLUDED.stamina,
+                recovery = EXCLUDED.recovery, ground_balls = EXCLUDED.ground_balls,
+                strikes = EXCLUDED.strikes, durability = EXCLUDED.durability,
+                recorded_at = EXCLUDED.recorded_at
             """,
             (season_id, now, player_id),
         )
@@ -186,7 +207,7 @@ class PlayerRepository:
             """
             SELECT *
             FROM players
-            WHERE id = ?
+            WHERE id = %s
             """,
             (player_id,),
         ).fetchone()
@@ -199,7 +220,7 @@ class PlayerRepository:
             """
             SELECT *
             FROM player_skills
-            WHERE player_id = ?
+            WHERE player_id = %s
             """,
             (player_id,),
         ).fetchone()
@@ -235,7 +256,7 @@ class PlayerRepository:
             """
             SELECT *
             FROM player_skills_history
-            WHERE player_id = ?
+            WHERE player_id = %s
             ORDER BY season_id
             """,
             (player_id,),
@@ -254,7 +275,7 @@ class PlayerRepository:
             True if player exists, False otherwise
         """
         row = self.conn.execute(
-            "SELECT 1 FROM players WHERE id = ?", (player_id,)
+            "SELECT 1 FROM players WHERE id = %s", (player_id,)
         ).fetchone()
 
         return row is not None
@@ -296,7 +317,7 @@ class PlayerRepository:
                JOIN player_skills ps ON p.id = ps.player_id
                JOIN team_players tp ON tp.player_id = p.id
                JOIN league_season_teams lst ON lst.team_id = tp.team_id
-               WHERE lst.league_id = ? AND lst.season_id = ?
+               WHERE lst.league_id = %s AND lst.season_id = %s
                ORDER BY p.last_name, p.first_name""",
             (league_id, season_id),
         ).fetchall()
@@ -320,7 +341,7 @@ class PlayerRepository:
             FROM players p
             JOIN player_skills ps ON p.id = ps.player_id
             JOIN team_players tp ON p.id = tp.player_id
-            WHERE tp.team_id = ?
+            WHERE tp.team_id = %s
             ORDER BY p.last_name, p.first_name
             """,
             (team_id,),

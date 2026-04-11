@@ -29,7 +29,7 @@ def _resolve_user(db: sqlite3.Connection, session_token: str | None) -> sqlite3.
             detail="X-GM-Session header required.",
         )
     user = db.execute(
-        "SELECT * FROM users WHERE session_token = ?", (session_token,)
+        "SELECT * FROM users WHERE session_token = %s", (session_token,)
     ).fetchone()
     if not user:
         raise HTTPException(
@@ -52,7 +52,7 @@ def resolve_gm_for_league(
     """
     user = _resolve_user(db, session_token)
     gm = db.execute(
-        "SELECT * FROM gms WHERE user_id = ? AND league_id = ?",
+        "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
         (user["id"], league_id),
     ).fetchone()
     if not gm:
@@ -74,7 +74,7 @@ def require_gm_by_id(
 
     Raises 404 if GM not found, 403 if session doesn't match.
     """
-    gm = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
+    gm = db.execute("SELECT * FROM gms WHERE id = %s", (gm_id,)).fetchone()
     if not gm:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="GM not found."
@@ -106,7 +106,7 @@ def resolve_commissioner(
     """
     gm = resolve_gm_for_league(db, session_token, league_id)
     league = db.execute(
-        "SELECT commissioner_gm_id FROM leagues WHERE id = ?", (league_id,)
+        "SELECT commissioner_gm_id FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     if not league or league["commissioner_gm_id"] != gm["id"]:
         raise HTTPException(

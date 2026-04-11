@@ -55,7 +55,7 @@ class PlayerGameRepository:
         f = stats.fielding
         self.conn.execute(
             """
-            INSERT OR REPLACE INTO player_game_stats (
+            INSERT INTO player_game_stats (
                 game_id, player_id, team_id, opponent_team_id,
 
                 bat_game_played, bat_game_started,
@@ -74,7 +74,33 @@ class PlayerGameRepository:
                 field_putouts, field_assists, field_errors, passed_balls, 
                 catcher_interferences, catcher_cs, catcher_sb
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (game_id, player_id) DO UPDATE SET
+                team_id = EXCLUDED.team_id, opponent_team_id = EXCLUDED.opponent_team_id,
+                bat_game_played = EXCLUDED.bat_game_played, bat_game_started = EXCLUDED.bat_game_started,
+                bat_ab = EXCLUDED.bat_ab, bat_hits = EXCLUDED.bat_hits,
+                bat_doubles = EXCLUDED.bat_doubles, bat_triples = EXCLUDED.bat_triples,
+                bat_home_runs = EXCLUDED.bat_home_runs, bat_rbi = EXCLUDED.bat_rbi,
+                bat_runs = EXCLUDED.bat_runs, bat_walks = EXCLUDED.bat_walks,
+                bat_strike_outs = EXCLUDED.bat_strike_outs, bat_hbp = EXCLUDED.bat_hbp,
+                bat_sac_flys = EXCLUDED.bat_sac_flys, bat_sac_bunts = EXCLUDED.bat_sac_bunts,
+                bat_gdp = EXCLUDED.bat_gdp, bat_gtp = EXCLUDED.bat_gtp,
+                bat_stolen_bases = EXCLUDED.bat_stolen_bases, bat_caught_stealing = EXCLUDED.bat_caught_stealing,
+                pitch_game_played = EXCLUDED.pitch_game_played, pitch_game_started = EXCLUDED.pitch_game_started,
+                pitch_complete_game = EXCLUDED.pitch_complete_game, pitch_shutout = EXCLUDED.pitch_shutout,
+                pitch_win = EXCLUDED.pitch_win, pitch_loss = EXCLUDED.pitch_loss,
+                pitch_save = EXCLUDED.pitch_save, pitch_hold = EXCLUDED.pitch_hold,
+                pitch_outs = EXCLUDED.pitch_outs, pitch_hits = EXCLUDED.pitch_hits,
+                pitch_runs = EXCLUDED.pitch_runs, pitch_earned_runs = EXCLUDED.pitch_earned_runs,
+                pitch_home_runs = EXCLUDED.pitch_home_runs, pitch_walks = EXCLUDED.pitch_walks,
+                pitch_strike_outs = EXCLUDED.pitch_strike_outs, pitch_hit_batters = EXCLUDED.pitch_hit_batters,
+                pitch_doubles = EXCLUDED.pitch_doubles, pitch_triples = EXCLUDED.pitch_triples,
+                pitch_pickoffs = EXCLUDED.pitch_pickoffs, pitch_balks = EXCLUDED.pitch_balks,
+                pitch_wild_pitches = EXCLUDED.pitch_wild_pitches, pitch_count = EXCLUDED.pitch_count,
+                field_putouts = EXCLUDED.field_putouts, field_assists = EXCLUDED.field_assists,
+                field_errors = EXCLUDED.field_errors, passed_balls = EXCLUDED.passed_balls,
+                catcher_interferences = EXCLUDED.catcher_interferences,
+                catcher_cs = EXCLUDED.catcher_cs, catcher_sb = EXCLUDED.catcher_sb
             """,
             (
                 game_id,
@@ -136,12 +162,17 @@ class PlayerGameRepository:
             for position, fs in fielding_positions:
                 self.conn.execute(
                     """
-                    INSERT OR REPLACE INTO player_game_fielding (
+                    INSERT INTO player_game_fielding (
                         game_id, player_id, position,
-                        putouts, assists, errors, passed_balls, 
+                        putouts, assists, errors, passed_balls,
                         catcher_interferences, catcher_cs, catcher_sb
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (game_id, player_id, position) DO UPDATE SET
+                        putouts = EXCLUDED.putouts, assists = EXCLUDED.assists,
+                        errors = EXCLUDED.errors, passed_balls = EXCLUDED.passed_balls,
+                        catcher_interferences = EXCLUDED.catcher_interferences,
+                        catcher_cs = EXCLUDED.catcher_cs, catcher_sb = EXCLUDED.catcher_sb
                     """,
                     (
                         game_id,
@@ -167,9 +198,9 @@ class PlayerGameRepository:
         Args:
             game_id: Game ID
         """
-        self.conn.execute("DELETE FROM player_game_stats WHERE game_id = ?", (game_id,))
+        self.conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
         self.conn.execute(
-            "DELETE FROM player_game_fielding WHERE game_id = ?", (game_id,)
+            "DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,)
         )
         self.conn.commit()
 
@@ -192,7 +223,7 @@ class PlayerGameRepository:
             """
             SELECT *
             FROM player_game_stats
-            WHERE game_id = ? AND player_id = ?
+            WHERE game_id = %s AND player_id = %s
             """,
             (game_id, player_id),
         ).fetchone()
@@ -216,7 +247,7 @@ class PlayerGameRepository:
             """
             SELECT *
             FROM player_game_stats
-            WHERE player_id = ?
+            WHERE player_id = %s
             ORDER BY game_id
             """,
             (player_id,),
@@ -240,7 +271,7 @@ class PlayerGameRepository:
             SELECT pgs.*
             FROM player_game_stats pgs
             JOIN games g ON pgs.game_id = g.id
-            WHERE pgs.player_id = ? AND g.season_id = ? AND g.series_id IS NULL
+            WHERE pgs.player_id = %s AND g.season_id = %s AND g.series_id IS NULL
             ORDER BY g.game_date
             """,
             (player_id, season_id),
@@ -267,7 +298,7 @@ class PlayerGameRepository:
         rows = self.conn.execute(
             """
             SELECT DISTINCT player_id FROM player_game_stats
-            WHERE game_id = ?
+            WHERE game_id = %s
             ORDER BY player_id
             """,
             (game_id,),

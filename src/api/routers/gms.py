@@ -29,7 +29,7 @@ DB = Annotated[sqlite3.Connection, Depends(get_db)]
 
 @router.get("/{gm_id}")
 def get_gm(gm_id: str, db: DB) -> GMResponse:
-    row = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
+    row = db.execute("SELECT * FROM gms WHERE id = %s", (gm_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="GM not found.")
     return GMResponse(**_gm_dict(row))
@@ -40,7 +40,7 @@ def get_gm(gm_id: str, db: DB) -> GMResponse:
 
 @router.get("/{gm_id}/profile")
 def get_profile(gm_id: str, db: DB) -> GMProfileResponse:
-    row = db.execute("SELECT * FROM gm_profiles WHERE gm_id = ?", (gm_id,)).fetchone()
+    row = db.execute("SELECT * FROM gm_profiles WHERE gm_id = %s", (gm_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Profile not found.")
     return GMProfileResponse(**dict(row))
@@ -70,15 +70,15 @@ def update_profile(
     if "dh_enabled" in updates:
         updates["dh_enabled"] = int(updates["dh_enabled"])
 
-    set_clause = ", ".join(f"{col} = ?" for col in updates)
+    set_clause = ", ".join(f"{col} = %s" for col in updates)
     values = list(updates.values()) + ["datetime('now')", gm_id]
 
     db.execute(
-        f"UPDATE gm_profiles SET {set_clause}, updated_at = ? WHERE gm_id = ?",
+        f"UPDATE gm_profiles SET {set_clause}, updated_at = %s WHERE gm_id = %s",
         values,
     )
 
-    row = db.execute("SELECT * FROM gm_profiles WHERE gm_id = ?", (gm_id,)).fetchone()
+    row = db.execute("SELECT * FROM gm_profiles WHERE gm_id = %s", (gm_id,)).fetchone()
     return GMProfileResponse(**dict(row))
 
 
@@ -96,10 +96,10 @@ def set_away(
     require_gm_by_id(db, gm_id, x_gm_session)
 
     db.execute(
-        "UPDATE gms SET is_away = ? WHERE id = ?",
+        "UPDATE gms SET is_away = %s WHERE id = %s",
         (int(body.is_away), gm_id),
     )
-    row = db.execute("SELECT * FROM gms WHERE id = ?", (gm_id,)).fetchone()
+    row = db.execute("SELECT * FROM gms WHERE id = %s", (gm_id,)).fetchone()
     return GMResponse(**_gm_dict(row))
 
 
@@ -109,7 +109,7 @@ def set_away(
 @router.get("/{gm_id}/roster")
 def get_roster(gm_id: str, db: DB) -> list[PlayerGrades]:
     gm = db.execute(
-        "SELECT team_id, league_id FROM gms WHERE id = ?", (gm_id,)
+        "SELECT team_id, league_id FROM gms WHERE id = %s", (gm_id,)
     ).fetchone()
     if not gm:
         raise HTTPException(status_code=404, detail="GM not found.")
@@ -122,7 +122,7 @@ def get_roster(gm_id: str, db: DB) -> list[PlayerGrades]:
     season_row = db.execute(
         """
         SELECT season_id FROM league_seasons
-        WHERE league_id = ? ORDER BY rowid DESC LIMIT 1
+        WHERE league_id = %s ORDER BY rowid DESC LIMIT 1
         """,
         (gm["league_id"],),
     ).fetchone()
@@ -139,7 +139,7 @@ def get_roster(gm_id: str, db: DB) -> list[PlayerGrades]:
         JOIN team_players tp ON tp.team_id = lst.team_id
         JOIN players p ON p.id = tp.player_id
         LEFT JOIN player_status ps_status ON ps_status.player_id = p.id
-        WHERE lst.team_id = ? AND lst.season_id = ?
+        WHERE lst.team_id = %s AND lst.season_id = %s
         ORDER BY
             CASE ps_status.status
                 WHEN '26man' THEN 1
@@ -155,7 +155,7 @@ def get_roster(gm_id: str, db: DB) -> list[PlayerGrades]:
     result = []
     for row in rows:
         skills_row = db.execute(
-            "SELECT * FROM player_skills WHERE player_id = ?", (row["id"],)
+            "SELECT * FROM player_skills WHERE player_id = %s", (row["id"],)
         ).fetchone()
         skills = dict(skills_row) if skills_row else {}
         result.append(
@@ -192,7 +192,7 @@ def set_roster(
             status_code=422, detail="Cannot have more than 26 active players."
         )
 
-    gm = db.execute("SELECT team_id FROM gms WHERE id = ?", (gm_id,)).fetchone()
+    gm = db.execute("SELECT team_id FROM gms WHERE id = %s", (gm_id,)).fetchone()
     if not gm or not gm["team_id"]:
         raise HTTPException(status_code=404, detail="GM has no team assigned.")
 
@@ -206,9 +206,9 @@ def set_roster(
             """
             SELECT tp.player_id FROM league_season_teams lst
             JOIN team_players tp ON tp.team_id = lst.team_id
-            WHERE lst.team_id = ? AND lst.season_id = (
+            WHERE lst.team_id = %s AND lst.season_id = (
                 SELECT season_id FROM league_seasons
-                WHERE league_id = (SELECT league_id FROM gms WHERE id = ?)
+                WHERE league_id = (SELECT league_id FROM gms WHERE id = %s)
                 ORDER BY rowid DESC LIMIT 1
             )
             """,
@@ -229,8 +229,8 @@ def set_roster(
         db.execute(
             """
             INSERT INTO player_status (player_id, status, since)
-            VALUES (?, ?, ?)
-            ON CONFLICT (player_id) DO UPDATE SET status = ?, since = ?
+            VALUES (%s, %s, %s)
+            ON CONFLICT (player_id) DO UPDATE SET status = %s, since = %s
             """,
             (player_id, status, now, status, now),
         )
@@ -250,7 +250,7 @@ def get_lineup(gm_id: str, db: DB) -> list[dict]:
                p.first_name, p.last_name
         FROM gm_lineup_preferences lp
         JOIN players p ON p.id = lp.player_id
-        WHERE lp.gm_id = ?
+        WHERE lp.gm_id = %s
         ORDER BY lp.batting_order ASC NULLS LAST, p.last_name
         """,
         (gm_id,),
@@ -290,14 +290,14 @@ def set_lineup(
     now = db.execute("SELECT datetime('now')").fetchone()[0]
 
     # Replace entire lineup
-    db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = ?", (gm_id,))
+    db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = %s", (gm_id,))
 
     for slot in slots:
         db.execute(
             """
             INSERT INTO gm_lineup_preferences
                 (gm_id, player_id, batting_order, position, is_starter, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 gm_id,
@@ -321,7 +321,7 @@ def get_evaluations(gm_id: str, db: DB) -> list[GMEvaluationResponse]:
     rows = db.execute(
         """
         SELECT * FROM gm_season_evaluations
-        WHERE gm_id = ?
+        WHERE gm_id = %s
         ORDER BY evaluated_at DESC
         """,
         (gm_id,),
@@ -348,22 +348,22 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
     Full player detail: all skill grades, energy state, and current season stats.
     """
     gm = db.execute(
-        "SELECT team_id, league_id FROM gms WHERE id = ?", (gm_id,)
+        "SELECT team_id, league_id FROM gms WHERE id = %s", (gm_id,)
     ).fetchone()
     if not gm:
         raise HTTPException(status_code=404, detail="GM not found.")
 
-    player = db.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
+    player = db.execute("SELECT * FROM players WHERE id = %s", (player_id,)).fetchone()
     if not player:
         raise HTTPException(status_code=404, detail="Player not found.")
 
     skills_row = db.execute(
-        "SELECT * FROM player_skills WHERE player_id = ?", (player_id,)
+        "SELECT * FROM player_skills WHERE player_id = %s", (player_id,)
     ).fetchone()
     skills = dict(skills_row) if skills_row else {}
 
     status_row = db.execute(
-        "SELECT status FROM player_status WHERE player_id = ?", (player_id,)
+        "SELECT status FROM player_status WHERE player_id = %s", (player_id,)
     ).fetchone()
     status = status_row["status"] if status_row else "unassigned"
 
@@ -401,7 +401,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
         all_grades[key] = {
             "label": label,
             "category": category,
-            "grade": skill_to_grade(val) if val is not None else "?",
+            "grade": skill_to_grade(val) if val is not None else "%s",
             "raw": val,
         }
 
@@ -411,7 +411,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
 
     if is_pitcher:
         ps = db.execute(
-            "SELECT * FROM pitcher_state WHERE player_id = ?", (player_id,)
+            "SELECT * FROM pitcher_state WHERE player_id = %s", (player_id,)
         ).fetchone()
         if ps:
             energy = {
@@ -423,7 +423,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
             }
     else:
         pe = db.execute(
-            "SELECT * FROM player_energy WHERE player_id = ?", (player_id,)
+            "SELECT * FROM player_energy WHERE player_id = %s", (player_id,)
         ).fetchone()
         if pe:
             energy = {
@@ -438,7 +438,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
     season_row = db.execute(
         """
         SELECT season_id FROM league_seasons
-        WHERE league_id = ? ORDER BY rowid DESC LIMIT 1
+        WHERE league_id = %s ORDER BY rowid DESC LIMIT 1
         """,
         (gm["league_id"],),
     ).fetchone()
@@ -460,7 +460,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
                     SUM(pitch_strike_outs) as K
                 FROM player_game_stats pgs
                 JOIN games g ON g.id = pgs.game_id
-                WHERE pgs.player_id = ? AND g.season_id = ?
+                WHERE pgs.player_id = %s AND g.season_id = %s
                 AND pgs.pitch_game_played = 1
                 """,
                 (player_id, season_id),
@@ -503,7 +503,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
                     SUM(bat_hbp) as HBP, SUM(bat_sac_flys) as SF
                 FROM player_game_stats pgs
                 JOIN games g ON g.id = pgs.game_id
-                WHERE pgs.player_id = ? AND g.season_id = ?
+                WHERE pgs.player_id = %s AND g.season_id = %s
                 AND pgs.bat_game_played = 1
                 """,
                 (player_id, season_id),

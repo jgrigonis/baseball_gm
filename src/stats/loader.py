@@ -65,7 +65,7 @@ class StatsLoader:
             SELECT DISTINCT pgs.player_id
             FROM player_game_stats pgs
             JOIN games g ON pgs.game_id = g.id
-            WHERE g.season_id = ? AND g.series_id IS NULL
+            WHERE g.season_id = %s AND g.series_id IS NULL
         """,
             (season_id,),
         )
@@ -109,7 +109,7 @@ class StatsLoader:
                 SELECT DISTINCT pgs.player_id
                 FROM player_game_stats pgs
                 JOIN games g ON pgs.game_id = g.id
-                WHERE pgs.team_id = ? AND g.season_id = ?
+                WHERE pgs.team_id = %s AND g.season_id = %s
             """,
                 (team_id, season_id),
             )
@@ -119,7 +119,7 @@ class StatsLoader:
                 """
                 SELECT DISTINCT player_id
                 FROM player_game_stats
-                WHERE team_id = ?
+                WHERE team_id = %s
             """,
                 (team_id,),
             )

@@ -4,56 +4,65 @@ from src.db.schema import SCHEMA_SQL
 from src.db.migrations import run_migrations
 
 
-def init_db(conn):
+def _split_statements(sql: str) -> list[str]:
+    """
+    Split a SQL string into individual statements, stripping comments and
+    empty lines. Safe for both DDL and DML.
+    """
+    statements = []
+    current: list[str] = []
+
+    for line in sql.splitlines():
+        stripped = line.strip()
+        # Skip single-line comments and blank lines
+        if stripped.startswith("--") or not stripped:
+            continue
+        current.append(line)
+        if stripped.endswith(";"):
+            stmt = "\n".join(current).strip()
+            if stmt:
+                statements.append(stmt)
+            current = []
+
+    return statements
+
+
+def init_db(conn) -> None:
     """
     Ensure the database schema exists.
-    Safe to call multiple times (idempotent).
-
-    Args:
-        conn: SQLite database connection
-
-    Raises:
-        sqlite3.Error: If schema creation or migrations fail
+    Safe to call multiple times (idempotent — uses IF NOT EXISTS throughout).
     """
     try:
-        # CRITICAL: Enable foreign key enforcement
-        conn.execute("PRAGMA foreign_keys = ON")
-        # Create schema (CREATE TABLE IF NOT EXISTS makes this idempotent)
-        conn.executescript(SCHEMA_SQL)
+        for stmt in _split_statements(SCHEMA_SQL):
+            conn.execute(stmt)
 
-        # Run any pending migrations
         run_migrations(conn)
-
-        # Commit all changes
         conn.commit()
 
     except Exception:
-        # Rollback on any error to maintain clean state
         conn.rollback()
         raise
 
 
-def verify_schema(conn):
+def verify_schema(conn) -> bool:
     """
     Verify that the database schema is properly initialized.
 
-    Args:
-        conn: SQLite database connection
-
     Returns:
-        bool: True if schema is valid
+        True if schema is valid.
 
     Raises:
-        RuntimeError: If critical tables are missing
+        RuntimeError: If critical tables are missing.
     """
     cursor = conn.execute("""
-        SELECT name FROM sqlite_master 
-        WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        ORDER BY name
-        """)
-    tables = {row[0] for row in cursor.fetchall()}
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+    """)
+    tables = {row["table_name"] for row in cursor.fetchall()}
 
-    # Critical tables that must exist
     required_tables = {
         "schema_migrations",
         "players",

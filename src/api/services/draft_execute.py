@@ -84,7 +84,7 @@ class BlitzDraft(SnakeDraft):
                 rating = PlayerEvaluator.prospect_rating(chosen.skills)
 
                 self.conn.execute(
-                    "INSERT OR IGNORE INTO team_players (team_id, player_id) VALUES (?, ?)",
+                    "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                     (team_id, chosen.id),
                 )
                 self.status_repo.set_status(chosen.id, "minors")
@@ -116,7 +116,7 @@ class BlitzDraft(SnakeDraft):
         for team_entry in ai_teams:
             team_id = team_entry["team_id"]
             player_ids = self.conn.execute(
-                "SELECT player_id FROM team_players WHERE team_id = ?",
+                "SELECT player_id FROM team_players WHERE team_id = %s",
                 (team_id,),
             ).fetchall()
             players = []
@@ -137,7 +137,7 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
     Run the full blitz preference-list draft end-to-end.
     Assumes DraftGenerator has already been run (prospect pool exists).
     """
-    draft = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+    draft = conn.execute("SELECT * FROM drafts WHERE id = %s", (draft_id,)).fetchone()
 
     if not draft:
         raise ValueError(f"Draft {draft_id} not found.")
@@ -149,14 +149,14 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
     league_id = draft["league_id"]
     season_id = draft["season_id"]
 
-    conn.execute("UPDATE drafts SET state = 'open' WHERE id = ?", (draft_id,))
+    conn.execute("UPDATE drafts SET state = 'open' WHERE id = %s", (draft_id,))
     conn.commit()
 
     # Load all human GM team IDs first
     human_team_ids = {
         row["team_id"]
         for row in conn.execute(
-            "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL",
+            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
             (league_id,),
         ).fetchall()
     }
@@ -166,8 +166,8 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
         SELECT g.team_id, dp.player_id, dp.rank
         FROM draft_preferences dp
         JOIN gms g ON g.id = dp.gm_id
-        WHERE dp.draft_id = ?
-          AND g.league_id = ?
+        WHERE dp.draft_id = %s
+          AND g.league_id = %s
           AND g.is_ai = 0
           AND g.team_id IS NOT NULL
         ORDER BY g.team_id, dp.rank
@@ -184,7 +184,7 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
     # Read the pre-stored draft order from draft_order table (written by
     # league_start or offseason_pipeline — never recompute from standings here)
     stored_order = conn.execute(
-        """SELECT team_id FROM draft_order WHERE draft_id = ? ORDER BY pick_position""",
+        """SELECT team_id FROM draft_order WHERE draft_id = %s ORDER BY pick_position""",
         (draft_id,),
     ).fetchall()
 
@@ -198,7 +198,7 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
         prior_season_row = conn.execute(
             """SELECT s.id FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = ?
+               WHERE ls.league_id = %s
                  AND EXISTS (
                    SELECT 1 FROM games g
                    WHERE g.season_id = s.id AND g.completed = 1
@@ -218,9 +218,9 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
         auto = 1 if pick.team_id not in gm_preferences else 0
         conn.execute(
             """
-            INSERT OR IGNORE INTO draft_picks
+            INSERT INTO draft_picks
                 (draft_id, pick_number, round, gm_id, team_id, player_id, auto_picked, picked_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 draft_id,
@@ -235,10 +235,10 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
         )
 
     conn.execute(
-        "UPDATE drafts SET state = 'complete', current_pick = ? WHERE id = ?",
+        "UPDATE drafts SET state = 'complete', current_pick = %s WHERE id = %s",
         (len(picks) + 1, draft_id),
     )
-    conn.execute("UPDATE leagues SET state = 'preseason' WHERE id = ?", (league_id,))
+    conn.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (league_id,))
     conn.commit()
 
     return {
@@ -252,13 +252,13 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
 
 
 def _season_year(conn: sqlite3.Connection, season_id: str) -> int:
-    row = conn.execute("SELECT year FROM seasons WHERE id = ?", (season_id,)).fetchone()
+    row = conn.execute("SELECT year FROM seasons WHERE id = %s", (season_id,)).fetchone()
     return row["year"] if row else 2025
 
 
 def _gm_for_team(conn: sqlite3.Connection, league_id: str, team_id: str) -> str | None:
     row = conn.execute(
-        "SELECT id FROM gms WHERE league_id = ? AND team_id = ?",
+        "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
         (league_id, team_id),
     ).fetchone()
     return row["id"] if row else None

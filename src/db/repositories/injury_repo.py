@@ -76,7 +76,7 @@ class InjuryRepository:
         cursor = self.conn.cursor()
         cursor.execute(
             """SELECT player_id, games_remaining FROM player_injuries
-               WHERE player_id = ? AND league_id = ?""",
+               WHERE player_id = %s AND league_id = %s""",
             (player_id, self.league_id),
         )
         row = cursor.fetchone()
@@ -92,7 +92,7 @@ class InjuryRepository:
         cursor = self.conn.cursor()
         cursor.execute(
             """SELECT player_id, games_remaining FROM player_injuries
-               WHERE games_remaining > 0 AND league_id = ?""",
+               WHERE games_remaining > 0 AND league_id = %s""",
             (self.league_id,),
         )
         return [
@@ -128,7 +128,7 @@ class InjuryRepository:
             cursor.execute(
                 """
                 INSERT INTO player_injuries (player_id, league_id, games_remaining)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 ON CONFLICT(player_id, league_id) DO UPDATE SET
                     games_remaining = excluded.games_remaining
                 """,
@@ -138,7 +138,7 @@ class InjuryRepository:
                 """
                 INSERT INTO player_injury_log
                     (player_id, season_id, games_missed, severity, injury_date, activity)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
                     player_id,
@@ -188,7 +188,7 @@ class InjuryRepository:
     def clear(self, player_id: str) -> bool:
         cursor = self.conn.cursor()
         cursor.execute(
-            "DELETE FROM player_injuries WHERE player_id = ? AND league_id = ?",
+            "DELETE FROM player_injuries WHERE player_id = %s AND league_id = %s",
             (player_id, self.league_id),
         )
         deleted = cursor.rowcount > 0
@@ -199,7 +199,7 @@ class InjuryRepository:
         """Delete all injury rows for this league. Call between seasons."""
         cursor = self.conn.cursor()
         cursor.execute(
-            "DELETE FROM player_injuries WHERE league_id = ?",
+            "DELETE FROM player_injuries WHERE league_id = %s",
             (self.league_id,),
         )
         deleted = cursor.rowcount
@@ -215,7 +215,7 @@ class InjuryRepository:
         cursor.execute(
             """
             INSERT INTO player_injuries (player_id, league_id, games_remaining)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
             ON CONFLICT(player_id, league_id) DO UPDATE SET
                 games_remaining = excluded.games_remaining
             """,

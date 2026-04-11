@@ -38,23 +38,14 @@ from src.league.play_season import play_game
 # ---------------------------------------------------------------------------
 
 ROUND_DEFS = [
-    {"name": "Round 1", "series_names": ["1v8", "2v7", "3v6", "4v5"], "best_of": 5},
-    {
-        "name": "Semifinals",
-        "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"],
-        "best_of": 7,
-    },
-    {"name": "Finals", "series_names": ["Finals"], "best_of": 7},
+    {"name": "Round 1",  "series_names": ["1v8", "2v7", "3v6", "4v5"], "best_of": 5},
+    {"name": "Semifinals", "series_names": ["[1,8]v[4,5]", "[2,7]v[3,6]"], "best_of": 7},
+    {"name": "Finals",   "series_names": ["Finals"], "best_of": 7},
 ]
 
 SERIES_BEST_OF = {
-    "1v8": 5,
-    "2v7": 5,
-    "3v6": 5,
-    "4v5": 5,
-    "[1,8]v[4,5]": 7,
-    "[2,7]v[3,6]": 7,
-    "Finals": 7,
+    "1v8": 5, "2v7": 5, "3v6": 5, "4v5": 5,
+    "[1,8]v[4,5]": 7, "[2,7]v[3,6]": 7, "Finals": 7,
 }
 
 
@@ -72,7 +63,7 @@ class SimConfig:
 
 def _get_season_id(conn, league_id: str) -> str | None:
     row = conn.execute(
-        "SELECT season_id FROM league_seasons WHERE league_id = ? ORDER BY rowid DESC LIMIT 1",
+        "SELECT season_id FROM league_seasons WHERE league_id = %s ORDER BY rowid DESC LIMIT 1",
         (league_id,),
     ).fetchone()
     return row["season_id"] if row else None
@@ -82,7 +73,7 @@ def _get_playoff_start(conn, season_id: str) -> date:
     row = conn.execute(
         """SELECT g.game_date FROM games g
            JOIN series s ON g.series_id = s.id
-           WHERE s.season_id = ? AND s.name IN ('1v8','2v7','3v6','4v5')
+           WHERE s.season_id = %s AND s.name IN ('1v8','2v7','3v6','4v5')
            ORDER BY g.game_date LIMIT 1""",
         (season_id,),
     ).fetchone()
@@ -111,7 +102,7 @@ def _ensure_round_games(
             if not sid:
                 continue
             existing = conn.execute(
-                "SELECT COUNT(*) FROM games WHERE series_id = ?", (sid,)
+                "SELECT COUNT(*) FROM games WHERE series_id = %s", (sid,)
             ).fetchone()[0]
             if existing > 0:
                 continue
@@ -121,7 +112,8 @@ def _ensure_round_games(
             low = team_b if seed_a < seed_b else team_a
             # Each semi series gets its own offset schedule
             semi_offsets = (
-                _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]" else _SEMI_27_36_OFFSETS
+                _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]"
+                else _SEMI_27_36_OFFSETS
             )
             generate_round_games(
                 conn,
@@ -147,7 +139,7 @@ def _ensure_round_games(
             if not sid:
                 return
             existing = conn.execute(
-                "SELECT COUNT(*) FROM games WHERE series_id = ?", (sid,)
+                "SELECT COUNT(*) FROM games WHERE series_id = %s", (sid,)
             ).fetchone()[0]
             if existing > 0:
                 return
@@ -205,6 +197,8 @@ def _play_one_game(
     return None
 
 
+
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -220,7 +214,7 @@ def sim_playoff(
     mode: "game" (1 day) | "round" (1 round) | "all" (entire playoffs)
     Returns summary dict.
     """
-    league = conn.execute("SELECT * FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] != "playoffs":
@@ -238,7 +232,7 @@ def sim_playoff(
 
     # Track injuries for the GM's team so we can report new injuries / returns
     gm_row = conn.execute(
-        "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
+        "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
         (league_id,),
     ).fetchone()
     gm_team_id = gm_row["team_id"] if gm_row else None
@@ -251,14 +245,11 @@ def sim_playoff(
                       p.first_name || ' ' || p.last_name as name
                FROM player_injuries pi
                JOIN players p ON p.id = pi.player_id
-               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = ?
-               WHERE pi.games_remaining > 0 AND (pi.league_id = ? OR pi.league_id = '')""",
+               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
+               WHERE pi.games_remaining > 0 AND (pi.league_id = %s OR pi.league_id = '')""",
             (team_id, league_id),
         ).fetchall()
-        return {
-            r["player_id"]: {"name": r["name"], "days": r["games_remaining"]}
-            for r in rows
-        }
+        return {r["player_id"]: {"name": r["name"], "days": r["games_remaining"]} for r in rows}
 
     injured_before = _get_injured(gm_team_id)
 
@@ -277,7 +268,7 @@ def sim_playoff(
             """SELECT MIN(g.game_date) as next_date
                FROM games g
                JOIN series s ON g.series_id = s.id
-               WHERE s.season_id = ? AND g.completed = 0""",
+               WHERE s.season_id = %s AND g.completed = 0""",
             (season_id,),
         ).fetchone()
         if not row or not row["next_date"]:
@@ -289,7 +280,7 @@ def sim_playoff(
                       g.completed, s.name as series_name, g.series_id
                FROM games g
                JOIN series s ON g.series_id = s.id
-               WHERE s.season_id = ? AND g.game_date = ? AND g.completed = 0
+               WHERE s.season_id = %s AND g.game_date = %s AND g.completed = 0
                ORDER BY s.name""",
             (season_id, next_date),
         ).fetchall()
@@ -306,7 +297,7 @@ def sim_playoff(
                       g.completed, s.name as series_name, g.series_id
                FROM games g
                JOIN series s ON g.series_id = s.id
-               WHERE s.season_id = ? AND g.completed = 0 AND g.game_date > ?
+               WHERE s.season_id = %s AND g.completed = 0 AND g.game_date > %s
                ORDER BY g.game_date, s.name""",
             (season_id, next_date),
         ).fetchall()
@@ -314,7 +305,6 @@ def sim_playoff(
             return []
         # Find first date with at least one undecided series game
         from itertools import groupby
-
         for date_key, group in groupby(rows2, key=lambda r: r["game_date"]):
             day = [dict(r) for r in group if r["series_id"] not in decided_sids]
             if day:
@@ -345,9 +335,7 @@ def sim_playoff(
             # Skip if series already decided (early exit)
             if series_is_decided(conn, g["series_id"], best_of):
                 continue
-            r = _play_one_game(
-                conn, season_id, league_id, league_mode, g["series_id"], rng
-            )
+            r = _play_one_game(conn, season_id, league_id, league_mode, g["series_id"], rng)
             if r:
                 results.append({"series": g["series_name"], "result": str(r)})
                 count += 1
@@ -370,11 +358,7 @@ def sim_playoff(
                 break
         if current_round_def:
             while not all(
-                series_is_decided(
-                    conn,
-                    get_series_id(conn, season_id, sn),
-                    current_round_def["best_of"],
-                )
+                series_is_decided(conn, get_series_id(conn, season_id, sn), current_round_def["best_of"])
                 for sn in current_round_def["series_names"]
                 if get_series_id(conn, season_id, sn)
             ):
@@ -398,7 +382,7 @@ def sim_playoff(
     if finals_sid and series_is_decided(conn, finals_sid, 7):
         champion = get_series_winner(conn, finals_sid, 7)
         conn.execute(
-            "UPDATE leagues SET state = 'offseason' WHERE id = ?", (league_id,)
+            "UPDATE leagues SET state = 'offseason' WHERE id = %s", (league_id,)
         )
         conn.commit()
 
@@ -419,7 +403,7 @@ def sim_playoff(
     last_game = conn.execute(
         """SELECT MAX(g.game_date) as d FROM games g
            JOIN series s ON g.series_id = s.id
-           WHERE s.season_id = ? AND g.completed = 1""",
+           WHERE s.season_id = %s AND g.completed = 1""",
         (season_id,),
     ).fetchone()
     current_date = last_game["d"] if last_game and last_game["d"] else None

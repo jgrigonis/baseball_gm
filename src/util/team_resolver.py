@@ -27,14 +27,14 @@ def resolve_team(conn: sqlite3.Connection, query: str) -> dict:
     q = query.strip()
 
     # 1. Exact UUID
-    row = _fetchone(conn, "SELECT id, city, mascot FROM teams WHERE id = ?", (q,))
+    row = _fetchone(conn, "SELECT id, city, mascot FROM teams WHERE id = %s", (q,))
     if row:
         return row
 
     # 2. Exact full name  "Vienna Maestros"
     row = _fetchone(
         conn,
-        "SELECT id, city, mascot FROM teams WHERE LOWER(city || ' ' || mascot) = LOWER(?)",
+        "SELECT id, city, mascot FROM teams WHERE LOWER(city || ' ' || mascot) = LOWER(%s)",
         (q,),
     )
     if row:
@@ -42,7 +42,7 @@ def resolve_team(conn: sqlite3.Connection, query: str) -> dict:
 
     # 3. Exact city
     rows = _fetchall(
-        conn, "SELECT id, city, mascot FROM teams WHERE LOWER(city) = LOWER(?)", (q,)
+        conn, "SELECT id, city, mascot FROM teams WHERE LOWER(city) = LOWER(%s)", (q,)
     )
     if len(rows) == 1:
         return rows[0]
@@ -51,7 +51,7 @@ def resolve_team(conn: sqlite3.Connection, query: str) -> dict:
 
     # 4. Exact mascot
     rows = _fetchall(
-        conn, "SELECT id, city, mascot FROM teams WHERE LOWER(mascot) = LOWER(?)", (q,)
+        conn, "SELECT id, city, mascot FROM teams WHERE LOWER(mascot) = LOWER(%s)", (q,)
     )
     if len(rows) == 1:
         return rows[0]
@@ -62,7 +62,7 @@ def resolve_team(conn: sqlite3.Connection, query: str) -> dict:
     rows = _fetchall(
         conn,
         "SELECT id, city, mascot FROM teams"
-        " WHERE LOWER(city) LIKE LOWER(?) OR LOWER(mascot) LIKE LOWER(?)",
+        " WHERE LOWER(city) LIKE LOWER(%s) OR LOWER(mascot) LIKE LOWER(%s)",
         (f"%{q}%", f"%{q}%"),
     )
     if len(rows) == 1:

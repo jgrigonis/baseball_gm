@@ -22,12 +22,12 @@ def parse_args():
 
 
 def head_to_head_wins(conn, season_id: str, team_ids: list[str]) -> dict[str, int]:
-    placeholders = ",".join("?" * len(team_ids))
+    placeholders = ",".join("%s" * len(team_ids))
     rows = conn.execute(
         f"""
         SELECT winner_id, COUNT(*) as wins
         FROM games
-        WHERE season_id = ?
+        WHERE season_id = %s
           AND completed = 1
           AND home_team_id IN ({placeholders})
           AND away_team_id IN ({placeholders})
@@ -79,7 +79,7 @@ def print_standings(db_path: Path, season_id: str, logger: logging.Logger = None
         FROM teams t
         JOIN team_game_stats tgs ON t.id = tgs.team_id
         JOIN games g ON tgs.game_id = g.id
-        WHERE g.season_id = ? AND g.completed = 1 AND g.series_id IS NULL
+        WHERE g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
         GROUP BY t.id
         """,  # No ORDER BY — sort_standings handles this
         (season_id,),
