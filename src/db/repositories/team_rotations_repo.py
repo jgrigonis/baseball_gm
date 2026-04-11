@@ -225,7 +225,8 @@ class TeamRotationsRepository:
         )
         current = cursor.fetchone()
         if current:
-            current_order, current_effective_date = current
+            current_order = current["rotation_order"]
+            current_effective_date = current["effective_date"]
 
             # Don't update if order hasn't changed
             if current_order == new_rotation_order:
@@ -299,7 +300,7 @@ class TeamRotationsRepository:
                 f"in season {season_id} as of {effective_date}"
             )
 
-        current_effective_date = current[0]
+        current_effective_date = current["effective_date"]
 
         # End the current assignment
         self.conn.execute(
@@ -520,7 +521,7 @@ class TeamRotationsRepository:
             (team_id, season_id),
         ).fetchall()
 
-        orders = [r[0] for r in order_rows]
+        orders = [r["rotation_order"] for r in order_rows]
         if not orders:
             return
 

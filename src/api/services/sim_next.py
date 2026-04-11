@@ -232,6 +232,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
                 }
             )
             print(f"Game {game_dict['game_id']} failed: {e}")
+            print(traceback.format_exc())
 
     # Rollup game stats into player_season_stats after each day
     if results:
