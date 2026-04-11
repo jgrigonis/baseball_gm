@@ -357,7 +357,7 @@ def pick_league_interactively(db_filename: str) -> str | None:
     try:
         conn = get_connection(db_filename)
         rows = conn.execute(
-            "SELECT id, name, state FROM leagues ORDER BY rowid"
+            "SELECT id, name, state FROM leagues ORDER BY created_at"
         ).fetchall()
     except Exception as e:
         print(f"  Could not read leagues from {db_filename}: {e}")
@@ -463,7 +463,7 @@ def _bootstrap_first_season(
     )
 
     existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
+        "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)
     ).fetchone()[0]
     if existing_games == 0:
         scheduler = ScheduleGenerator(rng=rng)
@@ -495,7 +495,7 @@ def _create_next_season_cli(
     from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 
     current = conn.execute(
-        "SELECT name FROM seasons WHERE id = %s", (current_season_id,)
+        "SELECT name FROM seasons WHERE id = ?", (current_season_id,)
     ).fetchone()
     current_name = current["name"] if current else f"Season {next_year - 1}"
     parts = current_name.rsplit(" ", 1)
@@ -508,7 +508,7 @@ def _create_next_season_cli(
     existing = conn.execute(
         """SELECT ls.season_id FROM league_seasons ls
            JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s AND s.year = %s""",
+           WHERE ls.league_id = ? AND s.year = ?""",
         (league_id, next_year),
     ).fetchone()
     if existing:
@@ -516,7 +516,7 @@ def _create_next_season_cli(
         team_ids = [
             r["team_id"]
             for r in conn.execute(
-                "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
+                "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
                 (league_id, season_id),
             ).fetchall()
         ]
@@ -525,22 +525,22 @@ def _create_next_season_cli(
 
     season_id = str(_uuid.uuid4())
     conn.execute(
-        "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
+        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
         (season_id, next_year, new_name),
     )
     conn.execute(
-        "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)",
+        "INSERT INTO league_seasons (league_id, season_id) VALUES (?, ?)",
         (league_id, season_id),
     )
 
     team_rows = conn.execute(
-        "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
+        "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
         (league_id, current_season_id),
     ).fetchall()
     team_ids = [r["team_id"] for r in team_rows]
     for tid in team_ids:
         conn.execute(
-            "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+            "INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id) VALUES (?, ?, ?)",
             (league_id, season_id, tid),
         )
 
@@ -586,7 +586,7 @@ def _play_regular_season(
     from src.league.play_season import play_game
 
     league_row = conn.execute(
-        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
+        "SELECT mode FROM leagues WHERE id = ?", (league_id,)
     ).fetchone()
     league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
 
@@ -662,7 +662,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
     )
 
     existing = conn.execute(
-        "SELECT COUNT(*) FROM series WHERE season_id = %s", (season_id,)
+        "SELECT COUNT(*) FROM series WHERE season_id = ?", (season_id,)
     ).fetchone()[0]
     if existing > 0:
         print("  Playoff bracket already set up")
@@ -670,7 +670,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
 
     seeds = get_top_8(conn, season_id)
     last_game = conn.execute(
-        "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
+        "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND completed = 1",
         (season_id,),
     ).fetchone()
     from datetime import date, timedelta
@@ -707,7 +707,7 @@ def _play_playoffs(
     )
 
     league_row = conn.execute(
-        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
+        "SELECT mode FROM leagues WHERE id = ?", (league_id,)
     ).fetchone()
     league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
 
@@ -724,7 +724,7 @@ def _play_playoffs(
     first_game = conn.execute(
         """SELECT g.game_date FROM games g
            JOIN series s ON g.series_id = s.id
-           WHERE s.season_id = %s AND s.name IN ('1v8','2v7','3v6','4v5')
+           WHERE s.season_id = ? AND s.name IN ('1v8','2v7','3v6','4v5')
            ORDER BY g.game_date LIMIT 1""",
         (season_id,),
     ).fetchone()
@@ -815,7 +815,7 @@ def _play_playoffs(
     )
 
     champ_name = conn.execute(
-        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (champion,)
+        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = ?", (champion,)
     ).fetchone()["name"]
     print(f"  🏆 Champion: {champ_name}")
 
@@ -857,7 +857,7 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
 
     # --- Season label for display ---
     row = conn.execute(
-        "SELECT name, year FROM seasons WHERE id = %s", (season_id,)
+        "SELECT name, year FROM seasons WHERE id = ?", (season_id,)
     ).fetchone()
     season_label = f"{row['name']} ({row['year']})" if row else season_id[:8]
 
@@ -987,7 +987,7 @@ def cmd_run_season(args) -> None:
     league_id = args.league_id
     if not league_id:
         rows = conn.execute(
-            "SELECT id, name, state FROM leagues ORDER BY rowid"
+            "SELECT id, name, state FROM leagues ORDER BY created_at"
         ).fetchall()
         if not rows:
             print("❌ No leagues found in DB.")
@@ -1004,7 +1004,7 @@ def cmd_run_season(args) -> None:
     season_row = conn.execute(
         """SELECT s.id, s.year FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s
+           WHERE ls.league_id = ?
            ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
@@ -1075,7 +1075,7 @@ def _resolve_league(conn, db_filename, league_id_arg):
     """Return league_id, prompting if needed."""
     if league_id_arg:
         return league_id_arg
-    rows = conn.execute("SELECT id, name FROM leagues ORDER BY rowid").fetchall()
+    rows = conn.execute("SELECT id, name FROM leagues ORDER BY created_at").fetchall()
     if not rows:
         print("❌ No leagues found in DB.")
         sys.exit(1)
@@ -1117,7 +1117,7 @@ def cmd_reports(args) -> None:
         row = conn.execute(
             """SELECT s.id FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s AND s.year = %s""",
+               WHERE ls.league_id = ? AND s.year = ?""",
             (league_id, year),
         ).fetchone()
         if not row:
