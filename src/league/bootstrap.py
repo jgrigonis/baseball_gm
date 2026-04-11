@@ -54,7 +54,7 @@ class LeagueBootstrapper:
             if not row:
                 raise ValueError(f"League {league_id} not found in database.")
         else:
-            # CLI path — create or look up by name as before
+            # Old CLI path — create or look up by name as before
             league_id = self.league_repo.create_league(manifest["league_name"])
 
         # Defaults to name=Season1 year=2026 if not found in manifest

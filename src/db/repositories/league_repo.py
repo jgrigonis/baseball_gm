@@ -15,23 +15,34 @@ class LeagueRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def create_league(self, name: str) -> str:
+    def create_league(self, name: str, league_id: str | None) -> str:
         """
         Create a league or return existing league ID if name already exists.
 
         Args:
             name: League name (e.g., "MLB", "Minor League A")
+            league_id: if you provide a league_id, it will create that league 
+                if it doesn't exist.
+                If you don't provide a league_id, it will create a new league
+                if the name doesn't already exist.
+                If it finds an existing league, it will just return that id
 
         Returns:
             League ID (UUID hex string)
         """
-        # Check if league already exists
-        existing = self._get_league_id_by_name(name)
-        if existing:
-            return existing
+        if league_id:
+            existing = self._get_league_id_by_id(league_id)
+            if existing:
+                return existing
+        else:
+            # Check if league name already exists
+            existing = self._get_league_id_by_name(name)
+            if existing:
+                return existing
 
-        # Create new league
-        league_id = uuid.uuid4().hex
+        # Create new league id if none provided
+        if league_id is None:
+            league_id = uuid.uuid4().hex
         self.conn.execute(
             "INSERT INTO leagues (id, name) VALUES (%s, %s)", (league_id, name)
         )
@@ -42,6 +53,14 @@ class LeagueRepository:
         """Helper: Get league ID by name."""
         row = self.conn.execute(
             "SELECT id FROM leagues WHERE name = %s", (name,)
+        ).fetchone()
+
+        return row["id"] if row else None
+
+    def _get_league_id_by_id(self, league_id: str) -> str | None:
+        """Helper: Get league ID by ID."""
+        row = self.conn.execute(
+            "SELECT id FROM leagues WHERE id = %s", (league_id,)
         ).fetchone()
 
         return row["id"] if row else None

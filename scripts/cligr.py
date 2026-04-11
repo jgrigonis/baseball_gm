@@ -16,9 +16,9 @@ Usage examples:
 
   # Start a brand new league and sim it
   python cligr.py new-league
-  python cligr.py new-league --year 2026 --seed 42 --num-years 3
+  python cligr.py new-league --year 2026 --seed 42
   python cligr.py new-league --logs --game-logs --reports
-  python cligr.py new-league --yes         # skip confirmation prompt
+  python cligr.py new-league --clear-db         # destroy the entire DB
 
   # Run the next season for an existing league
   python cligr.py run-season
@@ -31,13 +31,28 @@ Common options (all subcommands):
 """
 
 import argparse
+import datetime
+import random
 import shutil
 import sys
+import uuid
 from pathlib import Path
 
 from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
-from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
+from src.db.init import init_db
+from src.db.repositories.league_repo import LeagueRepository
+from src.league.bootstrap import LeagueBootstrapper
+from src.league.manifest_helper import (
+    load_manifest,
+    validate_manifest_structure,
+    validate_manifest_uniqueness,
+    find_missing_team_files,
+    create_team_files,
+)
+from src.league.schedule import ScheduleGenerator, save_schedule_to_db
+from src.util.locations import MANIFEST_FILES_DIR, TEAM_FILES_DIR
+
 
 # Database is configured via DATABASE_URL environment variable
 DEFAULT_YEAR = 2025
@@ -96,7 +111,7 @@ def build_parser() -> argparse.ArgumentParser:
     new = sub.add_parser(
         "new-league",
         help="Create a fresh league and sim it",
-        description="Destroys the existing DB, bootstraps a new league, and runs seasons.",
+        description="Bootstraps a new league, and runs seasons.",
     )
     new.add_argument(
         "--year",
@@ -110,13 +125,6 @@ def build_parser() -> argparse.ArgumentParser:
         "-m",
         default="world_league",
         help="Manifest file prefix (default: world_league)",
-    )
-    new.add_argument(
-        "--num-years",
-        "-n",
-        type=int,
-        default=1,
-        help="Number of seasons to simulate (default: 1)",
     )
     new.add_argument(
         "--seed",
@@ -141,14 +149,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Generate leaderboard and totals reports after each season",
     )
     new.add_argument(
-        "--yes",
-        action="store_true",
-        help="Skip the destructive-action confirmation prompt",
-    )
-    new.add_argument(
         "--clear-db",
         action="store_true",
-        help="Skip DB deletion confirmation prompt",
+        help="Destroy the DB",
     )
     new.add_argument(
         "--clear-logs",
@@ -396,7 +399,7 @@ def _bootstrap_first_season(
     year: int | None, manifest_filename: str | None, seed: int | None
 ):
     """
-    Initialise the DB, create a fresh league, and return
+    Create a fresh league, and return
     (conn, league_id, season_id, team_ids).
 
     Order matters:
@@ -405,21 +408,6 @@ def _bootstrap_first_season(
       3. Bootstrap from manifest with the known league_id
          so bootstrap_from_manifest finds files in the right place
     """
-    import datetime
-    import random
-    from src.db.init import init_db
-    from src.db.repositories.league_repo import LeagueRepository
-    from src.league.bootstrap import LeagueBootstrapper
-    from src.league.manifest_helper import (
-        load_manifest,
-        validate_manifest_structure,
-        validate_manifest_uniqueness,
-        find_missing_team_files,
-        create_team_files,
-    )
-    from src.league.schedule import ScheduleGenerator, save_schedule_to_db
-    from src.util.locations import MANIFEST_FILES_DIR
-
     conn = get_connection()
     init_db(conn)
 
@@ -444,8 +432,10 @@ def _bootstrap_first_season(
     validate_manifest_uniqueness(manifest)
 
     # 1. Create the league record first so we have league_id for file paths
+    league_id = str(uuid.UUID(int=rng.getrandbits(128)).hex)
     league_repo = LeagueRepository(conn)
-    league_id = league_repo.create_league(manifest["league_name"])
+    league_id = league_repo.create_league(manifest["league_name"], league_id)
+    
 
     # 2. Create team CSV files in the right location: {year}/{league_id}/
     missing = find_missing_team_files(manifest, league_id=league_id)
@@ -459,7 +449,7 @@ def _bootstrap_first_season(
     # 3. Bootstrap with known league_id — finds files in {year}/{league_id}/
     boot = LeagueBootstrapper(conn, rng=rng)
     league_id, teams, season_id = boot.bootstrap_from_manifest(
-        manifest, start_date, league_id=league_id
+        manifest, start_date, league_id=league_id, force_new_teams=True,
     )
 
     existing_games = conn.execute(
@@ -701,9 +691,6 @@ def _play_playoffs(
         play_series,
         generate_round_games,
         original_seed,
-        _HOME_MAP_BO7,
-        _SEMI_OFFSETS,
-        _FINAL_OFFSETS,
     )
 
     league_row = conn.execute(
@@ -939,21 +926,19 @@ def _run_one_season(
 
 
 def cmd_new_league(args) -> None:
-    if not args.yes and not args.clear_db:
+    if args.clear_db:
         msg = (
-            f"⚠️  This will destroy the database and create a fresh league. Continue? [y/N] "
+            f"⚠️  This will destroy the entire database. Continue? [y/N] "
         )
         if input(msg).strip().lower() not in ("y", "yes"):
             print("Aborted.")
             return
+        clear_db()
 
     if args.clear_logs:
         clear_logs()
     if args.clear_temp:
         clear_temp()
-
-    # Always wipe the DB for a fresh league
-    clear_db()
 
     print(f"\n🏟️  Creating new league — Year {args.year}")
     conn, league_id, season_id, _ = _bootstrap_first_season(
@@ -961,16 +946,16 @@ def cmd_new_league(args) -> None:
     )
 
     current_season_id = season_id
-    for n in range(args.num_years):
-        year = args.year + n
-        if n > 0:
-            # Subsequent years: create season directly (teams already exist)
-            current_season_id, _ = _create_next_season_cli(
-                conn, league_id, current_season_id, year
-            )
-        _run_one_season(conn, current_season_id, league_id, year, args)
+    # for n in range(args.num_years):
+    #     year = args.year + n
+    #     if n > 0:
+    #         # Subsequent years: create season directly (teams already exist)
+    #         current_season_id, _ = _create_next_season_cli(
+    #             conn, league_id, current_season_id, year
+    #         )
+    #     _run_one_season(conn, current_season_id, league_id, year, args)
 
-    print(f"\n✅ Done — {args.num_years} season(s) complete.")
+    # print(f"\n✅ Done — {args.num_years} season(s) complete.")
 
 
 def cmd_run_season(args) -> None:
