@@ -353,7 +353,7 @@ def display(totals: dict, season_label: str, logger: logging.Logger = None):
 
 def main():
     args = parse_args()
-    db_path, season_id, season_label = resolve_season(args.id)
+    season_id, season_label = resolve_season(args.id)
 
     logger = None
     if args.logs:
@@ -368,11 +368,7 @@ def main():
             log_to_file=True,
         )
 
-    if not db_path.exists():
-        log_print(f"Database not found: {db_path}", logger=logger)
-        return
-
-    min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
+    min_pa, min_ip = calculate_min_pa(season_id, logger=logger)
 
     with StatsLoader() as loader:
         all_players = loader.load_season_players_with_stats(season_id)

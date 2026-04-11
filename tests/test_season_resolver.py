@@ -16,11 +16,10 @@ def make_db(tmp_path: Path, seasons: list[dict]) -> Path:
     return db
 
 
-def resolve(db_path: Path, season_arg):
+def resolve(season_arg):
     """Call resolve_season with the tmp db path patched in."""
     from src.league.season_resolver import resolve_season
 
-    db_file = db_path.name
     with patch("src.league.season_resolver.LEAGUE_FILES_DIR", str(db_path.parent)):
         return resolve_season(season_arg)
 
