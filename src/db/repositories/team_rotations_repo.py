@@ -37,7 +37,7 @@ class TeamRotationsRepository:
             WHERE team_id = %s AND season_id = %s AND end_date IS NULL
             """,
             (team_id, season_id),
-        ).fetchone()[0]
+        ).fetchone()["count"]
 
         if existing > 0:
             return  # already set, skip silently
@@ -95,10 +95,10 @@ class TeamRotationsRepository:
         rows = cursor.fetchall()
         return [
             {
-                "player_id": row[0],
-                "rotation_order": row[1],
-                "effective_date": row[2],
-                "end_date": row[3],
+                "player_id": row["player_id"],
+                "rotation_order": row["rotation_order"],
+                "effective_date": row["effective_date"],
+                "end_date": row["end_date"],
             }
             for row in rows
         ]
@@ -352,7 +352,7 @@ class TeamRotationsRepository:
             AND (end_date IS NULL OR end_date > %s)
             """,
             (team_id, season_id, player_id, effective_date, effective_date),
-        ).fetchone()[0]
+        ).fetchone()["count"]
 
         if existing > 0:
             raise ValueError(
@@ -464,10 +464,9 @@ class TeamRotationsRepository:
         # Ensure pointer row exists
         self.conn.execute(
             """
-            INSERT INTO team_rotation_pointer
+            INSERT OR IGNORE INTO team_rotation_pointer
                 (team_id, season_id, series_id, next_order)
             VALUES (%s, %s, %s, 1)
-            ON CONFLICT DO NOTHING
             """,
             (team_id, season_id, series_id),
         )
@@ -543,7 +542,7 @@ class TeamRotationsRepository:
             """
             INSERT INTO team_rotation_pointer
                 (team_id, season_id, series_id, next_order, updated_at)
-            VALUES (%s, %s, %s, %s, datetime('now'))
+            VALUES (%s, %s, %s, %s, NOW())
             ON CONFLICT (team_id, season_id, series_id)
             DO UPDATE SET next_order = excluded.next_order,
                         updated_at = excluded.updated_at
@@ -569,11 +568,11 @@ class TeamRotationsRepository:
             self.conn.execute(
                 """INSERT INTO team_rotation_pointer
                        (team_id, season_id, series_id, next_order, updated_at)
-                   VALUES (%s, %s, '', 1, datetime('now'))
+                   VALUES (%s, %s, '', 1, NOW())
                    ON CONFLICT (team_id, season_id, series_id)
                    DO UPDATE SET next_order = 1,
                                  updated_at = excluded.updated_at""",
-                (row[0], season_id),
+                (row["team_id"], season_id),
             )
             count += 1
 

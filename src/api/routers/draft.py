@@ -152,7 +152,7 @@ def submit_preferences(
         "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
         (gm["id"], draft_id),
     )
-    db.executemany(
+    db.cursor().executemany(
         "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
         [
             (gm["id"], draft_id, pid, rank + 1)

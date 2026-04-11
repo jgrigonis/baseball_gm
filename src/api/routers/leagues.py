@@ -171,7 +171,7 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
     human_count = db.execute(
         "SELECT COUNT(*) FROM gms WHERE league_id = %s AND is_ai = 0",
         (league["id"],),
-    ).fetchone()[0]
+    ).fetchone()["count"]
 
     if human_count >= league["num_teams"]:
         raise HTTPException(

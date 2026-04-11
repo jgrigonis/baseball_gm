@@ -253,7 +253,7 @@ def get_game_9inn_best(conn, args, agg_expr, team_id=None, pitching=False):
         ORDER BY value DESC LIMIT 1
     """
     row = conn.execute(sql, params).fetchone()
-    return row[0] if row else None
+    return row["value"] if row else None
 
 
 def game_records_extra_query(
@@ -437,9 +437,8 @@ def run_season_records(args, conn, team_id):
     # Check rollup table available
     has_rollup = (
         conn.execute(
-            "SELECT COUNT(*) FROM sqlite_master"
-            " WHERE type='table' AND name='player_season_stats'"
-        ).fetchone()[0]
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='player_season_stats'"
+        ).fetchone()["count"]
         > 0
     )
 

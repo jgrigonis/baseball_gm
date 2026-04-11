@@ -122,7 +122,7 @@ def get_roster(gm_id: str, db: DB) -> list[PlayerGrades]:
     season_row = db.execute(
         """
         SELECT season_id FROM league_seasons
-        WHERE league_id = %s ORDER BY rowid DESC LIMIT 1
+        WHERE league_id = %s ORDER BY s.year DESC LIMIT 1
         """,
         (gm["league_id"],),
     ).fetchone()
@@ -209,7 +209,7 @@ def set_roster(
             WHERE lst.team_id = %s AND lst.season_id = (
                 SELECT season_id FROM league_seasons
                 WHERE league_id = (SELECT league_id FROM gms WHERE id = %s)
-                ORDER BY rowid DESC LIMIT 1
+                ORDER BY s.year DESC LIMIT 1
             )
             """,
             (team_id, gm_id),
@@ -438,7 +438,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
     season_row = db.execute(
         """
         SELECT season_id FROM league_seasons
-        WHERE league_id = %s ORDER BY rowid DESC LIMIT 1
+        WHERE league_id = %s ORDER BY s.year DESC LIMIT 1
         """,
         (gm["league_id"],),
     ).fetchone()

@@ -70,7 +70,7 @@ def _applied_versions(conn):
         set[int]: Version numbers that have been applied
     """
     rows = conn.execute("SELECT version FROM schema_migrations").fetchall()
-    return {row[0] for row in rows}
+    return {row["version"] for row in rows}
 
 
 def _record_migration(conn, version):

@@ -244,14 +244,15 @@ def _games_remaining(db, season_id: str | None) -> int:
         "SELECT COUNT(*) FROM games WHERE season_id = %s AND completed = 0",
         (season_id,),
     ).fetchone()
-    return row[0] if row else 0
+    return row["count"] if row else 0
 
 
 def _draft_is_complete(db, league_id: str) -> bool:
     row = db.execute(
         """SELECT d.state FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
+           JOIN seasons s ON s.id = ls.season_id
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     return bool(row and row["state"] == "complete")
@@ -715,7 +716,8 @@ async def save_draft_preferences(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
+           JOIN seasons s ON s.id = ls.season_id
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
     if not draft:
@@ -839,7 +841,8 @@ def draft_tab(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
+           JOIN seasons s ON s.id = ls.season_id
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -969,7 +972,8 @@ def execute_draft(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
+           JOIN seasons s ON s.id = ls.season_id
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -1014,7 +1018,8 @@ def draft_results(
     draft = db.execute(
         """SELECT d.* FROM drafts d
            JOIN league_seasons ls ON ls.season_id = d.season_id
-           WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1""",
+           JOIN seasons s ON s.id = ls.season_id
+           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
 
@@ -3406,8 +3411,7 @@ def player_panel(
 
         # Season stats — find current season for this league
         season_row = db.execute(
-            """SELECT season_id FROM league_seasons WHERE league_id = %s
-               ORDER BY rowid DESC LIMIT 1""",
+            """SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
             (league_id,),
         ).fetchone()
         stats = None

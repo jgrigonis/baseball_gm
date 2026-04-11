@@ -831,8 +831,8 @@ async def history_season(request: Request, league_id: str, year: int, db: DB):
 def _current_season_id(league_id: str, db: sqlite3.Connection) -> str | None:
     row = db.execute(
         """
-        SELECT season_id FROM league_seasons
-        WHERE league_id = %s ORDER BY rowid DESC LIMIT 1
+        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
+        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
     """,
         (league_id,),
     ).fetchone()
@@ -844,7 +844,7 @@ def _current_season_name(league_id: str, db: sqlite3.Connection) -> str | None:
         """
         SELECT s.name, s.year FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
-        WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1
+        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
     """,
         (league_id,),
     ).fetchone()
@@ -856,7 +856,7 @@ def _current_year(league_id: str, db: sqlite3.Connection) -> int:
         """
         SELECT s.year FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
-        WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1
+        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
     """,
         (league_id,),
     ).fetchone()
@@ -916,8 +916,8 @@ def _load_roster(gm: sqlite3.Row, db: sqlite3.Connection) -> list[dict]:
 
     season_row = db.execute(
         """
-        SELECT season_id FROM league_seasons
-        WHERE league_id = %s ORDER BY rowid DESC LIMIT 1
+        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
+        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
     """,
         (gm["league_id"],),
     ).fetchone()

@@ -63,7 +63,7 @@ class SimConfig:
 
 def _get_season_id(conn, league_id: str) -> str | None:
     row = conn.execute(
-        "SELECT season_id FROM league_seasons WHERE league_id = %s ORDER BY rowid DESC LIMIT 1",
+        "SELECT season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1",
         (league_id,),
     ).fetchone()
     return row["season_id"] if row else None

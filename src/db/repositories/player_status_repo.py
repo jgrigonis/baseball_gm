@@ -68,7 +68,7 @@ class PlayerStatusRepository:
             since: Date to use for all assignments (default: today)
         """
         since_str = (since or date.today()).isoformat()
-        self.conn.executemany(
+        self.conn.cursor().executemany(
             """
             INSERT INTO player_status (player_id, status, since)
             VALUES (%s, %s, %s)

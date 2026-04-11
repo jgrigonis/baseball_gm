@@ -66,7 +66,7 @@ class TalentCapRepository:
             for player_id, caps in records
         ]
 
-        self.conn.executemany(
+        self.conn.cursor().executemany(
             f"""
             INSERT INTO player_talent_caps
                 (player_id, {cols})

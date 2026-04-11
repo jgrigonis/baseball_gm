@@ -215,7 +215,7 @@ def _insert_series(conn, series_id: str, season_id: str, name: str) -> None:
 
 
 def _insert_games(conn, games: list[dict]) -> None:
-    conn.executemany(
+    conn.cursor().executemany(
         """
         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
         VALUES (%(id)s, %(game_date)s, %(season_id)s, %(series_id)s, %(home_team_id)s, %(away_team_id)s)

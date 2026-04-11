@@ -97,7 +97,7 @@ def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
         cursor.execute(
             """
             INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
             """,
             (
                 game.id,

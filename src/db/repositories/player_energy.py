@@ -159,15 +159,15 @@ class PlayerEnergyRepository:
             return None
 
         last_game_date = None
-        last_game_date = datetime.fromisoformat(row[3]).date() if row[3] else None
+        last_game_date = datetime.fromisoformat(row["last_game_date"]).date() if row["last_game_date"] else None
 
         return PlayerEnergyState(
-            player_id=row[0],
-            current_energy=row[1],
-            max_energy=row[2],
+            player_id=row["player_id"],
+            current_energy=row["current_energy"],
+            max_energy=row["max_energy"],
             last_game_date=last_game_date,
-            consecutive_days=row[4],
-            season_games_played=row[5],
+            consecutive_days=row["consecutive_days"],
+            season_games_played=row["season_games_played"],
         )
 
     def get_with_recovery(

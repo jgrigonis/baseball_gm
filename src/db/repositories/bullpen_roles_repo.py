@@ -46,7 +46,7 @@ def _get_active_rotation_player_ids(conn, team_id: str, season_id: str) -> set[s
         """,
         (team_id, season_id),
     )
-    return {row[0] for row in cursor.fetchall()}
+    return {row["player_id"] for row in cursor.fetchall()}
 
 
 def _get_active_bullpen_player_ids(conn, team_id: str, season_id: str) -> set[str]:
@@ -61,7 +61,7 @@ def _get_active_bullpen_player_ids(conn, team_id: str, season_id: str) -> set[st
         """,
         (team_id, season_id),
     )
-    return {row[0] for row in cursor.fetchall()}
+    return {row["player_id"] for row in cursor.fetchall()}
 
 
 def _close_active_role(
@@ -146,7 +146,7 @@ def set_roles(
     )
 
     # Insert new roles
-    conn.executemany(
+    conn.cursor().executemany(
         """
         INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date, end_date)
         VALUES (%s, %s, %s, %s, %s, NULL)
@@ -250,7 +250,7 @@ def update_role(
         (team_id, player_id, season_id),
     )
     row = cursor.fetchone()
-    if row and row[0] == new_role:
+    if row and row["role"] == new_role:
         return  # Already assigned this role; nothing to do
 
     # Close existing active role

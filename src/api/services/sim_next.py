@@ -46,7 +46,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         """
         SELECT season_id FROM league_seasons
         WHERE league_id = %s
-        ORDER BY rowid DESC LIMIT 1
+        ORDER BY s.year DESC LIMIT 1
         """,
         (league_id,),
     ).fetchone()

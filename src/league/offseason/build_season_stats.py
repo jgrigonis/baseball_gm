@@ -300,7 +300,7 @@ def main():
         if not row:
             print(f"Error: season '{season_id}' not found in database")
             sys.exit(1)
-        year = row[0]
+        year = row["year"]
 
         print(f"Building player_season_stats for Season {year} ({season_id})...")
         n = build_season(conn, season_id)

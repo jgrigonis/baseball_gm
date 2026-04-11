@@ -114,7 +114,7 @@ def main():
 
     existing_games = conn.execute(
         "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
-    ).fetchone()[0]
+    ).fetchone()["count"]
 
     if existing_games > 0 and not args.regenerate_schedule:
         print(f"Schedule already exists: {existing_games} games")

@@ -200,7 +200,7 @@ def generate_round_games(
             }
         )
 
-    conn.executemany(
+    conn.cursor().executemany(
         """
         INSERT INTO games
             (id, game_date, season_id, series_id, home_team_id, away_team_id)

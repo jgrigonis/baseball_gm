@@ -168,16 +168,16 @@ class PitcherStateRepository:
             return None
 
         last_game_date = None
-        if row[3]:
-            last_game_date = datetime.fromisoformat(row[3]).date()
+        if row["last_game_date"]:
+            last_game_date = datetime.fromisoformat(row["last_game_date"]).date()
 
         return PitcherState(
-            player_id=row[0],
-            current_energy=row[1],
-            max_energy=row[2],
+            player_id=row["player_id"],
+            current_energy=row["current_energy"],
+            max_energy=row["max_energy"],
             last_game_date=last_game_date,
-            last_pitch_count=row[4],
-            consecutive_days=row[5] or 0,
+            last_pitch_count=row["last_pitch_count"],
+            consecutive_days=row["consecutive_days"] or 0,
         )
 
     def get_with_recovery(

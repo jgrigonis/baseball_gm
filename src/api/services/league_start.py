@@ -82,7 +82,7 @@ def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     existing_games = conn.execute(
         "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
-    ).fetchone()[0]
+    ).fetchone()["count"]
 
     if existing_games == 0:
         scheduler = ScheduleGenerator(rng=rng)

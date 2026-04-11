@@ -371,15 +371,15 @@ def main():
     # Check rollup table exists and has data
     conn = sqlite3.connect(args.db)
     row = conn.execute(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='player_season_stats'"
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='player_season_stats'"
     ).fetchone()
-    if not row or row[0] == 0:
+    if not row or row["count"] == 0:
         print("Error: player_season_stats table not found.")
         print("Run: python3 -m src.league.offseason.build_season_stats --rebuild")
         sys.exit(1)
 
     row = conn.execute("SELECT COUNT(*) FROM player_season_stats").fetchone()
-    if not row or row[0] == 0:
+    if not row or row["count"] == 0:
         print("Error: player_season_stats is empty.")
         print("Run: python3 -m src.league.offseason.build_season_stats --rebuild")
         sys.exit(1)

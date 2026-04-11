@@ -199,7 +199,7 @@ def get_9inn_best(conn, args, team_id, field, pitching=False):
         ORDER BY {field} DESC LIMIT 1
     """
     row = conn.execute(sql, params).fetchone()
-    return row[0] if row else None
+    return row[field] if row else None
 
 
 TOTAL_BASES_EXPR = (
@@ -584,8 +584,8 @@ def main():
     # Check rollup table for season records
     has_rollup = (
         conn.execute(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='player_season_stats'"
-        ).fetchone()[0]
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='player_season_stats'"
+        ).fetchone()["count"]
         > 0
     )
 

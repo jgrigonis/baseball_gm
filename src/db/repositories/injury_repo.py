@@ -82,7 +82,7 @@ class InjuryRepository:
         row = cursor.fetchone()
         if not row:
             return None
-        return PlayerInjury(player_id=row[0], games_remaining=row[1])
+        return PlayerInjury(player_id=row["player_id"], games_remaining=row["games_remaining"])
 
     def is_injured(self, player_id: str) -> bool:
         injury = self.get(player_id)
@@ -96,7 +96,7 @@ class InjuryRepository:
             (self.league_id,),
         )
         return [
-            PlayerInjury(player_id=row[0], games_remaining=row[1])
+            PlayerInjury(player_id=row["player_id"], games_remaining=row["games_remaining"])
             for row in cursor.fetchall()
         ]
 
