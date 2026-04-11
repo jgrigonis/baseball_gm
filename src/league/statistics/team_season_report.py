@@ -13,7 +13,7 @@ from pathlib import Path
 
 from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season
-from src.league.team_resolver import resolve_team_id, TeamResolverError
+from src.util.team_resolver import resolve_team_id, TeamResolverError
 
 # ---------------------------------------------------------------------------
 # Queries
@@ -75,9 +75,9 @@ SELECT
 FROM players p
 JOIN player_game_stats pgs ON p.id = pgs.player_id
 JOIN games g               ON pgs.game_id = g.id
-WHERE g.season_id  = :season_id
+WHERE g.season_id  = %(season_id)s
   AND g.completed  = 1
-  AND pgs.team_id  = :team_id
+  AND pgs.team_id  = %(team_id)s
   AND (pgs.bat_ab > 0 OR pgs.bat_game_played > 0)
 GROUP BY p.id, p.first_name, p.last_name, p.position, p.bats
 ORDER BY SUM(pgs.bat_ab + pgs.bat_walks + pgs.bat_hbp + pgs.bat_sac_flys + pgs.bat_sac_bunts) DESC,
@@ -143,9 +143,9 @@ SELECT
 FROM players p
 JOIN player_game_stats pgs ON p.id = pgs.player_id
 JOIN games g               ON pgs.game_id = g.id
-WHERE g.season_id  = :season_id
+WHERE g.season_id  = %(season_id)s
   AND g.completed  = 1
-  AND pgs.team_id  = :team_id
+  AND pgs.team_id  = %(team_id)s
   AND pgs.pitch_outs > 0
 GROUP BY p.id, p.first_name, p.last_name, p.throws
 ORDER BY SUM(pgs.pitch_outs) DESC, p.last_name, p.first_name

@@ -11,14 +11,12 @@ Accepts any of:
 Matching is case-insensitive. Raises TeamResolverError if no match or ambiguous.
 """
 
-import sqlite3
-
 
 class TeamResolverError(ValueError):
     pass
 
 
-def resolve_team(conn: sqlite3.Connection, query: str) -> dict:
+def resolve_team(conn, query: str) -> dict:
     """
     Return a dict with keys: id, city, mascot, name.
 
@@ -73,7 +71,12 @@ def resolve_team(conn: sqlite3.Connection, query: str) -> dict:
     raise TeamResolverError(f"No team found matching '{q}'")
 
 
-def list_teams(conn: sqlite3.Connection) -> list[dict]:
+def resolve_team_id(conn, query: str) -> str:
+    """Resolve to team ID only."""
+    return resolve_team(conn, query)["id"]
+
+
+def list_teams(conn) -> list[dict]:
     """Return all teams sorted by city."""
     return _fetchall(conn, "SELECT id, city, mascot FROM teams ORDER BY city")
 
@@ -82,18 +85,11 @@ def list_teams(conn: sqlite3.Connection) -> list[dict]:
 
 
 def _to_dict(row) -> dict:
-    if hasattr(row, "keys"):
-        return {
-            "id": row["id"],
-            "city": row["city"],
-            "mascot": row["mascot"],
-            "name": f"{row['city']} {row['mascot']}",
-        }
     return {
-        "id": row[0],
-        "city": row[1],
-        "mascot": row[2],
-        "name": f"{row[1]} {row[2]}",
+        "id": row["id"],
+        "city": row["city"],
+        "mascot": row["mascot"],
+        "name": f"{row['city']} {row['mascot']}",
     }
 
 
