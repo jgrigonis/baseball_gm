@@ -154,7 +154,7 @@ class GameEventLogger:
                 INSERT INTO game_events
                     (game_id, inning, half, team_id, event_type,
                      player_id, player_id_2, reason, detail)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     self.game_id,
