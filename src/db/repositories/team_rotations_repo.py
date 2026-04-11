@@ -464,9 +464,10 @@ class TeamRotationsRepository:
         # Ensure pointer row exists
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO team_rotation_pointer
+            INSERT INTO team_rotation_pointer
                 (team_id, season_id, series_id, next_order)
             VALUES (%s, %s, %s, 1)
+            ON CONFLICT DO NOTHING
             """,
             (team_id, season_id, series_id),
         )
