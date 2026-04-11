@@ -4,7 +4,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 
-def get_connection(db: str | None = None) -> psycopg.Connection:
+def get_connection(url: str | None = None) -> psycopg.Connection:
     """
     Return a psycopg3 connection.
 
@@ -15,7 +15,8 @@ def get_connection(db: str | None = None) -> psycopg.Connection:
     dict_row factory means rows support both row["column"] and row.get("column"),
     matching the old sqlite3.Row behaviour everywhere in the codebase.
     """
-    url = os.environ.get("DATABASE_URL")
+    if url is None:
+        url = os.environ.get("DATABASE_URL")
     if not url:
         raise RuntimeError(
             "DATABASE_URL environment variable is not set. "

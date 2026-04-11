@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -19,7 +20,7 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Running migrations against %s…", settings.db_path)
+    log.info("Initializing database…")
     conn = get_connection()
     try:
         init_db(conn)

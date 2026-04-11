@@ -11,9 +11,8 @@ from src.stats.stats import Stats
 class StatsLoader:
     """Load and aggregate player statistics using existing repositories"""
 
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        self.conn = get_connection(db_path)
+    def __init__(self):
+        self.conn = get_connection()
         self.player_repo = PlayerRepository(self.conn)
         self.player_game_repo = PlayerGameRepository(self.conn)
 

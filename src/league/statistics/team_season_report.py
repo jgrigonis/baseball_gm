@@ -13,6 +13,7 @@ from pathlib import Path
 
 from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season
+from src.util.locations import TEMP_FILES
 from src.util.team_resolver import resolve_team_id, TeamResolverError
 
 # ---------------------------------------------------------------------------
@@ -290,7 +291,6 @@ def get_args():
     p = argparse.ArgumentParser(
         description="Generate batting and pitching CSVs for a team (or all teams) in a season."
     )
-    p.add_argument("--file", "-f", default="league.db", help="DB file name")
     p.add_argument(
         "--id", "-i", required=True, help="Season ID (or partial name/year match)"
     )
@@ -298,7 +298,7 @@ def get_args():
     p.add_argument(
         "--all", "-a", action="store_true", help="Generate reports for all teams"
     )
-    p.add_argument("--out-dir", "-o", default="temp_files", help="Output directory")
+    p.add_argument("--out-dir", "-o", default=f"{TEMP_FILES}", help="Output directory")
     return p.parse_args()
 
 
@@ -309,8 +309,8 @@ def main():
         print("❌ Provide --team <name> or --all")
         return
 
-    db_path, season_id, season_label = resolve_season(args.file, args.id)
-    conn = get_connection(db_path)
+    season_id, season_label = resolve_season(args.id)
+    conn = get_connection()
 
     season_slug = (
         season_label.lower().replace(" ", "_").replace("(", "").replace(")", "")

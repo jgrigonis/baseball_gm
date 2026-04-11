@@ -51,7 +51,7 @@ from src.league.manifest_helper import (
     create_team_files,
 )
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
-from src.util.locations import MANIFEST_FILES_DIR, TEAM_FILES_DIR
+from src.util.locations import MANIFEST_FILES_DIR, TEAM_FILES_DIR, TEMP_FILES, LOG_FILES
 
 
 # Database is configured via DATABASE_URL environment variable
@@ -83,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
     clear.add_argument(
         "--temp",
         action="store_true",
-        help="Delete all files in temp_files/",
+        help=f"Delete all files in {TEMP_FILES}/",
     )
     clear.add_argument(
         "--db",
@@ -260,11 +260,11 @@ def _project_root() -> Path:
 
 
 def _logs_dir() -> Path:
-    return _project_root() / "logs"
+    return _project_root() / LOG_FILES
 
 
 def _temp_dir() -> Path:
-    return _project_root() / "temp_files"
+    return _project_root() / TEMP_FILES
 
 
 def _team_files_dir() -> Path:
@@ -289,7 +289,7 @@ def clear_logs() -> None:
 def clear_temp() -> None:
     d = _temp_dir()
     if not d.exists():
-        print("  temp_files/: nothing to clear")
+        print(f"  {TEMP_FILES}/: nothing to clear")
         return
     removed = 0
     for f in d.iterdir():
@@ -299,7 +299,7 @@ def clear_temp() -> None:
         elif f.is_dir():
             shutil.rmtree(f)
             removed += 1
-    print(f"  temp_files/: removed {removed} item(s)")
+    print(f"  {TEMP_FILES}/: removed {removed} item(s)")
 
 
 def clear_db() -> None:
@@ -327,18 +327,18 @@ def clear_db() -> None:
 def clear_all_teams() -> None:
     d = _team_files_dir()
     if not d.exists():
-        print("  team_files/: nothing to clear")
+        print(f"  {TEAM_FILES_DIR}/: nothing to clear")
         return
     shutil.rmtree(d)
     d.mkdir(parents=True, exist_ok=True)
-    print("  team_files/: cleared all team files")
+    print(f"  {TEAM_FILES_DIR}/: cleared all team files")
 
 
 def clear_teams_for_league(league_id: str) -> None:
     """Delete all year subdirectories that contain a league_id folder."""
     d = _team_files_dir()
     if not d.exists():
-        print("  team_files/: nothing to clear")
+        print(f"  {TEAM_FILES_DIR}/: nothing to clear")
         return
     removed = 0
     for year_dir in sorted(d.iterdir()):
@@ -363,11 +363,11 @@ def pick_league_interactively() -> str | None:
             "SELECT id, name, state FROM leagues ORDER BY created_at"
         ).fetchall()
     except Exception as e:
-        print(f"  Could not read leagues from {db_filename}: {e}")
+        print(f"  Could not read leagues: {e}")
         return None
 
     if not rows:
-        print(f"  No leagues found in {db_filename}")
+        print(f"  No leagues found in database")
         return None
 
     print("\n  Leagues:")
@@ -389,10 +389,6 @@ def pick_league_interactively() -> str | None:
 
 
 # ── Season helpers ──────────────────────────────────────────────────────────────
-
-
-def _get_conn():
-    return get_connection()
 
 
 def _bootstrap_first_season(

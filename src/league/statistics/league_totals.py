@@ -345,7 +345,7 @@ def display(totals: dict, season_label: str, logger: logging.Logger = None):
 
 def main():
     args = parse_args()
-    db_path, season_id, season_label = resolve_season(args.file, args.id)
+    season_id, season_label = resolve_season(args.id)
 
     logger = None
     if args.logs:
@@ -360,10 +360,7 @@ def main():
             log_to_file=True,
         )
 
-    if not db_path.exists():
-        log_print(f"Database not found: {db_path}", logger=logger)
-        raise SystemExit(1)
-    conn = get_connection(db_path)
+    conn = get_connection()
 
     totals = fetch_totals(conn, season_id)
     conn.close()

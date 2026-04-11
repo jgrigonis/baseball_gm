@@ -14,9 +14,6 @@ def parse_args():
     parser.add_argument(
         "--id", "-i", required=False, help="Season ID (or partial name/year match)"
     )
-    parser.add_argument(
-        "--file", "-f", default="league.db", help="Set the league db filename."
-    )
     args = parser.parse_args()
     return args
 
@@ -64,8 +61,8 @@ def sort_standings(conn, season_id: str, rows: list) -> list:
     return result
 
 
-def print_standings(db_path: Path, season_id: str, logger: logging.Logger = None):
-    conn = get_connection(db_path)
+def print_standings(season_id: str, logger: logging.Logger = None):
+    conn = get_connection()
 
     rows = conn.execute(
         """
@@ -106,8 +103,8 @@ def print_standings(db_path: Path, season_id: str, logger: logging.Logger = None
 
 def main():
     args = parse_args()
-    db_path, season_id, _ = resolve_season(args.file, args.id)
-    print_standings(db_path, season_id)
+    season_id, _ = resolve_season(args.id)
+    print_standings(season_id)
 
 
 if __name__ == "__main__":

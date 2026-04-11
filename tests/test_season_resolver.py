@@ -22,7 +22,7 @@ def resolve(db_path: Path, season_arg):
 
     db_file = db_path.name
     with patch("src.league.season_resolver.LEAGUE_FILES_DIR", str(db_path.parent)):
-        return resolve_season(db_file, season_arg)
+        return resolve_season(season_arg)
 
 
 # ---------------------------------------------------------------------------

@@ -30,10 +30,10 @@ def log_print(msg: str = "", logger: logging.Logger = None):
 
 
 def calculate_min_pa(
-    db_path: Path, season_id: str, logger: logging.Logger = None
+    season_id: str, logger: logging.Logger = None
 ) -> tuple[float, float]:
     """Calculate minimum PA and IP for leaderboard qualification based on games completed."""
-    conn = get_connection(str(db_path))
+    conn = get_connection()
 
     cursor = conn.execute(
         """
@@ -531,7 +531,7 @@ def show_all_leaderboards(
 
 if __name__ == "__main__":
     args = get_args()
-    db_path, season_id, _ = resolve_season(args.file, args.id)
+    season_id, _ = resolve_season(args.id)
 
     logger = None
     if args.logs:
@@ -543,9 +543,9 @@ if __name__ == "__main__":
             log_to_file=True,
         )
 
-    min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
+    min_pa, min_ip = calculate_min_pa(season_id, logger=logger)
 
-    with StatsLoader(str(db_path)) as loader:
+    with StatsLoader() as loader:
         all_players = loader.load_season_players_with_stats(season_id)
 
     show_all_leaderboards(

@@ -33,9 +33,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="League-wide stat leaders for a season."
     )
-    parser.add_argument(
-        "--file", "-f", default="cli.db", help="Set the league db filename."
-    )
     parser.add_argument("--id", "-i", help="Season ID (or partial name/year match)")
     parser.add_argument("--logs", action="store_true", help="Write output to log file.")
     return parser.parse_args()
@@ -356,7 +353,7 @@ def display(totals: dict, season_label: str, logger: logging.Logger = None):
 
 def main():
     args = parse_args()
-    db_path, season_id, season_label = resolve_season(args.file, args.id)
+    db_path, season_id, season_label = resolve_season(args.id)
 
     logger = None
     if args.logs:
@@ -377,7 +374,7 @@ def main():
 
     min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
 
-    with StatsLoader(str(db_path)) as loader:
+    with StatsLoader() as loader:
         all_players = loader.load_season_players_with_stats(season_id)
 
     # print(f"DEBUG: loaded {len(all_players)} players for season {season_id}")
