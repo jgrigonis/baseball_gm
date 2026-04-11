@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import sqlite3
 from datetime import datetime, UTC
 
 from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
@@ -132,7 +131,7 @@ class BlitzDraft(SnakeDraft):
         print(f"  Reassigned rosters for {len(ai_teams)} AI teams")
 
 
-def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
+def execute_blitz_draft(draft_id: str, conn) -> dict:
     """
     Run the full blitz preference-list draft end-to-end.
     Assumes DraftGenerator has already been run (prospect pool exists).
@@ -251,12 +250,12 @@ def execute_blitz_draft(draft_id: str, conn: sqlite3.Connection) -> dict:
     }
 
 
-def _season_year(conn: sqlite3.Connection, season_id: str) -> int:
+def _season_year(conn, season_id: str) -> int:
     row = conn.execute("SELECT year FROM seasons WHERE id = %s", (season_id,)).fetchone()
     return row["year"] if row else 2025
 
 
-def _gm_for_team(conn: sqlite3.Connection, league_id: str, team_id: str) -> str | None:
+def _gm_for_team(conn, league_id: str, team_id: str) -> str | None:
     row = conn.execute(
         "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
         (league_id, team_id),

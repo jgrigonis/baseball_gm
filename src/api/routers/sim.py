@@ -1,7 +1,6 @@
 # src/api/routers/sim.py
 
-import sqlite3
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
@@ -9,7 +8,7 @@ from src.api.database import get_db
 
 router = APIRouter(prefix="/leagues", tags=["sim"])
 
-DB = Annotated[sqlite3.Connection, Depends(get_db)]
+DB = Annotated[Any, Depends(get_db)]
 
 
 @router.post("/{league_id}/sim/next", status_code=status.HTTP_200_OK)

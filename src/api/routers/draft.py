@@ -6,8 +6,7 @@
 
 from __future__ import annotations
 
-import sqlite3
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
@@ -23,13 +22,13 @@ from src.api.schemas import (
 
 router = APIRouter(prefix="/drafts", tags=["draft"])
 
-DB = Annotated[sqlite3.Connection, Depends(get_db)]
+DB = Annotated[Any, Depends(get_db)]
 
 
 # ── Auth helper (shared with gms router) ─────────────────────────────────────
 
 
-def _resolve_gm(db: sqlite3.Connection, x_gm_session: str | None) -> sqlite3.Row:
+def _resolve_gm(db, x_gm_session: str | None):
     if not x_gm_session:
         raise HTTPException(status_code=401, detail="X-GM-Session header required.")
     gm = db.execute(
@@ -300,14 +299,14 @@ def execute_draft(
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _require_draft(draft_id: str, db: sqlite3.Connection) -> sqlite3.Row:
+def _require_draft(draft_id: str, db):
     row = db.execute("SELECT * FROM drafts WHERE id = %s", (draft_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Draft not found.")
     return row
 
 
-def _gm_on_the_clock(draft: sqlite3.Row, db: sqlite3.Connection) -> str | None:
+def _gm_on_the_clock(draft, db) -> str | None:
     """
     Determine which GM should pick next in snake order.
     Returns the GM id, or None if the draft is over.

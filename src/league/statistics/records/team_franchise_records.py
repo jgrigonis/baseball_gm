@@ -17,7 +17,6 @@ Usage:
     python3 team_franchise_records.py --teams
 """
 
-import sqlite3
 import argparse
 import os
 import sys

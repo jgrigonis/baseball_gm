@@ -15,7 +15,6 @@ Usage:
     python3 records.py --db path/to/other.db        # override default DB
 """
 
-import sqlite3
 import argparse
 import os
 import sys

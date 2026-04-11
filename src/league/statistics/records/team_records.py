@@ -15,7 +15,6 @@ Usage:
     python3 team_records.py --teams          # list all teams and exit
 """
 
-import sqlite3
 import argparse
 import os
 import sys

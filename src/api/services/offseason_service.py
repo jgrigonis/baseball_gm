@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import datetime
 import random
-import sqlite3
 import uuid
 
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
@@ -97,7 +96,7 @@ def _create_next_season(
     return new_season_id, team_ids
 
 
-def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
+def run_offseason(league_id: str, conn) -> dict:
     """
     Run the full offseason for a league and return to draft state.
     Idempotent — pipeline skips completed steps; season creation is guarded.

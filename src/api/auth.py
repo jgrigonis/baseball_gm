@@ -4,7 +4,7 @@
 #
 # Identity chain:
 #   X-GM-Session header → users.session_token → users.id
-#                       → gms WHERE user_id = ? AND league_id = ?
+#                       → gms WHERE user_id = %s AND league_id = %s
 #
 # Two entry points:
 #   resolve_gm_for_league  — used when you have a league_id in scope
@@ -13,12 +13,10 @@
 
 from __future__ import annotations
 
-import sqlite3
-
 from fastapi import HTTPException, status
 
 
-def _resolve_user(db: sqlite3.Connection, session_token: str | None) -> sqlite3.Row:
+def _resolve_user(db, session_token: str | None):
     """
     session_token → users row.
     Raises 401 if missing, 403 if not found.
@@ -40,10 +38,10 @@ def _resolve_user(db: sqlite3.Connection, session_token: str | None) -> sqlite3.
 
 
 def resolve_gm_for_league(
-    db: sqlite3.Connection,
+    db,
     session_token: str | None,
     league_id: str,
-) -> sqlite3.Row:
+):
     """
     Resolve the GM row for this session in a specific league.
     Used by draft routes and any route scoped to a league_id.
@@ -64,10 +62,10 @@ def resolve_gm_for_league(
 
 
 def require_gm_by_id(
-    db: sqlite3.Connection,
+    db,
     gm_id: str,
     session_token: str | None,
-) -> sqlite3.Row:
+):
     """
     Fetch a GM row by id and verify the session owns it.
     Used by /gms/{gm_id}/... routes where the GM id is explicit in the URL.
@@ -96,10 +94,10 @@ def require_gm_by_id(
 
 
 def resolve_commissioner(
-    db: sqlite3.Connection,
+    db,
     session_token: str | None,
     league_id: str,
-) -> sqlite3.Row:
+):
     """
     Like resolve_gm_for_league but also asserts the GM is the commissioner.
     Used by league start, draft execute, and other commissioner-only actions.
@@ -114,3 +112,4 @@ def resolve_commissioner(
             detail="Only the commissioner can perform this action.",
         )
     return gm
+    

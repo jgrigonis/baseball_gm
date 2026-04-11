@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import random
-import sqlite3
 import string
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 
@@ -22,13 +21,13 @@ from src.api.services.league_start import start_league as _start
 
 router = APIRouter(prefix="/leagues", tags=["leagues"])
 
-DB = Annotated[sqlite3.Connection, Depends(get_db)]
+DB = Annotated[Any, Depends(get_db)]
 
 _JOIN_CODE_CHARS = string.ascii_uppercase + string.digits
 _JOIN_CODE_LEN = 6
 
 
-def _make_join_code(db: sqlite3.Connection) -> str:
+def _make_join_code(db) -> str:
     """Generate a unique 6-character alphanumeric join code."""
     for _ in range(20):  # give up after 20 collisions (astronomically unlikely)
         code = "".join(random.choices(_JOIN_CODE_CHARS, k=_JOIN_CODE_LEN))
@@ -234,13 +233,13 @@ def start_league(
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _league_row(row: sqlite3.Row) -> dict:
+def _league_row(row) -> dict:
     d = dict(row)
     d["reentry_enabled"] = bool(d.get("reentry_enabled", 1))
     return d
 
 
-def _gm_row(row: sqlite3.Row) -> dict:
+def _gm_row(row) -> dict:
     d = dict(row)
     d["is_ai"] = bool(d["is_ai"])
     d["is_away"] = bool(d["is_away"])

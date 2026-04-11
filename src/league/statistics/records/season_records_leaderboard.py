@@ -17,7 +17,6 @@ Usage:
     python3 season_records.py --db path/to/other.db
 """
 
-import sqlite3
 import argparse
 import os
 import sys

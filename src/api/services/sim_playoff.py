@@ -10,7 +10,6 @@ Simulate playoff games in four modes:
 from __future__ import annotations
 
 import random
-import sqlite3
 from dataclasses import dataclass
 from datetime import date
 
@@ -206,7 +205,7 @@ def _play_one_game(
 
 def sim_playoff(
     league_id: str,
-    conn: sqlite3.Connection,
+    conn,
     mode: str = "game",
 ) -> dict:
     """

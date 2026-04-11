@@ -14,9 +14,8 @@
 
 from __future__ import annotations
 
-import sqlite3
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Cookie, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -30,7 +29,7 @@ from src.player.player_skills import PlayerSkills, SKILLS
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="src/web/templates")
 
-DB = Annotated[sqlite3.Connection, Depends(get_db)]
+DB = Annotated[Any, Depends(get_db)]
 
 
 # ── Player rating helpers ─────────────────────────────────────────────────────
@@ -204,7 +203,7 @@ def _is_htmx(request: Request) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
-def _resolve_user(db: sqlite3.Connection, token: str | None) -> sqlite3.Row | None:
+def _resolve_user(db, token: str | None):
     """Return the users row for a session cookie, or None."""
     if not token:
         return None
@@ -213,9 +212,7 @@ def _resolve_user(db: sqlite3.Connection, token: str | None) -> sqlite3.Row | No
     ).fetchone()
 
 
-def _resolve_gm(
-    db: sqlite3.Connection, user_id: str, league_id: str
-) -> sqlite3.Row | None:
+def _resolve_gm(db, user_id: str, league_id: str):
     """Return the gms row for this user in this league, or None."""
     return db.execute(
         "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
@@ -308,10 +305,10 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
 
 def _shell_ctx(
     request: Request,
-    db: sqlite3.Connection,
+    db,
     league_id: str,
-    user: sqlite3.Row,
-    gm: sqlite3.Row | None,
+    user: dict,
+    gm: dict | None,
     active_tab: str | None = None,
 ) -> dict:
     league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()

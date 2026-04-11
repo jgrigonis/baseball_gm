@@ -6,10 +6,9 @@
 
 from __future__ import annotations
 
-import sqlite3
 import uuid
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -44,7 +43,7 @@ def render(name: str, context: dict) -> HTMLResponse:
 
 
 router = APIRouter()
-DB = Annotated[sqlite3.Connection, Depends(get_db)]
+DB = Annotated[Any, Depends(get_db)]
 
 
 # ── Session helpers ───────────────────────────────────────────────────────────
@@ -66,8 +65,8 @@ def _get_identity(request: Request) -> tuple[str | None, str | None]:
 
 
 def _gm_for_league(
-    db: sqlite3.Connection, session_token: str | None, league_id: str
-) -> sqlite3.Row | None:
+    db, session_token: str | None, league_id: str
+) -> dict | None:
     """Find the GM row for this session token in a specific league."""
     if not session_token:
         return None
@@ -85,7 +84,7 @@ def _require_identity(request: Request):
     return token, name, None
 
 
-def _require_league_gm(request: Request, league_id: str, db: sqlite3.Connection):
+def _require_league_gm(request: Request, league_id: str, db):
     """Return (gm_row, None) or (None, redirect). Used for in-league routes."""
     token, _, redir = _require_identity(request)
     if redir:
@@ -106,8 +105,8 @@ def is_htmx(request: Request) -> bool:
 
 def _shell_ctx(
     request: Request,
-    gm: sqlite3.Row,
-    db: sqlite3.Connection,
+    gm: dict,
+    db,
     league_id: str | None = None,
     active_tab: str | None = None,
 ) -> dict:
@@ -374,7 +373,7 @@ async def dashboard(request: Request, league_id: str, db: DB):
 
 
 async def _lobby(
-    request: Request, league_id: str, gm: sqlite3.Row, db: sqlite3.Connection
+    request: Request, league_id: str, gm: dict, db
 ) -> HTMLResponse:
     league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     gms_rows = db.execute(
@@ -828,7 +827,7 @@ async def history_season(request: Request, league_id: str, year: int, db: DB):
 # ── DB query helpers ──────────────────────────────────────────────────────────
 
 
-def _current_season_id(league_id: str, db: sqlite3.Connection) -> str | None:
+def _current_season_id(league_id: str, db) -> str | None:
     row = db.execute(
         """
         SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
@@ -839,7 +838,7 @@ def _current_season_id(league_id: str, db: sqlite3.Connection) -> str | None:
     return row["season_id"] if row else None
 
 
-def _current_season_name(league_id: str, db: sqlite3.Connection) -> str | None:
+def _current_season_name(league_id: str, db) -> str | None:
     row = db.execute(
         """
         SELECT s.name, s.year FROM league_seasons ls
@@ -851,7 +850,7 @@ def _current_season_name(league_id: str, db: sqlite3.Connection) -> str | None:
     return f"Season {row['year']}" if row else None
 
 
-def _current_year(league_id: str, db: sqlite3.Connection) -> int:
+def _current_year(league_id: str, db) -> int:
     row = db.execute(
         """
         SELECT s.year FROM league_seasons ls
@@ -864,7 +863,7 @@ def _current_year(league_id: str, db: sqlite3.Connection) -> int:
 
 
 def _load_standings(
-    league_id: str, db: sqlite3.Connection, season_id: str | None = None
+    league_id: str, db, season_id: str | None = None
 ) -> list[dict]:
     if not season_id:
         season_id = _current_season_id(league_id, db)
@@ -910,7 +909,7 @@ def _load_standings(
     return result
 
 
-def _load_roster(gm: sqlite3.Row, db: sqlite3.Connection) -> list[dict]:
+def _load_roster(gm: dict, db) -> list[dict]:
     if not gm["team_id"]:
         return []
 
@@ -951,7 +950,7 @@ def _load_roster(gm: sqlite3.Row, db: sqlite3.Connection) -> list[dict]:
     return result
 
 
-def _load_draft_board(draft_id: str, db: sqlite3.Connection) -> list[dict]:
+def _load_draft_board(draft_id: str, db) -> list[dict]:
     picked = {
         r["player_id"]
         for r in db.execute(
@@ -978,7 +977,7 @@ def _load_draft_board(draft_id: str, db: sqlite3.Connection) -> list[dict]:
     return board
 
 
-def _load_leaders(league_id: str, category: str, db: sqlite3.Connection) -> list[dict]:
+def _load_leaders(league_id: str, category: str, db) -> list[dict]:
     season_id = _current_season_id(league_id, db)
     if not season_id:
         return []
@@ -1031,7 +1030,7 @@ def _load_leaders(league_id: str, category: str, db: sqlite3.Connection) -> list
 
 
 def _load_player_detail(
-    player_id: str | None, gm: sqlite3.Row, db: sqlite3.Connection
+    player_id: str | None, gm: dict, db
 ) -> dict | None:
     if not player_id:
         return None

@@ -198,7 +198,7 @@ class PlayerGrades(BaseModel):
 
 def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrades:
     """
-    Build a PlayerGrades from raw sqlite3.Row dicts.
+    Build a PlayerGrades from raw dicts.
     Determines player_type from whether pitching skills dominate.
     """
     # A player is treated as a pitcher if they have meaningful stamina/strikes

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime
 import random
-import sqlite3
 import uuid
 from pathlib import Path
 
@@ -22,7 +21,7 @@ from src.util.locations import MANIFEST_FILES_DIR
 _MANIFEST_FILENAME = "world_league-2025.json"
 
 
-def start_league(league_id: str, conn: sqlite3.Connection) -> dict:
+def start_league(league_id: str, conn) -> dict:
     league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
 
     if not league:

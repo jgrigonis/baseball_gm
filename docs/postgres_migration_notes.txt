@@ -1,0 +1,11 @@
+
+row[0] are a problem
+
+? are a problem
+
+executemany is a problem 
+
+Should game_event_logger.py use a repository?
+
+:param is a problem 
+

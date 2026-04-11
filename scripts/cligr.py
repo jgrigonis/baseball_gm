@@ -8,8 +8,7 @@ Usage examples:
   # Clear operations (can be combined)
   python cligr.py clear --logs
   python cligr.py clear --temp
-  python cligr.py clear --db               # clears default DB (cli.db)
-  python cligr.py clear --db myfile.db
+  python cligr.py clear --db               # drops and recreates the Postgres DB
   python cligr.py clear --teams            # interactive league picker
   python cligr.py clear --teams --league-id LEAGUE_ID
   python cligr.py clear --all-teams        # ⚠ destroys all team files
@@ -28,7 +27,7 @@ Usage examples:
   python cligr.py run-season --league-id LEAGUE_ID
 
 Common options (all subcommands):
-  --db FILENAME       DB file to use (default: cli.db)
+  Database is configured via the DATABASE_URL environment variable.
 """
 
 import argparse
@@ -40,7 +39,7 @@ from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
 from src.util.locations import LEAGUE_FILES_DIR, TEAM_FILES_DIR
 
-DEFAULT_DB = "cli.db"
+# Database is configured via DATABASE_URL environment variable
 DEFAULT_YEAR = 2025
 NUM_YEARS = 50  # The maximum number of years to expect manifest files for
 
@@ -52,13 +51,6 @@ def build_parser() -> argparse.ArgumentParser:
         epilog="Run `python cligr.py COMMAND --help` for help on a specific command.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "--db",
-        "-d",
-        default=DEFAULT_DB,
-        help=f"DB filename (default: {DEFAULT_DB})",
-    )
-
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
     sub.required = True
 
@@ -82,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--db",
         dest="clear_db",
         action="store_true",
-        help="Delete the DB file specified by the top-level --db flag",
+        help="Drop and recreate the Postgres database (uses DATABASE_URL)",
     )
     clear.add_argument(
         "--teams",
@@ -272,11 +264,6 @@ def _temp_dir() -> Path:
     return _project_root() / "temp_files"
 
 
-def _db_path(db_filename: str) -> Path:
-    """DB files live in leagues/ under the project root."""
-    return Path(LEAGUE_FILES_DIR) / db_filename
-
-
 def _team_files_dir() -> Path:
     return Path(TEAM_FILES_DIR)
 
@@ -312,13 +299,26 @@ def clear_temp() -> None:
     print(f"  temp_files/: removed {removed} item(s)")
 
 
-def clear_db(db_filename: str) -> None:
-    p = _db_path(db_filename)
-    if p.exists():
-        p.unlink()
-        print(f"  Deleted {p}")
-    else:
-        print(f"  {p}: not found, nothing to delete")
+def clear_db() -> None:
+    """
+    Drop and recreate the Postgres database.
+    Reads DATABASE_URL from environment to find the DB name.
+    """
+    import os, subprocess
+    url = os.environ.get("DATABASE_URL", "")
+    # Extract db name from URL: postgresql://user@host/dbname
+    db_name = url.rstrip("/").rsplit("/", 1)[-1].split("?")[0] if "/" in url else None
+    if not db_name:
+        print("  ❌ Could not determine DB name from DATABASE_URL")
+        return
+    try:
+        subprocess.run(["dropdb", "--if-exists", db_name], check=True)
+        subprocess.run(["createdb", db_name], check=True)
+        print(f"  Dropped and recreated database: {db_name}")
+    except subprocess.CalledProcessError as e:
+        print(f"  ❌ DB reset failed: {e}")
+    except FileNotFoundError:
+        print("  ❌ dropdb/createdb not found — reset the database manually")
 
 
 def clear_all_teams() -> None:
@@ -352,10 +352,10 @@ def clear_teams_for_league(league_id: str) -> None:
         print(f"  Removed {removed} year folder(s) for league {league_id}")
 
 
-def pick_league_interactively(db_filename: str) -> str | None:
+def pick_league_interactively() -> str | None:
     """Show a numbered list of leagues from the DB and return the chosen league_id."""
     try:
-        conn = get_connection(db_filename)
+        conn = get_connection()
         rows = conn.execute(
             "SELECT id, name, state FROM leagues ORDER BY created_at"
         ).fetchall()
@@ -388,12 +388,12 @@ def pick_league_interactively(db_filename: str) -> str | None:
 # ── Season helpers ──────────────────────────────────────────────────────────────
 
 
-def _get_conn(db_filename: str):
-    return get_connection(db_filename)
+def _get_conn():
+    return get_connection()
 
 
 def _bootstrap_first_season(
-    db_filename: str, year: int | None, manifest_filename: str | None, seed: int | None
+    year: int | None, manifest_filename: str | None, seed: int | None
 ):
     """
     Initialise the DB, create a fresh league, and return
@@ -420,7 +420,7 @@ def _bootstrap_first_season(
     from src.league.schedule import ScheduleGenerator, save_schedule_to_db
     from src.util.locations import MANIFEST_FILES_DIR
 
-    conn = get_connection(db_filename)
+    conn = get_connection()
     init_db(conn)
 
     if year is None:
@@ -463,7 +463,7 @@ def _bootstrap_first_season(
     )
 
     existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)
+        "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
     ).fetchone()["count"]
     if existing_games == 0:
         scheduler = ScheduleGenerator(rng=rng)
@@ -495,7 +495,7 @@ def _create_next_season_cli(
     from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 
     current = conn.execute(
-        "SELECT name FROM seasons WHERE id = ?", (current_season_id,)
+        "SELECT name FROM seasons WHERE id = %s", (current_season_id,)
     ).fetchone()
     current_name = current["name"] if current else f"Season {next_year - 1}"
     parts = current_name.rsplit(" ", 1)
@@ -508,7 +508,7 @@ def _create_next_season_cli(
     existing = conn.execute(
         """SELECT ls.season_id FROM league_seasons ls
            JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = ? AND s.year = ?""",
+           WHERE ls.league_id = %s AND s.year = %s""",
         (league_id, next_year),
     ).fetchone()
     if existing:
@@ -516,7 +516,7 @@ def _create_next_season_cli(
         team_ids = [
             r["team_id"]
             for r in conn.execute(
-                "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
+                "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
                 (league_id, season_id),
             ).fetchall()
         ]
@@ -525,22 +525,22 @@ def _create_next_season_cli(
 
     season_id = str(_uuid.uuid4())
     conn.execute(
-        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
         (season_id, next_year, new_name),
     )
     conn.execute(
-        "INSERT INTO league_seasons (league_id, season_id) VALUES (?, ?)",
+        "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)",
         (league_id, season_id),
     )
 
     team_rows = conn.execute(
-        "SELECT team_id FROM league_season_teams WHERE league_id = ? AND season_id = ?",
+        "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
         (league_id, current_season_id),
     ).fetchall()
     team_ids = [r["team_id"] for r in team_rows]
     for tid in team_ids:
         conn.execute(
-            "INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id) VALUES (?, ?, ?)",
+            "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
             (league_id, season_id, tid),
         )
 
@@ -586,7 +586,7 @@ def _play_regular_season(
     from src.league.play_season import play_game
 
     league_row = conn.execute(
-        "SELECT mode FROM leagues WHERE id = ?", (league_id,)
+        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
 
@@ -662,7 +662,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
     )
 
     existing = conn.execute(
-        "SELECT COUNT(*) FROM series WHERE season_id = ?", (season_id,)
+        "SELECT COUNT(*) FROM series WHERE season_id = %s", (season_id,)
     ).fetchone()["count"]
     if existing > 0:
         print("  Playoff bracket already set up")
@@ -670,7 +670,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
 
     seeds = get_top_8(conn, season_id)
     last_game = conn.execute(
-        "SELECT MAX(game_date) as d FROM games WHERE season_id = ? AND completed = 1",
+        "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
         (season_id,),
     ).fetchone()
     from datetime import date, timedelta
@@ -707,7 +707,7 @@ def _play_playoffs(
     )
 
     league_row = conn.execute(
-        "SELECT mode FROM leagues WHERE id = ?", (league_id,)
+        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
 
@@ -724,7 +724,7 @@ def _play_playoffs(
     first_game = conn.execute(
         """SELECT g.game_date FROM games g
            JOIN series s ON g.series_id = s.id
-           WHERE s.season_id = ? AND s.name IN ('1v8','2v7','3v6','4v5')
+           WHERE s.season_id = %s AND s.name IN ('1v8','2v7','3v6','4v5')
            ORDER BY g.game_date LIMIT 1""",
         (season_id,),
     ).fetchone()
@@ -815,7 +815,7 @@ def _play_playoffs(
     )
 
     champ_name = conn.execute(
-        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = ?", (champion,)
+        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (champion,)
     ).fetchone()["name"]
     print(f"  🏆 Champion: {champ_name}")
 
@@ -847,17 +847,16 @@ def _make_logger(name: str, enabled: bool):
     )
 
 
-def _run_reports(db_filename: str, season_id: str, logs: bool = False):
+def _run_reports(season_id: str, logs: bool = False):
     """Run leaderboard and stats reports by importing directly."""
     from src.db.connection import get_connection as _get_conn
     from src.stats.loader import StatsLoader
 
-    db_path = _db_path(db_filename)
-    conn = _get_conn(db_filename)
+    conn = _get_conn()
 
     # --- Season label for display ---
     row = conn.execute(
-        "SELECT name, year FROM seasons WHERE id = ?", (season_id,)
+        "SELECT name, year FROM seasons WHERE id = %s", (season_id,)
     ).fetchone()
     season_label = f"{row['name']} ({row['year']})" if row else season_id[:8]
 
@@ -871,9 +870,9 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
 
         logger = _make_logger("view_leaderboards", logs)
 
-        min_pa, min_ip = calculate_min_pa(db_path, season_id, logger=logger)
+        min_pa, min_ip = calculate_min_pa(season_id, logger=logger)
 
-        with StatsLoader(str(db_path)) as loader:
+        with StatsLoader() as loader:
             all_players = loader.load_season_players_with_stats(season_id)
         show_all_leaderboards(all_players, min_pa=min_pa, min_ip=min_ip, logger=logger)
     except Exception as e:
@@ -902,7 +901,7 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
         )
 
         logger = _make_logger("league_leaders", logs)
-        with StatsLoader(str(db_path)) as loader:
+        with StatsLoader() as loader:
             all_players = loader.load_season_players_with_stats(season_id)
         leaders = fetch_leaders(all_players, min_pa=min_pa, min_ip=min_ip)
         display_leaders(leaders, season_label, logger=logger)
@@ -913,7 +912,7 @@ def _run_reports(db_filename: str, season_id: str, logs: bool = False):
 
 
 def _run_one_season(
-    conn, db_filename: str, season_id: str, league_id: str, year: int, args
+    conn, season_id: str, league_id: str, year: int, args
 ) -> None:
     """Play one complete season: regular season → reports → playoffs → offseason."""
     print(f"\n{'='*60}")
@@ -924,7 +923,7 @@ def _run_one_season(
 
     if args.reports:
         print("  Generating reports...")
-        _run_reports(db_filename, season_id, logs=args.logs)
+        _run_reports(season_id, logs=args.logs)
 
     print("  Setting up playoffs...")
     _setup_playoffs(conn, season_id, year)
@@ -941,9 +940,8 @@ def _run_one_season(
 
 def cmd_new_league(args) -> None:
     if not args.yes and not args.clear_db:
-        db_p = _db_path(args.db)
         msg = (
-            f"⚠️  This will destroy {db_p} and create a fresh league. Continue? [y/N] "
+            f"⚠️  This will destroy the database and create a fresh league. Continue? [y/N] "
         )
         if input(msg).strip().lower() not in ("y", "yes"):
             print("Aborted.")
@@ -955,11 +953,11 @@ def cmd_new_league(args) -> None:
         clear_temp()
 
     # Always wipe the DB for a fresh league
-    clear_db(args.db)
+    clear_db()
 
     print(f"\n🏟️  Creating new league — Year {args.year}")
     conn, league_id, season_id, _ = _bootstrap_first_season(
-        args.db, args.year, args.manifest, args.seed
+        args.year, args.manifest, args.seed
     )
 
     current_season_id = season_id
@@ -970,18 +968,13 @@ def cmd_new_league(args) -> None:
             current_season_id, _ = _create_next_season_cli(
                 conn, league_id, current_season_id, year
             )
-        _run_one_season(conn, args.db, current_season_id, league_id, year, args)
+        _run_one_season(conn, current_season_id, league_id, year, args)
 
     print(f"\n✅ Done — {args.num_years} season(s) complete.")
 
 
 def cmd_run_season(args) -> None:
-    db_p = _db_path(args.db)
-    if not db_p.exists():
-        print(f"❌ DB not found: {db_p}. Use `new-league` to start fresh.")
-        sys.exit(1)
-
-    conn = get_connection(args.db)
+    conn = get_connection()
 
     # Resolve league
     league_id = args.league_id
@@ -996,7 +989,7 @@ def cmd_run_season(args) -> None:
             league_id = rows[0]["id"]
             print(f"  Using league: {rows[0]['name']} ({league_id[:8]}...)")
         else:
-            league_id = pick_league_interactively(args.db)
+            league_id = pick_league_interactively()
             if not league_id:
                 sys.exit(0)
 
@@ -1004,7 +997,7 @@ def cmd_run_season(args) -> None:
     season_row = conn.execute(
         """SELECT s.id, s.year FROM seasons s
            JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = ?
+           WHERE ls.league_id = %s
            ORDER BY s.year DESC LIMIT 1""",
         (league_id,),
     ).fetchone()
@@ -1029,7 +1022,7 @@ def cmd_run_season(args) -> None:
             current_season_id = season_id
             current_year = year
 
-        _run_one_season(conn, args.db, season_id, league_id, year, args)
+        _run_one_season(conn, season_id, league_id, year, args)
 
     print(f"\n✅ Done — {args.num_years} season(s) complete.")
 
@@ -1053,16 +1046,16 @@ def cmd_clear(args) -> None:
         clear_all_teams()
 
     if args.teams and not args.all_teams:
-        league_id = args.league_id or pick_league_interactively(args.db)
+        league_id = args.league_id or pick_league_interactively()
         if league_id:
             clear_teams_for_league(league_id)
 
     if args.clear_db:
-        confirm = input(f"⚠️  Delete {args.db}? [y/N] ").strip()
+        confirm = input("⚠️  Reset the Postgres database? [y/N] ").strip()
         if confirm.lower() not in ("y", "yes"):
             print("  Aborted")
         else:
-            clear_db(args.db)
+            clear_db()
 
     if args.logs:
         clear_logs()
@@ -1071,7 +1064,7 @@ def cmd_clear(args) -> None:
         clear_temp()
 
 
-def _resolve_league(conn, db_filename, league_id_arg):
+def _resolve_league(conn, league_id_arg):
     """Return league_id, prompting if needed."""
     if league_id_arg:
         return league_id_arg
@@ -1081,20 +1074,15 @@ def _resolve_league(conn, db_filename, league_id_arg):
         sys.exit(1)
     if len(rows) == 1:
         return rows[0]["id"]
-    league_id = pick_league_interactively(db_filename)
+    league_id = pick_league_interactively()
     if not league_id:
         sys.exit(0)
     return league_id
 
 
 def cmd_reports(args) -> None:
-    db_p = _db_path(args.db)
-    if not db_p.exists():
-        print(f"❌ DB not found: {db_p}")
-        sys.exit(1)
-
-    conn = get_connection(args.db)
-    league_id = _resolve_league(conn, args.db, args.league_id)
+    conn = get_connection()
+    league_id = _resolve_league(conn, args.league_id)
 
     # Determine year range
     if args.start_year and args.end_year:
@@ -1117,7 +1105,7 @@ def cmd_reports(args) -> None:
         row = conn.execute(
             """SELECT s.id FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = ? AND s.year = ?""",
+               WHERE ls.league_id = %s AND s.year = %s""",
             (league_id, year),
         ).fetchone()
         if not row:
@@ -1132,7 +1120,7 @@ def cmd_reports(args) -> None:
 
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                _run_reports(args.db, season_id, logs=args.logs)
+                _run_reports(season_id, logs=args.logs)
             output = buf.getvalue()
             print(output, end="")  # still show on screen
 
@@ -1152,7 +1140,7 @@ def cmd_reports(args) -> None:
                 f.write(f"\n=== {year} ===\n")
                 f.write(output)
         else:
-            _run_reports(args.db, season_id, logs=args.logs)
+            _run_reports(season_id, logs=args.logs)
 
     if range_mode:
         print(f"\n✅ Done — output saved to {combined_path}")

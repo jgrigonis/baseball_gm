@@ -7,7 +7,6 @@ player creation and never updated — they represent immutable talent
 ceilings determined at birth.
 """
 
-import sqlite3
 from typing import Sequence
 from src.player.positions import SKILLS
 
@@ -17,7 +16,7 @@ _SKILLS = list(SKILLS.keys())
 class TalentCapRepository:
     """Read and write talent caps for players."""
 
-    def __init__(self, conn: sqlite3.Connection) -> None:
+    def __init__(self, conn) -> None:
         self.conn = conn
 
     # ─────────────────────────────────────────────

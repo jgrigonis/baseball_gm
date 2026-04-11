@@ -15,8 +15,6 @@ Roster limits:
     total:  160
 """
 
-import sqlite3
-
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.player.player_evaluator import PlayerEvaluator
@@ -25,7 +23,7 @@ MINORS_LIMIT = 120
 
 
 class RosterTrimmer:
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn):
         self.conn = conn
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
