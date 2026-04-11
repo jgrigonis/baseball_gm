@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import sqlite3
+from datetime import datetime, UTC
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -21,7 +21,7 @@ from src.api.schemas import (
 
 router = APIRouter(prefix="/gms", tags=["gms"])
 
-DB = Annotated[sqlite3.Connection, Depends(get_db)]
+DB = Annotated[any, Depends(get_db)]
 
 
 # ── GET /gms/{gm_id} ─────────────────────────────────────────────────────────
@@ -71,10 +71,10 @@ def update_profile(
         updates["dh_enabled"] = int(updates["dh_enabled"])
 
     set_clause = ", ".join(f"{col} = %s" for col in updates)
-    values = list(updates.values()) + ["datetime('now')", gm_id]
+    values = list(updates.values()) + [gm_id]
 
     db.execute(
-        f"UPDATE gm_profiles SET {set_clause}, updated_at = %s WHERE gm_id = %s",
+        f"UPDATE gm_profiles SET {set_clause}, updated_at = NOW() WHERE gm_id = %s",
         values,
     )
 
@@ -121,8 +121,8 @@ def get_roster(gm_id: str, db: DB) -> list[PlayerGrades]:
     # Scope to the current season so players from previous leagues don't bleed in
     season_row = db.execute(
         """
-        SELECT season_id FROM league_seasons
-        WHERE league_id = %s ORDER BY s.year DESC LIMIT 1
+        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
+        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
         """,
         (gm["league_id"],),
     ).fetchone()
@@ -207,8 +207,8 @@ def set_roster(
             SELECT tp.player_id FROM league_season_teams lst
             JOIN team_players tp ON tp.team_id = lst.team_id
             WHERE lst.team_id = %s AND lst.season_id = (
-                SELECT season_id FROM league_seasons
-                WHERE league_id = (SELECT league_id FROM gms WHERE id = %s)
+                SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
+                WHERE ls.league_id = (SELECT league_id FROM gms WHERE id = %s)
                 ORDER BY s.year DESC LIMIT 1
             )
             """,
@@ -222,7 +222,7 @@ def set_roster(
             status_code=422, detail=f"Players not on this team: {list(invalid)[:3]}"
         )
 
-    now = db.execute("SELECT datetime('now')").fetchone()[0]
+    now = datetime.now(UTC).isoformat()
 
     for player_id in team_players:
         status = "26man" if player_id in active_set else "40man"
@@ -287,7 +287,7 @@ def set_lineup(
     if any(o < 1 or o > 9 for o in orders):
         raise HTTPException(status_code=422, detail="Batting order must be 1-9.")
 
-    now = db.execute("SELECT datetime('now')").fetchone()[0]
+    now = datetime.now(UTC).isoformat()
 
     # Replace entire lineup
     db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = %s", (gm_id,))
@@ -437,8 +437,8 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
     # ── Season stats ──────────────────────────────────────────────────────────
     season_row = db.execute(
         """
-        SELECT season_id FROM league_seasons
-        WHERE league_id = %s ORDER BY s.year DESC LIMIT 1
+        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
+        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
         """,
         (gm["league_id"],),
     ).fetchone()
@@ -562,7 +562,7 @@ def get_player_detail(gm_id: str, player_id: str, db: DB) -> dict:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _gm_dict(row: sqlite3.Row) -> dict:
+def _gm_dict(row: dict) -> dict:
     d = dict(row)
     d["is_ai"] = bool(d["is_ai"])
     d["is_away"] = bool(d["is_away"])

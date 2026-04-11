@@ -154,7 +154,7 @@ def run_offseason(league_id: str, conn: sqlite3.Connection) -> dict:
     # ── 3. Generate schedule ──────────────────────────────────────────────────
     existing_games = conn.execute(
         "SELECT COUNT(*) FROM games WHERE season_id = %s", (new_season_id,)
-    ).fetchone()[0]
+    ).fetchone()["count"]
 
     if existing_games == 0:
         start_date = datetime.date(next_year, 4, 1)

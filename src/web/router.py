@@ -581,7 +581,7 @@ async def save_strategy(
     set_clause = ", ".join(f"{col} = %s" for col in updates)
     values = list(updates.values()) + [gm["id"]]
     db.execute(
-        f"UPDATE gm_profiles SET {set_clause}, updated_at = datetime('now') WHERE gm_id = %s",
+        f"UPDATE gm_profiles SET {set_clause}, updated_at = NOW() WHERE gm_id = %s",
         values,
     )
     db.commit()
@@ -639,7 +639,7 @@ async def schedule_tab(
         prev = db.execute(
             """
             SELECT game_date FROM games
-            WHERE season_id = %s AND completed = 1 AND game_date < %s
+            WHERE season_id = %s AND completed = 1 AND game_date::date < %s
             ORDER BY game_date DESC LIMIT 1
         """,
             (season_id, date),
@@ -647,7 +647,7 @@ async def schedule_tab(
         nxt = db.execute(
             """
             SELECT game_date FROM games
-            WHERE season_id = %s AND completed = 1 AND game_date > %s
+            WHERE season_id = %s AND completed = 1 AND game_date::date > %s
             ORDER BY game_date ASC LIMIT 1
         """,
             (season_id, date),
@@ -844,7 +844,7 @@ def _current_season_name(league_id: str, db: sqlite3.Connection) -> str | None:
         """
         SELECT s.name, s.year FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
-        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
+        WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1
     """,
         (league_id,),
     ).fetchone()
@@ -856,7 +856,7 @@ def _current_year(league_id: str, db: sqlite3.Connection) -> int:
         """
         SELECT s.year FROM league_seasons ls
         JOIN seasons s ON s.id = ls.season_id
-        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
+        WHERE ls.league_id = %s ORDER BY ls.rowid DESC LIMIT 1
     """,
         (league_id,),
     ).fetchone()

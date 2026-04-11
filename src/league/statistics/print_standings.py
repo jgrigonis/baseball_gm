@@ -22,7 +22,7 @@ def parse_args():
 
 
 def head_to_head_wins(conn, season_id: str, team_ids: list[str]) -> dict[str, int]:
-    placeholders = ",".join("%s" * len(team_ids))
+    placeholders = ", ".join(["%s"] * len(team_ids))
     rows = conn.execute(
         f"""
         SELECT winner_id, COUNT(*) as wins

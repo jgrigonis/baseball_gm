@@ -391,7 +391,7 @@ class PlayerEnergyRepository:
         cursor = self.conn.cursor()
 
         if player_ids is not None:
-            placeholders = ",".join("%s" * len(player_ids))
+            placeholders = ", ".join(["%s"] * len(player_ids))
             cursor.execute(
                 f"DELETE FROM player_energy WHERE league_id = %s AND player_id IN ({placeholders})",
                 [self.league_id] + list(player_ids),

@@ -389,9 +389,9 @@ class OffseasonPipeline:
             self.conn.execute(
                 """INSERT INTO team_rotation_pointer
                        (team_id, season_id, series_id, next_order, updated_at)
-                   VALUES (%s, %s, '', 1, datetime('now'))
+                   VALUES (%s, %s, '', 1, NOW())
                    ON CONFLICT (team_id, season_id, series_id)
-                   DO UPDATE SET next_order = 1, updated_at = datetime('now')""",
+                   DO UPDATE SET next_order = 1, updated_at = NOW()""",
                 (team.id, season_id),
             )
 

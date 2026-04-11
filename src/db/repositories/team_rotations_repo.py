@@ -85,8 +85,8 @@ class TeamRotationsRepository:
             FROM team_rotations
             WHERE team_id       = %s
             AND season_id       = %s
-            AND effective_date <= %s
-            AND (end_date IS NULL OR end_date > %s)
+            AND effective_date::date <= %s
+            AND (end_date IS NULL OR end_date::date > %s)
             ORDER BY rotation_order
             """,
             (team_id, season_id, as_of_date, as_of_date),
@@ -145,12 +145,12 @@ class TeamRotationsRepository:
             AND g.season_id   = %s
             AND pgs.pitch_game_started = 1
             AND pgs.player_id IN ({})
-            AND g.game_date <= %s
-            AND tr.effective_date <= g.game_date
-            AND (tr.end_date IS NULL OR tr.end_date > g.game_date)
+            AND g.game_date::date <= %s
+            AND tr.effective_date::date <= g.game_date::date
+            AND (tr.end_date IS NULL OR tr.end_date::date > g.game_date::date)
             ORDER BY g.game_date DESC, g.id DESC
             LIMIT 1
-            """.format(",".join("%s" * len(rotation_player_ids))),
+            """.format(", ".join(["%s"] * len(rotation_player_ids))),
             (team_id, season_id, *rotation_player_ids, current_date),
         )
 
@@ -216,8 +216,8 @@ class TeamRotationsRepository:
             WHERE team_id       = %s
             AND season_id       = %s
             AND player_id       = %s
-            AND effective_date <= %s
-            AND (end_date IS NULL OR end_date > %s)
+            AND effective_date::date <= %s
+            AND (end_date IS NULL OR end_date::date > %s)
             ORDER BY effective_date DESC
             LIMIT 1
             """,
@@ -284,8 +284,8 @@ class TeamRotationsRepository:
             WHERE team_id       = %s
             AND season_id       = %s
             AND player_id       = %s
-            AND effective_date <= %s
-            AND (end_date IS NULL OR end_date > %s)
+            AND effective_date::date <= %s
+            AND (end_date IS NULL OR end_date::date > %s)
             ORDER BY effective_date DESC
             LIMIT 1
             """,
@@ -348,8 +348,8 @@ class TeamRotationsRepository:
             WHERE team_id       = %s
             AND season_id       = %s
             AND player_id       = %s
-            AND effective_date <= %s
-            AND (end_date IS NULL OR end_date > %s)
+            AND effective_date::date <= %s
+            AND (end_date IS NULL OR end_date::date > %s)
             """,
             (team_id, season_id, player_id, effective_date, effective_date),
         ).fetchone()["count"]
@@ -464,9 +464,10 @@ class TeamRotationsRepository:
         # Ensure pointer row exists
         self.conn.execute(
             """
-            INSERT OR IGNORE INTO team_rotation_pointer
+            INSERT INTO team_rotation_pointer
                 (team_id, season_id, series_id, next_order)
             VALUES (%s, %s, %s, 1)
+            ON CONFLICT DO NOTHING
             """,
             (team_id, season_id, series_id),
         )

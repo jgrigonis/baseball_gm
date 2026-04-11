@@ -464,7 +464,7 @@ def _bootstrap_first_season(
 
     existing_games = conn.execute(
         "SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id,)
-    ).fetchone()[0]
+    ).fetchone()["count"]
     if existing_games == 0:
         scheduler = ScheduleGenerator(rng=rng)
         schedule = scheduler.create_schedule(
@@ -663,7 +663,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
 
     existing = conn.execute(
         "SELECT COUNT(*) FROM series WHERE season_id = ?", (season_id,)
-    ).fetchone()[0]
+    ).fetchone()["count"]
     if existing > 0:
         print("  Playoff bracket already set up")
         return

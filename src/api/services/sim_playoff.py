@@ -103,7 +103,7 @@ def _ensure_round_games(
                 continue
             existing = conn.execute(
                 "SELECT COUNT(*) FROM games WHERE series_id = %s", (sid,)
-            ).fetchone()[0]
+            ).fetchone()["count"]
             if existing > 0:
                 continue
             seed_a = original_seed(seeds, team_a)
@@ -140,7 +140,7 @@ def _ensure_round_games(
                 return
             existing = conn.execute(
                 "SELECT COUNT(*) FROM games WHERE series_id = %s", (sid,)
-            ).fetchone()[0]
+            ).fetchone()["count"]
             if existing > 0:
                 return
             a, sa = semi_winners[0]
@@ -297,7 +297,7 @@ def sim_playoff(
                       g.completed, s.name as series_name, g.series_id
                FROM games g
                JOIN series s ON g.series_id = s.id
-               WHERE s.season_id = %s AND g.completed = 0 AND g.game_date > %s
+               WHERE s.season_id = %s AND g.completed = 0 AND g.game_date::date > %s
                ORDER BY g.game_date, s.name""",
             (season_id, next_date),
         ).fetchall()

@@ -740,7 +740,7 @@ async def save_draft_preferences(
         "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
         (gm["id"], draft["id"]),
     )
-    db.executemany(
+    db.cursor().executemany(
         "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
         [(gm["id"], draft["id"], pid, rank + 1) for rank, pid in enumerate(player_ids)],
     )
@@ -1175,7 +1175,7 @@ def save_roster_put(
             )
         else:
             db.execute(
-                "INSERT INTO player_status (player_id, status, since) VALUES (%s, %s, datetime('now'))",
+                "INSERT INTO player_status (player_id, status, since) VALUES (%s, %s, NOW())",
                 (pid, new_status),
             )
 
@@ -2192,7 +2192,7 @@ async def save_lineup(
         db.execute(
             """INSERT INTO gm_lineup_preferences
                (gm_id, player_id, batting_order, position, is_starter, updated_at)
-               VALUES (%s, %s, %s, %s, 1, datetime('now'))""",
+               VALUES (%s, %s, %s, %s, 1, NOW())""",
             (gm["id"], slot["player_id"], slot["batting_order"], slot.get("position")),
         )
 
@@ -2265,7 +2265,7 @@ async def save_rotation(
         db.execute(
             """INSERT INTO team_rotation_pointer
                    (team_id, season_id, series_id, next_order, updated_at)
-               VALUES (%s, %s, '', %s, datetime('now'))
+               VALUES (%s, %s, '', %s, NOW())
                ON CONFLICT (team_id, season_id, series_id)
                DO UPDATE SET next_order = excluded.next_order,
                              updated_at = excluded.updated_at""",
@@ -2274,7 +2274,7 @@ async def save_rotation(
 
     # Remove bullpen roles for any pitcher now in the rotation
     if rotation:
-        placeholders = ",".join("%s" * len(rotation))
+        placeholders = ", ".join(["%s"] * len(rotation))
         db.execute(
             f"DELETE FROM bullpen_roles WHERE team_id = %s AND season_id = %s "
             f"AND end_date IS NULL AND player_id IN ({placeholders})",
@@ -2440,7 +2440,7 @@ async def save_strategy(
 
     set_clause = ", ".join(f"{col} = %s" for col in updates)
     db.execute(
-        f"UPDATE gm_profiles SET {set_clause}, updated_at = datetime('now') WHERE gm_id = %s",
+        f"UPDATE gm_profiles SET {set_clause}, updated_at = NOW() WHERE gm_id = %s",
         [*updates.values(), gm["id"]],
     )
     db.commit()
@@ -2497,7 +2497,7 @@ def schedule(
 
         opp_records: dict[str, str] = {}
         if opp_team_ids:
-            placeholders = ",".join("%s" * len(opp_team_ids))
+            placeholders = ", ".join(["%s"] * len(opp_team_ids))
             wl_rows = db.execute(
                 f"""SELECT tgs.team_id,
                            COALESCE(SUM(tgs.win),  0) as wins,

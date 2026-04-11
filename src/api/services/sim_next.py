@@ -44,8 +44,8 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
     # Find the current season for this league
     season_id = conn.execute(
         """
-        SELECT season_id FROM league_seasons
-        WHERE league_id = %s
+        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
+        WHERE ls.league_id = %s
         ORDER BY s.year DESC LIMIT 1
         """,
         (league_id,),
@@ -70,7 +70,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         existing_series = conn.execute(
             "SELECT COUNT(*) FROM series WHERE season_id = %s",
             (season_id,),
-        ).fetchone()[0]
+        ).fetchone()["count"]
 
         if existing_series == 0:
             # Auto-seed and build playoff bracket
@@ -131,7 +131,7 @@ def sim_next_day(league_id: str, conn: sqlite3.Connection) -> dict:
         team_ids.add(g["home_team_id"])
         team_ids.add(g["away_team_id"])
 
-    placeholders = ",".join("%s" * len(team_ids))
+    placeholders = ", ".join(["%s"] * len(team_ids))
     name_rows = conn.execute(
         f"SELECT id, city, mascot FROM teams WHERE id IN ({placeholders})",
         list(team_ids),
