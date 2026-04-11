@@ -1,6 +1,15 @@
 #!/bin/bash
 source .venv/bin/activate
 
+# Default to current system user if PGUSER is unset or empty
+: "${PGUSER:=$(whoami)}"
+
+# 2. Final safety check: bail if it's still somehow empty
+if [[ -z "$PGUSER" ]]; then
+    echo "Error: Could not determine database user."
+    exit 1
+fi
+
 # Check if --yes was passed as an argument
 SKIP_CONFIRM=false
 for arg in "$@"; do
@@ -18,9 +27,10 @@ if [ "$SKIP_CONFIRM" = false ]; then
     fi
 fi
 
+echo "$PGUSER"
 # Do the needful
-psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'your_db_name';" postgres
-psql -c "DROP DATABASE baseball_manager;"
-psql -c "CREATE DATABASE baseball_manager;"
+psql -U "$PGUSER" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'baseball_manager';" postgres
+psql -U "$PGUSER" -c "DROP DATABASE baseball_manager;" postgres
+psql -U "$PGUSER" -c "CREATE DATABASE baseball_manager;" postgres
 
 uvicorn src.api.main:app --reload
