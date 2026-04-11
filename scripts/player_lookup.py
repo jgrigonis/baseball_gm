@@ -6,12 +6,10 @@ ratings, and season stats from the database.
 Usage:
     python player_lookup.py "John Smith"
     python player_lookup.py "John Smith" --season 2025
-    python player_lookup.py "John Smith" --season 2025 --db db_filename
     python player_lookup.py "John Smith" --dir team_files/2025
 
 Defaults:
     --dir   team_files/
-    --db    league.db
 """
 
 import argparse
@@ -33,7 +31,6 @@ def parse_args():
     parser.add_argument(
         "--season", help="Season year or name to filter stats (e.g. 2025)"
     )
-    parser.add_argument("--db", default="league.db", help="Name of SQLite database")
     return parser.parse_args()
 
 
@@ -133,12 +130,12 @@ PITCHING_COLS = [
 ]
 
 
-def query_season_stats(db_file: str, player_id: str, season: str | None) -> dict:
+def query_season_stats(player_id: str, season: str | None) -> dict:
     """
     Aggregate player_game_stats for a player, optionally filtered by season.
     Returns dict with 'batting', 'pitching', and 'games' keys.
     """
-    conn = get_connection(db_file)
+    conn = get_connection()
     cur = conn.cursor()
 
     # Show available seasons and resolve season_id
@@ -393,7 +390,7 @@ def main():
     # DB stats
     player_id = row.get("ID", "")
     season_stats = (
-        query_season_stats(args.db, player_id, args.season) if player_id else {}
+        query_season_stats(player_id, args.season) if player_id else {}
     )
 
     display_player(row, ratings, season_stats)

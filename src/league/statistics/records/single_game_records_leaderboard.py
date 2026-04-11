@@ -12,19 +12,11 @@ Usage:
     python3 records.py --batting
     python3 records.py --pitching
     python3 records.py --top 10
-    python3 records.py --db path/to/other.db        # override default DB
 """
 
 import argparse
-import os
-import sys
 
-try:
-    from src.util.locations import LEAGUE_FILES_DIR
-except ImportError:
-    LEAGUE_FILES_DIR = "leagues"
-
-DEFAULT_DB = os.path.join(LEAGUE_FILES_DIR, "league.db")
+from src.db.connection import get_connection
 
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
@@ -252,11 +244,6 @@ def main():
         description="Baseball single-game records leaderboard"
     )
     parser.add_argument(
-        "--db",
-        default=DEFAULT_DB,
-        help=f"Path to SQLite database (default: {DEFAULT_DB})",
-    )
-    parser.add_argument(
         "--season",
         type=int,
         help="Filter to a specific season year (includes playoffs)",
@@ -282,11 +269,8 @@ def main():
         args.batting = True
         args.pitching = True
 
-    if not os.path.exists(args.db):
-        print(f"Error: database not found at '{args.db}'")
-        sys.exit(1)
 
-    conn = sqlite3.connect(args.db)
+    conn = get_connection()
 
     scope_parts = []
     if args.season:

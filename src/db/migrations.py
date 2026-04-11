@@ -12,7 +12,6 @@ Migrations are:
 - Explicit
 
 Important Notes:
-- SQLite migrations are hard to roll back
 - Avoid destructive changes
 - Prefer adding columns/tables
 - If you must remove something → create a new table and migrate data
@@ -33,7 +32,7 @@ def run_migrations(conn):
     Run all pending migrations in order.
 
     Args:
-        conn: SQLite database connection
+        conn: database connection
 
     Raises:
         Exception: If any migration fails (after rollback)
@@ -78,7 +77,7 @@ def _record_migration(conn, version):
     Record that a migration has been applied.
 
     Args:
-        conn: SQLite database connection
+        conn: database connection
         version: Migration version number
     """
     conn.execute(

@@ -14,19 +14,12 @@ Usage:
     python3 season_records.py --batting
     python3 season_records.py --pitching
     python3 season_records.py --top 10
-    python3 season_records.py --db path/to/other.db
 """
 
 import argparse
-import os
 import sys
 
-try:
-    from src.util.locations import LEAGUE_FILES_DIR
-except ImportError:
-    LEAGUE_FILES_DIR = "leagues"
-
-DEFAULT_DB = os.path.join(LEAGUE_FILES_DIR, "league.db")
+from src.db.connection import get_connection
 
 PA_PER_GAME = 3.1
 IP_PER_GAME = 1.0
@@ -339,11 +332,6 @@ def main():
         description="Baseball single-season records leaderboard"
     )
     parser.add_argument(
-        "--db",
-        default=DEFAULT_DB,
-        help=f"Path to SQLite database (default: {DEFAULT_DB})",
-    )
-    parser.add_argument(
         "--regular-season",
         action="store_true",
         help="Regular season only — excludes playoff series games",
@@ -363,12 +351,9 @@ def main():
         args.batting = True
         args.pitching = True
 
-    if not os.path.exists(args.db):
-        print(f"Error: database not found at '{args.db}'")
-        sys.exit(1)
 
     # Check rollup table exists and has data
-    conn = sqlite3.connect(args.db)
+    conn = get_connection()
     row = conn.execute(
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='player_season_stats'"
     ).fetchone()

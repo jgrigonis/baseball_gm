@@ -22,17 +22,12 @@ import os
 import sys
 
 try:
-    from src.util.locations import LEAGUE_FILES_DIR
-except ImportError:
-    LEAGUE_FILES_DIR = "leagues"
-
-try:
     from src.util.team_resolver import resolve_team, list_teams, TeamResolverError
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
     from src.util.team_resolver import resolve_team, list_teams, TeamResolverError
 
-DEFAULT_DB = os.path.join(LEAGUE_FILES_DIR, "league.db")
+from src.db.connection import get_connection
 
 
 # ── Formatting ────────────────────────────────────────────────────────────────
@@ -520,11 +515,6 @@ def main():
         description="Team franchise records — single game, season, and series"
     )
     parser.add_argument(
-        "--db",
-        default=DEFAULT_DB,
-        help=f"Path to SQLite database (default: {DEFAULT_DB})",
-    )
-    parser.add_argument(
         "--team",
         "-t",
         help="Filter to a specific team — city, mascot, full name, or UUID",
@@ -549,12 +539,8 @@ def main():
     )
     args = parser.parse_args()
 
-    if not os.path.exists(args.db):
-        print(f"Error: database not found at '{args.db}'")
-        sys.exit(1)
+    conn = get_connection()
 
-    conn = sqlite3.connect(args.db)
-    conn.row_factory = sqlite3.Row
 
     if args.teams:
         teams = list_teams(conn)

@@ -16,18 +16,12 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 
-try:
-    from src.util.locations import LEAGUE_FILES_DIR
-except ImportError:
-    LEAGUE_FILES_DIR = "leagues"
-
-
+from src.db.connection import get_connection
 from src.util.team_resolver import resolve_team, list_teams, TeamResolverError
 
-DEFAULT_DB = os.path.join(LEAGUE_FILES_DIR, "league.db")
+
 
 PA_PER_GAME = 3.1
 IP_PER_GAME = 1.0
@@ -526,11 +520,6 @@ def run_season_pitching(args, conn, team_id):
 def main():
     parser = argparse.ArgumentParser(description="All-time records for a specific team")
     parser.add_argument(
-        "--db",
-        default=DEFAULT_DB,
-        help=f"Path to SQLite database (default: {DEFAULT_DB})",
-    )
-    parser.add_argument(
         "--team", "-t", help="Team to look up — city, mascot, full name, or UUID"
     )
     parser.add_argument("--teams", action="store_true", help="List all teams and exit")
@@ -550,12 +539,7 @@ def main():
     )
     args = parser.parse_args()
 
-    if not os.path.exists(args.db):
-        print(f"Error: database not found at '{args.db}'")
-        sys.exit(1)
-
-    conn = sqlite3.connect(args.db)
-    conn.row_factory = sqlite3.Row
+    conn = get_connection()
 
     if args.teams:
         teams = list_teams(conn)
