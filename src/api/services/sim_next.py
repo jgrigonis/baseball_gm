@@ -26,7 +26,7 @@ class SimConfig:
     seed: int | None = None
 
 
-def sim_next_day(league_id: str) -> dict:
+def sim_next_day(league_id: str, conn) -> dict:
     """
     Find the next unplayed game date for this league and play all games
     scheduled on that date.
