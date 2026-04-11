@@ -1,3 +1,4 @@
+#!/bin/bash
 # This is the old way to run the tests:
 # python3 -m unittest discover -s tests  -p "*_test.py" -v
 
