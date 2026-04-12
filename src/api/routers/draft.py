@@ -291,7 +291,9 @@ def execute_draft(
     try:
         from src.api.services.draft_execute import execute_blitz_draft
 
-        return execute_blitz_draft(draft_id, db)
+        result = execute_blitz_draft(draft_id, db)
+        db.commit()
+        return result
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 

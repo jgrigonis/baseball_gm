@@ -149,7 +149,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     season_id = draft["season_id"]
 
     conn.execute("UPDATE drafts SET state = 'open' WHERE id = %s", (draft_id,))
-    conn.commit()
+    # conn.commit()
 
     # Load all human GM team IDs first
     human_team_ids = {
@@ -238,7 +238,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         (len(picks) + 1, draft_id),
     )
     conn.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (league_id,))
-    conn.commit()
+    # conn.commit()
 
     return {
         "draft_id": draft_id,

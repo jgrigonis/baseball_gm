@@ -1,0 +1,126 @@
+# tests/factories/data_factory.py
+
+import uuid
+from types import SimpleNamespace
+
+
+class TestDataFactory:
+    def __init__(self, db):
+        self.db = db
+        self._league = None   # last created league, for gm() default
+
+    def _id(self):
+        return str(uuid.uuid4())
+
+    def league(self, state="draft", mode="blitz"):
+        league_id = self._id()
+        self.db.execute(
+            "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, %s, %s)",
+            (league_id, "Test League", state, mode),
+        )
+        obj = SimpleNamespace(id=league_id)
+        self._league = obj
+        return obj
+
+    def season(self, year=2025):
+        season_id = self._id()
+        self.db.execute(
+            "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
+            (season_id, year, f"Season {year}"),
+        )
+        return SimpleNamespace(id=season_id, year=year)
+
+    def league_season(self, league, season):
+        self.db.execute(
+            "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)"
+            " ON CONFLICT DO NOTHING",
+            (league.id, season.id),
+        )
+
+    def draft(self, league=None, season=None, **kwargs):
+        league = league or self.league()
+        season = season or self.season()
+        self.league_season(league, season)
+        draft_id = self._id()
+        fmt   = kwargs.get("fmt", "preference")
+        state = kwargs.get("state", "pending")
+        self.db.execute(
+            "INSERT INTO drafts (id, league_id, season_id, format, state)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (draft_id, league.id, season.id, fmt, state),
+        )
+        return SimpleNamespace(
+            id=draft_id,
+            league_id=league.id,
+            season_id=season.id,
+        )
+
+    def team(self, city="City", mascot="Team"):
+        team_id = self._id()
+        self.db.execute(
+            "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)"
+            " ON CONFLICT DO NOTHING",
+            (team_id, city, mascot),
+        )
+        return SimpleNamespace(id=team_id)
+
+    def gm(self, team=None, league=None, **kwargs):
+        gm_id  = self._id()
+        team   = team   or self.team()
+        league = league or self._league or self.league()
+        is_ai  = kwargs.get("is_ai", 1)
+        self.db.execute(
+            "INSERT INTO gms (id, league_id, team_id, display_name, is_ai)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (gm_id, league.id, team.id, "GM", is_ai),
+        )
+        self.db.execute(
+            "INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,)
+        )
+        return SimpleNamespace(id=gm_id)
+
+    def draft_order(self, draft, teams):
+        """Assign pick positions to a list of team objects for a given draft."""
+        for i, team in enumerate(teams, 1):
+            self.db.execute(
+                "INSERT INTO draft_order (draft_id, team_id, pick_position)"
+                " VALUES (%s, %s, %s)",
+                (draft.id, team.id, i),
+            )
+
+    def prospect(self, player_id=None, stamina=50, strikes=50):
+        """Insert a full prospect (player + skills + status)."""
+        player_id = player_id or self._id()
+        self.db.execute(
+            "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
+            " VALUES (%s, 'Test', 'Player', 'R', 'R', 'of')"
+            " ON CONFLICT DO NOTHING",
+            (player_id,),
+        )
+        self.db.execute(
+            """INSERT INTO player_skills
+               (player_id, age, durability, strikes, stamina, recovery, accuracy, clutch,
+                speed, power, arm, eye, contact, base_running,
+                bunting, catching, infield, outfield, ground_balls)
+               VALUES (%s,20,80,%s,%s,50,50,50,50,50,50,50,50,50,50,50,50,50,50)
+               ON CONFLICT DO NOTHING""",
+            (player_id, strikes, stamina),
+        )
+        self.db.execute(
+            "INSERT INTO player_status (player_id, status, since)"
+            " VALUES (%s, 'prospect', '2025-01-01')"
+            " ON CONFLICT DO NOTHING",
+            (player_id,),
+        )
+        return SimpleNamespace(id=player_id)
+
+    def player_row(self, player_id=None):
+        """Insert a bare player row (no skills/status) for FK satisfaction."""
+        player_id = player_id or self._id()
+        self.db.execute(
+            "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
+            " VALUES (%s, 'Test', 'Player', 'R', 'R', 'of')"
+            " ON CONFLICT DO NOTHING",
+            (player_id,),
+        )
+        return SimpleNamespace(id=player_id)

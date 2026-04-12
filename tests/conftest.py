@@ -6,15 +6,16 @@ from psycopg.pq import TransactionStatus
 from psycopg.rows import dict_row
 from unittest.mock import Mock
 
+from tests.factories.data_factory import TestDataFactory
 from tests.utils import FakeTeam, FakeRNG
 from src.game.game import Game
 from src.db.init import init_db
 
 # ── Repo imports ──────────────────────────────────────────────────────────────
-from src.db.repositories.bullpen_roles_repo import (
-    get_current_roles,
-    set_roles,
-)
+# from src.db.repositories.bullpen_roles_repo import (
+#     get_current_roles,
+#     set_roles,
+# )
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
@@ -103,6 +104,9 @@ def db_conn_factory(_session_conn):
         _session_conn.execute(f"ROLLBACK TO SAVEPOINT {sp}")
         _session_conn.execute(f"RELEASE SAVEPOINT {sp}")
 
+@pytest.fixture
+def factory(db_conn):
+    return TestDataFactory(db_conn)
 
 @pytest.fixture
 def db_seed(db_conn):

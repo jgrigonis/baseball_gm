@@ -120,6 +120,7 @@ class SnakeDraft:
         # 3. Run snake — respects current_owner_id from draft_pick_rights if available
         picks = self._run_snake(draft_order, rated)
         print(f"  Completed {len(picks)} picks across {ROUNDS} rounds")
+        self.conn.commit()
 
         # 4. Re-run RosterAssigner for each team
         self._reassign_rosters(draft_order)
@@ -278,7 +279,7 @@ class SnakeDraft:
 
                 overall_pick += 1
 
-        self.conn.commit()
+        # self.conn.commit()
         return picks
 
     # -----------------------------------------------------------------------

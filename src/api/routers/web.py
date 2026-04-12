@@ -987,6 +987,7 @@ def execute_draft(
         from src.api.services.draft_execute import execute_blitz_draft
 
         execute_blitz_draft(draft["id"], db)
+        db.commit()
     except Exception:
         return HTMLResponse(
             f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
