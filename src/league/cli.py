@@ -42,7 +42,6 @@ def get_args():
         action="store_true",
         help="Allow importing updated roster CSVs (e.g. after offseason aging).",
     )
-    parser.add_argument("--db", "-d", default="cli.db", help="DB File Name")
     parser.add_argument(
         "--manifest", "-m", default="league_teams.json", help="Set the manifest file."
     )
@@ -72,7 +71,7 @@ def main():
     # print(f"========== SCRIPT START {time.time()} ==========")
     man_path = Path(MANIFEST_FILES_DIR)
 
-    conn = get_connection(args.db)
+    conn = get_connection()
 
     init_db(conn)
 
