@@ -1,6 +1,9 @@
 # tests/conftest.py
-import sqlite3
+import os
 import pytest
+import psycopg
+from psycopg.pq import TransactionStatus
+from psycopg.rows import dict_row
 from unittest.mock import Mock
 
 from tests.utils import FakeTeam, FakeRNG
@@ -23,128 +26,165 @@ from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 
 
-# ── Core DB fixture ───────────────────────────────────────────────────────────
+# ── Core DB fixtures ──────────────────────────────────────────────────────────
 
-@pytest.fixture
-def db_conn():
+@pytest.fixture(scope="session")
+def _session_conn(request):
     """
-    In-memory SQLite connection initialised with the real production schema
-    (schema.py) and all migrations applied.
+    Session-scoped Postgres connection.  Runs init_db exactly once for the
+    whole test session, then stays open so every test can borrow it.
 
-    This is the single source of truth for test DB setup.  When the project
-    migrates to Postgres, only this fixture needs to change.
-
-    Scoped to 'function' (default) so every test gets a clean slate.
+    The DATABASE_URL env var is the default; --db-url on the CLI overrides it.
     """
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
+    db_url = request.config.getoption("--db-url") or os.environ.get("DATABASE_TEST_URL")
+    if not db_url:
+        raise RuntimeError(
+            "No test database URL found. Set DATABASE_TEST_URL or pass --db-url."
+        )
+    conn = psycopg.connect(db_url, row_factory=dict_row)
     init_db(conn)
+    # Wipe any data left over from a previous test session.
+    # CASCADE handles all dependent tables.  schema_migrations is preserved.
+    conn.execute("TRUNCATE TABLE leagues, seasons, teams, players, users CASCADE")
+    conn.commit()
     yield conn
     conn.close()
 
+
 @pytest.fixture
-def db_conn_factory():
-    """Factory that creates fresh initialised DB connections. Use when a test
-    needs more than one independent connection."""
-    conns = []
+def db_conn(_session_conn):
+    """
+    Function-scoped fixture.  Each test runs inside a SAVEPOINT so all writes
+    are invisible to other tests and are rolled back automatically on teardown.
+    No schema recreation cost — just a cheap savepoint per test.
+
+    If the test body exercises production code that calls conn.commit() or
+    conn.rollback(), the savepoint will be gone by teardown.  We catch that
+    and issue a plain ROLLBACK to recover the connection for the next test.
+    Note: data committed by production code inside the test will persist in
+    the test DB — use unique IDs in such tests to avoid cross-run collisions.
+    """
+    _session_conn.execute("SAVEPOINT test_savepoint")
+    yield _session_conn
+    try:
+        _session_conn.execute("ROLLBACK TO SAVEPOINT test_savepoint")
+        _session_conn.execute("RELEASE SAVEPOINT test_savepoint")
+    except Exception:
+        # Only issue ROLLBACK if the connection is in a genuine error state.
+        # Covering two cases:
+        #   - Production code called conn.commit(): savepoint is gone,
+        #     ROLLBACK TO SAVEPOINT threw InvalidSavepointSpecification,
+        #     which aborted the transaction → INERROR.
+        #   - Production code called conn.rollback(): same result.
+        # If the connection is IDLE or INTRANS for any other reason, leave
+        # it alone — an unnecessary rollback() here would undo the previous
+        # test's clean teardown and confuse the next test.
+        if _session_conn.info.transaction_status == TransactionStatus.INERROR:
+            _session_conn.rollback()
+
+
+@pytest.fixture
+def db_conn_factory(_session_conn):
+    """
+    Factory variant for tests that need to simulate multiple independent
+    connections.  Each call gets its own nested savepoint.
+    """
+    savepoints = []
+
     def _make():
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
-        init_db(conn)
-        conns.append(conn)
-        return conn
+        sp = f"sp_{len(savepoints)}"
+        _session_conn.execute(f"SAVEPOINT {sp}")
+        savepoints.append(sp)
+        return _session_conn
+
     yield _make
-    for c in conns:
-        c.close()
+
+    for sp in reversed(savepoints):
+        _session_conn.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+        _session_conn.execute(f"RELEASE SAVEPOINT {sp}")
 
 
 @pytest.fixture
 def db_seed(db_conn):
     """
     Baseline rows that satisfy FK constraints for most repo tests.
-    Inserts: 1 league, 2 seasons, 4 teams, 5 games, 2 players.
+    Inserts: 1 league, 11 seasons, 21 teams, 13 players, 5 games.
     Returns the db_conn so tests can add more rows on top.
     """
-    # Leagues
-    db_conn.execute(
-        """
-        INSERT INTO leagues (id, name, state)
-        VALUES (?, ?, ?)
-        """,
-        ("league-1", "League 1", "season"),
-    )
-    # Seasons
-    db_conn.executemany(
-        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
-        [
-            ("season-1", 2025, "Season 1"), 
-            ("season-2", 2026, "Season 2"),
-            ("season-10", 2026, "Season 2"),
-            ("season-11", 2026, "Season 2"),
+    with db_conn.cursor() as cur:
+        # League
+        cur.execute(
+            "INSERT INTO leagues (id, name, state) VALUES (%s, %s, %s)",
+            ("league-1", "League 1", "season"),
+        )
+        # Seasons
+        for row in [
+            ("season-1",    2025, "Season 1"),
+            ("season-2",    2026, "Season 2"),
+            ("season-10",   2026, "Season 2"),
+            ("season-11",   2026, "Season 2"),
             ("season-2023", 2023, "Season 1"),
             ("season-2024", 2024, "Season 2"),
             ("season-2025", 2025, "Season 3"),
             ("season-2026", 2026, "Season 4"),
-            ("S1", 2026, "Season 1"),
+            ("S1",          2026, "Season 1"),
             ("test-season", 2026, "Season 1"),
             ("season-3025", 2025, "Season 3"),
-        ],
-    )
-    # Teams
-    db_conn.executemany(
-        "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-        [
+        ]:
+            cur.execute("INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)", row)
+        # Teams
+        for row in [
             ("team-1",    "City 1",    "Team 1"),
             ("team-2",    "City 2",    "Team 2"),
             ("team-home", "Home City", "Homers"),
             ("team-away", "Away City", "Visitors"),
             ("home-team", "Home City", "Homers"),
             ("away-team", "Away City", "Visitors"),
-            ("BOS", "Boston", "Rots"),
-            ("home-11",    "home",    "home"),
-            ("home-12",    "home",    "home"),
-            ("home-13",    "home",    "home"),
-            ("home-14",    "home",    "home"),
-            ("home-15",    "home",    "home"),
-            ("away-11",    "away",    "away"),
-            ("away-12",    "away",    "away"),
-            ("away-13",    "away",    "away"),
-            ("away-14",    "away",    "away"),
-            ("away-15",    "away",    "away"),
-            ("team-a",    "away",    "away"),
-            ("team-b",    "away",    "away"),
-            ("team-c",    "away",    "away"),
-            ("team-d",    "away",    "away"),
-        ],
-    )
-    # Players
-    db_conn.executemany(
-        "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        [
-            ("p1", "John", "Doe",  "R", "R", "cf"),
-            ("p2", "Jane", "Doe",  "L", "L", "ss"),
-            ("player-0", "Joe", "Doe",  "R", "R", "cf"),
-            ("player-1", "John", "Doe",  "R", "R", "cf"),
-            ("player-2", "Jane", "Doe",  "L", "L", "ss"),
-            ("player-3", "John", "Doe",  "R", "R", "cf"),
-            ("player-4", "Jane", "Doe",  "L", "L", "ss"),
-            ("P001", "Jane", "Doe",  "L", "L", "ss"),
-            ("P002", "Jane", "Doe",  "L", "L", "ss"),
-            ("P003", "Jane", "Doe",  "L", "L", "ss"),
-            ("P004", "Jane", "Doe",  "L", "L", "ss"),
-            ("P005", "Jane", "Doe",  "L", "L", "ss"),
-            ("P006", "Jane", "Doe",  "L", "L", "ss"),
-        ],
-    )
-    # Games (season-1, using team-home vs team-away)
-    db_conn.executemany(
-        "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        [(f"game-{i}", f"2025-04-{i+1:02d}", "season-1", "team-home", "team-away", 0)
-         for i in range(5)],
-    )
-    db_conn.commit()
+            ("BOS",       "Boston",    "Rots"),
+            ("home-11",   "home",      "home"),
+            ("home-12",   "home",      "home"),
+            ("home-13",   "home",      "home"),
+            ("home-14",   "home",      "home"),
+            ("home-15",   "home",      "home"),
+            ("away-11",   "away",      "away"),
+            ("away-12",   "away",      "away"),
+            ("away-13",   "away",      "away"),
+            ("away-14",   "away",      "away"),
+            ("away-15",   "away",      "away"),
+            ("team-a",    "away",      "away"),
+            ("team-b",    "away",      "away"),
+            ("team-c",    "away",      "away"),
+            ("team-d",    "away",      "away"),
+        ]:
+            cur.execute("INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)", row)
+        # Players
+        for row in [
+            ("p1",       "John", "Doe", "R", "R", "cf"),
+            ("p2",       "Jane", "Doe", "L", "L", "ss"),
+            ("player-0", "Joe",  "Doe", "R", "R", "cf"),
+            ("player-1", "John", "Doe", "R", "R", "cf"),
+            ("player-2", "Jane", "Doe", "L", "L", "ss"),
+            ("player-3", "John", "Doe", "R", "R", "cf"),
+            ("player-4", "Jane", "Doe", "L", "L", "ss"),
+            ("P001",     "Jane", "Doe", "L", "L", "ss"),
+            ("P002",     "Jane", "Doe", "L", "L", "ss"),
+            ("P003",     "Jane", "Doe", "L", "L", "ss"),
+            ("P004",     "Jane", "Doe", "L", "L", "ss"),
+            ("P005",     "Jane", "Doe", "L", "L", "ss"),
+            ("P006",     "Jane", "Doe", "L", "L", "ss"),
+        ]:
+            cur.execute(
+                "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
+                " VALUES (%s, %s, %s, %s, %s, %s)",
+                row,
+            )
+        # Games
+        for i in range(5):
+            cur.execute(
+                "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)"
+                " VALUES (%s, %s, %s, %s, %s, %s)",
+                (f"game-{i}", f"2025-04-{i+1:02d}", "season-1", "team-home", "team-away", 0),
+            )
     return db_conn
 
 # def insert_more_teams(db_conn):
@@ -326,8 +366,8 @@ def pytest_addoption(parser):
         "--db-url",
         action="store",
         default=None,
-        help="Postgres connection URL (e.g. postgresql://user:pass@localhost/test). "
-             "When set, db_conn uses Postgres instead of SQLite.",
+        help="Postgres connection URL for the test database. "
+             "Falls back to the DATABASE_TEST_URL environment variable.",
     )
 
 

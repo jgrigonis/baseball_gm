@@ -1,87 +1,50 @@
 # tests/db/test_init.py
 
 import pytest
-import sqlite3
+import psycopg
+from unittest.mock import patch, Mock
 
 from src.db.init import init_db, verify_schema
 
 
-def test_init_db_creates_schema():
-    """Test that init_db creates all required tables"""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-
-    init_db(conn)
-
-    # Verify schema is valid
-    assert verify_schema(conn)
-
-    conn.close()
+def test_init_db_creates_schema(db_conn):
+    """Schema was created by the session fixture; verify it's valid."""
+    assert verify_schema(db_conn)
 
 
-def test_init_db_is_idempotent():
-    """Test that init_db can be called multiple times safely"""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-
-    # Call multiple times
-    init_db(conn)
-    init_db(conn)
-    init_db(conn)
-
-    # Should still be valid
-    assert verify_schema(conn)
-
-    conn.close()
+def test_init_db_is_idempotent(db_conn):
+    """init_db can be called multiple times safely (IF NOT EXISTS throughout)."""
+    init_db(db_conn)
+    init_db(db_conn)
+    assert verify_schema(db_conn)
 
 
-def test_init_db_rolls_back_on_error():
-    """Test that init_db rolls back if migrations fail"""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-
-    # Mock run_migrations to raise an error
+def test_init_db_rolls_back_on_error(db_conn):
+    """init_db rolls back if migrations fail; connection remains usable after."""
     import src.db.init as init_module
 
-    original_run_migrations = init_module.run_migrations
-
     def failing_migrations(conn):
-        raise sqlite3.OperationalError("Migration failed!")
+        raise psycopg.OperationalError("Migration failed!")
 
-    try:
-        # Replace run_migrations with failing version
-        init_module.run_migrations = failing_migrations
+    with patch.object(init_module, "run_migrations", failing_migrations):
+        with pytest.raises(psycopg.OperationalError):
+            init_db(db_conn)
 
-        with pytest.raises(sqlite3.OperationalError):
-            init_db(conn)
-
-        # Connection should still be usable after rollback
-        cursor = conn.execute("SELECT 1")
-        assert cursor.fetchone()[0] == 1
-
-    finally:
-        # Restore original function
-        init_module.run_migrations = original_run_migrations
-
-    conn.close()
+    # Connection should still be usable after the rollback
+    cursor = db_conn.execute("SELECT 1 AS val")
+    assert cursor.fetchone()["val"] == 1
 
 
-def test_schema_has_required_tables():
-    """Test that schema creates all expected tables"""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
+def test_schema_has_required_tables(db_conn):
+    """All expected tables exist after init_db."""
+    cursor = db_conn.execute("""
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+    """)
+    tables = {row["table_name"] for row in cursor.fetchall()}
 
-    init_db(conn)
-
-    cursor = conn.execute("""
-        SELECT name FROM sqlite_master 
-        WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        ORDER BY name
-        """)
-    tables = {row[0] for row in cursor.fetchall()}
-
-    # Check some critical tables exist
     expected_tables = {
         "schema_migrations",
         "players",
@@ -93,33 +56,20 @@ def test_schema_has_required_tables():
         "player_game_stats",
         "team_game_stats",
     }
-
-    assert expected_tables.issubset(
-        tables
-    ), f"Missing tables: {expected_tables - tables}"
-
-    conn.close()
+    assert expected_tables.issubset(tables), f"Missing tables: {expected_tables - tables}"
 
 
 def test_verify_schema_fails_on_missing_tables():
-    """Test that verify_schema raises error when tables are missing"""
-    conn = sqlite3.connect(":memory:")
+    """verify_schema raises RuntimeError when required tables are absent."""
+    mock_conn = Mock()
+    mock_cursor = Mock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn.execute.return_value = mock_cursor
 
-    # Don't initialize - no tables exist
     with pytest.raises(RuntimeError, match="Missing required tables"):
-        verify_schema(conn)
-
-    conn.close()
+        verify_schema(mock_conn)
 
 
-def test_verify_schema_passes_after_init():
-    """Test that verify_schema succeeds after initialization"""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-
-    init_db(conn)
-
-    # Should not raise
-    assert verify_schema(conn) is True
-
-    conn.close()
+def test_verify_schema_passes_after_init(db_conn):
+    """verify_schema returns True on a fully-initialised database."""
+    assert verify_schema(db_conn) is True

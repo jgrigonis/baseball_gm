@@ -46,78 +46,75 @@ _player_counter = 0
 
 def insert_team(db_conn, team_id, city="Test", mascot="Team"):
     db_conn.execute(
-        "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
+        "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         (team_id, city, mascot),
     )
-    db_conn.commit()
 
 
 def insert_season(db_conn, season_id, year=2026):
     db_conn.execute(
-        "INSERT OR IGNORE INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         (season_id, year, f"Season {year}"),
     )
-    db_conn.commit()
 
 
 def insert_league_season_team(db_conn, season_id, team_id, league_id="league-1"):
     db_conn.execute(
-        "INSERT OR IGNORE INTO leagues (id, name) VALUES (?, ?)",
+        "INSERT INTO leagues (id, name) VALUES (%s, %s) ON CONFLICT DO NOTHING",
         (league_id, "Test League"),
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO league_seasons (league_id, season_id) VALUES (?, ?)",
+        "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
         (league_id, season_id),
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id) VALUES (?, ?, ?)",
+        "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         (league_id, season_id, team_id),
     )
-    db_conn.commit()
 
 
 def insert_game_result(db_conn, season_id, team_id, wins, losses):
     """Insert game rows to represent a team's record."""
     db_conn.execute(
-        "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
+        "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         ("dummy", "Dummy", "Dummies"),
     )
     for i in range(wins):
         game_id = f"game-{team_id}-w{i}"
         db_conn.execute(
-            "INSERT OR IGNORE INTO games (id, game_date, season_id, home_team_id, away_team_id, completed) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
             (game_id, "2025-04-01", season_id, team_id, "dummy", 1),
         )
         db_conn.execute(
-            "INSERT OR IGNORE INTO team_game_stats (game_id, team_id, win, loss) VALUES (?, ?, 1, 0)",
+            "INSERT INTO team_game_stats (game_id, team_id, win, loss) VALUES (%s, %s, 1, 0) ON CONFLICT DO NOTHING",
             (game_id, team_id),
         )
     for i in range(losses):
         game_id = f"game-{team_id}-l{i}"
         db_conn.execute(
-            "INSERT OR IGNORE INTO games (id, game_date, season_id, home_team_id, away_team_id, completed) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
             (game_id, "2025-04-01", season_id, team_id, "dummy", 1),
         )
         db_conn.execute(
-            "INSERT OR IGNORE INTO team_game_stats (game_id, team_id, win, loss) VALUES (?, ?, 0, 1)",
+            "INSERT INTO team_game_stats (game_id, team_id, win, loss) VALUES (%s, %s, 0, 1) ON CONFLICT DO NOTHING",
             (game_id, team_id),
         )
-    db_conn.commit()
 
 
 def insert_prospect(db_conn, player_id, team_id=None, rating_skills=None):
     """Insert a prospect player, optionally on a team."""
     db_conn.execute(
-        "INSERT OR IGNORE INTO players (id, first_name, last_name, bats, throws, position) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO players (id, first_name, last_name, bats, throws, position) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
         (player_id, "Test", "Player", "R", "R", "of"),
     )
     skills = rating_skills or {}
     db_conn.execute(
-        """INSERT OR IGNORE INTO player_skills
+        """INSERT INTO player_skills
            (player_id, age, durability, strikes, stamina, recovery, accuracy, clutch,
             speed, power, arm, eye, contact, base_running,
             bunting, catching, infield, outfield, ground_balls)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+           ON CONFLICT DO NOTHING""",
         (
             player_id,
             20,
@@ -141,15 +138,14 @@ def insert_prospect(db_conn, player_id, team_id=None, rating_skills=None):
         ),
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO player_status (player_id, status, since) VALUES (?, 'prospect', '2025-01-01')",
+        "INSERT INTO player_status (player_id, status, since) VALUES (%s, 'prospect', '2025-01-01') ON CONFLICT DO NOTHING",
         (player_id,),
     )
     if team_id:
         db_conn.execute(
-            "INSERT OR IGNORE INTO team_players (team_id, player_id) VALUES (?, ?)",
+            "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
             (team_id, player_id),
         )
-    db_conn.commit()
 
 
 def setup_basic_draft(db_conn, n_teams=4, n_prospects=200, season_id="season-1"):
@@ -258,18 +254,21 @@ class TestLoadDraftPool:
         assert all(p.id != "p1" for p in pool)
 
     def test_excludes_non_prospects(self, db_conn, draft):
+        fa_id = "tst-fa1-non-prospect"
         db_conn.execute(
-            "INSERT INTO players (id, first_name, last_name, bats, throws) VALUES ('fa1','A','B','R','R')"
+            "INSERT INTO players (id, first_name, last_name, bats, throws) VALUES (%s,'A','B','R','R')",
+            (fa_id,),
         )
         db_conn.execute(
-            "INSERT INTO player_skills (player_id, age, durability, clutch, speed, power, eye, contact, base_running, bunting, catching, infield, outfield, arm, accuracy, stamina, recovery, ground_balls, strikes) VALUES ('fa1',30,80,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50)"
+            "INSERT INTO player_skills (player_id, age, durability, clutch, speed, power, eye, contact, base_running, bunting, catching, infield, outfield, arm, accuracy, stamina, recovery, ground_balls, strikes) VALUES (%s,30,80,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50)",
+            (fa_id,),
         )
         db_conn.execute(
-            "INSERT INTO player_status (player_id, status, since) VALUES ('fa1','free_agent','2025-01-01')"
+            "INSERT INTO player_status (player_id, status, since) VALUES (%s,'free_agent','2025-01-01')",
+            (fa_id,),
         )
-        db_conn.commit()
         pool = draft._load_draft_pool()
-        assert all(p.id != "fa1" for p in pool)
+        assert all(p.id != fa_id for p in pool)
 
     def test_empty_pool(self, db_conn, draft):
         pool = draft._load_draft_pool()
@@ -392,7 +391,7 @@ class TestRunSnake:
 
         for pick in picks:
             row = db_conn.execute(
-                "SELECT 1 FROM team_players WHERE team_id = ? AND player_id = ?",
+                "SELECT 1 FROM team_players WHERE team_id = %s AND player_id = %s",
                 (pick.team_id, pick.player_id),
             ).fetchone()
             assert row is not None, f"Player {pick.player_id} not in team_players"
@@ -408,7 +407,7 @@ class TestRunSnake:
 
         for pick in picks[:20]:  # spot check first 20
             row = db_conn.execute(
-                "SELECT status FROM player_status WHERE player_id = ?",
+                "SELECT status FROM player_status WHERE player_id = %s",
                 (pick.player_id,),
             ).fetchone()
             assert row["status"] == "minors"
