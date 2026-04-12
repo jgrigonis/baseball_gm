@@ -15,6 +15,7 @@ from src.league.manifest_helper import (
     validate_manifest_uniqueness,
 )
 from src.league.offseason.draft_generator import DraftGenerator
+from src.league.offseason.snake_draft import write_draft_order
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import MANIFEST_FILES_DIR
 
@@ -80,7 +81,7 @@ def start_league(league_id: str, conn) -> dict:
 
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
+        "SELECT COUNT(*) as count FROM games WHERE season_id = %s", (season_id,)
     ).fetchone()["count"]
 
     if existing_games == 0:
@@ -163,8 +164,6 @@ def start_league(league_id: str, conn) -> dict:
     )
 
     # Write draft order using a separate shuffle from GM assignment
-    from src.league.offseason.snake_draft import write_draft_order
-
     draft_order_ids = team_ids_all[:]
     rng.shuffle(draft_order_ids)
     write_draft_order(conn, draft_id, league_id, year, draft_order_ids)
