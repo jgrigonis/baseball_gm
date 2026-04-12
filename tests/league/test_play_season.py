@@ -11,8 +11,8 @@ play_game() is too integrated (full game engine + 10+ repos) to unit test —
 that belongs in integration tests.
 """
 
-import random
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -264,62 +264,65 @@ class TestPickStarterInjuredScheduled:
 class TestClearGameData:
 
     @pytest.fixture
-    def game(self, db_conn):
-        db_conn.execute(
-            "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
-            ("s1", 2025, "Season 1"),
-        )
-        db_conn.execute(
-            "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            ("home", "H", "H"),
-        )
-        db_conn.execute(
-            "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            ("away", "A", "A"),
-        )
-        db_conn.execute(
-            """INSERT INTO games
-               (id, game_date, season_id, home_team_id, away_team_id,
-                home_score, away_score, winner_id, innings_played, completed)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("game-1", "2025-04-01", "s1", "home", "away", 5, 3, "home", 9, 1),
-        )
-        db_conn.commit()
-        return db_conn
+    def game(self, factory):
+        return factory.game_with_teams()
+    # @pytest.fixture
+    # def game(self, db_conn):
+    #     db_conn.execute(
+    #         "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
+    #         ("s1", 2025, "Season 1"),
+    #     )
+    #     db_conn.execute(
+    #         "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
+    #         ("home", "H", "H"),
+    #     )
+    #     db_conn.execute(
+    #         "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
+    #         ("away", "A", "A"),
+    #     )
+    #     db_conn.execute(
+    #         """INSERT INTO games
+    #            (id, game_date, season_id, home_team_id, away_team_id,
+    #             home_score, away_score, winner_id, innings_played, completed)
+    #            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+    #         ("game-1", "2025-04-01", "s1", "home", "away", 5, 3, "home", 9, 1),
+    #     )
+    #     db_conn.commit()
+    #     return db_conn
 
-    def test_clears_game_scores(self, game):
-        clear_game_data(game, "game-1")
-        row = game.execute(
-            "SELECT home_score, away_score FROM games WHERE id = ?", ("game-1",)
+    def test_clears_game_scores(self, db_conn, game):
+        clear_game_data(db_conn, game.id)
+        row = db_conn.execute(
+            "SELECT home_score, away_score FROM games WHERE id = %s", (game.id,)
         ).fetchone()
         assert row["home_score"] is None
         assert row["away_score"] is None
 
-    def test_clears_winner(self, game):
-        clear_game_data(game, "game-1")
-        row = game.execute(
-            "SELECT winner_id FROM games WHERE id = ?", ("game-1",)
+    def test_clears_winner(self, db_conn, game):
+        clear_game_data(db_conn, game.id)
+        row = db_conn.execute(
+            "SELECT winner_id FROM games WHERE id = %s", (game.id,)
         ).fetchone()
         assert row["winner_id"] is None
 
-    def test_clears_innings_played(self, game):
-        clear_game_data(game, "game-1")
-        row = game.execute(
-            "SELECT innings_played FROM games WHERE id = ?", ("game-1",)
+    def test_clears_innings_played(self, db_conn, game):
+        clear_game_data(db_conn, game.id)
+        row = db_conn.execute(
+            "SELECT innings_played FROM games WHERE id = %s", (game.id,)
         ).fetchone()
         assert row["innings_played"] is None
 
-    def test_sets_completed_to_zero(self, game):
-        clear_game_data(game, "game-1")
-        row = game.execute(
-            "SELECT completed FROM games WHERE id = ?", ("game-1",)
+    def test_sets_completed_to_zero(self, db_conn, game):
+        clear_game_data(db_conn, game.id)
+        row = db_conn.execute(
+            "SELECT completed FROM games WHERE id = %s", (game.id,)
         ).fetchone()
         assert row["completed"] == 0
 
-    def test_game_row_still_exists(self, game):
-        clear_game_data(game, "game-1")
-        row = game.execute(
-            "SELECT id FROM games WHERE id = ?", ("game-1",)
+    def test_game_row_still_exists(self, db_conn, game):
+        clear_game_data(db_conn, game.id)
+        row = db_conn.execute(
+            "SELECT id FROM games WHERE id = %s", (game.id,)
         ).fetchone()
         assert row is not None
 
@@ -331,52 +334,85 @@ class TestClearGameData:
 class TestLoadEligibleIds:
 
     @pytest.fixture
-    def seeded(self, db_conn):
-        db_conn.execute(
-            "INSERT INTO teams (id, city, mascot) VALUES ('t1', 'C', 'M')"
-        )
-        for pid, status in [
-            ("p-26", "26man"),
-            ("p-40", "40man"),
-            ("p-min", "minors"),
-            ("p-fa", "free_agent"),
-        ]:
+    def seeded(self, factory, db_conn):
+        team = factory.team()
+
+        players = {}
+        for status in ["26man", "40man", "minors", "free_agent"]:
+            player_id = factory._id()
+
             db_conn.execute(
                 "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
-                " VALUES (?, 'A', 'B', 'R', 'R', 'cf')", (pid,)
+                " VALUES (%s, 'A', 'B', 'R', 'R', 'cf')",
+                (player_id,),
             )
             db_conn.execute(
-                "INSERT INTO player_status (player_id, status, since) VALUES (?, ?, '2025-01-01')",
-                (pid, status),
+                "INSERT INTO player_status (player_id, status, since) VALUES (%s, %s, '2025-01-01')",
+                (player_id, status),
             )
             db_conn.execute(
-                "INSERT INTO team_players (team_id, player_id) VALUES ('t1', ?)", (pid,)
+                "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s)",
+                (team.id, player_id),
             )
-        db_conn.commit()
-        return db_conn
+
+            #players.append(player_id)
+            players[status] = player_id
+
+        return db_conn, team.id, players
+
+    # @pytest.fixture
+    # def seeded(self, db_conn):
+    #     db_conn.execute(
+    #         "INSERT INTO teams (id, city, mascot) VALUES ('t1', 'C', 'M')"
+    #     )
+    #     for pid, status in [
+    #         ("p-26", "26man"),
+    #         ("p-40", "40man"),
+    #         ("p-min", "minors"),
+    #         ("p-fa", "free_agent"),
+    #     ]:
+    #         db_conn.execute(
+    #             "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
+    #             " VALUES (%s, 'A', 'B', 'R', 'R', 'cf')", (pid,)
+    #         )
+    #         db_conn.execute(
+    #             "INSERT INTO player_status (player_id, status, since) VALUES (%s, %s, '2025-01-01')",
+    #             (pid, status),
+    #         )
+    #         db_conn.execute(
+    #             "INSERT INTO team_players (team_id, player_id) VALUES ('t1', %s)", (pid,)
+    #         )
+    #     db_conn.commit()
+    #     return db_conn
 
     def test_blitz_includes_26man_and_40man(self, seeded):
-        ids = _load_eligible_ids(seeded, "t1", "", blitz=True)
-        assert "p-26" in ids
-        assert "p-40" in ids
+        db, team_id, players = seeded
+        ids = _load_eligible_ids(db, team_id, "", blitz=True)
+        assert players["26man"] in ids
+        assert players["40man"]in ids
 
     def test_blitz_excludes_minors_and_free_agents(self, seeded):
-        ids = _load_eligible_ids(seeded, "t1", "", blitz=True)
-        assert "p-min" not in ids
-        assert "p-fa" not in ids
+        db, team_id, players = seeded
+        ids = _load_eligible_ids(db, team_id, "", blitz=True)
+        assert players["minors"] not in ids
+        assert players["free_agent"] not in ids
+
 
     def test_long_form_includes_only_26man(self, seeded):
-        ids = _load_eligible_ids(seeded, "t1", "", blitz=False)
-        assert "p-26" in ids
-        assert "p-40" not in ids
+        db, team_id, players = seeded
+        ids = _load_eligible_ids(db, team_id, "", blitz=False)
+        assert players["26man"] in ids
+        assert players["40man"]not in ids
 
     def test_long_form_excludes_minors_and_free_agents(self, seeded):
-        ids = _load_eligible_ids(seeded, "t1", "", blitz=False)
-        assert "p-min" not in ids
-        assert "p-fa" not in ids
+        db, team_id, players = seeded
+        ids = _load_eligible_ids(db, team_id, "", blitz=False)
+        assert players["minors"] not in ids
+        assert players["free_agent"] not in ids
 
     def test_returns_set(self, seeded):
-        ids = _load_eligible_ids(seeded, "t1", "", blitz=True)
+        db, team_id, _ = seeded
+        ids = _load_eligible_ids(db, team_id, "", blitz=True)
         assert isinstance(ids, set)
 
     def test_empty_roster_returns_empty_set(self, db_conn):

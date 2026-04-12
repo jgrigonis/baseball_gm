@@ -64,6 +64,12 @@ class TestDataFactory:
         )
         return SimpleNamespace(id=team_id)
 
+    def league_season_team(self, league, season, team):
+        self.db.execute(
+            "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s)",
+            (league.id, season.id, team.id),
+        )
+
     def gm(self, team=None, league=None, **kwargs):
         gm_id  = self._id()
         team   = team   or self.team()
@@ -124,3 +130,74 @@ class TestDataFactory:
             (player_id,),
         )
         return SimpleNamespace(id=player_id)
+
+    def game(self, season, home_team, away_team, game_date="2025-04-01"):
+        game_id = self._id()
+
+        self.db.execute(
+            """INSERT INTO games
+            (id, game_date, season_id, home_team_id, away_team_id,
+                home_score, away_score, winner_id, innings_played, completed)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                game_id,
+                game_date,
+                season["id"],
+                home_team["id"],
+                away_team["id"],
+                5,
+                3,
+                home_team["id"],
+                9,
+                1,
+            ),
+        )
+        return SimpleNamespace(
+            id = game_id,
+        )
+        # return {"id": game_id}
+
+    def game_with_teams(
+        self,
+        *,
+        season=None,
+        home=None,
+        away=None,
+        game_date="2025-04-01",
+    ):
+        season = season or self.season()
+        home = home or self.team(city="H", mascot="H")
+        away = away or self.team(city="A", mascot="A")
+
+        game_id = self._id()
+
+        self.db.execute(
+            """INSERT INTO games
+            (id, game_date, season_id, home_team_id, away_team_id,
+                home_score, away_score, winner_id, innings_played, completed)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                game_id,
+                game_date,
+                season.id,
+                home.id,
+                away.id,
+                5,
+                3,
+                home.id,
+                9,
+                1,
+            ),
+        )
+        return SimpleNamespace(
+            id = game_id,
+            season = season,
+            home = home,
+            away = away,
+        )
+        # return {
+        #     "id": game_id,
+        #     "season": season,
+        #     "home": home,
+        #     "away": away,
+        # }

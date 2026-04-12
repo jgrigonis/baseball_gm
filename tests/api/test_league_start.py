@@ -49,37 +49,50 @@ FAKE_MANIFEST = {
 
 
 @pytest.fixture
-def league(db_conn):
+def league(db_conn, factory):
     """Insert a league in lobby state and a human GM."""
-    db_conn.execute(
-        "INSERT INTO leagues (id, name, state, mode) VALUES (?, ?, 'lobby', 'blitz')",
-        (LEAGUE_ID, "Test League"),
-    )
-    db_conn.execute(
-        "INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)",
-        (SEASON_ID, 2025, "Season 2025"),
-    )
-    db_conn.execute(
-        "INSERT INTO league_seasons (league_id, season_id) VALUES (?, ?)",
-        (LEAGUE_ID, SEASON_ID),
-    )
-    for t in FAKE_TEAMS:
-        db_conn.execute(
-            "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            (t.id, f"City {t.id}", "Team"),
-        )
-        db_conn.execute(
-            "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (?, ?, ?)",
-            (LEAGUE_ID, SEASON_ID, t.id),
-        )
+    league = factory.league(state="lobby")
+    season = factory.season()
+    factory.league_season(league, season)
+    # db_conn.execute(
+    #     "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, 'lobby', 'blitz')",
+    #     (league.id, "Test League"),
+    # )
+    # db_conn.execute(
+    #     "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
+    #     (season.id, 2025, "Season 2025"),
+    # )
+    # db_conn.execute(
+    #     "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)",
+    #     (league.id, season.id),
+    # )
+    team1 = factory.team()
+    team2 = factory.team()
+    team3 = factory.team()
+    team4 = factory.team()
+    factory.league_season_team(league, season, team1)
+    factory.league_season_team(league, season, team2)
+    factory.league_season_team(league, season, team3)
+    factory.league_season_team(league, season, team4)
+
+    # for t in FAKE_TEAMS:
+    #     db_conn.execute(
+    #         "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
+    #         (t.id, f"City {t.id}", "Team"),
+    #     )
+    #     db_conn.execute(
+    #         "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s)",
+    #         (league.id, season.id, t.id),
+    #     )
     # One human GM, no team assigned yet
-    gm_id = str(uuid.uuid4())
-    db_conn.execute(
-        "INSERT INTO gms (id, league_id, display_name, is_ai) VALUES (?, ?, 'Human GM', 0)",
-        (gm_id, LEAGUE_ID),
-    )
-    db_conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (?)", (gm_id,))
-    db_conn.commit()
+    factory.gm(team=team1, league=league, is_ai=0)
+    # gm_id = str(uuid.uuid4())
+    # db_conn.execute(
+    #     "INSERT INTO gms (id, league_id, display_name, is_ai) VALUES (%s, %s, 'Human GM', 0)",
+    #     (gm_id, league.id),
+    # )
+    # db_conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
+    # db_conn.commit()
     return db_conn
 
 
@@ -129,7 +142,7 @@ class TestStartLeagueGuards:
 
     def test_raises_if_league_not_in_lobby(self, db_conn):
         db_conn.execute(
-            "INSERT INTO leagues (id, name, state, mode) VALUES (?, ?, 'draft', 'blitz')",
+            "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, 'draft', 'blitz')",
             ("league-wrong-state", "Test"),
         )
         db_conn.commit()
@@ -138,7 +151,7 @@ class TestStartLeagueGuards:
 
     def test_raises_if_league_in_season_state(self, db_conn):
         db_conn.execute(
-            "INSERT INTO leagues (id, name, state, mode) VALUES (?, ?, 'season', 'blitz')",
+            "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, 'season', 'blitz')",
             ("league-season", "Test"),
         )
         db_conn.commit()
@@ -152,8 +165,9 @@ class TestStartLeagueGuards:
 
 class TestStartLeagueReturnValue:
 
-    def test_returns_expected_keys(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
+    def test_returns_expected_keys(self, patched_start, factory):
+        league = factory.league(state='lobby')
+        result = start_league(league.id, patched_start)
         assert set(result.keys()) == {
             "league_id", "season_id", "draft_id", "team_count",
             "game_count", "prospect_count", "seed", "your_team",
@@ -195,13 +209,13 @@ class TestLeagueStateTransition:
     def test_league_state_becomes_draft(self, patched_start):
         start_league(LEAGUE_ID, patched_start)
         row = patched_start.execute(
-            "SELECT state FROM leagues WHERE id = ?", (LEAGUE_ID,)
+            "SELECT state FROM leagues WHERE id = %s", (LEAGUE_ID,)
         ).fetchone()
         assert row["state"] == "draft"
 
     def test_league_was_lobby_before(self, league):
         row = league.execute(
-            "SELECT state FROM leagues WHERE id = ?", (LEAGUE_ID,)
+            "SELECT state FROM leagues WHERE id = %s", (LEAGUE_ID,)
         ).fetchone()
         assert row["state"] == "lobby"
 
@@ -215,7 +229,7 @@ class TestDraftCreation:
     def test_draft_record_created(self, patched_start):
         result = start_league(LEAGUE_ID, patched_start)
         row = patched_start.execute(
-            "SELECT * FROM drafts WHERE id = ?", (result["draft_id"],)
+            "SELECT * FROM drafts WHERE id = %s", (result["draft_id"],)
         ).fetchone()
         assert row is not None
         assert row["league_id"] == LEAGUE_ID
@@ -225,14 +239,14 @@ class TestDraftCreation:
     def test_draft_format_is_preference_for_blitz(self, patched_start):
         result = start_league(LEAGUE_ID, patched_start)
         row = patched_start.execute(
-            "SELECT format FROM drafts WHERE id = ?", (result["draft_id"],)
+            "SELECT format FROM drafts WHERE id = %s", (result["draft_id"],)
         ).fetchone()
         assert row["format"] == "preference"
 
     def test_only_one_draft_created(self, patched_start):
         start_league(LEAGUE_ID, patched_start)
         count = patched_start.execute(
-            "SELECT COUNT(*) FROM drafts WHERE league_id = ?", (LEAGUE_ID,)
+            "SELECT COUNT(*) FROM drafts WHERE league_id = %s", (LEAGUE_ID,)
         ).fetchone()[0]
         assert count == 1
 
@@ -246,7 +260,7 @@ class TestGMAssignment:
     def test_human_gm_assigned_to_a_team(self, patched_start):
         start_league(LEAGUE_ID, patched_start)
         row = patched_start.execute(
-            "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0",
+            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0",
             (LEAGUE_ID,),
         ).fetchone()
         assert row["team_id"] is not None
@@ -254,7 +268,7 @@ class TestGMAssignment:
     def test_human_gm_assigned_to_valid_team(self, patched_start):
         start_league(LEAGUE_ID, patched_start)
         row = patched_start.execute(
-            "SELECT team_id FROM gms WHERE league_id = ? AND is_ai = 0",
+            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0",
             (LEAGUE_ID,),
         ).fetchone()
         team_ids = {t.id for t in FAKE_TEAMS}
@@ -263,7 +277,7 @@ class TestGMAssignment:
     def test_ai_gms_created_for_remaining_teams(self, patched_start):
         start_league(LEAGUE_ID, patched_start)
         ai_count = patched_start.execute(
-            "SELECT COUNT(*) FROM gms WHERE league_id = ? AND is_ai = 1",
+            "SELECT COUNT(*) FROM gms WHERE league_id = %s AND is_ai = 1",
             (LEAGUE_ID,),
         ).fetchone()[0]
         # 4 teams, 1 human GM → 3 AI GMs
@@ -273,7 +287,7 @@ class TestGMAssignment:
         start_league(LEAGUE_ID, patched_start)
         for team in FAKE_TEAMS:
             count = patched_start.execute(
-                "SELECT COUNT(*) FROM gms WHERE league_id = ? AND team_id = ?",
+                "SELECT COUNT(*) FROM gms WHERE league_id = %s AND team_id = %s",
                 (LEAGUE_ID, team.id),
             ).fetchone()[0]
             assert count == 1, f"Team {team.id} has {count} GMs, expected 1"
@@ -284,15 +298,16 @@ class TestGMAssignment:
         # Should be "City team-X Team" format
         assert "Team" in result["your_team"]
 
-    def test_ai_gms_have_profiles(self, patched_start):
-        start_league(LEAGUE_ID, patched_start)
+    def test_ai_gms_have_profiles(self, patched_start, factory):
+        league = factory.league(state="lobby")
+        start_league(league.id, patched_start)
         ai_gm_ids = [
             r["id"] for r in patched_start.execute(
-                "SELECT id FROM gms WHERE league_id = ? AND is_ai = 1", (LEAGUE_ID,)
+                "SELECT id FROM gms WHERE league_id = %s AND is_ai = 1", (league.id,)
             ).fetchall()
         ]
         for gm_id in ai_gm_ids:
             row = patched_start.execute(
-                "SELECT gm_id FROM gm_profiles WHERE gm_id = ?", (gm_id,)
+                "SELECT gm_id FROM gm_profiles WHERE gm_id = %s", (gm_id,)
             ).fetchone()
             assert row is not None, f"AI GM {gm_id} has no gm_profiles row"
