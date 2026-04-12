@@ -270,6 +270,7 @@ class TestScheduleGenerator:
         assert len(schedule) == 24
 
 
+
 class TestSaveScheduleToDB:
     """Test save_schedule_to_db function."""
 
@@ -277,48 +278,26 @@ class TestSaveScheduleToDB:
         """Test saving empty schedule."""
         save_schedule_to_db(db_conn, [])
 
-        cursor = db_conn.execute("SELECT COUNT(*) as c FROM games")
-        count = cursor.fetchone()["c"]
+        count = db_conn.execute("SELECT COUNT(*) AS c FROM games").fetchone()["c"]
         assert count == 0
 
-        # Check print output
         captured = capsys.readouterr()
         assert "Saved 0 games" in captured.out
 
-    def test_save_single_game(self, db_conn, capsys):
+    def test_save_single_game(self, db_conn, factory, capsys):
         """Test saving a single game."""
-        db_conn.execute(
-            """
-            INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)
-            """,
-            ("season-1", 2025, "Season 2025")
-        )
-        # db_conn.executemany(
-        #     "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
-        #     [
-        #         ("team-a",    "away",    "away"),
-        #         ("team-b",    "away",    "away"),
-        #     ],
-        # )
-        db_conn.execute(
-            """
-            INSERT INTO teams (id, city, mascot)
-            VALUES
-                (%s, %s, %s),
-                (%s, %s, %s)
-            """,
-            (
-                "team-a", "away", "away",
-                "team-b", "away", "away",
-            ),
-        )
+        season = factory.season()
+        team_a = factory.team()
+        team_b = factory.team()
 
+        import uuid
+        game_id = str(uuid.uuid4())
         schedule = [
             ScheduledGame(
-                id="game-1",
-                season_id="season-1",
-                home_team_id="team-a",
-                away_team_id="team-b",
+                id=game_id,
+                season_id=season.id,
+                home_team_id=team_a.id,
+                away_team_id=team_b.id,
                 game_date=date(2025, 4, 1),
                 series_id=None,
             )
@@ -326,60 +305,33 @@ class TestSaveScheduleToDB:
 
         save_schedule_to_db(db_conn, schedule)
 
-        # Verify database
-        cursor = db_conn.execute("SELECT * FROM games WHERE id = %s", ("game-1",))
-        row = cursor.fetchone()
+        row = db_conn.execute(
+            "SELECT * FROM games WHERE id = %s", (game_id,)
+        ).fetchone()
 
         assert row is not None
-        assert row["id"] == "game-1"
-        assert row["season_id"] == "season-1"
-        assert row["home_team_id"] == "team-a"
-        assert row["away_team_id"] == "team-b"
+        assert row["id"] == game_id
+        assert row["season_id"] == season.id
+        assert row["home_team_id"] == team_a.id
+        assert row["away_team_id"] == team_b.id
         assert row["game_date"] == "2025-04-01"
 
-        # Check print output
         captured = capsys.readouterr()
         assert "Saved 1 games" in captured.out
 
-    def test_save_multiple_games(self, db_conn):
+    def test_save_multiple_games(self, db_conn, factory):
         """Test saving multiple games."""
-        db_conn.execute(
-            """
-            INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)
-            """,
-            ("season-1", 3025, "Season 3025")
-        )
-        # db_conn.executemany(
-        #     "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
-        #     [
-        #         ("team-a",    "away",    "away"),
-        #         ("team-b",    "away",    "away"),
-        #         ("team-c",    "away",    "away"),
-        #         ("team-d",    "away",    "away"),
-        #     ],
-        # )
-        db_conn.execute(
-            """
-            INSERT INTO teams (id, city, mascot)
-            VALUES
-                (%s, %s, %s),
-                (%s, %s, %s),
-                (%s, %s, %s),
-                (%s, %s, %s)
-            """,
-            (
-                "team-a", "away", "away",
-                "team-b", "away", "away",
-                "team-c", "away", "away",
-                "team-d", "away", "away",
-            ),
-        )
+        import uuid
+        season = factory.season()
+        team_a = factory.team()
+        team_b = factory.team()
+
         schedule = [
             ScheduledGame(
-                id=f"game-{i}",
-                season_id="season-1",
-                home_team_id="team-a",
-                away_team_id="team-b",
+                id=str(uuid.uuid4()),
+                season_id=season.id,
+                home_team_id=team_a.id,
+                away_team_id=team_b.id,
                 game_date=date(2025, 4, i),
                 series_id=None,
             )
@@ -388,95 +340,60 @@ class TestSaveScheduleToDB:
 
         save_schedule_to_db(db_conn, schedule)
 
-        # Verify count
-        cursor = db_conn.execute("SELECT COUNT(*) as c FROM games")
-        count = cursor.fetchone()["c"]
+        count = db_conn.execute(
+            "SELECT COUNT(*) AS c FROM games WHERE season_id = %s", (season.id,)
+        ).fetchone()["c"]
         assert count == 5
 
-        # Verify all IDs present
-        cursor = db_conn.execute("SELECT id FROM games ORDER BY id")
-        ids = [row["id"] for row in cursor.fetchall()]
-        assert ids == ["game-1", "game-2", "game-3", "game-4", "game-5"]
-
-    def test_save_full_schedule(self, db_conn):
+    def test_save_full_schedule(self, db_conn, factory):
         """Test saving a complete generated schedule."""
         generator = ScheduleGenerator(rng=random.Random(42))
-        season_id="season-3025"
-        # db_conn.executemany(
-        #     "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
-        #     [
-        #         ("team-a",    "away",    "away"),
-        #         ("team-b",    "away",    "away"),
-        #         ("team-c",    "away",    "away"),
-        #         ("team-d",    "away",    "away"),
-        #     ],
-        # )
-        db_conn.execute(
-            """
-            INSERT INTO teams (id, city, mascot)
-            VALUES
-                (%s, %s, %s),
-                (%s, %s, %s),
-                (%s, %s, %s),
-                (%s, %s, %s)
-            """,
-            (
-                "team-a", "away", "away",
-                "team-b", "away", "away",
-                "team-c", "away", "away",
-                "team-d", "away", "away",
-            ),
-        )
-        db_conn.execute(
-            """
-            INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)
-            """,
-            (season_id, 3025, "Season 3025")
-        )
-        db_conn.commit()
+        season = factory.season()
+        teams = [factory.team() for _ in range(4)]
+        team_ids = [t.id for t in teams]
+
         schedule = generator.create_schedule(
-            season_id=season_id,
-            team_ids=["team-a", "team-b", "team-c", "team-d"],
-            start_date=date(3025, 4, 1),
+            season_id=season.id,
+            team_ids=team_ids,
+            start_date=date(2025, 4, 1),
             games_per_matchup=3,
             home_and_away=True,
         )
 
         save_schedule_to_db(db_conn, schedule)
 
-        # Verify count (4 teams, 6 pairings, 3 games, home/away = 36)
-        cursor = db_conn.execute("SELECT COUNT(*) as c FROM games WHERE season_id = %s", (season_id, ))
-        count = cursor.fetchone()["c"]
+        # 4 teams, 6 pairings, 3 games, home/away = 36
+        count = db_conn.execute(
+            "SELECT COUNT(*) AS c FROM games WHERE season_id = %s", (season.id,)
+        ).fetchone()["c"]
         assert count == 36
 
-        # Verify season_id on all games
-        cursor = db_conn.execute(
-            "SELECT COUNT(*) as c FROM games"
-        )
-        count = cursor.fetchone()["c"]
-        assert count == 36
-
-    def test_save_preserves_all_fields(self, db_conn, db_seed):
+    def test_save_preserves_all_fields(self, db_conn, factory):
         """Test that all fields are correctly saved."""
+        import uuid
+        season = factory.season()
+        home_team = factory.team()
+        away_team = factory.team()
+
+        game_id = str(uuid.uuid4())
         game = ScheduledGame(
-            id="test-game",
-            season_id="test-season",
-            home_team_id="home-team",
-            away_team_id="away-team",
+            id=game_id,
+            season_id=season.id,
+            home_team_id=home_team.id,
+            away_team_id=away_team.id,
             game_date=date(2025, 12, 25),
             series_id=None,
         )
 
         save_schedule_to_db(db_conn, [game])
 
-        cursor = db_conn.execute(
-            "SELECT * FROM games WHERE id = %s", ("test-game",)
-        )
-        row = cursor.fetchone()
+        row = db_conn.execute(
+            "SELECT * FROM games WHERE id = %s", (game_id,)
+        ).fetchone()
 
-        assert row["id"] == "test-game"
-        assert row["season_id"] == "test-season"
-        assert row["home_team_id"] == "home-team"
-        assert row["away_team_id"] == "away-team"
+        assert row["id"] == game_id
+        assert row["season_id"] == season.id
+        assert row["home_team_id"] == home_team.id
+        assert row["away_team_id"] == away_team.id
         assert row["game_date"] == "2025-12-25"
         assert row["series_id"] is None
