@@ -3,8 +3,8 @@
 Display aggregate league-wide stats for a season with expected real-world ranges.
 
 Usage:
-    python league_totals.py --file league.db --id <season_id>
-    python league_totals.py --file league.db  # auto-selects if one season
+    python league_totals.py --id <season_id>
+    python league_totals.py  # auto-selects if one season
 """
 
 import argparse
@@ -83,9 +83,6 @@ def _range_str(key: str) -> str:
 def parse_args():
     parser = argparse.ArgumentParser(
         description="League-wide stat totals for a season."
-    )
-    parser.add_argument(
-        "--file", "-f", default="league.db", help="Set the league db filename."
     )
     parser.add_argument("--id", "-i", help="Season ID (or partial name/year match)")
     parser.add_argument("--logs", action="store_true", help="Write output to log file.")

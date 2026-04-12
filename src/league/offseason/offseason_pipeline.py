@@ -518,7 +518,6 @@ class OffseasonPipeline:
 
 def get_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--db", "-d", default="league.db")
     p.add_argument("--season-id", "-i", required=True)
     p.add_argument("--league-id", "-l", default=None)
     p.add_argument("--seed", "-s", type=int)
@@ -527,7 +526,7 @@ def get_args():
 
 def main():
     args = get_args()
-    conn = get_connection(args.db)
+    conn = get_connection()
 
     setup_logger(
         name="offseason",

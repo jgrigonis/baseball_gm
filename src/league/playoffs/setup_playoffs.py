@@ -12,7 +12,7 @@ Steps:
      (unplayed games in eliminated series are simply skipped at play time)
 
 Usage:
-    python -m src.league.setup_playoffs --db league.db --season-id S1 --start-date 2025-10-01
+    python -m src.league.setup_playoffs --season-id S1 --start-date 2025-10-01
 """
 
 import argparse
@@ -41,7 +41,6 @@ def log_print(msg: str = "", logger: logging.Logger = None):
 
 def get_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--db", "-d", default="league.db")
     p.add_argument(
         "--season-id", "-i", required=True, help="Season ID to build playoffs for"
     )
@@ -315,7 +314,7 @@ def main():
             log_id="setup_playoffs",
             log_to_file=True,
         )
-    conn = get_connection(args.db)
+    conn = get_connection()
     lines = []
     lines.append(f"\n🏆 Setting up playoffs for season {args.season_id}")
     lines.append(f"   Start date : {start_date}")

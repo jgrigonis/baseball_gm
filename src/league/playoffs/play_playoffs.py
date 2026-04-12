@@ -13,7 +13,7 @@ Semi and Finals games are generated here once the prior round's winners
 are known, so home/away assignments are correct.
 
 Usage:
-    python -m src.league.playoffs.play_playoffs --db league.db --season-id S1
+    python -m src.league.playoffs.play_playoffs --season-id S1
 """
 
 import argparse
@@ -48,7 +48,6 @@ def log_print(msg: str = "", logger: logging.Logger = None):
 
 def get_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--db", "-d", default="league.db")
     p.add_argument("--season-id", "-i", required=True)
     p.add_argument("--seed", "-s", type=int, help="RNG seed for reproducibility")
     p.add_argument("--logs", action="store_true", help="Write per-game log files")
@@ -337,7 +336,7 @@ def get_seeds(conn, season_id: str) -> list[dict]:
 
 def main():
     args = get_args()
-    conn = get_connection(args.db)
+    conn = get_connection()
     logger = None
     if args.logs:
         logger = setup_logger(

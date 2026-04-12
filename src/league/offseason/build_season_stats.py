@@ -7,10 +7,10 @@ from scratch (e.g. after a schema change or data correction).
 
 Usage:
     # Incremental — build stats for one season
-    python3 -m scripts.build_season_stats --db league.db --season-id SEASON_UUID
+    python3 -m scripts.build_season_stats --season-id SEASON_UUID
 
     # Full rebuild — wipe and reconstruct all seasons
-    python3 -m scripts.build_season_stats --db league.db --rebuild
+    python3 -m scripts.build_season_stats --rebuild
 
 Hook into offseason_pipeline.py:
     pipeline.run(season_id) should call build_season(conn, season_id)
@@ -256,12 +256,6 @@ def parse_args():
         description="Build the player_season_stats rollup table."
     )
     p.add_argument(
-        "--db",
-        "-d",
-        default="league.db",
-        help="DB filename (resolved via get_connection, default: league.db)",
-    )
-    p.add_argument(
         "--season-id", "-i", help="Season UUID to build stats for (incremental)"
     )
     p.add_argument(
@@ -281,7 +275,7 @@ def main():
         )
         sys.exit(1)
 
-    conn = get_connection(args.db)
+    conn = get_connection()
     ensure_table(conn)
 
     if args.rebuild:
