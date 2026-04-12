@@ -277,8 +277,8 @@ class TestSaveScheduleToDB:
         """Test saving empty schedule."""
         save_schedule_to_db(db_conn, [])
 
-        cursor = db_conn.execute("SELECT COUNT(*) FROM games")
-        count = cursor.fetchone()[0]
+        cursor = db_conn.execute("SELECT COUNT(*) as c FROM games")
+        count = cursor.fetchone()["c"]
         assert count == 0
 
         # Check print output
@@ -289,16 +289,28 @@ class TestSaveScheduleToDB:
         """Test saving a single game."""
         db_conn.execute(
             """
-            INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)
+            INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)
             """,
             ("season-1", 2025, "Season 2025")
         )
-        db_conn.executemany(
-            "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            [
-                ("team-a",    "away",    "away"),
-                ("team-b",    "away",    "away"),
-            ],
+        # db_conn.executemany(
+        #     "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
+        #     [
+        #         ("team-a",    "away",    "away"),
+        #         ("team-b",    "away",    "away"),
+        #     ],
+        # )
+        db_conn.execute(
+            """
+            INSERT INTO teams (id, city, mascot)
+            VALUES
+                (%s, %s, %s),
+                (%s, %s, %s)
+            """,
+            (
+                "team-a", "away", "away",
+                "team-b", "away", "away",
+            ),
         )
 
         schedule = [
@@ -315,7 +327,7 @@ class TestSaveScheduleToDB:
         save_schedule_to_db(db_conn, schedule)
 
         # Verify database
-        cursor = db_conn.execute("SELECT * FROM games WHERE id = ?", ("game-1",))
+        cursor = db_conn.execute("SELECT * FROM games WHERE id = %s", ("game-1",))
         row = cursor.fetchone()
 
         assert row is not None
@@ -333,18 +345,34 @@ class TestSaveScheduleToDB:
         """Test saving multiple games."""
         db_conn.execute(
             """
-            INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)
+            INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)
             """,
             ("season-1", 3025, "Season 3025")
         )
-        db_conn.executemany(
-            "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            [
-                ("team-a",    "away",    "away"),
-                ("team-b",    "away",    "away"),
-                ("team-c",    "away",    "away"),
-                ("team-d",    "away",    "away"),
-            ],
+        # db_conn.executemany(
+        #     "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
+        #     [
+        #         ("team-a",    "away",    "away"),
+        #         ("team-b",    "away",    "away"),
+        #         ("team-c",    "away",    "away"),
+        #         ("team-d",    "away",    "away"),
+        #     ],
+        # )
+        db_conn.execute(
+            """
+            INSERT INTO teams (id, city, mascot)
+            VALUES
+                (%s, %s, %s),
+                (%s, %s, %s),
+                (%s, %s, %s),
+                (%s, %s, %s)
+            """,
+            (
+                "team-a", "away", "away",
+                "team-b", "away", "away",
+                "team-c", "away", "away",
+                "team-d", "away", "away",
+            ),
         )
         schedule = [
             ScheduledGame(
@@ -361,8 +389,8 @@ class TestSaveScheduleToDB:
         save_schedule_to_db(db_conn, schedule)
 
         # Verify count
-        cursor = db_conn.execute("SELECT COUNT(*) FROM games")
-        count = cursor.fetchone()[0]
+        cursor = db_conn.execute("SELECT COUNT(*) as c FROM games")
+        count = cursor.fetchone()["c"]
         assert count == 5
 
         # Verify all IDs present
@@ -374,18 +402,34 @@ class TestSaveScheduleToDB:
         """Test saving a complete generated schedule."""
         generator = ScheduleGenerator(rng=random.Random(42))
         season_id="season-3025"
-        db_conn.executemany(
-            "INSERT INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            [
-                ("team-a",    "away",    "away"),
-                ("team-b",    "away",    "away"),
-                ("team-c",    "away",    "away"),
-                ("team-d",    "away",    "away"),
-            ],
+        # db_conn.executemany(
+        #     "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
+        #     [
+        #         ("team-a",    "away",    "away"),
+        #         ("team-b",    "away",    "away"),
+        #         ("team-c",    "away",    "away"),
+        #         ("team-d",    "away",    "away"),
+        #     ],
+        # )
+        db_conn.execute(
+            """
+            INSERT INTO teams (id, city, mascot)
+            VALUES
+                (%s, %s, %s),
+                (%s, %s, %s),
+                (%s, %s, %s),
+                (%s, %s, %s)
+            """,
+            (
+                "team-a", "away", "away",
+                "team-b", "away", "away",
+                "team-c", "away", "away",
+                "team-d", "away", "away",
+            ),
         )
         db_conn.execute(
             """
-            INSERT INTO seasons (id, year, name) VALUES (?, ?, ?)
+            INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)
             """,
             (season_id, 3025, "Season 3025")
         )
@@ -401,15 +445,15 @@ class TestSaveScheduleToDB:
         save_schedule_to_db(db_conn, schedule)
 
         # Verify count (4 teams, 6 pairings, 3 games, home/away = 36)
-        cursor = db_conn.execute("SELECT COUNT(*) FROM games WHERE season_id = ?", (season_id, ))
-        count = cursor.fetchone()[0]
+        cursor = db_conn.execute("SELECT COUNT(*) as c FROM games WHERE season_id = %s", (season_id, ))
+        count = cursor.fetchone()["c"]
         assert count == 36
 
         # Verify season_id on all games
         cursor = db_conn.execute(
-            "SELECT COUNT(*) FROM games"
+            "SELECT COUNT(*) as c FROM games"
         )
-        count = cursor.fetchone()[0]
+        count = cursor.fetchone()["c"]
         assert count == 36
 
     def test_save_preserves_all_fields(self, db_conn, db_seed):
@@ -426,7 +470,7 @@ class TestSaveScheduleToDB:
         save_schedule_to_db(db_conn, [game])
 
         cursor = db_conn.execute(
-            "SELECT * FROM games WHERE id = ?", ("test-game",)
+            "SELECT * FROM games WHERE id = %s", ("test-game",)
         )
         row = cursor.fetchone()
 
