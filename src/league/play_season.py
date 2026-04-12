@@ -29,7 +29,6 @@ from src.util.logger import setup_logger
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--db", "-d", default="league.db", help="DB File Name")
     parser.add_argument("--season-id", "-i", required=True, help="Season ID to play")
     parser.add_argument(
         "--seed", "-s", type=int, help="Random seed for reproducibility"
@@ -560,7 +559,7 @@ def play_game(
 def main():
     args = get_args()
     start_time = datetime.now()
-    conn = get_connection(args.db)
+    conn = get_connection()
 
     season_logger = setup_logger(
         name="season",
@@ -663,7 +662,7 @@ def main():
     )
     print("\n" + msg_complete)
     season_logger.info(msg_complete)
-    print_standings(args.db, args.season_id, season_logger)
+    print_standings(args.season_id, season_logger)
 
 
 if __name__ == "__main__":
