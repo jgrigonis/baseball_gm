@@ -26,7 +26,7 @@ from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills, SKILLS
 from src.web.dependencies import IsHTMX
-from src.web.utils import tab_response, _shell_ctx
+from src.web.utils import tab_response, _shell_ctx, _current_league_date
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="src/web/templates")
@@ -279,30 +279,30 @@ def _games_remaining(db, season_id: str | None) -> int:
 #     return post
 
 
-def _current_league_date(db, season_id: str | None, state: str) -> str | None:
-    """Return the next unplayed game date, or last played date if season is over."""
-    if not season_id or state not in ("preseason", "season", "playoffs"):
-        return None
-    # Next unplayed regular season game
-    row = db.execute(
-        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
-        (season_id,),
-    ).fetchone()
-    if row:
-        return row["game_date"]
-    # Playoffs: next unplayed playoff game
-    row = db.execute(
-        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 ORDER BY game_date ASC LIMIT 1",
-        (season_id,),
-    ).fetchone()
-    if row:
-        return row["game_date"]
-    # All done — last played date
-    row = db.execute(
-        "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
-        (season_id,),
-    ).fetchone()
-    return row["d"] if row else None
+# def _current_league_date(db, season_id: str | None, state: str) -> str | None:
+#     """Return the next unplayed game date, or last played date if season is over."""
+#     if not season_id or state not in ("preseason", "season", "playoffs"):
+#         return None
+#     # Next unplayed regular season game
+#     row = db.execute(
+#         "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
+#         (season_id,),
+#     ).fetchone()
+#     if row:
+#         return row["game_date"]
+#     # Playoffs: next unplayed playoff game
+#     row = db.execute(
+#         "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 ORDER BY game_date ASC LIMIT 1",
+#         (season_id,),
+#     ).fetchone()
+#     if row:
+#         return row["game_date"]
+#     # All done — last played date
+#     row = db.execute(
+#         "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
+#         (season_id,),
+#     ).fetchone()
+#     return row["d"] if row else None
 
 # moved to utils
 # def _shell_ctx(
@@ -1318,7 +1318,7 @@ def standings(
 
     gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "standings", user)
-    # print(f"DEBUG KEYS: {ctx.keys()}")
+    print(f"DEBUG KEYS: {ctx.keys()}")
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
     teams = []

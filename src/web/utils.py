@@ -63,6 +63,31 @@ def tab_response(request: Request, htmx: bool, template_name: str, ctx: dict):
     ctx["tab_template"] = template_name
     return render("dashboard/shell.html", ctx)
 
+def _current_league_date(db, season_id: str | None, state: str) -> str | None:
+    """Return the next unplayed game date, or last played date if season is over."""
+    if not season_id or state not in ("preseason", "season", "playoffs"):
+        return None
+    # Next unplayed regular season game
+    row = db.execute(
+        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
+        (season_id,),
+    ).fetchone()
+    if row:
+        return row["game_date"]
+    # Playoffs: next unplayed playoff game
+    row = db.execute(
+        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 ORDER BY game_date ASC LIMIT 1",
+        (season_id,),
+    ).fetchone()
+    if row:
+        return row["game_date"]
+    # All done — last played date
+    row = db.execute(
+        "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
+        (season_id,),
+    ).fetchone()
+    return row["d"] if row else None
+
 
 def _games_remaining(db, season_id: str | None) -> int:
     if not season_id:
@@ -91,12 +116,14 @@ def _shell_ctx(
     active_tab: str | None = None,
     user: dict | None = None, # Keep as optional for the 'web' version needs
 ) -> dict:
+    league = None # prevent any possible NameError
     # 1. Start with the core info we definitely have
     ctx = {
         "request": request,
         "active_tab": active_tab,
         "gm_id": gm.get("id"),
-        "gm_display_name": gm.get("display_name"),
+        "gm_display_name": gm.get("display_name") if gm else (user.get("display_name") if user else "Guest"),
+        # "gm_display_name": gm.get("display_name"),
         "league_id": league_id,
         "team_id": gm.get("team_id"),
         "league_state": "lobby", # Default
@@ -191,6 +218,7 @@ def _shell_ctx(
             "season_id": season["id"],
             "season_name": season["name"],
             "games_remaining": _games_remaining(db, season["id"]),
+            "current_date": _current_league_date(db, season["id"], ctx["league_state"])
         })
     db.commit()
     return ctx
