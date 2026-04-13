@@ -180,7 +180,7 @@ class DraftGenerator:
                 LEFT JOIN team_players tp ON p.id = tp.player_id
                 WHERE ps.status = 'prospect'
                   AND tp.player_id IS NULL
-                  AND (p.league_id = %s OR p.league_id IS NULL)
+                  AND p.league_id = %s
                 """,
                 (league_id,),
             ).fetchall()

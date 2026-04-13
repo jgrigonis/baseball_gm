@@ -217,127 +217,172 @@ class TestGetExistingDraftable:
 
 
 # ---------------------------------------------------------------------------
-# run() — integration
+# run() — integration tests
 # ---------------------------------------------------------------------------
 
 
 class TestDraftGeneratorRun:
     """
-    run() is unscoped — it touches all players in the DB.
-    We can't assert exact counts; instead assert on the return value and
-    relative changes (+DRAFT_POOL_SIZE new players committed by run()).
+    Each test passes a unique league_id so run() only sees players it inserted.
+    No DB counts, no mocking — just real behavior assertions.
     """
 
-    def test_inserts_new_players_into_db(self, db_conn, generator, tmp_path):
-        before = db_conn.execute("SELECT COUNT(*) AS n FROM players").fetchone()["n"]
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            generator.run("season-1", 2026)
-        after = db_conn.execute("SELECT COUNT(*) AS n FROM players").fetchone()["n"]
-        assert after - before == DRAFT_POOL_SIZE
+    @pytest.fixture
+    def lid(self, db_conn):
+        """Unique league_id per test — inserts a real league row to satisfy FK."""
+        league_id = f"tst-lg-{uuid.uuid4().hex[:8]}"
+        db_conn.execute(
+            "INSERT INTO leagues (id, name, state) VALUES (%s, %s, 'lobby')"
+            " ON CONFLICT DO NOTHING",
+            (league_id, f"Test League {league_id}"),
+        )
+        return league_id
 
-    def test_new_players_have_prospect_status(self, db_conn, generator, tmp_path):
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            generator.run("season-1", 2026)
-        csv_path = tmp_path / "2026" / "draft.csv"
-        with open(csv_path, newline="") as f:
-            ids_in_csv = [row["ID"] for row in csv.DictReader(f)]
-        assert len(ids_in_csv) > 0
-        statuses = db_conn.execute(
-            "SELECT player_id, status FROM player_status WHERE player_id = ANY(%s)",
-            (ids_in_csv,),
-        ).fetchall()
-        by_id = {r["player_id"]: r["status"] for r in statuses}
-        for pid in ids_in_csv:
-            assert by_id.get(pid) == "prospect", f"{pid} missing prospect status"
+    @pytest.fixture
+    def gen(self, db_conn, lid):
+        return DraftGenerator(db_conn, random.Random(42)), lid
 
-    def test_existing_prospects_included_in_csv(self, db_conn, generator, tmp_path):
-        pid = _uid()
-        insert_player(db_conn, pid, "prospect")
+    def test_returns_total_count_matches_csv(self, db_conn, gen, tmp_path):
+        generator, lid = gen
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run("season-1", 2026)
-        # At least DRAFT_POOL_SIZE new + the 1 we inserted
-        assert total >= DRAFT_POOL_SIZE + 1
-
-    def test_existing_rostered_excluded_from_csv(self, db_conn, generator, tmp_path):
-        pid = _uid()
-        insert_player(db_conn, pid, "26man", team_id=_team_id())
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run("season-1", 2026)
-        # Rostered player must not appear
-        csv_path = tmp_path / "2026" / "draft.csv"
-        with open(csv_path, newline="") as f:
-            ids_in_csv = {row["ID"] for row in csv.DictReader(f)}
-        assert pid not in ids_in_csv
-
-    def test_no_double_counting(self, db_conn, generator, tmp_path):
-        """Return value matches CSV row count — no player counted twice."""
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run("season-1", 2026)
-        csv_path = tmp_path / "2026" / "draft.csv"
-        with open(csv_path, newline="") as f:
-            ids_in_csv = [row["ID"] for row in csv.DictReader(f)]
-        assert len(ids_in_csv) == total
-        assert len(set(ids_in_csv)) == len(ids_in_csv), "Duplicate IDs in CSV"
-
-    def test_draft_csv_created(self, db_conn, generator, tmp_path):
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            generator.run("season-1", 2026)
-        assert (tmp_path / "2026" / "draft.csv").exists()
-
-    def test_draft_csv_has_correct_row_count(self, db_conn, generator, tmp_path):
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run("season-1", 2026)
-        csv_path = tmp_path / "2026" / "draft.csv"
-        with open(csv_path, newline="") as f:
+            total = generator.run("s1", 2026, league_id=lid)
+        with open(tmp_path / "2026" / lid / "draft.csv", newline="") as f:
             rows = list(csv.DictReader(f))
-        assert len(rows) == total
+        assert total == len(rows)
 
-    def test_draft_csv_has_required_columns(self, db_conn, generator, tmp_path):
+    def test_new_players_equal_draft_pool_size(self, db_conn, gen, tmp_path):
+        generator, lid = gen
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            generator.run("season-1", 2026)
-        csv_path = tmp_path / "2026" / "draft.csv"
-        with open(csv_path, newline="") as f:
+            total = generator.run("s1", 2026, league_id=lid)
+        assert total == DRAFT_POOL_SIZE
+
+    def test_no_duplicate_ids_in_csv(self, db_conn, gen, tmp_path):
+        generator, lid = gen
+        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
+            generator.run("s1", 2026, league_id=lid)
+        with open(tmp_path / "2026" / lid / "draft.csv", newline="") as f:
+            ids = [row["ID"] for row in csv.DictReader(f)]
+        assert len(ids) == len(set(ids)), "Duplicate IDs in CSV"
+
+    def test_new_players_inserted_into_db(self, db_conn, gen, tmp_path):
+        generator, lid = gen
+        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
+            generator.run("s1", 2026, league_id=lid)
+        count = db_conn.execute(
+            "SELECT COUNT(*) AS n FROM players WHERE league_id = %s", (lid,)
+        ).fetchone()["n"]
+        assert count == DRAFT_POOL_SIZE
+
+    def test_new_players_have_prospect_status(self, db_conn, gen, tmp_path):
+        generator, lid = gen
+        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
+            generator.run("s1", 2026, league_id=lid)
+        rows = db_conn.execute(
+            """SELECT ps.status FROM player_status ps
+               JOIN players p ON p.id = ps.player_id
+               WHERE p.league_id = %s""", (lid,)
+        ).fetchall()
+        assert len(rows) == DRAFT_POOL_SIZE
+        assert all(r["status"] == "prospect" for r in rows)
+
+    def test_existing_prospects_included_in_csv(self, db_conn, gen, tmp_path):
+        generator, lid = gen
+        pid = _uid()
+        # Insert a prospect tagged to this league
+        db_conn.execute(
+            "INSERT INTO players (id, first_name, last_name, bats, throws, position, league_id)"
+            " VALUES (%s, 'E', 'P', 'R', 'R', 'cf', %s) ON CONFLICT DO NOTHING",
+            (pid, lid),
+        )
+        db_conn.execute(
+            "INSERT INTO player_skills (player_id, age, durability, clutch, speed, power, eye,"
+            " contact, base_running, bunting, catching, infield, outfield, arm, accuracy,"
+            " stamina, recovery, ground_balls, strikes)"
+            " VALUES (%s, 20, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60)"
+            " ON CONFLICT DO NOTHING",
+            (pid,),
+        )
+        db_conn.execute(
+            "INSERT INTO player_status (player_id, status, since)"
+            " VALUES (%s, 'prospect', '2025-01-01') ON CONFLICT DO NOTHING",
+            (pid,),
+        )
+        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
+            total = generator.run("s1", 2026, league_id=lid)
+        assert total == DRAFT_POOL_SIZE + 1
+        with open(tmp_path / "2026" / lid / "draft.csv", newline="") as f:
+            ids = {row["ID"] for row in csv.DictReader(f)}
+        assert pid in ids
+
+    def test_existing_rostered_excluded_from_csv(self, db_conn, gen, tmp_path):
+        generator, lid = gen
+        pid = _uid()
+        team = f"tst-team-{uuid.uuid4().hex[:8]}"
+        db_conn.execute(
+            "INSERT INTO teams (id, city, mascot) VALUES (%s, 'C', 'M') ON CONFLICT DO NOTHING",
+            (team,),
+        )
+        db_conn.execute(
+            "INSERT INTO players (id, first_name, last_name, bats, throws, position, league_id)"
+            " VALUES (%s, 'R', 'P', 'R', 'R', 'cf', %s) ON CONFLICT DO NOTHING",
+            (pid, lid),
+        )
+        db_conn.execute(
+            "INSERT INTO player_skills (player_id, age, durability, clutch, speed, power, eye,"
+            " contact, base_running, bunting, catching, infield, outfield, arm, accuracy,"
+            " stamina, recovery, ground_balls, strikes)"
+            " VALUES (%s, 20, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60)"
+            " ON CONFLICT DO NOTHING",
+            (pid,),
+        )
+        db_conn.execute(
+            "INSERT INTO player_status (player_id, status, since)"
+            " VALUES (%s, '26man', '2025-01-01') ON CONFLICT DO NOTHING",
+            (pid,),
+        )
+        db_conn.execute(
+            "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+            (team, pid),
+        )
+        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
+            total = generator.run("s1", 2026, league_id=lid)
+        assert total == DRAFT_POOL_SIZE
+        with open(tmp_path / "2026" / lid / "draft.csv", newline="") as f:
+            ids = {row["ID"] for row in csv.DictReader(f)}
+        assert pid not in ids
+
+    def test_csv_created_at_correct_path(self, db_conn, gen, tmp_path):
+        generator, lid = gen
+        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
+            generator.run("s1", 2026, league_id=lid)
+        assert (tmp_path / "2026" / lid / "draft.csv").exists()
+
+    def test_csv_has_required_columns(self, db_conn, gen, tmp_path):
+        generator, lid = gen
+        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
+            generator.run("s1", 2026, league_id=lid)
+        with open(tmp_path / "2026" / lid / "draft.csv", newline="") as f:
             headers = csv.DictReader(f).fieldnames
         for col in ["Name", "Age", "ID", "PS", "B", "T"]:
             assert col in headers, f"Missing column: {col}"
 
-    def test_returns_total_count(self, db_conn, generator, tmp_path):
+    def test_deterministic_with_same_seed(self, db_conn, tmp_path):
+        """Same seed → same player IDs regardless of run order."""
+        lid1 = f"tst-lg-{uuid.uuid4().hex[:8]}"
+        lid2 = f"tst-lg-{uuid.uuid4().hex[:8]}"
+        for lid in (lid1, lid2):
+            db_conn.execute(
+                "INSERT INTO leagues (id, name, state) VALUES (%s, %s, 'lobby')"
+                " ON CONFLICT DO NOTHING",
+                (lid, f"Test League {lid}"),
+            )
+        gen1 = DraftGenerator(db_conn, random.Random(99))
+        gen2 = DraftGenerator(db_conn, random.Random(99))
         with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run("season-1", 2026)
-        csv_path = tmp_path / "2026" / "draft.csv"
-        with open(csv_path, newline="") as f:
-            rows = list(csv.DictReader(f))
-        assert total == len(rows)
-
-    def test_deterministic_with_same_seed(self, tmp_path):
-        """Same seed should produce same player IDs."""
-        import os
-        import psycopg
-        from psycopg.rows import dict_row
-        db_url = os.environ.get("DATABASE_TEST_URL")
-        if not db_url:
-            pytest.skip("DATABASE_TEST_URL not set")
-
-        suffix = uuid.uuid4().hex[:8]
-        with psycopg.connect(db_url, row_factory=dict_row) as conn1, \
-             psycopg.connect(db_url, row_factory=dict_row) as conn2:
-            gen1 = DraftGenerator(conn1, random.Random(99))
-            gen2 = DraftGenerator(conn2, random.Random(99))
-
-            with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-                gen1.run(f"det-season-{suffix}", 8888)
-                gen2.run(f"det-season-{suffix}", 8888)
-
-            ids1 = {r["id"] for r in conn1.execute(
-                "SELECT id FROM players WHERE id LIKE 'tst-%' OR id NOT LIKE '%--%'"
-            ).fetchall()}
-            ids2 = {r["id"] for r in conn2.execute(
-                "SELECT id FROM players WHERE id LIKE 'tst-%' OR id NOT LIKE '%--%'"
-            ).fetchall()}
-
-            # The newly inserted players from both runs should overlap completely
-            # (same seed → same IDs → ON CONFLICT DO NOTHING on second run)
-            csv_path1 = tmp_path / "8888" / "draft.csv"
-            with open(csv_path1, newline="") as f:
-                csv_ids = {row["ID"] for row in csv.DictReader(f)}
-            assert len(csv_ids) > 0  # both runs wrote same file, same IDs
+            gen1.run("s1", 8001, league_id=lid1)
+            gen2.run("s1", 8002, league_id=lid2)
+        with open(tmp_path / "8001" / lid1 / "draft.csv", newline="") as f:
+            ids1 = [row["ID"] for row in csv.DictReader(f)]
+        with open(tmp_path / "8002" / lid2 / "draft.csv", newline="") as f:
+            ids2 = [row["ID"] for row in csv.DictReader(f)]
+        assert ids1 == ids2

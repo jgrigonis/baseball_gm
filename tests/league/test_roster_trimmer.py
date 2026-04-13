@@ -42,21 +42,21 @@ def _next_id():
 
 def setup_season(db_conn, season_id="s1", team_ids=("t1",)):
     db_conn.execute(
-        "INSERT OR IGNORE INTO seasons (id, year, name) VALUES (%s, 2026, 'Season 2026')", (season_id,)
+        "INSERT INTO seasons (id, year, name) VALUES (%s, 2026, 'Season 2026') ON CONFLICT DO NOTHING", (season_id,)
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO leagues (id, name) VALUES ('lg1', 'Test League')"
+        "INSERT INTO leagues (id, name) VALUES ('lg1', 'Test League') ON CONFLICT DO NOTHING"
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO league_seasons (league_id, season_id) VALUES ('lg1', %s)", (season_id,)
+        "INSERT INTO league_seasons (league_id, season_id) VALUES ('lg1', %s) ON CONFLICT DO NOTHING", (season_id,)
     )
     for team_id in team_ids:
         db_conn.execute(
-            "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (%s, 'Test', 'Team')",
+            "INSERT INTO teams (id, city, mascot) VALUES (%s, 'Test', 'Team') ON CONFLICT DO NOTHING",
             (team_id,),
         )
         db_conn.execute(
-            "INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id) VALUES ('lg1', %s, %s)",
+            "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES ('lg1', %s, %s) ON CONFLICT DO NOTHING",
             (season_id, team_id),
         )
     db_conn.commit()
