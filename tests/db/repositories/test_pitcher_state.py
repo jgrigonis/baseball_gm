@@ -11,7 +11,6 @@ from src.db.repositories.pitcher_state import (
     MIN_ENERGY_STARTER,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -36,8 +35,8 @@ def players(db_conn, factory):
 
 
 def test_daily_recovery_rate_bounds():
-    low  = _daily_recovery_rate(1)
-    mid  = _daily_recovery_rate(50)
+    low = _daily_recovery_rate(1)
+    mid = _daily_recovery_rate(50)
     high = _daily_recovery_rate(100)
 
     assert low < mid < high
@@ -46,7 +45,7 @@ def test_daily_recovery_rate_bounds():
 
 
 def test_apply_recovery_increases_energy():
-    energy    = 0.2
+    energy = 0.2
     recovered = _apply_recovery(energy, days=3, recovery_skill=50)
     assert recovered > energy
     assert recovered <= 1.0
@@ -111,7 +110,7 @@ def test_save_and_get(repo, players):
         last_pitch_count=50,
         consecutive_days=2,
     )
-    repo.save(state)
+    repo.save_pitcher_state(state)
     loaded = repo.get(p1.id)
 
     assert loaded is not None
@@ -140,13 +139,15 @@ def test_get_with_recovery_no_history(repo, players):
 def test_get_with_recovery_applies_rest(repo, players):
     p1, _ = players
     game_date = date(2026, 1, 10)
-    repo.save(PitcherState(
-        player_id=p1.id,
-        current_energy=0.2,
-        max_energy=1.0,
-        last_game_date=game_date - timedelta(days=3),
-        last_pitch_count=50,
-    ))
+    repo.save_pitcher_state(
+        PitcherState(
+            player_id=p1.id,
+            current_energy=0.2,
+            max_energy=1.0,
+            last_game_date=game_date - timedelta(days=3),
+            last_pitch_count=50,
+        )
+    )
 
     state = repo.get_with_recovery(p1.id, game_date, recovery_skill=50)
     assert state.current_energy > 0.2
@@ -156,12 +157,14 @@ def test_get_with_recovery_applies_rest(repo, players):
 def test_get_with_recovery_negative_days(repo, players):
     p1, _ = players
     game_date = date(2026, 1, 10)
-    repo.save(PitcherState(
-        player_id=p1.id,
-        current_energy=0.2,
-        max_energy=1.0,
-        last_game_date=game_date + timedelta(days=1),
-    ))
+    repo.save_pitcher_state(
+        PitcherState(
+            player_id=p1.id,
+            current_energy=0.2,
+            max_energy=1.0,
+            last_game_date=game_date + timedelta(days=1),
+        )
+    )
 
     state = repo.get_with_recovery(p1.id, game_date)
     assert state.current_energy == 0.2
@@ -176,18 +179,22 @@ def test_get_available_pitchers(repo, players):
     p1, p2 = players
     today = date.today()
 
-    repo.save(PitcherState(
-        player_id=p1.id,
-        current_energy=0.9,
-        max_energy=1.0,
-        last_game_date=today - timedelta(days=3),
-    ))
-    repo.save(PitcherState(
-        player_id=p2.id,
-        current_energy=0.2,
-        max_energy=1.0,
-        last_game_date=today,
-    ))
+    repo.save_pitcher_state(
+        PitcherState(
+            player_id=p1.id,
+            current_energy=0.9,
+            max_energy=1.0,
+            last_game_date=today - timedelta(days=3),
+        )
+    )
+    repo.save_pitcher_state(
+        PitcherState(
+            player_id=p2.id,
+            current_energy=0.2,
+            max_energy=1.0,
+            last_game_date=today,
+        )
+    )
 
     available = repo.get_available_pitchers(
         [p1.id, p2.id], today, min_energy=MIN_ENERGY_STARTER
@@ -240,13 +247,15 @@ def test_update_after_game_consecutive_days(repo, players):
     p1, _ = players
     today = date.today()
 
-    repo.save(PitcherState(
-        player_id=p1.id,
-        current_energy=0.5,
-        max_energy=1.0,
-        last_game_date=today - timedelta(days=1),
-        consecutive_days=2,
-    ))
+    repo.save_pitcher_state(
+        PitcherState(
+            player_id=p1.id,
+            current_energy=0.5,
+            max_energy=1.0,
+            last_game_date=today - timedelta(days=1),
+            consecutive_days=2,
+        )
+    )
 
     repo.update_after_game(
         player_id=p1.id,
@@ -267,17 +276,17 @@ def test_update_after_game_consecutive_days(repo, players):
 
 def test_delete(repo, players):
     p1, _ = players
-    repo.save(PitcherState(p1.id, 0.5, 1.0))
+    repo.save_pitcher_state(PitcherState(p1.id, 0.5, 1.0))
     assert repo.delete(p1.id) is True
     assert repo.get(p1.id) is None
 
 
 def test_clear_all(repo, players):
     p1, p2 = players
-    repo.save(PitcherState(p1.id, 0.5, 1.0))
-    repo.save(PitcherState(p2.id, 0.5, 1.0))
+    repo.save_pitcher_state(PitcherState(p1.id, 0.5, 1.0))
+    repo.save_pitcher_state(PitcherState(p2.id, 0.5, 1.0))
 
-    deleted = repo.clear_all()
+    deleted = repo.clear_all_pitcher_state()
     assert deleted >= 2
     assert repo.get(p1.id) is None
     assert repo.get(p2.id) is None

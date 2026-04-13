@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from re import L
 import uuid
 from typing import Annotated, Any
 
@@ -23,6 +24,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.api.database import get_db
 from src.api.schemas import player_row_to_grades, skill_to_grade
+from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills, SKILLS
 from src.web.dependencies import IsHTMX
@@ -245,6 +247,7 @@ def _games_remaining(db, season_id: str | None) -> int:
     ).fetchone()
     return row["count"] if row else 0
 
+
 # This is used code in that monster return in old _shell_ctx
 # def _draft_is_complete(db, league_id: str) -> bool:
 #     row = db.execute(
@@ -410,13 +413,13 @@ def _games_remaining(db, season_id: str | None) -> int:
 #     ctx["tab_template"] = partial_template
 #     return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
 
-# Trying to inject the is_htmx 
+# Trying to inject the is_htmx
 # moved to utils
 # def respond(request: Request, is_htmx: bool, partial_template: str, ctx: dict) -> HTMLResponse:
 #     """HTMX → return partial only. Direct nav → full shell with partial embedded."""
 #     if is_htmx:
 #         return templates.TemplateResponse(request, partial_template, ctx)
-    
+
 #     ctx["tab_template"] = partial_template
 #     return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
 
@@ -561,8 +564,9 @@ def new_league_page(request: Request):
     return templates.TemplateResponse(request, "leagues/new.html", {})
 
 
+# was create_league
 @router.post("/leagues/new")
-def create_league(
+def new_league(
     request: Request,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -739,21 +743,35 @@ async def save_draft_preferences(
     if not player_ids:
         return JSONResponse({"detail": "player_ids required"}, status_code=422)
 
-    # Validate all IDs exist
-    for pid in player_ids:
-        if not db.execute("SELECT 1 FROM players WHERE id = %s", (pid,)).fetchone():
-            return JSONResponse({"detail": f"Unknown player: {pid}"}, status_code=422)
+    # Validate all IDs exist (optimized)
+    rows = db.execute(
+        "SELECT id FROM players WHERE id = ANY(%s)", (player_ids,)
+    ).fetchall()
+
+    found_ids = {r["id"] for r in rows}
+    if len(found_ids) != len(set(player_ids)):
+        # Find the first missing one for the error message
+        missing = next(pid for pid in player_ids if pid not in found_ids)
+        return JSONResponse({"detail": f"Unknown player: {missing}"}, status_code=422)
+
+    # for pid in player_ids:
+    #     if not db.execute("SELECT 1 FROM players WHERE id = %s", (pid,)).fetchone():
+    #         return JSONResponse({"detail": f"Unknown player: {pid}"}, status_code=422)
 
     # Replace existing preferences atomically
-    db.execute(
-        "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
-        (gm["id"], draft["id"]),
-    )
-    db.cursor().executemany(
-        "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
-        [(gm["id"], draft["id"], pid, rank + 1) for rank, pid in enumerate(player_ids)],
-    )
-    db.commit()
+    with db.cursor() as cur:
+        cur.execute(
+            "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
+            (gm["id"], draft["id"]),
+        )
+        cur.executemany(
+            "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
+            [
+                (gm["id"], draft["id"], pid, rank + 1)
+                for rank, pid in enumerate(player_ids)
+            ],
+        )
+        db.commit()
 
     return JSONResponse({"saved": len(player_ids)})
 
@@ -2174,7 +2192,7 @@ def lineup(
 
 
 @router.put("/leagues/{league_id}/lineup/save")
-async def save_lineup(
+async def save_lineup_prefs(
     request: Request,
     league_id: str,
     db: DB,
@@ -2204,14 +2222,16 @@ async def save_lineup(
             {"detail": f"Duplicate positions: {', '.join(set(dupes))}"}, status_code=422
         )
 
-    db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = %s", (gm["id"],))
-    for slot in lineup:
-        db.execute(
-            """INSERT INTO gm_lineup_preferences
-               (gm_id, player_id, batting_order, position, is_starter, updated_at)
-               VALUES (%s, %s, %s, %s, 1, NOW())""",
-            (gm["id"], slot["player_id"], slot["batting_order"], slot.get("position")),
-        )
+    lpr = LineupPreferenceRepository(db)
+    lpr.save_preferences(gm["id"], lineup)
+    # db.execute("DELETE FROM gm_lineup_preferences WHERE gm_id = %s", (gm["id"],))
+    # for slot in lineup:
+    #     db.execute(
+    #         """INSERT INTO gm_lineup_preferences
+    #            (gm_id, player_id, batting_order, position, is_starter, updated_at)
+    #            VALUES (%s, %s, %s, %s, 1, NOW())""",
+    #         (gm["id"], slot["player_id"], slot["batting_order"], slot.get("position")),
+    #     )
 
     db.commit()
     return JSONResponse({"saved": True})
@@ -2830,7 +2850,9 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     }
 
     def _team_name(tid):
-        r = db.execute("SELECT city, mascot FROM teams WHERE id = %s", (tid,)).fetchone()
+        r = db.execute(
+            "SELECT city, mascot FROM teams WHERE id = %s", (tid,)
+        ).fetchone()
         return f"{r['city']} {r['mascot']}" if r else tid
 
     def load_series(series_name, best_of):
@@ -3349,7 +3371,8 @@ def history(
             ).fetchone()
             if champ and champ["wins"] >= 4:
                 t = db.execute(
-                    "SELECT city, mascot FROM teams WHERE id = %s", (champ["winner_id"],)
+                    "SELECT city, mascot FROM teams WHERE id = %s",
+                    (champ["winner_id"],),
                 ).fetchone()
                 if t:
                     champion_name = f"{t['city']} {t['mascot']}"

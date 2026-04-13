@@ -36,7 +36,7 @@ class SeasonRepository:
             "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
             (season_id, year, name),
         )
-        self.conn.commit()
+        # self.conn.commit()
         return season_id
 
     # def _get_season_id(self, year: int, name: str) -> str | None:
@@ -115,6 +115,7 @@ class SeasonRepository:
 
         return row is not None
 
+    # This is never called except in tests
     def delete_season(self, season_id: str) -> None:
         """
         Delete a season.
@@ -127,4 +128,4 @@ class SeasonRepository:
             depending on your foreign key constraints.
         """
         self.conn.execute("DELETE FROM seasons WHERE id = %s", (season_id,))
-        self.conn.commit()
+        # self.conn.commit()

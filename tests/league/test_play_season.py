@@ -20,13 +20,12 @@ import pytest
 from src.league.play_season import _pick_starter, clear_game_data, _load_eligible_ids
 from src.db.repositories.pitcher_state import PitcherState, MIN_ENERGY_STARTER
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 GAME_DATE = date(2025, 4, 10)
-TEAM_ID   = "team-1"
+TEAM_ID = "team-1"
 SEASON_ID = "season-1"
 
 
@@ -44,14 +43,17 @@ def _make_rot_repo(scheduled: str | None, rotation: list[dict] | None = None):
 def _make_pitcher_repo(energy_map: dict[str, float]):
     """energy_map: player_id → current_energy"""
     repo = MagicMock()
+
     def _get(player_id, game_date, recovery_skill=50):
         return _state(energy_map.get(player_id, 1.0))
+
     repo.get_with_recovery.side_effect = _get
     return repo
 
 
-def _fake_player(pid: str, stamina: int = 60, energy: float = 1.0,
-                 bullpen_role: str | None = None) -> MagicMock:
+def _fake_player(
+    pid: str, stamina: int = 60, energy: float = 1.0, bullpen_role: str | None = None
+) -> MagicMock:
     p = MagicMock()
     p.id = pid
     p.pitcher_fatigue = MagicMock()
@@ -71,6 +73,7 @@ def _rotation_row(pid: str, order: int) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # _pick_starter — no rotation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPickStarterNoRotation:
 
@@ -92,6 +95,7 @@ class TestPickStarterNoRotation:
 # ─────────────────────────────────────────────────────────────────────────────
 # _pick_starter — healthy scheduled pitcher
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPickStarterHealthyScheduled:
 
@@ -138,11 +142,10 @@ class TestPickStarterHealthyScheduled:
         assert advance is True
 
 
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # _pick_starter — injured scheduled pitcher (spot start)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPickStarterInjuredScheduled:
 
@@ -155,7 +158,11 @@ class TestPickStarterInjuredScheduled:
         pit = _make_pitcher_repo({"p3": 1.0})
         p3 = _fake_player("p3", stamina=60, energy=1.0)
         pid, advance = _pick_starter(
-            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE,
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
             injured_ids={"p1"},
             team_players=[p3],
         )
@@ -171,7 +178,11 @@ class TestPickStarterInjuredScheduled:
         pit = _make_pitcher_repo({"p2": 1.0})
         p2 = _fake_player("p2", stamina=60)
         _, advance = _pick_starter(
-            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE,
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
             injured_ids={"p1"},
             team_players=[p2],
         )
@@ -184,10 +195,14 @@ class TestPickStarterInjuredScheduled:
             rotation=[_rotation_row("p1", 1)],
         )
         pit = _make_pitcher_repo({"p-low": 1.0, "p-high": 1.0})
-        p_low  = _fake_player("p-low",  stamina=40)
+        p_low = _fake_player("p-low", stamina=40)
         p_high = _fake_player("p-high", stamina=80)
         pid, _ = _pick_starter(
-            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE,
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
             injured_ids={"p1"},
             team_players=[p_low, p_high],
         )
@@ -203,7 +218,11 @@ class TestPickStarterInjuredScheduled:
         closer = _fake_player("closer", stamina=80, bullpen_role="Closer")
         middle = _fake_player("middle", stamina=60)
         pid, _ = _pick_starter(
-            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE,
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
             injured_ids={"p1"},
             team_players=[closer, middle],
         )
@@ -218,7 +237,11 @@ class TestPickStarterInjuredScheduled:
         pit = _make_pitcher_repo({"p2": 1.0})
         # No team_players passed (empty bullpen)
         pid, advance = _pick_starter(
-            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE,
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
             injured_ids={"p1"},
             team_players=[],
         )
@@ -232,7 +255,11 @@ class TestPickStarterInjuredScheduled:
         )
         pit = _make_pitcher_repo({})
         pid, advance = _pick_starter(
-            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE,
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
             injured_ids={"p1"},
             team_players=[],
         )
@@ -247,9 +274,13 @@ class TestPickStarterInjuredScheduled:
         )
         pit = _make_pitcher_repo({"p-ineligible": 1.0, "p-eligible": 1.0})
         p_inel = _fake_player("p-ineligible", stamina=90)
-        p_el   = _fake_player("p-eligible",   stamina=60)
+        p_el = _fake_player("p-eligible", stamina=60)
         pid, _ = _pick_starter(
-            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE,
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
             injured_ids={"p1"},
             team_players=[p_inel, p_el],
             eligible_ids={"p-eligible"},
@@ -261,11 +292,13 @@ class TestPickStarterInjuredScheduled:
 # clear_game_data
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestClearGameData:
 
     @pytest.fixture
     def game(self, factory):
         return factory.game_with_teams()
+
     # @pytest.fixture
     # def game(self, db_conn):
     #     db_conn.execute(
@@ -331,6 +364,7 @@ class TestClearGameData:
 # _load_eligible_ids
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestLoadEligibleIds:
 
     @pytest.fixture
@@ -355,7 +389,7 @@ class TestLoadEligibleIds:
                 (team.id, player_id),
             )
 
-            #players.append(player_id)
+            # players.append(player_id)
             players[status] = player_id
 
         return db_conn, team.id, players
@@ -389,7 +423,7 @@ class TestLoadEligibleIds:
         db, team_id, players = seeded
         ids = _load_eligible_ids(db, team_id, "", blitz=True)
         assert players["26man"] in ids
-        assert players["40man"]in ids
+        assert players["40man"] in ids
 
     def test_blitz_excludes_minors_and_free_agents(self, seeded):
         db, team_id, players = seeded
@@ -397,12 +431,11 @@ class TestLoadEligibleIds:
         assert players["minors"] not in ids
         assert players["free_agent"] not in ids
 
-
     def test_long_form_includes_only_26man(self, seeded):
         db, team_id, players = seeded
         ids = _load_eligible_ids(db, team_id, "", blitz=False)
         assert players["26man"] in ids
-        assert players["40man"]not in ids
+        assert players["40man"] not in ids
 
     def test_long_form_excludes_minors_and_free_agents(self, seeded):
         db, team_id, players = seeded

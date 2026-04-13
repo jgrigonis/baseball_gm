@@ -7,7 +7,7 @@ from types import SimpleNamespace
 class TestDataFactory:
     def __init__(self, db):
         self.db = db
-        self._league = None   # last created league, for gm() default
+        self._league = None  # last created league, for gm() default
 
     def _id(self):
         return str(uuid.uuid4())
@@ -42,7 +42,7 @@ class TestDataFactory:
         season = season or self.season()
         self.league_season(league, season)
         draft_id = self._id()
-        fmt   = kwargs.get("fmt", "preference")
+        fmt = kwargs.get("fmt", "preference")
         state = kwargs.get("state", "pending")
         self.db.execute(
             "INSERT INTO drafts (id, league_id, season_id, format, state)"
@@ -71,18 +71,16 @@ class TestDataFactory:
         )
 
     def gm(self, team=None, league=None, **kwargs):
-        gm_id  = self._id()
-        team   = team   or self.team()
+        gm_id = self._id()
+        team = team or self.team()
         league = league or self._league or self.league()
-        is_ai  = kwargs.get("is_ai", 1)
+        is_ai = kwargs.get("is_ai", 1)
         self.db.execute(
             "INSERT INTO gms (id, league_id, team_id, display_name, is_ai)"
             " VALUES (%s, %s, %s, %s, %s)",
             (gm_id, league.id, team.id, "GM", is_ai),
         )
-        self.db.execute(
-            "INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,)
-        )
+        self.db.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
         return SimpleNamespace(id=gm_id)
 
     def draft_order(self, draft, teams):
@@ -153,7 +151,7 @@ class TestDataFactory:
             ),
         )
         return SimpleNamespace(
-            id = game_id,
+            id=game_id,
         )
         # return {"id": game_id}
 
@@ -190,10 +188,10 @@ class TestDataFactory:
             ),
         )
         return SimpleNamespace(
-            id = game_id,
-            season = season,
-            home = home,
-            away = away,
+            id=game_id,
+            season=season,
+            home=home,
+            away=away,
         )
         # return {
         #     "id": game_id,

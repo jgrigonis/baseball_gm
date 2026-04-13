@@ -21,8 +21,6 @@ import sys
 from src.db.connection import get_connection
 from src.util.team_resolver import resolve_team, list_teams, TeamResolverError
 
-
-
 PA_PER_GAME = 3.1
 IP_PER_GAME = 1.0
 

@@ -101,7 +101,9 @@ def run_offseason(league_id: str, conn) -> dict:
     Run the full offseason for a league and return to draft state.
     Idempotent — pipeline skips completed steps; season creation is guarded.
     """
-    league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    league = conn.execute(
+        "SELECT * FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] not in ("offseason",):

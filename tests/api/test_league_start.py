@@ -29,6 +29,7 @@ from src.api.services.league_start import start_league
 class TeamRef:
     id: str
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures & helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ def ctx(db_conn, factory):
     gm = factory.gm(team=teams[0], league=league, is_ai=0)
 
     from types import SimpleNamespace
+
     return SimpleNamespace(
         conn=db_conn,
         league=league,
@@ -76,20 +78,21 @@ def patched(ctx):
     Yields ctx so tests can access ctx.conn, ctx.league, etc.
     """
 
-
     fake_teams = [TeamRef(id=t.id) for t in ctx.teams]
 
-
-
-    with patch("src.api.services.league_start.load_manifest", return_value=FAKE_MANIFEST), \
-         patch("src.api.services.league_start.validate_manifest_structure"), \
-         patch("src.api.services.league_start.validate_manifest_uniqueness"), \
-         patch("src.api.services.league_start.create_team_files"), \
-         patch("src.api.services.league_start.LeagueBootstrapper") as MockBootstrapper, \
-         patch("src.api.services.league_start.DraftGenerator") as MockDraftGen, \
-         patch("src.api.services.league_start.ScheduleGenerator") as MockScheduler, \
-         patch("src.api.services.league_start.save_schedule_to_db"), \
-         patch("src.api.services.league_start.write_draft_order"):
+    with (
+        patch(
+            "src.api.services.league_start.load_manifest", return_value=FAKE_MANIFEST
+        ),
+        patch("src.api.services.league_start.validate_manifest_structure"),
+        patch("src.api.services.league_start.validate_manifest_uniqueness"),
+        patch("src.api.services.league_start.create_team_files"),
+        patch("src.api.services.league_start.LeagueBootstrapper") as MockBootstrapper,
+        patch("src.api.services.league_start.DraftGenerator") as MockDraftGen,
+        patch("src.api.services.league_start.ScheduleGenerator") as MockScheduler,
+        patch("src.api.services.league_start.save_schedule_to_db"),
+        patch("src.api.services.league_start.write_draft_order"),
+    ):
 
         # --- Bootstrapper ---
         MockBootstrapper.return_value.bootstrap_from_manifest.return_value = (
@@ -105,9 +108,6 @@ def patched(ctx):
         MockScheduler.return_value.create_schedule.return_value = ["g1", "g2", "g3"]
 
         yield ctx
-
-
-
 
     # with patch("src.api.services.league_start.load_manifest", return_value=FAKE_MANIFEST), \
     #      patch("src.api.services.league_start.validate_manifest_structure"), \
@@ -140,6 +140,7 @@ def patched(ctx):
 # Guard clauses
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestStartLeagueGuards:
 
     def test_raises_if_league_not_found(self, db_conn):
@@ -161,13 +162,20 @@ class TestStartLeagueGuards:
 # Return value
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestStartLeagueReturnValue:
 
     def test_returns_expected_keys(self, patched):
         result = start_league(patched.league.id, patched.conn)
         assert set(result.keys()) == {
-            "league_id", "season_id", "draft_id", "team_count",
-            "game_count", "prospect_count", "seed", "your_team",
+            "league_id",
+            "season_id",
+            "draft_id",
+            "team_count",
+            "game_count",
+            "prospect_count",
+            "seed",
+            "your_team",
         }
 
     def test_returns_correct_league_and_season_ids(self, patched):
@@ -201,6 +209,7 @@ class TestStartLeagueReturnValue:
 # League state transition
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestLeagueStateTransition:
 
     def test_league_state_becomes_draft(self, patched):
@@ -220,6 +229,7 @@ class TestLeagueStateTransition:
 # ─────────────────────────────────────────────────────────────────────────────
 # Draft record creation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestDraftCreation:
 
@@ -243,7 +253,8 @@ class TestDraftCreation:
     def test_only_one_draft_created(self, patched):
         start_league(patched.league.id, patched.conn)
         count = patched.conn.execute(
-            "SELECT COUNT(*) AS n FROM drafts WHERE league_id = %s", (patched.league.id,)
+            "SELECT COUNT(*) AS n FROM drafts WHERE league_id = %s",
+            (patched.league.id,),
         ).fetchone()["n"]
         assert count == 1
 
@@ -251,6 +262,7 @@ class TestDraftCreation:
 # ─────────────────────────────────────────────────────────────────────────────
 # GM assignment
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestGMAssignment:
 
@@ -296,7 +308,8 @@ class TestGMAssignment:
     def test_ai_gms_have_profiles(self, patched):
         start_league(patched.league.id, patched.conn)
         ai_gm_ids = [
-            r["id"] for r in patched.conn.execute(
+            r["id"]
+            for r in patched.conn.execute(
                 "SELECT id FROM gms WHERE league_id = %s AND is_ai = 1",
                 (patched.league.id,),
             ).fetchall()

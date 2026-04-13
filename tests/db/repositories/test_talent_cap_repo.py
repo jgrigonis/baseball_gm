@@ -1,10 +1,10 @@
 # tests/db/repositories/test_talent_cap_repo.py
 """Unit tests for TalentCapRepository."""
+
 import pytest
 
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.talent_cap_repo import _SKILLS
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,6 +33,7 @@ def repo(db_conn):
 def ctx(factory):
     """Three unique players per test — no cross-run ID collisions."""
     from types import SimpleNamespace
+
     p1 = factory.player_row()
     p2 = factory.player_row()
     p3 = factory.player_row()
@@ -48,7 +49,7 @@ class TestInsert:
 
     def test_insert_persists_all_skills(self, repo, ctx):
         caps = _varied_caps()
-        repo.insert(ctx.p1.id, caps)
+        repo.insert_talent_caps(ctx.p1.id, caps)
         result = repo.get(ctx.p1.id)
         assert result is not None
         for sk in _SKILLS:
@@ -56,19 +57,19 @@ class TestInsert:
 
     def test_insert_is_idempotent(self, repo, ctx):
         """INSERT OR IGNORE — second insert silently does nothing."""
-        repo.insert(ctx.p1.id, _full_caps(70))
-        repo.insert(ctx.p1.id, _full_caps(90))  # should be ignored
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(70))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(90))  # should be ignored
         assert repo.get(ctx.p1.id)["speed"] == 70
 
     def test_insert_missing_skill_defaults_to_50(self, repo, ctx):
         """Caps dict with a missing key defaults to 50."""
         partial = {sk: 65 for sk in _SKILLS if sk != "clutch"}
-        repo.insert(ctx.p1.id, partial)
+        repo.insert_talent_caps(ctx.p1.id, partial)
         assert repo.get(ctx.p1.id)["clutch"] == 50
 
     def test_insert_multiple_players(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(60))
-        repo.insert(ctx.p2.id, _full_caps(80))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(60))
+        repo.insert_talent_caps(ctx.p2.id, _full_caps(80))
         assert repo.get(ctx.p1.id)["speed"] == 60
         assert repo.get(ctx.p2.id)["speed"] == 80
 
@@ -86,27 +87,29 @@ class TestInsertMany:
             (ctx.p2.id, _full_caps(75)),
             (ctx.p3.id, _full_caps(88)),
         ]
-        repo.insert_many(records)
+        repo.insert_many_talent_caps(records)
         for pid, caps in records:
             result = repo.get(pid)
             assert result is not None, f"Missing caps for {pid}"
             assert result["contact"] == caps["contact"]
 
     def test_insert_many_empty_list(self, repo):
-        repo.insert_many([])  # should not raise
+        repo.insert_many_talent_caps([])  # should not raise
 
     def test_insert_many_ignores_duplicates(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(60))
-        repo.insert_many([(ctx.p1.id, _full_caps(99))])
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(60))
+        repo.insert_many_talent_caps([(ctx.p1.id, _full_caps(99))])
         assert repo.get(ctx.p1.id)["speed"] == 60
 
     def test_insert_many_partial_duplicates(self, repo, ctx):
         """Only new players inserted; existing ones unchanged."""
-        repo.insert(ctx.p1.id, _full_caps(60))
-        repo.insert_many([
-            (ctx.p1.id, _full_caps(99)),  # duplicate — ignored
-            (ctx.p2.id, _full_caps(75)),  # new — inserted
-        ])
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(60))
+        repo.insert_many_talent_caps(
+            [
+                (ctx.p1.id, _full_caps(99)),  # duplicate — ignored
+                (ctx.p2.id, _full_caps(75)),  # new — inserted
+            ]
+        )
         assert repo.get(ctx.p1.id)["speed"] == 60
         assert repo.get(ctx.p2.id)["speed"] == 75
 
@@ -122,18 +125,18 @@ class TestGet:
         assert repo.get("nonexistent") is None
 
     def test_get_returns_all_skill_keys(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(70))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(70))
         assert set(repo.get(ctx.p1.id).keys()) == set(_SKILLS)
 
     def test_get_values_are_integers(self, repo, ctx):
-        repo.insert(ctx.p1.id, _varied_caps())
+        repo.insert_talent_caps(ctx.p1.id, _varied_caps())
         result = repo.get(ctx.p1.id)
         for sk, val in result.items():
             assert isinstance(val, int), f"{sk} should be int, got {type(val)}"
 
     def test_get_roundtrips_varied_caps(self, repo, ctx):
         caps = _varied_caps()
-        repo.insert(ctx.p1.id, caps)
+        repo.insert_talent_caps(ctx.p1.id, caps)
         assert repo.get(ctx.p1.id) == caps
 
 
@@ -146,9 +149,9 @@ class TestGetMany:
 
     @pytest.fixture
     def setup_players(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(60))
-        repo.insert(ctx.p2.id, _full_caps(75))
-        repo.insert(ctx.p3.id, _full_caps(88))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(60))
+        repo.insert_talent_caps(ctx.p2.id, _full_caps(75))
+        repo.insert_talent_caps(ctx.p3.id, _full_caps(88))
 
     def test_get_many_returns_all_requested(self, repo, ctx, setup_players):
         result = repo.get_many([ctx.p1.id, ctx.p2.id, ctx.p3.id])
@@ -192,11 +195,11 @@ class TestExists:
         assert repo.exists("nobody") is False
 
     def test_exists_true_after_insert(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(70))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(70))
         assert repo.exists(ctx.p1.id) is True
 
     def test_exists_does_not_affect_other_players(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(70))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(70))
         assert repo.exists(ctx.p2.id) is False
 
 
@@ -208,20 +211,20 @@ class TestExists:
 class TestEdgeCases:
 
     def test_cap_value_at_minimum(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(1))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(1))
         result = repo.get(ctx.p1.id)
         for sk in _SKILLS:
             assert result[sk] == 1
 
     def test_cap_value_at_maximum(self, repo, ctx):
-        repo.insert(ctx.p1.id, _full_caps(100))
+        repo.insert_talent_caps(ctx.p1.id, _full_caps(100))
         result = repo.get(ctx.p1.id)
         for sk in _SKILLS:
             assert result[sk] == 100
 
     def test_insert_then_get_many_consistent(self, repo, ctx):
         caps = _varied_caps()
-        repo.insert(ctx.p1.id, caps)
+        repo.insert_talent_caps(ctx.p1.id, caps)
         single = repo.get(ctx.p1.id)
         many = repo.get_many([ctx.p1.id])
         assert single == many[ctx.p1.id]

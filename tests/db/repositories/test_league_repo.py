@@ -47,6 +47,7 @@ class TestLeagueRepositoryCreateLeague:
 
     def test_create_multiple_leagues(self, league_repo, db_conn):
         import uuid
+
         suffix = str(uuid.uuid4())[:8]
         mlb_id = league_repo.create_league(f"MLB-{suffix}")
         nba_id = league_repo.create_league(f"NBA-{suffix}")
@@ -58,6 +59,7 @@ class TestLeagueRepositoryCreateLeague:
 
     def test_create_league_idempotent(self, league_repo):
         import uuid
+
         name = f"Test League {uuid.uuid4()}"
         league_id = league_repo.create_league(name)
         for _ in range(5):
@@ -79,7 +81,7 @@ class TestLeagueRepositoryAssignSeasonToLeague:
         assert row["season_id"] == sample_season.id
 
     def test_assign_multiple_seasons_to_league(self, league_repo, db_conn, factory):
-        #league_id = league_repo.create_league("MLB")
+        # league_id = league_repo.create_league("MLB")
         league_id = league_repo.create_league(f"MLB-{uuid.uuid4()}")
         seasons = [factory.season(year=2025 + i) for i in range(3)]
 
@@ -92,7 +94,9 @@ class TestLeagueRepositoryAssignSeasonToLeague:
         ).fetchone()["n"]
         assert count == 3
 
-    def test_assign_season_to_league_idempotent(self, league_repo, db_conn, sample_season):
+    def test_assign_season_to_league_idempotent(
+        self, league_repo, db_conn, sample_season
+    ):
         league_id = league_repo.create_league("MLB")
 
         for _ in range(5):
@@ -107,7 +111,9 @@ class TestLeagueRepositoryAssignSeasonToLeague:
 
 class TestLeagueRepositoryAssignToLeague:
 
-    def test_assign_team_to_league(self, league_repo, db_conn, sample_season, sample_team):
+    def test_assign_team_to_league(
+        self, league_repo, db_conn, sample_season, sample_team
+    ):
         league_id = league_repo.create_league("MLB")
         league_repo.assign_season_to_league(league_id, sample_season.id)
         league_repo.assign_to_league(league_id, sample_season.id, sample_team.id)
@@ -124,7 +130,9 @@ class TestLeagueRepositoryAssignToLeague:
         assert row["season_id"] == sample_season.id
         assert row["team_id"] == sample_team.id
 
-    def test_assign_multiple_teams_to_league(self, league_repo, db_conn, sample_season, factory):
+    def test_assign_multiple_teams_to_league(
+        self, league_repo, db_conn, sample_season, factory
+    ):
         league_id = league_repo.create_league("MLB")
         league_repo.assign_season_to_league(league_id, sample_season.id)
         teams = [factory.team() for _ in range(5)]
@@ -138,7 +146,9 @@ class TestLeagueRepositoryAssignToLeague:
         ).fetchone()["n"]
         assert count == 5
 
-    def test_assign_to_league_idempotent(self, league_repo, db_conn, sample_season, sample_team):
+    def test_assign_to_league_idempotent(
+        self, league_repo, db_conn, sample_season, sample_team
+    ):
         league_id = league_repo.create_league("MLB")
         league_repo.assign_season_to_league(league_id, sample_season.id)
 
@@ -154,7 +164,9 @@ class TestLeagueRepositoryAssignToLeague:
         ).fetchone()["n"]
         assert count == 1
 
-    def test_assign_same_team_to_different_seasons(self, league_repo, db_conn, sample_team, factory):
+    def test_assign_same_team_to_different_seasons(
+        self, league_repo, db_conn, sample_team, factory
+    ):
         league_id = league_repo.create_league("MLB")
         season_1 = factory.season(year=3200)
         season_2 = factory.season(year=3201)
@@ -191,6 +203,7 @@ class TestLeagueRepositoryHasSeason:
 
     def test_has_season_multiple_leagues(self, league_repo, sample_season):
         import uuid
+
         suffix = str(uuid.uuid4())[:8]
         mlb_id = league_repo.create_league(f"MLB-{suffix}")
         nba_id = league_repo.create_league(f"NBA-{suffix}")

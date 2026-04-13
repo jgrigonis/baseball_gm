@@ -24,13 +24,15 @@ _MANIFEST_FILENAME = "world_league-2025.json"
 
 
 def start_league(
-    league_id: str, 
+    league_id: str,
     conn,
     bootstrapper=None,
     draft_gen=None,
     scheduler=None,
 ) -> dict:
-    league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    league = conn.execute(
+        "SELECT * FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
 
     if not league:
         raise ValueError(f"League {league_id} not found.")

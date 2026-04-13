@@ -100,7 +100,8 @@ def get_top_8(conn, season_id: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def reset_rotation_pointers(conn, season_id: str) -> None:
+# TODO rename this somehow
+def playoff_rotation_pointers(conn, season_id: str) -> None:
     """Reset all rotation pointers for a season back to order 1."""
     rot_repo = TeamRotationsRepository(conn)
     reset = rot_repo.reset_rotation_pointers(season_id)
@@ -214,14 +215,16 @@ def _insert_series(conn, series_id: str, season_id: str, name: str) -> None:
 
 
 def _insert_games(conn, games: list[dict]) -> None:
-    conn.cursor().executemany(
-        """
-        INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
-        VALUES (%(id)s, %(game_date)s, %(season_id)s, %(series_id)s, %(home_team_id)s, %(away_team_id)s)
-        ON CONFLICT DO NOTHING
-        """,
-        games,
-    )
+    # Psycopg 3 uses %s or named placeholders, but doesn't need 'extras' for speed
+    with conn.cursor() as cur:
+        cur.executemany(
+            """
+            INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
+            VALUES (%(id)s, %(game_date)s, %(season_id)s, %(series_id)s, %(home_team_id)s, %(away_team_id)s)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            games,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -336,11 +339,13 @@ def main():
 
     # 2.5 Reset rotation pointers
     lines.append("\nResetting rotation pointers...")
-    reset_rotation_pointers(conn, args.season_id)
+    playoff_rotation_pointers(conn, args.season_id)
 
     # 3. Build bracket + pre-generate games
     lines.append("\nBuilding bracket...")
     build_bracket(conn, args.season_id, seeds, start_date, logger=logger)
+
+    conn.commit()
 
     lines.append("\n✅ Playoff bracket ready.")
     output = "\n".join(lines)

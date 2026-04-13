@@ -10,7 +10,6 @@ from src.db.migrations import (
     _record_migration,
 )
 
-
 # ============================================================================
 # CRITICAL TESTS - Migration System Invariants
 # ============================================================================
@@ -29,9 +28,9 @@ def test_migrations_are_idempotent(db_conn):
         "SELECT version, COUNT(*) AS count FROM schema_migrations GROUP BY version"
     )
     for row in cursor:
-        assert row["count"] == 1, (
-            f"Migration {row['version']} was recorded {row['count']} times (should be 1)"
-        )
+        assert (
+            row["count"] == 1
+        ), f"Migration {row['version']} was recorded {row['count']} times (should be 1)"
 
 
 def test_migrations_run_in_order(db_conn):
@@ -167,8 +166,8 @@ def test_migrations_with_real_schema_changes(db_conn):
     """)
     columns = {row["column_name"] for row in cursor.fetchall()}
 
-    assert "pitch_doubles"  in columns
-    assert "pitch_triples"  in columns
+    assert "pitch_doubles" in columns
+    assert "pitch_triples" in columns
     assert "pitch_pickoffs" in columns
 
 
@@ -196,7 +195,9 @@ def test_migration_failure_rolls_back(db_conn):
 
         raise RuntimeError("Migration failed!")
 
-    with patch("src.db.migrations.load_migrations", return_value=[(99999, failing_migration)]):
+    with patch(
+        "src.db.migrations.load_migrations", return_value=[(99999, failing_migration)]
+    ):
         with pytest.raises(RuntimeError, match="Migration failed"):
             run_migrations(db_conn)
 
@@ -217,10 +218,13 @@ def test_migration_failure_does_not_record_migration(db_conn):
     A failed migration must not appear in schema_migrations so that it will
     be retried on the next deployment after the bug is fixed.
     """
+
     def failing_migration(conn):
         raise RuntimeError("Intentional failure")
 
-    with patch("src.db.migrations.load_migrations", return_value=[(55555, failing_migration)]):
+    with patch(
+        "src.db.migrations.load_migrations", return_value=[(55555, failing_migration)]
+    ):
         with pytest.raises(RuntimeError):
             run_migrations(db_conn)
 
@@ -233,6 +237,7 @@ def test_successful_migrations_before_failure_are_preserved(db_conn):
     recorded.  Partial progress is preserved.
     """
     import uuid
+
     base = abs(hash(uuid.uuid4())) % 10_000_000 + 50_000_000  # unique 8-digit sentinel
     v1, v2, v3 = base + 1, base + 2, base + 3
 

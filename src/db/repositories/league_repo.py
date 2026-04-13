@@ -21,7 +21,7 @@ class LeagueRepository:
 
         Args:
             name: League name (e.g., "MLB", "Minor League A")
-            league_id: if you provide a league_id, it will create that league 
+            league_id: if you provide a league_id, it will create that league
                 if it doesn't exist.
                 If you don't provide a league_id, it will create a new league
                 if the name doesn't already exist.
@@ -46,7 +46,7 @@ class LeagueRepository:
         self.conn.execute(
             "INSERT INTO leagues (id, name) VALUES (%s, %s)", (league_id, name)
         )
-        self.conn.commit()
+        # self.conn.commit()
         return league_id
 
     def _get_league_id_by_name(self, name: str) -> str | None:
@@ -82,7 +82,7 @@ class LeagueRepository:
             """,
             (league_id, season_id),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     def assign_to_league(self, league_id: str, season_id: str, team_id: str) -> None:
         """
@@ -105,7 +105,7 @@ class LeagueRepository:
             """,
             (league_id, season_id, team_id),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     def has_season(self, league_id: str, season_id: str) -> bool:
         """

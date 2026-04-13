@@ -33,7 +33,9 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     Returns a summary dict with date, games played, and results.
     """
-    league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    league = conn.execute(
+        "SELECT * FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
     if not league:
         raise ValueError(f"League {league_id} not found.")
 
@@ -99,7 +101,9 @@ def sim_next_day(league_id: str, conn) -> dict:
                 print(f"Playoff setup failed: {e}")
                 print(traceback.format_exc())
 
-        conn.execute("UPDATE leagues SET state = 'playoffs' WHERE id = %s", (league_id,))
+        conn.execute(
+            "UPDATE leagues SET state = 'playoffs' WHERE id = %s", (league_id,)
+        )
         conn.commit()
         return {
             "game_date": None,

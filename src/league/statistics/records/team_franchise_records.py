@@ -29,7 +29,6 @@ except ImportError:
 
 from src.db.connection import get_connection
 
-
 # ── Formatting ────────────────────────────────────────────────────────────────
 
 
@@ -540,7 +539,6 @@ def main():
     args = parser.parse_args()
 
     conn = get_connection()
-
 
     if args.teams:
         teams = list_teams(conn)

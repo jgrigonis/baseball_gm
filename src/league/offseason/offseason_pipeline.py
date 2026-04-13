@@ -199,12 +199,13 @@ class OffseasonPipeline:
             if self._should_retire(player.age, player.skills, is_unrostered, rng):
                 self.player_status_repo.set_status(player.id, "free_agent")
                 row = self.conn.execute(
-                    "SELECT team_id FROM team_players WHERE player_id = %s", (player.id,)
+                    "SELECT team_id FROM team_players WHERE player_id = %s",
+                    (player.id,),
                 ).fetchone()
                 if row:
                     team_repo.remove_player(row["team_id"], player.id)
                 retired.append(player)
-                
+
         self.conn.commit()
 
         if retired:
@@ -333,7 +334,7 @@ class OffseasonPipeline:
 
     def _reset_pitcher_state(self, season_id: str) -> None:
         repo = PitcherStateRepository(self.conn)
-        count = repo.clear_all()
+        count = repo.clear_all_pitcher_state()
         print(f"  Cleared pitcher state for {count} pitchers")
         self._reset_rotation_pointers(season_id)
 
@@ -417,6 +418,7 @@ class OffseasonPipeline:
     def _reset_rotation_pointers(self, season_id: str) -> None:
         rot_repo = TeamRotationsRepository(self.conn)
         reset = rot_repo.reset_rotation_pointers(season_id)
+        self.conn.commit()
         print(f"  Reset rotation pointers to sp1 for {reset} teams")
 
     def _generate_draft(self, season_id: str) -> None:

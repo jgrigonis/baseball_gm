@@ -26,8 +26,8 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 
-
 # ── Core DB fixtures ──────────────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="session")
 def _session_conn(request):
@@ -104,9 +104,11 @@ def db_conn_factory(_session_conn):
         _session_conn.execute(f"ROLLBACK TO SAVEPOINT {sp}")
         _session_conn.execute(f"RELEASE SAVEPOINT {sp}")
 
+
 @pytest.fixture
 def factory(db_conn):
     return TestDataFactory(db_conn)
+
 
 @pytest.fixture
 def db_seed(db_conn):
@@ -123,59 +125,65 @@ def db_seed(db_conn):
         )
         # Seasons
         for row in [
-            ("season-1",    2025, "Season 1"),
-            ("season-2",    2026, "Season 2"),
-            ("season-10",   2026, "Season 2"),
-            ("season-11",   2026, "Season 2"),
+            ("season-1", 2025, "Season 1"),
+            ("season-2", 2026, "Season 2"),
+            ("season-10", 2026, "Season 2"),
+            ("season-11", 2026, "Season 2"),
             ("season-2023", 2023, "Season 1"),
             ("season-2024", 2024, "Season 2"),
             ("season-2025", 2025, "Season 3"),
             ("season-2026", 2026, "Season 4"),
-            ("S1",          2026, "Season 1"),
+            ("S1", 2026, "Season 1"),
             ("test-season", 2026, "Season 1"),
             ("season-3025", 2025, "Season 3"),
         ]:
-            cur.execute("INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", row)
+            cur.execute(
+                "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                row,
+            )
         # Teams
         for row in [
-            ("team-1",    "City 1",    "Team 1"),
-            ("team-2",    "City 2",    "Team 2"),
+            ("team-1", "City 1", "Team 1"),
+            ("team-2", "City 2", "Team 2"),
             ("team-home", "Home City", "Homers"),
             ("team-away", "Away City", "Visitors"),
             ("home-team", "Home City", "Homers"),
             ("away-team", "Away City", "Visitors"),
-            ("BOS",       "Boston",    "Rots"),
-            ("home-11",   "home",      "home"),
-            ("home-12",   "home",      "home"),
-            ("home-13",   "home",      "home"),
-            ("home-14",   "home",      "home"),
-            ("home-15",   "home",      "home"),
-            ("away-11",   "away",      "away"),
-            ("away-12",   "away",      "away"),
-            ("away-13",   "away",      "away"),
-            ("away-14",   "away",      "away"),
-            ("away-15",   "away",      "away"),
-            ("team-a",    "away",      "away"),
-            ("team-b",    "away",      "away"),
-            ("team-c",    "away",      "away"),
-            ("team-d",    "away",      "away"),
+            ("BOS", "Boston", "Rots"),
+            ("home-11", "home", "home"),
+            ("home-12", "home", "home"),
+            ("home-13", "home", "home"),
+            ("home-14", "home", "home"),
+            ("home-15", "home", "home"),
+            ("away-11", "away", "away"),
+            ("away-12", "away", "away"),
+            ("away-13", "away", "away"),
+            ("away-14", "away", "away"),
+            ("away-15", "away", "away"),
+            ("team-a", "away", "away"),
+            ("team-b", "away", "away"),
+            ("team-c", "away", "away"),
+            ("team-d", "away", "away"),
         ]:
-            cur.execute("INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", row)
+            cur.execute(
+                "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                row,
+            )
         # Players
         for row in [
-            ("p1",       "John", "Doe", "R", "R", "cf"),
-            ("p2",       "Jane", "Doe", "L", "L", "ss"),
-            ("player-0", "Joe",  "Doe", "R", "R", "cf"),
+            ("p1", "John", "Doe", "R", "R", "cf"),
+            ("p2", "Jane", "Doe", "L", "L", "ss"),
+            ("player-0", "Joe", "Doe", "R", "R", "cf"),
             ("player-1", "John", "Doe", "R", "R", "cf"),
             ("player-2", "Jane", "Doe", "L", "L", "ss"),
             ("player-3", "John", "Doe", "R", "R", "cf"),
             ("player-4", "Jane", "Doe", "L", "L", "ss"),
-            ("P001",     "Jane", "Doe", "L", "L", "ss"),
-            ("P002",     "Jane", "Doe", "L", "L", "ss"),
-            ("P003",     "Jane", "Doe", "L", "L", "ss"),
-            ("P004",     "Jane", "Doe", "L", "L", "ss"),
-            ("P005",     "Jane", "Doe", "L", "L", "ss"),
-            ("P006",     "Jane", "Doe", "L", "L", "ss"),
+            ("P001", "Jane", "Doe", "L", "L", "ss"),
+            ("P002", "Jane", "Doe", "L", "L", "ss"),
+            ("P003", "Jane", "Doe", "L", "L", "ss"),
+            ("P004", "Jane", "Doe", "L", "L", "ss"),
+            ("P005", "Jane", "Doe", "L", "L", "ss"),
+            ("P006", "Jane", "Doe", "L", "L", "ss"),
         ]:
             cur.execute(
                 "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
@@ -187,13 +195,20 @@ def db_seed(db_conn):
             cur.execute(
                 "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)"
                 " VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                (f"game-{i}", f"2025-04-{i+1:02d}", "season-1", "team-home", "team-away", 0),
+                (
+                    f"game-{i}",
+                    f"2025-04-{i+1:02d}",
+                    "season-1",
+                    "team-home",
+                    "team-away",
+                    0,
+                ),
             )
     return db_conn
-    
 
 
 # ── Repository fixtures ───────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def player_repo(db_conn):
@@ -241,6 +256,7 @@ def team_rotations_repo(db_conn):
 
 
 # ── Game engine fixtures (unchanged from original) ────────────────────────────
+
 
 @pytest.fixture
 def home_team():
@@ -301,6 +317,7 @@ def mock_teams():
 
 # ── pytest options ────────────────────────────────────────────────────────────
 
+
 def pytest_addoption(parser):
     parser.addoption("--slow", action="store_true", default=False)
     parser.addoption(
@@ -308,7 +325,7 @@ def pytest_addoption(parser):
         action="store",
         default=None,
         help="Postgres connection URL for the test database. "
-             "Falls back to the DATABASE_TEST_URL environment variable.",
+        "Falls back to the DATABASE_TEST_URL environment variable.",
     )
 
 

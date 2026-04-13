@@ -21,7 +21,6 @@ import pytest
 
 from src.league.offseason.snake_draft import SnakeDraft, ROUNDS
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -283,10 +282,14 @@ class TestLoadDraftPool:
 class TestRatePool:
     def test_sorted_best_first(self, db_conn, draft):
         insert_prospect(
-            db_conn, "p-low", rating_skills={"strikes": 10, "stamina": 10, "recovery": 10}
+            db_conn,
+            "p-low",
+            rating_skills={"strikes": 10, "stamina": 10, "recovery": 10},
         )
         insert_prospect(
-            db_conn, "p-high", rating_skills={"strikes": 90, "stamina": 90, "recovery": 90}
+            db_conn,
+            "p-high",
+            rating_skills={"strikes": 90, "stamina": 90, "recovery": 90},
         )
 
         pool = draft._load_draft_pool()

@@ -55,7 +55,7 @@ class TeamGameRepository:
             """,
             (game_id, team_id, runs, hits, errors, 1 if won else 0, 0 if won else 1),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     def save_game_stats(
         self,
@@ -199,6 +199,7 @@ class TeamGameRepository:
             "win_pct": self._calculate_win_pct(row["wins"] or 0, row["losses"] or 0),
         }
 
+    # never called, not even in test
     def clear_stats(self, game_id: str) -> None:
         """
         Clear team stats for a game (for replaying games).
@@ -207,7 +208,7 @@ class TeamGameRepository:
             game_id: Game ID
         """
         self.conn.execute("DELETE FROM team_game_stats WHERE game_id = %s", (game_id,))
-        self.conn.commit()
+        # self.conn.commit()
 
     def get_standings(self, season_id: str) -> list[dict]:
         """

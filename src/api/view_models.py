@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, computed_field
 
 from src.api.routers.web import _current_league_date
 
+
 class SeasonContext(BaseModel):
     id: str
     name: str
@@ -11,11 +12,13 @@ class SeasonContext(BaseModel):
     games_remaining: int
     is_active: bool = True
 
+
 class WebContext(BaseModel):
     """
     Consolidates league, GM, and session data for Jinja2 templates.
     All 'monster' logic moved into computed_fields or properties.
     """
+
     active_tab: str
     league: Optional[dict] = None
     gm: Optional[dict] = None
@@ -53,7 +56,7 @@ class WebContext(BaseModel):
         return self.user["display_name"] if self.user else "Guest"
 
     # --- Tab Visibility Logic ---
-    
+
     @computed_field
     @property
     def visible_tabs(self) -> list[str]:

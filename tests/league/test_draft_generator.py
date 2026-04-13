@@ -19,7 +19,6 @@ from src.league.offseason.draft_generator import (
     _age_distribution_positions,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -60,7 +59,27 @@ def insert_player(db_conn, player_id, status, team_id=None):
         "  stamina, recovery, ground_balls, strikes)"
         " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         " ON CONFLICT DO NOTHING",
-        (player_id, 20, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60),
+        (
+            player_id,
+            20,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+            60,
+        ),
     )
     db_conn.execute(
         "INSERT INTO player_status (player_id, status, since)"
@@ -107,8 +126,9 @@ class TestAgeDistributionPositions:
             age_counts[age] = age_counts.get(age, 0) + 1
         for expected_age, expected_pct in AGE_DISTRIBUTION:
             actual_pct = age_counts.get(expected_age, 0) / 10000
-            assert abs(actual_pct - expected_pct) < 0.05, \
-                f"Age {expected_age}: expected ~{expected_pct:.0%}, got {actual_pct:.0%}"
+            assert (
+                abs(actual_pct - expected_pct) < 0.05
+            ), f"Age {expected_age}: expected ~{expected_pct:.0%}, got {actual_pct:.0%}"
 
     def test_position_distribution_55_percent_pitchers(self):
         result = _age_distribution_positions(random.Random(42), 10000)
@@ -117,7 +137,9 @@ class TestAgeDistributionPositions:
 
     def test_position_distribution_45_percent_position_players(self):
         result = _age_distribution_positions(random.Random(42), 10000)
-        pos_pct = sum(1 for _, pos in result if pos in POSITION_PLAYER_POSITIONS) / 10000
+        pos_pct = (
+            sum(1 for _, pos in result if pos in POSITION_PLAYER_POSITIONS) / 10000
+        )
         assert abs(pos_pct - 0.62) < 0.03
 
     def test_pitcher_positions_even_split(self):
@@ -280,7 +302,8 @@ class TestDraftGeneratorRun:
         rows = db_conn.execute(
             """SELECT ps.status FROM player_status ps
                JOIN players p ON p.id = ps.player_id
-               WHERE p.league_id = %s""", (lid,)
+               WHERE p.league_id = %s""",
+            (lid,),
         ).fetchall()
         assert len(rows) == DRAFT_POOL_SIZE
         assert all(r["status"] == "prospect" for r in rows)

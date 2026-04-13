@@ -53,7 +53,6 @@ from src.league.manifest_helper import (
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import MANIFEST_FILES_DIR, TEAM_FILES_DIR, TEMP_FILES, LOG_FILES
 
-
 # Database is configured via DATABASE_URL environment variable
 DEFAULT_YEAR = 2025
 NUM_YEARS = 50  # The maximum number of years to expect manifest files for
@@ -308,6 +307,7 @@ def clear_db() -> None:
     Reads DATABASE_URL from environment to find the DB name.
     """
     import os, subprocess
+
     url = os.environ.get("DATABASE_URL", "")
     # Extract db name from URL: postgresql://user@host/dbname
     db_name = url.rstrip("/").rsplit("/", 1)[-1].split("?")[0] if "/" in url else None
@@ -431,7 +431,7 @@ def _bootstrap_first_season(
     league_id = str(uuid.UUID(int=rng.getrandbits(128)).hex)
     league_repo = LeagueRepository(conn)
     league_id = league_repo.create_league(manifest["league_name"], league_id)
-    
+    conn.commit()  # moved from league_repo might need to move down...
 
     # 2. Create team CSV files in the right location: {year}/{league_id}/
     missing = find_missing_team_files(manifest, league_id=league_id)
@@ -445,7 +445,10 @@ def _bootstrap_first_season(
     # 3. Bootstrap with known league_id — finds files in {year}/{league_id}/
     boot = LeagueBootstrapper(conn, rng=rng)
     league_id, teams, season_id = boot.bootstrap_from_manifest(
-        manifest, start_date, league_id=league_id, force_new_teams=True,
+        manifest,
+        start_date,
+        league_id=league_id,
+        force_new_teams=True,
     )
 
     existing_games = conn.execute(
@@ -894,9 +897,7 @@ def _run_reports(season_id: str, logs: bool = False):
     conn.close()
 
 
-def _run_one_season(
-    conn, season_id: str, league_id: str, year: int, args
-) -> None:
+def _run_one_season(conn, season_id: str, league_id: str, year: int, args) -> None:
     """Play one complete season: regular season → reports → playoffs → offseason."""
     print(f"\n{'='*60}")
     print(f"  Season {year}  (season_id={season_id[:8]}...)")
@@ -923,9 +924,7 @@ def _run_one_season(
 
 def cmd_new_league(args) -> None:
     if args.clear_db:
-        msg = (
-            f"⚠️  This will destroy the entire database. Continue? [y/N] "
-        )
+        msg = f"⚠️  This will destroy the entire database. Continue? [y/N] "
         if input(msg).strip().lower() not in ("y", "yes"):
             print("Aborted.")
             return

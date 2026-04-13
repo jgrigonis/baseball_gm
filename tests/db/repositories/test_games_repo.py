@@ -14,7 +14,8 @@ def game_repo(db_conn):
 def base(db_conn, factory):
     """Season + two teams used by most fixtures."""
     from types import SimpleNamespace
-    season    = factory.season()
+
+    season = factory.season()
     home_team = factory.team(city="Home City", mascot="Homers")
     away_team = factory.team(city="Away City", mascot="Visitors")
     return SimpleNamespace(
@@ -29,6 +30,7 @@ def base(db_conn, factory):
 def sample_game(base):
     """An incomplete game."""
     import uuid
+
     gid = str(uuid.uuid4())
     base.conn.execute(
         """
@@ -45,6 +47,7 @@ def sample_game(base):
 def completed_game(base):
     """A completed game with scores."""
     import uuid
+
     gid = str(uuid.uuid4())
     base.conn.execute(
         """
@@ -54,8 +57,19 @@ def completed_game(base):
         )
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
-        (gid, "2025-04-02", base.season.id, None,
-         base.home.id, base.away.id, 5, 3, 1, 9, base.home.id),
+        (
+            gid,
+            "2025-04-02",
+            base.season.id,
+            None,
+            base.home.id,
+            base.away.id,
+            5,
+            3,
+            1,
+            9,
+            base.home.id,
+        ),
     )
     base.gid = gid
     return base
@@ -93,10 +107,17 @@ class TestGameRepositoryGet:
     def test_get_returns_all_fields(self, game_repo, sample_game):
         result = game_repo.get(sample_game.gid)
         assert set(result.keys()) == {
-            "game_id", "season_id", "series_id",
-            "home_team_id", "away_team_id", "game_date",
-            "completed", "home_score", "away_score",
-            "winner_id", "innings_played",
+            "game_id",
+            "season_id",
+            "series_id",
+            "home_team_id",
+            "away_team_id",
+            "game_date",
+            "completed",
+            "home_score",
+            "away_score",
+            "winner_id",
+            "innings_played",
         }
 
 
@@ -104,11 +125,15 @@ class TestGameRepositorySaveResult:
 
     def test_save_result_basic(self, game_repo, sample_game):
         result = GameResult(
-            home_team="Home Team", away_team="Away Team",
-            home_score=5, away_score=3, innings_played=9,
-            winner="Home Team", winning_margin=2,
+            home_team="Home Team",
+            away_team="Away Team",
+            home_score=5,
+            away_score=3,
+            innings_played=9,
+            winner="Home Team",
+            winning_margin=2,
         )
-        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
+        game_repo.save_game_result(sample_game.gid, result, sample_game.home.id)
 
         row = sample_game.conn.execute(
             "SELECT * FROM games WHERE id = %s", (sample_game.gid,)
@@ -121,11 +146,15 @@ class TestGameRepositorySaveResult:
 
     def test_save_result_extra_innings(self, game_repo, sample_game):
         result = GameResult(
-            home_team="Home", away_team="Away",
-            home_score=4, away_score=3, innings_played=12,
-            winner="Home", winning_margin=1,
+            home_team="Home",
+            away_team="Away",
+            home_score=4,
+            away_score=3,
+            innings_played=12,
+            winner="Home",
+            winning_margin=1,
         )
-        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
+        game_repo.save_game_result(sample_game.gid, result, sample_game.home.id)
 
         row = sample_game.conn.execute(
             "SELECT innings_played FROM games WHERE id = %s", (sample_game.gid,)
@@ -139,11 +168,15 @@ class TestGameRepositorySaveResult:
         assert row["completed"] == 0
 
         result = GameResult(
-            home_team="Home", away_team="Away",
-            home_score=1, away_score=0, innings_played=9,
-            winner="Home", winning_margin=1,
+            home_team="Home",
+            away_team="Away",
+            home_score=1,
+            away_score=0,
+            innings_played=9,
+            winner="Home",
+            winning_margin=1,
         )
-        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
+        game_repo.save_game_result(sample_game.gid, result, sample_game.home.id)
 
         row = sample_game.conn.execute(
             "SELECT completed FROM games WHERE id = %s", (sample_game.gid,)
@@ -152,11 +185,17 @@ class TestGameRepositorySaveResult:
 
     def test_save_result_overwrites_existing(self, game_repo, completed_game):
         new_result = GameResult(
-            home_team="Home", away_team="Away",
-            home_score=10, away_score=8, innings_played=11,
-            winner="Home", winning_margin=2,
+            home_team="Home",
+            away_team="Away",
+            home_score=10,
+            away_score=8,
+            innings_played=11,
+            winner="Home",
+            winning_margin=2,
         )
-        game_repo.save_result(completed_game.gid, new_result, completed_game.home.id)
+        game_repo.save_game_result(
+            completed_game.gid, new_result, completed_game.home.id
+        )
 
         row = completed_game.conn.execute(
             "SELECT * FROM games WHERE id = %s", (completed_game.gid,)
@@ -179,12 +218,14 @@ class TestGameRepositoryGetSeasonGames:
         teams = [factory.team() for _ in range(5)]
 
         games_s1 = []
-        for i, (home, away, completed, hs, as_) in enumerate([
-            (teams[0], teams[1], 0, None, None),
-            (teams[1], teams[2], 1, 5, 3),
-            (teams[2], teams[3], 1, 2, 1),
-            (teams[3], teams[4], 0, None, None),
-        ]):
+        for i, (home, away, completed, hs, as_) in enumerate(
+            [
+                (teams[0], teams[1], 0, None, None),
+                (teams[1], teams[2], 1, 5, 3),
+                (teams[2], teams[3], 1, 2, 1),
+                (teams[3], teams[4], 0, None, None),
+            ]
+        ):
             gid = str(uuid.uuid4())
             db_conn.execute(
                 """
@@ -192,8 +233,17 @@ class TestGameRepositoryGetSeasonGames:
                     home_team_id, away_team_id, completed, home_score, away_score)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (gid, f"2025-04-{i+1:02d}", s1.id, None,
-                 home.id, away.id, completed, hs, as_),
+                (
+                    gid,
+                    f"2025-04-{i+1:02d}",
+                    s1.id,
+                    None,
+                    home.id,
+                    away.id,
+                    completed,
+                    hs,
+                    as_,
+                ),
             )
             games_s1.append(gid)
 
@@ -204,13 +254,15 @@ class TestGameRepositoryGetSeasonGames:
                 home_team_id, away_team_id, completed, home_score, away_score)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (gid_s2, "2025-04-01", s2.id, None,
-             teams[0].id, teams[1].id, 1, 4, 2),
+            (gid_s2, "2025-04-01", s2.id, None, teams[0].id, teams[1].id, 1, 4, 2),
         )
 
         return SimpleNamespace(
-            conn=db_conn, s1=s1, s2=s2,
-            games_s1=games_s1, game_s2=gid_s2,
+            conn=db_conn,
+            s1=s1,
+            s2=s2,
+            games_s1=games_s1,
+            game_s2=gid_s2,
         )
 
     def test_get_all_season_games(self, game_repo, season_games):
@@ -245,9 +297,16 @@ class TestGameRepositoryGetSeasonGames:
     def test_get_season_games_returns_all_fields(self, game_repo, season_games):
         games = game_repo.get_season_games(season_games.s1.id)
         expected_fields = {
-            "game_id", "season_id", "home_team_id", "away_team_id",
-            "game_date", "completed", "home_score", "away_score",
-            "winner_id", "innings_played",
+            "game_id",
+            "season_id",
+            "home_team_id",
+            "away_team_id",
+            "game_date",
+            "completed",
+            "home_score",
+            "away_score",
+            "winner_id",
+            "innings_played",
         }
         for game in games:
             assert set(game.keys()) == expected_fields
@@ -310,11 +369,15 @@ class TestGameRepositoryIsCompleted:
         assert game_repo.is_completed(sample_game.gid) is False
 
         result = GameResult(
-            home_team="Home", away_team="Away",
-            home_score=3, away_score=2, innings_played=9,
-            winner="Home", winning_margin=1,
+            home_team="Home",
+            away_team="Away",
+            home_score=3,
+            away_score=2,
+            innings_played=9,
+            winner="Home",
+            winning_margin=1,
         )
-        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
+        game_repo.save_game_result(sample_game.gid, result, sample_game.home.id)
         assert game_repo.is_completed(sample_game.gid) is True
 
     def test_is_completed_after_clear(self, game_repo, completed_game):

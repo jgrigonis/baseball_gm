@@ -15,7 +15,7 @@ def rot(db_conn, factory):
     from types import SimpleNamespace
 
     season = factory.season(year=2024)
-    team   = factory.team(city="Boston", mascot="Red Sox")
+    team = factory.team(city="Boston", mascot="Red Sox")
 
     players = []
     for i in range(1, 8):
@@ -35,8 +35,8 @@ def rot(db_conn, factory):
     return SimpleNamespace(
         season_id=season.id,
         team_id=team.id,
-        players=players,        # [p1..p7] — players[0] == "tst-rot-p001", etc.
-        p=players,              # shorthand: rot.p[0] .. rot.p[6]
+        players=players,  # [p1..p7] — players[0] == "tst-rot-p001", etc.
+        p=players,  # shorthand: rot.p[0] .. rot.p[6]
     )
 
 
@@ -109,7 +109,9 @@ class TestGetCurrentRotation:
 class TestGetNextStarter:
     def test_get_next_starter_no_previous_games(self, repo, rot):
         repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
-        assert repo.get_next_starter(rot.team_id, rot.season_id, "2024-04-15") == rot.p[0]
+        assert (
+            repo.get_next_starter(rot.team_id, rot.season_id, "2024-04-15") == rot.p[0]
+        )
 
     def test_get_next_starter_with_previous_game(self, repo, db_conn, rot, factory):
         repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
@@ -128,7 +130,9 @@ class TestGetNextStarter:
             (game_id, rot.p[0], rot.team_id, opp.id, 1),
         )
 
-        assert repo.get_next_starter(rot.team_id, rot.season_id, "2024-04-03") == rot.p[1]
+        assert (
+            repo.get_next_starter(rot.team_id, rot.season_id, "2024-04-03") == rot.p[1]
+        )
 
     def test_get_next_starter_wraps_around(self, repo, db_conn, rot, factory):
         repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
@@ -147,7 +151,9 @@ class TestGetNextStarter:
             (game_id, rot.p[4], rot.team_id, opp.id, 1),
         )
 
-        assert repo.get_next_starter(rot.team_id, rot.season_id, "2024-04-03") == rot.p[0]
+        assert (
+            repo.get_next_starter(rot.team_id, rot.season_id, "2024-04-03") == rot.p[0]
+        )
 
     def test_get_next_starter_no_rotation(self, repo, rot):
         assert repo.get_next_starter(rot.team_id, rot.season_id, "2024-04-01") is None
@@ -207,7 +213,9 @@ class TestRemoveFromRotation:
         repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
 
         with pytest.raises(ValueError, match="not in active rotation"):
-            repo.remove_from_rotation(rot.team_id, rot.season_id, rot.p[5], "2024-05-01")
+            repo.remove_from_rotation(
+                rot.team_id, rot.season_id, rot.p[5], "2024-05-01"
+            )
 
 
 class TestAddToRotation:
@@ -246,7 +254,9 @@ class TestSwapRotationSpots:
     def test_swap_rotation_spots_success(self, repo, rot):
         repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
 
-        repo.swap_rotation_spots(rot.team_id, rot.season_id, rot.p[0], rot.p[4], "2024-05-01")
+        repo.swap_rotation_spots(
+            rot.team_id, rot.season_id, rot.p[0], rot.p[4], "2024-05-01"
+        )
 
         rotation = repo.get_current_rotation(rot.team_id, rot.season_id, "2024-05-15")
         by_player = {p["player_id"]: p["rotation_order"] for p in rotation}
@@ -257,10 +267,14 @@ class TestSwapRotationSpots:
         repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
 
         with pytest.raises(ValueError, match="not in active rotation"):
-            repo.swap_rotation_spots(rot.team_id, rot.season_id, rot.p[5], rot.p[0], "2024-05-01")
+            repo.swap_rotation_spots(
+                rot.team_id, rot.season_id, rot.p[5], rot.p[0], "2024-05-01"
+            )
 
     def test_swap_rotation_spots_player2_not_in_rotation(self, repo, rot):
         repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
 
         with pytest.raises(ValueError, match="not in active rotation"):
-            repo.swap_rotation_spots(rot.team_id, rot.season_id, rot.p[0], rot.p[6], "2024-05-01")
+            repo.swap_rotation_spots(
+                rot.team_id, rot.season_id, rot.p[0], rot.p[6], "2024-05-01"
+            )

@@ -88,12 +88,10 @@ class TeamRepository:
         )
 
     def get(self, team_id: str) -> TeamRecord | None:
-        """
-        Fetch a team by ID.
-        """
+        """Fetch a team by ID."""
         row = self.conn.execute(
             """
-            SELECT *
+            SELECT id, city, mascot, source_csv, source_hash
             FROM teams
             WHERE id = %s
             """,
@@ -103,6 +101,7 @@ class TeamRepository:
         if row is None:
             return None
 
+        # Note: self.get_roster(team_id) should also use explicit columns!
         players = self.get_roster(team_id)
 
         return TeamRecord(
@@ -115,22 +114,18 @@ class TeamRepository:
         )
 
     def find_by_city_mascot(self, city: str, mascot: str) -> str | None:
-        """
-        Fetch a team id based on city and mascot
-        """
+        """Fetch a team id based on city and mascot."""
         row = self.conn.execute(
             """
-            SELECT *
+            SELECT id
             FROM teams
             WHERE city = %s AND mascot = %s
             """,
             (city, mascot),
         ).fetchone()
 
-        if row is None:
-            return None
-
-        return row["id"]
+        # Returns just the string ID, much lighter
+        return row["id"] if row else None
 
     def is_in_league(self, team_id: str, league_id: str, season_id: str) -> bool:
         """Check if team is in a specific league for a specific season"""
@@ -216,4 +211,4 @@ class TeamRepository:
             "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
             (team_id, player_id),
         )
-        self.conn.commit()
+        # self.conn.commit()

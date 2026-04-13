@@ -10,12 +10,12 @@ from src.util.team_resolver import resolve_team, list_teams, TeamResolverError
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 _TEST_TEAMS = [
-    ("uuid-tstvienna",    "Tstvienna",    "Tmaestros"),
-    ("uuid-tsttokyo",     "Tsttokyo",     "Tsamurai"),
-    ("uuid-tstdubai",     "Tstdubai",     "Tfalcons"),
-    ("uuid-tstlondon",    "Tstlondon",    "Tlions"),
-    ("uuid-tstberlin",    "Tstberlin",    "Teagles"),   # \
-    ("uuid-tstfrankfurt", "Tstfrankfurt", "Teagles"),   # / same mascot — ambiguity tests
+    ("uuid-tstvienna", "Tstvienna", "Tmaestros"),
+    ("uuid-tsttokyo", "Tsttokyo", "Tsamurai"),
+    ("uuid-tstdubai", "Tstdubai", "Tfalcons"),
+    ("uuid-tstlondon", "Tstlondon", "Tlions"),
+    ("uuid-tstberlin", "Tstberlin", "Teagles"),  # \
+    ("uuid-tstfrankfurt", "Tstfrankfurt", "Teagles"),  # / same mascot — ambiguity tests
 ]
 
 

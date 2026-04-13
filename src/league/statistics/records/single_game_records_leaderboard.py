@@ -18,7 +18,6 @@ import argparse
 
 from src.db.connection import get_connection
 
-
 # ── Formatting helpers ────────────────────────────────────────────────────────
 
 
@@ -268,7 +267,6 @@ def main():
     if not args.batting and not args.pitching:
         args.batting = True
         args.pitching = True
-
 
     conn = get_connection()
 

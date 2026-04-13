@@ -15,10 +15,22 @@ def player_repo(db_conn):
 @pytest.fixture
 def sample_skills():
     return PlayerSkills(
-        clutch=75, speed=80, power=70, eye=65, contact=85,
-        base_running=78, bunting=50, catching=60, infield=75,
-        outfield=80, arm=70, accuracy=75, stamina=80,
-        recovery=70, ground_balls=65, strikes=75,
+        clutch=75,
+        speed=80,
+        power=70,
+        eye=65,
+        contact=85,
+        base_running=78,
+        bunting=50,
+        catching=60,
+        infield=75,
+        outfield=80,
+        arm=70,
+        accuracy=75,
+        stamina=80,
+        recovery=70,
+        ground_balls=65,
+        strikes=75,
     )
 
 
@@ -27,6 +39,7 @@ def ctx(db_conn, factory):
     """Unique player IDs + season per test — no cross-run collisions."""
     from types import SimpleNamespace
     import uuid
+
     season = factory.season()
     # Generate IDs only — don't pre-insert players, so each test controls insertion
     p1 = SimpleNamespace(id=str(uuid.uuid4()))
@@ -76,7 +89,9 @@ class TestPlayerRepositoryInsert:
         ).fetchone()
         assert row["first_name"] == "Mike"
 
-    def test_insert_multiple_players(self, player_repo, ctx, db_conn, sample_skills, factory):
+    def test_insert_multiple_players(
+        self, player_repo, ctx, db_conn, sample_skills, factory
+    ):
         ids = [ctx.p1.id, ctx.p2.id, factory.player_row().id]
         for pid in ids:
             player_repo.insert(pid, "First", "Last", "R", "R", "rf", sample_skills)
@@ -86,12 +101,15 @@ class TestPlayerRepositoryInsert:
         ).fetchone()["n"]
         assert count == 3
 
-    def test_insert_different_handedness(self, player_repo, ctx, db_conn, sample_skills):
+    def test_insert_different_handedness(
+        self, player_repo, ctx, db_conn, sample_skills
+    ):
         import uuid
+
         p3_id = str(uuid.uuid4())
         player_repo.insert(ctx.p1.id, "A", "B", "r", "r", "1b", sample_skills)
         player_repo.insert(ctx.p2.id, "C", "D", "L", "L", "of", sample_skills)
-        player_repo.insert(p3_id,     "E", "F", "S", "R", "c",  sample_skills)
+        player_repo.insert(p3_id, "E", "F", "S", "R", "c", sample_skills)
 
         rows = db_conn.execute(
             "SELECT id, bats FROM players WHERE id = ANY(%s) ORDER BY bats",
@@ -110,8 +128,9 @@ class TestPlayerRepositoryInsert:
         ).fetchone()
         assert row["updated_at"] is not None
         ts = datetime.fromisoformat(row["updated_at"].replace("Z", "+00:00"))
-        assert ts.replace(tzinfo=None) >= before.replace(microsecond=0) \
-            or ts.replace(tzinfo=None) <= after.replace(microsecond=0)
+        assert ts.replace(tzinfo=None) >= before.replace(microsecond=0) or ts.replace(
+            tzinfo=None
+        ) <= after.replace(microsecond=0)
 
 
 # ---------------------------------------------------------------------------
@@ -125,10 +144,22 @@ class TestPlayerRepositoryUpdateSkills:
         player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
 
         new_skills = PlayerSkills(
-            clutch=80, speed=85, power=75, eye=70, contact=90,
-            base_running=83, bunting=55, catching=65, infield=80,
-            outfield=85, arm=75, accuracy=80, stamina=85,
-            recovery=75, ground_balls=70, strikes=80,
+            clutch=80,
+            speed=85,
+            power=75,
+            eye=70,
+            contact=90,
+            base_running=83,
+            bunting=55,
+            catching=65,
+            infield=80,
+            outfield=85,
+            arm=75,
+            accuracy=80,
+            stamina=85,
+            recovery=75,
+            ground_balls=70,
+            strikes=80,
         )
         player_repo.update_skills(ctx.p1.id, new_skills)
 
@@ -140,14 +171,18 @@ class TestPlayerRepositoryUpdateSkills:
         assert row["power"] == 75
         assert row["contact"] == 90
 
-    def test_update_skills_creates_new_timestamp(self, player_repo, ctx, db_conn, sample_skills):
+    def test_update_skills_creates_new_timestamp(
+        self, player_repo, ctx, db_conn, sample_skills
+    ):
         player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
 
         original_ts = db_conn.execute(
             "SELECT updated_at FROM player_skills WHERE player_id = %s", (ctx.p1.id,)
         ).fetchone()["updated_at"]
 
-        import time; time.sleep(0.01)
+        import time
+
+        time.sleep(0.01)
 
         new_skills = PlayerSkills({**sample_skills.as_dict(), "speed": 85})
         player_repo.update_skills(ctx.p1.id, new_skills)
@@ -190,7 +225,9 @@ class TestPlayerRepositorySnapshotSkills:
         assert row["speed"] == 80
         assert row["power"] == 70
 
-    def test_snapshot_skills_multiple_seasons(self, player_repo, ctx, db_conn, sample_skills, factory):
+    def test_snapshot_skills_multiple_seasons(
+        self, player_repo, ctx, db_conn, sample_skills, factory
+    ):
         player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
 
         seasons = [factory.season(year=3400 + i) for i in range(3)]
@@ -225,7 +262,9 @@ class TestPlayerRepositorySnapshotSkills:
         ).fetchone()
         assert row["speed"] == 85
 
-    def test_snapshot_skills_creates_timestamp(self, player_repo, ctx, db_conn, sample_skills):
+    def test_snapshot_skills_creates_timestamp(
+        self, player_repo, ctx, db_conn, sample_skills
+    ):
         player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
         player_repo.snapshot_skills(ctx.p1.id, ctx.season.id)
 
@@ -308,7 +347,9 @@ class TestPlayerRepositoryGetSkillHistory:
         assert history[0]["clutch"] == 75
         assert history[0]["speed"] == 80
 
-    def test_get_skill_history_multiple_seasons(self, player_repo, ctx, sample_skills, factory):
+    def test_get_skill_history_multiple_seasons(
+        self, player_repo, ctx, sample_skills, factory
+    ):
         player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
 
         seasons = [factory.season(year=3500 + i) for i in range(3)]
@@ -331,7 +372,9 @@ class TestPlayerRepositoryGetSkillHistory:
         season_ids = [h["season_id"] for h in history]
         assert season_ids == sorted(season_ids)
 
-    def test_get_skill_history_shows_progression(self, player_repo, ctx, sample_skills, factory):
+    def test_get_skill_history_shows_progression(
+        self, player_repo, ctx, sample_skills, factory
+    ):
         player_repo.insert(ctx.p1.id, "Mike", "Trout", "R", "R", "of", sample_skills)
 
         seasons = [factory.season(year=3700 + i) for i in range(3)]
@@ -388,6 +431,7 @@ class TestPlayerRepositoryGetAllPlayers:
 
     def test_get_all_players_multiple(self, player_repo, ctx, sample_skills):
         import uuid
+
         p3_id = str(uuid.uuid4())
         for pid in [ctx.p1.id, ctx.p2.id, p3_id]:
             player_repo.insert(pid, "First", "Last", "R", "R", "rf", sample_skills)
@@ -442,8 +486,15 @@ class TestPlayerRepositoryIntegration:
     def test_roster_management(self, player_repo, sample_skills, factory):
         players = [factory.player_row() for _ in range(25)]
         for i, p in enumerate(players):
-            player_repo.insert(p.id, f"First{i}", f"Last{i}",
-                               "R" if i % 2 == 0 else "L", "R", "cf", sample_skills)
+            player_repo.insert(
+                p.id,
+                f"First{i}",
+                f"Last{i}",
+                "R" if i % 2 == 0 else "L",
+                "R",
+                "cf",
+                sample_skills,
+            )
 
         all_players = player_repo.get_all_players()
         ids = {p.id for p in all_players}

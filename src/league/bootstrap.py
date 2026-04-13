@@ -56,6 +56,7 @@ class LeagueBootstrapper:
         else:
             # Old CLI path — create or look up by name as before
             league_id = self.league_repo.create_league(manifest["league_name"])
+            # self.conn.commit() # Moved out of league_repo, don't think we ever get on this code path anyway
 
         # Defaults to name=Season1 year=2026 if not found in manifest
         season_id = self.season_repo.create_season(
@@ -71,6 +72,7 @@ class LeagueBootstrapper:
 
         # Link the season to the league
         self.league_repo.assign_season_to_league(league_id, season_id)
+        # self.conn.commit() # Moved out of league_repo, may move it down further
 
         teams = []
         for team_def in manifest["teams"]:
@@ -94,6 +96,7 @@ class LeagueBootstrapper:
         # Set starting rotations for all teams
         self._bootstrap_rotations(teams, season_id, start_date)
 
+        self.conn.commit()  # Moved out of league_repo
         return league_id, teams, season_id
 
     def _bootstrap_rotations(self, teams, season_id: str, start_date: str) -> None:
@@ -130,10 +133,10 @@ class LeagueBootstrapper:
                        SET next_order = 1, updated_at = NOW()""",
                 (team.id, season_id),
             )
-            self.conn.commit()
             self._bootstrap_bullpen(
                 team, active_players, rotation, season_id, start_date
             )
+            self.conn.commit()
 
     def _bootstrap_bullpen(
         self, team, active_players, rotation, season_id: str, start_date: str

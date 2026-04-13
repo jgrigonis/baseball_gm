@@ -29,7 +29,7 @@ class PlayerGameRepository:
     # WRITE
     # ------------------------------------------------------------
 
-    def insert(
+    def insert_player_game(
         self,
         game_id: str,
         player_id: str,
@@ -188,8 +188,9 @@ class PlayerGameRepository:
                     ),
                 )
 
-        self.conn.commit()
+        # self.conn.commit()
 
+    # Only called by tests
     def delete_game_stats(self, game_id: str) -> None:
         """
         Delete all player stats for a game (for replaying games).
@@ -198,11 +199,13 @@ class PlayerGameRepository:
         Args:
             game_id: Game ID
         """
-        self.conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
+        self.conn.execute(
+            "DELETE FROM player_game_stats WHERE game_id = %s", (game_id,)
+        )
         self.conn.execute(
             "DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,)
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     # ------------------------------------------------------------
     # READ

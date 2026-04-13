@@ -351,7 +351,6 @@ def main():
         args.batting = True
         args.pitching = True
 
-
     # Check rollup table exists and has data
     conn = get_connection()
     row = conn.execute(

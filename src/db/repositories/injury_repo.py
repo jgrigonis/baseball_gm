@@ -82,7 +82,9 @@ class InjuryRepository:
         row = cursor.fetchone()
         if not row:
             return None
-        return PlayerInjury(player_id=row["player_id"], games_remaining=row["games_remaining"])
+        return PlayerInjury(
+            player_id=row["player_id"], games_remaining=row["games_remaining"]
+        )
 
     def is_injured(self, player_id: str) -> bool:
         injury = self.get(player_id)
@@ -96,7 +98,9 @@ class InjuryRepository:
             (self.league_id,),
         )
         return [
-            PlayerInjury(player_id=row["player_id"], games_remaining=row["games_remaining"])
+            PlayerInjury(
+                player_id=row["player_id"], games_remaining=row["games_remaining"]
+            )
             for row in cursor.fetchall()
         ]
 
@@ -153,7 +157,7 @@ class InjuryRepository:
                     activity,
                 ),
             )
-            self.conn.commit()
+            # self.conn.commit()
         except Exception:
             self.conn.rollback()
             raise
@@ -171,7 +175,7 @@ class InjuryRepository:
         injury.games_remaining -= 1
 
         if injury.games_remaining <= 0:
-            self.clear(player_id)
+            self.clear_injuries(player_id)
             logger.info("Player %s injury cleared — available to play.", player_id)
             return None
 
@@ -185,17 +189,17 @@ class InjuryRepository:
                 results[player_id] = self.tick(player_id)
         return results
 
-    def clear(self, player_id: str) -> bool:
+    def clear_injuries(self, player_id: str) -> bool:
         cursor = self.conn.cursor()
         cursor.execute(
             "DELETE FROM player_injuries WHERE player_id = %s AND league_id = %s",
             (player_id, self.league_id),
         )
         deleted = cursor.rowcount > 0
-        self.conn.commit()
+        # self.conn.commit()
         return deleted
 
-    def clear_all(self) -> int:
+    def clear_all_injuries(self) -> int:
         """Delete all injury rows for this league. Call between seasons."""
         cursor = self.conn.cursor()
         cursor.execute(
@@ -203,7 +207,7 @@ class InjuryRepository:
             (self.league_id,),
         )
         deleted = cursor.rowcount
-        self.conn.commit()
+        # self.conn.commit()
         return deleted
 
     # ------------------------------------------------------------------
@@ -221,4 +225,4 @@ class InjuryRepository:
             """,
             (injury.player_id, self.league_id, injury.games_remaining),
         )
-        self.conn.commit()
+        # self.conn.commit()

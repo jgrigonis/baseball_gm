@@ -23,7 +23,7 @@ class TalentCapRepository:
     #  Write
     # ─────────────────────────────────────────────
 
-    def insert(self, player_id: str, caps: dict[str, int]) -> None:
+    def insert_talent_caps(self, player_id: str, caps: dict[str, int]) -> None:
         """
         Insert talent caps for a newly created player.
 
@@ -48,9 +48,12 @@ class TalentCapRepository:
             """,
             (player_id, *values),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
-    def insert_many(self, records: Sequence[tuple[str, dict[str, int]]]) -> None:
+    # Only called in tests
+    def insert_many_talent_caps(
+        self, records: Sequence[tuple[str, dict[str, int]]]
+    ) -> None:
         """
         Bulk insert caps for multiple players.
 
@@ -75,7 +78,7 @@ class TalentCapRepository:
             """,
             rows,
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     # ─────────────────────────────────────────────
     #  Read

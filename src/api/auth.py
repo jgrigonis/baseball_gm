@@ -112,4 +112,3 @@ def resolve_commissioner(
             detail="Only the commissioner can perform this action.",
         )
     return gm
-    

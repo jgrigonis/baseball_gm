@@ -16,7 +16,6 @@ import pytest
 
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 
-
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
 # ---------------------------------------------------------------------------
@@ -56,6 +55,7 @@ def seed_team(db_conn, team_id, *player_ids):
 def ctx(db_conn, factory):
     """Unique players and teams per test — no cross-run collisions."""
     from types import SimpleNamespace
+
     p = [factory.player_row() for _ in range(6)]
     t1 = factory.team()
     t2 = factory.team()
@@ -226,23 +226,27 @@ class TestGetByTeamAndStatus:
 
 class TestBulkSet:
     def test_inserts_all_assignments(self, ctx, repo):
-        repo.bulk_set({
-            ctx.p[0].id: "26man",
-            ctx.p[1].id: "40man",
-            ctx.p[2].id: "minors",
-        })
+        repo.bulk_set(
+            {
+                ctx.p[0].id: "26man",
+                ctx.p[1].id: "40man",
+                ctx.p[2].id: "minors",
+            }
+        )
         assert repo.get_status(ctx.p[0].id) == "26man"
         assert repo.get_status(ctx.p[1].id) == "40man"
         assert repo.get_status(ctx.p[2].id) == "minors"
 
     def test_upserts_existing_players(self, ctx, repo):
         repo.bulk_set({ctx.p[0].id: "unassigned", ctx.p[1].id: "unassigned"})
-        repo.bulk_set({ctx.p[0].id: "26man",      ctx.p[1].id: "minors"})
+        repo.bulk_set({ctx.p[0].id: "26man", ctx.p[1].id: "minors"})
         assert repo.get_status(ctx.p[0].id) == "26man"
         assert repo.get_status(ctx.p[1].id) == "minors"
 
     def test_since_applied_to_all(self, ctx, repo):
-        repo.bulk_set({ctx.p[0].id: "26man", ctx.p[1].id: "40man"}, since=date(2025, 6, 1))
+        repo.bulk_set(
+            {ctx.p[0].id: "26man", ctx.p[1].id: "40man"}, since=date(2025, 6, 1)
+        )
         for p in ctx.p[:2]:
             row = ctx.conn.execute(
                 "SELECT since FROM player_status WHERE player_id = %s", (p.id,)
@@ -275,6 +279,15 @@ class TestBulkSet:
         repo.bulk_set(assignments)
 
         all_ids = [p.id for p in players]
-        assert len([pid for pid in repo.get_by_status("26man")  if pid in set(all_ids)]) == 26
-        assert len([pid for pid in repo.get_by_status("40man")  if pid in set(all_ids)]) == 14
-        assert len([pid for pid in repo.get_by_status("minors") if pid in set(all_ids)]) == 120
+        assert (
+            len([pid for pid in repo.get_by_status("26man") if pid in set(all_ids)])
+            == 26
+        )
+        assert (
+            len([pid for pid in repo.get_by_status("40man") if pid in set(all_ids)])
+            == 14
+        )
+        assert (
+            len([pid for pid in repo.get_by_status("minors") if pid in set(all_ids)])
+            == 120
+        )

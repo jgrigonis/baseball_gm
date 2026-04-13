@@ -22,10 +22,10 @@ from src.league.offseason.snake_draft import DraftPick, ROUNDS
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_player(pid: str, rating: int = 50) -> PlayerRecord:
     """Create a minimal PlayerRecord for testing."""
@@ -53,6 +53,7 @@ def _seed_prospects(factory, n, prefix="prospect"):
 # Guard clauses
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestExecuteBlitzDraftGuards:
 
     def test_raises_if_draft_not_found(self, db_conn):
@@ -78,6 +79,7 @@ class TestExecuteBlitzDraftGuards:
 # ─────────────────────────────────────────────────────────────────────────────
 # State transitions
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestExecuteBlitzDraftStateTransitions:
 
@@ -116,8 +118,12 @@ class TestExecuteBlitzDraftStateTransitions:
         db_conn, draft, _, _ = setup
         result = execute_blitz_draft(draft.id, db_conn)
         assert set(result.keys()) == {
-            "draft_id", "season_id", "picks_made",
-            "auto_picks", "rounds", "league_state",
+            "draft_id",
+            "season_id",
+            "picks_made",
+            "auto_picks",
+            "rounds",
+            "league_state",
         }
 
     def test_returns_correct_draft_and_season_ids(self, setup):
@@ -140,6 +146,7 @@ class TestExecuteBlitzDraftStateTransitions:
 # ─────────────────────────────────────────────────────────────────────────────
 # draft_picks table
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestDraftPicksTable:
 
@@ -180,7 +187,8 @@ class TestDraftPicksTable:
         db_conn, draft = setup
         execute_blitz_draft(draft.id, db_conn)
         pick_nums = [
-            r["pick_number"] for r in db_conn.execute(
+            r["pick_number"]
+            for r in db_conn.execute(
                 "SELECT pick_number FROM draft_picks WHERE draft_id = %s ORDER BY pick_number",
                 (draft.id,),
             ).fetchall()
@@ -200,6 +208,7 @@ class TestDraftPicksTable:
 # ─────────────────────────────────────────────────────────────────────────────
 # Preference list behaviour
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPreferenceList:
 
@@ -256,6 +265,7 @@ class TestPreferenceList:
 # BlitzDraft._run_snake directly
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestBlitzDraftRunSnake:
 
     @pytest.fixture
@@ -279,8 +289,8 @@ class TestBlitzDraftRunSnake:
         hi = factory.player_row()
         lo = factory.player_row()
         p_high = _make_player(hi.id, rating=90)
-        p_low  = _make_player(lo.id, rating=10)
-        rated  = [(p_high, 90), (p_low, 10)]
+        p_low = _make_player(lo.id, rating=10)
+        rated = [(p_high, 90), (p_low, 10)]
 
         with patch("src.api.services.draft_execute.PlayerEvaluator") as MockEval:
             MockEval.prospect_rating.return_value = 50
@@ -295,7 +305,7 @@ class TestBlitzDraftRunSnake:
         factory.gm(team=human_team, is_ai=0)
         factory.gm(team=ai_team, is_ai=1)
 
-        p_pref_row  = factory.player_row()
+        p_pref_row = factory.player_row()
         p_other_row = factory.player_row()
 
         blitz = BlitzDraft(
@@ -305,9 +315,9 @@ class TestBlitzDraftRunSnake:
         )
         order = [{"team_id": human_team.id, "team_name": "Humans"}]
 
-        p_pref  = _make_player(p_pref_row.id)
+        p_pref = _make_player(p_pref_row.id)
         p_other = _make_player(p_other_row.id)
-        rated   = [(p_pref, 50), (p_other, 50)]
+        rated = [(p_pref, 50), (p_other, 50)]
 
         with patch("src.api.services.draft_execute.PlayerEvaluator") as MockEval:
             MockEval.prospect_rating.return_value = 50

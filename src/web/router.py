@@ -65,9 +65,7 @@ def _get_identity(request: Request) -> tuple[str | None, str | None]:
     return token, name
 
 
-def _gm_for_league(
-    db, session_token: str | None, league_id: str
-) -> dict | None:
+def _gm_for_league(db, session_token: str | None, league_id: str) -> dict | None:
     """Find the GM row for this session token in a specific league."""
     if not session_token:
         return None
@@ -250,8 +248,9 @@ async def new_league_page(request: Request):
     )
 
 
+# was create_league
 @router.post("/leagues/new")
-async def create_league(
+async def new_league(
     request: Request,
     db: DB,
     name: str = Form(...),
@@ -288,7 +287,9 @@ async def create_league(
     db.execute(
         "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm_id, league_id)
     )
-    db.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s) ON CONFLICT DO NOTHING", (gm_id,))
+    db.execute(
+        "INSERT INTO gm_profiles (gm_id) VALUES (%s) ON CONFLICT DO NOTHING", (gm_id,)
+    )
     db.commit()
 
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
@@ -340,7 +341,10 @@ async def join_league(request: Request, db: DB, join_code: str = Form(...)):
         """,
             (gm_id, league["id"], token, display_name or "GM"),
         )
-        db.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s) ON CONFLICT DO NOTHING", (gm_id,))
+        db.execute(
+            "INSERT INTO gm_profiles (gm_id) VALUES (%s) ON CONFLICT DO NOTHING",
+            (gm_id,),
+        )
         db.commit()
 
     return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
@@ -374,9 +378,7 @@ async def dashboard(request: Request, league_id: str, db: DB):
     return RedirectResponse(f"/leagues/{league_id}/standings", status_code=302)
 
 
-async def _lobby(
-    request: Request, league_id: str, gm: dict, db
-) -> HTMLResponse:
+async def _lobby(request: Request, league_id: str, gm: dict, db) -> HTMLResponse:
     league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     gms_rows = db.execute(
         """
@@ -664,7 +666,9 @@ async def schedule_date(request: Request, league_id: str, date: str, db: DB):
 
 
 @router.get("/leagues/{league_id}/games/{game_id}", response_class=HTMLResponse)
-async def game_detail(request: Request, htmx: IsHTMX, league_id: str, game_id: str, db: DB):
+async def game_detail(
+    request: Request, htmx: IsHTMX, league_id: str, game_id: str, db: DB
+):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
@@ -863,9 +867,7 @@ def _current_year(league_id: str, db) -> int:
     return row["year"] if row else 1
 
 
-def _load_standings(
-    league_id: str, db, season_id: str | None = None
-) -> list[dict]:
+def _load_standings(league_id: str, db, season_id: str | None = None) -> list[dict]:
     if not season_id:
         season_id = _current_season_id(league_id, db)
     if not season_id:
@@ -1030,9 +1032,7 @@ def _load_leaders(league_id: str, category: str, db) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def _load_player_detail(
-    player_id: str | None, gm: dict, db
-) -> dict | None:
+def _load_player_detail(player_id: str | None, gm: dict, db) -> dict | None:
     if not player_id:
         return None
 

@@ -134,7 +134,7 @@ class DraftGenerator:
                 league_id=league_id,  # ← scopes to this league
             )
             if player.caps is not None:
-                self.cap_repo.insert(player.id, player.caps)
+                self.cap_repo.insert_talent_caps(player.id, player.caps)
             self.status_repo.set_status(player.id, "prospect")
         self.conn.commit()
         seen = {p.id for p in new_players}

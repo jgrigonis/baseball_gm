@@ -19,10 +19,10 @@ import pytest
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.player.player_skills import PlayerSkills
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def make_pipeline(db_conn, seed=42):
     return OffseasonPipeline(db_conn, rng=random.Random(seed))
@@ -56,8 +56,15 @@ def seed_finals_complete(db_conn, season_id="s1"):
                (id, game_date, season_id, series_id, home_team_id, away_team_id,
                 completed, winner_id)
                VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
-            (f"finals-game-{i}", "2025-10-01", season_id, "finals-1",
-             "team-champ", "team-runner", "team-champ"),
+            (
+                f"finals-game-{i}",
+                "2025-10-01",
+                season_id,
+                "finals-1",
+                "team-champ",
+                "team-runner",
+                "team-champ",
+            ),
         )
     db_conn.commit()
 
@@ -66,15 +73,27 @@ def seed_finals_complete(db_conn, season_id="s1"):
 # _should_retire — pure logic, no DB
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestShouldRetire:
     """Tests for the static retirement probability logic."""
 
     def _skills(self, **overrides):
         """Return a minimal PlayerSkills-like object."""
         defaults = dict(
-            contact=50, power=50, eye=50, speed=50, base_running=50,
-            arm=50, outfield=50, infield=50, catching=50,
-            accuracy=50, stamina=20, recovery=50, ground_balls=50, strikes=20,
+            contact=50,
+            power=50,
+            eye=50,
+            speed=50,
+            base_running=50,
+            arm=50,
+            outfield=50,
+            infield=50,
+            catching=50,
+            accuracy=50,
+            stamina=20,
+            recovery=50,
+            ground_balls=50,
+            strikes=20,
         )
         defaults.update(overrides)
         mock = MagicMock()
@@ -144,6 +163,7 @@ class TestShouldRetire:
 # _is_done / _mark_done
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestStepTracking:
 
     def test_step_not_done_initially(self, db_conn):
@@ -184,6 +204,7 @@ class TestStepTracking:
 # _load_season_year
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestLoadSeasonYear:
 
     def test_loads_year_plus_one(self, db_conn):
@@ -208,6 +229,7 @@ class TestLoadSeasonYear:
 # ─────────────────────────────────────────────────────────────────────────────
 # _playoffs_complete
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPlayoffsComplete:
 
@@ -255,16 +277,25 @@ class TestPlayoffsComplete:
 # run() — idempotency
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestRunIdempotency:
     """Verify that completed steps are skipped on re-run."""
 
     def _patch_all_steps(self, pipeline):
         """Pre-mark all steps done so run() skips everything."""
         steps = [
-            "archive", "age", "retire", "clear_stale_prospects",
-            "generate_draft", "run_draft", "trim_rosters",
-            "reset_pitcher_state", "rebuild_rotations",
-            "reset_player_energy", "build_season_stats", "write_csvs",
+            "archive",
+            "age",
+            "retire",
+            "clear_stale_prospects",
+            "generate_draft",
+            "run_draft",
+            "trim_rosters",
+            "reset_pitcher_state",
+            "rebuild_rotations",
+            "reset_player_energy",
+            "build_season_stats",
+            "write_csvs",
         ]
         for step in steps:
             pipeline._mark_done("s1", step)
@@ -309,11 +340,22 @@ class TestRunIdempotency:
                             with patch.object(pipeline, "_run_draft"):
                                 with patch.object(pipeline, "_trim_rosters"):
                                     with patch.object(pipeline, "_reset_pitcher_state"):
-                                        with patch.object(pipeline, "_rebuild_rotations"):
-                                            with patch.object(pipeline, "_reset_player_energy"):
-                                                with patch.object(pipeline, "_write_csvs"):
-                                                    with patch("src.league.offseason.offseason_pipeline.build_season", return_value=0):
-                                                        with patch("src.league.offseason.offseason_pipeline.ensure_table"):
+                                        with patch.object(
+                                            pipeline, "_rebuild_rotations"
+                                        ):
+                                            with patch.object(
+                                                pipeline, "_reset_player_energy"
+                                            ):
+                                                with patch.object(
+                                                    pipeline, "_write_csvs"
+                                                ):
+                                                    with patch(
+                                                        "src.league.offseason.offseason_pipeline.build_season",
+                                                        return_value=0,
+                                                    ):
+                                                        with patch(
+                                                            "src.league.offseason.offseason_pipeline.ensure_table"
+                                                        ):
                                                             pipeline.run("s1")
 
         captured = capsys.readouterr().out

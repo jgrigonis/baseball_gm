@@ -7,6 +7,10 @@ Return current rotation
 Get next starter
 Update the pitching rotation
 
+
+might want to pass the pitcher_repo into get_next_starter as an
+argument instead of re-instantiating it in a loop.
+
 """
 
 from typing import Any
@@ -57,7 +61,7 @@ class TeamRotationsRepository:
                 (team_id, season_id, player_id, order, effective_date),
             )
 
-        self.conn.commit()
+        # self.conn.commit()
 
     def get_current_rotation(
         self, team_id, season_id, as_of_date
@@ -132,6 +136,9 @@ class TeamRotationsRepository:
         pitcher_repo = PitcherStateRepository(self.conn, league_id=self.league_id)
         # Find most recent starter from this team's rotation
         rotation_player_ids = [r["player_id"] for r in rotation]
+
+        if not rotation_player_ids:
+            return None
 
         cursor = self.conn.execute(
             """
@@ -257,8 +264,9 @@ class TeamRotationsRepository:
             (team_id, season_id, player_id, new_rotation_order, effective_date),
         )
 
-        self.conn.commit()
+        # self.conn.commit()
 
+    # only ever called in tests
     def remove_from_rotation(
         self, team_id: str, season_id: str, player_id: str, effective_date: str
     ) -> None:
@@ -316,8 +324,9 @@ class TeamRotationsRepository:
             (effective_date, team_id, season_id, player_id, current_effective_date),
         )
 
-        self.conn.commit()
+        # self.conn.commit()
 
+    # Only ever called in tests
     def add_to_rotation(
         self,
         team_id: str,
@@ -390,8 +399,9 @@ class TeamRotationsRepository:
             (team_id, season_id, player_id, rotation_order, effective_date),
         )
 
-        self.conn.commit()
+        # self.conn.commit()
 
+    # Only called in tests
     def swap_rotation_spots(
         self,
         team_id: str,
@@ -472,7 +482,7 @@ class TeamRotationsRepository:
             """,
             (team_id, season_id, series_id),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
         row = self.conn.execute(
             """
@@ -551,7 +561,7 @@ class TeamRotationsRepository:
             """,
             (team_id, season_id, series_id, new_order),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     def reset_rotation_pointers(self, season_id: str) -> int:
         """
@@ -578,7 +588,7 @@ class TeamRotationsRepository:
             )
             count += 1
 
-        self.conn.commit()
+        # self.conn.commit()
         return count
 
 

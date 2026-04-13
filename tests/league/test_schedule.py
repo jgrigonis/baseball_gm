@@ -270,7 +270,6 @@ class TestScheduleGenerator:
         assert len(schedule) == 24
 
 
-
 class TestSaveScheduleToDB:
     """Test save_schedule_to_db function."""
 
@@ -291,6 +290,7 @@ class TestSaveScheduleToDB:
         team_b = factory.team()
 
         import uuid
+
         game_id = str(uuid.uuid4())
         schedule = [
             ScheduledGame(
@@ -322,6 +322,7 @@ class TestSaveScheduleToDB:
     def test_save_multiple_games(self, db_conn, factory):
         """Test saving multiple games."""
         import uuid
+
         season = factory.season()
         team_a = factory.team()
         team_b = factory.team()
@@ -371,6 +372,7 @@ class TestSaveScheduleToDB:
     def test_save_preserves_all_fields(self, db_conn, factory):
         """Test that all fields are correctly saved."""
         import uuid
+
         season = factory.season()
         home_team = factory.team()
         away_team = factory.team()

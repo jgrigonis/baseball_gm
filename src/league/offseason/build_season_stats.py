@@ -195,7 +195,7 @@ def ensure_table(conn) -> None:
     conn.commit()
 
 
-def delete_season(conn, season_id: str) -> int:
+def delete_season_rows(conn, season_id: str) -> int:
     """Delete existing rollup rows for a season. Returns rows deleted."""
     cur = conn.execute(
         "DELETE FROM player_season_stats WHERE season_id = %s", (season_id,)
@@ -217,7 +217,7 @@ def build_season(conn, season_id: str) -> int:
     Deletes existing rows for that season first to make it safe to re-run.
     Returns number of rows inserted.
     """
-    deleted = delete_season(conn, season_id)
+    deleted = delete_season_rows(conn, season_id)
     if deleted:
         print(f"  Cleared {deleted} existing rows for season {season_id}")
 

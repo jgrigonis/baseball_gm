@@ -183,7 +183,7 @@ class PlayerRepository:
             (season_id, now, player_id),
         )
 
-        self.conn.commit()
+        # self.conn.commit()
 
     # ------------------------------------------------------------
     # READ

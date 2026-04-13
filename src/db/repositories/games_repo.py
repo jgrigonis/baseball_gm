@@ -22,7 +22,19 @@ class GameRepository:
         """Load game information from database."""
         row = self.conn.execute(
             """
-            SELECT * FROM games WHERE id = %s
+            SELECT 
+                id AS game_id, 
+                game_date, 
+                season_id, 
+                series_id, 
+                home_team_id, 
+                away_team_id, 
+                completed, 
+                home_score, 
+                away_score, 
+                winner_id, 
+                innings_played 
+            FROM games WHERE id = %s
             """,
             (game_id,),
         ).fetchone()
@@ -30,21 +42,23 @@ class GameRepository:
         if not row:
             return None
 
-        return {
-            "game_id": row["id"],
-            "game_date": row["game_date"],
-            "season_id": row["season_id"],
-            "series_id": row["series_id"],
-            "home_team_id": row["home_team_id"],
-            "away_team_id": row["away_team_id"],
-            "completed": row["completed"],
-            "home_score": row["home_score"],
-            "away_score": row["away_score"],
-            "winner_id": row["winner_id"],
-            "innings_played": row["innings_played"],
-        }
+        return dict(row) if row else None
 
-    def save_result(self, game_id: str, result: GameResult, winner_id: str):
+        # return {
+        #     "game_id": row["id"],
+        #     "game_date": row["game_date"],
+        #     "season_id": row["season_id"],
+        #     "series_id": row["series_id"],
+        #     "home_team_id": row["home_team_id"],
+        #     "away_team_id": row["away_team_id"],
+        #     "completed": row["completed"],
+        #     "home_score": row["home_score"],
+        #     "away_score": row["away_score"],
+        #     "winner_id": row["winner_id"],
+        #     "innings_played": row["innings_played"],
+        # }
+
+    def save_game_result(self, game_id: str, result: GameResult, winner_id: str):
         """Save game result to database."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -63,7 +77,7 @@ class GameRepository:
                 game_id,
             ),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     def get_season_games(
         self,
@@ -73,24 +87,38 @@ class GameRepository:
         regular_season_only: bool = False,
     ) -> list[dict]:
         """Get all games for a season."""
-        conditions = ["season_id = %s"]
+        # 1. Base query and list of columns (no SELECT *)
+        query = """
+            SELECT id, season_id, home_team_id, away_team_id, game_date, 
+                completed, home_score, away_score, winner_id, innings_played 
+            FROM games 
+            WHERE season_id = %s
+        """
+        # conditions = ["season_id = %s"]
         params = [season_id]
 
         if completed_only:
-            conditions.append("completed = 1")
+            query += " AND completed = 1"
+            # conditions.append("completed = 1")
 
         if incomplete_only:
-            conditions.append("completed = 0")
+            query += " AND completed = 0"
+            # conditions.append("completed = 0")
 
         if regular_season_only:
-            conditions.append("series_id IS NULL")
+            query += " AND series_id IS NULL"
+            # conditions.append("series_id IS NULL")
 
-        where = " AND ".join(conditions)
+        query += " ORDER BY game_date"
 
-        rows = self.conn.execute(
-            f"SELECT * FROM games WHERE {where} ORDER BY game_date",
-            params,
-        ).fetchall()
+        # where = " AND ".join(conditions)
+
+        rows = self.conn.execute(query, params).fetchall()
+
+        # rows = self.conn.execute(
+        #     f"SELECT * FROM games WHERE {where} ORDER BY game_date",
+        #     params,
+        # ).fetchall()
 
         return [
             {
@@ -108,6 +136,7 @@ class GameRepository:
             for row in rows
         ]
 
+    # Don't see this ever getting called anywhere currently
     def clear_result(self, game_id: str):
         """Clear game result (for replaying)."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -124,8 +153,9 @@ class GameRepository:
                 game_id,
             ),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
+    # This never gets called, except in tests
     def is_completed(self, game_id: str) -> bool:
         """Check if game is completed."""
         row = self.conn.execute(

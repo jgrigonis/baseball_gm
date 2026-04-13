@@ -251,7 +251,9 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
 
 
 def _season_year(conn, season_id: str) -> int:
-    row = conn.execute("SELECT year FROM seasons WHERE id = %s", (season_id,)).fetchone()
+    row = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
     return row["year"] if row else 2025
 
 

@@ -41,7 +41,7 @@ class LineupRepository:
                 (game_id, team_id, pitcher.id),
             )
 
-        self.conn.commit()
+        # self.conn.commit()
 
     def get_lineup(self, game_id: str, team_id: str) -> list[dict]:
         cursor = self.conn.cursor()

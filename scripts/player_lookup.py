@@ -389,9 +389,7 @@ def main():
 
     # DB stats
     player_id = row.get("ID", "")
-    season_stats = (
-        query_season_stats(player_id, args.season) if player_id else {}
-    )
+    season_stats = query_season_stats(player_id, args.season) if player_id else {}
 
     display_player(row, ratings, season_stats)
 

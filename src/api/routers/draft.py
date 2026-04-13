@@ -147,17 +147,18 @@ def submit_preferences(
             raise HTTPException(status_code=422, detail=f"Unknown player id: {pid}")
 
     # Replace existing preferences atomically
-    db.execute(
-        "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
-        (gm["id"], draft_id),
-    )
-    db.cursor().executemany(
-        "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
-        [
-            (gm["id"], draft_id, pid, rank + 1)
-            for rank, pid in enumerate(body.player_ids)
-        ],
-    )
+    with db.cursor() as cur:
+        cur.execute(
+            "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
+            (gm["id"], draft_id),
+        )
+        cur.executemany(
+            "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
+            [
+                (gm["id"], draft_id, pid, rank + 1)
+                for rank, pid in enumerate(body.player_ids)
+            ],
+        )
 
     return PreferenceListResponse(
         gm_id=gm["id"],

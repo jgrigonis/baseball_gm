@@ -16,7 +16,6 @@ import pytest
 
 from src.league.offseason.roster_trimmer import RosterTrimmer, MINORS_LIMIT
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -42,13 +41,15 @@ def _next_id():
 
 def setup_season(db_conn, season_id="s1", team_ids=("t1",)):
     db_conn.execute(
-        "INSERT INTO seasons (id, year, name) VALUES (%s, 2026, 'Season 2026') ON CONFLICT DO NOTHING", (season_id,)
+        "INSERT INTO seasons (id, year, name) VALUES (%s, 2026, 'Season 2026') ON CONFLICT DO NOTHING",
+        (season_id,),
     )
     db_conn.execute(
         "INSERT INTO leagues (id, name) VALUES ('lg1', 'Test League') ON CONFLICT DO NOTHING"
     )
     db_conn.execute(
-        "INSERT INTO league_seasons (league_id, season_id) VALUES ('lg1', %s) ON CONFLICT DO NOTHING", (season_id,)
+        "INSERT INTO league_seasons (league_id, season_id) VALUES ('lg1', %s) ON CONFLICT DO NOTHING",
+        (season_id,),
     )
     for team_id in team_ids:
         db_conn.execute(
@@ -311,7 +312,9 @@ class TestRosterTrimmerRun:
 
     def test_no_teams_in_season(self, db_conn, trimmer):
         """Should handle a season with no teams gracefully."""
-        db_conn.execute("INSERT INTO seasons (id, year, name) VALUES ('s1', 2026, 'Season 2026')")
+        db_conn.execute(
+            "INSERT INTO seasons (id, year, name) VALUES ('s1', 2026, 'Season 2026')"
+        )
         db_conn.execute("INSERT INTO leagues (id, name) VALUES ('lg1', 'Test')")
         db_conn.commit()
         total = trimmer.run("s1")

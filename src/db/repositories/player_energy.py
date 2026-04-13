@@ -159,7 +159,11 @@ class PlayerEnergyRepository:
             return None
 
         last_game_date = None
-        last_game_date = datetime.fromisoformat(row["last_game_date"]).date() if row["last_game_date"] else None
+        last_game_date = (
+            datetime.fromisoformat(row["last_game_date"]).date()
+            if row["last_game_date"]
+            else None
+        )
 
         return PlayerEnergyState(
             player_id=row["player_id"],
@@ -304,7 +308,7 @@ class PlayerEnergyRepository:
     # Write
     # ------------------------------------------------------------------
 
-    def save(self, state: PlayerEnergyState) -> None:
+    def save_player_energy(self, state: PlayerEnergyState) -> None:
         """
         Upsert a player energy row.
 
@@ -344,7 +348,7 @@ class PlayerEnergyRepository:
                 state.season_games_played,
             ),
         )
-        self.conn.commit()
+        # self.conn.commit()
 
     def update_after_game(
         self,
@@ -368,7 +372,7 @@ class PlayerEnergyRepository:
             season_games_played:  fatigue.season_games_played after the game.
             game_date:            Date the game was played.
         """
-        self.save(
+        self.save_player_energy(
             PlayerEnergyState(
                 player_id=player_id,
                 current_energy=final_energy,

@@ -133,29 +133,30 @@ def set_roles(
             f"{', '.join(sorted(conflicts))}"
         )
 
-    # Close all current active roles for this team/season
-    conn.execute(
-        """
-        UPDATE bullpen_roles
-        SET end_date = %s
-        WHERE team_id = %s
-          AND season_id = %s
-          AND end_date IS NULL
-        """,
-        (effective_date, team_id, season_id),
-    )
+    with conn.cursor() as cur:
+        # Close all current active roles for this team/season
+        cur.execute(
+            """
+            UPDATE bullpen_roles
+            SET end_date = %s
+            WHERE team_id = %s
+            AND season_id = %s
+            AND end_date IS NULL
+            """,
+            (effective_date, team_id, season_id),
+        )
 
-    # Insert new roles
-    conn.cursor().executemany(
-        """
-        INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date, end_date)
-        VALUES (%s, %s, %s, %s, %s, NULL)
-        """,
-        [
-            (team_id, entry["player_id"], season_id, entry["role"], effective_date)
-            for entry in assignments
-        ],
-    )
+        # Insert new roles
+        cur.executemany(
+            """
+            INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date, end_date)
+            VALUES (%s, %s, %s, %s, %s, NULL)
+            """,
+            [
+                (team_id, entry["player_id"], season_id, entry["role"], effective_date)
+                for entry in assignments
+            ],
+        )
 
 
 def get_current_roles(conn, team_id: str, season_id: str) -> list[dict]:

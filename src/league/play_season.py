@@ -14,6 +14,7 @@ from src.db.repositories import bullpen_roles_repo
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository, MIN_ENERGY_STARTER
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -62,7 +63,7 @@ def save_player_stats(conn, game_id, home_team, away_team):
     conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
     conn.execute("DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,))
     conn.commit()
-    player_repo = PlayerGameRepository(conn)
+    player_game_repo = PlayerGameRepository(conn)
     for team, opp in [(home_team, away_team), (away_team, home_team)]:
         for player in team.players:
             if (
@@ -76,7 +77,7 @@ def save_player_stats(conn, game_id, home_team, away_team):
                         raise ValueError(
                             f"Cannot insert fielding stats for {player.id}: position is None"
                         )
-                player_repo.insert(
+                player_game_repo.insert_player_game(
                     game_id=game_id,
                     player_id=player.id,
                     team_id=team.record.id,
@@ -120,7 +121,7 @@ def save_position_energy(conn, player_energy_states, league_id):
     repo = PlayerEnergyRepository(conn, league_id)
     for state in player_energy_states.values():
         if state.season_games_played > 0 or state.last_game_date is not None:
-            repo.save(state)
+            repo.save_player_energy(state)
 
 
 def _load_eligible_ids(conn, team_id: str, league_id: str, blitz: bool) -> set[str]:
@@ -137,22 +138,23 @@ def _load_eligible_ids(conn, team_id: str, league_id: str, blitz: bool) -> set[s
     return {r["player_id"] for r in rows}
 
 
-def _load_saved_lineup(conn, team_id: str, league_id: str) -> list[dict] | None:
-    """Load human GM's saved lineup preferences, or None if AI team / none saved."""
-    gm = conn.execute(
-        "SELECT id FROM gms WHERE team_id = %s AND league_id = %s AND is_ai = 0 LIMIT 1",
-        (team_id, league_id),
-    ).fetchone()
-    if not gm:
-        return None
-    rows = conn.execute(
-        """SELECT player_id, batting_order, position
-           FROM gm_lineup_preferences
-           WHERE gm_id = %s
-           ORDER BY batting_order""",
-        (gm["id"],),
-    ).fetchall()
-    return [dict(r) for r in rows] if rows else None
+# Moved to lineup_preference_repo
+# def _load_saved_lineup(conn, team_id: str, league_id: str) -> list[dict] | None:
+#     """Load human GM's saved lineup preferences, or None if AI team / none saved."""
+#     gm = conn.execute(
+#         "SELECT id FROM gms WHERE team_id = %s AND league_id = %s AND is_ai = 0 LIMIT 1",
+#         (team_id, league_id),
+#     ).fetchone()
+#     if not gm:
+#         return None
+#     rows = conn.execute(
+#         """SELECT player_id, batting_order, position
+#            FROM gm_lineup_preferences
+#            WHERE gm_id = %s
+#            ORDER BY batting_order""",
+#         (gm["id"],),
+#     ).fetchall()
+#     return [dict(r) for r in rows] if rows else None
 
 
 def _pick_starter(
@@ -413,10 +415,15 @@ def play_game(
     for player in home_team.position_players + away_team.position_players:
         state = player_energy_states.get(player.id)
         if state and player.player_energy:
-            player.player_energy.set_position_energy(state.current_energy, state.max_energy)
+            player.player_energy.set_position_energy(
+                state.current_energy, state.max_energy
+            )
 
-    home_saved = _load_saved_lineup(conn, home_team.record.id, league_id)
-    away_saved = _load_saved_lineup(conn, away_team.record.id, league_id)
+    lpr = LineupPreferenceRepository(conn)
+    home_saved = lpr.get_preferences(home_team.record.id, league_id)
+    away_saved = lpr.get_preferences(away_team.record.id, league_id)
+    # home_saved = _load_saved_lineup(conn, home_team.record.id, league_id)
+    # away_saved = _load_saved_lineup(conn, away_team.record.id, league_id)
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
     game = Game(
@@ -501,7 +508,7 @@ def play_game(
         if result.home_score > result.away_score
         else game_info["away_team_id"]
     )
-    game_repo.save_result(game_info["game_id"], result, winner_id)
+    game_repo.save_game_result(game_info["game_id"], result, winner_id)
     if home_advance:
         rotations_repo.advance_rotation_pointer(
             home_team.record.id, season_id, series_id
@@ -552,6 +559,9 @@ def play_game(
     logger.info(away_team.output_batting_stats())
     logger.info(home_team.output_pitching_stats())
     logger.info(away_team.output_pitching_stats())
+
+    # moving from game_lineup_repo
+    conn.commit()
 
     return result
 

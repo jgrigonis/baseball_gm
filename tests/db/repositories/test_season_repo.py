@@ -3,7 +3,6 @@ import pytest
 
 from src.db.repositories.season_repo import SeasonRepository
 
-
 # Far-future years used as unique per-test namespaces — never used elsewhere.
 # Each test class gets its own year range so cross-test contamination is impossible.
 _BASE = 9000
@@ -39,7 +38,7 @@ class TestSeasonRepositoryCreateSeason:
 
     def test_create_multiple_seasons_same_year(self, season_repo, db_conn):
         spring_id = season_repo.create_season(_BASE + 3, "Spring")
-        fall_id   = season_repo.create_season(_BASE + 3, "Fall")
+        fall_id = season_repo.create_season(_BASE + 3, "Fall")
         assert spring_id != fall_id
 
         count = db_conn.execute(
@@ -99,7 +98,7 @@ class TestSeasonRepositoryGetSeasonsByYear:
     def test_get_seasons_by_year_multiple(self, season_repo):
         spring = season_repo.create_season(_BASE + 31, "Spring")
         summer = season_repo.create_season(_BASE + 31, "Summer")
-        fall   = season_repo.create_season(_BASE + 31, "Fall")
+        fall = season_repo.create_season(_BASE + 31, "Fall")
         seasons = season_repo.get_seasons_by_year(_BASE + 31)
         assert len(seasons) == 3
         ids = {s["id"] for s in seasons}
@@ -151,8 +150,8 @@ class TestSeasonRepositoryGetAllSeasons:
 
     def test_get_all_seasons_ordered_by_year_desc(self, season_repo):
         """Years inserted out of order — verify our three appear in desc order."""
-        y_low  = _BASE + 50
-        y_mid  = _BASE + 51
+        y_low = _BASE + 50
+        y_mid = _BASE + 51
         y_high = _BASE + 52
         season_repo.create_season(y_low)
         season_repo.create_season(y_high)

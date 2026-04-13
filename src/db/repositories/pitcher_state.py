@@ -300,7 +300,7 @@ class PitcherStateRepository:
     # Write
     # ------------------------------------------------------------------
 
-    def save(self, state: PitcherState) -> None:
+    def save_pitcher_state(self, state: PitcherState) -> None:
         """
         Upsert a pitcher state row.
 
@@ -377,7 +377,7 @@ class PitcherStateRepository:
         else:
             consecutive_days = 1
 
-        self.save(
+        self.save_pitcher_state(
             PitcherState(
                 player_id=player_id,
                 current_energy=final_energy,
@@ -401,7 +401,7 @@ class PitcherStateRepository:
         self.conn.commit()
         return deleted
 
-    def clear_all(self) -> int:
+    def clear_all_pitcher_state(self) -> int:
         """Delete all pitcher state rows. Call between seasons. Returns row count deleted."""
         cursor = self.conn.cursor()
         cursor.execute(
@@ -409,5 +409,5 @@ class PitcherStateRepository:
             (self.league_id,),
         )
         deleted = cursor.rowcount
-        self.conn.commit()
+        # self.conn.commit()
         return deleted
