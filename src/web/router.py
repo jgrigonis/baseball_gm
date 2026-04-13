@@ -16,7 +16,8 @@ from fastapi.templating import Jinja2Templates
 
 from src.api.database import get_db
 from src.api.schemas import skill_to_grade, player_row_to_grades
-
+from src.web.dependencies import IsHTMX
+from src.web.utils import tab_response, _shell_ctx
 from jinja2 import Environment, FileSystemLoader
 
 # from starlette.responses import HTMLResponse
@@ -96,68 +97,69 @@ def _require_league_gm(request: Request, league_id: str, db):
     return gm, None
 
 
-def is_htmx(request: Request) -> bool:
-    return request.headers.get("HX-Request") == "true"
+# def is_htmx(request: Request) -> bool:
+#     return request.headers.get("HX-Request") == "true"
 
 
 # ── Shell context ─────────────────────────────────────────────────────────────
 
 
-def _shell_ctx(
-    request: Request,
-    gm: dict,
-    db,
-    league_id: str | None = None,
-    active_tab: str | None = None,
-) -> dict:
-    """Base context for all dashboard templates."""
-    ctx: dict = {
-        "request": request,
-        "active_tab": active_tab,
-        "gm_id": gm["id"],
-        "gm_display_name": gm["display_name"],
-        "league_id": league_id,
-        "league_name": None,
-        "league_state": None,
-        "league_mode": None,
-        "join_code": None,
-        "team_id": gm["team_id"],
-        "team_name": None,
-        "is_commissioner": False,
-    }
+# def _shell_ctx(
+#     request: Request,
+#     gm: dict,
+#     db,
+#     league_id: str | None = None,
+#     active_tab: str | None = None,
+# ) -> dict:
+#     """Base context for all dashboard templates."""
+#     ctx: dict = {
+#         "request": request,
+#         "active_tab": active_tab,
+#         "gm_id": gm["id"],
+#         "gm_display_name": gm["display_name"],
+#         "league_id": league_id,
+#         "league_name": None,
+#         "league_state": None,
+#         "league_mode": None,
+#         "join_code": None,
+#         "team_id": gm["team_id"],
+#         "team_name": None,
+#         "is_commissioner": False,
+#     }
 
-    if league_id:
-        league = db.execute(
-            "SELECT * FROM leagues WHERE id = %s", (league_id,)
-        ).fetchone()
-        if league:
-            ctx["league_name"] = league["name"]
-            ctx["league_state"] = league["state"]
-            ctx["league_mode"] = league["mode"]
-            ctx["join_code"] = league["join_code"]
-            ctx["is_commissioner"] = league["commissioner_gm_id"] == gm["id"]
+#     if league_id:
+#         league = db.execute(
+#             "SELECT * FROM leagues WHERE id = %s", (league_id,)
+#         ).fetchone()
+#         if league:
+#             ctx["league_name"] = league["name"]
+#             ctx["league_state"] = league["state"]
+#             ctx["league_mode"] = league["mode"]
+#             ctx["join_code"] = league["join_code"]
+#             ctx["is_commissioner"] = league["commissioner_gm_id"] == gm["id"]
 
-    if gm["team_id"]:
-        team = db.execute(
-            "SELECT city, mascot FROM teams WHERE id = %s", (gm["team_id"],)
-        ).fetchone()
-        if team:
-            ctx["team_name"] = f"{team['city']} {team['mascot']}"
+#     if gm["team_id"]:
+#         team = db.execute(
+#             "SELECT city, mascot FROM teams WHERE id = %s", (gm["team_id"],)
+#         ).fetchone()
+#         if team:
+#             ctx["team_name"] = f"{team['city']} {team['mascot']}"
 
-    return ctx
+#     return ctx
 
 
-def _tab_visible(state: str | None) -> list[str]:
-    if not state:
-        return []
-    always = ["standings", "leaders", "roster", "lineup", "strategy"]
-    if state == "lobby":
-        return []
-    if state == "draft":
-        return ["draft"] + always
-    if state in ("season", "playoffs"):
-        return always + ["schedule"]
-    return always
+# moved to utils
+# def _tab_visible(state: str | None) -> list[str]:
+#     if not state:
+#         return []
+#     always = ["standings", "leaders", "roster", "lineup", "strategy"]
+#     if state == "lobby":
+#         return []
+#     if state == "draft":
+#         return ["draft"] + always
+#     if state in ("season", "playoffs"):
+#         return always + ["schedule"]
+#     return always
 
 
 # ── Landing / Auth ────────────────────────────────────────────────────────────
@@ -413,21 +415,21 @@ async def _lobby(
 #   - Direct load → returns full shell with tab content embedded
 #   - HTMX request → returns just the partial (swapped into #tab-content)
 
-
-def _tab_response(request: Request, template_name: str, ctx: dict):
-    if is_htmx(request):
-        return render(template_name, ctx)
-    ctx["tab_template"] = template_name
-    ctx["tab_visible"] = _tab_visible(ctx.get("league_state"))
-    return render("dashboard/shell.html", ctx)
+# moved to utils
+# def _tab_response(request: Request, template_name: str, ctx: dict):
+#     if is_htmx(request):
+#         return render(template_name, ctx)
+#     ctx["tab_template"] = template_name
+#     ctx["tab_visible"] = _tab_visible(ctx.get("league_state"))
+#     return render("dashboard/shell.html", ctx)
 
 
 @router.get("/leagues/{league_id}/draft", response_class=HTMLResponse)
-async def draft_tab(request: Request, league_id: str, db: DB):
+async def draft_tab(request: Request, htmx: IsHTMX, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "draft")
+    ctx = _shell_ctx(request, db, gm, league_id, "draft")
 
     # Load draft board
     draft = db.execute(
@@ -454,43 +456,42 @@ async def draft_tab(request: Request, league_id: str, db: DB):
     # Load this GM's current roster (inherited team)
     ctx["roster"] = _load_roster(gm, db)
 
-    return _tab_response(request, "dashboard/partials/draft.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/draft.html", ctx)
 
 
 @router.get("/leagues/{league_id}/standings", response_class=HTMLResponse)
-async def standings_tab(request: Request, league_id: str, db: DB):
+async def standings_tab(request: Request, htmx: IsHTMX, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "standings")
+    ctx = _shell_ctx(request, db, gm, league_id, "standings")
     ctx["teams"] = _load_standings(league_id, db)
     ctx["games_played"] = (
         sum(r["wins"] + r["losses"] for r in ctx["teams"]) // 2 if ctx["teams"] else 0
     )
     ctx["season_name"] = _current_season_name(league_id, db)
-    ctx["tab_visible"] = _tab_visible(ctx.get("league_state"))
-    return _tab_response(request, "dashboard/partials/standings.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/standings.html", ctx)
 
 
 @router.get("/leagues/{league_id}/roster", response_class=HTMLResponse)
-async def roster_tab(request: Request, league_id: str, db: DB):
+async def roster_tab(request: Request, htmx: IsHTMX, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "roster")
+    ctx = _shell_ctx(request, db, gm, league_id, "roster")
     ctx["players"] = _load_roster(gm, db)
     ctx["active_count"] = sum(
         1 for p in ctx["players"] if p.get("roster_status") == "26man"
     )
-    return _tab_response(request, "dashboard/partials/roster.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 
 
 @router.get("/leagues/{league_id}/lineup", response_class=HTMLResponse)
-async def lineup_tab(request: Request, league_id: str, db: DB):
+async def lineup_tab(request: Request, htmx: IsHTMX, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "lineup")
+    ctx = _shell_ctx(request, db, gm, league_id, "lineup")
 
     roster = _load_roster(gm, db)
     ctx["hitters"] = [
@@ -515,15 +516,15 @@ async def lineup_tab(request: Request, league_id: str, db: DB):
     ).fetchall()
     ctx["saved_lineup"] = [dict(r) for r in saved]
 
-    return _tab_response(request, "dashboard/partials/lineup.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/lineup.html", ctx)
 
 
 @router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
-async def strategy_tab(request: Request, league_id: str, db: DB):
+async def strategy_tab(request: Request, htmx: IsHTMX, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "strategy")
+    ctx = _shell_ctx(request, db, gm, league_id, "strategy")
 
     profile = db.execute(
         "SELECT * FROM gm_profiles WHERE gm_id = %s", (gm["id"],)
@@ -549,7 +550,7 @@ async def strategy_tab(request: Request, league_id: str, db: DB):
                 profile_indexes[f"{field}_index"] = 0
 
     ctx["profile"] = profile_indexes
-    return _tab_response(request, "dashboard/partials/strategy.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/strategy.html", ctx)
 
 
 @router.post("/leagues/{league_id}/strategy")
@@ -592,12 +593,12 @@ async def save_strategy(
 
 @router.get("/leagues/{league_id}/schedule", response_class=HTMLResponse)
 async def schedule_tab(
-    request: Request, league_id: str, db: DB, date: str | None = None
+    request: Request, htmx: IsHTMX, league_id: str, db: DB, date: str | None = None
 ):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "schedule")
+    ctx = _shell_ctx(request, db, gm, league_id, "schedule")
 
     season_id = _current_season_id(league_id, db)
     if not date and season_id:
@@ -654,7 +655,7 @@ async def schedule_tab(
         ctx["prev_date"] = prev["game_date"] if prev else None
         ctx["next_date"] = nxt["game_date"] if nxt else None
 
-    return _tab_response(request, "dashboard/partials/schedule.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/schedule.html", ctx)
 
 
 @router.get("/leagues/{league_id}/schedule/{date}", response_class=HTMLResponse)
@@ -663,11 +664,11 @@ async def schedule_date(request: Request, league_id: str, date: str, db: DB):
 
 
 @router.get("/leagues/{league_id}/games/{game_id}", response_class=HTMLResponse)
-async def game_detail(request: Request, league_id: str, game_id: str, db: DB):
+async def game_detail(request: Request, htmx: IsHTMX, league_id: str, game_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "schedule")
+    ctx = _shell_ctx(request, db, gm, league_id, "schedule")
 
     game = db.execute(
         """
@@ -712,7 +713,7 @@ async def game_detail(request: Request, league_id: str, game_id: str, db: DB):
         ).fetchall()
         ctx["pitching_lines"] = [dict(r) for r in pitching]
 
-    return _tab_response(request, "dashboard/partials/game_detail.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/game_detail.html", ctx)
 
 
 # ── Player panel ──────────────────────────────────────────────────────────────
@@ -743,15 +744,15 @@ async def player_panel(
 
 @router.get("/leagues/{league_id}/leaders", response_class=HTMLResponse)
 async def leaders_tab(
-    request: Request, league_id: str, db: DB, category: str = "batting"
+    request: Request, htmx: IsHTMX, league_id: str, db: DB, category: str = "batting"
 ):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-    ctx = _shell_ctx(request, gm, db, league_id, "leaders")
+    ctx = _shell_ctx(request, db, gm, league_id, "leaders")
     ctx["category"] = category
     ctx["rows"] = _load_leaders(league_id, category, db)
-    return _tab_response(request, "dashboard/partials/leaders.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/leaders.html", ctx)
 
 
 # ── History ───────────────────────────────────────────────────────────────────

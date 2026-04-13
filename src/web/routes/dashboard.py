@@ -10,16 +10,18 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from src.web.dependencies import IsHTMX
+
 router = APIRouter(prefix="/leagues/{league_id}")
 templates = Jinja2Templates(directory="src/web/templates")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-
-def is_htmx(request: Request) -> bool:
-    """True if this is an HTMX partial request."""
-    return request.headers.get("HX-Request") == "true"
+# moved to utils
+# def is_htmx(request: Request) -> bool:
+#     """True if this is an HTMX partial request."""
+#     return request.headers.get("HX-Request") == "true"
 
 
 def shell_context(request: Request, league_id: str, active_tab: str | None = None):
@@ -91,25 +93,25 @@ async def dashboard(request: Request, league_id: str):
 
 
 @router.get("/draft", response_class=HTMLResponse)
-async def draft(request: Request, league_id: str):
+async def draft(request: Request, htmx: bool, league_id: str):
     ctx = {**shell_context(request, league_id, "draft")}
     # TODO: load draft board data
     ctx["players"] = []
     template = (
-        "dashboard/partials/draft.html" if is_htmx(request) else "dashboard/shell.html"
+        "dashboard/partials/draft.html" if htmx else "dashboard/shell.html"
     )
     ctx["tab_template"] = "dashboard/partials/draft.html"
     return templates.TemplateResponse(template, ctx)
 
 
 @router.get("/standings", response_class=HTMLResponse)
-async def standings(request: Request, league_id: str):
+async def standings(request: Request, htmx: bool, league_id: str):
     ctx = {**shell_context(request, league_id, "standings")}
     # TODO: load standings from DB
     ctx["divisions"] = []
     template = (
         "dashboard/partials/standings.html"
-        if is_htmx(request)
+        if htmx
         else "dashboard/shell.html"
     )
     ctx["tab_template"] = "dashboard/partials/standings.html"
@@ -117,14 +119,14 @@ async def standings(request: Request, league_id: str):
 
 
 @router.get("/leaders", response_class=HTMLResponse)
-async def leaders(request: Request, league_id: str, category: str = "batting"):
+async def leaders(request: Request, htmx: bool, league_id: str, category: str = "batting"):
     ctx = {**shell_context(request, league_id, "leaders")}
     # TODO: load leaderboards
     ctx["category"] = category
     ctx["rows"] = []
     template = (
         "dashboard/partials/leaders.html"
-        if is_htmx(request)
+        if htmx
         else "dashboard/shell.html"
     )
     ctx["tab_template"] = "dashboard/partials/leaders.html"
@@ -132,33 +134,33 @@ async def leaders(request: Request, league_id: str, category: str = "batting"):
 
 
 @router.get("/roster", response_class=HTMLResponse)
-async def roster(request: Request, league_id: str):
+async def roster(request: Request, htmx: bool, league_id: str):
     ctx = {**shell_context(request, league_id, "roster")}
     # TODO: load GM's roster
     ctx["players"] = []
     template = (
-        "dashboard/partials/roster.html" if is_htmx(request) else "dashboard/shell.html"
+        "dashboard/partials/roster.html" if htmx else "dashboard/shell.html"
     )
     ctx["tab_template"] = "dashboard/partials/roster.html"
     return templates.TemplateResponse(template, ctx)
 
 
 @router.get("/lineup", response_class=HTMLResponse)
-async def lineup(request: Request, league_id: str):
+async def lineup(request: Request, htmx: bool, league_id: str):
     ctx = {**shell_context(request, league_id, "lineup")}
     # TODO: load lineup preferences
     ctx["batting_order"] = []
     ctx["rotation"] = []
     ctx["bullpen"] = []
     template = (
-        "dashboard/partials/lineup.html" if is_htmx(request) else "dashboard/shell.html"
+        "dashboard/partials/lineup.html" if htmx else "dashboard/shell.html"
     )
     ctx["tab_template"] = "dashboard/partials/lineup.html"
     return templates.TemplateResponse(template, ctx)
 
 
 @router.get("/schedule", response_class=HTMLResponse)
-async def schedule(request: Request, league_id: str, date: str | None = None):
+async def schedule(request: Request, htmx: bool, league_id: str, date: str | None = None):
     ctx = {**shell_context(request, league_id, "schedule")}
     # TODO: load games for date (default: most recent)
     ctx["game_date"] = date
@@ -167,7 +169,7 @@ async def schedule(request: Request, league_id: str, date: str | None = None):
     ctx["next_date"] = None
     template = (
         "dashboard/partials/schedule.html"
-        if is_htmx(request)
+        if htmx
         else "dashboard/shell.html"
     )
     ctx["tab_template"] = "dashboard/partials/schedule.html"
@@ -180,7 +182,7 @@ async def schedule_date(request: Request, league_id: str, date: str):
 
 
 @router.get("/strategy", response_class=HTMLResponse)
-async def strategy(request: Request, league_id: str):
+async def strategy(request: Request, htmx: bool, league_id: str):
     ctx = {**shell_context(request, league_id, "strategy")}
     # TODO: load GM profile from DB, translate string values to 0-based indexes
     ctx["profile"] = {
@@ -194,7 +196,7 @@ async def strategy(request: Request, league_id: str):
     }
     template = (
         "dashboard/partials/strategy.html"
-        if is_htmx(request)
+        if htmx
         else "dashboard/shell.html"
     )
     ctx["tab_template"] = "dashboard/partials/strategy.html"

@@ -25,6 +25,8 @@ from src.api.database import get_db
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills, SKILLS
+from src.web.dependencies import IsHTMX
+from src.web.utils import tab_response, _shell_ctx
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="src/web/templates")
@@ -198,9 +200,9 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
-
-def _is_htmx(request: Request) -> bool:
-    return request.headers.get("HX-Request") == "true"
+# moved to utils
+# def _is_htmx(request: Request) -> bool:
+#     return request.headers.get("HX-Request") == "true"
 
 
 def _resolve_user(db, token: str | None):
@@ -243,38 +245,38 @@ def _games_remaining(db, season_id: str | None) -> int:
     ).fetchone()
     return row["count"] if row else 0
 
+# This is used code in that monster return in old _shell_ctx
+# def _draft_is_complete(db, league_id: str) -> bool:
+#     row = db.execute(
+#         """SELECT d.state FROM drafts d
+#            JOIN league_seasons ls ON ls.season_id = d.season_id
+#            JOIN seasons s ON s.id = ls.season_id
+#            WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+#         (league_id,),
+#     ).fetchone()
+#     return bool(row and row["state"] == "complete")
 
-def _draft_is_complete(db, league_id: str) -> bool:
-    row = db.execute(
-        """SELECT d.state FROM drafts d
-           JOIN league_seasons ls ON ls.season_id = d.season_id
-           JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
-    return bool(row and row["state"] == "complete")
-
-
-def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
-    if state == "lobby":
-        return []
-    if not draft_complete:
-        return [
-            "draft",
-            "roster",
-            "lineup",
-            "standings",
-            "leaders",
-            "stats",
-            "strategy",
-        ]
-    post = ["roster", "lineup", "schedule", "standings", "leaders", "stats", "strategy"]
-    if state not in ("season", "playoffs", "preseason", "offseason"):
-        post.remove("schedule")
-    if state in ("playoffs", "offseason"):
-        post.append("playoffs")
-    post.append("draft")  # draft results at far right
-    return post
+# moved to utils
+# def _tab_visible(state: str, draft_complete: bool = False) -> list[str]:
+#     if state == "lobby":
+#         return []
+#     if not draft_complete:
+#         return [
+#             "draft",
+#             "roster",
+#             "lineup",
+#             "standings",
+#             "leaders",
+#             "stats",
+#             "strategy",
+#         ]
+#     post = ["roster", "lineup", "schedule", "standings", "leaders", "stats", "strategy"]
+#     if state not in ("season", "playoffs", "preseason", "offseason"):
+#         post.remove("schedule")
+#     if state in ("playoffs", "offseason"):
+#         post.append("playoffs")
+#     post.append("draft")  # draft results at far right
+#     return post
 
 
 def _current_league_date(db, season_id: str | None, state: str) -> str | None:
@@ -302,111 +304,121 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     ).fetchone()
     return row["d"] if row else None
 
+# moved to utils
+# def _shell_ctx(
+#     request: Request,
+#     db,
+#     league_id: str,
+#     user: dict,
+#     gm: dict | None,
+#     active_tab: str | None = None,
+# ) -> dict:
+#     league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+#     team = None
+#     if gm and gm["team_id"]:
+#         team = db.execute(
+#             "SELECT city, mascot FROM teams WHERE id = %s", (gm["team_id"],)
+#         ).fetchone()
 
-def _shell_ctx(
-    request: Request,
-    db,
-    league_id: str,
-    user: dict,
-    gm: dict | None,
-    active_tab: str | None = None,
-) -> dict:
-    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
-    team = None
-    if gm and gm["team_id"]:
-        team = db.execute(
-            "SELECT city, mascot FROM teams WHERE id = %s", (gm["team_id"],)
-        ).fetchone()
+#     league_state_for_season = league["state"] if league else "lobby"
 
-    league_state_for_season = league["state"] if league else "lobby"
+#     if league_state_for_season == "draft":
+#         # During draft, show the last COMPLETED season for standings/schedule/etc.
+#         # Year 2 is being drafted but has no games — year 1's data is what's useful.
+#         season = db.execute(
+#             """SELECT s.* FROM seasons s
+#                JOIN league_seasons ls ON ls.season_id = s.id
+#                WHERE ls.league_id = %s
+#                  AND EXISTS (
+#                    SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 1
+#                  )
+#                ORDER BY s.year DESC LIMIT 1""",
+#             (league_id,),
+#         ).fetchone()
+#         # Fallback to newest if nothing completed yet (first ever draft)
+#         if season is None:
+#             season = db.execute(
+#                 """SELECT s.* FROM seasons s
+#                    JOIN league_seasons ls ON ls.season_id = s.id
+#                    WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+#                 (league_id,),
+#             ).fetchone()
+#     elif league_state_for_season in ("playoffs", "offseason"):
+#         # During playoffs/offseason, use the season that has series records
+#         season = db.execute(
+#             """SELECT s.* FROM seasons s
+#                JOIN league_seasons ls ON ls.season_id = s.id
+#                WHERE ls.league_id = %s
+#                  AND EXISTS (
+#                    SELECT 1 FROM series sr WHERE sr.season_id = s.id
+#                  )
+#                ORDER BY s.year DESC LIMIT 1""",
+#             (league_id,),
+#         ).fetchone()
+#         # Fallback to newest if no series yet
+#         if season is None:
+#             season = db.execute(
+#                 """SELECT s.* FROM seasons s
+#                    JOIN league_seasons ls ON ls.season_id = s.id
+#                    WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+#                 (league_id,),
+#             ).fetchone()
+#     else:
+#         # season/preseason: show the newest season (current active season)
+#         season = db.execute(
+#             """SELECT s.* FROM seasons s
+#                JOIN league_seasons ls ON ls.season_id = s.id
+#                WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+#             (league_id,),
+#         ).fetchone()
 
-    if league_state_for_season == "draft":
-        # During draft, show the last COMPLETED season for standings/schedule/etc.
-        # Year 2 is being drafted but has no games — year 1's data is what's useful.
-        season = db.execute(
-            """SELECT s.* FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s
-                 AND EXISTS (
-                   SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 1
-                 )
-               ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
-        # Fallback to newest if nothing completed yet (first ever draft)
-        if season is None:
-            season = db.execute(
-                """SELECT s.* FROM seasons s
-                   JOIN league_seasons ls ON ls.season_id = s.id
-                   WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-                (league_id,),
-            ).fetchone()
-    elif league_state_for_season in ("playoffs", "offseason"):
-        # During playoffs/offseason, use the season that has series records
-        season = db.execute(
-            """SELECT s.* FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s
-                 AND EXISTS (
-                   SELECT 1 FROM series sr WHERE sr.season_id = s.id
-                 )
-               ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
-        # Fallback to newest if no series yet
-        if season is None:
-            season = db.execute(
-                """SELECT s.* FROM seasons s
-                   JOIN league_seasons ls ON ls.season_id = s.id
-                   WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-                (league_id,),
-            ).fetchone()
-    else:
-        # season/preseason: show the newest season (current active season)
-        season = db.execute(
-            """SELECT s.* FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
+#     return {
+#         "league_id": league_id,
+#         "league_name": league["name"] if league else "—",
+#         "league_state": league["state"] if league else "lobby",
+#         "league_mode": league["mode"] if league else "blitz",
+#         "join_code": league["join_code"] if league else "",
+#         "num_teams": league["num_teams"] if league else 30,
+#         "decision_window_sec": league["decision_window_sec"] if league else 120,
+#         "draft_window_sec": league["draft_window_sec"] if league else 300,
+#         "reentry_enabled": bool(league["reentry_enabled"]) if league else True,
+#         "pace_control": league["pace_control"] if league else "timer",
+#         "gm_id": gm["id"] if gm else None,
+#         "gm_display_name": gm["display_name"] if gm else user["display_name"],
+#         "team_id": gm["team_id"] if gm else None,
+#         "team_name": f"{team['city']} {team['mascot']}" if team else None,
+#         "is_commissioner": (league and gm and league["commissioner_gm_id"] == gm["id"]),
+#         "active_tab": active_tab,
+#         "visible_tabs": _tab_visible(
+#             league["state"] if league else "lobby",
+#             _draft_is_complete(db, league_id) if league else False,
+#         ),
+#         "season_id": season["id"] if season else None,
+#         "current_date": _current_league_date(
+#             db, season["id"] if season else None, league["state"] if league else "lobby"
+#         ),
+#         "season_name": season["name"] if season else None,
+#         "draft_complete": _draft_is_complete(db, league_id) if league else False,
+#         "games_remaining": _games_remaining(db, season["id"] if season else None),
+#     }
 
-    return {
-        "league_id": league_id,
-        "league_name": league["name"] if league else "—",
-        "league_state": league["state"] if league else "lobby",
-        "league_mode": league["mode"] if league else "blitz",
-        "join_code": league["join_code"] if league else "",
-        "num_teams": league["num_teams"] if league else 30,
-        "decision_window_sec": league["decision_window_sec"] if league else 120,
-        "draft_window_sec": league["draft_window_sec"] if league else 300,
-        "reentry_enabled": bool(league["reentry_enabled"]) if league else True,
-        "pace_control": league["pace_control"] if league else "timer",
-        "gm_id": gm["id"] if gm else None,
-        "gm_display_name": gm["display_name"] if gm else user["display_name"],
-        "team_id": gm["team_id"] if gm else None,
-        "team_name": f"{team['city']} {team['mascot']}" if team else None,
-        "is_commissioner": (league and gm and league["commissioner_gm_id"] == gm["id"]),
-        "active_tab": active_tab,
-        "visible_tabs": _tab_visible(
-            league["state"] if league else "lobby",
-            _draft_is_complete(db, league_id) if league else False,
-        ),
-        "season_id": season["id"] if season else None,
-        "current_date": _current_league_date(
-            db, season["id"] if season else None, league["state"] if league else "lobby"
-        ),
-        "season_name": season["name"] if season else None,
-        "draft_complete": _draft_is_complete(db, league_id) if league else False,
-        "games_remaining": _games_remaining(db, season["id"] if season else None),
-    }
+# refactored away
+# def _respond(request: Request, partial_template: str, ctx: dict) -> HTMLResponse:
+#     """HTMX → return partial only. Direct nav → full shell with partial embedded."""
+#     if _is_htmx(request):
+#         return templates.TemplateResponse(request, partial_template, ctx)
+#     ctx["tab_template"] = partial_template
+#     return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
 
-
-def _respond(request: Request, partial_template: str, ctx: dict) -> HTMLResponse:
-    """HTMX → return partial only. Direct nav → full shell with partial embedded."""
-    if _is_htmx(request):
-        return templates.TemplateResponse(request, partial_template, ctx)
-    ctx["tab_template"] = partial_template
-    return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
+# Trying to inject the is_htmx 
+# moved to utils
+# def respond(request: Request, is_htmx: bool, partial_template: str, ctx: dict) -> HTMLResponse:
+#     """HTMX → return partial only. Direct nav → full shell with partial embedded."""
+#     if is_htmx:
+#         return templates.TemplateResponse(request, partial_template, ctx)
+    
+#     ctx["tab_template"] = partial_template
+#     return templates.TemplateResponse(request, "dashboard/shell.html", ctx)
 
 
 # ── Landing / Auth ─────────────────────────────────────────────────────────────
@@ -824,6 +836,7 @@ def _lobby(request, league_id, db, user, gm):
 @router.get("/leagues/{league_id}/draft", response_class=HTMLResponse)
 def draft_tab(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -833,7 +846,7 @@ def draft_tab(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "draft")
+    ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
 
     draft = db.execute(
         """SELECT d.* FROM drafts d
@@ -947,7 +960,7 @@ def draft_tab(
             players.append(g)
     ctx["players"] = players
 
-    return _respond(request, "dashboard/partials/draft.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/draft.html", ctx)
 
 
 @router.post("/leagues/{league_id}/draft/execute")
@@ -1001,6 +1014,7 @@ def execute_draft(
 @router.get("/leagues/{league_id}/draft/results", response_class=HTMLResponse)
 def draft_results(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -1011,7 +1025,7 @@ def draft_results(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "draft")
+    ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
 
     draft = db.execute(
         """SELECT d.* FROM drafts d
@@ -1072,7 +1086,7 @@ def draft_results(
 
     ctx["rounds"] = rounds
     ctx["draft_done"] = bool(draft and draft["state"] == "complete")
-    return _respond(request, "dashboard/partials/draft_results.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/draft_results.html", ctx)
 
 
 @router.post("/leagues/{league_id}/roster/save", response_class=HTMLResponse)
@@ -1293,6 +1307,7 @@ async def sim_games(
 @router.get("/leagues/{league_id}/standings", response_class=HTMLResponse)
 def standings(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -1302,7 +1317,8 @@ def standings(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "standings")
+    ctx = _shell_ctx(request, db, gm, league_id, "standings", user)
+    print(f"DEBUG KEYS: {ctx.keys()}")
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
     teams = []
@@ -1567,7 +1583,7 @@ def standings(
     ctx["recent_games"] = recent_games
     ctx["injuries"] = injuries
     ctx["my_team_id"] = my_team_id
-    return _respond(request, "dashboard/partials/standings.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/standings.html", ctx)
 
 
 # ── Tab: Leaders ───────────────────────────────────────────────────────────────
@@ -1576,6 +1592,7 @@ def standings(
 @router.get("/leagues/{league_id}/leaders", response_class=HTMLResponse)
 def leaders(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     category: str = "batting",
@@ -1586,7 +1603,7 @@ def leaders(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "leaders")
+    ctx = _shell_ctx(request, db, gm, league_id, "leaders", user)
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
@@ -1849,7 +1866,7 @@ def leaders(
     ctx["category"] = category
     ctx["bat_cats"] = bat_cats
     ctx["pit_cats"] = pit_cats
-    return _respond(request, "dashboard/partials/leaders.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/leaders.html", ctx)
 
 
 # ── Tab: Roster ────────────────────────────────────────────────────────────────
@@ -1858,6 +1875,7 @@ def leaders(
 @router.get("/leagues/{league_id}/roster", response_class=HTMLResponse)
 def roster(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -1867,7 +1885,7 @@ def roster(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "roster")
+    ctx = _shell_ctx(request, db, gm, league_id, "roster", user)
     players = []
 
     if gm and gm["team_id"]:
@@ -1949,7 +1967,7 @@ def roster(
         p["injury_days"] = raw_days if raw_days else None
         p["returning"] = False
     ctx["players"] = players
-    return _respond(request, "dashboard/partials/roster.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 
 
 # ── Tab: Lineup ────────────────────────────────────────────────────────────────
@@ -1958,6 +1976,7 @@ def roster(
 @router.get("/leagues/{league_id}/lineup", response_class=HTMLResponse)
 def lineup(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -1967,7 +1986,7 @@ def lineup(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "lineup")
+    ctx = _shell_ctx(request, db, gm, league_id, "lineup", user)
 
     if not gm or not gm["team_id"]:
         ctx["hitters"] = []
@@ -1975,7 +1994,7 @@ def lineup(
         ctx["saved_lineup"] = []
         ctx["saved_rotation"] = []
         ctx["saved_bullpen"] = []
-        return _respond(request, "dashboard/partials/lineup.html", ctx)
+        return tab_response(request, htmx, "dashboard/partials/lineup.html", ctx)
 
     team_id = gm["team_id"]
     season_id = ctx.get("season_id")
@@ -2151,7 +2170,7 @@ def lineup(
         "SELECT state FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     ctx["is_playoffs"] = league_row and league_row["state"] == "playoffs"
-    return _respond(request, "dashboard/partials/lineup.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/lineup.html", ctx)
 
 
 @router.put("/leagues/{league_id}/lineup/save")
@@ -2348,6 +2367,7 @@ async def save_bullpen(
 @router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
 def strategy(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -2357,7 +2377,7 @@ def strategy(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "strategy")
+    ctx = _shell_ctx(request, db, gm, league_id, "strategy", user)
 
     profile_row = (
         db.execute("SELECT * FROM gm_profiles WHERE gm_id = %s", (gm["id"],)).fetchone()
@@ -2403,7 +2423,7 @@ def strategy(
             "bullpen_pref_index": 0,
         }
 
-    return _respond(request, "dashboard/partials/strategy.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/strategy.html", ctx)
 
 
 @router.post("/leagues/{league_id}/strategy")
@@ -2453,6 +2473,7 @@ async def save_strategy(
 @router.get("/leagues/{league_id}/schedule", response_class=HTMLResponse)
 def schedule(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -2462,7 +2483,7 @@ def schedule(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "schedule")
+    ctx = _shell_ctx(request, db, gm, league_id, "schedule", user)
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
@@ -2564,7 +2585,7 @@ def schedule(
 
     ctx["upcoming"] = upcoming
     ctx["recent"] = recent
-    return _respond(request, "dashboard/partials/schedule.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/schedule.html", ctx)
 
 
 # ── Tab: Stats ─────────────────────────────────────────────────────────────────
@@ -2573,6 +2594,7 @@ def schedule(
 @router.get("/leagues/{league_id}/stats", response_class=HTMLResponse)
 def stats(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     team_id: str | None = None,
@@ -2585,7 +2607,7 @@ def stats(
         return RedirectResponse("/")
 
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "stats")
+    ctx = _shell_ctx(request, db, gm, league_id, "stats", user)
     current_season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
@@ -2777,7 +2799,7 @@ def stats(
             "pitchers": pitchers,
         }
     )
-    return _respond(request, "dashboard/partials/stats.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/stats.html", ctx)
 
 
 # ── Tab: Playoffs ──────────────────────────────────────────────────────────────
@@ -2897,6 +2919,7 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
 @router.get("/leagues/{league_id}/playoffs", response_class=HTMLResponse)
 def playoffs(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -2905,7 +2928,7 @@ def playoffs(
     if not user:
         return RedirectResponse("/")
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm, "playoffs")
+    ctx = _shell_ctx(request, db, gm, league_id, "playoffs", user)
 
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
@@ -2925,7 +2948,7 @@ def playoffs(
             "my_team_id": my_team_id,
         }
     )
-    return _respond(request, "dashboard/partials/playoffs.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/playoffs.html", ctx)
 
 
 @router.post("/leagues/{league_id}/playoffs/sim")
@@ -3051,7 +3074,7 @@ def game_panel(
             ed["detail_parsed"] = None
         events_out.append(ed)
 
-    ctx = _shell_ctx(request, db, league_id, user, gm)
+    ctx = _shell_ctx(request, db, gm, league_id, user)
     ctx.update(
         {
             "game": game,
@@ -3075,6 +3098,7 @@ def game_panel(
 @router.get("/leagues/{league_id}/season-summary", response_class=HTMLResponse)
 def season_summary(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     season_id: str | None = None,
@@ -3084,7 +3108,7 @@ def season_summary(
     if not user:
         return RedirectResponse("/")
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm)
+    ctx = _shell_ctx(request, db, gm, league_id, user)
     my_team_id = gm["team_id"] if gm else None
 
     # Use explicit season_id (from history link) or fall back to last season with series
@@ -3251,7 +3275,7 @@ def season_summary(
             "my_team_name": ctx.get("team_name", ""),
         }
     )
-    return _respond(request, "dashboard/partials/season_summary.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/season_summary.html", ctx)
 
 
 @router.post("/leagues/{league_id}/offseason/begin")
@@ -3287,6 +3311,7 @@ def begin_offseason(
 @router.get("/leagues/{league_id}/history", response_class=HTMLResponse)
 def history(
     request: Request,
+    htmx: IsHTMX,
     league_id: str,
     db: DB,
     gm_session: str | None = Cookie(default=None),
@@ -3295,7 +3320,7 @@ def history(
     if not user:
         return RedirectResponse("/")
     gm = _resolve_gm(db, user["id"], league_id)
-    ctx = _shell_ctx(request, db, league_id, user, gm)
+    ctx = _shell_ctx(request, db, gm, league_id, user)
     my_team_id = gm["team_id"] if gm else None
 
     seasons = db.execute(
@@ -3354,7 +3379,7 @@ def history(
         )
 
     ctx["history_rows"] = history_rows
-    return _respond(request, "dashboard/partials/history.html", ctx)
+    return tab_response(request, "dashboard/partials/history.html", ctx)
 
 
 # ── Player panel (slide-in) ────────────────────────────────────────────────────
@@ -3545,7 +3570,7 @@ def player_panel(
             "returning": False,
         }
 
-    ctx = _shell_ctx(request, db, league_id, user, gm)
+    ctx = _shell_ctx(request, db, gm, league_id, user)
     ctx["player"] = _load(player_id)
     ctx["compare_player"] = _load(compare) if compare else None
     return templates.TemplateResponse(
