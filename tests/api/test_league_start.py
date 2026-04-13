@@ -17,7 +17,7 @@ The tests verify the DB-side effects of steps 5-8:
   - Guard clauses (wrong state, missing league)
 """
 
-import uuid
+from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,21 +25,14 @@ import pytest
 from src.api.services.league_start import start_league
 
 
+@dataclass
+class TeamRef:
+    id: str
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures & helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-LEAGUE_ID = "league-test"
-SEASON_ID = "season-test"
-
-
-def _fake_team(team_id: str):
-    t = MagicMock()
-    t.id = team_id
-    return t
-
-
-FAKE_TEAMS = [_fake_team(f"team-{i}") for i in range(4)]
 FAKE_MANIFEST = {
     "league_name": "Test League",
     "season_year": 2025,
@@ -49,59 +42,45 @@ FAKE_MANIFEST = {
 
 
 @pytest.fixture
-def league(db_conn, factory):
-    """Insert a league in lobby state and a human GM."""
+def ctx(db_conn, factory):
+    """
+    Insert a league in lobby state with 4 teams and one human GM.
+    Returns a namespace with everything tests need: conn, league, season, teams, gm.
+    """
     league = factory.league(state="lobby")
     season = factory.season()
     factory.league_season(league, season)
-    # db_conn.execute(
-    #     "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, 'lobby', 'blitz')",
-    #     (league.id, "Test League"),
-    # )
-    # db_conn.execute(
-    #     "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
-    #     (season.id, 2025, "Season 2025"),
-    # )
-    # db_conn.execute(
-    #     "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)",
-    #     (league.id, season.id),
-    # )
-    team1 = factory.team()
-    team2 = factory.team()
-    team3 = factory.team()
-    team4 = factory.team()
-    factory.league_season_team(league, season, team1)
-    factory.league_season_team(league, season, team2)
-    factory.league_season_team(league, season, team3)
-    factory.league_season_team(league, season, team4)
+    teams = [factory.team() for _ in range(4)]
+    for t in teams:
+        db_conn.execute(
+            "INSERT INTO league_season_teams (league_id, season_id, team_id)"
+            " VALUES (%s, %s, %s)",
+            (league.id, season.id, t.id),
+        )
+    gm = factory.gm(team=teams[0], league=league, is_ai=0)
 
-    # for t in FAKE_TEAMS:
-    #     db_conn.execute(
-    #         "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)",
-    #         (t.id, f"City {t.id}", "Team"),
-    #     )
-    #     db_conn.execute(
-    #         "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s)",
-    #         (league.id, season.id, t.id),
-    #     )
-    # One human GM, no team assigned yet
-    factory.gm(team=team1, league=league, is_ai=0)
-    # gm_id = str(uuid.uuid4())
-    # db_conn.execute(
-    #     "INSERT INTO gms (id, league_id, display_name, is_ai) VALUES (%s, %s, 'Human GM', 0)",
-    #     (gm_id, league.id),
-    # )
-    # db_conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
-    # db_conn.commit()
-    return db_conn
+    from types import SimpleNamespace
+    return SimpleNamespace(
+        conn=db_conn,
+        league=league,
+        season=season,
+        teams=teams,
+        gm=gm,
+    )
 
 
 @pytest.fixture
-def patched_start(league):
+def patched(ctx):
     """
-    Patch all filesystem-touching code. Returns (db_conn, call_start_league).
-    Tests call start_league(LEAGUE_ID, db_conn) themselves.
+    Patch all filesystem-touching code.
+    Yields ctx so tests can access ctx.conn, ctx.league, etc.
     """
+
+
+    fake_teams = [TeamRef(id=t.id) for t in ctx.teams]
+
+
+
     with patch("src.api.services.league_start.load_manifest", return_value=FAKE_MANIFEST), \
          patch("src.api.services.league_start.validate_manifest_structure"), \
          patch("src.api.services.league_start.validate_manifest_uniqueness"), \
@@ -112,22 +91,49 @@ def patched_start(league):
          patch("src.api.services.league_start.save_schedule_to_db"), \
          patch("src.api.services.league_start.write_draft_order"):
 
-        # Bootstrap returns (league_id, teams, season_id)
-        mock_boot = MagicMock()
-        mock_boot.bootstrap_from_manifest.return_value = (LEAGUE_ID, FAKE_TEAMS, SEASON_ID)
-        MockBootstrapper.return_value = mock_boot
+        # --- Bootstrapper ---
+        MockBootstrapper.return_value.bootstrap_from_manifest.return_value = (
+            ctx.league.id,
+            fake_teams,
+            ctx.season.id,
+        )
 
-        # Draft generator returns prospect count
-        mock_gen = MagicMock()
-        mock_gen.run.return_value = 150
-        MockDraftGen.return_value = mock_gen
+        # --- Draft generator ---
+        MockDraftGen.return_value.run.return_value = 150
 
-        # Schedule generator returns a list of fake games
-        mock_sched = MagicMock()
-        mock_sched.create_schedule.return_value = ["g1", "g2", "g3"]
-        MockScheduler.return_value = mock_sched
+        # --- Schedule generator ---
+        MockScheduler.return_value.create_schedule.return_value = ["g1", "g2", "g3"]
 
-        yield league
+        yield ctx
+
+
+
+
+    # with patch("src.api.services.league_start.load_manifest", return_value=FAKE_MANIFEST), \
+    #      patch("src.api.services.league_start.validate_manifest_structure"), \
+    #      patch("src.api.services.league_start.validate_manifest_uniqueness"), \
+    #      patch("src.api.services.league_start.create_team_files"), \
+    #      patch("src.api.services.league_start.LeagueBootstrapper") as MockBootstrapper, \
+    #      patch("src.api.services.league_start.DraftGenerator") as MockDraftGen, \
+    #      patch("src.api.services.league_start.ScheduleGenerator") as MockScheduler, \
+    #      patch("src.api.services.league_start.save_schedule_to_db"), \
+    #      patch("src.api.services.league_start.write_draft_order"):
+
+    #     mock_boot = MagicMock()
+    #     mock_boot.bootstrap_from_manifest.return_value = (
+    #         ctx.league.id, fake_teams, ctx.season.id
+    #     )
+    #     MockBootstrapper.return_value = mock_boot
+
+    #     mock_gen = MagicMock()
+    #     mock_gen.run.return_value = 150
+    #     MockDraftGen.return_value = mock_gen
+
+    #     mock_sched = MagicMock()
+    #     mock_sched.create_schedule.return_value = ["g1", "g2", "g3"]
+    #     MockScheduler.return_value = mock_sched
+
+    #     yield ctx
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -140,23 +146,15 @@ class TestStartLeagueGuards:
         with pytest.raises(ValueError, match="not found"):
             start_league("nonexistent-league", db_conn)
 
-    def test_raises_if_league_not_in_lobby(self, db_conn):
-        db_conn.execute(
-            "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, 'draft', 'blitz')",
-            ("league-wrong-state", "Test"),
-        )
-        db_conn.commit()
+    def test_raises_if_league_not_in_lobby(self, db_conn, factory):
+        league = factory.league(state="draft")
         with pytest.raises(ValueError, match="already in state"):
-            start_league("league-wrong-state", db_conn)
+            start_league(league.id, db_conn)
 
-    def test_raises_if_league_in_season_state(self, db_conn):
-        db_conn.execute(
-            "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, 'season', 'blitz')",
-            ("league-season", "Test"),
-        )
-        db_conn.commit()
+    def test_raises_if_league_in_season_state(self, db_conn, factory):
+        league = factory.league(state="season")
         with pytest.raises(ValueError, match="already in state"):
-            start_league("league-season", db_conn)
+            start_league(league.id, db_conn)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -165,37 +163,36 @@ class TestStartLeagueGuards:
 
 class TestStartLeagueReturnValue:
 
-    def test_returns_expected_keys(self, patched_start, factory):
-        league = factory.league(state='lobby')
-        result = start_league(league.id, patched_start)
+    def test_returns_expected_keys(self, patched):
+        result = start_league(patched.league.id, patched.conn)
         assert set(result.keys()) == {
             "league_id", "season_id", "draft_id", "team_count",
             "game_count", "prospect_count", "seed", "your_team",
         }
 
-    def test_returns_correct_league_and_season_ids(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
-        assert result["league_id"] == LEAGUE_ID
-        assert result["season_id"] == SEASON_ID
+    def test_returns_correct_league_and_season_ids(self, patched):
+        result = start_league(patched.league.id, patched.conn)
+        assert result["league_id"] == patched.league.id
+        assert result["season_id"] == patched.season.id
 
-    def test_returns_correct_team_count(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
-        assert result["team_count"] == len(FAKE_TEAMS)
+    def test_returns_correct_team_count(self, patched):
+        result = start_league(patched.league.id, patched.conn)
+        assert result["team_count"] == len(patched.teams)
 
-    def test_returns_prospect_count_from_generator(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
+    def test_returns_prospect_count_from_generator(self, patched):
+        result = start_league(patched.league.id, patched.conn)
         assert result["prospect_count"] == 150
 
-    def test_returns_game_count(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
-        assert result["game_count"] == 3  # len of fake schedule
+    def test_returns_game_count(self, patched):
+        result = start_league(patched.league.id, patched.conn)
+        assert result["game_count"] == 3
 
-    def test_returns_seed_as_int(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
+    def test_returns_seed_as_int(self, patched):
+        result = start_league(patched.league.id, patched.conn)
         assert isinstance(result["seed"], int)
 
-    def test_returns_draft_id_string(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
+    def test_returns_draft_id_string(self, patched):
+        result = start_league(patched.league.id, patched.conn)
         assert isinstance(result["draft_id"], str)
         assert len(result["draft_id"]) > 0
 
@@ -206,16 +203,16 @@ class TestStartLeagueReturnValue:
 
 class TestLeagueStateTransition:
 
-    def test_league_state_becomes_draft(self, patched_start):
-        start_league(LEAGUE_ID, patched_start)
-        row = patched_start.execute(
-            "SELECT state FROM leagues WHERE id = %s", (LEAGUE_ID,)
+    def test_league_state_becomes_draft(self, patched):
+        start_league(patched.league.id, patched.conn)
+        row = patched.conn.execute(
+            "SELECT state FROM leagues WHERE id = %s", (patched.league.id,)
         ).fetchone()
         assert row["state"] == "draft"
 
-    def test_league_was_lobby_before(self, league):
-        row = league.execute(
-            "SELECT state FROM leagues WHERE id = %s", (LEAGUE_ID,)
+    def test_league_was_lobby_before(self, ctx):
+        row = ctx.conn.execute(
+            "SELECT state FROM leagues WHERE id = %s", (ctx.league.id,)
         ).fetchone()
         assert row["state"] == "lobby"
 
@@ -226,28 +223,28 @@ class TestLeagueStateTransition:
 
 class TestDraftCreation:
 
-    def test_draft_record_created(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
-        row = patched_start.execute(
+    def test_draft_record_created(self, patched):
+        result = start_league(patched.league.id, patched.conn)
+        row = patched.conn.execute(
             "SELECT * FROM drafts WHERE id = %s", (result["draft_id"],)
         ).fetchone()
         assert row is not None
-        assert row["league_id"] == LEAGUE_ID
-        assert row["season_id"] == SEASON_ID
+        assert row["league_id"] == patched.league.id
+        assert row["season_id"] == patched.season.id
         assert row["state"] == "pending"
 
-    def test_draft_format_is_preference_for_blitz(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
-        row = patched_start.execute(
+    def test_draft_format_is_preference_for_blitz(self, patched):
+        result = start_league(patched.league.id, patched.conn)
+        row = patched.conn.execute(
             "SELECT format FROM drafts WHERE id = %s", (result["draft_id"],)
         ).fetchone()
         assert row["format"] == "preference"
 
-    def test_only_one_draft_created(self, patched_start):
-        start_league(LEAGUE_ID, patched_start)
-        count = patched_start.execute(
-            "SELECT COUNT(*) FROM drafts WHERE league_id = %s", (LEAGUE_ID,)
-        ).fetchone()[0]
+    def test_only_one_draft_created(self, patched):
+        start_league(patched.league.id, patched.conn)
+        count = patched.conn.execute(
+            "SELECT COUNT(*) AS n FROM drafts WHERE league_id = %s", (patched.league.id,)
+        ).fetchone()["n"]
         assert count == 1
 
 
@@ -257,57 +254,55 @@ class TestDraftCreation:
 
 class TestGMAssignment:
 
-    def test_human_gm_assigned_to_a_team(self, patched_start):
-        start_league(LEAGUE_ID, patched_start)
-        row = patched_start.execute(
+    def test_human_gm_assigned_to_a_team(self, patched):
+        start_league(patched.league.id, patched.conn)
+        row = patched.conn.execute(
             "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0",
-            (LEAGUE_ID,),
+            (patched.league.id,),
         ).fetchone()
         assert row["team_id"] is not None
 
-    def test_human_gm_assigned_to_valid_team(self, patched_start):
-        start_league(LEAGUE_ID, patched_start)
-        row = patched_start.execute(
+    def test_human_gm_assigned_to_valid_team(self, patched):
+        start_league(patched.league.id, patched.conn)
+        row = patched.conn.execute(
             "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0",
-            (LEAGUE_ID,),
+            (patched.league.id,),
         ).fetchone()
-        team_ids = {t.id for t in FAKE_TEAMS}
+        team_ids = {t.id for t in patched.teams}
         assert row["team_id"] in team_ids
 
-    def test_ai_gms_created_for_remaining_teams(self, patched_start):
-        start_league(LEAGUE_ID, patched_start)
-        ai_count = patched_start.execute(
-            "SELECT COUNT(*) FROM gms WHERE league_id = %s AND is_ai = 1",
-            (LEAGUE_ID,),
-        ).fetchone()[0]
-        # 4 teams, 1 human GM → 3 AI GMs
-        assert ai_count == len(FAKE_TEAMS) - 1
+    def test_ai_gms_created_for_remaining_teams(self, patched):
+        start_league(patched.league.id, patched.conn)
+        ai_count = patched.conn.execute(
+            "SELECT COUNT(*) AS n FROM gms WHERE league_id = %s AND is_ai = 1",
+            (patched.league.id,),
+        ).fetchone()["n"]
+        assert ai_count == len(patched.teams) - 1
 
-    def test_every_team_has_exactly_one_gm(self, patched_start):
-        start_league(LEAGUE_ID, patched_start)
-        for team in FAKE_TEAMS:
-            count = patched_start.execute(
-                "SELECT COUNT(*) FROM gms WHERE league_id = %s AND team_id = %s",
-                (LEAGUE_ID, team.id),
-            ).fetchone()[0]
+    def test_every_team_has_exactly_one_gm(self, patched):
+        start_league(patched.league.id, patched.conn)
+        for team in patched.teams:
+            count = patched.conn.execute(
+                "SELECT COUNT(*) AS n FROM gms WHERE league_id = %s AND team_id = %s",
+                (patched.league.id, team.id),
+            ).fetchone()["n"]
             assert count == 1, f"Team {team.id} has {count} GMs, expected 1"
 
-    def test_your_team_returned_for_human_gm(self, patched_start):
-        result = start_league(LEAGUE_ID, patched_start)
+    def test_your_team_returned_for_human_gm(self, patched):
+        result = start_league(patched.league.id, patched.conn)
         assert result["your_team"] is not None
-        # Should be "City team-X Team" format
-        assert "Team" in result["your_team"]
+        assert isinstance(result["your_team"], str)
 
-    def test_ai_gms_have_profiles(self, patched_start, factory):
-        league = factory.league(state="lobby")
-        start_league(league.id, patched_start)
+    def test_ai_gms_have_profiles(self, patched):
+        start_league(patched.league.id, patched.conn)
         ai_gm_ids = [
-            r["id"] for r in patched_start.execute(
-                "SELECT id FROM gms WHERE league_id = %s AND is_ai = 1", (league.id,)
+            r["id"] for r in patched.conn.execute(
+                "SELECT id FROM gms WHERE league_id = %s AND is_ai = 1",
+                (patched.league.id,),
             ).fetchall()
         ]
         for gm_id in ai_gm_ids:
-            row = patched_start.execute(
+            row = patched.conn.execute(
                 "SELECT gm_id FROM gm_profiles WHERE gm_id = %s", (gm_id,)
             ).fetchone()
             assert row is not None, f"AI GM {gm_id} has no gm_profiles row"

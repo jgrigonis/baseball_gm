@@ -7,6 +7,7 @@ import random
 import uuid
 from pathlib import Path
 
+from src.api.routers import draft
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
     create_team_files,
@@ -22,7 +23,13 @@ from src.util.locations import MANIFEST_FILES_DIR
 _MANIFEST_FILENAME = "world_league-2025.json"
 
 
-def start_league(league_id: str, conn) -> dict:
+def start_league(
+    league_id: str, 
+    conn,
+    bootstrapper=None,
+    draft_gen=None,
+    scheduler=None,
+) -> dict:
     league = conn.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
 
     if not league:
@@ -52,7 +59,7 @@ def start_league(league_id: str, conn) -> dict:
     start_date_str = manifest.get("season_start_date", f"{year}-04-01")
     start_date = datetime.date.fromisoformat(start_date_str)
 
-    bootstrapper = LeagueBootstrapper(conn, rng=rng)
+    bootstrapper = bootstrapper or LeagueBootstrapper(conn, rng=rng)
 
     _, teams, season_id = bootstrapper.bootstrap_from_manifest(
         manifest,
@@ -85,7 +92,7 @@ def start_league(league_id: str, conn) -> dict:
     ).fetchone()["count"]
 
     if existing_games == 0:
-        scheduler = ScheduleGenerator(rng=rng)
+        scheduler = scheduler or ScheduleGenerator(rng=rng)
         schedule = scheduler.create_schedule(
             season_id=season_id,
             team_ids=[t.id for t in teams],
@@ -147,7 +154,7 @@ def start_league(league_id: str, conn) -> dict:
     )
     conn.commit()
 
-    prospect_count = DraftGenerator(conn, rng=rng).run(
+    prospect_count = draft_gen or DraftGenerator(conn, rng=rng).run(
         season_id=season_id, year=year, league_id=league_id
     )
 

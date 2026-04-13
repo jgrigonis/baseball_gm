@@ -155,7 +155,7 @@ class TeamRotationsRepository:
         )
 
         last_starter = cursor.fetchone()
-        last_rotation_order = last_starter[1] if last_starter else 0
+        last_rotation_order = last_starter["rotation_order"] if last_starter else 0
 
         # Try each pitcher in rotation order starting from next, skip if too tired
         game_date = (
