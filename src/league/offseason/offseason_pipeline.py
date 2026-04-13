@@ -204,6 +204,8 @@ class OffseasonPipeline:
                 if row:
                     team_repo.remove_player(row["team_id"], player.id)
                 retired.append(player)
+                
+        self.conn.commit()
 
         if retired:
             if self.league_id:
