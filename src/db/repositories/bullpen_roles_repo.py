@@ -178,7 +178,7 @@ def get_current_roles(conn, team_id: str, season_id: str) -> list[dict]:
         (team_id, season_id),
     )
     columns = [col[0] for col in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    return [dict(row) for row in cursor.fetchall()]
 
 
 def get_closer(conn, team_id: str, season_id: str) -> Optional[dict]:
@@ -203,8 +203,7 @@ def get_closer(conn, team_id: str, season_id: str) -> Optional[dict]:
     row = cursor.fetchone()
     if row is None:
         return None
-    columns = [col[0] for col in cursor.description]
-    return dict(zip(columns, row))
+    return dict(row)
 
 
 def update_role(
