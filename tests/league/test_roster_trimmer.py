@@ -42,21 +42,21 @@ def _next_id():
 
 def setup_season(db_conn, season_id="s1", team_ids=("t1",)):
     db_conn.execute(
-        "INSERT OR IGNORE INTO seasons (id, year, name) VALUES (?, 2026, 'Season 2026')", (season_id,)
+        "INSERT OR IGNORE INTO seasons (id, year, name) VALUES (%s, 2026, 'Season 2026')", (season_id,)
     )
     db_conn.execute(
         "INSERT OR IGNORE INTO leagues (id, name) VALUES ('lg1', 'Test League')"
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO league_seasons (league_id, season_id) VALUES ('lg1', ?)", (season_id,)
+        "INSERT OR IGNORE INTO league_seasons (league_id, season_id) VALUES ('lg1', %s)", (season_id,)
     )
     for team_id in team_ids:
         db_conn.execute(
-            "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, 'Test', 'Team')",
+            "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (%s, 'Test', 'Team')",
             (team_id,),
         )
         db_conn.execute(
-            "INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id) VALUES ('lg1', ?, ?)",
+            "INSERT OR IGNORE INTO league_season_teams (league_id, season_id, team_id) VALUES ('lg1', %s, %s)",
             (season_id, team_id),
         )
     db_conn.commit()
@@ -66,7 +66,7 @@ def insert_player(db_conn, team_id, status, strikes=50, speed=50, player_id=None
     """Insert a player with given status and key skills that affect prospect_rating."""
     pid = player_id or _next_id()
     db_conn.execute(
-        "INSERT INTO players (id, first_name, last_name, bats, throws, position) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO players (id, first_name, last_name, bats, throws, position) VALUES (%s,%s,%s,%s,%s,%s)",
         (pid, "Test", "Player", "R", "R", "of"),
     )
     db_conn.execute(
@@ -74,15 +74,15 @@ def insert_player(db_conn, team_id, status, strikes=50, speed=50, player_id=None
            (player_id, age, strikes, stamina, recovery, accuracy, clutch,
             speed, power, arm, eye, contact, base_running,
             bunting, catching, infield, outfield, ground_balls, durability)
-           VALUES (?,20,?,50,50,50,50,?,50,50,50,50,50,50,50,50,50,50,50)""",
+           VALUES (%s,20,%s,50,50,50,50,%s,50,50,50,50,50,50,50,50,50,50,50)""",
         (pid, strikes, speed),
     )
     db_conn.execute(
-        "INSERT INTO player_status (player_id, status, since) VALUES (?, ?, '2026-01-01')",
+        "INSERT INTO player_status (player_id, status, since) VALUES (%s, %s, '2026-01-01')",
         (pid, status),
     )
     db_conn.execute(
-        "INSERT INTO team_players (team_id, player_id) VALUES (?, ?)",
+        "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s)",
         (team_id, pid),
     )
     db_conn.commit()
@@ -105,17 +105,17 @@ def count_team_players(db_conn, team_id, status=None):
         return db_conn.execute(
             """SELECT COUNT(*) FROM team_players tp
                JOIN player_status ps ON tp.player_id = ps.player_id
-               WHERE tp.team_id = ? AND ps.status = ?""",
+               WHERE tp.team_id = %s AND ps.status = %s""",
             (team_id, status),
         ).fetchone()[0]
     return db_conn.execute(
-        "SELECT COUNT(*) FROM team_players WHERE team_id = ?", (team_id,)
+        "SELECT COUNT(*) FROM team_players WHERE team_id = %s", (team_id,)
     ).fetchone()[0]
 
 
 def get_status(db_conn, player_id):
     row = db_conn.execute(
-        "SELECT status FROM player_status WHERE player_id = ?", (player_id,)
+        "SELECT status FROM player_status WHERE player_id = %s", (player_id,)
     ).fetchone()
     return row["status"] if row else None
 
@@ -123,7 +123,7 @@ def get_status(db_conn, player_id):
 def in_team(db_conn, team_id, player_id):
     return (
         db_conn.execute(
-            "SELECT 1 FROM team_players WHERE team_id = ? AND player_id = ?",
+            "SELECT 1 FROM team_players WHERE team_id = %s AND player_id = %s",
             (team_id, player_id),
         ).fetchone()
         is not None

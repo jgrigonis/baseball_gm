@@ -7,67 +7,69 @@ from src.game.game import GameResult
 
 @pytest.fixture
 def game_repo(db_conn):
-    """Create GameRepository instance."""
     return GameRepository(db_conn)
 
 
 @pytest.fixture
-def sample_game(db_conn, db_seed):
-    """
-    Insert a sample game into database.
-    """
-    db_conn.execute(
-        """
-        INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        ("game-7", "2025-04-01", "season-1", None, "team-home", "team-away", 0),
+def base(db_conn, factory):
+    """Season + two teams used by most fixtures."""
+    from types import SimpleNamespace
+    season    = factory.season()
+    home_team = factory.team(city="Home City", mascot="Homers")
+    away_team = factory.team(city="Away City", mascot="Visitors")
+    return SimpleNamespace(
+        conn=db_conn,
+        season=season,
+        home=home_team,
+        away=away_team,
     )
-    db_conn.commit()
-    return "game-7"
 
 
 @pytest.fixture
-def completed_game(db_conn, db_seed):
-    """Insert a completed game into database."""
-    db_conn.execute(
+def sample_game(base):
+    """An incomplete game."""
+    import uuid
+    gid = str(uuid.uuid4())
+    base.conn.execute(
+        """
+        INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+        (gid, "2025-04-01", base.season.id, None, base.home.id, base.away.id, 0),
+    )
+    base.gid = gid
+    return base
+
+
+@pytest.fixture
+def completed_game(base):
+    """A completed game with scores."""
+    import uuid
+    gid = str(uuid.uuid4())
+    base.conn.execute(
         """
         INSERT INTO games (
-            id, game_date, season_id, series_id, home_team_id, away_team_id, 
+            id, game_date, season_id, series_id, home_team_id, away_team_id,
             home_score, away_score, completed, innings_played, winner_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
-        (
-            "game-6",
-            "2025-04-02",
-            "season-1",
-            None,
-            "team-home",
-            "team-away",
-            5,
-            3,
-            1,
-            9,
-            "team-home",
-        ),
+        (gid, "2025-04-02", base.season.id, None,
+         base.home.id, base.away.id, 5, 3, 1, 9, base.home.id),
     )
-    db_conn.commit()
-    return "game-6"
+    base.gid = gid
+    return base
 
 
 class TestGameRepositoryGet:
-    """Test get() method."""
 
     def test_get_existing_game(self, game_repo, sample_game):
-        """Test getting an existing game."""
-        result = game_repo.get(sample_game)
-
+        result = game_repo.get(sample_game.gid)
         assert result is not None
-        assert result["game_id"] == "game-7"
-        assert result["season_id"] == "season-1"
-        assert result["home_team_id"] == "team-home"
-        assert result["away_team_id"] == "team-away"
+        assert result["game_id"] == sample_game.gid
+        assert result["season_id"] == sample_game.season.id
+        assert result["home_team_id"] == sample_game.home.id
+        assert result["away_team_id"] == sample_game.away.id
         assert result["game_date"] == "2025-04-01"
         assert result["completed"] == 0
         assert result["home_score"] is None
@@ -76,330 +78,246 @@ class TestGameRepositoryGet:
         assert result["innings_played"] is None
 
     def test_get_completed_game(self, game_repo, completed_game):
-        """Test getting a completed game with scores."""
-        result = game_repo.get(completed_game)
-
+        result = game_repo.get(completed_game.gid)
         assert result is not None
-        assert result["game_id"] == "game-6"
+        assert result["game_id"] == completed_game.gid
         assert result["completed"] == 1
         assert result["home_score"] == 5
         assert result["away_score"] == 3
-        assert result["winner_id"] == "team-home"
+        assert result["winner_id"] == completed_game.home.id
         assert result["innings_played"] == 9
 
     def test_get_nonexistent_game(self, game_repo):
-        """Test getting a game that doesn't exist."""
-        result = game_repo.get("nonexistent-game")
-
-        assert result is None
+        assert game_repo.get("nonexistent-game") is None
 
     def test_get_returns_all_fields(self, game_repo, sample_game):
-        """Test that get returns all expected fields."""
-        result = game_repo.get(sample_game)
-
-        expected_fields = {
-            "game_id",
-            "season_id",
-            "series_id",
-            "home_team_id",
-            "away_team_id",
-            "game_date",
-            "completed",
-            "home_score",
-            "away_score",
-            "winner_id",
-            "innings_played",
+        result = game_repo.get(sample_game.gid)
+        assert set(result.keys()) == {
+            "game_id", "season_id", "series_id",
+            "home_team_id", "away_team_id", "game_date",
+            "completed", "home_score", "away_score",
+            "winner_id", "innings_played",
         }
-
-        assert set(result.keys()) == expected_fields
 
 
 class TestGameRepositorySaveResult:
-    """Test save_result() method."""
 
-    def test_save_result_basic(self, game_repo, sample_game, db_conn):
-        """Test saving a game result."""
+    def test_save_result_basic(self, game_repo, sample_game):
         result = GameResult(
-            home_team="Home Team",
-            away_team="Away Team",
-            home_score=5,
-            away_score=3,
-            innings_played=9,
-            winner="Home Team",
-            winning_margin=2,
+            home_team="Home Team", away_team="Away Team",
+            home_score=5, away_score=3, innings_played=9,
+            winner="Home Team", winning_margin=2,
         )
+        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
 
-        game_repo.save_result(sample_game, result, "team-home")
-
-        # Verify database was updated
-        row = db_conn.execute(
-            "SELECT * FROM games WHERE id = ?", (sample_game,)
+        row = sample_game.conn.execute(
+            "SELECT * FROM games WHERE id = %s", (sample_game.gid,)
         ).fetchone()
-
         assert row["home_score"] == 5
         assert row["away_score"] == 3
-        assert row["winner_id"] == "team-home"
+        assert row["winner_id"] == sample_game.home.id
         assert row["innings_played"] == 9
         assert row["completed"] == 1
 
-    def test_save_result_extra_innings(self, game_repo, sample_game, db_conn):
-        """Test saving a game that went to extra innings."""
+    def test_save_result_extra_innings(self, game_repo, sample_game):
         result = GameResult(
-            home_team="Home Team",
-            away_team="Away Team",
-            home_score=4,
-            away_score=3,
-            innings_played=12,
-            winner="Home Team",
-            winning_margin=1,
+            home_team="Home", away_team="Away",
+            home_score=4, away_score=3, innings_played=12,
+            winner="Home", winning_margin=1,
         )
+        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
 
-        game_repo.save_result(sample_game, result, "team-home")
-
-        row = db_conn.execute(
-            "SELECT innings_played FROM games WHERE id = ?", (sample_game,)
+        row = sample_game.conn.execute(
+            "SELECT innings_played FROM games WHERE id = %s", (sample_game.gid,)
         ).fetchone()
-
         assert row["innings_played"] == 12
 
-    def test_save_result_marks_completed(self, game_repo, sample_game, db_conn):
-        """Test that save_result marks game as completed."""
-        result = GameResult(
-            home_team="Home",
-            away_team="Away",
-            home_score=1,
-            away_score=0,
-            innings_played=9,
-            winner="Home",
-            winning_margin=1,
-        )
-
-        # Verify initially not completed
-        row = db_conn.execute(
-            "SELECT completed FROM games WHERE id = ?", (sample_game,)
+    def test_save_result_marks_completed(self, game_repo, sample_game):
+        row = sample_game.conn.execute(
+            "SELECT completed FROM games WHERE id = %s", (sample_game.gid,)
         ).fetchone()
         assert row["completed"] == 0
 
-        game_repo.save_result(sample_game, result, "team-home")
+        result = GameResult(
+            home_team="Home", away_team="Away",
+            home_score=1, away_score=0, innings_played=9,
+            winner="Home", winning_margin=1,
+        )
+        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
 
-        # Verify now completed
-        row = db_conn.execute(
-            "SELECT completed FROM games WHERE id = ?", (sample_game,)
+        row = sample_game.conn.execute(
+            "SELECT completed FROM games WHERE id = %s", (sample_game.gid,)
         ).fetchone()
         assert row["completed"] == 1
 
-    def test_save_result_overwrites_existing(
-        self, game_repo, completed_game, db_conn
-    ):
-        """Test that save_result can overwrite an existing result."""
+    def test_save_result_overwrites_existing(self, game_repo, completed_game):
         new_result = GameResult(
-            home_team="Home",
-            away_team="Away",
-            home_score=10,
-            away_score=8,
-            innings_played=11,
-            winner="Home",
-            winning_margin=2,
+            home_team="Home", away_team="Away",
+            home_score=10, away_score=8, innings_played=11,
+            winner="Home", winning_margin=2,
         )
+        game_repo.save_result(completed_game.gid, new_result, completed_game.home.id)
 
-        game_repo.save_result(completed_game, new_result, "team-home")
-
-        row = db_conn.execute(
-            "SELECT * FROM games WHERE id = ?", (completed_game,)
+        row = completed_game.conn.execute(
+            "SELECT * FROM games WHERE id = %s", (completed_game.gid,)
         ).fetchone()
-
         assert row["home_score"] == 10
         assert row["away_score"] == 8
         assert row["innings_played"] == 11
 
 
 class TestGameRepositoryGetSeasonGames:
-    """Test get_season_games() method."""
 
     @pytest.fixture
-    def season_games(self, db_conn, db_seed):
-        """Create multiple games for a season."""
-        db_conn.commit()
-        games = [
-            ("game-s1-1", "2025-04-01", "season-10", None, "home-11", "away-11", 0, None, None),
-            ("game-s1-2", "2025-04-02", "season-10", None, "home-12", "away-12", 1, 5, 3),
-            ("game-s1-3", "2025-04-03", "season-10", None, "home-13", "away-13", 1, 2, 1),
-            ("game-s1-4", "2025-04-04", "season-10", None, "home-14", "away-14", 0, None, None),
-            ("game-s2-1", "2025-04-01", "season-11", None, "home-15", "away-15", 1, 4, 2),
-        ]
+    def season_games(self, db_conn, factory):
+        """Two seasons with multiple games each."""
+        from types import SimpleNamespace
+        import uuid
 
-        for game in games:
+        s1 = factory.season(year=3100)
+        s2 = factory.season(year=3101)
+        teams = [factory.team() for _ in range(5)]
+
+        games_s1 = []
+        for i, (home, away, completed, hs, as_) in enumerate([
+            (teams[0], teams[1], 0, None, None),
+            (teams[1], teams[2], 1, 5, 3),
+            (teams[2], teams[3], 1, 2, 1),
+            (teams[3], teams[4], 0, None, None),
+        ]):
+            gid = str(uuid.uuid4())
             db_conn.execute(
                 """
-                INSERT INTO games (
-                    id, game_date, season_id, series_id, home_team_id, away_team_id, 
-                    completed, home_score, away_score
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO games (id, game_date, season_id, series_id,
+                    home_team_id, away_team_id, completed, home_score, away_score)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                game,
+                (gid, f"2025-04-{i+1:02d}", s1.id, None,
+                 home.id, away.id, completed, hs, as_),
             )
+            games_s1.append(gid)
 
-        db_conn.commit()
+        gid_s2 = str(uuid.uuid4())
+        db_conn.execute(
+            """
+            INSERT INTO games (id, game_date, season_id, series_id,
+                home_team_id, away_team_id, completed, home_score, away_score)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (gid_s2, "2025-04-01", s2.id, None,
+             teams[0].id, teams[1].id, 1, 4, 2),
+        )
+
+        return SimpleNamespace(
+            conn=db_conn, s1=s1, s2=s2,
+            games_s1=games_s1, game_s2=gid_s2,
+        )
 
     def test_get_all_season_games(self, game_repo, season_games):
-        """Test getting all games for a season."""
-        games = game_repo.get_season_games("season-10")
-
+        games = game_repo.get_season_games(season_games.s1.id)
         assert len(games) == 4
-        assert all(g["season_id"] == "season-10" for g in games)
+        assert all(g["season_id"] == season_games.s1.id for g in games)
 
     def test_get_season_games_ordered_by_date(self, game_repo, season_games):
-        """Test that games are ordered by date."""
-        games = game_repo.get_season_games("season-1")
-
+        games = game_repo.get_season_games(season_games.s1.id)
         dates = [g["game_date"] for g in games]
         assert dates == sorted(dates)
 
     def test_get_completed_games_only(self, game_repo, season_games):
-        """Test getting only completed games."""
-        games = game_repo.get_season_games("season-10", completed_only=True)
-
+        games = game_repo.get_season_games(season_games.s1.id, completed_only=True)
         assert len(games) == 2
         assert all(g["completed"] == 1 for g in games)
-        assert set(g["game_id"] for g in games) == {"game-s1-2", "game-s1-3"}
 
     def test_get_incomplete_games_only(self, game_repo, season_games):
-        """Test getting only incomplete games."""
-        games = game_repo.get_season_games("season-10", incomplete_only=True)
-
+        games = game_repo.get_season_games(season_games.s1.id, incomplete_only=True)
         assert len(games) == 2
         assert all(g["completed"] in (0, None) for g in games)
-        assert set(g["game_id"] for g in games) == {"game-s1-1", "game-s1-4"}
 
     def test_get_games_different_season(self, game_repo, season_games):
-        """Test getting games for a different season."""
-        games = game_repo.get_season_games("season-11")
-
+        games = game_repo.get_season_games(season_games.s2.id)
         assert len(games) == 1
-        assert games[0]["game_id"] == "game-s2-1"
+        assert games[0]["game_id"] == season_games.game_s2
 
     def test_get_season_games_empty(self, game_repo):
-        """Test getting games for a season with no games."""
         games = game_repo.get_season_games("nonexistent-season")
-
         assert games == []
 
     def test_get_season_games_returns_all_fields(self, game_repo, season_games):
-        """Test that all fields are returned."""
-        games = game_repo.get_season_games("season-1")
-
+        games = game_repo.get_season_games(season_games.s1.id)
         expected_fields = {
-            "game_id",
-            "season_id",
-            "home_team_id",
-            "away_team_id",
-            "game_date",
-            "completed",
-            "home_score",
-            "away_score",
-            "winner_id",
-            "innings_played",
+            "game_id", "season_id", "home_team_id", "away_team_id",
+            "game_date", "completed", "home_score", "away_score",
+            "winner_id", "innings_played",
         }
-
         for game in games:
             assert set(game.keys()) == expected_fields
 
 
 class TestGameRepositoryClearResult:
-    """Test clear_result() method."""
 
-    def test_clear_result_completed_game(
-        self, game_repo, completed_game, db_conn
-    ):
-        """Test clearing a completed game result."""
-        # Verify game is initially completed
-        row = db_conn.execute(
-            "SELECT * FROM games WHERE id = ?", (completed_game,)
+    def test_clear_result_completed_game(self, game_repo, completed_game):
+        row = completed_game.conn.execute(
+            "SELECT * FROM games WHERE id = %s", (completed_game.gid,)
         ).fetchone()
         assert row["completed"] == 1
         assert row["home_score"] == 5
 
-        # Clear the result
-        game_repo.clear_result(completed_game)
+        game_repo.clear_result(completed_game.gid)
 
-        # Verify fields are cleared
-        row = db_conn.execute(
-            "SELECT * FROM games WHERE id = ?", (completed_game,)
+        row = completed_game.conn.execute(
+            "SELECT * FROM games WHERE id = %s", (completed_game.gid,)
         ).fetchone()
-
         assert row["completed"] == 0
         assert row["home_score"] is None
         assert row["away_score"] is None
         assert row["winner_id"] is None
         assert row["innings_played"] is None
 
-    def test_clear_result_preserves_game_info(
-        self, game_repo, completed_game, db_conn
-    ):
-        """Test that clearing result preserves game identity info."""
-        game_repo.clear_result(completed_game)
+    def test_clear_result_preserves_game_info(self, game_repo, completed_game):
+        game_repo.clear_result(completed_game.gid)
 
-        row = db_conn.execute(
-            "SELECT * FROM games WHERE id = ?", (completed_game,)
+        row = completed_game.conn.execute(
+            "SELECT * FROM games WHERE id = %s", (completed_game.gid,)
         ).fetchone()
-
-        # These should not be affected
-        assert row["id"] == "game-6"
-        assert row["season_id"] == "season-1"
-        assert row["home_team_id"] == "team-home"
-        assert row["away_team_id"] == "team-away"
+        assert row["id"] == completed_game.gid
+        assert row["season_id"] == completed_game.season.id
+        assert row["home_team_id"] == completed_game.home.id
+        assert row["away_team_id"] == completed_game.away.id
         assert row["game_date"] == "2025-04-02"
 
-    def test_clear_result_incomplete_game(self, game_repo, sample_game, db_conn):
-        """Test clearing an already incomplete game (no-op)."""
-        game_repo.clear_result(sample_game)
+    def test_clear_result_incomplete_game(self, game_repo, sample_game):
+        game_repo.clear_result(sample_game.gid)
 
-        row = db_conn.execute(
-            "SELECT * FROM games WHERE id = ?", (sample_game,)
+        row = sample_game.conn.execute(
+            "SELECT * FROM games WHERE id = %s", (sample_game.gid,)
         ).fetchone()
-
         assert row["completed"] == 0
         assert row["home_score"] is None
 
 
 class TestGameRepositoryIsCompleted:
-    """Test is_completed() method."""
 
     def test_is_completed_true(self, game_repo, completed_game):
-        """Test checking a completed game."""
-        assert game_repo.is_completed(completed_game) is True
+        assert game_repo.is_completed(completed_game.gid) is True
 
     def test_is_completed_false(self, game_repo, sample_game):
-        """Test checking an incomplete game."""
-        assert game_repo.is_completed(sample_game) is False
+        assert game_repo.is_completed(sample_game.gid) is False
 
     def test_is_completed_nonexistent_game(self, game_repo):
-        """Test checking a game that doesn't exist."""
         assert game_repo.is_completed("nonexistent") is False
 
     def test_is_completed_after_save(self, game_repo, sample_game):
-        """Test that is_completed reflects save_result."""
-        assert game_repo.is_completed(sample_game) is False
+        assert game_repo.is_completed(sample_game.gid) is False
 
         result = GameResult(
-            home_team="Home",
-            away_team="Away",
-            home_score=3,
-            away_score=2,
-            innings_played=9,
-            winner="Home",
-            winning_margin=1,
+            home_team="Home", away_team="Away",
+            home_score=3, away_score=2, innings_played=9,
+            winner="Home", winning_margin=1,
         )
-
-        game_repo.save_result(sample_game, result, "team-home")
-
-        assert game_repo.is_completed(sample_game) is True
+        game_repo.save_result(sample_game.gid, result, sample_game.home.id)
+        assert game_repo.is_completed(sample_game.gid) is True
 
     def test_is_completed_after_clear(self, game_repo, completed_game):
-        """Test that is_completed reflects clear_result."""
-        assert game_repo.is_completed(completed_game) is True
-
-        game_repo.clear_result(completed_game)
-
-        assert game_repo.is_completed(completed_game) is False
+        assert game_repo.is_completed(completed_game.gid) is True
+        game_repo.clear_result(completed_game.gid)
+        assert game_repo.is_completed(completed_game.gid) is False

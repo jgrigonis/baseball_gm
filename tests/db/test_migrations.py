@@ -232,6 +232,10 @@ def test_successful_migrations_before_failure_are_preserved(db_conn):
     If migration 3 of 3 fails, migrations 1 and 2 are still committed and
     recorded.  Partial progress is preserved.
     """
+    import uuid
+    base = abs(hash(uuid.uuid4())) % 10_000_000 + 50_000_000  # unique 8-digit sentinel
+    v1, v2, v3 = base + 1, base + 2, base + 3
+
     success_count = 0
 
     def ok1(conn):
@@ -245,7 +249,7 @@ def test_successful_migrations_before_failure_are_preserved(db_conn):
     def fail3(conn):
         raise RuntimeError("Migration 3 failed!")
 
-    migrations = [(11100, ok1), (11200, ok2), (11300, fail3)]
+    migrations = [(v1, ok1), (v2, ok2), (v3, fail3)]
 
     with patch("src.db.migrations.load_migrations", return_value=migrations):
         with pytest.raises(RuntimeError, match="Migration 3 failed"):
@@ -254,9 +258,9 @@ def test_successful_migrations_before_failure_are_preserved(db_conn):
     assert success_count == 2
 
     versions = _applied_versions(db_conn)
-    assert 11100 in versions
-    assert 11200 in versions
-    assert 11300 not in versions
+    assert v1 in versions
+    assert v2 in versions
+    assert v3 not in versions
 
 
 # ============================================================================

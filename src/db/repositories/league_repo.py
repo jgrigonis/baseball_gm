@@ -15,7 +15,7 @@ class LeagueRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def create_league(self, name: str, league_id: str | None) -> str:
+    def create_league(self, name: str, league_id: str | None = None) -> str:
         """
         Create a league or return existing league ID if name already exists.
 

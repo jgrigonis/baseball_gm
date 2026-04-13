@@ -118,7 +118,7 @@ def db_seed(db_conn):
     with db_conn.cursor() as cur:
         # League
         cur.execute(
-            "INSERT INTO leagues (id, name, state) VALUES (%s, %s, %s)",
+            "INSERT INTO leagues (id, name, state) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
             ("league-1", "League 1", "season"),
         )
         # Seasons
@@ -135,7 +135,7 @@ def db_seed(db_conn):
             ("test-season", 2026, "Season 1"),
             ("season-3025", 2025, "Season 3"),
         ]:
-            cur.execute("INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)", row)
+            cur.execute("INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", row)
         # Teams
         for row in [
             ("team-1",    "City 1",    "Team 1"),
@@ -160,7 +160,7 @@ def db_seed(db_conn):
             ("team-c",    "away",      "away"),
             ("team-d",    "away",      "away"),
         ]:
-            cur.execute("INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s)", row)
+            cur.execute("INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", row)
         # Players
         for row in [
             ("p1",       "John", "Doe", "R", "R", "cf"),
@@ -179,80 +179,17 @@ def db_seed(db_conn):
         ]:
             cur.execute(
                 "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
-                " VALUES (%s, %s, %s, %s, %s, %s)",
+                " VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
                 row,
             )
         # Games
         for i in range(5):
             cur.execute(
                 "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)"
-                " VALUES (%s, %s, %s, %s, %s, %s)",
+                " VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
                 (f"game-{i}", f"2025-04-{i+1:02d}", "season-1", "team-home", "team-away", 0),
             )
     return db_conn
-
-# def insert_more_teams(db_conn):
-#     teams = [
-#         ("home-1", "Home Team", "Home Team"),
-#         ("away-1", "Away Team", "Away Team"),
-#         ("home-2", "Home Team", "Home Team"),
-#         ("away-2", "Away Team", "Away Team"),
-#         ("home-3", "Home Team", "Home Team"),
-#         ("away-3", "Away Team", "Away Team"),
-#         ("home-4", "Home Team", "Home Team"),
-#         ("away-4", "Away Team", "Away Team"),
-#         ("home-5", "Home Team", "Home Team"),
-#         ("away-5", "Away Team", "Away Team"),
-#     ]
-#     for team in teams:
-#         db_conn.execute(
-#             """
-#             INSERT INTO teams (id, city, mascot)
-#             VALUES (?, ?, ?)
-#             """,
-#             team,
-#         )
-
-# def insert_games(db_conn):
-#     db_conn.execute(
-#         """
-#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
-#         VALUES (?, ?, ?, ?, ?, ?, ?)
-#         """,
-#         ("game-0", "2025-04-01", "season-1", None, "team-home", "team-away", 0),
-#     )
-#     db_conn.execute(
-#         """
-#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
-#         VALUES (?, ?, ?, ?, ?, ?, ?)
-#         """,
-#         ("game-1", "2025-04-02", "season-1", None, "team-home", "team-away", 0),
-#     )
-#     db_conn.execute(
-#         """
-#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
-#         VALUES (?, ?, ?, ?, ?, ?, ?)
-#         """,
-#         ("game-2", "2025-04-03", "season-1", None, "team-home", "team-away", 0),
-#     )
-#     db_conn.execute(
-#         """
-#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
-#         VALUES (?, ?, ?, ?, ?, ?, ?)
-#         """,
-#         ("game-3", "2025-04-04", "season-1", None, "team-home", "team-away", 0),
-#     )
-#     db_conn.execute(
-#         """
-#         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id, completed)
-#         VALUES (?, ?, ?, ?, ?, ?, ?)
-#         """,
-#         ("game-4", "2025-04-05", "season-1", None, "team-home", "team-away", 0),
-#     )
-#     db_conn.commit()
-#     return ["game-0", "game-1", "game-2"]
-
-
     
 
 

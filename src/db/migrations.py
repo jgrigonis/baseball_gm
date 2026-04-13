@@ -55,10 +55,15 @@ def _ensure_migration_table(conn):
     """Create the schema_migrations table if it doesn't exist."""
     conn.execute("""
         CREATE TABLE IF NOT EXISTS schema_migrations (
-            version INTEGER PRIMARY KEY,
+            version BIGINT PRIMARY KEY,
             applied_at TEXT NOT NULL
         )
         """)
+    # Migrate existing INTEGER column to BIGINT if needed
+    conn.execute("""
+        ALTER TABLE schema_migrations
+        ALTER COLUMN version TYPE BIGINT
+    """)
 
 
 def _applied_versions(conn):
@@ -81,6 +86,6 @@ def _record_migration(conn, version):
         version: Migration version number
     """
     conn.execute(
-        "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)",
+        "INSERT INTO schema_migrations (version, applied_at) VALUES (%s, %s)",
         (version, datetime.now(UTC).isoformat()),
     )

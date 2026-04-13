@@ -137,7 +137,9 @@ class DraftGenerator:
                 self.cap_repo.insert(player.id, player.caps)
             self.status_repo.set_status(player.id, "prospect")
 
-        all_draftable = new_players + existing
+        seen = {p.id for p in new_players}
+        unique_existing = [p for p in existing if p.id not in seen]
+        all_draftable = new_players + unique_existing
         out_path = self._write_draft_csv(all_draftable, year, league_id)
         print(f"  Wrote {out_path} ({len(all_draftable)} players)")
 
