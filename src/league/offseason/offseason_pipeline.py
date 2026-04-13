@@ -124,6 +124,7 @@ class OffseasonPipeline:
             players = self.player_repo.get_all_players()
         for player in players:
             self.player_repo.snapshot_skills(player.id, season_id)
+        self.conn.commit()
 
     def _age(self, season_id, rng):
         """Age every player by one year and write back updated skills.
@@ -175,6 +176,7 @@ class OffseasonPipeline:
                 coaching=coaching,
             )
             self.player_repo.update_skills(player.id, new_skills)
+        self.conn.commit()
 
         print(f"  Aged {len(players)} players")
 

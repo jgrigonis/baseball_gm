@@ -81,7 +81,7 @@ class PlayerRepository:
         # Insert or update skills
         self.update_skills(id, skills)
 
-        self.conn.commit()
+        # self.conn.commit()
 
     def update_skills(self, player_id: str, skills: PlayerSkills) -> None:
         """
@@ -139,7 +139,7 @@ class PlayerRepository:
             ),
         )
 
-        self.conn.commit()
+        # self.conn.commit()
 
     def snapshot_skills(self, player_id: str, season_id: str) -> None:
         """
