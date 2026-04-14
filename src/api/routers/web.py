@@ -3158,14 +3158,17 @@ def game_panel(
     league_id: str,
     game_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return HTMLResponse("Unauthorized", status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return HTMLResponse("Unauthorized", status_code=401)
 
-    gm = _resolve_gm(db, user["id"], league_id)
-    my_team_id = gm["team_id"] if gm else None
+    # gm = _resolve_gm(db, user["id"], league_id)
+    # my_team_id = gm["team_id"] if gm else None
+    my_team_id = gm["team_id"]
+    # print(f"DEBUG: My team ID: {my_team_id}")
 
     game = db.execute(
         """SELECT g.*, ht.city as home_city, ht.mascot as home_mascot,
@@ -3183,12 +3186,12 @@ def game_panel(
     # Box score — batting
     bat_rows = db.execute(
         """SELECT p.first_name, p.last_name, pgs.team_id,
-                  pgs.bat_ab as AB, pgs.bat_runs as R, pgs.bat_hits as H,
-                  pgs.bat_doubles as "2B", pgs.bat_triples as "3B",
-                  pgs.bat_home_runs as HR, pgs.bat_rbi as RBI,
-                  pgs.bat_walks as BB, pgs.bat_strike_outs as K,
-                  pgs.bat_stolen_bases as SB, pgs.bat_hbp as HBP,
-                  pgs.bat_sac_flys as SF,
+                  pgs.bat_ab as "AB", pgs.bat_runs as "R", pgs.bat_hits as "H",
+                  pgs.bat_doubles as doubles, pgs.bat_triples as triples,
+                  pgs.bat_home_runs as "HR", pgs.bat_rbi as "RBI",
+                  pgs.bat_walks as "BB", pgs.bat_strike_outs as "K",
+                  pgs.bat_stolen_bases as "SB", pgs.bat_hbp as "HBP",
+                  pgs.bat_sac_flys as "SF",
                   pgs.bat_game_started as started
            FROM player_game_stats pgs
            JOIN players p ON p.id = pgs.player_id
@@ -3200,11 +3203,11 @@ def game_panel(
     # Box score — pitching
     pit_rows = db.execute(
         """SELECT p.first_name, p.last_name, pgs.team_id,
-                  pgs.pitch_outs as outs, pgs.pitch_hits as H,
-                  pgs.pitch_runs as R, pgs.pitch_earned_runs as ER,
-                  pgs.pitch_walks as BB, pgs.pitch_strike_outs as K,
-                  pgs.pitch_home_runs as HR, pgs.pitch_win as W,
-                  pgs.pitch_loss as L, pgs.pitch_save as SV,
+                  pgs.pitch_outs as outs, pgs.pitch_hits as "H",
+                  pgs.pitch_runs as "R", pgs.pitch_earned_runs as "ER",
+                  pgs.pitch_walks as "BB", pgs.pitch_strike_outs as "K",
+                  pgs.pitch_home_runs as "HR", pgs.pitch_win as "W",
+                  pgs.pitch_loss as "L", pgs.pitch_save as "SV",
                   pgs.pitch_game_started as started
            FROM player_game_stats pgs
            JOIN players p ON p.id = pgs.player_id
@@ -3261,7 +3264,7 @@ def game_panel(
         }
     )
     return templates.TemplateResponse(
-        request, "dashboard/partials/game_panel_content.html", ctx
+        request=request, name="dashboard/partials/game_panel_content.html", context=ctx
     )
 
 

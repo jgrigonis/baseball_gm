@@ -51,8 +51,8 @@
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.AB }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
           <td style="text-align:right;font-family:var(--font-mono);font-weight:{% if p.H > 0 %}600{% else %}400{% endif %};">{{ p.H }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p['2B'] or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p['3B'] or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.doubles or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.triples or '' }}</td>
           <td style="text-align:right;font-family:var(--font-mono);color:{% if p.HR > 0 %}var(--amber){% else %}inherit{% endif %};">{{ p.HR or '' }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.RBI or '' }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.BB or '' }}</td>
