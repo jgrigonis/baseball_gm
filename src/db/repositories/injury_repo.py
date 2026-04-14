@@ -90,6 +90,19 @@ class InjuryRepository:
         injury = self.get(player_id)
         return injury is not None and injury.is_active
 
+    def get_team_injuries(self, team_id: str) -> dict[str, int]:
+        """Return {player_id: games_remaining} for all injured players on a team."""
+        if not team_id:
+            return {}
+        rows = self.conn.execute(
+            """SELECT pi.player_id, pi.games_remaining FROM player_injuries pi
+               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
+               WHERE pi.games_remaining > 0
+                 AND (pi.league_id = %s OR pi.league_id = '')""",
+            (team_id, self.league_id),
+        ).fetchall()
+        return {r["player_id"]: r["games_remaining"] for r in rows}
+
     def get_all_injured(self) -> list[PlayerInjury]:
         cursor = self.conn.cursor()
         cursor.execute(

@@ -227,16 +227,8 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 
 def _injured_player_ids(db, team_id: str, league_id: str = "") -> dict:
     """Return dict of {player_id: games_remaining} for players on IL for a team."""
-    if not team_id:
-        return {}
-    rows = db.execute(
-        """SELECT pi.player_id, pi.games_remaining FROM player_injuries pi
-           JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
-           WHERE pi.games_remaining > 0
-             AND (pi.league_id = %s OR pi.league_id = '')""",
-        (team_id, league_id),
-    ).fetchall()
-    return {r["player_id"]: r["games_remaining"] for r in rows}
+    from src.db.repositories.injury_repo import InjuryRepository
+    return InjuryRepository(db, league_id).get_team_injuries(team_id)
 
 
 def _games_remaining(db, season_id: str | None) -> int:
