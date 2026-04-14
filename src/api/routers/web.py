@@ -778,7 +778,9 @@ async def save_draft_preferences(
     request: Request,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
+    #gm_session: str | None = Cookie(default=None),
 ):
     """
     Save the GM's draft preference list. Called from JS using the session
@@ -786,13 +788,13 @@ async def save_draft_preferences(
     """
     from fastapi.responses import JSONResponse
 
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
 
-    gm = _resolve_gm(db, user["id"], league_id)
-    if not gm:
-        return JSONResponse({"detail": "Not a member of this league"}, status_code=403)
+    # gm = _resolve_gm(db, user["id"], league_id)
+    # if not gm:
+    #     return JSONResponse({"detail": "Not a member of this league"}, status_code=403)
 
     # Find the current draft for this league
     draft = db.execute(
@@ -994,13 +996,15 @@ def draft_tab(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
+    # gm_session: str | None = Cookie(default=None),
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
 
     draft = db.execute(
@@ -1123,16 +1127,16 @@ def execute_draft(
     request: Request,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    gm: GM,
 ):
     """Execute the blitz auto-draft and redirect to results."""
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/", status_code=302)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/", status_code=302)
 
-    gm = _resolve_gm(db, user["id"], league_id)
-    if not gm:
-        return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
+    # gm = _resolve_gm(db, user["id"], league_id)
+    # if not gm:
+    #     return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
 
     draft = db.execute(
         """SELECT d.* FROM drafts d
@@ -1157,6 +1161,7 @@ def execute_draft(
         execute_blitz_draft(draft["id"], db)
         db.commit()
     except Exception:
+        db.rollback()
         return HTMLResponse(
             f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
             f"Draft execution failed:\n\n{traceback.format_exc()}</pre>",
@@ -1172,14 +1177,15 @@ def draft_results(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
     """Show completed draft results — all picks by round, your picks highlighted."""
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
 
     draft = db.execute(
@@ -1191,7 +1197,7 @@ def draft_results(
     ).fetchone()
 
     rounds = []
-    my_team_id = gm["team_id"] if gm else None
+    my_team_id = gm["team_id"]
 
     if draft:
         picks = db.execute(
@@ -1249,16 +1255,16 @@ def save_roster(
     request: Request,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    gm: GM,
 ):
     """Save 40-man roster. Enforces the 40-player limit."""
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return HTMLResponse("Unauthorized", status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return HTMLResponse("Unauthorized", status_code=401)
 
-    gm = _resolve_gm(db, user["id"], league_id)
-    if not gm or not gm["team_id"]:
-        return HTMLResponse("No team", status_code=400)
+    # gm = _resolve_gm(db, user["id"], league_id)
+    # if not gm or not gm["team_id"]:
+    #     return HTMLResponse("No team", status_code=400)
 
     # Read JSON body
     import asyncio
@@ -1277,19 +1283,19 @@ def save_roster_put(
     request: Request,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    gm: GM,
 ):
     """PUT endpoint for roster save from JS fetch."""
     from fastapi.responses import JSONResponse
-    import asyncio
+    #import asyncio
 
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
 
-    gm = _resolve_gm(db, user["id"], league_id)
-    if not gm or not gm["team_id"]:
-        return JSONResponse({"detail": "No team"}, status_code=400)
+    # gm = _resolve_gm(db, user["id"], league_id)
+    # if not gm or not gm["team_id"]:
+    #     return JSONResponse({"detail": "No team"}, status_code=400)
 
     team_id = gm["team_id"]
 
@@ -1358,15 +1364,15 @@ async def sim_games(
     request: Request,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    gm: GM,
 ):
     """Sim N games (or until season end). Returns JSON with results summary."""
     from fastapi.responses import JSONResponse
     from src.api.services.sim_next import sim_next_day
 
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
 
     body = await request.json()
     count = body.get("count", 1)  # number of game-days to sim, or "season"
@@ -1465,13 +1471,14 @@ def standings(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "standings", user)
     print(f"DEBUG KEYS: {ctx.keys()}")
     season_id = ctx["season_id"]
@@ -1750,14 +1757,15 @@ def leaders(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
+    user: User,
+    gm: GM,
     category: str = "batting",
-    gm_session: str | None = Cookie(default=None),
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "leaders", user)
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
@@ -2137,13 +2145,14 @@ def lineup(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "lineup", user)
 
     if not gm or not gm["team_id"]:
@@ -2541,13 +2550,14 @@ def strategy(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "strategy", user)
 
     profile_row = (
@@ -2602,13 +2612,13 @@ async def save_strategy(
     request: Request,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return HTMLResponse("Unauthorized", status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return HTMLResponse("Unauthorized", status_code=401)
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     if not gm:
         return HTMLResponse("Not a member of this league", status_code=403)
 
@@ -2647,13 +2657,14 @@ def schedule(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "schedule", user)
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
@@ -2768,16 +2779,17 @@ def stats(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
+    user: User,
+    gm: GM,
     team_id: str | None = None,
     season_id: str | None = None,
     postseason: int = 0,
-    gm_session: str | None = Cookie(default=None),
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "stats", user)
     current_season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
@@ -3095,16 +3107,17 @@ def playoffs(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
-    gm = _resolve_gm(db, user["id"], league_id)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "playoffs", user)
 
     season_id = ctx["season_id"]
-    my_team_id = gm["team_id"] if gm else None
+    my_team_id = gm["team_id"]
 
     bracket = _load_bracket(db, season_id, my_team_id) if season_id else []
     champion = None
@@ -3129,14 +3142,14 @@ def sim_playoff_route(
     request: Request,
     league_id: str,
     db: DB,
+    gm: GM,
     mode: str = "game",
-    gm_session: str | None = Cookie(default=None),
 ):
     from fastapi.responses import JSONResponse
 
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
     from src.api.services.sim_playoff import sim_playoff
 
@@ -3277,13 +3290,14 @@ def season_summary(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
+    user: User,
+    gm: GM,
     season_id: str | None = None,
-    gm_session: str | None = Cookie(default=None),
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
-    gm = _resolve_gm(db, user["id"], league_id)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, user)
     my_team_id = gm["team_id"] if gm else None
 
@@ -3459,13 +3473,13 @@ def begin_offseason(
     request: Request,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    gm: GM,
 ):
     from fastapi.responses import JSONResponse
 
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
     from src.api.services.offseason_service import run_offseason
 
@@ -3490,12 +3504,13 @@ def history(
     htmx: IsHTMX,
     league_id: str,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    user: User,
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
-    gm = _resolve_gm(db, user["id"], league_id)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
+    # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, user)
     my_team_id = gm["team_id"] if gm else None
 
@@ -3570,14 +3585,15 @@ def player_panel(
     league_id: str,
     player_id: str,
     db: DB,
+    user: User,
+    gm: GM,
     compare: str | None = None,
-    gm_session: str | None = Cookie(default=None),
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return HTMLResponse("Unauthorized", status_code=401)
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return HTMLResponse("Unauthorized", status_code=401)
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
 
     def _load(pid: str) -> dict | None:
         p = db.execute("SELECT * FROM players WHERE id = %s", (pid,)).fetchone()
@@ -3761,13 +3777,13 @@ def history_season_detail(
     league_id: str,
     year: int,
     db: DB,
-    gm_session: str | None = Cookie(default=None),
+    gm: GM,
 ):
-    user = _resolve_user(db, gm_session)
-    if not user:
-        return RedirectResponse("/")
+    # user = _resolve_user(db, gm_session)
+    # if not user:
+    #     return RedirectResponse("/")
 
-    gm = _resolve_gm(db, user["id"], league_id)
+    # gm = _resolve_gm(db, user["id"], league_id)
 
     season = db.execute(
         """SELECT s.* FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
