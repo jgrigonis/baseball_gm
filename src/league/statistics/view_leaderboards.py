@@ -1,7 +1,6 @@
 # scripts/view_leaderboards.py
 import argparse
 import logging
-from pathlib import Path
 
 from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season

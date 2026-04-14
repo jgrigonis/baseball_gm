@@ -18,7 +18,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from src.api.services.draft_execute import execute_blitz_draft, BlitzDraft
-from src.league.offseason.snake_draft import DraftPick, ROUNDS
+from src.league.offseason.snake_draft import ROUNDS
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 

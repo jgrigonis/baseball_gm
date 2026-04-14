@@ -12,12 +12,11 @@ Strategy:
 """
 
 import random
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
-from src.player.player_skills import PlayerSkills
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

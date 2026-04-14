@@ -367,7 +367,7 @@ def pick_league_interactively() -> str | None:
         return None
 
     if not rows:
-        print(f"  No leagues found in database")
+        print("  No leagues found in database")
         return None
 
     print("\n  Leagues:")
@@ -924,7 +924,7 @@ def _run_one_season(conn, season_id: str, league_id: str, year: int, args) -> No
 
 def cmd_new_league(args) -> None:
     if args.clear_db:
-        msg = f"⚠️  This will destroy the entire database. Continue? [y/N] "
+        msg = "⚠️  This will destroy the entire database. Continue? [y/N] "
         if input(msg).strip().lower() not in ("y", "yes"):
             print("Aborted.")
             return

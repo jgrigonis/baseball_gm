@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS leagues (
                              CHECK (mode IN ('blitz', 'longform')),
     num_teams            INTEGER NOT NULL DEFAULT 30,
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
-    reentry_enabled      INTEGER NOT NULL DEFAULT 1
-                             CHECK (reentry_enabled IN (0, 1)),
+    reentry_enabled      BOOLEAN NOT NULL DEFAULT FALSE
+                             CHECK (reentry_enabled IN (FALSE, TRUE)),
     pace_control         TEXT NOT NULL DEFAULT 'timer'
                              CHECK (pace_control IN ('timer', 'confirmed', 'scheduled')),
     state                TEXT NOT NULL DEFAULT 'lobby'
@@ -59,6 +59,10 @@ CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
     session_token TEXT UNIQUE NOT NULL,   -- credential stored in browser cookie
     display_name  TEXT NOT NULL,
+    password_hash TEXT,
+    email         TEXT UNIQUE,
+    is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+    totp_secret   TEXT,
     created_at    TEXT NOT NULL DEFAULT (NOW())
 );
 
@@ -843,6 +847,8 @@ CREATE INDEX IF NOT EXISTS idx_pick_rights_league_year
 
 CREATE INDEX IF NOT EXISTS idx_pick_rights_owner
     ON draft_pick_rights(current_owner_id);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Deferred FK: leagues.commissioner_gm_id → gms (circular; added after gms exists)
 ALTER TABLE leagues

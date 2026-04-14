@@ -12,13 +12,12 @@ that belongs in integration tests.
 """
 
 from datetime import date
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
 from src.league.play_season import _pick_starter, clear_game_data, _load_eligible_ids
-from src.db.repositories.pitcher_state import PitcherState, MIN_ENERGY_STARTER
+from src.db.repositories.pitcher_state import PitcherState
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

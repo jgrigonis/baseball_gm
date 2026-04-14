@@ -311,3 +311,10 @@ class GMEvaluationResponse(BaseModel):
     won_championship: bool
     verdict: str | None
     evaluated_at: str
+
+
+# ── Bullpen ──────────────────────────────────────────────────────
+
+
+class BullpenSaveRequest(BaseModel):
+    bullpen: dict[str, str]  # Matches {"player_id": "role"}

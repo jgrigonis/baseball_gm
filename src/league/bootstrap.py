@@ -2,7 +2,7 @@
 from pathlib import Path
 import random
 
-from src.db.repositories.bullpen_roles_repo import set_roles
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -141,6 +141,7 @@ class LeagueBootstrapper:
     def _bootstrap_bullpen(
         self, team, active_players, rotation, season_id: str, start_date: str
     ) -> None:
+        bp_repo = BullpenRepository(self.conn)
         relievers = [
             p for p in active_players if p.is_pitcher() and p.id not in set(rotation)
         ]
@@ -149,4 +150,4 @@ class LeagueBootstrapper:
             print(
                 f"Warning: No pitchers found for team {team.name}, skipping bullpen roles."
             )
-        set_roles(self.conn, team.id, season_id, roles, start_date)
+        bp_repo.set_roles(team.id, season_id, roles, start_date)

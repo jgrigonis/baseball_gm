@@ -10,7 +10,7 @@ import random
 import traceback
 
 from src.db.connection import get_connection
-from src.db.repositories import bullpen_roles_repo
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -381,8 +381,9 @@ def play_game(
             print(f"  ⚠ No rotation for {away_team.record.mascot} — using best pitcher")
 
     # Bullpen roles
-    home_bullpen = bullpen_roles_repo.get_current_roles(conn, home_record.id, season_id)
-    away_bullpen = bullpen_roles_repo.get_current_roles(conn, away_record.id, season_id)
+    bpr = BullpenRepository(conn)
+    home_bullpen = bpr.get_current_roles(home_record.id, season_id)
+    away_bullpen = bpr.get_current_roles(away_record.id, season_id)
     home_role_map = {e["player_id"]: e["role"] for e in home_bullpen}
     away_role_map = {e["player_id"]: e["role"] for e in away_bullpen}
     for player in home_team.players:

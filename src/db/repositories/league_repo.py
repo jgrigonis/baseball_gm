@@ -15,7 +15,41 @@ class LeagueRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def create_league(self, name: str, league_id: str | None = None) -> str:
+    def create_new_league(
+        self,
+        league_id: str,
+        name: str,
+        join_code: str,
+        mode: str,
+        commissioner_gm_id: str,
+        settings: dict,
+    ) -> None:
+        """Strict creation of a new league with full settings."""
+        self.conn.execute(
+            """INSERT INTO leagues
+                (id, name, join_code, mode, num_teams, decision_window_sec,
+                draft_window_sec, reentry_enabled, pace_control, state, commissioner_gm_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'timer', 'lobby', NULL)""",
+            (
+                league_id,
+                name,
+                join_code,
+                mode,
+                settings.get("num_teams", 30),
+                settings.get("decision_window_sec", 120),
+                settings.get("draft_window_sec", 300),
+                settings.get("reentry_enabled", True),
+            ),
+        )
+
+    def get_by_join_code(self, code: str) -> dict | None:
+        row = self.conn.execute(
+            "SELECT id, name, state FROM leagues WHERE join_code = %s", (code,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    # was create_league
+    def get_or_create_by_name(self, name: str, league_id: str | None = None) -> str:
         """
         Create a league or return existing league ID if name already exists.
 

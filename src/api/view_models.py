@@ -1,8 +1,6 @@
 # src/api/view_models.py
-from typing import Any, Optional
-from pydantic import BaseModel, Field, computed_field
-
-from src.api.routers.web import _current_league_date
+from typing import Optional
+from pydantic import BaseModel, EmailStr, computed_field
 
 
 class SeasonContext(BaseModel):
@@ -70,3 +68,16 @@ class WebContext(BaseModel):
         return tabs
 
     # Add any other complex fields like 'current_date' or 'games_remaining' here
+
+
+class UserContext(BaseModel):
+    id: Optional[str] = None
+    username: str = "Guest"
+    email: Optional[EmailStr] = None
+    is_authenticated: bool = False
+    is_admin: bool = False
+
+    # UI helper
+    @property
+    def initials(self) -> str:
+        return self.username[:2].upper()

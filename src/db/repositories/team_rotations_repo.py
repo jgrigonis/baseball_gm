@@ -63,6 +63,68 @@ class TeamRotationsRepository:
 
         # self.conn.commit()
 
+    def replace_rotation(
+        self,
+        team_id: str,
+        season_id: str,
+        player_ids: list[str],
+        effective_date: str,
+        next_order: int,
+    ) -> None:
+        """
+        Closes existing rotation entries and opens new ones.
+        Maintains history by setting end_date instead of deleting.
+        """
+        # 1. First, delete any entries that were already created for TODAY
+        # This prevents the UniqueViolation if they save twice in one day.
+        self.conn.execute(
+            """
+            DELETE FROM team_rotations 
+            WHERE team_id = %s AND season_id = %s AND effective_date = %s
+            """,
+            (team_id, season_id, effective_date),
+        )
+        # 2. Close current active rotation slots
+        self.conn.execute(
+            """
+            UPDATE team_rotations 
+            SET end_date = %s 
+            WHERE team_id = %s AND season_id = %s AND end_date IS NULL
+            """,
+            (effective_date, team_id, season_id),
+        )
+
+        # 3. Open the new rotation slots
+        for order, pid in enumerate(player_ids, start=1):
+            self.conn.execute(
+                """
+                INSERT INTO team_rotations 
+                    (team_id, season_id, player_id, rotation_order, effective_date, end_date)
+                VALUES (%s, %s, %s, %s, %s, NULL)
+                """,
+                (team_id, season_id, pid, order, effective_date),
+            )
+
+        # 4. Handle the bullpen role conflict (historically safe)
+        if player_ids:
+            placeholders = ", ".join(["%s"] * len(player_ids))
+            self.conn.execute(
+                f"""
+                UPDATE bullpen_roles 
+                SET end_date = %s
+                WHERE team_id = %s AND season_id = %s 
+                AND end_date IS NULL 
+                AND player_id IN ({placeholders})
+                """,
+                (effective_date, team_id, season_id, *player_ids),
+            )
+        # 5. Update the pointer
+        self.assign_rotation_pointer(
+            team_id=team_id,
+            season_id=season_id,
+            next_order=next_order,
+        )
+
     def get_current_rotation(
         self, team_id, season_id, as_of_date
     ) -> list[dict[str, Any]]:
@@ -590,6 +652,23 @@ class TeamRotationsRepository:
 
         # self.conn.commit()
         return count
+
+    def assign_rotation_pointer(
+        self, team_id: str, season_id: str, next_order: int, series_id: str = ""
+    ) -> None:
+        """
+        Assign the pointer to a specific rotation order slot (e.g., 1 through 5).
+        """
+        self.conn.execute(
+            """INSERT INTO team_rotation_pointer
+                    (team_id, season_id, series_id, next_order, updated_at)
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT (team_id, season_id, series_id)
+                DO UPDATE SET 
+                    next_order = EXCLUDED.next_order,
+                    updated_at = EXCLUDED.updated_at""",
+            (team_id, season_id, series_id, next_order),
+        )
 
 
 # get_rotation_history(team_id, season_id, player_id=None)

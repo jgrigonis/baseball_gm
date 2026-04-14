@@ -5,12 +5,11 @@ from __future__ import annotations
 import random
 import string
 import uuid
-from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, HTTPException, Header, status
 
 from src.api.auth import resolve_commissioner
-from src.api.database import get_db
+from src.api.dependencies import DB
 from src.api.schemas import (
     GMResponse,
     LeagueCreate,
@@ -20,8 +19,6 @@ from src.api.schemas import (
 from src.api.services.league_start import start_league as _start
 
 router = APIRouter(prefix="/leagues", tags=["leagues"])
-
-DB = Annotated[Any, Depends(get_db)]
 
 _JOIN_CODE_CHARS = string.ascii_uppercase + string.digits
 _JOIN_CODE_LEN = 6

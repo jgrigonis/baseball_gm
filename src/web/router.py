@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from src.api.database import get_db
+from src.api.dependencies import DB
 from src.api.schemas import skill_to_grade, player_row_to_grades
-from src.web.dependencies import IsHTMX
+from src.api.dependencies import IsHTMX
 from src.web.utils import tab_response, _shell_ctx
 from jinja2 import Environment, FileSystemLoader
 
@@ -44,7 +43,6 @@ def render(name: str, context: dict) -> HTMLResponse:
 
 
 router = APIRouter()
-DB = Annotated[Any, Depends(get_db)]
 
 
 # ── Session helpers ───────────────────────────────────────────────────────────

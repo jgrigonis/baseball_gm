@@ -6,11 +6,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from fastapi import APIRouter, Header, HTTPException, status
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
-
-from src.api.database import get_db
+from src.api.dependencies import DB
 from src.api.schemas import (
     DraftPickResponse,
     DraftResponse,
@@ -21,8 +19,6 @@ from src.api.schemas import (
 )
 
 router = APIRouter(prefix="/drafts", tags=["draft"])
-
-DB = Annotated[Any, Depends(get_db)]
 
 
 # ── Auth helper (shared with gms router) ─────────────────────────────────────

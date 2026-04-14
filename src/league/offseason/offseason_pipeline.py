@@ -14,7 +14,7 @@ from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.db.repositories.bullpen_roles_repo import set_roles
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
@@ -344,10 +344,11 @@ class OffseasonPipeline:
         of a new season. Picks the top 5 healthy pitchers by SP rating per team.
         Respects 26-man roster only (same as bootstrap).
         """
-        rot_repo = TeamRotationsRepository(self.conn)
+        # rot_repo = TeamRotationsRepository(self.conn)
         status_repo = self.player_status_repo
         inj_repo = InjuryRepository(self.conn, league_id=self.league_id or "")
         team_repo = TeamRepository(self.conn)
+        bp_repo = BullpenRepository(self.conn)
 
         teams = team_repo.get_teams_by_season(season_id)
         injured_ids = {inj.player_id for inj in inj_repo.get_all_injured()}
@@ -408,7 +409,7 @@ class OffseasonPipeline:
             ]
             roles = team.set_bullpen_roles(rotation, relievers=relievers)
             if roles:
-                set_roles(self.conn, team.id, season_id, roles, today)
+                bp_repo.set_roles(team.id, season_id, roles, today)
 
             rebuilt += 1
 

@@ -1,6 +1,5 @@
 # src/league/season_resolver.py
 import argparse
-from pathlib import Path
 
 from src.db.connection import get_connection
 

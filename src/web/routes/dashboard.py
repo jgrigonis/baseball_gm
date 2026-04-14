@@ -10,8 +10,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from src.web.dependencies import IsHTMX
-
 router = APIRouter(prefix="/leagues/{league_id}")
 templates = Jinja2Templates(directory="src/web/templates")
 

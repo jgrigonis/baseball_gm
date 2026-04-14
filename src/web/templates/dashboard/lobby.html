@@ -66,11 +66,11 @@
           <table class="data-table">
             <tbody>
               <tr><td style="color:var(--text-dim);">Mode</td><td class="team-name">{{ league_mode | title }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Teams</td><td>{{ num_teams }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Decision window</td><td>{{ decision_window_sec }}s</td></tr>
-              <tr><td style="color:var(--text-dim);">Draft window</td><td>{{ draft_window_sec }}s</td></tr>
-              <tr><td style="color:var(--text-dim);">Re-entry</td><td>{{ 'Enabled' if reentry_enabled else 'Disabled' }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Pace</td><td>{{ pace_control | title }}</td></tr>
+              <tr><td style="color:var(--text-dim);">Teams</td><td>{{ league_num_teams }}</td></tr>
+              <tr><td style="color:var(--text-dim);">Decision window</td><td>{{ league_decision_window_sec }}s</td></tr>
+              <tr><td style="color:var(--text-dim);">Draft window</td><td>{{ league_draft_window_sec }}s</td></tr>
+              <tr><td style="color:var(--text-dim);">Re-entry</td><td>{{ 'Enabled' if league_reentry_enabled else 'Disabled' }}</td></tr>
+              <tr><td style="color:var(--text-dim);">Pace</td><td>{{ league_pace_control | title }}</td></tr>
             </tbody>
           </table>
         </div>

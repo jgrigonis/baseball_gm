@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, UTC
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 
 from src.api.auth import require_gm_by_id
-from src.api.database import get_db
+from src.api.dependencies import DB
 from src.api.schemas import (
     GMAwayUpdate,
     GMEvaluationResponse,
@@ -20,8 +19,6 @@ from src.api.schemas import (
 )
 
 router = APIRouter(prefix="/gms", tags=["gms"])
-
-DB = Annotated[any, Depends(get_db)]
 
 
 # ── GET /gms/{gm_id} ─────────────────────────────────────────────────────────

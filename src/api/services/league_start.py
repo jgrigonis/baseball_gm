@@ -7,7 +7,6 @@ import random
 import uuid
 from pathlib import Path
 
-from src.api.routers import draft
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
     create_team_files,
@@ -86,7 +85,7 @@ def start_league(
         "DELETE FROM pitcher_state WHERE league_id = %s",
         (league_id,),
     )
-    conn.commit()
+    # conn.commit()
 
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     existing_games = conn.execute(
@@ -109,26 +108,54 @@ def start_league(
 
     # ── 5. Fill AI GMs + assign all GMs to teams ─────────────────────────────
     human_gms = conn.execute(
-        "SELECT * FROM gms WHERE league_id = %s AND is_ai = 0 ORDER BY created_at",
+        "SELECT id FROM gms WHERE league_id = %s AND is_ai = 0 ORDER BY created_at",
         (league_id,),
     ).fetchall()
 
     team_ids_all = [t.id for t in teams]
     rng.shuffle(team_ids_all)
 
+    # 5a. Prepare Batch Update for Human GMs
+    human_updates = []
     assigned_teams = set()
+
     for gm, team_id in zip(human_gms, team_ids_all):
-        conn.execute("UPDATE gms SET team_id = %s WHERE id = %s", (team_id, gm["id"]))
+        human_updates.append((team_id, gm["id"]))
+        # conn.execute("UPDATE gms SET team_id = %s WHERE id = %s", (team_id, gm["id"]))
         assigned_teams.add(team_id)
 
-    for team_id in [tid for tid in team_ids_all if tid not in assigned_teams]:
-        ai_gm_id = str(uuid.uuid4())
-        conn.execute(
-            "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', 1)",
-            (ai_gm_id, league_id, team_id),
+    if human_updates:
+        conn.cursor().executemany(
+            "UPDATE gms SET team_id = %s WHERE id = %s", human_updates
         )
-        conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (ai_gm_id,))
 
+    # 5b. Prepare Batch Insert for AI GMs
+    ai_inserts = []
+    profile_inserts = []
+
+    remaining_teams = [tid for tid in team_ids_all if tid not in assigned_teams]
+
+    for team_id in remaining_teams:
+        ai_gm_id = str(uuid.uuid4())
+        ai_inserts.append((ai_gm_id, league_id, team_id))
+        profile_inserts.append((ai_gm_id,))
+        # conn.execute(
+        #     "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', 1)",
+        #     (ai_gm_id, league_id, team_id),
+        # )
+        # conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (ai_gm_id,))
+
+    if ai_inserts:
+        cur = conn.cursor()
+        # Insert the AI GMs
+        cur.executemany(
+            "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', 1)",
+            ai_inserts,
+        )
+        # Insert the matching Profiles
+        cur.executemany("INSERT INTO gm_profiles (gm_id) VALUES (%s)", profile_inserts)
+
+    # 5c. Get the human gm team
     human_gm_team = conn.execute(
         """
         SELECT t.city, t.mascot FROM gms g
@@ -154,7 +181,7 @@ def start_league(
     """,
         (league_id,),
     )
-    conn.commit()
+    # conn.commit()
 
     prospect_count = draft_gen or DraftGenerator(conn, rng=rng).run(
         season_id=season_id, year=year, league_id=league_id
@@ -179,7 +206,7 @@ def start_league(
 
     # ── 8. Advance league state → draft ──────────────────────────────────────
     conn.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (league_id,))
-    conn.commit()
+    # conn.commit()
 
     return {
         "league_id": league_id,

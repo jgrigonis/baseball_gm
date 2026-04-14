@@ -1,14 +1,10 @@
 # src/api/routers/sim.py
 
-from typing import Annotated, Any
+from fastapi import APIRouter, Header, HTTPException, status
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
-
-from src.api.database import get_db
+from src.api.dependencies import DB
 
 router = APIRouter(prefix="/leagues", tags=["sim"])
-
-DB = Annotated[Any, Depends(get_db)]
 
 
 @router.post("/{league_id}/sim/next", status_code=status.HTTP_200_OK)

@@ -1,6 +1,6 @@
 # src/player/position_fatigue.py
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from src.db.repositories.player_energy import _daily_recovery_rate
 from src.player.fatigue_level import FatigueLevel

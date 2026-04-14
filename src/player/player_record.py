@@ -18,7 +18,7 @@ it does not belong here.
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from src.player.player_constants import VALID_ROLES, VALID_BATS, VALID_THROWS
+from src.player.player_constants import VALID_BATS, VALID_THROWS
 from src.player.player_skills import PlayerSkills
 from src.player.positions import ALL_POSITIONS, is_pitcher
 from src.types.rows import CsvRow, DbRow
