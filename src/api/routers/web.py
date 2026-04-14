@@ -25,6 +25,7 @@ from src.api.dependencies import DB, User, OptionalUser, GM, Commissioner, IsHTM
 from src.api.schemas import player_row_to_grades, skill_to_grade, BullpenSaveRequest
 from src.api.services.league_start import start_league as _start
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -227,7 +228,6 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 
 def _injured_player_ids(db, team_id: str, league_id: str = "") -> dict:
     """Return dict of {player_id: games_remaining} for players on IL for a team."""
-    from src.db.repositories.injury_repo import InjuryRepository
     return InjuryRepository(db, league_id).get_team_injuries(team_id)
 
 
