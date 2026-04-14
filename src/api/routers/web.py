@@ -208,21 +208,21 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 #     return request.headers.get("HX-Request") == "true"
 
 
-def _resolve_user(db, token: str | None):
-    """Return the users row for a session cookie, or None."""
-    if not token:
-        return None
-    return db.execute(
-        "SELECT * FROM users WHERE session_token = %s", (token,)
-    ).fetchone()
+# def _resolve_user(db, token: str | None):
+#     """Return the users row for a session cookie, or None."""
+#     if not token:
+#         return None
+#     return db.execute(
+#         "SELECT * FROM users WHERE session_token = %s", (token,)
+#     ).fetchone()
 
 
-def _resolve_gm(db, user_id: str, league_id: str):
-    """Return the gms row for this user in this league, or None."""
-    return db.execute(
-        "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
-        (user_id, league_id),
-    ).fetchone()
+# def _resolve_gm(db, user_id: str, league_id: str):
+#     """Return the gms row for this user in this league, or None."""
+#     return db.execute(
+#         "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
+#         (user_id, league_id),
+#     ).fetchone()
 
 
 def _injured_player_ids(db, team_id: str, league_id: str = "") -> dict:
