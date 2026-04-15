@@ -81,9 +81,9 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     """Return the next unplayed game date, or last played date if season is over."""
     if not season_id:
         return None
-    if state not in ("draft", "preseason", "season", "playoffs"):
+    if state not in ("draft", "preseason", "season", "playoffs", "offseason"):
         return None
-    if state == "draft":
+    if state in ("draft", "offseason"):
         # print(season_id)
         row = db.execute(
             "SELECT year FROM seasons WHERE id = %s",
@@ -92,7 +92,7 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
         if row:
             year = row["year"] 
             # print(f"{year}-04-01")
-            return f"{year}-04-01"
+            return f"{year}-03-30"
         else:
             return None
     
