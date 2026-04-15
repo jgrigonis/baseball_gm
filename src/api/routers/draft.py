@@ -243,7 +243,7 @@ def make_pick(
         """
         INSERT INTO draft_picks
             (draft_id, pick_number, round, gm_id, team_id, player_id, auto_picked)
-        VALUES (%s, %s, %s, %s, %s, %s, 0)
+        VALUES (%s, %s, %s, %s, %s, %s, FALSE)
         """,
         (draft_id, pick_number, round_number, gm["id"], gm["team_id"], player_id),
     )

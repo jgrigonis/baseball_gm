@@ -214,7 +214,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     now = datetime.now(UTC).isoformat()
     for pick in picks:
         gm_id = _gm_for_team(conn, league_id, pick.team_id)
-        auto = 1 if pick.team_id not in gm_preferences else 0
+        auto = pick.team_id not in gm_preferences
         conn.execute(
             """
             INSERT INTO draft_picks

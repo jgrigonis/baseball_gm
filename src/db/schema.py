@@ -487,7 +487,7 @@ CREATE TABLE IF NOT EXISTS draft_picks (
     gm_id       TEXT    NOT NULL,
     team_id     TEXT    NOT NULL,
     player_id   TEXT    NOT NULL,
-    auto_picked INTEGER NOT NULL DEFAULT 0 CHECK (auto_picked IN (0, 1)),
+    auto_picked BOOLEAN NOT NULL DEFAULT FALSE,
     picked_at   TEXT NOT NULL DEFAULT (NOW()),
 
     UNIQUE (draft_id, pick_number),

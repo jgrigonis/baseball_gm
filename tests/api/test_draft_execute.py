@@ -199,7 +199,7 @@ class TestDraftPicksTable:
         db_conn, draft = setup
         execute_blitz_draft(draft.id, db_conn)
         non_auto = db_conn.execute(
-            "SELECT COUNT(*) as n FROM draft_picks WHERE draft_id = %s AND auto_picked = 0",
+            "SELECT COUNT(*) as n FROM draft_picks WHERE draft_id = %s AND NOT auto_picked",
             (draft.id,),
         ).fetchone()["n"]
         assert non_auto == 0
@@ -252,7 +252,7 @@ class TestPreferenceList:
             " WHERE draft_id = %s AND player_id = %s",
             (draft.id, preferred.id),
         ).fetchone()
-        assert row["auto_picked"] == 0
+        assert row["auto_picked"] == False
 
     def test_auto_picks_count_correct(self, setup):
         db_conn, draft, _, _ = setup
