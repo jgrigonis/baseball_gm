@@ -165,37 +165,37 @@ class GameRepository:
         ).fetchone()
         return row["count"] if row else 0
 
-    def get_team_upcoming(self, season_id: str, team_id: str) -> list[dict]:
-        """Return all incomplete games for a team, with opponent team names, ordered by date."""
-        rows = self.conn.execute(
-            """SELECT g.game_date, g.home_team_id, g.away_team_id,
-                      ht.city as home_city, ht.mascot as home_mascot,
-                      at.city as away_city, at.mascot as away_mascot
-               FROM games g
-               JOIN teams ht ON ht.id = g.home_team_id
-               JOIN teams at ON at.id = g.away_team_id
-               WHERE g.season_id = %s AND g.completed = 0
-                 AND (g.home_team_id = %s OR g.away_team_id = %s)
-               ORDER BY g.game_date""",
-            (season_id, team_id, team_id),
-        ).fetchall()
+    def get_team_upcoming(self, season_id: str, team_id: str, limit: int | None = None) -> list[dict]:
+        """Return incomplete games for a team, with opponent team names, ordered by date."""
+        query = """SELECT g.game_date, g.home_team_id, g.away_team_id,
+                          ht.city as home_city, ht.mascot as home_mascot,
+                          at.city as away_city, at.mascot as away_mascot
+                   FROM games g
+                   JOIN teams ht ON ht.id = g.home_team_id
+                   JOIN teams at ON at.id = g.away_team_id
+                   WHERE g.season_id = %s AND g.completed = 0
+                     AND (g.home_team_id = %s OR g.away_team_id = %s)
+                   ORDER BY g.game_date"""
+        if limit:
+            query += f" LIMIT {limit}"
+        rows = self.conn.execute(query, (season_id, team_id, team_id)).fetchall()
         return [dict(r) for r in rows]
 
-    def get_team_results(self, season_id: str, team_id: str) -> list[dict]:
-        """Return all completed games for a team, with scores and team names, newest first."""
-        rows = self.conn.execute(
-            """SELECT g.id as game_id, g.game_date, g.home_team_id, g.away_team_id,
-                      g.home_score, g.away_score, g.innings_played,
-                      ht.city as home_city, ht.mascot as home_mascot,
-                      at.city as away_city, at.mascot as away_mascot
-               FROM games g
-               JOIN teams ht ON ht.id = g.home_team_id
-               JOIN teams at ON at.id = g.away_team_id
-               WHERE g.season_id = %s AND g.completed = 1
-                 AND (g.home_team_id = %s OR g.away_team_id = %s)
-               ORDER BY g.game_date DESC""",
-            (season_id, team_id, team_id),
-        ).fetchall()
+    def get_team_results(self, season_id: str, team_id: str, limit: int | None = None) -> list[dict]:
+        """Return completed games for a team, with scores and team names, newest first."""
+        query = """SELECT g.id as game_id, g.game_date, g.home_team_id, g.away_team_id,
+                          g.home_score, g.away_score, g.innings_played,
+                          ht.city as home_city, ht.mascot as home_mascot,
+                          at.city as away_city, at.mascot as away_mascot
+                   FROM games g
+                   JOIN teams ht ON ht.id = g.home_team_id
+                   JOIN teams at ON at.id = g.away_team_id
+                   WHERE g.season_id = %s AND g.completed = 1
+                     AND (g.home_team_id = %s OR g.away_team_id = %s)
+                   ORDER BY g.game_date DESC"""
+        if limit:
+            query += f" LIMIT {limit}"
+        rows = self.conn.execute(query, (season_id, team_id, team_id)).fetchall()
         return [dict(r) for r in rows]
 
     # This never gets called, except in tests

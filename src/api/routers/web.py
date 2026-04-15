@@ -1345,84 +1345,16 @@ def standings(
     teams = []
 
     if season_id:
-        # Base W-L per team
-        rows = db.execute(
-            """SELECT
-                 t.id as team_id, t.city, t.mascot,
-                 COALESCE(SUM(tgs.win),  0) as wins,
-                 COALESCE(SUM(tgs.loss), 0) as losses,
-                 COALESCE(SUM(tgs.runs), 0) as runs_scored
-               FROM teams t
-               JOIN league_season_teams lst
-                 ON lst.team_id = t.id
-                 AND lst.league_id = %s
-                 AND lst.season_id = %s
-               LEFT JOIN (
-                 SELECT tgs2.team_id, tgs2.win, tgs2.loss, tgs2.runs
-                 FROM team_game_stats tgs2
-                 JOIN games g2
-                   ON g2.id = tgs2.game_id
-                   AND g2.season_id = %s
-                   AND g2.completed = 1
-                   AND g2.series_id IS NULL
-               ) tgs ON tgs.team_id = t.id
-               GROUP BY t.id
-               ORDER BY wins DESC, losses ASC""",
-            (league_id, season_id, season_id),
-        ).fetchall()
+        tg_repo = TeamGameRepository(db)
+        game_repo = GameRepository(db)
+        gm_repo = GMRepository(db)
+        inj_repo = InjuryRepository(db, league_id)
 
-        ra_rows = db.execute(
-            """SELECT tgs.team_id, SUM(opp.runs) as runs_allowed
-               FROM team_game_stats tgs
-               JOIN games g ON g.id = tgs.game_id AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
-               JOIN team_game_stats opp
-                 ON opp.game_id = g.id AND opp.team_id != tgs.team_id
-               GROUP BY tgs.team_id""",
-            (season_id,),
-        ).fetchall()
-        ra_map = {r["team_id"]: r["runs_allowed"] or 0 for r in ra_rows}
-
-        # Home / Away splits
-        ha_rows = db.execute(
-            """SELECT
-                 tgs.team_id,
-                 SUM(CASE WHEN g.home_team_id = tgs.team_id AND tgs.win  = 1 THEN 1 ELSE 0 END) as home_wins,
-                 SUM(CASE WHEN g.home_team_id = tgs.team_id AND tgs.loss = 1 THEN 1 ELSE 0 END) as home_losses,
-                 SUM(CASE WHEN g.away_team_id = tgs.team_id AND tgs.win  = 1 THEN 1 ELSE 0 END) as away_wins,
-                 SUM(CASE WHEN g.away_team_id = tgs.team_id AND tgs.loss = 1 THEN 1 ELSE 0 END) as away_losses
-               FROM team_game_stats tgs
-               JOIN games g ON g.id = tgs.game_id
-                 AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
-               GROUP BY tgs.team_id""",
-            (season_id,),
-        ).fetchall()
-        ha_map = {
-            r["team_id"]: {
-                "hw": r["home_wins"] or 0,
-                "hl": r["home_losses"] or 0,
-                "aw": r["away_wins"] or 0,
-                "al": r["away_losses"] or 0,
-            }
-            for r in ha_rows
-        }
-
-        human_team_ids = {
-            r["team_id"]
-            for r in db.execute(
-                "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
-                (league_id,),
-            ).fetchall()
-        }
-
-        # Recent game results per team for streak (last 10 games ordered newest first)
-        recent_rows = db.execute(
-            """SELECT tgs.team_id, tgs.win, g.game_date
-               FROM team_game_stats tgs
-               JOIN games g ON g.id = tgs.game_id
-               WHERE g.season_id = %s AND g.completed = 1
-               ORDER BY g.game_date DESC""",
-            (season_id,),
-        ).fetchall()
+        rows = tg_repo.get_wl_for_league(league_id, season_id)
+        ra_map = tg_repo.get_runs_allowed(season_id)
+        ha_map = tg_repo.get_home_away_splits(season_id)
+        human_team_ids = gm_repo.get_human_team_ids(league_id)
+        recent_rows = tg_repo.get_recent_results(season_id)
 
         # Build per-team recent results
         team_recent: dict[str, list] = {}
@@ -1508,19 +1440,7 @@ def standings(
         # ── My next 3 upcoming games ──────────────────────────────────────────
         upcoming = []
         if my_team_id:
-            up_rows = db.execute(
-                """SELECT g.id, g.game_date, g.home_team_id, g.away_team_id,
-                          ht.city as home_city, ht.mascot as home_mascot,
-                          at.city as away_city, at.mascot as away_mascot
-                   FROM games g
-                   JOIN teams ht ON ht.id = g.home_team_id
-                   JOIN teams at ON at.id = g.away_team_id
-                   WHERE g.season_id = %s AND g.completed = 0
-                     AND (g.home_team_id = %s OR g.away_team_id = %s)
-                   ORDER BY g.game_date LIMIT 3""",
-                (season_id, my_team_id, my_team_id),
-            ).fetchall()
-            for g_row in up_rows:
+            for g_row in game_repo.get_team_upcoming(season_id, my_team_id, limit=3):
                 is_home = g_row["home_team_id"] == my_team_id
                 opp_city = g_row["away_city"] if is_home else g_row["home_city"]
                 opp_mascot = g_row["away_mascot"] if is_home else g_row["home_mascot"]
@@ -1532,23 +1452,10 @@ def standings(
                     }
                 )
 
-        # ── My last 3 completed games ─────────────────────────────────────────
+        # ── My last 5 completed games ─────────────────────────────────────────
         recent_games = []
         if my_team_id:
-            rg_rows = db.execute(
-                """SELECT g.id as game_id, g.game_date, g.home_team_id, g.away_team_id,
-                          g.home_score, g.away_score,
-                          ht.city as home_city, ht.mascot as home_mascot,
-                          at.city as away_city, at.mascot as away_mascot
-                   FROM games g
-                   JOIN teams ht ON ht.id = g.home_team_id
-                   JOIN teams at ON at.id = g.away_team_id
-                   WHERE g.season_id = %s AND g.completed = 1
-                     AND (g.home_team_id = %s OR g.away_team_id = %s)
-                   ORDER BY g.game_date DESC LIMIT 5""",
-                (season_id, my_team_id, my_team_id),
-            ).fetchall()
-            for g_row in rg_rows:
+            for g_row in game_repo.get_team_results(season_id, my_team_id, limit=5):
                 is_home = g_row["home_team_id"] == my_team_id
                 my_score = g_row["home_score"] if is_home else g_row["away_score"]
                 opp_score = g_row["away_score"] if is_home else g_row["home_score"]
@@ -1570,22 +1477,7 @@ def standings(
         # ── Injury report ─────────────────────────────────────────────────────
         injuries = []
         if my_team_id:
-            inj_rows = db.execute(
-                """SELECT p.id as player_id, p.first_name, p.last_name, pi.games_remaining
-                   FROM player_injuries pi
-                   JOIN players p ON p.id = pi.player_id
-                   JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
-                   WHERE pi.games_remaining > 0
-                     AND (pi.league_id = %s OR pi.league_id = '')
-                   ORDER BY pi.games_remaining DESC""",
-                (my_team_id, league_id),
-            ).fetchall()
-            injuries = []
-            for r in inj_rows:
-                d = dict(r)
-                raw = d.get("games_remaining", 0) or 0
-                d["games_remaining"] = raw
-                injuries.append(d)
+            injuries = inj_repo.get_team_injury_report(my_team_id, league_id)
 
     else:
         upcoming = []

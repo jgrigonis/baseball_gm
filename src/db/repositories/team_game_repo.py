@@ -295,6 +295,84 @@ class TeamGameRepository:
         runs_allowed = row["runs_allowed"] or 0
         return runs_scored - runs_allowed
 
+    def get_wl_for_league(self, league_id: str, season_id: str) -> list[dict]:
+        """Return W-L-RS per team for a league/season (regular season only, all teams included)."""
+        rows = self.conn.execute(
+            """SELECT
+                 t.id as team_id, t.city, t.mascot,
+                 COALESCE(SUM(tgs.win),  0) as wins,
+                 COALESCE(SUM(tgs.loss), 0) as losses,
+                 COALESCE(SUM(tgs.runs), 0) as runs_scored
+               FROM teams t
+               JOIN league_season_teams lst
+                 ON lst.team_id = t.id
+                 AND lst.league_id = %s
+                 AND lst.season_id = %s
+               LEFT JOIN (
+                 SELECT tgs2.team_id, tgs2.win, tgs2.loss, tgs2.runs
+                 FROM team_game_stats tgs2
+                 JOIN games g2
+                   ON g2.id = tgs2.game_id
+                   AND g2.season_id = %s
+                   AND g2.completed = 1
+                   AND g2.series_id IS NULL
+               ) tgs ON tgs.team_id = t.id
+               GROUP BY t.id
+               ORDER BY wins DESC, losses ASC""",
+            (league_id, season_id, season_id),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_runs_allowed(self, season_id: str) -> dict[str, int]:
+        """Return {team_id: runs_allowed} for all teams in a season (regular season only)."""
+        rows = self.conn.execute(
+            """SELECT tgs.team_id, SUM(opp.runs) as runs_allowed
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
+               JOIN team_game_stats opp
+                 ON opp.game_id = g.id AND opp.team_id != tgs.team_id
+               GROUP BY tgs.team_id""",
+            (season_id,),
+        ).fetchall()
+        return {r["team_id"]: r["runs_allowed"] or 0 for r in rows}
+
+    def get_home_away_splits(self, season_id: str) -> dict[str, dict]:
+        """Return {team_id: {hw, hl, aw, al}} for all teams in a season (regular season only)."""
+        rows = self.conn.execute(
+            """SELECT
+                 tgs.team_id,
+                 SUM(CASE WHEN g.home_team_id = tgs.team_id AND tgs.win  = 1 THEN 1 ELSE 0 END) as home_wins,
+                 SUM(CASE WHEN g.home_team_id = tgs.team_id AND tgs.loss = 1 THEN 1 ELSE 0 END) as home_losses,
+                 SUM(CASE WHEN g.away_team_id = tgs.team_id AND tgs.win  = 1 THEN 1 ELSE 0 END) as away_wins,
+                 SUM(CASE WHEN g.away_team_id = tgs.team_id AND tgs.loss = 1 THEN 1 ELSE 0 END) as away_losses
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id
+                 AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
+               GROUP BY tgs.team_id""",
+            (season_id,),
+        ).fetchall()
+        return {
+            r["team_id"]: {
+                "hw": r["home_wins"] or 0,
+                "hl": r["home_losses"] or 0,
+                "aw": r["away_wins"] or 0,
+                "al": r["away_losses"] or 0,
+            }
+            for r in rows
+        }
+
+    def get_recent_results(self, season_id: str) -> list[dict]:
+        """Return all completed game results newest first, for streak/L10 calculations."""
+        rows = self.conn.execute(
+            """SELECT tgs.team_id, tgs.win, g.game_date
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id
+               WHERE g.season_id = %s AND g.completed = 1
+               ORDER BY g.game_date DESC""",
+            (season_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_records_for_teams(self, season_id: str, team_ids: set[str]) -> dict[str, str]:
         """Return {team_id: 'W-L'} for a set of teams in a season (regular season only)."""
         if not team_ids:
