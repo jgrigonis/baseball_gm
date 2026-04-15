@@ -999,7 +999,7 @@ def draft_tab(
         prefs = draft_repo.get_preferences(draft["id"], gm["id"]) if gm else []
 
         pick_position = None
-        if gm and gm["team_id"]:
+        if gm["team_id"]:
             pick_position = draft_repo.get_pick_position(draft["id"], gm["team_id"])
 
         ctx["draft_id"] = draft["id"]
@@ -1014,7 +1014,7 @@ def draft_tab(
 
     # Load GM's current roster for the right-hand column
     players = []
-    if gm and gm["team_id"]:
+    if gm["team_id"]:
         roster_rows = db.execute(
             """SELECT p.*, ps.status
                FROM players p
