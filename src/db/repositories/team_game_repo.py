@@ -295,6 +295,24 @@ class TeamGameRepository:
         runs_allowed = row["runs_allowed"] or 0
         return runs_scored - runs_allowed
 
+    def get_records_for_teams(self, season_id: str, team_ids: set[str]) -> dict[str, str]:
+        """Return {team_id: 'W-L'} for a set of teams in a season (regular season only)."""
+        if not team_ids:
+            return {}
+        placeholders = ", ".join(["%s"] * len(team_ids))
+        rows = self.conn.execute(
+            f"""SELECT tgs.team_id,
+                       COALESCE(SUM(tgs.win),  0) as wins,
+                       COALESCE(SUM(tgs.loss), 0) as losses
+                FROM team_game_stats tgs
+                JOIN games g ON g.id = tgs.game_id
+                  AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
+                WHERE tgs.team_id IN ({placeholders})
+                GROUP BY tgs.team_id""",
+            (season_id, *team_ids),
+        ).fetchall()
+        return {r["team_id"]: f"{r['wins']}-{r['losses']}" for r in rows}
+
     @staticmethod
     def _calculate_win_pct(wins: int, losses: int) -> float:
         """

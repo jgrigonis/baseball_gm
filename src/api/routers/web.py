@@ -40,6 +40,7 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -2403,11 +2404,7 @@ def strategy(
     # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "strategy", user)
 
-    profile_row = (
-        db.execute("SELECT * FROM gm_profiles WHERE gm_id = %s", (gm["id"],)).fetchone()
-        if gm
-        else None
-    )
+    profile_row = GMRepository(db).get_profile(gm["id"])
 
     _L = ["traditional", "analytics", "speed-first", "power-first"]
     _S = ["conservative", "standard", "aggressive"]
@@ -2424,7 +2421,7 @@ def strategy(
             return default
 
     if profile_row:
-        p = dict(profile_row)
+        p = profile_row
         ctx["profile"] = {
             "lineup_style_index": idx(_L, p.get("lineup_style", "analytics"), 1),
             "steal_aggression_index": idx(_S, p.get("steal_aggression", "standard"), 1),
@@ -2480,11 +2477,7 @@ async def save_strategy(
         i = int(form.get(field, 0))
         updates[field] = options[min(i, len(options) - 1)]
 
-    set_clause = ", ".join(f"{col} = %s" for col in updates)
-    db.execute(
-        f"UPDATE gm_profiles SET {set_clause}, updated_at = NOW() WHERE gm_id = %s",
-        [*updates.values(), gm["id"]],
-    )
+    GMRepository(db).save_profile(gm["id"], updates)
     db.commit()
     return HTMLResponse(
         '<span style="color:var(--green);font-family:var(--font-mono);font-size:11px;">✓ Saved</span>'
@@ -2516,45 +2509,15 @@ def schedule(
     recent = []
 
     if season_id and my_team_id:
-        # Upcoming games — all remaining for my team
-        up_rows = db.execute(
-            """SELECT g.game_date, g.home_team_id, g.away_team_id,
-                      ht.city as home_city, ht.mascot as home_mascot,
-                      at.city as away_city, at.mascot as away_mascot
-               FROM games g
-               JOIN teams ht ON ht.id = g.home_team_id
-               JOIN teams at ON at.id = g.away_team_id
-               WHERE g.season_id = %s AND g.completed = 0
-                 AND (g.home_team_id = %s OR g.away_team_id = %s)
-               ORDER BY g.game_date""",
-            (season_id, my_team_id, my_team_id),
-        ).fetchall()
-        # Build opponent W-L record map for upcoming games
-        opp_team_ids = set()
-        for r in up_rows:
-            opp_id = (
-                r["away_team_id"]
-                if r["home_team_id"] == my_team_id
-                else r["home_team_id"]
-            )
-            opp_team_ids.add(opp_id)
+        game_repo = GameRepository(db)
+        tg_repo = TeamGameRepository(db)
 
-        opp_records: dict[str, str] = {}
-        if opp_team_ids:
-            placeholders = ", ".join(["%s"] * len(opp_team_ids))
-            wl_rows = db.execute(
-                f"""SELECT tgs.team_id,
-                           COALESCE(SUM(tgs.win),  0) as wins,
-                           COALESCE(SUM(tgs.loss), 0) as losses
-                    FROM team_game_stats tgs
-                    JOIN games g ON g.id = tgs.game_id
-                      AND g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
-                    WHERE tgs.team_id IN ({placeholders})
-                    GROUP BY tgs.team_id""",
-                (season_id, *opp_team_ids),
-            ).fetchall()
-            for wl in wl_rows:
-                opp_records[wl["team_id"]] = f"{wl['wins']}-{wl['losses']}"
+        up_rows = game_repo.get_team_upcoming(season_id, my_team_id)
+        opp_team_ids = {
+            r["away_team_id"] if r["home_team_id"] == my_team_id else r["home_team_id"]
+            for r in up_rows
+        }
+        opp_records = tg_repo.get_records_for_teams(season_id, opp_team_ids)
 
         for r in up_rows:
             is_home = r["home_team_id"] == my_team_id
@@ -2570,21 +2533,7 @@ def schedule(
                 }
             )
 
-        # Recent results — all completed
-        rec_rows = db.execute(
-            """SELECT g.id as game_id, g.game_date, g.home_team_id, g.away_team_id,
-                      g.home_score, g.away_score, g.innings_played,
-                      ht.city as home_city, ht.mascot as home_mascot,
-                      at.city as away_city, at.mascot as away_mascot
-               FROM games g
-               JOIN teams ht ON ht.id = g.home_team_id
-               JOIN teams at ON at.id = g.away_team_id
-               WHERE g.season_id = %s AND g.completed = 1
-                 AND (g.home_team_id = %s OR g.away_team_id = %s)
-               ORDER BY g.game_date DESC""",
-            (season_id, my_team_id, my_team_id),
-        ).fetchall()
-        for r in rec_rows:
+        for r in game_repo.get_team_results(season_id, my_team_id):
             is_home = r["home_team_id"] == my_team_id
             my_score = r["home_score"] if is_home else r["away_score"]
             opp_score = r["away_score"] if is_home else r["home_score"]

@@ -76,6 +76,21 @@ class GMRepository:
         # Convert rows to plain dicts if your driver doesn't do it automatically
         return [dict(row) for row in rows]
 
+    def get_profile(self, gm_id: str) -> dict | None:
+        """Return the gm_profiles row for a GM, or None."""
+        row = self.conn.execute(
+            "SELECT * FROM gm_profiles WHERE gm_id = %s", (gm_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def save_profile(self, gm_id: str, updates: dict) -> None:
+        """Update strategy fields on gm_profiles."""
+        set_clause = ", ".join(f"{col} = %s" for col in updates)
+        self.conn.execute(
+            f"UPDATE gm_profiles SET {set_clause}, updated_at = NOW() WHERE gm_id = %s",
+            [*updates.values(), gm_id],
+        )
+
     def get_all_in_league(self, league_id: str) -> list[dict]:
         """Fetch all the GMs in a league."""
         rows = self.conn.execute(
