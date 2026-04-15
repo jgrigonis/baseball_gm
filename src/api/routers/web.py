@@ -2557,12 +2557,7 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
                 "winner_id": None,
             }
 
-        games = db.execute(
-            """SELECT id, game_date, home_team_id, away_team_id,
-                      completed, home_score, away_score, winner_id
-               FROM games WHERE series_id = %s ORDER BY game_date""",
-            (sid,),
-        ).fetchall()
+        games = GameRepository(db).get_series_games(sid)
 
         team_ids = []
         seen = set()

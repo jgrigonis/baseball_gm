@@ -155,6 +155,16 @@ class GameRepository:
         )
         # self.conn.commit()
 
+    def get_series_games(self, series_id: str) -> list[dict]:
+        """Return all games for a playoff series, ordered by date."""
+        rows = self.conn.execute(
+            """SELECT id, game_date, home_team_id, away_team_id,
+                      completed, home_score, away_score, winner_id
+               FROM games WHERE series_id = %s ORDER BY game_date""",
+            (series_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def games_remaining(self, season_id: str) -> int:
         """Returns how many unplayed games remain in a season."""
         if not season_id:
