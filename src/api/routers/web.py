@@ -24,6 +24,7 @@ from fastapi.templating import Jinja2Templates
 from src.api.dependencies import DB, User, OptionalUser, GM, Commissioner, IsHTMX
 from src.api.schemas import player_row_to_grades, skill_to_grade, BullpenSaveRequest
 from src.api.services.league_start import start_league as _start
+from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -232,13 +233,15 @@ def _injured_player_ids(db, team_id: str, league_id: str = "") -> dict:
 
 
 def _games_remaining(db, season_id: str | None) -> int:
-    if not season_id:
-        return 0
-    row = db.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = %s AND completed = 0",
-        (season_id,),
-    ).fetchone()
-    return row["count"] if row else 0
+    """Return the number of unplayed games remaining in a season."""
+    return GameRepository(db).games_remaining(season_id)
+    # if not season_id:
+    #     return 0
+    # row = db.execute(
+    #     "SELECT COUNT(*) FROM games WHERE season_id = %s AND completed = 0",
+    #     (season_id,),
+    # ).fetchone()
+    # return row["count"] if row else 0
 
 
 # This is used code in that monster return in old _shell_ctx

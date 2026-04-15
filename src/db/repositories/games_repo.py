@@ -155,6 +155,17 @@ class GameRepository:
         )
         # self.conn.commit()
 
+    def games_remaining(self, season_id: str) -> int:
+        """Returns how many unplayed games remain in a season."""
+        if not season_id:
+            return 0
+        row = self.conn.execute(
+            "SELECT COUNT(*) FROM games WHERE season_id = %s AND completed = 0",
+            (season_id,),
+        ).fetchone()
+        return row["count"] if row else 0
+
+
     # This never gets called, except in tests
     def is_completed(self, game_id: str) -> bool:
         """Check if game is completed."""
@@ -166,3 +177,4 @@ class GameRepository:
             return False
 
         return row["completed"] == 1
+
