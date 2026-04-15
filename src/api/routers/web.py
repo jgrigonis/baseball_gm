@@ -43,6 +43,7 @@ from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
+from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -1755,17 +1756,9 @@ def roster(
     team_id = gm["team_id"]
 
     if team_id:
-        rows = db.execute(
-            """SELECT p.*, ps_stat.status, sk.*
-               FROM players p
-               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
-               JOIN player_status ps_stat ON ps_stat.player_id = p.id
-               LEFT JOIN player_skills sk ON sk.player_id = p.id
-               ORDER BY ps_stat.status, p.last_name""",
-            (team_id,),
-        ).fetchall()
-        for row in rows:
-            d = dict(row)
+        player_repo = PlayerRepository(db)
+        for row in player_repo.get_team_roster_with_skills(team_id):
+            d = row
             # skills_row = db.execute(
             #     "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
             # ).fetchone()
@@ -1795,19 +1788,7 @@ def roster(
     # Season stats for display on roster cards
     season_id = ctx.get("season_id")
     if season_id and team_id:
-        stat_rows = db.execute(
-            """SELECT player_id,
-                      bat_games_played, bat_hits, bat_ab, bat_home_runs, bat_rbi,
-                      pitch_games_started, pitch_outs, pitch_earned_runs,
-                      pitch_wins, pitch_losses, pitch_saves
-               FROM player_season_stats
-               WHERE season_id = %s AND is_postseason = 0
-                 AND player_id IN (
-                     SELECT player_id FROM team_players WHERE team_id = %s
-                 )""",
-            (season_id, gm["team_id"]),
-        ).fetchall()
-        stats_map = {r["player_id"]: r for r in stat_rows}
+        stats_map = PlayerSeasonStatsRepository(db).get_team_stats_map(season_id, team_id)
         for p in players:
             s = stats_map.get(p["player_id"])
             if s and p.get("player_type") != "pitcher":
@@ -1867,26 +1848,14 @@ def lineup(
     team_id = gm["team_id"]
     season_id = ctx.get("season_id")
 
-    # Load all 40-man players with grades
-    rows = db.execute(
-        """SELECT p.*, ps.status FROM players p
-           JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
-           JOIN player_status ps ON ps.player_id = p.id
-           WHERE ps.status IN ('26man', '40man')
-           ORDER BY p.last_name""",
-        (team_id,),
-    ).fetchall()
-
+    # Load all 40-man players with grades (skills batched in the query)
+    player_repo = PlayerRepository(db)
     hitters = []
     pitchers = []
-    for row in rows:
-        d = dict(row)
-        sk = db.execute(
-            "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
-        ).fetchone()
-        skills = dict(sk) if sk else {}
-        grades = player_row_to_grades(d, skills, d["status"])
-        ratings = _compute_ratings(skills, d.get("throws", "R"))
+    for row in player_repo.get_active_roster_with_skills(team_id):
+        d = row
+        grades = player_row_to_grades(d, d, d["status"])
+        ratings = _compute_ratings(d, d.get("throws", "R"))
         g = grades.model_dump()
         if ratings:
             if g.get("player_type") == "pitcher":
@@ -1917,82 +1886,31 @@ def lineup(
             ):
                 g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
         # Raw skill grades not in PlayerGrades — needed for sort
-        g["base_running"] = skill_to_grade(skills.get("base_running"))
-        g["bunting"] = skill_to_grade(skills.get("bunting"))
-        g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
+        g["base_running"] = skill_to_grade(d.get("base_running"))
+        g["bunting"] = skill_to_grade(d.get("bunting"))
+        g["ground_balls"] = skill_to_grade(d.get("ground_balls"))
         if g.get("player_type") == "pitcher":
             pitchers.append(g)
         else:
             hitters.append(g)
 
-    # Load saved lineup preferences
-    saved_lineup = []
-    prefs = db.execute(
-        """SELECT player_id, batting_order, position FROM gm_lineup_preferences
-           WHERE gm_id = %s AND batting_order IS NOT NULL
-           ORDER BY batting_order""",
-        (gm["id"],),
-    ).fetchall()
-    saved_lineup = [
-        {
-            "player_id": r["player_id"],
-            "batting_order": r["batting_order"],
-            "position": r["position"],
-        }
-        for r in prefs
-    ]
+    # Load saved lineup preferences, rotation, bullpen
+    lp_repo = LineupPreferenceRepository(db)
+    rot_repo = TeamRotationsRepository(db)
+    bp_repo = BullpenRepository(db)
 
-    # Load saved rotation
-    saved_rotation = []
-    if season_id:
-        rot = db.execute(
-            """SELECT player_id, rotation_order FROM team_rotations
-               WHERE team_id = %s AND season_id = %s AND end_date IS NULL
-               ORDER BY rotation_order""",
-            (team_id, season_id),
-        ).fetchall()
-        saved_rotation = [r["player_id"] for r in rot]
-
-    # Load saved bullpen roles
-    saved_bullpen = {}
-    if season_id:
-        bp = db.execute(
-            """SELECT player_id, role FROM bullpen_roles
-               WHERE team_id = %s AND season_id = %s AND end_date IS NULL""",
-            (team_id, season_id),
-        ).fetchall()
-        saved_bullpen = {r["player_id"]: r["role"] for r in bp}
-
-    # Load rotation pointer (green light position)
-    saved_rotation_pointer = None
-    if season_id and saved_rotation:
-        ptr_row = db.execute(
-            """SELECT next_order FROM team_rotation_pointer
-               WHERE team_id = %s AND season_id = %s AND series_id = ''""",
-            (team_id, season_id),
-        ).fetchone()
-        if ptr_row:
-            rot_at_ptr = db.execute(
-                """SELECT player_id FROM team_rotations
-                   WHERE team_id = %s AND season_id = %s AND rotation_order = %s
-                   AND end_date IS NULL""",
-                (team_id, season_id, ptr_row["next_order"]),
-            ).fetchone()
-            if rot_at_ptr:
-                saved_rotation_pointer = rot_at_ptr["player_id"]
+    saved_lineup = lp_repo.get_by_gm_id(gm["id"])
+    saved_rotation = rot_repo.get_saved_rotation(team_id, season_id) if season_id else []
+    saved_bullpen = bp_repo.get_roles_map(team_id, season_id) if season_id else {}
+    saved_rotation_pointer = (
+        rot_repo.get_rotation_pointer_player(team_id, season_id)
+        if season_id and saved_rotation
+        else None
+    )
 
     # Attach season stats to each player for display
     if season_id:
-        stat_rows = db.execute(
-            """SELECT player_id,
-                      bat_ab, bat_hits, bat_home_runs,
-                      pitch_games_started, pitch_outs, pitch_earned_runs,
-                      pitch_wins, pitch_losses, pitch_saves
-               FROM player_season_stats
-               WHERE season_id = %s AND is_postseason = 0""",
-            (season_id,),
-        ).fetchall()
-        stats_map = {r["player_id"]: r for r in stat_rows}
+        stats_map = PlayerSeasonStatsRepository(db).get_team_stats_map(season_id, team_id)
         for p in hitters:
             s = stats_map.get(p["player_id"])
             if s and (s["bat_ab"] or 0) > 0:
@@ -2034,9 +1952,7 @@ def lineup(
     ctx["saved_bullpen"] = saved_bullpen
     ctx["saved_rotation_pointer"] = saved_rotation_pointer
     # Tell template whether we're in playoffs so the nav button points the right way
-    league_row = db.execute(
-        "SELECT state FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
+    league_row = LeagueRepository(db).get_by_id(league_id)
     ctx["is_playoffs"] = league_row and league_row["state"] == "playoffs"
     return tab_response(request, htmx, "dashboard/partials/lineup.html", ctx)
 
@@ -2434,14 +2350,11 @@ def stats(
     current_season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
+    season_repo = SeasonRepository(db)
+    team_repo = TeamRepository(db)
+
     # All seasons for this league, newest first
-    all_seasons = db.execute(
-        """SELECT s.id, s.year FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s
-           ORDER BY s.year DESC""",
-        (league_id,),
-    ).fetchall()
+    all_seasons = season_repo.get_seasons_for_league(league_id)
 
     # Default to current season
     selected_season_id = season_id or current_season_id
@@ -2452,14 +2365,7 @@ def stats(
 
     # All teams for the selected season
     all_teams = (
-        db.execute(
-            """SELECT DISTINCT t.id, t.city, t.mascot
-           FROM teams t
-           JOIN league_season_teams lst ON lst.team_id = t.id
-           WHERE lst.league_id = %s AND lst.season_id = %s
-           ORDER BY t.city""",
-            (league_id, selected_season_id),
-        ).fetchall()
+        team_repo.get_teams_in_league_season(league_id, selected_season_id)
         if selected_season_id
         else []
     )
@@ -2475,27 +2381,14 @@ def stats(
     ps_flag = 1 if is_postseason else 0
 
     if selected_season_id and selected_team_id:
-        tg_row = db.execute(
-            """SELECT MAX(bat_games_played) as tg FROM player_season_stats
-               WHERE season_id = %s AND is_postseason = %s
-                 AND team_id = %s""",
-            (selected_season_id, ps_flag, selected_team_id),
-        ).fetchone()
-        team_games = tg_row["tg"] or 0
+        pss_repo = PlayerSeasonStatsRepository(db)
+        team_games = pss_repo.get_max_games_played_for_team(selected_season_id, selected_team_id, is_postseason)
         min_ab = int(3.1 * team_games) if not is_postseason else 0
         min_outs = int(3 * team_games) if not is_postseason else 0
 
-        rows = db.execute(
-            """SELECT p.id as player_id, p.first_name, p.last_name, pss.*
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               WHERE pss.season_id = %s AND pss.is_postseason = %s
-                 AND pss.team_id = %s""",
-            (selected_season_id, ps_flag, selected_team_id),
-        ).fetchall()
+        rows = pss_repo.get_for_team(selected_season_id, selected_team_id, is_postseason)
 
-        for r in rows:
-            s = dict(r)
+        for s in rows:
             ab = s.get("bat_ab") or 0
             h = s.get("bat_hits") or 0
             d = s.get("bat_doubles") or 0
@@ -2611,8 +2504,8 @@ def stats(
 
     ctx.update(
         {
-            "all_teams": [dict(t) for t in all_teams],
-            "all_seasons": [dict(s) for s in all_seasons],
+            "all_teams": all_teams,
+            "all_seasons": all_seasons,
             "selected_team_id": selected_team_id,
             "selected_season_id": selected_season_id,
             "selected_year": selected_year,

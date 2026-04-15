@@ -367,6 +367,33 @@ class PlayerRepository:
             for row in rows
         ]
 
+    def get_team_roster_with_skills(self, team_id: str) -> list[dict]:
+        """Return all players on a team with status and skills merged into flat dicts."""
+        rows = self.conn.execute(
+            """SELECT p.*, ps_stat.status, sk.*
+               FROM players p
+               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
+               JOIN player_status ps_stat ON ps_stat.player_id = p.id
+               LEFT JOIN player_skills sk ON sk.player_id = p.id
+               ORDER BY ps_stat.status, p.last_name""",
+            (team_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_active_roster_with_skills(self, team_id: str) -> list[dict]:
+        """Return 26-man/40-man players with skills merged, ordered by last name."""
+        rows = self.conn.execute(
+            """SELECT p.*, ps.status, sk.*
+               FROM players p
+               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
+               JOIN player_status ps ON ps.player_id = p.id
+               LEFT JOIN player_skills sk ON sk.player_id = p.id
+               WHERE ps.status IN ('26man', '40man')
+               ORDER BY p.last_name""",
+            (team_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def _get_timestamp(self) -> str:
         """Helper: Get current UTC timestamp in ISO format."""
         return datetime.datetime.now(datetime.timezone.utc).isoformat()

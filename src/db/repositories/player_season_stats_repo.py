@@ -32,6 +32,43 @@ class PlayerSeasonStatsRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_team_stats_map(self, season_id: str, team_id: str) -> dict[str, dict]:
+        """Return {player_id: stat_dict} for all players on a team in a season (regular season)."""
+        rows = self.conn.execute(
+            """SELECT player_id,
+                      bat_games_played, bat_hits, bat_ab, bat_home_runs, bat_rbi,
+                      pitch_games_started, pitch_outs, pitch_earned_runs,
+                      pitch_wins, pitch_losses, pitch_saves
+               FROM player_season_stats
+               WHERE season_id = %s AND is_postseason = 0
+                 AND player_id IN (
+                     SELECT player_id FROM team_players WHERE team_id = %s
+                 )""",
+            (season_id, team_id),
+        ).fetchall()
+        return {r["player_id"]: dict(r) for r in rows}
+
+    def get_max_games_played_for_team(self, season_id: str, team_id: str, is_postseason: bool = False) -> int:
+        """Return the max bat_games_played for a specific team in a season."""
+        row = self.conn.execute(
+            """SELECT MAX(bat_games_played) as tg FROM player_season_stats
+               WHERE season_id = %s AND is_postseason = %s AND team_id = %s""",
+            (season_id, 1 if is_postseason else 0, team_id),
+        ).fetchone()
+        return row["tg"] or 0
+
+    def get_for_team(self, season_id: str, team_id: str, is_postseason: bool = False) -> list[dict]:
+        """Return all player stats with first/last name for a team in a season."""
+        rows = self.conn.execute(
+            """SELECT p.id as player_id, p.first_name, p.last_name, pss.*
+               FROM player_season_stats pss
+               JOIN players p ON p.id = pss.player_id
+               WHERE pss.season_id = %s AND pss.is_postseason = %s
+                 AND pss.team_id = %s""",
+            (season_id, 1 if is_postseason else 0, team_id),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_pitching_for_league(self, league_id: str, season_id: str) -> list[dict]:
         """Return pitching stats for all players in a league (regular season, at least 3 outs)."""
         rows = self.conn.execute(

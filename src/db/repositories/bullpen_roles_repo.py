@@ -198,6 +198,15 @@ class BullpenRepository:
         # columns = [col[0] for col in cursor.description]
         return [dict(row) for row in cursor.fetchall()]
 
+    def get_roles_map(self, team_id: str, season_id: str) -> dict[str, str]:
+        """Return {player_id: role} for all active bullpen roles for a team."""
+        rows = self.conn.execute(
+            """SELECT player_id, role FROM bullpen_roles
+               WHERE team_id = %s AND season_id = %s AND end_date IS NULL""",
+            (team_id, season_id),
+        ).fetchall()
+        return {r["player_id"]: r["role"] for r in rows}
+
     def get_closer(self, team_id: str, season_id: str) -> Optional[dict]:
         """
         Return the active Closer for a team in a given season, or None if unassigned.

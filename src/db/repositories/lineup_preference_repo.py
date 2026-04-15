@@ -17,6 +17,16 @@ class LineupPreferenceRepository:
                 (gm_id, slot["player_id"], slot["batting_order"], slot.get("position")),
             )
 
+    def get_by_gm_id(self, gm_id: str) -> list[dict]:
+        """Return saved batting order for a GM (batting_order slots only), ordered."""
+        rows = self.conn.execute(
+            """SELECT player_id, batting_order, position FROM gm_lineup_preferences
+               WHERE gm_id = %s AND batting_order IS NOT NULL
+               ORDER BY batting_order""",
+            (gm_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_preferences(self, team_id: str, league_id: str) -> list[dict] | None:
         # This moved from _load_saved_lineup in play_season
         gm = self.conn.execute(

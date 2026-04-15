@@ -205,6 +205,18 @@ class TeamRepository:
         team_ids = [row["id"] for row in cursor.fetchall()]
         return [self.get(team_id) for team_id in team_ids]
 
+    def get_teams_in_league_season(self, league_id: str, season_id: str) -> list[dict]:
+        """Return all teams in a league/season as {id, city, mascot}, ordered by city."""
+        rows = self.conn.execute(
+            """SELECT DISTINCT t.id, t.city, t.mascot
+               FROM teams t
+               JOIN league_season_teams lst ON lst.team_id = t.id
+               WHERE lst.league_id = %s AND lst.season_id = %s
+               ORDER BY t.city""",
+            (league_id, season_id),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def remove_player(self, team_id: str, player_id: str) -> None:
         """Remove a player from a team's roster."""
         self.conn.execute(

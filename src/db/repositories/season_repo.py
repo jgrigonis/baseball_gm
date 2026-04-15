@@ -140,6 +140,17 @@ class SeasonRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_seasons_for_league(self, league_id: str) -> list[dict]:
+        """Return all seasons for a league, newest first (id, year only)."""
+        rows = self.conn.execute(
+            """SELECT s.id, s.year FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s
+               ORDER BY s.year DESC""",
+            (league_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_current_id_for_league(self, league_id: str) -> str | None:
         """Return the most recent season ID for a league, or None."""
         row = self.conn.execute(

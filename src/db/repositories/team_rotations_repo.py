@@ -653,6 +653,33 @@ class TeamRotationsRepository:
         # self.conn.commit()
         return count
 
+    def get_saved_rotation(self, team_id: str, season_id: str) -> list[str]:
+        """Return player_ids in current active rotation order (no date filtering)."""
+        rows = self.conn.execute(
+            """SELECT player_id FROM team_rotations
+               WHERE team_id = %s AND season_id = %s AND end_date IS NULL
+               ORDER BY rotation_order""",
+            (team_id, season_id),
+        ).fetchall()
+        return [r["player_id"] for r in rows]
+
+    def get_rotation_pointer_player(self, team_id: str, season_id: str) -> str | None:
+        """Return the player_id at the current rotation pointer (read-only). None if unset."""
+        ptr = self.conn.execute(
+            """SELECT next_order FROM team_rotation_pointer
+               WHERE team_id = %s AND season_id = %s AND series_id = ''""",
+            (team_id, season_id),
+        ).fetchone()
+        if not ptr:
+            return None
+        row = self.conn.execute(
+            """SELECT player_id FROM team_rotations
+               WHERE team_id = %s AND season_id = %s AND rotation_order = %s
+               AND end_date IS NULL""",
+            (team_id, season_id, ptr["next_order"]),
+        ).fetchone()
+        return row["player_id"] if row else None
+
     def assign_rotation_pointer(
         self, team_id: str, season_id: str, next_order: int, series_id: str = ""
     ) -> None:
