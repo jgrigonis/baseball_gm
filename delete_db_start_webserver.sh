@@ -27,7 +27,7 @@ if [ "$SKIP_CONFIRM" = false ]; then
     fi
 fi
 
-echo "$PGUSER"
+# echo "$PGUSER"
 # Do the needful
 psql -U "$PGUSER" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'baseball_manager';" postgres
 psql -U "$PGUSER" -c "DROP DATABASE baseball_manager;" postgres

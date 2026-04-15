@@ -2021,16 +2021,16 @@ async def save_rotation(
     rotation = body.get("rotation", [])
     pointer_pid = body.get("pointer_pid", None)
     season_repo = SeasonRepository(db)
-    season_row = season_repo.get_most_recent_season_from_league(league_id)
+    season_id = season_repo.get_most_recent_season_from_league(league_id)
     # season_row = db.execute(
     #     """SELECT s.id FROM seasons s
     #        JOIN league_seasons ls ON ls.season_id = s.id
     #        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
     #     (league_id,),
     # ).fetchone()
-    if not season_row:
+    if not season_id:
         return JSONResponse({"detail": "No active season"}, status_code=400)
-    season_id = season_row["id"]
+    # season_id = season_row["id"]
     team_id = gm["team_id"]
 
     league = LeagueRepository(db).get_by_id(league_id)
@@ -2070,7 +2070,7 @@ async def save_bullpen(
     #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
     season_repo = SeasonRepository(db)
     # Resolve Season
-    season_row = season_repo.get_most_recent_season_from_league(league_id)
+    season_id = season_repo.get_most_recent_season_from_league(league_id)
     # season = db.execute(
     #     """SELECT s.id FROM seasons s 
     #        JOIN league_seasons ls ON ls.season_id = s.id 
@@ -2078,7 +2078,7 @@ async def save_bullpen(
     #     (league_id,),
     # ).fetchone()
 
-    if not season_row:
+    if not season_id:
         raise HTTPException(status_code=400, detail="No active season")
 
     # gm = _resolve_gm(db, user["id"], league_id)
@@ -2095,7 +2095,7 @@ async def save_bullpen(
     #     (league_id,),
     # ).fetchone()
 
-    season_id = season_row["id"]
+    # season_id = season_row["id"]
 
     # season_id = season_id["id"] if season_id else None
     # if not season_id:
