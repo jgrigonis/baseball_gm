@@ -14,16 +14,25 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import random
+import string
 import uuid
 import traceback
 
-from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from src.api.dependencies import DB, User, OptionalUser, GM, Commissioner, IsHTMX
 from src.api.schemas import player_row_to_grades, skill_to_grade, BullpenSaveRequest
-from src.api.services.league_start import start_league as _start
+from src.api.services.draft_execute import execute_blitz_draft
+from src.api.services.league_start import start_league
+from src.api.services.offseason_service import run_offseason
+from src.api.services.sim_next import sim_next_day
+from src.api.services.sim_playoff import sim_playoff
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -32,6 +41,8 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
+from src.league.playoffs.play_playoffs import get_series_id, get_series_winner
+from src.league.statistics.print_standings import sort_standings
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills, SKILLS
 from src.web.utils import tab_response, _shell_ctx, _current_league_date
@@ -595,11 +606,9 @@ def new_league(
     draft_window_sec: int = Form(300),
     reentry_enabled: bool = Form(True),
 ):
-    import random as _random, string as _string, uuid as _uuid
-
-    league_id = str(_uuid.uuid4())
-    gm_id = str(_uuid.uuid4())
-    join_code = "".join(_random.choices(_string.ascii_uppercase + _string.digits, k=6))
+    league_id = str(uuid.uuid4())
+    gm_id = str(uuid.uuid4())
+    join_code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
     league_repo = LeagueRepository(db)
     gm_repo = GMRepository(db)
@@ -705,13 +714,13 @@ def join_page(request: Request):
 
 
 @router.post("/leagues/{league_id}/start")
-def start_league(
+def start_league_router(
     league_id: str,
     db: DB,
     _: Commissioner,
 ):
     try:
-        _start(league_id, db)
+        start_league(league_id, db)
         db.commit()
     except Exception:
         # Surface the error as a plain response so we can see what went wrong
@@ -776,8 +785,6 @@ async def save_draft_preferences(
     Save the GM's draft preference list. Called from JS using the session
     cookie — no token exposure needed. Proxies to the existing draft logic.
     """
-    from fastapi.responses import JSONResponse
-
     # user = _resolve_user(db, gm_session)
     # if not user:
     #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
@@ -1073,11 +1080,7 @@ def execute_draft(
     if draft["state"] == "complete":
         return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
 
-    import traceback
-
     try:
-        from src.api.services.draft_execute import execute_blitz_draft
-
         execute_blitz_draft(draft["id"], db)
         db.commit()
     except Exception:
@@ -1167,8 +1170,6 @@ def save_roster(
     #     return HTMLResponse("No team", status_code=400)
 
     # Read JSON body
-    import asyncio
-
     _ = (
         asyncio.get_event_loop().run_until_complete(request.body())
         if hasattr(request, "_body")
@@ -1186,8 +1187,6 @@ def save_roster_put(
     gm: GM,
 ):
     """PUT endpoint for roster save from JS fetch."""
-    from fastapi.responses import JSONResponse
-
     # import asyncio
 
     # user = _resolve_user(db, gm_session)
@@ -1203,9 +1202,7 @@ def save_roster_put(
     # Parse body synchronously via stored body
     body = None
     try:
-        import asyncio as _asyncio
-
-        loop = _asyncio.new_event_loop()
+        loop = asyncio.new_event_loop()
         body = loop.run_until_complete(request.json())
         loop.close()
     except Exception:
@@ -1268,9 +1265,6 @@ async def sim_games(
     gm: GM,
 ):
     """Sim N games (or until season end). Returns JSON with results summary."""
-    from fastapi.responses import JSONResponse
-    from src.api.services.sim_next import sim_next_day
-
     # user = _resolve_user(db, gm_session)
     # if not user:
     #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
@@ -1489,10 +1483,6 @@ def standings(
             return f"{letter}{count}"
 
         # Sort by win pct descending, with H2H and RS tiebreakers
-        from src.league.statistics.print_standings import (
-            sort_standings as _sort_standings,
-        )
-
         raw_rows = []
         for r in rows:
             wins = r["wins"] or 0
@@ -1505,7 +1495,7 @@ def standings(
                     "runs_scored": r["runs_scored"] or 0,
                 }
             )
-        ranked = _sort_standings(db, season_id, raw_rows)
+        ranked = sort_standings(db, season_id, raw_rows)
         leader_wins = ranked[0]["wins"] or 0 if ranked else 0
         leader_losses = ranked[0]["losses"] or 0 if ranked else 0
 
@@ -2249,8 +2239,6 @@ async def save_lineup_prefs(
     gm: GM,
     # gm_session: str | None = Cookie(default=None),
 ):
-    from fastapi.responses import JSONResponse
-
     # user = _resolve_user(db, gm_session)
     # if not user:
     #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
@@ -2295,8 +2283,6 @@ async def save_rotation(
     db: DB,
     gm: GM,
 ):
-    from fastapi.responses import JSONResponse
-
     if not gm["team_id"]:
         return JSONResponse({"detail": "No team"}, status_code=400)
 
@@ -2353,9 +2339,6 @@ async def save_bullpen(
     db: DB,
     gm: GM,
 ):
-    from fastapi.responses import JSONResponse
-    from fastapi import HTTPException
-
     # user = _resolve_user(db, gm_session)
     # if not user:
     #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
@@ -2407,8 +2390,6 @@ async def save_bullpen(
     assignments = [
         {"player_id": pid, "role": role} for pid, role in body.bullpen.items()
     ]
-    from src.db.repositories.bullpen_roles_repo import BullpenRepository
-
     bp_repo = BullpenRepository(db)
 
     try:
@@ -2891,10 +2872,6 @@ def stats(
 
 def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     """Load full bracket state for template rendering."""
-    from src.league.playoffs.play_playoffs import (
-        get_series_id,
-    )
-
     ROUND_DEFS = [
         {"name": "Round 1", "series_names": ["1v8", "4v5", "2v7", "3v6"], "best_of": 5},
         {
@@ -2904,9 +2881,6 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
         },
         {"name": "Finals", "series_names": ["Finals"], "best_of": 7},
     ]
-
-    from src.league.playoffs.play_playoffs import get_series_winner as _gsw
-
     # Map semifinal series name → which round-1 series feed into it
     _SEMI_FEEDERS = {
         "[1,8]v[4,5]": ("1v8", "4v5"),
@@ -2953,7 +2927,7 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
             for feeder_name in _SEMI_FEEDERS[series_name]:
                 feeder_sid = get_series_id(db, season_id, feeder_name)
                 if feeder_sid:
-                    w = _gsw(db, feeder_sid, 5)
+                    w = get_series_winner(db, feeder_sid, 5)
                     if w and w not in seen:
                         team_ids.append(w)
                         seen.add(w)
@@ -3046,14 +3020,9 @@ def sim_playoff_route(
     gm: GM,
     mode: str = "game",
 ):
-    from fastapi.responses import JSONResponse
-
     # user = _resolve_user(db, gm_session)
     # if not user:
     #     return JSONResponse({"error": "Unauthorized"}, status_code=401)
-
-    from src.api.services.sim_playoff import sim_playoff
-
     result = sim_playoff(league_id, db, mode=mode)
 
     league_state = db.execute(
@@ -3150,14 +3119,12 @@ def game_panel(
            ORDER BY ge.id""",
         (game_id,),
     ).fetchall()
-    import json as _json
-
     events_out = []
     for e in events:
         ed = dict(e)
         if ed.get("detail"):
             try:
-                ed["detail_parsed"] = _json.loads(ed["detail"])
+                ed["detail_parsed"] = json.loads(ed["detail"])
             except Exception:
                 ed["detail_parsed"] = None
         else:
@@ -3376,20 +3343,13 @@ def begin_offseason(
     db: DB,
     gm: GM,
 ):
-    from fastapi.responses import JSONResponse
-
     # user = _resolve_user(db, gm_session)
     # if not user:
     #     return JSONResponse({"error": "Unauthorized"}, status_code=401)
-
-    from src.api.services.offseason_service import run_offseason
-
     try:
         result = run_offseason(league_id, db)
         return JSONResponse({"ok": True, **result})
     except Exception as e:
-        import traceback
-
         return JSONResponse(
             {"ok": False, "error": str(e), "detail": traceback.format_exc()},
             status_code=500,
