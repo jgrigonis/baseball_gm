@@ -39,6 +39,7 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
 from src.league.playoffs.play_playoffs import get_series_id, get_series_winner
@@ -978,6 +979,7 @@ def draft_tab(
 
     draft_repo = DraftRepository(db)
     draft = draft_repo.get_current_for_league(league_id)
+    player_repo =  PlayerRepository(db)
 
     if draft:
         picked_ids = draft_repo.get_picked_ids(draft["id"])
@@ -987,10 +989,11 @@ def draft_tab(
         for row in all_players:
             if row["id"] in picked_ids:
                 continue
-            skills_row = db.execute(
-                "SELECT * FROM player_skills WHERE player_id = %s", (row["id"],)
-            ).fetchone()
-            skills = dict(skills_row) if skills_row else {}
+            # skills_row = db.execute(
+            #     "SELECT * FROM player_skills WHERE player_id = %s", (row["id"],)
+            # ).fetchone()
+            # skills = dict(skills_row) if skills_row else {}
+            skills = player_repo.get_player_skills(row["id"])
             grades = player_row_to_grades(dict(row), skills, row["status"])
             ratings = _compute_ratings(skills, dict(row).get("throws", "R"))
             g = grades.model_dump()
@@ -1031,11 +1034,14 @@ def draft_tab(
             (gm["team_id"],),
         ).fetchall()
         for row in roster_rows:
+            
+            skills = player_repo.get_player_skills(row["id"])
             d = dict(row)
-            skills_row = db.execute(
-                "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
-            ).fetchone()
-            skills = dict(skills_row) if skills_row else {}
+            # skills_row = db.execute(
+            #     "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
+            # ).fetchone()
+            # skills = dict(skills_row) if skills_row else {}
+            
             grades = player_row_to_grades(d, skills, d["status"])
             ratings = _compute_ratings(skills, d.get("throws", "R"))
             g = grades.model_dump()
