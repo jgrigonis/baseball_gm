@@ -17,6 +17,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.league.offseason.build_season_stats import build_season
 from src.league.playoffs.play_playoffs import (
     _HOME_MAP_BO7,
     _SEMI_27_36_OFFSETS,
@@ -352,6 +353,16 @@ def sim_playoff(
             if r:
                 results.append({"series": g["series_name"], "result": str(r)})
                 count += 1
+        # Rollup game stats into player_season_stats after each day
+        if results:
+            try:
+                build_season(conn, season_id)
+            except Exception as _bs_err:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                print(f"build_season non-fatal error (will retry next day): {_bs_err}")
         return count
 
     if mode == "game":

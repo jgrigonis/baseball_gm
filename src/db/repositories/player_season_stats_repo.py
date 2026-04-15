@@ -9,7 +9,7 @@ class PlayerSeasonStatsRepository:
         """Return the max bat_games_played across all players in a season (regular season only)."""
         row = self.conn.execute(
             """SELECT MAX(bat_games_played) as tg FROM player_season_stats
-               WHERE season_id = %s AND is_postseason = 0""",
+               WHERE season_id = %s AND NOT is_postseason""",
             (season_id,),
         ).fetchone()
         return row["tg"] or 1
@@ -27,7 +27,7 @@ class PlayerSeasonStatsRepository:
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst
                  ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.bat_ab >= 1""",
+               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.bat_ab >= 1""",
             (league_id, season_id),
         ).fetchall()
         return [dict(r) for r in rows]
@@ -36,7 +36,7 @@ class PlayerSeasonStatsRepository:
         """Return a player's regular season stat row as a dict, or None."""
         row = self.conn.execute(
             """SELECT * FROM player_season_stats
-               WHERE player_id = %s AND season_id = %s AND is_postseason = 0""",
+               WHERE player_id = %s AND season_id = %s AND NOT is_postseason""",
             (player_id, season_id),
         ).fetchone()
         return dict(row) if row else None
@@ -51,7 +51,7 @@ class PlayerSeasonStatsRepository:
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst
                  ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.bat_ab >= %s
+               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.bat_ab >= %s
                ORDER BY avg DESC LIMIT 1""",
             (league_id, season_id, min_ab),
         ).fetchone()
@@ -67,7 +67,7 @@ class PlayerSeasonStatsRepository:
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst
                  ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.pitch_outs >= %s
+               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.pitch_outs >= %s
                ORDER BY era ASC LIMIT 1""",
             (league_id, season_id, min_outs),
         ).fetchone()
@@ -81,7 +81,7 @@ class PlayerSeasonStatsRepository:
                       pitch_games_started, pitch_outs, pitch_earned_runs,
                       pitch_wins, pitch_losses, pitch_saves
                FROM player_season_stats
-               WHERE season_id = %s AND is_postseason = 0
+               WHERE season_id = %s AND NOT is_postseason
                  AND player_id IN (
                      SELECT player_id FROM team_players WHERE team_id = %s
                  )""",
@@ -94,7 +94,7 @@ class PlayerSeasonStatsRepository:
         row = self.conn.execute(
             """SELECT MAX(bat_games_played) as tg FROM player_season_stats
                WHERE season_id = %s AND is_postseason = %s AND team_id = %s""",
-            (season_id, 1 if is_postseason else 0, team_id),
+            (season_id, is_postseason, team_id),
         ).fetchone()
         return row["tg"] or 0
 
@@ -106,7 +106,7 @@ class PlayerSeasonStatsRepository:
                JOIN players p ON p.id = pss.player_id
                WHERE pss.season_id = %s AND pss.is_postseason = %s
                  AND pss.team_id = %s""",
-            (season_id, 1 if is_postseason else 0, team_id),
+            (season_id, is_postseason, team_id),
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -123,7 +123,7 @@ class PlayerSeasonStatsRepository:
                JOIN teams t ON t.id = pss.team_id
                JOIN league_season_teams lst
                  ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.pitch_outs >= 9""",
+               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.pitch_outs >= 9""",
             (league_id, season_id),
         ).fetchall()
         return [dict(r) for r in rows]

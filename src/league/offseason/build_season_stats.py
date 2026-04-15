@@ -2,8 +2,10 @@
 """
 Populate the player_season_stats rollup table from player_game_stats.
 
-Run after each season completes, or use --rebuild to fully reconstruct
+Run after each day completes, or use --rebuild to fully reconstruct
 from scratch (e.g. after a schema change or data correction).
+
+This is called in sim_next each day of the league.
 
 Usage:
     # Incremental — build stats for one season
@@ -29,7 +31,7 @@ CREATE TABLE IF NOT EXISTS player_season_stats (
     player_id       TEXT    NOT NULL,
     season_id       TEXT    NOT NULL,
     team_id         TEXT    NOT NULL,
-    is_postseason   INTEGER NOT NULL DEFAULT 0 CHECK (is_postseason IN (0, 1)),
+    is_postseason   BOOLEAN NOT NULL DEFAULT FALSE,
 
     bat_games_played        INTEGER NOT NULL DEFAULT 0,
     bat_games_started       INTEGER NOT NULL DEFAULT 0,
@@ -121,7 +123,7 @@ SELECT
     pgs.player_id,
     g.season_id,
     pgs.team_id,
-    CASE WHEN g.series_id IS NULL THEN 0 ELSE 1 END AS is_postseason,
+    g.series_id IS NOT NULL AS is_postseason,
 
     SUM(pgs.bat_game_played),
     SUM(pgs.bat_game_started),
@@ -179,7 +181,7 @@ GROUP BY
     pgs.player_id,
     g.season_id,
     pgs.team_id,
-    CASE WHEN g.series_id IS NULL THEN 0 ELSE 1 END
+    g.series_id IS NOT NULL
 """
 
 

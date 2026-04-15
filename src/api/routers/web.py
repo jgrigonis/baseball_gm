@@ -844,7 +844,6 @@ def standings(
     gm: GM,
 ):
     ctx = _shell_ctx(request, db, gm, league_id, "standings", user)
-    print(f"DEBUG KEYS: {ctx.keys()}")
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
     teams = []

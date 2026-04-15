@@ -19,8 +19,7 @@ CREATE TABLE IF NOT EXISTS leagues (
                              CHECK (mode IN ('blitz', 'longform')),
     num_teams            INTEGER NOT NULL DEFAULT 30,
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
-    reentry_enabled      BOOLEAN NOT NULL DEFAULT FALSE
-                             CHECK (reentry_enabled IN (FALSE, TRUE)),
+    reentry_enabled      BOOLEAN NOT NULL DEFAULT FALSE,
     pace_control         TEXT NOT NULL DEFAULT 'timer'
                              CHECK (pace_control IN ('timer', 'confirmed', 'scheduled')),
     state                TEXT NOT NULL DEFAULT 'lobby'
@@ -66,6 +65,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TEXT NOT NULL DEFAULT (NOW())
 );
 
+-- 1 row per player
 CREATE TABLE IF NOT EXISTS players (
     id         TEXT PRIMARY KEY,
     first_name TEXT NOT NULL,
@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS league_seasons (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
+-- Track completed offseason steps for each season
 CREATE TABLE IF NOT EXISTS offseason_steps (
     season_id TEXT NOT NULL,
     step TEXT NOT NULL,
@@ -117,7 +118,6 @@ CREATE TABLE IF NOT EXISTS offseason_steps (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
--- 1 row per player
 CREATE TABLE IF NOT EXISTS series (
     id TEXT PRIMARY KEY,
     season_id TEXT NOT NULL,
@@ -246,12 +246,11 @@ CREATE TABLE IF NOT EXISTS player_injury_log (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
--- Track completed offseason steps for each season
 CREATE TABLE IF NOT EXISTS player_season_stats (
     player_id       TEXT    NOT NULL,
     season_id       TEXT    NOT NULL,
     team_id         TEXT    NOT NULL,
-    is_postseason   INTEGER NOT NULL DEFAULT 0 CHECK (is_postseason IN (0, 1)),
+    is_postseason   BOOLEAN NOT NULL DEFAULT FALSE,
  
     -- ── Batting ──────────────────────────────────────────────────────────────
     bat_games_played    INTEGER NOT NULL DEFAULT 0,
@@ -644,6 +643,7 @@ CREATE TABLE IF NOT EXISTS player_game_fielding (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+-- 1 row per player per game
 CREATE TABLE IF NOT EXISTS player_game_stats (
     game_id TEXT NOT NULL,
     player_id TEXT NOT NULL,

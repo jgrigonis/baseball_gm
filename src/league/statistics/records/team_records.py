@@ -402,7 +402,7 @@ WHIP_EXPR = (
 
 
 def season_counting(conn, args, team_id, expr, bat_or_pitch="bat", fmt_fn=None):
-    ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
+    ps_filter = "AND NOT pss.is_postseason" if args.regular_season else ""
     sql = f"""
         SELECT
             p.first_name || ' ' || p.last_name,
@@ -425,7 +425,7 @@ def season_counting(conn, args, team_id, expr, bat_or_pitch="bat", fmt_fn=None):
 
 
 def season_rate_desc(conn, args, team_id, expr, qualify_expr, fmt=".3f"):
-    ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
+    ps_filter = "AND NOT pss.is_postseason" if args.regular_season else ""
     sql = f"""
         WITH {games_per_team_cte(args.regular_season)}
         SELECT
@@ -451,7 +451,7 @@ def season_rate_desc(conn, args, team_id, expr, qualify_expr, fmt=".3f"):
 
 
 def season_rate_asc(conn, args, team_id, expr, qualify_expr, fmt=".2f"):
-    ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
+    ps_filter = "AND NOT pss.is_postseason" if args.regular_season else ""
     sql = f"""
         WITH {games_per_team_cte(args.regular_season)}
         SELECT

@@ -116,7 +116,7 @@ def counting_query(
     Aggregate a counting stat from player_season_stats across all seasons.
     For traded players, sums across all team stints within the season.
     """
-    ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
+    ps_filter = "AND NOT pss.is_postseason" if args.regular_season else ""
     order = order_expr or select_expr
 
     sql = f"""
@@ -147,7 +147,7 @@ def rate_query_desc(
     Qualified rate stat — higher is better (AVG, OBP, SLG).
     qualify_expr is a HAVING clause fragment using aggregated columns.
     """
-    ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
+    ps_filter = "AND NOT pss.is_postseason" if args.regular_season else ""
     having = f"HAVING {qualify_expr}" if qualify_expr else ""
 
     sql = f"""
@@ -179,7 +179,7 @@ def rate_query_asc(conn, args, select_expr, qualify_expr, fmt=".2f"):
     """
     Qualified rate stat — lower is better (ERA, WHIP).
     """
-    ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
+    ps_filter = "AND NOT pss.is_postseason" if args.regular_season else ""
 
     sql = f"""
         WITH {games_per_team_cte(args.regular_season)}

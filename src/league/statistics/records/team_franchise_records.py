@@ -296,7 +296,7 @@ def season_records_query(
     Best single-season team total for a stat.
     Returns (team_name, season_year, value).
     """
-    ps_filter = "AND pss.is_postseason = 0" if args.regular_season else ""
+    ps_filter = "AND NOT pss.is_postseason" if args.regular_season else ""
     team_filter = "AND pss.team_id = %s" if team_id else ""
     params = [team_id] if team_id else []
 
