@@ -1,3 +1,9 @@
+0.5.2
+-----
+
+- Big web.py refactor, changing SQL types
+
+
 0.5.1
 -----
 
