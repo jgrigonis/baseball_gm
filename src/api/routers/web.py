@@ -1041,14 +1041,15 @@ def draft_tab(
     # Load GM's current roster for the right-hand column
     players = []
     if gm["team_id"]:
-        roster_rows = db.execute(
-            """SELECT p.*, ps.status
-               FROM players p
-               JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
-               JOIN player_status ps ON ps.player_id = p.id
-               ORDER BY ps.status, p.last_name""",
-            (gm["team_id"],),
-        ).fetchall()
+        roster_rows = player_repo.get_team_roster_with_skills(gm["team_id"])
+        # roster_rows = db.execute(
+        #     """SELECT p.*, ps.status
+        #        FROM players p
+        #        JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
+        #        JOIN player_status ps ON ps.player_id = p.id
+        #        ORDER BY ps.status, p.last_name""",
+        #     (gm["team_id"],),
+        # ).fetchall()
         for row in roster_rows:
 
             skills = player_repo.get_player_skills(row["id"])
@@ -2019,13 +2020,14 @@ async def save_rotation(
     body = await request.json()
     rotation = body.get("rotation", [])
     pointer_pid = body.get("pointer_pid", None)
-
-    season_row = db.execute(
-        """SELECT s.id FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
+    season_repo = SeasonRepository(db)
+    season_row = season_repo.get_most_recent_season_from_league(league_id)
+    # season_row = db.execute(
+    #     """SELECT s.id FROM seasons s
+    #        JOIN league_seasons ls ON ls.season_id = s.id
+    #        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+    #     (league_id,),
+    # ).fetchone()
     if not season_row:
         return JSONResponse({"detail": "No active season"}, status_code=400)
     season_id = season_row["id"]
@@ -2072,16 +2074,17 @@ async def save_bullpen(
     # user = _resolve_user(db, gm_session)
     # if not user:
     #     return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    season_repo = SeasonRepository(db)
+    # Resolve Season
+    season_row = season_repo.get_most_recent_season_from_league(league_id)
+    # season = db.execute(
+    #     """SELECT s.id FROM seasons s 
+    #        JOIN league_seasons ls ON ls.season_id = s.id 
+    #        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+    #     (league_id,),
+    # ).fetchone()
 
-    # 1. Resolve Season (You could eventually move this to a dependency too!)
-    season = db.execute(
-        """SELECT s.id FROM seasons s 
-           JOIN league_seasons ls ON ls.season_id = s.id 
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
-
-    if not season:
+    if not season_row:
         raise HTTPException(status_code=400, detail="No active season")
 
     # gm = _resolve_gm(db, user["id"], league_id)
@@ -2098,7 +2101,7 @@ async def save_bullpen(
     #     (league_id,),
     # ).fetchone()
 
-    season_id = season["id"]
+    season_id = season_row["id"]
 
     # season_id = season_id["id"] if season_id else None
     # if not season_id:

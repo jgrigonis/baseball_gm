@@ -152,6 +152,16 @@ class SeasonRepository:
         ).fetchone()
         return row["id"] if row else None
 
+    def get_most_recent_season_from_league(self, league_id: str) -> str | None:
+        """Return the most recent season from the league."""
+        row = self.conn.execute(
+            """SELECT s.id FROM seasons s
+                JOIN league_seasons ls ON ls.season_id = s.id
+                WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        return row["id"] if row else None
+
     def get_team_count(self, season_id: str) -> int:
         """Return the number of distinct teams in a season."""
         row = self.conn.execute(
