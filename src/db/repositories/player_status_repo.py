@@ -59,6 +59,22 @@ class PlayerStatusRepository:
         ).fetchall()
         return [r["player_id"] for r in rows]
 
+    def get_player_ids_for_team(self, team_id: str) -> set[str]:
+        """Return all player_ids on a team (from team_players)."""
+        rows = self.conn.execute(
+            "SELECT player_id FROM team_players WHERE team_id = %s", (team_id,)
+        ).fetchall()
+        return {r["player_id"] for r in rows}
+
+    def set_40man_roster(self, team_player_ids: set[str], forty_man_ids: list[str]) -> None:
+        """Set 40-man/minors status for every player on a team."""
+        forty_set = set(forty_man_ids)
+        assignments = {
+            pid: ("40man" if pid in forty_set else "minors")
+            for pid in team_player_ids
+        }
+        self.bulk_set(assignments)
+
     def bulk_set(self, assignments: dict[str, str], since: date | None = None) -> None:
         """
         Set status for many players at once.

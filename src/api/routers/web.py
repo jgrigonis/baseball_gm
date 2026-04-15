@@ -1231,38 +1231,18 @@ def save_roster_put(
             status_code=422,
         )
 
-    # Verify all submitted players belong to this team
-    team_player_ids = {
-        r["player_id"]
-        for r in db.execute(
-            "SELECT player_id FROM team_players WHERE team_id = %s", (team_id,)
-        ).fetchall()
-    }
+    from src.db.repositories.player_status_repo import PlayerStatusRepository
+
+    status_repo = PlayerStatusRepository(db)
+    team_player_ids = status_repo.get_player_ids_for_team(team_id)
+
     for pid in forty_man_ids:
         if pid not in team_player_ids:
             return JSONResponse(
                 {"detail": f"Player {pid} not on this team"}, status_code=422
             )
 
-    forty_set = set(forty_man_ids)
-
-    # Update statuses
-    for pid in team_player_ids:
-        new_status = "40man" if pid in forty_set else "minors"
-        existing = db.execute(
-            "SELECT status FROM player_status WHERE player_id = %s", (pid,)
-        ).fetchone()
-        if existing:
-            db.execute(
-                "UPDATE player_status SET status = %s WHERE player_id = %s",
-                (new_status, pid),
-            )
-        else:
-            db.execute(
-                "INSERT INTO player_status (player_id, status, since) VALUES (%s, %s, NOW())",
-                (pid, new_status),
-            )
-
+    status_repo.set_40man_roster(team_player_ids, forty_man_ids)
     db.commit()
     return JSONResponse({"saved": len(forty_man_ids)})
 
