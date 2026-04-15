@@ -540,21 +540,23 @@ def leagues_index(
     db: DB,
     user: User,
 ):
+    gm_repo = GMRepository(db)
     # 1. Identity Reclaim (Auto-linking)
     # We still need this for now since we aren't doing 2FA/Logins yet,
     # but the dependency ensures 'user' is already valid.
     # Auto-reclaim: any gm row with same display_name but different user_id
     # gets reassigned to the current user. This handles the common case where
     # the browser cookie was cleared and a new guest identity was created.
-    db.execute(
-        """UPDATE gms SET user_id = %s
-           WHERE is_ai = 0
-             AND user_id != %s
-             AND user_id IN (
-               SELECT id FROM users WHERE display_name = %s
-             )""",
-        (user["id"], user["id"], user["display_name"]),
-    )
+    gm_repo.auto_link_gm_account(user["id"], user["display_name"])
+    # db.execute(
+    #     """UPDATE gms SET user_id = %s
+    #        WHERE is_ai = 0
+    #          AND user_id != %s
+    #          AND user_id IN (
+    #            SELECT id FROM users WHERE display_name = %s
+    #          )""",
+    #     (user["id"], user["id"], user["display_name"]),
+    # )
     db.commit()
 
     # user = _resolve_user(db, gm_session)
@@ -572,14 +574,15 @@ def leagues_index(
     # db.commit()
 
     # 2. Fetch User's Leagues
-    rows = db.execute(
-        """SELECT l.id, l.name, l.state, l.mode, l.created_at 
-           FROM leagues l
-           JOIN gms g ON g.league_id = l.id
-           WHERE g.user_id = %s AND g.is_ai = 0
-           ORDER BY l.created_at DESC""",
-        (user["id"],),
-    ).fetchall()
+    rows = gm_repo.get_users_leagues(user["id"])
+    # rows = db.execute(
+    #     """SELECT l.id, l.name, l.state, l.mode, l.created_at 
+    #        FROM leagues l
+    #        JOIN gms g ON g.league_id = l.id
+    #        WHERE g.user_id = %s AND g.is_ai = 0
+    #        ORDER BY l.created_at DESC""",
+    #     (user["id"],),
+    # ).fetchall()
 
     return templates.TemplateResponse(
         request,
