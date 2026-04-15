@@ -42,6 +42,7 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
@@ -2771,124 +2772,47 @@ def season_summary(
     ctx = _shell_ctx(request, db, gm, league_id, user)
     my_team_id = gm["team_id"] if gm else None
 
+    season_repo = SeasonRepository(db)
+    series_repo = SeriesRepository(db)
+    tg_repo = TeamGameRepository(db)
+    game_repo = GameRepository(db)
+    pss_repo = PlayerSeasonStatsRepository(db)
+
     # Use explicit season_id (from history link) or fall back to last season with series
     if not season_id:
-        row = db.execute(
-            """SELECT s.id FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s
-                 AND EXISTS (SELECT 1 FROM series sr WHERE sr.season_id = s.id)
-               ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
-        season_id = row["id"] if row else ctx["season_id"]
+        season_id = season_repo.get_last_with_series(league_id) or ctx["season_id"]
 
     # My team record
     my_record = None
     if my_team_id and season_id:
-        r = db.execute(
-            """SELECT SUM(tgs.win) as w, SUM(tgs.loss) as l
-               FROM team_game_stats tgs
-               JOIN games g ON g.id = tgs.game_id
-               WHERE tgs.team_id = %s AND g.season_id = %s AND g.series_id IS NULL""",
-            (my_team_id, season_id),
-        ).fetchone()
-        if r:
-            my_record = {"w": r["w"] or 0, "l": r["l"] or 0}
+        my_record = tg_repo.get_team_wl(my_team_id, season_id)
 
     # Champion
     champion = None
     if season_id:
-        finals = db.execute(
-            "SELECT id FROM series WHERE season_id = %s AND name = 'Finals'",
-            (season_id,),
-        ).fetchone()
-        if finals:
-            champ_row = db.execute(
-                """SELECT winner_id, COUNT(*) as wins FROM games
-                   WHERE series_id = %s AND completed = 1
-                   GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
-                (finals["id"],),
-            ).fetchone()
-            if champ_row and champ_row["wins"] >= 4:
-                t = db.execute(
-                    "SELECT city, mascot FROM teams WHERE id = %s",
-                    (champ_row["winner_id"],),
-                ).fetchone()
-                if t:
-                    champion = {
-                        "team_id": champ_row["winner_id"],
-                        "name": f"{t['city']} {t['mascot']}",
-                        "is_mine": champ_row["winner_id"] == my_team_id,
-                    }
+        champ = series_repo.get_champion(season_id)
+        if champ:
+            champion = {
+                "team_id": champ["team_id"],
+                "name": f"{champ['city']} {champ['mascot']}",
+                "is_mine": champ["team_id"] == my_team_id,
+            }
 
     # My playoff result
     my_playoff_result = None
     if my_team_id and season_id:
-        for series_name, best_of in [
-            ("Finals", 7),
-            ("[1,8]v[4,5]", 7),
-            ("[2,7]v[3,6]", 7),
-            ("1v8", 5),
-            ("2v7", 5),
-            ("3v6", 5),
-            ("4v5", 5),
-        ]:
-            sid = db.execute(
-                "SELECT id FROM series WHERE season_id = %s AND name = %s",
-                (season_id, series_name),
-            ).fetchone()
-            if not sid:
-                continue
-            appeared = db.execute(
-                """SELECT 1 FROM games WHERE series_id = %s
-                   AND (home_team_id = %s OR away_team_id = %s) LIMIT 1""",
-                (sid["id"], my_team_id, my_team_id),
-            ).fetchone()
-            if appeared:
-                wins_needed = {5: 3, 7: 4}[best_of]
-                wins_row = db.execute(
-                    """SELECT winner_id, COUNT(*) as wins FROM games
-                       WHERE series_id = %s AND completed = 1 AND winner_id = %s
-                       GROUP BY winner_id""",
-                    (sid["id"], my_team_id),
-                ).fetchone()
-                my_wins = wins_row["wins"] if wins_row else 0
-                if my_wins >= wins_needed:
-                    my_playoff_result = f"Won {series_name}"
-                else:
-                    my_playoff_result = f"Eliminated in {series_name}"
-                break
+        my_playoff_result = series_repo.get_team_playoff_result(my_team_id, season_id)
 
     # Stat leaders — compute qualification thresholds from actual games played
     bat_leader = pit_leader = None
     if season_id:
-        games_row = db.execute(
-            """SELECT COUNT(*) as g FROM games
-               WHERE season_id = %s AND completed = 1 AND series_id IS NULL""",
-            (season_id,),
-        ).fetchone()
-        num_teams_row = db.execute(
-            "SELECT COUNT(DISTINCT team_id) as n FROM league_season_teams WHERE season_id = %s",
-            (season_id,),
-        ).fetchone()
-        num_teams = num_teams_row["n"] or 30
-        games_total = games_row["g"] or 0
+        games_total = game_repo.get_completed_regular_season_count(season_id)
+        num_teams = season_repo.get_team_count(season_id) or 30
         games_per_team = (games_total * 2) / num_teams if num_teams else 0
         min_ab = int(3.1 * games_per_team)
         min_outs = int(3 * games_per_team)
 
-        br = db.execute(
-            """SELECT p.first_name, p.last_name, t.city, t.mascot,
-                      CAST(pss.bat_hits AS REAL)/NULLIF(pss.bat_ab,0) as avg
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=%s
-               WHERE pss.season_id=%s AND pss.is_postseason=0 AND pss.bat_ab >= %s
-               ORDER BY avg DESC LIMIT 1""",
-            (league_id, season_id, min_ab),
-        ).fetchone()
+        br = pss_repo.get_batting_leader(league_id, season_id, min_ab)
         if br:
             bat_leader = {
                 "name": f"{br['first_name']} {br['last_name']}",
@@ -2897,17 +2821,7 @@ def season_summary(
                 "label": "AVG",
             }
 
-        pr = db.execute(
-            """SELECT p.first_name, p.last_name, t.city, t.mascot,
-                      CAST(pss.pitch_earned_runs*27 AS REAL)/NULLIF(pss.pitch_outs,0) as era
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst ON lst.team_id=pss.team_id AND lst.season_id=pss.season_id AND lst.league_id=%s
-               WHERE pss.season_id=%s AND pss.is_postseason=0 AND pss.pitch_outs >= %s
-               ORDER BY era ASC LIMIT 1""",
-            (league_id, season_id, min_outs),
-        ).fetchone()
+        pr = pss_repo.get_pitching_leader(league_id, season_id, min_outs)
         if pr:
             pit_leader = {
                 "name": f"{pr['first_name']} {pr['last_name']}",
@@ -2919,10 +2833,8 @@ def season_summary(
     # Season year
     season_year = None
     if season_id:
-        sy = db.execute(
-            "SELECT year FROM seasons WHERE id = %s", (season_id,)
-        ).fetchone()
-        season_year = sy["year"] if sy else None
+        s = season_repo.get_season(season_id)
+        season_year = s["year"] if s else None
 
     ctx.update(
         {

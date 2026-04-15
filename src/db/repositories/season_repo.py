@@ -140,6 +140,26 @@ class SeasonRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_last_with_series(self, league_id: str) -> str | None:
+        """Return the season_id of the most recent season that has any series records."""
+        row = self.conn.execute(
+            """SELECT s.id FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s
+                 AND EXISTS (SELECT 1 FROM series sr WHERE sr.season_id = s.id)
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        return row["id"] if row else None
+
+    def get_team_count(self, season_id: str) -> int:
+        """Return the number of distinct teams in a season."""
+        row = self.conn.execute(
+            "SELECT COUNT(DISTINCT team_id) as n FROM league_season_teams WHERE season_id = %s",
+            (season_id,),
+        ).fetchone()
+        return row["n"] or 0
+
     def get_seasons_for_league(self, league_id: str) -> list[dict]:
         """Return all seasons for a league, newest first (id, year only)."""
         rows = self.conn.execute(

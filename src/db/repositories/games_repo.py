@@ -155,6 +155,14 @@ class GameRepository:
         )
         # self.conn.commit()
 
+    def get_completed_regular_season_count(self, season_id: str) -> int:
+        """Return the number of completed regular season games."""
+        row = self.conn.execute(
+            "SELECT COUNT(*) as g FROM games WHERE season_id = %s AND completed = 1 AND series_id IS NULL",
+            (season_id,),
+        ).fetchone()
+        return row["g"] or 0
+
     def get_with_teams(self, game_id: str) -> dict | None:
         """Return game row with home/away team city and mascot joined in."""
         row = self.conn.execute(

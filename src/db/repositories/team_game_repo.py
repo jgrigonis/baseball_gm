@@ -295,6 +295,19 @@ class TeamGameRepository:
         runs_allowed = row["runs_allowed"] or 0
         return runs_scored - runs_allowed
 
+    def get_team_wl(self, team_id: str, season_id: str) -> dict | None:
+        """Return {w, l} for a team in a season (regular season only), or None if no games."""
+        row = self.conn.execute(
+            """SELECT SUM(tgs.win) as w, SUM(tgs.loss) as l
+               FROM team_game_stats tgs
+               JOIN games g ON g.id = tgs.game_id
+               WHERE tgs.team_id = %s AND g.season_id = %s AND g.series_id IS NULL""",
+            (team_id, season_id),
+        ).fetchone()
+        if not row or (row["w"] is None and row["l"] is None):
+            return None
+        return {"w": row["w"] or 0, "l": row["l"] or 0}
+
     def get_wl_for_league(self, league_id: str, season_id: str) -> list[dict]:
         """Return W-L-RS per team for a league/season (regular season only, all teams included)."""
         rows = self.conn.execute(
