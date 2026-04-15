@@ -39,6 +39,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
@@ -1623,49 +1624,17 @@ def leaders(
     season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
 
-    def top(rows, key, n=10, asc=False):
-        return sorted(rows, key=lambda r: r[key] or 0, reverse=not asc)[:n]
-
-    def fmt_avg(v):
-        return f"{v:.3f}" if v else ".000"
-
-    def fmt_era(v):
-        return f"{v:.2f}" if v else "0.00"
-
-    def ip_str(outs):
-        o = outs or 0
-        return f"{o//3}.{o%3}"
-
     bat_cats = []
     pit_cats = []
 
     if season_id:
-        # Team games played — basis for qualification thresholds
-        tg_row = db.execute(
-            """SELECT MAX(bat_games_played) as tg FROM player_season_stats
-               WHERE season_id = %s AND is_postseason = 0""",
-            (season_id,),
-        ).fetchone()
-        team_games = tg_row["tg"] or 1
+        pss_repo = PlayerSeasonStatsRepository(db)
 
+        team_games = pss_repo.get_max_games_played(season_id)
         min_ab = int(3.1 * team_games)  # qualify for rate stats
         min_outs = int(3 * team_games)  # 1 IP per team game
 
-        # ── Batting: one query, compute rate stats, build all categories ────────
-        bat_rows = db.execute(
-            """SELECT pss.player_id, p.first_name, p.last_name, t.city, t.mascot, pss.team_id,
-                      pss.bat_ab, pss.bat_hits, pss.bat_doubles, pss.bat_triples,
-                      pss.bat_home_runs, pss.bat_rbi, pss.bat_runs, pss.bat_walks,
-                      pss.bat_strike_outs, pss.bat_stolen_bases, pss.bat_hbp, pss.bat_sac_flys,
-                      pss.bat_games_played
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.bat_ab >= 1""",
-            (league_id, season_id),
-        ).fetchall()
+        bat_rows = pss_repo.get_batting_for_league(league_id, season_id)
 
         batters = []
         for r in bat_rows:
@@ -1782,21 +1751,7 @@ def leaders(
             ),
         ]
 
-        # ── Pitching: one query, compute rate stats, build all categories ──────
-        pit_rows = db.execute(
-            """SELECT pss.player_id, p.first_name, p.last_name, t.city, t.mascot, pss.team_id,
-                      pss.pitch_games_played, pss.pitch_games_started, pss.pitch_wins,
-                      pss.pitch_losses, pss.pitch_saves, pss.pitch_outs,
-                      pss.pitch_hits, pss.pitch_earned_runs, pss.pitch_walks,
-                      pss.pitch_strike_outs, pss.pitch_home_runs
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND pss.is_postseason = 0 AND pss.pitch_outs >= 9""",
-            (league_id, season_id),
-        ).fetchall()
+        pit_rows = pss_repo.get_pitching_for_league(league_id, season_id)
 
         pitchers = []
         for r in pit_rows:
