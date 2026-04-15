@@ -19,6 +19,14 @@ class GMRepository:
         # Tucking this in here ensures every GM always has a profile
         self.conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
 
+    def get_human_team_ids(self, league_id: str) -> set[str]:
+        """Return the set of team_ids belonging to human GMs in a league."""
+        rows = self.conn.execute(
+            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
+            (league_id,),
+        ).fetchall()
+        return {r["team_id"] for r in rows}
+
     def get_by_user_and_league(self, user_id: str, league_id: str) -> dict | None:
         row = self.conn.execute(
             "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
@@ -29,5 +37,6 @@ class GMRepository:
     def set_commissioner(self, gm_id: str, league_id: str):
         """Set the commissioner."""
         self.conn.execute(
-            "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm_id, league_id)
+            "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s",
+            (gm_id, league_id),
         )

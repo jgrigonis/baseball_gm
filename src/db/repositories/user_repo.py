@@ -1,6 +1,7 @@
 # src/db/repositories/user_repo.py
 import uuid
 
+
 class UserRepository:
     def __init__(self, db):
         self.db = db

@@ -165,7 +165,6 @@ class GameRepository:
         ).fetchone()
         return row["count"] if row else 0
 
-
     # This never gets called, except in tests
     def is_completed(self, game_id: str) -> bool:
         """Check if game is completed."""
@@ -177,4 +176,3 @@ class GameRepository:
             return False
 
         return row["completed"] == 1
-

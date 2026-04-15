@@ -17,13 +17,14 @@ from __future__ import annotations
 import uuid
 import traceback
 
-from fastapi import APIRouter, Cookie, Form, Request
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from src.api.dependencies import DB, User, OptionalUser, GM, Commissioner, IsHTMX
 from src.api.schemas import player_row_to_grades, skill_to_grade, BullpenSaveRequest
 from src.api.services.league_start import start_league as _start
+from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -769,7 +770,7 @@ async def save_draft_preferences(
     db: DB,
     user: User,
     gm: GM,
-    #gm_session: str | None = Cookie(default=None),
+    # gm_session: str | None = Cookie(default=None),
 ):
     """
     Save the GM's draft preference list. Called from JS using the session
@@ -785,14 +786,9 @@ async def save_draft_preferences(
     # if not gm:
     #     return JSONResponse({"detail": "Not a member of this league"}, status_code=403)
 
-    # Find the current draft for this league
-    draft = db.execute(
-        """SELECT d.* FROM drafts d
-           JOIN league_seasons ls ON ls.season_id = d.season_id
-           JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
+    draft_repo = DraftRepository(db)
+
+    draft = draft_repo.get_current_for_league(league_id)
     if not draft:
         return JSONResponse({"detail": "No draft found"}, status_code=404)
     if draft["state"] == "complete":
@@ -803,35 +799,12 @@ async def save_draft_preferences(
     if not player_ids:
         return JSONResponse({"detail": "player_ids required"}, status_code=422)
 
-    # Validate all IDs exist (optimized)
-    rows = db.execute(
-        "SELECT id FROM players WHERE id = ANY(%s)", (player_ids,)
-    ).fetchall()
-
-    found_ids = {r["id"] for r in rows}
-    if len(found_ids) != len(set(player_ids)):
-        # Find the first missing one for the error message
-        missing = next(pid for pid in player_ids if pid not in found_ids)
+    missing = draft_repo.validate_player_ids(player_ids)
+    if missing:
         return JSONResponse({"detail": f"Unknown player: {missing}"}, status_code=422)
 
-    # for pid in player_ids:
-    #     if not db.execute("SELECT 1 FROM players WHERE id = %s", (pid,)).fetchone():
-    #         return JSONResponse({"detail": f"Unknown player: {pid}"}, status_code=422)
-
-    # Replace existing preferences atomically
-    with db.cursor() as cur:
-        cur.execute(
-            "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
-            (gm["id"], draft["id"]),
-        )
-        cur.executemany(
-            "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
-            [
-                (gm["id"], draft["id"], pid, rank + 1)
-                for rank, pid in enumerate(player_ids)
-            ],
-        )
-        db.commit()
+    draft_repo.save_preferences(draft["id"], gm["id"], player_ids)
+    db.commit()
 
     return JSONResponse({"saved": len(player_ids)})
 
@@ -996,32 +969,12 @@ def draft_tab(
     # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
 
-    draft = db.execute(
-        """SELECT d.* FROM drafts d
-           JOIN league_seasons ls ON ls.season_id = d.season_id
-           JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
+    draft_repo = DraftRepository(db)
+    draft = draft_repo.get_current_for_league(league_id)
 
     if draft:
-        picked_ids = {
-            r["player_id"]
-            for r in db.execute(
-                "SELECT player_id FROM draft_picks WHERE draft_id = %s",
-                (draft["id"],),
-            ).fetchall()
-        }
-        # Scope board strictly to players belonging to this league.
-        # league_id is set by DraftGenerator when prospects are created.
-        all_players = db.execute(
-            """SELECT p.*, ps.status FROM players p
-               JOIN player_status ps ON ps.player_id = p.id
-               WHERE ps.status = 'prospect'
-               AND p.league_id = %s
-               ORDER BY p.last_name, p.first_name""",
-            (league_id,),
-        ).fetchall()
+        picked_ids = draft_repo.get_picked_ids(draft["id"])
+        all_players = draft_repo.get_prospects(league_id)
 
         board = []
         for row in all_players:
@@ -1043,31 +996,15 @@ def draft_tab(
                 g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
             board.append(g)
 
-        prefs = []
-        if gm:
-            prefs = db.execute(
-                """SELECT dp.player_id FROM draft_preferences dp
-                   WHERE dp.draft_id = %s AND dp.gm_id = %s
-                   ORDER BY dp.rank""",
-                (draft["id"], gm["id"]),
-            ).fetchall()
+        prefs = draft_repo.get_preferences(draft["id"], gm["id"]) if gm else []
 
-        # Pick position from stored draft_order (written by pipeline)
         pick_position = None
         if gm and gm["team_id"]:
-            try:
-                pos_row = db.execute(
-                    "SELECT pick_position FROM draft_order WHERE draft_id = %s AND team_id = %s",
-                    (draft["id"], gm["team_id"]),
-                ).fetchone()
-                if pos_row:
-                    pick_position = pos_row["pick_position"]
-            except Exception:
-                pass  # table doesn't exist yet on older DBs
+            pick_position = draft_repo.get_pick_position(draft["id"], gm["team_id"])
 
         ctx["draft_id"] = draft["id"]
         ctx["board"] = board
-        ctx["preferences"] = [r["player_id"] for r in prefs]
+        ctx["preferences"] = prefs
         ctx["pick_position"] = pick_position
     else:
         ctx["draft_id"] = None
@@ -1127,13 +1064,7 @@ def execute_draft(
     # if not gm:
     #     return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
 
-    draft = db.execute(
-        """SELECT d.* FROM drafts d
-           JOIN league_seasons ls ON ls.season_id = d.season_id
-           JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
+    draft = DraftRepository(db).get_current_for_league(league_id)
 
     if not draft:
         return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
@@ -1177,37 +1108,17 @@ def draft_results(
     # gm = _resolve_gm(db, user["id"], league_id)
     ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
 
-    draft = db.execute(
-        """SELECT d.* FROM drafts d
-           JOIN league_seasons ls ON ls.season_id = d.season_id
-           JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
+    draft_repo = DraftRepository(db)
+    draft = draft_repo.get_current_for_league(league_id)
 
     rounds = []
     my_team_id = gm["team_id"]
 
     if draft:
-        picks = db.execute(
-            """SELECT dp.round, dp.pick_number, dp.team_id, dp.player_id, dp.auto_picked,
-                      p.first_name, p.last_name, p.position,
-                      t.city, t.mascot
-               FROM draft_picks dp
-               JOIN players p ON p.id = dp.player_id
-               JOIN teams t ON t.id = dp.team_id
-               WHERE dp.draft_id = %s
-               ORDER BY dp.pick_number""",
-            (draft["id"],),
-        ).fetchall()
+        picks = draft_repo.get_picks_with_details(draft["id"])
 
-        human_team_ids = {
-            r["team_id"]
-            for r in db.execute(
-                "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
-                (league_id,),
-            ).fetchall()
-        }
+        gm_repo = GMRepository(db)
+        human_team_ids = gm_repo.get_human_team_ids(league_id)
 
         # Group by round
         rounds_map = {}
@@ -1276,7 +1187,8 @@ def save_roster_put(
 ):
     """PUT endpoint for roster save from JS fetch."""
     from fastapi.responses import JSONResponse
-    #import asyncio
+
+    # import asyncio
 
     # user = _resolve_user(db, gm_session)
     # if not user:
