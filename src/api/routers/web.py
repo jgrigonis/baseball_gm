@@ -940,37 +940,37 @@ def dashboard(
     # "is_commissioner": bool(is_commish),
 
 
-def _lobby(request, league_id, db, user, gm):
-    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
-    gms = db.execute(
-        """SELECT g.id, g.display_name, g.is_ai, g.is_away, g.team_id,
-                  t.city, t.mascot
-           FROM gms g LEFT JOIN teams t ON t.id = g.team_id
-           WHERE g.league_id = %s ORDER BY g.created_at""",
-        (league_id,),
-    ).fetchall()
-    return templates.TemplateResponse(
-        request,
-        "dashboard/lobby.html",
-        {
-            "league_id": league_id,
-            "league_name": league["name"],
-            "league_state": "lobby",
-            "join_code": league["join_code"],
-            "num_teams": league["num_teams"],
-            "decision_window_sec": league["decision_window_sec"],
-            "draft_window_sec": (dict(league).get("draft_window_sec") or 300),
-            "reentry_enabled": bool(league["reentry_enabled"]),
-            "pace_control": league["pace_control"],
-            "league_mode": league["mode"],
-            "gm_display_name": gm["display_name"] if gm else user["display_name"],
-            "current_gm_id": gm["id"] if gm else None,
-            "is_commissioner": gm and league["commissioner_gm_id"] == gm["id"],
-            "draft_complete": False,
-            "visible_tabs": [],
-            "gms": [dict(r) for r in gms],
-        },
-    )
+# def _lobby(request, league_id, db, user, gm):
+#     league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+#     gms = db.execute(
+#         """SELECT g.id, g.display_name, g.is_ai, g.is_away, g.team_id,
+#                   t.city, t.mascot
+#            FROM gms g LEFT JOIN teams t ON t.id = g.team_id
+#            WHERE g.league_id = %s ORDER BY g.created_at""",
+#         (league_id,),
+#     ).fetchall()
+#     return templates.TemplateResponse(
+#         request,
+#         "dashboard/lobby.html",
+#         {
+#             "league_id": league_id,
+#             "league_name": league["name"],
+#             "league_state": "lobby",
+#             "join_code": league["join_code"],
+#             "num_teams": league["num_teams"],
+#             "decision_window_sec": league["decision_window_sec"],
+#             "draft_window_sec": (dict(league).get("draft_window_sec") or 300),
+#             "reentry_enabled": bool(league["reentry_enabled"]),
+#             "pace_control": league["pace_control"],
+#             "league_mode": league["mode"],
+#             "gm_display_name": gm["display_name"] if gm else user["display_name"],
+#             "current_gm_id": gm["id"] if gm else None,
+#             "is_commissioner": gm and league["commissioner_gm_id"] == gm["id"],
+#             "draft_complete": False,
+#             "visible_tabs": [],
+#             "gms": [dict(r) for r in gms],
+#         },
+#     )
 
 
 # ── Tab: Draft ─────────────────────────────────────────────────────────────────
