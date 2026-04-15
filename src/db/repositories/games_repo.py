@@ -155,6 +155,30 @@ class GameRepository:
         )
         # self.conn.commit()
 
+    def get_with_teams(self, game_id: str) -> dict | None:
+        """Return game row with home/away team city and mascot joined in."""
+        row = self.conn.execute(
+            """SELECT g.*, ht.city as home_city, ht.mascot as home_mascot,
+                      at.city as away_city, at.mascot as away_mascot
+               FROM games g
+               JOIN teams ht ON ht.id = g.home_team_id
+               JOIN teams at ON at.id = g.away_team_id
+               WHERE g.id = %s""",
+            (game_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_events(self, game_id: str) -> list[dict]:
+        """Return all event log entries for a game in order."""
+        rows = self.conn.execute(
+            """SELECT event_type, inning, half, reason, detail, team_id
+               FROM game_events
+               WHERE game_id = %s
+               ORDER BY id""",
+            (game_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_series_games(self, series_id: str) -> list[dict]:
         """Return all games for a playoff series, ordered by date."""
         rows = self.conn.execute(

@@ -45,6 +45,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
@@ -2699,75 +2700,30 @@ def game_panel(
     my_team_id = gm["team_id"]
     # print(f"DEBUG: My team ID: {my_team_id}")
 
-    game = db.execute(
-        """SELECT g.*, ht.city as home_city, ht.mascot as home_mascot,
-                  at.city as away_city, at.mascot as away_mascot
-           FROM games g
-           JOIN teams ht ON ht.id = g.home_team_id
-           JOIN teams at ON at.id = g.away_team_id
-           WHERE g.id = %s""",
-        (game_id,),
-    ).fetchone()
+    game_repo = GameRepository(db)
+    pgs_repo = PlayerGameRepository(db)
+
+    game = game_repo.get_with_teams(game_id)
     if not game:
         return HTMLResponse("Game not found", status_code=404)
-    game = dict(game)
 
-    # Box score — batting
-    bat_rows = db.execute(
-        """SELECT p.first_name, p.last_name, pgs.team_id,
-                  pgs.bat_ab as "AB", pgs.bat_runs as "R", pgs.bat_hits as "H",
-                  pgs.bat_doubles as doubles, pgs.bat_triples as triples,
-                  pgs.bat_home_runs as "HR", pgs.bat_rbi as "RBI",
-                  pgs.bat_walks as "BB", pgs.bat_strike_outs as "K",
-                  pgs.bat_stolen_bases as "SB", pgs.bat_hbp as "HBP",
-                  pgs.bat_sac_flys as "SF",
-                  pgs.bat_game_started as started
-           FROM player_game_stats pgs
-           JOIN players p ON p.id = pgs.player_id
-           WHERE pgs.game_id = %s AND pgs.bat_ab > 0
-           ORDER BY pgs.team_id, pgs.bat_game_started DESC, p.last_name""",
-        (game_id,),
-    ).fetchall()
+    # Box score
+    bat_rows = pgs_repo.get_batting_box_score(game_id)
+    pit_rows = pgs_repo.get_pitching_box_score(game_id)
 
-    # Box score — pitching
-    pit_rows = db.execute(
-        """SELECT p.first_name, p.last_name, pgs.team_id,
-                  pgs.pitch_outs as outs, pgs.pitch_hits as "H",
-                  pgs.pitch_runs as "R", pgs.pitch_earned_runs as "ER",
-                  pgs.pitch_walks as "BB", pgs.pitch_strike_outs as "K",
-                  pgs.pitch_home_runs as "HR", pgs.pitch_win as "W",
-                  pgs.pitch_loss as "L", pgs.pitch_save as "SV",
-                  pgs.pitch_game_started as started
-           FROM player_game_stats pgs
-           JOIN players p ON p.id = pgs.player_id
-           WHERE pgs.game_id = %s AND pgs.pitch_outs > 0
-           ORDER BY pgs.team_id, pgs.pitch_game_started DESC, pgs.pitch_outs DESC""",
-        (game_id,),
-    ).fetchall()
-
-    # Format pitching IP
     def fmt_ip(outs):
         return f"{outs//3}.{outs%3}"
 
-    home_bat = [dict(r) for r in bat_rows if r["team_id"] == game["home_team_id"]]
-    away_bat = [dict(r) for r in bat_rows if r["team_id"] == game["away_team_id"]]
-    home_pit = [dict(r) for r in pit_rows if r["team_id"] == game["home_team_id"]]
-    away_pit = [dict(r) for r in pit_rows if r["team_id"] == game["away_team_id"]]
+    home_bat = [r for r in bat_rows if r["team_id"] == game["home_team_id"]]
+    away_bat = [r for r in bat_rows if r["team_id"] == game["away_team_id"]]
+    home_pit = [r for r in pit_rows if r["team_id"] == game["home_team_id"]]
+    away_pit = [r for r in pit_rows if r["team_id"] == game["away_team_id"]]
     for p in home_pit + away_pit:
         p["IP"] = fmt_ip(p["outs"] or 0)
 
     # Event log
-    events = db.execute(
-        """SELECT ge.event_type, ge.inning, ge.half, ge.reason,
-                  ge.detail, ge.team_id
-           FROM game_events ge
-           WHERE ge.game_id = %s
-           ORDER BY ge.id""",
-        (game_id,),
-    ).fetchall()
     events_out = []
-    for e in events:
-        ed = dict(e)
+    for ed in game_repo.get_events(game_id):
         if ed.get("detail"):
             try:
                 ed["detail_parsed"] = json.loads(ed["detail"])

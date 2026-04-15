@@ -362,3 +362,40 @@ class PlayerGameRepository:
         f.chances = f.putouts + f.assists + f.errors
 
         return s
+
+    def get_batting_box_score(self, game_id: str) -> list[dict]:
+        """Return batting lines for a game box score (players with at-bats), ordered for display."""
+        rows = self.conn.execute(
+            """SELECT p.first_name, p.last_name, pgs.team_id,
+                      pgs.bat_ab as "AB", pgs.bat_runs as "R", pgs.bat_hits as "H",
+                      pgs.bat_doubles as doubles, pgs.bat_triples as triples,
+                      pgs.bat_home_runs as "HR", pgs.bat_rbi as "RBI",
+                      pgs.bat_walks as "BB", pgs.bat_strike_outs as "K",
+                      pgs.bat_stolen_bases as "SB", pgs.bat_hbp as "HBP",
+                      pgs.bat_sac_flys as "SF",
+                      pgs.bat_game_started as started
+               FROM player_game_stats pgs
+               JOIN players p ON p.id = pgs.player_id
+               WHERE pgs.game_id = %s AND pgs.bat_ab > 0
+               ORDER BY pgs.team_id, pgs.bat_game_started DESC, p.last_name""",
+            (game_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_pitching_box_score(self, game_id: str) -> list[dict]:
+        """Return pitching lines for a game box score (pitchers with outs recorded), ordered for display."""
+        rows = self.conn.execute(
+            """SELECT p.first_name, p.last_name, pgs.team_id,
+                      pgs.pitch_outs as outs, pgs.pitch_hits as "H",
+                      pgs.pitch_runs as "R", pgs.pitch_earned_runs as "ER",
+                      pgs.pitch_walks as "BB", pgs.pitch_strike_outs as "K",
+                      pgs.pitch_home_runs as "HR", pgs.pitch_win as "W",
+                      pgs.pitch_loss as "L", pgs.pitch_save as "SV",
+                      pgs.pitch_game_started as started
+               FROM player_game_stats pgs
+               JOIN players p ON p.id = pgs.player_id
+               WHERE pgs.game_id = %s AND pgs.pitch_outs > 0
+               ORDER BY pgs.team_id, pgs.pitch_game_started DESC, pgs.pitch_outs DESC""",
+            (game_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
