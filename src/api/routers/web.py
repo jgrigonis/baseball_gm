@@ -2033,15 +2033,9 @@ async def save_rotation(
     season_id = season_row["id"]
     team_id = gm["team_id"]
 
-    season_start_row = db.execute(
-        "SELECT MIN(game_date) as start FROM games WHERE season_id = %s",
-        (season_id,),
-    ).fetchone()
-    effective_date = (
-        season_start_row["start"]
-        if season_start_row and season_start_row["start"]
-        else "2000-01-01"
-    )
+    league = LeagueRepository(db).get_by_id(league_id)
+    league_state = league["state"] if league else "lobby"
+    effective_date = _current_league_date(db, season_id, league_state)
 
     # Find where this player sits in the new rotation (1-based index)
     try:
@@ -2107,15 +2101,9 @@ async def save_bullpen(
     # if not season_id:
     #     return JSONResponse({"detail": "No active season"}, status_code=400)
 
-    season_start_row = db.execute(
-        "SELECT MIN(game_date) as start FROM games WHERE season_id = %s",
-        (season_id,),
-    ).fetchone()
-    effective_date = (
-        season_start_row["start"]
-        if season_start_row and season_start_row["start"]
-        else "2000-01-01"
-    )
+    league = LeagueRepository(db).get_by_id(league_id)
+    league_state = league["state"] if league else "preseason"
+    effective_date = _current_league_date(db, season_id, league_state)
 
     # Format assignments for the Repo
     # We transform {"player_id": "role"} -> [{"player_id": "...", "role": "..."}]
