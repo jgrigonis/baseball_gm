@@ -79,8 +79,23 @@ def tab_response(request: Request, htmx: bool, template_name: str, ctx: dict):
 
 def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     """Return the next unplayed game date, or last played date if season is over."""
-    if not season_id or state not in ("preseason", "season", "playoffs"):
+    if not season_id:
         return None
+    if state not in ("draft", "preseason", "season", "playoffs"):
+        return None
+    if state == "draft":
+        # print(season_id)
+        row = db.execute(
+            "SELECT year FROM seasons WHERE id = %s",
+            (season_id,),
+        ).fetchone()
+        if row:
+            year = row["year"] 
+            # print(f"{year}-04-01")
+            return f"{year}-04-01"
+        else:
+            return None
+    
     # Next unplayed regular season game
     row = db.execute(
         "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
