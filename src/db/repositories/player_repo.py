@@ -240,14 +240,13 @@ class PlayerRepository:
             position=identity_row["position"],
             skills=skills,
         )
-    
+
     def get_player_skills(self, player_id: str) -> dict:
         """Return the player's skill dict, or an empty dict if none found."""
         row = self.conn.execute(
             "SELECT * FROM player_skills WHERE player_id = %s", (player_id,)
         ).fetchone()
         return dict(row) if row else {}
-
 
     def get_skill_history(self, player_id: str) -> list[dict]:
         """

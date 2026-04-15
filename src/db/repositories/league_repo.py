@@ -48,6 +48,12 @@ class LeagueRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_by_id(self, league_id: str) -> dict | None:
+        row = self.conn.execute(
+            "SELECT * FROM leagues WHERE id = %s", (league_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
     # was create_league
     def get_or_create_by_name(self, name: str, league_id: str | None = None) -> str:
         """

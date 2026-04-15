@@ -40,9 +40,9 @@ class GMRepository:
             "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s",
             (gm_id, league_id),
         )
-    
+
     def auto_link_gm_account(self, user_id: str, user_display_name: str):
-        """ 
+        """
         Identity Reclaim (Auto-linking)
         We still need this for now since we aren't doing 2FA/Logins yet,
         but the dependency ensures 'user' is already valid.
@@ -72,6 +72,14 @@ class GMRepository:
             ORDER BY l.created_at DESC""",
             (user_id,),
         ).fetchall()
-        
+
         # Convert rows to plain dicts if your driver doesn't do it automatically
+        return [dict(row) for row in rows]
+
+    def get_all_in_league(self, league_id: str) -> list[dict]:
+        """Fetch all the GMs in a league."""
+        rows = self.conn.execute(
+            "SELECT * FROM gms WHERE league_id = %s", (league_id,)
+        ).fetchall()
+
         return [dict(row) for row in rows]

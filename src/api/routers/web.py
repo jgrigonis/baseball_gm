@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from operator import le
 import random
 import string
 import uuid
@@ -576,7 +577,7 @@ def leagues_index(
     # 2. Fetch User's Leagues
     rows = gm_repo.get_users_leagues(user["id"])
     # rows = db.execute(
-    #     """SELECT l.id, l.name, l.state, l.mode, l.created_at 
+    #     """SELECT l.id, l.name, l.state, l.mode, l.created_at
     #        FROM leagues l
     #        JOIN gms g ON g.league_id = l.id
     #        WHERE g.user_id = %s AND g.is_ai = 0
@@ -831,8 +832,10 @@ def dashboard(
     user: User,
     gm: GM,
 ):
-
-    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    gm_repo = GMRepository(db)
+    league_repo = LeagueRepository(db)
+    league = league_repo.get_by_id(league_id)
+    # league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
     if not league:
         return RedirectResponse("/leagues/")
 
@@ -848,9 +851,10 @@ def dashboard(
         # Simplified the season fetch for now to get you back to green
         return RedirectResponse(f"/leagues/{league_id}/history/1/")
 
-    gms_in_league = db.execute(
-        "SELECT * FROM gms WHERE league_id = %s", (league_id,)
-    ).fetchall()
+    gms_in_league = gm_repo.get_all_in_league(league_id)
+    # gms_in_league = db.execute(
+    #     "SELECT * FROM gms WHERE league_id = %s", (league_id,)
+    # ).fetchall()
 
     # print(f"DEBUG: League Commish ID: {league['commissioner_gm_id']}")
     # print(f"DEBUG: My GM ID: {gm['id']}")
@@ -982,7 +986,7 @@ def draft_tab(
 
     draft_repo = DraftRepository(db)
     draft = draft_repo.get_current_for_league(league_id)
-    player_repo =  PlayerRepository(db)
+    player_repo = PlayerRepository(db)
 
     if draft:
         picked_ids = draft_repo.get_picked_ids(draft["id"])
@@ -1037,14 +1041,14 @@ def draft_tab(
             (gm["team_id"],),
         ).fetchall()
         for row in roster_rows:
-            
+
             skills = player_repo.get_player_skills(row["id"])
             d = dict(row)
             # skills_row = db.execute(
             #     "SELECT * FROM player_skills WHERE player_id = %s", (d["id"],)
             # ).fetchone()
             # skills = dict(skills_row) if skills_row else {}
-            
+
             grades = player_row_to_grades(d, skills, d["status"])
             ratings = _compute_ratings(skills, d.get("throws", "R"))
             g = grades.model_dump()
