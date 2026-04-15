@@ -25,3 +25,9 @@ class GMRepository:
             (user_id, league_id),
         ).fetchone()
         return dict(row) if row else None
+
+    def set_commissioner(self, gm_id: str, league_id: str):
+        """Set the commissioner."""
+        self.conn.execute(
+            "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm_id, league_id)
+        )

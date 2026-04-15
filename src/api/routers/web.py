@@ -513,15 +513,8 @@ def logout(db: DB, user: OptionalUser):
     resp.delete_cookie("gm_session", httponly=True, samesite="lax")
 
     if user:
-        # Generate a new random token that the user doesn't have
-        # This makes the old cookie value invalid
-        new_garbage_token = uuid.uuid4().hex
-        db.execute(
-            "UPDATE users SET session_token = %s WHERE id = %s",
-            (new_garbage_token, user["id"]),
-        )
+        UserRepository(db).invalidate_session(user["id"])
         db.commit()
-
     return resp
 
 
@@ -632,9 +625,10 @@ def new_league(
         display_name=user["display_name"],
     )
     # 3. Update the League (Now the GM exists, so the commish ID is valid)
-    db.execute(
-        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm_id, league_id)
-    )
+    gm_repo.set_commissioner(gm_id=gm_id, league_id=league_id)
+    # db.execute(
+    #     "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm_id, league_id)
+    # )
 
     # # 2. Create the GM
     # db.execute(
