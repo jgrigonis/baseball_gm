@@ -19,7 +19,7 @@ from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft
-from src.league.offseason.build_season_stats import build_season, ensure_table
+from src.league.offseason.build_season_stats import build_season
 from src.util.locations import TEAM_FILES_DIR
 from src.player.player_evaluator import PlayerEvaluator
 from src.util.logger import setup_logger
@@ -101,7 +101,6 @@ class OffseasonPipeline:
             print("  Skipping player energy reset (already done)")
 
         if not self._is_done(season_id, "build_season_stats"):
-            ensure_table(self.conn)
             n = build_season(self.conn, season_id)
             print(f"  Built season stats rollup: {n} rows")
             self._mark_done(season_id, "build_season_stats")

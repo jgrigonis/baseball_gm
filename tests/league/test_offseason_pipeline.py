@@ -352,10 +352,10 @@ class TestRunIdempotency:
                                                         "src.league.offseason.offseason_pipeline.build_season",
                                                         return_value=0,
                                                     ):
-                                                        with patch(
-                                                            "src.league.offseason.offseason_pipeline.ensure_table"
-                                                        ):
-                                                            pipeline.run("s1")
+                                                        # with patch(
+                                                        #     "src.league.offseason.offseason_pipeline.ensure_table"
+                                                        # ):
+                                                        pipeline.run("s1")
 
         captured = capsys.readouterr().out
         assert "Skipping archive" in captured

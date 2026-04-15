@@ -631,9 +631,8 @@ def _play_regular_season(
 
     # Final stats rollup
     try:
-        from src.league.offseason.build_season_stats import build_season, ensure_table
+        from src.league.offseason.build_season_stats import build_season
 
-        ensure_table(conn)
         n = build_season(conn, season_id)
         print(f"  Stats rollup: {n} rows")
     except Exception as e:
