@@ -39,6 +39,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
@@ -3511,18 +3512,8 @@ def history_season_detail(
 
     # gm = _resolve_gm(db, user["id"], league_id)
 
-    season = db.execute(
-        """SELECT s.* FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s AND s.year = %s""",
-        (league_id, year),
-    ).fetchone()
-
-    evaluation = None
-    if season and gm:
-        evaluation = db.execute(
-            "SELECT * FROM gm_season_evaluations WHERE gm_id = %s AND season_id = %s",
-            (gm["id"], season["id"]),
-        ).fetchone()
+    season = SeasonRepository(db).get_by_league_and_year(league_id, year)
+    evaluation = GMEvaluationRepository(db).get(gm["id"], season["id"]) if season else None
 
     return templates.TemplateResponse(
         request,
@@ -3530,8 +3521,8 @@ def history_season_detail(
         {
             "league_id": league_id,
             "year": year,
-            "season": dict(season) if season else None,
-            "gm_evaluation": dict(evaluation) if evaluation else None,
+            "season": season,
+            "gm_evaluation": evaluation,
             "standings": [],
             "stat_leaders": {},
             "win_trend": [],

@@ -130,6 +130,16 @@ class SeasonRepository:
         self.conn.execute("DELETE FROM seasons WHERE id = %s", (season_id,))
         # self.conn.commit()
 
+    def get_by_league_and_year(self, league_id: str, year: int) -> dict | None:
+        """Return the season row for a league and year, or None."""
+        row = self.conn.execute(
+            """SELECT s.* FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s AND s.year = %s""",
+            (league_id, year),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_current_id_for_league(self, league_id: str) -> str | None:
         """Return the most recent season ID for a league, or None."""
         row = self.conn.execute(
