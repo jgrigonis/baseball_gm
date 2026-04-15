@@ -155,7 +155,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     human_team_ids = {
         row["team_id"]
         for row in conn.execute(
-            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
+            "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL",
             (league_id,),
         ).fetchall()
     }
@@ -167,7 +167,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         JOIN gms g ON g.id = dp.gm_id
         WHERE dp.draft_id = %s
           AND g.league_id = %s
-          AND g.is_ai = 0
+          AND NOT g.is_ai
           AND g.team_id IS NOT NULL
         ORDER BY g.team_id, dp.rank
         """,

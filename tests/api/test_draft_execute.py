@@ -91,8 +91,8 @@ class TestExecuteBlitzDraftStateTransitions:
         draft = factory.draft(league=league, season=season)
         team1 = factory.team()
         team2 = factory.team()
-        factory.gm(team=team1, league=league, is_ai=1)
-        factory.gm(team=team2, league=league, is_ai=1)
+        factory.gm(team=team1, league=league, is_ai=True)
+        factory.gm(team=team2, league=league, is_ai=True)
         factory.draft_order(draft, [team1, team2])
         for i in range(ROUNDS * 2 + 5):
             factory.prospect()
@@ -158,8 +158,8 @@ class TestDraftPicksTable:
         draft = factory.draft(league=league, season=season)
         team1 = factory.team()
         team2 = factory.team()
-        factory.gm(team=team1, league=league, is_ai=1)
-        factory.gm(team=team2, league=league, is_ai=1)
+        factory.gm(team=team1, league=league, is_ai=True)
+        factory.gm(team=team2, league=league, is_ai=True)
         factory.draft_order(draft, [team1, team2])
         for i in range(ROUNDS * 2 + 5):
             factory.prospect()
@@ -220,8 +220,8 @@ class TestPreferenceList:
         draft = factory.draft(league=league, season=season)
         human_team = factory.team()
         ai_team = factory.team()
-        human_gm = factory.gm(team=human_team, league=league, is_ai=0)
-        factory.gm(team=ai_team, league=league, is_ai=1)
+        human_gm = factory.gm(team=human_team, league=league, is_ai=False)
+        factory.gm(team=ai_team, league=league, is_ai=True)
         factory.draft_order(draft, [human_team, ai_team])
         prospects = [factory.prospect() for _ in range(ROUNDS * 2 + 5)]
         # Human GM prefers the first prospect
@@ -302,8 +302,8 @@ class TestBlitzDraftRunSnake:
         factory.draft()
         human_team = factory.team()
         ai_team = factory.team()
-        factory.gm(team=human_team, is_ai=0)
-        factory.gm(team=ai_team, is_ai=1)
+        factory.gm(team=human_team, is_ai=False)
+        factory.gm(team=ai_team, is_ai=True)
 
         p_pref_row = factory.player_row()
         p_other_row = factory.player_row()
@@ -328,7 +328,7 @@ class TestBlitzDraftRunSnake:
     def test_falls_back_when_pref_unavailable(self, db_conn, factory):
         factory.draft()
         human_team = factory.team()
-        factory.gm(team=human_team, is_ai=0)
+        factory.gm(team=human_team, is_ai=False)
 
         available_row = factory.player_row()
 
@@ -351,8 +351,8 @@ class TestBlitzDraftRunSnake:
         factory.draft()
         team1 = factory.team()
         team2 = factory.team()
-        factory.gm(team=team1, is_ai=1)
-        factory.gm(team=team2, is_ai=1)
+        factory.gm(team=team1, is_ai=True)
+        factory.gm(team=team2, is_ai=True)
 
         only = factory.player_row()
 

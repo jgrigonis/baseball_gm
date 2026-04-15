@@ -108,7 +108,7 @@ def start_league(
 
     # ── 5. Fill AI GMs + assign all GMs to teams ─────────────────────────────
     human_gms = conn.execute(
-        "SELECT id FROM gms WHERE league_id = %s AND is_ai = 0 ORDER BY created_at",
+        "SELECT id FROM gms WHERE league_id = %s AND NOT is_ai ORDER BY created_at",
         (league_id,),
     ).fetchall()
 
@@ -139,17 +139,12 @@ def start_league(
         ai_gm_id = str(uuid.uuid4())
         ai_inserts.append((ai_gm_id, league_id, team_id))
         profile_inserts.append((ai_gm_id,))
-        # conn.execute(
-        #     "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', 1)",
-        #     (ai_gm_id, league_id, team_id),
-        # )
-        # conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (ai_gm_id,))
 
     if ai_inserts:
         cur = conn.cursor()
         # Insert the AI GMs
         cur.executemany(
-            "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', 1)",
+            "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', TRUE)",
             ai_inserts,
         )
         # Insert the matching Profiles
@@ -160,7 +155,7 @@ def start_league(
         """
         SELECT t.city, t.mascot FROM gms g
         JOIN teams t ON t.id = g.team_id
-        WHERE g.league_id = %s AND g.is_ai = 0
+        WHERE g.league_id = %s AND NOT g.is_ai
         LIMIT 1
         """,
         (league_id,),

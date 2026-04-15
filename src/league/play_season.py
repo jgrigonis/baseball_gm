@@ -138,25 +138,6 @@ def _load_eligible_ids(conn, team_id: str, league_id: str, blitz: bool) -> set[s
     return {r["player_id"] for r in rows}
 
 
-# Moved to lineup_preference_repo
-# def _load_saved_lineup(conn, team_id: str, league_id: str) -> list[dict] | None:
-#     """Load human GM's saved lineup preferences, or None if AI team / none saved."""
-#     gm = conn.execute(
-#         "SELECT id FROM gms WHERE team_id = %s AND league_id = %s AND is_ai = 0 LIMIT 1",
-#         (team_id, league_id),
-#     ).fetchone()
-#     if not gm:
-#         return None
-#     rows = conn.execute(
-#         """SELECT player_id, batting_order, position
-#            FROM gm_lineup_preferences
-#            WHERE gm_id = %s
-#            ORDER BY batting_order""",
-#         (gm["id"],),
-#     ).fetchall()
-#     return [dict(r) for r in rows] if rows else None
-
-
 def _pick_starter(
     rotations_repo: TeamRotationsRepository,
     pitcher_repo: PitcherStateRepository,

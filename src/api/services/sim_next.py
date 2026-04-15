@@ -163,7 +163,7 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     # Snapshot GM team injuries before this day to detect changes
     gm_team_id = conn.execute(
-        "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
+        "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL LIMIT 1",
         (league_id,),
     ).fetchone()
     gm_team_id = gm_team_id["team_id"] if gm_team_id else None

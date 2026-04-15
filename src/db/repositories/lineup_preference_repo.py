@@ -13,7 +13,7 @@ class LineupPreferenceRepository:
             self.conn.execute(
                 """INSERT INTO gm_lineup_preferences
                    (gm_id, player_id, batting_order, position, is_starter, updated_at)
-                   VALUES (%s, %s, %s, %s, 1, NOW())""",
+                   VALUES (%s, %s, %s, %s, TRUE, NOW())""",
                 (gm_id, slot["player_id"], slot["batting_order"], slot.get("position")),
             )
 
@@ -30,7 +30,7 @@ class LineupPreferenceRepository:
     def get_preferences(self, team_id: str, league_id: str) -> list[dict] | None:
         # This moved from _load_saved_lineup in play_season
         gm = self.conn.execute(
-            "SELECT id FROM gms WHERE team_id = %s AND league_id = %s AND is_ai = 0 LIMIT 1",
+            "SELECT id FROM gms WHERE team_id = %s AND league_id = %s AND NOT is_ai LIMIT 1",
             (team_id, league_id),
         ).fetchone()
         if not gm:

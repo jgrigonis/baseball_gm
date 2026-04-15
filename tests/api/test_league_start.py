@@ -58,7 +58,7 @@ def ctx(db_conn, factory):
             " VALUES (%s, %s, %s)",
             (league.id, season.id, t.id),
         )
-    gm = factory.gm(team=teams[0], league=league, is_ai=0)
+    gm = factory.gm(team=teams[0], league=league, is_ai=False)
 
     from types import SimpleNamespace
 
@@ -269,7 +269,7 @@ class TestGMAssignment:
     def test_human_gm_assigned_to_a_team(self, patched):
         start_league(patched.league.id, patched.conn)
         row = patched.conn.execute(
-            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0",
+            "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai",
             (patched.league.id,),
         ).fetchone()
         assert row["team_id"] is not None
@@ -277,7 +277,7 @@ class TestGMAssignment:
     def test_human_gm_assigned_to_valid_team(self, patched):
         start_league(patched.league.id, patched.conn)
         row = patched.conn.execute(
-            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0",
+            "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai",
             (patched.league.id,),
         ).fetchone()
         team_ids = {t.id for t in patched.teams}
@@ -286,7 +286,7 @@ class TestGMAssignment:
     def test_ai_gms_created_for_remaining_teams(self, patched):
         start_league(patched.league.id, patched.conn)
         ai_count = patched.conn.execute(
-            "SELECT COUNT(*) AS n FROM gms WHERE league_id = %s AND is_ai = 1",
+            "SELECT COUNT(*) AS n FROM gms WHERE league_id = %s AND is_ai",
             (patched.league.id,),
         ).fetchone()["n"]
         assert ai_count == len(patched.teams) - 1
@@ -310,7 +310,7 @@ class TestGMAssignment:
         ai_gm_ids = [
             r["id"]
             for r in patched.conn.execute(
-                "SELECT id FROM gms WHERE league_id = %s AND is_ai = 1",
+                "SELECT id FROM gms WHERE league_id = %s AND is_ai",
                 (patched.league.id,),
             ).fetchall()
         ]

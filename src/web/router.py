@@ -277,7 +277,7 @@ async def new_league(
     db.execute(
         """
         INSERT INTO gms (id, league_id, user_session, display_name, is_ai)
-        VALUES (%s, %s, %s, %s, 0)
+        VALUES (%s, %s, %s, %s, FALSE)
     """,
         (gm_id, league_id, token, display_name or "GM"),
     )
@@ -335,7 +335,7 @@ async def join_league(request: Request, db: DB, join_code: str = Form(...)):
         db.execute(
             """
             INSERT INTO gms (id, league_id, user_session, display_name, is_ai)
-            VALUES (%s, %s, %s, %s, 0)
+            VALUES (%s, %s, %s, %s, FALSE)
         """,
             (gm_id, league["id"], token, display_name or "GM"),
         )
@@ -894,7 +894,7 @@ def _load_standings(league_id: str, db, season_id: str | None = None) -> list[di
     human_team_ids = {
         r["team_id"]
         for r in db.execute(
-            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
+            "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL",
             (league_id,),
         ).fetchall()
     }

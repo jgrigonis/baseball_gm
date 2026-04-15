@@ -240,7 +240,7 @@ def sim_playoff(
 
     # Track injuries for the GM's team so we can report new injuries / returns
     gm_row = conn.execute(
-        "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL LIMIT 1",
+        "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL LIMIT 1",
         (league_id,),
     ).fetchone()
     gm_team_id = gm_row["team_id"] if gm_row else None

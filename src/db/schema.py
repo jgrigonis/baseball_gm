@@ -170,8 +170,8 @@ CREATE TABLE IF NOT EXISTS gms (
     user_id        TEXT,                  -- NULL for AI GMs
     team_id        TEXT,                  -- NULL until assigned
     display_name   TEXT NOT NULL,         -- can differ from users.display_name per league
-    is_ai          INTEGER NOT NULL DEFAULT 0 CHECK (is_ai   IN (0, 1)),
-    is_away        INTEGER NOT NULL DEFAULT 0 CHECK (is_away IN (0, 1)),
+    is_ai          BOOLEAN NOT NULL DEFAULT FALSE,
+    is_away        BOOLEAN NOT NULL DEFAULT FALSE,
     career_seasons INTEGER NOT NULL DEFAULT 0,
     warned_at      TEXT,                  -- ISO datetime of performance warning
     fired_at       TEXT,                  -- ISO datetime of firing; NULL = active
@@ -520,8 +520,7 @@ CREATE TABLE IF NOT EXISTS gm_lineup_preferences (
     player_id    TEXT NOT NULL,
     batting_order INTEGER,        -- 1-9, NULL for bench/pitcher
     position     TEXT,            -- defensive position
-    is_starter   INTEGER NOT NULL DEFAULT 1
-                        CHECK (is_starter IN (0, 1)),
+    is_starter   BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at   TEXT NOT NULL DEFAULT (NOW()),
 
     PRIMARY KEY (gm_id, player_id),
@@ -567,8 +566,8 @@ CREATE TABLE IF NOT EXISTS gm_season_evaluations (
     losses                INTEGER NOT NULL DEFAULT 0,
     expected_wins         REAL,
     roster_quality_rating REAL,
-    made_playoffs         INTEGER NOT NULL DEFAULT 0 CHECK (made_playoffs    IN (0, 1)),
-    won_championship      INTEGER NOT NULL DEFAULT 0 CHECK (won_championship IN (0, 1)),
+    made_playoffs         BOOLEAN NOT NULL DEFAULT FALSE,
+    won_championship      BOOLEAN NOT NULL DEFAULT FALSE,
     verdict               TEXT CHECK (verdict IN ('retained', 'warned', 'fired')),
     evaluated_at          TEXT NOT NULL DEFAULT (NOW()),
 

@@ -88,7 +88,7 @@ def create_league(body: LeagueCreate, db: DB) -> dict:
         "SELECT id FROM users WHERE session_token = %s", (session_token,)
     ).fetchone()
     db.execute(
-        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, 0)",
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, FALSE)",
         (gm_id, league_id, user["id"], body.commissioner_display_name),
     )
 
@@ -165,7 +165,7 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
 
     # Count current human GMs — cap at num_teams
     human_count = db.execute(
-        "SELECT COUNT(*) FROM gms WHERE league_id = %s AND is_ai = 0",
+        "SELECT COUNT(*) FROM gms WHERE league_id = %s AND NOT is_ai",
         (league["id"],),
     ).fetchone()["count"]
 
@@ -189,7 +189,7 @@ def join_league(join_code: str, body: LeagueJoin, db: DB) -> GMResponse:
         "SELECT id FROM users WHERE session_token = %s", (session_token,)
     ).fetchone()
     db.execute(
-        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, 0)",
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, FALSE)",
         (gm_id, league["id"], user["id"], body.display_name),
     )
 

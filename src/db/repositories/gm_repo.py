@@ -14,7 +14,7 @@ class GMRepository:
         """Creates a GM and their associated profile."""
         self.conn.execute(
             "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, %s)",
-            (gm_id, league_id, user_id, display_name, 1 if is_ai else 0),
+            (gm_id, league_id, user_id, display_name, is_ai),
         )
         # Tucking this in here ensures every GM always has a profile
         self.conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
@@ -22,7 +22,7 @@ class GMRepository:
     def get_human_team_ids(self, league_id: str) -> set[str]:
         """Return the set of team_ids belonging to human GMs in a league."""
         rows = self.conn.execute(
-            "SELECT team_id FROM gms WHERE league_id = %s AND is_ai = 0 AND team_id IS NOT NULL",
+            "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL",
             (league_id,),
         ).fetchall()
         return {r["team_id"] for r in rows}
@@ -53,7 +53,7 @@ class GMRepository:
         self.conn.execute(
             """
                 UPDATE gms SET user_id = %s
-                WHERE is_ai = 0
+                WHERE NOT is_ai
                     AND user_id != %s
                     AND user_id IN (
                     SELECT id FROM users WHERE display_name = %s
@@ -68,7 +68,7 @@ class GMRepository:
             """SELECT l.id, l.name, l.state, l.mode, l.created_at 
             FROM leagues l
             JOIN gms g ON g.league_id = l.id
-            WHERE g.user_id = %s AND g.is_ai = 0
+            WHERE g.user_id = %s AND NOT g.is_ai
             ORDER BY l.created_at DESC""",
             (user_id,),
         ).fetchall()
