@@ -39,6 +39,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -1265,24 +1266,14 @@ async def sim_games(
     body = await request.json()
     count = body.get("count", 1)  # number of game-days to sim, or "season"
 
+    season_repo = SeasonRepository(db)
+    league_repo = LeagueRepository(db)
+
     results = []
     days_simmed = 0
     all_new_injuries = []
     all_returned = []
-    remaining = _games_remaining(
-        db,
-        (
-            db.execute(
-                """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-                (league_id,),
-            ).fetchone()["id"]
-            if db.execute(
-                "SELECT 1 FROM league_seasons WHERE league_id = %s", (league_id,)
-            ).fetchone()
-            else None
-        ),
-    )
+    remaining = _games_remaining(db, season_repo.get_current_id_for_league(league_id))
 
     limit = remaining if count == "season" else min(int(count), remaining)
 
@@ -1302,39 +1293,16 @@ async def sim_games(
             break
 
     games_played = sum(r.get("games_played", 0) for r in results)
-    new_remaining = _games_remaining(
-        db,
-        (
-            db.execute(
-                """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-                (league_id,),
-            ).fetchone()["id"]
-            if db.execute(
-                "SELECT 1 FROM league_seasons WHERE league_id = %s", (league_id,)
-            ).fetchone()
-            else None
-        ),
-    )
+    new_remaining = _games_remaining(db, season_repo.get_current_id_for_league(league_id))
 
     # If season just ended, trigger the state transition (playoffs setup)
     if new_remaining == 0 and days_simmed > 0:
         sim_next_day(league_id, db)
 
-    league_state_row = db.execute(
-        "SELECT state FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
-    # Get updated current date for topbar
-    current_season_id = db.execute(
-        """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
-    current_date = _current_league_date(
-        db,
-        current_season_id["id"] if current_season_id else None,
-        league_state_row["state"] if league_state_row else "lobby",
-    )
+    league = league_repo.get_by_id(league_id)
+    league_state = league["state"] if league else "lobby"
+    current_season_id = season_repo.get_current_id_for_league(league_id)
+    current_date = _current_league_date(db, current_season_id, league_state)
 
     return JSONResponse(
         {
@@ -1342,7 +1310,7 @@ async def sim_games(
             "games_played": games_played,
             "games_remaining": new_remaining,
             "last_date": results[-1]["game_date"] if results else None,
-            "league_state": league_state_row["state"] if league_state_row else None,
+            "league_state": league_state,
             "current_date": current_date,
             "new_injuries": all_new_injuries,
             "returned": all_returned,
