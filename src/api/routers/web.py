@@ -46,8 +46,10 @@ from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
 from src.league.playoffs.play_playoffs import get_series_id, get_series_winner
@@ -2889,50 +2891,22 @@ def history(
     ctx = _shell_ctx(request, db, gm, league_id, user)
     my_team_id = gm["team_id"] if gm else None
 
-    seasons = db.execute(
-        """SELECT s.id, s.year, s.name
-           FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s
-           ORDER BY s.year DESC""",
-        (league_id,),
-    ).fetchall()
+    season_repo = SeasonRepository(db)
+    series_repo = SeriesRepository(db)
+    tg_repo = TeamGameRepository(db)
+
+    seasons = season_repo.get_seasons_for_league(league_id)
 
     history_rows = []
     for s in seasons:
-        # Champion
-        finals = db.execute(
-            "SELECT id FROM series WHERE season_id = %s AND name = 'Finals'",
-            (s["id"],),
-        ).fetchone()
-        champion_name = None
-        if finals:
-            champ = db.execute(
-                """SELECT winner_id, COUNT(*) as wins FROM games
-                   WHERE series_id = %s AND completed=1
-                   GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
-                (finals["id"],),
-            ).fetchone()
-            if champ and champ["wins"] >= 4:
-                t = db.execute(
-                    "SELECT city, mascot FROM teams WHERE id = %s",
-                    (champ["winner_id"],),
-                ).fetchone()
-                if t:
-                    champion_name = f"{t['city']} {t['mascot']}"
+        champ = series_repo.get_champion(s["id"])
+        champion_name = f"{champ['city']} {champ['mascot']}" if champ else None
 
-        # My team record
         my_w = my_l = None
         if my_team_id:
-            r = db.execute(
-                """SELECT SUM(tgs.win) as w, SUM(tgs.loss) as l
-                   FROM team_game_stats tgs
-                   JOIN games g ON g.id=tgs.game_id
-                   WHERE tgs.team_id=%s AND g.season_id=%s AND g.series_id IS NULL""",
-                (my_team_id, s["id"]),
-            ).fetchone()
-            if r and (r["w"] or r["l"]):
-                my_w, my_l = r["w"] or 0, r["l"] or 0
+            wl = tg_repo.get_team_wl(my_team_id, s["id"])
+            if wl:
+                my_w, my_l = wl["w"], wl["l"]
 
         history_rows.append(
             {
@@ -2970,50 +2944,34 @@ def player_panel(
 
     # gm = _resolve_gm(db, user["id"], league_id)
 
+    player_repo = PlayerRepository(db)
+    status_repo = PlayerStatusRepository(db)
+    energy_repo = PlayerEnergyRepository(db, league_id)
+    inj_repo = InjuryRepository(db, league_id)
+    team_repo = TeamRepository(db)
+    season_repo = SeasonRepository(db)
+    pss_repo = PlayerSeasonStatsRepository(db)
+
     def _load(pid: str) -> dict | None:
-        p = db.execute("SELECT * FROM players WHERE id = %s", (pid,)).fetchone()
+        p = player_repo.get_with_skills(pid)
         if not p:
             return None
-        sk = db.execute(
-            "SELECT * FROM player_skills WHERE player_id = %s", (pid,)
-        ).fetchone()
-        st = db.execute(
-            "SELECT status FROM player_status WHERE player_id = %s", (pid,)
-        ).fetchone()
-        en = db.execute(
-            "SELECT * FROM player_energy WHERE player_id = %s AND league_id = %s",
-            (pid, league_id),
-        ).fetchone()
-        inj = db.execute(
-            "SELECT * FROM player_injury_log WHERE player_id = %s ORDER BY injury_date DESC LIMIT 5",
-            (pid,),
-        ).fetchall()
-        team = db.execute(
-            """SELECT t.city, t.mascot FROM teams t
-               JOIN team_players tp ON tp.team_id = t.id WHERE tp.player_id = %s""",
-            (pid,),
-        ).fetchone()
 
-        skills = dict(sk) if sk else {}
-        grades = player_row_to_grades(
-            dict(p), skills, st["status"] if st else "unassigned"
-        )
-        ratings = _compute_ratings(skills, dict(p).get("throws", "R"))
+        status = status_repo.get_status(pid) or "unassigned"
+        en = energy_repo.get(pid)
+        inj_log = inj_repo.get_injury_log(pid)
+        team = team_repo.get_for_player(pid)
+
+        grades = player_row_to_grades(p, p, status)
+        ratings = _compute_ratings(p, p.get("throws", "R"))
 
         # Season stats — find current season for this league
-        season_row = db.execute(
-            """SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
+        current_season_id = season_repo.get_current_id_for_league(league_id)
         stats = None
-        if season_row:
-            stats_row = db.execute(
-                """SELECT * FROM player_season_stats
-                   WHERE player_id = %s AND season_id = %s AND is_postseason = 0""",
-                (pid, season_row["season_id"]),
-            ).fetchone()
+        if current_season_id:
+            stats_row = pss_repo.get_player_season(pid, current_season_id)
             if stats_row:
-                s = dict(stats_row)
+                s = stats_row
                 is_pitcher = grades.player_type == "pitcher"
                 if is_pitcher and s.get("pitch_games_played", 0) > 0:
                     outs = s.get("pitch_outs", 0) or 0
@@ -3079,7 +3037,6 @@ def player_panel(
                     }
 
         # Overall: prospect rating for undrafted, position-aware rating for rostered
-        status = st["status"] if st else "unassigned"
         if status in ("prospect", "unassigned", "free_agent"):
             overall_grade = (
                 skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
@@ -3095,7 +3052,7 @@ def player_panel(
                 else grades.overall
             )
 
-        grade_map = _ratings_to_grade_map(grades, skills, ratings)
+        grade_map = _ratings_to_grade_map(grades, p, ratings)
 
         # Best defensive grade for card display
         best_def_grade = skill_to_grade(ratings.get("best_def")) if ratings else "%s"
@@ -3104,22 +3061,16 @@ def player_panel(
         energy = None
         if en:
             energy = {
-                "current": round(en["current_energy"] * 100),
-                "max": round(en["max_energy"] * 100),
-                "consecutive_days": en["consecutive_days"],
-                "last_game_date": en["last_game_date"],
-                "season_games_played": en["season_games_played"],
+                "current": round(en.current_energy * 100),
+                "max": round(en.max_energy * 100),
+                "consecutive_days": en.consecutive_days,
+                "last_game_date": en.last_game_date,
+                "season_games_played": en.season_games_played,
             }
 
         # Injury status
-        inj_status = db.execute(
-            """SELECT games_remaining FROM player_injuries
-               WHERE player_id = %s AND games_remaining > 0
-               AND (league_id = %s OR league_id = '')
-               LIMIT 1""",
-            (pid, league_id),
-        ).fetchone()
-        raw_injury = inj_status["games_remaining"] if inj_status else None
+        injury = inj_repo.get(pid)
+        raw_injury = injury.games_remaining if injury and injury.is_active else None
 
         return {
             **grades.model_dump(),
@@ -3131,7 +3082,7 @@ def player_panel(
             "best_def_grade": best_def_grade,
             "best_def_label": best_def_label,
             "energy": energy,
-            "injury_log": [dict(r) for r in inj],
+            "injury_log": inj_log,
             "stats": stats,
             "injured": raw_injury is not None,
             "games_remaining": raw_injury,

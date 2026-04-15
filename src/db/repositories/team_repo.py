@@ -205,6 +205,16 @@ class TeamRepository:
         team_ids = [row["id"] for row in cursor.fetchall()]
         return [self.get(team_id) for team_id in team_ids]
 
+    def get_for_player(self, player_id: str) -> dict | None:
+        """Return {city, mascot} for the team a player is on, or None."""
+        row = self.conn.execute(
+            """SELECT t.city, t.mascot FROM teams t
+               JOIN team_players tp ON tp.team_id = t.id
+               WHERE tp.player_id = %s""",
+            (player_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_teams_in_league_season(self, league_id: str, season_id: str) -> list[dict]:
         """Return all teams in a league/season as {id, city, mascot}, ordered by city."""
         rows = self.conn.execute(

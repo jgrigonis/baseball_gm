@@ -90,6 +90,15 @@ class InjuryRepository:
         injury = self.get(player_id)
         return injury is not None and injury.is_active
 
+    def get_injury_log(self, player_id: str, limit: int = 5) -> list[dict]:
+        """Return recent injury log entries for a player, newest first."""
+        rows = self.conn.execute(
+            """SELECT * FROM player_injury_log
+               WHERE player_id = %s ORDER BY injury_date DESC LIMIT %s""",
+            (player_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_team_injury_report(self, team_id: str, league_id: str) -> list[dict]:
         """Return injured players for a team with names, ordered by games_remaining DESC."""
         if not team_id:

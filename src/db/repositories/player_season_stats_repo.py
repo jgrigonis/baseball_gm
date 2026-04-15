@@ -32,6 +32,15 @@ class PlayerSeasonStatsRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_player_season(self, player_id: str, season_id: str) -> dict | None:
+        """Return a player's regular season stat row as a dict, or None."""
+        row = self.conn.execute(
+            """SELECT * FROM player_season_stats
+               WHERE player_id = %s AND season_id = %s AND is_postseason = 0""",
+            (player_id, season_id),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_batting_leader(self, league_id: str, season_id: str, min_ab: int) -> dict | None:
         """Return the batting average leader (first_name, last_name, city, mascot, avg), or None."""
         row = self.conn.execute(

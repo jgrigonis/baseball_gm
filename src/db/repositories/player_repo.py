@@ -367,6 +367,17 @@ class PlayerRepository:
             for row in rows
         ]
 
+    def get_with_skills(self, player_id: str) -> dict | None:
+        """Return a player row merged with their skill row as a flat dict, or None."""
+        row = self.conn.execute(
+            """SELECT p.*, sk.*
+               FROM players p
+               LEFT JOIN player_skills sk ON sk.player_id = p.id
+               WHERE p.id = %s""",
+            (player_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_team_roster_with_skills(self, team_id: str) -> list[dict]:
         """Return all players on a team with status and skills merged into flat dicts."""
         rows = self.conn.execute(
