@@ -1258,8 +1258,8 @@ async function saveRotation() {
         const stored = sessionStorage.getItem(STORAGE_KEY);
         if (stored) {
           const data = JSON.parse(stored);
-          delete data.rotation;
-          delete data.pointerPid;
+          data.rotation = compact;
+          data.pointerPid = pointerPid;
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
       } catch(e) {}
