@@ -50,7 +50,7 @@ class GMRepository:
         gets reassigned to the current user. This handles the common case where
         the browser cookie was cleared and a new guest identity was created.
         """
-        self.db.execute(
+        self.conn.execute(
             """
                 UPDATE gms SET user_id = %s
                 WHERE is_ai = 0
@@ -64,7 +64,7 @@ class GMRepository:
 
     def get_users_leagues(self, user_id: str) -> list[dict]:
         """Fetch the user's leagues"""
-        rows = self.db.execute(
+        rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at 
             FROM leagues l
             JOIN gms g ON g.league_id = l.id
