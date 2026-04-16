@@ -190,7 +190,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         (draft_id,),
     ).fetchall()
 
-    blitz = BlitzDraft(conn, gm_preferences=gm_preferences)
+    blitz = BlitzDraft(conn, league_id=league_id, gm_preferences=gm_preferences)
 
     if stored_order:
         draft_order = [{"team_id": r["team_id"], "team_name": ""} for r in stored_order]

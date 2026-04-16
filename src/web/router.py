@@ -962,8 +962,10 @@ def _load_draft_board(draft_id: str, db) -> list[dict]:
     players = db.execute("""
         SELECT p.*, ps.status FROM players p
         JOIN player_status ps ON ps.player_id = p.id
+        JOIN drafts d ON d.id = %s
         WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
-    """).fetchall()
+        AND p.league_id = d.league_id
+    """, (draft_id,)).fetchall()
 
     board = []
     for row in players:

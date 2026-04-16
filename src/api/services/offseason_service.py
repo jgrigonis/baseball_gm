@@ -193,7 +193,7 @@ def run_offseason(league_id: str, conn) -> dict:
         from src.league.offseason.snake_draft import write_draft_order
         from src.league.offseason.snake_draft import SnakeDraft as _SnakeDraft
 
-        snake = _SnakeDraft(conn, rng)
+        snake = _SnakeDraft(conn, league_id, rng)
         draft_order = snake._build_draft_order(
             season_id
         )  # season_id = completed season

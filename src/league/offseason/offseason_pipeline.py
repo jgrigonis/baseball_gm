@@ -448,7 +448,7 @@ class OffseasonPipeline:
         print(f"  Draft order stored: {len(draft_order)} teams")
 
     def _run_draft(self, season_id: str, league_id: str) -> None:
-        snake = SnakeDraft(self.conn, self.rng)
+        snake = SnakeDraft(self.conn, league_id, self.rng)
         # Build order first so we can persist it before the draft runs
         draft_order = snake._build_draft_order(season_id)
         self._write_draft_order(season_id, league_id, draft_order)
