@@ -114,6 +114,7 @@ class TeamImporter:
                             throws=player.throws,
                             position=player.position,
                             skills=player.skills,
+                            league_id=league_id,
                         )
                         caps = generate_talent_caps(
                             player.skills.as_dict(), rng=self.rng
