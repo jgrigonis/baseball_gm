@@ -77,7 +77,7 @@ class DraftPick:
 
 
 class SnakeDraft:
-    def __init__(self, conn, rng: random.Random | None = None):
+    def __init__(self, conn, league_id: str, rng: random.Random | None = None):
         self.conn = conn
         self.rng = rng or random.Random()
         self.player_repo = PlayerRepository(conn)
