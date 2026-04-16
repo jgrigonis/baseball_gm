@@ -189,3 +189,12 @@ class LeagueRepository:
         ).fetchall()
 
         return [row["team_id"] for row in rows]
+
+    def get_state(self, league_id: str) -> str:
+        """
+        Return the state of the league
+        """
+        league_state = self.conn.execute(
+            "SELECT state FROM leagues WHERE id = %s", (league_id,)
+        ).fetchone()["state"]
+        return league_state

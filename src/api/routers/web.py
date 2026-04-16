@@ -1927,10 +1927,11 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     }
 
     def _team_name(tid):
-        r = db.execute(
-            "SELECT city, mascot FROM teams WHERE id = %s", (tid,)
-        ).fetchone()
-        return f"{r['city']} {r['mascot']}" if r else tid
+        return TeamRepository.get_city_mascot(tid)
+        # r = db.execute(
+        #     "SELECT city, mascot FROM teams WHERE id = %s", (tid,)
+        # ).fetchone()
+        # return f"{r['city']} {r['mascot']}" if r else tid
 
     def load_series(series_name, best_of):
         sid = get_series_id(db, season_id, series_name)
@@ -2051,11 +2052,11 @@ def sim_playoff_route(
     mode: str = "game",
 ):
     result = sim_playoff(league_id, db, mode=mode)
-
-    league_state = db.execute(
-        "SELECT state FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()["state"]
-    result["league_state"] = league_state
+    result["league_state"] = LeagueRepository.get_state(league_id)
+    # league_state = db.execute(
+    #     "SELECT state FROM leagues WHERE id = %s", (league_id,)
+    # ).fetchone()["state"]
+    # result["league_state"] = league_state
     return JSONResponse(result)
 
 

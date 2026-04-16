@@ -234,3 +234,13 @@ class TeamRepository:
             (team_id, player_id),
         )
         # self.conn.commit()
+
+    def get_city_mascot(self, team_id: str) -> str:
+        """
+        Return City and Mascot in a formatted string based on the team_id.
+        If not found, just return the team_id as a string.
+        """
+        r = self.conn.execute(
+            "SELECT city, mascot FROM teams WHERE id = %s", (team_id,)
+        ).fetchone()
+        return f"{r['city']} {r['mascot']}" if r else team_id
