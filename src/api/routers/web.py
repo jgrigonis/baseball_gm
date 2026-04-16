@@ -325,6 +325,7 @@ def leagues_index(
 
     # 2. Fetch User's Leagues
     rows = gm_repo.get_users_leagues(user["id"])
+    print(rows[0])
 
     return templates.TemplateResponse(
         request,
@@ -534,7 +535,7 @@ def dashboard(
         "league_name": league["name"],
         "is_commissioner": bool(is_commish),
         "gms": list(gms_in_league),
-        # "num_teams": league["num_teams"],
+        "num_teams": league["num_teams"],
         "league_num_teams": league["num_teams"],  # Dual-mapping for safety
         "league_mode": league["mode"],
         "join_code": league.get("join_code"),
