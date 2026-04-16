@@ -24,6 +24,7 @@ from datetime import date, timedelta
 
 from src.db.connection import get_connection
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -69,10 +70,10 @@ _R1_A_OFFSETS = [0, 2, 4, 6, 8]  # 3v6, 4v5
 # Round 1 Group B (1v8, 2v7): days 2,4,6,8,10 → offsets 1,3,5,7,9
 _R1_B_OFFSETS = [1, 3, 5, 7, 9]  # 1v8, 2v7
 # Semifinals: two series alternate days starting day 7
-_SEMI_27_36_OFFSETS = [6, 8, 10, 12, 14, 16, 18]  # [2,7]v[3,6]
-_SEMI_18_45_OFFSETS = [7, 9, 11, 13, 15, 17, 19]  # [1,8]v[4,5]
+_SEMI_27_36_OFFSETS = [10, 12, 14, 16, 18, 20, 22]  # [2,7]v[3,6]
+_SEMI_18_45_OFFSETS = [11, 13, 15, 17, 19, 21, 23]  # [1,8]v[4,5]
 # Finals: consecutive days starting day 22
-_FINAL_OFFSETS = [21, 22, 23, 24, 25, 26, 27]
+_FINAL_OFFSETS = [25, 26, 28, 29, 30, 32, 33]
 
 
 def get_series_id(conn, season_id: str, name: str) -> str | None:
@@ -352,6 +353,7 @@ def main():
     game_repo = GameRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
+    league_repo = LeagueRepository(conn)
 
     sid = args.season_id
     log_print(f"\n🏆 Playing playoffs for season {sid}", logger=logger)
@@ -359,12 +361,8 @@ def main():
     # Recover seeds from R1 series
     seeds = get_seeds(conn, sid)
 
-    league_row = conn.execute(
-        "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1", (sid,)
-    ).fetchone()
-    league_id = league_row["league_id"] if league_row else ""
-    lr = conn.execute("SELECT mode FROM leagues WHERE id = %s", (league_id,)).fetchone()
-    league_mode = dict(lr).get("mode", "blitz") if lr else "blitz"
+    league_id = league_repo.get_league_id_from_season_id(sid)
+    league_mode = league_repo.get_league_mode(league_id)
 
     # Infer playoff start date from first R1 game
     first_game = conn.execute(

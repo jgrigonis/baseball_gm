@@ -644,7 +644,7 @@ def _play_regular_season(
 def _setup_playoffs(conn, season_id: str, year: int):
     """Seed top 8, build bracket, demote extra starters."""
     from src.league.playoffs.setup_playoffs import (
-        get_top_8,
+        get_top_N,
         build_bracket,
         demote_extra_starters,
     )
@@ -656,7 +656,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
         print("  Playoff bracket already set up")
         return
 
-    seeds = get_top_8(conn, season_id)
+    seeds = get_top_N(conn, season_id)
     last_game = conn.execute(
         "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
         (season_id,),

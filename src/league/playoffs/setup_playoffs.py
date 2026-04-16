@@ -51,7 +51,7 @@ def get_args():
         "--short-rotation",
         "-r",
         type=int,
-        choices=[3, 4],
+        choices=[3, 4, 5],
         default=4,
         help="Keep only this many starters; rest go to Long bullpen (default: 4, drops 5th only)",
     )
@@ -64,7 +64,7 @@ def get_args():
 # ---------------------------------------------------------------------------
 
 
-def get_top_8(conn, season_id: str) -> list[dict]:
+def get_top_N(conn, season_id: str, num_teams: int = 8) -> list[dict]:
     """Return top 8 teams sorted by win%, with H2H and RS tiebreakers."""
     from src.league.statistics.print_standings import sort_standings
 
@@ -88,11 +88,11 @@ def get_top_8(conn, season_id: str) -> list[dict]:
 
     if len(rows) < 8:
         raise ValueError(
-            f"Need at least 8 teams with completed games; found {len(rows)}"
+            f"Need at least {num_teams} teams with completed games; found {len(rows)}"
         )
 
     sorted_rows = sort_standings(conn, season_id, [dict(r) for r in rows])
-    return sorted_rows[:8]
+    return sorted_rows[:num_teams]
 
 
 # ---------------------------------------------------------------------------
@@ -100,8 +100,7 @@ def get_top_8(conn, season_id: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-# TODO rename this somehow
-def playoff_rotation_pointers(conn, season_id: str) -> None:
+def reset_playoff_rotation_pointers(conn, season_id: str) -> None:
     """Reset all rotation pointers for a season back to order 1."""
     rot_repo = TeamRotationsRepository(conn)
     reset = rot_repo.reset_rotation_pointers(season_id)
@@ -324,7 +323,7 @@ def main():
     lines.append(f"   Rotation   : keeping top {args.short_rotation} starters\n")
 
     # 1. Seed teams
-    seeds = get_top_8(conn, args.season_id)
+    seeds = get_top_N(conn, args.season_id)
     lines.append("Playoff seeds:")
     for i, s in enumerate(seeds, 1):
         lines.append(
@@ -339,7 +338,7 @@ def main():
 
     # 2.5 Reset rotation pointers
     lines.append("\nResetting rotation pointers...")
-    playoff_rotation_pointers(conn, args.season_id)
+    reset_playoff_rotation_pointers(conn, args.season_id)
 
     # 3. Build bracket + pre-generate games
     lines.append("\nBuilding bracket...")

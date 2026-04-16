@@ -6,14 +6,18 @@
 
 from __future__ import annotations
 
-import random
+
 from dataclasses import dataclass
+from datetime import date, timedelta
+import random
+import traceback
 
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
+from src.league.playoffs.setup_playoffs import get_top_N, build_bracket
 from src.league.offseason.build_season_stats import build_season
 
 
@@ -76,9 +80,6 @@ def sim_next_day(league_id: str, conn) -> dict:
         if existing_series == 0:
             # Auto-seed and build playoff bracket
             try:
-                from src.league.playoffs.setup_playoffs import get_top_8, build_bracket
-                from datetime import date, timedelta
-
                 last_game = conn.execute(
                     """SELECT MAX(game_date) as d FROM games
                        WHERE season_id = %s AND completed = 1""",
@@ -89,11 +90,9 @@ def sim_next_day(league_id: str, conn) -> dict:
                     if last_game and last_game["d"]
                     else date.today()
                 )
-                seeds = get_top_8(conn, season_id)
+                seeds = get_top_N(conn, season_id)
                 build_bracket(conn, season_id, seeds, playoff_start)
             except Exception as e:
-                import traceback
-
                 try:
                     conn.rollback()
                 except Exception:
@@ -220,8 +219,6 @@ def sim_next_day(league_id: str, conn) -> dict:
                 }
             )
         except Exception as e:
-            import traceback
-
             # Rollback any dirty transaction so the next game starts clean
             try:
                 conn.rollback()
