@@ -2,13 +2,7 @@
 
 import pytest
 
-from src.db.repositories.bullpen_roles_repo import (
-    set_roles,
-    get_current_roles,
-    get_closer,
-    update_role,
-    remove_role,
-)
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.player.player_constants import VALID_ROLES
 
 # ---------------------------------------------------------------------------
@@ -82,7 +76,7 @@ def _row_count(conn, team_id, season_id, active_only=True):
 
 
 def _seed_roles(ctx, assignments, effective_date="2024-04-01"):
-    set_roles(
+    BullpenRepository.set_roles(
         ctx.conn, ctx.team.id, ctx.season.id, assignments, effective_date=effective_date
     )
 

@@ -7,8 +7,6 @@ _positions = ", ".join(f"'{p.value}'" for p in Position)
 POSITION_CHECK = f"CHECK (position IN ({_positions}))"
 
 SCHEMA_SQL = f"""
--- Enable foreign key enforcement (must be set per connection)
-
 CREATE TABLE IF NOT EXISTS leagues (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
@@ -54,6 +52,9 @@ CREATE TABLE IF NOT EXISTS teams (
     updated_at TEXT
 );
 
+-- users: one row per human across all leagues and sessions.
+--   session_token is the opaque credential stored in the browser cookie.
+--   A future login system would link a new token to an existing user row.
 CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
     session_token TEXT UNIQUE NOT NULL,   -- credential stored in browser cookie
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS players (
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE SET NULL
 );
 
+-- One draft per league per season.
 CREATE TABLE IF NOT EXISTS drafts (
     id             TEXT PRIMARY KEY,
     league_id      TEXT NOT NULL,
@@ -98,7 +100,6 @@ CREATE TABLE IF NOT EXISTS drafts (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
--- Written as the draft runs; snake order derived from pick_number + num_teams.
 CREATE TABLE IF NOT EXISTS league_seasons (
     league_id TEXT NOT NULL,
     season_id TEXT NOT NULL,
@@ -126,6 +127,15 @@ CREATE TABLE IF NOT EXISTS series (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
+-- ── Draft order & pick rights ────────────────────────────────────────────────
+
+-- Records the finalized pick order for each executed draft.
+-- Written once by the offseason pipeline, never mutated.
+-- Tracks current ownership of each pick slot.
+-- Written by the pipeline alongside draft_order.
+-- current_owner_id == original_team_id until a trade changes it.
+-- draft_year + league_id identify the draft without requiring a draft_id FK,
+-- allowing future-season picks to be traded before the draft record exists.
 CREATE TABLE IF NOT EXISTS draft_pick_rights (
     league_id         TEXT    NOT NULL,
     draft_year        INTEGER NOT NULL,
@@ -138,17 +148,6 @@ CREATE TABLE IF NOT EXISTS draft_pick_rights (
     FOREIGN KEY (original_team_id) REFERENCES teams(id),
     FOREIGN KEY (current_owner_id) REFERENCES teams(id)
 );
-
--- ── GM / Identity layer ───────────────────────────────────────────────────────
---
--- users: one row per human across all leagues and sessions.
---   session_token is the opaque credential stored in the browser cookie.
---   A future login system would link a new token to an existing user row.
---
--- gms: one row per user per league (plus one per AI slot).
---   user_id is NULL for AI GMs.
---   All league-specific state (team, performance, fired status) lives here.
---   The API resolves identity as: session_token → user → gms WHERE league_id = ?
 
 CREATE TABLE IF NOT EXISTS team_rotation_pointer (
     team_id    TEXT    NOT NULL,
@@ -164,6 +163,12 @@ CREATE TABLE IF NOT EXISTS team_rotation_pointer (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
+-- ── GM / Identity layer ───────────────────────────────────────────────────────
+--
+-- gms: one row per user per league (plus one per AI slot).
+--   user_id is NULL for AI GMs.
+--   All league-specific state (team, performance, fired status) lives here.
+--   The API resolves identity as: session_token → user → gms WHERE league_id = ?
 CREATE TABLE IF NOT EXISTS gms (
     id             TEXT PRIMARY KEY,
     league_id      TEXT NOT NULL,
@@ -210,10 +215,6 @@ CREATE TABLE IF NOT EXISTS pitcher_state (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
--- ── Draft order & pick rights ────────────────────────────────────────────────
-
--- Records the finalized pick order for each executed draft.
--- Written once by the offseason pipeline, never mutated.
 CREATE TABLE IF NOT EXISTS player_energy (
     player_id            TEXT NOT NULL,
     league_id            TEXT NOT NULL DEFAULT '',
@@ -338,6 +339,7 @@ CREATE TABLE IF NOT EXISTS player_skills (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+-- Track skill progression over time
 CREATE TABLE IF NOT EXISTS player_skills_history (
     player_id    TEXT NOT NULL,
     season_id    TEXT NOT NULL,
@@ -406,7 +408,6 @@ CREATE TABLE IF NOT EXISTS player_talent_caps (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
--- Track skill progression over time
 CREATE TABLE IF NOT EXISTS team_players (
     team_id   TEXT NOT NULL,
     player_id TEXT NOT NULL,
@@ -442,11 +443,6 @@ CREATE TABLE IF NOT EXISTS draft_order (
     FOREIGN KEY (team_id)  REFERENCES teams(id)
 );
 
--- Tracks current ownership of each pick slot.
--- Written by the pipeline alongside draft_order.
--- current_owner_id == original_team_id until a trade changes it.
--- draft_year + league_id identify the draft without requiring a draft_id FK,
--- allowing future-season picks to be traded before the draft record exists.
 CREATE TABLE IF NOT EXISTS league_season_teams (
     league_id TEXT NOT NULL,
     season_id TEXT NOT NULL,
@@ -499,7 +495,6 @@ CREATE TABLE IF NOT EXISTS draft_picks (
     FOREIGN KEY (player_id) REFERENCES players(id)
 );
 
--- Blitz: primary mechanism. Longform: fallback when pick timer expires.
 CREATE TABLE IF NOT EXISTS draft_preferences (
     gm_id     TEXT    NOT NULL,
     draft_id  TEXT    NOT NULL,
@@ -514,7 +509,6 @@ CREATE TABLE IF NOT EXISTS draft_preferences (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
--- Written at season end by the evaluation job.
 CREATE TABLE IF NOT EXISTS gm_lineup_preferences (
     gm_id        TEXT NOT NULL,
     player_id    TEXT NOT NULL,
@@ -558,7 +552,7 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     FOREIGN KEY (gm_id) REFERENCES gms(id) ON DELETE CASCADE
 );
 
--- One draft per league per season.
+-- Written at season end by the evaluation job.
 CREATE TABLE IF NOT EXISTS gm_season_evaluations (
     gm_id                 TEXT NOT NULL,
     season_id             TEXT NOT NULL,
@@ -576,17 +570,6 @@ CREATE TABLE IF NOT EXISTS gm_season_evaluations (
     FOREIGN KEY (gm_id)     REFERENCES gms(id)     ON DELETE CASCADE,
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
-
--- ── Indexes ───────────────────────────────────────────────────────────────────
-
-
--- GM / identity layer indexes
-
--- Game Events indexes
- 
- 
-
-
 
 CREATE TABLE IF NOT EXISTS game_events (
     id            SERIAL PRIMARY KEY,
@@ -722,7 +705,7 @@ CREATE TABLE IF NOT EXISTS team_game_stats (
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
-
+-- ── Indexes ───────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_draft_order_draft ON draft_order(draft_id);
 
 CREATE INDEX IF NOT EXISTS idx_player_skills_player_id ON player_skills(player_id);

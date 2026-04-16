@@ -39,14 +39,14 @@ def _make_player(pid: str, rating: int = 50) -> PlayerRecord:
     p.skills = skills
     return p
 
-
-def _seed_prospects(factory, n, prefix="prospect"):
-    """Insert n prospects via the factory, return their IDs."""
-    ids = []
-    for i in range(n):
-        p = factory.prospect(player_id=f"{prefix}-{i}")
-        ids.append(p.id)
-    return ids
+# Doesn't seem to be used
+# def _seed_prospects(factory, n, prefix="prospect"):
+#     """Insert n prospects via the factory, return their IDs."""
+#     ids = []
+#     for i in range(n):
+#         p = factory.prospect(player_id=f"{prefix}-{i}")
+#         ids.append(p.id)
+#     return ids
 
 
 # ─────────────────────────────────────────────────────────────────────────────
