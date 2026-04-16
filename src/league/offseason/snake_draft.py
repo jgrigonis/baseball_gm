@@ -199,14 +199,18 @@ class SnakeDraft:
 
     def _load_draft_pool(self) -> list[PlayerRecord]:
         """Load all prospect players not on any team."""
-        rows = self.conn.execute("""
+        rows = self.conn.execute(
+            """
             SELECT p.id
             FROM players p
             JOIN player_status ps ON p.id = ps.player_id
             LEFT JOIN team_players tp ON p.id = tp.player_id
             WHERE ps.status = 'prospect'
               AND tp.player_id IS NULL
-            """).fetchall()
+              AND p.league_id = %s
+            """,
+            (self.league_id,),
+        ).fetchall()
 
         players = []
         for row in rows:

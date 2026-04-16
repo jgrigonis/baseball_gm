@@ -132,9 +132,7 @@ class OffseasonPipeline:
         energy_repo = PlayerEnergyRepository(self.conn)
 
         if self.league_id:
-            players = self.player_repo.get_players_in_league_season(
-                self.league_id, season_id
-            )
+            players = self.player_repo.get_players_by_league(self.league_id)
         else:
             players = self.player_repo.get_all_players()
         player_ids = [p.id for p in players]
@@ -184,9 +182,7 @@ class OffseasonPipeline:
         Scoped to players on teams in this league's season only."""
         team_repo = TeamRepository(self.conn)
         if self.league_id:
-            players = self.player_repo.get_players_in_league_season(
-                self.league_id, self._current_season_id
-            )
+            players = self.player_repo.get_players_by_league(self.league_id)
         else:
             players = self.player_repo.get_all_players()
         retired = []
@@ -311,14 +307,18 @@ class OffseasonPipeline:
         Prospects aged 24+ who are still in the pool get marked free_agent
         so they don't accumulate indefinitely across seasons.
         """
-        rows = self.conn.execute("""
+        rows = self.conn.execute(
+            """
             SELECT p.id
             FROM players p
             JOIN player_status ps ON p.id = ps.player_id
             LEFT JOIN team_players tp ON p.id = tp.player_id
             WHERE ps.status = 'prospect'
               AND tp.player_id IS NULL
-            """).fetchall()
+              AND p.league_id = %s
+            """,
+            (self.league_id,),
+        ).fetchall()
 
         cleared = 0
         for row in rows:

@@ -322,6 +322,29 @@ class PlayerRepository:
             for row in rows
         ]
 
+    def get_players_by_league(self, league_id: str) -> list[PlayerRecord]:
+        """Get all players belonging to a league, including prospects."""
+        rows = self.conn.execute(
+            """SELECT p.*, ps.*
+               FROM players p
+               JOIN player_skills ps ON p.id = ps.player_id
+               WHERE p.league_id = %s
+               ORDER BY p.last_name, p.first_name""",
+            (league_id,),
+        ).fetchall()
+        return [
+            PlayerRecord(
+                id=row["id"],
+                first_name=row["first_name"],
+                last_name=row["last_name"],
+                bats=row["bats"],
+                throws=row["throws"],
+                position=row["position"],
+                skills=PlayerSkills.from_db_row(row),
+            )
+            for row in rows
+        ]
+
     def get_players_in_league_season(
         self, league_id: str, season_id: str
     ) -> list[PlayerRecord]:
@@ -423,4 +446,3 @@ class PlayerRepository:
             (team_id,),
         ).fetchall()
         return player_ids
-    
