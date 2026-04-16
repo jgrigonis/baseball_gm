@@ -25,14 +25,15 @@ class BlitzDraft(SnakeDraft):
     best prospect rating — identical to the base SnakeDraft behaviour.
     """
 
-    def __init__(self, conn, gm_preferences: dict[str, list[str]], **kwargs):
+    def __init__(self, conn, league_id: str, gm_preferences: dict[str, list[str]], rng=None):
         """
         Args:
             conn: DB connection
+            league_id: League to scope the draft pool to
             gm_preferences: { team_id: [player_id, ...] } in rank order.
                             Only human GMs will have entries; AI GMs won't.
         """
-        super().__init__(conn, **kwargs)
+        super().__init__(conn, league_id, rng)
         self._prefs: dict[str, list[str]] = {
             tid: list(pids) for tid, pids in gm_preferences.items()
         }

@@ -25,8 +25,9 @@ import random
 import uuid
 
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
+from src.league.offseason.snake_draft import write_draft_order
+from src.league.offseason.snake_draft import SnakeDraft
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
-
 
 def _get_season_id(conn, league_id: str) -> str | None:
     row = conn.execute(
@@ -190,10 +191,7 @@ def run_offseason(league_id: str, conn) -> dict:
         conn.commit()
 
         # Write draft order — standings-based for season 2+, randomized for first season
-        from src.league.offseason.snake_draft import write_draft_order
-        from src.league.offseason.snake_draft import SnakeDraft as _SnakeDraft
-
-        snake = _SnakeDraft(conn, league_id, rng)
+        snake = SnakeDraft(conn, league_id, rng)
         draft_order = snake._build_draft_order(
             season_id
         )  # season_id = completed season
