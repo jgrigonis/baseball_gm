@@ -325,7 +325,6 @@ def leagues_index(
 
     # 2. Fetch User's Leagues
     rows = gm_repo.get_users_leagues(user["id"])
-    print(rows[0])
 
     return templates.TemplateResponse(
         request,

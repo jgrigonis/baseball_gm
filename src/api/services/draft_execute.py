@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, UTC
 
+from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
@@ -81,11 +82,12 @@ class BlitzDraft(SnakeDraft):
 
                 available.discard(chosen.id)
                 rating = PlayerEvaluator.prospect_rating(chosen.skills)
-
-                self.conn.execute(
-                    "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                    (team_id, chosen.id),
-                )
+                tr = TeamRepository(self.conn)
+                tr.add_player(team_id, chosen.id)
+                # self.conn.execute(
+                #     "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                #     (team_id, chosen.id),
+                # )
                 self.status_repo.set_status(chosen.id, "minors")
 
                 picks.append(
@@ -114,10 +116,11 @@ class BlitzDraft(SnakeDraft):
 
         for team_entry in ai_teams:
             team_id = team_entry["team_id"]
-            player_ids = self.conn.execute(
-                "SELECT player_id FROM team_players WHERE team_id = %s",
-                (team_id,),
-            ).fetchall()
+            # player_ids = self.conn.execute(
+            #     "SELECT player_id FROM team_players WHERE team_id = %s",
+            #     (team_id,),
+            # ).fetchall()
+            player_ids = self.player_repo.get_player_ids_from_team_players(team_id)
             players = []
             for row in player_ids:
                 p = self.player_repo.look_up(row["player_id"])

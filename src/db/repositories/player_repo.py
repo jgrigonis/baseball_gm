@@ -408,3 +408,11 @@ class PlayerRepository:
     def _get_timestamp(self) -> str:
         """Helper: Get current UTC timestamp in ISO format."""
         return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    def get_player_ids_from_team_players(self, team_id: str) -> list[str]:
+        player_ids = self.conn.execute(
+            "SELECT player_id FROM team_players WHERE team_id = %s",
+            (team_id,),
+        ).fetchall()
+        return player_ids
+    
