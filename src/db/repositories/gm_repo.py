@@ -65,7 +65,7 @@ class GMRepository:
     def get_users_leagues(self, user_id: str) -> list[dict]:
         """Fetch the user's leagues"""
         rows = self.conn.execute(
-            """SELECT l.id, l.name, l.state, l.mode, l.created_at 
+            """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code
             FROM leagues l
             JOIN gms g ON g.league_id = l.id
             WHERE g.user_id = %s AND NOT g.is_ai
