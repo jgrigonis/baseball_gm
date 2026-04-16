@@ -9,7 +9,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routers import draft, gms, leagues, sim, web
+# from src.api.routers import draft, gms, leagues, web
+from src.api.routers import web
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
@@ -48,11 +49,11 @@ app.add_middleware(
 # wildcard, which would otherwise swallow them.
 app.include_router(web.router)
 
+# dead routers
 # JSON API routers
-app.include_router(leagues.router)
-app.include_router(gms.router)
-app.include_router(draft.router)
-app.include_router(sim.router)
+# app.include_router(leagues.router)
+# app.include_router(gms.router)
+# app.include_router(draft.router)
 
 # Static files
 app.mount("/static", StaticFiles(directory="src/web/static"), name="static")

@@ -348,11 +348,6 @@ var  LEAGUE_ID    = "{{ league_id }}";
 const ALL_PLAYERS = {{ players | tojson }};
 const ROSTER_KEY  = `roster3_${LEAGUE_ID}`;
 
-const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
-function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
-function gradeClass(g) {
-  return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
-}
 
 /* ── State ──────────────────────────────────────────────────────────────────── */
 const SERVER_FORTY = new Set(

@@ -427,11 +427,6 @@ const POSITIONS = ['c','1b','2b','3b','ss','lf','cf','rf','dh'];
 const POS_LABEL = {c:'C',  '1b':'1B','2b':'2B','3b':'3B','ss':'SS',
                    lf:'LF',cf:'CF',   rf:'RF',  dh:'DH'};
 
-const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
-function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
-function gradeClass(g) {
-  return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
-}
 
 /* ── Batting state ──────────────────────────────────────────────────────────── */
 let lineup = Array(9).fill(null); // {player_id, position} | null

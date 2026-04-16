@@ -325,11 +325,6 @@ const ALL_ROSTER  = {{ players     | tojson }};
 const SAVED_PREFS = {{ preferences | tojson }};
 const STORAGE_KEY = `draft3col_${DRAFT_ID}`;
 
-const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
-function gradeVal(g) { const i = GRADE_ORDER.indexOf(g||'?'); return i===-1?99:i; }
-function gradeClass(g) {
-  return 'grade grade-'+(g||'?').replace('+','-plus').replace(/-(?!plus)/g,'-minus');
-}
 
 /* ── State ──────────────────────────────────────────────────────────────────── */
 let prefOrder      = ALL_PLAYERS.map(p => p.player_id);
