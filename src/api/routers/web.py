@@ -2281,7 +2281,7 @@ def history(
         )
 
     ctx["history_rows"] = history_rows
-    return tab_response(request, "dashboard/partials/history.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/history.html", ctx)
 
 
 # ── Player panel (slide-in) ────────────────────────────────────────────────────
