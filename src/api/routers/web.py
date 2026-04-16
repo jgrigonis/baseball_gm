@@ -1927,7 +1927,8 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     }
 
     def _team_name(tid):
-        return TeamRepository.get_city_mascot(tid)
+        tr = TeamRepository(db)
+        return tr.get_city_mascot(team_id=tid)
         # r = db.execute(
         #     "SELECT city, mascot FROM teams WHERE id = %s", (tid,)
         # ).fetchone()
@@ -2052,7 +2053,8 @@ def sim_playoff_route(
     mode: str = "game",
 ):
     result = sim_playoff(league_id, db, mode=mode)
-    result["league_state"] = LeagueRepository.get_state(league_id)
+    lr = LeagueRepository(db)
+    result["league_state"] = lr.get_state(league_id)
     # league_state = db.execute(
     #     "SELECT state FROM leagues WHERE id = %s", (league_id,)
     # ).fetchone()["state"]
