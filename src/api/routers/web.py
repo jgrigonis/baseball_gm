@@ -82,20 +82,34 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
     except Exception:
         return {}
 
+
+
+    # if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
+    # of_rating = max(ratings.get("lf", 0), ratings.get("cf", 0), ratings.get("rf", 0))
+    # c_rating = ratings.get("c", 0)
+    # b1_rating = ratings.get("1b", 0)
+
+    # best_def = max(if_rating, of_rating, c_rating, b1_rating)
+    # if best_def == c_rating and c_rating >= max(if_rating, of_rating, b1_rating):
+    #     best_def_label = "CA"
+    # elif best_def == b1_rating and b1_rating >= max(if_rating, of_rating, c_rating):
+    #     best_def_label = "1B"
+    # elif best_def == of_rating and of_rating >= max(if_rating, c_rating, b1_rating):
+    #     best_def_label = "OF"
+    # else:
+    #     best_def_label = "IF"
+
     if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
     of_rating = max(ratings.get("lf", 0), ratings.get("cf", 0), ratings.get("rf", 0))
-    c_rating = ratings.get("c", 0)
-    b1_rating = ratings.get("1b", 0)
+    groups = {
+        "IF": if_rating,
+        "OF": of_rating,
+        "CA": ratings.get("c", 0),
+        "1B": ratings.get("1b", 0)
+    }
 
-    best_def = max(if_rating, of_rating, c_rating, b1_rating)
-    if best_def == c_rating and c_rating >= max(if_rating, of_rating, b1_rating):
-        best_def_label = "CA"
-    elif best_def == b1_rating and b1_rating >= max(if_rating, of_rating, c_rating):
-        best_def_label = "1B"
-    elif best_def == of_rating and of_rating >= max(if_rating, c_rating, b1_rating):
-        best_def_label = "OF"
-    else:
-        best_def_label = "IF"
+    best_def_label = max(groups, key=groups.get)
+    best_def = groups[best_def_label]
 
     ratings["if"] = if_rating
     ratings["of"] = of_rating
