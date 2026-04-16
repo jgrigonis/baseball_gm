@@ -244,7 +244,15 @@ class PlayerRepository:
     def get_player_skills(self, player_id: str) -> dict:
         """Return the player's skill dict, or an empty dict if none found."""
         row = self.conn.execute(
-            "SELECT * FROM player_skills WHERE player_id = %s", (player_id,)
+            """
+            SELECT durability, clutch, speed, power, 
+            eye, contact, base_running, bunting, 
+            catching, infield, outfield, arm,
+            accuracy, stamina, recovery, ground_balls,
+            strikes
+            FROM player_skills WHERE player_id = %s
+            """, 
+            (player_id,)
         ).fetchone()
         return dict(row) if row else {}
 

@@ -76,8 +76,9 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
     """
     try:
         # Filter to valid skill keys only — DB rows include player_id, updated_at, etc.
-        filtered = {k: v for k, v in skills.items() if k in SKILLS and v is not None}
-        ps = PlayerSkills(filtered)
+        # Query is slimmed down now
+        #filtered = {k: v for k, v in skills.items() if k in SKILLS and v is not None}
+        ps = PlayerSkills(skills)
         ratings = PlayerEvaluator.rate_player(ps, throws or "R")
     except Exception:
         return {}
