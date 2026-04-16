@@ -120,10 +120,12 @@ class InjuryRepository:
         if not team_id:
             return {}
         rows = self.conn.execute(
-            """SELECT pi.player_id, pi.games_remaining FROM player_injuries pi
-               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
-               WHERE pi.games_remaining > 0
-                 AND (pi.league_id = %s OR pi.league_id = '')""",
+            """SELECT pi.player_id, pi.games_remaining 
+                FROM player_injuries pi
+                JOIN team_players tp ON tp.player_id = pi.player_id
+                WHERE tp.team_id = %s
+                AND pi.games_remaining > 0
+                AND pi.league_id = %s""",
             (team_id, self.league_id),
         ).fetchall()
         return {r["player_id"]: r["games_remaining"] for r in rows}
