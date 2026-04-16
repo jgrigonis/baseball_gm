@@ -204,7 +204,7 @@ class LeagueRepository:
         Get the league_id from league_seasons based on the season_id
         """
         league_row = self.conn.execute(
-            "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1", (sid,)
+            "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1", (season_id,)
         ).fetchone()
         league_id = league_row["league_id"] if league_row else ""
         return league_id
