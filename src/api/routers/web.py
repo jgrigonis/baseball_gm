@@ -518,7 +518,7 @@ def dashboard(
 
     state = league["state"]
     # Redirect logic
-    if state == "draft":
+    if state in ("preseason", "draft"):
         return RedirectResponse(f"/leagues/{league_id}/draft")
     if state in ("season", "playoffs"):
         return RedirectResponse(f"/leagues/{league_id}/standings")
