@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 # from src.api.routers import draft, gms, leagues, web
@@ -62,3 +63,9 @@ app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     return {"status": "ok", "version": app.version}
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == 401:
+        return RedirectResponse("/")
+    raise exc

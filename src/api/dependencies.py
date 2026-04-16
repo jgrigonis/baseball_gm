@@ -1,6 +1,7 @@
 # src/api/dependencies.py
 from typing import Annotated, Any
 from fastapi import Request, Depends, Cookie, HTTPException
+
 import psycopg
 
 from src.api.database import get_db
