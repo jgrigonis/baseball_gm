@@ -33,7 +33,13 @@ class OffseasonPipeline:
         self.rng = rng or random.Random()
         self.league_id: str | None = None  # set in run()
 
-    def run(self, season_id: str, league_id: str | None = None) -> None:
+    def run(
+        self,
+        season_id: str,
+        league_id: str | None = None,
+        skip_auto_draft: bool = False,
+        stop_after_draft_gen: bool = False,
+    ) -> None:
         print(f"season id: {season_id}")
         self.league_id = league_id
         self._current_season_id = season_id
@@ -72,7 +78,13 @@ class OffseasonPipeline:
         else:
             print("  Skipping draft generation (already done)")
 
-        if not self._is_done(season_id, "run_draft"):
+        if stop_after_draft_gen:
+            print("  Stopping after draft generation (post-draft steps deferred)")
+            return
+
+        if skip_auto_draft:
+            print("  Skipping auto-draft (UI draft will run separately)")
+        elif not self._is_done(season_id, "run_draft"):
             self._run_draft(season_id, league_id)
             self._mark_done(season_id, "run_draft")
         else:

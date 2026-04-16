@@ -9,13 +9,13 @@ We deliberately bypass LeagueBootstrapper for year 2+ because:
   - We need year 2's season to be in the SAME league, with the SAME teams
 
 Steps:
-  1. OffseasonPipeline.run() — archive, age, retire, generate_draft, trim, reset, write_csvs
-     (run_draft pre-marked done; human draft handles all 30 teams)
+  1. OffseasonPipeline.run() — archive, age, retire, generate_draft (stops here)
   2. Create next season record directly in DB under the same league_id
   3. Copy league_season_teams from year 1
   4. Generate schedule
   5. Create draft record
   6. Set league state → 'draft'
+  Post-draft (after UI draft): trim, rotations, energy, stats, csvs (via execute_blitz_draft)
 """
 
 from __future__ import annotations
@@ -122,12 +122,10 @@ def run_offseason(league_id: str, conn) -> dict:
     rng = random.Random()
 
     # ── 1. Run offseason pipeline ─────────────────────────────────────────────
-    # Pre-mark run_draft done so the pipeline skips it. The human-facing
-    # execute_blitz_draft handles all 30 teams and keeps the prospect pool intact.
+    # Stop after draft generation — trim/rotations run after the UI draft completes.
     print(f"Running offseason pipeline for {league_id} (season {season_id})...")
     pipeline = OffseasonPipeline(conn, rng)
-    pipeline._mark_done(season_id, "run_draft")
-    pipeline.run(season_id, league_id=league_id)
+    pipeline.run(season_id, league_id=league_id, stop_after_draft_gen=True)
 
     # ── 2. Create next season directly in DB ──────────────────────────────────
     existing_next = conn.execute(

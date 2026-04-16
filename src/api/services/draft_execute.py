@@ -7,9 +7,11 @@
 
 from __future__ import annotations
 
+import random
 from datetime import datetime, UTC
 
 from src.db.repositories.team_repo import TeamRepository
+from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
@@ -244,6 +246,14 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     conn.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (league_id,))
     # conn.commit()
 
+    # Run post-draft pipeline steps (trim rosters, rotations, energy, stats, csvs).
+    # These were deferred so they run against the final rosters including draft picks.
+    prev_season_id = _prev_season_id(conn, league_id, season_id)
+    if prev_season_id:
+        print(f"Running post-draft pipeline steps for season {prev_season_id}...")
+        pipeline = OffseasonPipeline(conn, random.Random())
+        pipeline.run(prev_season_id, league_id=league_id, skip_auto_draft=True)
+
     return {
         "draft_id": draft_id,
         "season_id": season_id,
@@ -252,6 +262,24 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         "rounds": ROUNDS,
         "league_state": "preseason",
     }
+
+
+def _prev_season_id(conn, league_id: str, new_season_id: str) -> str | None:
+    """Find the most recent season for this league that has deferred pipeline steps."""
+    row = conn.execute(
+        """SELECT os.season_id FROM offseason_steps os
+           JOIN league_seasons ls ON ls.season_id = os.season_id
+           WHERE ls.league_id = %s
+             AND os.step = 'generate_draft'
+             AND os.season_id != %s
+             AND NOT EXISTS (
+                 SELECT 1 FROM offseason_steps os2
+                 WHERE os2.season_id = os.season_id AND os2.step = 'trim_rosters'
+             )
+           ORDER BY os.completed_at DESC LIMIT 1""",
+        (league_id, new_season_id),
+    ).fetchone()
+    return row["season_id"] if row else None
 
 
 def _season_year(conn, season_id: str) -> int:
