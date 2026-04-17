@@ -97,7 +97,7 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
                 ).fetchone()
                 if has_completed:
                     year += 1
-            return f"{year}-03-22"
+            return f"{year}-03-30"
         else:
             return None
     
@@ -108,9 +108,21 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     ).fetchone()
     if row:
         return row["game_date"]
-    # Playoffs: next unplayed playoff game
+    # Playoffs: next unplayed game in an undecided series
     row = db.execute(
-        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 ORDER BY game_date ASC LIMIT 1",
+        """SELECT g.game_date FROM games g
+           WHERE g.season_id = %s AND g.completed = 0
+             AND g.series_id IS NOT NULL
+             AND NOT EXISTS (
+                 SELECT 1 FROM games sg
+                 JOIN series sr ON sr.id = sg.series_id
+                 WHERE sg.series_id = g.series_id AND sg.completed = 1
+                 GROUP BY sg.winner_id
+                 HAVING COUNT(*) >= MAX(
+                     CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
+                 )
+             )
+           ORDER BY g.game_date ASC LIMIT 1""",
         (season_id,),
     ).fetchone()
     if row:
@@ -127,7 +139,20 @@ def _games_remaining(db, season_id: str | None) -> int:
     if not season_id:
         return 0
     row = db.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = %s AND completed = 0",
+        """SELECT COUNT(*) FROM games g
+           WHERE g.season_id = %s AND g.completed = 0
+             AND (
+                 g.series_id IS NULL
+                 OR NOT EXISTS (
+                     SELECT 1 FROM games sg
+                     JOIN series sr ON sr.id = sg.series_id
+                     WHERE sg.series_id = g.series_id AND sg.completed = 1
+                     GROUP BY sg.winner_id
+                     HAVING COUNT(*) >= MAX(
+                         CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
+                     )
+                 )
+             )""",
         (season_id,),
     ).fetchone()
     return row["count"] if row else 0
