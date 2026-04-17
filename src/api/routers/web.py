@@ -2471,6 +2471,194 @@ def player_panel(
     )
 
 
+@router.get(
+    "/leagues/{league_id}/players/{player_id}/career", response_class=HTMLResponse
+)
+def player_career(
+    request: Request,
+    league_id: str,
+    player_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+    compare: str | None = None,
+):
+    player_repo = PlayerRepository(db)
+    inj_repo = InjuryRepository(db, league_id)
+
+    def _load_career(pid: str) -> dict | None:
+        p = player_repo.get_with_skills(pid)
+        if not p:
+            return None
+
+        status = PlayerStatusRepository(db).get_status(pid) or "unassigned"
+        grades = player_row_to_grades(p, p, status)
+        ratings = _compute_ratings(p, p.get("throws", "R"))
+        is_pitcher = grades.player_type == "pitcher"
+
+        # Current ratings chips
+        _abbrs = {
+            "contact": "CON", "power": "POW", "eye": "EYE", "speed": "SPD",
+            "base_running": "BSR", "bunting": "BUN", "clutch": "CLU",
+            "catching": "CAT", "infield": "INF", "outfield": "OF", "arm": "ARM",
+            "strikes": "STF", "accuracy": "CTL", "stamina": "STA",
+            "recovery": "REC", "ground_balls": "GRB", "durability": "DUR",
+        }
+        current_ratings = [
+            {"abbr": abbr, "grade": skill_to_grade(p[key])}
+            for key, abbr in _abbrs.items()
+            if p.get(key) is not None
+        ]
+
+        # Career stats — regular season only, newest first
+        stat_rows = db.execute(
+            """
+            SELECT pss.*, s.year, t.city as team_city, t.mascot as team_mascot
+            FROM player_season_stats pss
+            JOIN seasons s ON s.id = pss.season_id
+            JOIN teams t ON t.id = pss.team_id
+            WHERE pss.player_id = %s AND pss.is_postseason = FALSE
+            ORDER BY s.year DESC
+            """,
+            (pid,),
+        ).fetchall()
+
+        season_stats = []
+        totals: dict = {}
+        for r in [dict(x) for x in stat_rows]:
+            if is_pitcher:
+                outs = r.get("pitch_outs", 0) or 0
+                ip = outs / 3.0
+                er = r.get("pitch_earned_runs", 0) or 0
+                hits = r.get("pitch_hits", 0) or 0
+                bb = r.get("pitch_walks", 0) or 0
+                era = round((er / ip * 9), 2) if ip > 0 else 0.0
+                whip = round((hits + bb) / ip, 2) if ip > 0 else 0.0
+                row = {
+                    "year": r["year"],
+                    "team": f"{r['team_city']} {r['team_mascot']}",
+                    "G": r.get("pitch_games_played", 0),
+                    "GS": r.get("pitch_games_started", 0),
+                    "W": r.get("pitch_wins", 0),
+                    "L": r.get("pitch_losses", 0),
+                    "SV": r.get("pitch_saves", 0),
+                    "IP": round(ip, 1),
+                    "H": hits, "ER": er, "BB": bb,
+                    "K": r.get("pitch_strike_outs", 0),
+                    "HR": r.get("pitch_home_runs", 0),
+                    "ERA": era, "WHIP": whip,
+                }
+                for k in ("G", "GS", "W", "L", "SV", "H", "ER", "BB", "K", "HR"):
+                    totals[k] = totals.get(k, 0) + row[k]
+                totals["_outs"] = totals.get("_outs", 0) + outs
+            else:
+                ab = r.get("bat_ab", 0) or 0
+                h = r.get("bat_hits", 0) or 0
+                bb = r.get("bat_walks", 0) or 0
+                hbp = r.get("bat_hbp", 0) or 0
+                sf = r.get("bat_sac_flys", 0) or 0
+                sb = r.get("bat_stolen_bases", 0) or 0
+                dbl = r.get("bat_doubles", 0) or 0
+                trp = r.get("bat_triples", 0) or 0
+                hr = r.get("bat_home_runs", 0) or 0
+                slg_num = h + dbl + 2 * trp + 3 * hr
+                obp_d = ab + bb + hbp + sf
+                avg = round(h / ab, 3) if ab > 0 else 0.0
+                slg = round(slg_num / ab, 3) if ab > 0 else 0.0
+                obp = round((h + bb + hbp) / obp_d, 3) if obp_d > 0 else 0.0
+                row = {
+                    "year": r["year"],
+                    "team": f"{r['team_city']} {r['team_mascot']}",
+                    "G": r.get("bat_games_played", 0),
+                    "AB": ab, "H": h, "2B": dbl, "3B": trp, "HR": hr,
+                    "RBI": r.get("bat_rbi", 0) or 0,
+                    "R": r.get("bat_runs", 0) or 0,
+                    "BB": bb, "K": r.get("bat_strike_outs", 0) or 0, "SB": sb,
+                    "AVG": avg, "OBP": obp, "SLG": slg, "OPS": round(obp + slg, 3),
+                }
+                for k in ("G", "AB", "H", "2B", "3B", "HR", "RBI", "R", "BB", "K", "SB"):
+                    totals[k] = totals.get(k, 0) + row[k]
+                totals["_ab"] = totals.get("_ab", 0) + ab
+                totals["_h"] = totals.get("_h", 0) + h
+                totals["_bb"] = totals.get("_bb", 0) + bb
+                totals["_hbp"] = totals.get("_hbp", 0) + hbp
+                totals["_sf"] = totals.get("_sf", 0) + sf
+                totals["_slg_num"] = totals.get("_slg_num", 0) + slg_num
+            season_stats.append(row)
+
+        totals_row: dict | None = None
+        if totals:
+            if is_pitcher:
+                tot_outs = totals.pop("_outs", 0)
+                tot_ip = tot_outs / 3.0
+                tot_er = totals.get("ER", 0)
+                tot_h = totals.get("H", 0)
+                tot_bb = totals.get("BB", 0)
+                totals_row = {
+                    **totals, "IP": round(tot_ip, 1),
+                    "ERA": round((tot_er / tot_ip * 9), 2) if tot_ip > 0 else 0.0,
+                    "WHIP": round((tot_h + tot_bb) / tot_ip, 2) if tot_ip > 0 else 0.0,
+                }
+            else:
+                tot_ab = totals.pop("_ab", 0)
+                tot_h = totals.pop("_h", 0)
+                tot_bb = totals.pop("_bb", 0)
+                tot_hbp = totals.pop("_hbp", 0)
+                tot_sf = totals.pop("_sf", 0)
+                tot_slg_num = totals.pop("_slg_num", 0)
+                obp_d = tot_ab + tot_bb + tot_hbp + tot_sf
+                tot_avg = round(tot_h / tot_ab, 3) if tot_ab > 0 else 0.0
+                tot_slg = round(tot_slg_num / tot_ab, 3) if tot_ab > 0 else 0.0
+                tot_obp = round((tot_h + tot_bb + tot_hbp) / obp_d, 3) if obp_d > 0 else 0.0
+                totals_row = {
+                    **totals,
+                    "AVG": tot_avg, "OBP": tot_obp, "SLG": tot_slg,
+                    "OPS": round(tot_obp + tot_slg, 3),
+                }
+
+        # Injuries grouped by season year
+        all_inj = db.execute(
+            """
+            SELECT pil.injury_date, pil.severity, pil.games_missed, pil.activity,
+                   s.year as season_year
+            FROM player_injury_log pil
+            LEFT JOIN seasons s ON s.id = pil.season_id
+            WHERE pil.player_id = %s
+            ORDER BY pil.injury_date DESC
+            """,
+            (pid,),
+        ).fetchall()
+        injuries_by_year: dict[str, list] = {}
+        for r in all_inj:
+            yr = str(r["season_year"]) if r["season_year"] else "Pre-season"
+            injuries_by_year.setdefault(yr, []).append(dict(r))
+
+        overall_grade = grades.overall
+        if status in ("prospect", "unassigned", "free_agent"):
+            overall_grade = skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
+        elif is_pitcher:
+            best_p = max(ratings.get("sp", 0), ratings.get("rp", 0)) if ratings else 0
+            overall_grade = skill_to_grade(best_p) if best_p else grades.overall
+        else:
+            overall_grade = skill_to_grade(ratings.get("overall_player")) if ratings else grades.overall
+
+        return {
+            **grades.model_dump(),
+            "player_id": pid,
+            "overall_grade": overall_grade,
+            "is_pitcher": is_pitcher,
+            "current_ratings": current_ratings,
+            "season_stats": season_stats,
+            "totals_row": totals_row,
+            "injuries_by_year": injuries_by_year,
+        }
+
+    ctx = _shell_ctx(request, db, gm, league_id, user)
+    ctx["player"] = _load_career(player_id)
+    ctx["compare_player"] = _load_career(compare) if compare else None
+    return templates.TemplateResponse(request, "dashboard/partials/player_career.html", ctx)
+
+
 @router.get("/leagues/{league_id}/history/{year}/", response_class=HTMLResponse)
 def history_season_detail(
     request: Request,

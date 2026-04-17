@@ -1,0 +1,293 @@
+{# templates/dashboard/partials/player_career.html
+  Full career page for one or two players side-by-side.
+  Accessed via "Career" link in the player detail panel.
+#}
+
+<style>
+.career-page {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  padding: 0;
+  overflow-y: auto;
+  height: 100%;
+}
+.career-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.career-header .pp-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+}
+.career-header .pp-close:hover { color: var(--text); }
+.career-title { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+.career-body {
+  display: flex;
+  gap: 0;
+}
+.career-slot {
+  flex: 1;
+  padding: 16px;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+.career-slot:last-child { border-right: none; }
+
+.cs-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.cs-meta { color: var(--text-dim); font-size: 11px; margin-bottom: 12px; }
+.cs-overall {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.cs-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 14px 0 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Stats table */
+.cs-stats-wrap { overflow-x: auto; }
+.cs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cs-table th {
+  text-align: right;
+  padding: 3px 6px;
+  color: var(--text-dim);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.cs-table th:first-child,
+.cs-table th:nth-child(2) { text-align: left; }
+.cs-table td {
+  text-align: right;
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--border-subtle, #1e2733);
+}
+.cs-table td:first-child,
+.cs-table td:nth-child(2) { text-align: left; color: var(--text-dim); }
+.cs-table tr:last-child td { border-bottom: none; }
+.cs-table .totals-row td {
+  font-weight: 700;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+}
+.cs-table .totals-row td:first-child { color: var(--text-dim); }
+.stat-hi { color: var(--green, #4ade80); }
+.cs-table td.stat-hi { color: var(--green, #4ade80); }
+
+/* Ratings row */
+.cs-ratings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cs-rating-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-2);
+}
+.cs-rating-abbr { color: var(--text-dim); font-size: 10px; }
+.cs-rating-grade { font-weight: 700; font-size: 12px; }
+.cs-rating-grade.elite { color: #a78bfa; }
+.cs-rating-grade.good  { color: #4ade80; }
+.cs-rating-grade.poor  { color: var(--red, #f87171); }
+
+/* Injury table */
+.cs-inj-year { color: var(--text-dim); font-size: 10px; font-weight: 700; text-transform: uppercase; margin: 8px 0 4px; }
+.cs-inj-row {
+  display: flex;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-subtle, #1e2733);
+  font-size: 11px;
+}
+.cs-inj-row:last-child { border-bottom: none; }
+.cs-inj-date { color: var(--text-dim); min-width: 80px; }
+.cs-inj-sev  { flex: 1; }
+.cs-inj-gm   { color: var(--text-dim); text-align: right; min-width: 30px; }
+.cs-empty { color: var(--text-dim); font-style: italic; font-size: 11px; }
+</style>
+
+{% if not player %}
+<div style="padding:24px;font-family:var(--font-mono);font-size:12px;color:var(--red);">
+  Player not found.
+</div>
+{% else %}
+<div class="career-page">
+
+  <div class="career-header">
+    <button class="pp-close" onclick="closePlayerPanel()" title="Close">✕</button>
+    <span class="career-title">
+      {% if compare_player %}Career Comparison{% else %}Player Career{% endif %}
+    </span>
+    {% if not compare_player %}
+    <button class="btn btn-secondary"
+            style="font-size:10px;padding:4px 10px;"
+            onclick="pinForCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')">
+      Compare ↔
+    </button>
+    {% endif %}
+  </div>
+
+  <div class="career-body">
+
+    {# ── Player 1 ─────────────────────────────────────────────────────────── #}
+    {% macro career_slot(p) %}
+    <div class="career-slot">
+
+      <div class="cs-name">{{ p.first_name }} {{ p.last_name }}</div>
+      <div class="cs-meta">
+        {{ p.position or '?' }} · {{ p.bats }}/{{ p.throws }} · Age {{ p.age }}
+      </div>
+      <div class="cs-overall grade-{{ p.overall_grade | replace('+','-plus') | replace('-','-minus') }}">
+        {{ p.overall_grade }}
+      </div>
+
+      {# ── Current Ratings ───────────────────────────────────────────────── #}
+      <div class="cs-section-title">Current Ratings</div>
+      {% if p.current_ratings %}
+      <div class="cs-ratings">
+        {% for r in p.current_ratings %}
+        <div class="cs-rating-chip">
+          <span class="cs-rating-abbr">{{ r.abbr }}</span>
+          <span class="cs-rating-grade
+            {% set g = r.grade %}
+            {% if g and g.startswith('A') %}elite
+            {% elif g and (g.startswith('B') or g == 'C+') %}good
+            {% elif g and (g.startswith('D') or g == 'F') %}poor
+            {% endif %}">{{ r.grade }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <span class="cs-empty">No ratings available</span>
+      {% endif %}
+
+      {# ── Career Stats ──────────────────────────────────────────────────── #}
+      <div class="cs-section-title">Career Stats</div>
+      {% if p.season_stats %}
+      <div class="cs-stats-wrap">
+        <table class="cs-table">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Team</th>
+              {% if p.is_pitcher %}
+                <th>G</th><th>GS</th><th>W</th><th>L</th><th>SV</th>
+                <th>IP</th><th>H</th><th>ER</th><th>BB</th><th>K</th><th>HR</th>
+                <th>ERA</th><th>WHIP</th>
+              {% else %}
+                <th>G</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th>
+                <th>RBI</th><th>R</th><th>BB</th><th>K</th><th>SB</th>
+                <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in p.season_stats %}
+            <tr>
+              <td>{{ s.year }}</td>
+              <td>{{ s.team }}</td>
+              {% if p.is_pitcher %}
+                <td>{{ s.G }}</td><td>{{ s.GS }}</td><td>{{ s.W }}</td><td>{{ s.L }}</td><td>{{ s.SV }}</td>
+                <td>{{ s.IP }}</td><td>{{ s.H }}</td><td>{{ s.ER }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.HR }}</td>
+                <td class="stat-hi">{{ "%.2f"|format(s.ERA) }}</td>
+                <td class="stat-hi">{{ "%.2f"|format(s.WHIP) }}</td>
+              {% else %}
+                <td>{{ s.G }}</td><td>{{ s.AB }}</td><td>{{ s.H }}</td><td>{{ s['2B'] }}</td><td>{{ s['3B'] }}</td><td>{{ s.HR }}</td>
+                <td>{{ s.RBI }}</td><td>{{ s.R }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.SB }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(s.AVG) }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(s.OBP) }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(s.SLG) }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(s.OPS) }}</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+            {% if p.totals_row %}
+            <tr class="totals-row">
+              <td>Total</td><td>—</td>
+              {% set t = p.totals_row %}
+              {% if p.is_pitcher %}
+                <td>{{ t.G }}</td><td>{{ t.GS }}</td><td>{{ t.W }}</td><td>{{ t.L }}</td><td>{{ t.SV }}</td>
+                <td>{{ t.IP }}</td><td>{{ t.H }}</td><td>{{ t.ER }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.HR }}</td>
+                <td class="stat-hi">{{ "%.2f"|format(t.ERA) }}</td>
+                <td class="stat-hi">{{ "%.2f"|format(t.WHIP) }}</td>
+              {% else %}
+                <td>{{ t.G }}</td><td>{{ t.AB }}</td><td>{{ t.H }}</td><td>{{ t['2B'] }}</td><td>{{ t['3B'] }}</td><td>{{ t.HR }}</td>
+                <td>{{ t.RBI }}</td><td>{{ t.R }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.SB }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(t.AVG) }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(t.OBP) }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(t.SLG) }}</td>
+                <td class="stat-hi">{{ "%.3f"|format(t.OPS) }}</td>
+              {% endif %}
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <span class="cs-empty">No stats on record</span>
+      {% endif %}
+
+      {# ── Injury History ────────────────────────────────────────────────── #}
+      <div class="cs-section-title">Injury History</div>
+      {% if p.injuries_by_year %}
+        {% for year, injuries in p.injuries_by_year.items() %}
+        <div class="cs-inj-year">{{ year }}</div>
+        {% for inj in injuries %}
+        <div class="cs-inj-row">
+          <span class="cs-inj-date">{{ inj.injury_date }}</span>
+          <span class="cs-inj-sev">{{ inj.severity }}{% if inj.activity %} · {{ inj.activity }}{% endif %}</span>
+          <span class="cs-inj-gm">{{ inj.games_missed }}g</span>
+        </div>
+        {% endfor %}
+        {% endfor %}
+      {% else %}
+      <span class="cs-empty">No injuries on record</span>
+      {% endif %}
+
+    </div>
+    {% endmacro %}
+
+    {{ career_slot(player) }}
+
+    {% if compare_player %}
+    {{ career_slot(compare_player) }}
+    {% endif %}
+
+  </div>
+
+</div>
+{% endif %}
