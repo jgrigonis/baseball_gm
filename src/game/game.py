@@ -866,7 +866,8 @@ class Game:
 
                 state = self.player_energy_states.get(player.id)
                 if state:
-                    state.current_energy = 0.0
+                    # injured player energy will drop to 0.75
+                    state.current_energy = min(0.75, state.current_energy)
 
                 self.logger.info(
                     f"🚑 {player.name} injured ({activity}). Severity: {severity}"
