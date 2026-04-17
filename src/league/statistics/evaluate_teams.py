@@ -1,4 +1,4 @@
-# scripts/evaluate_teams.py
+# src/league/statistics/evaluate_teams.py
 
 import argparse
 import json

@@ -32,8 +32,8 @@ class PlayerCSVExporter:
         Returns:
             bool: True if file was written, False if user cancelled
         """
-        base = Path(TEAM_FILES_DIR) / str(year)
-        out_dir = base / league_id if league_id else base
+        base = Path(TEAM_FILES_DIR) / league_id if league_id else Path(TEAM_FILES_DIR)
+        out_dir = base / str(year)
         filepath = out_dir / filename
         filepath.parent.mkdir(parents=True, exist_ok=True)
 

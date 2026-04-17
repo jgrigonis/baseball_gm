@@ -1,4 +1,4 @@
-# scripts/league_totals.py
+# src/league/statistics/league_totals.py
 """
 Display aggregate league-wide stats for a season with expected real-world ranges.
 

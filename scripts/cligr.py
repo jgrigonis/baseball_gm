@@ -335,24 +335,13 @@ def clear_all_teams() -> None:
 
 
 def clear_teams_for_league(league_id: str) -> None:
-    """Delete all year subdirectories that contain a league_id folder."""
-    d = _team_files_dir()
-    if not d.exists():
-        print(f"  {TEAM_FILES_DIR}/: nothing to clear")
-        return
-    removed = 0
-    for year_dir in sorted(d.iterdir()):
-        if not year_dir.is_dir():
-            continue
-        league_dir = year_dir / league_id
-        if league_dir.exists():
-            shutil.rmtree(league_dir)
-            removed += 1
-            print(f"  Deleted {league_dir}")
-    if removed == 0:
+    """Delete the league's team files directory."""
+    league_dir = _team_files_dir() / league_id
+    if not league_dir.exists():
         print(f"  No team files found for league {league_id}")
-    else:
-        print(f"  Removed {removed} year folder(s) for league {league_id}")
+        return
+    shutil.rmtree(league_dir)
+    print(f"  Deleted {league_dir}")
 
 
 def pick_league_interactively() -> str | None:

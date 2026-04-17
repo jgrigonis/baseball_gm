@@ -1,4 +1,4 @@
-# scripts/evaluate_players.py
+# src/league/statistics/evaluate_players.py
 
 import argparse
 import csv
@@ -69,12 +69,6 @@ def evaluate_players_from_manifest(
     evaluations = []
 
     season_year = manifest.get("season_year")
-    if season_year:
-        year_dir = Path(base_dir) / str(season_year)
-        if year_dir.exists():
-            base_dir = year_dir
-        else:
-            print(f"  Warning: year directory {year_dir} not found, using {base_dir}")
 
     print(f"League: {manifest.get('league_name', 'Unknown')}")
     print(

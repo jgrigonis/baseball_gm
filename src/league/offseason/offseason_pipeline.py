@@ -217,7 +217,7 @@ class OffseasonPipeline:
 
         if retired:
             if self.league_id:
-                out_dir = Path(TEAM_FILES_DIR) / str(self.year) / self.league_id
+                out_dir = Path(TEAM_FILES_DIR) / self.league_id / str(self.year)
             else:
                 out_dir = Path(TEAM_FILES_DIR) / str(self.year)
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -242,7 +242,7 @@ class OffseasonPipeline:
                    WHERE lst.season_id = %s AND lst.league_id = %s""",
                 (season_id, self.league_id),
             ).fetchall()
-            out_dir = Path(TEAM_FILES_DIR) / str(self.year) / self.league_id
+            out_dir = Path(TEAM_FILES_DIR) / self.league_id / str(self.year)
         else:
             teams = self.conn.execute(
                 """SELECT t.id, t.source_csv

@@ -1,4 +1,4 @@
-# scripts/evaluate_team.py
+# src/league/statistics/evaluate_team.py
 
 import argparse
 from pathlib import Path

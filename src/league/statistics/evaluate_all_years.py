@@ -1,4 +1,4 @@
-# scripts/evaluate_all_years.py
+# src/league/statistics/evaluate_all_years.py
 import argparse
 from pathlib import Path
 from typing import List, Dict

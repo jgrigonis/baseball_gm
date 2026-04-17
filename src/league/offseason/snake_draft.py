@@ -326,9 +326,11 @@ class SnakeDraft:
         self, picks: list[DraftPick], year: int, league_id: str | None = None
     ) -> None:
         """Write draft_results.csv."""
-        out_dir = Path(TEAM_FILES_DIR) / str(year)
         if league_id:
-            out_dir = Path(TEAM_FILES_DIR) / str(year) / league_id
+            out_dir = Path(TEAM_FILES_DIR) / league_id / str(year)
+        else:
+            # TODO: This should really be an error
+            out_dir = Path(TEAM_FILES_DIR) / str(year)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "draft_results.csv"
 

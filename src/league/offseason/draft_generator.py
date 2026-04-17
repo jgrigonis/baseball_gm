@@ -206,7 +206,7 @@ class DraftGenerator:
     ) -> Path:
         # Scope by league_id so multiple leagues don't overwrite each other
         if league_id:
-            out_dir = Path(TEAM_FILES_DIR) / str(year) / league_id
+            out_dir = Path(TEAM_FILES_DIR) / league_id / str(year)
         else:
             out_dir = Path(TEAM_FILES_DIR) / str(year)
         out_dir.mkdir(parents=True, exist_ok=True)

@@ -1,4 +1,4 @@
-# scripts/league_leaders.py
+# src/league/statistics/league_leaders.py
 """
 Display the stat leaders for various stats for a season, compare with expected
 real-world ranges.

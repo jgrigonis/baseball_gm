@@ -44,8 +44,8 @@ def validate_manifest_uniqueness(manifest: dict) -> None:
 
 def _team_dir(year, league_id: str | None = None) -> Path:
     """Return the directory for team CSV files, scoped by league if provided."""
-    base = Path(TEAM_FILES_DIR) / str(year)
-    return base / league_id if league_id else base
+    base = Path(TEAM_FILES_DIR) / league_id if league_id else Path(TEAM_FILES_DIR)
+    return base / str(year)
 
 
 def find_missing_team_files(manifest: dict, league_id: str | None = None) -> list[dict]:
