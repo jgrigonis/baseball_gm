@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from src.api.dependencies import DB
 from src.api.schemas import skill_to_grade, player_row_to_grades
 from src.api.dependencies import IsHTMX
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.web.utils import tab_response, _shell_ctx
@@ -293,8 +294,8 @@ async def dashboard(request: Request, league_id: str, db: DB):
     gm, redir = _require_league_gm(request, league_id, db)
     if redir:
         return redir
-
-    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    lr = LeagueRepository(db)
+    league = lr.get_by_id(league_id)
     if not league:
         return RedirectResponse("/leagues", status_code=302)
 
@@ -314,7 +315,8 @@ async def dashboard(request: Request, league_id: str, db: DB):
 
 
 async def _lobby(request: Request, league_id: str, gm: dict, db) -> HTMLResponse:
-    league = db.execute("SELECT * FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    lr = LeagueRepository(db)
+    league = lr.get_by_id(league_id)
     gms_rows = db.execute(
         """
         SELECT g.id, g.display_name, g.is_ai, g.is_away, g.team_id,

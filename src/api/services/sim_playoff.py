@@ -15,6 +15,7 @@ from datetime import date
 
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
@@ -190,9 +191,8 @@ def sim_playoff(
     mode: "game" (1 day) | "round" (1 round) | "all" (entire playoffs)
     Returns summary dict.
     """
-    league = conn.execute(
-        "SELECT * FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
+    lr = LeagueRepository(conn)
+    league = lr.get_by_id(league_id)
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] != "playoffs":

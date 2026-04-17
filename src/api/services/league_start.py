@@ -7,6 +7,7 @@ import random
 import uuid
 from pathlib import Path
 
+from src.db.repositories.league_repo import LeagueRepository
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
     create_team_files,
@@ -29,9 +30,8 @@ def start_league(
     draft_gen=None,
     scheduler=None,
 ) -> dict:
-    league = conn.execute(
-        "SELECT * FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
+    lr = LeagueRepository(conn)
+    league = lr.get_by_id(league_id)
 
     if not league:
         raise ValueError(f"League {league_id} not found.")

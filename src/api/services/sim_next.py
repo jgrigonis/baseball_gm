@@ -14,6 +14,7 @@ import traceback
 
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -39,9 +40,8 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     Returns a summary dict with date, games played, and results.
     """
-    league = conn.execute(
-        "SELECT * FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
+    lr = LeagueRepository(conn)
+    league = lr.get_by_id(league_id)
     if not league:
         raise ValueError(f"League {league_id} not found.")
 

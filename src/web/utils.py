@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader
 
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 
 # Templates are in src/web/templates/ relative to the project root
@@ -183,9 +184,8 @@ def _shell_ctx(
 
     # 2. Fetch League Data if league_id exists
     if league_id:
-        league = db.execute(
-            "SELECT * FROM leagues WHERE id = %s", (league_id,)
-        ).fetchone()
+        lr = LeagueRepository(db)
+        league = lr.get_by_id(league_id)
         draft_complete = _draft_is_complete(db, league_id)
         if league:
             ctx.update(

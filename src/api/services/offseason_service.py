@@ -24,6 +24,7 @@ import datetime
 import random
 import uuid
 
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.offseason.snake_draft import write_draft_order
@@ -96,9 +97,8 @@ def run_offseason(league_id: str, conn) -> dict:
     Run the full offseason for a league and return to draft state.
     Idempotent — pipeline skips completed steps; season creation is guarded.
     """
-    league = conn.execute(
-        "SELECT * FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
+    lr = LeagueRepository(conn)
+    league = lr.get_by_id(league_id)
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] not in ("offseason",):
