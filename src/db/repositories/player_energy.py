@@ -218,7 +218,8 @@ class PlayerEnergyRepository:
             return PlayerEnergyState(player_id=player_id)
 
         if days_rest > 0:
-            state.consecutive_days = 0
+            if days_rest >= 2:
+                state.consecutive_days = 0
 
             # Exponential approach toward max_energy
             rate = _daily_recovery_rate(durability)
