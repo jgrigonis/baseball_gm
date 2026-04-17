@@ -47,6 +47,14 @@ class SeasonRepository:
 
     #     return row["id"] if row else None
 
+    def has_a_completed_game(self, season_id: str) -> bool:
+        """Determine if the season has a single completed game."""
+        row = self.conn.execute(
+            "SELECT 1 FROM games WHERE season_id = %s AND completed = 1 LIMIT 1",
+            (season_id,),
+        ).fetchone()
+        return row is not None
+
     def get_year(self, season_id: str) -> dict | None:
         """Get the year of the season."""
         row = self.conn.execute(

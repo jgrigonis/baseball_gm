@@ -44,20 +44,6 @@ class GameRepository:
 
         return dict(row) if row else None
 
-        # return {
-        #     "game_id": row["id"],
-        #     "game_date": row["game_date"],
-        #     "season_id": row["season_id"],
-        #     "series_id": row["series_id"],
-        #     "home_team_id": row["home_team_id"],
-        #     "away_team_id": row["away_team_id"],
-        #     "completed": row["completed"],
-        #     "home_score": row["home_score"],
-        #     "away_score": row["away_score"],
-        #     "winner_id": row["winner_id"],
-        #     "innings_played": row["innings_played"],
-        # }
-
     def save_game_result(self, game_id: str, result: GameResult, winner_id: str):
         """Save game result to database."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -111,14 +97,7 @@ class GameRepository:
 
         query += " ORDER BY game_date"
 
-        # where = " AND ".join(conditions)
-
         rows = self.conn.execute(query, params).fetchall()
-
-        # rows = self.conn.execute(
-        #     f"SELECT * FROM games WHERE {where} ORDER BY game_date",
-        #     params,
-        # ).fetchall()
 
         return [
             {

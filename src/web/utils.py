@@ -55,18 +55,6 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
     return post
 
 
-# def tab_visible(state: str | None) -> list[str]:
-#     """Determines which tabs to show based on league state."""
-#     if not state or state == "lobby":
-#         return []
-#     always = ["standings", "leaders", "roster", "lineup", "strategy"]
-#     if state == "draft":
-#         return ["draft"] + always
-#     if state in ("season", "playoffs"):
-#         return always + ["schedule"]
-#     return always
-
-
 def tab_response(request: Request, htmx: bool, template_name: str, ctx: dict):
     """The main entry point for your route responses."""
     # Ensure tab visibility is always calculated here so you don't
@@ -91,11 +79,7 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
         if row:
             year = row["year"]
             if state == "draft":
-                has_completed = db.execute(
-                    "SELECT 1 FROM games WHERE season_id = %s AND completed = 1 LIMIT 1",
-                    (season_id,),
-                ).fetchone()
-                if has_completed:
+                if sr.has_a_completed_game(season_id):
                     year += 1
             return f"{year}-03-22"
         else:
