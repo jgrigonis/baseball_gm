@@ -84,15 +84,20 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     if state not in ("draft", "preseason", "season", "playoffs", "offseason"):
         return None
     if state in ("draft", "offseason"):
-        # print(season_id)
         row = db.execute(
             "SELECT year FROM seasons WHERE id = %s",
             (season_id,),
         ).fetchone()
         if row:
-            year = row["year"] 
-            # print(f"{year}-04-01")
-            return f"{year}-03-30"
+            year = row["year"]
+            if state == "draft":
+                has_completed = db.execute(
+                    "SELECT 1 FROM games WHERE season_id = %s AND completed = 1 LIMIT 1",
+                    (season_id,),
+                ).fetchone()
+                if has_completed:
+                    year += 1
+            return f"{year}-03-22"
         else:
             return None
     
