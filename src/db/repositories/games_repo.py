@@ -217,6 +217,18 @@ class GameRepository:
                    JOIN teams at ON at.id = g.away_team_id
                    WHERE g.season_id = %s AND g.completed = 0
                      AND (g.home_team_id = %s OR g.away_team_id = %s)
+                     AND (
+                         g.series_id IS NULL
+                         OR NOT EXISTS (
+                             SELECT 1 FROM games sg
+                             JOIN series sr ON sr.id = sg.series_id
+                             WHERE sg.series_id = g.series_id AND sg.completed = 1
+                             GROUP BY sg.winner_id
+                             HAVING COUNT(*) >= MAX(
+                                 CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
+                             )
+                         )
+                     )
                    ORDER BY g.game_date"""
         if limit:
             query += f" LIMIT {limit}"
