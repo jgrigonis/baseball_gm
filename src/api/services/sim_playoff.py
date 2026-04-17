@@ -15,6 +15,7 @@ from datetime import date
 
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -26,12 +27,7 @@ from src.league.playoffs.play_playoffs import (
     _SEMI_18_45_OFFSETS,
     _FINAL_OFFSETS,
     generate_round_games,
-    get_seeds,
-    get_series_id,
-    get_series_games,
-    get_series_winner,
     original_seed,
-    series_is_decided,
 )
 from src.league.play_season import play_game
 
@@ -72,28 +68,19 @@ class SimConfig:
 # ---------------------------------------------------------------------------
 
 
-def _get_playoff_start(conn, season_id: str) -> date:
-    row = conn.execute(
-        """SELECT g.game_date FROM games g
-           JOIN series s ON g.series_id = s.id
-           WHERE s.season_id = %s AND s.name IN ('1v8','2v7','3v6','4v5')
-           ORDER BY g.game_date LIMIT 1""",
-        (season_id,),
-    ).fetchone()
-    return date.fromisoformat(row["game_date"]) if row else date.today()
-
-
 def _ensure_round_games(
     conn, season_id: str, round_idx: int, seeds: list[dict]
 ) -> None:
     """Generate games for semis or finals once prior round is decided."""
-    playoff_start = _get_playoff_start(conn, season_id)
+    pr = PlayoffRepository(conn)
+    playoff_start = pr.get_playoff_start(season_id) or date.today()
+    # TODO date.today() makes no sense here or ever in this code.
 
     if round_idx == 1:  # Semifinals
-        r1_winners = {}
-        for name in ["1v8", "2v7", "3v6", "4v5"]:
-            sid = get_series_id(conn, season_id, name)
-            r1_winners[name] = get_series_winner(conn, sid, 5)
+        r1_winners = {
+            name: pr.get_series_winner(pr.get_series_id(season_id, name), 5)
+            for name in ["1v8", "2v7", "3v6", "4v5"]
+        }
 
         for name, team_a, team_b in [
             ("[1,8]v[4,5]", r1_winners["1v8"], r1_winners["4v5"]),
@@ -101,63 +88,38 @@ def _ensure_round_games(
         ]:
             if not team_a or not team_b:
                 continue
-            sid = get_series_id(conn, season_id, name)
-            if not sid:
-                continue
-            existing = conn.execute(
-                "SELECT COUNT(*) FROM games WHERE series_id = %s", (sid,)
-            ).fetchone()["count"]
-            if existing > 0:
+            sid = pr.get_series_id(season_id, name)
+            if not sid or pr.series_has_games(sid):
                 continue
             seed_a = original_seed(seeds, team_a)
             seed_b = original_seed(seeds, team_b)
             high = team_a if seed_a < seed_b else team_b
             low = team_b if seed_a < seed_b else team_a
-            # Each semi series gets its own offset schedule
             semi_offsets = (
                 _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]" else _SEMI_27_36_OFFSETS
             )
             generate_round_games(
-                conn,
-                season_id,
-                sid,
-                high,
-                low,
-                _HOME_MAP_BO7,
-                playoff_start,
-                semi_offsets,
+                conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, semi_offsets
             )
 
     elif round_idx == 2:  # Finals
         semi_winners = []
         for name in ["[1,8]v[4,5]", "[2,7]v[3,6]"]:
-            sid = get_series_id(conn, season_id, name)
-            w = get_series_winner(conn, sid, 7)
+            sid = pr.get_series_id(season_id, name)
+            w = pr.get_series_winner(sid, 7)
             if w:
                 semi_winners.append((w, original_seed(seeds, w)))
 
         if len(semi_winners) == 2:
-            sid = get_series_id(conn, season_id, "Finals")
-            if not sid:
-                return
-            existing = conn.execute(
-                "SELECT COUNT(*) FROM games WHERE series_id = %s", (sid,)
-            ).fetchone()["count"]
-            if existing > 0:
+            sid = pr.get_series_id(season_id, "Finals")
+            if not sid or pr.series_has_games(sid):
                 return
             a, sa = semi_winners[0]
             b, sb = semi_winners[1]
             high = a if sa < sb else b
             low = b if sa < sb else a
             generate_round_games(
-                conn,
-                season_id,
-                sid,
-                high,
-                low,
-                _HOME_MAP_BO7,
-                playoff_start,
-                _FINAL_OFFSETS,
+                conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, _FINAL_OFFSETS
             )
 
 
@@ -176,7 +138,7 @@ def _play_one_game(
     rotations_repo = TeamRotationsRepository(conn)
     args = SimConfig()
 
-    for g in get_series_games(conn, series_id):
+    for g in GameRepository(conn).get_series_games(series_id):
         if not g["completed"]:
             return play_game(
                 conn=conn,
@@ -224,7 +186,8 @@ def sim_playoff(
 
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     league_mode = dict(league).get("mode", "blitz") or "blitz"
-    seeds = get_seeds(conn, season_id)
+    playoff_repo = PlayoffRepository(conn)
+    seeds = playoff_repo.get_seeds(season_id)
     rng = random.Random()
 
     games_played = 0
@@ -249,8 +212,8 @@ def sim_playoff(
         decided_sids = set()
         for rd in ROUND_DEFS:
             for sn in rd["series_names"]:
-                sid = get_series_id(conn, season_id, sn)
-                if sid and series_is_decided(conn, sid, rd["best_of"]):
+                sid = playoff_repo.get_series_id(season_id, sn)
+                if sid and playoff_repo.is_decided(sid, rd["best_of"]):
                     decided_sids.add(sid)
 
         row = conn.execute(
@@ -310,8 +273,8 @@ def sim_playoff(
         """Return the name of the round currently being played."""
         for rd in ROUND_DEFS:
             for sn in rd["series_names"]:
-                sid = get_series_id(conn, season_id, sn)
-                if sid and not series_is_decided(conn, sid, rd["best_of"]):
+                sid = playoff_repo.get_series_id(season_id, sn)
+                if sid and not playoff_repo.is_decided(sid, rd["best_of"]):
                     return rd["name"]
         return ROUND_DEFS[-1]["name"]
 
@@ -323,7 +286,7 @@ def sim_playoff(
         for g in day_games:
             best_of = SERIES_BEST_OF.get(g["series_name"], 7)
             # Skip if series already decided (early exit)
-            if series_is_decided(conn, g["series_id"], best_of):
+            if playoff_repo.is_decided(g["series_id"], best_of):
                 continue
             r = _play_one_game(
                 conn, season_id, league_id, league_mode, g["series_id"], rng
@@ -352,21 +315,20 @@ def sim_playoff(
         current_round_def = None
         for rd in ROUND_DEFS:
             for sn in rd["series_names"]:
-                sid = get_series_id(conn, season_id, sn)
-                if sid and not series_is_decided(conn, sid, rd["best_of"]):
+                sid = playoff_repo.get_series_id(season_id, sn)
+                if sid and not playoff_repo.is_decided(sid, rd["best_of"]):
                     current_round_def = rd
                     break
             if current_round_def:
                 break
         if current_round_def:
             while not all(
-                series_is_decided(
-                    conn,
-                    get_series_id(conn, season_id, sn),
+                playoff_repo.is_decided(
+                    playoff_repo.get_series_id(season_id, sn),
                     current_round_def["best_of"],
                 )
                 for sn in current_round_def["series_names"]
-                if get_series_id(conn, season_id, sn)
+                if playoff_repo.get_series_id(season_id, sn)
             ):
                 n = _play_day()
                 if n == 0:
@@ -384,9 +346,9 @@ def sim_playoff(
     current_round = _current_round_name()
 
     # Check if Finals decided → crown champion
-    finals_sid = get_series_id(conn, season_id, "Finals")
-    if finals_sid and series_is_decided(conn, finals_sid, 7):
-        champion = get_series_winner(conn, finals_sid, 7)
+    finals_sid = playoff_repo.get_series_id(season_id, "Finals")
+    if finals_sid and playoff_repo.is_decided(finals_sid, 7):
+        champion = playoff_repo.get_series_winner(finals_sid, 7)
         conn.execute(
             "UPDATE leagues SET state = 'offseason' WHERE id = %s", (league_id,)
         )

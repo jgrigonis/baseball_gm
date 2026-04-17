@@ -20,6 +20,7 @@ import logging
 from datetime import date, timedelta
 
 from src.db.connection import get_connection
+from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.util.logger import setup_logger
 
@@ -206,13 +207,6 @@ def _series_games(
     return games
 
 
-def _insert_series(conn, series_id: str, season_id: str, name: str) -> None:
-    conn.execute(
-        "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-        (series_id, season_id, name),
-    )
-
-
 def _insert_games(conn, games: list[dict]) -> None:
     # Psycopg 3 uses %s or named placeholders, but doesn't need 'extras' for speed
     with conn.cursor() as cur:
@@ -248,6 +242,7 @@ def build_bracket(
     seeds is a list of 8 dicts ordered [1st, 2nd, ..., 8th].
     """
     sid = season_id  # shorthand
+    pr = PlayoffRepository(conn)
 
     # Seed index helpers (0-based list → 1-based seed)
     def team(seed: int) -> str:
@@ -264,11 +259,9 @@ def build_bracket(
         ("2v7", 2, 7, _R1_B_OFFSETS),
     ]
 
-    r1_series_ids = {}
     for name, hi, lo, offsets in r1_matchups:
         series_id = f"{sid}_{name}"
-        r1_series_ids[name] = series_id
-        _insert_series(conn, series_id, sid, name)
+        pr.create_series(series_id, sid, name)
         games = _series_games(
             series_id=series_id,
             season_id=sid,
@@ -290,7 +283,7 @@ def build_bracket(
     # so home/away assignments can be set correctly.
     # ------------------------------------------------------------------
     for name in ("[1,8]v[4,5]", "[2,7]v[3,6]", "Finals"):
-        _insert_series(conn, f"{sid}_{name}", sid, name)
+        pr.create_series(f"{sid}_{name}", sid, name)
         log_print(
             f"  📋 Series {name}: record created (games generated after Round 1)",
             logger=logger,
