@@ -2497,18 +2497,23 @@ def player_career(
         ratings = _compute_ratings(p, p.get("throws", "R"))
         is_pitcher = grades.player_type == "pitcher"
 
-        # Current ratings chips
-        _abbrs = {
-            "contact": "CON", "power": "POW", "eye": "EYE", "speed": "SPD",
-            "base_running": "BSR", "bunting": "BUN", "clutch": "CLU",
-            "catching": "CAT", "infield": "INF", "outfield": "OF", "arm": "ARM",
-            "strikes": "STF", "accuracy": "CTL", "stamina": "STA",
-            "recovery": "REC", "ground_balls": "GRB", "durability": "DUR",
-        }
-        current_ratings = [
-            {"abbr": abbr, "grade": skill_to_grade(p[key])}
-            for key, abbr in _abbrs.items()
-            if p.get(key) is not None
+        # Current ratings grouped into sections
+        _sections = [
+            ("Pitching", [("strikes", "Stuff"), ("accuracy", "Control"), ("stamina", "Stamina"), ("recovery", "Recovery"), ("ground_balls", "Ground Balls")]),
+            ("Hitting",  [("contact", "Contact"), ("power", "Power"), ("eye", "Eye"), ("base_running", "Baserunning"), ("bunting", "Bunting")]),
+            ("Defense",  [("catching", "Catching"), ("infield", "Infield"), ("outfield", "Outfield"), ("arm", "Arm")]),
+            ("General",  [("speed", "Speed"), ("clutch", "Clutch"), ("durability", "Durability")]),
+        ]
+        rating_sections = [
+            {
+                "section": section,
+                "skills": [
+                    {"label": label, "grade": skill_to_grade(p[key])}
+                    for key, label in skills
+                    if p.get(key) is not None
+                ],
+            }
+            for section, skills in _sections
         ]
 
         # Career stats — regular season only, newest first
@@ -2648,7 +2653,7 @@ def player_career(
             "player_id": pid,
             "overall_grade": overall_grade,
             "is_pitcher": is_pitcher,
-            "current_ratings": current_ratings,
+            "rating_sections": rating_sections,
             "season_stats": season_stats,
             "totals_row": totals_row,
             "injuries_by_year": injuries_by_year,

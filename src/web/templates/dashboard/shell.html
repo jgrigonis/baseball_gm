@@ -57,6 +57,16 @@ window.closeAndBrowse = function(name) {
   if (tabContent) tabContent.prepend(hint);
 };
 window.cancelCompare = function() { _pinnedId = null; const h = document.getElementById('compare-hint'); if(h) h.remove(); };
+window.openCareerPage = function(playerId) {
+  const url = `/leagues/{{ league_id }}/players/${playerId}/career`;
+  fetch(url)
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById('player-panel-mount').innerHTML = html;
+      addBackdrop();
+    })
+    .catch(err => console.error('Career page load failed:', err));
+};
 function addBackdrop() {
   removeBackdrop();
   const bd = document.createElement('div');

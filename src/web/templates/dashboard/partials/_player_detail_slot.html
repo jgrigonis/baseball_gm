@@ -9,11 +9,10 @@
  <div>
    <div class="pd-name">
      {{ player.first_name }} {{ player.last_name }}
-     <a href="/leagues/{{ league_id }}/players/{{ player.player_id }}/career"
-        style="font-size:10px;font-weight:400;color:var(--text-dim);margin-left:8px;text-decoration:none;"
-        hx-get="/leagues/{{ league_id }}/players/{{ player.player_id }}/career"
-        hx-target="#player-panel-mount"
-        hx-swap="innerHTML">Career →</a>
+     <button onclick="openCareerPage('{{ player.player_id }}')"
+             style="font-size:10px;font-weight:400;color:var(--text-dim);margin-left:8px;background:none;border:none;cursor:pointer;padding:0;font-family:var(--font-mono);">
+       Career →
+     </button>
    </div>
    <div class="pd-meta">
      {{ player.position or '?' }} ·
