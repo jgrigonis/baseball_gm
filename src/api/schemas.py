@@ -115,6 +115,7 @@ class PlayerGrades(BaseModel):
     arm: str | None = None
     field: str | None = None  # best defensive grade (infield/outfield/catching)
     field_label: str | None = None  # "CA", "IF", or "OF"
+    offense: str | None = None
     overall: str
 
     # Pitcher tools (None when hitter)
@@ -148,6 +149,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
     else:
         best_field_label = "OF"
 
+    # TODO these are not done the same way as the skill ratings
     if is_pitcher:
         # Overall for pitchers: weighted blend of stuff, control, stamina
         raw_overall = round(
@@ -157,6 +159,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
             + (skills.get("recovery", 50) or 50) * 0.15
             + (skills.get("ground_balls", 50) or 50) * 0.20
         )
+        
     else:
         raw_overall = round(
             (skills.get("contact", 50) or 50) * 0.25
@@ -165,6 +168,12 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
             + (skills.get("speed", 50) or 50) * 0.15
             + best_field_val * 0.20
         )
+    offense = round(
+        (skills.get("contact", 50) or 50) * 0.30
+        + (skills.get("power", 50) or 50) * 0.25
+        + (skills.get("eye", 50) or 50) * 0.25
+        + (skills.get("speed", 50) or 50) * 0.20
+    )
     # raw_overall = expand_distribution(raw_overall)
 
     return PlayerGrades(
@@ -176,6 +185,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         throws=player["throws"],
         age=skills.get("age", 0),
         player_type="pitcher" if is_pitcher else "hitter",
+        offense=skill_to_grade(offense),
         overall=skill_to_grade(raw_overall),
         # Hitter tools
         contact=skill_to_grade(skills.get("contact")) if not is_pitcher else None,

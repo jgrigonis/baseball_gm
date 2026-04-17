@@ -1363,6 +1363,7 @@ def lineup(
                 g["leadoff_grade"] = skill_to_grade(ratings.get("lead_off", 0))
                 g["power_h_grade"] = skill_to_grade(ratings.get("power_hitter", 0))
                 g["contact_h_grade"] = skill_to_grade(ratings.get("contact_hitter", 0))
+                g["oofense_h_grade"] = skill_to_grade(ratings.get("offense", 0))
             g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
             g["best_def_label"] = ratings.get("best_def_label", "DEF")
             # Per-position ratings for assigned-position display
