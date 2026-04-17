@@ -21,6 +21,7 @@ from datetime import date, timedelta
 
 from src.db.connection import get_connection
 from src.db.repositories.playoff_repo import PlayoffRepository
+from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.util.logger import setup_logger
 
@@ -66,34 +67,8 @@ def get_args():
 
 
 def get_top_N(conn, season_id: str, num_teams: int = 8) -> list[dict]:
-    """Return top 8 teams sorted by win%, with H2H and RS tiebreakers."""
-    from src.league.statistics.print_standings import sort_standings
-
-    rows = conn.execute(
-        """
-        SELECT
-            t.id AS team_id,
-            t.city || ' ' || t.mascot AS team_name,
-            SUM(tgs.win)  AS wins,
-            SUM(tgs.loss) AS losses,
-            SUM(tgs.runs) AS runs_scored,
-            CAST(SUM(tgs.win) AS REAL) / (SUM(tgs.win) + SUM(tgs.loss)) AS win_pct
-        FROM teams t
-        JOIN team_game_stats tgs ON t.id = tgs.team_id
-        JOIN games g ON tgs.game_id = g.id
-        WHERE g.season_id = %s AND g.completed = 1
-        GROUP BY t.id
-        """,
-        (season_id,),
-    ).fetchall()
-
-    if len(rows) < 8:
-        raise ValueError(
-            f"Need at least {num_teams} teams with completed games; found {len(rows)}"
-        )
-
-    sorted_rows = sort_standings(conn, season_id, [dict(r) for r in rows])
-    return sorted_rows[:num_teams]
+    """Return top N teams sorted by win%, with H2H and RS tiebreakers."""
+    return StandingsRepository(conn).get_top_n(season_id, num_teams)
 
 
 # ---------------------------------------------------------------------------

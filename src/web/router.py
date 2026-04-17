@@ -17,6 +17,7 @@ from src.api.dependencies import DB
 from src.api.schemas import skill_to_grade, player_row_to_grades
 from src.api.dependencies import IsHTMX
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.standings_repo import StandingsRepository
 from src.web.utils import tab_response, _shell_ctx
 from jinja2 import Environment, FileSystemLoader
 
@@ -800,25 +801,9 @@ def _load_standings(league_id: str, db, season_id: str | None = None) -> list[di
     if not season_id:
         return []
 
-    rows = db.execute(
-        """
-        SELECT
-            t.id as team_id, t.city, t.mascot,
-            COALESCE(SUM(tgs.win), 0)  as wins,
-            COALESCE(SUM(tgs.loss), 0) as losses,
-            COALESCE(SUM(tgs.runs), 0) as runs_scored,
-            COALESCE(SUM(CASE WHEN tgs.team_id = g.home_team_id THEN g.away_score
-                              ELSE g.home_score END), 0) as runs_allowed
-        FROM league_season_teams lst
-        JOIN teams t ON t.id = lst.team_id
-        LEFT JOIN team_game_stats tgs ON tgs.team_id = t.id
-        LEFT JOIN games g ON g.id = tgs.game_id AND g.season_id = %s
-        WHERE lst.league_id = %s AND lst.season_id = %s
-        GROUP BY t.id, t.city, t.mascot
-        ORDER BY wins DESC, (wins - losses) DESC
-    """,
-        (season_id, league_id, season_id),
-    ).fetchall()
+    sr = StandingsRepository(db)
+    rows = sr.get_records(league_id, season_id)
+    ra_map = sr.get_runs_allowed(season_id)
 
     human_team_ids = {
         r["team_id"]
@@ -830,12 +815,13 @@ def _load_standings(league_id: str, db, season_id: str | None = None) -> list[di
 
     result = []
     for r in rows:
-        d = dict(r)
-        d["run_diff"] = d["runs_scored"] - d["runs_allowed"]
-        d["is_human"] = d["team_id"] in human_team_ids
-        d["streak"] = 0  # TODO: compute from recent games
-        d["last_10"] = None  # TODO
-        result.append(d)
+        runs_allowed = ra_map.get(r["team_id"], 0)
+        r["runs_allowed"] = runs_allowed
+        r["run_diff"] = r["runs_scored"] - runs_allowed
+        r["is_human"] = r["team_id"] in human_team_ids
+        r["streak"] = 0  # TODO: compute from recent games
+        r["last_10"] = None  # TODO
+        result.append(r)
     return result
 
 

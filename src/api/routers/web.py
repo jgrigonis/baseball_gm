@@ -49,10 +49,10 @@ from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
 from src.league.playoffs.play_playoffs import get_series_id, get_series_winner
-from src.league.statistics.print_standings import sort_standings
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
 from src.web.utils import tab_response, _shell_ctx, _current_league_date
@@ -870,11 +870,11 @@ def standings(
         gm_repo = GMRepository(db)
         inj_repo = InjuryRepository(db, league_id)
 
-        rows = tg_repo.get_wl_for_league(league_id, season_id)
-        ra_map = tg_repo.get_runs_allowed(season_id)
-        ha_map = tg_repo.get_home_away_splits(season_id)
+        st_repo = StandingsRepository(db)
+        ra_map = st_repo.get_runs_allowed(season_id)
+        ha_map = st_repo.get_home_away_splits(season_id)
         human_team_ids = gm_repo.get_human_team_ids(league_id)
-        recent_rows = tg_repo.get_recent_results(season_id)
+        recent_rows = st_repo.get_recent_results(season_id)
 
         # Build per-team recent results
         team_recent: dict[str, list] = {}
@@ -899,19 +899,12 @@ def standings(
             return f"{letter}{count}"
 
         # Sort by win pct descending, with H2H and RS tiebreakers
-        raw_rows = []
-        for r in rows:
-            wins = r["wins"] or 0
-            losses = r["losses"] or 0
-            played = wins + losses
-            raw_rows.append(
-                {
-                    **dict(r),
-                    "win_pct": wins / played if played else 0.0,
-                    "runs_scored": r["runs_scored"] or 0,
-                }
-            )
-        ranked = sort_standings(db, season_id, raw_rows)
+        rows = st_repo.get_records(league_id, season_id)
+        raw_rows = [
+            {**r, "win_pct": r["wins"] / (r["wins"] + r["losses"]) if (r["wins"] + r["losses"]) else 0.0}
+            for r in rows
+        ]
+        ranked = st_repo.sort(season_id, raw_rows)
         leader_wins = ranked[0]["wins"] or 0 if ranked else 0
         leader_losses = ranked[0]["losses"] or 0 if ranked else 0
 
