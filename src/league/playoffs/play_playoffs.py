@@ -494,9 +494,7 @@ def main():
         league_mode=league_mode,
     )
 
-    champ_name = conn.execute(
-        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (champion,)
-    ).fetchone()["name"]
+    champ_name = team_repo.get_name(champion)
 
     lines = []
     lines.append(f"\n{'='*60}")
