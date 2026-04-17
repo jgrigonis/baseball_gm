@@ -64,6 +64,7 @@ app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
 def health() -> dict:
     return {"status": "ok", "version": app.version}
 
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:

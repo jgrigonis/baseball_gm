@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from operator import le
 import random
 import string
 import uuid
@@ -55,7 +54,7 @@ from src.db.repositories.user_repo import UserRepository
 from src.league.playoffs.play_playoffs import get_series_id, get_series_winner
 from src.league.statistics.print_standings import sort_standings
 from src.player.player_evaluator import PlayerEvaluator
-from src.player.player_skills import PlayerSkills, SKILLS
+from src.player.player_skills import PlayerSkills
 from src.web.utils import tab_response, _shell_ctx, _current_league_date
 
 router = APIRouter(tags=["web"])
@@ -77,13 +76,11 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
     try:
         # Filter to valid skill keys only — DB rows include player_id, updated_at, etc.
         # Query is slimmed down now
-        #filtered = {k: v for k, v in skills.items() if k in SKILLS and v is not None}
+        # filtered = {k: v for k, v in skills.items() if k in SKILLS and v is not None}
         ps = PlayerSkills(skills)
         ratings = PlayerEvaluator.rate_player(ps, throws or "R")
     except Exception:
         return {}
-
-
 
     # if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
     # of_rating = max(ratings.get("lf", 0), ratings.get("cf", 0), ratings.get("rf", 0))
@@ -106,7 +103,7 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
         "IF": if_rating,
         "OF": of_rating,
         "CA": ratings.get("c", 0),
-        "1B": ratings.get("1b", 0)
+        "1B": ratings.get("1b", 0),
     }
 
     best_def_label = max(groups, key=groups.get)
@@ -292,6 +289,7 @@ def create_guest(
         samesite="lax",
     )
     return resp
+
 
 @router.post("/auth/logout")
 def logout(db: DB, user: OptionalUser):
@@ -548,6 +546,7 @@ def dashboard(
     return templates.TemplateResponse(
         request=request, name="dashboard/lobby.html", context=context_drawer
     )
+
 
 # ── Tab: Draft ─────────────────────────────────────────────────────────────────
 
@@ -821,7 +820,9 @@ async def sim_games(
             break
 
     games_played = sum(r.get("games_played", 0) for r in results)
-    new_remaining = _games_remaining(db, season_repo.get_current_id_for_league(league_id))
+    new_remaining = _games_remaining(
+        db, season_repo.get_current_id_for_league(league_id)
+    )
 
     # If season just ended, trigger the state transition (playoffs setup)
     if new_remaining == 0 and days_simmed > 0:
@@ -1292,7 +1293,9 @@ def roster(
     # Season stats for display on roster cards
     season_id = ctx.get("season_id")
     if season_id and team_id:
-        stats_map = PlayerSeasonStatsRepository(db).get_team_stats_map(season_id, team_id)
+        stats_map = PlayerSeasonStatsRepository(db).get_team_stats_map(
+            season_id, team_id
+        )
         for p in players:
             s = stats_map.get(p["player_id"])
             if s and p.get("player_type") != "pitcher":
@@ -1399,7 +1402,9 @@ def lineup(
     bp_repo = BullpenRepository(db)
 
     saved_lineup = lp_repo.get_by_gm_id(gm["id"])
-    saved_rotation = rot_repo.get_saved_rotation(team_id, season_id) if season_id else []
+    saved_rotation = (
+        rot_repo.get_saved_rotation(team_id, season_id) if season_id else []
+    )
     saved_bullpen = bp_repo.get_roles_map(team_id, season_id) if season_id else {}
     saved_rotation_pointer = (
         rot_repo.get_rotation_pointer_player(team_id, season_id)
@@ -1409,7 +1414,9 @@ def lineup(
 
     # Attach season stats to each player for display
     if season_id:
-        stats_map = PlayerSeasonStatsRepository(db).get_team_stats_map(season_id, team_id)
+        stats_map = PlayerSeasonStatsRepository(db).get_team_stats_map(
+            season_id, team_id
+        )
         for p in hitters:
             s = stats_map.get(p["player_id"])
             if s and (s["bat_ab"] or 0) > 0:
@@ -1781,15 +1788,19 @@ def stats(
     batters = []
     pitchers = []
     team_games = 0
-    ps_flag = 1 if is_postseason else 0
+    # ps_flag = 1 if is_postseason else 0
 
     if selected_season_id and selected_team_id:
         pss_repo = PlayerSeasonStatsRepository(db)
-        team_games = pss_repo.get_max_games_played_for_team(selected_season_id, selected_team_id, is_postseason)
+        team_games = pss_repo.get_max_games_played_for_team(
+            selected_season_id, selected_team_id, is_postseason
+        )
         min_ab = int(3.1 * team_games) if not is_postseason else 0
         min_outs = int(3 * team_games) if not is_postseason else 0
 
-        rows = pss_repo.get_for_team(selected_season_id, selected_team_id, is_postseason)
+        rows = pss_repo.get_for_team(
+            selected_season_id, selected_team_id, is_postseason
+        )
 
         for s in rows:
             ab = s.get("bat_ab") or 0
@@ -2476,7 +2487,9 @@ def history_season_detail(
     gm: GM,
 ):
     season = SeasonRepository(db).get_by_league_and_year(league_id, year)
-    evaluation = GMEvaluationRepository(db).get(gm["id"], season["id"]) if season else None
+    evaluation = (
+        GMEvaluationRepository(db).get(gm["id"], season["id"]) if season else None
+    )
 
     return templates.TemplateResponse(
         request,

@@ -41,7 +41,9 @@ class PlayerSeasonStatsRepository:
         ).fetchone()
         return dict(row) if row else None
 
-    def get_batting_leader(self, league_id: str, season_id: str, min_ab: int) -> dict | None:
+    def get_batting_leader(
+        self, league_id: str, season_id: str, min_ab: int
+    ) -> dict | None:
         """Return the batting average leader (first_name, last_name, city, mascot, avg), or None."""
         row = self.conn.execute(
             """SELECT p.first_name, p.last_name, t.city, t.mascot,
@@ -57,7 +59,9 @@ class PlayerSeasonStatsRepository:
         ).fetchone()
         return dict(row) if row else None
 
-    def get_pitching_leader(self, league_id: str, season_id: str, min_outs: int) -> dict | None:
+    def get_pitching_leader(
+        self, league_id: str, season_id: str, min_outs: int
+    ) -> dict | None:
         """Return the ERA leader (first_name, last_name, city, mascot, era), or None."""
         row = self.conn.execute(
             """SELECT p.first_name, p.last_name, t.city, t.mascot,
@@ -89,7 +93,9 @@ class PlayerSeasonStatsRepository:
         ).fetchall()
         return {r["player_id"]: dict(r) for r in rows}
 
-    def get_max_games_played_for_team(self, season_id: str, team_id: str, is_postseason: bool = False) -> int:
+    def get_max_games_played_for_team(
+        self, season_id: str, team_id: str, is_postseason: bool = False
+    ) -> int:
         """Return the max bat_games_played for a specific team in a season."""
         row = self.conn.execute(
             """SELECT MAX(bat_games_played) as tg FROM player_season_stats
@@ -98,7 +104,9 @@ class PlayerSeasonStatsRepository:
         ).fetchone()
         return row["tg"] or 0
 
-    def get_for_team(self, season_id: str, team_id: str, is_postseason: bool = False) -> list[dict]:
+    def get_for_team(
+        self, season_id: str, team_id: str, is_postseason: bool = False
+    ) -> list[dict]:
         """Return all player stats with first/last name for a team in a season."""
         rows = self.conn.execute(
             """SELECT p.id as player_id, p.first_name, p.last_name, pss.*

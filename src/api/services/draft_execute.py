@@ -27,7 +27,9 @@ class BlitzDraft(SnakeDraft):
     best prospect rating — identical to the base SnakeDraft behaviour.
     """
 
-    def __init__(self, conn, league_id: str, gm_preferences: dict[str, list[str]], rng=None):
+    def __init__(
+        self, conn, league_id: str, gm_preferences: dict[str, list[str]], rng=None
+    ):
         """
         Args:
             conn: DB connection

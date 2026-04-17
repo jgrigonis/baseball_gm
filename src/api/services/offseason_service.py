@@ -24,17 +24,11 @@ import datetime
 import random
 import uuid
 
+from src.db.repositories.season_repo import SeasonRepository
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.offseason.snake_draft import write_draft_order
 from src.league.offseason.snake_draft import SnakeDraft
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
-
-def _get_season_id(conn, league_id: str) -> str | None:
-    row = conn.execute(
-        "SELECT season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1",
-        (league_id,),
-    ).fetchone()
-    return row["season_id"] if row else None
 
 
 def _get_season(conn, season_id: str) -> dict | None:
@@ -112,7 +106,7 @@ def run_offseason(league_id: str, conn) -> dict:
             f"League must be in 'offseason' state, currently '{league['state']}'"
         )
 
-    season_id = _get_season_id(conn, league_id)
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     if not season_id:
         raise ValueError("No season found for this league")
 

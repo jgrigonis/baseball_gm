@@ -68,7 +68,7 @@ def evaluate_players_from_manifest(
     tf = TeamFactory()
     evaluations = []
 
-    season_year = manifest.get("season_year")
+    # season_year = manifest.get("season_year")
 
     print(f"League: {manifest.get('league_name', 'Unknown')}")
     print(

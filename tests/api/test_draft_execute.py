@@ -39,6 +39,7 @@ def _make_player(pid: str, rating: int = 50) -> PlayerRecord:
     p.skills = skills
     return p
 
+
 # Doesn't seem to be used
 # def _seed_prospects(factory, n, prefix="prospect"):
 #     """Insert n prospects via the factory, return their IDs."""

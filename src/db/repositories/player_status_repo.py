@@ -66,12 +66,13 @@ class PlayerStatusRepository:
         ).fetchall()
         return {r["player_id"] for r in rows}
 
-    def set_40man_roster(self, team_player_ids: set[str], forty_man_ids: list[str]) -> None:
+    def set_40man_roster(
+        self, team_player_ids: set[str], forty_man_ids: list[str]
+    ) -> None:
         """Set 40-man/minors status for every player on a team."""
         forty_set = set(forty_man_ids)
         assignments = {
-            pid: ("40man" if pid in forty_set else "minors")
-            for pid in team_player_ids
+            pid: ("40man" if pid in forty_set else "minors") for pid in team_player_ids
         }
         self.bulk_set(assignments)
 

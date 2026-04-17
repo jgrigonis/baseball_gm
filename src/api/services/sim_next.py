@@ -13,6 +13,8 @@ import random
 import traceback
 
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -47,17 +49,9 @@ def sim_next_day(league_id: str, conn) -> dict:
         raise ValueError(f"League is in state '{league['state']}' — cannot sim.")
 
     # Find the current season for this league
-    season_id = conn.execute(
-        """
-        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
-        WHERE ls.league_id = %s
-        ORDER BY s.year DESC LIMIT 1
-        """,
-        (league_id,),
-    ).fetchone()
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     if not season_id:
         raise ValueError("No season found for this league.")
-    season_id = season_id["season_id"]
 
     # Find next unplayed date
     next_date_row = conn.execute(
@@ -161,30 +155,14 @@ def sim_next_day(league_id: str, conn) -> dict:
     errors = []
 
     # Snapshot GM team injuries before this day to detect changes
-    gm_team_id = conn.execute(
+    gm_row = conn.execute(
         "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL LIMIT 1",
         (league_id,),
     ).fetchone()
-    gm_team_id = gm_team_id["team_id"] if gm_team_id else None
+    gm_team_id = gm_row["team_id"] if gm_row else None
 
-    def _get_injured(team_id):
-        if not team_id:
-            return {}
-        rows = conn.execute(
-            """SELECT pi.player_id, pi.games_remaining,
-                      p.first_name || ' ' || p.last_name as name
-               FROM player_injuries pi
-               JOIN players p ON p.id = pi.player_id
-               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
-               WHERE pi.games_remaining > 0 AND (pi.league_id = %s OR pi.league_id = '')""",
-            (team_id, league_id),
-        ).fetchall()
-        return {
-            r["player_id"]: {"name": r["name"], "days": r["games_remaining"]}
-            for r in rows
-        }
-
-    injured_before = _get_injured(gm_team_id)
+    inj_repo = InjuryRepository(conn, league_id)
+    injured_before = inj_repo.get_active_for_team(gm_team_id)
 
     for game_info in games:
         game_dict = dict(game_info)
@@ -246,7 +224,7 @@ def sim_next_day(league_id: str, conn) -> dict:
             print(f"build_season non-fatal error (will retry next day): {_bs_err}")
 
     # Diff injuries to find new injuries and returns for GM's team
-    injured_after = _get_injured(gm_team_id)
+    injured_after = inj_repo.get_active_for_team(gm_team_id)
     new_injuries = [
         {"name": v["name"], "days": v["days"]}
         for pid, v in injured_after.items()

@@ -386,7 +386,9 @@ class TeamGameRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_records_for_teams(self, season_id: str, team_ids: set[str]) -> dict[str, str]:
+    def get_records_for_teams(
+        self, season_id: str, team_ids: set[str]
+    ) -> dict[str, str]:
         """Return {team_id: 'W-L'} for a set of teams in a season (regular season only)."""
         if not team_ids:
             return {}

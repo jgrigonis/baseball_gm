@@ -8,7 +8,7 @@ from __future__ import annotations
 # from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel
 
 # ── Scouting grades ───────────────────────────────────────────────────────────
 # The sim engine stores skills as integers (roughly 0-100).
@@ -64,20 +64,22 @@ _GRADE_THRESHOLDS: list[tuple[int, str]] = [
     (25, "D-"),
 ]
 
+
 def skill_to_grade(raw: int | None) -> str:
     """Map a raw 0-100 skill integer directly to letter grades."""
     if raw is None:
         return "?"
-    
+
     # Ensure input stays in bounds
     score = max(0, min(100, raw))
-    
+
     # Check against thresholds
     for threshold, grade in _GRADE_THRESHOLDS:
         if score >= threshold:
             return grade
-            
+
     return "F"
+
 
 # scaled useless version
 # def skill_to_grade(raw: int | None) -> str:
@@ -164,7 +166,6 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
             + best_field_val * 0.20
         )
     # raw_overall = expand_distribution(raw_overall)
-    
 
     return PlayerGrades(
         player_id=player["id"],
@@ -192,6 +193,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         roster_status=status,
     )
 
+# Currently unused.
 def expand_distribution(value: float, factor: float = 1.28) -> int:
     """
     This will stretch good players to be overall rated higher, and
@@ -204,6 +206,7 @@ def expand_distribution(value: float, factor: float = 1.28) -> int:
     stretched = sign * (abs(normalized) ** (1 / factor))
     # 3. Scale back to 0-100
     return round((stretched * 50) + 50)
+
 
 # ── Bullpen ──────────────────────────────────────────────────────
 
@@ -313,8 +316,6 @@ class BullpenSaveRequest(BaseModel):
 #         return self
 
 
-
-
 # ── Draft ─────────────────────────────────────────────────────────────────────
 
 
@@ -365,6 +366,3 @@ class BullpenSaveRequest(BaseModel):
 #     won_championship: bool
 #     verdict: str | None
 #     evaluated_at: str
-
-
-

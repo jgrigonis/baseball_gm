@@ -186,7 +186,9 @@ class GameRepository:
         ).fetchone()
         return row["count"] if row else 0
 
-    def get_team_upcoming(self, season_id: str, team_id: str, limit: int | None = None) -> list[dict]:
+    def get_team_upcoming(
+        self, season_id: str, team_id: str, limit: int | None = None
+    ) -> list[dict]:
         """Return incomplete games for a team, with opponent team names, ordered by date."""
         query = """SELECT g.game_date, g.home_team_id, g.away_team_id,
                           ht.city as home_city, ht.mascot as home_mascot,
@@ -214,7 +216,9 @@ class GameRepository:
         rows = self.conn.execute(query, (season_id, team_id, team_id)).fetchall()
         return [dict(r) for r in rows]
 
-    def get_team_results(self, season_id: str, team_id: str, limit: int | None = None) -> list[dict]:
+    def get_team_results(
+        self, season_id: str, team_id: str, limit: int | None = None
+    ) -> list[dict]:
         """Return completed games for a team, with scores and team names, newest first."""
         query = """SELECT g.id as game_id, g.game_date, g.home_team_id, g.away_team_id,
                           g.home_score, g.away_score, g.innings_played,

@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from src.api.dependencies import DB
 from src.api.schemas import skill_to_grade, player_row_to_grades
 from src.api.dependencies import IsHTMX
+from src.db.repositories.season_repo import SeasonRepository
 from src.web.utils import tab_response, _shell_ctx
 from jinja2 import Environment, FileSystemLoader
 
@@ -91,71 +92,6 @@ def _require_league_gm(request: Request, league_id: str, db):
         # User has identity but isn't a GM in this league
         return None, RedirectResponse("/leagues", status_code=302)
     return gm, None
-
-
-# def is_htmx(request: Request) -> bool:
-#     return request.headers.get("HX-Request") == "true"
-
-
-# ── Shell context ─────────────────────────────────────────────────────────────
-
-
-# def _shell_ctx(
-#     request: Request,
-#     gm: dict,
-#     db,
-#     league_id: str | None = None,
-#     active_tab: str | None = None,
-# ) -> dict:
-#     """Base context for all dashboard templates."""
-#     ctx: dict = {
-#         "request": request,
-#         "active_tab": active_tab,
-#         "gm_id": gm["id"],
-#         "gm_display_name": gm["display_name"],
-#         "league_id": league_id,
-#         "league_name": None,
-#         "league_state": None,
-#         "league_mode": None,
-#         "join_code": None,
-#         "team_id": gm["team_id"],
-#         "team_name": None,
-#         "is_commissioner": False,
-#     }
-
-#     if league_id:
-#         league = db.execute(
-#             "SELECT * FROM leagues WHERE id = %s", (league_id,)
-#         ).fetchone()
-#         if league:
-#             ctx["league_name"] = league["name"]
-#             ctx["league_state"] = league["state"]
-#             ctx["league_mode"] = league["mode"]
-#             ctx["join_code"] = league["join_code"]
-#             ctx["is_commissioner"] = league["commissioner_gm_id"] == gm["id"]
-
-#     if gm["team_id"]:
-#         team = db.execute(
-#             "SELECT city, mascot FROM teams WHERE id = %s", (gm["team_id"],)
-#         ).fetchone()
-#         if team:
-#             ctx["team_name"] = f"{team['city']} {team['mascot']}"
-
-#     return ctx
-
-
-# moved to utils
-# def _tab_visible(state: str | None) -> list[str]:
-#     if not state:
-#         return []
-#     always = ["standings", "leaders", "roster", "lineup", "strategy"]
-#     if state == "lobby":
-#         return []
-#     if state == "draft":
-#         return ["draft"] + always
-#     if state in ("season", "playoffs"):
-#         return always + ["schedule"]
-#     return always
 
 
 # ── Landing / Auth ────────────────────────────────────────────────────────────
@@ -831,14 +767,7 @@ async def history_season(request: Request, league_id: str, year: int, db: DB):
 
 
 def _current_season_id(league_id: str, db) -> str | None:
-    row = db.execute(
-        """
-        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
-        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
-    """,
-        (league_id,),
-    ).fetchone()
-    return row["season_id"] if row else None
+    return SeasonRepository(db).get_current_id_for_league(league_id)
 
 
 def _current_season_name(league_id: str, db) -> str | None:
@@ -914,16 +843,9 @@ def _load_roster(gm: dict, db) -> list[dict]:
     if not gm["team_id"]:
         return []
 
-    season_row = db.execute(
-        """
-        SELECT ls.season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
-        WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1
-    """,
-        (gm["league_id"],),
-    ).fetchone()
-    if not season_row:
+    season_id = SeasonRepository(db).get_current_id_for_league(gm["league_id"])
+    if not season_id:
         return []
-    season_id = season_row["season_id"]
 
     rows = db.execute(
         """
@@ -959,13 +881,16 @@ def _load_draft_board(draft_id: str, db) -> list[dict]:
         ).fetchall()
     }
 
-    players = db.execute("""
+    players = db.execute(
+        """
         SELECT p.*, ps.status FROM players p
         JOIN player_status ps ON ps.player_id = p.id
         JOIN drafts d ON d.id = %s
         WHERE ps.status IN ('free_agent', 'unassigned', 'prospect')
         AND p.league_id = d.league_id
-    """, (draft_id,)).fetchall()
+    """,
+        (draft_id,),
+    ).fetchall()
 
     board = []
     for row in players:

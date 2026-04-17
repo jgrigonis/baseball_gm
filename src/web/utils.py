@@ -1,6 +1,5 @@
 # src/web/utils.py
 from pathlib import Path
-from tkinter import SE
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -84,7 +83,7 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
             return f"{year}-03-22"
         else:
             return None
-    
+
     # Next unplayed regular season game
     row = db.execute(
         "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",

@@ -204,14 +204,17 @@ class LeagueRepository:
         Get the league_id from league_seasons based on the season_id
         """
         league_row = self.conn.execute(
-            "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1", (season_id,)
+            "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1",
+            (season_id,),
         ).fetchone()
         league_id = league_row["league_id"] if league_row else ""
         return league_id
 
     def get_league_mode(self, league_id: str) -> str:
         """Get the mode of the league."""
-        row = self.conn.execute("SELECT mode FROM leagues WHERE id = %s", (league_id,)).fetchone()
+        row = self.conn.execute(
+            "SELECT mode FROM leagues WHERE id = %s", (league_id,)
+        ).fetchone()
         if row:
             return dict(row).get("mode", "blitz")
         else:

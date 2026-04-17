@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from datetime import date
 
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -68,14 +70,6 @@ class SimConfig:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _get_season_id(conn, league_id: str) -> str | None:
-    row = conn.execute(
-        "SELECT season_id FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1",
-        (league_id,),
-    ).fetchone()
-    return row["season_id"] if row else None
 
 
 def _get_playoff_start(conn, season_id: str) -> date:
@@ -228,7 +222,7 @@ def sim_playoff(
     if league["state"] != "playoffs":
         raise ValueError(f"League is in state '{league['state']}' — not in playoffs")
 
-    season_id = _get_season_id(conn, league_id)
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     league_mode = dict(league).get("mode", "blitz") or "blitz"
     seeds = get_seeds(conn, season_id)
     rng = random.Random()
@@ -245,24 +239,8 @@ def sim_playoff(
     ).fetchone()
     gm_team_id = gm_row["team_id"] if gm_row else None
 
-    def _get_injured(team_id):
-        if not team_id:
-            return {}
-        rows = conn.execute(
-            """SELECT pi.player_id, pi.games_remaining,
-                      p.first_name || ' ' || p.last_name as name
-               FROM player_injuries pi
-               JOIN players p ON p.id = pi.player_id
-               JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
-               WHERE pi.games_remaining > 0 AND (pi.league_id = %s OR pi.league_id = '')""",
-            (team_id, league_id),
-        ).fetchall()
-        return {
-            r["player_id"]: {"name": r["name"], "days": r["games_remaining"]}
-            for r in rows
-        }
-
-    injured_before = _get_injured(gm_team_id)
+    inj_repo = InjuryRepository(conn, league_id)
+    injured_before = inj_repo.get_active_for_team(gm_team_id)
 
     def _get_next_day_games() -> list[dict]:
         """Return all unplayed games on the earliest unplayed game_date,
@@ -415,7 +393,7 @@ def sim_playoff(
         conn.commit()
 
     # Diff injuries to find new injuries and returns for GM's team
-    injured_after = _get_injured(gm_team_id)
+    injured_after = inj_repo.get_active_for_team(gm_team_id)
     new_injuries = [
         {"name": v["name"], "days": v["days"]}
         for pid, v in injured_after.items()

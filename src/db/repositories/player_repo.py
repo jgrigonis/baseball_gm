@@ -251,8 +251,8 @@ class PlayerRepository:
             accuracy, stamina, recovery, ground_balls,
             strikes
             FROM player_skills WHERE player_id = %s
-            """, 
-            (player_id,)
+            """,
+            (player_id,),
         ).fetchone()
         return dict(row) if row else {}
 
