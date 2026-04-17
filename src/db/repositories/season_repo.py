@@ -47,6 +47,14 @@ class SeasonRepository:
 
     #     return row["id"] if row else None
 
+    def get_year(self, season_id: str) -> dict | None:
+        """Get the year of the season."""
+        row = self.conn.execute(
+            "SELECT year FROM seasons WHERE id = %s",
+            (season_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_season(self, season_id: str) -> dict | None:
         """
         Get season information by ID.

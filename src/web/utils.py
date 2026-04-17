@@ -1,11 +1,13 @@
 # src/web/utils.py
 from pathlib import Path
+from tkinter import SE
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-
 from jinja2 import Environment, FileSystemLoader
+
+from src.db.repositories.season_repo import SeasonRepository
 
 # Templates are in src/web/templates/ relative to the project root
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -84,10 +86,8 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     if state not in ("draft", "preseason", "season", "playoffs", "offseason"):
         return None
     if state in ("draft", "offseason"):
-        row = db.execute(
-            "SELECT year FROM seasons WHERE id = %s",
-            (season_id,),
-        ).fetchone()
+        sr = SeasonRepository(db)
+        row = sr.get_year(season_id)
         if row:
             year = row["year"]
             if state == "draft":
@@ -97,7 +97,7 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
                 ).fetchone()
                 if has_completed:
                     year += 1
-            return f"{year}-03-30"
+            return f"{year}-03-22"
         else:
             return None
     
