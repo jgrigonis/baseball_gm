@@ -929,19 +929,18 @@ class Game:
     def _deplete_batter_energy(self) -> None:
         if not self.current_batter:
             return
-        state = self.player_energy_states.get(self.current_batter.player.id)
+        # state = self.player_energy_states.get(self.current_batter.player.id)
+        player_id = self.current_batter.player.id
+        state = self.player_energy_states.get(player_id)
         if not state:
             return
-        base_depletion = BASE_ENERGY_DEPLETION
         # No penalty for first 3 consecutive days, then ramps up
         streak_days = max(0, state.consecutive_days - 3)
         streak_penalty = min(0.015 * streak_days, 0.05)
         state.current_energy = max(
-            0.0, state.current_energy - base_depletion - streak_penalty
+            0.0, state.current_energy - BASE_ENERGY_DEPLETION - streak_penalty
         )
-        state.consecutive_days += 1
-        state.season_games_played += 1
-        state.last_game_date = self.game_date
+        self._batters_this_game.add(player_id)
 
     def _record_lead_change_if_needed(self, responsible_pitcher) -> None:
         # DEBUG

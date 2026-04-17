@@ -510,16 +510,11 @@ def play_game(
     )
     save_player_stats(conn, game_info["game_id"], home_team, away_team)
 
-    for player in home_team.position_players + away_team.position_players:
-        fatigue = player.player_energy
-        if not fatigue:
-            continue
-        state = player_energy_states.get(player.id)
+    for player_id in game.batters_this_game:
+        state = player_energy_states.get(player_id)
         if state:
-            state.current_energy = fatigue.energy
-            state.max_energy = fatigue.max_energy
-            state.consecutive_days = fatigue.consecutive_days
-            state.season_games_played = fatigue.season_games_played
+            state.consecutive_days += 1
+            state.season_games_played += 1
             state.last_game_date = game_date
 
     save_energy(conn, game_date, home_team, away_team, league_id=league_id)
