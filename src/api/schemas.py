@@ -193,6 +193,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         roster_status=status,
     )
 
+
 # Currently unused.
 def expand_distribution(value: float, factor: float = 1.28) -> int:
     """

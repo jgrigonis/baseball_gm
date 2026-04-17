@@ -53,7 +53,12 @@ class PlayoffRepository:
     def get_seeds(self, season_id: str) -> list[dict]:
         """Reconstruct original seeds from R1 series (game 1 home team = high seed)."""
         result = {}
-        for name, hi, lo in [("1v8", 1, 8), ("2v7", 2, 7), ("3v6", 3, 6), ("4v5", 4, 5)]:
+        for name, hi, lo in [
+            ("1v8", 1, 8),
+            ("2v7", 2, 7),
+            ("3v6", 3, 6),
+            ("4v5", 4, 5),
+        ]:
             series_id = self.get_series_id(season_id, name)
             if not series_id:
                 raise ValueError(f"Series {name} not found for season {season_id}")

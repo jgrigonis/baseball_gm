@@ -99,7 +99,14 @@ def _ensure_round_games(
                 _SEMI_18_45_OFFSETS if name == "[1,8]v[4,5]" else _SEMI_27_36_OFFSETS
             )
             generate_round_games(
-                conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, semi_offsets
+                conn,
+                season_id,
+                sid,
+                high,
+                low,
+                _HOME_MAP_BO7,
+                playoff_start,
+                semi_offsets,
             )
 
     elif round_idx == 2:  # Finals
@@ -119,7 +126,14 @@ def _ensure_round_games(
             high = a if sa < sb else b
             low = b if sa < sb else a
             generate_round_games(
-                conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, _FINAL_OFFSETS
+                conn,
+                season_id,
+                sid,
+                high,
+                low,
+                _HOME_MAP_BO7,
+                playoff_start,
+                _FINAL_OFFSETS,
             )
 
 
