@@ -226,6 +226,7 @@ class Game:
         self.pitcher_states = pitcher_states or {}
         self.game_date = game_date
         self.player_energy_states = player_energy_states or {}
+        self.batters_this_game: set[str] = set()
         self._inning_had_error = False  # reset each half-inning
 
         # Injury info
@@ -940,7 +941,7 @@ class Game:
         state.current_energy = max(
             0.0, state.current_energy - BASE_ENERGY_DEPLETION - streak_penalty
         )
-        self._batters_this_game.add(player_id)
+        self.batters_this_game.add(player_id)
 
     def _record_lead_change_if_needed(self, responsible_pitcher) -> None:
         # DEBUG

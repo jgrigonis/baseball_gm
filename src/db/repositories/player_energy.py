@@ -325,7 +325,6 @@ class PlayerEnergyRepository:
                 last_game_date_str = state.last_game_date.isoformat()
 
         energy = max(0.0, min(1.0, round(state.current_energy, 4)))
-
         cursor.execute(
             """
             INSERT INTO player_energy
