@@ -374,18 +374,6 @@ class TeamGameRepository:
             for r in rows
         }
 
-    def get_recent_results(self, season_id: str) -> list[dict]:
-        """Return all completed game results newest first, for streak/L10 calculations."""
-        rows = self.conn.execute(
-            """SELECT tgs.team_id, tgs.win, g.game_date
-               FROM team_game_stats tgs
-               JOIN games g ON g.id = tgs.game_id
-               WHERE g.season_id = %s AND g.completed = 1
-               ORDER BY g.game_date DESC""",
-            (season_id,),
-        ).fetchall()
-        return [dict(r) for r in rows]
-
     def get_records_for_teams(
         self, season_id: str, team_ids: set[str]
     ) -> dict[str, str]:
