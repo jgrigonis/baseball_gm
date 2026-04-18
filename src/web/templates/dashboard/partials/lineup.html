@@ -1236,6 +1236,7 @@ function autoAssignBullpen() {
 
   bullpen = newBullpen;
   renderBullpen();
+  saveToStorage();
 }
 
 /* ── Pitching: save ──────────────────────────────────────────────────────────── */
@@ -1293,6 +1294,7 @@ async function saveBullpen() {
       bullpenSaved = true;
       showFeedback('✓ Bullpen saved', 'var(--green)');
       updateScheduleBtn();
+      saveToStorage();
     } else {
       const d = await res.json().catch(()=>({}));
       showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
