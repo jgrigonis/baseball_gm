@@ -789,6 +789,22 @@ CREATE INDEX IF NOT EXISTS idx_pss_player_season
 CREATE INDEX IF NOT EXISTS idx_pss_team_season
     ON player_season_stats(team_id, season_id);
 
+CREATE TABLE IF NOT EXISTS player_retirements (
+    id             TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    player_id      TEXT NOT NULL,
+    league_id      TEXT NOT NULL,
+    season_id      TEXT NOT NULL,
+    former_team_id TEXT,
+    retired_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_retirements_league_season
+    ON player_retirements(league_id, season_id);
+
 CREATE INDEX IF NOT EXISTS idx_users_session        ON users(session_token);
 
 CREATE INDEX IF NOT EXISTS idx_gms_league           ON gms(league_id);

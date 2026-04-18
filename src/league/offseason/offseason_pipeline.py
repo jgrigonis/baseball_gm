@@ -209,8 +209,17 @@ class OffseasonPipeline:
                     "SELECT team_id FROM team_players WHERE player_id = %s",
                     (player.id,),
                 ).fetchone()
-                if row:
-                    team_repo.remove_player(row["team_id"], player.id)
+                former_team_id = row["team_id"] if row else None
+                if former_team_id:
+                    team_repo.remove_player(former_team_id, player.id)
+                if self.league_id:
+                    self.conn.execute(
+                        """INSERT INTO player_retirements
+                               (player_id, league_id, season_id, former_team_id)
+                           VALUES (%s, %s, %s, %s)
+                           ON CONFLICT DO NOTHING""",
+                        (player.id, self.league_id, self._current_season_id, former_team_id),
+                    )
                 retired.append(player)
 
         self.conn.commit()

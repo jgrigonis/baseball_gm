@@ -2306,6 +2306,119 @@ def season_summary(
     return tab_response(request, htmx, "dashboard/partials/season_summary.html", ctx)
 
 
+@router.get("/leagues/{league_id}/retirement", response_class=HTMLResponse)
+def retirement(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+):
+    ctx = _shell_ctx(request, db, gm, league_id, user)
+    my_team_id = gm["team_id"] if gm else None
+
+    season_repo = SeasonRepository(db)
+    current_season_id = season_repo.get_current_id_for_league(league_id)
+
+    # Retirements happened in the season just before the current one
+    prev_season = None
+    if current_season_id:
+        current_year = (season_repo.get_season(current_season_id) or {}).get("year")
+        if current_year:
+            prev_season = db.execute(
+                """SELECT s.id FROM seasons s
+                   JOIN league_seasons ls ON ls.season_id = s.id
+                   WHERE ls.league_id = %s AND s.year = %s""",
+                (league_id, current_year - 1),
+            ).fetchone()
+
+    prev_season_id = prev_season["id"] if prev_season else None
+
+    retired_players = []
+    if prev_season_id:
+        rows = db.execute(
+            """
+            SELECT
+                pr.player_id,
+                pr.former_team_id,
+                p.first_name,
+                p.last_name,
+                p.position,
+                ps.age,
+                COALESCE(t.city || ' ' || t.mascot, '—') AS team_name,
+                (pr.former_team_id = %s)                  AS is_mine,
+                -- batting
+                pss.bat_games_played,
+                pss.bat_ab,
+                pss.bat_hits,
+                pss.bat_home_runs,
+                pss.bat_rbi,
+                pss.bat_walks,
+                pss.bat_strike_outs,
+                pss.bat_doubles,
+                pss.bat_triples,
+                pss.bat_stolen_bases,
+                -- pitching
+                pss.pitch_games_played,
+                pss.pitch_games_started,
+                pss.pitch_wins,
+                pss.pitch_losses,
+                pss.pitch_saves,
+                pss.pitch_outs,
+                pss.pitch_earned_runs,
+                pss.pitch_hits,
+                pss.pitch_walks,
+                pss.pitch_strike_outs
+            FROM player_retirements pr
+            JOIN players           p   ON p.id  = pr.player_id
+            JOIN player_skills     ps  ON ps.player_id = pr.player_id
+            LEFT JOIN teams        t   ON t.id  = pr.former_team_id
+            LEFT JOIN player_season_stats pss
+                ON pss.player_id  = pr.player_id
+               AND pss.season_id  = pr.season_id
+               AND pss.is_postseason = FALSE
+            WHERE pr.league_id = %s
+              AND pr.season_id  = %s
+            ORDER BY
+                (pr.former_team_id IS NOT NULL) DESC,
+                (pr.former_team_id = %s) DESC,
+                p.last_name, p.first_name
+            """,
+            (my_team_id, league_id, prev_season_id, my_team_id),
+        ).fetchall()
+
+        for r in rows:
+            r = dict(r)
+            ab = r.get("bat_ab") or 0
+            hits = r.get("bat_hits") or 0
+            bb = r.get("bat_walks") or 0
+            outs = r.get("pitch_outs") or 0
+            er = r.get("pitch_earned_runs") or 0
+            pk = r.get("pitch_walks") or 0
+            ph = r.get("pitch_hits") or 0
+            r["has_bat_stats"] = ab > 0
+            r["has_pit_stats"] = outs > 0
+            # is_pitcher: used for games column; show pitching if outs dominate or no AB
+            r["is_pitcher"] = outs > 0 and (ab == 0 or outs / 3 >= ab / 10)
+            r["avg"] = f"{hits / ab:.3f}" if ab >= 1 else "—"
+            r["obp"] = (
+                f"{(hits + bb) / (ab + bb):.3f}"
+                if (ab + bb) >= 1 else "—"
+            )
+            r["era"] = (
+                f"{(er * 27) / outs:.2f}" if outs >= 1 else "—"
+            )
+            r["ip"] = f"{outs // 3}.{outs % 3}" if outs >= 1 else "0.0"
+            r["whip"] = (
+                f"{(pk + ph) / (outs / 3):.2f}" if outs >= 1 else "—"
+            )
+            retired_players.append(r)
+
+    ctx.update({"retired_players": retired_players, "my_team_id": my_team_id})
+    return tab_response(request, htmx, "dashboard/partials/retirement.html", ctx)
+
+
 @router.post("/leagues/{league_id}/offseason/begin")
 def begin_offseason(
     league_id: str,

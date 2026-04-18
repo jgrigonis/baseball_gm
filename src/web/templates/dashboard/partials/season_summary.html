@@ -116,11 +116,10 @@ function beginOffseason() {
     .then(function(d){
       if (d.ok) {
         status.textContent = '✓ Offseason complete — ' + d.game_count + ' games scheduled for ' + d.new_year;
-        btn.textContent = 'Go to Draft →';
+        btn.textContent = 'View Retirements →';
         btn.disabled = false;
         btn.onclick = function() {
-          // Full navigation so tab bar, URL, and state all update cleanly
-          window.location.href = '/leagues/' + LEAGUE_ID + '/draft';
+          window.location.href = '/leagues/' + LEAGUE_ID + '/retirement';
         };
       } else {
         status.textContent = '✗ Error: ' + d.error;

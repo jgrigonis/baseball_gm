@@ -1,0 +1,120 @@
+{# templates/dashboard/partials/retirement.html #}
+{# ── Retirement Screen ─────────────────────────────────────────────────────── #}
+
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:12px 24px;border-bottom:1px solid var(--border);">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <h1 class="page-title">Retirements</h1>
+    <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
+      {{ retired_players | length }} player{{ 's' if retired_players | length != 1 else '' }} retired this offseason
+    </span>
+    <div style="margin-left:auto;">
+      <a href="/leagues/{{ league_id }}/draft"
+         class="btn btn-primary" style="padding:6px 18px;">
+        Continue to Draft →
+      </a>
+    </div>
+  </div>
+</div>
+
+{% if not retired_players %}
+<div style="padding:48px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+  No players retired this offseason.
+  <div style="margin-top:24px;">
+    <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to Draft →</a>
+  </div>
+</div>
+{% else %}
+
+<div style="padding:24px;">
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px;">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border);color:var(--text-dim);font-size:10px;letter-spacing:.06em;text-transform:uppercase;">
+        <th style="text-align:left;padding:6px 10px;">Player</th>
+        <th style="text-align:center;padding:6px 8px;">Age</th>
+        <th style="text-align:center;padding:6px 8px;">Pos</th>
+        <th style="text-align:left;padding:6px 10px;">Team</th>
+        <th style="text-align:center;padding:6px 8px;">G</th>
+        {% for col in ['AVG','OBP','HR','RBI','SB'] %}
+        <th class="ret-bat-col" style="text-align:center;padding:6px 8px;">{{ col }}</th>
+        {% endfor %}
+        {% for col in ['W','L','ERA','IP','K','WHIP'] %}
+        <th class="ret-pit-col" style="text-align:center;padding:6px 8px;">{{ col }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in retired_players %}
+      <tr style="border-bottom:1px solid var(--border);
+                 {% if p.is_mine %}background:rgba(245,197,24,.06);{% endif %}
+                 transition:background .1s;"
+          onmouseover="this.style.background='{% if p.is_mine %}rgba(245,197,24,.12){% else %}var(--bg-2){% endif %}'"
+          onmouseout="this.style.background='{% if p.is_mine %}rgba(245,197,24,.06){% else %}transparent{% endif %}'">
+
+        {# Name — clickable #}
+        <td style="padding:8px 10px;">
+          <button onclick="openPlayerPanel('{{ p.player_id }}')"
+                  style="background:none;border:none;cursor:pointer;padding:0;
+                         font-family:var(--font-mono);font-size:12px;font-weight:600;
+                         color:{% if p.is_mine %}var(--amber){% else %}var(--text){% endif %};
+                         text-align:left;">
+            {{ p.first_name }} {{ p.last_name }}
+          </button>
+        </td>
+
+        <td style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.age }}</td>
+        <td style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.position or '—' }}</td>
+
+        {# Team #}
+        <td style="padding:8px 10px;color:{% if p.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
+          {{ p.team_name }}
+        </td>
+
+        {# Games — show whichever is larger for two-way players #}
+        <td style="text-align:center;padding:8px;">
+          {{ [p.pitch_games_played or 0, p.bat_games_played or 0] | max }}
+        </td>
+
+        {# Batting columns — show real stats if they had ABs, else — #}
+        {% if p.has_bat_stats %}
+          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.avg }}</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.obp }}</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.bat_home_runs }}</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.bat_rbi }}</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.bat_stolen_bases }}</td>
+        {% else %}
+          <td class="ret-bat-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-bat-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+        {% endif %}
+
+        {# Pitching columns — show real stats if they pitched, else — #}
+        {% if p.has_pit_stats %}
+          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.pitch_wins }}</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.pitch_losses }}</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.era }}</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.ip }}</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.pitch_strike_outs }}</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.whip }}</td>
+        {% else %}
+          <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+          <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top:32px;text-align:center;">
+    <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
+      Continue to Draft →
+    </a>
+  </div>
+</div>
+{% endif %}
