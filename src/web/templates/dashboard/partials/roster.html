@@ -355,6 +355,7 @@ const SERVER_FORTY = new Set(
 );
 let lastSavedIds = new Set([...SERVER_FORTY]);
 let fortyMan;
+let rosterSaved = false;
 
 let colState = {
   '40':  { s1: 'overall', s2: '', reversed: false, type: '', health: 'all' },
@@ -669,9 +670,11 @@ async function saveRoster() {
     });
     if (res.ok) {
       lastSavedIds = new Set([...fortyMan]);
+      rosterSaved = true;
       showFeedback('✓ Saved', 'var(--green)');
       document.getElementById('unsaved-banner').style.display = 'none';
       document.getElementById('lineup-btn').style.display = 'inline-flex';
+      saveToStorage();
       measureHeader();
     } else {
       const d = await res.json().catch(()=>({}));
@@ -690,7 +693,7 @@ function showFeedback(msg, color) {
 /* ── Storage ─────────────────────────────────────────────────────────────────── */
 function saveToStorage() {
   try {
-    sessionStorage.setItem(ROSTER_KEY, JSON.stringify({ fortyMan: [...fortyMan], colState }));
+    sessionStorage.setItem(ROSTER_KEY, JSON.stringify({ fortyMan: [...fortyMan], colState, rosterSaved }));
   } catch(e) {}
 }
 
@@ -701,7 +704,7 @@ function loadFromStorage() {
     const data = JSON.parse(raw);
     if (!Array.isArray(data.fortyMan)) return null;
     const known = new Set(ALL_PLAYERS.map(p => p.player_id));
-    return { fortyMan: data.fortyMan.filter(id => known.has(id)), colState: data.colState || null };
+    return { fortyMan: data.fortyMan.filter(id => known.has(id)), colState: data.colState || null, rosterSaved: !!data.rosterSaved };
   } catch(e) { return null; }
 }
 
@@ -737,6 +740,10 @@ const stored = loadFromStorage();
 if (stored) {
   fortyMan = new Set(stored.fortyMan);
   restoreColState(stored.colState);
+  if (stored.rosterSaved) {
+    rosterSaved = true;
+    document.getElementById('lineup-btn').style.display = 'inline-flex';
+  }
 } else if (SERVER_FORTY.size > 0) {
   fortyMan = new Set([...SERVER_FORTY]);
 } else {
