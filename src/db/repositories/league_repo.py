@@ -210,6 +210,13 @@ class LeagueRepository:
         league_id = league_row["league_id"] if league_row else ""
         return league_id
 
+    def rename(self, league_id: str, new_name: str) -> None:
+        """Rename a league. Caller must verify commissioner before calling."""
+        self.conn.execute(
+            "UPDATE leagues SET name = %s WHERE id = %s",
+            (new_name.strip(), league_id),
+        )
+
     def get_league_mode(self, league_id: str) -> str:
         """Get the mode of the league."""
         row = self.conn.execute(

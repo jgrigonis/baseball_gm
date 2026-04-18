@@ -106,17 +106,19 @@
     Game Log
   </div>
   {% for e in events %}
-  <div style="border-bottom:1px solid var(--border);padding:4px 0;font-family:var(--font-mono);font-size:11px;">
+  {% set is_mine = e.team_id == my_team_id %}
+  <div style="border-bottom:1px solid var(--border);padding:4px 0;font-family:var(--font-mono);font-size:11px;
+              {% if is_mine %}background:rgba(74,222,128,.04);{% endif %}">
     {% if e.event_type == 'lineup_set' %}
-      <div style="color:var(--text-dim);margin-bottom:6px;font-size:11px;">
-        Pre &nbsp;<span style="color:var(--text);">Starting Lineup</span>
+      <div style="margin-bottom:6px;font-size:11px;">
+        Pre &nbsp;<span style="color:{% if is_mine %}var(--green){% else %}var(--text){% endif %};">Starting Lineup</span>
       </div>
       {% if e.detail_parsed %}
         <table style="margin-left:68px;border-collapse:collapse;font-size:11px;">
         {% for slot in e.detail_parsed %}
           <tr>
             <td style="color:var(--muted);padding:1px 6px 1px 0;min-width:18px;">{{ slot.batting_order }}.</td>
-            <td style="color:var(--text);padding:1px 10px 1px 0;">{{ slot.name }}</td>
+            <td style="color:{% if is_mine %}var(--green){% else %}var(--text){% endif %};padding:1px 10px 1px 0;">{{ slot.name }}</td>
             <td style="color:var(--text-dim);">{{ slot.position | upper }}</td>
           </tr>
         {% endfor %}
@@ -127,7 +129,7 @@
       <span style="color:var(--muted);min-width:60px;flex-shrink:0;">
         {% if e.inning %}{{ 'Top' if e.half == 'top' else 'Bot' }} {{ e.inning }}{% else %}Pre{% endif %}
       </span>
-      <span style="color:{% if e.event_type == 'injury' %}var(--red){% elif e.event_type in ('closer_called','pitcher_start') %}var(--amber){% else %}var(--text-dim){% endif %};">
+      <span style="color:{% if e.event_type == 'injury' %}var(--red){% elif is_mine %}var(--green){% elif e.event_type in ('closer_called','pitcher_start') %}var(--amber){% else %}var(--text-dim){% endif %};">
         {{ e.reason }}
       </span>
     </div>

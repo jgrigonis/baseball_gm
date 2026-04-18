@@ -18,12 +18,10 @@ class Inning(object):
     @number.setter
     def number(self, value: int) -> None:
         """Set the inning number with validation."""
-        if not isinstance(value, int):
+        if not isinstance(value, int) or not (value >= 1):
             raise TypeError(
-                f"Inning number must be an integer, got {type(value).__name__}"
+                f"Inning number must be an integer greater than or equal to 1, got {value}"
             )
-        if value < 1:
-            raise ValueError(f"Inning number must be at least 1, got {value}")
         self._number = value
 
     # ---------- outs property ----------
@@ -36,12 +34,8 @@ class Inning(object):
     @outs.setter
     def outs(self, value: int) -> None:
         """Set the out count with validation."""
-        if not isinstance(value, int):
-            raise TypeError(f"Outs must be an integer, got {type(value).__name__}")
-        if value < 0:
-            raise ValueError(f"Outs cannot be negative, got {value}")
-        if value > 3:
-            raise ValueError(f"Outs cannot exceed 3, got {value}")
+        if not isinstance(value, int) or not (0 <= value <= 3):
+            raise ValueError(f"Outs must be an integer between 0 and 3, got {value}")
         self._outs = value
 
     # ---------- computed properties ----------
@@ -62,8 +56,7 @@ class Inning(object):
         """Return an inning string."""
         if self.top:
             return f"Top of {self._number}"
-        else:
-            return f"Bottom of {self._number}"
+        return f"Bottom of {self._number}"
 
     # ---------- mutations ----------
 

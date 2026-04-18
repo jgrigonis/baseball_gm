@@ -22,6 +22,7 @@ import uuid
 import traceback
 
 from fastapi import APIRouter, Form, HTTPException, Request
+from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -493,6 +494,32 @@ async def save_draft_preferences(
     db.commit()
 
     return JSONResponse({"saved": len(player_ids)})
+
+
+# ── League rename ──────────────────────────────────────────────────────────────
+
+
+class RenameLeagueRequest(BaseModel):
+    name: str
+
+
+@router.post("/leagues/{league_id}/rename")
+def rename_league(
+    league_id: str,
+    body: RenameLeagueRequest,
+    db: DB,
+    gm: GM,
+):
+    name = body.name.strip()
+    if not name:
+        return JSONResponse({"detail": "Name required"}, status_code=422)
+    league_repo = LeagueRepository(db)
+    league = league_repo.get_by_id(league_id)
+    if not league or league["commissioner_gm_id"] != gm["id"]:
+        return JSONResponse({"detail": "Forbidden"}, status_code=403)
+    league_repo.rename(league_id, name)
+    db.commit()
+    return JSONResponse({"name": name})
 
 
 # ── Dashboard shell ────────────────────────────────────────────────────────────

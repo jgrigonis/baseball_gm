@@ -13,9 +13,59 @@
 <div class="app-shell">
 
   <header class="topbar">
-    <a href="/leagues/" class="topbar-logo">
-      ⚾ GM Sim{% if league_name %} <span>/ {{ league_name }}</span>{% endif %}
-    </a>
+    <span class="topbar-logo">
+      <a href="/leagues/" style="color:inherit;text-decoration:none;">⚾ GM Sim</a>
+      {% if league_name %}
+        <span style="color:var(--text-dim);margin:0 4px;">/</span>
+        {% if is_commissioner %}
+          <button onclick="openRenameModal()" style="background:none;border:none;padding:0;color:inherit;font:inherit;cursor:pointer;letter-spacing:inherit;" title="Rename league">{{ league_name }}</button>
+        {% else %}
+          <a href="/leagues/" style="color:inherit;text-decoration:none;">{{ league_name }}</a>
+        {% endif %}
+      {% endif %}
+    </span>
+
+    {# Rename modal — only rendered for commissioners in a league #}
+    {% if is_commissioner and league_id %}
+    <div id="rename-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
+      <div style="background:var(--bg-2);border:1px solid var(--border);padding:24px;min-width:320px;font-family:var(--font-mono);">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Rename League</div>
+        <input id="rename-input" type="text" value="{{ league_name }}"
+               style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;padding:7px 10px;margin-bottom:12px;"
+               onkeydown="if(event.key==='Enter')submitRename();if(event.key==='Escape')closeRenameModal();">
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button onclick="closeRenameModal()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--font-mono);font-size:11px;padding:5px 12px;cursor:pointer;">Cancel</button>
+          <button onclick="submitRename()" style="background:var(--green-dim);border:1px solid var(--green-mid);color:var(--green);font-family:var(--font-mono);font-size:11px;padding:5px 12px;cursor:pointer;">Save</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    function openRenameModal() {
+      const m = document.getElementById('rename-modal');
+      m.style.display = 'flex';
+      const inp = document.getElementById('rename-input');
+      inp.focus(); inp.select();
+    }
+    function closeRenameModal() {
+      document.getElementById('rename-modal').style.display = 'none';
+    }
+    function submitRename() {
+      const name = document.getElementById('rename-input').value.trim();
+      if (!name) return;
+      fetch('/leagues/{{ league_id }}/rename', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({name}),
+      }).then(r => r.json()).then(d => {
+        if (d.name) {
+          document.querySelectorAll('.topbar-logo button').forEach(b => b.textContent = d.name);
+          document.title = document.title.replace(/^[^—]+/, d.name + ' ');
+          closeRenameModal();
+        }
+      });
+    }
+    </script>
+    {% endif %}
     {% if league_state %}
       <span class="topbar-state state-{{ league_state }}">{{ league_state }}</span>
     {% endif %}

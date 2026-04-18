@@ -65,10 +65,15 @@ class GMRepository:
     def get_users_leagues(self, user_id: str) -> list[dict]:
         """Fetch the user's leagues"""
         rows = self.conn.execute(
-            """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code
+            """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
+                      MAX(s.year) as current_year,
+                      (l.commissioner_gm_id = g.id) as is_commissioner
             FROM leagues l
             JOIN gms g ON g.league_id = l.id
+            LEFT JOIN league_seasons ls ON ls.league_id = l.id
+            LEFT JOIN seasons s ON s.id = ls.season_id
             WHERE g.user_id = %s AND NOT g.is_ai
+            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.join_code, g.id
             ORDER BY l.created_at DESC""",
             (user_id,),
         ).fetchall()
