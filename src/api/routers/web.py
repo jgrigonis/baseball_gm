@@ -2536,15 +2536,15 @@ def player_career(
             for section, skills in _sections
         ]
 
-        # Career stats — regular season only, newest first
+        # Career stats — regular season + playoffs, newest first; playoffs above reg season within year
         stat_rows = db.execute(
             """
             SELECT pss.*, s.year, t.city as team_city, t.mascot as team_mascot
             FROM player_season_stats pss
             JOIN seasons s ON s.id = pss.season_id
             JOIN teams t ON t.id = pss.team_id
-            WHERE pss.player_id = %s AND pss.is_postseason = FALSE
-            ORDER BY s.year DESC
+            WHERE pss.player_id = %s
+            ORDER BY s.year DESC, pss.is_postseason DESC
             """,
             (pid,),
         ).fetchall()
@@ -2553,9 +2553,12 @@ def player_career(
         batting_seasons = []
         p_totals: dict = {}
         b_totals: dict = {}
+        pp_totals: dict = {}
+        pb_totals: dict = {}
 
         for r in [dict(x) for x in stat_rows]:
             yr = r["year"]
+            is_post = bool(r.get("is_postseason"))
             team = f"{r['team_city']} {r['team_mascot']}"
 
             if (r.get("pitch_games_played") or 0) > 0:
@@ -2567,7 +2570,7 @@ def player_career(
                 era = round(er / ip * 9, 2) if ip > 0 else 0.0
                 whip = round((hits + bb) / ip, 2) if ip > 0 else 0.0
                 prow = {
-                    "year": yr, "team": team,
+                    "year": yr, "team": team, "postseason": is_post,
                     "G": r.get("pitch_games_played", 0),
                     "GS": r.get("pitch_games_started", 0),
                     "W": r.get("pitch_wins", 0), "L": r.get("pitch_losses", 0),
@@ -2578,9 +2581,10 @@ def player_career(
                     "ERA": era, "WHIP": whip,
                 }
                 pitching_seasons.append(prow)
+                t = p_totals if not is_post else pp_totals
                 for k in ("G", "GS", "W", "L", "SV", "H", "ER", "BB", "K", "HR"):
-                    p_totals[k] = p_totals.get(k, 0) + prow[k]
-                p_totals["_outs"] = p_totals.get("_outs", 0) + outs
+                    t[k] = t.get(k, 0) + prow[k]
+                t["_outs"] = t.get("_outs", 0) + outs
 
             if (r.get("bat_games_played") or 0) > 0:
                 ab = r.get("bat_ab", 0) or 0
@@ -2594,7 +2598,7 @@ def player_career(
                 slg_num = h + dbl + 2 * trp + 3 * hr
                 obp_d = ab + bb + hbp + sf
                 brow = {
-                    "year": yr, "team": team,
+                    "year": yr, "team": team, "postseason": is_post,
                     "G": r.get("bat_games_played", 0),
                     "AB": ab, "H": h, "2B": dbl, "3B": trp, "HR": hr,
                     "RBI": r.get("bat_rbi", 0) or 0,
@@ -2610,41 +2614,40 @@ def player_career(
                     ),
                 }
                 batting_seasons.append(brow)
+                t = b_totals if not is_post else pb_totals
                 for k in ("G", "AB", "H", "2B", "3B", "HR", "RBI", "R", "BB", "K", "SB"):
-                    b_totals[k] = b_totals.get(k, 0) + brow[k]
-                b_totals["_ab"] = b_totals.get("_ab", 0) + ab
-                b_totals["_h"] = b_totals.get("_h", 0) + h
-                b_totals["_bb"] = b_totals.get("_bb", 0) + bb
-                b_totals["_hbp"] = b_totals.get("_hbp", 0) + hbp
-                b_totals["_sf"] = b_totals.get("_sf", 0) + sf
-                b_totals["_slg_num"] = b_totals.get("_slg_num", 0) + slg_num
+                    t[k] = t.get(k, 0) + brow[k]
+                t["_ab"] = t.get("_ab", 0) + ab
+                t["_h"] = t.get("_h", 0) + h
+                t["_bb"] = t.get("_bb", 0) + bb
+                t["_hbp"] = t.get("_hbp", 0) + hbp
+                t["_sf"] = t.get("_sf", 0) + sf
+                t["_slg_num"] = t.get("_slg_num", 0) + slg_num
 
-        pitching_totals: dict | None = None
-        if p_totals:
-            tot_outs = p_totals.pop("_outs", 0)
-            tot_ip = tot_outs / 3.0
-            pitching_totals = {
-                **p_totals, "IP": round(tot_ip, 1),
-                "ERA": round(p_totals.get("ER", 0) / tot_ip * 9, 2) if tot_ip > 0 else 0.0,
-                "WHIP": round((p_totals.get("H", 0) + p_totals.get("BB", 0)) / tot_ip, 2) if tot_ip > 0 else 0.0,
-            }
+        def _pitch_totals(d: dict) -> dict | None:
+            if not d:
+                return None
+            outs = d.pop("_outs", 0)
+            ip = outs / 3.0
+            return {**d, "IP": round(ip, 1),
+                    "ERA": round(d.get("ER", 0) / ip * 9, 2) if ip > 0 else 0.0,
+                    "WHIP": round((d.get("H", 0) + d.get("BB", 0)) / ip, 2) if ip > 0 else 0.0}
 
-        batting_totals: dict | None = None
-        if b_totals:
-            tot_ab = b_totals.pop("_ab", 0)
-            tot_h = b_totals.pop("_h", 0)
-            tot_bb = b_totals.pop("_bb", 0)
-            tot_hbp = b_totals.pop("_hbp", 0)
-            tot_sf = b_totals.pop("_sf", 0)
-            tot_slg_num = b_totals.pop("_slg_num", 0)
-            obp_d = tot_ab + tot_bb + tot_hbp + tot_sf
-            tot_obp = round((tot_h + tot_bb + tot_hbp) / obp_d, 3) if obp_d > 0 else 0.0
-            tot_slg = round(tot_slg_num / tot_ab, 3) if tot_ab > 0 else 0.0
-            batting_totals = {
-                **b_totals,
-                "AVG": round(tot_h / tot_ab, 3) if tot_ab > 0 else 0.0,
-                "OBP": tot_obp, "SLG": tot_slg, "OPS": round(tot_obp + tot_slg, 3),
-            }
+        def _bat_totals(d: dict) -> dict | None:
+            if not d:
+                return None
+            ab = d.pop("_ab", 0); h = d.pop("_h", 0); bb = d.pop("_bb", 0)
+            hbp = d.pop("_hbp", 0); sf = d.pop("_sf", 0); slg_num = d.pop("_slg_num", 0)
+            obp_d = ab + bb + hbp + sf
+            obp = round((h + bb + hbp) / obp_d, 3) if obp_d > 0 else 0.0
+            slg = round(slg_num / ab, 3) if ab > 0 else 0.0
+            return {**d, "AVG": round(h / ab, 3) if ab > 0 else 0.0,
+                    "OBP": obp, "SLG": slg, "OPS": round(obp + slg, 3)}
+
+        pitching_totals = _pitch_totals(p_totals)
+        pitching_playoff_totals = _pitch_totals(pp_totals)
+        batting_totals = _bat_totals(b_totals)
+        batting_playoff_totals = _bat_totals(pb_totals)
 
         # Injuries grouped by season year
         all_inj = db.execute(
@@ -2679,8 +2682,10 @@ def player_career(
             "rating_sections": rating_sections,
             "pitching_seasons": pitching_seasons,
             "pitching_totals": pitching_totals,
+            "pitching_playoff_totals": pitching_playoff_totals,
             "batting_seasons": batting_seasons,
             "batting_totals": batting_totals,
+            "batting_playoff_totals": batting_playoff_totals,
             "injuries_by_year": injuries_by_year,
         }
 
