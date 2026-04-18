@@ -1,5 +1,12 @@
 {# templates/dashboard/partials/game_panel.html #}
 {# Slide-in game detail panel — always in DOM, shown/hidden via JS #}
+<style>
+.gp-player-btn {
+  background:none;border:none;padding:0;color:var(--text);
+  font-family:var(--font-sans);font-size:inherit;cursor:pointer;text-align:left;
+}
+.gp-player-btn:hover { color:var(--green); }
+</style>
 
 <div id="game-panel-overlay"
      onclick="closeGamePanel()"

@@ -47,7 +47,7 @@
       <tbody>
         {% for p in bat_rows %}
         <tr>
-          <td style="font-family:var(--font-sans);">{{ p.first_name[0] }}. {{ p.last_name }}</td>
+          <td style="font-family:var(--font-sans);"><button onclick="openPlayerPanel('{{ p.player_id }}')" class="gp-player-btn">{{ p.first_name[0] }}. {{ p.last_name }}</button></td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.AB }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
           <td style="text-align:right;font-family:var(--font-mono);font-weight:{% if p.H > 0 %}600{% else %}400{% endif %};">{{ p.H }}</td>
@@ -78,7 +78,7 @@
       <tbody>
         {% for p in pit_rows %}
         <tr>
-          <td style="font-family:var(--font-sans);">{{ p.first_name[0] }}. {{ p.last_name }}</td>
+          <td style="font-family:var(--font-sans);"><button onclick="openPlayerPanel('{{ p.player_id }}')" class="gp-player-btn">{{ p.first_name[0] }}. {{ p.last_name }}</button></td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.IP }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.H }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
