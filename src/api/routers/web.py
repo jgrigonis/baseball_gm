@@ -33,7 +33,7 @@ from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_next_day
 from src.api.services.sim_playoff import sim_playoff
-from src.db.repositories.bullpen_roles_repo import BullpenRepository
+from src.db.repositories.bullpen_roles_repo import BullpenRepository, _get_active_rotation_player_ids
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -1604,8 +1604,20 @@ async def save_bullpen(
         {"player_id": pid, "role": role} for pid, role in body.bullpen.items()
     ]
     bp_repo = BullpenRepository(db)
+    rot_repo = TeamRotationsRepository(db)
 
     try:
+        # Evict any bullpen-assigned pitchers who are still in the DB rotation
+        bullpen_ids = {a["player_id"] for a in assignments}
+        in_rotation = _get_active_rotation_player_ids(db, gm["team_id"], season_id)
+        for pid in bullpen_ids & in_rotation:
+            rot_repo.remove_from_rotation(
+                team_id=gm["team_id"],
+                season_id=season_id,
+                player_id=pid,
+                effective_date=effective_date,
+            )
+
         bp_repo.set_roles(
             team_id=gm["team_id"],
             season_id=season_id,
