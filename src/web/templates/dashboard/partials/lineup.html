@@ -70,7 +70,7 @@
         <div style="display:flex;align-items:center;gap:3px;
                     font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
           <select id="bat-s1" onchange="renderRoster()" style="width:auto;font-size:10px;">
-            <option value="overall">Overall</option>
+            <option value="bat_overall">Overall</option>
             <optgroup label="Hitting">
               <option value="contact">Contact</option>
               <option value="power">Power</option>
@@ -558,7 +558,7 @@ function renderBattingOrder() {
           <button class="lu-arrow" data-idx="${i}" data-dir="up"  ${i===0?'disabled':''}>▲</button>
           <button class="lu-arrow" data-idx="${i}" data-dir="down" ${i===8?'disabled':''}>▼</button>
         </div>
-        <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+        <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
         <div style="min-width:0;">
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
@@ -773,15 +773,14 @@ function renderRoster() {
     card.dataset.pid = p.player_id;
 
     card.innerHTML = `
-      <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+      <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
       <div style="min-width:0;">
         <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}
           ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
         </div>
         <div class="lu-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
-        <div class="lu-skills">${isHitter ? hitterGradesHtml(p, null) : pitcherGradesHtml(p)}</div>
-        ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
-        ${!isHitter && p.stat_era!=null ? `<div class="lu-skills">${pitcherStatsHtml(p)}</div>` : ''}
+        <div class="lu-skills">${hitterGradesHtml(p, null)}</div>
+        ${p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
       </div>
       <button class="lu-add-btn" title="Add to lineup"
               onclick="event.stopPropagation();addToLineup('${p.player_id}')"

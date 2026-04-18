@@ -19,6 +19,7 @@ function closePlayDropdown() {
 // Player panel functions — defined early so partials can call them
 var _pinnedId = null;
 window.openPlayerPanel = function(pid) {
+  if (_pinnedCareerCompareId) { openCareerPage(pid); return; }
   const url = _pinnedId && _pinnedId !== pid
     ? `/leagues/{{ league_id }}/players/${pid}/panel?compare=${_pinnedId}`
     : `/leagues/{{ league_id }}/players/${pid}/panel`;
@@ -57,8 +58,15 @@ window.closeAndBrowse = function(name) {
   if (tabContent) tabContent.prepend(hint);
 };
 window.cancelCompare = function() { _pinnedId = null; const h = document.getElementById('compare-hint'); if(h) h.remove(); };
+var _pinnedCareerCompareId = null;
 window.openCareerPage = function(playerId) {
-  const url = `/leagues/{{ league_id }}/players/${playerId}/career`;
+  let url = `/leagues/{{ league_id }}/players/${playerId}/career`;
+  if (_pinnedCareerCompareId && _pinnedCareerCompareId !== playerId) {
+    url += `?compare=${_pinnedCareerCompareId}`;
+    _pinnedCareerCompareId = null;
+    const hint = document.getElementById('compare-hint');
+    if (hint) hint.remove();
+  }
   fetch(url)
     .then(r => r.text())
     .then(html => {
@@ -66,6 +74,27 @@ window.openCareerPage = function(playerId) {
       addBackdrop();
     })
     .catch(err => console.error('Career page load failed:', err));
+};
+window.pinForCareerCompare = function(pid, name) {
+  _pinnedCareerCompareId = pid;
+  document.getElementById('player-panel-mount').innerHTML = '';
+  removeBackdrop();
+  const hint = document.createElement('div');
+  hint.id = 'compare-hint';
+  hint.style.cssText = 'position:sticky;top:0;z-index:20;background:var(--amber-lo);' +
+    'border-bottom:1px solid var(--amber-dim);padding:8px 24px;' +
+    'font-family:var(--font-mono);font-size:11px;color:var(--amber);' +
+    'display:flex;align-items:center;gap:12px;';
+  hint.innerHTML = `✓ ${name} pinned — click Career → on any player to compare` +
+    ' · <button onclick="cancelCareerCompare()" style="background:none;border:none;' +
+    'color:var(--text-dim);font-family:var(--font-mono);font-size:11px;cursor:pointer;">✕ Cancel</button>';
+  const tabContent = document.getElementById('tab-content');
+  if (tabContent) tabContent.prepend(hint);
+};
+window.cancelCareerCompare = function() {
+  _pinnedCareerCompareId = null;
+  const h = document.getElementById('compare-hint');
+  if (h) h.remove();
 };
 function addBackdrop() {
   removeBackdrop();

@@ -1358,12 +1358,14 @@ def lineup(
                 g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
                 g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
                 g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
+                g["bat_overall"] = skill_to_grade(ratings.get("overall_player"))
             else:
                 g["overall"] = skill_to_grade(ratings.get("overall_player"))
                 g["leadoff_grade"] = skill_to_grade(ratings.get("lead_off", 0))
                 g["power_h_grade"] = skill_to_grade(ratings.get("power_hitter", 0))
                 g["contact_h_grade"] = skill_to_grade(ratings.get("contact_hitter", 0))
                 g["oofense_h_grade"] = skill_to_grade(ratings.get("offense", 0))
+                g["bat_overall"] = g["overall"]
             g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
             g["best_def_label"] = ratings.get("best_def_label", "DEF")
             # Per-position ratings for assigned-position display
@@ -1381,10 +1383,21 @@ def lineup(
                 "dh",
             ):
                 g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
-        # Raw skill grades not in PlayerGrades — needed for sort
+        # Raw skill grades not in PlayerGrades — needed for sort and batting display
         g["base_running"] = skill_to_grade(d.get("base_running"))
         g["bunting"] = skill_to_grade(d.get("bunting"))
         g["ground_balls"] = skill_to_grade(d.get("ground_balls"))
+        # Hitting grades for all players — pitchers need these when batting
+        if g.get("contact") is None:
+            g["contact"] = skill_to_grade(d.get("contact"))
+        if g.get("power") is None:
+            g["power"] = skill_to_grade(d.get("power"))
+        if g.get("eye") is None:
+            g["eye"] = skill_to_grade(d.get("eye"))
+        if g.get("speed") is None:
+            g["speed"] = skill_to_grade(d.get("speed"))
+        if g.get("arm") is None:
+            g["arm"] = skill_to_grade(d.get("arm"))
         if g.get("player_type") == "pitcher":
             pitchers.append(g)
         else:
@@ -1422,6 +1435,13 @@ def lineup(
                 p["stat_hr"] = None
         for p in pitchers:
             s = stats_map.get(p["player_id"])
+            if s and (s["bat_ab"] or 0) > 0:
+                avg = s["bat_hits"] / s["bat_ab"]
+                p["stat_avg"] = f"{avg:.3f}"
+                p["stat_hr"] = s["bat_home_runs"] or 0
+            else:
+                p["stat_avg"] = None
+                p["stat_hr"] = None
             if s and (s["pitch_outs"] or 0) > 0:
                 outs = s["pitch_outs"]
                 era = (s["pitch_earned_runs"] * 27) / outs

@@ -1,7 +1,7 @@
 {# templates/dashboard/partials/player_career.html #}
 
 <style>
-.career-page { font-family:var(--font-mono); font-size:12px; color:var(--text); background:var(--bg); overflow-y:auto; }
+.career-page { font-family:var(--font-mono); font-size:12px; color:var(--text); background:var(--bg); overflow-y:auto; pointer-events:auto; }
 .career-hdr  { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg-2); position:sticky; top:0; z-index:10; }
 .career-hdr .pp-close { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:2px 8px; }
 .career-hdr .pp-close:hover { color:var(--text); }
@@ -76,7 +76,7 @@
     <span class="career-hdr-title">{% if compare_player %}Career Comparison{% else %}Player Career{% endif %}</span>
     {% if not compare_player %}
     <button class="btn btn-secondary" style="font-size:10px;padding:4px 10px;"
-            onclick="pinForCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')">
+            onclick="pinForCareerCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')">
       Compare ↔
     </button>
     {% endif %}
