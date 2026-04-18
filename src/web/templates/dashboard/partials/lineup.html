@@ -688,6 +688,7 @@ function setPosition(idx, pos) {
   if (lineup[idx]) lineup[idx].position = pos || '';
   renderBattingOrder();
   updateSaveBattingBtn();
+  saveToStorage();
 }
 
 function removeFromLineup(idx) {
@@ -1169,6 +1170,7 @@ function handleBullpenRoleChange(pid, role) {
     setBullpenRole(pid, role);
   }
   renderBullpen();
+  saveToStorage();
 }
 
 /* ── Pitching: clear / auto-fill / auto-assign ───────────────────────────────── */
@@ -1328,10 +1330,11 @@ function saveToStorage() {
     const bs1 = document.getElementById('bp-s1')?.value   || 'sp_grade';
     const bs2 = document.getElementById('bp-s2')?.value   || '';
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      lineup, rotation, pointerPid,
+      lineup, rotation, pointerPid, bullpen,
       rosterFilter, activeTab,
       rosterSort: { s1, s2, s3 },
       bullpenSort: { s1: bs1, s2: bs2 },
+      battingSaved, pitchingSaved, bullpenSaved,
     }));
   } catch(e) {}
 }
@@ -1413,6 +1416,12 @@ if (stored) {
     if (document.getElementById('bp-s1')) document.getElementById('bp-s1').value = stored.bullpenSort.s1||'sp_grade';
     if (document.getElementById('bp-s2')) document.getElementById('bp-s2').value = stored.bullpenSort.s2||'';
   }
+  if (stored.bullpen && typeof stored.bullpen === 'object') {
+    bullpen = stored.bullpen;
+  }
+  if (stored.battingSaved)  battingSaved  = true;
+  if (stored.pitchingSaved) pitchingSaved = true;
+  if (stored.bullpenSaved)  bullpenSaved  = true;
   if (stored.activeTab && stored.activeTab !== 'batting') {
     switchTab(stored.activeTab);
   }
