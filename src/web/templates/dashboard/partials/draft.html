@@ -16,7 +16,7 @@
               style="margin-left:8px;">Submit Preferences</button>
       <span id="submit-check"
             style="font-family:var(--font-mono);font-size:13px;color:var(--green);
-                   margin-left:8px;display:none;">✓</span>
+                   margin-left:8px;display:none;">✓ Submitted</span>
       {% if draft_complete %}
         <a href="/leagues/{{ league_id }}/draft/results"
            class="btn btn-secondary"
@@ -36,6 +36,22 @@
       <span class="page-subtitle" style="color:var(--text-dim);">Draft not yet open</span>
     {% endif %}
   </div>
+
+  {# Unsaved changes banner #}
+  {% if draft_id %}
+  <div id="draft-unsaved-banner"
+       style="margin-top:8px;padding:6px 12px;
+              background:var(--amber-lo);border:1px solid var(--amber);
+              font-family:var(--font-mono);font-size:11px;color:var(--amber);
+              display:flex;align-items:center;gap:10px;">
+    <span>⚠ Preferences not yet submitted</span>
+    <button class="btn btn-secondary" onclick="submitPrefs()"
+            style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
+      Submit now
+    </button>
+  </div>
+  {% endif %}
+
 </div>
 
 {% if draft_id %}
@@ -668,16 +684,13 @@ function resetToDefault() {
 }
 
 function updateCheckmark() {
-  const check  = document.getElementById('submit-check');
-  const retBtn = document.getElementById('return-submitted-btn');
-  if (!submittedOrder) {
-    if (check)  check.style.display  = 'none';
-    if (retBtn) retBtn.style.display = 'none';
-    return;
-  }
-  const isMatch = JSON.stringify(prefOrder) === JSON.stringify(submittedOrder);
+  const check   = document.getElementById('submit-check');
+  const retBtn  = document.getElementById('return-submitted-btn');
+  const banner  = document.getElementById('draft-unsaved-banner');
+  const isMatch = submittedOrder && JSON.stringify(prefOrder) === JSON.stringify(submittedOrder);
   if (check)  check.style.display  = isMatch ? 'inline' : 'none';
-  if (retBtn) retBtn.style.display = !isMatch ? 'inline-block' : 'none';
+  if (retBtn) retBtn.style.display = (submittedOrder && !isMatch) ? 'inline-block' : 'none';
+  if (banner) banner.style.display = isMatch ? 'none' : 'flex';
 }
 
 function returnToSubmitted() {
