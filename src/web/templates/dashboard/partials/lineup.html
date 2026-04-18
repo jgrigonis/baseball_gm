@@ -565,9 +565,13 @@ function renderBattingOrder() {
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.bats}/${p.throws} · Age ${p.age}</span>
             ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
           </div>
-          ${_battingSlotGrades(isHitter, p, slot.position)}
-          ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
-          ${!isHitter && p.stat_era!=null ? `<div class="lu-skills">${pitcherStatsHtml(p)}</div>` : ''}
+          {# Always show batting grades and hitter stats #}
+          
+          ${_battingSlotGrades(true, p, slot.position)}
+          
+          ${p.stat_avg != null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''}
+          {# ${isHitter && p.stat_avg!=null ? `<div class="lu-skills">${hitterStatsHtml(p)}</div>` : ''} #}
+          {# ${!isHitter && p.stat_era!=null ? `<div class="lu-skills">${pitcherStatsHtml(p)}</div>` : ''} #}
         </div>
         <select class="lu-pos-select${dupes.has(slot.position)?' dupe':''}"
                 onchange="setPosition(${i},this.value)">${posOpts}</select>
