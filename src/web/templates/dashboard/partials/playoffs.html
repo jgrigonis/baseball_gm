@@ -68,6 +68,8 @@
 }
 .sc-dots { display:flex;gap:3px;align-items:center; }
 .dot-win  { width:9px;height:9px;border-radius:50%;background:var(--green); }
+.dot-win.clickable { cursor:pointer; transition:transform .1s, box-shadow .1s; }
+.dot-win.clickable:hover { transform:scale(1.4); box-shadow:0 0 5px var(--green); }
 .dot-loss { width:9px;height:9px;border-radius:50%;background:var(--red);opacity:.5; }
 .dot-empty{ width:9px;height:9px;border-radius:50%;border:1px solid var(--border); }
 .sc-tbd {
@@ -80,6 +82,41 @@
   text-align:center;margin-bottom:12px;
 }
 </style>
+
+{% macro series_card(s, my_team_id) %}
+<div class="series-card{% if s.decided %} decided{% endif %}"
+     style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
+  <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
+  {% if s.teams %}
+    {% for t in s.teams %}
+    {% set win_game_ids = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | map(attribute='id') | list %}
+    <div class="sc-team">
+      <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+        {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
+      </span>
+      <div class="sc-dots">
+        {% if not t.pending %}
+          {% for i in range(s.wins_needed) %}
+            {% if i < t.wins %}
+              {% set gid = win_game_ids[i] if i < win_game_ids|length else None %}
+              {% if gid %}
+                <div class="dot-win clickable" onclick="openGamePanel('{{ gid }}')" title="View game"></div>
+              {% else %}
+                <div class="dot-win"></div>
+              {% endif %}
+            {% else %}
+              <div class="dot-empty"></div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="sc-tbd">{% if s.name in ['1v8','4v5','2v7','3v6'] %}TBD{% else %}Winner of {{ s.name }}{% endif %}</div>
+  {% endif %}
+</div>
+{% endmacro %}
 
 {% if not bracket %}
 <div style="padding:48px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
@@ -119,32 +156,7 @@
               height:560px;width:220px;flex-shrink:0;">
     <div class="round-label" style="position:absolute;top:-20px;left:0;width:220px;">Round 1</div>
     {% set r1 = bracket[0] %}
-    {% for s in r1.series %}
-    <div class="series-card{% if s.decided %} decided{% endif %}"
-         style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
-      <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
-      {% if s.teams %}
-        {% for t in s.teams %}
-        {% set other = s.teams[1] if loop.first else s.teams[0] %}
-        <div class="sc-team">
-          <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
-            {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
-          </span>
-          <div class="sc-dots">
-            {% if not t.pending %}
-              {% for i in range(s.wins_needed) %}
-                {% if i < t.wins %}<div class="dot-win"></div>
-                {% else %}<div class="dot-empty"></div>{% endif %}
-              {% endfor %}
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="sc-tbd">TBD</div>
-      {% endif %}
-    </div>
-    {% endfor %}
+    {% for s in r1.series %}{{ series_card(s, my_team_id) }}{% endfor %}
   </div>
 
   {# ── Connector 1 ─────────────────────────────────────────────────────────── #}
@@ -155,31 +167,7 @@
               height:560px;width:220px;flex-shrink:0;">
     <div class="round-label" style="position:absolute;top:-20px;left:252px;width:220px;">Semifinals</div>
     {% set r2 = bracket[1] %}
-    {% for s in r2.series %}
-    <div class="series-card{% if s.decided %} decided{% endif %}"
-         style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
-      <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
-      {% if s.teams %}
-        {% for t in s.teams %}
-        <div class="sc-team">
-          <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
-            {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
-          </span>
-          <div class="sc-dots">
-            {% if not t.pending %}
-              {% for i in range(s.wins_needed) %}
-                {% if i < t.wins %}<div class="dot-win"></div>
-                {% else %}<div class="dot-empty"></div>{% endif %}
-              {% endfor %}
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="sc-tbd">Winner of {{ s.name }}</div>
-      {% endif %}
-    </div>
-    {% endfor %}
+    {% for s in r2.series %}{{ series_card(s, my_team_id) }}{% endfor %}
   </div>
 
   {# ── Connector 2 ─────────────────────────────────────────────────────────── #}
@@ -191,29 +179,7 @@
     <div class="round-label" style="position:absolute;top:-20px;left:504px;width:220px;">Finals</div>
     {% set r3 = bracket[2] %}
     {% set s = r3.series[0] %}
-    <div class="series-card{% if s.decided %} decided{% endif %}"
-         style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
-      <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
-      {% if s.teams %}
-        {% for t in s.teams %}
-        <div class="sc-team">
-          <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
-            {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
-          </span>
-          <div class="sc-dots">
-            {% if not t.pending %}
-              {% for i in range(s.wins_needed) %}
-                {% if i < t.wins %}<div class="dot-win"></div>
-                {% else %}<div class="dot-empty"></div>{% endif %}
-              {% endfor %}
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="sc-tbd">Winners of Semifinals</div>
-      {% endif %}
-    </div>
+    {{ series_card(s, my_team_id) }}
   </div>
 
 </div>

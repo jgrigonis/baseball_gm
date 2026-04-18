@@ -2053,6 +2053,11 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
             (t["team_id"] for t in teams if t["wins"] >= wins_needed), None
         )
         games_played = sum(1 for g in games if g["completed"])
+        completed_games = [
+            {"id": g["id"], "winner_id": g["winner_id"],
+             "home_score": g["home_score"], "away_score": g["away_score"]}
+            for g in games if g["completed"]
+        ]
 
         return {
             "name": series_name,
@@ -2061,6 +2066,7 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
             "wins_needed": wins_needed,
             "teams": teams,
             "games_played": games_played,
+            "completed_games": completed_games,
             "decided": winner_id is not None,
             "winner_id": winner_id,
         }
