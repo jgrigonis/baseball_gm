@@ -128,64 +128,81 @@
         <span class="cs-empty">No ratings available</span>
       {% endif %}
 
-      {# Career Stats #}
-      <div class="cs-section-title">Career Stats</div>
-      {% if p.season_stats %}
+      {# Pitching Stats #}
+      {% if p.pitching_seasons %}
+      <div class="cs-section-title">Pitching</div>
       <div class="cs-stats-wrap">
         <table class="cs-table">
           <thead><tr>
             <th>Year</th><th>Team</th>
-            {% if p.is_pitcher %}
-              <th>G</th><th>GS</th><th>W</th><th>L</th><th>SV</th>
-              <th>IP</th><th>H</th><th>ER</th><th>BB</th><th>K</th><th>HR</th>
-              <th>ERA</th><th>WHIP</th>
-            {% else %}
-              <th>G</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th>
-              <th>RBI</th><th>R</th><th>BB</th><th>K</th><th>SB</th>
-              <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
-            {% endif %}
+            <th>G</th><th>GS</th><th>W</th><th>L</th><th>SV</th>
+            <th>IP</th><th>H</th><th>ER</th><th>BB</th><th>K</th><th>HR</th>
+            <th>ERA</th><th>WHIP</th>
           </tr></thead>
           <tbody>
-            {% for s in p.season_stats %}
+            {% for s in p.pitching_seasons %}
             <tr>
               <td>{{ s.year }}</td><td>{{ s.team }}</td>
-              {% if p.is_pitcher %}
-                <td>{{ s.G }}</td><td>{{ s.GS }}</td><td>{{ s.W }}</td><td>{{ s.L }}</td><td>{{ s.SV }}</td>
-                <td>{{ s.IP }}</td><td>{{ s.H }}</td><td>{{ s.ER }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.HR }}</td>
-                <td class="stat-hi">{{ "%.2f"|format(s.ERA) }}</td>
-                <td class="stat-hi">{{ "%.2f"|format(s.WHIP) }}</td>
-              {% else %}
-                <td>{{ s.G }}</td><td>{{ s.AB }}</td><td>{{ s.H }}</td><td>{{ s['2B'] }}</td><td>{{ s['3B'] }}</td><td>{{ s.HR }}</td>
-                <td>{{ s.RBI }}</td><td>{{ s.R }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.SB }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(s.AVG) }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(s.OBP) }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(s.SLG) }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(s.OPS) }}</td>
-              {% endif %}
+              <td>{{ s.G }}</td><td>{{ s.GS }}</td><td>{{ s.W }}</td><td>{{ s.L }}</td><td>{{ s.SV }}</td>
+              <td>{{ s.IP }}</td><td>{{ s.H }}</td><td>{{ s.ER }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.HR }}</td>
+              <td class="stat-hi">{{ "%.2f"|format(s.ERA) }}</td>
+              <td class="stat-hi">{{ "%.2f"|format(s.WHIP) }}</td>
             </tr>
             {% endfor %}
-            {% if p.totals_row %}{% set t = p.totals_row %}
+            {% if p.pitching_totals %}{% set t = p.pitching_totals %}
             <tr class="tot">
               <td>Total</td><td>—</td>
-              {% if p.is_pitcher %}
-                <td>{{ t.G }}</td><td>{{ t.GS }}</td><td>{{ t.W }}</td><td>{{ t.L }}</td><td>{{ t.SV }}</td>
-                <td>{{ t.IP }}</td><td>{{ t.H }}</td><td>{{ t.ER }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.HR }}</td>
-                <td class="stat-hi">{{ "%.2f"|format(t.ERA) }}</td>
-                <td class="stat-hi">{{ "%.2f"|format(t.WHIP) }}</td>
-              {% else %}
-                <td>{{ t.G }}</td><td>{{ t.AB }}</td><td>{{ t.H }}</td><td>{{ t['2B'] }}</td><td>{{ t['3B'] }}</td><td>{{ t.HR }}</td>
-                <td>{{ t.RBI }}</td><td>{{ t.R }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.SB }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(t.AVG) }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(t.OBP) }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(t.SLG) }}</td>
-                <td class="stat-hi">{{ "%.3f"|format(t.OPS) }}</td>
-              {% endif %}
+              <td>{{ t.G }}</td><td>{{ t.GS }}</td><td>{{ t.W }}</td><td>{{ t.L }}</td><td>{{ t.SV }}</td>
+              <td>{{ t.IP }}</td><td>{{ t.H }}</td><td>{{ t.ER }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.HR }}</td>
+              <td class="stat-hi">{{ "%.2f"|format(t.ERA) }}</td>
+              <td class="stat-hi">{{ "%.2f"|format(t.WHIP) }}</td>
             </tr>
             {% endif %}
           </tbody>
         </table>
       </div>
-      {% else %}
+      {% endif %}
+
+      {# Batting Stats #}
+      {% if p.batting_seasons %}
+      <div class="cs-section-title">Batting</div>
+      <div class="cs-stats-wrap">
+        <table class="cs-table">
+          <thead><tr>
+            <th>Year</th><th>Team</th>
+            <th>G</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th>
+            <th>RBI</th><th>R</th><th>BB</th><th>K</th><th>SB</th>
+            <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
+          </tr></thead>
+          <tbody>
+            {% for s in p.batting_seasons %}
+            <tr>
+              <td>{{ s.year }}</td><td>{{ s.team }}</td>
+              <td>{{ s.G }}</td><td>{{ s.AB }}</td><td>{{ s.H }}</td><td>{{ s['2B'] }}</td><td>{{ s['3B'] }}</td><td>{{ s.HR }}</td>
+              <td>{{ s.RBI }}</td><td>{{ s.R }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.SB }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(s.AVG) }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(s.OBP) }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(s.SLG) }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(s.OPS) }}</td>
+            </tr>
+            {% endfor %}
+            {% if p.batting_totals %}{% set t = p.batting_totals %}
+            <tr class="tot">
+              <td>Total</td><td>—</td>
+              <td>{{ t.G }}</td><td>{{ t.AB }}</td><td>{{ t.H }}</td><td>{{ t['2B'] }}</td><td>{{ t['3B'] }}</td><td>{{ t.HR }}</td>
+              <td>{{ t.RBI }}</td><td>{{ t.R }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.SB }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(t.AVG) }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(t.OBP) }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(t.SLG) }}</td>
+              <td class="stat-hi">{{ "%.3f"|format(t.OPS) }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if not p.pitching_seasons and not p.batting_seasons %}
         <span class="cs-empty">No stats on record</span>
       {% endif %}
 
