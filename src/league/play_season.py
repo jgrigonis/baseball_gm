@@ -384,10 +384,10 @@ def play_game(
         log_to_file=bool(args.logs),
     )
 
-    _ps_repo = PitcherStateRepository(conn)
+    _ps_repo = PitcherStateRepository(conn, league_id)
     pitcher_states = {pid: _ps_repo.get(pid) for pid in all_player_ids}
 
-    energy_repo = PlayerEnergyRepository(conn)
+    energy_repo = PlayerEnergyRepository(conn, league_id)
     player_energy_states = {
         p.id: energy_repo.get_with_recovery(
             p.id, game_date, durability=p.skills.get("durability", 50)

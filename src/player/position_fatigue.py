@@ -141,6 +141,7 @@ class PositionPlayerFatigue:
             damage = excess * 0.0008 * (50 / self.durability)
         self.max_energy = max(0.50, self.max_energy - damage)
 
+    # This function is never called, except in test
     def rest_day(self, days: int = 1) -> None:
         """
         Recover energy on a day off. Consecutive rest days recover less
