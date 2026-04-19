@@ -373,7 +373,7 @@ CREATE TABLE IF NOT EXISTS player_skills_history (
 CREATE TABLE IF NOT EXISTS player_status (
     player_id TEXT PRIMARY KEY,
     status TEXT NOT NULL CHECK (status IN (
-        'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect'
+        'unassigned', '26man', '40man', 'minors', 'free_agent', 'prospect', 'retired'
     )),
     since TEXT NOT NULL,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE

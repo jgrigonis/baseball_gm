@@ -25,15 +25,15 @@ from src.player.player_constants import (
 
 # Catchers drain fastest, middle infielders moderate, corners/OF lightest
 POSITION_DRAIN_RATES = {
-    "C": 0.055,
-    "SS": 0.038,
-    "2B": 0.035,
-    "3B": 0.028,
-    "CF": 0.028,
+    "C": 0.041,
+    "SS": 0.029,
+    "2B": 0.028,
+    "3B": 0.025,
+    "CF": 0.024,
     "1B": 0.022,
     "LF": 0.020,
     "RF": 0.020,
-    "DH": 0.010,
+    "DH": 0.008,
 }
 
 # How much energy is recovered per rest day
