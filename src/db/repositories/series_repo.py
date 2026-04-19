@@ -63,5 +63,11 @@ class SeriesRepository:
             if my_wins >= wins_needed:
                 return f"Won {series_name}"
             else:
-                return f"Eliminated in {series_name}"
+                if series_name in ["1v8", "2v7", "3v6", "4v5"]:
+                    round = "first round: "
+                elif series_name in ["[1,8]v[4,5]", "[2,7]v[3,6]"]:
+                    round = "semi-finals round: "
+                else:
+                    round = ""
+                return f"Eliminated in {round}{series_name}"
         return None

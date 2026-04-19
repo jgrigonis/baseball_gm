@@ -47,6 +47,7 @@ from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
+from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -2620,6 +2621,17 @@ def player_panel(
                 "last_game_date": en.last_game_date,
                 "season_games_played": en.season_games_played,
             }
+        elif grades.player_type == "pitcher":
+            ps = PitcherStateRepository(db, league_id).get(pid)
+            if ps:
+                energy = {
+                    "current": round(ps.current_energy * 100),
+                    "max": round(ps.max_energy * 100),
+                    "consecutive_days": ps.consecutive_days,
+                    "last_game_date": ps.last_game_date,
+                    "last_pitch_count": ps.last_pitch_count,
+                    "season_games_played": None,
+                }
 
         # Injury status
         injury = inj_repo.get(pid)
