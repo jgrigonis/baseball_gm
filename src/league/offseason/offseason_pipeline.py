@@ -218,7 +218,12 @@ class OffseasonPipeline:
                                (player_id, league_id, season_id, former_team_id)
                            VALUES (%s, %s, %s, %s)
                            ON CONFLICT DO NOTHING""",
-                        (player.id, self.league_id, self._current_season_id, former_team_id),
+                        (
+                            player.id,
+                            self.league_id,
+                            self._current_season_id,
+                            former_team_id,
+                        ),
                     )
                 retired.append(player)
 

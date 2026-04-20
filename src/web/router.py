@@ -757,7 +757,9 @@ def _load_player_career(player_id: str, db) -> dict | None:
             pa = ab + bb + hbp + sf + r["bat_sac_bunts"]
             obp_denom = ab + bb + hbp + sf
             avg = (h / ab) if ab > 0 else 0.0
-            slg_num = h + r["bat_doubles"] + 2 * r["bat_triples"] + 3 * r["bat_home_runs"]
+            slg_num = (
+                h + r["bat_doubles"] + 2 * r["bat_triples"] + 3 * r["bat_home_runs"]
+            )
             slg = (slg_num / ab) if ab > 0 else 0.0
             obp = ((h + bb + hbp) / obp_denom) if obp_denom > 0 else 0.0
             row = {
@@ -801,7 +803,12 @@ def _load_player_career(player_id: str, db) -> dict | None:
             tot_bb = totals.get("BB", 0)
             tot_era = (tot_er / tot_ip * 9) if tot_ip > 0 else 0.0
             tot_whip = ((tot_h + tot_bb) / tot_ip) if tot_ip > 0 else 0.0
-            totals_row = {**totals, "IP": round(tot_ip, 1), "ERA": round(tot_era, 2), "WHIP": round(tot_whip, 2)}
+            totals_row = {
+                **totals,
+                "IP": round(tot_ip, 1),
+                "ERA": round(tot_era, 2),
+                "WHIP": round(tot_whip, 2),
+            }
         else:
             tot_ab = totals.pop("_ab", 0)
             tot_h = totals.pop("_h", 0)
@@ -813,7 +820,13 @@ def _load_player_career(player_id: str, db) -> dict | None:
             tot_avg = (tot_h / tot_ab) if tot_ab > 0 else 0.0
             tot_slg = (tot_slg_num / tot_ab) if tot_ab > 0 else 0.0
             tot_obp = ((tot_h + tot_bb + tot_hbp) / obp_d) if obp_d > 0 else 0.0
-            totals_row = {**totals, "AVG": round(tot_avg, 3), "OBP": round(tot_obp, 3), "SLG": round(tot_slg, 3), "OPS": round(tot_obp + tot_slg, 3)}
+            totals_row = {
+                **totals,
+                "AVG": round(tot_avg, 3),
+                "OBP": round(tot_obp, 3),
+                "SLG": round(tot_slg, 3),
+                "OPS": round(tot_obp + tot_slg, 3),
+            }
 
     # Injuries grouped by season year
     inj_rows = db.execute(

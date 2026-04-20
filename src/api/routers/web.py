@@ -33,7 +33,10 @@ from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_next_day
 from src.api.services.sim_playoff import sim_playoff
-from src.db.repositories.bullpen_roles_repo import BullpenRepository, _get_active_rotation_player_ids
+from src.db.repositories.bullpen_roles_repo import (
+    BullpenRepository,
+    _get_active_rotation_player_ids,
+)
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -851,9 +854,9 @@ async def sim_games(
     new_remaining = _games_remaining(
         db, season_repo.get_current_id_for_league(league_id)
     )
-
     # If season just ended, trigger the state transition (playoffs setup)
     if new_remaining == 0 and days_simmed > 0:
+        print("we got here")
         sim_next_day(league_id, db)
 
     league = league_repo.get_by_id(league_id)
@@ -929,7 +932,14 @@ def standings(
         # Sort by win pct descending, with H2H and RS tiebreakers
         rows = st_repo.get_records(league_id, season_id)
         raw_rows = [
-            {**r, "win_pct": r["wins"] / (r["wins"] + r["losses"]) if (r["wins"] + r["losses"]) else 0.0}
+            {
+                **r,
+                "win_pct": (
+                    r["wins"] / (r["wins"] + r["losses"])
+                    if (r["wins"] + r["losses"])
+                    else 0.0
+                ),
+            }
             for r in rows
         ]
         ranked = st_repo.sort(season_id, raw_rows)
@@ -2067,9 +2077,14 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
         )
         games_played = sum(1 for g in games if g["completed"])
         completed_games = [
-            {"id": g["id"], "winner_id": g["winner_id"],
-             "home_score": g["home_score"], "away_score": g["away_score"]}
-            for g in games if g["completed"]
+            {
+                "id": g["id"],
+                "winner_id": g["winner_id"],
+                "home_score": g["home_score"],
+                "away_score": g["away_score"],
+            }
+            for g in games
+            if g["completed"]
         ]
 
         return {
@@ -2403,17 +2418,10 @@ def retirement(
             # is_pitcher: used for games column; show pitching if outs dominate or no AB
             r["is_pitcher"] = outs > 0 and (ab == 0 or outs / 3 >= ab / 10)
             r["avg"] = f"{hits / ab:.3f}" if ab >= 1 else "—"
-            r["obp"] = (
-                f"{(hits + bb) / (ab + bb):.3f}"
-                if (ab + bb) >= 1 else "—"
-            )
-            r["era"] = (
-                f"{(er * 27) / outs:.2f}" if outs >= 1 else "—"
-            )
+            r["obp"] = f"{(hits + bb) / (ab + bb):.3f}" if (ab + bb) >= 1 else "—"
+            r["era"] = f"{(er * 27) / outs:.2f}" if outs >= 1 else "—"
             r["ip"] = f"{outs // 3}.{outs % 3}" if outs >= 1 else "0.0"
-            r["whip"] = (
-                f"{(pk + ph) / (outs / 3):.2f}" if outs >= 1 else "—"
-            )
+            r["whip"] = f"{(pk + ph) / (outs / 3):.2f}" if outs >= 1 else "—"
             retired_players.append(r)
 
     ctx.update({"retired_players": retired_players, "my_team_id": my_team_id})
@@ -2689,10 +2697,43 @@ def player_career(
 
         # Current ratings grouped into sections
         _sections = [
-            ("Pitching", [("strikes", "Stuff"), ("accuracy", "Control"), ("stamina", "Stamina"), ("recovery", "Recovery"), ("ground_balls", "Ground Balls")]),
-            ("Hitting",  [("contact", "Contact"), ("power", "Power"), ("eye", "Eye"), ("base_running", "Baserunning"), ("bunting", "Bunting")]),
-            ("Defense",  [("catching", "Catching"), ("infield", "Infield"), ("outfield", "Outfield"), ("arm", "Arm")]),
-            ("General",  [("speed", "Speed"), ("clutch", "Clutch"), ("durability", "Durability")]),
+            (
+                "Pitching",
+                [
+                    ("strikes", "Stuff"),
+                    ("accuracy", "Control"),
+                    ("stamina", "Stamina"),
+                    ("recovery", "Recovery"),
+                    ("ground_balls", "Ground Balls"),
+                ],
+            ),
+            (
+                "Hitting",
+                [
+                    ("contact", "Contact"),
+                    ("power", "Power"),
+                    ("eye", "Eye"),
+                    ("base_running", "Baserunning"),
+                    ("bunting", "Bunting"),
+                ],
+            ),
+            (
+                "Defense",
+                [
+                    ("catching", "Catching"),
+                    ("infield", "Infield"),
+                    ("outfield", "Outfield"),
+                    ("arm", "Arm"),
+                ],
+            ),
+            (
+                "General",
+                [
+                    ("speed", "Speed"),
+                    ("clutch", "Clutch"),
+                    ("durability", "Durability"),
+                ],
+            ),
         ]
         rating_sections = [
             {
@@ -2740,15 +2781,22 @@ def player_career(
                 era = round(er / ip * 9, 2) if ip > 0 else 0.0
                 whip = round((hits + bb) / ip, 2) if ip > 0 else 0.0
                 prow = {
-                    "year": yr, "team": team, "postseason": is_post,
+                    "year": yr,
+                    "team": team,
+                    "postseason": is_post,
                     "G": r.get("pitch_games_played", 0),
                     "GS": r.get("pitch_games_started", 0),
-                    "W": r.get("pitch_wins", 0), "L": r.get("pitch_losses", 0),
+                    "W": r.get("pitch_wins", 0),
+                    "L": r.get("pitch_losses", 0),
                     "SV": r.get("pitch_saves", 0),
-                    "IP": round(ip, 1), "H": hits, "ER": er, "BB": bb,
+                    "IP": round(ip, 1),
+                    "H": hits,
+                    "ER": er,
+                    "BB": bb,
                     "K": r.get("pitch_strike_outs", 0),
                     "HR": r.get("pitch_home_runs", 0),
-                    "ERA": era, "WHIP": whip,
+                    "ERA": era,
+                    "WHIP": whip,
                 }
                 pitching_seasons.append(prow)
                 t = p_totals if not is_post else pp_totals
@@ -2768,24 +2816,44 @@ def player_career(
                 slg_num = h + dbl + 2 * trp + 3 * hr
                 obp_d = ab + bb + hbp + sf
                 brow = {
-                    "year": yr, "team": team, "postseason": is_post,
+                    "year": yr,
+                    "team": team,
+                    "postseason": is_post,
                     "G": r.get("bat_games_played", 0),
-                    "AB": ab, "H": h, "2B": dbl, "3B": trp, "HR": hr,
+                    "AB": ab,
+                    "H": h,
+                    "2B": dbl,
+                    "3B": trp,
+                    "HR": hr,
                     "RBI": r.get("bat_rbi", 0) or 0,
                     "R": r.get("bat_runs", 0) or 0,
-                    "BB": bb, "K": r.get("bat_strike_outs", 0) or 0,
+                    "BB": bb,
+                    "K": r.get("bat_strike_outs", 0) or 0,
                     "SB": r.get("bat_stolen_bases", 0) or 0,
                     "AVG": round(h / ab, 3) if ab > 0 else 0.0,
                     "OBP": round((h + bb + hbp) / obp_d, 3) if obp_d > 0 else 0.0,
                     "SLG": round(slg_num / ab, 3) if ab > 0 else 0.0,
                     "OPS": round(
                         ((h + bb + hbp) / obp_d if obp_d > 0 else 0)
-                        + (slg_num / ab if ab > 0 else 0), 3
+                        + (slg_num / ab if ab > 0 else 0),
+                        3,
                     ),
                 }
                 batting_seasons.append(brow)
                 t = b_totals if not is_post else pb_totals
-                for k in ("G", "AB", "H", "2B", "3B", "HR", "RBI", "R", "BB", "K", "SB"):
+                for k in (
+                    "G",
+                    "AB",
+                    "H",
+                    "2B",
+                    "3B",
+                    "HR",
+                    "RBI",
+                    "R",
+                    "BB",
+                    "K",
+                    "SB",
+                ):
                     t[k] = t.get(k, 0) + brow[k]
                 t["_ab"] = t.get("_ab", 0) + ab
                 t["_h"] = t.get("_h", 0) + h
@@ -2799,20 +2867,34 @@ def player_career(
                 return None
             outs = d.pop("_outs", 0)
             ip = outs / 3.0
-            return {**d, "IP": round(ip, 1),
-                    "ERA": round(d.get("ER", 0) / ip * 9, 2) if ip > 0 else 0.0,
-                    "WHIP": round((d.get("H", 0) + d.get("BB", 0)) / ip, 2) if ip > 0 else 0.0}
+            return {
+                **d,
+                "IP": round(ip, 1),
+                "ERA": round(d.get("ER", 0) / ip * 9, 2) if ip > 0 else 0.0,
+                "WHIP": (
+                    round((d.get("H", 0) + d.get("BB", 0)) / ip, 2) if ip > 0 else 0.0
+                ),
+            }
 
         def _bat_totals(d: dict) -> dict | None:
             if not d:
                 return None
-            ab = d.pop("_ab", 0); h = d.pop("_h", 0); bb = d.pop("_bb", 0)
-            hbp = d.pop("_hbp", 0); sf = d.pop("_sf", 0); slg_num = d.pop("_slg_num", 0)
+            ab = d.pop("_ab", 0)
+            h = d.pop("_h", 0)
+            bb = d.pop("_bb", 0)
+            hbp = d.pop("_hbp", 0)
+            sf = d.pop("_sf", 0)
+            slg_num = d.pop("_slg_num", 0)
             obp_d = ab + bb + hbp + sf
             obp = round((h + bb + hbp) / obp_d, 3) if obp_d > 0 else 0.0
             slg = round(slg_num / ab, 3) if ab > 0 else 0.0
-            return {**d, "AVG": round(h / ab, 3) if ab > 0 else 0.0,
-                    "OBP": obp, "SLG": slg, "OPS": round(obp + slg, 3)}
+            return {
+                **d,
+                "AVG": round(h / ab, 3) if ab > 0 else 0.0,
+                "OBP": obp,
+                "SLG": slg,
+                "OPS": round(obp + slg, 3),
+            }
 
         pitching_totals = _pitch_totals(p_totals)
         pitching_playoff_totals = _pitch_totals(pp_totals)
@@ -2838,12 +2920,18 @@ def player_career(
 
         overall_grade = grades.overall
         if status in ("prospect", "unassigned", "free_agent"):
-            overall_grade = skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
+            overall_grade = (
+                skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
+            )
         elif is_pitcher:
             best_p = max(ratings.get("sp", 0), ratings.get("rp", 0)) if ratings else 0
             overall_grade = skill_to_grade(best_p) if best_p else grades.overall
         else:
-            overall_grade = skill_to_grade(ratings.get("overall_player")) if ratings else grades.overall
+            overall_grade = (
+                skill_to_grade(ratings.get("overall_player"))
+                if ratings
+                else grades.overall
+            )
 
         return {
             **grades.model_dump(),
@@ -2862,7 +2950,9 @@ def player_career(
     ctx = _shell_ctx(request, db, gm, league_id, user)
     ctx["player"] = _load_career(player_id)
     ctx["compare_player"] = _load_career(compare) if compare else None
-    return templates.TemplateResponse(request, "dashboard/partials/player_career.html", ctx)
+    return templates.TemplateResponse(
+        request, "dashboard/partials/player_career.html", ctx
+    )
 
 
 @router.get("/leagues/{league_id}/history/{year}/", response_class=HTMLResponse)

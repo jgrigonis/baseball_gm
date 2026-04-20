@@ -39,12 +39,14 @@ class GameRepository:
             (game_id,),
         ).fetchone()
 
-        if not row:
-            return None
+        # if not row:
+        #     return None
 
         return dict(row) if row else None
 
-    def save_game_result(self, game_id: str, result: GameResult, winner_id: str):
+    def save_game_result(
+        self, game_id: str, result: GameResult, winner_id: str
+    ) -> None:
         """Save game result to database."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -114,6 +116,19 @@ class GameRepository:
             }
             for row in rows
         ]
+
+    def get_days_games(self, season_id: str, game_date) -> list[dict] | None:
+        """Get the season's games for a particular date."""
+        games = self.conn.execute(
+            """
+            SELECT id as game_id, home_team_id, away_team_id, completed,
+                season_id, game_date
+            FROM games
+            WHERE season_id = %s AND game_date = %s AND completed = 0
+            """,
+            (season_id, game_date),
+        ).fetchall()
+        return games
 
     # Don't see this ever getting called anywhere currently
     def clear_result(self, game_id: str):
@@ -246,3 +261,27 @@ class GameRepository:
             return False
 
         return row["completed"] == 1
+
+    def get_next_unplayed_date(self, season_id: str) -> dict | None:
+        """Get the next unplayed date row."""
+        row = self.conn.execute(
+            """
+            SELECT game_date FROM games
+            WHERE season_id = %s AND completed = 0
+            ORDER BY game_date ASC
+            LIMIT 1
+            """,
+            (season_id,),
+        ).fetchone()
+        if row:
+            return dict(row)
+
+    def last_game_date(self, season_id: str) -> dict | None:
+        last_game = self.conn.execute(
+            """SELECT MAX(game_date) as d FROM games
+                WHERE season_id = %s AND completed = 1""",
+            (season_id,),
+        ).fetchone()
+        if last_game and last_game.get("d") is not None:
+            return last_game
+        return None

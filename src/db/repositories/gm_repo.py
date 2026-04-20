@@ -27,6 +27,14 @@ class GMRepository:
         ).fetchall()
         return {r["team_id"] for r in rows}
 
+    def get_first_human_team_id(self, league_id: str) -> str | None:
+        """Just get one human team id."""
+        row = self.conn.execute(
+            "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL LIMIT 1",
+            (league_id,),
+        ).fetchone()
+        return row["team_id"] if row else None
+
     def get_by_user_and_league(self, user_id: str, league_id: str) -> dict | None:
         row = self.conn.execute(
             "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",

@@ -75,3 +75,13 @@ class PlayoffRepository:
             "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
             (series_id, season_id, name),
         )
+
+    def existing_series_exist(self, season_id: str) -> bool:
+        """Return True is there is already an existing series, else False."""
+        existing_series = self.conn.execute(
+            "SELECT COUNT(*) FROM series WHERE season_id = %s",
+            (season_id,),
+        ).fetchone()["count"]
+        if existing_series:
+            return True
+        return False

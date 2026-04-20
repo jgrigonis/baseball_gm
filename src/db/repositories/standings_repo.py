@@ -116,7 +116,9 @@ class StandingsRepository:
                 continue
             tied_ids = [r["team_id"] for r in group]
             h2h = self.head_to_head_wins(season_id, tied_ids)
-            group.sort(key=lambda r: (-h2h.get(r["team_id"], 0), -(r.get("runs_scored") or 0)))
+            group.sort(
+                key=lambda r: (-h2h.get(r["team_id"], 0), -(r.get("runs_scored") or 0))
+            )
             result.extend(group)
         return result
 
@@ -139,7 +141,9 @@ class StandingsRepository:
         ).fetchall()
 
         if len(rows) < n:
-            raise ValueError(f"Need at least {n} teams with completed games; found {len(rows)}")
+            raise ValueError(
+                f"Need at least {n} teams with completed games; found {len(rows)}"
+            )
 
         sorted_rows = self.sort(season_id, [dict(r) for r in rows])
         return sorted_rows[:n]

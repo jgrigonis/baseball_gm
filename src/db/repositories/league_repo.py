@@ -226,3 +226,13 @@ class LeagueRepository:
             return dict(row).get("mode", "blitz")
         else:
             return "blitz"
+
+    def set_state(self, league_id: str, state: str) -> None:
+        """Set the league to state: state."""
+        self.conn.execute(
+            "UPDATE leagues SET state = %s WHERE id = %s",
+            (
+                state,
+                league_id,
+            ),
+        )

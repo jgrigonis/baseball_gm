@@ -12,9 +12,12 @@ from datetime import date, timedelta
 import random
 import traceback
 
+from src.api.dependencies import GM
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -41,6 +44,9 @@ def sim_next_day(league_id: str, conn) -> dict:
     Returns a summary dict with date, games played, and results.
     """
     lr = LeagueRepository(conn)
+    tr = TeamRepository(conn)
+    gr = GameRepository(conn)
+    por = PlayoffRepository(conn)
     league = lr.get_by_id(league_id)
     if not league:
         raise ValueError(f"League {league_id} not found.")
@@ -54,31 +60,16 @@ def sim_next_day(league_id: str, conn) -> dict:
         raise ValueError("No season found for this league.")
 
     # Find next unplayed date
-    next_date_row = conn.execute(
-        """
-        SELECT game_date FROM games
-        WHERE season_id = %s AND completed = 0
-        ORDER BY game_date ASC
-        LIMIT 1
-        """,
-        (season_id,),
-    ).fetchone()
+    next_date_row = gr.get_next_unplayed_date(season_id)
 
     if not next_date_row:
         # No more regular season games — set up playoffs if not already done
-        existing_series = conn.execute(
-            "SELECT COUNT(*) FROM series WHERE season_id = %s",
-            (season_id,),
-        ).fetchone()["count"]
+        existing_series = por.existing_series_exist(season_id)
 
-        if existing_series == 0:
+        if not existing_series:
             # Auto-seed and build playoff bracket
             try:
-                last_game = conn.execute(
-                    """SELECT MAX(game_date) as d FROM games
-                       WHERE season_id = %s AND completed = 1""",
-                    (season_id,),
-                ).fetchone()
+                last_game = gr.last_game_date(season_id)
                 playoff_start = (
                     date.fromisoformat(last_game["d"]) + timedelta(days=5)
                     if last_game and last_game["d"]
@@ -94,9 +85,8 @@ def sim_next_day(league_id: str, conn) -> dict:
                 print(f"Playoff setup failed: {e}")
                 print(traceback.format_exc())
 
-        conn.execute(
-            "UPDATE leagues SET state = 'playoffs' WHERE id = %s", (league_id,)
-        )
+        lr.set_state(league_id, "playoffs")
+
         conn.commit()
         return {
             "game_date": None,
@@ -108,15 +98,7 @@ def sim_next_day(league_id: str, conn) -> dict:
     game_date = next_date_row["game_date"]
 
     # Load all games on this date
-    games = conn.execute(
-        """
-        SELECT id as game_id, home_team_id, away_team_id, completed,
-               season_id, game_date
-        FROM games
-        WHERE season_id = %s AND game_date = %s AND completed = 0
-        """,
-        (season_id, game_date),
-    ).fetchall()
+    games = gr.get_days_games(season_id, game_date)
 
     if not games:
         return {"game_date": game_date, "games_played": 0, "results": []}
@@ -127,16 +109,11 @@ def sim_next_day(league_id: str, conn) -> dict:
         team_ids.add(g["home_team_id"])
         team_ids.add(g["away_team_id"])
 
-    placeholders = ", ".join(["%s"] * len(team_ids))
-    name_rows = conn.execute(
-        f"SELECT id, city, mascot FROM teams WHERE id IN ({placeholders})",
-        list(team_ids),
-    ).fetchall()
-    team_names = {r["id"]: f"{r['city']} {r['mascot']}" for r in name_rows}
+    team_names = tr.get_names(team_ids)
 
     # Advance league state to 'season' if still in preseason
     if league["state"] == "preseason":
-        conn.execute("UPDATE leagues SET state = 'season' WHERE id = %s", (league_id,))
+        lr.set_state(league_id, "season")
         conn.commit()
 
     # Set up repos
@@ -146,8 +123,6 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     league_mode = dict(league).get("mode", "blitz") or "blitz"
 
-    game_repo = GameRepository(conn)
-    team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
@@ -155,11 +130,8 @@ def sim_next_day(league_id: str, conn) -> dict:
     errors = []
 
     # Snapshot GM team injuries before this day to detect changes
-    gm_row = conn.execute(
-        "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL LIMIT 1",
-        (league_id,),
-    ).fetchone()
-    gm_team_id = gm_row["team_id"] if gm_row else None
+    gm_repo = GMRepository(conn)
+    gm_team_id = gm_repo.get_first_human_team_id(league_id)
 
     inj_repo = InjuryRepository(conn, league_id)
     injured_before = inj_repo.get_active_for_team(gm_team_id)
@@ -170,8 +142,8 @@ def sim_next_day(league_id: str, conn) -> dict:
             result = play_game(
                 conn=conn,
                 args=args,
-                team_repo=team_repo,
-                game_repo=game_repo,
+                team_repo=tr,
+                game_repo=gr,
                 team_game_repo=team_game_repo,
                 rotations_repo=rotations_repo,
                 season_id=season_id,

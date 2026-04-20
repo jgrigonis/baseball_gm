@@ -113,6 +113,20 @@ class TeamRepository:
             players=tuple(players),
         )
 
+    def get_names(self, team_ids: list[str]) -> dict[str, str]:
+        """Returns a mapping of id -> 'City Mascot'"""
+        # Defensive check: if the set is empty, SQL will error on "IN ()"
+        if not team_ids:
+            return {}
+        # Convert to list to satisfy the DB driver
+        params = list(team_ids)
+        placeholders = ", ".join(["%s"] * len(params))
+        rows = self.conn.execute(
+            f"SELECT id, city, mascot FROM teams WHERE id IN ({placeholders})",
+            params,
+        ).fetchall()
+        return {r["id"]: f"{r['city']} {r['mascot']}" for r in rows}
+
     def find_by_city_mascot(self, city: str, mascot: str) -> str | None:
         """Fetch a team id based on city and mascot."""
         row = self.conn.execute(

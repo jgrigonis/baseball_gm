@@ -159,7 +159,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
             + (skills.get("recovery", 50) or 50) * 0.15
             + (skills.get("ground_balls", 50) or 50) * 0.20
         )
-        
+
     else:
         raw_overall = round(
             (skills.get("contact", 50) or 50) * 0.25
