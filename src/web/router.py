@@ -754,7 +754,7 @@ def _load_player_career(player_id: str, db) -> dict | None:
             bb = r["bat_walks"]
             hbp = r["bat_hbp"]
             sf = r["bat_sac_flys"]
-            pa = ab + bb + hbp + sf + r["bat_sac_bunts"]
+            # pa = ab + bb + hbp + sf + r["bat_sac_bunts"]
             obp_denom = ab + bb + hbp + sf
             avg = (h / ab) if ab > 0 else 0.0
             slg_num = (

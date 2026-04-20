@@ -12,7 +12,6 @@ from datetime import date, timedelta
 import random
 import traceback
 
-from src.api.dependencies import GM
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository

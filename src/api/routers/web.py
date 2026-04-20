@@ -896,7 +896,7 @@ def standings(
     teams = []
 
     if season_id:
-        tg_repo = TeamGameRepository(db)
+        # tg_repo = TeamGameRepository(db)
         game_repo = GameRepository(db)
         gm_repo = GMRepository(db)
         inj_repo = InjuryRepository(db, league_id)
@@ -2683,7 +2683,7 @@ def player_career(
     compare: str | None = None,
 ):
     player_repo = PlayerRepository(db)
-    inj_repo = InjuryRepository(db, league_id)
+    # inj_repo = InjuryRepository(db, league_id)
 
     def _load_career(pid: str) -> dict | None:
         p = player_repo.get_with_skills(pid)
