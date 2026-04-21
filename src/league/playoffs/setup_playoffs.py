@@ -105,50 +105,18 @@ def demote_extra_starters(
 
         # Get current active rotation ordered by slot
         rotation = rot_repo.get_current_rotation(team_id, season_id, today)
-        # rotation = conn.execute(
-        #     """
-        #     SELECT player_id, rotation_order
-        #     FROM team_rotations
-        #     WHERE team_id = %s AND season_id = %s AND end_date IS NULL
-        #     ORDER BY rotation_order
-        #     """,
-        #     (team_id, season_id),
-        # ).fetchall()
 
         to_demote = [r["player_id"] for r in rotation if r["rotation_order"] > keep]
 
         for player_id in to_demote:
             # Close out the rotation slot
             rot_repo.remove_from_rotation(team_id, season_id, player_id, today)
-            # conn.execute(
-            #     """
-            #     UPDATE team_rotations
-            #     SET end_date = %s
-            #     WHERE team_id = %s AND season_id = %s AND player_id = %s AND end_date IS NULL
-            #     """,
-            #     (today, team_id, season_id, player_id),
-            # )
 
             # Close any existing bullpen role first (idempotent)
             bull_repo.remove_role(team_id, player_id, season_id, today)
-            # conn.execute(
-            #     """
-            #     UPDATE bullpen_roles
-            #     SET end_date = %s
-            #     WHERE team_id = %s AND season_id = %s AND player_id = %s AND end_date IS NULL
-            #     """,
-            #     (today, team_id, season_id, player_id),
-            # )
 
             # Insert Long role
             bull_repo.update_role(team_id, player_id, season_id, 'Long', today)
-            # conn.execute(
-            #     """
-            #     INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date)
-            #     VALUES (%s, %s, %s, 'Long', %s)
-            #     """,
-            #     (team_id, player_id, season_id, today),
-            # )
 
             log_print(
                 f"  ↓ {team['team_name']} — player {player_id} demoted to Long relief",
@@ -197,15 +165,6 @@ def _series_games(
 def _insert_games(conn, schedule: list[dict]) -> None:
     game_repo = GameRepository(conn)
     game_repo.insert_schedule(schedule)
-    # with conn.cursor() as cur:
-    #     cur.executemany(
-    #         """
-    #         INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
-    #         VALUES (%(id)s, %(game_date)s, %(season_id)s, %(series_id)s, %(home_team_id)s, %(away_team_id)s)
-    #         ON CONFLICT (id) DO NOTHING
-    #         """,
-    #         games,
-    #     )
 
 
 # ---------------------------------------------------------------------------
