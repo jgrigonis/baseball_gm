@@ -338,7 +338,7 @@ def sim_playoff(
     finals_sid = playoff_repo.get_series_id(season_id, "Finals")
     if finals_sid and playoff_repo.is_decided(finals_sid, 7):
         champion = playoff_repo.get_series_winner(finals_sid, 7)
-        lr.set_state(league_id, 'offseason')
+        lr.set_state(league_id, "offseason")
         conn.commit()
 
     # Diff injuries to find new injuries and returns for GM's team
