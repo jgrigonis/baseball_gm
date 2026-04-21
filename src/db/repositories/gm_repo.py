@@ -39,6 +39,13 @@ class GMRepository:
         ).fetchall()
         return rows
 
+    def get_gm_id_from_team_id(self, league_id: str, team_id: str) -> str | None:
+        row = self.conn.execute(
+            "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
+            (league_id, team_id),
+        ).fetchone()
+        return row["id"] if row else None
+
     def get_first_human_team_id(self, league_id: str) -> str | None:
         """Just get one human team id."""
         row = self.conn.execute(

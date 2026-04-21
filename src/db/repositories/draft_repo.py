@@ -48,6 +48,24 @@ class DraftRepository:
         ).fetchall()
         return [r["player_id"] for r in rows]
 
+    def get_ids_and_rank_from_preferences(
+        self, draft_id: str, league_id: str
+    ) -> list[dict]:
+        pref_rows = self.conn.execute(
+            """
+            SELECT g.team_id, dp.player_id, dp.rank
+            FROM draft_preferences dp
+            JOIN gms g ON g.id = dp.gm_id
+            WHERE dp.draft_id = %s
+            AND g.league_id = %s
+            AND NOT g.is_ai
+            AND g.team_id IS NOT NULL
+            ORDER BY g.team_id, dp.rank
+            """,
+            (draft_id, league_id),
+        ).fetchall()
+        return pref_rows
+
     def get_pick_position(self, draft_id: str, team_id: str) -> int | None:
         """Return the team's pick position from draft_order, or None."""
         try:
@@ -94,6 +112,20 @@ class DraftRepository:
         if row:
             return row["id"]
 
+    def get_draft(self, draft_id: str) -> dict:
+        draft = self.conn.execute(
+            "SELECT id, league_id, season_id, format, state FROM drafts WHERE id = %s",
+            (draft_id,),
+        ).fetchone()
+        return dict(draft)
+
+    def get_team_id_draft_order(self, draft_id: str) -> list[str]:
+        order = self.conn.execute(
+            """SELECT team_id FROM draft_order WHERE draft_id = %s ORDER BY pick_position""",
+            (draft_id,),
+        ).fetchall()
+        return order
+
     # ── Write ─────────────────────────────────────────────────────────────────
 
     def save_preferences(
@@ -120,3 +152,50 @@ class DraftRepository:
             (draft_id, league_id, season_id, draft_format),
         )
         return draft_id
+
+    def set_draft_state(self, draft_id: str, state: str) -> None:
+        self.conn.execute(
+            "UPDATE drafts SET state = %s WHERE id = %s",
+            (
+                state,
+                draft_id,
+            ),
+        )
+
+    def set_complete_current_pick(self, draft_id: str, current_pick: int) -> None:
+        self.conn.execute(
+            "UPDATE drafts SET state = 'complete', current_pick = %s WHERE id = %s",
+            (
+                current_pick,
+                draft_id,
+            ),
+        )
+
+    def insert_draft_picks(
+        self,
+        draft_id: str,
+        pick_number: int,
+        pick_round: int,
+        gm_id: str,
+        team_id: str,
+        player_id: str,
+        auto_pick: bool,
+        picked_at: str,
+    ) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO draft_picks
+                (draft_id, pick_number, round, gm_id, team_id, player_id, auto_picked, picked_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                draft_id,
+                pick_number,
+                pick_round,
+                gm_id,
+                team_id,
+                player_id,
+                auto_pick,
+                picked_at,
+            ),
+        )

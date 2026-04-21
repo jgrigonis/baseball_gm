@@ -185,6 +185,21 @@ class PlayerRepository:
 
         # self.conn.commit()
 
+    def delete_unassigned_prospects(self, league_id: str) -> None:
+        self.conn.execute(
+            """
+            DELETE FROM players WHERE id IN (
+                SELECT p.id FROM players p
+                JOIN player_status ps ON ps.player_id = p.id
+                LEFT JOIN team_players tp ON tp.player_id = p.id
+                WHERE ps.status = 'prospect'
+                AND tp.player_id IS NULL
+                AND p.league_id = %s
+            )
+        """,
+            (league_id,),
+        )
+
     # ------------------------------------------------------------
     # READ
     # ------------------------------------------------------------

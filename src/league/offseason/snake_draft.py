@@ -84,6 +84,7 @@ class SnakeDraft:
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
 
+    # This is no longer used, we always have an order.
     def run_snake_draft(
         self, season_id: str, year: int, league_id: str | None = None
     ) -> list[DraftPick]:
