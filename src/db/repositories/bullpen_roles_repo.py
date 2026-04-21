@@ -48,6 +48,7 @@ def _get_active_rotation_player_ids(conn, team_id: str, season_id: str) -> set[s
     )
     return {row["player_id"] for row in cursor.fetchall()}
 
+
 # Unused
 def _get_active_bullpen_player_ids(conn, team_id: str, season_id: str) -> set[str]:
     """Return the set of player_ids with an active bullpen role."""
@@ -301,7 +302,7 @@ class BullpenRepository:
         """
         if end_date is None:
             end_date = _today()
-        
+
         _close_active_role(self.conn, team_id, player_id, season_id, end_date)
 
         # cursor = self.conn.execute(

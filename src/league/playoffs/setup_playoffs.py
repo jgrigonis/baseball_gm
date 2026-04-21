@@ -14,10 +14,12 @@ Steps:
 Usage:
     python -m src.league.setup_playoffs --season-id S1 --start-date 2025-10-01
 """
+
 # from __future__ import annotations
 import argparse
 import logging
 from datetime import date, timedelta
+
 # from typing import TYPE_CHECKING
 
 from src.db.connection import get_connection
@@ -28,8 +30,6 @@ from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.schedule import ScheduledGame
 from src.util.logger import setup_logger
-    
-
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -116,7 +116,7 @@ def demote_extra_starters(
             bull_repo.remove_role(team_id, player_id, season_id, today)
 
             # Insert Long role
-            bull_repo.update_role(team_id, player_id, season_id, 'Long', today)
+            bull_repo.update_role(team_id, player_id, season_id, "Long", today)
 
             log_print(
                 f"  ↓ {team['team_name']} — player {player_id} demoted to Long relief",

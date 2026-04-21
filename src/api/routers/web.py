@@ -54,10 +54,10 @@ from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
-from src.league.playoffs.play_playoffs import get_series_id, get_series_winner
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
 from src.web.utils import tab_response, _shell_ctx, _current_league_date
@@ -2020,7 +2020,8 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
         return tr.get_city_mascot(team_id=tid)
 
     def load_series(series_name, best_of):
-        sid = get_series_id(db, season_id, series_name)
+        por = PlayoffRepository(db)
+        sid = por.get_series_id(season_id, series_name)
         if not sid:
             return {
                 "name": series_name,
@@ -2046,9 +2047,9 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
         # try to show the known winner(s) from the feeder round-1 series.
         if not team_ids and series_name in _SEMI_FEEDERS:
             for feeder_name in _SEMI_FEEDERS[series_name]:
-                feeder_sid = get_series_id(db, season_id, feeder_name)
+                feeder_sid = por.get_series_id(season_id, feeder_name)
                 if feeder_sid:
-                    w = get_series_winner(db, feeder_sid, 5)
+                    w = por.get_series_winner(feeder_sid, 5)
                     if w and w not in seen:
                         team_ids.append(w)
                         seen.add(w)
