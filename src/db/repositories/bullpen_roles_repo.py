@@ -48,7 +48,7 @@ def _get_active_rotation_player_ids(conn, team_id: str, season_id: str) -> set[s
     )
     return {row["player_id"] for row in cursor.fetchall()}
 
-
+# Unused
 def _get_active_bullpen_player_ids(conn, team_id: str, season_id: str) -> set[str]:
     """Return the set of player_ids with an active bullpen role."""
     cursor = conn.execute(
@@ -295,24 +295,24 @@ class BullpenRepository:
         player_id: str,
         season_id: str,
         end_date: Optional[str] = None,
-    ) -> bool:
+    ) -> None:
         """
         Remove a pitcher from the bullpen by closing their active role.
-
-        Returns True if a role was closed, False if the player had no active role.
         """
         if end_date is None:
             end_date = _today()
+        
+        _close_active_role(self.conn, team_id, player_id, season_id, end_date)
 
-        cursor = self.conn.execute(
-            """
-            UPDATE bullpen_roles
-            SET end_date = %s
-            WHERE team_id = %s
-            AND player_id = %s
-            AND season_id = %s
-            AND end_date IS NULL
-            """,
-            (end_date, team_id, player_id, season_id),
-        )
-        return cursor.rowcount > 0
+        # cursor = self.conn.execute(
+        #     """
+        #     UPDATE bullpen_roles
+        #     SET end_date = %s
+        #     WHERE team_id = %s
+        #     AND player_id = %s
+        #     AND season_id = %s
+        #     AND end_date IS NULL
+        #     """,
+        #     (end_date, team_id, player_id, season_id),
+        # )
+        # return cursor.rowcount > 0

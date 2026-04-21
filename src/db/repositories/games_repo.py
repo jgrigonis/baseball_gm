@@ -78,13 +78,14 @@ class GameRepository:
         for game in schedule:
             cursor.execute(
                 """
-                INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO games (id, game_date, season_id, series_id, home_team_id, away_team_id)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
                     game.id,
                     game.game_date.isoformat(),
                     game.season_id,
+                    game.series_id,
                     game.home_team_id,
                     game.away_team_id,
                 ),

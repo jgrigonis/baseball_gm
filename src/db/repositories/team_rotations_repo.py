@@ -61,8 +61,6 @@ class TeamRotationsRepository:
                 (team_id, season_id, player_id, order, effective_date),
             )
 
-        # self.conn.commit()
-
     def replace_rotation(
         self,
         team_id: str,
@@ -326,8 +324,6 @@ class TeamRotationsRepository:
             (team_id, season_id, player_id, new_rotation_order, effective_date),
         )
 
-        # self.conn.commit()
-
     # only ever called in tests
     def remove_from_rotation(
         self, team_id: str, season_id: str, player_id: str, effective_date: str
@@ -385,8 +381,6 @@ class TeamRotationsRepository:
             """,
             (effective_date, team_id, season_id, player_id, current_effective_date),
         )
-
-        # self.conn.commit()
 
     # Only ever called in tests
     def add_to_rotation(
@@ -460,8 +454,6 @@ class TeamRotationsRepository:
             """,
             (team_id, season_id, player_id, rotation_order, effective_date),
         )
-
-        # self.conn.commit()
 
     # Only called in tests
     def swap_rotation_spots(
@@ -544,7 +536,6 @@ class TeamRotationsRepository:
             """,
             (team_id, season_id, series_id),
         )
-        # self.conn.commit()
 
         row = self.conn.execute(
             """
@@ -623,7 +614,6 @@ class TeamRotationsRepository:
             """,
             (team_id, season_id, series_id, new_order),
         )
-        # self.conn.commit()
 
     def reset_rotation_pointers(self, season_id: str) -> int:
         """
@@ -650,7 +640,6 @@ class TeamRotationsRepository:
             )
             count += 1
 
-        # self.conn.commit()
         return count
 
     def get_saved_rotation(self, team_id: str, season_id: str) -> list[str]:
