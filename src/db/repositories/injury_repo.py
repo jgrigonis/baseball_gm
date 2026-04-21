@@ -161,6 +161,20 @@ class InjuryRepository:
             )
             for row in cursor.fetchall()
         ]
+    
+    def get_injuries_by_year(self, player_id: str) -> list[dict]:
+        rows = self.conn.execute(
+            """
+            SELECT pil.injury_date, pil.severity, pil.games_missed, pil.activity,
+                   s.year as season_year
+            FROM player_injury_log pil
+            LEFT JOIN seasons s ON s.id = pil.season_id
+            WHERE pil.player_id = %s
+            ORDER BY pil.injury_date DESC
+            """,
+            (player_id,),
+        ).fetchall()
+        return rows
 
     # ------------------------------------------------------------------
     # Write

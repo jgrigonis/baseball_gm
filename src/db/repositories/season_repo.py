@@ -108,7 +108,7 @@ class SeasonRepository:
             List of season dictionaries
         """
         rows = self.conn.execute(
-            "SELECT * FROM seasons ORDER BY year DESC, name"
+            "SELECT id, year, name FROM seasons ORDER BY year DESC, name"
         ).fetchall()
 
         return [

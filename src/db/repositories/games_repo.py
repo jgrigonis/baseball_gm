@@ -12,6 +12,7 @@ Handles:
 import datetime
 
 from src.game.game import GameResult
+# from src.league.schedule import ScheduledGame
 
 
 class GameRepository:
@@ -65,7 +66,26 @@ class GameRepository:
                 game_id,
             ),
         )
-        # self.conn.commit()
+    
+    def insert_schedule(self, schedule: list["ScheduledGame"]) -> None:
+        cursor = self.conn.cursor()
+
+        for game in schedule:
+            cursor.execute(
+                """
+                INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    game.id,
+                    game.game_date.isoformat(),
+                    game.season_id,
+                    game.home_team_id,
+                    game.away_team_id,
+                ),
+            )
+
+
 
     def get_season_games(
         self,

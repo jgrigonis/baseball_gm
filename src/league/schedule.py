@@ -5,6 +5,8 @@ import itertools
 import random
 import uuid
 
+from src.db.repositories.games_repo import GameRepository
+
 
 @dataclass
 class ScheduledGame:
@@ -91,22 +93,24 @@ class ScheduleGenerator:
 
 def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
     """Save schedule to games table."""
-    cursor = conn.cursor()
+    game_repo = GameRepository(conn)
+    game_repo.insert_schedule(schedule)
+    # cursor = conn.cursor()
 
-    for game in schedule:
-        cursor.execute(
-            """
-            INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (
-                game.id,
-                game.game_date.isoformat(),
-                game.season_id,
-                game.home_team_id,
-                game.away_team_id,
-            ),
-        )
+    # for game in schedule:
+    #     cursor.execute(
+    #         """
+    #         INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)
+    #         VALUES (%s, %s, %s, %s, %s)
+    #         """,
+    #         (
+    #             game.id,
+    #             game.game_date.isoformat(),
+    #             game.season_id,
+    #             game.home_team_id,
+    #             game.away_team_id,
+    #         ),
+    #     )
 
     conn.commit()
     print(f"Saved {len(schedule)} games to schedule")

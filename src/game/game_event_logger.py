@@ -15,6 +15,7 @@ import json
 import logging
 
 _log = logging.getLogger("game_event_logger")
+from src.db.repositories.game_event_repo import GameEventRepository
 
 
 class GameEventLogger:
@@ -25,6 +26,7 @@ class GameEventLogger:
         self.game_id = game_id
         self._inning: int | None = None
         self._half: str | None = None
+        # TODO should we put the GameEventRepository in init?
 
     def set_context(self, inning: int, half: str) -> None:
         """Update current inning context. Called as innings advance."""
@@ -149,24 +151,17 @@ class GameEventLogger:
         inning = inning if inning is not None else self._inning
         half = half if half is not None else self._half
         try:
-            self.conn.execute(
-                """
-                INSERT INTO game_events
-                    (game_id, inning, half, team_id, event_type,
-                     player_id, player_id_2, reason, detail)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    self.game_id,
-                    inning,
-                    half,
-                    team_id,
-                    event_type,
-                    player_id,
-                    player_id_2,
-                    reason,
-                    detail,
-                ),
+            ger = GameEventRepository(self.conn)
+            ger.insert_game_event(
+                game_id=self.game_id,
+                inning=inning,
+                half=half,
+                team_id=team_id,
+                event_type=event_type,
+                player_id=player_id,
+                player_id_2=player_id_2,
+                reason=reason,
+                detail=detail,
             )
             self.conn.commit()
         except Exception as e:

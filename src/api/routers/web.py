@@ -2018,10 +2018,6 @@ def _load_bracket(db, season_id: str, my_team_id: str | None) -> list:
     def _team_name(tid):
         tr = TeamRepository(db)
         return tr.get_city_mascot(team_id=tid)
-        # r = db.execute(
-        #     "SELECT city, mascot FROM teams WHERE id = %s", (tid,)
-        # ).fetchone()
-        # return f"{r['city']} {r['mascot']}" if r else tid
 
     def load_series(series_name, best_of):
         sid = get_series_id(db, season_id, series_name)
@@ -2155,10 +2151,6 @@ def sim_playoff_route(
     result = sim_playoff(league_id, db, mode=mode)
     lr = LeagueRepository(db)
     result["league_state"] = lr.get_state(league_id)
-    # league_state = db.execute(
-    #     "SELECT state FROM leagues WHERE id = %s", (league_id,)
-    # ).fetchone()["state"]
-    # result["league_state"] = league_state
     return JSONResponse(result)
 
 
@@ -2341,67 +2333,13 @@ def retirement(
     if current_season_id:
         current_year = (season_repo.get_season(current_season_id) or {}).get("year")
         if current_year:
-            prev_season = db.execute(
-                """SELECT s.id FROM seasons s
-                   JOIN league_seasons ls ON ls.season_id = s.id
-                   WHERE ls.league_id = %s AND s.year = %s""",
-                (league_id, current_year - 1),
-            ).fetchone()
+            prev_season = season_repo.get_by_league_and_year(league_id, current_year - 1)
 
     prev_season_id = prev_season["id"] if prev_season else None
-
+    player_repo = PlayerRepository(db)
     retired_players = []
     if prev_season_id:
-        rows = db.execute(
-            """
-            SELECT
-                pr.player_id,
-                pr.former_team_id,
-                p.first_name,
-                p.last_name,
-                p.position,
-                ps.age,
-                COALESCE(t.city || ' ' || t.mascot, '—') AS team_name,
-                (pr.former_team_id = %s)                  AS is_mine,
-                -- batting
-                pss.bat_games_played,
-                pss.bat_ab,
-                pss.bat_hits,
-                pss.bat_home_runs,
-                pss.bat_rbi,
-                pss.bat_walks,
-                pss.bat_strike_outs,
-                pss.bat_doubles,
-                pss.bat_triples,
-                pss.bat_stolen_bases,
-                -- pitching
-                pss.pitch_games_played,
-                pss.pitch_games_started,
-                pss.pitch_wins,
-                pss.pitch_losses,
-                pss.pitch_saves,
-                pss.pitch_outs,
-                pss.pitch_earned_runs,
-                pss.pitch_hits,
-                pss.pitch_walks,
-                pss.pitch_strike_outs
-            FROM player_retirements pr
-            JOIN players           p   ON p.id  = pr.player_id
-            JOIN player_skills     ps  ON ps.player_id = pr.player_id
-            LEFT JOIN teams        t   ON t.id  = pr.former_team_id
-            LEFT JOIN player_season_stats pss
-                ON pss.player_id  = pr.player_id
-               AND pss.season_id  = pr.season_id
-               AND pss.is_postseason = FALSE
-            WHERE pr.league_id = %s
-              AND pr.season_id  = %s
-            ORDER BY
-                (pr.former_team_id IS NOT NULL) DESC,
-                (pr.former_team_id = %s) DESC,
-                p.last_name, p.first_name
-            """,
-            (my_team_id, league_id, prev_season_id, my_team_id),
-        ).fetchall()
+        rows = player_repo.get_retired_players_season_stats(my_team_id, league_id, prev_season_id)
 
         for r in rows:
             r = dict(r)
@@ -2747,17 +2685,7 @@ def player_career(
         ]
 
         # Career stats — regular season + playoffs, newest first; playoffs above reg season within year
-        stat_rows = db.execute(
-            """
-            SELECT pss.*, s.year, t.city as team_city, t.mascot as team_mascot
-            FROM player_season_stats pss
-            JOIN seasons s ON s.id = pss.season_id
-            JOIN teams t ON t.id = pss.team_id
-            WHERE pss.player_id = %s
-            ORDER BY s.year DESC, pss.is_postseason DESC
-            """,
-            (pid,),
-        ).fetchall()
+        stat_rows = player_repo.get_career_stats(pid)
 
         pitching_seasons = []
         batting_seasons = []
@@ -2901,17 +2829,8 @@ def player_career(
         batting_playoff_totals = _bat_totals(pb_totals)
 
         # Injuries grouped by season year
-        all_inj = db.execute(
-            """
-            SELECT pil.injury_date, pil.severity, pil.games_missed, pil.activity,
-                   s.year as season_year
-            FROM player_injury_log pil
-            LEFT JOIN seasons s ON s.id = pil.season_id
-            WHERE pil.player_id = %s
-            ORDER BY pil.injury_date DESC
-            """,
-            (pid,),
-        ).fetchall()
+        inj_repo = InjuryRepository(db)
+        all_inj = inj_repo.get_injuries_by_year(pid)
         injuries_by_year: dict[str, list] = {}
         for r in all_inj:
             yr = str(r["season_year"]) if r["season_year"] else "Pre-season"

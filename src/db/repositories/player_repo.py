@@ -461,3 +461,70 @@ class PlayerRepository:
             (team_id,),
         ).fetchall()
         return player_ids
+    
+    def get_retired_players_season_stats(self, team_id: str, league_id: str, season_id: str) -> list[dict]:
+        rows = self.conn.execute(
+            """
+            SELECT
+                pr.player_id,
+                pr.former_team_id,
+                p.first_name,
+                p.last_name,
+                p.position,
+                ps.age,
+                COALESCE(t.city || ' ' || t.mascot, '—') AS team_name,
+                (pr.former_team_id = %s)                  AS is_mine,
+                -- batting
+                pss.bat_games_played,
+                pss.bat_ab,
+                pss.bat_hits,
+                pss.bat_home_runs,
+                pss.bat_rbi,
+                pss.bat_walks,
+                pss.bat_strike_outs,
+                pss.bat_doubles,
+                pss.bat_triples,
+                pss.bat_stolen_bases,
+                -- pitching
+                pss.pitch_games_played,
+                pss.pitch_games_started,
+                pss.pitch_wins,
+                pss.pitch_losses,
+                pss.pitch_saves,
+                pss.pitch_outs,
+                pss.pitch_earned_runs,
+                pss.pitch_hits,
+                pss.pitch_walks,
+                pss.pitch_strike_outs
+            FROM player_retirements pr
+            JOIN players           p   ON p.id  = pr.player_id
+            JOIN player_skills     ps  ON ps.player_id = pr.player_id
+            LEFT JOIN teams        t   ON t.id  = pr.former_team_id
+            LEFT JOIN player_season_stats pss
+                ON pss.player_id  = pr.player_id
+               AND pss.season_id  = pr.season_id
+               AND pss.is_postseason = FALSE
+            WHERE pr.league_id = %s
+              AND pr.season_id  = %s
+            ORDER BY
+                (pr.former_team_id IS NOT NULL) DESC,
+                (pr.former_team_id = %s) DESC,
+                p.last_name, p.first_name
+            """,
+            (team_id, league_id, season_id, team_id),
+        ).fetchall()
+        return rows
+
+    def get_career_stats(self, player_id: str) -> list[dict]:
+        rows = self.conn.execute(
+            """
+            SELECT pss.*, s.year, t.city as team_city, t.mascot as team_mascot
+            FROM player_season_stats pss
+            JOIN seasons s ON s.id = pss.season_id
+            JOIN teams t ON t.id = pss.team_id
+            WHERE pss.player_id = %s
+            ORDER BY s.year DESC, pss.is_postseason DESC
+            """,
+            (player_id,),
+        ).fetchall()
+        return rows

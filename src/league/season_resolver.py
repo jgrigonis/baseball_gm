@@ -2,7 +2,7 @@
 import argparse
 
 from src.db.connection import get_connection
-
+from src.db.repositories.season_repo import SeasonRepository
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -22,11 +22,13 @@ def resolve_season(season_arg: str | None) -> tuple[str, str]:
     - season_label - name year combo for the season
 
     """
-
+    
     conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
-    seasons = cur.fetchall()
+    # cur = conn.cursor()
+    sr = SeasonRepository(conn)
+    seasons = sr.get_all_seasons()
+    # cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
+    # seasons = cur.fetchall()
     conn.close()
 
     if not seasons:
