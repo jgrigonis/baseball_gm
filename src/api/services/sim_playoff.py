@@ -12,8 +12,10 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from datetime import date
+from itertools import groupby
 
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
@@ -31,6 +33,7 @@ from src.league.playoffs.play_playoffs import (
     original_seed,
 )
 from src.league.play_season import play_game
+from tests.db.repositories.test_games_repo import game_repo
 
 # ---------------------------------------------------------------------------
 # Round definitions — fixed bracket structure
@@ -192,6 +195,8 @@ def sim_playoff(
     Returns summary dict.
     """
     lr = LeagueRepository(conn)
+    gm_repo = GMRepository(conn)
+    inj_repo = InjuryRepository(conn, league_id)
     league = lr.get_by_id(league_id)
     if not league:
         raise ValueError(f"League {league_id} not found")
@@ -210,13 +215,7 @@ def sim_playoff(
     champion = None
 
     # Track injuries for the GM's team so we can report new injuries / returns
-    gm_row = conn.execute(
-        "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL LIMIT 1",
-        (league_id,),
-    ).fetchone()
-    gm_team_id = gm_row["team_id"] if gm_row else None
-
-    inj_repo = InjuryRepository(conn, league_id)
+    gm_team_id = gm_repo.get_first_human_team_id(league_id)
     injured_before = inj_repo.get_active_for_team(gm_team_id)
 
     def _get_next_day_games() -> list[dict]:
@@ -230,26 +229,12 @@ def sim_playoff(
                 if sid and playoff_repo.is_decided(sid, rd["best_of"]):
                     decided_sids.add(sid)
 
-        row = conn.execute(
-            """SELECT MIN(g.game_date) as next_date
-               FROM games g
-               JOIN series s ON g.series_id = s.id
-               WHERE s.season_id = %s AND g.completed = 0""",
-            (season_id,),
-        ).fetchone()
+        row = playoff_repo.get_earliest_unplayed_date(season_id)
         if not row or not row["next_date"]:
             return []
         next_date = row["next_date"]
 
-        rows = conn.execute(
-            """SELECT g.id, g.game_date, g.home_team_id, g.away_team_id,
-                      g.completed, s.name as series_name, g.series_id
-               FROM games g
-               JOIN series s ON g.series_id = s.id
-               WHERE s.season_id = %s AND g.game_date = %s AND g.completed = 0
-               ORDER BY s.name""",
-            (season_id, next_date),
-        ).fetchall()
+        rows = playoff_repo.get_days_playoff_games(season_id, next_date)
 
         # Filter out games in decided series, then if nothing left advance to next date
         active = [dict(r) for r in rows if r["series_id"] not in decided_sids]
@@ -258,20 +243,10 @@ def sim_playoff(
 
         # All games on next_date belong to decided series — skip ahead
         # This handles leftover pre-generated games (e.g. game 4&5 when series swept)
-        rows2 = conn.execute(
-            """SELECT g.id, g.game_date, g.home_team_id, g.away_team_id,
-                      g.completed, s.name as series_name, g.series_id
-               FROM games g
-               JOIN series s ON g.series_id = s.id
-               WHERE s.season_id = %s AND g.completed = 0 AND g.game_date::date > %s
-               ORDER BY g.game_date, s.name""",
-            (season_id, next_date),
-        ).fetchall()
+        rows2 = playoff_repo.get_games_after_date(season_id, next_date)
         if not rows2:
             return []
         # Find first date with at least one undecided series game
-        from itertools import groupby
-
         for date_key, group in groupby(rows2, key=lambda r: r["game_date"]):
             day = [dict(r) for r in group if r["series_id"] not in decided_sids]
             if day:
@@ -363,9 +338,7 @@ def sim_playoff(
     finals_sid = playoff_repo.get_series_id(season_id, "Finals")
     if finals_sid and playoff_repo.is_decided(finals_sid, 7):
         champion = playoff_repo.get_series_winner(finals_sid, 7)
-        conn.execute(
-            "UPDATE leagues SET state = 'offseason' WHERE id = %s", (league_id,)
-        )
+        lr.set_state(league_id, 'offseason')
         conn.commit()
 
     # Diff injuries to find new injuries and returns for GM's team
@@ -382,13 +355,8 @@ def sim_playoff(
     ]
 
     # Most recently played game date
-    last_game = conn.execute(
-        """SELECT MAX(g.game_date) as d FROM games g
-           JOIN series s ON g.series_id = s.id
-           WHERE s.season_id = %s AND g.completed = 1""",
-        (season_id,),
-    ).fetchone()
-    current_date = last_game["d"] if last_game and last_game["d"] else None
+    game_repo = GameRepository(conn)
+    current_date = game_repo.last_series_game_date(season_id)
 
     return {
         "games_played": games_played,

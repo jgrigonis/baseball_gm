@@ -285,3 +285,14 @@ class GameRepository:
         if last_game and last_game.get("d") is not None:
             return last_game
         return None
+    
+    def last_series_game_date(self, season_id: str) -> dict | None:
+        last_game = self.conn.execute(
+            """SELECT MAX(game_date) as d FROM games g
+                JOIN series s ON g.series_id = s.id
+                WHERE s.season_id = %s AND g.completed = 1""",
+            (season_id,),
+        ).fetchone()
+        if last_game and last_game.get("d") is not None:
+            return last_game
+        return None

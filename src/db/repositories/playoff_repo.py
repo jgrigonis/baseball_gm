@@ -85,3 +85,37 @@ class PlayoffRepository:
         if existing_series:
             return True
         return False
+
+    def get_earliest_unplayed_date(self, season_id: str) -> dict | None:
+        row = self.conn.execute(
+            """SELECT MIN(g.game_date) as next_date
+               FROM games g
+               JOIN series s ON g.series_id = s.id
+               WHERE s.season_id = %s AND g.completed = 0""",
+            (season_id,),
+        ).fetchone()
+        return dict(row)
+
+    def get_days_playoff_games(self, season_id: str, next_date) -> list[dict]:
+        rows = self.conn.execute(
+            """SELECT g.id, g.game_date, g.home_team_id, g.away_team_id,
+                      g.completed, s.name as series_name, g.series_id
+               FROM games g
+               JOIN series s ON g.series_id = s.id
+               WHERE s.season_id = %s AND g.game_date = %s AND g.completed = 0
+               ORDER BY s.name""",
+            (season_id, next_date),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_games_after_date(self, season_id, next_date) -> list[dict]:
+        rows = self.conn.execute(
+            """SELECT g.id, g.game_date, g.home_team_id, g.away_team_id,
+                      g.completed, s.name as series_name, g.series_id
+               FROM games g
+               JOIN series s ON g.series_id = s.id
+               WHERE s.season_id = %s AND g.completed = 0 AND g.game_date::date > %s
+               ORDER BY g.game_date, s.name""",
+            (season_id, next_date),
+        ).fetchall()
+        return [dict(row) for row in rows]
