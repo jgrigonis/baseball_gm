@@ -9,6 +9,7 @@ import sys
 
 from src.db.connection import get_connection
 from src.db.init import init_db
+from src.db.repositories.games_repo import GameRepository
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
     load_manifest,
@@ -111,15 +112,18 @@ def main():
     print(f"Season created: {season_id}")
     print(f"Teams imported: {len(teams)}")
 
-    existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
-    ).fetchone()["count"]
+    gr = GameRepository(conn)
+    existing_games = gr.games_remaining(season_id)
+    # existing_games = conn.execute(
+    #     "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
+    # ).fetchone()["count"]
 
     if existing_games > 0 and not args.regenerate_schedule:
         print(f"Schedule already exists: {existing_games} games")
         return
     elif existing_games > 0 and args.regenerate_schedule:
-        conn.execute("DELETE FROM games WHERE season_id = %s", (season_id,))
+        gr.delete_season_games(season_id)
+        # conn.execute("DELETE FROM games WHERE season_id = %s", (season_id,))
         conn.commit()
         print(f"Deleted {existing_games} existing games")
 
