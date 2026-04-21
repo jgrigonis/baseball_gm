@@ -247,7 +247,6 @@ class TeamRepository:
             "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
             (team_id, player_id),
         )
-        # self.conn.commit()
 
     def get_city_mascot(self, team_id: str) -> str:
         """

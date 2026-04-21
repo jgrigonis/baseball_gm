@@ -153,10 +153,6 @@ class BullpenRepository:
 
             # Insert new roles
             cur.executemany(
-                # """
-                # INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date, end_date)
-                # VALUES (%s, %s, %s, %s, %s, NULL)
-                # """,
                 """
                 INSERT INTO bullpen_roles (team_id, player_id, season_id, role, effective_date, end_date)
                 VALUES (%s, %s, %s, %s, %s, NULL)
@@ -304,16 +300,3 @@ class BullpenRepository:
             end_date = _today()
 
         _close_active_role(self.conn, team_id, player_id, season_id, end_date)
-
-        # cursor = self.conn.execute(
-        #     """
-        #     UPDATE bullpen_roles
-        #     SET end_date = %s
-        #     WHERE team_id = %s
-        #     AND player_id = %s
-        #     AND season_id = %s
-        #     AND end_date IS NULL
-        #     """,
-        #     (end_date, team_id, player_id, season_id),
-        # )
-        # return cursor.rowcount > 0
