@@ -18,7 +18,7 @@ from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
-from src.league.offseason.snake_draft import SnakeDraft
+from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
 from src.league.offseason.build_season_stats import build_season
 from src.util.locations import TEAM_FILES_DIR
 from src.player.player_evaluator import PlayerEvaluator
@@ -456,7 +456,6 @@ class OffseasonPipeline:
         self, season_id: str, league_id: str, draft_order: list[dict]
     ) -> None:
         """Persist the draft order and pick rights for this draft."""
-        from src.league.offseason.snake_draft import write_draft_order
 
         # The draft record belongs to the NEW season (created by offseason_service),
         # not the completed season passed in as season_id. Find the newest pending draft.

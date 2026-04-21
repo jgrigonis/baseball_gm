@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import random
+import string
 import uuid
 from pathlib import Path
 
@@ -196,8 +198,6 @@ async def new_league(
     token, display_name, redir = _require_identity(request)
     if redir:
         return redir
-
-    import random, string
 
     league_id = str(uuid.uuid4())
     gm_id = str(uuid.uuid4())
