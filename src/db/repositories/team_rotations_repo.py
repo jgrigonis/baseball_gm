@@ -615,6 +615,19 @@ class TeamRotationsRepository:
             (team_id, season_id, series_id, new_order),
         )
 
+    # def set_pointer_to_one(self, team_id: str, season_id: str, series_id: str = '') -> None:
+    #     """Set the rotation pointer to sp1."""
+    #     self.conn.execute(
+    #         """INSERT INTO team_rotation_pointer
+    #         (team_id, season_id, series_id, next_order, updated_at)
+    #         VALUES(%s, %s, %s, 1, NOW())
+    #         ON CONFLICT (team_id, season_id, series_id)
+    #                DO UPDATE SET next_order = 1,
+    #                              updated_at = excluded.updated_at
+    #         """,
+    #         (team_id, season_id, series_id)
+    #     )
+
     def reset_rotation_pointers(self, season_id: str) -> int:
         """
         Reset all rotation pointers for a season back to order 1.
@@ -629,15 +642,17 @@ class TeamRotationsRepository:
 
         count = 0
         for row in team_rows:
-            self.conn.execute(
-                """INSERT INTO team_rotation_pointer
-                       (team_id, season_id, series_id, next_order, updated_at)
-                   VALUES (%s, %s, '', 1, NOW())
-                   ON CONFLICT (team_id, season_id, series_id)
-                   DO UPDATE SET next_order = 1,
-                                 updated_at = excluded.updated_at""",
-                (row["team_id"], season_id),
-            )
+            # self.set_pointer_to_one(row["team_id"], season_id)
+            self.assign_rotation_pointer(row["team_id"], season_id, 1)
+            # self.conn.execute(
+            #     """INSERT INTO team_rotation_pointer
+            #            (team_id, season_id, series_id, next_order, updated_at)
+            #        VALUES (%s, %s, '', 1, NOW())
+            #        ON CONFLICT (team_id, season_id, series_id)
+            #        DO UPDATE SET next_order = 1,
+            #                      updated_at = excluded.updated_at""",
+            #     (row["team_id"], season_id),
+            # )
             count += 1
 
         return count

@@ -320,3 +320,7 @@ class GameRepository:
         if last_game and last_game.get("d") is not None:
             return last_game
         return None
+
+    def delete_season_games(self, season_id: str) -> None:
+        self.conn.execute("DELETE FROM games WHERE season_id = %s", (season_id,))
+    

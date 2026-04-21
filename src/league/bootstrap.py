@@ -48,9 +48,10 @@ class LeagueBootstrapper:
         if league_id is not None:
             # Use the provided ID — skip create_league entirely
             # Verify it exists
-            row = self.conn.execute(
-                "SELECT id FROM leagues WHERE id = %s", (league_id,)
-            ).fetchone()
+            row = self.league_repo._get_league_id_by_id(league_id)
+            # row = self.conn.execute(
+            #     "SELECT id FROM leagues WHERE id = %s", (league_id,)
+            # ).fetchone()
             if not row:
                 raise ValueError(f"League {league_id} not found in database.")
         else:
@@ -125,14 +126,19 @@ class LeagueBootstrapper:
                 effective_date=start_date,
             )
             # Initialise the rotation pointer at sp1 so game 1 always starts correctly
-            self.conn.execute(
-                """INSERT INTO team_rotation_pointer
-                       (team_id, season_id, series_id, next_order, updated_at)
-                   VALUES (%s, %s, '', 1, NOW())
-                   ON CONFLICT (team_id, season_id, series_id) DO UPDATE
-                       SET next_order = 1, updated_at = NOW()""",
-                (team.id, season_id),
+            self.rotations_repo.assign_rotation_pointer(
+                team_id=team.id,
+                season_id=season_id,
+                next_order=1,
             )
+            # self.conn.execute(
+            #     """INSERT INTO team_rotation_pointer
+            #            (team_id, season_id, series_id, next_order, updated_at)
+            #        VALUES (%s, %s, '', 1, NOW())
+            #        ON CONFLICT (team_id, season_id, series_id) DO UPDATE
+            #            SET next_order = 1, updated_at = NOW()""",
+            #     (team.id, season_id),
+            # )
             self._bootstrap_bullpen(
                 team, active_players, rotation, season_id, start_date
             )
