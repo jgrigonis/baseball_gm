@@ -161,7 +161,7 @@ class InjuryRepository:
             )
             for row in cursor.fetchall()
         ]
-    
+
     def get_injuries_by_year(self, player_id: str) -> list[dict]:
         rows = self.conn.execute(
             """

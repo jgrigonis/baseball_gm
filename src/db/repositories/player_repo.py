@@ -461,8 +461,10 @@ class PlayerRepository:
             (team_id,),
         ).fetchall()
         return player_ids
-    
-    def get_retired_players_season_stats(self, team_id: str, league_id: str, season_id: str) -> list[dict]:
+
+    def get_retired_players_season_stats(
+        self, team_id: str, league_id: str, season_id: str
+    ) -> list[dict]:
         rows = self.conn.execute(
             """
             SELECT

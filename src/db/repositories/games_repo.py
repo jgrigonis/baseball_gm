@@ -9,10 +9,15 @@ Handles:
 - Game completion status
 """
 
+# needed for < python 3.14 for type hinting ScheduledGame without quotes
+from __future__ import annotations
 import datetime
+from typing import TYPE_CHECKING
 
 from src.game.game import GameResult
-# from src.league.schedule import ScheduledGame
+
+if TYPE_CHECKING:
+    from src.league.schedule import ScheduledGame
 
 
 class GameRepository:
@@ -66,8 +71,8 @@ class GameRepository:
                 game_id,
             ),
         )
-    
-    def insert_schedule(self, schedule: list["ScheduledGame"]) -> None:
+
+    def insert_schedule(self, schedule: list[ScheduledGame]) -> None:
         cursor = self.conn.cursor()
 
         for game in schedule:
@@ -84,8 +89,6 @@ class GameRepository:
                     game.away_team_id,
                 ),
             )
-
-
 
     def get_season_games(
         self,

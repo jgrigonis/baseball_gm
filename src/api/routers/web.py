@@ -2333,13 +2333,17 @@ def retirement(
     if current_season_id:
         current_year = (season_repo.get_season(current_season_id) or {}).get("year")
         if current_year:
-            prev_season = season_repo.get_by_league_and_year(league_id, current_year - 1)
+            prev_season = season_repo.get_by_league_and_year(
+                league_id, current_year - 1
+            )
 
     prev_season_id = prev_season["id"] if prev_season else None
     player_repo = PlayerRepository(db)
     retired_players = []
     if prev_season_id:
-        rows = player_repo.get_retired_players_season_stats(my_team_id, league_id, prev_season_id)
+        rows = player_repo.get_retired_players_season_stats(
+            my_team_id, league_id, prev_season_id
+        )
 
         for r in rows:
             r = dict(r)

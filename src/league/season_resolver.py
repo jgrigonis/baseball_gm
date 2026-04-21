@@ -4,6 +4,7 @@ import argparse
 from src.db.connection import get_connection
 from src.db.repositories.season_repo import SeasonRepository
 
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", "-i", required=False, help="Set the season ID.")
@@ -22,7 +23,7 @@ def resolve_season(season_arg: str | None) -> tuple[str, str]:
     - season_label - name year combo for the season
 
     """
-    
+
     conn = get_connection()
     # cur = conn.cursor()
     sr = SeasonRepository(conn)
