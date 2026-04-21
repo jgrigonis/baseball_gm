@@ -1,4 +1,5 @@
 # src/db/repositories/draft_repo.py
+import uuid
 
 
 class DraftRepository:
@@ -85,6 +86,14 @@ class DraftRepository:
         missing = next((pid for pid in player_ids if pid not in found), None)
         return missing
 
+    def get_draft_id(self, league_id: str, season_id: str) -> str | None:
+        row = self.conn.execute(
+            "SELECT id FROM drafts WHERE league_id = %s AND season_id = %s",
+            (league_id, season_id),
+        ).fetchone()
+        if row:
+            return row["id"]
+
     # ── Write ─────────────────────────────────────────────────────────────────
 
     def save_preferences(
@@ -103,3 +112,11 @@ class DraftRepository:
                     for rank, pid in enumerate(player_ids)
                 ],
             )
+
+    def create_draft(self, league_id: str, season_id: str, draft_format: str) -> str:
+        draft_id = str(uuid.uuid4())
+        self.conn.execute(
+            "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (%s, %s, %s, %s, 'pending')",
+            (draft_id, league_id, season_id, draft_format),
+        )
+        return draft_id

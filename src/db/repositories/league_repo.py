@@ -9,7 +9,7 @@ class LeagueRepository:
     Typical workflow:
     1. create_league() - Create or get existing league
     2. assign_season_to_league() - Link season to league
-    3. assign_to_league() - Add teams to league for that season
+    3. assign_team_to_league() - Add teams to league for that season
     """
 
     def __init__(self, conn):
@@ -124,7 +124,9 @@ class LeagueRepository:
         )
         # self.conn.commit()
 
-    def assign_to_league(self, league_id: str, season_id: str, team_id: str) -> None:
+    def assign_team_to_league(
+        self, league_id: str, season_id: str, team_id: str
+    ) -> None:
         """
         Assign a team to a league for a specific season.
         Idempotent - safe to call multiple times.

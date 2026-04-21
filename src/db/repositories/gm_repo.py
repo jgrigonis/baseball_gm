@@ -1,23 +1,28 @@
 # src/db/repositories/gm_repo.py
+import uuid
+
+
 class GMRepository:
     def __init__(self, conn):
         self.conn = conn
 
     def create_gm(
         self,
-        gm_id: str,
         league_id: str,
-        user_id: str,
         display_name: str,
+        user_id: str | None = None,
+        team_id: str | None = None,
         is_ai: bool = False,
-    ):
+    ) -> str:
         """Creates a GM and their associated profile."""
+        gm_id = str(uuid.uuid4())
         self.conn.execute(
-            "INSERT INTO gms (id, league_id, user_id, display_name, is_ai) VALUES (%s, %s, %s, %s, %s)",
-            (gm_id, league_id, user_id, display_name, is_ai),
+            "INSERT INTO gms (id, league_id, user_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, %s, %s, %s)",
+            (gm_id, league_id, user_id, team_id, display_name, is_ai),
         )
         # Tucking this in here ensures every GM always has a profile
         self.conn.execute("INSERT INTO gm_profiles (gm_id) VALUES (%s)", (gm_id,))
+        return gm_id
 
     def get_human_team_ids(self, league_id: str) -> set[str]:
         """Return the set of team_ids belonging to human GMs in a league."""
@@ -26,6 +31,13 @@ class GMRepository:
             (league_id,),
         ).fetchall()
         return {r["team_id"] for r in rows}
+
+    def get_human_gm_ids(self, league_id: str) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT id FROM gms WHERE league_id = %s AND NOT is_ai ORDER BY created_at",
+            (league_id,),
+        ).fetchall()
+        return rows
 
     def get_first_human_team_id(self, league_id: str) -> str | None:
         """Just get one human team id."""
@@ -111,3 +123,24 @@ class GMRepository:
         ).fetchall()
 
         return [dict(row) for row in rows]
+
+    def assign_team_to_gm(self, team_id: str, gm_id: str) -> None:
+        self.conn.execute(
+            "UPDATE gms SET team_id = %s WHERE id = %s",
+            (
+                team_id,
+                gm_id,
+            ),
+        )
+
+    def get_human_gm_city_mascot(self, league_id: str) -> dict:
+        row = self.conn.execute(
+            """
+            SELECT t.city, t.mascot FROM gms g
+            JOIN teams t ON t.id = g.team_id
+            WHERE g.league_id = %s AND NOT g.is_ai
+            LIMIT 1
+            """,
+            (league_id,),
+        ).fetchone()
+        return dict(row)

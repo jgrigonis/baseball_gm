@@ -116,7 +116,7 @@ class TestLeagueRepositoryAssignToLeague:
     ):
         league_id = league_repo.create_league("MLB")
         league_repo.assign_season_to_league(league_id, sample_season.id)
-        league_repo.assign_to_league(league_id, sample_season.id, sample_team.id)
+        league_repo.assign_team_to_league(league_id, sample_season.id, sample_team.id)
 
         row = db_conn.execute(
             """
@@ -138,7 +138,7 @@ class TestLeagueRepositoryAssignToLeague:
         teams = [factory.team() for _ in range(5)]
 
         for t in teams:
-            league_repo.assign_to_league(league_id, sample_season.id, t.id)
+            league_repo.assign_team_to_league(league_id, sample_season.id, t.id)
 
         count = db_conn.execute(
             "SELECT COUNT(*) AS n FROM league_season_teams WHERE league_id = %s AND season_id = %s",
@@ -146,14 +146,16 @@ class TestLeagueRepositoryAssignToLeague:
         ).fetchone()["n"]
         assert count == 5
 
-    def test_assign_to_league_idempotent(
+    def test_assign_team_to_league_idempotent(
         self, league_repo, db_conn, sample_season, sample_team
     ):
         league_id = league_repo.create_league("MLB")
         league_repo.assign_season_to_league(league_id, sample_season.id)
 
         for _ in range(5):
-            league_repo.assign_to_league(league_id, sample_season.id, sample_team.id)
+            league_repo.assign_team_to_league(
+                league_id, sample_season.id, sample_team.id
+            )
 
         count = db_conn.execute(
             """
@@ -173,8 +175,8 @@ class TestLeagueRepositoryAssignToLeague:
 
         league_repo.assign_season_to_league(league_id, season_1.id)
         league_repo.assign_season_to_league(league_id, season_2.id)
-        league_repo.assign_to_league(league_id, season_1.id, sample_team.id)
-        league_repo.assign_to_league(league_id, season_2.id, sample_team.id)
+        league_repo.assign_team_to_league(league_id, season_1.id, sample_team.id)
+        league_repo.assign_team_to_league(league_id, season_2.id, sample_team.id)
 
         count = db_conn.execute(
             "SELECT COUNT(*) AS n FROM league_season_teams WHERE league_id = %s AND team_id = %s",
@@ -223,7 +225,7 @@ class TestLeagueRepositoryIntegration:
 
         league_repo.assign_season_to_league(league_id, season.id)
         for t in teams:
-            league_repo.assign_to_league(league_id, season.id, t.id)
+            league_repo.assign_team_to_league(league_id, season.id, t.id)
 
         assert league_repo.has_season(league_id, season.id)
 

@@ -90,7 +90,7 @@ class LeagueBootstrapper:
                 allow_roster_update=allow_roster_update,
                 force_new=force_new_teams,
             )
-            self.league_repo.assign_to_league(league_id, season_id, team.id)
+            self.league_repo.assign_team_to_league(league_id, season_id, team.id)
             teams.append(team)
 
         # Set starting rotations for all teams

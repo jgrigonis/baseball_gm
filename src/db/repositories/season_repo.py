@@ -115,6 +115,7 @@ class SeasonRepository:
             {"id": row["id"], "year": row["year"], "name": row["name"]} for row in rows
         ]
 
+    # TODO Don't think this is ever called
     def exists(self, season_id: str) -> bool:
         """
         Check if a season exists.

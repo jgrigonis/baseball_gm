@@ -357,7 +357,7 @@ def new_league(
     reentry_enabled: bool = Form(True),
 ):
     league_id = str(uuid.uuid4())
-    gm_id = str(uuid.uuid4())
+    # gm_id = str(uuid.uuid4())
     join_code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
     league_repo = LeagueRepository(db)
@@ -377,13 +377,14 @@ def new_league(
         },
     )
     # 2. GM setup
+    # print(user["id"])
 
-    gm_repo.create_gm(
-        gm_id=gm_id,
+    gm_id = gm_repo.create_gm(
         league_id=league_id,
         user_id=user["id"],
         display_name=user["display_name"],
     )
+    # print(gm_id)
     # 3. Update the League (Now the GM exists, so the commish ID is valid)
     gm_repo.set_commissioner(gm_id=gm_id, league_id=league_id)
 
@@ -418,10 +419,9 @@ def join_league(
         return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
 
     # 3. Join the league using our clean GM creator
-    gm_id = str(uuid.uuid4())
+    # gm_id = str(uuid.uuid4())
     # This repo method now handles the GM row AND the GM Profile automatically!
     gm_repo.create_gm(
-        gm_id=gm_id,
         league_id=league["id"],
         user_id=user["id"],
         display_name=user["display_name"],
@@ -856,7 +856,6 @@ async def sim_games(
     )
     # If season just ended, trigger the state transition (playoffs setup)
     if new_remaining == 0 and days_simmed > 0:
-        print("we got here")
         sim_next_day(league_id, db)
 
     league = league_repo.get_by_id(league_id)
