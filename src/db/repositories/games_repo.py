@@ -83,7 +83,7 @@ class GameRepository:
                 """,
                 (
                     game.id,
-                    game.game_date.isoformat(),
+                    game.game_date,
                     game.season_id,
                     game.series_id,
                     game.home_team_id,

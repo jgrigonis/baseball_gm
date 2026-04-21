@@ -14,11 +14,11 @@ Steps:
 Usage:
     python -m src.league.setup_playoffs --season-id S1 --start-date 2025-10-01
 """
-from __future__ import annotations
+# from __future__ import annotations
 import argparse
 import logging
 from datetime import date, timedelta
-from typing import TYPE_CHECKING
+# from typing import TYPE_CHECKING
 
 from src.db.connection import get_connection
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
@@ -26,9 +26,9 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.league.schedule import ScheduledGame
 from src.util.logger import setup_logger
-if TYPE_CHECKING:
-    from src.league.schedule import ScheduledGame
+    
 
 
 # ---------------------------------------------------------------------------
@@ -182,22 +182,21 @@ def _series_games(
         away_id = low_seed_id if high_is_home else high_seed_id
         game_date = (start_date + timedelta(days=offset)).isoformat()
         games.append(
-            {
-                "id": f"{series_id}_g{i}",
-                "game_date": game_date,
-                "season_id": season_id,
-                "series_id": series_id,
-                "home_team_id": home_id,
-                "away_team_id": away_id,
-            }
+            ScheduledGame(
+                id=f"{series_id}_g{i}",
+                season_id=season_id,
+                home_team_id=home_id,
+                away_team_id=away_id,
+                game_date=game_date,
+                series_id=series_id,
+            )
         )
     return games
 
 
 def _insert_games(conn, schedule: list[dict]) -> None:
     game_repo = GameRepository(conn)
-    for game in schedule:
-        game_repo.insert_schedule(game)
+    game_repo.insert_schedule(schedule)
     # with conn.cursor() as cur:
     #     cur.executemany(
     #         """
