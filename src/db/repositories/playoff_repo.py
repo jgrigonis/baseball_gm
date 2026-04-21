@@ -38,7 +38,7 @@ class PlayoffRepository:
             SELECT winner_id, COUNT(*) AS wins
             FROM games
             WHERE series_id = %s AND completed = 1
-            # GROUP BY winner_id
+            GROUP BY winner_id
             """,
             (series_id,),
         ).fetchall()
