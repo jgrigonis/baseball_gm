@@ -271,7 +271,7 @@ def report_one_team(
     """Generate batting and pitching CSVs for a single team."""
     team_repo = TeamRepository(conn)
     team_name = team_repo.get_city_mascot(team_id)
-    #team_name = get_team_name(conn, team_id)
+    # team_name = get_team_name(conn, team_id)
     slug = team_name.lower().replace(" ", "_")
 
     batting_path = out_dir / f"{slug}_{season_slug}_batting.csv"

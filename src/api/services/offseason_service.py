@@ -46,7 +46,6 @@ def _create_next_season(
     sr = SeasonRepository(conn)
     lr = LeagueRepository(conn)
     current = sr.get_season(current_season_id)
-    # current = _get_season(conn, current_season_id)
     current_name = current["name"] if current else f"Season {next_year - 1}"
 
     # Increment season number in name: "Season 1" → "Season 2"
@@ -56,31 +55,13 @@ def _create_next_season(
     except (IndexError, ValueError):
         new_name = f"Season {next_year}"
 
-    # new_season_id = str(uuid.uuid4())
-    # conn.execute(
-    #     "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
-    #     (new_season_id, next_year, new_name),
-    # )
     new_season_id = sr.create_season(next_year, new_name)
-    # conn.execute(
-    #     "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)",
-    #     (league_id, new_season_id),
-    # )
     lr.assign_season_to_league(league_id, new_season_id)
 
     # Copy teams from current season
-    # team_rows = conn.execute(
-    #     "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
-    #     (league_id, current_season_id),
-    # ).fetchall()
     team_ids = lr.get_league_teams(league_id, current_season_id)
-    # team_ids = [r["team_id"] for r in team_rows]
     for tid in team_ids:
         lr.assign_team_to_league(league_id, new_season_id, tid)
-        # conn.execute(
-        #     "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-        #     (league_id, new_season_id, tid),
-        # )
 
     # Bootstrap rotations and bullpen roles for the new season
     _rng = random.Random()
@@ -128,23 +109,9 @@ def run_offseason(league_id: str, conn) -> dict:
 
     # ── 2. Create next season directly in DB ──────────────────────────────────
     existing_next = sr.get_by_league_and_year(league_id, next_year)
-    #  = conn.execute(
-    #     """SELECT ls.season_id FROM league_seasons ls
-    #        JOIN seasons s ON s.id = ls.season_id
-    #        WHERE ls.league_id = %s AND s.year = %s""",
-    #     (league_id, next_year),
-    # ).fetchone()
-    # existing_next = existing_season["id"]
 
     if existing_next:
         new_season_id = existing_next["season_id"]
-        # team_ids = [
-        #     r["team_id"]
-        #     for r in conn.execute(
-        #         "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
-        #         (league_id, new_season_id),
-        #     ).fetchall()
-        # ]
         team_ids = lr.get_league_teams(league_id, new_season_id)
         print(f"  Season {next_year} already exists: {new_season_id}")
     else:
@@ -155,9 +122,6 @@ def run_offseason(league_id: str, conn) -> dict:
 
     # ── 3. Generate schedule ──────────────────────────────────────────────────
     gr = GameRepository(conn)
-    # existing_games = conn.execute(
-    #     "SELECT COUNT(*) FROM games WHERE season_id = %s", (new_season_id,)
-    # ).fetchone()["count"]
     existing_games = gr.games_remaining(new_season_id)
 
     if existing_games == 0:
@@ -179,20 +143,11 @@ def run_offseason(league_id: str, conn) -> dict:
 
     # ── 4. Create draft record ────────────────────────────────────────────────
     dr = DraftRepository(conn)
-    # existing_draft = conn.execute(
-    #     "SELECT id FROM drafts WHERE league_id = %s AND season_id = %s",
-    #     (league_id, new_season_id),
-    # ).fetchone()
     existing_draft_id = dr.get_draft_id(league_id, new_season_id)
-    # print(existing_draft_id)
 
     if not existing_draft_id:
 
         draft_format = "preference" if league_mode == "blitz" else "interactive"
-        # conn.execute(
-        #     "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (%s, %s, %s, %s, 'pending')",
-        #     (draft_id, league_id, new_season_id, draft_format),
-        # )
         draft_id = dr.create_draft(league_id, new_season_id, draft_format)
         conn.commit()
 

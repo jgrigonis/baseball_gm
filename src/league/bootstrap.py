@@ -49,15 +49,11 @@ class LeagueBootstrapper:
             # Use the provided ID — skip create_league entirely
             # Verify it exists
             row = self.league_repo._get_league_id_by_id(league_id)
-            # row = self.conn.execute(
-            #     "SELECT id FROM leagues WHERE id = %s", (league_id,)
-            # ).fetchone()
             if not row:
                 raise ValueError(f"League {league_id} not found in database.")
         else:
             # Old CLI path — create or look up by name as before
             league_id = self.league_repo.create_league(manifest["league_name"])
-            # self.conn.commit() # Moved out of league_repo, don't think we ever get on this code path anyway
 
         # Defaults to name=Season1 year=2026 if not found in manifest
         season_id = self.season_repo.create_season(
@@ -131,14 +127,6 @@ class LeagueBootstrapper:
                 season_id=season_id,
                 next_order=1,
             )
-            # self.conn.execute(
-            #     """INSERT INTO team_rotation_pointer
-            #            (team_id, season_id, series_id, next_order, updated_at)
-            #        VALUES (%s, %s, '', 1, NOW())
-            #        ON CONFLICT (team_id, season_id, series_id) DO UPDATE
-            #            SET next_order = 1, updated_at = NOW()""",
-            #     (team.id, season_id),
-            # )
             self._bootstrap_bullpen(
                 team, active_players, rotation, season_id, start_date
             )

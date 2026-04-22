@@ -25,11 +25,8 @@ def resolve_season(season_arg: str | None) -> tuple[str, str]:
     """
 
     conn = get_connection()
-    # cur = conn.cursor()
     sr = SeasonRepository(conn)
     seasons = sr.get_all_seasons()
-    # cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
-    # seasons = cur.fetchall()
     conn.close()
 
     if not seasons:

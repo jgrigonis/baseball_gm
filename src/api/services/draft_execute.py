@@ -94,10 +94,6 @@ class BlitzDraft(SnakeDraft):
                 rating = PlayerEvaluator.prospect_rating(chosen.skills)
                 tr = TeamRepository(self.conn)
                 tr.add_player(team_id, chosen.id)
-                # self.conn.execute(
-                #     "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                #     (team_id, chosen.id),
-                # )
                 self.status_repo.set_status(chosen.id, "minors")
 
                 picks.append(
@@ -126,10 +122,6 @@ class BlitzDraft(SnakeDraft):
 
         for team_entry in ai_teams:
             team_id = team_entry["team_id"]
-            # player_ids = self.conn.execute(
-            #     "SELECT player_id FROM team_players WHERE team_id = %s",
-            #     (team_id,),
-            # ).fetchall()
             player_ids = self.player_repo.get_player_ids_from_team_players(team_id)
             players = []
             for pid in player_ids:
@@ -149,11 +141,8 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     Run the full blitz preference-list draft end-to-end.
     Assumes DraftGenerator has already been run (prospect pool exists).
     """
-    # new
     dr = DraftRepository(conn)
     draft = dr.get_draft(draft_id)
-    # old
-    # draft = conn.execute("SELECT * FROM drafts WHERE id = %s", (draft_id,)).fetchone()
 
     if not draft:
         raise ValueError(f"Draft {draft_id} not found.")
@@ -165,39 +154,14 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     league_id = draft["league_id"]
     season_id = draft["season_id"]
 
-    # new
     dr.set_draft_state(draft_id, "open")
-    # old
-    # conn.execute("UPDATE drafts SET state = 'open' WHERE id = %s", (draft_id,))
-    # conn.commit()
 
     # Load all human GM team IDs first
-    # new
     gm_repo = GMRepository(conn)
     human_team_ids = gm_repo.get_human_team_ids(league_id)
-    # old
-    # human_team_ids = {
-    #     row["team_id"]
-    #     for row in conn.execute(
-    #         "SELECT team_id FROM gms WHERE league_id = %s AND NOT is_ai AND team_id IS NOT NULL",
-    #         (league_id,),
-    #     ).fetchall()
-    # }
+
     # Load preference lists keyed by team_id (human GMs only)
     pref_rows = dr.get_ids_and_rank_from_preferences(draft_id, league_id)
-    # pref_rows = conn.execute(
-    #     """
-    #     SELECT g.team_id, dp.player_id, dp.rank
-    #     FROM draft_preferences dp
-    #     JOIN gms g ON g.id = dp.gm_id
-    #     WHERE dp.draft_id = %s
-    #       AND g.league_id = %s
-    #       AND NOT g.is_ai
-    #       AND g.team_id IS NOT NULL
-    #     ORDER BY g.team_id, dp.rank
-    #     """,
-    #     (draft_id, league_id),
-    # ).fetchall()
 
     gm_preferences: dict[str, list[str]] = {tid: [] for tid in human_team_ids}
     for row in pref_rows:
@@ -210,10 +174,6 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     # Read the pre-stored draft order from draft_order table (written by
     # league_start or offseason_pipeline — never recompute from standings here)
     stored_order = dr.get_team_id_draft_order(draft_id)
-    # stored_order = conn.execute(
-    #     """SELECT team_id FROM draft_order WHERE draft_id = %s ORDER BY pick_position""",
-    #     (draft_id,),
-    # ).fetchall()
 
     blitz = BlitzDraft(conn, league_id=league_id, gm_preferences=gm_preferences)
 
@@ -222,22 +182,6 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         picks = blitz.run_snake_draft_with_order(draft_order, year, league_id)
     else:
         raise RuntimeError(f"No stored order found")
-        # Fallback for legacy DBs without draft_order rows
-        # prior_season_row = conn.execute(
-        #     """SELECT s.id FROM seasons s
-        #        JOIN league_seasons ls ON ls.season_id = s.id
-        #        WHERE ls.league_id = %s
-        #          AND EXISTS (
-        #            SELECT 1 FROM games g
-        #            WHERE g.season_id = s.id AND g.completed = 1
-        #          )
-        #        ORDER BY s.year DESC LIMIT 1""",
-        #     (league_id,),
-        # ).fetchone()
-        # standings_season_id = prior_season_row["id"] if prior_season_row else season_id
-        # picks = blitz.run_snake_draft(
-        #     season_id=standings_season_id, year=year, league_id=league_id
-        # )
 
     # Record into draft_picks table
     now = datetime.now(UTC).isoformat()
@@ -255,34 +199,10 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
             auto,
             now,
         )
-        # conn.execute(
-        #     """
-        #     INSERT INTO draft_picks
-        #         (draft_id, pick_number, round, gm_id, team_id, player_id, auto_picked, picked_at)
-        #     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        #     """,
-        #     (
-        #         draft_id,
-        #         pick.pick,
-        #         pick.round,
-        #         gm_id,
-        #         pick.team_id,
-        #         pick.player_id,
-        #         auto,
-        #         now,
-        #     ),
-        # )
-    # new
+
     dr.set_complete_current_pick(draft_id, len(picks) + 1)
-    # old
-    # conn.execute(
-    #     "UPDATE drafts SET state = 'complete', current_pick = %s WHERE id = %s",
-    #     (len(picks) + 1, draft_id),
-    # )
     lr = LeagueRepository(conn)
     lr.set_state(league_id, "preseason")
-    # conn.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (league_id,))
-    # conn.commit()
 
     # Run post-draft pipeline steps (trim rosters, rotations, energy, stats, csvs).
     # These were deferred so they run against the final rosters including draft picks.
@@ -302,36 +222,3 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         "rounds": ROUNDS,
         "league_state": "preseason",
     }
-
-
-# def _prev_season_id(conn, league_id: str, new_season_id: str) -> str | None:
-#     """Find the most recent season for this league that has deferred pipeline steps."""
-#     row = conn.execute(
-#         """SELECT os.season_id FROM offseason_steps os
-#            JOIN league_seasons ls ON ls.season_id = os.season_id
-#            WHERE ls.league_id = %s
-#              AND os.step = 'generate_draft'
-#              AND os.season_id != %s
-#              AND NOT EXISTS (
-#                  SELECT 1 FROM offseason_steps os2
-#                  WHERE os2.season_id = os.season_id AND os2.step = 'trim_rosters'
-#              )
-#            ORDER BY os.completed_at DESC LIMIT 1""",
-#         (league_id, new_season_id),
-#     ).fetchone()
-#     return row["season_id"] if row else None
-
-
-# def _season_year(conn, season_id: str) -> int:
-#     row = conn.execute(
-#         "SELECT year FROM seasons WHERE id = %s", (season_id,)
-#     ).fetchone()
-#     return row["year"] if row else 2025
-
-
-# def _gm_for_team(conn, league_id: str, team_id: str) -> str | None:
-#     row = conn.execute(
-#         "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
-#         (league_id, team_id),
-#     ).fetchone()
-#     return row["id"] if row else None

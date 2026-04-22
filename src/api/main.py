@@ -50,12 +50,6 @@ app.add_middleware(
 # wildcard, which would otherwise swallow them.
 app.include_router(web.router)
 
-# dead routers
-# JSON API routers
-# app.include_router(leagues.router)
-# app.include_router(gms.router)
-# app.include_router(draft.router)
-
 # Static files
 app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
 

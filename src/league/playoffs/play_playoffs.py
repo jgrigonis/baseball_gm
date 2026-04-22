@@ -78,91 +78,20 @@ _SEMI_18_45_OFFSETS = [11, 13, 15, 17, 19, 21, 23]  # [1,8]v[4,5]
 _FINAL_OFFSETS = [25, 26, 28, 29, 30, 32, 33]
 
 
-# def get_series_id(conn, season_id: str, name: str) -> str | None:
-#     row = conn.execute(
-#         "SELECT id FROM series WHERE season_id = %s AND name = %s",
-#         (season_id, name),
-#     ).fetchone()
-#     return row["id"] if row else None
-
-
-# def get_series_games(conn, series_id: str) -> list[dict]:
-#     rows = conn.execute(
-#         """
-#         SELECT id, game_date, home_team_id, away_team_id, completed,
-#                home_score, away_score, winner_id
-#         FROM games
-#         WHERE series_id = %s
-#         ORDER BY game_date
-#         """,
-#         (series_id,),
-#     ).fetchall()
-#     return [dict(r) for r in rows]
-
-
-# def get_series_winner(conn, series_id: str, best_of: int) -> str | None:
-#     """
-#     Return the winning team_id if the series is decided, else None.
-#     """
-#     wins_needed = _WINS_NEEDED[best_of]
-#     rows = conn.execute(
-#         """
-#         SELECT winner_id, COUNT(*) AS wins
-#         FROM games
-#         WHERE series_id = %s AND completed = 1
-#         GROUP BY winner_id
-#         """,
-#         (series_id,),
-#     ).fetchall()
-
-#     for row in rows:
-#         if row["wins"] >= wins_needed:
-#             return row["winner_id"]
-#     return None
-
-
-# def series_is_decided(conn, series_id: str, best_of: int) -> bool:
-#     por = PlayoffRepository(conn)
-#     return por.get_series_winner(series_id, best_of) is not None
-
-
 def print_series_result(
     conn, series_id: str, best_of: int, logger: logging.Logger = None
 ) -> None:
     por = PlayoffRepository(conn)
     winner_id = por.get_series_winner(series_id, best_of)
     rows = por.get_win_count(series_id)
-    # rows = conn.execute(
-    #     """
-    #     SELECT winner_id, COUNT(*) AS wins
-    #     FROM games
-    #     WHERE series_id = %s AND completed = 1
-    #     GROUP BY winner_id
-    #     ORDER BY wins DESC
-    #     """,
-    #     (series_id,),
-    # ).fetchall()
 
     win_map = {r["winner_id"]: r["wins"] for r in rows}
     series = por.get_series_name(series_id)
-    # series = conn.execute(
-    #     "SELECT name FROM series WHERE id = %s", (series_id,)
-    # ).fetchone()
 
     # Get both team names
     game = por.get_teams_in_series(series_id)
-    # game = conn.execute(
-    #     "SELECT home_team_id, away_team_id FROM games WHERE series_id = %s LIMIT 1",
-    #     (series_id,),
-    # ).fetchone()
 
     team_repo = TeamRepository(conn)
-
-    # def team_name(tid):
-    #     row = conn.execute(
-    #         "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (tid,)
-    #     ).fetchone()
-    #     return row["name"] if row else tid
 
     team_ids = {game["home_team_id"], game["away_team_id"]}
     winner_name = team_repo.get_name(winner_id)
@@ -207,26 +136,9 @@ def generate_round_games(
                 game_date=game_date,
                 series_id=series_id,
             )
-            # {
-            #     "id": f"{series_id}_g{i}",
-            #     "game_date": game_date,
-            #     "season_id": season_id,
-            #     "series_id": series_id,
-            #     "home_team_id": home_id,
-            #     "away_team_id": away_id,
-            # }
         )
     game_repo = GameRepository(conn)
     game_repo.insert_schedule(games)
-    # conn.cursor().executemany(
-    #     """
-    #     INSERT INTO games
-    #         (id, game_date, season_id, series_id, home_team_id, away_team_id)
-    #     VALUES (%(id)s, %(game_date)s, %(season_id)s, %(series_id)s, %(home_team_id)s, %(away_team_id)s)
-    #     ON CONFLICT DO NOTHING
-    #     """,
-    #     games,
-    # )
     conn.commit()
 
 
@@ -331,31 +243,6 @@ def play_series(
 # ---------------------------------------------------------------------------
 
 
-# def get_seeds(conn, season_id: str) -> list[dict]:
-#     """Reconstruct original seeds from R1 series ordering."""
-#     # Seeds are recoverable from the series names created in setup_playoffs
-#     # e.g. "1v8" tells us which team was seed 1 vs seed 8
-#     # We query each R1 series and figure out which team was the high seed
-#     # (home team in game 1 = high seed, since home map starts True)
-#     result = {}
-
-#     for name, hi, lo in [("1v8", 1, 8), ("2v7", 2, 7), ("3v6", 3, 6), ("4v5", 4, 5)]:
-#         series_id = get_series_id(conn, season_id, name)
-#         if not series_id:
-#             raise ValueError(f"Series {name} not found for season {season_id}")
-
-#         # Game 1 home = high seed (home_map[0] = True)
-#         game = conn.execute(
-#             "SELECT home_team_id, away_team_id FROM games WHERE series_id = %s ORDER BY game_date LIMIT 1",
-#             (series_id,),
-#         ).fetchone()
-
-#         result[hi] = game["home_team_id"]
-#         result[lo] = game["away_team_id"]
-
-#     return [{"team_id": result[i], "seed": i} for i in range(1, 9)]
-
-
 def main():
     args = get_args()
     conn = get_connection()
@@ -389,15 +276,6 @@ def main():
 
     # Infer playoff start date from first R1 game
     first_game = por.get_first_game(sid)
-    # first_game = conn.execute(
-    #     """
-    #     SELECT g.game_date FROM games g
-    #     JOIN series s ON g.series_id = s.id
-    #     WHERE s.season_id = %s AND s.name IN ('1v8','2v7','3v6','4v5')
-    #     ORDER BY g.game_date LIMIT 1
-    #     """,
-    #     (sid,),
-    # ).fetchone()
     playoff_start = date.fromisoformat(first_game["game_date"])
 
     # ------------------------------------------------------------------

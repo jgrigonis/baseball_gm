@@ -173,10 +173,6 @@ class OffseasonPipeline:
             if energy_state is not None:
                 games = energy_state.season_games_played
                 result = inj_repo.count_player_injuries(player.id, season_id)
-                # result = self.conn.execute(
-                #     "SELECT COUNT(*) FROM player_injury_log WHERE player_id = %s AND season_id = %s",
-                #     (player.id, season_id),
-                # ).fetchone()
                 injuries = result[0] if result else 0
 
                 if games >= 150:
@@ -224,10 +220,6 @@ class OffseasonPipeline:
             if self._should_retire(player.age, player.skills, is_unrostered, rng):
                 self.player_status_repo.set_status(player.id, "free_agent")
                 row = self.team_repo.get_players_team_from_team_players(player.id)
-                # row = self.conn.execute(
-                #     "SELECT team_id FROM team_players WHERE player_id = %s",
-                #     (player.id,),
-                # ).fetchone()
                 former_team_id = row["team_id"] if row else None
                 if former_team_id:
                     self.team_repo.remove_player(former_team_id, player.id)
@@ -238,18 +230,6 @@ class OffseasonPipeline:
                         self._current_season_id,
                         former_team_id,
                     )
-                    # self.conn.execute(
-                    #     """INSERT INTO player_retirements
-                    #            (player_id, league_id, season_id, former_team_id)
-                    #        VALUES (%s, %s, %s, %s)
-                    #        ON CONFLICT DO NOTHING""",
-                    #     (
-                    #         player.id,
-                    #         self.league_id,
-                    #         self._current_season_id,
-                    #         former_team_id,
-                    #     ),
-                    # )
                 retired.append(player)
 
         self.conn.commit()
@@ -275,25 +255,10 @@ class OffseasonPipeline:
         # Scope to this league via league_season_teams
         if self.league_id:
             teams = self.team_repo.get_team_id_and_csv(season_id, self.league_id)
-            # teams = self.conn.execute(
-            #     """SELECT t.id, t.source_csv
-            #        FROM teams t
-            #        JOIN league_season_teams lst ON lst.team_id = t.id
-            #        WHERE lst.season_id = %s AND lst.league_id = %s""",
-            #     (season_id, self.league_id),
-            # ).fetchall()
             out_dir = Path(TEAM_FILES_DIR) / self.league_id / str(self.year)
         else:
             raise RuntimeError("No league id to write CSVs for")
-            # # This is now a runtime error
-            # teams = self.conn.execute(
-            #     """SELECT t.id, t.source_csv
-            #        FROM teams t
-            #        JOIN league_season_teams lst ON lst.team_id = t.id
-            #        WHERE lst.season_id = %s""",
-            #     (season_id,),
-            # ).fetchall()
-            # out_dir = Path(TEAM_FILES_DIR) / str(self.year)
+            # This is now a runtime error
 
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -320,38 +285,17 @@ class OffseasonPipeline:
 
             print(f"  Wrote {path}")
 
-    # def os_repo.is_done(self, season_id: str, step: str) -> bool:
-    #     row = self.conn.execute(
-    #         "SELECT 1 FROM offseason_steps WHERE season_id = %s AND step = %s",
-    #         (season_id, step),
-    #     ).fetchone()
-    #     return row is not None
-
     def _mark_done(self, season_id: str, step: str) -> None:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         self.os_repo.mark_done(season_id, step, now)
-        # self.conn.execute(
-        #     "INSERT INTO offseason_steps (season_id, step, completed_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-        #     (season_id, step, now),
-        # )
         self.conn.commit()
 
     def _playoffs_complete(self, season_id: str) -> bool:
         series_repo = SeriesRepository(self.conn)
         finals = series_repo.get_finals_id(season_id)
-        # finals = self.conn.execute(
-        #     "SELECT id FROM series WHERE season_id = %s AND name = 'Finals'",
-        #     (season_id,),
-        # ).fetchone()
         if finals is None:
             return False
         win_total = series_repo.get_champ(finals["id"])
-        # row = self.conn.execute(
-        #     """SELECT COUNT(*) AS wins FROM games
-        #        WHERE series_id = %s AND completed = 1
-        #        GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
-        #     (finals["id"],),
-        # ).fetchone()
         return win_total is not None and win_total["wins"] >= 4
 
     def _reset_player_energy(self) -> None:
@@ -366,26 +310,6 @@ class OffseasonPipeline:
         so they don't accumulate indefinitely across seasons.
         """
         cleared = self.player_repo.clear_stale_prospects(self.league_id)
-        # rows = self.conn.execute(
-        #     """
-        #     SELECT p.id
-        #     FROM players p
-        #     JOIN player_status ps ON p.id = ps.player_id
-        #     LEFT JOIN team_players tp ON p.id = tp.player_id
-        #     WHERE ps.status = 'prospect'
-        #       AND tp.player_id IS NULL
-        #       AND p.league_id = %s
-        #     """,
-        #     (self.league_id,),
-        # ).fetchall()
-
-        # cleared = 0
-        # for row in rows:
-        #     player = self.player_repo.look_up(row["id"])
-        #     if player and player.age >= 24:
-        #         self.player_status_repo.set_status(player.id, "free_agent")
-        #         cleared += 1
-
         if cleared:
             self.conn.commit()
         print(f"  Cleared {cleared} stale prospects (age >= 24)")
@@ -402,7 +326,6 @@ class OffseasonPipeline:
         of a new season. Picks the top 5 healthy pitchers by SP rating per team.
         Respects 26-man roster only (same as bootstrap).
         """
-        # rot_repo = TeamRotationsRepository(self.conn)
         status_repo = self.player_status_repo
         inj_repo = InjuryRepository(self.conn, league_id=self.league_id or "")
         team_repo = TeamRepository(self.conn)
@@ -444,27 +367,6 @@ class OffseasonPipeline:
                 effective_date=today,
                 next_order=1,
             )
-            # self.conn.execute(
-            #     "DELETE FROM team_rotations WHERE team_id = %s AND season_id = %s",
-            #     (team.id, season_id),
-            # )
-            # for order, pid in enumerate(rotation, 1):
-            #     self.conn.execute(
-            #         """INSERT INTO team_rotations
-            #                (team_id, season_id, player_id, rotation_order, effective_date)
-            #            VALUES (%s, %s, %s, %s, %s)""",
-            #         (team.id, season_id, pid, order, today),
-            #     )
-
-            # Reset pointer to SP1
-            # self.conn.execute(
-            #     """INSERT INTO team_rotation_pointer
-            #            (team_id, season_id, series_id, next_order, updated_at)
-            #        VALUES (%s, %s, '', 1, NOW())
-            #        ON CONFLICT (team_id, season_id, series_id)
-            #        DO UPDATE SET next_order = 1, updated_at = NOW()""",
-            #     (team.id, season_id),
-            # )
 
             # Rebuild bullpen roles from the active 26-man non-rotation pitchers
             relievers = [
@@ -498,11 +400,6 @@ class OffseasonPipeline:
         # The draft record belongs to the NEW season (created by offseason_service),
         # not the completed season. Find the newest pending draft.
         row = self.draft_repo.get_current_for_league(league_id)
-        # row = self.conn.execute(
-        #     """SELECT id FROM drafts WHERE league_id = %s
-        #        ORDER BY created_at DESC LIMIT 1""",
-        #     (league_id,),
-        # ).fetchone()
         if not row:
             print("  WARNING: no draft record found, skipping draft_order write")
             return
@@ -575,15 +472,6 @@ class OffseasonPipeline:
             decline_factor = max(0.0, (50 - skill_avg) / 100)
             probability = min(0.95, base + decline_factor)
         return rng.random() < probability
-
-    # def _load_season_year(self, season_id: str) -> int:
-    #     row = self.conn.execute(
-    #         "SELECT year FROM seasons WHERE id = %s", (season_id,)
-    #     ).fetchone()
-    #     if row is None:
-    #         raise ValueError(f"Season {season_id} not found")
-    #     self.year = row["year"] + 1
-    #     return self.year
 
 
 def get_args():

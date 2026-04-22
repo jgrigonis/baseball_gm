@@ -175,29 +175,9 @@ class DraftGenerator:
         dr = DraftRepository(self.conn)
         if league_id:
             rows = dr.get_prospects(league_id)
-            # rows = self.conn.execute(
-            #     """
-            #     SELECT p.id
-            #     FROM players p
-            #     JOIN player_status ps ON p.id = ps.player_id
-            #     LEFT JOIN team_players tp ON p.id = tp.player_id
-            #     WHERE ps.status = 'prospect'
-            #       AND tp.player_id IS NULL
-            #       AND p.league_id = %s
-            #     """,
-            #     (league_id,),
-            # ).fetchall()
         else:
             # This is now a run time error
             raise RuntimeError("No league_id set")
-            # rows = self.conn.execute("""
-            #     SELECT p.id
-            #     FROM players p
-            #     JOIN player_status ps ON p.id = ps.player_id
-            #     LEFT JOIN team_players tp ON p.id = tp.player_id
-            #     WHERE ps.status = 'prospect'
-            #       AND tp.player_id IS NULL
-            #     """).fetchall()
 
         players = []
         for row in rows:

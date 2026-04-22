@@ -80,9 +80,6 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
       best_def_label = "IF" | "OF" | "CA" | "1B"
     """
     try:
-        # Filter to valid skill keys only — DB rows include player_id, updated_at, etc.
-        # Query is slimmed down now
-        # filtered = {k: v for k, v in skills.items() if k in SKILLS and v is not None}
         ps = PlayerSkills(skills)
         ratings = PlayerEvaluator.rate_player(ps, throws or "R")
     except Exception:
@@ -405,8 +402,6 @@ def join_league(
         return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
 
     # 3. Join the league using our clean GM creator
-    # gm_id = str(uuid.uuid4())
-    # This repo method now handles the GM row AND the GM Profile automatically!
     gm_repo.create_gm(
         league_id=league["id"],
         user_id=user["id"],
@@ -783,12 +778,6 @@ def save_roster_put(
     player_repo = PlayerRepository(db)
     status_repo = PlayerStatusRepository(db)
     team_player_ids = player_repo.get_player_ids_from_team_players(team_id)
-    # team_player_ids_old = status_repo.get_player_ids_for_team(team_id)
-    # for pid in team_player_ids_old:
-    #     print(pid)
-
-    # for pid in team_player_ids:
-    #     print(pid)
 
     for pid in forty_man_ids:
         if pid not in team_player_ids:
@@ -1599,8 +1588,6 @@ async def save_bullpen(
     effective_date = _current_league_date(db, season_id, league_state)
 
     # Format assignments for the Repo
-    # We transform {"player_id": "role"} -> [{"player_id": "...", "role": "..."}]
-    # raw_bullpen = body.get("bullpen", {})
     assignments = [
         {"player_id": pid, "role": role} for pid, role in body.bullpen.items()
     ]

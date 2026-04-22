@@ -114,16 +114,12 @@ def main():
 
     gr = GameRepository(conn)
     existing_games = gr.games_remaining(season_id)
-    # existing_games = conn.execute(
-    #     "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
-    # ).fetchone()["count"]
 
     if existing_games > 0 and not args.regenerate_schedule:
         print(f"Schedule already exists: {existing_games} games")
         return
     elif existing_games > 0 and args.regenerate_schedule:
         gr.delete_season_games(season_id)
-        # conn.execute("DELETE FROM games WHERE season_id = %s", (season_id,))
         conn.commit()
         print(f"Deleted {existing_games} existing games")
 

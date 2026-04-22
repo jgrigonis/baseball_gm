@@ -41,13 +41,6 @@ class RosterTrimmer:
             Total number of players cut across all teams
         """
         team_rows = self.team_repo.get_teams_in_season(season_id)
-        # team_rows = self.conn.execute(
-        #     """
-        #     SELECT DISTINCT team_id FROM league_season_teams
-        #     WHERE season_id = %s
-        #     """,
-        #     (season_id,),
-        # ).fetchall()
 
         total_cut = 0
         for row in team_rows:
@@ -65,19 +58,6 @@ class RosterTrimmer:
         """
         # Load all minors players for this team
         rows = self.status_repo.get_by_team_and_status(team_id, "minors")
-        # print(rows2)
-        # rows2 = self.conn.execute(
-        #     """
-        #     SELECT p.id
-        #     FROM players p
-        #     JOIN team_players tp ON p.id = tp.player_id
-        #     JOIN player_status ps ON p.id = ps.player_id
-        #     WHERE tp.team_id = %s
-        #       AND ps.status = 'minors'
-        #     """,
-        #     (team_id,),
-        # ).fetchall()
-        # print(rows2)
 
         n_minors = len(rows)
         if n_minors <= MINORS_LIMIT:
@@ -102,9 +82,5 @@ class RosterTrimmer:
             self.status_repo.set_status(player.id, "free_agent")
             # Remove from team
             self.team_repo.remove_player(team_id, player.id)
-            # self.conn.execute(
-            #     "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
-            #     (team_id, player.id),
-            # )
 
         return n_to_cut

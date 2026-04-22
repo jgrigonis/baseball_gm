@@ -240,7 +240,7 @@ class LeagueRepository:
                 league_id,
             ),
         )
-    
+
     def draft_complete(self, league_id: str) -> bool:
         """Return True if the draft is complete, else False."""
         row = self.conn.execute(

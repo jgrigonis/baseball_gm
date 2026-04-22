@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime
 import random
-import uuid
 from pathlib import Path
 
 from src.db.repositories.draft_repo import DraftRepository
@@ -81,29 +80,13 @@ def start_league(
     # Delete only rows scoped to THIS league_id so other leagues are unaffected.
     ir = InjuryRepository(conn, league_id)
     ir.clear_all_injuries()
-    # conn.execute(
-    #     "DELETE FROM player_injuries WHERE league_id = %s",
-    #     (league_id,),
-    # )
     per = PlayerEnergyRepository(conn, league_id)
     per.clear_season()
-    # conn.execute(
-    #     "DELETE FROM player_energy WHERE league_id = %s",
-    #     (league_id,),
-    # )
     ps = PitcherStateRepository(conn, league_id)
-    # conn.execute(
-    #     "DELETE FROM pitcher_state WHERE league_id = %s",
-    #     (league_id,),
-    # )
     ps.clear_all_pitcher_state()
-    # conn.commit()
 
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     gr = GameRepository(conn)
-    # existing_games = conn.execute(
-    #     "SELECT COUNT(*) as count FROM games WHERE season_id = %s", (season_id,)
-    # ).fetchone()["count"]
     existing_games = gr.games_remaining(season_id)
 
     if existing_games == 0:
@@ -121,10 +104,6 @@ def start_league(
         game_count = existing_games
 
     # ── 5. Fill AI GMs + assign all GMs to teams ─────────────────────────────
-    # human_gms = conn.execute(
-    #     "SELECT id FROM gms WHERE league_id = %s AND NOT is_ai ORDER BY created_at",
-    #     (league_id,),
-    # ).fetchall()
     gm_repo = GMRepository(conn)
     human_gms = gm_repo.get_human_gm_ids(league_id)
 
@@ -132,103 +111,34 @@ def start_league(
     rng.shuffle(team_ids_all)
 
     # 5a. Prepare Batch Update for Human GMs
-    # human_updates = []
     assigned_teams = set()
 
     for gm, team_id in zip(human_gms, team_ids_all):
         gm_repo.assign_team_to_gm(team_id, gm["id"])
-        # human_updates.append((team_id, gm["id"]))
-        # conn.execute("UPDATE gms SET team_id = %s WHERE id = %s", (team_id, gm["id"]))
         assigned_teams.add(team_id)
 
-    # for human_update in human_updates:
-    #     gm_repo.assign_team_to_gm()
-    # if human_updates:
-
-    #     conn.cursor().executemany(
-    #         "UPDATE gms SET team_id = %s WHERE id = %s", human_updates
-    #     )
-
     # 5b. Prepare Batch Insert for AI GMs
-    # ai_inserts = []
-    # profile_inserts = []
-
     remaining_teams = [tid for tid in team_ids_all if tid not in assigned_teams]
 
     for team_id in remaining_teams:
-        # print(f"inserting team: {team_id}")
-        # ai_gm_id = str(uuid.uuid4())
         gm_repo.create_gm(
             league_id=league_id, team_id=team_id, display_name="AI Manager", is_ai=True
         )
-        # ai_inserts.append((ai_gm_id, league_id, team_id))
-        # profile_inserts.append((ai_gm_id,))
-
-    # if ai_inserts:
-    #     cur = conn.cursor()
-    #     # Insert the AI GMs
-    #     cur.executemany(
-    #         "INSERT INTO gms (id, league_id, team_id, display_name, is_ai) VALUES (%s, %s, %s, 'AI Manager', TRUE)",
-    #         ai_inserts,
-    #     )
-    #     # Insert the matching Profiles
-    #     cur.executemany("INSERT INTO gm_profiles (gm_id) VALUES (%s)", profile_inserts)
-
-    # for ai_insert in ai_inserts:
-    #     gm_repo.create_gm(ai_insert[0], league_id, ai_insert[2], 'AI Manager', True)
-
-    # 5c. Get the human gm team
-    # human_gm_team = conn.execute(
-    #     """
-    #     SELECT t.city, t.mascot FROM gms g
-    #     JOIN teams t ON t.id = g.team_id
-    #     WHERE g.league_id = %s AND NOT g.is_ai
-    #     LIMIT 1
-    #     """,
-    #     (league_id,),
-    # ).fetchone()
     human_gm_team = gm_repo.get_human_gm_city_mascot(league_id)
 
     # ── 6. Generate prospect pool ─────────────────────────────────────────────
     # Only delete prospects that belong to THIS league — don't touch other leagues.
     dr = DraftRepository(conn)
-    # dr.delete_unassigned_prospects(league_id)
-    # conn.execute(
-    #     """
-    #     DELETE FROM players WHERE id IN (
-    #         SELECT p.id FROM players p
-    #         JOIN player_status ps ON ps.player_id = p.id
-    #         LEFT JOIN team_players tp ON tp.player_id = p.id
-    #         WHERE ps.status = 'prospect'
-    #           AND tp.player_id IS NULL
-    #           AND p.league_id = %s
-    #     )
-    # """,
-    #     (league_id,),
-    # )
-    # conn.commit()
-
     prospect_count = draft_gen or DraftGenerator(conn, rng=rng).run(
         season_id=season_id, year=year, league_id=league_id
     )
 
     # ── 7. Create draft ───────────────────────────────────────────────────────
-    # draft_id = str(uuid.uuid4())
-
     if league["mode"] == "blitz":
         draft_format = "preference"
     else:
         draft_format = "interactive"
     draft_id = dr.create_draft(league_id, season_id, draft_format)
-    # conn.execute(
-    #     "INSERT INTO drafts (id, league_id, season_id, format, state) VALUES (%s, %s, %s, %s, 'pending')",
-    #     (
-    #         draft_id,
-    #         league_id,
-    #         season_id,
-    #         "preference" if league["mode"] == "blitz" else "interactive",
-    #     ),
-    # )
 
     # Write draft order using a separate shuffle from GM assignment
     draft_order_ids = team_ids_all[:]
@@ -237,8 +147,6 @@ def start_league(
 
     # ── 8. Advance league state → draft ──────────────────────────────────────
     lr.set_state(league_id, "draft")
-    # conn.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (league_id,))
-    # conn.commit()
 
     return {
         "league_id": league_id,
