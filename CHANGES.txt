@@ -1,3 +1,9 @@
+0.5.3
+-----
+
+- Nearly all queries moved to repository scripts
+
+
 0.5.2
 -----
 
