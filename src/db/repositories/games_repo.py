@@ -317,7 +317,7 @@ class GameRepository:
             (season_id,),
         ).fetchone()
         if last_game and last_game.get("d") is not None:
-            return last_game
+            return last_game["d"]
         return None
 
     def delete_season_games(self, season_id: str) -> None:
