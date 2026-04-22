@@ -163,24 +163,24 @@ class SnakeDraft:
         # Get win% per team
         # standings_repo.get_records should work for this
         # or team_game_repo.get_wl_for_league
-        stat_rows2 = self.team_game_repo.get_wl_for_league(self.league_id, season_id)
-        stat_rows = self.conn.execute(
-            """
-            SELECT tgs.team_id,
-                COALESCE(SUM(tgs.win),  0) AS wins,
-                COALESCE(SUM(tgs.loss), 0) AS losses
-            FROM team_game_stats tgs
-            JOIN games g ON tgs.game_id = g.id
-            WHERE g.season_id    = %s
-            AND g.completed    = 1
-            AND g.series_id IS NULL
-            GROUP BY tgs.team_id
-            ORDER BY wins DESC, losses ASC
-            """,
-            (season_id,),
-        ).fetchall()
-        print(f"stat_rows: {stat_rows}")
-        print(f"stat_rows2: {stat_rows2}")
+        stat_rows = self.team_game_repo.get_wl_for_league(self.league_id, season_id)
+        # stat_rows = self.conn.execute(
+        #     """
+        #     SELECT tgs.team_id,
+        #         COALESCE(SUM(tgs.win),  0) AS wins,
+        #         COALESCE(SUM(tgs.loss), 0) AS losses
+        #     FROM team_game_stats tgs
+        #     JOIN games g ON tgs.game_id = g.id
+        #     WHERE g.season_id    = %s
+        #     AND g.completed    = 1
+        #     AND g.series_id IS NULL
+        #     GROUP BY tgs.team_id
+        #     ORDER BY wins DESC, losses ASC
+        #     """,
+        #     (season_id,),
+        # ).fetchall()
+        # print(f"stat_rows: {stat_rows}")
+        # print(f"stat_rows2: {stat_rows2}")
 
         standings = {}
         for row in stat_rows:
