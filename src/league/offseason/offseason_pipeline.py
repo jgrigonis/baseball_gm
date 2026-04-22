@@ -53,7 +53,11 @@ class OffseasonPipeline:
         self.league_id = league_id
         self._current_season_id = season_id
         row = self.season_repo.get_year(season_id)
-        self.year = row["year"] if row else 2025
+        if row:
+            self.year = row["year"] + 1
+        else:
+            print("No year found with season.")
+            self.year = 2025
         # self._load_season_year(season_id)
 
         if not self.os_repo.is_done(season_id, "archive"):
