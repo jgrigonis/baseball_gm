@@ -5,7 +5,9 @@ class RetirementRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def retire_player(self, player_id: str, league_id: str, season_id: str, team_id: str) -> None:
+    def retire_player(
+        self, player_id: str, league_id: str, season_id: str, team_id: str
+    ) -> None:
         """Inserts a player into the player_retirements table.
 
         player_id: the player id to be retired.

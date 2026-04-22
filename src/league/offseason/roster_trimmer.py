@@ -64,7 +64,7 @@ class RosterTrimmer:
         Returns number of players cut.
         """
         # Load all minors players for this team
-        rows = self.status_repo.get_by_team_and_status(team_id, 'minors')
+        rows = self.status_repo.get_by_team_and_status(team_id, "minors")
         # print(rows2)
         # rows2 = self.conn.execute(
         #     """

@@ -209,7 +209,7 @@ class OffseasonPipeline:
     def _retire(self, rng: random.Random) -> None:
         """Evaluate all players for retirement.
         Scoped to players on teams in this league's season only."""
-        
+
         ret_repo = RetirementRepository(self.conn)
         if self.league_id:
             players = self.player_repo.get_players_by_league(self.league_id)

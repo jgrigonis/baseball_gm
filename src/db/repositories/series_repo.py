@@ -11,7 +11,7 @@ class SeriesRepository:
             (season_id,),
         ).fetchone()
         return finals
-    
+
     def get_champ(self, finals_id: str) -> dict:
         champ = self.conn.execute(
             """SELECT winner_id, COUNT(*) as wins FROM games
@@ -20,7 +20,7 @@ class SeriesRepository:
             (finals_id,),
         ).fetchone()
         return champ
-    
+
     def get_champ_team(self, winner_id: str) -> dict:
         team = self.conn.execute(
             "SELECT city, mascot FROM teams WHERE id = %s", (winner_id,)
@@ -41,7 +41,11 @@ class SeriesRepository:
         # ).fetchone()
         if not champ_team:
             return None
-        return {"team_id": champ["winner_id"], "city": champ_team["city"], "mascot": champ_team["mascot"]}
+        return {
+            "team_id": champ["winner_id"],
+            "city": champ_team["city"],
+            "mascot": champ_team["mascot"],
+        }
 
     def get_team_playoff_result(self, team_id: str, season_id: str) -> str | None:
         """Return a string like 'Won Finals' or 'Eliminated in 1v8', or None if no playoff appearance."""

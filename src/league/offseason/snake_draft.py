@@ -24,8 +24,11 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.team_game_repo import TeamGameRepository
+from src.db.repositories.team_repo import TeamRepository
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.team.roster_assigner import RosterAssigner
@@ -42,24 +45,28 @@ def write_draft_order(
     ordered_team_ids should be in pick order (index 0 = picks first).
     Safe to call on a fresh draft — clears any existing rows first.
     """
-    conn.execute("DELETE FROM draft_order WHERE draft_id = %s", (draft_id,))
-    conn.execute(
-        "DELETE FROM draft_pick_rights WHERE league_id = %s AND draft_year = %s",
-        (league_id, draft_year),
-    )
+    draft_repo = DraftRepository(conn)
+    draft_repo.clear_draft(draft_id, league_id, draft_year)
+    # conn.execute("DELETE FROM draft_order WHERE draft_id = %s", (draft_id,))
+    # conn.execute(
+    #     "DELETE FROM draft_pick_rights WHERE league_id = %s AND draft_year = %s",
+    #     (league_id, draft_year),
+    # )
     for pos, tid in enumerate(ordered_team_ids, 1):
-        conn.execute(
-            "INSERT INTO draft_order (draft_id, team_id, pick_position) VALUES (%s, %s, %s)",
-            (draft_id, tid, pos),
-        )
+        draft_repo.insert_draft_order(draft_id, tid, pos)
+        # conn.execute(
+        #     "INSERT INTO draft_order (draft_id, team_id, pick_position) VALUES (%s, %s, %s)",
+        #     (draft_id, tid, pos),
+        # )
     for tid in ordered_team_ids:
         for rnd in range(1, ROUNDS + 1):
-            conn.execute(
-                """INSERT INTO draft_pick_rights
-                   (league_id, draft_year, round, original_team_id, current_owner_id)
-                   VALUES (%s, %s, %s, %s, %s)""",
-                (league_id, draft_year, rnd, tid, tid),
-            )
+            draft_repo.insert_draft_pick_rights(league_id, draft_year, rnd, tid, tid)
+            # conn.execute(
+            #     """INSERT INTO draft_pick_rights
+            #        (league_id, draft_year, round, original_team_id, current_owner_id)
+            #        VALUES (%s, %s, %s, %s, %s)""",
+            #     (league_id, draft_year, rnd, tid, tid),
+            # )
     conn.commit()
 
 
@@ -83,14 +90,17 @@ class SnakeDraft:
         self.rng = rng or random.Random()
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
+        self.draft_repo = DraftRepository(conn)
+        self.team_repo = TeamRepository(conn)
+        self.team_game_repo = TeamGameRepository(conn)
 
     # This is no longer used, we always have an order.
-    def run_snake_draft(
-        self, season_id: str, year: int, league_id: str | None = None
-    ) -> list[DraftPick]:
-        """Legacy entry point — builds order from standings then runs draft."""
-        draft_order = self._build_draft_order(season_id)
-        return self.run_snake_draft_with_order(draft_order, year, league_id)
+    # def run_snake_draft(
+    #     self, season_id: str, year: int, league_id: str | None = None
+    # ) -> list[DraftPick]:
+    #     """Legacy entry point — builds order from standings then runs draft."""
+    #     draft_order = self._build_draft_order(season_id)
+    #     return self.run_snake_draft_with_order(draft_order, year, league_id)
 
     def run_snake_draft_with_order(
         self,
@@ -139,17 +149,21 @@ class SnakeDraft:
 
     def _build_draft_order(self, season_id: str) -> list[dict]:
         # Get all teams in this season with city/mascot in one query
-        all_team_rows = self.conn.execute(
-            """
-            SELECT DISTINCT lst.team_id, t.city, t.mascot
-            FROM league_season_teams lst
-            JOIN teams t ON lst.team_id = t.id
-            WHERE lst.season_id = %s
-            """,
-            (season_id,),
-        ).fetchall()
+        all_team_rows = self.draft_repo.get_all_teams_city_mascot(season_id)
+        # all_team_rows = self.conn.execute(
+        #     """
+        #     SELECT DISTINCT lst.team_id, t.city, t.mascot
+        #     FROM league_season_teams lst
+        #     JOIN teams t ON lst.team_id = t.id
+        #     WHERE lst.season_id = %s
+        #     """,
+        #     (season_id,),
+        # ).fetchall()
 
         # Get win% per team
+        # standings_repo.get_records should work for this
+        # or team_game_repo.get_wl_for_league
+        stat_rows2 = self.team_game_repo.get_wl_for_league(self.league_id, season_id)
         stat_rows = self.conn.execute(
             """
             SELECT tgs.team_id,
@@ -165,6 +179,8 @@ class SnakeDraft:
             """,
             (season_id,),
         ).fetchall()
+        print(f"stat_rows: {stat_rows}")
+        print(f"stat_rows2: {stat_rows2}")
 
         standings = {}
         for row in stat_rows:
@@ -200,18 +216,19 @@ class SnakeDraft:
 
     def _load_draft_pool(self) -> list[PlayerRecord]:
         """Load all prospect players not on any team."""
-        rows = self.conn.execute(
-            """
-            SELECT p.id
-            FROM players p
-            JOIN player_status ps ON p.id = ps.player_id
-            LEFT JOIN team_players tp ON p.id = tp.player_id
-            WHERE ps.status = 'prospect'
-              AND tp.player_id IS NULL
-              AND p.league_id = %s
-            """,
-            (self.league_id,),
-        ).fetchall()
+        rows = self.draft_repo.get_prospects(self.league_id)
+        # rows = self.conn.execute(
+        #     """
+        #     SELECT p.id
+        #     FROM players p
+        #     JOIN player_status ps ON p.id = ps.player_id
+        #     LEFT JOIN team_players tp ON p.id = tp.player_id
+        #     WHERE ps.status = 'prospect'
+        #       AND tp.player_id IS NULL
+        #       AND p.league_id = %s
+        #     """,
+        #     (self.league_id,),
+        # ).fetchall()
 
         players = []
         for row in rows:
@@ -263,10 +280,11 @@ class SnakeDraft:
                 team_name = team_entry["team_name"]
 
                 # Add to team_players
-                self.conn.execute(
-                    "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                    (team_id, player.id),
-                )
+                self.team_repo.add_player(team_id, player.id)
+                # self.conn.execute(
+                #     "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                #     (team_id, player.id),
+                # )
                 # Set status to minors
                 self.status_repo.set_status(player.id, "minors")
 
@@ -293,6 +311,7 @@ class SnakeDraft:
     # Post-draft roster assignment
     # -----------------------------------------------------------------------
 
+    # This code is generally overridden in the UI
     def _reassign_rosters(self, draft_order: list[dict]) -> None:
         """Re-run RosterAssigner for every team after the draft."""
         assigner = RosterAssigner()
@@ -300,11 +319,13 @@ class SnakeDraft:
         for team_entry in draft_order:
             team_id = team_entry["team_id"]
 
-            player_ids = self.conn.execute(
-                "SELECT player_id FROM team_players WHERE team_id = %s",
-                (team_id,),
-            ).fetchall()
-
+            player_ids = self.player_repo.get_player_ids_from_team_players(team_id)
+            # print(f"player_ids2: {player_ids2}")
+            # player_ids = self.conn.execute(
+            #     "SELECT player_id FROM team_players WHERE team_id = %s",
+            #     (team_id,),
+            # ).fetchall()
+            # print(f"player_ids: {player_ids}")
             players = []
             for row in player_ids:
                 p = self.player_repo.look_up(row["player_id"])

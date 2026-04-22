@@ -200,7 +200,7 @@ class PlayerRepository:
         """,
             (league_id,),
         )
-    
+
     def clear_stale_prospects(self, league_id: str) -> int:
         cleared = 0
         psr = PlayerStatusRepository(self.conn)
@@ -223,7 +223,6 @@ class PlayerRepository:
                     psr.set_status(player.id, "free_agent")
                     cleared += 1
         return cleared
-
 
     # ------------------------------------------------------------
     # READ

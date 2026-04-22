@@ -93,7 +93,7 @@ class TeamRepository:
             """,
             (team_id, player_id),
         )
-    
+
     def remove_player(self, team_id: str, player_id: str) -> None:
         """Remove a player from a team's roster."""
         self.conn.execute(
@@ -275,7 +275,7 @@ class TeamRepository:
             "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (team_id,)
         ).fetchone()["name"]
         return name
-    
+
     def get_team_id_and_csv(self, season_id: str, league_id: str) -> list[dict]:
         teams = self.conn.execute(
             """SELECT t.id, t.source_csv
