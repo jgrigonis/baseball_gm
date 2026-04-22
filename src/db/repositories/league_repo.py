@@ -240,3 +240,14 @@ class LeagueRepository:
                 league_id,
             ),
         )
+    
+    def draft_complete(self, league_id: str) -> bool:
+        """Return True if the draft is complete, else False."""
+        row = self.conn.execute(
+            """SELECT d.state FROM drafts d
+            JOIN league_seasons ls ON ls.season_id = d.season_id
+            JOIN seasons s ON s.id = ls.season_id
+            WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        return bool(row and row["state"] == "complete")

@@ -6,8 +6,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader
 
+from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.team_repo import TeamRepository
 
 # Templates are in src/web/templates/ relative to the project root
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -86,71 +88,85 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
             return None
 
     # Next unplayed regular season game
-    row = db.execute(
-        "SELECT game_date FROM games WHERE season_id = %s AND completed = 0 AND series_id IS NULL ORDER BY game_date ASC LIMIT 1",
-        (season_id,),
-    ).fetchone()
+    game_repo = GameRepository(db)
+    row = game_repo.get_next_unplayed_date(season_id)
+    # row = db.execute(
+    #     """
+    #     SELECT game_date FROM games 
+    #     WHERE season_id = %s AND completed = 0 
+    #     AND series_id IS NULL 
+    #     ORDER BY game_date ASC 
+    #     LIMIT 1
+    #     """,
+    #     (season_id,),
+    # ).fetchone()
     if row:
         return row["game_date"]
     # Playoffs: next unplayed game in an undecided series
-    row = db.execute(
-        """SELECT g.game_date FROM games g
-           WHERE g.season_id = %s AND g.completed = 0
-             AND g.series_id IS NOT NULL
-             AND NOT EXISTS (
-                 SELECT 1 FROM games sg
-                 JOIN series sr ON sr.id = sg.series_id
-                 WHERE sg.series_id = g.series_id AND sg.completed = 1
-                 GROUP BY sg.winner_id
-                 HAVING COUNT(*) >= MAX(
-                     CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
-                 )
-             )
-           ORDER BY g.game_date ASC LIMIT 1""",
-        (season_id,),
-    ).fetchone()
-    if row:
-        return row["game_date"]
+    # Same query above works for playoffs too
+    # row = db.execute(
+    #     """SELECT g.game_date FROM games g
+    #        WHERE g.season_id = %s AND g.completed = 0
+    #          AND g.series_id IS NOT NULL
+    #          AND NOT EXISTS (
+    #              SELECT 1 FROM games sg
+    #              JOIN series sr ON sr.id = sg.series_id
+    #              WHERE sg.series_id = g.series_id AND sg.completed = 1
+    #              GROUP BY sg.winner_id
+    #              HAVING COUNT(*) >= MAX(
+    #                  CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
+    #              )
+    #          )
+    #        ORDER BY g.game_date ASC LIMIT 1""",
+    #     (season_id,),
+    # ).fetchone()
+    # if row:
+    #     return row["game_date"]
     # All done — last played date
-    row = db.execute(
-        "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
-        (season_id,),
-    ).fetchone()
+    row = game_repo.last_game_date(season_id)
+    # row = db.execute(
+    #     "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
+    #     (season_id,),
+    # ).fetchone()
     return row["d"] if row else None
 
 
 def _games_remaining(db, season_id: str | None) -> int:
     if not season_id:
         return 0
-    row = db.execute(
-        """SELECT COUNT(*) FROM games g
-           WHERE g.season_id = %s AND g.completed = 0
-             AND (
-                 g.series_id IS NULL
-                 OR NOT EXISTS (
-                     SELECT 1 FROM games sg
-                     JOIN series sr ON sr.id = sg.series_id
-                     WHERE sg.series_id = g.series_id AND sg.completed = 1
-                     GROUP BY sg.winner_id
-                     HAVING COUNT(*) >= MAX(
-                         CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
-                     )
-                 )
-             )""",
-        (season_id,),
-    ).fetchone()
-    return row["count"] if row else 0
+    game_repo = GameRepository(db)
+    num = game_repo.games_remaining(season_id)
+    # TODO test that this change to a simpler query didn't break something
+    # row = db.execute(
+    #     """SELECT COUNT(*) FROM games g
+    #        WHERE g.season_id = %s AND g.completed = 0
+    #          AND (
+    #              g.series_id IS NULL
+    #              OR NOT EXISTS (
+    #                  SELECT 1 FROM games sg
+    #                  JOIN series sr ON sr.id = sg.series_id
+    #                  WHERE sg.series_id = g.series_id AND sg.completed = 1
+    #                  GROUP BY sg.winner_id
+    #                  HAVING COUNT(*) >= MAX(
+    #                      CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
+    #                  )
+    #              )
+    #          )""",
+    #     (season_id,),
+    # ).fetchone()
+    # return row["count"] if row else 0
+    return num if num else 0
 
 
-def _draft_is_complete(db, league_id: str) -> bool:
-    row = db.execute(
-        """SELECT d.state FROM drafts d
-           JOIN league_seasons ls ON ls.season_id = d.season_id
-           JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
-    return bool(row and row["state"] == "complete")
+# def _draft_is_complete(db, league_id: str) -> bool:
+#     row = db.execute(
+#         """SELECT d.state FROM drafts d
+#            JOIN league_seasons ls ON ls.season_id = d.season_id
+#            JOIN seasons s ON s.id = ls.season_id
+#            WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+#         (league_id,),
+#     ).fetchone()
+#     return bool(row and row["state"] == "complete")
 
 
 def _shell_ctx(
@@ -186,7 +202,7 @@ def _shell_ctx(
     if league_id:
         lr = LeagueRepository(db)
         league = lr.get_by_id(league_id)
-        draft_complete = _draft_is_complete(db, league_id)
+        draft_complete = lr.draft_complete(league_id)
         if league:
             ctx.update(
                 {
@@ -209,9 +225,11 @@ def _shell_ctx(
 
     # 3. Fetch Team Data if team_id exists
     if ctx["team_id"]:
-        team = db.execute(
-            "SELECT city, mascot FROM teams WHERE id = %s", (ctx["team_id"],)
-        ).fetchone()
+        team_repo = TeamRepository(db)
+        team = team_repo.get_city_mascot(ctx["team_id"])
+        # team = db.execute(
+        #     "SELECT city, mascot FROM teams WHERE id = %s", (ctx["team_id"],)
+        # ).fetchone()
         if team:
             ctx["team_name"] = f"{team['city']} {team['mascot']}"
 

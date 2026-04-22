@@ -12,6 +12,7 @@ import csv
 from pathlib import Path
 
 from src.db.connection import get_connection
+from src.db.repositories.team_repo import TeamRepository
 from src.league.season_resolver import resolve_season
 from src.util.locations import TEMP_FILES
 from src.util.team_resolver import resolve_team_id, TeamResolverError
@@ -162,11 +163,11 @@ SELECT id, city, mascot FROM teams ORDER BY city, mascot
 # ---------------------------------------------------------------------------
 
 
-def get_team_name(conn, team_id: str) -> str:
-    row = conn.execute(
-        "SELECT city, mascot FROM teams WHERE id = %s", (team_id,)
-    ).fetchone()
-    return f"{row['city']} {row['mascot']}" if row else team_id
+# def get_team_name(conn, team_id: str) -> str:
+#     row = conn.execute(
+#         "SELECT city, mascot FROM teams WHERE id = %s", (team_id,)
+#     ).fetchone()
+#     return f"{row['city']} {row['mascot']}" if row else team_id
 
 
 def write_batting_csv(conn, season_id: str, team_id: str, out_path: Path) -> int:
@@ -268,7 +269,9 @@ def report_one_team(
     conn, season_id: str, team_id: str, season_slug: str, out_dir: Path
 ) -> None:
     """Generate batting and pitching CSVs for a single team."""
-    team_name = get_team_name(conn, team_id)
+    team_repo = TeamRepository(conn)
+    team_name = team_repo.get_city_mascot(team_id)
+    #team_name = get_team_name(conn, team_id)
     slug = team_name.lower().replace(" ", "_")
 
     batting_path = out_dir / f"{slug}_{season_slug}_batting.csv"
