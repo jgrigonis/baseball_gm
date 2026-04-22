@@ -23,3 +23,16 @@ class OffseasonRepository:
             (league_id, season_id),
         ).fetchone()
         return row["season_id"] if row else None
+
+    def is_done(self, season_id: str, step: str) -> bool:
+        row = self.conn.execute(
+            "SELECT 1 FROM offseason_steps WHERE season_id = %s AND step = %s",
+            (season_id, step),
+        ).fetchone()
+        return row is not None
+
+    def mark_done(self, season_id: str, step: str, done_time: str) -> None:
+        self.conn.execute(
+            "INSERT INTO offseason_steps (season_id, step, completed_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+            (season_id, step, done_time),
+        )

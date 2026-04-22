@@ -221,6 +221,8 @@ class LeagueRepository:
 
     def get_league_mode(self, league_id: str) -> str:
         """Get the mode of the league."""
+        if league_id is None:
+            return "blitz"
         row = self.conn.execute(
             "SELECT mode FROM leagues WHERE id = %s", (league_id,)
         ).fetchone()

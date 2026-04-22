@@ -154,7 +154,6 @@ class GameRepository:
         ).fetchall()
         return games
 
-    # Don't see this ever getting called anywhere currently
     def clear_result(self, game_id: str):
         """Clear game result (for replaying)."""
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -323,4 +322,3 @@ class GameRepository:
 
     def delete_season_games(self, season_id: str) -> None:
         self.conn.execute("DELETE FROM games WHERE season_id = %s", (season_id,))
-    

@@ -69,6 +69,13 @@ class TeamRepository:
             (league_id, season_id, team_id),
         )
 
+    def get_players_team_from_team_players(self, player_id: str) -> dict:
+        row = self.conn.execute(
+            "SELECT team_id FROM team_players WHERE player_id = %s",
+            (player_id,),
+        ).fetchone()
+        return row
+
     # ------------------------------------------------------------
     # WRITE
     # ------------------------------------------------------------
@@ -86,6 +93,17 @@ class TeamRepository:
             """,
             (team_id, player_id),
         )
+    
+    def remove_player(self, team_id: str, player_id: str) -> None:
+        """Remove a player from a team's roster."""
+        self.conn.execute(
+            "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
+            (team_id, player_id),
+        )
+
+    # ------------------------------------------------------------
+    # READ
+    # ------------------------------------------------------------
 
     def get(self, team_id: str) -> TeamRecord | None:
         """Fetch a team by ID."""
@@ -241,13 +259,6 @@ class TeamRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def remove_player(self, team_id: str, player_id: str) -> None:
-        """Remove a player from a team's roster."""
-        self.conn.execute(
-            "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
-            (team_id, player_id),
-        )
-
     def get_city_mascot(self, team_id: str) -> str:
         """
         Return City and Mascot in a formatted string based on the team_id.
@@ -264,3 +275,23 @@ class TeamRepository:
             "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (team_id,)
         ).fetchone()["name"]
         return name
+    
+    def get_team_id_and_csv(self, season_id: str, league_id: str) -> list[dict]:
+        teams = self.conn.execute(
+            """SELECT t.id, t.source_csv
+                FROM teams t
+                JOIN league_season_teams lst ON lst.team_id = t.id
+                WHERE lst.season_id = %s AND lst.league_id = %s""",
+            (season_id, league_id),
+        ).fetchall()
+        return teams
+
+    def get_teams_in_season(self, season_id: str) -> list[dict]:
+        team_rows = self.conn.execute(
+            """
+            SELECT DISTINCT team_id FROM league_season_teams
+            WHERE season_id = %s
+            """,
+            (season_id,),
+        ).fetchall()
+        return team_rows

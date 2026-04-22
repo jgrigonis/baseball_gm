@@ -41,7 +41,11 @@ class LineupRepository:
                 (game_id, team_id, pitcher.id),
             )
 
-        # self.conn.commit()
+    def delete_game_lineup(self, game_id: str) -> None:
+        self.conn.execute(
+            "DELETE FROM game_lineup_slots WHERE game_id = %s",
+            (game_id,),
+        )
 
     def get_lineup(self, game_id: str, team_id: str) -> list[dict]:
         cursor = self.conn.cursor()

@@ -10,14 +10,17 @@ import random
 import traceback
 
 from src.db.connection import get_connection
+from src.db.repositories import game_lineup_repo
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository, MIN_ENERGY_STARTER
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
@@ -48,20 +51,30 @@ def get_args():
 
 
 def clear_game_data(conn, game_id: str):
-    conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
-    conn.execute("DELETE FROM team_game_stats WHERE game_id = %s", (game_id,))
-    conn.execute("DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,))
-    conn.execute("DELETE FROM game_lineup_slots WHERE game_id = %s", (game_id,))
-    conn.execute(
-        "UPDATE games SET home_score=NULL,away_score=NULL,winner_id=NULL,innings_played=NULL,completed=0 WHERE id=%s",
-        (game_id,),
-    )
+    pg = PlayerGameRepository(conn)
+    tg = TeamGameRepository(conn)
+    lu = LineupRepository(conn)
+    gr = GameRepository(conn)
+    pg.delete_game_stats(game_id)
+    tg.clear_stats(game_id)
+    lu.delete_game_lineup(game_id)
+    gr.clear_result(game_id)
+    # conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
+    # conn.execute("DELETE FROM team_game_stats WHERE game_id = %s", (game_id,))
+    # conn.execute("DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,))
+    # conn.execute("DELETE FROM game_lineup_slots WHERE game_id = %s", (game_id,))
+    # conn.execute(
+    #     "UPDATE games SET home_score=NULL,away_score=NULL,winner_id=NULL,innings_played=NULL,completed=0 WHERE id=%s",
+    #     (game_id,),
+    # )
     conn.commit()
 
 
 def save_player_stats(conn, game_id, home_team, away_team):
-    conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
-    conn.execute("DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,))
+    pg = PlayerGameRepository(conn)
+    pg.delete_game_stats(game_id)
+    # conn.execute("DELETE FROM player_game_stats WHERE game_id = %s", (game_id,))
+    # conn.execute("DELETE FROM player_game_fielding WHERE game_id = %s", (game_id,))
     conn.commit()
     player_game_repo = PlayerGameRepository(conn)
     for team, opp in [(home_team, away_team), (away_team, home_team)]:
@@ -124,18 +137,30 @@ def save_position_energy(conn, player_energy_states, league_id):
             repo.save_player_energy(state)
 
 
-def _load_eligible_ids(conn, team_id: str, league_id: str, blitz: bool) -> set[str]:
+def _load_eligible_ids(conn, team_id: str, blitz: bool) -> set[str]:
     """Return player IDs eligible to play based on league mode.
     Blitz: 26man + 40man. Long form: 26man only.
     """
-    statuses = "'26man','40man'" if blitz else "'26man'"
-    rows = conn.execute(
-        f"""SELECT ps.player_id FROM player_status ps
-            JOIN team_players tp ON tp.player_id = ps.player_id
-            WHERE tp.team_id = %s AND ps.status IN ({statuses})""",
-        (team_id,),
-    ).fetchall()
-    return {r["player_id"] for r in rows}
+    # statuses = "'26man','40man'" if blitz else "'26man'"
+    if blitz:
+        status_list = ["26man", "40man"]
+    else:
+        status_list = ["26man"]
+    psr = PlayerStatusRepository(conn)
+    ids = []
+    for status in status_list:
+        ids.extend(psr.get_by_team_and_status(team_id, status))
+    # player_ids = psr.get_by_team_and_statuses(team_id, statuses)
+    # print(f"IDS:\n{ids}")
+    # print(f"player_ids:\n{player_ids}")
+
+    # rows = conn.execute(
+    #     f"""SELECT ps.player_id FROM player_status ps
+    #         JOIN team_players tp ON tp.player_id = ps.player_id
+    #         WHERE tp.team_id = %s AND ps.status IN ({statuses})""",
+    #     (team_id,),
+    # ).fetchall()
+    return ids
 
 
 def _pick_starter(
@@ -308,8 +333,8 @@ def play_game(
             player.is_starter = True
 
     # Roster eligibility: blitz=40man, long form=26man (handled inside _load_eligible_ids)
-    home_eligible = _load_eligible_ids(conn, home_team.record.id, league_id, blitz)
-    away_eligible = _load_eligible_ids(conn, away_team.record.id, league_id, blitz)
+    home_eligible = _load_eligible_ids(conn, home_team.record.id, blitz)
+    away_eligible = _load_eligible_ids(conn, away_team.record.id, blitz)
 
     # Build injured_ids BEFORE ticking so players finishing their last game of injury
     # are still excluded from today's game (they return for the next game).
@@ -556,19 +581,22 @@ def main():
         log_to_file=True,
     )
 
-    league_row = conn.execute(
-        "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1",
-        (args.season_id,),
-    ).fetchone()
-    league_id = league_row["league_id"] if league_row else ""
+    lr = LeagueRepository(conn)
+    league_id = lr.get_league_id_from_season_id(args.season_id)
+    # league_row = conn.execute(
+    #     "SELECT league_id FROM league_seasons WHERE season_id = %s LIMIT 1",
+    #     (args.season_id,),
+    # ).fetchone()
+    # league_id = league_row["league_id"] if league_row else ""
 
-    league_mode = "blitz"
-    if league_id:
-        lr = conn.execute(
-            "SELECT mode FROM leagues WHERE id = %s", (league_id,)
-        ).fetchone()
-        if lr:
-            league_mode = lr["mode"] or "blitz"
+    # league_mode = "blitz"
+    # if league_id:
+    league_mode = lr.get_league_mode(league_id)
+    # lr = conn.execute(
+    #     "SELECT mode FROM leagues WHERE id = %s", (league_id,)
+    # ).fetchone()
+    # if lr:
+    #     league_mode = lr["mode"] or "blitz"
 
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)

@@ -17,6 +17,7 @@ Roster limits:
 
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.team_repo import TeamRepository
 from src.player.player_evaluator import PlayerEvaluator
 
 MINORS_LIMIT = 120
@@ -27,6 +28,7 @@ class RosterTrimmer:
         self.conn = conn
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
+        self.team_repo = TeamRepository(conn)
 
     def run(self, season_id: str) -> int:
         """
@@ -38,13 +40,14 @@ class RosterTrimmer:
         Returns:
             Total number of players cut across all teams
         """
-        team_rows = self.conn.execute(
-            """
-            SELECT DISTINCT team_id FROM league_season_teams
-            WHERE season_id = %s
-            """,
-            (season_id,),
-        ).fetchall()
+        team_rows = self.team_repo.get_teams_in_season(season_id)
+        # team_rows = self.conn.execute(
+        #     """
+        #     SELECT DISTINCT team_id FROM league_season_teams
+        #     WHERE season_id = %s
+        #     """,
+        #     (season_id,),
+        # ).fetchall()
 
         total_cut = 0
         for row in team_rows:
@@ -61,17 +64,20 @@ class RosterTrimmer:
         Returns number of players cut.
         """
         # Load all minors players for this team
-        rows = self.conn.execute(
-            """
-            SELECT p.id
-            FROM players p
-            JOIN team_players tp ON p.id = tp.player_id
-            JOIN player_status ps ON p.id = ps.player_id
-            WHERE tp.team_id = %s
-              AND ps.status = 'minors'
-            """,
-            (team_id,),
-        ).fetchall()
+        rows = self.status_repo.get_by_team_and_status(team_id, 'minors')
+        # print(rows2)
+        # rows2 = self.conn.execute(
+        #     """
+        #     SELECT p.id
+        #     FROM players p
+        #     JOIN team_players tp ON p.id = tp.player_id
+        #     JOIN player_status ps ON p.id = ps.player_id
+        #     WHERE tp.team_id = %s
+        #       AND ps.status = 'minors'
+        #     """,
+        #     (team_id,),
+        # ).fetchall()
+        # print(rows2)
 
         n_minors = len(rows)
         if n_minors <= MINORS_LIMIT:
@@ -80,7 +86,7 @@ class RosterTrimmer:
         # Load full player records and rate them
         players = []
         for row in rows:
-            player = self.player_repo.look_up(row["id"])
+            player = self.player_repo.look_up(row)
             if player:
                 rating = PlayerEvaluator.prospect_rating(player.skills)
                 players.append((player, rating))
@@ -95,9 +101,10 @@ class RosterTrimmer:
             # Release to free agency
             self.status_repo.set_status(player.id, "free_agent")
             # Remove from team
-            self.conn.execute(
-                "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
-                (team_id, player.id),
-            )
+            self.team_repo.remove_player(team_id, player.id)
+            # self.conn.execute(
+            #     "DELETE FROM team_players WHERE team_id = %s AND player_id = %s",
+            #     (team_id, player.id),
+            # )
 
         return n_to_cut

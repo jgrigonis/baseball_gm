@@ -5,28 +5,43 @@ class SeriesRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def get_champion(self, season_id: str, min_wins: int = 4) -> dict | None:
-        """Return the Finals champion as {team_id, city, mascot}, or None if undecided."""
+    def get_finals_id(self, season_id: str) -> dict:
         finals = self.conn.execute(
             "SELECT id FROM series WHERE season_id = %s AND name = 'Finals'",
             (season_id,),
         ).fetchone()
-        if not finals:
-            return None
+        return finals
+    
+    def get_champ(self, finals_id: str) -> dict:
         champ = self.conn.execute(
             """SELECT winner_id, COUNT(*) as wins FROM games
                WHERE series_id = %s AND completed = 1
                GROUP BY winner_id ORDER BY wins DESC LIMIT 1""",
-            (finals["id"],),
+            (finals_id,),
         ).fetchone()
+        return champ
+    
+    def get_champ_team(self, winner_id: str) -> dict:
+        team = self.conn.execute(
+            "SELECT city, mascot FROM teams WHERE id = %s", (winner_id,)
+        ).fetchone()
+        return team
+
+    def get_champion(self, season_id: str, min_wins: int = 4) -> dict | None:
+        """Return the Finals champion as {team_id, city, mascot}, or None if undecided."""
+        finals = self.get_finals_id(season_id)
+        if not finals:
+            return None
+        champ = self.get_champ(finals["id"])
         if not champ or champ["wins"] < min_wins:
             return None
-        t = self.conn.execute(
-            "SELECT city, mascot FROM teams WHERE id = %s", (champ["winner_id"],)
-        ).fetchone()
-        if not t:
+        champ_team = self.get_champ_team(champ["winner_id"])
+        # t = self.conn.execute(
+        #     "SELECT city, mascot FROM teams WHERE id = %s", (champ["winner_id"],)
+        # ).fetchone()
+        if not champ_team:
             return None
-        return {"team_id": champ["winner_id"], "city": t["city"], "mascot": t["mascot"]}
+        return {"team_id": champ["winner_id"], "city": champ_team["city"], "mascot": champ_team["mascot"]}
 
     def get_team_playoff_result(self, team_id: str, season_id: str) -> str | None:
         """Return a string like 'Won Finals' or 'Eliminated in 1v8', or None if no playoff appearance."""

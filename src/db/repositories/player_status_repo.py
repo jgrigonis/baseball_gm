@@ -59,12 +59,26 @@ class PlayerStatusRepository:
         ).fetchall()
         return [r["player_id"] for r in rows]
 
-    def get_player_ids_for_team(self, team_id: str) -> set[str]:
-        """Return all player_ids on a team (from team_players)."""
-        rows = self.conn.execute(
-            "SELECT player_id FROM team_players WHERE team_id = %s", (team_id,)
-        ).fetchall()
-        return {r["player_id"] for r in rows}
+    # def get_by_team_and_statuses(self, team_id: str, statuses: list) -> list[str]:
+    #     """Return player_ids on a specific team with a given status."""
+    #     rows = self.conn.execute(
+    #         f"""
+    #         SELECT tp.player_id
+    #         FROM team_players tp
+    #         JOIN player_status ps ON tp.player_id = ps.player_id
+    #         WHERE tp.team_id = %s AND ps.status IN ({statuses})
+    #         """,
+    #         (team_id,),
+    #     ).fetchall()
+    #     return [r["player_id"] for r in rows]
+
+    # Use get_player_ids_from_team_players
+    # def get_player_ids_for_team(self, team_id: str) -> set[str]:
+    #     """Return all player_ids on a team (from team_players)."""
+    #     rows = self.conn.execute(
+    #         "SELECT player_id FROM team_players WHERE team_id = %s", (team_id,)
+    #     ).fetchall()
+    #     return {r["player_id"] for r in rows}
 
     def set_40man_roster(
         self, team_player_ids: set[str], forty_man_ids: list[str]

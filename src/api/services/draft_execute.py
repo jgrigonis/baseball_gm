@@ -132,8 +132,8 @@ class BlitzDraft(SnakeDraft):
             # ).fetchall()
             player_ids = self.player_repo.get_player_ids_from_team_players(team_id)
             players = []
-            for row in player_ids:
-                p = self.player_repo.look_up(row["player_id"])
+            for pid in player_ids:
+                p = self.player_repo.look_up(pid)
                 if p:
                     players.append(p)
             if not players:

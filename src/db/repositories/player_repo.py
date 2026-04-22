@@ -15,6 +15,7 @@ Uses tables:
 """
 
 import datetime
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
@@ -199,6 +200,30 @@ class PlayerRepository:
         """,
             (league_id,),
         )
+    
+    def clear_stale_prospects(self, league_id: str) -> int:
+        cleared = 0
+        psr = PlayerStatusRepository(self.conn)
+        with self.conn.cursor() as cur:
+            rows = cur.execute(
+                """
+                SELECT p.id
+                FROM players p
+                JOIN player_status ps ON p.id = ps.player_id
+                LEFT JOIN team_players tp ON p.id = tp.player_id
+                WHERE ps.status = 'prospect'
+                AND tp.player_id IS NULL
+                AND p.league_id = %s
+                """,
+                (league_id,),
+            ).fetchall()
+            for row in rows:
+                player = self.look_up(row["id"])
+                if player and player.age >= 24:
+                    psr.set_status(player.id, "free_agent")
+                    cleared += 1
+        return cleared
+
 
     # ------------------------------------------------------------
     # READ
@@ -455,12 +480,13 @@ class PlayerRepository:
         """Helper: Get current UTC timestamp in ISO format."""
         return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    def get_player_ids_from_team_players(self, team_id: str) -> list[str]:
+    def get_player_ids_from_team_players(self, team_id: str) -> set[str]:
         player_ids = self.conn.execute(
             "SELECT player_id FROM team_players WHERE team_id = %s",
             (team_id,),
         ).fetchall()
-        return player_ids
+        return {r["player_id"] for r in player_ids}
+        # return player_ids
 
     def get_retired_players_season_stats(
         self, team_id: str, league_id: str, season_id: str

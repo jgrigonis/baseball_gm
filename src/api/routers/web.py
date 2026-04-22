@@ -44,6 +44,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
@@ -779,10 +780,15 @@ def save_roster_put(
             status_code=422,
         )
 
-    from src.db.repositories.player_status_repo import PlayerStatusRepository
-
+    player_repo = PlayerRepository(db)
     status_repo = PlayerStatusRepository(db)
-    team_player_ids = status_repo.get_player_ids_for_team(team_id)
+    team_player_ids = player_repo.get_player_ids_from_team_players(team_id)
+    # team_player_ids_old = status_repo.get_player_ids_for_team(team_id)
+    # for pid in team_player_ids_old:
+    #     print(pid)
+
+    # for pid in team_player_ids:
+    #     print(pid)
 
     for pid in forty_man_ids:
         if pid not in team_player_ids:

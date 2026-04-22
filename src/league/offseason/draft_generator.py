@@ -15,6 +15,7 @@ import csv
 import random
 from pathlib import Path
 
+from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
@@ -171,28 +172,32 @@ class DraftGenerator:
         Existing draftable players for this league — prospects with no team
         and either matching league_id or (for legacy rows) NULL league_id.
         """
+        dr = DraftRepository(self.conn)
         if league_id:
-            rows = self.conn.execute(
-                """
-                SELECT p.id
-                FROM players p
-                JOIN player_status ps ON p.id = ps.player_id
-                LEFT JOIN team_players tp ON p.id = tp.player_id
-                WHERE ps.status = 'prospect'
-                  AND tp.player_id IS NULL
-                  AND p.league_id = %s
-                """,
-                (league_id,),
-            ).fetchall()
+            rows = dr.get_prospects(league_id)
+            # rows = self.conn.execute(
+            #     """
+            #     SELECT p.id
+            #     FROM players p
+            #     JOIN player_status ps ON p.id = ps.player_id
+            #     LEFT JOIN team_players tp ON p.id = tp.player_id
+            #     WHERE ps.status = 'prospect'
+            #       AND tp.player_id IS NULL
+            #       AND p.league_id = %s
+            #     """,
+            #     (league_id,),
+            # ).fetchall()
         else:
-            rows = self.conn.execute("""
-                SELECT p.id
-                FROM players p
-                JOIN player_status ps ON p.id = ps.player_id
-                LEFT JOIN team_players tp ON p.id = tp.player_id
-                WHERE ps.status = 'prospect'
-                  AND tp.player_id IS NULL
-                """).fetchall()
+            # This is now a run time error
+            raise RuntimeError("No league_id set")
+            # rows = self.conn.execute("""
+            #     SELECT p.id
+            #     FROM players p
+            #     JOIN player_status ps ON p.id = ps.player_id
+            #     LEFT JOIN team_players tp ON p.id = tp.player_id
+            #     WHERE ps.status = 'prospect'
+            #       AND tp.player_id IS NULL
+            #     """).fetchall()
 
         players = []
         for row in rows:

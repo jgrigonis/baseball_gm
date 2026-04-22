@@ -176,6 +176,13 @@ class InjuryRepository:
         ).fetchall()
         return rows
 
+    def count_player_injuries(self, player_id: str, season_id: str) -> dict:
+        result = self.conn.execute(
+            "SELECT COUNT(*) FROM player_injury_log WHERE player_id = %s AND season_id = %s",
+            (player_id, season_id),
+        ).fetchone()
+        return result
+
     # ------------------------------------------------------------------
     # Write
     # ------------------------------------------------------------------
