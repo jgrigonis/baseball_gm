@@ -74,7 +74,7 @@ class TestDataFactory:
         gm_id = self._id()
         team = team or self.team()
         league = league or self._league or self.league()
-        is_ai = kwargs.get("is_ai", 1)
+        is_ai = kwargs.get("is_ai", True)
         self.db.execute(
             "INSERT INTO gms (id, league_id, team_id, display_name, is_ai)"
             " VALUES (%s, %s, %s, %s, %s)",

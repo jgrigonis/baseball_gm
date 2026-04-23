@@ -34,10 +34,13 @@ def init_db(conn) -> None:
     """
     try:
         for stmt in _split_statements(SCHEMA_SQL):
+            # print(stmt)
+            # print("*"*80)
             conn.execute(stmt)
-
+        # print("finished statements")
         run_migrations(conn)
         conn.commit()
+        # print("finished migration")
 
     except Exception:
         conn.rollback()

@@ -208,7 +208,6 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     # These were deferred so they run against the final rosters including draft picks.
     osr = OffseasonRepository(conn)
     prev_season_id = osr.find_season_with_offseason_steps(league_id, season_id)
-    # prev_season_id = _prev_season_id(conn, league_id, season_id)
     if prev_season_id:
         print(f"Running post-draft pipeline steps for season {prev_season_id}...")
         pipeline = OffseasonPipeline(conn, random.Random())

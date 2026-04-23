@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS teams (
 --   A future login system would link a new token to an existing user row.
 CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
-    session_token TEXT UNIQUE NOT NULL,   -- credential stored in browser cookie
+    session_token TEXT UNIQUE NOT NULL,   
     display_name  TEXT NOT NULL,
     password_hash TEXT,
     email         TEXT UNIQUE,

@@ -12,10 +12,7 @@ from src.game.game import Game
 from src.db.init import init_db
 
 # ── Repo imports ──────────────────────────────────────────────────────────────
-# from src.db.repositories.bullpen_roles_repo import (
-#     get_current_roles,
-#     set_roles,
-# )
+
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
@@ -43,10 +40,12 @@ def _session_conn(request):
             "No test database URL found. Set DATABASE_TEST_URL or pass --db-url."
         )
     conn = psycopg.connect(db_url, row_factory=dict_row)
+    conn.execute("DROP TABLE IF EXISTS leagues, seasons, teams, players, users, gms CASCADE")
+    conn.commit()
     init_db(conn)
     # Wipe any data left over from a previous test session.
     # CASCADE handles all dependent tables.  schema_migrations is preserved.
-    conn.execute("TRUNCATE TABLE leagues, seasons, teams, players, users CASCADE")
+    conn.execute("TRUNCATE TABLE leagues, seasons, teams, players, users, gms CASCADE")
     conn.commit()
     yield conn
     conn.close()

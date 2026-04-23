@@ -14,6 +14,7 @@ Coverage:
 
 import random
 from unittest.mock import patch, MagicMock
+import uuid
 
 import pytest
 
@@ -272,7 +273,7 @@ class TestBlitzDraftRunSnake:
     @pytest.fixture
     def blitz(self, db_conn, factory):
         factory.draft()
-        return BlitzDraft(db_conn, gm_preferences={}, rng=random.Random(42))
+        return BlitzDraft(db_conn, league_id=str(uuid.uuid4()), gm_preferences={}, rng=random.Random(42))
 
     def test_empty_pool_returns_empty(self, blitz):
         order = [{"team_id": "t1", "team_name": "T1"}]
@@ -284,7 +285,7 @@ class TestBlitzDraftRunSnake:
         team = factory.team()
         factory.gm(team=team)
 
-        blitz = BlitzDraft(db_conn, gm_preferences={}, rng=random.Random(42))
+        blitz = BlitzDraft(db_conn, league_id=str(uuid.uuid4()), gm_preferences={}, rng=random.Random(42))
         order = [{"team_id": team.id, "team_name": "T1"}]
 
         hi = factory.player_row()
@@ -311,6 +312,7 @@ class TestBlitzDraftRunSnake:
 
         blitz = BlitzDraft(
             db_conn,
+            league_id=str(uuid.uuid4()),
             gm_preferences={human_team.id: [p_pref_row.id, p_other_row.id]},
             rng=random.Random(42),
         )
@@ -332,9 +334,10 @@ class TestBlitzDraftRunSnake:
         factory.gm(team=human_team, is_ai=False)
 
         available_row = factory.player_row()
-
+        league_id = str(uuid.uuid4())
         blitz = BlitzDraft(
             db_conn,
+            league_id=league_id,
             gm_preferences={human_team.id: ["p-gone-does-not-exist"]},
             rng=random.Random(42),
         )
@@ -356,8 +359,9 @@ class TestBlitzDraftRunSnake:
         factory.gm(team=team2, is_ai=True)
 
         only = factory.player_row()
-
-        blitz = BlitzDraft(db_conn, gm_preferences={}, rng=random.Random(42))
+        
+        league_id = str(uuid.uuid4())
+        blitz = BlitzDraft(db_conn, league_id=league_id, gm_preferences={}, rng=random.Random(42))
         order = [
             {"team_id": team1.id, "team_name": "T1"},
             {"team_id": team2.id, "team_name": "T2"},
