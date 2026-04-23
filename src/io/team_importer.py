@@ -38,7 +38,8 @@ class TeamImporter:
         self,
         league_id: str,
         season_id: str,
-        path: str,
+        year: str,
+        csv_file: str,
         city: str,
         mascot: str,
         *,
@@ -46,10 +47,12 @@ class TeamImporter:
         allow_roster_update=False,
         force_new=False,
     ) -> TeamRecord:
-        full_path = Path(TEAM_FILES_DIR) / path
+        full_path = Path(TEAM_FILES_DIR) / league_id / year / csv_file
         if not full_path.exists():
             raise FileNotFoundError(full_path)
         csv_hash = self.hash_file(full_path)
+        # TODO determine if we really want to put this whole string
+        csv_path = Path(league_id) / year / csv_file
 
         try:
             self.conn.execute("BEGIN")
@@ -84,7 +87,7 @@ class TeamImporter:
                 team_id = self.team_repo.create(
                     city=city,
                     mascot=mascot,
-                    source_csv=path,
+                    source_csv=str(csv_path),
                     source_hash=csv_hash,
                 )
 
@@ -135,7 +138,7 @@ class TeamImporter:
                 city=city,
                 mascot=mascot,
                 players=tuple(players),
-                source_csv=path,
+                source_csv=csv_path,
                 source_hash=csv_hash,
             )
 

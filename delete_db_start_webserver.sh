@@ -27,6 +27,9 @@ if [ "$SKIP_CONFIRM" = false ]; then
     fi
 fi
 
+# clear team_files
+rm -rf team_files/*
+
 # echo "$PGUSER"
 # Do the needful
 psql -U "$PGUSER" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'baseball_manager';" postgres

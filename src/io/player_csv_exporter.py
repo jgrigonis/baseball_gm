@@ -12,12 +12,12 @@ from src.util.locations import TEAM_FILES_DIR
 
 class PlayerCSVExporter:
     @staticmethod
-    def write(
+    def write_csv(
         team: TeamRecord,
         year,
         filename,
+        league_id: str,
         force_overwrite=False,
-        league_id: str | None = None,
     ):
         """
         Write team players to CSV file.

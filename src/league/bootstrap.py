@@ -76,11 +76,8 @@ class LeagueBootstrapper:
             team = self.team_importer.import_csv(
                 league_id=league_id,
                 season_id=season_id,
-                path=str(
-                    Path(league_id)
-                    / str(manifest.get("season_year", 2026))
-                    / team_def["csv"]
-                ),
+                year=str(manifest.get("season_year", 2026)),
+                csv_file=team_def["csv"],
                 city=team_def["city"],
                 mascot=team_def["mascot"],
                 allow_existing=True,
