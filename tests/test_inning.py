@@ -321,13 +321,13 @@ class TestEdgeCases:
     def test_negative_inning_number_via_direct_assignment(self):
         """Setting negative inning number raises ValueError."""
         inning = Inning()
-        with pytest.raises(ValueError, match="Inning number must be at least 1"):
+        with pytest.raises(TypeError, match="Inning number must be an integer greater than or equal to 1"):
             inning.number = -1
 
     def test_excessive_outs_via_direct_assignment(self):
         """Setting more than 3 outs raises ValueError."""
         inning = Inning()
-        with pytest.raises(ValueError, match="Outs cannot exceed 3"):
+        with pytest.raises(ValueError, match="Outs must be an integer between 0 and 3, got 10"):
             inning.outs = 10
 
     def test_record_out_beyond_three(self):
@@ -352,7 +352,7 @@ class TestEdgeCases:
     def test_zero_inning_number(self):
         """Setting inning to 0 raises ValueError."""
         inning = Inning()
-        with pytest.raises(ValueError, match="Inning number must be at least 1"):
+        with pytest.raises(TypeError, match="Inning number must be an integer greater than or equal to 1"):
             inning.number = 0
 
     def test_very_high_inning_number(self):
@@ -436,12 +436,12 @@ class TestPropertyValidation:
 
     def test_number_rejects_negative(self):
         inning = Inning()
-        with pytest.raises(ValueError, match="Inning number must be at least 1"):
+        with pytest.raises(TypeError, match="Inning number must be an integer greater than or equal to 1"):
             inning.number = -5
 
     def test_number_rejects_zero(self):
         inning = Inning()
-        with pytest.raises(ValueError, match="Inning number must be at least 1"):
+        with pytest.raises(TypeError, match="Inning number must be an integer greater than or equal to 1"):
             inning.number = 0
 
     def test_number_accepts_positive(self):
@@ -461,12 +461,12 @@ class TestPropertyValidation:
 
     def test_outs_rejects_negative(self):
         inning = Inning()
-        with pytest.raises(ValueError, match="Outs cannot be negative"):
+        with pytest.raises(ValueError, match="Outs must be an integer between 0 and 3"):
             inning.outs = -1
 
     def test_outs_rejects_above_three(self):
         inning = Inning()
-        with pytest.raises(ValueError, match="Outs cannot exceed 3"):
+        with pytest.raises(ValueError, match="Outs must be an integer between 0 and 3"):
             inning.outs = 4
 
     def test_outs_accepts_zero(self):
@@ -482,12 +482,12 @@ class TestPropertyValidation:
 
     def test_outs_rejects_float(self):
         inning = Inning()
-        with pytest.raises(TypeError, match="Outs must be an integer"):
+        with pytest.raises(ValueError, match="Outs must be an integer"):
             inning.outs = 2.5
 
     def test_outs_rejects_string(self):
         inning = Inning()
-        with pytest.raises(TypeError, match="Outs must be an integer"):
+        with pytest.raises(ValueError, match="Outs must be an integer"):
             inning.outs = "2"
 
     def test_is_over_property(self):

@@ -112,12 +112,13 @@ class DraftRepository:
         if row:
             return row["id"]
 
-    def get_draft(self, draft_id: str) -> dict:
+    def get_draft(self, draft_id: str) -> dict | None:
         draft = self.conn.execute(
             "SELECT id, league_id, season_id, format, state FROM drafts WHERE id = %s",
             (draft_id,),
         ).fetchone()
-        return dict(draft)
+        if draft:
+            return dict(draft) 
 
     def get_team_id_draft_order(self, draft_id: str) -> list[str]:
         order = self.conn.execute(
