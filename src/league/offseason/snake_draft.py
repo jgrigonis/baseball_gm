@@ -243,6 +243,7 @@ class SnakeDraft:
     # -----------------------------------------------------------------------
 
     # This code is generally overridden in the UI
+    # It does run in cligr
     def _reassign_rosters(self, draft_order: list[dict]) -> None:
         """Re-run RosterAssigner for every team after the draft."""
         assigner = RosterAssigner()
@@ -252,8 +253,8 @@ class SnakeDraft:
 
             player_ids = self.player_repo.get_player_ids_from_team_players(team_id)
             players = []
-            for row in player_ids:
-                p = self.player_repo.look_up(row["player_id"])
+            for pid in player_ids:
+                p = self.player_repo.look_up(pid)
                 if p:
                     players.append(p)
 

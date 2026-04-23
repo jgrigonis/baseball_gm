@@ -31,9 +31,14 @@ Common options (all subcommands):
 """
 
 import argparse
+import contextlib
 import datetime
+import io
+import logging
+import os
 import random
 import shutil
+import subprocess
 import sys
 import uuid
 from pathlib import Path
@@ -41,7 +46,13 @@ from pathlib import Path
 from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
 from src.db.init import init_db
+from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.playoff_repo import PlayoffRepository
+from src.db.repositories.team_game_repo import TeamGameRepository
+from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
     load_manifest,
@@ -50,8 +61,39 @@ from src.league.manifest_helper import (
     find_missing_team_files,
     create_team_files,
 )
+from src.league.offseason.build_season_stats import build_season
+from src.league.offseason.offseason_pipeline import OffseasonPipeline
+from src.league.play_season import play_game
+from src.league.playoffs.play_playoffs import (
+    play_series,
+    generate_round_games,
+    original_seed,
+    _HOME_MAP_BO7,
+    _SEMI_18_45_OFFSETS,
+    _SEMI_27_36_OFFSETS,
+    _FINAL_OFFSETS
+)
+from src.league.playoffs.setup_playoffs import (
+    get_top_N,
+    build_bracket,
+    demote_extra_starters,
+)
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
+from src.league.statistics.league_leaders import (
+    fetch_leaders,
+    display as display_leaders,
+)
+from src.league.statistics.league_totals import (
+    fetch_totals,
+    display as display_totals,
+)
+from src.league.statistics.view_leaderboards import (
+    show_all_leaderboards,
+    calculate_min_pa,
+)
+from src.stats.loader import StatsLoader
 from src.util.locations import MANIFEST_FILES_DIR, TEAM_FILES_DIR, TEMP_FILES, LOG_FILES
+from src.util.logger import setup_logger
 
 # Database is configured via DATABASE_URL environment variable
 DEFAULT_YEAR = 2025
@@ -306,8 +348,6 @@ def clear_db() -> None:
     Drop and recreate the Postgres database.
     Reads DATABASE_URL from environment to find the DB name.
     """
-    import os, subprocess
-
     url = os.environ.get("DATABASE_URL", "")
     # Extract db name from URL: postgresql://user@host/dbname
     db_name = url.rstrip("/").rsplit("/", 1)[-1].split("?")[0] if "/" in url else None
@@ -419,7 +459,7 @@ def _bootstrap_first_season(
     # 1. Create the league record first so we have league_id for file paths
     league_id = str(uuid.UUID(int=rng.getrandbits(128)).hex)
     league_repo = LeagueRepository(conn)
-    league_id = league_repo.create_league(manifest["league_name"], league_id)
+    league_id = league_repo.get_or_create_by_name(manifest["league_name"], league_id)
     conn.commit()  # moved from league_repo might need to move down...
 
     # 2. Create team CSV files in the right location: {year}/{league_id}/
@@ -468,10 +508,6 @@ def _create_next_season_cli(
     Create the next season record directly in DB (same teams, new schedule).
     Returns (new_season_id, team_ids).
     """
-    import datetime
-    import uuid as _uuid
-    from src.league.schedule import ScheduleGenerator, save_schedule_to_db
-
     current = conn.execute(
         "SELECT name FROM seasons WHERE id = %s", (current_season_id,)
     ).fetchone()
@@ -501,7 +537,7 @@ def _create_next_season_cli(
         print(f"  Season {next_year} already exists")
         return season_id, team_ids
 
-    season_id = str(_uuid.uuid4())
+    season_id = str(uuid.uuid4())
     conn.execute(
         "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
         (season_id, next_year, new_name),
@@ -523,7 +559,7 @@ def _create_next_season_cli(
         )
 
     start_date = datetime.date(next_year, 4, 1)
-    rng = __import__("random").Random()
+    rng = random.Random()
     scheduler = ScheduleGenerator(rng=rng)
     schedule = scheduler.create_schedule(
         season_id=season_id,
@@ -535,10 +571,7 @@ def _create_next_season_cli(
     save_schedule_to_db(conn, schedule)
 
     # Bootstrap rotations and bullpen roles for each team in the new season
-    from src.league.bootstrap import LeagueBootstrapper
-
     boot = LeagueBootstrapper(conn, rng=rng)
-    from src.db.repositories.team_repo import TeamRepository
 
     team_repo = TeamRepository(conn)
     teams = [team_repo.get(tid) for tid in team_ids]
@@ -555,13 +588,6 @@ def _play_regular_season(
     conn, season_id: str, league_id: str, seed: int | None, game_logs: bool
 ):
     """Play all incomplete regular season games."""
-    import random
-    from argparse import Namespace
-    from src.db.repositories.games_repo import GameRepository
-    from src.db.repositories.team_game_repo import TeamGameRepository
-    from src.db.repositories.team_repo import TeamRepository
-    from src.db.repositories.team_rotations_repo import TeamRotationsRepository
-    from src.league.play_season import play_game
 
     league_row = conn.execute(
         "SELECT mode FROM leagues WHERE id = %s", (league_id,)
@@ -581,7 +607,7 @@ def _play_regular_season(
         return
 
     rng = random.Random(seed)
-    args = Namespace(logs=game_logs)
+    args = argparse.Namespace(logs=game_logs)
     completed = 0
     errors = 0
 
@@ -620,8 +646,6 @@ def _play_regular_season(
 
     # Final stats rollup
     try:
-        from src.league.offseason.build_season_stats import build_season
-
         n = build_season(conn, season_id)
         print(f"  Stats rollup: {n} rows")
     except Exception as e:
@@ -632,12 +656,6 @@ def _play_regular_season(
 
 def _setup_playoffs(conn, season_id: str, year: int):
     """Seed top 8, build bracket, demote extra starters."""
-    from src.league.playoffs.setup_playoffs import (
-        get_top_N,
-        build_bracket,
-        demote_extra_starters,
-    )
-
     existing = conn.execute(
         "SELECT COUNT(*) FROM series WHERE season_id = %s", (season_id,)
     ).fetchone()["count"]
@@ -650,12 +668,10 @@ def _setup_playoffs(conn, season_id: str, year: int):
         "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
         (season_id,),
     ).fetchone()
-    from datetime import date, timedelta
-
     playoff_start = (
-        date.fromisoformat(last_game["d"]) + timedelta(days=5)
+        datetime.date.fromisoformat(last_game["d"]) + datetime.timedelta(days=5)
         if last_game and last_game["d"]
-        else date(year, 10, 1)
+        else datetime.date(year, 10, 1)
     )
     demote_extra_starters(conn, season_id, seeds, keep=4)
     build_bracket(conn, season_id, seeds, playoff_start)
@@ -666,34 +682,19 @@ def _play_playoffs(
     conn, season_id: str, league_id: str, seed: int | None, game_logs: bool
 ):
     """Play the full playoff bracket to completion."""
-    import random
-    from argparse import Namespace
-    from src.db.repositories.games_repo import GameRepository
-    from src.db.repositories.team_game_repo import TeamGameRepository
-    from src.db.repositories.team_repo import TeamRepository
-    from src.db.repositories.team_rotations_repo import TeamRotationsRepository
-    from src.league.playoffs.play_playoffs import (
-        get_seeds,
-        get_series_id,
-        play_series,
-        generate_round_games,
-        original_seed,
-    )
-
-    league_row = conn.execute(
-        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
-    league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
+    lr = LeagueRepository(conn)
+    league_mode = lr.get_league_mode(league_id)
+    pr = PlayoffRepository(conn)
 
     rng = random.Random(seed)
-    args = Namespace(logs=game_logs, season_id=season_id)
+    args = argparse.Namespace(logs=game_logs, season_id=season_id)
 
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
     rotations_repo = TeamRotationsRepository(conn)
 
-    seeds = get_seeds(conn, season_id)
+    seeds = pr.get_seeds(season_id)
 
     first_game = conn.execute(
         """SELECT g.game_date FROM games g
@@ -702,16 +703,14 @@ def _play_playoffs(
            ORDER BY g.game_date LIMIT 1""",
         (season_id,),
     ).fetchone()
-    from datetime import date
-
     playoff_start = (
-        date.fromisoformat(first_game["game_date"]) if first_game else date.today()
+        datetime.date.fromisoformat(first_game["game_date"])
     )
 
     print("  Playing Round 1...")
     r1_winners = {}
     for name, hi, lo in [("1v8", 1, 8), ("2v7", 2, 7), ("3v6", 3, 6), ("4v5", 4, 5)]:
-        sid = get_series_id(conn, season_id, name)
+        sid = pr.get_series_id(season_id, name)
         winner = play_series(
             conn,
             args,
@@ -734,10 +733,14 @@ def _play_playoffs(
         ("[1,8]v[4,5]", r1_winners["1v8"], r1_winners["4v5"]),
         ("[2,7]v[3,6]", r1_winners["2v7"], r1_winners["3v6"]),
     ]:
-        sid = get_series_id(conn, season_id, name)
+        sid = pr.get_series_id(season_id, name)
         sa, sb = original_seed(seeds, team_a), original_seed(seeds, team_b)
         high = team_a if sa < sb else team_b
         low = team_b if sa < sb else team_a
+        if name == "[1,8]v[4,5]":
+            _SEMI_OFFSETS = _SEMI_18_45_OFFSETS
+        else:
+            _SEMI_OFFSETS = _SEMI_27_36_OFFSETS
         generate_round_games(
             conn, season_id, sid, high, low, _HOME_MAP_BO7, playoff_start, _SEMI_OFFSETS
         )
@@ -762,7 +765,7 @@ def _play_playoffs(
     fb, sb = semi_winners[1]
     high = fa if sa < sb else fb
     low = fb if sa < sb else fa
-    finals_id = get_series_id(conn, season_id, "Finals")
+    finals_id = pr.get_series_id(season_id, "Finals")
     generate_round_games(
         conn,
         season_id,
@@ -796,9 +799,6 @@ def _play_playoffs(
 
 def _run_offseason_pipeline(conn, season_id: str, league_id: str, seed: int | None):
     """Run the full offseason pipeline (AI snake draft runs for all teams)."""
-    import random
-    from src.league.offseason.offseason_pipeline import OffseasonPipeline
-
     rng = random.Random(seed)
     pipeline = OffseasonPipeline(conn, rng)
     # CLI mode: let run_draft execute (all-AI snake draft — do NOT pre-mark done)
@@ -809,9 +809,6 @@ def _make_logger(name: str, enabled: bool):
     """Return a logger if enabled, else None."""
     if not enabled:
         return None
-    import logging
-    from src.util.logger import setup_logger
-
     return setup_logger(
         name=name,
         level=logging.INFO,
@@ -823,10 +820,7 @@ def _make_logger(name: str, enabled: bool):
 
 def _run_reports(season_id: str, logs: bool = False):
     """Run leaderboard and stats reports by importing directly."""
-    from src.db.connection import get_connection as _get_conn
-    from src.stats.loader import StatsLoader
-
-    conn = _get_conn()
+    conn = get_connection()
 
     # --- Season label for display ---
     row = conn.execute(
@@ -837,11 +831,6 @@ def _run_reports(season_id: str, logs: bool = False):
     # --- Leaderboards (view_leaderboards) ---
     print("  Leaderboards...")
     try:
-        from src.league.statistics.view_leaderboards import (
-            show_all_leaderboards,
-            calculate_min_pa,
-        )
-
         logger = _make_logger("view_leaderboards", logs)
 
         min_pa, min_ip = calculate_min_pa(season_id, logger=logger)
@@ -855,11 +844,6 @@ def _run_reports(season_id: str, logs: bool = False):
     # --- League Totals ---
     print("  League Totals...")
     try:
-        from src.league.statistics.league_totals import (
-            fetch_totals,
-            display as display_totals,
-        )
-
         logger = _make_logger("league_totals", logs)
         totals = fetch_totals(conn, season_id)
         display_totals(totals, season_label, logger=logger)
@@ -869,11 +853,6 @@ def _run_reports(season_id: str, logs: bool = False):
     # --- League Leaders ---
     print("  League Leaders...")
     try:
-        from src.league.statistics.league_leaders import (
-            fetch_leaders,
-            display as display_leaders,
-        )
-
         logger = _make_logger("league_leaders", logs)
         with StatsLoader() as loader:
             all_players = loader.load_season_players_with_stats(season_id)
@@ -1084,8 +1063,6 @@ def cmd_reports(args) -> None:
         print(f"\n📊 Reports for {year} (season {season_id[:8]}...)")
 
         if range_mode:
-            import io, contextlib
-
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 _run_reports(season_id, logs=args.logs)

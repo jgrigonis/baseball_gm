@@ -18,15 +18,6 @@ class PlayoffRepository:
     def get_series_winner(self, series_id: str, best_of: int) -> str | None:
         wins_needed = _WINS_NEEDED[best_of]
         rows = self.get_win_count(series_id)
-        # rows = self.conn.execute(
-        #     """
-        #     SELECT winner_id, COUNT(*) AS wins
-        #     FROM games
-        #     WHERE series_id = %s AND completed = 1
-        #     GROUP BY winner_id
-        #     """,
-        #     (series_id,),
-        # ).fetchall()
         for row in rows:
             if row["wins"] >= wins_needed:
                 return row["winner_id"]

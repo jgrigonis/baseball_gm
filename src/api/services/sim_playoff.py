@@ -77,8 +77,7 @@ def _ensure_round_games(
 ) -> None:
     """Generate games for semis or finals once prior round is decided."""
     pr = PlayoffRepository(conn)
-    playoff_start = pr.get_playoff_start(season_id) or date.today()
-    # TODO date.today() makes no sense here or ever in this code.
+    playoff_start = pr.get_playoff_start(season_id)
 
     if round_idx == 1:  # Semifinals
         r1_winners = {
@@ -198,13 +197,13 @@ def sim_playoff(
     gm_repo = GMRepository(conn)
     inj_repo = InjuryRepository(conn, league_id)
     league = lr.get_by_id(league_id)
+    league_mode = lr.get_league_mode(league_id)
     if not league:
         raise ValueError(f"League {league_id} not found")
     if league["state"] != "playoffs":
         raise ValueError(f"League is in state '{league['state']}' — not in playoffs")
 
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
-    league_mode = dict(league).get("mode", "blitz") or "blitz"
     playoff_repo = PlayoffRepository(conn)
     seeds = playoff_repo.get_seeds(season_id)
     rng = random.Random()
