@@ -1594,7 +1594,7 @@ async def save_bullpen(
         # Evict any bullpen-assigned pitchers who are still in the DB rotation
         bullpen_ids = {a["player_id"] for a in assignments}
         in_rotation = bp_repo.get_active_rotation_player_ids(
-            db, gm["team_id"], season_id
+            gm["team_id"], season_id
         )
         for pid in bullpen_ids & in_rotation:
             rot_repo.remove_from_rotation(
