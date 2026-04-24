@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS leagues (
                                  'lobby', 'draft', 'preseason', 'season',
                                  'playoffs', 'offseason', 'complete'
                              )),
-    current_date         TEXT,
     commissioner_gm_id   TEXT,
     draft_window_sec     INTEGER NOT NULL DEFAULT 300,
     created_at TEXT DEFAULT (NOW())

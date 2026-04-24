@@ -21,6 +21,7 @@ import random
 import string
 import uuid
 import traceback
+from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -2436,13 +2437,28 @@ def player_panel(
     season_repo = SeasonRepository(db)
     pss_repo = PlayerSeasonStatsRepository(db)
 
+    league_row = LeagueRepository(db).get_by_id(league_id)
+    _current_date: date | None = None
+    if league_row:
+        _season_id = season_repo.get_current_id_for_league(league_id)
+        _date_str = _current_league_date(db, _season_id, league_row.get("state", ""))
+        if _date_str:
+            try:
+                _current_date = date.fromisoformat(_date_str)
+            except ValueError:
+                pass
+
     def _load(pid: str) -> dict | None:
         p = player_repo.get_with_skills(pid)
         if not p:
             return None
 
         status = status_repo.get_status(pid) or "unassigned"
-        en = energy_repo.get(pid)
+        en = (
+            energy_repo.get_with_recovery(pid, _current_date, p.get("durability", 50))
+            if _current_date
+            else energy_repo.get(pid)
+        )
         inj_log = inj_repo.get_injury_log(pid)
         team = team_repo.get_for_player(pid)
 
@@ -2543,7 +2559,7 @@ def player_panel(
         best_def_label = ratings.get("best_def_label", "DEF") if ratings else "DEF"
 
         energy = None
-        if en:
+        if grades.player_type != "pitcher":
             energy = {
                 "current": round(en.current_energy * 100),
                 "max": round(en.max_energy * 100),
@@ -2551,9 +2567,19 @@ def player_panel(
                 "last_game_date": en.last_game_date,
                 "season_games_played": en.season_games_played,
             }
-        elif grades.player_type == "pitcher":
-            ps = PitcherStateRepository(db, league_id).get(pid)
+        else:
+            ps_repo = PitcherStateRepository(db, league_id)
+            ps = (
+                ps_repo.get_with_recovery(pid, _current_date, p.get("recovery", 50))
+                if _current_date
+                else ps_repo.get(pid)
+            )
             if ps:
+                days_rest = (
+                    (_current_date - ps.last_game_date).days - 1
+                    if _current_date and ps.last_game_date
+                    else None
+                )
                 energy = {
                     "current": round(ps.current_energy * 100),
                     "max": round(ps.max_energy * 100),
@@ -2561,6 +2587,7 @@ def player_panel(
                     "last_game_date": ps.last_game_date,
                     "last_pitch_count": ps.last_pitch_count,
                     "season_games_played": None,
+                    "days_rest": days_rest,
                 }
 
         # Injury status

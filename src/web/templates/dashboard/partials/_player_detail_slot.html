@@ -62,6 +62,9 @@
      {% if player.energy.consecutive_days %}
        <span>{{ player.energy.consecutive_days }}d streak</span>
      {% endif %}
+     {% if player.energy.days_rest %}
+       <span>{{ player.energy.days_rest }} days rest</span>
+     {% endif %}
      {% if player.energy.last_pitch_count %}
        <span>Last: {{ player.energy.last_pitch_count }}p</span>
      {% endif %}

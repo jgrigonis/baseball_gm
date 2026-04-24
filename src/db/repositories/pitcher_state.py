@@ -129,13 +129,6 @@ class PitcherState:
     def is_fresh(self) -> bool:
         return self.current_energy >= _RECOVERY_THRESHOLD
 
-    @property
-    def days_since_last_game(self) -> Optional[int]:
-        if not self.last_game_date:
-            return None
-        return (date.today() - self.last_game_date).days
-
-
 # ---------------------------------------------------------------------------
 # Repository
 # ---------------------------------------------------------------------------
@@ -210,7 +203,8 @@ class PitcherStateRepository:
             return state
 
         days_rest = max(0, (game_date - state.last_game_date).days - 1)
-
+        if days_rest > 0:
+            state.consecutive_days = 0
         # Energy: exponential approach toward max_energy (not 1.0)
         # This will never hit with the max set above
         # if days_rest < 0:
