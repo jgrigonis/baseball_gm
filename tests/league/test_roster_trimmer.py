@@ -368,9 +368,12 @@ class TestRosterTrimmerRun:
         trimmer.run(s1)
 
         # Verify via a fresh query
-        remaining = db_conn.execute("""SELECT COUNT(*) FROM team_players tp
+        remaining = db_conn.execute(
+            """SELECT COUNT(*) FROM team_players tp
                JOIN player_status ps ON tp.player_id = ps.player_id
-               WHERE tp.team_id = 't1' AND ps.status = 'minors'""").fetchone()["count"]
+               WHERE tp.team_id = %s AND ps.status = 'minors'""",
+               (t1, )
+        ).fetchone()["count"]
         assert remaining == MINORS_LIMIT
 
     @pytest.mark.slow
