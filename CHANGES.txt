@@ -1,3 +1,10 @@
+0.5.4
+-----
+
+- All unit tests passing
+- Everything working apart from small bugs
+
+
 0.5.3
 -----
 
