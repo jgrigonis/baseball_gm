@@ -88,6 +88,13 @@ class PlayoffRepository:
             (series_id, season_id, name),
         )
 
+    def has_champion(self, season_id: str) -> bool:
+        """Return True if the Finals series has been decided."""
+        finals_id = self.get_series_id(season_id, "Finals")
+        if not finals_id:
+            return False
+        return self.is_decided(finals_id, best_of=7)
+
     def existing_series_exist(self, season_id: str) -> bool:
         """Return True is there is already an existing series, else False."""
         existing_series = self.conn.execute(

@@ -899,24 +899,24 @@ def cmd_run_season(args) -> None:
                 sys.exit(0)
 
     sr = SeasonRepository(conn)
-    season_row = sr.get_oldest_incomplete_for_league(league_id)
+    pr = PlayoffRepository(conn)
 
-    if not season_row:
-        # All existing seasons are complete — create the next one
-        seasons = sr.get_seasons_for_league(league_id)
-        if not seasons:
-            print("❌ No season found for this league.")
-            sys.exit(1)
-        last = seasons[0]
-        next_year = last["year"] + 1
-        print(f"  All seasons complete. Creating season {next_year}...")
+    seasons = sr.get_seasons_for_league(league_id)
+    if not seasons:
+        print("❌ No season found for this league.")
+        sys.exit(1)
+
+    last = seasons[0]
+    current_season_id = last["id"]
+    current_year = last["year"]
+
+    if pr.has_champion(current_season_id):
+        next_year = current_year + 1
+        print(f"  Season {current_year} complete. Creating season {next_year}...")
         current_season_id, _ = _create_next_season_cli(
-            conn, league_id, last["id"], next_year
+            conn, league_id, current_season_id, next_year
         )
         current_year = next_year
-    else:
-        current_season_id = season_row["id"]
-        current_year = season_row["year"]
 
     for n in range(args.num_years):
         year = current_year + n
