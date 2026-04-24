@@ -198,6 +198,20 @@ class SeasonRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_oldest_incomplete_for_league(self, league_id: str) -> dict | None:
+        """Return the oldest season that still has unplayed games, or None."""
+        row = self.conn.execute(
+            """SELECT s.id, s.year FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s
+                 AND EXISTS (
+                   SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 0
+                 )
+               ORDER BY s.year ASC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_current_id_for_league(self, league_id: str) -> str | None:
         """Return the most recent season ID for a league, or None."""
         row = self.conn.execute(

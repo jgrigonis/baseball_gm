@@ -231,6 +231,13 @@ class LeagueRepository:
         else:
             return "blitz"
 
+    def list_all(self) -> list[dict]:
+        """Return all leagues ordered by creation time (id, name, state)."""
+        rows = self.conn.execute(
+            "SELECT id, name, state FROM leagues ORDER BY created_at"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def set_state(self, league_id: str, state: str) -> None:
         """Set the league to state: state."""
         self.conn.execute(

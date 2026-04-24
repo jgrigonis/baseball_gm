@@ -51,6 +51,7 @@ from src.db.connection import get_connection
 from src.db.init import init_db
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -396,9 +397,7 @@ def pick_league_interactively() -> str | None:
     """Show a numbered list of leagues from the DB and return the chosen league_id."""
     try:
         conn = get_connection()
-        rows = conn.execute(
-            "SELECT id, name, state FROM leagues ORDER BY created_at"
-        ).fetchall()
+        rows = LeagueRepository(conn).list_all()
     except Exception as e:
         print(f"  Could not read leagues: {e}")
         return None
@@ -516,9 +515,10 @@ def _create_next_season_cli(
     Create the next season record directly in DB (same teams, new schedule).
     Returns (new_season_id, team_ids).
     """
-    current = conn.execute(
-        "SELECT name FROM seasons WHERE id = %s", (current_season_id,)
-    ).fetchone()
+    sr = SeasonRepository(conn)
+    lr = LeagueRepository(conn)
+
+    current = sr.get_season(current_season_id)
     current_name = current["name"] if current else f"Season {next_year - 1}"
     parts = current_name.rsplit(" ", 1)
     try:
@@ -527,44 +527,19 @@ def _create_next_season_cli(
         new_name = f"Season {next_year}"
 
     # Check if already exists
-    existing = conn.execute(
-        """SELECT ls.season_id FROM league_seasons ls
-           JOIN seasons s ON s.id = ls.season_id
-           WHERE ls.league_id = %s AND s.year = %s""",
-        (league_id, next_year),
-    ).fetchone()
+    existing = sr.get_by_league_and_year(league_id, next_year)
     if existing:
-        season_id = existing["season_id"]
-        team_ids = [
-            r["team_id"]
-            for r in conn.execute(
-                "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
-                (league_id, season_id),
-            ).fetchall()
-        ]
+        season_id = existing["id"]
+        team_ids = lr.get_league_teams(league_id, season_id)
         print(f"  Season {next_year} already exists")
         return season_id, team_ids
 
-    season_id = str(uuid.uuid4())
-    conn.execute(
-        "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)",
-        (season_id, next_year, new_name),
-    )
-    conn.execute(
-        "INSERT INTO league_seasons (league_id, season_id) VALUES (%s, %s)",
-        (league_id, season_id),
-    )
+    season_id = sr.create_season(next_year, new_name)
+    lr.assign_season_to_league(league_id, season_id)
 
-    team_rows = conn.execute(
-        "SELECT team_id FROM league_season_teams WHERE league_id = %s AND season_id = %s",
-        (league_id, current_season_id),
-    ).fetchall()
-    team_ids = [r["team_id"] for r in team_rows]
+    team_ids = lr.get_league_teams(league_id, current_season_id)
     for tid in team_ids:
-        conn.execute(
-            "INSERT INTO league_season_teams (league_id, season_id, team_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-            (league_id, season_id, tid),
-        )
+        lr.assign_team_to_league(league_id, season_id, tid)
 
     start_date = datetime.date(next_year, 4, 1)
     rng = random.Random()
@@ -597,10 +572,7 @@ def _play_regular_season(
 ):
     """Play all incomplete regular season games."""
 
-    league_row = conn.execute(
-        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
-    ).fetchone()
-    league_mode = dict(league_row).get("mode", "blitz") if league_row else "blitz"
+    league_mode = LeagueRepository(conn).get_league_mode(league_id)
 
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
@@ -664,21 +636,15 @@ def _play_regular_season(
 
 def _setup_playoffs(conn, season_id: str, year: int):
     """Seed top 8, build bracket, demote extra starters."""
-    existing = conn.execute(
-        "SELECT COUNT(*) FROM series WHERE season_id = %s", (season_id,)
-    ).fetchone()["count"]
-    if existing > 0:
+    if PlayoffRepository(conn).existing_series_exist(season_id):
         print("  Playoff bracket already set up")
         return
 
     seeds = get_top_N(conn, season_id)
-    last_game = conn.execute(
-        "SELECT MAX(game_date) as d FROM games WHERE season_id = %s AND completed = 1",
-        (season_id,),
-    ).fetchone()
+    last_game = GameRepository(conn).last_game_date(season_id)
     playoff_start = (
         datetime.date.fromisoformat(last_game["d"]) + datetime.timedelta(days=5)
-        if last_game and last_game["d"]
+        if last_game
         else datetime.date(year, 10, 1)
     )
     demote_extra_starters(conn, season_id, seeds, keep=4)
@@ -704,13 +670,7 @@ def _play_playoffs(
 
     seeds = pr.get_seeds(season_id)
 
-    first_game = conn.execute(
-        """SELECT g.game_date FROM games g
-           JOIN series s ON g.series_id = s.id
-           WHERE s.season_id = %s AND s.name IN ('1v8','2v7','3v6','4v5')
-           ORDER BY g.game_date LIMIT 1""",
-        (season_id,),
-    ).fetchone()
+    first_game = pr.get_first_game(season_id)
     playoff_start = datetime.date.fromisoformat(first_game["game_date"])
 
     print("  Playing Round 1...")
@@ -797,9 +757,7 @@ def _play_playoffs(
         league_mode=league_mode,
     )
 
-    champ_name = conn.execute(
-        "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (champion,)
-    ).fetchone()["name"]
+    champ_name = TeamRepository(conn).get_name(champion)
     print(f"  🏆 Champion: {champ_name}")
 
 
@@ -829,9 +787,7 @@ def _run_reports(season_id: str, logs: bool = False):
     conn = get_connection()
 
     # --- Season label for display ---
-    row = conn.execute(
-        "SELECT name, year FROM seasons WHERE id = %s", (season_id,)
-    ).fetchone()
+    row = SeasonRepository(conn).get_season(season_id)
     season_label = f"{row['name']} ({row['year']})" if row else season_id[:8]
 
     # --- Leaderboards (view_leaderboards) ---
@@ -932,9 +888,7 @@ def cmd_run_season(args) -> None:
     # Resolve league
     league_id = args.league_id
     if not league_id:
-        rows = conn.execute(
-            "SELECT id, name, state FROM leagues ORDER BY created_at"
-        ).fetchall()
+        rows = LeagueRepository(conn).list_all()
         if not rows:
             print("❌ No leagues found in DB.")
             sys.exit(1)
@@ -946,20 +900,25 @@ def cmd_run_season(args) -> None:
             if not league_id:
                 sys.exit(0)
 
-    # Find the most recent season for this league
-    season_row = conn.execute(
-        """SELECT s.id, s.year FROM seasons s
-           JOIN league_seasons ls ON ls.season_id = s.id
-           WHERE ls.league_id = %s
-           ORDER BY s.year DESC LIMIT 1""",
-        (league_id,),
-    ).fetchone()
-    if not season_row:
-        print("❌ No season found for this league.")
-        sys.exit(1)
+    sr = SeasonRepository(conn)
+    season_row = sr.get_oldest_incomplete_for_league(league_id)
 
-    current_season_id = season_row["id"]
-    current_year = season_row["year"]
+    if not season_row:
+        # All existing seasons are complete — create the next one
+        seasons = sr.get_seasons_for_league(league_id)
+        if not seasons:
+            print("❌ No season found for this league.")
+            sys.exit(1)
+        last = seasons[0]
+        next_year = last["year"] + 1
+        print(f"  All seasons complete. Creating season {next_year}...")
+        current_season_id, _ = _create_next_season_cli(
+            conn, league_id, last["id"], next_year
+        )
+        current_year = next_year
+    else:
+        current_season_id = season_row["id"]
+        current_year = season_row["year"]
 
     for n in range(args.num_years):
         year = current_year + n
@@ -1018,7 +977,7 @@ def _resolve_league(conn, league_id_arg):
     """Return league_id, prompting if needed."""
     if league_id_arg:
         return league_id_arg
-    rows = conn.execute("SELECT id, name FROM leagues ORDER BY created_at").fetchall()
+    rows = LeagueRepository(conn).list_all()
     if not rows:
         print("❌ No leagues found in DB.")
         sys.exit(1)
@@ -1052,12 +1011,7 @@ def cmd_reports(args) -> None:
         _temp_dir().mkdir(parents=True, exist_ok=True)
 
     for year in years:
-        row = conn.execute(
-            """SELECT s.id FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s AND s.year = %s""",
-            (league_id, year),
-        ).fetchone()
+        row = SeasonRepository(conn).get_by_league_and_year(league_id, year)
         if not row:
             print(f"⚠️  No season found for year {year} — skipping")
             continue
