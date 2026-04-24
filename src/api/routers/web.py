@@ -2467,13 +2467,13 @@ def player_panel(
 
         # Season stats — find current season for this league
         current_season_id = season_repo.get_current_id_for_league(league_id)
-        stats = None
+        pitch_stats = None
+        bat_stats = None
         if current_season_id:
             stats_row = pss_repo.get_player_season(pid, current_season_id)
             if stats_row:
                 s = stats_row
-                is_pitcher = grades.player_type == "pitcher"
-                if is_pitcher and s.get("pitch_games_played", 0) > 0:
+                if s.get("pitch_games_played", 0) > 0:
                     outs = s.get("pitch_outs", 0) or 0
                     ip = outs // 3 + (outs % 3) / 10
                     er = s.get("pitch_earned_runs", 0) or 0
@@ -2481,7 +2481,7 @@ def player_panel(
                     walks = s.get("pitch_walks", 0) or 0
                     hits = s.get("pitch_hits", 0) or 0
                     whip = round((walks + hits) / (outs / 3), 2) if outs > 0 else 0.0
-                    stats = {
+                    pitch_stats = {
                         "G": s.get("pitch_games_played", 0),
                         "GS": s.get("pitch_games_started", 0),
                         "W": s.get("pitch_wins", 0),
@@ -2495,7 +2495,7 @@ def player_panel(
                         "ERA": era,
                         "WHIP": whip,
                     }
-                elif not is_pitcher and s.get("bat_games_played", 0) > 0:
+                if s.get("bat_games_played", 0) > 0:
                     ab = s.get("bat_ab", 0) or 0
                     hits = s.get("bat_hits", 0) or 0
                     bb = s.get("bat_walks", 0) or 0
@@ -2518,7 +2518,7 @@ def player_panel(
                         + 4 * (s.get("bat_home_runs", 0) or 0)
                     )
                     slg = round(tb / ab, 3) if ab > 0 else 0.0
-                    stats = {
+                    bat_stats = {
                         "G": s.get("bat_games_played", 0),
                         "AB": ab,
                         "H": hits,
@@ -2605,7 +2605,8 @@ def player_panel(
             "best_def_label": best_def_label,
             "energy": energy,
             "injury_log": inj_log,
-            "stats": stats,
+            "pitch_stats": pitch_stats,
+            "bat_stats": bat_stats,
             "injured": raw_injury is not None,
             "games_remaining": raw_injury,
             "returning": False,

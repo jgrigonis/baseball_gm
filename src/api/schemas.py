@@ -5,10 +5,12 @@
 
 from __future__ import annotations
 
-# from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel
+
+from src.player.player_evaluator import PlayerEvaluator
+from src.player.player_skills import PlayerSkills
 
 # ── Scouting grades ───────────────────────────────────────────────────────────
 # The sim engine stores skills as integers (roughly 0-100).
@@ -98,49 +100,38 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
     Build a PlayerGrades from raw dicts.
     Determines player_type from whether pitching skills dominate.
     """
+    throws = player.get("throws", "R") or "R"
+    try:
+        ps = PlayerSkills(skills)
+        ratings = PlayerEvaluator.rate_player(ps, throws)
+    except Exception:
+        ratings = {}
+
     # A player is treated as a pitcher if they have meaningful stamina/strikes
     is_pitcher = (skills.get("stamina", 0) or 0) > 20 and (
         skills.get("strikes", 0) or 0
     ) > 20
 
-    catching = skills.get("catching", 0) or 0
-    infield = skills.get("infield", 0) or 0
-    outfield = skills.get("outfield", 0) or 0
+    if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
+    of_rating = max(ratings.get("lf", 0), ratings.get("cf", 0), ratings.get("rf", 0))
+    groups = {
+        "IF": if_rating,
+        "OF": of_rating,
+        "CA": ratings.get("c", 0),
+        "1B": ratings.get("1b", 0),
+    }
+    best_field_label = max(groups, key=groups.get) if groups else "IF"
+    best_field_val = groups[best_field_label]
 
-    best_field_val = max(catching, infield, outfield)
-    if best_field_val == catching:
-        best_field_label = "CA"
-    elif best_field_val == infield:
-        best_field_label = "IF"
-    else:
-        best_field_label = "OF"
+    pitcher_overall = max(ratings.get("sp", 0), ratings.get("rp", 0))
+    hitter_overall = ratings.get("overall_player", 0)
+    raw_overall = max(pitcher_overall, hitter_overall)
 
-    # TODO these are not done the same way as the skill ratings
-    if is_pitcher:
-        # Overall for pitchers: weighted blend of stuff, control, stamina
-        raw_overall = round(
-            (skills.get("strikes", 50) or 50) * 0.25
-            + (skills.get("accuracy", 50) or 50) * 0.20
-            + (skills.get("stamina", 50) or 50) * 0.20
-            + (skills.get("recovery", 50) or 50) * 0.15
-            + (skills.get("ground_balls", 50) or 50) * 0.20
-        )
+    offense = ratings.get("overall_offense", 0)
 
-    else:
-        raw_overall = round(
-            (skills.get("contact", 50) or 50) * 0.25
-            + (skills.get("power", 50) or 50) * 0.20
-            + (skills.get("eye", 50) or 50) * 0.20
-            + (skills.get("speed", 50) or 50) * 0.15
-            + best_field_val * 0.20
-        )
-    offense = round(
-        (skills.get("contact", 50) or 50) * 0.30
-        + (skills.get("power", 50) or 50) * 0.25
-        + (skills.get("eye", 50) or 50) * 0.25
-        + (skills.get("speed", 50) or 50) * 0.20
-    )
-    # raw_overall = expand_distribution(raw_overall)
+    def _skill(key: str) -> str | None:
+        val = skills.get(key) or 0
+        return skill_to_grade(val) if val > 20 else None
 
     return PlayerGrades(
         player_id=player["id"],
@@ -154,18 +145,18 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         offense=skill_to_grade(offense),
         overall=skill_to_grade(raw_overall),
         # Hitter tools
-        contact=skill_to_grade(skills.get("contact")) if not is_pitcher else None,
-        power=skill_to_grade(skills.get("power")) if not is_pitcher else None,
-        eye=skill_to_grade(skills.get("eye")) if not is_pitcher else None,
-        speed=skill_to_grade(skills.get("speed")) if not is_pitcher else None,
-        arm=skill_to_grade(skills.get("arm")) if not is_pitcher else None,
-        field=skill_to_grade(best_field_val) if not is_pitcher else None,
-        field_label=best_field_label if not is_pitcher else None,
+        contact=_skill("contact"),
+        power=_skill("power"),
+        eye=_skill("eye"),
+        speed=_skill("speed"),
+        arm=_skill("arm"),
+        field=skill_to_grade(best_field_val) if best_field_val > 20 else None,
+        field_label=best_field_label if best_field_val > 20 else None,
         # Pitcher tools
-        stuff=skill_to_grade(skills.get("strikes")) if is_pitcher else None,
-        control=skill_to_grade(skills.get("accuracy")) if is_pitcher else None,
-        stamina=skill_to_grade(skills.get("stamina")) if is_pitcher else None,
-        recovery=skill_to_grade(skills.get("recovery")) if is_pitcher else None,
+        stuff=_skill("strikes"),
+        control=_skill("accuracy"),
+        stamina=_skill("stamina"),
+        recovery=_skill("recovery"),
         roster_status=status,
     )
 
