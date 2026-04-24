@@ -16,10 +16,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import random
 import string
 import uuid
 import traceback
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from pydantic import BaseModel
@@ -79,6 +82,7 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
         ps = PlayerSkills(skills)
         ratings = PlayerEvaluator.rate_player(ps, throws or "R")
     except Exception:
+        logger.exception("Failed to evaluate player skills: skills=%s throws=%s", skills, throws)
         return {}
 
     if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))

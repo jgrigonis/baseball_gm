@@ -40,6 +40,10 @@ from src.game.probabilities import (
     FATIGUE_MULTIPLIER,
     LOW_ENERGY,
     BASE_ENERGY_DEPLETION,
+    DURABILITY_MOD,
+    FREE_STREAK_DAYS,
+    MAX_STREAK_PENALTY,
+    ENERGY_PENALTY_PER_STREAK_DAY,
     MINOR_INJURY_PROB,
     MODERATE_INJURY_PROB,
     # PITCHER_INJURY_PROB, # use this soon...
@@ -231,7 +235,7 @@ class Game:
 
         # Injury info
         self.injured_ids = set(injured_ids or {})
-        self.new_injuries: list[tuple[str, str]] = []  # (player_id, severity)
+        self.new_injuries: list[tuple[str, str, str]] = []  # (player_id, severity)
 
         # Logging
         self.logger = logger
@@ -813,7 +817,7 @@ class Game:
                     if hasattr(player, "skills")
                     else 50
                 )
-                durability_mult = 1.0 - ((durability - 50) / 50) * 0.3
+                durability_mult = 1.0 - ((durability - 50) / 50) * DURABILITY_MOD
                 activity_mult *= durability_mult
 
             prob = INJURY_BASE_PROB * activity_mult
@@ -931,29 +935,21 @@ class Game:
     def _deplete_batter_energy(self) -> None:
         if not self.current_batter:
             return
-        # state = self.player_energy_states.get(self.current_batter.player.id)
         player_id = self.current_batter.player.id
         state = self.player_energy_states.get(player_id)
         if not state:
             return
-        # No penalty for first 3 consecutive days, then ramps up
-        streak_days = max(0, state.consecutive_days - 3)
-        streak_penalty = min(0.015 * streak_days, 0.05)
+        # No penalty for first few consecutive days, then ramps up
+        streak_days = max(0, state.consecutive_days - FREE_STREAK_DAYS)
+        streak_penalty = min(ENERGY_PENALTY_PER_STREAK_DAY * streak_days, MAX_STREAK_PENALTY)
         state.current_energy = max(
             0.0, state.current_energy - BASE_ENERGY_DEPLETION - streak_penalty
         )
         self.batters_this_game.add(player_id)
 
     def _record_lead_change_if_needed(self, responsible_pitcher) -> None:
-        # DEBUG
-        # print(f"_record_lead_change_if_needed called: score={self.score.home}-{self.score.away} leader={self.score.leader}")
-        # DEBUG
         scoring_team = "away" if self.inning.top else "home"
         leader = self.score.leader  # already updated by score_run
-        # DEBUG
-        # print(f"  scoring_team={scoring_team} leader={leader} _last_known_leader={self._last_known_leader}")
-        # print(f"  leader == scoring_team and self._last_known_leader != scoring_team: {leader == scoring_team and self._last_known_leader != scoring_team}")
-        # DEBUG
 
         if leader == scoring_team and self._last_known_leader != scoring_team:
             self.lead_changes.append(
@@ -968,11 +964,6 @@ class Game:
         self._last_known_leader = leader
 
     def _open_pitcher_appearance(self, pitcher) -> None:
-        # DEBUG
-        # import traceback
-        # print(f"_open_pitcher_appearance called for {pitcher.name}")
-        # traceback.print_stack(limit=4)
-        # DEBUG
         already_appearing = any(
             a.pitcher == pitcher and not a.finished_game
             for a in self.pitcher_appearances
@@ -1018,8 +1009,6 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
-                # self.home_eligible,
-                # self.away_eligible,
                 pitcher_states=self.pitcher_states,
                 game_date=self.game_date,
                 eligible_ids=eligible,
@@ -1075,8 +1064,6 @@ class Game:
                 self.current_pitcher,
                 self.inning,
                 self.score,
-                # self.home_eligible,
-                # self.away_eligible,
                 pitcher_states=self.pitcher_states,
                 game_date=self.game_date,
                 eligible_ids=eligible,

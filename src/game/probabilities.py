@@ -118,14 +118,18 @@ PITCH_COUNT_THRESHOLD = 100
 CLOSER_ENTRANCE_PROB = 0.92
 
 # Injury/Fatigue
-INJURY_BASE_PROB = 0.0003  # per plate appearance
+INJURY_BASE_PROB = 0.00025  # per plate appearance
 FATIGUE_MULTIPLIER = 1.6  # injury multiplier for fatigued players
 LOW_ENERGY = 0.50  # threshold for low player energy
-BASE_ENERGY_DEPLETION = 0.035
+BASE_ENERGY_DEPLETION = 0.035 # base energy depletion per plate appearance
+DURABILITY_MOD = 0.3 # Modifies the multiplier for injury chances by up to 30 percent in either direction
+FREE_STREAK_DAYS = 3 # Number of days before a streak penalty is applied to energy drain
+MAX_STREAK_PENALTY = 0.05 # Max amount of energy drained during a long streak
+ENERGY_PENALTY_PER_STREAK_DAY = 0.015 # After FREE_STREAK_DAYS, each day's energy drain penalty is multiplied by this, until it crosses MAX_STREAK_PENALTY
 # Injury type probabilities
 MINOR_INJURY_PROB = 50
 MODERATE_INJURY_PROB = 30
-PITCHER_INJURY_PROB = 35
+PITCHER_INJURY_PROB = 35 # currently unused
 SEVERE_INJURE_PROB = 5
 SURGERY_INJURY_PROB = 2
 
