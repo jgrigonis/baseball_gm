@@ -14,15 +14,18 @@ Usage examples:
   python cligr.py clear --all-teams        # ⚠ destroys all team files
   python cligr.py clear --logs --temp      # combine as needed
 
-  # Start a brand new league and sim it
+  # Create a new league (no games run)
   python cligr.py new-league
-  python cligr.py new-league --year 2026 --seed 42
-  python cligr.py new-league --logs --game-logs --reports
+  python cligr.py new-league --year 2030 --seed 42
   python cligr.py new-league --clear-db         # destroy the entire DB
 
-  # Run the next season for an existing league
+  # Create a new league and immediately run seasons
+  python cligr.py new-league --year 2030 --run-season
+  python cligr.py new-league --year 2030 --run-season --num-years 15 --reports
+
+  # Run the next season(s) for an existing league
   python cligr.py run-season
-  python cligr.py run-season --year 2027 --seed 99
+  python cligr.py run-season --num-years 5 --seed 99
   python cligr.py run-season --logs --game-logs --reports
   python cligr.py run-season --league-id LEAGUE_ID
 
@@ -151,8 +154,8 @@ def build_parser() -> argparse.ArgumentParser:
     # ── new-league ─────────────────────────────────────────────────────────────
     new = sub.add_parser(
         "new-league",
-        help="Create a fresh league and sim it",
-        description="Bootstraps a new league, and runs seasons.",
+        help="Create a fresh league (optionally run seasons immediately)",
+        description="Bootstraps a new league. Add --run-season to simulate seasons right away.",
     )
     new.add_argument(
         "--year",
@@ -175,19 +178,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Random seed for reproducibility",
     )
     new.add_argument(
-        "--logs",
+        "--run-season",
         action="store_true",
-        help="Write season-level log files",
+        help="Run season(s) immediately after creating the league",
+    )
+    new.add_argument(
+        "--num-years",
+        "-n",
+        type=int,
+        default=1,
+        help="Number of seasons to simulate (requires --run-season, default: 1)",
     )
     new.add_argument(
         "--game-logs",
         action="store_true",
-        help="Write per-game log files (verbose, slow)",
+        help="Write per-game log files — requires --run-season (verbose, slow)",
     )
     new.add_argument(
         "--reports",
         action="store_true",
-        help="Generate leaderboard and totals reports after each season",
+        help="Generate leaderboard and totals reports — requires --run-season",
+    )
+    new.add_argument(
+        "--logs",
+        action="store_true",
+        help="Write season-level log files — requires --run-season",
     )
     new.add_argument(
         "--clear-db",
@@ -208,15 +223,8 @@ def build_parser() -> argparse.ArgumentParser:
     # ── run-season ─────────────────────────────────────────────────────────────
     run = sub.add_parser(
         "run-season",
-        help="Run the next season for an existing league",
-        description="Bootstraps the next year's manifest and plays through the season.",
-    )
-    run.add_argument(
-        "--year",
-        "-y",
-        type=int,
-        default=2026,
-        help="Season year to run (default: 2026)",
+        help="Run the next season(s) for an existing league",
+        description="Continues from wherever the league left off. Year is auto-detected.",
     )
     run.add_argument(
         "--num-years",
@@ -904,18 +912,18 @@ def cmd_new_league(args) -> None:
     conn, league_id, season_id, _ = _bootstrap_first_season(
         args.year, args.manifest, args.seed
     )
+    print(f"\n✅ League created.")
 
-    # current_season_id = season_id
-    # for n in range(args.num_years):
-    #     year = args.year + n
-    #     if n > 0:
-    #         # Subsequent years: create season directly (teams already exist)
-    #         current_season_id, _ = _create_next_season_cli(
-    #             conn, league_id, current_season_id, year
-    #         )
-    #     _run_one_season(conn, current_season_id, league_id, year, args)
-
-    # print(f"\n✅ Done — {args.num_years} season(s) complete.")
+    if args.run_season:
+        current_season_id = season_id
+        for n in range(args.num_years):
+            year = args.year + n
+            if n > 0:
+                current_season_id, _ = _create_next_season_cli(
+                    conn, league_id, current_season_id, year
+                )
+            _run_one_season(conn, current_season_id, league_id, year, args)
+        print(f"\n✅ Done — {args.num_years} season(s) complete.")
 
 
 def cmd_run_season(args) -> None:
@@ -953,11 +961,8 @@ def cmd_run_season(args) -> None:
     current_season_id = season_row["id"]
     current_year = season_row["year"]
 
-    # If a specific year was requested, use that
-    start_year = args.year or current_year
-
     for n in range(args.num_years):
-        year = start_year + n
+        year = current_year + n
         if year == current_year:
             season_id = current_season_id
         else:
