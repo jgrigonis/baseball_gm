@@ -10,7 +10,6 @@ import random
 import traceback
 
 from src.db.connection import get_connection
-from src.db.repositories import game_lineup_repo
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
@@ -127,7 +126,7 @@ def save_position_energy(conn, player_energy_states, league_id):
             repo.save_player_energy(state)
 
 
-def _load_eligible_ids(conn, team_id: str, blitz: bool) -> set[str]:
+def _load_eligible_ids(conn, team_id: str, blitz: bool) -> list[str]:
     """Return player IDs eligible to play based on league mode.
     Blitz: 26man + 40man. Long form: 26man only.
     """

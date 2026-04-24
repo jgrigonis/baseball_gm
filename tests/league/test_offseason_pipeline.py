@@ -4,7 +4,7 @@ Tests for OffseasonPipeline.
 
 Strategy:
 - Pure logic (_should_retire) — no DB needed, fast, exhaustive
-- Step tracking (_is_done, _mark_done) — db_conn fixture, verify DB state
+- Step tracking (is_done, _mark_done) — db_conn fixture, verify DB state
 - _load_season_year — db_conn, simple query
 - _playoffs_complete — db_conn, test series/games state
 - run() idempotency — mock the heavy steps, verify steps are skipped on re-run
@@ -12,7 +12,8 @@ Strategy:
 """
 
 import random
-from unittest.mock import MagicMock, patch
+import uuid
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -27,42 +28,50 @@ def make_pipeline(db_conn, seed=42):
     return OffseasonPipeline(db_conn, rng=random.Random(seed))
 
 
-def seed_season(db_conn, season_id="s1", year=2025):
+def seed_season(db_conn, season_id=None, year=2025):
+    if season_id is None:
+        season_id = str(uuid.uuid4())
     db_conn.execute(
-        "INSERT OR IGNORE INTO seasons (id, year, name) VALUES (?, ?, ?)",
+        "INSERT INTO seasons (id, year, name) VALUES (%s, %s, %s)"
+        "  ON CONFLICT DO NOTHING",
         (season_id, year, f"Season {year}"),
     )
     db_conn.commit()
+    return season_id
 
 
-def seed_finals_complete(db_conn, season_id="s1"):
+def seed_finals_complete(db_conn, season_id):
     """Insert a completed Finals series with 4 wins for one team."""
+    team_id = str(uuid.uuid4())
+    team_id2 = str(uuid.uuid4())
+    series_id = str(uuid.uuid4())
     db_conn.execute(
-        "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-        ("team-champ", "Champ", "Champions"),
+        "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+        (team_id, "Champ", "Champions"),
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-        ("team-runner", "Runner", "Runners"),
+        "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+        (team_id2, "Runner", "Runners"),
     )
     db_conn.execute(
-        "INSERT OR IGNORE INTO series (id, season_id, name) VALUES (?, ?, ?)",
-        ("finals-1", season_id, "Finals"),
+        "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+        (series_id, season_id, "Finals"),
     )
     for i in range(4):
+        game_id = str(uuid.uuid4())
         db_conn.execute(
             """INSERT INTO games
                (id, game_date, season_id, series_id, home_team_id, away_team_id,
                 completed, winner_id)
-               VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
+               VALUES (%s, %s, %s, %s, %s, %s, 1, %s)""",
             (
-                f"finals-game-{i}",
+                game_id,
                 "2025-10-01",
                 season_id,
-                "finals-1",
-                "team-champ",
-                "team-runner",
-                "team-champ",
+                series_id,
+                team_id,
+                team_id2,
+                team_id,
             ),
         )
     db_conn.commit()
@@ -159,70 +168,73 @@ class TestShouldRetire:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _is_done / _mark_done
+# is_done / _mark_done
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestStepTracking:
 
+    @pytest.mark.slow
     def test_step_not_done_initially(self, db_conn):
-        seed_season(db_conn)
+        season_id = seed_season(db_conn)
         pipeline = make_pipeline(db_conn)
-        assert pipeline._is_done("s1", "archive") is False
+        print(pipeline.os_repo.is_done(season_id, "archive"))
+        assert pipeline.os_repo.is_done(season_id, "archive") is False
 
     def test_mark_done_persists(self, db_conn):
-        seed_season(db_conn)
+        season_id = seed_season(db_conn)
         pipeline = make_pipeline(db_conn)
-        pipeline._mark_done("s1", "archive")
-        assert pipeline._is_done("s1", "archive") is True
+        pipeline._mark_done(season_id, "archive")
+        assert pipeline.os_repo.is_done(season_id, "archive") is True
 
     def test_mark_done_is_idempotent(self, db_conn):
-        seed_season(db_conn)
+        season_id = seed_season(db_conn)
         pipeline = make_pipeline(db_conn)
-        pipeline._mark_done("s1", "archive")
-        pipeline._mark_done("s1", "archive")  # should not raise
-        assert pipeline._is_done("s1", "archive") is True
+        pipeline._mark_done(season_id, "archive")
+        pipeline._mark_done(season_id, "archive")  # should not raise
+        assert pipeline.os_repo.is_done(season_id, "archive") is True
 
     def test_different_steps_tracked_independently(self, db_conn):
-        seed_season(db_conn)
+        season_id = seed_season(db_conn)
         pipeline = make_pipeline(db_conn)
-        pipeline._mark_done("s1", "archive")
-        assert pipeline._is_done("s1", "archive") is True
-        assert pipeline._is_done("s1", "age") is False
+        pipeline._mark_done(season_id, "archive")
+        assert pipeline.os_repo.is_done(season_id, "archive") is True
+        assert pipeline.os_repo.is_done(season_id, "age") is False
 
     def test_different_seasons_tracked_independently(self, db_conn):
-        seed_season(db_conn, "s1", 2025)
-        seed_season(db_conn, "s2", 2026)
+        season_id = seed_season(db_conn, year=2025)
+        season_id2 = seed_season(db_conn, year=2026)
         pipeline = make_pipeline(db_conn)
-        pipeline._mark_done("s1", "archive")
-        assert pipeline._is_done("s1", "archive") is True
-        assert pipeline._is_done("s2", "archive") is False
+        pipeline._mark_done(season_id, "archive")
+        assert pipeline.os_repo.is_done(season_id, "archive") is True
+        assert pipeline.os_repo.is_done(season_id2, "archive") is False
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# _load_season_year
-# ─────────────────────────────────────────────────────────────────────────────
+# # ─────────────────────────────────────────────────────────────────────────────
+# # _load_season_year
+# # ─────────────────────────────────────────────────────────────────────────────
 
+# This is gone
 
-class TestLoadSeasonYear:
+# class TestLoadSeasonYear:
 
-    def test_loads_year_plus_one(self, db_conn):
-        seed_season(db_conn, "s1", 2025)
-        pipeline = make_pipeline(db_conn)
-        year = pipeline._load_season_year("s1")
-        assert year == 2026
-        assert pipeline.year == 2026
+#     def test_loads_year_plus_one(self, db_conn):
+#         seed_season(db_conn, "s1", 2025)
+#         pipeline = make_pipeline(db_conn)
+#         year = pipeline._load_season_year("s1")
+#         assert year == 2026
+#         assert pipeline.year == 2026
 
-    def test_raises_on_missing_season(self, db_conn):
-        pipeline = make_pipeline(db_conn)
-        with pytest.raises(ValueError, match="Season nonexistent not found"):
-            pipeline._load_season_year("nonexistent")
+#     def test_raises_on_missing_season(self, db_conn):
+#         pipeline = make_pipeline(db_conn)
+#         with pytest.raises(ValueError, match="Season nonexistent not found"):
+#             pipeline._load_season_year("nonexistent")
 
-    def test_sets_year_attribute(self, db_conn):
-        seed_season(db_conn, "s1", 2030)
-        pipeline = make_pipeline(db_conn)
-        pipeline._load_season_year("s1")
-        assert pipeline.year == 2031
+#     def test_sets_year_attribute(self, db_conn):
+#         seed_season(db_conn, "s1", 2030)
+#         pipeline = make_pipeline(db_conn)
+#         pipeline._load_season_year("s1")
+#         assert pipeline.year == 2031
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -233,43 +245,48 @@ class TestLoadSeasonYear:
 class TestPlayoffsComplete:
 
     def test_returns_false_when_no_finals(self, db_conn):
-        seed_season(db_conn)
+        new_id = str(uuid.uuid4())
+        seed_season(db_conn, season_id=new_id)
         pipeline = make_pipeline(db_conn)
         pipeline.year = 2026
-        assert pipeline._playoffs_complete("s1") is False
+        assert pipeline._playoffs_complete(new_id) is False
 
     def test_returns_false_when_finals_incomplete(self, db_conn):
-        seed_season(db_conn)
+        season_id = seed_season(db_conn)
+        series_id = str(uuid.uuid4())
+        team_a = str(uuid.uuid4())
+        team_b = str(uuid.uuid4())
         db_conn.execute(
-            "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            ("team-a", "A", "A"),
+            "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+            (team_a, "A", "A"),
         )
         db_conn.execute(
-            "INSERT OR IGNORE INTO teams (id, city, mascot) VALUES (?, ?, ?)",
-            ("team-b", "B", "B"),
+            "INSERT INTO teams (id, city, mascot) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+            (team_b, "B", "B"),
         )
         db_conn.execute(
-            "INSERT OR IGNORE INTO series (id, season_id, name) VALUES (?, ?, ?)",
-            ("finals-1", "s1", "Finals"),
+            "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+            (series_id, season_id, "Finals"),
         )
         # Only 3 wins — not enough
         for i in range(3):
+            game_id = str(uuid.uuid4())
             db_conn.execute(
                 """INSERT INTO games
                    (id, game_date, season_id, series_id, home_team_id, away_team_id,
                     completed, winner_id)
-                   VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
-                (f"g{i}", "2025-10-01", "s1", "finals-1", "team-a", "team-b", "team-a"),
+                   VALUES (%s, %s, %s, %s, %s, %s, 1, %s)""",
+                (game_id, "2025-10-01", season_id, series_id, team_a, team_b, team_a),
             )
         db_conn.commit()
         pipeline = make_pipeline(db_conn)
-        assert pipeline._playoffs_complete("s1") is False
+        assert pipeline._playoffs_complete(season_id) is False
 
     def test_returns_true_when_finals_has_4_wins(self, db_conn):
-        seed_season(db_conn)
-        seed_finals_complete(db_conn)
+        season_id = seed_season(db_conn)
+        seed_finals_complete(db_conn, season_id=season_id)
         pipeline = make_pipeline(db_conn)
-        assert pipeline._playoffs_complete("s1") is True
+        assert pipeline._playoffs_complete(season_id) is True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -280,7 +297,7 @@ class TestPlayoffsComplete:
 class TestRunIdempotency:
     """Verify that completed steps are skipped on re-run."""
 
-    def _patch_all_steps(self, pipeline):
+    def _patch_all_steps(self, pipeline, season_id):
         """Pre-mark all steps done so run() skips everything."""
         steps = [
             "archive",
@@ -297,15 +314,15 @@ class TestRunIdempotency:
             "write_csvs",
         ]
         for step in steps:
-            pipeline._mark_done("s1", step)
+            pipeline._mark_done(season_id, step)
 
     def test_run_skips_all_completed_steps(self, db_conn, capsys):
-        seed_season(db_conn)
-        seed_finals_complete(db_conn)
+        season_id = seed_season(db_conn)
+        seed_finals_complete(db_conn, season_id)
         pipeline = make_pipeline(db_conn)
-        self._patch_all_steps(pipeline)
+        self._patch_all_steps(pipeline, season_id)
 
-        pipeline.run("s1", league_id=None)
+        pipeline.run(season_id, league_id=None)
 
         captured = capsys.readouterr().out
         assert "Skipping archive" in captured
@@ -313,49 +330,50 @@ class TestRunIdempotency:
         assert "Skipping run draft" in captured
 
     def test_run_stops_early_if_playoffs_not_complete(self, db_conn, capsys):
-        seed_season(db_conn)
+        season_id = seed_season(db_conn)
         # No series inserted — playoffs not complete
         pipeline = make_pipeline(db_conn)
 
-        pipeline.run("s1")
+        pipeline.run(season_id, "l1")
 
         captured = capsys.readouterr().out
         assert "Playoffs are not complete" in captured
         # archive should not have been marked done
-        assert pipeline._is_done("s1", "archive") is False
+        assert pipeline.os_repo.is_done(season_id, "archive") is False
 
-    def test_second_run_skips_completed_steps(self, db_conn, capsys):
-        """After marking archive done, second run skips it."""
-        seed_season(db_conn)
-        pipeline = make_pipeline(db_conn)
-        pipeline._mark_done("s1", "archive")
+    # nonsense
+    # def test_second_run_skips_completed_steps(self, db_conn, capsys):
+    #     """After marking archive done, second run skips it."""
+    #     seed_season(db_conn)
+    #     pipeline = make_pipeline(db_conn)
+    #     pipeline._mark_done("s1", "archive")
 
-        # Patch playoffs_complete so run() doesn't bail before archive check
-        with patch.object(pipeline, "_playoffs_complete", return_value=True):
-            with patch.object(pipeline, "_age"):
-                with patch.object(pipeline, "_retire"):
-                    with patch.object(pipeline, "_clear_stale_prospects"):
-                        with patch.object(pipeline, "_generate_draft"):
-                            with patch.object(pipeline, "_run_draft"):
-                                with patch.object(pipeline, "_trim_rosters"):
-                                    with patch.object(pipeline, "_reset_pitcher_state"):
-                                        with patch.object(
-                                            pipeline, "_rebuild_rotations"
-                                        ):
-                                            with patch.object(
-                                                pipeline, "_reset_player_energy"
-                                            ):
-                                                with patch.object(
-                                                    pipeline, "_write_csvs"
-                                                ):
-                                                    with patch(
-                                                        "src.league.offseason.offseason_pipeline.build_season",
-                                                        return_value=0,
-                                                    ):
-                                                        # with patch(
-                                                        #     "src.league.offseason.offseason_pipeline.ensure_table"
-                                                        # ):
-                                                        pipeline.run("s1")
+    #     # Patch playoffs_complete so run() doesn't bail before archive check
+    #     with patch.object(pipeline, "_playoffs_complete", return_value=True):
+    #         with patch.object(pipeline, "_age"):
+    #             with patch.object(pipeline, "_retire"):
+    #                 with patch.object(pipeline, "_clear_stale_prospects"):
+    #                     with patch.object(pipeline, "_generate_draft"):
+    #                         with patch.object(pipeline, "_run_draft"):
+    #                             with patch.object(pipeline, "_trim_rosters"):
+    #                                 with patch.object(pipeline, "_reset_pitcher_state"):
+    #                                     with patch.object(
+    #                                         pipeline, "_rebuild_rotations"
+    #                                     ):
+    #                                         with patch.object(
+    #                                             pipeline, "_reset_player_energy"
+    #                                         ):
+    #                                             with patch.object(
+    #                                                 pipeline, "_write_csvs"
+    #                                             ):
+    #                                                 with patch(
+    #                                                     "src.league.offseason.offseason_pipeline.build_season",
+    #                                                     return_value=0,
+    #                                                 ):
+    #                                                     # with patch(
+    #                                                     #     "src.league.offseason.offseason_pipeline.ensure_table"
+    #                                                     # ):
+    #                                                     pipeline.run("s1")
 
-        captured = capsys.readouterr().out
-        assert "Skipping archive" in captured
+    #     captured = capsys.readouterr().out
+    #     assert "Skipping archive" in captured

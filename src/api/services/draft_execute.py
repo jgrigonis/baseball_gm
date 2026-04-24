@@ -181,7 +181,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         draft_order = [{"team_id": r["team_id"], "team_name": ""} for r in stored_order]
         picks = blitz.run_snake_draft_with_order(draft_order, year, league_id)
     else:
-        raise RuntimeError(f"No stored order found")
+        raise RuntimeError("No stored order found")
 
     # Record into draft_picks table
     now = datetime.now(UTC).isoformat()

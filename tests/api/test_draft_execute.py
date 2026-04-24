@@ -97,7 +97,7 @@ class TestExecuteBlitzDraftStateTransitions:
         factory.gm(team=team2, league=league, is_ai=True)
         factory.draft_order(draft, [team1, team2])
         for i in range(ROUNDS * 2 + 5):
-            factory.prospect()
+            factory.prospect(league_id=league.id)
         return db_conn, draft, league, season
 
     def test_draft_state_becomes_complete(self, setup):
@@ -164,7 +164,7 @@ class TestDraftPicksTable:
         factory.gm(team=team2, league=league, is_ai=True)
         factory.draft_order(draft, [team1, team2])
         for i in range(ROUNDS * 2 + 5):
-            factory.prospect()
+            factory.prospect(league_id=league.id)
         return db_conn, draft
 
     def test_draft_picks_inserted(self, setup):
@@ -225,7 +225,9 @@ class TestPreferenceList:
         human_gm = factory.gm(team=human_team, league=league, is_ai=False)
         factory.gm(team=ai_team, league=league, is_ai=True)
         factory.draft_order(draft, [human_team, ai_team])
-        prospects = [factory.prospect() for _ in range(ROUNDS * 2 + 5)]
+        prospects = [
+            factory.prospect(league_id=league.id) for _ in range(ROUNDS * 2 + 5)
+        ]
         # Human GM prefers the first prospect
         preferred = prospects[0]
         db_conn.execute(
@@ -273,7 +275,12 @@ class TestBlitzDraftRunSnake:
     @pytest.fixture
     def blitz(self, db_conn, factory):
         factory.draft()
-        return BlitzDraft(db_conn, league_id=str(uuid.uuid4()), gm_preferences={}, rng=random.Random(42))
+        return BlitzDraft(
+            db_conn,
+            league_id=str(uuid.uuid4()),
+            gm_preferences={},
+            rng=random.Random(42),
+        )
 
     def test_empty_pool_returns_empty(self, blitz):
         order = [{"team_id": "t1", "team_name": "T1"}]
@@ -285,7 +292,12 @@ class TestBlitzDraftRunSnake:
         team = factory.team()
         factory.gm(team=team)
 
-        blitz = BlitzDraft(db_conn, league_id=str(uuid.uuid4()), gm_preferences={}, rng=random.Random(42))
+        blitz = BlitzDraft(
+            db_conn,
+            league_id=str(uuid.uuid4()),
+            gm_preferences={},
+            rng=random.Random(42),
+        )
         order = [{"team_id": team.id, "team_name": "T1"}]
 
         hi = factory.player_row()
@@ -359,9 +371,11 @@ class TestBlitzDraftRunSnake:
         factory.gm(team=team2, is_ai=True)
 
         only = factory.player_row()
-        
+
         league_id = str(uuid.uuid4())
-        blitz = BlitzDraft(db_conn, league_id=league_id, gm_preferences={}, rng=random.Random(42))
+        blitz = BlitzDraft(
+            db_conn, league_id=league_id, gm_preferences={}, rng=random.Random(42)
+        )
         order = [
             {"team_id": team1.id, "team_name": "T1"},
             {"team_id": team2.id, "team_name": "T2"},

@@ -118,7 +118,7 @@ class DraftRepository:
             (draft_id,),
         ).fetchone()
         if draft:
-            return dict(draft) 
+            return dict(draft)
 
     def get_team_id_draft_order(self, draft_id: str) -> list[str]:
         order = self.conn.execute(

@@ -17,7 +17,7 @@ NUM_ROSTERS = 500
 MAX_VIOLATION_RATE = 0.01  # allow up to 1%
 
 
-@pytest.mark.slow
+@pytest.mark.veryslow
 def test_left_handed_infielders_are_rare():
     violations = []
 

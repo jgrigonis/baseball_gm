@@ -162,6 +162,7 @@ class TestTeamFactoryGenerateTeam:
 
         assert len(team.players) == 9
 
+    @pytest.mark.slow
     def test_generate_team_default_size_is_160(self):
         """Default roster size is 40 players."""
         factory = TeamFactory()
@@ -285,6 +286,7 @@ class TestTeamFactoryGenerateTeam:
         assert position_counts["cf"] >= 1
         assert position_counts["rf"] >= 1
 
+    @pytest.mark.slow
     def test_generate_team_different_sizes(self):
         """Test various roster sizes work correctly."""
         factory = TeamFactory()

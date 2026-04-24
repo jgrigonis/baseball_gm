@@ -104,12 +104,12 @@ class DraftGenerator:
         self.cap_repo = TalentCapRepository(conn)
         self.factory = PlayerFactory(rng=self.rng)
 
-    def run(self, season_id: str, year: int, league_id: str | None = None) -> int:
+    def run(self, year: int, league_id: str | None = None) -> int:
         """
         Generate draft pool, insert into DB, write draft.csv.
 
         Args:
-            season_id:  Current season ID (used for output path)
+            season_id:  unused TODO delete
             year:       The year of the draft (used for output directory)
             league_id:  The league this pool belongs to. Players are tagged
                         with this so draft boards don't leak across leagues.
@@ -171,6 +171,8 @@ class DraftGenerator:
         """
         Existing draftable players for this league — prospects with no team
         and either matching league_id or (for legacy rows) NULL league_id.
+
+        returns a list of PlayerRecords
         """
         dr = DraftRepository(self.conn)
         if league_id:

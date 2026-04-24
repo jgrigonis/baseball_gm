@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from datetime import date
 from itertools import groupby
 
 from src.db.repositories.games_repo import GameRepository
@@ -33,7 +32,6 @@ from src.league.playoffs.play_playoffs import (
     original_seed,
 )
 from src.league.play_season import play_game
-from tests.db.repositories.test_games_repo import game_repo
 
 # ---------------------------------------------------------------------------
 # Round definitions — fixed bracket structure

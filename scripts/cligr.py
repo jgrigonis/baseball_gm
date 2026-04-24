@@ -71,7 +71,7 @@ from src.league.playoffs.play_playoffs import (
     _HOME_MAP_BO7,
     _SEMI_18_45_OFFSETS,
     _SEMI_27_36_OFFSETS,
-    _FINAL_OFFSETS
+    _FINAL_OFFSETS,
 )
 from src.league.playoffs.setup_playoffs import (
     get_top_N,
@@ -703,9 +703,7 @@ def _play_playoffs(
            ORDER BY g.game_date LIMIT 1""",
         (season_id,),
     ).fetchone()
-    playoff_start = (
-        datetime.date.fromisoformat(first_game["game_date"])
-    )
+    playoff_start = datetime.date.fromisoformat(first_game["game_date"])
 
     print("  Playing Round 1...")
     r1_winners = {}
@@ -907,7 +905,7 @@ def cmd_new_league(args) -> None:
         args.year, args.manifest, args.seed
     )
 
-    current_season_id = season_id
+    # current_season_id = season_id
     # for n in range(args.num_years):
     #     year = args.year + n
     #     if n > 0:

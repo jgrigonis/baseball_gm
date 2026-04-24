@@ -40,12 +40,16 @@ def _session_conn(request):
             "No test database URL found. Set DATABASE_TEST_URL or pass --db-url."
         )
     conn = psycopg.connect(db_url, row_factory=dict_row)
-    conn.execute("DROP TABLE IF EXISTS leagues, seasons, teams, players, users, gms CASCADE")
+    conn.execute(
+        "DROP TABLE IF EXISTS leagues, seasons, teams, players, users, gms, draft_picks, offseason_steps CASCADE"
+    )
     conn.commit()
     init_db(conn)
     # Wipe any data left over from a previous test session.
     # CASCADE handles all dependent tables.  schema_migrations is preserved.
-    conn.execute("TRUNCATE TABLE leagues, seasons, teams, players, users, gms CASCADE")
+    conn.execute(
+        "TRUNCATE TABLE leagues, seasons, teams, players, users, gms, draft_picks, offseason_steps CASCADE"
+    )
     conn.commit()
     yield conn
     conn.close()
@@ -320,6 +324,9 @@ def mock_teams():
 def pytest_addoption(parser):
     parser.addoption("--slow", action="store_true", default=False)
     parser.addoption(
+        "--veryslow", action="store_true", default=False, help="run veryslow tests"
+    )
+    parser.addoption(
         "--db-url",
         action="store",
         default=None,
@@ -334,3 +341,8 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "slow" in item.keywords:
                 item.add_marker(skip_slow)
+    if not config.getoption("--veryslow"):
+        skip_veryslow = pytest.mark.skip(reason="use --veryslow to run")
+        for item in items:
+            if "veryslow" in item.keywords:
+                item.add_marker(skip_veryslow)

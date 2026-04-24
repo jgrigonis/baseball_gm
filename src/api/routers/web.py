@@ -33,30 +33,26 @@ from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_next_day
 from src.api.services.sim_playoff import sim_playoff
-from src.db.repositories.bullpen_roles_repo import (
-    BullpenRepository,
-    _get_active_rotation_player_ids,
-)
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
-from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
-from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
-from src.db.repositories.player_status_repo import PlayerStatusRepository
-from src.db.repositories.season_repo import SeasonRepository
-from src.db.repositories.series_repo import SeriesRepository
-from src.db.repositories.team_game_repo import TeamGameRepository
-from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
-from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
+from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
+from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.standings_repo import StandingsRepository
+from src.db.repositories.team_game_repo import TeamGameRepository
+from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
 from src.player.player_evaluator import PlayerEvaluator
@@ -1597,7 +1593,9 @@ async def save_bullpen(
     try:
         # Evict any bullpen-assigned pitchers who are still in the DB rotation
         bullpen_ids = {a["player_id"] for a in assignments}
-        in_rotation = _get_active_rotation_player_ids(db, gm["team_id"], season_id)
+        in_rotation = bp_repo.get_active_rotation_player_ids(
+            db, gm["team_id"], season_id
+        )
         for pid in bullpen_ids & in_rotation:
             rot_repo.remove_from_rotation(
                 team_id=gm["team_id"],

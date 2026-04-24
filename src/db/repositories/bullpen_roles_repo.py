@@ -34,54 +34,6 @@ def _validate_role(role: str) -> None:
         )
 
 
-def _get_active_rotation_player_ids(conn, team_id: str, season_id: str) -> set[str]:
-    """Return the set of player_ids currently in the starting rotation."""
-    cursor = conn.execute(
-        """
-        SELECT player_id
-        FROM team_rotations
-        WHERE team_id = %s
-          AND season_id = %s
-          AND end_date IS NULL
-        """,
-        (team_id, season_id),
-    )
-    return {row["player_id"] for row in cursor.fetchall()}
-
-
-# Unused
-def _get_active_bullpen_player_ids(conn, team_id: str, season_id: str) -> set[str]:
-    """Return the set of player_ids with an active bullpen role."""
-    cursor = conn.execute(
-        """
-        SELECT player_id
-        FROM bullpen_roles
-        WHERE team_id = %s
-          AND season_id = %s
-          AND end_date IS NULL
-        """,
-        (team_id, season_id),
-    )
-    return {row["player_id"] for row in cursor.fetchall()}
-
-
-def _close_active_role(
-    conn, team_id: str, player_id: str, season_id: str, end_date: str
-) -> None:
-    """Set end_date on any active bullpen role for this player."""
-    conn.execute(
-        """
-        UPDATE bullpen_roles
-        SET end_date = %s
-        WHERE team_id = %s
-          AND player_id = %s
-          AND season_id = %s
-          AND end_date IS NULL
-        """,
-        (end_date, team_id, player_id, season_id),
-    )
-
-
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -130,7 +82,7 @@ class BullpenRepository:
             seen_player_ids.add(entry["player_id"])
 
         # Check no one is in the starting rotation
-        rotation_ids = _get_active_rotation_player_ids(self.conn, team_id, season_id)
+        rotation_ids = self.get_active_rotation_player_ids(team_id, season_id)
         conflicts = seen_player_ids & rotation_ids
         if conflicts:
             raise ValueError(
@@ -252,7 +204,7 @@ class BullpenRepository:
         _validate_role(new_role)
 
         # Rotation conflict check
-        rotation_ids = _get_active_rotation_player_ids(self.conn, team_id, season_id)
+        rotation_ids = self.get_active_rotation_player_ids(team_id, season_id)
         if player_id in rotation_ids:
             raise ValueError(
                 f"Player '{player_id}' is in the starting rotation and cannot be assigned a bullpen role."
@@ -275,7 +227,7 @@ class BullpenRepository:
             return  # Already assigned this role; nothing to do
 
         # Close existing active role
-        _close_active_role(self.conn, team_id, player_id, season_id, effective_date)
+        self.close_active_role(team_id, player_id, season_id, effective_date)
 
         # Insert updated role
         self.conn.execute(
@@ -299,4 +251,34 @@ class BullpenRepository:
         if end_date is None:
             end_date = _today()
 
-        _close_active_role(self.conn, team_id, player_id, season_id, end_date)
+        self.close_active_role(team_id, player_id, season_id, end_date)
+
+    def get_active_rotation_player_ids(self, team_id: str, season_id: str) -> set[str]:
+        """Return the set of player_ids currently in the starting rotation."""
+        cursor = self.conn.execute(
+            """
+            SELECT player_id
+            FROM team_rotations
+            WHERE team_id = %s
+            AND season_id = %s
+            AND end_date IS NULL
+            """,
+            (team_id, season_id),
+        )
+        return {row["player_id"] for row in cursor.fetchall()}
+
+    def close_active_role(
+        self, team_id: str, player_id: str, season_id: str, end_date: str
+    ) -> None:
+        """Set end_date on any active bullpen role for this player."""
+        self.conn.execute(
+            """
+            UPDATE bullpen_roles
+            SET end_date = %s
+            WHERE team_id = %s
+            AND player_id = %s
+            AND season_id = %s
+            AND end_date IS NULL
+            """,
+            (end_date, team_id, player_id, season_id),
+        )

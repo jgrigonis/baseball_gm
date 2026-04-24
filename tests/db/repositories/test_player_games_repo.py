@@ -10,11 +10,6 @@ from src.stats.fielding_stats import FieldingStats
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def player_repo(db_conn):
-    return PlayerGameRepository(db_conn)
-
-
 # Alias used by some tests
 @pytest.fixture
 def player_games_repo(db_conn):
@@ -126,8 +121,8 @@ def sample_fielding_positions_two_way():
 
 class TestPlayerGameRepositoryInsert:
 
-    def test_insert_basic(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_insert_basic(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
 
@@ -142,8 +137,8 @@ class TestPlayerGameRepositoryInsert:
         assert row["team_id"] == ctx.home.id
         assert row["opponent_team_id"] == ctx.away.id
 
-    def test_insert_batting_stats(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_insert_batting_stats(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
 
@@ -162,8 +157,8 @@ class TestPlayerGameRepositoryInsert:
         assert row["bat_strike_outs"] == 1
         assert row["bat_stolen_bases"] == 1
 
-    def test_insert_pitching_stats(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_insert_pitching_stats(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
 
@@ -180,8 +175,8 @@ class TestPlayerGameRepositoryInsert:
         assert row["pitch_strike_outs"] == 8
         assert row["pitch_count"] == 95
 
-    def test_insert_fielding_stats(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_insert_fielding_stats(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
 
@@ -194,12 +189,12 @@ class TestPlayerGameRepositoryInsert:
         assert row["field_assists"] == 1
         assert row["field_errors"] == 0
 
-    def test_insert_idempotent(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_insert_idempotent(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
         sample_stats.batting.hits = 3
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
 
@@ -215,8 +210,10 @@ class TestPlayerGameRepositoryInsert:
         ).fetchone()
         assert row["bat_hits"] == 3
 
-    def test_insert_zero_stats(self, player_repo, ctx):
-        player_repo.insert(ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, Stats())
+    def test_insert_zero_stats(self, player_games_repo, ctx):
+        player_games_repo.insert_player_game(
+            ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, Stats()
+        )
 
         row = ctx.conn.execute(
             "SELECT * FROM player_game_stats WHERE game_id = %s AND player_id = %s",
@@ -228,11 +225,11 @@ class TestPlayerGameRepositoryInsert:
         assert row["field_putouts"] == 0
 
     def test_insert_multiple_players_same_game(
-        self, player_repo, ctx, sample_stats, factory
+        self, player_games_repo, ctx, sample_stats, factory
     ):
         players = [factory.player_row() for _ in range(5)]
         for p in players:
-            player_repo.insert(
+            player_games_repo.insert_player_game(
                 ctx.game_id, p.id, ctx.home.id, ctx.away.id, sample_stats
             )
 
@@ -251,9 +248,9 @@ class TestPlayerGameRepositoryInsert:
 class TestPlayerGameRepositoryFieldingPositions:
 
     def test_insert_single_fielding_position(
-        self, player_repo, ctx, sample_stats, sample_fielding_positions
+        self, player_games_repo, ctx, sample_stats, sample_fielding_positions
     ):
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p1.id,
             ctx.home.id,
@@ -274,9 +271,9 @@ class TestPlayerGameRepositoryFieldingPositions:
         assert rows[0]["errors"] == 0
 
     def test_insert_two_way_player(
-        self, player_repo, ctx, sample_stats, sample_fielding_positions_two_way
+        self, player_games_repo, ctx, sample_stats, sample_fielding_positions_two_way
     ):
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p1.id,
             ctx.home.id,
@@ -300,8 +297,8 @@ class TestPlayerGameRepositoryFieldingPositions:
         assert positions["p"]["assists"] == 2
         assert positions["p"]["errors"] == 1
 
-    def test_insert_no_fielding_positions(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_insert_no_fielding_positions(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
 
@@ -312,9 +309,9 @@ class TestPlayerGameRepositoryFieldingPositions:
         assert len(rows) == 0
 
     def test_insert_fielding_positions_idempotent(
-        self, player_repo, ctx, sample_stats, sample_fielding_positions
+        self, player_games_repo, ctx, sample_stats, sample_fielding_positions
     ):
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p1.id,
             ctx.home.id,
@@ -328,7 +325,7 @@ class TestPlayerGameRepositoryFieldingPositions:
         updated_fs.assists = 7
         updated_fs.errors = 1
 
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p1.id,
             ctx.home.id,
@@ -347,7 +344,7 @@ class TestPlayerGameRepositoryFieldingPositions:
         assert rows[0]["errors"] == 1
 
     def test_fielding_positions_isolated_per_player(
-        self, player_repo, ctx, sample_stats
+        self, player_games_repo, ctx, sample_stats
     ):
         ss_stats = FieldingStats()
         ss_stats.putouts = 1
@@ -356,7 +353,7 @@ class TestPlayerGameRepositoryFieldingPositions:
         cf_stats.putouts = 3
         cf_stats.assists = 0
 
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p1.id,
             ctx.home.id,
@@ -364,7 +361,7 @@ class TestPlayerGameRepositoryFieldingPositions:
             sample_stats,
             fielding_positions=[("ss", ss_stats)],
         )
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p2.id,
             ctx.home.id,
@@ -393,11 +390,13 @@ class TestPlayerGameRepositoryFieldingPositions:
 
 class TestPlayerGameRepositoryDeleteGameStats:
 
-    def test_delete_cleans_player_game_stats(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_delete_cleans_player_game_stats(
+        self, player_games_repo, ctx, sample_stats
+    ):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        player_repo.delete_game_stats(ctx.game_id)
+        player_games_repo.delete_game_stats(ctx.game_id)
 
         count = ctx.conn.execute(
             "SELECT COUNT(*) AS n FROM player_game_stats WHERE game_id = %s",
@@ -406,9 +405,9 @@ class TestPlayerGameRepositoryDeleteGameStats:
         assert count == 0
 
     def test_delete_cleans_player_game_fielding(
-        self, player_repo, ctx, sample_stats, sample_fielding_positions
+        self, player_games_repo, ctx, sample_stats, sample_fielding_positions
     ):
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p1.id,
             ctx.home.id,
@@ -416,7 +415,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
             sample_stats,
             fielding_positions=sample_fielding_positions,
         )
-        player_repo.delete_game_stats(ctx.game_id)
+        player_games_repo.delete_game_stats(ctx.game_id)
 
         count = ctx.conn.execute(
             "SELECT COUNT(*) AS n FROM player_game_fielding WHERE game_id = %s",
@@ -425,7 +424,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
         assert count == 0
 
     def test_delete_only_affects_specified_game(
-        self, player_repo, ctx, sample_stats, sample_fielding_positions, factory
+        self, player_games_repo, ctx, sample_stats, sample_fielding_positions, factory
     ):
         import uuid
 
@@ -436,7 +435,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
             (game2_id, "2025-04-02", ctx.season.id, ctx.home.id, ctx.away.id),
         )
 
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             ctx.game_id,
             ctx.p1.id,
             ctx.home.id,
@@ -444,7 +443,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
             sample_stats,
             fielding_positions=sample_fielding_positions,
         )
-        player_repo.insert(
+        player_games_repo.insert_player_game(
             game2_id,
             ctx.p1.id,
             ctx.home.id,
@@ -453,7 +452,7 @@ class TestPlayerGameRepositoryDeleteGameStats:
             fielding_positions=sample_fielding_positions,
         )
 
-        player_repo.delete_game_stats(ctx.game_id)
+        player_games_repo.delete_game_stats(ctx.game_id)
 
         assert (
             ctx.conn.execute(
@@ -479,19 +478,19 @@ class TestPlayerGameRepositoryDeleteGameStats:
 
 class TestPlayerGameRepositoryGetForGame:
 
-    def test_get_for_game_existing(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_get_for_game_existing(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        retrieved = player_repo.get_for_game(ctx.game_id, ctx.p1.id)
+        retrieved = player_games_repo.get_for_game(ctx.game_id, ctx.p1.id)
         assert retrieved is not None
         assert isinstance(retrieved, Stats)
 
-    def test_get_for_game_batting_stats(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_get_for_game_batting_stats(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        retrieved = player_repo.get_for_game(ctx.game_id, ctx.p1.id)
+        retrieved = player_games_repo.get_for_game(ctx.game_id, ctx.p1.id)
         assert retrieved.batting.at_bats == 4
         assert retrieved.batting.hits == 2
         assert retrieved.batting.doubles == 1
@@ -499,43 +498,44 @@ class TestPlayerGameRepositoryGetForGame:
         assert retrieved.batting.rbi == 3
         assert retrieved.batting.runs == 2
 
-    def test_get_for_game_pitching_stats(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_get_for_game_pitching_stats(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        retrieved = player_repo.get_for_game(ctx.game_id, ctx.p1.id)
+        retrieved = player_games_repo.get_for_game(ctx.game_id, ctx.p1.id)
         assert retrieved.pitching.outs == 27
         assert retrieved.pitching.hits == 5
         assert retrieved.pitching.runs == 2
         assert retrieved.pitching.strike_outs == 8
         assert retrieved.pitching.pitch_count == 95
 
-    def test_get_for_game_fielding_stats(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_get_for_game_fielding_stats(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        retrieved = player_repo.get_for_game(ctx.game_id, ctx.p1.id)
+        retrieved = player_games_repo.get_for_game(ctx.game_id, ctx.p1.id)
         assert retrieved.fielding.putouts == 3
         assert retrieved.fielding.assists == 1
         assert retrieved.fielding.errors == 0
         assert retrieved.fielding.chances == 4
 
-    def test_get_for_game_nonexistent(self, player_repo):
+    def test_get_for_game_nonexistent(self, player_games_repo):
         assert (
-            player_repo.get_for_game("nonexistent-game", "nonexistent-player") is None
+            player_games_repo.get_for_game("nonexistent-game", "nonexistent-player")
+            is None
         )
 
-    def test_get_for_game_wrong_player(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_get_for_game_wrong_player(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        assert player_repo.get_for_game(ctx.game_id, ctx.p2.id) is None
+        assert player_games_repo.get_for_game(ctx.game_id, ctx.p2.id) is None
 
-    def test_get_for_game_wrong_game(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_get_for_game_wrong_game(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        assert player_repo.get_for_game("wrong-game-id", ctx.p1.id) is None
+        assert player_games_repo.get_for_game("wrong-game-id", ctx.p1.id) is None
 
 
 # ---------------------------------------------------------------------------
@@ -545,16 +545,18 @@ class TestPlayerGameRepositoryGetForGame:
 
 class TestPlayerGameRepositoryFetchPlayerGames:
 
-    def test_fetch_player_games_single(self, player_repo, ctx, sample_stats):
-        player_repo.insert(
+    def test_fetch_player_games_single(self, player_games_repo, ctx, sample_stats):
+        player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
         )
-        games = player_repo.fetch_player_games(ctx.p1.id)
+        games = player_games_repo.fetch_player_games(ctx.p1.id)
         assert len(games) == 1
         assert isinstance(games[0], Stats)
         assert games[0].batting.hits == 2
 
-    def test_fetch_player_games_multiple(self, player_repo, ctx, sample_stats, factory):
+    def test_fetch_player_games_multiple(
+        self, player_games_repo, ctx, sample_stats, factory
+    ):
         import uuid
 
         for i in range(5):
@@ -564,16 +566,16 @@ class TestPlayerGameRepositoryFetchPlayerGames:
                 " VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
                 (gid, f"2025-04-{i+1:02d}", ctx.season.id, ctx.home.id, ctx.away.id),
             )
-            player_repo.insert_player_game(
+            player_games_repo.insert_player_game(
                 gid, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
             )
 
-        games = player_repo.fetch_player_games(ctx.p1.id)
+        games = player_games_repo.fetch_player_games(ctx.p1.id)
         assert len(games) == 5
         assert all(isinstance(g, Stats) for g in games)
 
-    def test_fetch_player_games_empty(self, player_repo):
-        assert player_repo.fetch_player_games("nonexistent-player") == []
+    def test_fetch_player_games_empty(self, player_games_repo):
+        assert player_games_repo.fetch_player_games("nonexistent-player") == []
 
     def test_fetch_player_games_ordered(
         self, player_games_repo, ctx, sample_stats, factory
@@ -687,20 +689,22 @@ class TestPlayerGameRepositoryLoadSeasonStats:
             game_s2=game_s2,
         )
 
-    def test_load_season_stats_basic(self, player_repo, season_setup):
+    def test_load_season_stats_basic(self, player_games_repo, season_setup):
         ss = season_setup
         for gid in ss.games_s1:
             s = Stats()
             s.batting.hits = 2
             s.batting.at_bats = 4
-            player_repo.insert(gid, ss.player.id, ss.home.id, ss.away.id, s)
+            player_games_repo.insert_player_game(
+                gid, ss.player.id, ss.home.id, ss.away.id, s
+            )
 
-        result = player_repo.load_season_stats(ss.player.id, ss.season1.id)
+        result = player_games_repo.load_season_stats(ss.player.id, ss.season1.id)
         assert result.games_played == 3
         assert result.stats.batting.hits == 6
         assert result.stats.batting.at_bats == 12
 
-    def test_load_season_stats_aggregation(self, player_repo, season_setup):
+    def test_load_season_stats_aggregation(self, player_games_repo, season_setup):
         ss = season_setup
         stats_data = [(2, 1, 4), (3, 0, 5), (1, 1, 3)]
         for gid, (hits, hrs, ab) in zip(ss.games_s1, stats_data):
@@ -708,60 +712,74 @@ class TestPlayerGameRepositoryLoadSeasonStats:
             s.batting.hits = hits
             s.batting.home_runs = hrs
             s.batting.at_bats = ab
-            player_repo.insert(gid, ss.player.id, ss.home.id, ss.away.id, s)
+            player_games_repo.insert_player_game(
+                gid, ss.player.id, ss.home.id, ss.away.id, s
+            )
 
-        result = player_repo.load_season_stats(ss.player.id, ss.season1.id)
+        result = player_games_repo.load_season_stats(ss.player.id, ss.season1.id)
         assert result.games_played == 3
         assert result.stats.batting.hits == 6
         assert result.stats.batting.home_runs == 2
         assert result.stats.batting.at_bats == 12
 
-    def test_load_season_stats_different_season(self, player_repo, season_setup):
+    def test_load_season_stats_different_season(self, player_games_repo, season_setup):
         ss = season_setup
         s1 = Stats()
         s1.batting.hits = 2
-        player_repo.insert(ss.games_s1[0], ss.player.id, ss.home.id, ss.away.id, s1)
+        player_games_repo.insert_player_game(
+            ss.games_s1[0], ss.player.id, ss.home.id, ss.away.id, s1
+        )
 
         s2 = Stats()
         s2.batting.hits = 3
-        player_repo.insert(ss.game_s2, ss.player.id, ss.home.id, ss.away.id, s2)
+        player_games_repo.insert_player_game(
+            ss.game_s2, ss.player.id, ss.home.id, ss.away.id, s2
+        )
 
-        r1 = player_repo.load_season_stats(ss.player.id, ss.season1.id)
+        r1 = player_games_repo.load_season_stats(ss.player.id, ss.season1.id)
         assert r1.games_played == 1 and r1.stats.batting.hits == 2
 
-        r2 = player_repo.load_season_stats(ss.player.id, ss.season2.id)
+        r2 = player_games_repo.load_season_stats(ss.player.id, ss.season2.id)
         assert r2.games_played == 1 and r2.stats.batting.hits == 3
 
-    def test_load_season_stats_no_games(self, player_repo, season_setup):
+    def test_load_season_stats_no_games(self, player_games_repo, season_setup):
         ss = season_setup
-        result = player_repo.load_season_stats(ss.player.id, ss.season1.id)
+        result = player_games_repo.load_season_stats(ss.player.id, ss.season1.id)
         assert result.games_played == 0
         assert result.stats.batting.hits == 0
 
-    def test_load_season_stats_pitching_aggregation(self, player_repo, season_setup):
+    def test_load_season_stats_pitching_aggregation(
+        self, player_games_repo, season_setup
+    ):
         ss = season_setup
         for gid in ss.games_s1:
             s = Stats()
             s.pitching.outs = 9
             s.pitching.strike_outs = 5
             s.pitching.walks = 2
-            player_repo.insert(gid, ss.player.id, ss.home.id, ss.away.id, s)
+            player_games_repo.insert_player_game(
+                gid, ss.player.id, ss.home.id, ss.away.id, s
+            )
 
-        result = player_repo.load_season_stats(ss.player.id, ss.season1.id)
+        result = player_games_repo.load_season_stats(ss.player.id, ss.season1.id)
         assert result.stats.pitching.outs == 27
         assert result.stats.pitching.strike_outs == 15
         assert result.stats.pitching.walks == 6
 
-    def test_load_season_stats_fielding_aggregation(self, player_repo, season_setup):
+    def test_load_season_stats_fielding_aggregation(
+        self, player_games_repo, season_setup
+    ):
         ss = season_setup
         for gid in ss.games_s1:
             s = Stats()
             s.fielding.putouts = 3
             s.fielding.assists = 2
             s.fielding.errors = 1
-            player_repo.insert(gid, ss.player.id, ss.home.id, ss.away.id, s)
+            player_games_repo.insert_player_game(
+                gid, ss.player.id, ss.home.id, ss.away.id, s
+            )
 
-        result = player_repo.load_season_stats(ss.player.id, ss.season1.id)
+        result = player_games_repo.load_season_stats(ss.player.id, ss.season1.id)
         assert result.stats.fielding.putouts == 9
         assert result.stats.fielding.assists == 6
         assert result.stats.fielding.errors == 3

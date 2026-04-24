@@ -420,37 +420,37 @@ class TestLoadEligibleIds:
 
     def test_blitz_includes_26man_and_40man(self, seeded):
         db, team_id, players = seeded
-        ids = _load_eligible_ids(db, team_id, "", blitz=True)
+        ids = _load_eligible_ids(db, team_id, blitz=True)
         assert players["26man"] in ids
         assert players["40man"] in ids
 
     def test_blitz_excludes_minors_and_free_agents(self, seeded):
         db, team_id, players = seeded
-        ids = _load_eligible_ids(db, team_id, "", blitz=True)
+        ids = _load_eligible_ids(db, team_id, blitz=True)
         assert players["minors"] not in ids
         assert players["free_agent"] not in ids
 
     def test_long_form_includes_only_26man(self, seeded):
         db, team_id, players = seeded
-        ids = _load_eligible_ids(db, team_id, "", blitz=False)
+        ids = _load_eligible_ids(db, team_id, blitz=False)
         assert players["26man"] in ids
         assert players["40man"] not in ids
 
     def test_long_form_excludes_minors_and_free_agents(self, seeded):
         db, team_id, players = seeded
-        ids = _load_eligible_ids(db, team_id, "", blitz=False)
+        ids = _load_eligible_ids(db, team_id, blitz=False)
         assert players["minors"] not in ids
         assert players["free_agent"] not in ids
 
     def test_returns_set(self, seeded):
         db, team_id, _ = seeded
-        ids = _load_eligible_ids(db, team_id, "", blitz=True)
-        assert isinstance(ids, set)
+        ids = _load_eligible_ids(db, team_id, blitz=True)
+        assert isinstance(ids, list)
 
     def test_empty_roster_returns_empty_set(self, db_conn):
         db_conn.execute(
             "INSERT INTO teams (id, city, mascot) VALUES ('empty-team', 'C', 'M')"
         )
         db_conn.commit()
-        ids = _load_eligible_ids(db_conn, "empty-team", "", blitz=True)
-        assert ids == set()
+        ids = _load_eligible_ids(db_conn, "empty-team", blitz=True)
+        assert ids == []

@@ -130,7 +130,7 @@ def start_league(
     # Only delete prospects that belong to THIS league — don't touch other leagues.
     dr = DraftRepository(conn)
     prospect_count = draft_gen or DraftGenerator(conn, rng=rng).run(
-        season_id=season_id, year=year, league_id=league_id
+        year=year, league_id=league_id
     )
 
     # ── 7. Create draft ───────────────────────────────────────────────────────

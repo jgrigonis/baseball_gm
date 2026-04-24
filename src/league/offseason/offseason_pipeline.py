@@ -45,7 +45,7 @@ class OffseasonPipeline:
     def run(
         self,
         season_id: str,
-        league_id: str | None = None,
+        league_id: str,
         skip_auto_draft: bool = False,
         stop_after_draft_gen: bool = False,
     ) -> None:
@@ -58,7 +58,6 @@ class OffseasonPipeline:
         else:
             print("No year found with season.")
             self.year = 2025
-        # self._load_season_year(season_id)
 
         if not self.os_repo.is_done(season_id, "archive"):
             if not self._playoffs_complete(season_id):
@@ -391,7 +390,7 @@ class OffseasonPipeline:
 
     def _generate_draft(self, season_id: str) -> None:
         generator = DraftGenerator(self.conn, self.rng)
-        total = generator.run(season_id, self.year, league_id=self.league_id)
+        total = generator.run(self.year, league_id=self.league_id)
         print(f"  Draft pool ready: {total} draftable players")
 
     def _write_draft_order(self, league_id: str, draft_order: list[dict]) -> None:

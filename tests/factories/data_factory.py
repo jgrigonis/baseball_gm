@@ -92,14 +92,14 @@ class TestDataFactory:
                 (draft.id, team.id, i),
             )
 
-    def prospect(self, player_id=None, stamina=50, strikes=50):
+    def prospect(self, league_id, player_id=None, stamina=50, strikes=50):
         """Insert a full prospect (player + skills + status)."""
         player_id = player_id or self._id()
         self.db.execute(
-            "INSERT INTO players (id, first_name, last_name, bats, throws, position)"
-            " VALUES (%s, 'Test', 'Player', 'R', 'R', 'of')"
+            "INSERT INTO players (id, first_name, last_name, bats, throws, position, league_id)"
+            " VALUES (%s, 'Test', 'Player', 'R', 'R', 'of', %s)"
             " ON CONFLICT DO NOTHING",
-            (player_id,),
+            (player_id, league_id),
         )
         self.db.execute(
             """INSERT INTO player_skills

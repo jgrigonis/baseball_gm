@@ -7,7 +7,7 @@ class LeagueRepository:
     Repository for managing leagues, seasons, and team assignments.
 
     Typical workflow:
-    1. create_league() - Create or get existing league
+    1. get_or_create_by_name() - Create or get existing league
     2. assign_season_to_league() - Link season to league
     3. assign_team_to_league() - Add teams to league for that season
     """

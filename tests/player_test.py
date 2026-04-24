@@ -1,3 +1,5 @@
+# tests/player_test.py
+import pytest
 import random
 import unittest
 
@@ -27,6 +29,7 @@ class TestPlayerFactory(unittest.TestCase):
         self.assertEqual(my_player2.throws, "L")
         self.assertNotEqual(my_player2.name, None)
 
+    @pytest.mark.slow
     def test_lefty_1b_probability(self):
         rng = random.Random(40)
         factory = PlayerFactory(rng=rng)
