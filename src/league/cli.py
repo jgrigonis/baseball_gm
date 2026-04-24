@@ -91,7 +91,7 @@ def main():
     elif missing:
         for miss in missing:
             print(f"The csv file for {miss} is missing.")
-        sys, exit(1)
+        sys.exit(1)
 
     # Parse start date from manifest or default
     start_date_str = manifest.get(
