@@ -68,14 +68,13 @@ class DraftRepository:
 
     def get_pick_position(self, draft_id: str, team_id: str) -> int | None:
         """Return the team's pick position from draft_order, or None."""
-        try:
-            row = self.conn.execute(
-                "SELECT pick_position FROM draft_order WHERE draft_id = %s AND team_id = %s",
-                (draft_id, team_id),
-            ).fetchone()
-            return row["pick_position"] if row else None
-        except Exception:
-            return None  # table doesn't exist on older DBs
+        cursor = self.conn.cursor()
+        row = cursor.execute(
+            "SELECT pick_position FROM draft_order WHERE draft_id = %s AND team_id = %s",
+            (draft_id, team_id),
+        ).fetchone()
+        return row["pick_position"] if row else None
+
 
     def get_picks_with_details(self, draft_id: str) -> list[dict]:
         """Return all picks for a draft with player and team info, ordered by pick number."""

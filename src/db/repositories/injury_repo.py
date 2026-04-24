@@ -207,7 +207,7 @@ class InjuryRepository:
         injury = PlayerInjury(player_id=player_id, games_remaining=games_missed)
 
         cursor = self.conn.cursor()
-        try:
+        with self.conn.transaction():
             cursor.execute(
                 """
                 INSERT INTO player_injuries (player_id, league_id, games_remaining)
@@ -236,10 +236,7 @@ class InjuryRepository:
                     activity,
                 ),
             )
-            # self.conn.commit()
-        except Exception:
-            self.conn.rollback()
-            raise
+
 
         logger.info(
             "Player %s injured: %s (%d games).", player_id, severity, games_missed
@@ -286,7 +283,6 @@ class InjuryRepository:
             (self.league_id,),
         )
         deleted = cursor.rowcount
-        # self.conn.commit()
         return deleted
 
     # ------------------------------------------------------------------
@@ -304,4 +300,3 @@ class InjuryRepository:
             """,
             (injury.player_id, self.league_id, injury.games_remaining),
         )
-        # self.conn.commit()
