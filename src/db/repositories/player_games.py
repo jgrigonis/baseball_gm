@@ -363,6 +363,58 @@ class PlayerGameRepository:
 
         return s
 
+    def get_player_stats_totals(
+        self, player_id: str, season_id: str | None = None
+    ) -> dict | None:
+        """Return aggregated batting+pitching totals for a player.
+
+        If season_id is given, scopes to that season; otherwise returns career totals.
+        Returns None if the player has no games matching the filter.
+        """
+        season_filter = "AND g.season_id = %s" if season_id else ""
+        params = [player_id, season_id] if season_id else [player_id]
+        row = self.conn.execute(
+            f"""
+            SELECT
+                COUNT(DISTINCT pgs.game_id) AS games_played,
+                SUM(pgs.bat_ab) AS bat_ab,
+                SUM(pgs.bat_hits) AS bat_hits,
+                SUM(pgs.bat_doubles) AS bat_doubles,
+                SUM(pgs.bat_triples) AS bat_triples,
+                SUM(pgs.bat_home_runs) AS bat_home_runs,
+                SUM(pgs.bat_rbi) AS bat_rbi,
+                SUM(pgs.bat_runs) AS bat_runs,
+                SUM(pgs.bat_walks) AS bat_walks,
+                SUM(pgs.bat_strike_outs) AS bat_strike_outs,
+                SUM(pgs.bat_stolen_bases) AS bat_stolen_bases,
+                SUM(pgs.bat_hbp) AS bat_hbp,
+                SUM(pgs.bat_sac_flys) AS bat_sac_flys,
+                SUM(pgs.pitch_game_played) AS pitch_game_played,
+                SUM(pgs.pitch_game_started) AS pitch_game_started,
+                SUM(pgs.pitch_win) AS pitch_win,
+                SUM(pgs.pitch_loss) AS pitch_loss,
+                SUM(pgs.pitch_save) AS pitch_save,
+                SUM(pgs.pitch_hold) AS pitch_hold,
+                SUM(pgs.pitch_complete_game) AS pitch_complete_game,
+                SUM(pgs.pitch_shutout) AS pitch_shutout,
+                SUM(pgs.pitch_outs) AS pitch_outs,
+                SUM(pgs.pitch_hits) AS pitch_hits,
+                SUM(pgs.pitch_runs) AS pitch_runs,
+                SUM(pgs.pitch_earned_runs) AS pitch_earned_runs,
+                SUM(pgs.pitch_walks) AS pitch_walks,
+                SUM(pgs.pitch_strike_outs) AS pitch_strike_outs,
+                SUM(pgs.pitch_home_runs) AS pitch_home_runs,
+                SUM(pgs.pitch_count) AS pitch_count
+            FROM player_game_stats pgs
+            JOIN games g ON g.id = pgs.game_id
+            WHERE pgs.player_id = %s {season_filter}
+            """,
+            params,
+        ).fetchone()
+        if not row or (row["games_played"] or 0) == 0:
+            return None
+        return dict(row)
+
     def get_batting_box_score(self, game_id: str) -> list[dict]:
         """Return batting lines for a game box score (players with at-bats), ordered for display."""
         rows = self.conn.execute(

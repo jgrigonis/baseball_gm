@@ -115,6 +115,13 @@ class SeasonRepository:
             {"id": row["id"], "year": row["year"], "name": row["name"]} for row in rows
         ]
 
+    def get_all_seasons_asc(self) -> list[dict]:
+        """Return all seasons ordered by year ascending (oldest first)."""
+        rows = self.conn.execute(
+            "SELECT id, year, name FROM seasons ORDER BY year"
+        ).fetchall()
+        return [{"id": row["id"], "year": row["year"], "name": row["name"]} for row in rows]
+
     # TODO Don't think this is ever called
     def exists(self, season_id: str) -> bool:
         """
@@ -221,3 +228,39 @@ class SeasonRepository:
             (league_id,),
         ).fetchone()
         return row["id"] if row else None
+
+    def get_newest_for_league(self, league_id: str) -> dict | None:
+        """Return the newest season row for a league, or None."""
+        row = self.conn.execute(
+            """SELECT s.id, s.year, s.name FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_last_with_completed_games(self, league_id: str) -> dict | None:
+        """Return the newest season that has at least one completed game, or None."""
+        row = self.conn.execute(
+            """SELECT s.id, s.year, s.name FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s
+                 AND EXISTS (
+                   SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 1
+                 )
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_last_with_series_row(self, league_id: str) -> dict | None:
+        """Return the newest season that has series records, or None."""
+        row = self.conn.execute(
+            """SELECT s.id, s.year, s.name FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s
+                 AND EXISTS (SELECT 1 FROM series sr WHERE sr.season_id = s.id)
+               ORDER BY s.year DESC LIMIT 1""",
+            (league_id,),
+        ).fetchone()
+        return dict(row) if row else None

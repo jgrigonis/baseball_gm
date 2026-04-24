@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 
 from src.db.connection import get_connection
+from src.db.repositories.player_games import PlayerGameRepository
+from src.db.repositories.season_repo import SeasonRepository
 
 # ---------------------------------------------------------------------------
 # Args
@@ -136,11 +138,9 @@ def query_season_stats(player_id: str, season: str | None) -> dict:
     Returns dict with 'batting', 'pitching', and 'games' keys.
     """
     conn = get_connection()
-    cur = conn.cursor()
 
     # Show available seasons and resolve season_id
-    cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
-    all_seasons = cur.fetchall()
+    all_seasons = SeasonRepository(conn).get_all_seasons_asc()
     if not all_seasons:
         print("  Warning: no seasons found in database.")
         conn.close()
@@ -167,33 +167,10 @@ def query_season_stats(player_id: str, season: str | None) -> dict:
         for s in all_seasons:
             print(f"    year={s['year']}  name={s['name']}")
 
-    # Build WHERE clause
-    where = "WHERE pgs.player_id = ?"
-    params: list = [player_id]
-    if season_id:
-        where += " AND g.season_id = ?"
-        params.append(season_id)
-
-    bat_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in BATTING_COLS)
-    pit_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in PITCHING_COLS)
-
-    cur.execute(
-        f"""
-        SELECT
-            COUNT(DISTINCT pgs.game_id) as games_played,
-            {bat_sums},
-            {pit_sums}
-        FROM player_game_stats pgs
-        JOIN games g ON g.id = pgs.game_id
-        {where}
-    """,
-        params,
-    )
-
-    row = cur.fetchone()
+    row = PlayerGameRepository(conn).get_player_stats_totals(player_id, season_id)
     conn.close()
 
-    if not row or row["games_played"] == 0:
+    if not row:
         return {}
 
     batting = {label: (row[col] or 0) for col, label in BATTING_COLS}

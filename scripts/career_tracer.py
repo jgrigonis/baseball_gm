@@ -17,6 +17,9 @@ import sys
 from pathlib import Path
 
 from src.db.connection import get_connection
+from src.db.repositories.player_games import PlayerGameRepository
+from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.player.skill_map import SKILL_MAP, SKILL_ABBREVIATIONS
 
 # ---------------------------------------------------------------------------
@@ -166,48 +169,23 @@ def resolve_id_from_name(directory: Path, name_query: str) -> list[tuple[str, st
 
 def get_talent_caps(player_id: str) -> dict | None:
     conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM player_talent_caps WHERE player_id = ?", (player_id,))
-    row = cur.fetchone()
+    caps = TalentCapRepository(conn).get(player_id)
     conn.close()
-    if not row:
-        return None
-    return dict(row)
+    return caps
 
 
 def get_all_seasons() -> list[dict]:
     conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, year, name FROM seasons ORDER BY year")
-    rows = [dict(r) for r in cur.fetchall()]
+    rows = SeasonRepository(conn).get_all_seasons_asc()
     conn.close()
     return rows
 
 
-def get_season_stats(player_id: str, season_id: int) -> dict:
+def get_season_stats(player_id: str, season_id: str) -> dict:
     conn = get_connection()
-    cur = conn.cursor()
-
-    bat_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in BATTING_COLS)
-    pit_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in PITCHING_COLS)
-
-    cur.execute(
-        f"""
-        SELECT
-            COUNT(DISTINCT pgs.game_id) as games_played,
-            {bat_sums},
-            {pit_sums}
-        FROM player_game_stats pgs
-        JOIN games g ON g.id = pgs.game_id
-        WHERE pgs.player_id = ? AND g.season_id = ?
-    """,
-        (player_id, season_id),
-    )
-
-    row = cur.fetchone()
+    row = PlayerGameRepository(conn).get_player_stats_totals(player_id, season_id)
     conn.close()
-
-    if not row or (row["games_played"] or 0) == 0:
+    if not row:
         return {}
 
     batting = {label: (row[col] or 0) for col, label in BATTING_COLS}
@@ -243,27 +221,9 @@ def get_season_stats(player_id: str, season_id: int) -> dict:
 def get_career_stats(player_id: str) -> dict:
     """Sum stats across all seasons."""
     conn = get_connection()
-    cur = conn.cursor()
-
-    bat_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in BATTING_COLS)
-    pit_sums = ", ".join(f"SUM(pgs.{col}) as {col}" for col, _ in PITCHING_COLS)
-
-    cur.execute(
-        f"""
-        SELECT
-            COUNT(DISTINCT pgs.game_id) as games_played,
-            {bat_sums},
-            {pit_sums}
-        FROM player_game_stats pgs
-        WHERE pgs.player_id = ?
-    """,
-        (player_id,),
-    )
-
-    row = cur.fetchone()
+    row = PlayerGameRepository(conn).get_player_stats_totals(player_id)
     conn.close()
-
-    if not row or (row["games_played"] or 0) == 0:
+    if not row:
         return {}
 
     batting = {label: (row[col] or 0) for col, label in BATTING_COLS}

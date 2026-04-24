@@ -186,55 +186,19 @@ def _shell_ctx(
     # 4. Season/Date logic
     league_state_for_season = league["state"] if league else "lobby"
 
+    sr = SeasonRepository(db)
     if league_state_for_season == "draft":
         # During draft, show the last COMPLETED season for standings/schedule/etc.
         # Year 2 is being drafted but has no games — year 1's data is what's useful.
-        season = db.execute(
-            """SELECT s.* FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s
-                 AND EXISTS (
-                   SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 1
-                 )
-               ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
-        # Fallback to newest if nothing completed yet (first ever draft)
-        if season is None:
-            season = db.execute(
-                """SELECT s.* FROM seasons s
-                   JOIN league_seasons ls ON ls.season_id = s.id
-                   WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-                (league_id,),
-            ).fetchone()
+        # Fallback to newest if nothing completed yet (first ever draft).
+        season = sr.get_last_with_completed_games(league_id) or sr.get_newest_for_league(league_id)
     elif league_state_for_season in ("playoffs", "offseason"):
-        # During playoffs/offseason, use the season that has series records
-        season = db.execute(
-            """SELECT s.* FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s
-                 AND EXISTS (
-                   SELECT 1 FROM series sr WHERE sr.season_id = s.id
-                 )
-               ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
-        # Fallback to newest if no series yet
-        if season is None:
-            season = db.execute(
-                """SELECT s.* FROM seasons s
-                   JOIN league_seasons ls ON ls.season_id = s.id
-                   WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-                (league_id,),
-            ).fetchone()
+        # During playoffs/offseason, use the season that has series records.
+        # Fallback to newest if no series yet.
+        season = sr.get_last_with_series_row(league_id) or sr.get_newest_for_league(league_id)
     else:
         # season/preseason: show the newest season (current active season)
-        season = db.execute(
-            """SELECT s.* FROM seasons s
-               JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
-        ).fetchone()
+        season = sr.get_newest_for_league(league_id)
     if season:
         ctx.update(
             {
