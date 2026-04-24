@@ -228,6 +228,7 @@ def play_series(
             log_print(traceback.format_exc(), logger=logger)
             raise
 
+    game_repo.void_remaining_series_games(series_id)
     print_series_result(conn, series_id, best_of, logger)
     por = PlayoffRepository(conn)
     winner = por.get_series_winner(series_id, best_of)

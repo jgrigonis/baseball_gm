@@ -236,18 +236,6 @@ class GameRepository:
                    JOIN teams at ON at.id = g.away_team_id
                    WHERE g.season_id = %s AND g.completed = 0
                      AND (g.home_team_id = %s OR g.away_team_id = %s)
-                     AND (
-                         g.series_id IS NULL
-                         OR NOT EXISTS (
-                             SELECT 1 FROM games sg
-                             JOIN series sr ON sr.id = sg.series_id
-                             WHERE sg.series_id = g.series_id AND sg.completed = 1
-                             GROUP BY sg.winner_id
-                             HAVING COUNT(*) >= MAX(
-                                 CASE WHEN sr.name IN ('1v8','2v7','3v6','4v5') THEN 3 ELSE 4 END
-                             )
-                         )
-                     )
                    ORDER BY g.game_date"""
         if limit:
             query += f" LIMIT {limit}"
@@ -284,6 +272,15 @@ class GameRepository:
             return False
 
         return row["completed"] == 1
+
+    def void_remaining_series_games(self, series_id: str) -> int:
+        """Mark unplayed games in a decided series as voided (-1). Returns count voided."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "UPDATE games SET completed = -1 WHERE series_id = %s AND completed = 0",
+            (series_id,),
+        )
+        return cursor.rowcount
 
     def get_next_unplayed_date(self, season_id: str) -> dict | None:
         """Get the next unplayed date row."""
