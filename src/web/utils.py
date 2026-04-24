@@ -86,7 +86,6 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
             return f"{year}-03-22"
         else:
             return None
-
     # Next unplayed regular season game
     game_repo = GameRepository(db)
     row = game_repo.get_next_unplayed_date(season_id)
