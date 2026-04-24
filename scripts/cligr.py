@@ -486,10 +486,8 @@ def _bootstrap_first_season(
         league_id=league_id,
         force_new_teams=True,
     )
-
-    existing_games = conn.execute(
-        "SELECT COUNT(*) FROM games WHERE season_id = %s", (season_id,)
-    ).fetchone()["count"]
+    game_repo = GameRepository(conn)
+    existing_games = game_repo.games_remaining(season_id)
     if existing_games == 0:
         scheduler = ScheduleGenerator(rng=rng)
         schedule = scheduler.create_schedule(
