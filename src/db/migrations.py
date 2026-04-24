@@ -59,11 +59,6 @@ def _ensure_migration_table(conn):
             applied_at TEXT NOT NULL
         )
         """)
-    # Migrate existing INTEGER column to BIGINT if needed
-    conn.execute("""
-        ALTER TABLE schema_migrations
-        ALTER COLUMN version TYPE BIGINT
-    """)
 
 
 def _applied_versions(conn):
