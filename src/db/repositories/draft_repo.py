@@ -75,7 +75,6 @@ class DraftRepository:
         ).fetchone()
         return row["pick_position"] if row else None
 
-
     def get_picks_with_details(self, draft_id: str) -> list[dict]:
         """Return all picks for a draft with player and team info, ordered by pick number."""
         rows = self.conn.execute(

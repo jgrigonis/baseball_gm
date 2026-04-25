@@ -83,7 +83,9 @@ def _compute_ratings(skills: dict, throws: str) -> dict:
         ps = PlayerSkills(skills)
         ratings = PlayerEvaluator.rate_player(ps, throws or "R")
     except Exception:
-        logger.exception("Failed to evaluate player skills: skills=%s throws=%s", skills, throws)
+        logger.exception(
+            "Failed to evaluate player skills: skills=%s throws=%s", skills, throws
+        )
         return {}
 
     if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
@@ -1463,7 +1465,9 @@ def lineup(
             if s and (s["pitch_games_played"] or 0) > 0:
                 outs = s["pitch_outs"] or 0
                 p["stat_gs"] = s["pitch_games_started"] or 0
-                p["stat_era"] = f"{(s['pitch_earned_runs'] * 27) / outs:.2f}" if outs else "--"
+                p["stat_era"] = (
+                    f"{(s['pitch_earned_runs'] * 27) / outs:.2f}" if outs else "--"
+                )
                 p["stat_ip"] = f"{outs // 3}.{outs % 3}"
                 p["stat_w"] = s["pitch_wins"] or 0
                 p["stat_l"] = s["pitch_losses"] or 0
@@ -1597,9 +1601,7 @@ async def save_bullpen(
     try:
         # Evict any bullpen-assigned pitchers who are still in the DB rotation
         bullpen_ids = {a["player_id"] for a in assignments}
-        in_rotation = bp_repo.get_active_rotation_player_ids(
-            gm["team_id"], season_id
-        )
+        in_rotation = bp_repo.get_active_rotation_player_ids(gm["team_id"], season_id)
         for pid in bullpen_ids & in_rotation:
             rot_repo.remove_from_rotation(
                 team_id=gm["team_id"],

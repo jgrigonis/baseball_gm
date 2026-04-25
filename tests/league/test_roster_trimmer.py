@@ -372,7 +372,7 @@ class TestRosterTrimmerRun:
             """SELECT COUNT(*) FROM team_players tp
                JOIN player_status ps ON tp.player_id = ps.player_id
                WHERE tp.team_id = %s AND ps.status = 'minors'""",
-               (t1, )
+            (t1,),
         ).fetchone()["count"]
         assert remaining == MINORS_LIMIT
 

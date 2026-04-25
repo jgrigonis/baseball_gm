@@ -866,7 +866,7 @@ def cmd_new_league(args) -> None:
     conn, league_id, season_id, _ = _bootstrap_first_season(
         args.year, args.manifest, args.seed
     )
-    print(f"\n✅ League created.")
+    print("\n✅ League created.")
 
     if args.run_season:
         current_season_id = season_id

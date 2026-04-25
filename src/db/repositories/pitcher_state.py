@@ -129,6 +129,7 @@ class PitcherState:
     def is_fresh(self) -> bool:
         return self.current_energy >= _RECOVERY_THRESHOLD
 
+
 # ---------------------------------------------------------------------------
 # Repository
 # ---------------------------------------------------------------------------

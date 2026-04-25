@@ -207,7 +207,9 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     # Human teams are excluded — they set their own lineups.
     ai_team_ids = {r["team_id"] for r in stored_order} - human_team_ids
     seeded = seed_ai_rotations(
-        conn, season_id, ai_team_ids,
+        conn,
+        season_id,
+        ai_team_ids,
         statuses=["26man", "40man"],
         effective_date=f"{year}-04-01",
     )

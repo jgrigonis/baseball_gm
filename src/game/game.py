@@ -941,7 +941,9 @@ class Game:
             return
         # No penalty for first few consecutive days, then ramps up
         streak_days = max(0, state.consecutive_days - FREE_STREAK_DAYS)
-        streak_penalty = min(ENERGY_PENALTY_PER_STREAK_DAY * streak_days, MAX_STREAK_PENALTY)
+        streak_penalty = min(
+            ENERGY_PENALTY_PER_STREAK_DAY * streak_days, MAX_STREAK_PENALTY
+        )
         state.current_energy = max(
             0.0, state.current_energy - BASE_ENERGY_DEPLETION - streak_penalty
         )

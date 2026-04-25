@@ -120,7 +120,9 @@ class SeasonRepository:
         rows = self.conn.execute(
             "SELECT id, year, name FROM seasons ORDER BY year"
         ).fetchall()
-        return [{"id": row["id"], "year": row["year"], "name": row["name"]} for row in rows]
+        return [
+            {"id": row["id"], "year": row["year"], "name": row["name"]} for row in rows
+        ]
 
     # TODO Don't think this is ever called
     def exists(self, season_id: str) -> bool:

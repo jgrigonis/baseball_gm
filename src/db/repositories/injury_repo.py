@@ -237,7 +237,6 @@ class InjuryRepository:
                 ),
             )
 
-
         logger.info(
             "Player %s injured: %s (%d games).", player_id, severity, games_missed
         )

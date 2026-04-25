@@ -28,7 +28,6 @@ from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
-from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.rotation_seeder import seed_ai_rotations
@@ -68,7 +67,9 @@ def _create_next_season(
     human_team_ids = GMRepository(conn).get_human_team_ids(league_id)
     ai_team_ids = set(team_ids) - human_team_ids
     seed_ai_rotations(
-        conn, new_season_id, ai_team_ids,
+        conn,
+        new_season_id,
+        ai_team_ids,
         statuses=["26man"],
         effective_date=f"{next_year}-04-01",
     )

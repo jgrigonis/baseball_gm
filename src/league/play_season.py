@@ -354,7 +354,9 @@ def play_game(
         ]
         if not pitchers:
             return None
-        return max(pitchers, key=lambda p: p.get_effective_stat(p.skills.get("stamina", 0))).id
+        return max(
+            pitchers, key=lambda p: p.get_effective_stat(p.skills.get("stamina", 0))
+        ).id
 
     if not home_starter_id:
         home_starter_id = _best_pitcher_id(home_team)

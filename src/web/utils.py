@@ -191,11 +191,15 @@ def _shell_ctx(
         # During draft, show the last COMPLETED season for standings/schedule/etc.
         # Year 2 is being drafted but has no games — year 1's data is what's useful.
         # Fallback to newest if nothing completed yet (first ever draft).
-        season = sr.get_last_with_completed_games(league_id) or sr.get_newest_for_league(league_id)
+        season = sr.get_last_with_completed_games(
+            league_id
+        ) or sr.get_newest_for_league(league_id)
     elif league_state_for_season in ("playoffs", "offseason"):
         # During playoffs/offseason, use the season that has series records.
         # Fallback to newest if no series yet.
-        season = sr.get_last_with_series_row(league_id) or sr.get_newest_for_league(league_id)
+        season = sr.get_last_with_series_row(league_id) or sr.get_newest_for_league(
+            league_id
+        )
     else:
         # season/preseason: show the newest season (current active season)
         season = sr.get_newest_for_league(league_id)

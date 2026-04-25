@@ -63,7 +63,9 @@ def seed_ai_rotations(
         )
         rotation = [p.id for p in pitchers[:5]]
         if not rotation:
-            print(f"  Warning: No pitchers found for AI team {team.name}, skipping rotation.")
+            print(
+                f"  Warning: No pitchers found for AI team {team.name}, skipping rotation."
+            )
             continue
 
         rot_repo.replace_rotation(
