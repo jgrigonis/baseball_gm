@@ -16,6 +16,7 @@ Queries:
 - During roster/lineup decisions (check pitcher availability)
 
 """
+
 # Old model
 # Recovery model
 # --------------
