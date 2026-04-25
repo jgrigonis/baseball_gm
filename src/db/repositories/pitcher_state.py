@@ -43,10 +43,10 @@ logger = logging.getLogger(__name__)
 # Recovery calibration
 # ---------------------------------------------------------------------------
 
-_RECOVERY_THRESHOLD = 0.99  # "effectively full"
-_DAYS_AT_SKILL_MAX = 4.0  # recovery = 100
-_DAYS_AT_SKILL_MID = 5.0  # recovery = 50
-_DAYS_AT_SKILL_MIN = 6.0  # recovery = 1
+# _RECOVERY_THRESHOLD = 0.99  # "effectively full"
+# _DAYS_AT_SKILL_MAX = 4.0  # recovery = 100
+# _DAYS_AT_SKILL_MID = 8.0  # recovery = 50
+# _DAYS_AT_SKILL_MIN = 12.0  # recovery = 1
 
 MIN_ENERGY_STARTER = 0.75
 
@@ -61,33 +61,64 @@ CAP_REGEN_PER_DAY = 0.004
 
 def _daily_recovery_rate(recovery_skill: int) -> float:
     """
-    Fraction of remaining energy gap closed each day.
+    Actual energy recovered as a number.
 
-    Piecewise linear interpolation of target days across the skill range,
-    then solved analytically:
+    At recovery skill 100 a pitcher can recover 0 to 100 in 4 days rest
+    At recovery skill 60 a pitcher can recover 0 to 100 in 7 days rest
+    At recovery skill 1 a pitcher can recover 0 to 100 in 12 days rest
 
-        rate = 1 - (1 - threshold) ^ (1 / days)
+    Recovery is linear.
 
-    Examples:
-        skill=100 → rate ≈ 0.779  (full in 3 days)
-        skill=50  → rate ≈ 0.683  (full in 4 days)
-        skill=1   → rate ≈ 0.602  (full in 5 days)
     """
     skill = max(1, min(100, recovery_skill))
-    if skill <= 50:
-        t = (skill - 1) / (50 - 1)
-        days = _DAYS_AT_SKILL_MIN + t * (_DAYS_AT_SKILL_MID - _DAYS_AT_SKILL_MIN)
-    else:
-        t = (skill - 50) / (100 - 50)
-        days = _DAYS_AT_SKILL_MID + t * (_DAYS_AT_SKILL_MAX - _DAYS_AT_SKILL_MID)
-    return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
+    return (1 / 600) * skill + 1 / 12
+
+    # if skill <= 50:
+    #     t = (skill - 1) / (50 - 1)
+    #     days = _DAYS_AT_SKILL_MIN + t * (_DAYS_AT_SKILL_MID - _DAYS_AT_SKILL_MIN)
+    # else:
+    #     t = (skill - 50) / (100 - 50)
+    #     days = _DAYS_AT_SKILL_MID + t * (_DAYS_AT_SKILL_MAX - _DAYS_AT_SKILL_MID)
+    # return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
+
+
+# def _daily_recovery_rate(recovery_skill: int) -> float:
+#     """
+#     Fraction of remaining energy gap closed each day.
+
+#     Piecewise linear interpolation of target days across the skill range,
+#     then solved analytically:
+
+#         rate = 1 - (1 - threshold) ^ (1 / days)
+
+#     Examples:
+#         skill=100 → rate ≈ 0.779  (full in 3 days)
+#         skill=50  → rate ≈ 0.683  (full in 4 days)
+#         skill=1   → rate ≈ 0.602  (full in 5 days)
+#     """
+#     skill = max(1, min(100, recovery_skill))
+#     if skill <= 50:
+#         t = (skill - 1) / (50 - 1)
+#         days = _DAYS_AT_SKILL_MIN + t * (_DAYS_AT_SKILL_MID - _DAYS_AT_SKILL_MIN)
+#     else:
+#         t = (skill - 50) / (100 - 50)
+#         days = _DAYS_AT_SKILL_MID + t * (_DAYS_AT_SKILL_MAX - _DAYS_AT_SKILL_MID)
+#     return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
+
+
+# def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
+#     """Apply exponential recovery over ``days`` full days."""
+#     rate = _daily_recovery_rate(recovery_skill)
+#     for _ in range(days):
+#         energy += (1.0 - energy) * rate
+#     return max(0.0, min(1.0, energy))
 
 
 def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
-    """Apply exponential recovery over ``days`` full days."""
+    """Apply linear recovery over ``days`` full days."""
     rate = _daily_recovery_rate(recovery_skill)
     for _ in range(days):
-        energy += (1.0 - energy) * rate
+        energy += rate
     return max(0.0, min(1.0, energy))
 
 
@@ -125,9 +156,10 @@ class PitcherState:
     last_pitch_count: Optional[int] = None
     consecutive_days: int = 0
 
-    @property
-    def is_fresh(self) -> bool:
-        return self.current_energy >= _RECOVERY_THRESHOLD
+    # never used.
+    # @property
+    # def is_fresh(self) -> bool:
+    #     return self.current_energy >= _RECOVERY_THRESHOLD
 
 
 # ---------------------------------------------------------------------------

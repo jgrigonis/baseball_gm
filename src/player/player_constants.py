@@ -13,6 +13,13 @@ MOD_TIRED = 0.9
 MOD_EXHAUSTED = 0.75
 MOD_ZERO = 0.5
 
+# Pitching fatigue constants
+FASTBALL_DRAIN = 0.008
+
+CAP_DMG_LOW = 0.0008
+CAP_DMG_HIGH = 0.0018
+
+# Energy injury mod
 MOD_INJURY_FRESH = 0.80  # Slightly protected
 MOD_INJURY_GOOD = 1.0  # Normal
 MOD_INJURY_TIRED = 1.40
@@ -30,12 +37,6 @@ STREAK_PENALTY = (
     0.005  # Penalty multplier after a STREAK_GAMES + 1 game streak with no rest
 )
 STREAK_GAMES = 4
-
-# Pitching fatigue constants
-FASTBALL_DRAIN = 0.008
-
-CAP_DMG_LOW = 0.0008
-CAP_DMG_HIGH = 0.0018
 
 # General player constants
 VALID_ROLES = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}

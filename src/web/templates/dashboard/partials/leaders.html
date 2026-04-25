@@ -1,7 +1,7 @@
 {# templates/dashboard/partials/leaders.html #}
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:12px 24px;border-bottom:1px solid var(--border);">
-  <div style="display:flex;align-items:center;gap:12px;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <h1 class="page-title">Leaders</h1>
     <div style="display:flex;gap:0;border:1px solid var(--border);">
       <button id="lb-btn-bat" onclick="lbSwitch('batting')"
@@ -17,6 +17,16 @@
         Pitching
       </button>
     </div>
+    {% if leaders_seasons and leaders_seasons|length > 1 %}
+    <select onchange="htmx.ajax('GET','/leagues/{{ league_id }}/leaders?season='+this.value,{target:'#tab-content',swap:'innerHTML'})"
+            style="font-family:var(--font-mono);font-size:11px;padding:4px 8px;
+                   background:var(--bg-2);color:var(--text);border:1px solid var(--border);
+                   cursor:pointer;">
+      {% for s in leaders_seasons %}
+      <option value="{{ s.id }}" {% if s.id == leaders_season_id %}selected{% endif %}>{{ s.year }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
   </div>
 </div>
 

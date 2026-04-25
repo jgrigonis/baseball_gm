@@ -30,6 +30,7 @@ _GRADE_THRESHOLDS: list[tuple[int, str]] = [
     (35, "D+"),
     (30, "D"),
     (25, "D-"),
+    (20, "F"),
 ]
 
 

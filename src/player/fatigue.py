@@ -1,3 +1,4 @@
+# src/player/fatigue.py
 from dataclasses import dataclass
 
 from src.player.fatigue_level import FatigueLevel
@@ -111,8 +112,9 @@ class PitcherFatigue:
             excess = pitch_count - threshold
             base_damage = excess * CAP_DMG_LOW
         else:
-            excess = pitch_count - threshold
-            base_damage = excess * CAP_DMG_HIGH
+            base_damage = (heavy - threshold) * CAP_DMG_LOW
+            heavy_excess = pitch_count - heavy
+            base_damage += heavy_excess * CAP_DMG_HIGH
 
         # 100 stamina = 0.500 stamina_factor
         #  75 stamina = 0.625 stamina_factor

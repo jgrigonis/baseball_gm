@@ -112,9 +112,10 @@ class PlayerEnergyState:
     consecutive_days: int = 0
     season_games_played: int = 0
 
-    @property
-    def is_fresh(self) -> bool:
-        return self.current_energy >= _RECOVERY_THRESHOLD
+    # Never used
+    # @property
+    # def is_fresh(self) -> bool:
+    #     return self.current_energy >= _RECOVERY_THRESHOLD
 
     @property
     def needs_rest(self) -> bool:

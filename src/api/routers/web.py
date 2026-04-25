@@ -1040,10 +1040,27 @@ def leaders(
     user: User,
     gm: GM,
     category: str = "batting",
+    season: str | None = None,
 ):
     ctx = _shell_ctx(request, db, gm, league_id, "leaders", user)
-    season_id = ctx["season_id"]
     my_team_id = gm["team_id"] if gm else None
+
+    sr = SeasonRepository(db)
+    all_seasons = sr.get_seasons_for_league(league_id)  # newest first
+
+    # Determine which season to display: explicit param > last with completed games
+    last_completed = sr.get_last_with_completed_games(league_id)
+    if season and any(s["id"] == season for s in all_seasons):
+        display_season = next(s for s in all_seasons if s["id"] == season)
+    elif last_completed:
+        display_season = last_completed
+    else:
+        display_season = all_seasons[0] if all_seasons else None
+
+    season_id = display_season["id"] if display_season else None
+    ctx["leaders_season_id"] = season_id
+    ctx["leaders_season_name"] = display_season["name"] if display_season else ""
+    ctx["leaders_seasons"] = all_seasons
 
     bat_cats = []
     pit_cats = []
@@ -1363,6 +1380,11 @@ def lineup(
     team_id = gm["team_id"]
     season_id = ctx.get("season_id")
 
+    # For stat display use last season with completed games so preseason still
+    # shows last year's numbers when building the new lineup.
+    _stats_s = SeasonRepository(db).get_last_with_completed_games(league_id)
+    stats_season_id = _stats_s["id"] if _stats_s else season_id
+
     # Load all 40-man players with grades (skills batched in the query)
     player_repo = PlayerRepository(db)
     hitters = []
@@ -1440,9 +1462,9 @@ def lineup(
     )
 
     # Attach season stats to each player for display
-    if season_id:
+    if stats_season_id:
         stats_map = PlayerSeasonStatsRepository(db).get_team_stats_map(
-            season_id, team_id
+            stats_season_id, team_id
         )
         for p in hitters:
             s = stats_map.get(p["player_id"])
@@ -2466,8 +2488,10 @@ def player_panel(
         grades = player_row_to_grades(p, p, status)
         ratings = _compute_ratings(p, p.get("throws", "R"))
 
-        # Season stats — find current season for this league
-        current_season_id = season_repo.get_current_id_for_league(league_id)
+        # Season stats — use last season with actual games so draft/offseason state
+        # doesn't accidentally point at the upcoming empty season
+        _last_season = season_repo.get_last_with_completed_games(league_id)
+        current_season_id = _last_season["id"] if _last_season else None
         pitch_stats = None
         bat_stats = None
         if current_season_id:
