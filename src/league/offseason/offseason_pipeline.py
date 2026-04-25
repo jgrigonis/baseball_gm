@@ -8,6 +8,7 @@ import random
 
 from src.db.connection import get_connection
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.offseason_repo import OffseasonRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
@@ -19,14 +20,13 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
 from src.league.offseason.build_season_stats import build_season
+from src.league.rotation_seeder import seed_ai_rotations
 from src.util.locations import TEAM_FILES_DIR
-from src.player.player_evaluator import PlayerEvaluator
 from src.util.logger import setup_logger
 
 
@@ -320,67 +320,20 @@ class OffseasonPipeline:
         self._reset_rotation_pointers(season_id)
 
     def _rebuild_rotations(self, season_id: str) -> None:
-        """
-        Rebuild starting rotations and bullpen roles for all teams at the start
-        of a new season. Picks the top 5 healthy pitchers by SP rating per team.
-        Respects 26-man roster only (same as bootstrap).
-        """
-        status_repo = self.player_status_repo
-        inj_repo = InjuryRepository(self.conn, league_id=self.league_id or "")
-        team_repo = TeamRepository(self.conn)
-        bp_repo = BullpenRepository(self.conn)
-        rotation_repo = TeamRotationsRepository(self.conn)
-
-        teams = team_repo.get_teams_by_season(season_id)
-        injured_ids = {inj.player_id for inj in inj_repo.get_all_injured()}
-        today = datetime.date.today().isoformat()
-        rebuilt = 0
-
-        for team in teams:
-            if not team:
-                continue
-
-            # 26-man players only
-            active_ids = set(status_repo.get_by_team_and_status(team.id, "26man"))
-            active_players = [p for p in team.players if p.id in active_ids]
-
-            # Pick top 5 healthy starters directly
-            pitchers = [
-                p for p in active_players if p.is_pitcher() and p.id not in injured_ids
-            ]
-            pitchers.sort(
-                key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),
-                reverse=True,
-            )
-            rotation = [p.id for p in pitchers[:5]]
-            if not rotation:
-                print(
-                    f"  Warning: No healthy pitchers for {team.name}, skipping rotation rebuild."
-                )
-                continue
-            # Replace old rotation rows with fresh ones
-            rotation_repo.replace_rotation(
-                team_id=team.id,
-                season_id=season_id,
-                player_ids=rotation,
-                effective_date=today,
-                next_order=1,
-            )
-
-            # Rebuild bullpen roles from the active 26-man non-rotation pitchers
-            relievers = [
-                p
-                for p in active_players
-                if p.is_pitcher() and p.id not in set(rotation)
-            ]
-            roles = team.set_bullpen_roles(rotation, relievers=relievers)
-            if roles:
-                bp_repo.set_roles(team.id, season_id, roles, today)
-
-            rebuilt += 1
-
+        """Rebuild rotations and bullpen roles for AI teams only at the start of a new season."""
+        gm_repo = GMRepository(self.conn)
+        human_team_ids = gm_repo.get_human_team_ids(self.league_id or "")
+        all_teams = self.team_repo.get_teams_by_season(season_id)
+        ai_team_ids = {t.id for t in all_teams} - human_team_ids
+        seeded = seed_ai_rotations(
+            self.conn,
+            season_id,
+            ai_team_ids,
+            statuses=["26man"],
+            effective_date=f"{self.year}-04-01",
+        )
         self.conn.commit()
-        print(f"  Rebuilt rotations and bullpen roles for {rebuilt} teams")
+        print(f"  Rebuilt rotations and bullpen roles for {seeded} AI teams")
 
     def _reset_rotation_pointers(self, season_id: str) -> None:
         rot_repo = TeamRotationsRepository(self.conn)

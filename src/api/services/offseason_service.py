@@ -29,8 +29,9 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.league.bootstrap import LeagueBootstrapper
+from src.db.repositories.gm_repo import GMRepository
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
+from src.league.rotation_seeder import seed_ai_rotations
 from src.league.offseason.snake_draft import write_draft_order
 from src.league.offseason.snake_draft import SnakeDraft
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
@@ -63,14 +64,14 @@ def _create_next_season(
     for tid in team_ids:
         lr.assign_team_to_league(league_id, new_season_id, tid)
 
-    # Bootstrap rotations and bullpen roles for the new season
-    _rng = random.Random()
-    _boot = LeagueBootstrapper(conn, rng=_rng)
-    _team_repo = TeamRepository(conn)
-    _teams = [_team_repo.get(tid) for tid in team_ids]
-    _teams = [t for t in _teams if t]
-    _start = datetime.date(next_year, 4, 1)
-    _boot._bootstrap_rotations(_teams, new_season_id, _start)
+    # Seed rotations for AI teams only — humans set their own post-draft
+    human_team_ids = GMRepository(conn).get_human_team_ids(league_id)
+    ai_team_ids = set(team_ids) - human_team_ids
+    seed_ai_rotations(
+        conn, new_season_id, ai_team_ids,
+        statuses=["26man"],
+        effective_date=f"{next_year}-04-01",
+    )
 
     conn.commit()
     return new_season_id, team_ids

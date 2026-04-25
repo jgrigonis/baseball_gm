@@ -172,6 +172,17 @@
           Save Rotation
         </button>
       </div>
+      <div id="rot-unsaved-banner"
+           style="display:none;margin:6px 0 0;padding:6px 12px;
+                  background:var(--amber-lo);border:1px solid var(--amber);
+                  font-family:var(--font-mono);font-size:11px;color:var(--amber);
+                  align-items:center;gap:10px;">
+        <span>⚠ Starting rotation not saved</span>
+        <button class="btn btn-secondary" onclick="saveRotation()"
+                style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
+          Save now
+        </button>
+      </div>
       <div class="lu-col-body" id="rotation-list"></div>
     </div>
 
@@ -206,6 +217,17 @@
             <option value="recovery">Recovery</option>
           </select>
         </div>
+      </div>
+      <div id="bp-unsaved-banner"
+           style="display:none;margin:6px 0 0;padding:6px 12px;
+                  background:var(--amber-lo);border:1px solid var(--amber);
+                  font-family:var(--font-mono);font-size:11px;color:var(--amber);
+                  align-items:center;gap:10px;">
+        <span>⚠ Bullpen assignments not saved</span>
+        <button class="btn btn-secondary" onclick="saveBullpen()"
+                style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
+          Save now
+        </button>
       </div>
       <div class="lu-col-body" id="bullpen-list"></div>
     </div>
@@ -423,7 +445,7 @@ const SAVED_LINEUP  = {{ saved_lineup  | tojson }};
 const SAVED_ROT     = {{ saved_rotation | tojson }};
 const SAVED_BP      = {{ saved_bullpen  | tojson }};
 const SAVED_POINTER = {{ saved_rotation_pointer | tojson }};
-const STORAGE_KEY   = `lineup2_${LEAGUE_ID}`;
+const STORAGE_KEY   = `lineup3_${LEAGUE_ID}`;
 
 const POSITIONS = ['c','1b','2b','3b','ss','lf','cf','rf','dh'];
 const POS_LABEL = {c:'C',  '1b':'1B','2b':'2B','3b':'3B','ss':'SS',
@@ -932,15 +954,19 @@ function _makeInsertLine(insertIdx) {
     if (bpPid && !compact.includes(bpPid)) {
       compact.splice(insertIdx, 0, bpPid);
       delete bullpen[bpPid];
+      pitchingSaved = false;
+      bullpenSaved  = false;
     } else if (rotPid && !isNaN(rotIdx)) {
       const srcPos = compact.indexOf(rotPid);
       if (srcPos === -1) return;
       compact.splice(srcPos, 1);
       const destPos = srcPos < insertIdx ? insertIdx - 1 : insertIdx;
       compact.splice(destPos, 0, rotPid);
+      pitchingSaved = false;
     }
     rotation = compact;
     ensureValidPointer();
+    updatePitchingBanners();
     renderRotation();
     renderBullpen();
   });
@@ -1019,14 +1045,18 @@ function renderRotation() {
         const destPos = compact2.indexOf(pid);
         compact2[destPos] = bpPid;
         delete bullpen[bpPid];
+        pitchingSaved = false;
+        bullpenSaved  = false;
       } else if (rotPid && !isNaN(rotIdx) && rotIdx !== slotIdx) {
         // Rotation → rotation swap
         const a = compact2.indexOf(rotPid);
         const b = compact2.indexOf(pid);
         [compact2[a], compact2[b]] = [compact2[b], compact2[a]];
+        pitchingSaved = false;
       }
       rotation = compact2;
       ensureValidPointer();
+      updatePitchingBanners();
       renderRotation();
       renderBullpen();
     });
@@ -1045,9 +1075,11 @@ function renderRotation() {
     const idx  = parseInt(btn.dataset.idx);
     const dir  = btn.dataset.dir;
     const c = rotation.filter(Boolean);
+    const moved = (dir === 'up' && idx > 0) || (dir === 'down' && idx < c.length - 1);
     if (dir === 'up'   && idx > 0)          [c[idx-1], c[idx]] = [c[idx], c[idx-1]];
     if (dir === 'down' && idx < c.length-1) [c[idx],   c[idx+1]] = [c[idx+1], c[idx]];
     rotation = c;
+    if (moved) { pitchingSaved = false; updatePitchingBanners(); }
     renderRotation();
   };
 
@@ -1055,7 +1087,10 @@ function renderRotation() {
 }
 
 function setPointer(pid) {
+  if (pointerPid === pid) return;
   pointerPid = pid;
+  pitchingSaved = false;
+  updatePitchingBanners();
   renderRotation();
 }
 
@@ -1064,8 +1099,11 @@ function addToRotation(pid) {
   rotation.push(pid);
   delete bullpen[pid];
   ensureValidPointer();
+  pitchingSaved = false;
+  bullpenSaved  = false;
   renderRotation();
   renderBullpen();
+  updatePitchingBanners();
 }
 
 function removeFromRotation(idx) {
@@ -1084,8 +1122,11 @@ function removeFromRotation(idx) {
       pointerPid = null;
     }
   }
+  pitchingSaved = false;
+  bullpenSaved  = false;
   renderRotation();
   renderBullpen();
+  updatePitchingBanners();
 }
 
 /* ── Bullpen: render ─────────────────────────────────────────────────────────── */
@@ -1157,6 +1198,7 @@ function handleBullpenRoleChange(pid, role) {
       rotation.push(pid);
       delete bullpen[pid];
       ensureValidPointer();
+      pitchingSaved = false;
       renderRotation();
     }
   } else {
@@ -1165,11 +1207,14 @@ function handleBullpenRoleChange(pid, role) {
     if (idx !== -1) {
       rotation.splice(idx, 1);
       ensureValidPointer();
+      pitchingSaved = false;
       renderRotation();
     }
     setBullpenRole(pid, role);
   }
+  bullpenSaved = false;
   renderBullpen();
+  updatePitchingBanners();
   saveToStorage();
 }
 
@@ -1177,11 +1222,14 @@ function handleBullpenRoleChange(pid, role) {
 function clearRotation() {
   rotation = [];
   pointerPid = null;
+  pitchingSaved = false;
   renderRotation();
   renderBullpen();
+  updatePitchingBanners();
 }
 
 function autoFillRotation() {
+  const before = rotation.filter(Boolean).join(',');
   // Remove injured pitchers from rotation
   rotation = rotation.filter(pid => {
     const p = ALL_PITCHERS.find(x => x.player_id === pid);
@@ -1195,6 +1243,10 @@ function autoFillRotation() {
   const needed = Math.max(0, 5 - rotation.length);
   candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
   ensureValidPointer();
+  if (rotation.filter(Boolean).join(',') !== before) {
+    pitchingSaved = false;
+    updatePitchingBanners();
+  }
   renderRotation();
   renderBullpen();
 }
@@ -1234,7 +1286,12 @@ function autoAssignBullpen() {
   });
   // Injured players: leave unassigned (no role entry)
 
+  const before = JSON.stringify(Object.entries(bullpen).sort());
   bullpen = newBullpen;
+  if (JSON.stringify(Object.entries(bullpen).sort()) !== before) {
+    bullpenSaved = false;
+    updatePitchingBanners();
+  }
   renderBullpen();
   saveToStorage();
 }
@@ -1258,7 +1315,7 @@ async function saveRotation() {
     if (res.ok) {
       pitchingSaved = true;
       showFeedback('✓ Rotation saved', 'var(--green)');
-      updateScheduleBtn();
+      updatePitchingBanners();
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY);
         if (stored) {
@@ -1293,7 +1350,7 @@ async function saveBullpen() {
     if (res.ok) {
       bullpenSaved = true;
       showFeedback('✓ Bullpen saved', 'var(--green)');
-      updateScheduleBtn();
+      updatePitchingBanners();
       saveToStorage();
     } else {
       const d = await res.json().catch(()=>({}));
@@ -1314,6 +1371,15 @@ async function saveAll() {
 function updateScheduleBtn() {
   const btn = document.getElementById('schedule-btn');
   if (btn) btn.style.display = (battingSaved && pitchingSaved && bullpenSaved) ? 'inline-flex' : 'none';
+}
+
+/* ── Pitching unsaved banners ─────────────────────────────────────────────────── */
+function updatePitchingBanners() {
+  const rotBanner = document.getElementById('rot-unsaved-banner');
+  const bpBanner  = document.getElementById('bp-unsaved-banner');
+  if (rotBanner) rotBanner.style.display = pitchingSaved ? 'none' : 'flex';
+  if (bpBanner)  bpBanner.style.display  = bullpenSaved  ? 'none' : 'flex';
+  updateScheduleBtn();
 }
 
 /* ── Feedback ────────────────────────────────────────────────────────────────── */
@@ -1373,19 +1439,15 @@ if (SAVED_LINEUP.length > 0) {
   });
 }
 
-// Pitching: load saved rotation, or auto-fill top 5 SP if nothing saved
+// Pitching: load saved rotation only — no auto-fill on first visit
 SAVED_ROT.filter(pid => knownPitcherIds.has(pid)).forEach(pid => rotation.push(pid));
-if (!rotation.length) {
-  // Auto-fill top 5 healthy SP-rated pitchers
-  ALL_PITCHERS
-    .filter(p => !p.injured)
-    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall))
-    .slice(0, 5)
-    .forEach(p => rotation.push(p.player_id));
-}
 if (Object.keys(SAVED_BP).length) bullpen = { ...SAVED_BP };
 if (SAVED_POINTER && knownPitcherIds.has(SAVED_POINTER)) pointerPid = SAVED_POINTER;
-else ensureValidPointer();
+
+// Treat server-saved data as already saved; user must explicitly save any changes
+pitchingSaved = rotation.length > 0;
+bullpenSaved  = Object.keys(SAVED_BP).length > 0;
+ensureValidPointer();
 
 // Restore from sessionStorage (overrides server data if present and valid)
 const stored = loadFromStorage();
@@ -1397,8 +1459,9 @@ if (stored) {
     );
     lineup = validLineup;
   }
-  // Validate and apply stored rotation
-  if (Array.isArray(stored.rotation)) {
+  // Validate and apply stored rotation — only if DB also has a saved rotation,
+  // so an auto-filled-but-never-saved session rotation can't survive a reload
+  if (Array.isArray(stored.rotation) && SAVED_ROT.length > 0) {
     rotation = stored.rotation.filter(pid => pid && knownPitcherIds.has(pid));
   }
   if (stored.rosterFilter) rosterFilter = stored.rosterFilter;
@@ -1418,7 +1481,8 @@ if (stored) {
     if (document.getElementById('bp-s1')) document.getElementById('bp-s1').value = stored.bullpenSort.s1||'sp_grade';
     if (document.getElementById('bp-s2')) document.getElementById('bp-s2').value = stored.bullpenSort.s2||'';
   }
-  if (stored.bullpen && typeof stored.bullpen === 'object') {
+  // Only restore session bullpen if DB also has saved roles
+  if (stored.bullpen && typeof stored.bullpen === 'object' && Object.keys(SAVED_BP).length > 0) {
     bullpen = stored.bullpen;
   }
   if (stored.battingSaved)  battingSaved  = true;
@@ -1439,7 +1503,7 @@ renderRoster();
 renderRotation();
 renderBullpen();
 updateSaveBattingBtn();
-updateScheduleBtn();
+updatePitchingBanners();
 requestAnimationFrame(measureHeader);
 window.addEventListener('resize', measureHeader);
 

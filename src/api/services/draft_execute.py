@@ -17,6 +17,7 @@ from src.db.repositories.offseason_repo import OffseasonRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
+from src.league.rotation_seeder import seed_ai_rotations
 from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
@@ -201,6 +202,17 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         )
 
     dr.set_complete_current_pick(draft_id, len(picks) + 1)
+
+    # Seed rotations/bullpen for AI teams using full post-draft roster.
+    # Human teams are excluded — they set their own lineups.
+    ai_team_ids = {r["team_id"] for r in stored_order} - human_team_ids
+    seeded = seed_ai_rotations(
+        conn, season_id, ai_team_ids,
+        statuses=["26man", "40man"],
+        effective_date=f"{year}-04-01",
+    )
+    print(f"Seeded rotations for {seeded} AI teams post-draft.")
+
     lr = LeagueRepository(conn)
     lr.set_state(league_id, "preseason")
 

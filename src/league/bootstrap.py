@@ -1,13 +1,9 @@
 # src/league/bootstrap.py
 import random
 
-from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.league_repo import LeagueRepository
-from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.db.repositories.team_rotations_repo import TeamRotationsRepository
-from src.player.player_evaluator import PlayerEvaluator
 from src.io.team_importer import TeamImporter
 
 
@@ -19,8 +15,6 @@ class LeagueBootstrapper:
         self.season_repo = SeasonRepository(conn)
         self.team_repo = TeamRepository(conn)
         self.team_importer = TeamImporter(conn, rng=self.rng)
-        self.rotations_repo = TeamRotationsRepository(conn)
-        self.status_repo = PlayerStatusRepository(conn)
 
     def bootstrap_from_manifest(
         self,
@@ -86,58 +80,5 @@ class LeagueBootstrapper:
             self.league_repo.assign_team_to_league(league_id, season_id, team.id)
             teams.append(team)
 
-        # Set starting rotations for all teams
-        self._bootstrap_rotations(teams, season_id, start_date)
-
         self.conn.commit()  # Moved out of league_repo
         return league_id, teams, season_id
-
-    def _bootstrap_rotations(self, teams, season_id: str, start_date: str) -> None:
-        """Set the initial starting rotation for each team using 26-man roster only."""
-        for team in teams:
-            # Filter to 26-man players only
-            active_ids = set(self.status_repo.get_by_team_and_status(team.id, "26man"))
-            active_players = [p for p in team.players if p.id in active_ids]
-
-            # Inline rotation selection — avoid dataclasses.replace on slots=True frozen dataclass
-            pitchers = [p for p in active_players if p.is_pitcher()]
-            pitchers.sort(
-                key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),
-                reverse=True,
-            )
-            rotation = [p.id for p in pitchers[:5]]
-            if not rotation:
-                print(
-                    f"Warning: No pitchers found for team {team.name}, skipping rotation."
-                )
-                continue
-            self.rotations_repo.set_rotation(
-                team_id=team.id,
-                season_id=season_id,
-                player_id_list=rotation,
-                effective_date=start_date,
-            )
-            # Initialise the rotation pointer at sp1 so game 1 always starts correctly
-            self.rotations_repo.assign_rotation_pointer(
-                team_id=team.id,
-                season_id=season_id,
-                next_order=1,
-            )
-            self._bootstrap_bullpen(
-                team, active_players, rotation, season_id, start_date
-            )
-            self.conn.commit()
-
-    def _bootstrap_bullpen(
-        self, team, active_players, rotation, season_id: str, start_date: str
-    ) -> None:
-        bp_repo = BullpenRepository(self.conn)
-        relievers = [
-            p for p in active_players if p.is_pitcher() and p.id not in set(rotation)
-        ]
-        roles = team.set_bullpen_roles(rotation, relievers=relievers)
-        if not roles:
-            print(
-                f"Warning: No pitchers found for team {team.name}, skipping bullpen roles."
-            )
-        bp_repo.set_roles(team.id, season_id, roles, start_date)
