@@ -15,20 +15,22 @@ Queries:
 - Before game start (get energy, apply recovery based on rest days)
 - During roster/lineup decisions (check pitcher availability)
 
-Recovery model
---------------
-Uses an exponential approach to 1.0 so recovery is fast when a pitcher
-is depleted and tapers as they approach full energy:
-
-    energy += (1.0 - energy) * daily_rate
-
-daily_rate is derived from the pitcher's recovery skill so that a pitcher
-starting at 0.0 reaches 0.99 in:
-
-    recovery skill 100  →  4 days
-    recovery skill 50   →  5 days
-    recovery skill 1    →  6 days
 """
+# Old model
+# Recovery model
+# --------------
+# Uses an exponential approach to 1.0 so recovery is fast when a pitcher
+# is depleted and tapers as they approach full energy:
+
+#     energy += (1.0 - energy) * daily_rate
+
+# daily_rate is derived from the pitcher's recovery skill so that a pitcher
+# starting at 0.0 reaches 0.99 in:
+
+#     recovery skill 100  →  4 days
+#     recovery skill 50   →  5 days
+#     recovery skill 1    →  6 days
+
 
 from __future__ import annotations
 
@@ -43,12 +45,7 @@ logger = logging.getLogger(__name__)
 # Recovery calibration
 # ---------------------------------------------------------------------------
 
-# _RECOVERY_THRESHOLD = 0.99  # "effectively full"
-# _DAYS_AT_SKILL_MAX = 4.0  # recovery = 100
-# _DAYS_AT_SKILL_MID = 8.0  # recovery = 50
-# _DAYS_AT_SKILL_MIN = 12.0  # recovery = 1
-
-MIN_ENERGY_STARTER = 0.75
+MIN_ENERGY_STARTER = 0.83
 
 # Cap: slow passive regeneration
 CAP_REGEN_PER_DAY = 0.004
@@ -71,47 +68,7 @@ def _daily_recovery_rate(recovery_skill: int) -> float:
 
     """
     skill = max(1, min(100, recovery_skill))
-    return (1 / 600) * skill + 1 / 12
-
-    # if skill <= 50:
-    #     t = (skill - 1) / (50 - 1)
-    #     days = _DAYS_AT_SKILL_MIN + t * (_DAYS_AT_SKILL_MID - _DAYS_AT_SKILL_MIN)
-    # else:
-    #     t = (skill - 50) / (100 - 50)
-    #     days = _DAYS_AT_SKILL_MID + t * (_DAYS_AT_SKILL_MAX - _DAYS_AT_SKILL_MID)
-    # return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
-
-
-# def _daily_recovery_rate(recovery_skill: int) -> float:
-#     """
-#     Fraction of remaining energy gap closed each day.
-
-#     Piecewise linear interpolation of target days across the skill range,
-#     then solved analytically:
-
-#         rate = 1 - (1 - threshold) ^ (1 / days)
-
-#     Examples:
-#         skill=100 → rate ≈ 0.779  (full in 3 days)
-#         skill=50  → rate ≈ 0.683  (full in 4 days)
-#         skill=1   → rate ≈ 0.602  (full in 5 days)
-#     """
-#     skill = max(1, min(100, recovery_skill))
-#     if skill <= 50:
-#         t = (skill - 1) / (50 - 1)
-#         days = _DAYS_AT_SKILL_MIN + t * (_DAYS_AT_SKILL_MID - _DAYS_AT_SKILL_MIN)
-#     else:
-#         t = (skill - 50) / (100 - 50)
-#         days = _DAYS_AT_SKILL_MID + t * (_DAYS_AT_SKILL_MAX - _DAYS_AT_SKILL_MID)
-#     return 1.0 - (1.0 - _RECOVERY_THRESHOLD) ** (1.0 / days)
-
-
-# def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
-#     """Apply exponential recovery over ``days`` full days."""
-#     rate = _daily_recovery_rate(recovery_skill)
-#     for _ in range(days):
-#         energy += (1.0 - energy) * rate
-#     return max(0.0, min(1.0, energy))
+    return (1 / 800) * skill + 1 / 16
 
 
 def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
@@ -155,11 +112,6 @@ class PitcherState:
     last_game_date: Optional[date] = None
     last_pitch_count: Optional[int] = None
     consecutive_days: int = 0
-
-    # never used.
-    # @property
-    # def is_fresh(self) -> bool:
-    #     return self.current_energy >= _RECOVERY_THRESHOLD
 
 
 # ---------------------------------------------------------------------------
@@ -238,17 +190,6 @@ class PitcherStateRepository:
         days_rest = max(0, (game_date - state.last_game_date).days - 1)
         if days_rest > 0:
             state.consecutive_days = 0
-        # Energy: exponential approach toward max_energy (not 1.0)
-        # This will never hit with the max set above
-        # if days_rest < 0:
-        #     logger.warning(
-        #         "Data inconsistency for pitcher %s: game_date %s is before "
-        #         "last_game_date %s. Returning fresh state.",
-        #         player_id,
-        #         game_date,
-        #         state.last_game_date,
-        #     )
-        #     return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
 
         rate = _daily_recovery_rate(recovery_skill)
         energy = state.current_energy
@@ -261,7 +202,7 @@ class PitcherStateRepository:
         )
         return state
 
-    # THIS CODE IS NOT USED, BUT MAY BE USEFULE
+    # THIS CODE IS NOT USED, BUT MAY BE USEFUL
     # def days_until_ready(
     #     self,
     #     player_id: str,
@@ -436,5 +377,4 @@ class PitcherStateRepository:
             (self.league_id,),
         )
         deleted = cursor.rowcount
-        # self.conn.commit()
         return deleted
