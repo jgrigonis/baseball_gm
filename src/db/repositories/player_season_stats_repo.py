@@ -82,7 +82,7 @@ class PlayerSeasonStatsRepository:
         rows = self.conn.execute(
             """SELECT player_id,
                       bat_games_played, bat_hits, bat_ab, bat_home_runs, bat_rbi,
-                      pitch_games_started, pitch_outs, pitch_earned_runs,
+                      pitch_games_played, pitch_games_started, pitch_outs, pitch_earned_runs,
                       pitch_wins, pitch_losses, pitch_saves
                FROM player_season_stats
                WHERE season_id = %s AND NOT is_postseason
