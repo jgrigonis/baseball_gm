@@ -929,6 +929,46 @@ function ensureValidPointer() {
 /* ── Rotation: render ────────────────────────────────────────────────────────── */
 let _rotDragIdx = null;
 
+function _makeRotDropZone(insertIdx) {
+  const zone = document.createElement('div');
+  zone.className = 'rot-drag-zone';
+  zone.textContent = 'drag pitcher here';
+  zone.addEventListener('dragover', e => {
+    const hasPid = e.dataTransfer.types.includes('rot-pid') || e.dataTransfer.types.includes('bp-pid');
+    if (!hasPid) return;
+    e.preventDefault();
+    zone.classList.add('drag-active');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-active'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-active');
+    const bpPid  = e.dataTransfer.getData('bp-pid');
+    const rotPid = e.dataTransfer.getData('rot-pid');
+    const rotIdx = parseInt(e.dataTransfer.getData('rot-idx'));
+    const compact = rotation.filter(Boolean);
+    if (bpPid && !compact.includes(bpPid)) {
+      compact.splice(insertIdx, 0, bpPid);
+      delete bullpen[bpPid];
+      pitchingSaved = false;
+      bullpenSaved  = false;
+    } else if (rotPid && !isNaN(rotIdx)) {
+      const srcPos = compact.indexOf(rotPid);
+      if (srcPos === -1) return;
+      compact.splice(srcPos, 1);
+      const destPos = srcPos < insertIdx ? insertIdx - 1 : insertIdx;
+      compact.splice(destPos, 0, rotPid);
+      pitchingSaved = false;
+    }
+    rotation = compact;
+    ensureValidPointer();
+    updatePitchingBanners();
+    renderRotation();
+    renderBullpen();
+  });
+  return zone;
+}
+
 function _makeInsertLine(insertIdx) {
   /* A thin drop-line that inserts a pitcher before insertIdx */
   const line = document.createElement('div');
@@ -1064,8 +1104,8 @@ function renderRotation() {
     el.appendChild(row);
   });
 
-  // Insert line after last slot (append position)
-  el.appendChild(_makeInsertLine(compact.length));
+  // Persistent drop zone at bottom — easier target than the thin insert line
+  el.appendChild(_makeRotDropZone(compact.length));
 
   // Arrow clicks via delegation
   el.onclick = (e) => {
