@@ -1460,11 +1460,10 @@ def lineup(
             else:
                 p["stat_avg"] = None
                 p["stat_hr"] = None
-            if s and (s["pitch_outs"] or 0) > 0:
-                outs = s["pitch_outs"]
-                era = (s["pitch_earned_runs"] * 27) / outs
+            if s and (s["pitch_games_played"] or 0) > 0:
+                outs = s["pitch_outs"] or 0
                 p["stat_gs"] = s["pitch_games_started"] or 0
-                p["stat_era"] = f"{era:.2f}"
+                p["stat_era"] = f"{(s['pitch_earned_runs'] * 27) / outs:.2f}" if outs else None
                 p["stat_ip"] = f"{outs // 3}.{outs % 3}"
                 p["stat_w"] = s["pitch_wins"] or 0
                 p["stat_l"] = s["pitch_losses"] or 0
