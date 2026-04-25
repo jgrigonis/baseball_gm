@@ -347,14 +347,14 @@ def play_game(
         eligible_ids=away_eligible,
     )
 
-    # Fallback: if no rotation set, pick the best healthy pitcher by stamina
+    # Fallback: if no rotation set, pick the best healthy pitcher by fatigue-adjusted stamina
     def _best_pitcher_id(team: TeamInGame) -> str | None:
         pitchers = [
             p for p in team.players if p.pitcher_fatigue and p.id not in injured_ids
         ]
         if not pitchers:
             return None
-        return max(pitchers, key=lambda p: p.skills.get("stamina", 0)).id
+        return max(pitchers, key=lambda p: p.get_effective_stat(p.skills.get("stamina", 0))).id
 
     if not home_starter_id:
         home_starter_id = _best_pitcher_id(home_team)
