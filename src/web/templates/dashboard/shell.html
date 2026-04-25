@@ -274,6 +274,15 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
   }
 });
 
+// ── Injury news bar (always available, element lives in shell) ─────────────────
+function setInjuryNews(msg) {
+  var el = document.getElementById('sim-injury-news');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+window.setInjuryNews = setInjuryNews;
+
 // ── Play button ────────────────────────────────────────────────────────────────
 
 </script>

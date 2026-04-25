@@ -19,20 +19,20 @@
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
       <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
       {% if not champion %}
-      <div style="position:relative;display:inline-block;">
-        <button id="po-play-btn" onclick="togglePoMenu()"
-                class="btn btn-primary" style="padding:6px 14px;">
-          ▶ Sim &nbsp;▾
-        </button>
-        <div id="po-menu"
-             style="display:none;position:absolute;right:0;top:100%;margin-top:4px;
-                    background:var(--bg-2);border:1px solid var(--border);
-                    min-width:160px;z-index:20;">
-          <button onclick="simPlayoffs('game')"  class="po-menu-item">Sim 1 Day</button>
-          <button onclick="simPlayoffs('round')" class="po-menu-item">Sim 1 Round</button>
-          <button onclick="simPlayoffs('all')"   class="po-menu-item">Sim Entire Playoffs</button>
-        </div>
-      </div>
+      <button id="po-day-btn" onclick="simPlayoffs('game')"
+              class="btn btn-primary">
+        ▶ Sim Day
+      </button>
+      <button id="po-round-btn" onclick="simPlayoffs('round')"
+              class="btn btn-secondary"
+              style="font-size:11px;padding:5px 10px;">
+        ▶ Sim Round
+      </button>
+      <button id="po-all-btn" onclick="simPlayoffs('all')"
+              class="btn btn-secondary"
+              style="font-size:11px;padding:5px 10px;">
+        ▶▶ Full Playoffs
+      </button>
       {% endif %}
     </div>
   </div>
@@ -190,57 +190,46 @@
 (function(){
 var LEAGUE_ID = "{{ league_id }}";
 
-function togglePoMenu() {
-  var m = document.getElementById('po-menu');
-  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+function _poSetDisabled(disabled) {
+  ['po-day-btn','po-round-btn','po-all-btn'].forEach(function(id) {
+    var b = document.getElementById(id);
+    if (b) b.disabled = disabled;
+  });
+  var dayBtn = document.getElementById('po-day-btn');
+  if (dayBtn) dayBtn.textContent = disabled ? 'Simming…' : '▶ Sim Day';
 }
 
 function simPlayoffs(mode) {
-  document.getElementById('po-menu').style.display = 'none';
-  var btn = document.getElementById('po-play-btn');
-  var fb  = document.getElementById('po-feedback');
-  if (btn) { btn.disabled = true; btn.textContent = 'Simming…'; }
-  fb.textContent = '';
+  var fb = document.getElementById('po-feedback');
+  _poSetDisabled(true);
+  if (fb) fb.textContent = '';
 
   fetch('/leagues/' + LEAGUE_ID + '/playoffs/sim?mode=' + mode, {method:'POST'})
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if (btn) { btn.disabled = false; btn.textContent = '▶ Sim  ▾'; }
-      fb.textContent = d.games_played + ' game' + (d.games_played !== 1 ? 's' : '') + ' played';
+      _poSetDisabled(false);
+      if (fb) fb.textContent = d.games_played + ' game' + (d.games_played !== 1 ? 's' : '') + ' played';
 
-      // Update topbar date
       if (d.current_date) {
         var dateEl = document.querySelector('.topbar-date');
         if (dateEl) dateEl.textContent = d.current_date;
       }
 
-      // Show injury / return news in the shell banner
       var injNews = '';
       if (d.new_injuries && d.new_injuries.length > 0)
         injNews += d.new_injuries.map(function(i){ return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
       if (d.returned && d.returned.length > 0)
         injNews += (injNews ? '  ' : '') + d.returned.map(function(i){ return '✅ ' + i.name + ' returned'; }).join('  ');
-      if (typeof setInjuryNews === 'function') setInjuryNews(injNews);
+      setInjuryNews(injNews);
 
-      // Refresh bracket
       htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
     })
     .catch(function(){
-      if (btn) { btn.disabled = false; btn.textContent = '▶ Sim  ▾'; }
-      fb.textContent = 'Error';
+      _poSetDisabled(false);
+      if (fb) fb.textContent = 'Error';
     });
 }
 
-// Close menu on outside click
-document.addEventListener('click', function(e) {
-  var menu = document.getElementById('po-menu');
-  var btn  = document.getElementById('po-play-btn');
-  if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
-    menu.style.display = 'none';
-  }
-});
-
-window.togglePoMenu = togglePoMenu;
-window.simPlayoffs  = simPlayoffs;
+window.simPlayoffs = simPlayoffs;
 })();
 </script>

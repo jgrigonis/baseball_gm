@@ -25,12 +25,6 @@ function setStatus(msg, color) {
   }
 }
 
-function setInjuryNews(msg) {
-  var el = document.getElementById('sim-injury-news');
-  if (!el) return;
-  el.textContent = msg;
-  el.style.display = msg ? 'block' : 'none';
-}
 
 function setSimMode(simming) {
   var btn    = getBtn();
