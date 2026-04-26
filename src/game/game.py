@@ -1004,24 +1004,24 @@ class Game:
             self.rng,
         )
         if pitcher:
-                outgoing = self.current_pitcher
-                self._close_pitcher_appearance()
-                self.current_pitcher = pitcher
-                self._active_pitchers[self.pitch_team.record.id] = pitcher
-                self.current_pitcher.game_stats.pitching.game_played = 1
-                self.current_pitcher.current_position = "p"
-                self._open_pitcher_appearance(pitcher)
-                self.logger.info(f"🔒 Closer in: {self.current_pitcher.name}")
-                if self.event_logger:
-                    self.event_logger.closer_called(
-                        team_id=self.pitch_team.record.id,
-                        player_id=pitcher.id,
-                        name=pitcher.name,
-                        outgoing_id=outgoing.id if outgoing else "",
-                        outgoing_name=outgoing.name if outgoing else "",
-                        score_diff=self.score_differential,
-                    )
-                return  # Don't also run the fatigue check below
+            outgoing = self.current_pitcher
+            self._close_pitcher_appearance()
+            self.current_pitcher = pitcher
+            self._active_pitchers[self.pitch_team.record.id] = pitcher
+            self.current_pitcher.game_stats.pitching.game_played = 1
+            self.current_pitcher.current_position = "p"
+            self._open_pitcher_appearance(pitcher)
+            self.logger.info(f"🔒 Closer in: {self.current_pitcher.name}")
+            if self.event_logger:
+                self.event_logger.closer_called(
+                    team_id=self.pitch_team.record.id,
+                    player_id=pitcher.id,
+                    name=pitcher.name,
+                    outgoing_id=outgoing.id if outgoing else "",
+                    outgoing_name=outgoing.name if outgoing else "",
+                    score_diff=self.score_differential,
+                )
+            return  # Don't also run the fatigue check below
 
         # ── Normal fatigue-based change ────────────────────────────────────
         rnd = self.rng.random()

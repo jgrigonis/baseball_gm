@@ -1447,7 +1447,7 @@ def lineup(
 
     # Load saved lineup preferences, rotation, bullpen
     lp_repo = LineupPreferenceRepository(db)
-    rot_repo = TeamRotationsRepository(db)
+    rot_repo = TeamRotationsRepository(db, league_id)
     bp_repo = BullpenRepository(db)
 
     saved_lineup = lp_repo.get_by_gm_id(gm["id"])
@@ -1582,7 +1582,7 @@ async def save_rotation(
         # Fallback if the pointer_pid is missing or not in the rotation
         next_order = 1
 
-    rot_repo = TeamRotationsRepository(db)
+    rot_repo = TeamRotationsRepository(db, league_id)
     rot_repo.replace_rotation(
         team_id=team_id,
         season_id=season_id,
@@ -1618,7 +1618,7 @@ async def save_bullpen(
         {"player_id": pid, "role": role} for pid, role in body.bullpen.items()
     ]
     bp_repo = BullpenRepository(db)
-    rot_repo = TeamRotationsRepository(db)
+    rot_repo = TeamRotationsRepository(db, league_id)
 
     try:
         # Evict any bullpen-assigned pitchers who are still in the DB rotation
@@ -2500,7 +2500,7 @@ def player_panel(
                 s = stats_row
                 if s.get("pitch_games_played", 0) > 0:
                     outs = s.get("pitch_outs", 0) or 0
-                    ip = outs // 3 + (outs % 3) / 10
+                    # ip = outs // 3 + (outs % 3) / 10
                     er = s.get("pitch_earned_runs", 0) or 0
                     era = round((er * 27) / outs, 2) if outs > 0 else 0.0
                     walks = s.get("pitch_walks", 0) or 0
@@ -2867,7 +2867,7 @@ def player_career(
         batting_playoff_totals = _bat_totals(pb_totals)
 
         # Injuries grouped by season year
-        inj_repo = InjuryRepository(db)
+        inj_repo = InjuryRepository(db, league_id)
         all_inj = inj_repo.get_injuries_by_year(pid)
         injuries_by_year: dict[str, list] = {}
         for r in all_inj:

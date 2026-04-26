@@ -245,7 +245,7 @@ def talent_cap_repo(db_conn):
 
 @pytest.fixture
 def pitcher_state_repo(db_conn):
-    return PitcherStateRepository(db_conn)
+    return PitcherStateRepository(db_conn, league_id="test")
 
 
 @pytest.fixture
@@ -255,7 +255,7 @@ def player_games_repo(db_conn):
 
 @pytest.fixture
 def team_rotations_repo(db_conn):
-    return TeamRotationsRepository(db_conn)
+    return TeamRotationsRepository(db_conn, league_id="test")
 
 
 # ── Game engine fixtures (unchanged from original) ────────────────────────────

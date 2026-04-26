@@ -107,7 +107,7 @@ class PitcherState:
 class PitcherStateRepository:
     """Repository for managing pitcher energy and rest, scoped to a single league."""
 
-    def __init__(self, conn, league_id: str = ""):
+    def __init__(self, conn, league_id: str):
         self.conn = conn
         self.league_id = league_id
 

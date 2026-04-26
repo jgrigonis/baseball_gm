@@ -575,7 +575,7 @@ def _play_regular_season(
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn)
+    rotations_repo = TeamRotationsRepository(conn, league_id)
 
     games = game_repo.get_season_games(
         season_id=season_id, incomplete_only=True, regular_season_only=True
@@ -632,7 +632,7 @@ def _play_regular_season(
     print(f"  Regular season complete: {completed} played, {errors} errors")
 
 
-def _setup_playoffs(conn, season_id: str, year: int):
+def _setup_playoffs(conn, season_id: str, year: int, league_id: str):
     """Seed top 8, build bracket, demote extra starters."""
     if PlayoffRepository(conn).existing_series_exist(season_id):
         print("  Playoff bracket already set up")
@@ -645,7 +645,7 @@ def _setup_playoffs(conn, season_id: str, year: int):
         if last_game
         else datetime.date(year, 10, 1)
     )
-    demote_extra_starters(conn, season_id, seeds, keep=4)
+    demote_extra_starters(conn, season_id, seeds, keep=4, league_id=league_id)
     build_bracket(conn, season_id, seeds, playoff_start)
     print(f"  Playoff bracket ready. Start date: {playoff_start}")
 
@@ -664,7 +664,7 @@ def _play_playoffs(
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn)
+    rotations_repo = TeamRotationsRepository(conn, league_id)
 
     seeds = pr.get_seeds(season_id)
 
@@ -837,7 +837,7 @@ def _run_one_season(conn, season_id: str, league_id: str, year: int, args) -> No
         _run_reports(season_id, logs=args.logs)
 
     print("  Setting up playoffs...")
-    _setup_playoffs(conn, season_id, year)
+    _setup_playoffs(conn, season_id, year, league_id)
 
     print("  Playing playoffs...")
     _play_playoffs(conn, season_id, league_id, args.seed, args.game_logs)

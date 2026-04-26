@@ -39,7 +39,7 @@ class PlayerRepository:
         throws: str,
         position: str,
         skills: PlayerSkills,
-        league_id=None,
+        league_id: str,
     ) -> None:
         """
         Create a player record with identity and initial skills.

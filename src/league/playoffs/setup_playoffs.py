@@ -26,6 +26,7 @@ from src.db.connection import get_connection
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.schedule import ScheduledGame
@@ -82,22 +83,27 @@ def get_top_N(conn, season_id: str, num_teams: int = 8) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def reset_playoff_rotation_pointers(conn, season_id: str) -> None:
+def reset_playoff_rotation_pointers(conn, season_id: str, league_id: str) -> None:
     """Reset all rotation pointers for a season back to order 1."""
-    rot_repo = TeamRotationsRepository(conn)
+    rot_repo = TeamRotationsRepository(conn, league_id)
     reset = rot_repo.reset_rotation_pointers(season_id)
     print(f"  Reset rotation pointers to sp1 for {reset} teams")
 
 
 def demote_extra_starters(
-    conn, season_id: str, teams: list[dict], keep: int, logger: logging.Logger = None
+    conn,
+    season_id: str,
+    teams: list[dict],
+    keep: int,
+    league_id: str,
+    logger: logging.Logger = None,
 ) -> None:
     """
     For each team, keep only `keep` rotation slots active.
     Demote remaining starters to Long bullpen role.
     """
     today = date.today().isoformat()
-    rot_repo = TeamRotationsRepository(conn)
+    rot_repo = TeamRotationsRepository(conn, league_id)
     bull_repo = BullpenRepository(conn)
 
     for team in teams:
@@ -257,6 +263,7 @@ def main():
             log_to_file=True,
         )
     conn = get_connection()
+    league_id = LeagueRepository(conn).get_league_id_from_season_id(args.season_id)
     lines = []
     lines.append(f"\n🏆 Setting up playoffs for season {args.season_id}")
     lines.append(f"   Start date : {start_date}")
@@ -273,12 +280,17 @@ def main():
     # 2. Demote extra starters
     lines.append("\nAdjusting rotations...")
     demote_extra_starters(
-        conn, args.season_id, seeds, keep=args.short_rotation, logger=logger
+        conn,
+        args.season_id,
+        seeds,
+        keep=args.short_rotation,
+        league_id=league_id,
+        logger=logger,
     )
 
     # 2.5 Reset rotation pointers
     lines.append("\nResetting rotation pointers...")
-    reset_playoff_rotation_pointers(conn, args.season_id)
+    reset_playoff_rotation_pointers(conn, args.season_id, league_id)
 
     # 3. Build bracket + pre-generate games
     lines.append("\nBuilding bracket...")

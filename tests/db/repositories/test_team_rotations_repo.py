@@ -42,7 +42,7 @@ def rot(db_conn, factory):
 
 @pytest.fixture
 def repo(db_conn):
-    return TeamRotationsRepository(db_conn)
+    return TeamRotationsRepository(db_conn, league_id="test")
 
 
 class TestSetRotation:

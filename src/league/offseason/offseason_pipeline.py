@@ -155,8 +155,8 @@ class OffseasonPipeline:
         """Age every player by one year and write back updated skills.
         Scoped to players on teams in this league's season only."""
         cap_repo = TalentCapRepository(self.conn)
-        energy_repo = PlayerEnergyRepository(self.conn)
-        inj_repo = InjuryRepository(self.conn)
+        energy_repo = PlayerEnergyRepository(self.conn, self.league_id)
+        inj_repo = InjuryRepository(self.conn, self.league_id)
 
         if self.league_id:
             players = self.player_repo.get_players_by_league(self.league_id)
@@ -171,8 +171,7 @@ class OffseasonPipeline:
             coaching = 1.0
             if energy_state is not None:
                 games = energy_state.season_games_played
-                result = inj_repo.count_player_injuries(player.id, season_id)
-                injuries = result[0] if result else 0
+                injuries = inj_repo.count_player_injuries(player.id, season_id)
 
                 if games >= 150:
                     coaching = 0.85
@@ -298,7 +297,7 @@ class OffseasonPipeline:
         return win_total is not None and win_total["wins"] >= 4
 
     def _reset_player_energy(self) -> None:
-        repo = PlayerEnergyRepository(self.conn)
+        repo = PlayerEnergyRepository(self.conn, self.league_id)
         count = repo.clear_season()
         print(f"  Cleared player energy for {count} players")
 
@@ -314,7 +313,7 @@ class OffseasonPipeline:
         print(f"  Cleared {cleared} stale prospects (age >= 24)")
 
     def _reset_pitcher_state(self, season_id: str) -> None:
-        repo = PitcherStateRepository(self.conn)
+        repo = PitcherStateRepository(self.conn, self.league_id)
         count = repo.clear_all_pitcher_state()
         print(f"  Cleared pitcher state for {count} pitchers")
         self._reset_rotation_pointers(season_id)
@@ -331,12 +330,13 @@ class OffseasonPipeline:
             ai_team_ids,
             statuses=["26man"],
             effective_date=f"{self.year}-04-01",
+            league_id=self.league_id,
         )
         self.conn.commit()
         print(f"  Rebuilt rotations and bullpen roles for {seeded} AI teams")
 
     def _reset_rotation_pointers(self, season_id: str) -> None:
-        rot_repo = TeamRotationsRepository(self.conn)
+        rot_repo = TeamRotationsRepository(self.conn, self.league_id)
         reset = rot_repo.reset_rotation_pointers(season_id)
         self.conn.commit()
         print(f"  Reset rotation pointers to sp1 for {reset} teams")

@@ -150,7 +150,7 @@ def _play_one_game(
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn)
+    rotations_repo = TeamRotationsRepository(conn, league_id)
     args = SimConfig()
 
     for g in GameRepository(conn).get_series_games(series_id):

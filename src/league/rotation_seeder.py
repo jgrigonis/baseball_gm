@@ -13,6 +13,7 @@ def seed_ai_rotations(
     ai_team_ids: set[str],
     statuses: list[str],
     effective_date: str,
+    league_id: str,
 ) -> int:
     """
     Seed starting rotations and bullpen roles for AI-managed teams.
@@ -38,7 +39,7 @@ def seed_ai_rotations(
 
     status_repo = PlayerStatusRepository(conn)
     player_repo = PlayerRepository(conn)
-    rot_repo = TeamRotationsRepository(conn)
+    rot_repo = TeamRotationsRepository(conn, league_id)
     bp_repo = BullpenRepository(conn)
     team_repo = TeamRepository(conn)
 

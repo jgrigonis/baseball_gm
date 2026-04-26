@@ -64,7 +64,7 @@ class PlayerInjury:
 class InjuryRepository:
     """Repository for managing player injuries, scoped to a single league."""
 
-    def __init__(self, conn, league_id: str = ""):
+    def __init__(self, conn, league_id: str):
         self.conn = conn
         self.league_id = league_id
 
@@ -176,12 +176,12 @@ class InjuryRepository:
         ).fetchall()
         return rows
 
-    def count_player_injuries(self, player_id: str, season_id: str) -> dict:
+    def count_player_injuries(self, player_id: str, season_id: str) -> int:
         result = self.conn.execute(
             "SELECT COUNT(*) FROM player_injury_log WHERE player_id = %s AND season_id = %s",
             (player_id, season_id),
         ).fetchone()
-        return result
+        return result["count"] if result else 0
 
     # ------------------------------------------------------------------
     # Write

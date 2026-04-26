@@ -90,7 +90,7 @@ def save_player_stats(conn, game_id, home_team, away_team):
     conn.commit()
 
 
-def load_energy(conn, game_repo, game_id, home_team, away_team, league_id=""):
+def load_energy(conn, game_repo, game_id, home_team, away_team, league_id: str):
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     game_record = game_repo.get(game_id)
     game_date = datetime.fromisoformat(game_record["game_date"]).date()
@@ -105,7 +105,7 @@ def load_energy(conn, game_repo, game_id, home_team, away_team, league_id=""):
     return game_date
 
 
-def save_energy(conn, game_date, home_team, away_team, league_id=""):
+def save_energy(conn, game_date, home_team, away_team, league_id: str):
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     for player in home_team.players + away_team.players:
         if player.game_stats.pitching.pitch_count > 0:
@@ -279,7 +279,7 @@ def play_game(
     season_id: str,
     game_info: dict,
     rng: random.Random,
-    league_id: str = "",
+    league_id: str,
     league_mode: str = "blitz",
 ):
     """Play a single game and save results."""
@@ -567,7 +567,7 @@ def main():
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn)
+    rotations_repo = TeamRotationsRepository(conn, league_id)
 
     games = game_repo.get_season_games(
         season_id=args.season_id, incomplete_only=args.resume, regular_season_only=True

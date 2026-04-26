@@ -261,7 +261,6 @@ def main():
     team_repo = TeamRepository(conn)
     game_repo = GameRepository(conn)
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn)
     league_repo = LeagueRepository(conn)
 
     sid = args.season_id
@@ -273,6 +272,7 @@ def main():
     # seeds = get_seeds(conn, sid)
 
     league_id = league_repo.get_league_id_from_season_id(sid)
+    rotations_repo = TeamRotationsRepository(conn, league_id)
     league_mode = league_repo.get_league_mode(league_id)
 
     # Infer playoff start date from first R1 game

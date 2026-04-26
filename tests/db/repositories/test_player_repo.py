@@ -1,5 +1,6 @@
 # tests/db/repositories/test_player_repo.py
 import pytest
+import uuid
 from datetime import datetime
 
 from src.db.repositories.player_repo import PlayerRepository
@@ -38,13 +39,15 @@ def sample_skills():
 def ctx(db_conn, factory):
     """Unique player IDs + season per test — no cross-run collisions."""
     from types import SimpleNamespace
-    import uuid
 
+    league = factory.league()
     season = factory.season()
     # Generate IDs only — don't pre-insert players, so each test controls insertion
     p1 = SimpleNamespace(id=str(uuid.uuid4()))
     p2 = SimpleNamespace(id=str(uuid.uuid4()))
-    return SimpleNamespace(conn=db_conn, season=season, p1=p1, p2=p2)
+    return SimpleNamespace(
+        conn=db_conn, season=season, p1=p1, p2=p2, league_id=league.id
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +58,9 @@ def ctx(db_conn, factory):
 class TestPlayerRepositoryInsert:
 
     def test_insert_new_player(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "R", "R", "of", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "R", "R", "of", sample_skills, ctx.league_id
+        )
 
         row = ctx.conn.execute(
             "SELECT * FROM players WHERE id = %s", (ctx.p1.id,)
@@ -76,8 +81,12 @@ class TestPlayerRepositoryInsert:
         assert skills_row["power"] == 70
 
     def test_insert_idempotent(self, player_repo, ctx, db_conn, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
-        player_repo.insert(ctx.p1.id, "Michael", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
+        player_repo.insert(
+            ctx.p1.id, "Michael", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
 
         count = db_conn.execute(
             "SELECT COUNT(*) AS n FROM players WHERE id = %s", (ctx.p1.id,)
@@ -94,7 +103,9 @@ class TestPlayerRepositoryInsert:
     ):
         ids = [ctx.p1.id, ctx.p2.id, factory.player_row().id]
         for pid in ids:
-            player_repo.insert(pid, "First", "Last", "R", "R", "rf", sample_skills)
+            player_repo.insert(
+                pid, "First", "Last", "R", "R", "rf", sample_skills, ctx.league_id
+            )
 
         count = db_conn.execute(
             "SELECT COUNT(*) AS n FROM players WHERE id = ANY(%s)", (ids,)
@@ -107,9 +118,13 @@ class TestPlayerRepositoryInsert:
         import uuid
 
         p3_id = str(uuid.uuid4())
-        player_repo.insert(ctx.p1.id, "A", "B", "r", "r", "1b", sample_skills)
-        player_repo.insert(ctx.p2.id, "C", "D", "L", "L", "of", sample_skills)
-        player_repo.insert(p3_id, "E", "F", "S", "R", "c", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "A", "B", "r", "r", "1b", sample_skills, ctx.league_id
+        )
+        player_repo.insert(
+            ctx.p2.id, "C", "D", "L", "L", "of", sample_skills, ctx.league_id
+        )
+        player_repo.insert(p3_id, "E", "F", "S", "R", "c", sample_skills, ctx.league_id)
 
         rows = db_conn.execute(
             "SELECT id, bats FROM players WHERE id = ANY(%s) ORDER BY bats",
@@ -120,7 +135,9 @@ class TestPlayerRepositoryInsert:
 
     def test_insert_creates_timestamp(self, player_repo, ctx, db_conn, sample_skills):
         before = datetime.now()
-        player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
         after = datetime.now()
 
         row = db_conn.execute(
@@ -141,7 +158,9 @@ class TestPlayerRepositoryInsert:
 class TestPlayerRepositoryUpdateSkills:
 
     def test_update_skills(self, player_repo, ctx, db_conn, sample_skills):
-        player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
 
         new_skills = PlayerSkills(
             clutch=80,
@@ -174,7 +193,9 @@ class TestPlayerRepositoryUpdateSkills:
     def test_update_skills_creates_new_timestamp(
         self, player_repo, ctx, db_conn, sample_skills
     ):
-        player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
 
         original_ts = db_conn.execute(
             "SELECT updated_at FROM player_skills WHERE player_id = %s", (ctx.p1.id,)
@@ -193,7 +214,9 @@ class TestPlayerRepositoryUpdateSkills:
         assert new_ts != original_ts
 
     def test_update_skills_idempotent(self, player_repo, ctx, db_conn, sample_skills):
-        player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
 
         for i in range(5):
             new_skills = PlayerSkills({**sample_skills.as_dict(), "speed": 85 + i})
@@ -213,7 +236,9 @@ class TestPlayerRepositoryUpdateSkills:
 class TestPlayerRepositorySnapshotSkills:
 
     def test_snapshot_skills(self, player_repo, ctx, db_conn, sample_skills):
-        player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
         player_repo.snapshot_skills(ctx.p1.id, ctx.season.id)
 
         row = db_conn.execute(
@@ -228,7 +253,9 @@ class TestPlayerRepositorySnapshotSkills:
     def test_snapshot_skills_multiple_seasons(
         self, player_repo, ctx, db_conn, sample_skills, factory
     ):
-        player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
 
         seasons = [factory.season(year=3400 + i) for i in range(3)]
         for i, s in enumerate(seasons):
@@ -243,7 +270,9 @@ class TestPlayerRepositorySnapshotSkills:
         assert count == 3
 
     def test_snapshot_skills_idempotent(self, player_repo, ctx, db_conn, sample_skills):
-        player_repo.insert(ctx.p1.id, "First", "Player", "R", "R", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "R", "R", "1b", sample_skills, ctx.league_id
+        )
         player_repo.snapshot_skills(ctx.p1.id, ctx.season.id)
 
         new_skills = PlayerSkills({**sample_skills.as_dict(), "speed": 85})
@@ -265,7 +294,9 @@ class TestPlayerRepositorySnapshotSkills:
     def test_snapshot_skills_creates_timestamp(
         self, player_repo, ctx, db_conn, sample_skills
     ):
-        player_repo.insert(ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
         player_repo.snapshot_skills(ctx.p1.id, ctx.season.id)
 
         row = db_conn.execute(
@@ -283,7 +314,9 @@ class TestPlayerRepositorySnapshotSkills:
 class TestPlayerRepositoryLookUp:
 
     def test_look_up_existing_player(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
         record = player_repo.look_up(ctx.p1.id)
 
         assert record is not None
@@ -296,7 +329,9 @@ class TestPlayerRepositoryLookUp:
         assert record.position == "rf"
 
     def test_look_up_skills(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "R", "R", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "R", "R", "rf", sample_skills, ctx.league_id
+        )
         record = player_repo.look_up(ctx.p1.id)
 
         assert isinstance(record.skills, PlayerSkills)
@@ -318,7 +353,9 @@ class TestPlayerRepositoryLookUp:
             player_repo.look_up(ctx.p1.id)
 
     def test_look_up_returns_current_skills(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
         new_skills = PlayerSkills({**sample_skills.as_dict(), "speed": 85})
         player_repo.update_skills(ctx.p1.id, new_skills)
 
@@ -334,11 +371,15 @@ class TestPlayerRepositoryLookUp:
 class TestPlayerRepositoryGetSkillHistory:
 
     def test_get_skill_history_empty(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
         assert player_repo.get_skill_history(ctx.p1.id) == []
 
     def test_get_skill_history_single_season(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
         player_repo.snapshot_skills(ctx.p1.id, ctx.season.id)
 
         history = player_repo.get_skill_history(ctx.p1.id)
@@ -350,7 +391,9 @@ class TestPlayerRepositoryGetSkillHistory:
     def test_get_skill_history_multiple_seasons(
         self, player_repo, ctx, sample_skills, factory
     ):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
 
         seasons = [factory.season(year=3500 + i) for i in range(3)]
         for i, s in enumerate(seasons):
@@ -362,7 +405,9 @@ class TestPlayerRepositoryGetSkillHistory:
         assert len(history) == 3
 
     def test_get_skill_history_ordered(self, player_repo, ctx, sample_skills, factory):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
 
         seasons = [factory.season(year=3600 + i) for i in [2, 0, 1]]
         for s in seasons:
@@ -375,7 +420,9 @@ class TestPlayerRepositoryGetSkillHistory:
     def test_get_skill_history_shows_progression(
         self, player_repo, ctx, sample_skills, factory
     ):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "R", "R", "of", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "R", "R", "of", sample_skills, ctx.league_id
+        )
 
         seasons = [factory.season(year=3700 + i) for i in range(3)]
         expected_speeds = {}
@@ -400,15 +447,21 @@ class TestPlayerRepositoryGetSkillHistory:
 class TestPlayerRepositoryExists:
 
     def test_exists_true(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "of", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "of", sample_skills, ctx.league_id
+        )
         assert player_repo.exists(ctx.p1.id) is True
 
     def test_exists_false(self, player_repo):
         assert player_repo.exists("nonexistent") is False
 
     def test_exists_multiple_players(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Player", "One", "r", "r", "1b", sample_skills)
-        player_repo.insert(ctx.p2.id, "Player", "Two", "L", "L", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Player", "One", "r", "r", "1b", sample_skills, ctx.league_id
+        )
+        player_repo.insert(
+            ctx.p2.id, "Player", "Two", "L", "L", "rf", sample_skills, ctx.league_id
+        )
 
         assert player_repo.exists(ctx.p1.id) is True
         assert player_repo.exists(ctx.p2.id) is True
@@ -423,18 +476,20 @@ class TestPlayerRepositoryExists:
 class TestPlayerRepositoryGetAllPlayers:
 
     def test_get_all_players_single(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
+        )
 
         players = player_repo.get_all_players()
         ids = {p.id for p in players}
         assert ctx.p1.id in ids
 
     def test_get_all_players_multiple(self, player_repo, ctx, sample_skills):
-        import uuid
-
         p3_id = str(uuid.uuid4())
         for pid in [ctx.p1.id, ctx.p2.id, p3_id]:
-            player_repo.insert(pid, "First", "Last", "R", "R", "rf", sample_skills)
+            player_repo.insert(
+                pid, "First", "Last", "R", "R", "rf", sample_skills, ctx.league_id
+            )
 
         players = player_repo.get_all_players()
         ids = {p.id for p in players}
@@ -442,7 +497,9 @@ class TestPlayerRepositoryGetAllPlayers:
         assert all(isinstance(p, PlayerRecord) for p in players)
 
     def test_get_all_players_includes_skills(self, player_repo, ctx, sample_skills):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "R", "R", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "R", "R", "rf", sample_skills, ctx.league_id
+        )
 
         players = player_repo.get_all_players()
         p = next(p for p in players if p.id == ctx.p1.id)
@@ -459,7 +516,9 @@ class TestPlayerRepositoryGetAllPlayers:
 class TestPlayerRepositoryIntegration:
 
     def test_full_player_lifecycle(self, player_repo, ctx, sample_skills, factory):
-        player_repo.insert(ctx.p1.id, "Mike", "Trout", "R", "R", "rf", sample_skills)
+        player_repo.insert(
+            ctx.p1.id, "Mike", "Trout", "R", "R", "rf", sample_skills, ctx.league_id
+        )
 
         record = player_repo.look_up(ctx.p1.id)
         assert record.skills["speed"] == 80
@@ -484,6 +543,7 @@ class TestPlayerRepositoryIntegration:
         assert speeds[s2.id] == 76
 
     def test_roster_management(self, player_repo, sample_skills, factory):
+        league_id = factory.league().id
         players = [factory.player_row() for _ in range(25)]
         for i, p in enumerate(players):
             player_repo.insert(
@@ -494,6 +554,7 @@ class TestPlayerRepositoryIntegration:
                 "R",
                 "cf",
                 sample_skills,
+                league_id=league_id,
             )
 
         all_players = player_repo.get_all_players()

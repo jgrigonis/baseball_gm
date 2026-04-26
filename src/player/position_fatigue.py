@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 
-from src.db.repositories.player_energy import _daily_recovery_rate
 from src.player.fatigue_level import FatigueLevel
 from src.player.player_constants import (
     FRESH_THRESHOLD,
@@ -14,8 +13,8 @@ from src.player.player_constants import (
     BAT_TIRED,
     BAT_EXHAUSTED,
     BAT_ZERO,
-    STREAK_PENALTY,
-    STREAK_GAMES,
+    # STREAK_PENALTY,
+    # STREAK_GAMES,
     MOD_INJURY_FRESH,
     MOD_INJURY_GOOD,
     MOD_INJURY_TIRED,

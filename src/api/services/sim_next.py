@@ -123,7 +123,7 @@ def sim_next_day(league_id: str, conn) -> dict:
     league_mode = dict(league).get("mode", "blitz") or "blitz"
 
     team_game_repo = TeamGameRepository(conn)
-    rotations_repo = TeamRotationsRepository(conn)
+    rotations_repo = TeamRotationsRepository(conn, league_id)
 
     results = []
     errors = []

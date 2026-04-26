@@ -131,7 +131,7 @@ class PlayerEnergyState:
 class PlayerEnergyRepository:
     """Repository for managing position player energy and fatigue state."""
 
-    def __init__(self, conn, league_id: str = ""):
+    def __init__(self, conn, league_id: str):
         self.conn = conn
         self.league_id = league_id
 

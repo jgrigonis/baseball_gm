@@ -72,6 +72,7 @@ def _create_next_season(
         ai_team_ids,
         statuses=["26man"],
         effective_date=f"{next_year}-04-01",
+        league_id=league_id,
     )
 
     conn.commit()

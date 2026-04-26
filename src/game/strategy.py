@@ -731,7 +731,10 @@ class GameStrategy:
         rng: random.Random | None = None,
     ) -> bool:
         """Thin wrapper around find_closer for backwards compatibility."""
-        return GameStrategy.find_closer(current_pitcher, team, inning, score_diff, rng) is not None
+        return (
+            GameStrategy.find_closer(current_pitcher, team, inning, score_diff, rng)
+            is not None
+        )
 
     @staticmethod
     def select_relief_pitcher(

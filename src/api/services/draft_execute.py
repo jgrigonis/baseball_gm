@@ -212,6 +212,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         ai_team_ids,
         statuses=["26man", "40man"],
         effective_date=f"{year}-04-01",
+        league_id=league_id,
     )
     print(f"Seeded rotations for {seeded} AI teams post-draft.")
 
