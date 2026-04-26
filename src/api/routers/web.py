@@ -2512,7 +2512,7 @@ def player_panel(
                         "W": s.get("pitch_wins", 0),
                         "L": s.get("pitch_losses", 0),
                         "SV": s.get("pitch_saves", 0),
-                        "IP": round(ip, 1),
+                        "IP": f"{outs // 3}.{outs % 3}",
                         "H": hits,
                         "ER": er,
                         "BB": walks,
@@ -2834,7 +2834,7 @@ def player_career(
             ip = outs / 3.0
             return {
                 **d,
-                "IP": round(ip, 1),
+                "IP": f"{outs // 3}.{outs % 3}",
                 "ERA": round(d.get("ER", 0) / ip * 9, 2) if ip > 0 else 0.0,
                 "WHIP": (
                     round((d.get("H", 0) + d.get("BB", 0)) / ip, 2) if ip > 0 else 0.0
