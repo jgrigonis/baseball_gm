@@ -1,3 +1,10 @@
+0.5.5
+-----
+
+- We are now bug free.
+- All unit tests passing
+
+
 0.5.4
 -----
 
