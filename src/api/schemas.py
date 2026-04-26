@@ -130,7 +130,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
 
     def _skill(key: str) -> str | None:
         val = skills.get(key) or 0
-        return skill_to_grade(val) if val > 20 else None
+        return skill_to_grade(val) if val > 0 else None
 
     return PlayerGrades(
         player_id=player["id"],
