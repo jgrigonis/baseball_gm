@@ -86,7 +86,7 @@
   </div>
   {% endif %}
 
-  {# Begin Offseason button #}
+  {# Begin Offseason / continue to draft #}
   {% if league_state == 'offseason' %}
   <div style="text-align:center;">
     <button id="begin-offseason-btn" onclick="beginOffseason()"
@@ -95,6 +95,13 @@
     </button>
     <div id="offseason-status" style="font-family:var(--font-mono);font-size:11px;
                                        color:var(--text-dim);margin-top:12px;"></div>
+  </div>
+  {% elif league_state == 'draft' %}
+  <div style="text-align:center;">
+    <a href="/leagues/{{ league_id }}/retirement"
+       class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
+      View Retirements →
+    </a>
   </div>
   {% endif %}
 
