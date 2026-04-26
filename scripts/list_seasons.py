@@ -7,6 +7,7 @@ from src.db.repositories.season_repo import SeasonRepository
 
 l_width = 50
 s_width = 48
+t_width = 22
 y_width = 12
 n_width = 20
 
@@ -23,8 +24,10 @@ def main():
 
     for season in seasons:
         league_id = lr.get_league_id_from_season_id(season["id"])
+        state = lr.get_state(league_id)
         print(f"{'league_id: ' + str(league_id):<{l_width}} "
             f"{'season_id: ' + str(season['id']):<{s_width}} "
+            f"{'state: ' + str(state):<{t_width}} "
             f"{'year: ' + str(season['year']):<{y_width}} "
             f"{'name: ' + season['name']:<{n_width}}"
         )
