@@ -17,22 +17,6 @@ Queries:
 
 """
 
-# Old model
-# Recovery model
-# --------------
-# Uses an exponential approach to 1.0 so recovery is fast when a pitcher
-# is depleted and tapers as they approach full energy:
-
-#     energy += (1.0 - energy) * daily_rate
-
-# daily_rate is derived from the pitcher's recovery skill so that a pitcher
-# starting at 0.0 reaches 0.99 in:
-
-#     recovery skill 100  →  4 days
-#     recovery skill 50   →  5 days
-#     recovery skill 1    →  6 days
-
-
 from __future__ import annotations
 
 import logging
