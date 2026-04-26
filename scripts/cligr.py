@@ -68,6 +68,7 @@ from src.league.manifest_helper import (
 from src.league.offseason.build_season_stats import build_season
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.play_season import play_game
+from src.league.rotation_seeder import seed_ai_rotations
 from src.league.playoffs.play_playoffs import (
     play_series,
     generate_round_games,
@@ -551,14 +552,16 @@ def _create_next_season_cli(
     )
     save_schedule_to_db(conn, schedule)
 
-    # Bootstrap rotations and bullpen roles for each team in the new season
-    boot = LeagueBootstrapper(conn, rng=rng)
-
-    team_repo = TeamRepository(conn)
-    teams = [team_repo.get(tid) for tid in team_ids]
-    teams = [t for t in teams if t]
-    boot._bootstrap_rotations(teams, season_id, start_date)
-    print(f"  Rotations bootstrapped for {len(teams)} teams")
+    # Seed rotations for all teams (CLI = all-AI, no human GMs)
+    seeded = seed_ai_rotations(
+        conn,
+        season_id,
+        set(team_ids),
+        statuses=["26man"],
+        effective_date=start_date.isoformat(),
+        league_id=league_id,
+    )
+    print(f"  Rotations seeded for {seeded} teams")
 
     conn.commit()
     print(f"  Created season {next_year}: {len(schedule)} games scheduled")
@@ -570,7 +573,26 @@ def _play_regular_season(
 ):
     """Play all incomplete regular season games."""
 
-    league_mode = LeagueRepository(conn).get_league_mode(league_id)
+    lr = LeagueRepository(conn)
+    league_mode = lr.get_league_mode(league_id)
+
+    # Seed rotations for all teams if not already set (idempotent).
+    # Covers the first season of a new league and any run-season resume.
+    team_ids = lr.get_league_teams(league_id, season_id)
+    season_start = datetime.date(
+        SeasonRepository(conn).get_year(season_id)["year"], 4, 1
+    )
+    seeded = seed_ai_rotations(
+        conn,
+        season_id,
+        set(team_ids),
+        statuses=["26man"],
+        effective_date=season_start.isoformat(),
+        league_id=league_id,
+    )
+    if seeded:
+        conn.commit()
+        print(f"  Seeded rotations for {seeded} teams")
 
     game_repo = GameRepository(conn)
     team_repo = TeamRepository(conn)
