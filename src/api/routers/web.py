@@ -2754,7 +2754,7 @@ def player_career(
                     "W": r.get("pitch_wins", 0),
                     "L": r.get("pitch_losses", 0),
                     "SV": r.get("pitch_saves", 0),
-                    "IP": round(ip, 1),
+                    "IP": f"{outs // 3}.{outs % 3}",
                     "H": hits,
                     "ER": er,
                     "BB": bb,
