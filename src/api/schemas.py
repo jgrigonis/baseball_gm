@@ -108,11 +108,6 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
     except Exception:
         ratings = {}
 
-    # A player is treated as a pitcher if they have meaningful stamina/strikes
-    is_pitcher = (skills.get("stamina", 0) or 0) > 20 and (
-        skills.get("strikes", 0) or 0
-    ) > 20
-
     if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))
     of_rating = max(ratings.get("lf", 0), ratings.get("cf", 0), ratings.get("rf", 0))
     groups = {
@@ -126,6 +121,9 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
 
     pitcher_overall = max(ratings.get("sp", 0), ratings.get("rp", 0))
     hitter_overall = ratings.get("overall_player", 0)
+
+    # Classify by whichever role produces the higher overall rating
+    is_pitcher = pitcher_overall > hitter_overall
     raw_overall = max(pitcher_overall, hitter_overall)
 
     offense = ratings.get("overall_offense", 0)
