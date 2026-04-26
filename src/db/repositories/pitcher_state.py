@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 MIN_ENERGY_STARTER = 0.83
 
 # Cap: slow passive regeneration
-CAP_REGEN_PER_DAY = 0.004
+CAP_REGEN_PER_DAY = 0.006
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +181,8 @@ class PitcherStateRepository:
         for _ in range(days_rest):
             energy += (state.max_energy - energy) * rate
         state.current_energy = max(0.0, min(state.max_energy, energy))
-        state.max_energy = min(1.0, state.max_energy + (CAP_REGEN_PER_DAY * days_rest))
+        cap_regen = CAP_REGEN_PER_DAY * recovery_skill / 50
+        state.max_energy = min(1.0, state.max_energy + (cap_regen * days_rest))
         state.current_energy = _apply_recovery(
             state.current_energy, days_rest, recovery_skill
         )

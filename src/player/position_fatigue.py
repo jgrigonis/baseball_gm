@@ -103,62 +103,64 @@ class PositionPlayerFatigue:
 
     # was play_game
     # Only used in unit tests
-    def record_game(self, innings_played: int = 9) -> None:
-        """
-        Record a game played. Drain scales with innings and position.
+    # def record_game(self, innings_played: int = 9) -> None:
+    #     """
+    #     Record a game played. Drain scales with innings and position.
 
-        Args:
-            innings_played: Partial games (e.g. pinch hitting = 1) drain less.
-        """
-        base_drain = POSITION_DRAIN_RATES[self.position]
+    #     Args:
+    #         innings_played: Partial games (e.g. pinch hitting = 1) drain less.
+    #     """
+    #     base_drain = POSITION_DRAIN_RATES[self.position]
 
-        # Scale by innings share (9 = full game)
-        innings_fraction = min(innings_played, 9) / 9.0
+    #     # Scale by innings share (9 = full game)
+    #     innings_fraction = min(innings_played, 9) / 9.0
 
-        # Durability reduces drain, same pattern as pitcher stamina
-        drain = base_drain * innings_fraction * (50 / self.durability)
+    #     # Durability reduces drain, same pattern as pitcher stamina
+    #     drain = base_drain * innings_fraction * (50 / self.durability)
 
-        # Consecutive day penalty: each day in a long streak adds a small
-        # extra drain (fatigue compounds — day 7+ hurts more than day 2)
-        streak_penalty = max(0, (self.consecutive_days - STREAK_GAMES) * STREAK_PENALTY)
-        drain += streak_penalty
+    #     # Consecutive day penalty: each day in a long streak adds a small
+    #     # extra drain (fatigue compounds — day 7+ hurts more than day 2)
+    #     streak_penalty = max(0, (self.consecutive_days - STREAK_GAMES) * STREAK_PENALTY)
+    #     drain += streak_penalty
 
-        self.energy = max(0.0, self.energy - drain)
-        self.consecutive_days += 1
-        self.season_games_played += 1
-        self.degrade_cap()
+    #     self.energy = max(0.0, self.energy - drain)
+    #     self.consecutive_days += 1
+    #     self.season_games_played += 1
+    #     self.degrade_cap()
 
-    def degrade_cap(self) -> None:
-        """Degrade seasonal ceiling based on accumulated workload."""
-        # Only starts biting after 100 games
-        if self.season_games_played < 100:
-            return
-        excess = self.season_games_played - 100
-        # Light damage 100-140 games, heavier above 140
-        if self.season_games_played < 140:
-            damage = excess * 0.0004 * (50 / self.durability)
-        else:
-            damage = excess * 0.0008 * (50 / self.durability)
-        self.max_energy = max(0.50, self.max_energy - damage)
+    # # This also is never called.
+    # def degrade_cap(self) -> None:
+    #     """Degrade seasonal ceiling based on accumulated workload."""
+    #     # Only starts biting after 100 games
+    #     if self.season_games_played < 100:
+    #         return
+    #     excess = self.season_games_played - 100
+    #     # Light damage 100-140 games, heavier above 140
+    #     if self.season_games_played < 140:
+    #         damage = excess * 0.0004 * (50 / self.durability)
+    #     else:
+    #         damage = excess * 0.0008 * (50 / self.durability)
+    #     self.max_energy = max(0.50, self.max_energy - damage)
 
-    # This function is never called, except in test
-    def rest_day(self, days: int = 1) -> None:
-        """
-        Recover energy on a day off. Consecutive rest days recover less
-        (diminishing returns — first day of rest does the most work).
-        Exponential recovery toward max_energy (not 1.0).
-        """
-        rate = _daily_recovery_rate(self.durability)
-        for _ in range(days):
-            self.energy += (self.max_energy - self.energy) * rate
-        self.energy = max(0.0, min(self.max_energy, self.energy))
-        self.consecutive_days = 0
+    # # This function is never called, except in test
+    # def rest_day(self, days: int = 1) -> None:
+    #     """
+    #     Recover energy on a day off. Consecutive rest days recover less
+    #     (diminishing returns — first day of rest does the most work).
+    #     Exponential recovery toward max_energy (not 1.0).
+    #     """
+    #     rate = _daily_recovery_rate(self.durability)
+    #     for _ in range(days):
+    #         self.energy += (self.max_energy - self.energy) * rate
+    #     self.energy = max(0.0, min(self.max_energy, self.energy))
+    #     self.consecutive_days = 0
 
-    def end_season(self) -> None:
-        """Full reset at the start of the offseason."""
-        self.energy = 1.0
-        self.consecutive_days = 0
-        self.season_games_played = 0
+    # This is never called, but isn't really needed.
+    # def end_season(self) -> None:
+    #     """Full reset at the start of the offseason."""
+    #     self.energy = 1.0
+    #     self.consecutive_days = 0
+    #     self.season_games_played = 0
 
     # ------------------------------------------------------------------
     # Injury risk (to wire up to your injury system later)

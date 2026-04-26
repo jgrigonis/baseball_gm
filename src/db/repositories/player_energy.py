@@ -18,7 +18,7 @@ Queries:
 
 Recovery model
 --------------
-Mirrors pitcher_state: exponential approach to 1.0 so recovery is fast
+Exponential approach to 1.0 so recovery is fast
 when a player is depleted and tapers near full energy:
 
     energy += (1.0 - energy) * daily_rate
