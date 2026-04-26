@@ -981,6 +981,7 @@ class Game:
         )
 
     def _close_pitcher_appearance(self) -> None:
+        """End a pitching appearance, set the most recent pitcher's finished_game to False."""
         if self.pitcher_appearances:
             self.pitcher_appearances[-1].finished_game = False
 
@@ -992,31 +993,17 @@ class Game:
             return
 
         # ── Closer situation: override fatigue logic entirely ──────────────
-        # Check this BEFORE the fatigue roll so a save situation always
-        # triggers the closer regardless of the current pitcher's fatigue.
-        if GameStrategy.should_bring_in_closer(
+        # find_closer uses the same player pool for both the availability check
+        # and the selection, so we can never confirm a closer exists then fail
+        # to bring them in (which would cause repeated cycling through the bullpen).
+        pitcher = GameStrategy.find_closer(
             self.current_pitcher,
             self.pitch_team,
             self.inning,
             self.score_differential,
             self.rng,
-        ):
-            eligible = (
-                self.home_eligible
-                if self.pitch_team == self.home
-                else self.away_eligible
-            )
-            pitcher = GameStrategy.select_relief_pitcher(
-                self.pitch_team,
-                self.current_pitcher,
-                self.inning,
-                self.score,
-                pitcher_states=self.pitcher_states,
-                game_date=self.game_date,
-                eligible_ids=eligible,
-                rng=self.rng,
-            )
-            if pitcher:
+        )
+        if pitcher:
                 outgoing = self.current_pitcher
                 self._close_pitcher_appearance()
                 self.current_pitcher = pitcher

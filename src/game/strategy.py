@@ -675,15 +675,15 @@ class GameStrategy:
         return prob
 
     @staticmethod
-    def should_bring_in_closer(
+    def find_closer(
         current_pitcher: PlayerInGame,
         team: TeamInGame,
         inning: Inning,
         score_diff: int,  # positive = pitching team is winning
         rng: random.Random | None = None,
-    ) -> bool:
+    ) -> "PlayerInGame | None":
         """
-        Decide if this is a clear save situation that warrants bringing in the Closer.
+        Return the closer to bring in if this is a save situation, else None.
 
         Triggers when ALL of the following are true:
         - Inning 9 or later
@@ -691,22 +691,18 @@ class GameStrategy:
         - A fresh/good Closer is available on the roster
         - The current pitcher IS NOT already the Closer role
 
-        Returns True with very high probability (CLOSER_ENTRANCE_PROB) so the manager
+        Returns the closer with probability CLOSER_ENTRANCE_PROB so the manager
         almost always makes the move, but not robotically 100%.
         """
         rng = _get_rng(rng)
 
-        # Must be save situation: inning 9+, leading by 1-3
         if inning.number < 9:
-            return False
+            return None
         if not (1 <= score_diff <= 3):
-            return False
-
-        # Don't pull the closer to replace themselves
+            return None
         if getattr(current_pitcher, "bullpen_role", None) == "Closer":
-            return False
+            return None
 
-        # Check a fresh/good closer is actually available
         available_closers = [
             p
             for p in team.players
@@ -719,10 +715,23 @@ class GameStrategy:
         ]
 
         if not available_closers:
-            return False
+            return None
 
-        # Almost always make the move — 92% so it's not robotic
-        return rng.random() < CLOSER_ENTRANCE_PROB
+        if rng.random() >= CLOSER_ENTRANCE_PROB:
+            return None
+
+        return available_closers[0]
+
+    @staticmethod
+    def should_bring_in_closer(
+        current_pitcher: PlayerInGame,
+        team: TeamInGame,
+        inning: Inning,
+        score_diff: int,
+        rng: random.Random | None = None,
+    ) -> bool:
+        """Thin wrapper around find_closer for backwards compatibility."""
+        return GameStrategy.find_closer(current_pitcher, team, inning, score_diff, rng) is not None
 
     @staticmethod
     def select_relief_pitcher(
