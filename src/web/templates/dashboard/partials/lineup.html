@@ -1270,6 +1270,8 @@ function clearRotation() {
 
 function autoFillRotation() {
   const before = rotation.filter(Boolean).join(',');
+  const bullpenBefore = JSON.stringify(Object.entries(bullpen).sort());
+
   // Remove injured pitchers from rotation
   rotation = rotation.filter(pid => {
     const p = ALL_PITCHERS.find(x => x.player_id === pid);
@@ -1283,8 +1285,17 @@ function autoFillRotation() {
   const needed = Math.max(0, 5 - rotation.length);
   candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
   ensureValidPointer();
+
+  // Remove newly-promoted rotation players from the bullpen dict
+  const newInRot = new Set(rotation.filter(Boolean));
+  Object.keys(bullpen).forEach(pid => { if (newInRot.has(pid)) delete bullpen[pid]; });
+
   if (rotation.filter(Boolean).join(',') !== before) {
     pitchingSaved = false;
+    updatePitchingBanners();
+  }
+  if (JSON.stringify(Object.entries(bullpen).sort()) !== bullpenBefore) {
+    bullpenSaved = false;
     updatePitchingBanners();
   }
   renderRotation();
