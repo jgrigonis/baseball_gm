@@ -165,5 +165,9 @@ class GameEventLogger:
             )
             self.conn.commit()
         except Exception as e:
-            # Never let logging crash a game
+            # Never let logging crash a game — rollback to clear aborted txn state
+            try:
+                self.conn.rollback()
+            except Exception:
+                pass
             _log.warning(f"Failed to log event {event_type}: {e}")
