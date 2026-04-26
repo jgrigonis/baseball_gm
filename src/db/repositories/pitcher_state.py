@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 MIN_ENERGY_STARTER = 0.83
 
 # Cap: slow passive regeneration
-CAP_REGEN_PER_DAY = 0.006
+CAP_REGEN_PER_DAY = 0.0045
 
 
 # ---------------------------------------------------------------------------
