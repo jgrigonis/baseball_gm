@@ -1,13 +1,6 @@
+{# src/web/templates/dasboard/parials/_play_script.html #}
 <script>
 (function() {
-
-// This should be dead code
-// function schedToggleDropdown() {
-//   var dd = document.getElementById('sched-dropdown');
-//   if (!dd) return;
-//   dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
-// }
-// window.schedToggleDropdown = schedToggleDropdown;
 
 // Helpers that always look up fresh DOM refs
 function getBtn()  { return document.getElementById('sched-play-btn'); }
@@ -55,10 +48,6 @@ function setSimMode(simming) {
 if (typeof window._simStop === 'undefined') window._simStop = false;
 
 async function schedSim(count) {
-  // more dead code
-  // var dd = document.getElementById('sched-dropdown');
-  // if (dd) dd.style.display = 'none';
-
   window._simStop = false;
   setSimMode(count !== 1);
 
@@ -178,16 +167,6 @@ function schedStop() {
   if (stop) stop.textContent = 'Stopping…';
 }
 window.schedStop = schedStop;
-
-// dead code
-// Close dropdown on outside click
-// document.addEventListener('click', function(e) {
-//   var wrap = document.getElementById('play-wrap');
-//   var dd   = document.getElementById('sched-dropdown');
-//   if (wrap && dd && !wrap.contains(e.target)) dd.style.display = 'none';
-// });
-// above code is dead
-
 
 })();
 </script>

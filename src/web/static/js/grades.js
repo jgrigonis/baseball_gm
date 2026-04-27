@@ -14,3 +14,13 @@ function gradeVal(g) {
 function gradeClass(g) {
   return 'grade grade-' + (g || '?').replace('+', '-plus').replace(/-(?!plus)/g, '-minus');
 }
+
+function playerGradesHtml(p) {
+  const pairs = p.player_type === 'pitcher'
+    ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],['GB',p.ground_balls]]
+    : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
+       ['ARM',p.arm],[p.best_def_label||'DEF',p.best_def_grade]];
+  return pairs.filter(([,v])=>v)
+    .map(([k,v])=>`<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`)
+    .join('');
+}
