@@ -215,20 +215,22 @@ class OffseasonPipeline:
             current_status = self.player_status_repo.get_status(player.id)
             is_unrostered = current_status in ("prospect", "unassigned", "free_agent")
 
-            if self._should_retire(player.age, player.skills, is_unrostered, rng):
-                self.player_status_repo.set_status(player.id, "free_agent")
+            status = self._should_retire(player.age, player.skills, is_unrostered, rng)
+            if status in ['retired', 'free_agent']:
+                self.player_status_repo.set_status(player.id, status)
                 row = self.team_repo.get_players_team_from_team_players(player.id)
                 former_team_id = row["team_id"] if row else None
                 if former_team_id:
                     self.team_repo.remove_player(former_team_id, player.id)
-                if self.league_id:
-                    ret_repo.retire_player(
-                        player.id,
-                        self.league_id,
-                        self._current_season_id,
-                        former_team_id,
-                    )
-                retired.append(player)
+                if status is "retired":
+                    if self.league_id:
+                        ret_repo.retire_player(
+                            player.id,
+                            self.league_id,
+                            self._current_season_id,
+                            former_team_id,
+                        )
+                    retired.append(player)
 
         self.conn.commit()
 
@@ -373,14 +375,22 @@ class OffseasonPipeline:
         trimmer.run(season_id)
 
     @staticmethod
-    def _should_retire(age, skills, is_unrostered, rng):
+    def _should_retire(age, skills, is_unrostered, rng) -> str | None:
+        """
+        We should be considering games played, injury history as well
+
+        Younger players should just become stale prospects, not necessarily
+        retired.
+
+        The current code is too focused on peaks and skills.
+        """
         if is_unrostered:
             if age < 18:
-                return False
+                return None
             probability = min(0.95, (age - 22) * 0.20)
         else:
             if age < 30:
-                return False
+                return None
             pitching_skills = [
                 "accuracy",
                 "stamina",
@@ -409,11 +419,11 @@ class OffseasonPipeline:
                     for k in ["strikes", "stamina", "recovery", "ground_balls"]
                 )
                 if peak >= 75:
-                    return False
+                    return None
             else:
                 peak = max(skill_dict.get(k, 0) for k in ["power", "speed", "arm"])
                 if peak >= 72:
-                    return False
+                    return None
             relevant_keys = pitching_skills if is_pitcher else batting_skills
             relevant = {k: v for k, v in skill_dict.items() if k in relevant_keys}
             skill_avg = sum(relevant.values()) / len(relevant)
@@ -423,7 +433,11 @@ class OffseasonPipeline:
                 base = 0.15 + (age - 35) * 0.09
             decline_factor = max(0.0, (50 - skill_avg) / 100)
             probability = min(0.95, base + decline_factor)
-        return rng.random() < probability
+        if rng.random() < probability:
+            if age < 30:
+                return "free_agent"
+            else:
+                return "retired"
 
 
 def get_args():
