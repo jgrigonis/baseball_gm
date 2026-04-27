@@ -284,8 +284,8 @@ class PlayerRepository:
         """Return the player's skill dict, or an empty dict if none found."""
         row = self.conn.execute(
             """
-            SELECT durability, clutch, speed, power, 
-            eye, contact, base_running, bunting, 
+            SELECT age, durability, clutch, speed, power,
+            eye, contact, base_running, bunting,
             catching, infield, outfield, arm,
             accuracy, stamina, recovery, ground_balls,
             strikes
