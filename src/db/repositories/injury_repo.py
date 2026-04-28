@@ -183,6 +183,13 @@ class InjuryRepository:
         ).fetchone()
         return result["count"] if result else 0
 
+    def get_games_missed_in_season(self, player_id: str, season_id: str) -> int:
+        result = self.conn.execute(
+            "SELECT COALESCE(SUM(games_missed), 0) AS total FROM player_injury_log WHERE player_id = %s AND season_id = %s",
+            (player_id, season_id),
+        ).fetchone()
+        return result["total"] if result else 0
+
     # ------------------------------------------------------------------
     # Write
     # ------------------------------------------------------------------

@@ -15,12 +15,14 @@ from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.retirement_repo import RetirementRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.league.league_constants import SEASON_LENGTH
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
@@ -205,6 +207,12 @@ class OffseasonPipeline:
         Scoped to players on teams in this league's season only."""
 
         ret_repo = RetirementRepository(self.conn)
+        inj_repo = InjuryRepository(self.conn, self.league_id)
+        stats_repo = PlayerSeasonStatsRepository(self.conn)
+        season_id = self._current_season_id
+
+        max_games = stats_repo.get_max_games_played(season_id) if season_id else 162
+
         if self.league_id:
             players = self.player_repo.get_players_by_league(self.league_id)
         else:
@@ -215,7 +223,24 @@ class OffseasonPipeline:
             current_status = self.player_status_repo.get_status(player.id)
             is_unrostered = current_status in ("prospect", "unassigned", "free_agent")
 
-            status = self._should_retire(player.age, player.skills, is_unrostered, rng)
+            season_stats = stats_repo.get_player_season(player.id, season_id) if season_id else None
+            games_played = 0
+            if season_stats:
+                games_played = max(
+                    season_stats.get("bat_games_played") or 0,
+                    season_stats.get("pitch_games_played") or 0,
+                )
+
+            injuries = inj_repo.count_player_injuries(player.id, season_id) if season_id else 0
+            games_missed = inj_repo.get_games_missed_in_season(player.id, season_id) if season_id else 0
+
+            status = self._should_retire(
+                player.age, player.skills, is_unrostered, rng,
+                games_played=games_played,
+                games_missed=games_missed,
+                season_injuries=injuries,
+                max_games=max_games,
+            )
             if status in ['retired', 'free_agent']:
                 self.player_status_repo.set_status(player.id, status)
                 row = self.team_repo.get_players_team_from_team_players(player.id)
@@ -375,17 +400,23 @@ class OffseasonPipeline:
         trimmer.run(season_id)
 
     @staticmethod
-    def _should_retire(age, skills, is_unrostered, rng) -> str | None:
-        """
-        We should be considering games played, injury history as well
-
-        Younger players should just become stale prospects, not necessarily
-        retired.
-
-        The current code is too focused on peaks and skills.
-        """
+    def _should_retire(
+        age,
+        skills,
+        is_unrostered,
+        rng,
+        *,
+        games_played: int = 0,
+        games_missed: int = 0,
+        season_injuries: int = 0,
+        max_games: int = SEASON_LENGTH,
+    ) -> str | None:
         if is_unrostered:
             if age < 18:
+                return None
+            # Young players who actually played last season are active prospects — give
+            # them a pass until they've aged out more meaningfully.
+            if age < 23 and games_played > 0:
                 return None
             probability = min(0.95, (age - 22) * 0.20)
         else:
@@ -414,15 +445,15 @@ class OffseasonPipeline:
                 skill_dict.get("stamina", 0) > 40 or skill_dict.get("strikes", 0) > 40
             )
             if is_pitcher:
-                peak = max(
+                best = max(
                     skill_dict.get(k, 0)
                     for k in ["strikes", "stamina", "recovery", "ground_balls"]
                 )
-                if peak >= 75:
+                if best >= 75:
                     return None
             else:
-                peak = max(skill_dict.get(k, 0) for k in ["power", "speed", "arm"])
-                if peak >= 72:
+                best = max(skill_dict.get(k, 0) for k in ["power", "speed", "arm"])
+                if best >= 72:
                     return None
             relevant_keys = pitching_skills if is_pitcher else batting_skills
             relevant = {k: v for k, v in skill_dict.items() if k in relevant_keys}
@@ -432,7 +463,22 @@ class OffseasonPipeline:
             else:
                 base = 0.15 + (age - 35) * 0.09
             decline_factor = max(0.0, (50 - skill_avg) / 100)
-            probability = min(0.95, base + decline_factor)
+
+            # Injury burden: each additional injury in the season pushes probability up.
+            # Capped so a single injury year can add at most ~0.12.
+            injury_factor = min(0.12, season_injuries * 0.04)
+
+            # Availability penalty: missing more than half the season signals a body
+            # breaking down. Only meaningful for players 33+.
+            availability_factor = 0.0
+            if age >= 33 and max_games > 0:
+                
+                missed_fraction = games_missed / max_games
+                if missed_fraction > 0.5:
+                    availability_factor = 0.10
+
+            probability = min(0.95, base + decline_factor + injury_factor + availability_factor)
+
         if rng.random() < probability:
             if age < 30:
                 return "free_agent"
