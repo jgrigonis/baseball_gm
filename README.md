@@ -20,7 +20,7 @@ For developing:
 
 `pip install -e ".[dev]"`
 
-On windows I had to use pythom -m pip
+On windows I had to use python -m pip
 
 Or I'd get permission problems.
 
