@@ -495,7 +495,7 @@ def _bootstrap_first_season(
             season_id=season_id,
             team_ids=[t.id for t in teams],
             start_date=start_date,
-            games_per_matchup=3,
+            games_per_series=3,
             home_and_away=True,
         )
         save_schedule_to_db(conn, schedule)
@@ -547,7 +547,7 @@ def _create_next_season_cli(
         season_id=season_id,
         team_ids=team_ids,
         start_date=start_date,
-        games_per_matchup=3,
+        games_per_series=3,
         home_and_away=True,
     )
     save_schedule_to_db(conn, schedule)

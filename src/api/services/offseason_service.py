@@ -134,7 +134,7 @@ def run_offseason(league_id: str, conn) -> dict:
             season_id=new_season_id,
             team_ids=team_ids,
             start_date=start_date,
-            games_per_matchup=3,
+            games_per_series=3,
             home_and_away=True,
         )
         save_schedule_to_db(conn, schedule)

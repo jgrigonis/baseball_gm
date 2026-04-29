@@ -130,7 +130,7 @@ def main():
         season_id=season_id,
         team_ids=team_ids,
         start_date=start_date,
-        games_per_matchup=3,
+        games_per_series=3,
         home_and_away=True,
     )
 
