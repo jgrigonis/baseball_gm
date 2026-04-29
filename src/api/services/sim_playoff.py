@@ -21,6 +21,7 @@ from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.build_season_stats import build_season
 from src.league.playoffs.play_playoffs import (
@@ -341,12 +342,17 @@ def sim_playoff(
     # Diff injuries to find new injuries and returns for GM's team
     injured_after = inj_repo.get_active_for_team(gm_team_id)
     new_injuries = [
-        {"name": v["name"], "days": v["days"]}
+        {"name": v["name"], "days": v["days"], "is_pitcher": v["is_pitcher"]}
         for pid, v in injured_after.items()
         if pid not in injured_before
     ]
+    status_repo = PlayerStatusRepository(conn)
     returned = [
-        {"name": v["name"]}
+        {
+            "name": v["name"],
+            "is_pitcher": v["is_pitcher"],
+            "on_40man": status_repo.get_status(pid) in ("26man", "40man"),
+        }
         for pid, v in injured_before.items()
         if pid not in injured_after
     ]

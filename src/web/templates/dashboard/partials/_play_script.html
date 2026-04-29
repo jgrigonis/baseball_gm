@@ -81,15 +81,22 @@ async function schedSim(count) {
 
       // Build injury news
       var injNews = '';
+      var injDest = 'batting';  // default destination: lineup batting tab
       if (d.new_injuries && d.new_injuries.length > 0) {
-        // old way, ES6 arrow below // injNews += d.new_injuries.map(function(i) { return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
         injNews += d.new_injuries.map(i => `🚑 ${i.name} (${i.days}g)`).join('  ');
+        // A new pitcher injury → pitching tab; hitter injury keeps batting
+        if (d.new_injuries.some(i => i.is_pitcher)) injDest = 'pitching';
       }
       if (d.returned && d.returned.length > 0) {
-        // old way, ES6 arrow below // injNews += (injNews ? '  ' : '') + d.returned.map(function(i) { return '✅ ' + i.name + ' returned'; }).join('  ');
         injNews += (injNews ? '  ' : '') + d.returned.map(i => `✅ ${i.name} returned`).join('  ');
+        // Returned player not on 40-man → roster tab (needs to be placed first)
+        if (d.returned.some(i => !i.on_40man)) {
+          injDest = 'roster';
+        } else if (injDest !== 'roster' && d.returned.some(i => i.is_pitcher)) {
+          injDest = 'pitching';
+        }
       }
-      setInjuryNews(injNews);  // clears if empty, shows if not
+      setInjuryNews(injNews, injDest);  // clears if empty, shows if not
 
       // Stop on injury — read from window._stopOnInjury which persists across tab re-renders
       if (injNews && (count === 'injury')) {

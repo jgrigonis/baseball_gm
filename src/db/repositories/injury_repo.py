@@ -116,20 +116,26 @@ class InjuryRepository:
         return [dict(r) for r in rows]
 
     def get_active_for_team(self, team_id: str) -> dict[str, dict]:
-        """Return {player_id: {"name": ..., "days": games_remaining}} for all active injuries on a team."""
+        """Return {player_id: {"name": ..., "days": games_remaining, "is_pitcher": bool}} for all active injuries on a team."""
         if not team_id:
             return {}
         rows = self.conn.execute(
             """SELECT pi.player_id, pi.games_remaining,
-                      p.first_name || ' ' || p.last_name as name
+                      p.first_name || ' ' || p.last_name as name,
+                      ps.player_id IS NOT NULL as is_pitcher
                FROM player_injuries pi
                JOIN players p ON p.id = pi.player_id
                JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
+               LEFT JOIN pitcher_state ps ON ps.player_id = pi.player_id AND ps.league_id = %s
                WHERE pi.games_remaining > 0 AND (pi.league_id = %s OR pi.league_id = '')""",
-            (team_id, self.league_id),
+            (team_id, self.league_id, self.league_id),
         ).fetchall()
         return {
-            r["player_id"]: {"name": r["name"], "days": r["games_remaining"]}
+            r["player_id"]: {
+                "name": r["name"],
+                "days": r["games_remaining"],
+                "is_pitcher": bool(r["is_pitcher"]),
+            }
             for r in rows
         }
 

@@ -236,7 +236,7 @@ window.closeGamePanel = function() {
             background:var(--bg-2);border-bottom:1px solid var(--border);
             font-family:var(--font-mono);font-size:11px;color:var(--amber);
             cursor:pointer;"
-     onclick="var links=document.querySelectorAll('.tab-link');for(var i=0;i<links.length;i++){if(links[i].textContent.trim().toLowerCase().indexOf('lineup')!==-1){setActiveTab(links[i]);links[i].click();break;}}"></div>
+     onclick="injuryNewsClick()"></div>
 <div id="tab-content" class="tab-fade">
   {% if tab_template %}{% include tab_template %}{% endif %}
 </div>
@@ -273,15 +273,49 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
     e.detail.target.classList.add('tab-fade');
   }
 });
+// afterSettle fires after inline scripts in the swapped content have run,
+// so this overrides sessionStorage-based tab restoration in lineup.html
+document.body.addEventListener('htmx:afterSettle', function(e) {
+  if (e.detail.target.id === 'tab-content') {
+    var landing = window._lineupLandingTab;
+    if (landing && typeof window.switchTab === 'function') {
+      window._lineupLandingTab = null;
+      window.switchTab(landing);
+    }
+  }
+});
 
 // ── Injury news bar (always available, element lives in shell) ─────────────────
-function setInjuryNews(msg) {
+// dest: 'batting' | 'pitching' | 'roster'
+function setInjuryNews(msg, dest) {
   var el = document.getElementById('sim-injury-news');
   if (!el) return;
   el.textContent = msg;
+  el.dataset.dest = dest || 'batting';
   el.style.display = msg ? 'block' : 'none';
 }
 window.setInjuryNews = setInjuryNews;
+
+function injuryNewsClick() {
+  var el = document.getElementById('sim-injury-news');
+  var dest = el ? el.dataset.dest : 'batting';
+  var links = document.querySelectorAll('.tab-link');
+  if (dest === 'roster') {
+    for (var i = 0; i < links.length; i++) {
+      if ((links[i].getAttribute('hx-get') || '').indexOf('/roster') !== -1) {
+        setActiveTab(links[i]); links[i].click(); break;
+      }
+    }
+  } else {
+    window._lineupLandingTab = dest;
+    for (var i = 0; i < links.length; i++) {
+      if ((links[i].getAttribute('hx-get') || '').indexOf('/lineup') !== -1) {
+        setActiveTab(links[i]); links[i].click(); break;
+      }
+    }
+  }
+}
+window.injuryNewsClick = injuryNewsClick;
 
 // ── Play button ────────────────────────────────────────────────────────────────
 
