@@ -67,20 +67,20 @@ class TestRosteredAgeThreshold:
     def test_never_retires_before_30(self):
         rng = rng_always(0.0)  # Would retire at any probability > 0
         for age in range(17, 30):
-            assert should_retire(age, MockSkills(50), False, rng) is False
+            assert should_retire(age, MockSkills(50), False, rng) is None
 
     def test_exactly_30_can_retire(self):
         # At 30, base = (30-30)*0.04 = 0.0 — no retirement chance at exactly 30
-        assert should_retire(30, MockSkills(50), False, rng_always(0.0)) is False
+        assert should_retire(30, MockSkills(50), False, rng_always(0.0)) is None
 
     def test_age_31_first_retirement_chance(self):
         # At 31, base = (31-30)*0.03 = 0.03
         # rng=0.02 → retires
-        assert should_retire(31, MockSkills(50), False, rng_always(0.02)) is True
+        assert should_retire(31, MockSkills(50), False, rng_always(0.02)) is 'retired'
 
     def test_age_31_no_retire_if_rng_above(self):
         # probability=0.04, rng=0.05 → does not retire
-        assert should_retire(31, MockSkills(50), False, rng_always(0.05)) is False
+        assert should_retire(31, MockSkills(50), False, rng_always(0.05)) is None
 
 
 # ---------------------------------------------------------------------------
@@ -93,16 +93,16 @@ class TestRosteredProbabilityScaling:
         # At age 40, base = (40-30)*0.04 = 0.40
         # rng=0.39 → retires; at age 30 base=0.04 → rng=0.39 → does not retire
         skills = MockSkills(50)
-        assert should_retire(40, skills, False, rng_always(0.39)) is True
-        assert should_retire(30, skills, False, rng_always(0.39)) is False
+        assert should_retire(40, skills, False, rng_always(0.39)) is 'retired'
+        assert should_retire(30, skills, False, rng_always(0.39)) is None
 
     def test_probability_capped_at_95_percent(self):
         # Extremely old player with terrible skills — still only 95% chance
         # rng=0.96 → should not retire even at 99 years old
-        assert should_retire(99, MockSkills(1), False, rng_always(0.96)) is False
+        assert should_retire(99, MockSkills(1), False, rng_always(0.96)) is None
 
     def test_probability_at_cap_retires(self):
-        assert should_retire(99, MockSkills(1), False, rng_always(0.94)) is True
+        assert should_retire(99, MockSkills(1), False, rng_always(0.94)) is 'retired'
 
 
 # ---------------------------------------------------------------------------
@@ -117,20 +117,20 @@ class TestRosteredSkillDecline:
         # skill_avg=50 → decline_factor=0 → probability=0.08
         # rng=0.15: retires if skill_avg=30, not if skill_avg=50
         rng = rng_always(0.15)
-        assert should_retire(32, MockSkills(30), False, rng) is True
-        assert should_retire(32, MockSkills(50), False, rng) is False
+        assert should_retire(32, MockSkills(30), False, rng) is 'retired'
+        assert should_retire(32, MockSkills(50), False, rng) is None
 
     def test_above_average_skills_no_decline_bonus(self):
         # skill_avg=65 → decline_factor=0 (above 50, no penalty)
         # age=32, base=(32-30)*0.03=0.06
         # peak=65 < 72 so peak guard doesn't fire
         rng = rng_always(0.05)
-        assert should_retire(32, MockSkills(65), False, rng) is True  # 0.05 < 0.06
+        assert should_retire(32, MockSkills(65), False, rng) is 'retired'  # 0.05 < 0.06
 
     def test_skill_avg_50_no_decline_factor(self):
         # age=31, base=(31-30)*0.03=0.03, decline_factor=0
         # rng=0.02 → retires
-        assert should_retire(31, MockSkills(50), False, rng_always(0.02)) is True
+        assert should_retire(31, MockSkills(50), False, rng_always(0.02)) is 'retired'
 
 
 # ---------------------------------------------------------------------------
@@ -142,20 +142,20 @@ class TestProspectAgeThreshold:
     def test_never_retires_before_22(self):
         rng = rng_always(0.0)
         for age in range(17, 22):
-            assert should_retire(age, MockSkills(50), True, rng) is False
+            assert should_retire(age, MockSkills(50), True, rng) is None
 
     def test_exactly_22_can_retire(self):
         # At 22, probability=(22-22)*0.20=0.0 → never retires at exactly 22
-        assert should_retire(22, MockSkills(50), True, rng_always(0.0)) is False
+        assert should_retire(22, MockSkills(50), True, rng_always(0.0)) is None
 
     def test_23_has_retirement_chance(self):
         # At 23, probability=(23-22)*0.20=0.20
         # rng=0.19 → retires
-        assert should_retire(23, MockSkills(50), True, rng_always(0.19)) is True
+        assert should_retire(23, MockSkills(50), True, rng_always(0.19)) is 'free_agent'
 
     def test_23_no_retire_if_rng_above(self):
         # probability=0.20, rng=0.21 → does not retire
-        assert should_retire(23, MockSkills(50), True, rng_always(0.21)) is False
+        assert should_retire(23, MockSkills(50), True, rng_always(0.21)) is None
 
 
 # ---------------------------------------------------------------------------
@@ -169,20 +169,20 @@ class TestProspectProbabilityScaling:
         # age=26 → probability=(26-22)*0.20=0.80
         # rng=0.85: retires at 27 (capped at 0.95), not at 26
         rng = rng_always(0.85)
-        assert should_retire(27, MockSkills(50), True, rng) is True
-        assert should_retire(26, MockSkills(50), True, rng) is False
+        assert should_retire(27, MockSkills(50), True, rng) is 'free_agent'
+        assert should_retire(26, MockSkills(50), True, rng) is None
 
     def test_prospect_probability_capped_at_95(self):
         # age=100 → probability capped at 0.95
         # rng=0.96 → does not retire
-        assert should_retire(100, MockSkills(50), True, rng_always(0.96)) is False
-        assert should_retire(100, MockSkills(50), True, rng_always(0.94)) is True
+        assert should_retire(100, MockSkills(50), True, rng_always(0.96)) is None
+        assert should_retire(100, MockSkills(50), True, rng_always(0.94)) is 'retired'
 
     def test_prospect_skills_do_not_affect_probability(self):
         # Prospects retire based on age only, not skill level
         rng = rng_always(0.19)
-        assert should_retire(23, MockSkills(10), True, rng) is True
-        assert should_retire(23, MockSkills(90), True, rng) is True
+        assert should_retire(23, MockSkills(10), True, rng) is 'free_agent'
+        assert should_retire(23, MockSkills(90), True, rng) is 'free_agent'
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +204,6 @@ class TestDeterministicBehavior:
         results = {
             should_retire(38, skills, False, random.Random(seed)) for seed in range(20)
         }
-        # Should see both True and False across 20 seeds
-        assert True in results
-        assert False in results
+        # Should see both None and 'retired'' across 20 seeds
+        assert None in results
+        assert 'retired' in results

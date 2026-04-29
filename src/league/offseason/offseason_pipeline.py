@@ -28,6 +28,7 @@ from src.league.offseason.roster_trimmer import RosterTrimmer
 from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
 from src.league.offseason.build_season_stats import build_season
 from src.league.rotation_seeder import seed_ai_rotations
+from src.player.player_skills import PlayerSkills
 from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import setup_logger
 
@@ -401,16 +402,32 @@ class OffseasonPipeline:
 
     @staticmethod
     def _should_retire(
-        age,
-        skills,
-        is_unrostered,
-        rng,
+        age: int,
+        skills: PlayerSkills,
+        is_unrostered: bool,
+        rng: random.Random,
         *,
         games_played: int = 0,
         games_missed: int = 0,
         season_injuries: int = 0,
         max_games: int = SEASON_LENGTH,
     ) -> str | None:
+        """
+        Determine if a player should retire.
+
+        Args:
+            age: Age of the player
+            skills: A dict like class of skills of the player
+            is_unrostered: A boolean representing whether the player is rostered
+            rng: A random number generator
+            games_played: The number of glames played by the player last season
+            games_missed: The number of games missed due to injury
+            max_games: the total season length
+            
+        Returns:
+            Either a string in ('free_agent', 'retired')
+            or None in the case of do not retire.
+        """
         if is_unrostered:
             if age < 18:
                 return None

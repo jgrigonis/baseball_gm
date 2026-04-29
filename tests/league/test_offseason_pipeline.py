@@ -112,39 +112,42 @@ class TestShouldRetire:
         skills = self._skills()
         rng = random.Random(0)
         for age in range(17, 30):
-            assert OffseasonPipeline._should_retire(age, skills, False, rng) is False
+            assert OffseasonPipeline._should_retire(age, skills, False, rng) is None
 
     def test_unrostered_young_never_retires(self):
         skills = self._skills()
         rng = random.Random(0)
         for age in range(17, 18):
-            assert OffseasonPipeline._should_retire(age, skills, True, rng) is False
+            assert OffseasonPipeline._should_retire(age, skills, True, rng) is None
 
     def test_unrostered_old_player_likely_retires(self):
         """Age 35+ unrostered player has high probability."""
         skills = self._skills()
-        retirements = sum(
-            OffseasonPipeline._should_retire(35, skills, True, random.Random(i))
-            for i in range(100)
-        )
+        retirements = 0
+        for i in range(100):
+            result = OffseasonPipeline._should_retire(35, skills, True, random.Random(i))
+            if result in ('retired', 'free_agent'):
+                retirements += 1
         assert retirements > 60  # high probability
 
     def test_rostered_elite_pitcher_stays(self):
         """Elite pitcher (high strikes) at age 32 rarely retires."""
         skills = self._skills(strikes=80, stamina=80, recovery=80, ground_balls=80)
-        retirements = sum(
-            OffseasonPipeline._should_retire(32, skills, False, random.Random(i))
-            for i in range(100)
-        )
+        retirements = 0
+        for i in range(100):
+            result = OffseasonPipeline._should_retire(32, skills, False, random.Random(i))
+            if result in ('retired', 'free_agent'):
+                retirements += 1
         assert retirements == 0  # peak >= 75 → never retires at 32
 
     def test_rostered_elite_batter_stays(self):
         """Elite batter (high power/speed/arm) at age 32 never retires."""
         skills = self._skills(power=75, speed=75, arm=75)
-        retirements = sum(
-            OffseasonPipeline._should_retire(32, skills, False, random.Random(i))
-            for i in range(100)
-        )
+        retirements = 0
+        for i in range(100):
+            result = OffseasonPipeline._should_retire(32, skills, False, random.Random(i))
+            if result in ('retired', 'free_agent'):
+                retirements += 1
         assert retirements == 0  # peak >= 72 → never retires
 
     def test_probability_caps_at_95_percent(self):
@@ -155,15 +158,16 @@ class TestShouldRetire:
         mock_rng.random.return_value = 0.94
         # Very old unrostered player — probability should be capped at 0.95
         result = OffseasonPipeline._should_retire(99, skills, True, mock_rng)
-        assert result is True  # 0.94 < 0.95 cap
+        assert result is 'retired'  # 0.94 < 0.95 cap
 
     def test_rostered_aging_mediocre_player_eventually_retires(self):
         """Mediocre 38-year-old rostered player has significant retirement chance."""
         skills = self._skills(power=40, speed=40, arm=40)
-        retirements = sum(
-            OffseasonPipeline._should_retire(38, skills, False, random.Random(i))
-            for i in range(100)
-        )
+        retirements = 0
+        for i in range(100):
+            result = OffseasonPipeline._should_retire(38, skills, False, random.Random(i))
+            if result == 'retired':
+                retirements += 1
         assert retirements > 20
 
 
