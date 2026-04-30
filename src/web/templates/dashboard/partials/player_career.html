@@ -264,6 +264,34 @@
       {% else %}
         <span class="cs-empty">No injuries on record</span>
       {% endif %}
+
+      {# Skills History #}
+      {% if p.skills_history %}
+      <div class="cs-section-title">Skills History</div>
+      <div class="cs-stats-wrap">
+        <table class="cs-table">
+          <thead><tr>
+            <th style="text-align:left">Year</th><th style="text-align:left">Age</th>
+            <th>Dur</th><th>Clu</th><th>Spd</th><th>Pow</th><th>Eye</th>
+            <th>Con</th><th>BR</th><th>Bnt</th>
+            <th>Cat</th><th>IF</th><th>OF</th><th>Arm</th>
+            <th>Acc</th><th>Sta</th><th>Rec</th><th>GB</th><th>K</th>
+          </tr></thead>
+          <tbody>
+            {% for row in p.skills_history %}
+            <tr>
+              <td style="text-align:left">{{ row.year }}</td>
+              <td style="text-align:left;color:var(--text-dim)">{{ row.age }}</td>
+              {% for col in ['durability','clutch','speed','power','eye','contact','base_running','bunting','catching','infield','outfield','arm','accuracy','stamina','recovery','ground_balls','strikes'] %}
+              {% set g = row[col] %}
+              <td class="cs-chip-grade {% if g and g.startswith('A') %}elite{% elif g and (g.startswith('B') or g == 'C+') %}good{% elif g and (g.startswith('D') or g == 'F') %}poor{% endif %}">{{ g }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
     </div>
   {% endmacro %}
 

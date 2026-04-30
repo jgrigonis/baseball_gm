@@ -970,10 +970,10 @@ def standings(
                 }
             )
 
-        # ── My next 3 upcoming games ──────────────────────────────────────────
+        # ── My next 5 upcoming games ──────────────────────────────────────────
         upcoming = []
         if my_team_id:
-            for g_row in game_repo.get_team_upcoming(season_id, my_team_id, limit=3):
+            for g_row in game_repo.get_team_upcoming(season_id, my_team_id, limit=5):
                 is_home = g_row["home_team_id"] == my_team_id
                 opp_city = g_row["away_city"] if is_home else g_row["home_city"]
                 opp_mascot = g_row["away_mascot"] if is_home else g_row["home_mascot"]
@@ -2874,6 +2874,30 @@ def player_career(
             yr = str(r["season_year"]) if r["season_year"] else "Pre-season"
             injuries_by_year.setdefault(yr, []).append(dict(r))
 
+        # Skills history by season
+        skills_history = db.execute(
+            """SELECT s.year, psh.age,
+                      psh.durability, psh.clutch, psh.speed, psh.power, psh.eye,
+                      psh.contact, psh.base_running, psh.bunting,
+                      psh.catching, psh.infield, psh.outfield, psh.arm,
+                      psh.accuracy, psh.stamina, psh.recovery, psh.ground_balls, psh.strikes
+               FROM player_skills_history psh
+               JOIN seasons s ON s.id = psh.season_id
+               WHERE psh.player_id = %s
+               ORDER BY s.year""",
+            (pid,),
+        ).fetchall()
+        _skill_cols = [
+            "durability", "clutch", "speed", "power", "eye", "contact",
+            "base_running", "bunting", "catching", "infield", "outfield", "arm",
+            "accuracy", "stamina", "recovery", "ground_balls", "strikes",
+        ]
+        skills_history = [
+            {**{k: v for k, v in dict(r).items() if k not in _skill_cols},
+             **{k: skill_to_grade(r[k]) for k in _skill_cols}}
+            for r in skills_history
+        ]
+
         overall_grade = grades.overall
         if status in ("prospect", "unassigned", "free_agent"):
             overall_grade = (
@@ -2901,6 +2925,7 @@ def player_career(
             "batting_totals": batting_totals,
             "batting_playoff_totals": batting_playoff_totals,
             "injuries_by_year": injuries_by_year,
+            "skills_history": skills_history,
         }
 
     ctx = _shell_ctx(request, db, gm, league_id, user)
