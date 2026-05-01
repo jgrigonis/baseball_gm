@@ -7,7 +7,7 @@
     <h1 class="page-title" style="white-space:nowrap;">Stats</h1>
 
     <select id="team-select" onchange="switchTeam(this.value)"
-            style="font-family:var(--font-mono);font-size:12px;padding:4px 8px;">
+            style="font-family:var(--font-mono);font-size:12px;padding:4px 8px;max-width:160px;">
       {% for t in all_teams %}
       <option value="{{ t.id }}" {% if t.id == selected_team_id %}selected{% endif %}>
         {{ t.city }} {{ t.mascot }}{% if t.id == my_team_id %} ★{% endif %}
@@ -16,7 +16,7 @@
     </select>
 
     <select id="season-select" onchange="switchSeason(this.value)"
-            style="font-family:var(--font-mono);font-size:12px;padding:4px 8px;">
+            style="font-family:var(--font-mono);font-size:12px;padding:4px 8px;max-width:80px;">
       {% for s in all_seasons %}
       <option value="{{ s.id }}" {% if s.id == selected_season_id %}selected{% endif %}>
         {{ s.year }}
@@ -37,7 +37,7 @@
                      border:none;border-left:1px solid var(--border);cursor:pointer;
                      background:{% if is_postseason %}var(--green-dim){% else %}transparent{% endif %};
                      color:{% if is_postseason %}var(--green){% else %}var(--text-dim){% endif %};">
-        PO
+        Playoff
       </button>
     </div>
 
@@ -53,9 +53,20 @@
                      border-left:1px solid var(--border);">
         Pit
       </button>
+      <button id="btn-def" onclick="showCategory('defense')"
+              style="padding:4px 10px;font-family:var(--font-mono);font-size:11px;
+                     background:transparent;color:var(--text-dim);border:none;cursor:pointer;
+                     border-left:1px solid var(--border);">
+        Def
+      </button>
     </div>
 
-    <span id="stats-count" style="font-family:var(--font-mono);font-size:11px;
+    <button id="btn-hide-pit" onclick="toggleHidePitchers()"
+            style="display:none;padding:4px 10px;font-family:var(--font-mono);font-size:11px;white-space:nowrap;
+                   background:transparent;color:var(--text-dim);border:1px solid var(--border);cursor:pointer;">
+      Hide P
+    </button>
+    <span id="stats-count" style="font-family:var(--font-mono);font-size:11px;white-space:nowrap;
                                    color:var(--text-dim);margin-left:auto;"></span>
   </div>
 </div>
@@ -81,12 +92,14 @@ var TEAM_GAMES      = {{ team_games }};
 var MIN_AB          = Math.floor(3.1 * TEAM_GAMES);
 var MIN_OUTS        = 3 * TEAM_GAMES;
 
-var BATTERS  = {{ batters  | tojson }};
-var PITCHERS = {{ pitchers | tojson }};
+var BATTERS   = {{ batters  | tojson }};
+var PITCHERS  = {{ pitchers | tojson }};
+var FIELDERS  = {{ fielders | tojson }};
 
-var category  = 'batting';
-var sortKey   = 'AVG';
-var sortAsc   = false;  // descending by default
+var category    = 'batting';
+var sortKey     = 'AVG';
+var sortAsc     = false;
+var hidePitchers = false;
 
 var BAT_COLS = [
   {key:'name',  label:'Player',  fmt:null,    rate:false, asc:true},
@@ -129,6 +142,17 @@ var PIT_COLS = [
   {key:'K9',    label:'K/9',     fmt:'era',   rate:true},
 ];
 
+var DEF_COLS = [
+  {key:'name',  label:'Player', fmt:null,   rate:false, asc:true},
+  {key:'pos',   label:'Pos',    fmt:null,   rate:false, asc:true},
+  {key:'G',     label:'G',      fmt:null,   rate:false},
+  {key:'PO',    label:'PO',     fmt:null,   rate:false},
+  {key:'A',     label:'A',      fmt:null,   rate:false},
+  {key:'E',     label:'E',      fmt:null,   rate:false},
+  {key:'PB',    label:'PB',     fmt:null,   rate:false},
+  {key:'FPCT',  label:'FPCT',   fmt:'avg',  rate:true},
+];
+
 function fmtVal(val, fmt) {
   if (val === null || val === undefined) return '—';
   if (fmt === 'avg') return val.toFixed(3);
@@ -138,7 +162,7 @@ function fmtVal(val, fmt) {
 }
 
 function sortVal(row, key) {
-  if (key === 'name') return row.name || '';
+  if (key === 'name' || key === 'pos') return row[key] || '';
   if (key === 'IP')   return row.IP_val || 0;
   if (key === 'AB_K') return row.AB_K || 0;
   if (key === 'HR_AB') return row.HR_AB || 0;
@@ -148,12 +172,24 @@ function sortVal(row, key) {
 
 function showCategory(cat) {
   category = cat;
-  sortKey  = cat === 'batting' ? 'AVG' : 'ERA';
-  sortAsc  = cat === 'pitching';  // ERA sorts ascending
-  document.getElementById('btn-bat').style.background = cat==='batting' ? 'var(--green-dim)' : 'transparent';
-  document.getElementById('btn-bat').style.color      = cat==='batting' ? 'var(--green)'     : 'var(--text-dim)';
-  document.getElementById('btn-pit').style.background = cat==='pitching'? 'var(--green-dim)' : 'transparent';
-  document.getElementById('btn-pit').style.color      = cat==='pitching'? 'var(--green)'     : 'var(--text-dim)';
+  sortKey  = cat === 'batting' ? 'AVG' : cat === 'pitching' ? 'ERA' : 'FPCT';
+  sortAsc  = cat === 'pitching';
+  var cats = ['batting', 'pitching', 'defense'];
+  var btns = ['btn-bat', 'btn-pit', 'btn-def'];
+  cats.forEach(function(c, i) {
+    var on = c === cat;
+    document.getElementById(btns[i]).style.background = on ? 'var(--green-dim)' : 'transparent';
+    document.getElementById(btns[i]).style.color      = on ? 'var(--green)'     : 'var(--text-dim)';
+  });
+  document.getElementById('btn-hide-pit').style.display = cat === 'defense' ? '' : 'none';
+  renderTable();
+}
+
+function toggleHidePitchers() {
+  hidePitchers = !hidePitchers;
+  var btn = document.getElementById('btn-hide-pit');
+  btn.style.background = hidePitchers ? 'var(--green-dim)' : 'transparent';
+  btn.style.color      = hidePitchers ? 'var(--green)'     : 'var(--text-dim)';
   renderTable();
 }
 
@@ -168,8 +204,9 @@ function setSort(key, defaultAsc) {
 }
 
 function renderTable() {
-  var cols = category === 'batting' ? BAT_COLS : PIT_COLS;
-  var rows = category === 'batting' ? BATTERS  : PITCHERS;
+  var cols = category === 'batting' ? BAT_COLS : category === 'pitching' ? PIT_COLS : DEF_COLS;
+  var rows = category === 'batting' ? BATTERS  : category === 'pitching' ? PITCHERS : FIELDERS;
+  if (category === 'defense' && hidePitchers) rows = rows.filter(function(r) { return r.pos !== 'P'; });
 
 
   rows = rows.slice().sort(function(a, b) {
@@ -185,7 +222,7 @@ function renderTable() {
     var arrow = sortKey === col.key ? (sortAsc ? ' ↑' : ' ↓') : '';
     var defaultAsc = col.asc !== undefined ? col.asc : (col.key === 'ERA' || col.key === 'BB9' || col.key === 'HR9' || col.key === 'WHIP');
     headHtml += '<th style="cursor:pointer;user-select:none;text-align:'
-      + (col.key==='name'?'left':'right') + ';white-space:nowrap;position:sticky;top:0;z-index:3;background:var(--bg-2);box-shadow:0 1px 0 var(--border);"'
+      + (col.key==='name'||col.key==='pos'?'left':'right') + ';white-space:nowrap;position:sticky;top:0;z-index:3;background:var(--bg-2);box-shadow:0 1px 0 var(--border);"'
       + ' onclick="setSort(\'' + col.key + '\',' + defaultAsc + ')">' 
       + col.label + arrow + '</th>';
   });
@@ -210,7 +247,7 @@ function renderTable() {
       + ' onmouseover="this.style.background=\'var(--bg-3)\'"'
       + ' onmouseout="this.style.background=\'\'">';
     cols.forEach(function(col) {
-      var isName = col.key === 'name';
+      var isName = col.key === 'name' || col.key === 'pos';
       var isRate = col.rate;
       var unqual = isRate && !row.qualified;
       var color = unqual ? 'var(--text-dim)' : (isRate ? 'var(--amber)' : '');
@@ -260,12 +297,13 @@ sizeStatsScroll();
 window.addEventListener('resize', sizeStatsScroll);
 renderTable();
 
-window.setSort       = setSort;
-window.showCategory  = showCategory;
-window.switchTeam    = switchTeam;
-window.switchSeason  = switchSeason;
+window.setSort          = setSort;
+window.showCategory     = showCategory;
+window.toggleHidePitchers = toggleHidePitchers;
+window.switchTeam       = switchTeam;
+window.switchSeason     = switchSeason;
 window.switchPostseason = switchPostseason;
-window.renderTable   = renderTable;
+window.renderTable      = renderTable;
 
 })();
 </script>

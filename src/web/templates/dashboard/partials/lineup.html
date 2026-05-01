@@ -315,9 +315,9 @@
 
 /* ── Fielding table ─────────────────────────────────────────────────────────── */
 .fd-row {
-  display: grid; grid-template-columns: 36px 1fr;
+  display: grid; grid-template-columns: 36px 1fr auto;
   gap: 0 8px; padding: 4px 14px; border-bottom: 1px solid var(--border);
-  font-family: var(--font-mono); font-size: 11px;
+  font-family: var(--font-mono); font-size: 11px; align-items: center;
 }
 .fd-row:last-child { border-bottom: none; }
 .fd-pos { color: var(--amber); font-weight: 600; }
@@ -438,9 +438,10 @@ window.handleBullpenRoleChange = handleBullpenRoleChange;
 window.setBullpenRole      = setBullpenRole;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
-var  LEAGUE_ID      = "{{ league_id }}";
-const ALL_HITTERS   = {{ hitters   | tojson }};
-const ALL_PITCHERS  = {{ pitchers  | tojson }};
+var  LEAGUE_ID        = "{{ league_id }}";
+const ALL_HITTERS     = {{ hitters          | tojson }};
+const ALL_PITCHERS    = {{ pitchers         | tojson }};
+const FIELDING_STATS  = {{ fielding_stats_map | tojson }};  // {player_id: {pos: {po,a,e,pb,fpct}}}
 const SAVED_LINEUP  = {{ saved_lineup  | tojson }};
 const SAVED_ROT     = {{ saved_rotation | tojson }};
 const SAVED_BP      = {{ saved_bullpen  | tojson }};
@@ -677,7 +678,6 @@ function renderBattingOrder() {
 
 function renderFieldingTable() {
   const el = document.getElementById('fielding-table');
-  // Build map: position -> {player, posGrade}
   const posMap = {};
   lineup.forEach(slot => {
     if (slot && slot.position) {
@@ -692,15 +692,25 @@ function renderFieldingTable() {
   el.innerHTML = POSITIONS.map(pos => {
     const entry = posMap[pos];
     if (!entry) {
-      return `<div class="fd-row"><span class="fd-pos">${POS_LABEL[pos]}</span><span class="fd-name">—</span></div>`;
+      return `<div class="fd-row"><span class="fd-pos">${POS_LABEL[pos]}</span><span class="fd-name">—</span><span></span></div>`;
     }
     const { player: p, grade } = entry;
     const gradeHtml = grade
       ? `<span class="${gradeClass(grade)}" style="font-family:var(--font-mono);font-size:11px;margin-left:4px;">${grade}</span>`
       : '';
+    const fs = pos !== 'dh' ? ((FIELDING_STATS[p.player_id] || {})[pos]) : null;
+    let statsHtml = '';
+    if (fs) {
+      const fpct = fs.fpct != null ? fs.fpct.toFixed(3) : '—';
+      const pbPart = pos === 'c' ? ` PB:${fs.pb}` : '';
+      statsHtml = `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);white-space:nowrap;text-align:right;">`
+        + `${fs.po}/${fs.a}/${fs.e} ${fpct}${pbPart}`
+        + `</span>`;
+    }
     return `<div class="fd-row" style="cursor:pointer;" onclick="openPlayerPanel('${p.player_id}')">
       <span class="fd-pos">${POS_LABEL[pos]}</span>
       <span class="fd-name filled">${p.first_name} ${p.last_name}${gradeHtml}</span>
+      ${statsHtml}
     </div>`;
   }).join('');
 }

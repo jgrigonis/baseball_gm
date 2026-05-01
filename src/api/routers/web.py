@@ -1272,9 +1272,99 @@ def leaders(
             pit_card_q("K/9", "K/9", fmt=lambda v: f"{v:.2f}"),
         ]
 
+    def_cats = []
+
+    if season_id:
+        def_rows_raw = db.execute(
+            """SELECT p.first_name || ' ' || p.last_name AS name,
+                      pgf.player_id, pgf.position,
+                      t.city, t.mascot, pgs.team_id,
+                      COUNT(DISTINCT pgf.game_id)        AS g,
+                      SUM(pgf.putouts)                   AS po,
+                      SUM(pgf.assists)                   AS a,
+                      SUM(pgf.errors)                    AS e,
+                      SUM(COALESCE(pgf.passed_balls, 0)) AS pb
+               FROM player_game_fielding pgf
+               JOIN games gm  ON gm.id  = pgf.game_id
+               JOIN players p ON p.id   = pgf.player_id
+               JOIN player_game_stats pgs
+                    ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
+               JOIN teams t   ON t.id   = pgs.team_id
+               WHERE gm.season_id = %s AND pgf.position NOT IN ('p', 'dh')
+               GROUP BY pgf.player_id, pgf.position, pgs.team_id,
+                        p.first_name, p.last_name, t.city, t.mascot""",
+            (season_id,),
+        ).fetchall()
+
+        def_data = []
+        for r in def_rows_raw:
+            po = r["po"] or 0
+            a  = r["a"]  or 0
+            e  = r["e"]  or 0
+            pb = r["pb"] or 0
+            g  = r["g"]  or 0
+            denom = po + a + e
+            fpct = (po + a) / denom if denom else 1.0
+            def_data.append({
+                "player_id": r["player_id"],
+                "name": r["name"],
+                "team": f"{r['city']} {r['mascot']}",
+                "team_id": r["team_id"],
+                "is_mine": r["team_id"] == my_team_id,
+                "pos": r["position"].upper(),
+                "G": g,
+                "PO": po,
+                "A": a,
+                "E": e,
+                "PB": pb,
+                "PB/G": round(pb / g, 2) if g else 0.0,
+                "FPCT": fpct,
+            })
+
+        def def_card(label, key, pool, asc=False, fmt=None):
+            srt = sorted(pool, key=lambda r: r[key], reverse=not asc)[:10]
+            rows = []
+            for i, r in enumerate(srt, 1):
+                val = r[key]
+                if fmt:
+                    disp = fmt(val)
+                elif isinstance(val, float):
+                    disp = f"{val:.3f}"
+                else:
+                    disp = str(int(val))
+                rows.append({
+                    "rank": i,
+                    "name": r["name"],
+                    "team": r["team"],
+                    "player_id": r["player_id"],
+                    "is_mine": r["is_mine"],
+                    "val": disp,
+                })
+            return {"label": label, "rows": rows}
+
+        field_positions = [
+            ("C", "C"), ("1B", "1B"), ("2B", "2B"), ("3B", "3B"),
+            ("SS", "SS"), ("LF", "LF"), ("CF", "CF"), ("RF", "RF"),
+        ]
+        min_g_qual = max(5, team_games // 4)
+
+        for pos_val, pos_label in field_positions:
+            pool = [r for r in def_data if r["pos"] == pos_val]
+            if not pool:
+                continue
+            q_pool = [r for r in pool if r["G"] >= min_g_qual] or pool
+            def_cats.append(def_card(f"{pos_label} FPCT", "FPCT", q_pool,
+                                     fmt=lambda v: f"{v:.3f}"))
+            def_cats.append(def_card(f"{pos_label} PO", "PO", pool))
+            def_cats.append(def_card(f"{pos_label} A",  "A",  pool))
+            if pos_val == "C":
+                def_cats.append(def_card("C PB/G", "PB/G", q_pool,
+                                         asc=True, fmt=lambda v: f"{v:.2f}"))
+
     ctx["category"] = category
     ctx["bat_cats"] = bat_cats
     ctx["pit_cats"] = pit_cats
+    ctx["def_cats"] = def_cats
     return tab_response(request, htmx, "dashboard/partials/leaders.html", ctx)
 
 
@@ -1502,6 +1592,35 @@ def lineup(
                 p["stat_l"] = None
                 p["stat_sv"] = None
 
+    # Load fielding stats by player+position for the season
+    fielding_stats_map: dict = {}
+    if stats_season_id:
+        fd_rows = db.execute(
+            """SELECT pgf.player_id, pgf.position,
+                      COUNT(DISTINCT pgf.game_id) AS g,
+                      SUM(pgf.putouts)  AS po,
+                      SUM(pgf.assists)  AS a,
+                      SUM(pgf.errors)   AS e,
+                      SUM(COALESCE(pgf.passed_balls, 0)) AS pb
+               FROM player_game_fielding pgf
+               JOIN games gm ON gm.id = pgf.game_id
+               JOIN player_game_stats pgs
+                 ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
+               WHERE gm.season_id = %s AND pgs.team_id = %s
+                 AND pgf.position NOT IN ('p', 'dh')
+               GROUP BY pgf.player_id, pgf.position""",
+            (stats_season_id, team_id),
+        ).fetchall()
+        for r in fd_rows:
+            pid = r["player_id"]
+            po, a, e = (r["po"] or 0), (r["a"] or 0), (r["e"] or 0)
+            total = po + a + e
+            fpct = round((po + a) / total, 3) if total > 0 else None
+            fielding_stats_map.setdefault(pid, {})[r["position"]] = {
+                "g": r["g"], "po": po, "a": a, "e": e,
+                "pb": r["pb"] or 0, "fpct": fpct,
+            }
+
     injured_map = _injured_player_ids(db, team_id, league_id)
     for p in hitters + pitchers:
         raw_days = injured_map.get(p["player_id"])
@@ -1510,6 +1629,7 @@ def lineup(
         p["returning"] = False
     ctx["hitters"] = hitters
     ctx["pitchers"] = pitchers
+    ctx["fielding_stats_map"] = fielding_stats_map
     ctx["saved_lineup"] = saved_lineup
     ctx["saved_rotation"] = saved_rotation
     ctx["saved_bullpen"] = saved_bullpen
@@ -1854,6 +1974,7 @@ def stats(
 
     batters = []
     pitchers = []
+    fielders = []
     team_games = 0
     # ps_flag = 1 if is_postseason else 0
 
@@ -1963,17 +2084,51 @@ def stats(
                     }
                 )
 
+        def_rows = db.execute(
+            """SELECT p.first_name || ' ' || p.last_name AS name,
+                      pgf.player_id, pgf.position,
+                      COUNT(DISTINCT pgf.game_id)   AS g,
+                      SUM(pgf.putouts)              AS po,
+                      SUM(pgf.assists)              AS a,
+                      SUM(pgf.errors)               AS e,
+                      SUM(pgf.passed_balls)         AS pb
+               FROM player_game_fielding pgf
+               JOIN games g    ON g.id = pgf.game_id
+               JOIN players p  ON p.id = pgf.player_id
+               JOIN player_game_stats pgs
+                    ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
+               WHERE g.season_id = %s AND pgs.team_id = %s AND pgf.position != 'dh'
+               GROUP BY pgf.player_id, pgf.position, p.first_name, p.last_name
+               ORDER BY name, pgf.position""",
+            (selected_season_id, selected_team_id),
+        ).fetchall()
+        for r in def_rows:
+            po, a, e = r["po"] or 0, r["a"] or 0, r["e"] or 0
+            denom = po + a + e
+            fpct = round((po + a) / denom, 3) if denom else 1.0
+            fielders.append({
+                "player_id": r["player_id"],
+                "name": r["name"],
+                "pos": r["position"].upper(),
+                "G": r["g"] or 0,
+                "PO": po,
+                "A": a,
+                "E": e,
+                "PB": r["pb"] if r["pb"] else None,
+                "FPCT": fpct,
+            })
+
     # Attach injury status only for current season
     is_current_season = selected_season_id == current_season_id
     if selected_team_id and is_current_season:
         injured_map = _injured_player_ids(db, selected_team_id, league_id)
-        for p in batters + pitchers:
+        for p in batters + pitchers + fielders:
             raw_days = injured_map.get(p["player_id"])
             p["injured"] = raw_days is not None
             p["injury_days"] = raw_days if raw_days else None
             p["returning"] = False
     else:
-        for p in batters + pitchers:
+        for p in batters + pitchers + fielders:
             p["injured"] = False
             p["injury_days"] = None
             p["returning"] = False
@@ -1994,6 +2149,7 @@ def stats(
             "team_games": team_games,
             "batters": batters,
             "pitchers": pitchers,
+            "fielders": fielders,
         }
     )
     return tab_response(request, htmx, "dashboard/partials/stats.html", ctx)
