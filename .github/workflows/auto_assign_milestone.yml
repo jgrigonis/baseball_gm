@@ -2,7 +2,6 @@ name: Auto Assign Milestone
 on:
   issues:
     types: [opened]
-
 jobs:
   assign-milestone:
     runs-on: ubuntu-latest
@@ -15,10 +14,17 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              milestone: 1
-            })
-            
+            const issue = context.payload.issue;
+            // Check if the issue already has a milestone
+            if (!issue.milestone) {
+              github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                milestone: 1
+              });
+              console.log("Milestone assigned successfully.");
+            } else {
+              console.log("Issue already has a milestone. Skipping.");
+            }
+
