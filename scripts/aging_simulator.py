@@ -2,8 +2,9 @@
 """
 Baseball Player Skill Aging Simulator
 ======================================
-All aging-curve constants live at the top of this file.
-Tweak any value, then run scenarios from __main__.
+There are no caps currently here.
+
+It uses the official SkillAging class
 
 Usage:
     python aging_simulator.py
@@ -53,85 +54,11 @@ def phased_delta(
 
 
 # ═══════════════════════════════════════════════════════════════
-#  DELTA FUNCTIONS
-# ═══════════════════════════════════════════════════════════════
-
-
-# def delta_SP(age: int, val: float, rng: random.Random) -> float:
-#     return phased_delta(age, rng, SP_PHASE_BREAKS, SP_RATES, SP_NOISES)
-
-
-# def delta_PO(age: int, val: float, rng: random.Random) -> float:
-#     return phased_delta(age, rng, PO_PHASE_BREAKS, PO_RATES, PO_NOISES)
-
-
-# def delta_AR(age: int, val: float, rng: random.Random) -> float:
-#     return phased_delta(age, rng, AR_PHASE_BREAKS, AR_RATES, AR_NOISES)
-
-
-# def delta_KK(age: int, val: float, rng: random.Random) -> float:
-#     return phased_delta(age, rng, KK_PHASE_BREAKS, KK_RATES, KK_NOISES)
-
-
-# def delta_CL(
-#     age: int, val: float, rng: random.Random, playoff_boost: float = 0.0
-# ) -> float:
-#     vet_bonus = CL_VET_BONUS if age >= CL_VET_AGE else 0.0
-#     return vet_bonus + playoff_boost + noise(rng, CL_NOISE)
-
-
-# def delta_EY(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-#     return phased_delta(
-#         age, rng, EY_PHASE_BREAKS, EY_RATES, EY_NOISES, EY_COACHED, coaching
-#     )
-
-
-# def delta_CT(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-#     return phased_delta(
-#         age, rng, CT_PHASE_BREAKS, CT_RATES, CT_NOISES, CT_COACHED, coaching
-#     )
-
-
-# def delta_BR(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-#     return phased_delta(
-#         age, rng, BR_PHASE_BREAKS, BR_RATES, BR_NOISES, BR_COACHED, coaching
-#     )
-
-
-# def delta_technical_up(
-#     age: int, val: float, rng: random.Random, coaching: float = 1.0
-# ) -> float:
-#     rate = coaching * (TECH_BASE_RATE + noise(rng, TECH_NOISE))
-#     if age > TECH_SLOW_AFTER:
-#         rate *= TECH_SLOW_MULT
-#     return max(0.0, rate)
-
-
-# def delta_AC(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-#     distance = max(0.0, AC_CEILING - val)
-#     base = (
-#         coaching * (AC_BASE_RATE + noise(rng, AC_NOISE)) * (distance / AC_DIST_DIVISOR)
-#     )
-#     return max(0.0, base)
-
-
-# def delta_ST(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-#     return phased_delta(
-#         age, rng, ST_PHASE_BREAKS, ST_RATES, ST_NOISES, ST_COACHED, coaching
-#     )
-
-
-# def delta_RE(age: int, val: float, rng: random.Random, coaching: float = 1.0) -> float:
-#     return phased_delta(
-#         age, rng, RE_PHASE_BREAKS, RE_RATES, RE_NOISES, RE_COACHED, coaching
-#     )
-
-
-# ═══════════════════════════════════════════════════════════════
 #  SIMULATION CORE
 # ═══════════════════════════════════════════════════════════════
 
 ALL_SKILLS = [
+    "durability",
     "clutch",
     "speed",
     "power",
@@ -150,7 +77,13 @@ ALL_SKILLS = [
     "strikes",
 ]
 
-DEFAULT_INITIAL_SKILLS: dict[str, int] = {skill: 50 for skill in ALL_SKILLS}
+DEFAULT_30_SKILLS: dict[str, int] = {skill: 30 for skill in ALL_SKILLS}
+DEFAULT_40_SKILLS: dict[str, int] = {skill: 40 for skill in ALL_SKILLS}
+DEFAULT_50_SKILLS: dict[str, int] = {skill: 50 for skill in ALL_SKILLS}
+DEFAULT_60_SKILLS: dict[str, int] = {skill: 60 for skill in ALL_SKILLS}
+DEFAULT_70_SKILLS: dict[str, int] = {skill: 70 for skill in ALL_SKILLS}
+DEFAULT_80_SKILLS: dict[str, int] = {skill: 80 for skill in ALL_SKILLS}
+DEFAULT_90_SKILLS: dict[str, int] = {skill: 90 for skill in ALL_SKILLS}
 
 
 def simulate_one(
@@ -183,6 +116,7 @@ def simulate_one(
         s["accuracy"] += SA.delta_AC(age, s["accuracy"], rng, coaching)
         s["stamina"] += SA.delta_ST(age, s["stamina"], rng, coaching)
         s["recovery"] += SA.delta_RE(age, s["recovery"], rng, coaching)
+        s["durability"] += SA.delta_DU(age, s["durability"], rng, coaching)
 
         for k in s:
             s[k] = float(clamp(s[k]))
@@ -195,9 +129,9 @@ def simulate_one(
 @dataclass
 class Scenario:
     name: str
-    initial_skills: dict = field(default_factory=lambda: dict(DEFAULT_INITIAL_SKILLS))
+    initial_skills: dict = field(default_factory=lambda: dict(DEFAULT_50_SKILLS))
     start_age: int = 17
-    end_age: int = 40
+    end_age: int = 41
     coaching: float = 1.0
     n_sims: int = 500
     seed: int = 42
@@ -244,7 +178,7 @@ def run_scenario(scenario: Scenario) -> dict[str, list[dict]]:
 #  REPORTING
 # ═══════════════════════════════════════════════════════════════
 
-TARGET_AGES = [20, 25, 30, 35]
+TARGET_AGES = [20, 25, 30, 35, 40]
 
 
 def print_scenario(scenario: Scenario, results: dict) -> None:
@@ -252,7 +186,7 @@ def print_scenario(scenario: Scenario, results: dict) -> None:
     print(f"  {scenario.name}")
     print(
         f"  coaching={scenario.coaching}  N={scenario.n_sims}  "
-        f"ages {scenario.start_age}–{scenario.end_age - 1}"
+        f"ages {scenario.start_age}-{scenario.end_age - 1}"
     )
     print(f"{'═' * 72}")
 
@@ -268,7 +202,7 @@ def print_scenario(scenario: Scenario, results: dict) -> None:
         for age in TARGET_AGES:
             if age in by_age:
                 r = by_age[age]
-                row += f"  {r['p50']:3d} [{r['p10']:3d}–{r['p90']:3d}]"
+                row += f"  {r['p50']:3d} [{r['p10']:3d}-{r['p90']:3d}]"
             else:
                 row += f"  {'N/A':>14}"
         print(row)
@@ -284,39 +218,34 @@ if __name__ == "__main__":
             "Baseline — average starter (coaching 1.0)",
             coaching=1.0,
         ),
+        # We don't really do coaching differences yet
+        # Scenario(
+        #     "Elite coaching environment (coaching 1.3)",
+        #     coaching=1.3,
+        # ),
+        # Scenario(
+        #     "Poor development (coaching 0.7)",
+        #     coaching=0.7,
+        # ),
         Scenario(
-            "Elite coaching environment (coaching 1.3)",
-            coaching=1.3,
-        ),
-        Scenario(
-            "Poor development (coaching 0.7)",
-            coaching=0.7,
-        ),
-        Scenario(
-            "Five-tool prospect — high speed & arm",
+            "70 skill player",
             initial_skills={
-                **DEFAULT_INITIAL_SKILLS,
-                "speed": 75,
-                "arm": 72,
-                "outfield": 68,
+                **DEFAULT_70_SKILLS,
             },
             coaching=1.0,
         ),
         Scenario(
-            "Power hitter — high PO, low speed",
+            "90 skill player",
             initial_skills={
-                **DEFAULT_INITIAL_SKILLS,
-                "power": 78,
-                "contact": 62,
-                "speed": 35,
+                **DEFAULT_90_SKILLS,
             },
             coaching=1.0,
         ),
         Scenario(
-            "Late bloomer — starts age 20",
-            initial_skills={**DEFAULT_INITIAL_SKILLS, "power": 45, "contact": 45},
+            "Late bloomer — starts age 20 - 40 skills",
+            initial_skills={**DEFAULT_40_SKILLS},
             start_age=20,
-            coaching=1.2,
+            coaching=1.0,
         ),
     ]
 
