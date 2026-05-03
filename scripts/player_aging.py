@@ -15,15 +15,7 @@ import io
 
 
 from src.player.player_skill_aging import SkillAging
-
-# ─────────────────────────────────────────────
-#  HELPERS
-# ─────────────────────────────────────────────
-
-
-def clamp(val, lo=1, hi=100):
-    return max(lo, min(hi, int(round(val))))
-
+from src.util.clamp import clamp
 
 # ─────────────────────────────────────────────
 #  MAIN SIMULATION
@@ -48,6 +40,7 @@ def age_player_career(
     s = {
         k: float(start_skill)
         for k in [
+            "DU",
             "CL",
             "SP",
             "PO",
@@ -82,7 +75,7 @@ def age_player_career(
             PS=position,
             T=throws,
             B=bats,
-            **{k: clamp(v) for k, v in s.items()},
+            **{k: int(clamp(v, 1, 100)) for k, v in s.items()},
             ID=player_id,
         )
         rows.append(row)
@@ -92,6 +85,7 @@ def age_player_career(
         s["PO"] += SA.delta_PO(age, s["PO"], rng)
         s["AR"] += SA.delta_AR(age, s["AR"], rng)
         s["KK"] += SA.delta_KK(age, s["KK"], rng)
+        s["DU"] += SA.delta_DU(age, s["DU"], rng)
         s["CL"] += SA.delta_CL(age, s["CL"], rng)
         s["EY"] += SA.delta_EY(age, s["EY"], rng, coaching)
         s["CT"] += SA.delta_CT(age, s["CT"], rng, coaching)
@@ -107,7 +101,7 @@ def age_player_career(
 
         # Clamp everything to valid range
         for k in s:
-            s[k] = float(clamp(s[k]))
+            s[k] = float(clamp(s[k], 1, 100))
 
     return rows
 
@@ -117,6 +111,7 @@ def age_player_career(
 # ─────────────────────────────────────────────
 
 SKILL_KEYS = [
+    "DU",
     "CL",
     "SP",
     "PO",
@@ -136,12 +131,13 @@ SKILL_KEYS = [
 ]
 
 CATEGORIES = {
-    "PHYSICAL": ["SP", "PO", "AR", "KK"],
+    "PHYSICAL": ["SP", "PO", "AR", "KK", "DU"],
     "COGNITIVE": ["CL", "EY", "BR"],
     "TECHNICAL": ["CT", "BU", "CA", "IF", "OF", "AC", "ST", "RE", "GB"],
 }
 
 CATEGORY_LABELS = {
+    "DU": "Durability",
     "CL": "Clutch",
     "SP": "Speed",
     "PO": "Power",
@@ -220,6 +216,7 @@ def rows_to_csv_string(rows):
         "PS",
         "T",
         "B",
+        "DU",
         "CL",
         "SP",
         "PO",

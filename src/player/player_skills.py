@@ -24,6 +24,7 @@ from src.player.player_skill_aging import SkillAging
 from src.player.positions import SKILLS, SKILL_TEMPLATE
 from src.player.skill_map import SKILL_MAP, SKILL_MIN, SKILL_MAX
 from src.types.rows import CsvRow, DbRow
+from src.util.clamp import clamp
 
 # Constants for skill generation
 DEFAULT_SKILL_MEAN = 50
@@ -33,13 +34,6 @@ DEFAULT_SIGMA_DIVISOR = (
 # Increase to cluster skills closer to position means;
 # decrease to produce more extreme outliers.
 START_AGE = 17  # All players are born as 17 year olds
-
-
-# ─────────────────────────────────────────────
-#  HELPERS
-# ─────────────────────────────────────────────
-def clamp(val, lo=1, hi=100):
-    return max(lo, min(hi, int(round(val))))
 
 
 class PlayerSkills:
@@ -551,6 +545,6 @@ class PlayerSkills:
             )
 
             for k in s:
-                s[k] = float(clamp(s[k]))
+                s[k] = float(clamp(s[k], 1, 100))
 
         return PlayerSkills(s, age=age)

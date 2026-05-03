@@ -44,6 +44,8 @@ from datetime import date, datetime
 from dataclasses import dataclass
 from typing import Optional
 
+from src.util.clamp import clamp
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -326,7 +328,7 @@ class PlayerEnergyRepository:
             else:
                 last_game_date_str = state.last_game_date.isoformat()
 
-        energy = max(0.0, min(1.0, round(state.current_energy, 4)))
+        energy = clamp(state.current_energy, 0.0, 1.0, 4)
         cursor.execute(
             """
             INSERT INTO player_energy

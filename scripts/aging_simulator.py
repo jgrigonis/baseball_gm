@@ -14,6 +14,7 @@ import random
 from dataclasses import dataclass, field
 
 from src.player.player_skill_aging import SkillAging, noise
+from src.util.clamp import clamp
 
 # ═══════════════════════════════════════════════════════════════
 #  HELPERS
@@ -24,8 +25,8 @@ from src.player.player_skill_aging import SkillAging, noise
 #     return rng.gauss(0, scale)
 
 
-def clamp(val, lo: int = 1, hi: int = 100) -> float:
-    return max(lo, min(hi, int(round(val))))
+# def clamp(val, lo: int = 1, hi: int = 100) -> float:
+#     return max(lo, min(hi, int(round(val))))
 
 
 def phased_delta(
@@ -124,7 +125,7 @@ def simulate_one(
         s["durability"] += SA.delta_DU(age, s["durability"], rng, coaching)
 
         for k in s:
-            s[k] = float(clamp(s[k]))
+            s[k] = float(clamp(s[k], 1, 100, precision=4))
 
         records.append({"age": age + 1, **{k: int(round(v)) for k, v in s.items()}})
 
