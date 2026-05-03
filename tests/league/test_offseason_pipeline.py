@@ -164,7 +164,7 @@ class TestShouldRetire:
         mock_rng.random.return_value = 0.94
         # Very old unrostered player — probability should be capped at 0.95
         result = OffseasonPipeline._should_retire(99, skills, True, mock_rng)
-        assert result is "retired"  # 0.94 < 0.95 cap
+        assert result == "retired"  # 0.94 < 0.95 cap
 
     def test_rostered_aging_mediocre_player_eventually_retires(self):
         """Mediocre 38-year-old rostered player has significant retirement chance."""

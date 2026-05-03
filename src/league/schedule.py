@@ -96,8 +96,7 @@ class ScheduleGenerator:
             for a, b in pairs:
                 if "__bye__" in (a, b):
                     continue
-                home, away = (a, b) if self.rng.random() < 0.5 else (b, a)
-                matchups.append((home, away))
+                matchups.append((a, b))
 
         if home_and_away:
             return_rounds = self._circle_rounds(team_ids)
@@ -108,9 +107,7 @@ class ScheduleGenerator:
                 for a, b in pairs:
                     if "__bye__" in (a, b):
                         continue
-                    # Flip home/away for the return leg
-                    away, home = (a, b) if self.rng.random() < 0.5 else (b, a)
-                    matchups.append((home, away))
+                    matchups.append((b, a))
 
         return matchups
 

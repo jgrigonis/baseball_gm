@@ -262,10 +262,9 @@ class TestScheduleGenerator:
         matchups = [(g.home_team_id, g.away_team_id) for g in schedule]
         matchup_counts = Counter(matchups)
 
-        # Each specific matchup should appear exactly 2 times
-        # for count in matchup_counts.values():
-        #     assert count == 4
-        # seometimes it's 2 sometimes 4
+        # Each specific ordered matchup (home, away) should appear exactly games_per_series times
+        for count in matchup_counts.values():
+            assert count == 2
 
         # Total should be 6 unique pairings * 2 games * 2 (home/away) = 24
         assert len(schedule) == 24

@@ -261,7 +261,7 @@ class OffseasonPipeline:
                 former_team_id = row["team_id"] if row else None
                 if former_team_id:
                     self.team_repo.remove_player(former_team_id, player.id)
-                if status is "retired":
+                if status == "retired":
                     if self.league_id:
                         ret_repo.retire_player(
                             player.id,
