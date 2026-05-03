@@ -153,7 +153,6 @@ class ScheduleGenerator:
         schedule.sort(key=lambda g: g.game_date)
         return schedule
 
-
     # def generate_series_matchups(
     #     self,
     #     team_ids: list[str],
@@ -174,7 +173,7 @@ class ScheduleGenerator:
 
     #     self.rng.shuffle(matchups)
     #     return matchups
-        
+
     # def generate_series_matchups(
     #     self,
     #     team_ids: list[str],
@@ -250,8 +249,6 @@ class ScheduleGenerator:
 
     #     return schedule
 
-
-
     # def create_schedule(
     #     self,
     #     season_id: str,
@@ -312,7 +309,6 @@ class ScheduleGenerator:
 
     #     schedule.sort(key=lambda g: g.game_date)
     #     return schedule
-
 
     # def create_schedule(
     #     self,
@@ -382,7 +378,8 @@ class ScheduleGenerator:
 
     #     schedule.sort(key=lambda g: g.game_date)
     #     return schedule
-        
+
+
 def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
     """Save schedule to games table."""
     game_repo = GameRepository(conn)

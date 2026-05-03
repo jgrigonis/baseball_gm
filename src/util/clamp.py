@@ -3,6 +3,7 @@
 Clamp a value between a minimum and maximum.
 """
 
+
 def clamp(val: float, lo: float = 0.0, hi: float = 1.0, precision: int = 0) -> float:
     """
     Clamp a value between a minimum and maximum.

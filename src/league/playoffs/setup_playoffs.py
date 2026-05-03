@@ -263,7 +263,9 @@ def setup_playoff_bracket(
     rotation pointers, and build the bracket.  Returns the ordered seed list.
     """
     seeds = get_top_N(conn, season_id)
-    demote_extra_starters(conn, season_id, seeds, keep=keep, league_id=league_id, logger=logger)
+    demote_extra_starters(
+        conn, season_id, seeds, keep=keep, league_id=league_id, logger=logger
+    )
     reset_playoff_rotation_pointers(conn, season_id, league_id)
     build_bracket(conn, season_id, seeds, start_date, logger=logger)
     conn.commit()

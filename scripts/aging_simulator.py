@@ -92,6 +92,7 @@ FULL_WIDTH = 92
 HEADER_WIDTH = 14
 AGE_WIDTH = 13
 
+
 def simulate_one(
     initial_skills: dict[str, int | float],
     start_age: int,
@@ -191,8 +192,7 @@ def print_scenario(scenario: Scenario, results: dict) -> None:
     print(f"\n{'═' * FULL_WIDTH}")
     print(f"  {scenario.name}")
     print(
-        f"  N={scenario.n_sims}  "
-        f"ages {scenario.start_age}-{scenario.end_age - 1}"
+        f"  N={scenario.n_sims}  " f"ages {scenario.start_age}-{scenario.end_age - 1}"
     )
     print(f"{'═' * FULL_WIDTH}")
 
@@ -200,7 +200,11 @@ def print_scenario(scenario: Scenario, results: dict) -> None:
         f"  {'Age ' + str(a):>{AGE_WIDTH}}" for a in TARGET_AGES
     )
     print(header)
-    print(f"  {'-' * HEADER_WIDTH}" + "   " + "  ".join(["-" * AGE_WIDTH] * len(TARGET_AGES)))
+    print(
+        f"  {'-' * HEADER_WIDTH}"
+        + "   "
+        + "  ".join(["-" * AGE_WIDTH] * len(TARGET_AGES))
+    )
 
     for skill in ALL_SKILLS:
         by_age = {r["age"]: r for r in results[skill]}

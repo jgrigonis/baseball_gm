@@ -1299,27 +1299,29 @@ def leaders(
         def_data = []
         for r in def_rows_raw:
             po = r["po"] or 0
-            a  = r["a"]  or 0
-            e  = r["e"]  or 0
+            a = r["a"] or 0
+            e = r["e"] or 0
             pb = r["pb"] or 0
-            g  = r["g"]  or 0
+            g = r["g"] or 0
             denom = po + a + e
             fpct = (po + a) / denom if denom else 1.0
-            def_data.append({
-                "player_id": r["player_id"],
-                "name": r["name"],
-                "team": f"{r['city']} {r['mascot']}",
-                "team_id": r["team_id"],
-                "is_mine": r["team_id"] == my_team_id,
-                "pos": r["position"].upper(),
-                "G": g,
-                "PO": po,
-                "A": a,
-                "E": e,
-                "PB": pb,
-                "PB/G": round(pb / g, 2) if g else 0.0,
-                "FPCT": fpct,
-            })
+            def_data.append(
+                {
+                    "player_id": r["player_id"],
+                    "name": r["name"],
+                    "team": f"{r['city']} {r['mascot']}",
+                    "team_id": r["team_id"],
+                    "is_mine": r["team_id"] == my_team_id,
+                    "pos": r["position"].upper(),
+                    "G": g,
+                    "PO": po,
+                    "A": a,
+                    "E": e,
+                    "PB": pb,
+                    "PB/G": round(pb / g, 2) if g else 0.0,
+                    "FPCT": fpct,
+                }
+            )
 
         def def_card(label, key, pool, asc=False, fmt=None):
             srt = sorted(pool, key=lambda r: r[key], reverse=not asc)[:10]
@@ -1332,19 +1334,27 @@ def leaders(
                     disp = f"{val:.3f}"
                 else:
                     disp = str(int(val))
-                rows.append({
-                    "rank": i,
-                    "name": r["name"],
-                    "team": r["team"],
-                    "player_id": r["player_id"],
-                    "is_mine": r["is_mine"],
-                    "val": disp,
-                })
+                rows.append(
+                    {
+                        "rank": i,
+                        "name": r["name"],
+                        "team": r["team"],
+                        "player_id": r["player_id"],
+                        "is_mine": r["is_mine"],
+                        "val": disp,
+                    }
+                )
             return {"label": label, "rows": rows}
 
         field_positions = [
-            ("C", "C"), ("1B", "1B"), ("2B", "2B"), ("3B", "3B"),
-            ("SS", "SS"), ("LF", "LF"), ("CF", "CF"), ("RF", "RF"),
+            ("C", "C"),
+            ("1B", "1B"),
+            ("2B", "2B"),
+            ("3B", "3B"),
+            ("SS", "SS"),
+            ("LF", "LF"),
+            ("CF", "CF"),
+            ("RF", "RF"),
         ]
         min_g_qual = max(5, team_games // 4)
 
@@ -1353,13 +1363,17 @@ def leaders(
             if not pool:
                 continue
             q_pool = [r for r in pool if r["G"] >= min_g_qual] or pool
-            def_cats.append(def_card(f"{pos_label} FPCT", "FPCT", q_pool,
-                                     fmt=lambda v: f"{v:.3f}"))
+            def_cats.append(
+                def_card(f"{pos_label} FPCT", "FPCT", q_pool, fmt=lambda v: f"{v:.3f}")
+            )
             def_cats.append(def_card(f"{pos_label} PO", "PO", pool))
-            def_cats.append(def_card(f"{pos_label} A",  "A",  pool))
+            def_cats.append(def_card(f"{pos_label} A", "A", pool))
             if pos_val == "C":
-                def_cats.append(def_card("C PB/G", "PB/G", q_pool,
-                                         asc=True, fmt=lambda v: f"{v:.2f}"))
+                def_cats.append(
+                    def_card(
+                        "C PB/G", "PB/G", q_pool, asc=True, fmt=lambda v: f"{v:.2f}"
+                    )
+                )
 
     ctx["category"] = category
     ctx["bat_cats"] = bat_cats
@@ -1617,8 +1631,12 @@ def lineup(
             total = po + a + e
             fpct = round((po + a) / total, 3) if total > 0 else None
             fielding_stats_map.setdefault(pid, {})[r["position"]] = {
-                "g": r["g"], "po": po, "a": a, "e": e,
-                "pb": r["pb"] or 0, "fpct": fpct,
+                "g": r["g"],
+                "po": po,
+                "a": a,
+                "e": e,
+                "pb": r["pb"] or 0,
+                "fpct": fpct,
             }
 
     injured_map = _injured_player_ids(db, team_id, league_id)
@@ -2106,17 +2124,19 @@ def stats(
             po, a, e = r["po"] or 0, r["a"] or 0, r["e"] or 0
             denom = po + a + e
             fpct = round((po + a) / denom, 3) if denom else 1.0
-            fielders.append({
-                "player_id": r["player_id"],
-                "name": r["name"],
-                "pos": r["position"].upper(),
-                "G": r["g"] or 0,
-                "PO": po,
-                "A": a,
-                "E": e,
-                "PB": r["pb"] if r["pb"] else None,
-                "FPCT": fpct,
-            })
+            fielders.append(
+                {
+                    "player_id": r["player_id"],
+                    "name": r["name"],
+                    "pos": r["position"].upper(),
+                    "G": r["g"] or 0,
+                    "PO": po,
+                    "A": a,
+                    "E": e,
+                    "PB": r["pb"] if r["pb"] else None,
+                    "FPCT": fpct,
+                }
+            )
 
     # Attach injury status only for current season
     is_current_season = selected_season_id == current_season_id
@@ -3044,13 +3064,29 @@ def player_career(
             (pid,),
         ).fetchall()
         _skill_cols = [
-            "durability", "clutch", "speed", "power", "eye", "contact",
-            "base_running", "bunting", "catching", "infield", "outfield", "arm",
-            "accuracy", "stamina", "recovery", "ground_balls", "strikes",
+            "durability",
+            "clutch",
+            "speed",
+            "power",
+            "eye",
+            "contact",
+            "base_running",
+            "bunting",
+            "catching",
+            "infield",
+            "outfield",
+            "arm",
+            "accuracy",
+            "stamina",
+            "recovery",
+            "ground_balls",
+            "strikes",
         ]
         skills_history = [
-            {**{k: v for k, v in dict(r).items() if k not in _skill_cols},
-             **{k: skill_to_grade(r[k]) for k in _skill_cols}}
+            {
+                **{k: v for k, v in dict(r).items() if k not in _skill_cols},
+                **{k: skill_to_grade(r[k]) for k in _skill_cols},
+            }
             for r in skills_history
         ]
 

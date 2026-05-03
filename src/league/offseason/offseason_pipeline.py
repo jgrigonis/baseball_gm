@@ -224,7 +224,11 @@ class OffseasonPipeline:
             current_status = self.player_status_repo.get_status(player.id)
             is_unrostered = current_status in ("prospect", "unassigned", "free_agent")
 
-            season_stats = stats_repo.get_player_season(player.id, season_id) if season_id else None
+            season_stats = (
+                stats_repo.get_player_season(player.id, season_id)
+                if season_id
+                else None
+            )
             games_played = 0
             if season_stats:
                 games_played = max(
@@ -232,17 +236,26 @@ class OffseasonPipeline:
                     season_stats.get("pitch_games_played") or 0,
                 )
 
-            injuries = inj_repo.count_player_injuries(player.id, season_id) if season_id else 0
-            games_missed = inj_repo.get_games_missed_in_season(player.id, season_id) if season_id else 0
+            injuries = (
+                inj_repo.count_player_injuries(player.id, season_id) if season_id else 0
+            )
+            games_missed = (
+                inj_repo.get_games_missed_in_season(player.id, season_id)
+                if season_id
+                else 0
+            )
 
             status = self._should_retire(
-                player.age, player.skills, is_unrostered, rng,
+                player.age,
+                player.skills,
+                is_unrostered,
+                rng,
                 games_played=games_played,
                 games_missed=games_missed,
                 season_injuries=injuries,
                 max_games=max_games,
             )
-            if status in ['retired', 'free_agent']:
+            if status in ["retired", "free_agent"]:
                 self.player_status_repo.set_status(player.id, status)
                 row = self.team_repo.get_players_team_from_team_players(player.id)
                 former_team_id = row["team_id"] if row else None
@@ -423,7 +436,7 @@ class OffseasonPipeline:
             games_played: The number of glames played by the player last season
             games_missed: The number of games missed due to injury
             max_games: the total season length
-            
+
         Returns:
             Either a string in ('free_agent', 'retired')
             or None in the case of do not retire.
@@ -489,12 +502,14 @@ class OffseasonPipeline:
             # breaking down. Only meaningful for players 33+.
             availability_factor = 0.0
             if age >= 33 and max_games > 0:
-                
+
                 missed_fraction = games_missed / max_games
                 if missed_fraction > 0.5:
                     availability_factor = 0.10
 
-            probability = min(0.95, base + decline_factor + injury_factor + availability_factor)
+            probability = min(
+                0.95, base + decline_factor + injury_factor + availability_factor
+            )
 
         if rng.random() < probability:
             if age < 30:
