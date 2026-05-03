@@ -23,7 +23,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
-from src.league.playoffs.setup_playoffs import get_top_N, build_bracket
+from src.league.playoffs.setup_playoffs import setup_playoff_bracket
 from src.league.offseason.build_season_stats import build_season
 
 
@@ -67,7 +67,6 @@ def sim_next_day(league_id: str, conn) -> dict:
         existing_series = por.existing_series_exist(season_id)
 
         if not existing_series:
-            # Auto-seed and build playoff bracket
             try:
                 last_game = gr.last_game_date(season_id)
                 playoff_start = (
@@ -75,8 +74,7 @@ def sim_next_day(league_id: str, conn) -> dict:
                     if last_game and last_game["d"]
                     else date.today()
                 )
-                seeds = get_top_N(conn, season_id)
-                build_bracket(conn, season_id, seeds, playoff_start)
+                setup_playoff_bracket(conn, season_id, league_id, playoff_start)
             except Exception as e:
                 try:
                     conn.rollback()

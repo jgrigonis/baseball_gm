@@ -246,6 +246,31 @@ def build_bracket(
 
 
 # ---------------------------------------------------------------------------
+# Shared setup entry point (used by both CLI and UI)
+# ---------------------------------------------------------------------------
+
+
+def setup_playoff_bracket(
+    conn,
+    season_id: str,
+    league_id: str,
+    start_date: date,
+    keep: int = 4,
+    logger: logging.Logger = None,
+) -> list[dict]:
+    """
+    Full one-time playoff setup: seed teams, demote extra starters, reset
+    rotation pointers, and build the bracket.  Returns the ordered seed list.
+    """
+    seeds = get_top_N(conn, season_id)
+    demote_extra_starters(conn, season_id, seeds, keep=keep, league_id=league_id, logger=logger)
+    reset_playoff_rotation_pointers(conn, season_id, league_id)
+    build_bracket(conn, season_id, seeds, start_date, logger=logger)
+    conn.commit()
+    return seeds
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -264,43 +289,28 @@ def main():
         )
     conn = get_connection()
     league_id = LeagueRepository(conn).get_league_id_from_season_id(args.season_id)
+
     lines = []
     lines.append(f"\n🏆 Setting up playoffs for season {args.season_id}")
     lines.append(f"   Start date : {start_date}")
     lines.append(f"   Rotation   : keeping top {args.short_rotation} starters\n")
 
-    # 1. Seed teams
-    seeds = get_top_N(conn, args.season_id)
+    seeds = setup_playoff_bracket(
+        conn,
+        args.season_id,
+        league_id,
+        start_date,
+        keep=args.short_rotation,
+        logger=logger,
+    )
+
     lines.append("Playoff seeds:")
     for i, s in enumerate(seeds, 1):
         lines.append(
             f"  {i}. {s['team_name']}  ({s['wins']}-{s['losses']}, {s['win_pct']:.3f})"
         )
-
-    # 2. Demote extra starters
-    lines.append("\nAdjusting rotations...")
-    demote_extra_starters(
-        conn,
-        args.season_id,
-        seeds,
-        keep=args.short_rotation,
-        league_id=league_id,
-        logger=logger,
-    )
-
-    # 2.5 Reset rotation pointers
-    lines.append("\nResetting rotation pointers...")
-    reset_playoff_rotation_pointers(conn, args.season_id, league_id)
-
-    # 3. Build bracket + pre-generate games
-    lines.append("\nBuilding bracket...")
-    build_bracket(conn, args.season_id, seeds, start_date, logger=logger)
-
-    conn.commit()
-
     lines.append("\n✅ Playoff bracket ready.")
-    output = "\n".join(lines)
-    log_print(output, logger)
+    log_print("\n".join(lines), logger)
 
 
 if __name__ == "__main__":

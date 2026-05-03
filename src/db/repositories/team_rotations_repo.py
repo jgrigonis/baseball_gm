@@ -561,7 +561,26 @@ class TeamRotationsRepository:
             (team_id, season_id, next_order),
         ).fetchone()
 
-        return starter["player_id"] if starter else None
+        if starter:
+            return starter["player_id"]
+
+        # Pointer is pointing at a gap (e.g. sp1 slot was closed mid-season).
+        # Fall back to the lowest available active slot so the team still fields
+        # a starter rather than triggering the "No rotation" warning.
+        fallback = self.conn.execute(
+            """
+            SELECT player_id
+            FROM team_rotations
+            WHERE team_id  = %s
+            AND season_id  = %s
+            AND end_date IS NULL
+            ORDER BY rotation_order
+            LIMIT 1
+            """,
+            (team_id, season_id),
+        ).fetchone()
+
+        return fallback["player_id"] if fallback else None
 
     def advance_rotation_pointer(
         self,
