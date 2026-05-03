@@ -13,15 +13,15 @@ Usage:
 import random
 from dataclasses import dataclass, field
 
-from src.player.player_skill_aging import SkillAging
+from src.player.player_skill_aging import SkillAging, noise
 
 # ═══════════════════════════════════════════════════════════════
 #  HELPERS
 # ═══════════════════════════════════════════════════════════════
 
 
-def noise(rng: random.Random, scale: float = 1.0) -> float:
-    return rng.gauss(0, scale)
+# def noise(rng: random.Random, scale: float = 1.0) -> float:
+#     return rng.gauss(0, scale)
 
 
 def clamp(val, lo: int = 1, hi: int = 100) -> float:
@@ -77,6 +77,8 @@ ALL_SKILLS = [
     "strikes",
 ]
 
+DEFAULT_10_SKILLS: dict[str, int] = {skill: 10 for skill in ALL_SKILLS}
+DEFAULT_20_SKILLS: dict[str, int] = {skill: 20 for skill in ALL_SKILLS}
 DEFAULT_30_SKILLS: dict[str, int] = {skill: 30 for skill in ALL_SKILLS}
 DEFAULT_40_SKILLS: dict[str, int] = {skill: 40 for skill in ALL_SKILLS}
 DEFAULT_50_SKILLS: dict[str, int] = {skill: 50 for skill in ALL_SKILLS}
@@ -85,6 +87,9 @@ DEFAULT_70_SKILLS: dict[str, int] = {skill: 70 for skill in ALL_SKILLS}
 DEFAULT_80_SKILLS: dict[str, int] = {skill: 80 for skill in ALL_SKILLS}
 DEFAULT_90_SKILLS: dict[str, int] = {skill: 90 for skill in ALL_SKILLS}
 
+FULL_WIDTH = 92
+HEADER_WIDTH = 14
+AGE_WIDTH = 13
 
 def simulate_one(
     initial_skills: dict[str, int | float],
@@ -182,29 +187,29 @@ TARGET_AGES = [20, 25, 30, 35, 40]
 
 
 def print_scenario(scenario: Scenario, results: dict) -> None:
-    print(f"\n{'═' * 72}")
+    print(f"\n{'═' * FULL_WIDTH}")
     print(f"  {scenario.name}")
     print(
-        f"  coaching={scenario.coaching}  N={scenario.n_sims}  "
+        f"  N={scenario.n_sims}  "
         f"ages {scenario.start_age}-{scenario.end_age - 1}"
     )
-    print(f"{'═' * 72}")
+    print(f"{'═' * FULL_WIDTH}")
 
-    header = f"  {'Skill':<15}" + "".join(
-        f"  {'Age ' + str(a):>14}" for a in TARGET_AGES
+    header = f"  {'Skill':<{HEADER_WIDTH}}" + "".join(
+        f"  {'Age ' + str(a):>{AGE_WIDTH}}" for a in TARGET_AGES
     )
     print(header)
-    print(f"  {'-' * 14}" + "  " + "  ".join(["-" * 14] * len(TARGET_AGES)))
+    print(f"  {'-' * HEADER_WIDTH}" + "   " + "  ".join(["-" * AGE_WIDTH] * len(TARGET_AGES)))
 
     for skill in ALL_SKILLS:
         by_age = {r["age"]: r for r in results[skill]}
-        row = f"  {skill:<15}"
+        row = f"  {skill:<{HEADER_WIDTH}}"
         for age in TARGET_AGES:
             if age in by_age:
                 r = by_age[age]
                 row += f"  {r['p50']:3d} [{r['p10']:3d}-{r['p90']:3d}]"
             else:
-                row += f"  {'N/A':>14}"
+                row += f"  {'N/A':>{AGE_WIDTH}}"
         print(row)
 
 
