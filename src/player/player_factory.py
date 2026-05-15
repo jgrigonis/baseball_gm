@@ -38,6 +38,7 @@ from src.player.player_constants import (
     VALID_BATS,
     VALID_THROWS,
     DEFAULT_LEFT_HANDED_PROB,
+    START_AGE,
 )
 from src.player.positions import is_valid_affinity_position
 from src.player.player_record import PlayerRecord
@@ -109,7 +110,7 @@ class PlayerFactory(object):
         # -------------------------
         # Skill generation
         # -------------------------
-        skills = PlayerSkills.generate(self.rng, position, throws)
+        skills = PlayerSkills.generate(self.rng, position, throws, age)
         self.logger.trace(
             f"Created player: first_name={first_name}, last_name={last_name}, position={position}, throws={throws}, bats={bats}"
         )

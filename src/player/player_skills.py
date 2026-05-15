@@ -23,6 +23,7 @@ from typing import ItemsView, KeysView, ValuesView, Iterator
 from src.player.player_skill_aging import SkillAging
 from src.player.positions import SKILLS, SKILL_TEMPLATE
 from src.player.skill_map import SKILL_MAP, SKILL_MIN, SKILL_MAX
+from src.player.player_constants import START_AGE
 from src.types.rows import CsvRow, DbRow
 from src.util.clamp import clamp
 
@@ -33,7 +34,6 @@ DEFAULT_SIGMA_DIVISOR = (
 )
 # Increase to cluster skills closer to position means;
 # decrease to produce more extreme outliers.
-START_AGE = 17  # All players are born as 17 year olds
 
 
 class PlayerSkills:
@@ -54,7 +54,7 @@ class PlayerSkills:
     def __init__(
         self,
         skills: dict[str, int] | None = None,
-        age: int = 17,
+        age: int = START_AGE,
         *,
         validate: bool = True,
         **kwargs,
@@ -311,6 +311,7 @@ class PlayerSkills:
         rng: random.Random,
         position: str,
         throws: str | None = None,
+        age: int = START_AGE,
     ) -> PlayerSkills:
         """
         Generate random skills based on position.
@@ -323,7 +324,7 @@ class PlayerSkills:
             rng: Random number generator for reproducibility
             position: Position code (e.g., "ss", "sp", "cf")
             throws: Throwing hand ("left" or "right"), optional
-
+            age: Age of the player
         Returns:
             PlayerSkills instance with randomly generated values
 
@@ -343,7 +344,7 @@ class PlayerSkills:
         # Apply position-specific restrictions
         cls._apply_position_restrictions(skills, position, throws, rng)
 
-        return cls(skills, validate=False)  # Already validated in generate_stat
+        return cls(skills, age=age, validate=False)  # Already validated in generate_stat
 
     @classmethod
     def _apply_position_restrictions(

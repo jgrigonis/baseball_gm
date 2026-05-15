@@ -44,3 +44,4 @@ VALID_ROLES = {"Closer", "Setup", "Middle", "Long", "Specialist", "Utility"}
 VALID_BATS = {"L", "R", "S"}
 VALID_THROWS = {"L", "R"}
 DEFAULT_LEFT_HANDED_PROB = 0.21  # Much higher than general population
+START_AGE = 17
