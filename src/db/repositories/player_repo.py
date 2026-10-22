@@ -487,9 +487,10 @@ class PlayerRepository:
         return {r["player_id"] for r in player_ids}
         # return player_ids
 
-    def get_retired_players_season_stats(
+    def get_retired_players_career_stats(
         self, team_id: str, league_id: str, season_id: str
     ) -> list[dict]:
+        """Players who retired in season_id, with regular-season career totals."""
         rows = self.conn.execute(
             """
             SELECT
@@ -501,36 +502,61 @@ class PlayerRepository:
                 ps.age,
                 COALESCE(t.city || ' ' || t.mascot, '—') AS team_name,
                 (pr.former_team_id = %s)                  AS is_mine,
+                cs.seasons_played,
                 -- batting
-                pss.bat_games_played,
-                pss.bat_ab,
-                pss.bat_hits,
-                pss.bat_home_runs,
-                pss.bat_rbi,
-                pss.bat_walks,
-                pss.bat_strike_outs,
-                pss.bat_doubles,
-                pss.bat_triples,
-                pss.bat_stolen_bases,
+                cs.bat_games_played,
+                cs.bat_ab,
+                cs.bat_hits,
+                cs.bat_home_runs,
+                cs.bat_rbi,
+                cs.bat_walks,
+                cs.bat_strike_outs,
+                cs.bat_doubles,
+                cs.bat_triples,
+                cs.bat_stolen_bases,
                 -- pitching
-                pss.pitch_games_played,
-                pss.pitch_games_started,
-                pss.pitch_wins,
-                pss.pitch_losses,
-                pss.pitch_saves,
-                pss.pitch_outs,
-                pss.pitch_earned_runs,
-                pss.pitch_hits,
-                pss.pitch_walks,
-                pss.pitch_strike_outs
+                cs.pitch_games_played,
+                cs.pitch_games_started,
+                cs.pitch_wins,
+                cs.pitch_losses,
+                cs.pitch_saves,
+                cs.pitch_outs,
+                cs.pitch_earned_runs,
+                cs.pitch_hits,
+                cs.pitch_walks,
+                cs.pitch_strike_outs
             FROM player_retirements pr
             JOIN players           p   ON p.id  = pr.player_id
             JOIN player_skills     ps  ON ps.player_id = pr.player_id
             LEFT JOIN teams        t   ON t.id  = pr.former_team_id
-            LEFT JOIN player_season_stats pss
-                ON pss.player_id  = pr.player_id
-               AND pss.season_id  = pr.season_id
-               AND pss.is_postseason = FALSE
+            LEFT JOIN (
+                SELECT
+                    player_id,
+                    COUNT(DISTINCT season_id) AS seasons_played,
+                    SUM(bat_games_played)    AS bat_games_played,
+                    SUM(bat_ab)              AS bat_ab,
+                    SUM(bat_hits)            AS bat_hits,
+                    SUM(bat_home_runs)       AS bat_home_runs,
+                    SUM(bat_rbi)             AS bat_rbi,
+                    SUM(bat_walks)           AS bat_walks,
+                    SUM(bat_strike_outs)     AS bat_strike_outs,
+                    SUM(bat_doubles)         AS bat_doubles,
+                    SUM(bat_triples)         AS bat_triples,
+                    SUM(bat_stolen_bases)    AS bat_stolen_bases,
+                    SUM(pitch_games_played)  AS pitch_games_played,
+                    SUM(pitch_games_started) AS pitch_games_started,
+                    SUM(pitch_wins)          AS pitch_wins,
+                    SUM(pitch_losses)        AS pitch_losses,
+                    SUM(pitch_saves)         AS pitch_saves,
+                    SUM(pitch_outs)          AS pitch_outs,
+                    SUM(pitch_earned_runs)   AS pitch_earned_runs,
+                    SUM(pitch_hits)          AS pitch_hits,
+                    SUM(pitch_walks)         AS pitch_walks,
+                    SUM(pitch_strike_outs)   AS pitch_strike_outs
+                FROM player_season_stats
+                WHERE is_postseason = FALSE
+                GROUP BY player_id
+            ) cs ON cs.player_id = pr.player_id
             WHERE pr.league_id = %s
               AND pr.season_id  = %s
             ORDER BY

@@ -2522,7 +2522,7 @@ def retirement(
     player_repo = PlayerRepository(db)
     retired_players = []
     if prev_season_id:
-        rows = player_repo.get_retired_players_season_stats(
+        rows = player_repo.get_retired_players_career_stats(
             my_team_id, league_id, prev_season_id
         )
 

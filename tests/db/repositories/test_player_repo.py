@@ -562,3 +562,73 @@ class TestPlayerRepositoryIntegration:
         inserted_ids = {p.id for p in players}
         assert inserted_ids.issubset(ids)
         assert all(p.skills is not None for p in all_players if p.id in inserted_ids)
+
+
+# ---------------------------------------------------------------------------
+# TestRetiredPlayersCareerStats
+# ---------------------------------------------------------------------------
+
+
+class TestRetiredPlayersCareerStats:
+
+    def _season_stats(self, conn, player_id, season_id, team_id, **stats):
+        cols = ["player_id", "season_id", "team_id", *stats]
+        conn.execute(
+            f"INSERT INTO player_season_stats ({', '.join(cols)})"
+            f" VALUES ({', '.join(['%s'] * len(cols))})",
+            (player_id, season_id, team_id, *stats.values()),
+        )
+
+    def test_returns_career_totals_not_final_season(self, player_repo, factory, db_conn):
+        league = factory.league()
+        team = factory.team()
+        s1, s2 = factory.season(2025), factory.season(2026)
+        player = factory.prospect(league.id)
+
+        self._season_stats(
+            db_conn, player.id, s1.id, team.id,
+            bat_games_played=100, bat_ab=400, bat_hits=120, bat_home_runs=20,
+        )
+        self._season_stats(
+            db_conn, player.id, s2.id, team.id,
+            bat_games_played=50, bat_ab=200, bat_hits=50, bat_home_runs=5,
+        )
+        # Postseason stats should not be counted
+        db_conn.execute(
+            "INSERT INTO player_season_stats"
+            " (player_id, season_id, team_id, is_postseason, bat_ab, bat_hits)"
+            " VALUES (%s, %s, %s, TRUE, 30, 10)",
+            (player.id, s2.id, team.id),
+        )
+        db_conn.execute(
+            "INSERT INTO player_retirements (player_id, league_id, season_id, former_team_id)"
+            " VALUES (%s, %s, %s, %s)",
+            (player.id, league.id, s2.id, team.id),
+        )
+
+        rows = player_repo.get_retired_players_career_stats(team.id, league.id, s2.id)
+
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["seasons_played"] == 2
+        assert row["bat_games_played"] == 150
+        assert row["bat_ab"] == 600
+        assert row["bat_hits"] == 170
+        assert row["bat_home_runs"] == 25
+        assert row["is_mine"] is True
+
+    def test_player_with_no_stats_still_listed(self, player_repo, factory, db_conn):
+        league = factory.league()
+        season = factory.season()
+        player = factory.prospect(league.id)
+        db_conn.execute(
+            "INSERT INTO player_retirements (player_id, league_id, season_id)"
+            " VALUES (%s, %s, %s)",
+            (player.id, league.id, season.id),
+        )
+
+        rows = player_repo.get_retired_players_career_stats(None, league.id, season.id)
+
+        assert len(rows) == 1
+        assert rows[0]["bat_ab"] is None
+        assert rows[0]["seasons_played"] is None
