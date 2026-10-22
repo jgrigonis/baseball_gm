@@ -146,8 +146,8 @@
                onmouseover="this.style.background='var(--bg-3)'"
                onmouseout="this.style.background=''">
             <span style="color:var(--text);">{{ inj.first_name }} {{ inj.last_name }}</span>
-            {% if inj.games_remaining %}
-            <span style="color:var(--red);font-size:11px;">IL · {{ inj.games_remaining }}g</span>
+            {% if inj.days_remaining %}
+            <span style="color:var(--red);font-size:11px;">IL · {{ inj.days_remaining }}d</span>
             {% endif %}
           </div>
           {% endfor %}

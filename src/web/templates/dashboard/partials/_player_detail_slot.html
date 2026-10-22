@@ -29,7 +29,7 @@
 {# ── Status badges ─────────────────────────────────────────────────────────── #}
 <div class="pd-badges">
  {% if player.injured %}
-   <span class="badge badge-injured">IL · {{ player.games_remaining }}g</span>
+   <span class="badge badge-injured">IL · {{ player.injury_days }}d</span>
  {% endif %}
  {% if player.energy %}
    {% if player.energy.current < 40 %}
@@ -135,7 +135,7 @@
  <div class="pd-injury-row">
    <span class="pd-skill-label">{{ inj.injury_date }}</span>
    <span style="color:var(--text);">{{ inj.severity }}</span>
-   <span class="pd-skill-label">{{ inj.games_missed }}g</span>
+   <span class="pd-skill-label">{{ inj.games_missed }}d</span>
  </div>
  {% endfor %}
 </div>

@@ -231,7 +231,8 @@ CREATE TABLE IF NOT EXISTS player_energy (
 CREATE TABLE IF NOT EXISTS player_injuries (
     player_id               TEXT NOT NULL,
     league_id               TEXT NOT NULL,
-    games_remaining         INTEGER NOT NULL DEFAULT 0,
+    games_remaining         INTEGER NOT NULL DEFAULT 0,  -- legacy: length of injury in days
+    return_date             TEXT,                        -- ISO date the player is available again
     PRIMARY KEY (player_id, league_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
@@ -243,7 +244,7 @@ CREATE TABLE IF NOT EXISTS player_injury_log (
     injury_date     TEXT NOT NULL,
     severity        TEXT NOT NULL,
     activity        TEXT,
-    games_missed    INTEGER NOT NULL,
+    games_missed    INTEGER NOT NULL,       -- days missed (games, before migration 1)
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 

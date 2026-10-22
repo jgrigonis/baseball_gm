@@ -516,7 +516,7 @@ function makeCard(p, isIn40) {
     <div style="min-width:0;">
       <div class="r-name" style="color:${p.injured?'var(--red)':''};">
         ${p.first_name} ${p.last_name}
-        ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'g)':''}</span>`:''}
+        ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}
       </div>
       <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
       <div class="r-grades">${playerGradesHtml(p)}</div>

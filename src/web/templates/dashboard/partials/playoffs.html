@@ -217,7 +217,7 @@ function simPlayoffs(mode) {
 
       var injNews = '';
       if (d.new_injuries && d.new_injuries.length > 0)
-        injNews += d.new_injuries.map(function(i){ return '🚑 ' + i.name + ' (' + i.days + 'g)'; }).join('  ');
+        injNews += d.new_injuries.map(function(i){ return '🚑 ' + i.name + ' (' + i.days + 'd)'; }).join('  ');
       if (d.returned && d.returned.length > 0)
         injNews += (injNews ? '  ' : '') + d.returned.map(function(i){ return '✅ ' + i.name + ' returned'; }).join('  ');
       setInjuryNews(injNews);
