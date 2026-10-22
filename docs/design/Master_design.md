@@ -3,12 +3,15 @@
 ## Vision
 
 A web-based baseball GM simulation where players manage a franchise through
-multiple seasons. Supports both quick-play sessions (a full GM career in
-60-90 minutes with a group) and longer-form leagues where seasons unfold
-over days or weeks.
+multiple seasons.
+Supports three game types:
+- **Speed Blitz**, a hands-off, single-player quick sim where you set a lineup, rotation and bullpen and let it run;
+- **Blitz**, quick-play sessions, solo or with a group (a full GM career in 60-90 minutes);
+- **Long Form**, longer leagues, solo or with a group, where seasons unfold over days or weeks.
 
 The AI GM is a first-class participant — human GMs can drop out, and
-the league continues either way.
+the league continues either way. In single-player games, every other franchise
+is run by an AI GM.
 
 ---
 
@@ -22,29 +25,55 @@ sim time**. This sets the scale in terms of pacing:
 |-------------------|---------|------------|
 | 1 regular season  | 2,610   | ~5 min     |
 | + playoffs        | ~60     | ~8 sec     |
-| 5-season career   | ~13,000 | ~26 min    |
+| 5-season career   | ~13,000 | ~27 min    |
 | 8-season career   | ~20,000 | ~42 min    |
 | 25-season career  | ~62,000 | ~2 hrs     |
 
 Sim time is not a significant bottleneck in Blitz — **GM decision time is**.
+Sim time is the bottleneck in Speed Blitz.
 In the Long Form version, Simulation time is insignificant, as the players
 (some human) are intended to take time for nearly every single game.
+
 ---
 
 ## Experience Modes
 
-### Quick Play ("Blitz League")
+### Player Count by Mode
+
+| Mode        | Human GMs        | Other franchises |
+|-------------|------------------|------------------|
+| Speed Blitz | 1 (single-player only) | AI GMs     |
+| Blitz       | 1 to 30          | AI fills the rest |
+| Long Form   | 1 to 30          | AI fills the rest |
+
+With 1 human GM, the game is single-player: you play against AI GMs.
+
+### Speed Blitz
+- **Single-player only**: you play against AI GMs
+- The lightest-touch mode: very little GM decision time
+- No injuries and no trades
+- The GM sets a lineup, any platooning, the rotation and bullpen roles, then
+  leaves it alone for up to a full season or more, or just a portion of a season
+- The most natural decision point is Pre-Season, but a shorter interval can be
+  configured (see Decision Points)
+- The GM checks results periodically and makes changes as needed
+- Uses the same draft format as Blitz (preference list, auto-draft)
+
+### Blitz (Quick Play)
+- **Solo (vs AI GMs) or multiplayer**
 - A full GM career spans **5–8 seasons**, matching real-world GM tenure
 - Real GMs typically last 3–4 years if underperforming; 8–10 if successful
-- 5 seasons of sim takes ~26 minutes — total session with draft and decisions
+- 5 seasons of sim takes ~27 minutes — total session with draft and decisions
   is aimed towards around **60–90 minutes**
 - League currently always runs at **~30 teams** — the full sim size
 - Human GMs range from **1 to 30** depending on who joins; AI fills the rest
-- Join with strangers (via future public lobby) or friends via a league code
+- Play solo, join with strangers (via future public lobby), or play with
+  friends via a league code
 - Sim advances on a timer between phases — GMs who aren't ready get AI fallback
 - At career end: performance verdict, optionally start a new career
 
-### Long Form ("Commissioner League")
+### Long Form
+- **Solo (vs AI GMs) or multiplayer**
 - A season unfolds over days or weeks
 - Sim engine advances on a schedule (e.g. one series per day, or 10 games)
 - GMs make decisions on their own schedule between sim runs
@@ -53,9 +82,10 @@ In the Long Form version, Simulation time is insignificant, as the players
 - Higher stakes, more deliberate decision-making
 - A "career" plays out over weeks or months of real time
 
-**Both modes use the same sim engine and GM decision model.**
+**All three modes use the same sim engine and GM decision model.**
 The main difference is the pace at which the sim clock advances.
-Also, the intended stopping and adjustment points vary
+Also, the intended stopping and adjustment points vary.
+
 
 ---
 
@@ -65,16 +95,21 @@ Also, the intended stopping and adjustment points vary
 League Created
     │
     ▼
+Initial Draft
+  └── Draft (see Draft Format below)
+    │
+    ▼
 Pre-Season
-  ├── Draft (see Draft Format below)
-  ├── Set 40-man active roster and/or 26-man (and adjust full roster)
+  ├── Set active roster and adjust full roster (roster sizes depend on mode)
+  ├── Set lineup, platoons, rotation and bullpen roles
+  │     (Speed Blitz: the most natural decision point)
   └── Set strategic profile
 
     │
     ▼
 Regular Season  (repeating — ~5 min sim per season)
   ├── [Between series]  Review upcoming opponent, adjust profile/lineup
-  │                     Blitz: configurable window (see Decision Windows)
+  │                     Blitz and Speed Blitz: configurable window (see Decision Windows)
   │                     Long form: hours to days. Can advance when all are ready.
   ├── [Sim runs]        Games execute automatically using GM profiles
   └── [After series]    Review results; lineup, strategy and roster adjustments
@@ -84,16 +119,16 @@ Regular Season  (repeating — ~5 min sim per season)
 Playoffs
   ├── Bracket announced
   ├── [Between series]  Adjust rotation, lineup, profile, roster
-  │                         Long form pauses after each game.  
-  └── [Sim runs]        ~8 seconds per playoff round
+  │                         Long form pauses after each game.
+  └── [Sim runs]        A couple seconds per playoff round
 
     │
     ▼
 Offseason
-  ├── Performance review (GM firings — see below)
-  ├── Free agency / trades (TBD)
+  ├── Performance review (GM firings — see below; not in Speed Blitz)
+  ├── Free agency / trades (Blitz and Long Form only; not yet implemented)
   ├── Draft
-  └── New season begins
+  └── New season begins (return to Pre-Season)
 ```
 
 ---
@@ -102,14 +137,14 @@ Offseason
 
 Different formats per mode, reflecting the time available:
 
-### Blitz — Preference List (Auto-Draft)
+### Blitz and Speed Blitz — Preference List (Auto-Draft)
 - GMs submit a ranked preference list before the draft runs
 - Draft executes automatically in snake order using each GM's list
 - If a player is gone, the next available preference is taken
 - Fast — completes in seconds, not minutes
 - GMs spend their decision time *building the list*, not watching picks tick down
 
-### Long Form / Scheduled — Interactive Snake Draft
+### Long Form — Interactive Snake Draft
 - Live draft room, all GMs present
 - Each pick has a configurable timer (default 90 seconds)
 - If a GM doesn't pick in time, auto-selects from their submitted preference list
@@ -120,28 +155,35 @@ Different formats per mode, reflecting the time available:
 
 ## Roster Structure
 
-### Blitz Mode
-- **40-man roster** — players who appear in games
-- Full Organization - Unlimited size.
-- Moves between 40-man are unrestricted between series
+### Blitz and Speed Blitz
+- **40-man roster**: the entire pool is treated the same. Every player on it
+  is eligible to appear in games, and there is no separate active-roster limit.
+- Full organization: unlimited size.
+- Moves between the full organization and the 40-man are unrestricted between
+  series.
+- **Speed Blitz** has no injuries and no trades, so most of the roster goes
+  unused. In practice the GM only manages the 9 position players (with DH), a few
+  potential platoon players, and the pitchers (rotation and bullpen).
 
-### Long Form / Scheduled Mode
-- **26-man active roster** — players who are allowed to appear in games
-- **40-man roster** — standard organizational threshold
-- **Full org roster** — up to 160 players (existing sim cap)
-- Players must be on the 40-man to be called up to the 26-man
+### Long Form Mode
+- **26-man active roster**: the only players allowed to appear in games.
+  To use a player, you must move them from the 40-man to the 26-man.
+- **40-man roster**: standard organizational threshold.
+- **Full org roster**: up to 160 players.
+- Players must be on the 40-man to be called up to the 26-man.
 - Moving a player from full org → 40-man requires a roster move (limited
-  per series, exact number TBD, may introduce waivers, free agency, etc)
+  per series, exact number TBD, may introduce waivers, free agency, etc.)
 - Moving a player off the 40-man to make room follows MLB-style rules:
   outright waivers, DFA, release (details TBD for v1)
 
-> **Design note:** The 40-man threshold is what gives Long Form its
-> strategic texture. Protecting prospects, managing the 40-man crunch
-> before the trade deadline, and making DFA decisions are core GM activities
-> in real baseball. Blitz skips this complexity intentionally.
+> **Design note:** The 26/40 split is what gives Long Form its strategic
+> texture. Protecting prospects, managing the 40-man crunch before the trade
+> deadline, and making DFA decisions are core GM activities in real baseball.
+> Blitz and Speed Blitz skip this complexity intentionally.
 >
 > Specific roster move limits (transactions per series, option rules, DFA
 > mechanics) will be defined in a separate ruleset doc once v1 is stable.
+
 
 ---
 
@@ -176,7 +218,7 @@ Standard 20-80 scouting scale mapped to letter grades with +/–:
 
 Entire SKILLS found in positions.py:
 
-
+```
 SKILLS: MappingProxyType[str, int] = MappingProxyType(
     {
         # Pitching
@@ -202,6 +244,7 @@ SKILLS: MappingProxyType[str, int] = MappingProxyType(
         "arm": 50,  # Throwing arm strength
     }
 )
+```
 
 ### Scouting Uncertainty (future)
 - Early in a career, grades have a ±1 letter uncertainty range
@@ -236,21 +279,28 @@ This is under construction:
 ### Explicit Overrides (between series/games)
 - Set starting lineup for next game/series
 - Set starting pitcher
-- 26/40-man roster moves (call-ups, optioning down)
 - Set rotation order for a series
+- Set bullpen roles (the GM assigns relievers to roles; the rotation and
+  bullpen are GM-set, not AI-chosen)
+- 26/40-man roster moves (call-ups, optioning down, Long Form only)
 
 ### In-Game (not player-controlled)
 All in-game decisions (pinch hits, pitching changes, stolen base attempts,
-hit and run) are executed by the AI using the GM's strategic profile.
+hit and run) are executed by the AI using the GM's strategic profile and the
+rotation, bullpen roles and lineup the GM has set.
 
 > **Design principle:** GMs set *strategy*, not *tactics*.
 > The AI handles real-time execution.
 
 ---
 
-## Decision Windows (Blitz)
+## Decision Windows (Blitz and Speed Blitz)
 
 The time GMs have between series to make decisions before the sim advances.
+
+> The pace-agreement rules below apply when there are multiple human GMs.
+> With a single human GM (always the case in Speed Blitz), the league simply
+> runs at that GM's chosen pace.
 
 ### Configurable per league
 - Commissioner sets a window range (e.g. 30–180 seconds)
@@ -263,7 +313,7 @@ The time GMs have between series to make decisions before the sim advances.
 ### Suggested defaults
 - **Pickup / strangers**: 120 seconds (forgiving for new players)
 - **Friends / experienced**: 60 seconds
-- **Speed run**: 30 seconds
+- **Fast**: 30 seconds
 
 ### Late-session behavior
 Window does not automatically shrink as the session progresses — the
@@ -272,12 +322,20 @@ upfront. Future implementation would be to change window based on a quorum.
 
 ### Decision points
 - Also configurable is how often to set decision windows
-- Some standards are: Every 4 games, Every 10 games, twice per season, etc
-- Allow Blitz to approach, but not intersect with the Long Form version.
+- Some standards are: Every 4 games, Every 10 games, twice per season, etc.
+- Blitz can approach, but not intersect with, the Long Form version.
+- **Speed Blitz** (single-player) uses much longer intervals between decision
+  points. The most natural decision point is Pre-Season: the GM sets the
+  lineup, platoons, rotation and bullpen roles and may leave them for a full
+  season or more. A shorter interval can be configured to check in and make
+  changes partway through a season.
 
 ---
 
+
 ## Progression & Stakes
+
+> GM tenure, firing and re-entry are not enabled in Speed Blitz.
 
 ### GM Tenure
 Real GMs last 3–4 years if underperforming, 8–10 if successful. The sim
@@ -317,6 +375,10 @@ Each GM is evaluated at season end on:
 
 ## Multiplayer Model
 
+> Speed Blitz is single-player only, so league codes, the public lobby and
+> pace control below do not apply to it. Blitz and Long Form can be played
+> solo against AI GMs or as multiplayer leagues.
+
 ### League Codes
 - Any player can create a league and share a join code
 - League creator becomes Commissioner (admin controls)
@@ -325,10 +387,10 @@ Each GM is evaluated at season end on:
   simply with a click.
 
 ### Pace Control (Commissioner setting)
-- **Blitz**: sim advances on the agreed decision window timer and frequency
-- **Confirmed**: sim advances when all GMs confirm ready, or timeout expires
+- **WindowTimed**: sim advances on the agreed decision window timer and frequency (Blitz)
+- **Confirmed**: sim advances when all GMs confirm ready, or timeout expires (Long Form)
 - **Scheduled**: sim runs at fixed real-world times (e.g. one series per day
-  at 8pm)
+  at 8pm) (Long Form)
 
 ### AI Fallback
 - If a human GM is absent when the sim runs, their strategic profile governs
@@ -337,15 +399,14 @@ Each GM is evaluated at season end on:
 
 ---
 
-## Technical Architecture (proposed)
+
+## Technical Architecture
 
 ### Backend
-- **FastAPI** — REST API + WebSocket for live updates during sim
-- **SQLite** — initial development target; clean migration to PostgreSQL
-  when multiplayer requires concurrent writes
-- **Python sim engine** — existing codebase, runs as background task
-- **Celery + Redis** — task queue for sim jobs (added when moving to Postgres
-  for multiplayer; not needed for single-player SQLite phase)
+- **FastAPI**: REST API + WebSocket for live updates during sim
+- **PostgreSQL**: the migration from SQLite is complete
+- **Python sim engine**: existing codebase, runs as background task
+- **Celery + Redis**: planned task queue for sim jobs; not yet in use
 
 ### Frontend
 - **Server-rendered HTML (Jinja2)** for most views — standings, rosters,
@@ -359,24 +420,12 @@ Each GM is evaluated at season end on:
 ```
 GM action (web form / API call)
     → FastAPI endpoint validates + writes to DB
-    → Sim task triggered (or runs on schedule via Celery)
+    → Sim task triggered
     → Sim engine reads team profiles from DB
     → Game results written to DB in batches
     → WebSocket pushes series results to connected GMs
     → Standings / game log update via HTMX
 ```
-
-### SQLite → PostgreSQL Migration (when needed)
-Development starts against SQLite — the existing schema and codebase work
-as-is. Migration to Postgres happens when multiplayer concurrent writes
-require it. Known deltas at that point:
-- `TEXT` UUIDs work in both — no change needed
-- SQLite `INTEGER` PRIMARY KEY → Postgres `UUID` with `gen_random_uuid()`
-- SQLite-specific pragmas (`PRAGMA journal_mode`, etc.) removed
-- `player_game_stats`, `player_season_stats` rollup tables port cleanly
-- Indexes translate directly
-- Row factory (`sqlite3.Row`) → psycopg2 `RealDictCursor` or SQLAlchemy ORM
-
 ---
 
 ## Views (MVP)
@@ -390,9 +439,10 @@ require it. Known deltas at that point:
 
 ### My Team
 - Current roster with scouting grades
-- 26-man / 40-man breakdown (Long Form) or 26/40 (Blitz)
+- 26-man / 40-man breakdown (Long Form) or 40 (Blitz/Speed Blitz)
 - Strategic profile editor
 - Lineup setter for next series
+- Rotation and bullpen role editor
 - Recent performance (last 10 games)
 
 ### League Leaders
@@ -404,7 +454,7 @@ require it. Known deltas at that point:
 - Play-by-play (condensed — key events only)
 
 ### Draft Room
-- Blitz: preference list builder with player grades and filters
+- Blitz and Speed Blitz: preference list builder with player grades and filters
 - Long Form: interactive snake draft room with pick timer and live board
 
 ### History
@@ -418,14 +468,16 @@ require it. Known deltas at that point:
 
 | Question | Decision |
 |----------|----------|
-| Draft format | Preference list for Blitz; interactive snake with timer for Long Form |
-| Roster size | 26-man active / 40-man org for Blitz; 26/40/160 for Long Form |
+| Draft format | Preference list for Blitz and Speed Blitz; interactive snake with timer for Long Form |
+| Roster size | 40-man pool, unlimited org size for Blitz and Speed Blitz; 26/40/160 for Long Form |
 | Rating visibility | A+–F scouting grades in UI; raw numbers debug-only |
-| Decision window | Configurable; runs at fastest pace all GMs agree to |
-| Re-entry after firing | Commissioner toggle: one-and-done or re-entry pool |
-| League size | ~30 teams always; 1–30 human GMs, AI fills the rest |
+| Decision window | Configurable; runs at fastest pace all GMs agree to (single human GM: that GM's pace) |
+| Re-entry after firing | Commissioner toggle: one-and-done or re-entry pool (not in Speed Blitz) |
+| League size | ~30 teams always; AI fills every franchise without a human GM |
+| Player count | Speed Blitz: 1 human only. Blitz and Long Form: 1–30 humans (1 = single-player vs AI) |
+| Rotation and bullpen | GM-set (bullpen roles implemented), not AI-chosen |
 | 40-man move limits | TBD — separate ruleset doc, post-v1 |
-| Database | SQLite for development; PostgreSQL when multiplayer requires it |
+| Database | PostgreSQL |
 
 ---
 
@@ -439,4 +491,4 @@ require it. Known deltas at that point:
 - Spectator mode
 - Scouting uncertainty / hidden grade ranges
 - 40-man transaction ruleset (DFA, options, waivers)
-- Celery / Redis task queue (added with Postgres for multiplayer)
+- Celery / Redis task queue

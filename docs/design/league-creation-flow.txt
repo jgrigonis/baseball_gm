@@ -1,3 +1,6 @@
+League Creation
+
+Need to verify this is still accurate
 
 league_bootstrap.py
 

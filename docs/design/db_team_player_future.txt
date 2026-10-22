@@ -1,3 +1,8 @@
+Potential updates to team_players
+
+Add the season_id to this table:
+Also add a roster role
+Aslo a jersey number 
 
 CREATE TABLE IF NOT EXISTS team_players (
     team_id   TEXT NOT NULL,
