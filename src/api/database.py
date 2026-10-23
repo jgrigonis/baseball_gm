@@ -32,20 +32,13 @@ def db_transaction() -> Generator[psycopg.Connection, None, None]:
 
 def get_db() -> Generator[psycopg.Connection, None, None]:
     """
-    FastAPI dependency. Yields a connection; commits and closes after the
-    request regardless of outcome.
+    FastAPI dependency. Yields a connection inside db_transaction(): commits
+    if the request succeeds, rolls back if it raises, and always closes.
 
     Usage:
         @router.get("/things")
         def list_things(db: psycopg.Connection = Depends(get_db)):
             ...
     """
-    conn = get_connection()
-    try:
+    with db_transaction() as conn:
         yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
