@@ -2,36 +2,37 @@
 
 ### A Python 3 project
 
-(Requires at least python 3.14)
+### Requirements
 
-### Create a virtual environment
+- Python 3.14 or newer
+- [uv](https://docs.astral.sh/uv/) 0.11 or newer, which installs the
+  dependencies and runs the tests
 
-Recommended: install [uv](https://docs.astral.sh/uv/) and run
+### Install uv
+
+macOS or Linux:
+
+`curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+Windows (PowerShell):
+
+`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
+You can also use `brew install uv`, `winget install astral-sh.uv` or
+`pip install uv`. Open a new terminal afterwards and check it with
+`uv --version`.
+
+### Set up the project
 
 `uv sync --extra dev`
 
 This creates `.venv` and installs the exact versions recorded in `uv.lock`.
-Run tools inside it with `uv run`, for example `uv run pytest`.
+Run tools inside it with `uv run`, for example `uv run pytest`, or activate
+it with `source .venv/bin/activate` (`.venv\Scripts\activate` on Windows).
 
 After changing dependencies in `pyproject.toml`, run `uv lock` and commit the
 updated `uv.lock`. To upgrade everything to the newest allowed versions, run
 `uv lock --upgrade`.
-
-Without uv (versions are not locked this way):
-
-`python3 -m venv .venv`
-
-To install the project for use:
-
-`pip install -e .`
-
-For developing:
-
-`pip install -e ".[dev]"`
-
-On windows I had to use python -m pip
-
-Or I'd get permission problems.
 
 On windows you should also do this in a powershell as an admin:
 
