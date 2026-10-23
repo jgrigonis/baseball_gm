@@ -2,6 +2,8 @@
 from dataclasses import dataclass, field
 import logging
 
+from src.stats import formulas
+
 
 @dataclass
 class BattingStats:
@@ -82,7 +84,7 @@ class BattingStats:
     @property
     def batting_average(self):
         """Return the batting average."""
-        return self.hits / self.at_bats if self.at_bats > 0 else 0.0
+        return formulas.batting_average(self.hits, self.at_bats)
 
     @property
     def singles(self):
@@ -92,28 +94,26 @@ class BattingStats:
     @property
     def total_bases(self):
         """Return the total number of bases."""
-        return self.triples * 3 + self.doubles * 2 + self.home_runs * 4 + self.singles
+        return formulas.total_bases(
+            self.hits, self.doubles, self.triples, self.home_runs
+        )
 
     @property
     def slugging(self):
         """The rate of total bases per at bat."""
-        return self.total_bases / self.at_bats if self.at_bats > 0 else 0.0
+        return formulas.slugging_pct(self.total_bases, self.at_bats)
 
     @property
     def obp(self):
-        """On Base Percentage. The rate at which a batter reached base
-        in his plate appearances.
-        """
-        return (
-            (self.hits + self.walks + self.hbp) / (self.plate_appearances)
-            if self.plate_appearances > 0
-            else 0.0
+        """On Base Percentage: (H + BB + HBP) / (AB + BB + HBP + SF)."""
+        return formulas.on_base_pct(
+            self.hits, self.walks, self.hbp, self.at_bats, self.sac_flys
         )
 
     @property
     def ops(self):
         """The sum of On Base Percentage and Slugging."""
-        return self.obp + self.slugging if self.obp + self.slugging > 0 else 0.0
+        return self.obp + self.slugging
 
     @property
     def babip(self):

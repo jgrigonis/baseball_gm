@@ -20,6 +20,7 @@ from pathlib import Path
 from src.db.connection import get_connection
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.stats import formulas
 
 # ---------------------------------------------------------------------------
 # Args
@@ -182,17 +183,14 @@ def query_season_stats(player_id: str, season: str | None) -> dict:
     bb = batting["BB"]
     hbp = batting["HBP"]
     sf = batting["SF"]
-    batting["AVG"] = f"{h / ab:.3f}" if ab else ".000"
-    obp_denom = ab + bb + hbp + sf
-    batting["OBP"] = f"{(h + bb + hbp) / obp_denom:.3f}" if obp_denom else ".000"
+    batting["AVG"] = f"{formulas.batting_average(h, ab):.3f}"
+    batting["OBP"] = f"{formulas.on_base_pct(h, bb, hbp, ab, sf):.3f}"
 
     # Derived pitching stats
     outs = pitching["OUTS"] or 0
-    ip_full = outs // 3
-    ip_rem = outs % 3
-    pitching["IP"] = f"{ip_full}.{ip_rem}"
-    er = pitching["R"]  # no earned runs yet — using runs as proxy
-    pitching["ERA"] = f"{(er * 27 / outs):.2f}" if outs else "-.--"
+    pitching["IP"] = formulas.ip_str(outs)
+    er = pitching["ER"]
+    pitching["ERA"] = f"{formulas.era(er, outs):.2f}" if outs else "-.--"
     pitching["AVG PC"] = (
         f"{row['pitch_count'] / row['pitch_game_started']:.1f}"
         if (row["pitch_game_started"] or 0) > 0

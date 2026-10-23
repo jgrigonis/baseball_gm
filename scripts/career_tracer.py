@@ -20,6 +20,7 @@ from src.db.connection import get_connection
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
+from src.stats import formulas
 from src.player.skill_map import SKILL_MAP, SKILL_ABBREVIATIONS
 
 # ---------------------------------------------------------------------------
@@ -197,16 +198,13 @@ def get_season_stats(player_id: str, season_id: str) -> dict:
     hbp = batting["HBP"]
     sf = batting["SF"]
     batting["AVG"] = f"{h/ab:.3f}" if batting["AB"] else ".000"
-    denom = ab + bb + hbp + sf
-    batting["OBP"] = f"{(h+bb+hbp)/denom:.3f}" if denom else ".000"
+    batting["OBP"] = f"{formulas.on_base_pct(h, bb, hbp, ab, sf):.3f}"
 
     outs = pitching["OUTS"] or 0
-    ip_f = outs // 3
-    ip_r = outs % 3
-    pitching["IP"] = f"{ip_f}.{ip_r}"
+    pitching["IP"] = formulas.ip_str(outs)
     # r = pitching["R"]
     er = pitching["ER"]
-    pitching["ERA"] = f"{er*27/outs:.2f}" if outs else "-.--"
+    pitching["ERA"] = f"{formulas.era(er, outs):.2f}" if outs else "-.--"
     gs = pitching["GS"]
     pc = pitching["PC"]
     pitching["AVG PC"] = f"{pc/gs:.1f}" if gs else "—"
@@ -235,15 +233,12 @@ def get_career_stats(player_id: str) -> dict:
     hbp = batting["HBP"]
     sf = batting["SF"]
     batting["AVG"] = f"{h/ab:.3f}" if batting["AB"] else ".000"
-    denom = ab + bb + hbp + sf
-    batting["OBP"] = f"{(h+bb+hbp)/denom:.3f}" if denom else ".000"
+    batting["OBP"] = f"{formulas.on_base_pct(h, bb, hbp, ab, sf):.3f}"
 
     outs = pitching["OUTS"] or 0
-    ip_f = outs // 3
-    ip_r = outs % 3
-    pitching["IP"] = f"{ip_f}.{ip_r}"
+    pitching["IP"] = formulas.ip_str(outs)
     er = pitching["ER"]
-    pitching["ERA"] = f"{er*27/outs:.2f}" if outs else "-.--"
+    pitching["ERA"] = f"{formulas.era(er, outs):.2f}" if outs else "-.--"
     gs = pitching["GS"]
     pc = pitching["PC"]
     pitching["AVG PC"] = f"{pc/gs:.1f}" if gs else "—"

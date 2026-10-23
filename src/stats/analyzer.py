@@ -2,6 +2,8 @@
 from typing import List, Dict, Any
 import logging
 
+from src.stats import formulas
+
 
 class StatsAnalyzer:
     """Analyze and rank player statistics across games"""
@@ -221,7 +223,7 @@ class StatsAnalyzer:
             ab = p.game_stats.batting.at_bats
             if ab >= min_at_bats:
                 hits = p.game_stats.batting.hits
-                avg = hits / ab if ab > 0 else 0.0
+                avg = p.game_stats.batting.batting_average
                 leaders.append(
                     {
                         "player": p,
@@ -244,23 +246,14 @@ class StatsAnalyzer:
             stats = p.game_stats.batting
 
             # OBP = (H + BB + HBP) / (AB + BB + HBP + SF)
-
-            numerator = stats.hits + stats.walks + stats.hbp
-            denominator = (
-                stats.at_bats
-                + stats.walks
-                + stats.hbp
-                + stats.sac_flys
-                + stats.sac_bunts
-            )
+            denominator = stats.at_bats + stats.walks + stats.hbp + stats.sac_flys
 
             if denominator >= min_plate_appearances:
-                obp = numerator / denominator if denominator > 0 else 0.0
                 leaders.append(
                     {
                         "player": p,
                         "player_name": getattr(p, "name", str(p.id)),
-                        "obp": obp,
+                        "obp": stats.obp,
                         "hits": stats.hits,
                         "walks": stats.walks,
                         "plate_appearances": denominator,
@@ -278,21 +271,12 @@ class StatsAnalyzer:
             ab = stats.at_bats
 
             if ab >= min_at_bats:
-                # SLG = Total Bases / AB
-                total_bases = (
-                    stats.singles
-                    + 2 * stats.doubles
-                    + 3 * stats.triples
-                    + 4 * stats.home_runs
-                )
-                slg = total_bases / ab if ab > 0 else 0.0
-
                 leaders.append(
                     {
                         "player": p,
                         "player_name": getattr(p, "name", str(p.id)),
-                        "slg": slg,
-                        "total_bases": total_bases,
+                        "slg": stats.slugging,
+                        "total_bases": stats.total_bases,
                         "at_bats": ab,
                     }
                 )
@@ -308,22 +292,8 @@ class StatsAnalyzer:
             ab = stats.at_bats
 
             if ab >= min_at_bats:
-                # Calculate OBP
-                obp_numerator = stats.hits + stats.walks + stats.hbp
-                obp_denominator = (
-                    ab + stats.walks + stats.hbp + stats.sac_flys + stats.sac_bunts
-                )
-                obp = obp_numerator / obp_denominator if obp_denominator > 0 else 0.0
-
-                # Calculate SLG
-                total_bases = (
-                    stats.singles
-                    + 2 * stats.doubles
-                    + 3 * stats.triples
-                    + 4 * stats.home_runs
-                )
-                slg = total_bases / ab if ab > 0 else 0.0
-
+                obp = stats.obp
+                slg = stats.slugging
                 ops = obp + slg
 
                 leaders.append(
@@ -522,8 +492,7 @@ class StatsAnalyzer:
             innings = stats.ip_float
 
             if innings >= min_innings:
-                # ERA = (Earned Runs / Innings Pitched) * 9
-                era = (stats.runs / innings * 9) if innings > 0 else 0.0
+                era = stats.era
 
                 leaders.append(
                     {
@@ -531,7 +500,7 @@ class StatsAnalyzer:
                         "player_name": getattr(p, "name", str(p.id)),
                         "era": era,
                         "innings": innings,
-                        "earned_runs": stats.runs,
+                        "earned_runs": stats.earned_runs,
                         # 'wins': stats.wins,
                         # 'losses': stats.losses,
                     }
@@ -552,10 +521,9 @@ class StatsAnalyzer:
                         "player_name": getattr(p, "name", str(p.id)),
                         "strike_outs": p.game_stats.pitching.strike_outs,
                         "innings": ip,
-                        "k_per_9": (
-                            (p.game_stats.pitching.strike_outs / ip * 9)
-                            if ip > 0
-                            else 0
+                        "k_per_9": formulas.per_nine(
+                            p.game_stats.pitching.strike_outs,
+                            p.game_stats.pitching.outs,
                         ),
                     }
                 )
@@ -575,8 +543,8 @@ class StatsAnalyzer:
                         "player_name": getattr(p, "name", str(p.id)),
                         "walks": p.game_stats.pitching.walks,
                         "innings": ip,
-                        "bb_per_9": (
-                            (p.game_stats.pitching.walks / ip * 9) if ip > 0 else 0
+                        "bb_per_9": formulas.per_nine(
+                            p.game_stats.pitching.walks, p.game_stats.pitching.outs
                         ),
                     }
                 )
@@ -592,8 +560,7 @@ class StatsAnalyzer:
             innings = stats.ip_float
 
             if innings >= min_innings:
-                # WHIP = (Walks + Hits) / Innings Pitched
-                whip = (stats.walks + stats.hits) / innings if innings > 0 else 0.0
+                whip = stats.whip
 
                 leaders.append(
                     {
