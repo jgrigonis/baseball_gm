@@ -327,7 +327,7 @@ class OffseasonPipeline:
             log.info("Wrote %s", path)
 
     def _mark_done(self, season_id: str, step: str) -> None:
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.UTC).isoformat()
         self.os_repo.mark_done(season_id, step, now)
         self.conn.commit()
 

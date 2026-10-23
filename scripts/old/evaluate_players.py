@@ -4,7 +4,6 @@ import argparse
 import csv
 import json
 from pathlib import Path
-from typing import List, Dict
 from dataclasses import dataclass
 
 from src.io.player_csv_schema import EVALUATION_CSV_HEADER, EVALUATION_RATING_COLUMNS
@@ -24,7 +23,7 @@ class PlayerEvaluation:
     age: int
     position: str
     team_name: str
-    ratings: Dict[str, int]
+    ratings: dict[str, int]
 
 
 def load_manifest(manifest_path: Path) -> dict:
@@ -44,13 +43,13 @@ def load_manifest(manifest_path: Path) -> dict:
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest file not found: {manifest_path}")
 
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         return json.load(f)
 
 
 def evaluate_players_from_manifest(
     manifest_path: Path, base_dir: Path | None = None
-) -> List[PlayerEvaluation]:
+) -> list[PlayerEvaluation]:
     """
     Evaluate all players from teams listed in a manifest file.
 
@@ -122,7 +121,7 @@ def evaluate_players_from_manifest(
 
 
 def print_top_players(
-    evaluations: List[PlayerEvaluation], rating: str, title: str, top_n: int = 10
+    evaluations: list[PlayerEvaluation], rating: str, title: str, top_n: int = 10
 ):
     """Print top N players for a given rating."""
     sorted_players = sorted(evaluations, key=lambda x: x.ratings[rating], reverse=True)
@@ -143,7 +142,7 @@ def print_top_players(
         )
 
 
-def print_full_report(evaluations: List[PlayerEvaluation], top_n: int = 10):
+def print_full_report(evaluations: list[PlayerEvaluation], top_n: int = 10):
     """Print comprehensive player rankings report."""
     print(f"\n{'#' * 80}")
     print("PLAYER EVALUATION REPORT")
@@ -185,7 +184,7 @@ def print_full_report(evaluations: List[PlayerEvaluation], top_n: int = 10):
     print("\n")
 
 
-def export_to_csv(evaluations: List[PlayerEvaluation], output_path: Path):
+def export_to_csv(evaluations: list[PlayerEvaluation], output_path: Path):
 
     with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)

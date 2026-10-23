@@ -1,5 +1,4 @@
 # src/game/resolvers/pitch.py
-from typing import List
 
 from src.game.event import GameEvent
 from src.game.events.balk import BalkEvent
@@ -131,8 +130,8 @@ PITCH_OUTCOME_HANDLERS = {
 }
 
 
-def resolve_pitch(resolver, intent: PitchIntent, game) -> List[GameEvent]:
-    events: List[GameEvent] = []
+def resolve_pitch(resolver, intent: PitchIntent, game) -> list[GameEvent]:
+    events: list[GameEvent] = []
 
     # ------------------------------------------------------------
     # 1. Pitch is always thrown

@@ -1,6 +1,5 @@
 # src/game/events/pitch.py
 from dataclasses import dataclass
-from typing import Optional
 
 from src.game.count import CountSnapshot
 from src.game.event import GameEvent
@@ -18,7 +17,7 @@ class PitchThrownEvent(GameEvent):
     pitcher: PlayerInGame
     batter: PlayerInGame
     count: CountSnapshot
-    pitch_type: Optional[str] = None  # fastball, curve, etc. (optional for now)
+    pitch_type: str | None = None  # fastball, curve, etc. (optional for now)
 
     def apply(self, game):
         game.logger.trace("PitchThrownEvent applied")

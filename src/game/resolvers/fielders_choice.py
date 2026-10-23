@@ -1,5 +1,4 @@
 # src/game/resolvers/fielders_choice.py
-from typing import List
 
 from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
@@ -14,7 +13,7 @@ from src.game.resolvers.base_running import advance_all_runners, advance_batter_
 from src.game.resolvers.fielder_selector import FielderSelector
 
 
-def resolve_fielders_choice(resolver, intent, game) -> List[GameEvent]:
+def resolve_fielders_choice(resolver, intent, game) -> list[GameEvent]:
     """
     Fielder's choice can result in no outs.
 

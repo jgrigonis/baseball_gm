@@ -1,5 +1,4 @@
 # src/game/resolvers/steal.py
-from typing import List
 
 from src.game.bases import FIRST, SECOND, THIRD, HOME
 from src.game.event import GameEvent
@@ -26,7 +25,7 @@ from src.util.weighted_choice import WeightedChoice
 
 def resolve_steal_attempt(
     resolver, from_base: int, intent: PitchIntent, game
-) -> List[GameEvent]:
+) -> list[GameEvent]:
     """
     Resolve a single steal attempt.
 
@@ -129,8 +128,8 @@ def adjust_steal_prob(
 
 
 def resolve_double_steal(
-    resolver, from_bases: List[int], intent: PitchIntent, game
-) -> List[GameEvent]:
+    resolver, from_bases: list[int], intent: PitchIntent, game
+) -> list[GameEvent]:
     """
     Resolve a double steal attempt.
 

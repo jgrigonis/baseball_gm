@@ -1,6 +1,5 @@
 # src/game/rules/force_advancement.py
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 from src.player.player_in_game import PlayerInGame
 
@@ -11,14 +10,14 @@ class ForcedAdvance:
     from_base: int
     to_base: int
     reason: str = "force"
-    rbi_batter: Optional[PlayerInGame] = None
+    rbi_batter: PlayerInGame | None = None
 
 
 def force_advance_chain(
-    occupied_bases: Dict[int, PlayerInGame],
+    occupied_bases: dict[int, PlayerInGame],
     start_base: int,
-    rbi_batter: Optional[PlayerInGame] = None,
-) -> List[ForcedAdvance]:
+    rbi_batter: PlayerInGame | None = None,
+) -> list[ForcedAdvance]:
     """
     Compute forced runner movement as a pure function.
 
@@ -46,7 +45,7 @@ def force_advance_chain(
         ]
     """
 
-    advances: List[ForcedAdvance] = []
+    advances: list[ForcedAdvance] = []
 
     # Walk forward to find contiguous occupied chain
     base = start_base

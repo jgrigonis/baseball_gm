@@ -3,7 +3,6 @@
 import argparse
 import json
 from pathlib import Path
-from typing import List, Dict
 from dataclasses import dataclass
 
 from src.team.team_evaluator import TeamEvaluator
@@ -20,7 +19,7 @@ class TeamEvaluation:
     filename: str
     city: str
     mascot: str
-    ratings: Dict[str, int]
+    ratings: dict[str, int]
 
     @property
     def display_name(self) -> str:
@@ -32,13 +31,13 @@ class TeamEvaluation:
 def load_manifest(manifest_path: Path) -> dict:
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest file not found: {manifest_path}")
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         return json.load(f)
 
 
 def evaluate_from_manifest(
     manifest_path: Path, base_dir: Path | None = None
-) -> tuple[List[TeamEvaluation], str | None]:
+) -> tuple[list[TeamEvaluation], str | None]:
     """
     Evaluate all teams listed in a manifest file.
 
@@ -87,7 +86,7 @@ def evaluate_from_manifest(
     return evaluations, year_str
 
 
-def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
+def evaluate_directory(directory: Path) -> list[TeamEvaluation]:
     """Evaluate all CSV files in a directory."""
     tf = TeamFactory()
     evaluations = []
@@ -113,7 +112,7 @@ def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
     return evaluations
 
 
-def calculate_averages(evaluations: List[TeamEvaluation]) -> Dict[str, float]:
+def calculate_averages(evaluations: list[TeamEvaluation]) -> dict[str, float]:
     """Calculate average ratings across all teams."""
     if not evaluations:
         return {}
@@ -136,7 +135,7 @@ def calculate_averages(evaluations: List[TeamEvaluation]) -> Dict[str, float]:
 
 
 def print_rankings(
-    evaluations: List[TeamEvaluation], metric: str, title: str, top_n: int = 10
+    evaluations: list[TeamEvaluation], metric: str, title: str, top_n: int = 10
 ):
     """Print top N teams for a given metric."""
     sorted_teams = sorted(evaluations, key=lambda x: x.ratings[metric], reverse=True)
@@ -149,7 +148,7 @@ def print_rankings(
         print(f"{i:2d}. {team_eval.display_name:30s} {team_eval.ratings[metric]:3d}")
 
 
-def print_summary(evaluations: List[TeamEvaluation]):
+def print_summary(evaluations: list[TeamEvaluation]):
     """Print overall summary with averages."""
     averages = calculate_averages(evaluations)
 
@@ -165,7 +164,7 @@ def print_summary(evaluations: List[TeamEvaluation]):
 
 
 def print_full_report(
-    evaluations: List[TeamEvaluation], top_n: int = 10, year: str | None = None
+    evaluations: list[TeamEvaluation], top_n: int = 10, year: str | None = None
 ):
     """Print comprehensive rankings report."""
     heading = f"{year} TEAM EVALUATION REPORT" if year else "TEAM EVALUATION REPORT"
@@ -194,7 +193,7 @@ def print_full_report(
     print("\n")
 
 
-def export_to_csv(evaluations: List[TeamEvaluation], output_path: Path):
+def export_to_csv(evaluations: list[TeamEvaluation], output_path: Path):
     """Export all evaluations to CSV for analysis."""
     import csv
 

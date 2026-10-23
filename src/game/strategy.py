@@ -1,7 +1,6 @@
 # src/game/strategy.py
 from datetime import date
 import random
-from typing import List
 
 from src.db.repositories.pitcher_state import PitcherState, availability_weight
 from src.game.bases import Bases, FIRST, SECOND, THIRD
@@ -570,7 +569,7 @@ class GameStrategy:
         return rng.random() < prob
 
     @staticmethod
-    def get_double_steal_candidates(game) -> List[int] | None:
+    def get_double_steal_candidates(game) -> list[int] | None:
         """
         Get bases for potential double steal.
 
@@ -681,7 +680,7 @@ class GameStrategy:
         inning: Inning,
         score_diff: int,  # positive = pitching team is winning
         rng: random.Random | None = None,
-    ) -> "PlayerInGame | None":
+    ) -> PlayerInGame | None:
         """
         Return the closer to bring in if this is a save situation, else None.
 

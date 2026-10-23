@@ -12,7 +12,7 @@ from src.util.locations import TEAM_FILES_DIR
 def load_manifest(path: str) -> dict:
     """Open and load the manifest file."""
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             return json.load(f)
     except FileNotFoundError as e:
         print(e)

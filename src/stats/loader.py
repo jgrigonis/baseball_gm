@@ -1,5 +1,4 @@
 # src/stats/loader.py
-from typing import List
 
 from src.db.connection import get_connection
 from src.db.repositories.player_games import PlayerGameRepository
@@ -16,7 +15,7 @@ class StatsLoader:
         self.player_repo = PlayerRepository(self.conn)
         self.player_game_repo = PlayerGameRepository(self.conn)
 
-    def load_all_players_with_stats(self) -> List[PlayerInGame]:
+    def load_all_players_with_stats(self) -> list[PlayerInGame]:
         """
         Load all players and aggregate their stats across all games.
         Returns PlayerInGame objects with populated game_stats.
@@ -53,7 +52,7 @@ class StatsLoader:
 
         return players_with_stats
 
-    def load_season_players_with_stats(self, season_id: str) -> List[PlayerInGame]:
+    def load_season_players_with_stats(self, season_id: str) -> list[PlayerInGame]:
         """
         Load all players and their stats for a specific season.
         Returns PlayerInGame objects with season stats.
@@ -93,7 +92,7 @@ class StatsLoader:
 
     def load_team_players_with_stats(
         self, team_id: str, season_id: str = None
-    ) -> List[PlayerInGame]:
+    ) -> list[PlayerInGame]:
         """
         Load all players from a specific team with their stats.
 

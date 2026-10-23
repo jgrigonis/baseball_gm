@@ -1,5 +1,4 @@
 # src/game/resolvers/pick_off.py
-from typing import List
 
 from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
@@ -25,7 +24,7 @@ from src.game.probabilities import (
 from src.player.player_in_game import PlayerInGame
 
 
-def resolve_pickoff(resolver, intent: PickOffIntent, game) -> List[GameEvent]:
+def resolve_pickoff(resolver, intent: PickOffIntent, game) -> list[GameEvent]:
     """
     Resolve a pickoff attempt.
 

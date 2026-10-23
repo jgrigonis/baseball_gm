@@ -94,7 +94,7 @@ class PlayerRepository:
             skills: PlayerSkills object with updated ratings
         """
         skill_dict = skills.to_db_dict()
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.UTC).isoformat()
 
         self.conn.execute(
             """
@@ -151,7 +151,7 @@ class PlayerRepository:
             player_id: Player ID
             season_id: Season ID to associate with this snapshot
         """
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.UTC).isoformat()
 
         self.conn.execute(
             """
@@ -477,7 +477,7 @@ class PlayerRepository:
 
     def _get_timestamp(self) -> str:
         """Helper: Get current UTC timestamp in ISO format."""
-        return datetime.datetime.now(datetime.timezone.utc).isoformat()
+        return datetime.datetime.now(datetime.UTC).isoformat()
 
     def get_player_ids_from_team_players(self, team_id: str) -> set[str]:
         player_ids = self.conn.execute(

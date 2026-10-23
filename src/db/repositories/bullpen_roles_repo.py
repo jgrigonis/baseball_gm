@@ -14,7 +14,6 @@ Enforces:
 """
 
 from datetime import date
-from typing import Optional
 
 from src.player.player_constants import VALID_ROLES
 
@@ -48,7 +47,7 @@ class BullpenRepository:
         team_id: str,
         season_id: str,
         assignments: list[dict],
-        effective_date: Optional[str] = None,
+        effective_date: str | None = None,
     ) -> None:
         """
         Bulk-assign bullpen roles for a team, replacing all current active roles.
@@ -156,7 +155,7 @@ class BullpenRepository:
         ).fetchall()
         return {r["player_id"]: r["role"] for r in rows}
 
-    def get_closer(self, team_id: str, season_id: str) -> Optional[dict]:
+    def get_closer(self, team_id: str, season_id: str) -> dict | None:
         """
         Return the active Closer for a team in a given season, or None if unassigned.
 
@@ -186,7 +185,7 @@ class BullpenRepository:
         player_id: str,
         season_id: str,
         new_role: str,
-        effective_date: Optional[str] = None,
+        effective_date: str | None = None,
     ) -> None:
         """
         Change a pitcher's active bullpen role.
@@ -243,7 +242,7 @@ class BullpenRepository:
         team_id: str,
         player_id: str,
         season_id: str,
-        end_date: Optional[str] = None,
+        end_date: str | None = None,
     ) -> None:
         """
         Remove a pitcher from the bullpen by closing their active role.

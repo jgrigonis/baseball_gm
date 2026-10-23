@@ -2,8 +2,8 @@
 """The TeamInGame class."""
 
 __author__ = "josh"
-from enum import Enum
-from typing import Callable
+from enum import StrEnum
+from collections.abc import Callable
 
 from src.player.player_formatters import PlayerTableFormatter
 from src.player.player_in_game import PlayerInGame
@@ -18,7 +18,7 @@ OptimizeFn = Callable[
 ]
 
 
-class Position(str, Enum):
+class Position(StrEnum):
     PITCHER = "p"
     CATCHER = "c"
     FIRST_BASE = "1b"
@@ -152,7 +152,7 @@ class TeamInGame:
         lineup_slots: list[LineupSlot] = []
         used_ids: set[str] = set()
 
-        def best_for_position(pos: str) -> "PlayerInGame | None":
+        def best_for_position(pos: str) -> PlayerInGame | None:
             """Pick the highest-rated available player for a given position."""
             candidates = [p for p in available_by_id.values() if p.id not in used_ids]
             if not candidates:

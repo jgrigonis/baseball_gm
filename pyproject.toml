@@ -44,8 +44,8 @@ markers = [
 ]
 
 [tool.ruff.lint]
-# Pyflakes checks (F) plus syntax errors (E9).
-select = ["F", "E9"]
+# Pyflakes checks (F), syntax errors (E9), and pyupgrade (UP).
+select = ["F", "E9", "UP"]
 
 [tool.setuptools.packages.find]
 where = ["."]

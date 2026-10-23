@@ -21,7 +21,6 @@ RunnerAdvancedEvent reason meanings:
 
 from dataclasses import dataclass
 import logging
-from typing import Optional
 
 from src.game.event import GameEvent
 from src.game.events.scoring import RunScoredEvent
@@ -33,7 +32,7 @@ class ReachedBaseEvent(GameEvent):
     runner: PlayerInGame
     base: int
     reason: str  # "single", "double", "walk", "hit_by_pitch", "fielders_choice", "error", etc.
-    responsible_pitcher: Optional[PlayerInGame]
+    responsible_pitcher: PlayerInGame | None
 
     def apply(self, game):
         self.runner.responsible_pitcher = self.responsible_pitcher
@@ -59,9 +58,9 @@ class RunnerAdvancedEvent(GameEvent):
 
     runner: PlayerInGame
     pitcher: PlayerInGame
-    from_base: Optional[int]
+    from_base: int | None
     to_base: int
-    reason: Optional[str] = None
+    reason: str | None = None
     rbi_batter: PlayerInGame | None = None
 
     def apply(self, game) -> list[GameEvent]:
@@ -102,8 +101,8 @@ class RunnerRemovedEvent(GameEvent):
     """
 
     runner: PlayerInGame
-    from_base: Optional[int]
-    reason: Optional[str] = None
+    from_base: int | None
+    reason: str | None = None
 
     def apply(self, game):
         game.bases.remove(

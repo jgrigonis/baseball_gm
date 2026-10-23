@@ -54,7 +54,7 @@ class GameRepository:
         self, game_id: str, result: GameResult, winner_id: str
     ) -> None:
         """Save game result to database."""
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.UTC).isoformat()
 
         self.conn.execute(
             """
@@ -156,7 +156,7 @@ class GameRepository:
 
     def clear_result(self, game_id: str):
         """Clear game result (for replaying)."""
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.UTC).isoformat()
 
         self.conn.execute(
             """

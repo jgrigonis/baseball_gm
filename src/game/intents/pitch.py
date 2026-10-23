@@ -1,7 +1,6 @@
 # src/game/intents/pitch.py
 
 from dataclasses import dataclass
-from typing import Optional
 
 from src.game.intent import GameIntent
 from src.player.player_in_game import PlayerInGame
@@ -12,22 +11,22 @@ class PrePitchSituation:
     """Tactical decisions made before pitch delivery"""
 
     # Offense
-    steal_attempt: Optional[int] = None
-    double_steal_attempt: Optional[list[int]] = None
+    steal_attempt: int | None = None
+    double_steal_attempt: list[int] | None = None
     bunt_attempt: bool = False
     hit_and_run: bool = False
 
     # Defense
     pitch_out: bool = False
     intentional_walk: bool = False
-    pickoff_attempt: Optional[int] = None  # Which base?
+    pickoff_attempt: int | None = None  # Which base?
 
 
 @dataclass(frozen=True)
 class PitchIntent(GameIntent):
     pitcher: PlayerInGame
     batter: PlayerInGame
-    pre_pitch_situation: Optional[PrePitchSituation] = None
+    pre_pitch_situation: PrePitchSituation | None = None
     # Optional advisory info (AI / UI)
     # pitch_type: Optional[str] = None
     # target: Optional[str] = None

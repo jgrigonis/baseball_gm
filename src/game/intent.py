@@ -4,7 +4,6 @@ from __future__ import annotations
 import uuid
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 # kw_only solves non-default argument follows default argument error
@@ -20,4 +19,4 @@ class GameIntent(ABC):
     """
 
     intent_id: uuid.UUID = field(default_factory=uuid.uuid4)
-    issued_by: Optional[str] = None
+    issued_by: str | None = None

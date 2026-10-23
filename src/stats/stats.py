@@ -3,7 +3,7 @@ from .pitching_stats import PitchingStats
 from .fielding_stats import FieldingStats
 
 
-class Stats(object):
+class Stats:
     """Root statistics object"""
 
     def __init__(self):
@@ -29,7 +29,7 @@ class GameStats(Stats):
     pass
 
 
-class SeasonStats(object):
+class SeasonStats:
     """The season statistics object."""
 
     def __init__(self, stats, games_played):
@@ -47,7 +47,7 @@ class SeasonStats(object):
         self.games_played += 1
 
 
-class CareerStats(object):
+class CareerStats:
     """
     The career statistics object.
 

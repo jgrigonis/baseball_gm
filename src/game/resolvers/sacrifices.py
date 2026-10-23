@@ -1,5 +1,4 @@
 # src/game/resolvers/sacrifices.py
-from typing import List
 
 from src.game.bases import FIRST, SECOND, THIRD, HOME
 from src.game.event import GameEvent
@@ -14,7 +13,7 @@ from src.game.resolvers.base_running import advance_all_runners
 from src.game.resolvers.fielder_selector import FielderSelector
 
 
-def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
+def resolve_sac_bunt(resolver, intent, game) -> list[GameEvent]:
     """
     A sac bunt must be a bunt. There can't be 2 outs.
 
@@ -51,7 +50,7 @@ def resolve_sac_bunt(resolver, intent, game) -> List[GameEvent]:
     return events
 
 
-def resolve_sac_fly(resolver, intent, game) -> List[GameEvent]:
+def resolve_sac_fly(resolver, intent, game) -> list[GameEvent]:
     """
     A sac fly must result in a score. There can't be 2 outs.
 

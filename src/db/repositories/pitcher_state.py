@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, date
-from typing import Iterable, Optional
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 
 from src.util.clamp import clamp
@@ -66,7 +66,7 @@ def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
     return max(0.0, min(1.0, energy))
 
 
-def availability_weight(state: "PitcherState", game_date: date) -> float:
+def availability_weight(state: PitcherState, game_date: date) -> float:
     if state is None or state.last_game_date is None:
         return 1.0
     days_rest = (game_date - state.last_game_date).days
@@ -96,13 +96,13 @@ class PitcherState:
     player_id: str
     current_energy: float
     max_energy: float
-    last_game_date: Optional[date] = None
-    last_pitch_count: Optional[int] = None
+    last_game_date: date | None = None
+    last_pitch_count: int | None = None
     consecutive_days: int = 0
 
 
 def recover_pitcher_state(
-    state: Optional[PitcherState],
+    state: PitcherState | None,
     player_id: str,
     game_date: date,
     recovery_skill: int = 50,
@@ -170,7 +170,7 @@ class PitcherStateRepository:
     # Read
     # ------------------------------------------------------------------
 
-    def get(self, player_id: str) -> Optional[PitcherState]:
+    def get(self, player_id: str) -> PitcherState | None:
         cursor = self.conn.cursor()
         cursor.execute(
             """
