@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_001_injury_return_date.py
+# src/db/migration_files/migration_002_injury_return_date.py
 """
 Injuries are now tracked in calendar days instead of games.
 
@@ -7,7 +7,10 @@ and backfills it for existing injuries by treating the remaining games as
 remaining days, counted from the day after the league's last completed game.
 """
 
-VERSION = 1
+# Version 1 was used by an earlier, since-deleted migration
+# (migration_001_add_pitching_stats), so existing databases already have it
+# recorded. Never reuse a version number.
+VERSION = 2
 
 
 def upgrade(conn):
