@@ -12,7 +12,7 @@ that belongs in integration tests. Its transaction wrapper is tested here
 by patching out the game itself.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -139,6 +139,39 @@ class TestPickStarterHealthyScheduled:
         pid, advance = _pick_starter(rot, pit, TEAM_ID, SEASON_ID, GAME_DATE)
         assert pid == "p2"
         assert advance is True
+
+
+class TestPickStarterPreloadedStates:
+    def test_uses_preloaded_states_without_querying(self):
+        rotation = [_rotation_row("sp1", 1), _rotation_row("sp2", 2)]
+        rot = _make_rot_repo("sp1", rotation)
+        pit = _make_pitcher_repo({})
+        # sp1 pitched yesterday and is tired; sp2 has no stored state (fresh).
+        states = {
+            "sp1": PitcherState("sp1", 0.1, 1.0, GAME_DATE - timedelta(days=1), 100),
+            "sp2": None,
+        }
+        pid, advance = _pick_starter(
+            rot, pit, TEAM_ID, SEASON_ID, GAME_DATE, pitcher_states=states
+        )
+        assert pid == "sp2"
+        assert advance is True
+        pit.get_with_recovery.assert_not_called()
+
+    def test_falls_back_to_repo_for_pitchers_not_preloaded(self):
+        rotation = [_rotation_row("sp1", 1), _rotation_row("sp2", 2)]
+        rot = _make_rot_repo("sp1", rotation)
+        pit = _make_pitcher_repo({"sp1": 0.2})
+        pid, _ = _pick_starter(
+            rot,
+            pit,
+            TEAM_ID,
+            SEASON_ID,
+            GAME_DATE,
+            pitcher_states={"sp2": None},
+        )
+        assert pid == "sp2"
+        pit.get_with_recovery.assert_called_once()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

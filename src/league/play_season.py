@@ -16,7 +16,12 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
-from src.db.repositories.pitcher_state import PitcherStateRepository, MIN_ENERGY_STARTER
+from src.db.repositories.pitcher_state import (
+    MIN_ENERGY_STARTER,
+    PitcherState,
+    PitcherStateRepository,
+    recover_pitcher_state,
+)
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -88,15 +93,33 @@ def save_player_stats(conn, game_id, home_team, away_team):
                 )
 
 
-def load_energy(conn, game_repo, game_id, home_team, away_team, league_id: str):
-    pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
+def load_energy(
+    conn,
+    game_repo,
+    game_id,
+    home_team,
+    away_team,
+    league_id: str,
+    pitcher_states: dict[str, PitcherState] | None = None,
+):
+    """
+    Set each pitcher's starting energy for the game and return the game date.
+
+    ``pitcher_states`` are the stored (pre-recovery) states keyed by player
+    id; they are loaded here in one query when not passed in.
+    """
+    players = home_team.players + away_team.players
+    if pitcher_states is None:
+        pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
+        pitcher_states = pitcher_repo.get_many(p.id for p in players)
     game_record = game_repo.get(game_id)
     game_date = datetime.fromisoformat(game_record["game_date"]).date()
-    for player in home_team.players + away_team.players:
-        state = pitcher_repo.get_with_recovery(
-            player_id=player.id,
-            game_date=game_date,
-            recovery_skill=player.skills["recovery"],
+    for player in players:
+        state = recover_pitcher_state(
+            pitcher_states.get(player.id),
+            player.id,
+            game_date,
+            player.skills["recovery"],
         )
         if player.pitcher_fatigue:
             player.pitcher_fatigue.set_energy(state.current_energy, state.max_energy)
@@ -105,23 +128,28 @@ def load_energy(conn, game_repo, game_id, home_team, away_team, league_id: str):
 
 def save_energy(conn, game_date, home_team, away_team, league_id: str):
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
+    appearances = []
     for player in home_team.players + away_team.players:
         if player.game_stats.pitching.pitch_count > 0:
             player.pitcher_fatigue.degrade_cap(player.game_stats.pitching.pitch_count)
-            pitcher_repo.update_after_game(
-                player_id=player.id,
-                final_energy=player.pitcher_fatigue.energy,
-                max_energy=player.pitcher_fatigue.max_energy,
-                pitch_count=player.game_stats.pitching.pitch_count,
-                game_date=game_date,
+            appearances.append(
+                (
+                    player.id,
+                    player.pitcher_fatigue.energy,
+                    player.pitcher_fatigue.max_energy,
+                    player.game_stats.pitching.pitch_count,
+                )
             )
+    pitcher_repo.update_many_after_game(appearances, game_date)
 
 
 def save_position_energy(conn, player_energy_states, league_id):
     repo = PlayerEnergyRepository(conn, league_id)
-    for state in player_energy_states.values():
-        if state.season_games_played > 0 or state.last_game_date is not None:
-            repo.save_player_energy(state)
+    repo.save_many(
+        state
+        for state in player_energy_states.values()
+        if state.season_games_played > 0 or state.last_game_date is not None
+    )
 
 
 def _load_eligible_ids(conn, team_id: str, blitz: bool) -> list[str]:
@@ -150,9 +178,15 @@ def _pick_starter(
     injured_ids: set | None = None,
     team_players: list | None = None,
     eligible_ids: set | None = None,
+    pitcher_states: dict[str, PitcherState | None] | None = None,
 ) -> tuple[str | None, bool]:
     """
     Returns (starter_id, should_advance_pointer).
+
+    ``pitcher_states`` holds stored (pre-recovery) states already loaded for
+    this game, keyed by player id, so energy checks don't query the database
+    one pitcher at a time. Pitchers not in it are looked up through
+    ``pitcher_repo``.
 
     Normal start (rotation pitcher healthy + rested):
         (pitcher_id, True)  — advance pointer after game
@@ -169,6 +203,15 @@ def _pick_starter(
 
     def _eligible(pid: str) -> bool:
         return eligible_ids is None or pid in eligible_ids
+
+    def _energy(pid: str, recovery_skill: int) -> float:
+        if pitcher_states is not None and pid in pitcher_states:
+            state = recover_pitcher_state(
+                pitcher_states[pid], pid, game_date, recovery_skill
+            )
+        else:
+            state = pitcher_repo.get_with_recovery(pid, game_date, recovery_skill)
+        return state.current_energy
 
     scheduled = rotations_repo.get_scheduled_starter(team_id, season_id, series_id)
     if not scheduled:
@@ -196,10 +239,7 @@ def _pick_starter(
             ready = [
                 p
                 for p in bullpen
-                if pitcher_repo.get_with_recovery(
-                    p.id, game_date, p.skills.get("recovery", 50)
-                ).current_energy
-                >= MIN_ENERGY_STARTER
+                if _energy(p.id, p.skills.get("recovery", 50)) >= MIN_ENERGY_STARTER
                 and getattr(p, "bullpen_role", None) != "Closer"
             ]
             pool = (
@@ -224,11 +264,7 @@ def _pick_starter(
             return None, False
         best_r = max(
             healthy_rotation,
-            key=lambda r: (
-                pitcher_repo.get_with_recovery(
-                    r["player_id"], game_date, 50
-                ).current_energy
-            ),
+            key=lambda r: _energy(r["player_id"], 50),
         )
         return best_r["player_id"], True
 
@@ -248,12 +284,7 @@ def _pick_starter(
         candidate = rotation_sorted[idx]
         if candidate["player_id"] in injured_ids:
             continue
-        state = pitcher_repo.get_with_recovery(
-            player_id=candidate["player_id"],
-            game_date=game_date,
-            recovery_skill=50,
-        )
-        if state.current_energy >= MIN_ENERGY_STARTER:
+        if _energy(candidate["player_id"], 50) >= MIN_ENERGY_STARTER:
             return candidate["player_id"], True
 
     # All healthy rotation pitchers tired — most rested healthy one
@@ -262,9 +293,7 @@ def _pick_starter(
         return None, False
     best = max(
         healthy,
-        key=lambda r: (
-            pitcher_repo.get_with_recovery(r["player_id"], game_date, 50).current_energy
-        ),
+        key=lambda r: _energy(r["player_id"], 50),
     )
     return best["player_id"], True
 
@@ -327,8 +356,20 @@ def _play_game(
     home_team = TeamInGame(home_record)
     away_team = TeamInGame(away_record)
 
+    # Stored pitcher states for everyone in the game, loaded once and shared
+    # by the energy setup, starter selection and the game itself.
+    all_player_ids = [p.id for p in home_team.players + away_team.players]
+    pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
+    stored_pitcher_states = pitcher_repo.get_many(all_player_ids)
+
     game_date = load_energy(
-        conn, game_repo, game_info["game_id"], home_team, away_team, league_id=league_id
+        conn,
+        game_repo,
+        game_info["game_id"],
+        home_team,
+        away_team,
+        league_id=league_id,
+        pitcher_states=stored_pitcher_states,
     )
 
     # Pitching rotations
@@ -354,11 +395,10 @@ def _play_game(
 
     # Injuries are tracked in days: a player is out until their return date,
     # whether or not their team plays in the meantime.
-    all_player_ids = [p.id for p in home_team.players + away_team.players]
     injury_repo = InjuryRepository(conn, league_id=league_id)
     injured_ids = injury_repo.get_injured_ids(all_player_ids, as_of=game_date)
 
-    pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
+    pitcher_states = {pid: stored_pitcher_states.get(pid) for pid in all_player_ids}
     series_id = game_info.get("series_id") or ""
     home_starter_id, home_advance = _pick_starter(
         rotations_repo,
@@ -370,6 +410,7 @@ def _play_game(
         injured_ids=injured_ids,
         team_players=list(home_team.players),
         eligible_ids=home_eligible,
+        pitcher_states=pitcher_states,
     )
     away_starter_id, away_advance = _pick_starter(
         rotations_repo,
@@ -381,6 +422,7 @@ def _play_game(
         injured_ids=injured_ids,
         team_players=list(away_team.players),
         eligible_ids=away_eligible,
+        pitcher_states=pitcher_states,
     )
 
     # Fallback: if no rotation set, pick the best healthy pitcher by fatigue-adjusted stamina
@@ -426,16 +468,14 @@ def _play_game(
         log_to_file=bool(args.logs),
     )
 
-    _ps_repo = PitcherStateRepository(conn, league_id)
-    pitcher_states = {pid: _ps_repo.get(pid) for pid in all_player_ids}
-
     energy_repo = PlayerEnergyRepository(conn, league_id)
-    player_energy_states = {
-        p.id: energy_repo.get_with_recovery(
-            p.id, game_date, durability=p.skills.get("durability", 50)
-        )
-        for p in home_team.position_players + away_team.position_players
-    }
+    player_energy_states = energy_repo.get_many_with_recovery(
+        {
+            p.id: p.skills.get("durability", 50)
+            for p in home_team.position_players + away_team.position_players
+        },
+        game_date,
+    )
     for player in home_team.position_players + away_team.position_players:
         state = player_energy_states.get(player.id)
         if state and player.player_energy:
