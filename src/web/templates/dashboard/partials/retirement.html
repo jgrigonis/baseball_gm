@@ -6,7 +6,7 @@
   <div style="display:flex;align-items:center;gap:16px;">
     <h1 class="page-title">Retirements</h1>
     <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
-      {{ retired_players | length }} player{{ 's' if retired_players | length != 1 else '' }} retired this offseason
+      {{ retired_players | length }} player{{ 's' if retired_players | length != 1 else '' }} retired this offseason · career regular-season stats
     </span>
     <div style="margin-left:auto;">
       <a href="/leagues/{{ league_id }}/draft"
@@ -34,6 +34,7 @@
         <th style="text-align:center;padding:6px 8px;">Age</th>
         <th style="text-align:center;padding:6px 8px;">Pos</th>
         <th style="text-align:left;padding:6px 10px;">Team</th>
+        <th style="text-align:center;padding:6px 8px;">Seasons</th>
         <th style="text-align:center;padding:6px 8px;">G</th>
         {% for col in ['AVG','OBP','HR','RBI','SB'] %}
         <th class="ret-bat-col" style="text-align:center;padding:6px 8px;">{{ col }}</th>
@@ -69,6 +70,8 @@
         <td style="padding:8px 10px;color:{% if p.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
           {{ p.team_name }}
         </td>
+
+        <td style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.seasons_played or 0 }}</td>
 
         {# Games — show whichever is larger for two-way players #}
         <td style="text-align:center;padding:8px;">
