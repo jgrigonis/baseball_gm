@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
+import logging
 import random
-import traceback
 
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -25,6 +25,8 @@ from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
 from src.league.playoffs.setup_playoffs import setup_playoff_bracket
 from src.league.offseason.build_season_stats import build_season
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -80,8 +82,7 @@ def sim_next_day(league_id: str, conn) -> dict:
                     conn.rollback()
                 except Exception:
                     pass
-                print(f"Playoff setup failed: {e}")
-                print(traceback.format_exc())
+                log.exception("Playoff setup failed for league %s", league_id)
                 # Stay in the current state so the next sim retries the setup,
                 # rather than entering the playoffs with no bracket.
                 return {
@@ -185,11 +186,9 @@ def sim_next_day(league_id: str, conn) -> dict:
                 {
                     "game_id": game_dict["game_id"],
                     "error": str(e),
-                    "traceback": traceback.format_exc(),
                 }
             )
-            print(f"Game {game_dict['game_id']} failed: {e}")
-            print(traceback.format_exc())
+            log.exception("Game %s failed", game_dict["game_id"])
 
     # Rollup game stats into player_season_stats after each day
     if results:
@@ -200,7 +199,7 @@ def sim_next_day(league_id: str, conn) -> dict:
                 conn.rollback()
             except Exception:
                 pass
-            print(f"build_season non-fatal error (will retry next day): {_bs_err}")
+            log.warning("build_season failed, will retry next day: %s", _bs_err)
 
     # Diff injuries to find new injuries and returns for GM's team
     injured_after = inj_repo.get_active_for_team(gm_team_id)

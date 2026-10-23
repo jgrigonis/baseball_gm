@@ -129,7 +129,7 @@ function beginOffseason() {
           window.location.href = '/leagues/' + LEAGUE_ID + '/retirement';
         };
       } else {
-        status.textContent = '✗ Error: ' + d.error;
+        status.textContent = '✗ Error: ' + (d.detail || 'Something went wrong.');
         btn.disabled = false;
         btn.textContent = 'Try Again';
       }
