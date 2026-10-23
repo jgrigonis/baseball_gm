@@ -1,4 +1,6 @@
 # tests/league/test_schedule.py
+import logging
+
 import pytest
 from datetime import date, timedelta
 from collections import Counter
@@ -286,7 +288,7 @@ class TestSaveScheduleToDB:
     #     captured = capsys.readouterr()
     #     assert "Saved 0 games" in captured.out
 
-    def test_save_single_game(self, db_conn, factory, capsys):
+    def test_save_single_game(self, db_conn, factory, caplog):
         """Test saving a single game."""
         season = factory.season()
         team_a = factory.team()
@@ -306,7 +308,8 @@ class TestSaveScheduleToDB:
             )
         ]
 
-        save_schedule_to_db(db_conn, schedule)
+        with caplog.at_level(logging.INFO):
+            save_schedule_to_db(db_conn, schedule)
 
         row = db_conn.execute(
             "SELECT * FROM games WHERE id = %s", (game_id,)
@@ -319,8 +322,7 @@ class TestSaveScheduleToDB:
         assert row["away_team_id"] == team_b.id
         assert row["game_date"] == "2025-04-01"
 
-        captured = capsys.readouterr()
-        assert "Saved 1 games" in captured.out
+        assert "Saved 1 games" in caplog.text
 
     def test_save_multiple_games(self, db_conn, factory):
         """Test saving multiple games."""

@@ -38,7 +38,7 @@ def strategy(
     def idx(lst, val, default=0):
         try:
             return lst.index(val)
-        except:
+        except ValueError:
             return default
 
     if profile_row:

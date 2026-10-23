@@ -33,8 +33,10 @@ from src.api.routers import (
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
+from src.util.logger import configure_app_logging
 from src.web.utils import templates
 
+configure_app_logging(fmt="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
 
 

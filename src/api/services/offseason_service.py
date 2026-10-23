@@ -20,6 +20,7 @@ Steps:
 
 from __future__ import annotations
 
+import logging
 import datetime
 import random
 
@@ -34,6 +35,8 @@ from src.league.rotation_seeder import seed_ai_rotations
 from src.league.offseason.snake_draft import write_draft_order
 from src.league.offseason.snake_draft import SnakeDraft
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
+
+log = logging.getLogger(__name__)
 
 
 def _create_next_season(
@@ -106,7 +109,7 @@ def run_offseason(league_id: str, conn) -> dict:
 
     # ── 1. Run offseason pipeline ─────────────────────────────────────────────
     # Stop after draft generation — trim/rotations run after the UI draft completes.
-    print(f"Running offseason pipeline for {league_id} (season {season_id})...")
+    log.info("Running offseason pipeline for %s (season %s)...", league_id, season_id)
     pipeline = OffseasonPipeline(conn, rng)
     pipeline.run(season_id, league_id=league_id, stop_after_draft_gen=True)
 
@@ -116,12 +119,14 @@ def run_offseason(league_id: str, conn) -> dict:
     if existing_next:
         new_season_id = existing_next["season_id"]
         team_ids = lr.get_league_teams(league_id, new_season_id)
-        print(f"  Season {next_year} already exists: {new_season_id}")
+        log.info("Season %s already exists: %s", next_year, new_season_id)
     else:
         new_season_id, team_ids = _create_next_season(
             conn, league_id, season_id, next_year
         )
-        print(f"  Created season {next_year}: {new_season_id} ({len(team_ids)} teams)")
+        log.info(
+            "Created season %s: %s (%s teams)", next_year, new_season_id, len(team_ids)
+        )
 
     # ── 3. Generate schedule ──────────────────────────────────────────────────
     gr = GameRepository(conn)
@@ -139,10 +144,10 @@ def run_offseason(league_id: str, conn) -> dict:
         )
         save_schedule_to_db(conn, schedule)
         game_count = len(schedule)
-        print(f"  Schedule generated: {game_count} games")
+        log.info("Schedule generated: %s games", game_count)
     else:
         game_count = existing_games
-        print(f"  Schedule already exists: {game_count} games")
+        log.info("Schedule already exists: %s games", game_count)
 
     # ── 4. Create draft record ────────────────────────────────────────────────
     dr = DraftRepository(conn)
@@ -160,7 +165,7 @@ def run_offseason(league_id: str, conn) -> dict:
         )  # season_id = completed season
         ordered_ids = [e["team_id"] for e in draft_order]
         write_draft_order(conn, draft_id, league_id, next_year, ordered_ids)
-        print(f"  Draft order stored: {len(ordered_ids)} teams")
+        log.info("Draft order stored: %s teams", len(ordered_ids))
     else:
         draft_id = existing_draft_id
 
@@ -168,7 +173,7 @@ def run_offseason(league_id: str, conn) -> dict:
     lr.set_state(league_id, "draft")
     conn.commit()
 
-    print(f"  Offseason complete → state=draft, season {new_season_id}")
+    log.info("Offseason complete → state=draft, season %s", new_season_id)
 
     return {
         "prev_season_id": season_id,

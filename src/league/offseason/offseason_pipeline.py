@@ -30,7 +30,9 @@ from src.league.offseason.build_season_stats import build_season
 from src.league.rotation_seeder import seed_ai_rotations
 from src.player.player_skills import PlayerSkills
 from src.util.locations import TEAM_FILES_DIR
-from src.util.logger import setup_logger
+from src.util.logger import configure_app_logging, setup_logger
+
+log = logging.getLogger(__name__)
 
 
 class OffseasonPipeline:
@@ -52,66 +54,66 @@ class OffseasonPipeline:
         skip_auto_draft: bool = False,
         stop_after_draft_gen: bool = False,
     ) -> None:
-        print(f"season id: {season_id}")
+        log.info("season id: %s", season_id)
         self.league_id = league_id
         self._current_season_id = season_id
         row = self.season_repo.get_year(season_id)
         if row:
             self.year = row["year"] + 1
         else:
-            print("No year found with season.")
+            log.warning("No year found with season.")
             self.year = 2025
 
         if not self.os_repo.is_done(season_id, "archive"):
             if not self._playoffs_complete(season_id):
-                print("❌ Playoffs are not complete — run play_playoffs.py first")
+                log.warning("Playoffs are not complete — run play_playoffs.py first")
                 return
             self._archive(season_id)
             self._mark_done(season_id, "archive")
         else:
-            print("  Skipping archive (already done)")
+            log.info("Skipping archive (already done)")
 
         if not self.os_repo.is_done(season_id, "age"):
             self._age(season_id, self.rng)
             self._mark_done(season_id, "age")
         else:
-            print("  Skipping age (already done)")
+            log.info("Skipping age (already done)")
 
         if not self.os_repo.is_done(season_id, "retire"):
             self._retire(self.rng)
             self._mark_done(season_id, "retire")
         else:
-            print("  Skipping retirement (already done)")
+            log.info("Skipping retirement (already done)")
 
         if not self.os_repo.is_done(season_id, "clear_stale_prospects"):
             self._clear_stale_prospects()
             self._mark_done(season_id, "clear_stale_prospects")
         else:
-            print("  Skipping stale prospect clear (already done)")
+            log.info("Skipping stale prospect clear (already done)")
 
         if not self.os_repo.is_done(season_id, "generate_draft"):
             self._generate_draft(season_id)
             self._mark_done(season_id, "generate_draft")
         else:
-            print("  Skipping draft generation (already done)")
+            log.info("Skipping draft generation (already done)")
 
         if stop_after_draft_gen:
-            print("  Stopping after draft generation (post-draft steps deferred)")
+            log.info("Stopping after draft generation (post-draft steps deferred)")
             return
 
         if skip_auto_draft:
-            print("  Skipping auto-draft (UI draft will run separately)")
+            log.info("Skipping auto-draft (UI draft will run separately)")
         elif not self.os_repo.is_done(season_id, "run_draft"):
             self._run_draft(season_id, league_id)
             self._mark_done(season_id, "run_draft")
         else:
-            print("  Skipping run draft (already done)")
+            log.info("Skipping run draft (already done)")
 
         if not self.os_repo.is_done(season_id, "trim_rosters"):
             self._trim_rosters(season_id)
             self._mark_done(season_id, "trim_rosters")
         else:
-            print("  Skipping roster trim (already done)")
+            log.info("Skipping roster trim (already done)")
 
         if not self.os_repo.is_done(season_id, "reset_pitcher_state"):
             self._reset_pitcher_state(season_id)
@@ -121,26 +123,26 @@ class OffseasonPipeline:
             self._rebuild_rotations(season_id)
             self._mark_done(season_id, "rebuild_rotations")
         else:
-            print("  Skipping pitcher state reset (already done)")
+            log.info("Skipping pitcher state reset (already done)")
 
         if not self.os_repo.is_done(season_id, "reset_player_energy"):
             self._reset_player_energy()
             self._mark_done(season_id, "reset_player_energy")
         else:
-            print("  Skipping player energy reset (already done)")
+            log.info("Skipping player energy reset (already done)")
 
         if not self.os_repo.is_done(season_id, "build_season_stats"):
             n = build_season(self.conn, season_id)
-            print(f"  Built season stats rollup: {n} rows")
+            log.info("Built season stats rollup: %s rows", n)
             self._mark_done(season_id, "build_season_stats")
         else:
-            print("  Skipping season stat rollup (already done)")
+            log.info("Skipping season stat rollup (already done)")
 
         if not self.os_repo.is_done(season_id, "write_csvs"):
             self._write_csvs(season_id)
             self._mark_done(season_id, "write_csvs")
         else:
-            print("  Skipping CSV export (already done)")
+            log.info("Skipping CSV export (already done)")
 
     def _archive(self, season_id: str) -> None:
         """Snapshot player skills at end of season, scoped to this league."""
@@ -201,7 +203,7 @@ class OffseasonPipeline:
             self.player_repo.update_skills(player.id, new_skills)
         self.conn.commit()
 
-        print(f"  Aged {len(players)} players")
+        log.info("Aged %s players", len(players))
 
     def _retire(self, rng: random.Random) -> None:
         """Evaluate all players for retirement.
@@ -285,9 +287,9 @@ class OffseasonPipeline:
                 writer = csv.DictWriter(f, fieldnames=rows[0].keys())
                 writer.writeheader()
                 writer.writerows(rows)
-            print(f"  Retired {len(retired)} players → {path}")
+            log.info("Retired %s players → %s", len(retired), path)
         else:
-            print("  Retired 0 players")
+            log.info("Retired 0 players")
 
     def _write_csvs(self, season_id: str) -> None:
         """Write post-aging CSVs for teams in this league only."""
@@ -313,7 +315,7 @@ class OffseasonPipeline:
             )
             path = out_dir / filename
             if path.exists():
-                print(f"  Skipping {path} (already exists)")
+                log.info("Skipping %s (already exists)", path)
                 continue
 
             rows = [p.to_csv_dict() for p in players]
@@ -322,7 +324,7 @@ class OffseasonPipeline:
                 writer.writeheader()
                 writer.writerows(rows)
 
-            print(f"  Wrote {path}")
+            log.info("Wrote %s", path)
 
     def _mark_done(self, season_id: str, step: str) -> None:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -340,7 +342,7 @@ class OffseasonPipeline:
     def _reset_player_energy(self) -> None:
         repo = PlayerEnergyRepository(self.conn, self.league_id)
         count = repo.clear_season()
-        print(f"  Cleared player energy for {count} players")
+        log.info("Cleared player energy for %s players", count)
 
     def _clear_stale_prospects(self) -> None:
         """
@@ -351,12 +353,12 @@ class OffseasonPipeline:
         cleared = self.player_repo.clear_stale_prospects(self.league_id)
         if cleared:
             self.conn.commit()
-        print(f"  Cleared {cleared} stale prospects (age >= 24)")
+        log.info("Cleared %s stale prospects (age >= 24)", cleared)
 
     def _reset_pitcher_state(self, season_id: str) -> None:
         repo = PitcherStateRepository(self.conn, self.league_id)
         count = repo.clear_all_pitcher_state()
-        print(f"  Cleared pitcher state for {count} pitchers")
+        log.info("Cleared pitcher state for %s pitchers", count)
         self._reset_rotation_pointers(season_id)
 
     def _rebuild_rotations(self, season_id: str) -> None:
@@ -374,18 +376,18 @@ class OffseasonPipeline:
             league_id=self.league_id,
         )
         self.conn.commit()
-        print(f"  Rebuilt rotations and bullpen roles for {seeded} AI teams")
+        log.info("Rebuilt rotations and bullpen roles for %s AI teams", seeded)
 
     def _reset_rotation_pointers(self, season_id: str) -> None:
         rot_repo = TeamRotationsRepository(self.conn, self.league_id)
         reset = rot_repo.reset_rotation_pointers(season_id)
         self.conn.commit()
-        print(f"  Reset rotation pointers to sp1 for {reset} teams")
+        log.info("Reset rotation pointers to sp1 for %s teams", reset)
 
     def _generate_draft(self, season_id: str) -> None:
         generator = DraftGenerator(self.conn, self.rng)
         total = generator.run(self.year, league_id=self.league_id)
-        print(f"  Draft pool ready: {total} draftable players")
+        log.info("Draft pool ready: %s draftable players", total)
 
     def _write_draft_order(self, league_id: str, draft_order: list[dict]) -> None:
         """Persist the draft order and pick rights for this draft."""
@@ -394,12 +396,12 @@ class OffseasonPipeline:
         # not the completed season. Find the newest pending draft.
         row = self.draft_repo.get_current_for_league(league_id)
         if not row:
-            print("  WARNING: no draft record found, skipping draft_order write")
+            log.warning("no draft record found, skipping draft_order write")
             return
 
         ordered_ids = [e["team_id"] for e in draft_order]
         write_draft_order(self.conn, row["id"], league_id, self.year, ordered_ids)
-        print(f"  Draft order stored: {len(draft_order)} teams")
+        log.info("Draft order stored: %s teams", len(draft_order))
 
     def _run_draft(self, season_id: str, league_id: str) -> None:
         snake = SnakeDraft(self.conn, league_id, self.rng)
@@ -407,7 +409,7 @@ class OffseasonPipeline:
         draft_order = snake._build_draft_order(season_id)
         self._write_draft_order(league_id, draft_order)
         picks = snake.run_snake_draft_with_order(draft_order, self.year, league_id)
-        print(f"  Draft complete: {len(picks)} total picks")
+        log.info("Draft complete: %s total picks", len(picks))
 
     def _trim_rosters(self, season_id: str) -> None:
         trimmer = RosterTrimmer(self.conn)
@@ -529,6 +531,7 @@ def main():
     args = get_args()
     conn = get_connection()
 
+    configure_app_logging()
     setup_logger(
         name="offseason",
         level=logging.INFO,

@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import logging
 
+import psycopg
+
 _log = logging.getLogger("game_event_logger")
 from src.db.repositories.game_event_repo import GameEventRepository
 
@@ -166,6 +168,7 @@ class GameEventLogger:
                     reason=reason,
                     detail=detail,
                 )
-        except Exception as e:
-            # Never let logging crash a game
-            _log.warning(f"Failed to log event {event_type}: {e}")
+        except psycopg.Error:
+            # Never let a failed event insert crash a game; the savepoint
+            # above has already undone it.
+            _log.warning("Failed to log event %s", event_type, exc_info=True)

@@ -92,14 +92,12 @@ def new_league(
         },
     )
     # 2. GM setup
-    # print(user["id"])
 
     gm_id = gm_repo.create_gm(
         league_id=league_id,
         user_id=user["id"],
         display_name=user["display_name"],
     )
-    # print(gm_id)
     # 3. Update the League (Now the GM exists, so the commish ID is valid)
     gm_repo.set_commissioner(gm_id=gm_id, league_id=league_id)
 

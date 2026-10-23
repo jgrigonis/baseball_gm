@@ -52,3 +52,19 @@ def setup_logger(
     logger.addHandler(ch)
 
     return logger
+
+
+def configure_app_logging(level=logging.INFO, fmt: str = "%(message)s") -> None:
+    """
+    Send log records from the ``src`` package to stderr.
+
+    Only the ``src`` logger is configured, not the root logger, so the
+    per-game loggers ("game", "game.details", ...) keep their own setup and
+    don't flood the console. Safe to call more than once.
+    """
+    app_logger = logging.getLogger("src")
+    app_logger.setLevel(level)
+    if not app_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(fmt))
+        app_logger.addHandler(handler)

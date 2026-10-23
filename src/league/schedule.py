@@ -1,4 +1,5 @@
 # src/league/schedule.py
+import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
 import itertools
@@ -6,6 +7,8 @@ import random
 import uuid
 
 from src.db.repositories.games_repo import GameRepository
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -383,4 +386,4 @@ def save_schedule_to_db(conn, schedule: list[ScheduledGame]) -> None:
     game_repo.insert_schedule(schedule)
 
     conn.commit()
-    print(f"Saved {len(schedule)} games to schedule")
+    log.info("Saved %s games to schedule", len(schedule))

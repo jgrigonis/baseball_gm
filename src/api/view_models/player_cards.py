@@ -27,7 +27,7 @@ def compute_ratings(skills: dict, throws: str) -> dict:
     try:
         ps = PlayerSkills(skills)
         ratings = PlayerEvaluator.rate_player(ps, throws or "R")
-    except Exception:
+    except ValueError:
         logger.exception(
             "Failed to evaluate player skills: skills=%s throws=%s", skills, throws
         )

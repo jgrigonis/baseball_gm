@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import logging
 import random
 from datetime import datetime, UTC
 
@@ -22,6 +23,8 @@ from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.team.roster_assigner import RosterAssigner
+
+log = logging.getLogger(__name__)
 
 
 class BlitzDraft(SnakeDraft):
@@ -64,7 +67,7 @@ class BlitzDraft(SnakeDraft):
 
             for team_entry in order:
                 if not available:
-                    print(f"  Draft pool exhausted at pick {overall_pick}")
+                    log.info("Draft pool exhausted at pick %s", overall_pick)
                     return picks
 
                 team_id = team_entry["team_id"]
@@ -134,7 +137,7 @@ class BlitzDraft(SnakeDraft):
             assignments = assigner.assign(players)
             self.status_repo.bulk_set(assignments)
 
-        print(f"  Reassigned rosters for {len(ai_teams)} AI teams")
+        log.info("Reassigned rosters for %s AI teams", len(ai_teams))
 
 
 def execute_blitz_draft(draft_id: str, conn) -> dict:
@@ -214,7 +217,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         effective_date=f"{year}-04-01",
         league_id=league_id,
     )
-    print(f"Seeded rotations for {seeded} AI teams post-draft.")
+    log.info("Seeded rotations for %s AI teams post-draft.", seeded)
 
     lr = LeagueRepository(conn)
     lr.set_state(league_id, "preseason")
@@ -224,7 +227,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     osr = OffseasonRepository(conn)
     prev_season_id = osr.find_season_with_offseason_steps(league_id, season_id)
     if prev_season_id:
-        print(f"Running post-draft pipeline steps for season {prev_season_id}...")
+        log.info("Running post-draft pipeline steps for season %s...", prev_season_id)
         pipeline = OffseasonPipeline(conn, random.Random())
         pipeline.run(prev_season_id, league_id=league_id, skip_auto_draft=True)
 

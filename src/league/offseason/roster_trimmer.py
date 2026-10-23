@@ -15,10 +15,13 @@ Roster limits:
     total:  160
 """
 
+import logging
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.player.player_evaluator import PlayerEvaluator
+
+log = logging.getLogger(__name__)
 
 MINORS_LIMIT = 120
 
@@ -48,7 +51,7 @@ class RosterTrimmer:
             total_cut += cut
 
         self.conn.commit()
-        print(f"  Trimmed {total_cut} players across {len(team_rows)} teams")
+        log.info("Trimmed %s players across %s teams", total_cut, len(team_rows))
         return total_cut
 
     def _trim_team(self, team_id: str) -> int:

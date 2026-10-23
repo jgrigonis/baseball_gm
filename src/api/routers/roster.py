@@ -92,8 +92,10 @@ def save_roster_put(
         loop = asyncio.new_event_loop()
         body = loop.run_until_complete(request.json())
         loop.close()
-    except Exception:
+    except ValueError:  # json.JSONDecodeError is a ValueError
         return JSONResponse({"detail": "Invalid JSON"}, status_code=422)
+    if not isinstance(body, dict):
+        return JSONResponse({"detail": "Expected a JSON object"}, status_code=422)
 
     forty_man_ids = body.get("forty_man", [])
 

@@ -1206,10 +1206,10 @@ class Game:
                 + player.game_stats.batting.catcher_interferences
                 != player.game_stats.batting.plate_appearances
             ):
-                print(PlayerTableFormatter.horizontal_stat_header())
-                print(PlayerTableFormatter.horizontal_stats(player))
                 raise GameStateError(
-                    f"Plate appearances don't add up for {player.name}"
+                    f"Plate appearances don't add up for {player.name}\n"
+                    f"{PlayerTableFormatter.horizontal_stat_header()}\n"
+                    f"{PlayerTableFormatter.horizontal_stats(player)}"
                 )
 
     def check_pitcher_fatigue(self) -> FatigueLevel:

@@ -1,10 +1,13 @@
 # src/league/rotation_seeder.py
+import logging
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.player.player_evaluator import PlayerEvaluator
+
+log = logging.getLogger(__name__)
 
 
 def seed_ai_rotations(
@@ -64,8 +67,8 @@ def seed_ai_rotations(
         )
         rotation = [p.id for p in pitchers[:5]]
         if not rotation:
-            print(
-                f"  Warning: No pitchers found for AI team {team.name}, skipping rotation."
+            log.warning(
+                "No pitchers found for AI team %s, skipping rotation.", team.name
             )
             continue
 
