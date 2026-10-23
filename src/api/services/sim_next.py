@@ -12,6 +12,9 @@ from datetime import date, timedelta
 import logging
 import random
 
+import psycopg
+
+from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -78,10 +81,7 @@ def sim_next_day(league_id: str, conn) -> dict:
                 )
                 setup_playoff_bracket(conn, season_id, league_id, playoff_start)
             except Exception as e:
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
+                rollback_quietly(conn)
                 log.exception("Playoff setup failed for league %s", league_id)
                 # Stay in the current state so the next sim retries the setup,
                 # rather than entering the playoffs with no bracket.
@@ -177,11 +177,10 @@ def sim_next_day(league_id: str, conn) -> dict:
                 }
             )
         except Exception as e:
-            # Rollback any dirty transaction so the next game starts clean
-            try:
-                conn.rollback()
-            except Exception:
-                pass
+            # Deliberately broad: one broken game must not stop the rest of the
+            # day. The game saves all-or-nothing, so rolling back discards only
+            # its partial writes. The traceback is logged below.
+            rollback_quietly(conn)
             errors.append(
                 {
                     "game_id": game_dict["game_id"],
@@ -194,12 +193,9 @@ def sim_next_day(league_id: str, conn) -> dict:
     if results:
         try:
             build_season(conn, season_id)
-        except Exception as _bs_err:
-            try:
-                conn.rollback()
-            except Exception:
-                pass
-            log.warning("build_season failed, will retry next day: %s", _bs_err)
+        except psycopg.Error:
+            rollback_quietly(conn)
+            log.warning("build_season failed, will retry next day", exc_info=True)
 
     # Diff injuries to find new injuries and returns for GM's team
     injured_after = inj_repo.get_active_for_team(gm_team_id)

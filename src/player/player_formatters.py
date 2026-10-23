@@ -71,7 +71,7 @@ class PlayerTableFormatter:
         output = f"{player.name:<30}"  # 30 is the longest name
         try:
             output += f"{player.record.age:>4}"
-        except:
+        except AttributeError:
             output += f"{player.age:>4}"
         try:
             output += f"{player.position:>3}"

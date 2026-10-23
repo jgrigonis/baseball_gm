@@ -112,3 +112,19 @@ class TestHttpExceptions:
 
         assert r.status_code in (302, 307)
         assert r.headers["location"] == "/"
+
+
+class TestRosterSaveBody:
+    def test_invalid_json_is_rejected(self, client):
+        r = client.put(
+            f"/leagues/{LEAGUE}/roster/save",
+            content=b"{not json",
+            headers={"Content-Type": "application/json"},
+        )
+        assert r.status_code == 422
+        assert r.json() == {"detail": "Invalid JSON"}
+
+    def test_non_object_json_is_rejected(self, client):
+        r = client.put(f"/leagues/{LEAGUE}/roster/save", json=["p1", "p2"])
+        assert r.status_code == 422
+        assert r.json() == {"detail": "Expected a JSON object"}

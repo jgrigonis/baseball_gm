@@ -5,12 +5,15 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from pydantic import BaseModel
 
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
+
+log = logging.getLogger(__name__)
 
 # ── Scouting grades ───────────────────────────────────────────────────────────
 # The sim engine stores skills as integers (roughly 0-100).
@@ -105,7 +108,8 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
     try:
         ps = PlayerSkills(skills)
         ratings = PlayerEvaluator.rate_player(ps, throws)
-    except Exception:
+    except ValueError:
+        log.warning("Could not rate player %s", player.get("id"), exc_info=True)
         ratings = {}
 
     if_rating = max(ratings.get("2b", 0), ratings.get("3b", 0), ratings.get("ss", 0))

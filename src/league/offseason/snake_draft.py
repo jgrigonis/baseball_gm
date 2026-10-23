@@ -19,6 +19,7 @@ Post-draft:
   - RosterAssigner re-run for each team against full roster
 """
 
+import logging
 import csv
 import random
 from dataclasses import dataclass
@@ -33,6 +34,8 @@ from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.team.roster_assigner import RosterAssigner
 from src.util.locations import TEAM_FILES_DIR
+
+log = logging.getLogger(__name__)
 
 ROUNDS = 20
 
@@ -93,14 +96,14 @@ class SnakeDraft:
             year:        Draft year (for output path)
             league_id:   League scoping
         """
-        print(f"  Draft order: {len(draft_order)} teams")
+        log.info("Draft order: %s teams", len(draft_order))
 
         # 1. Load draft pool
         pool = self._load_draft_pool()
-        print(f"  Draft pool: {len(pool)} players available")
+        log.info("Draft pool: %s players available", len(pool))
 
         if not pool:
-            print("  WARNING: Empty draft pool, skipping draft")
+            log.warning("Empty draft pool, skipping draft")
             return []
 
         # 2. Pre-compute prospect ratings
@@ -109,7 +112,7 @@ class SnakeDraft:
         # 3. Run snake — respects current_owner_id from draft_pick_rights if available
         picks = self._run_snake(draft_order, rated)
         self.conn.commit()
-        print(f"  Completed {len(picks)} picks across {ROUNDS} rounds")
+        log.info("Completed %s picks across %s rounds", len(picks), ROUNDS)
 
         # 4. Re-run RosterAssigner for each team
         self._reassign_rosters(draft_order)
@@ -154,7 +157,7 @@ class SnakeDraft:
                 teams_with_games.append(entry)
 
         if teams_with_games == []:
-            print(f"WARNING: There are no teams with games in season {season_id}")
+            log.warning("There are no teams with games in season %s", season_id)
 
         teams_with_games.sort(key=lambda t: t["win_pct"])
         return teams_with_games + teams_without_games
@@ -208,7 +211,7 @@ class SnakeDraft:
 
             for team_entry in order:
                 if not available:
-                    print(f"  Draft pool exhausted at pick {overall_pick}")
+                    log.info("Draft pool exhausted at pick %s", overall_pick)
                     return picks
 
                 player, rating = available.pop(0)
@@ -264,7 +267,7 @@ class SnakeDraft:
             assignments = assigner.assign(players)
             self.status_repo.bulk_set(assignments)
 
-        print(f"  Reassigned rosters for {len(draft_order)} teams")
+        log.info("Reassigned rosters for %s teams", len(draft_order))
 
     # -----------------------------------------------------------------------
     # Output
@@ -309,4 +312,4 @@ class SnakeDraft:
                     }
                 )
 
-        print(f"  Wrote {out_path}")
+        log.info("Wrote %s", out_path)

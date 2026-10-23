@@ -9,10 +9,14 @@ Simulate playoff games in four modes:
 
 from __future__ import annotations
 
+import logging
 import random
 from dataclasses import dataclass
 from itertools import groupby
 
+import psycopg
+
+from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -33,6 +37,8 @@ from src.league.playoffs.play_playoffs import (
     original_seed,
 )
 from src.league.play_season import play_game
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Round definitions — fixed bracket structure
@@ -285,12 +291,9 @@ def sim_playoff(
         if results:
             try:
                 build_season(conn, season_id)
-            except Exception as _bs_err:
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
-                print(f"build_season non-fatal error (will retry next day): {_bs_err}")
+            except psycopg.Error:
+                rollback_quietly(conn)
+                log.warning("build_season failed, will retry next day", exc_info=True)
         return count
 
     if mode == "game":

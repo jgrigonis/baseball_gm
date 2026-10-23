@@ -11,6 +11,7 @@ Steps:
 4. Write draft.csv with all draftable players
 """
 
+import logging
 import csv
 import random
 from pathlib import Path
@@ -24,6 +25,8 @@ from src.player.player_record import PlayerRecord
 from src.player.player_skills import START_AGE
 from src.player.talent_caps import generate_talent_caps
 from src.util.locations import TEAM_FILES_DIR
+
+log = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------
 # Draft pool configuration
@@ -117,10 +120,10 @@ class DraftGenerator:
             Total number of draftable players written to CSV
         """
         existing = self._get_existing_draftable(league_id)
-        print(f"  Found {len(existing)} existing undrafted prospects")
+        log.info("Found %s existing undrafted prospects", len(existing))
 
         new_players = self._generate_prospects()
-        print(f"  Generated {len(new_players)} new prospects")
+        log.info("Generated %s new prospects", len(new_players))
 
         for player in new_players:
             self.player_repo.insert(
@@ -141,7 +144,7 @@ class DraftGenerator:
         unique_existing = [p for p in existing if p.id not in seen]
         all_draftable = new_players + unique_existing
         out_path = self._write_draft_csv(all_draftable, year, league_id)
-        print(f"  Wrote {out_path} ({len(all_draftable)} players)")
+        log.info("Wrote %s (%s players)", out_path, len(all_draftable))
 
         return len(all_draftable)
 

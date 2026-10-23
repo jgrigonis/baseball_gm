@@ -721,9 +721,6 @@ class TeamRotationsRepository:
                     updated_at = EXCLUDED.updated_at""",
             (team_id, season_id, series_id, next_order),
         )
-        # print("#" * 80)
-        # print(f"team_id   = {team_id}")
-        # print(f"season_id = {season_id}")
 
 
 # get_rotation_history(team_id, season_id, player_id=None)

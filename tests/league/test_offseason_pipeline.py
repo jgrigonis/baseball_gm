@@ -11,6 +11,7 @@ Strategy:
 - _age/_archive/_retire — mock dependencies or use minimal seeded DB
 """
 
+import logging
 import random
 import uuid
 from unittest.mock import MagicMock
@@ -326,27 +327,29 @@ class TestRunIdempotency:
         for step in steps:
             pipeline._mark_done(season_id, step)
 
-    def test_run_skips_all_completed_steps(self, db_conn, capsys):
+    def test_run_skips_all_completed_steps(self, db_conn, caplog):
         season_id = seed_season(db_conn)
         seed_finals_complete(db_conn, season_id)
         pipeline = make_pipeline(db_conn)
         self._patch_all_steps(pipeline, season_id)
 
-        pipeline.run(season_id, league_id=None)
+        with caplog.at_level(logging.INFO):
+            pipeline.run(season_id, league_id=None)
 
-        captured = capsys.readouterr().out
+        captured = caplog.text
         assert "Skipping archive" in captured
         assert "Skipping age" in captured
         assert "Skipping run draft" in captured
 
-    def test_run_stops_early_if_playoffs_not_complete(self, db_conn, capsys):
+    def test_run_stops_early_if_playoffs_not_complete(self, db_conn, caplog):
         season_id = seed_season(db_conn)
         # No series inserted — playoffs not complete
         pipeline = make_pipeline(db_conn)
 
-        pipeline.run(season_id, "l1")
+        with caplog.at_level(logging.INFO):
+            pipeline.run(season_id, "l1")
 
-        captured = capsys.readouterr().out
+        captured = caplog.text
         assert "Playoffs are not complete" in captured
         # archive should not have been marked done
         assert pipeline.os_repo.is_done(season_id, "archive") is False

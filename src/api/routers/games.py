@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -14,6 +15,8 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.stats import formulas
 from src.web.utils import _shell_ctx, templates
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["web"])
 
@@ -55,7 +58,12 @@ def game_panel(
         if ed.get("detail"):
             try:
                 ed["detail_parsed"] = json.loads(ed["detail"])
-            except Exception:
+            except ValueError:
+                log.warning(
+                    "Unparseable detail on event %s of game %s",
+                    ed.get("id"),
+                    game_id,
+                )
                 ed["detail_parsed"] = None
         else:
             ed["detail_parsed"] = None

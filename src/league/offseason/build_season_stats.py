@@ -20,9 +20,13 @@ Hook into offseason_pipeline.py:
 """
 
 import argparse
+import logging
 import sys
 
 from src.db.connection import get_connection
+from src.util.logger import configure_app_logging
+
+log = logging.getLogger(__name__)
 
 # ── SQL ───────────────────────────────────────────────────────────────────────
 
@@ -147,7 +151,7 @@ def build_season(conn, season_id: str) -> int:
         cur = conn.execute(sql, (season_id,))
     conn.commit()
     if deleted:
-        print(f"  Cleared {deleted} existing rows for season {season_id}")
+        log.info("Cleared %s existing rows for season %s", deleted, season_id)
     return cur.rowcount
 
 
@@ -158,7 +162,7 @@ def build_all(conn) -> int:
     """
     deleted = delete_all(conn)
     if deleted:
-        print(f"  Cleared {deleted} existing rows")
+        log.info("Cleared %s existing rows", deleted)
 
     sql = INSERT_SQL.format(where_clause="")
     cur = conn.execute(sql)
@@ -192,6 +196,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    configure_app_logging()
 
     if not args.season_id and not args.rebuild:
         print(
