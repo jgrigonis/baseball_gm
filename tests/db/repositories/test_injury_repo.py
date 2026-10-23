@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.db.migration_files.migration_001_injury_return_date import upgrade
+from src.db.migration_files.migration_002_injury_return_date import upgrade
 from src.db.repositories.injury_repo import InjuryRepository
 
 
