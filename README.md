@@ -2,9 +2,7 @@
 
 ### A Python 3 project
 
-(Requires at least python 3.11)
-
-(Only tested under python 3.12 - 3.14)
+(Requires at least python 3.14)
 
 ### Create a virtual environment
 
