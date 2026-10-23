@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Baseball GM Sim",
-    # This version is updated manually when the API changes in a way that breaks old clients. 
+    # This version is updated manually when the API changes in a way that breaks old clients.
     # It is not the same as the version in pyproject.toml, which is updated for every release.
     version="0.1.0",
     description="GM layer API — league management, strategic profiles, and drafts.",
