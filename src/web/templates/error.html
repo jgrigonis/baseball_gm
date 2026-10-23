@@ -1,0 +1,13 @@
+{# templates/error.html #}
+{% extends "base.html" %}
+{% block title %}Error — GM Sim{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner" style="max-width:480px;">
+  <div class="page-header"><h1 class="page-title">{% if status_code >= 500 %}Something went wrong{% else %}That didn't work{% endif %}</h1></div>
+  <p style="margin-bottom:16px;">{{ message }}</p>
+  <div style="display:flex;gap:8px;">
+    <a href="javascript:history.back()" class="btn btn-secondary">← Back</a>
+    <a href="/leagues/" class="btn btn-secondary">My Leagues</a>
+  </div>
+</div></div>
+{% endblock %}

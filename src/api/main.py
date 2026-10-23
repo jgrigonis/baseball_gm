@@ -6,8 +6,11 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exception_handlers import (
+    http_exception_handler as default_http_exception_handler,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 # from src.api.routers import draft, gms, leagues, web
@@ -15,6 +18,7 @@ from src.api.routers import web
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
+from src.web.utils import templates
 
 log = logging.getLogger(__name__)
 
@@ -59,8 +63,42 @@ def health() -> dict:
     return {"status": "ok", "version": app.version}
 
 
+# ── Error handling ────────────────────────────────────────────────────────────
+#
+# Routes don't catch exceptions themselves: they propagate through get_db,
+# which rolls the transaction back, and end up here. Users get a short
+# message; the traceback only goes to the server log.
+
+
+def _error_response(request: Request, message: str, status_code: int):
+    """A small HTML page for page loads and form posts, JSON for fetch/HTMX."""
+    wants_html = "text/html" in request.headers.get("accept", "")
+    if wants_html and request.headers.get("HX-Request") != "true":
+        return templates.TemplateResponse(
+            request,
+            "error.html",
+            {"message": message, "status_code": status_code},
+            status_code=status_code,
+        )
+    return JSONResponse({"detail": message}, status_code=status_code)
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
         return RedirectResponse("/")
-    raise exc
+    return await default_http_exception_handler(request, exc)
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """The services raise ValueError when an action breaks a game rule,
+    e.g. simming a league that isn't in season. Show the user why."""
+    log.info("Rejected %s %s: %s", request.method, request.url.path, exc)
+    return _error_response(request, str(exc), 400)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return _error_response(request, "Something went wrong.", 500)

@@ -20,7 +20,6 @@ import logging
 import random
 import string
 import uuid
-import traceback
 from datetime import date
 
 logger = logging.getLogger(__name__)
@@ -430,18 +429,8 @@ def start_league_router(
     db: DB,
     _: Commissioner,
 ):
-    try:
-        start_league(league_id, db)
-        db.commit()
-    except Exception:
-        # Surface the error as a plain response so we can see what went wrong
-        db.rollback()
-        return HTMLResponse(
-            f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
-            f"Start league failed:\n\n{traceback.format_exc()}</pre>",
-            status_code=500,
-        )
-
+    start_league(league_id, db)
+    db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 
@@ -664,17 +653,8 @@ def execute_draft(
     if draft["state"] == "complete":
         return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
 
-    try:
-        execute_blitz_draft(draft["id"], db)
-        db.commit()
-    except Exception:
-        db.rollback()
-        return HTMLResponse(
-            f"<pre style='font-family:monospace;padding:24px;background:#0c0f1a;color:#ef4444;'>"
-            f"Draft execution failed:\n\n{traceback.format_exc()}</pre>",
-            status_code=500,
-        )
-
+    execute_blitz_draft(draft["id"], db)
+    db.commit()
     return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
 
 
@@ -2562,14 +2542,8 @@ def begin_offseason(
     db: DB,
     gm: GM,
 ):
-    try:
-        result = run_offseason(league_id, db)
-        return JSONResponse({"ok": True, **result})
-    except Exception as e:
-        return JSONResponse(
-            {"ok": False, "error": str(e), "detail": traceback.format_exc()},
-            status_code=500,
-        )
+    result = run_offseason(league_id, db)
+    return JSONResponse({"ok": True, **result})
 
 
 # ── History ─────────────────────────────────────────────────────────────────────
