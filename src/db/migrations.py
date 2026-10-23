@@ -24,7 +24,7 @@ Versioning Rules:
 
 from datetime import datetime
 from datetime import UTC
-from src.db.migration_files.runner import load_migrations
+from src.db.migration_files.loader import load_migrations
 
 
 def run_migrations(conn):

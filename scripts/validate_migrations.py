@@ -5,7 +5,7 @@ Validate all migration files are well-formed.
 Run this in CI to catch issues early.
 """
 
-from src.db.migration_files.runner import load_migrations
+from src.db.migration_files.loader import load_migrations
 
 
 def main():
