@@ -669,6 +669,7 @@ def _setup_playoffs(conn, season_id: str, year: int, league_id: str):
     )
     demote_extra_starters(conn, season_id, seeds, keep=4, league_id=league_id)
     build_bracket(conn, season_id, seeds, playoff_start)
+    conn.commit()
     print(f"  Playoff bracket ready. Start date: {playoff_start}")
 
 

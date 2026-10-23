@@ -297,7 +297,6 @@ class PitcherStateRepository:
                 state.consecutive_days,
             ),
         )
-        self.conn.commit()
 
     def update_after_game(
         self,

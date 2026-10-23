@@ -64,7 +64,6 @@ def clear_game_data(conn, game_id: str):
 def save_player_stats(conn, game_id, home_team, away_team):
     pg = PlayerGameRepository(conn)
     pg.delete_game_stats(game_id)
-    conn.commit()
     player_game_repo = PlayerGameRepository(conn)
     for team, opp in [(home_team, away_team), (away_team, home_team)]:
         for player in team.players:
@@ -87,7 +86,6 @@ def save_player_stats(conn, game_id, home_team, away_team):
                     stats=player.game_stats,
                     fielding_positions=fielding_positions,
                 )
-    conn.commit()
 
 
 def load_energy(conn, game_repo, game_id, home_team, away_team, league_id: str):
@@ -282,7 +280,44 @@ def play_game(
     league_id: str,
     league_mode: str = "blitz",
 ):
-    """Play a single game and save results."""
+    """
+    Play a single game and save results.
+
+    Everything the game writes is saved atomically: if any step fails, none
+    of the game's writes are kept and the game stays unplayed. Helpers called
+    from here must not commit or roll back the connection themselves.
+    """
+    with conn.transaction():
+        result = _play_game(
+            conn,
+            args,
+            team_repo,
+            game_repo,
+            team_game_repo,
+            rotations_repo,
+            season_id,
+            game_info,
+            rng,
+            league_id,
+            league_mode,
+        )
+    conn.commit()
+    return result
+
+
+def _play_game(
+    conn,
+    args,
+    team_repo: TeamRepository,
+    game_repo: GameRepository,
+    team_game_repo: TeamGameRepository,
+    rotations_repo: TeamRotationsRepository,
+    season_id: str,
+    game_info: dict,
+    rng: random.Random,
+    league_id: str,
+    league_mode: str,
+):
     blitz = league_mode == "blitz"
 
     home_record = team_repo.get(game_info["home_team_id"])
@@ -539,9 +574,6 @@ def play_game(
     logger.info(away_team.output_batting_stats())
     logger.info(home_team.output_pitching_stats())
     logger.info(away_team.output_pitching_stats())
-
-    # moving from game_lineup_repo
-    conn.commit()
 
     return result
 

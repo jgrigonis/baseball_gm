@@ -82,6 +82,15 @@ def sim_next_day(league_id: str, conn) -> dict:
                     pass
                 print(f"Playoff setup failed: {e}")
                 print(traceback.format_exc())
+                # Stay in the current state so the next sim retries the setup,
+                # rather than entering the playoffs with no bracket.
+                return {
+                    "game_date": None,
+                    "games_played": 0,
+                    "league_state": league["state"],
+                    "errors": [{"error": f"Playoff setup failed: {e}"}],
+                    "message": "Regular season complete, but playoff setup failed.",
+                }
 
         lr.set_state(league_id, "playoffs")
 
