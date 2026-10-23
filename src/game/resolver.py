@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
@@ -142,7 +141,7 @@ class Resolver:
             }
         )
 
-    def resolve(self, intent: GameIntent, game) -> List[GameEvent]:
+    def resolve(self, intent: GameIntent, game) -> list[GameEvent]:
         """
         Resolve an intent into one or more GameEvents.
 
@@ -242,7 +241,7 @@ class Resolver:
                 ]
                 raise RuntimeError(f"Play requires a runner on {base_name} base")
 
-    def _find_pa_end_index(self, events: List[GameEvent]) -> int | None:
+    def _find_pa_end_index(self, events: list[GameEvent]) -> int | None:
         """
         Find the index of the PlateAppearanceEndEvent in the events list.
 
@@ -257,7 +256,7 @@ class Resolver:
                 return i
         return None
 
-    def _inning_ended(self, events: List[GameEvent], game) -> bool:
+    def _inning_ended(self, events: list[GameEvent], game) -> bool:
         """
         Check if the inning ended based on the events that occurred.
 
@@ -287,7 +286,7 @@ class Resolver:
     # Event Checks
     # ================================================================
 
-    def _ball_in_play(self, events: List[GameEvent]) -> bool:
+    def _ball_in_play(self, events: list[GameEvent]) -> bool:
         """
         Check if the ball was put in play during this pitch.
 
@@ -324,7 +323,7 @@ class Resolver:
 
         return any(isinstance(event, in_play_event_types) for event in events)
 
-    def _is_error(self, events: List[GameEvent]) -> bool:
+    def _is_error(self, events: list[GameEvent]) -> bool:
         """Check if an error occurred."""
         error_event_types = (
             FieldingErrorEvent,
@@ -333,12 +332,12 @@ class Resolver:
         )
         return any(isinstance(event, error_event_types) for event in events)
 
-    def _is_balk(self, events: List[GameEvent]) -> bool:
+    def _is_balk(self, events: list[GameEvent]) -> bool:
         """Check if a balk occurred."""
         balk_event_types = (BalkEvent,)
         return any(isinstance(event, balk_event_types) for event in events)
 
-    def _is_walk(self, events: List[GameEvent]) -> bool:
+    def _is_walk(self, events: list[GameEvent]) -> bool:
         """Check if a walk occurred."""
         walk_event_types = (
             WalkEvent,
@@ -348,13 +347,13 @@ class Resolver:
         )
         return any(isinstance(event, walk_event_types) for event in events)
 
-    def _is_wild_pitch_or_passed_ball(self, events: List[GameEvent]) -> bool:
+    def _is_wild_pitch_or_passed_ball(self, events: list[GameEvent]) -> bool:
         """Check if wild pitch or passed ball occurred."""
         return any(
             isinstance(event, (WildPitchEvent, PassedBallEvent)) for event in events
         )
 
-    def _is_foul(self, events: List[GameEvent]) -> bool:
+    def _is_foul(self, events: list[GameEvent]) -> bool:
         """Check if a foul ball occurred."""
         foul_event_types = (
             FoulStrikeEvent,

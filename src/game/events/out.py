@@ -1,6 +1,5 @@
 # src/game/events/out.py
 from dataclasses import dataclass
-from typing import Optional
 
 from src.game.event import GameEvent
 from src.player.player_in_game import PlayerInGame
@@ -82,7 +81,7 @@ class PutOutEvent(GameEvent):
     """
 
     fielder: PlayerInGame
-    assist: Optional[PlayerInGame] = None
+    assist: PlayerInGame | None = None
 
     def apply(self, game):
         self.fielder.game_stats.fielding.putout()

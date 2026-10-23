@@ -7,7 +7,7 @@ player creation and never updated — they represent immutable talent
 ceilings determined at birth.
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 from src.player.positions import SKILLS
 
 _SKILLS = list(SKILLS.keys())

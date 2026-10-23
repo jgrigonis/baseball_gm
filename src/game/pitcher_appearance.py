@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class PitcherAppearance:
-    pitcher: "PlayerInGame"
+    pitcher: PlayerInGame
     team_id: str
     entered_inning: int
     finished_game: bool = False
@@ -27,4 +27,4 @@ class LeadChange:
     inning: int
     half: str  # "top" | "bottom"
     new_leader: str  # team_id
-    responsible_pitcher: "PlayerInGame"  # pitcher who gave up the lead-taking run
+    responsible_pitcher: PlayerInGame  # pitcher who gave up the lead-taking run

@@ -19,7 +19,7 @@ class NameFrequency:
     end: float
 
 
-class SimpleNameGenerator(object):
+class SimpleNameGenerator:
     """
     A class for generating first and last names
 

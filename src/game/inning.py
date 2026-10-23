@@ -1,5 +1,5 @@
 # src/game/inning.py
-class Inning(object):
+class Inning:
     """Keep track of inning related information."""
 
     def __init__(self):

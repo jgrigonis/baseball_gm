@@ -14,7 +14,7 @@ from src.db.connection import get_connection
 
 
 @contextmanager
-def db_transaction() -> Generator[psycopg.Connection, None, None]:
+def db_transaction() -> Generator[psycopg.Connection]:
     """Context manager: commits on exit, rolls back on exception."""
     conn = get_connection()
     try:
@@ -30,7 +30,7 @@ def db_transaction() -> Generator[psycopg.Connection, None, None]:
 # ── FastAPI dependency ────────────────────────────────────────────────────────
 
 
-def get_db() -> Generator[psycopg.Connection, None, None]:
+def get_db() -> Generator[psycopg.Connection]:
     """
     FastAPI dependency. Yields a connection inside db_transaction(): commits
     if the request succeeds, rolls back if it raises, and always closes.

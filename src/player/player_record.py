@@ -16,17 +16,16 @@ it does not belong here.
 """
 
 from dataclasses import dataclass
-from typing import TypeAlias
 
 from src.player.player_constants import VALID_BATS, VALID_THROWS
 from src.player.player_skills import PlayerSkills
 from src.player.positions import ALL_POSITIONS, is_pitcher
 from src.types.rows import CsvRow, DbRow
 
-PlayerId: TypeAlias = str
-BattingSide: TypeAlias = str  # "L" | "R" | "S"
-ThrowingHand: TypeAlias = str  # "L" | "R"
-PositionCode: TypeAlias = str  # "ss" | "cf" | etc.
+type PlayerId = str
+type BattingSide = str  # "L" | "R" | "S"
+type ThrowingHand = str  # "L" | "R"
+type PositionCode = str  # "ss" | "cf" | etc.
 
 
 @dataclass(frozen=True)
@@ -83,7 +82,7 @@ class PlayerRecord:
         )
 
     @classmethod
-    def from_csv_row(cls, row: CsvRow) -> "PlayerRecord":
+    def from_csv_row(cls, row: CsvRow) -> PlayerRecord:
         """Create PlayerRecord from CSV row with abbreviated codes."""
         try:
             # Parse name
@@ -117,7 +116,7 @@ class PlayerRecord:
             raise ValueError(f"Missing required CSV column: {e}") from e
 
     @classmethod
-    def from_db_row(cls, row: DbRow) -> "PlayerRecord":
+    def from_db_row(cls, row: DbRow) -> PlayerRecord:
         return cls(
             id=row["id"],
             first_name=row["first_name"],
@@ -177,7 +176,7 @@ class PlayerRecord:
             "ID": self.id,
         }
 
-    def __lt__(self, other: "PlayerRecord") -> bool:
+    def __lt__(self, other: PlayerRecord) -> bool:
         """Sort by last name, then first name."""
         if not isinstance(other, PlayerRecord):
             return NotImplemented

@@ -18,7 +18,7 @@ from positions.py and skill_map.py.
 from __future__ import annotations
 import random
 from types import MappingProxyType
-from typing import ItemsView, KeysView, ValuesView, Iterator
+from collections.abc import ItemsView, KeysView, ValuesView, Iterator
 
 from src.player.player_skill_aging import SkillAging
 from src.player.positions import SKILLS, SKILL_TEMPLATE
@@ -463,7 +463,7 @@ class PlayerSkills:
         coaching: float = 1.0,
         rng: random.Random | None = None,
         caps: dict[str, int] | None = None,
-    ) -> "PlayerSkills":
+    ) -> PlayerSkills:
         """
         Simulate skill progression from START_AGE to the given age.
         Returns a new PlayerSkills instance — does not mutate self.

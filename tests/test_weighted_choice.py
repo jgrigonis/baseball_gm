@@ -2,7 +2,6 @@
 
 import pytest
 from random import Random
-from typing import Dict
 
 from src.util.weighted_choice import WeightedChoice
 
@@ -153,7 +152,7 @@ class TestWeightedChoiceModifier:
         """Test applying a modifier function."""
         wc = WeightedChoice({"a": 100, "b": 200})
 
-        def modifier(weights: Dict[str, int]) -> None:
+        def modifier(weights: dict[str, int]) -> None:
             weights["a"] *= 2
             weights["b"] += 50
 
@@ -171,7 +170,7 @@ class TestWeightedChoiceModifier:
         """Test complex modifier that adds new outcomes."""
         wc = WeightedChoice({"a": 100, "b": 200})
 
-        def complex_modifier(weights: Dict[str, int]) -> None:
+        def complex_modifier(weights: dict[str, int]) -> None:
             total = sum(weights.values())
             weights["c"] = total // 2
             weights["a"] = 0

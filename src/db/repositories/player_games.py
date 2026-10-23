@@ -36,7 +36,7 @@ class PlayerGameRepository:
         team_id: str,
         opponent_team_id: str,
         stats: Stats,
-        fielding_positions: list[tuple[str, "FieldingStats"]] | None = None,
+        fielding_positions: list[tuple[str, FieldingStats]] | None = None,
     ) -> None:
         """
         Persist a player's stats for a single game.

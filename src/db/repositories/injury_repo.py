@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 import logging
 import random
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +102,7 @@ class InjuryRepository:
     def _as_of(self, as_of) -> str:
         return (_to_date(as_of) if as_of else self.current_date()).isoformat()
 
-    def get(self, player_id: str, as_of=None) -> Optional[PlayerInjury]:
+    def get(self, player_id: str, as_of=None) -> PlayerInjury | None:
         as_of = self._as_of(as_of)
         row = self.conn.execute(
             """SELECT player_id, return_date,

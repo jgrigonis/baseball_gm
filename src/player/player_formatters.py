@@ -32,7 +32,7 @@ CSV_FIELDS = [
 ]
 
 
-class PlayerFormatter(object):
+class PlayerFormatter:
     @staticmethod
     def abbreviate(value):
         if value == "right":
@@ -362,56 +362,56 @@ class PlayerTableFormatter:
         k_per_9 = formulas.per_nine(stats.pitching.strike_outs, stats.pitching.outs)
         bb_per_9 = formulas.per_nine(stats.pitching.walks, stats.pitching.outs)
 
-        output += "{:>6.2f}".format(era)
-        output += "{:>6.2f}".format(whip)
-        output += "{:>6.2f}".format(k_per_9)
-        output += "{:>6.2f}".format(bb_per_9)
+        output += f"{era:>6.2f}"
+        output += f"{whip:>6.2f}"
+        output += f"{k_per_9:>6.2f}"
+        output += f"{bb_per_9:>6.2f}"
         return output
 
     @staticmethod
     def legend():
         """return the legend as a string"""
-        output = str("\nLegend:\n")
-        output += str("---------------------------\n")
-        output += str("SKILLS:\n")
-        output += str("PS = position\n")
-        output += str("AG = age\n")
-        output += str("T  = throws\n")
-        output += str("B  = bats\n")
-        output += str("DU = durability\n")
-        output += str("CL = clutch\n")
-        output += str("SP = run speed\n")
-        output += str("PO = batting power\n")
-        output += str("EY = eye\n")
-        output += str("CT = contact hitting\n")
-        output += str("BR = base running\n")
-        output += str("BU = bunting\n")
-        output += str("CA = catching\n")
-        output += str("IF = infield skills\n")
-        output += str("OF = outfield skills\n")
-        output += str("AR = throwing arm\n")
-        output += str("AC = pitching accuracy\n")
-        output += str("ST = pitching stamina\n")
-        output += str("RE = pitching recovery\n")
-        output += str("GB = pitching ground balls\n")
-        output += str("KK = pitching strikes\n\n")
-        output += str("POSITIONAL RATINGS:\n")
-        output += str("P  = Pitcher rating\n")
-        output += str("C  = Catcher rating\n")
-        output += str("1B = First baseman rating\n")
-        output += str("2B = Second baseman rating\n")
-        output += str("3B = Third baseman rating\n")
-        output += str("SS = Short stop rating\n")
-        output += str("LF = Left field rating\n")
-        output += str("CF = Center field rating\n")
-        output += str("RF = Right field rating\n\n")
-        output += str("ROLE RATINGS:\n")
-        output += str("LO = Lead off hitter rating\n")
-        output += str("CH = Contact hitter rating\n")
-        output += str("PH = Power hitter rating\n")
-        output += str("SR = Speed runner rating\n")
-        output += str("OO = Overall offensive rating\n")
-        output += str("OP = Overall player rating\n")
+        output = "\nLegend:\n"
+        output += "---------------------------\n"
+        output += "SKILLS:\n"
+        output += "PS = position\n"
+        output += "AG = age\n"
+        output += "T  = throws\n"
+        output += "B  = bats\n"
+        output += "DU = durability\n"
+        output += "CL = clutch\n"
+        output += "SP = run speed\n"
+        output += "PO = batting power\n"
+        output += "EY = eye\n"
+        output += "CT = contact hitting\n"
+        output += "BR = base running\n"
+        output += "BU = bunting\n"
+        output += "CA = catching\n"
+        output += "IF = infield skills\n"
+        output += "OF = outfield skills\n"
+        output += "AR = throwing arm\n"
+        output += "AC = pitching accuracy\n"
+        output += "ST = pitching stamina\n"
+        output += "RE = pitching recovery\n"
+        output += "GB = pitching ground balls\n"
+        output += "KK = pitching strikes\n\n"
+        output += "POSITIONAL RATINGS:\n"
+        output += "P  = Pitcher rating\n"
+        output += "C  = Catcher rating\n"
+        output += "1B = First baseman rating\n"
+        output += "2B = Second baseman rating\n"
+        output += "3B = Third baseman rating\n"
+        output += "SS = Short stop rating\n"
+        output += "LF = Left field rating\n"
+        output += "CF = Center field rating\n"
+        output += "RF = Right field rating\n\n"
+        output += "ROLE RATINGS:\n"
+        output += "LO = Lead off hitter rating\n"
+        output += "CH = Contact hitter rating\n"
+        output += "PH = Power hitter rating\n"
+        output += "SR = Speed runner rating\n"
+        output += "OO = Overall offensive rating\n"
+        output += "OP = Overall player rating\n"
         return output
 
     def csv_header():
@@ -471,7 +471,7 @@ class PlayerTableFormatter:
         ]
 
     @staticmethod
-    def lineup_card(team: "TeamInGame") -> str:
+    def lineup_card(team: TeamInGame) -> str:
         lines = ["\n"]
         lines.append("  #  Name                     Pos  B  T")
         lines.append("  " + "-" * 38)
@@ -483,7 +483,7 @@ class PlayerTableFormatter:
         return "\n".join(lines)
 
     @staticmethod
-    def rotation_card(team: "TeamInGame") -> str:
+    def rotation_card(team: TeamInGame) -> str:
         starters = [p for p in team.players if p.is_starter]
         lines = ["\n"]
         lines.append("  #  Name                    Throws")
@@ -494,7 +494,7 @@ class PlayerTableFormatter:
         return "\n".join(lines)
 
     @staticmethod
-    def bullpen_card(team: "TeamInGame") -> str:
+    def bullpen_card(team: TeamInGame) -> str:
         relievers = [p for p in team.players if p.bullpen_role is not None]
         # Sort by role priority
         role_order = {

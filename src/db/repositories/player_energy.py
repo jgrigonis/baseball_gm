@@ -42,7 +42,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 from dataclasses import dataclass, replace
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from src.util.clamp import clamp
 
@@ -110,7 +110,7 @@ class PlayerEnergyState:
     player_id: str
     current_energy: float = 1.0
     max_energy: float = 1.0
-    last_game_date: Optional[date] = None
+    last_game_date: date | None = None
     consecutive_days: int = 0
     season_games_played: int = 0
 
@@ -126,7 +126,7 @@ class PlayerEnergyState:
 
 
 def recover_player_energy(
-    state: Optional[PlayerEnergyState],
+    state: PlayerEnergyState | None,
     player_id: str,
     game_date: date,
     durability: int = 50,
@@ -211,7 +211,7 @@ class PlayerEnergyRepository:
     # Read
     # ------------------------------------------------------------------
 
-    def get(self, player_id: str) -> Optional[PlayerEnergyState]:
+    def get(self, player_id: str) -> PlayerEnergyState | None:
         """
         Get raw player energy state from DB (no recovery applied).
 

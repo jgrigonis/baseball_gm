@@ -1,5 +1,5 @@
 # src/stats/analyzer.py
-from typing import List, Dict, Any
+from typing import Any
 import logging
 
 from src.stats import formulas
@@ -17,7 +17,7 @@ class StatsAnalyzer:
 
     # ============ BATTING LEADERBOARDS ============
 
-    def leaderboard_home_runs(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_home_runs(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by home runs"""
         leaders = []
 
@@ -35,7 +35,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["home_runs"], reverse=True)
 
-    def leaderboard_triples(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_triples(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by triples"""
         leaders = []
 
@@ -53,7 +53,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["triples"], reverse=True)
 
-    def leaderboard_doubles(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_doubles(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by doubles"""
         leaders = []
 
@@ -71,7 +71,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["doubles"], reverse=True)
 
-    def leaderboard_singles(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_singles(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by singles"""
         leaders = []
 
@@ -89,7 +89,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["singles"], reverse=True)
 
-    def leaderboard_rbi(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_rbi(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by RBIs"""
         leaders = []
 
@@ -107,7 +107,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["rbi"], reverse=True)
 
-    def leaderboard_runs(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_runs(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by runs"""
         leaders = []
 
@@ -125,7 +125,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["runs"], reverse=True)
 
-    def leaderboard_hbp(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_hbp(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by hit by pitches"""
         leaders = []
 
@@ -143,7 +143,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["hbp"], reverse=True)
 
-    def leaderboard_hits(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_hits(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by total hits"""
         leaders = []
 
@@ -161,7 +161,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["hits"], reverse=True)
 
-    def leaderboard_double_plays(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_double_plays(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by double plays"""
         leaders = []
 
@@ -179,7 +179,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["double_plays"], reverse=True)
 
-    def leaderboard_sac_flys(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_sac_flys(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by total sac_flys"""
         leaders = []
 
@@ -197,7 +197,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["sac_flys"], reverse=True)
 
-    def leaderboard_sac_bunts(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_sac_bunts(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by total sac_bunts"""
         leaders = []
 
@@ -215,7 +215,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["sac_bunts"], reverse=True)
 
-    def leaderboard_batting_average(self, min_at_bats=10) -> List[Dict[str, Any]]:
+    def leaderboard_batting_average(self, min_at_bats=10) -> list[dict[str, Any]]:
         """Get players ranked by batting average"""
         leaders = []
 
@@ -238,7 +238,7 @@ class StatsAnalyzer:
 
     def leaderboard_on_base_percentage(
         self, min_plate_appearances=10
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get players ranked by on-base percentage (OBP)"""
         leaders = []
 
@@ -262,7 +262,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["obp"], reverse=True)
 
-    def leaderboard_slugging_percentage(self, min_at_bats=10) -> List[Dict[str, Any]]:
+    def leaderboard_slugging_percentage(self, min_at_bats=10) -> list[dict[str, Any]]:
         """Get players ranked by slugging percentage (SLG)"""
         leaders = []
 
@@ -283,7 +283,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["slg"], reverse=True)
 
-    def leaderboard_ops(self, min_at_bats=10) -> List[Dict[str, Any]]:
+    def leaderboard_ops(self, min_at_bats=10) -> list[dict[str, Any]]:
         """Get players ranked by OPS (On-base Plus Slugging)"""
         leaders = []
 
@@ -309,7 +309,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["ops"], reverse=True)
 
-    def leaderboard_stolen_bases(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_stolen_bases(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by stolen bases"""
         leaders = []
 
@@ -328,7 +328,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["sb"], reverse=True)
 
-    def leaderboard_caught_stealing(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_caught_stealing(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by caught stealing"""
         leaders = []
 
@@ -347,7 +347,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["cs"], reverse=True)
 
-    def leaderboard_walks(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_walks(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get players ranked by walks"""
         leaders = []
 
@@ -365,7 +365,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["walks"], reverse=True)
 
-    def leaderboard_batting_strikeouts(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_batting_strikeouts(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get batters ranked by strikeouts"""
         leaders = []
 
@@ -385,7 +385,7 @@ class StatsAnalyzer:
 
     def leaderboard_batting_strikeouts_per_ab(
         self, min_at_bats=0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get batters ranked by strikeouts per at-bat"""
         leaders = []
 
@@ -405,7 +405,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["k_per_ab"], reverse=False)
 
-    def leaderboard_batting_at_bats_per_k(self, min_at_bats=0) -> List[Dict[str, Any]]:
+    def leaderboard_batting_at_bats_per_k(self, min_at_bats=0) -> list[dict[str, Any]]:
         """Get batters ranked by at-bats per strikeout"""
         leaders = []
 
@@ -429,7 +429,7 @@ class StatsAnalyzer:
 
     # ============ PITCHING LEADERBOARDS ============
 
-    def leaderboard_wins(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_wins(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by wins"""
         leaders = []
 
@@ -448,7 +448,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["wins"], reverse=True)
 
-    def leaderboard_losses(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_losses(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by losses"""
         leaders = []
 
@@ -466,7 +466,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["losses"], reverse=True)
 
-    def leaderboard_innings_pitched(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_innings_pitched(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by innings pitched"""
         leaders = []
 
@@ -483,7 +483,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["innings_pitched"], reverse=True)
 
-    def leaderboard_era(self, min_innings=5.0) -> List[Dict[str, Any]]:
+    def leaderboard_era(self, min_innings=5.0) -> list[dict[str, Any]]:
         """Get pitchers ranked by ERA (lower is better)"""
         leaders = []
 
@@ -508,7 +508,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["era"])  # Lower is better
 
-    def leaderboard_pitch_strikeouts(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_pitch_strikeouts(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by strikeouts"""
         leaders = []
 
@@ -530,7 +530,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["strike_outs"], reverse=True)
 
-    def leaderboard_pitch_walks(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_pitch_walks(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by walks"""
         leaders = []
 
@@ -551,7 +551,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["walks"], reverse=True)
 
-    def leaderboard_whip(self, min_innings=5.0) -> List[Dict[str, Any]]:
+    def leaderboard_whip(self, min_innings=5.0) -> list[dict[str, Any]]:
         """Get pitchers ranked by WHIP (Walks + Hits per Inning Pitched)"""
         leaders = []
 
@@ -575,7 +575,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["whip"])  # Lower is better
 
-    def leaderboard_saves(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_saves(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by saves"""
         leaders = []
 
@@ -593,7 +593,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["saves"], reverse=True)
 
-    def leaderboard_balks(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_balks(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by balks"""
         leaders = []
 
@@ -611,7 +611,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["balks"], reverse=True)
 
-    def leaderboard_wild_pitches(self, min_innings=0) -> List[Dict[str, Any]]:
+    def leaderboard_wild_pitches(self, min_innings=0) -> list[dict[str, Any]]:
         """Get pitchers ranked by wild pitches"""
         leaders = []
 
@@ -631,7 +631,7 @@ class StatsAnalyzer:
 
     # ============ FIELDING LEADERBOARDS ============
 
-    def leaderboard_putouts(self) -> List[Dict[str, Any]]:
+    def leaderboard_putouts(self) -> list[dict[str, Any]]:
         """Get players ranked by putouts"""
         leaders = []
 
@@ -648,7 +648,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["putouts"], reverse=True)
 
-    def leaderboard_assists(self) -> List[Dict[str, Any]]:
+    def leaderboard_assists(self) -> list[dict[str, Any]]:
         """Get players ranked by assists"""
         leaders = []
 
@@ -665,7 +665,7 @@ class StatsAnalyzer:
 
         return sorted(leaders, key=lambda x: x["assists"], reverse=True)
 
-    def leaderboard_fielding_percentage(self, min_chances=10) -> List[Dict[str, Any]]:
+    def leaderboard_fielding_percentage(self, min_chances=10) -> list[dict[str, Any]]:
         """Get players ranked by fielding percentage"""
         leaders = []
 
@@ -698,7 +698,7 @@ class StatsAnalyzer:
     def print_leaderboard(
         self,
         title: str,
-        leaders: List[Dict[str, Any]],
+        leaders: list[dict[str, Any]],
         stat_key: str,
         top_n: int = 10,
         format_str: str = ".3f",

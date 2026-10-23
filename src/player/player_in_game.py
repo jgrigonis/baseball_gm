@@ -29,7 +29,7 @@ from src.player.player_skills import PlayerSkills
 from src.player.position_fatigue import PositionPlayerFatigue
 
 
-class PlayerInGame(object):
+class PlayerInGame:
     """A Baseball Player in the game."""
 
     def __init__(self, record: PlayerRecord):

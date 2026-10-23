@@ -1,5 +1,4 @@
 # src/game/resolvers/concurrent_events.py
-from typing import List
 
 from src.game.event import GameEvent
 from src.game.intents.pitch import PitchIntent
@@ -7,7 +6,7 @@ from src.game.resolvers.steal import resolve_double_steal, resolve_steal_attempt
 from src.game.strategy import GameStrategy
 
 
-def resolve_concurrent_events(resolver, intent: PitchIntent, game) -> List[GameEvent]:
+def resolve_concurrent_events(resolver, intent: PitchIntent, game) -> list[GameEvent]:
     """
     Resolve events that happen concurrently with the pitch.
 

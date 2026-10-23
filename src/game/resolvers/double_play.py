@@ -1,5 +1,4 @@
 # src/game/resolvers/double_play.py
-from typing import List
 
 from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
@@ -14,7 +13,7 @@ from src.game.resolvers.base_running import advance_all_runners
 from src.game.resolvers.fielder_selector import FielderSelector
 
 
-def resolve_double_play(resolver, intent, game) -> List[GameEvent]:
+def resolve_double_play(resolver, intent, game) -> list[GameEvent]:
     """
     Resolve a double play:
     - Default runner on first is out via force

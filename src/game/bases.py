@@ -31,7 +31,6 @@ Resolver enforces baseball.
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 from src.player.player_in_game import PlayerInGame
 
@@ -46,9 +45,9 @@ VALID_DESTINATIONS = (FIRST, SECOND, THIRD, HOME)
 
 @dataclass(frozen=True)
 class BasesSnapshot:
-    first: Optional[PlayerInGame] = None
-    second: Optional[PlayerInGame] = None
-    third: Optional[PlayerInGame] = None
+    first: PlayerInGame | None = None
+    second: PlayerInGame | None = None
+    third: PlayerInGame | None = None
 
 
 class Bases:
@@ -60,7 +59,7 @@ class Bases:
     """
 
     def __init__(self):
-        self._bases: Dict[int, PlayerInGame] = {}
+        self._bases: dict[int, PlayerInGame] = {}
 
     def __str__(self):
         """
@@ -104,13 +103,13 @@ class Bases:
     # Queries
     # ------------------------------------------------------------------
 
-    def runner_on(self, base: int) -> Optional[PlayerInGame]:
+    def runner_on(self, base: int) -> PlayerInGame | None:
         """Get the runner on a specific base, or None."""
         if base not in VALID_BASES:
             raise ValueError(f"Invalid base: {base}")
         return self._bases.get(base)
 
-    def base_of(self, runner: PlayerInGame) -> Optional[int]:
+    def base_of(self, runner: PlayerInGame) -> int | None:
         """
         Check if a specific runner is on any base, or return None.
         Raises RunTimeError if same runner on multiple bases.
@@ -192,7 +191,7 @@ class Bases:
     def advance(
         self,
         runner: PlayerInGame,
-        from_base: Optional[int],
+        from_base: int | None,
         to_base: int,
     ):
         """

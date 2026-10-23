@@ -1,7 +1,6 @@
 # src/league/statistics/evaluate_all_years.py
 import argparse
 from pathlib import Path
-from typing import List, Dict
 from dataclasses import dataclass
 import csv as csv_module
 
@@ -19,7 +18,7 @@ class TeamEvaluation:
     filename: str
     city: str
     mascot: str
-    ratings: Dict[str, int]
+    ratings: dict[str, int]
 
     @property
     def display_name(self) -> str:
@@ -28,7 +27,7 @@ class TeamEvaluation:
         )
 
 
-def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
+def evaluate_directory(directory: Path) -> list[TeamEvaluation]:
     """Evaluate all CSV files in a directory."""
     tf = TeamFactory()
     evaluations = []
@@ -54,7 +53,7 @@ def evaluate_directory(directory: Path) -> List[TeamEvaluation]:
     return evaluations
 
 
-def calculate_averages(evaluations: List[TeamEvaluation]) -> Dict[str, float]:
+def calculate_averages(evaluations: list[TeamEvaluation]) -> dict[str, float]:
     if not evaluations:
         return {}
 
@@ -74,7 +73,7 @@ def calculate_averages(evaluations: List[TeamEvaluation]) -> Dict[str, float]:
 
 
 def format_rankings(
-    evaluations: List[TeamEvaluation], metric: str, title: str, top_n: int = 10
+    evaluations: list[TeamEvaluation], metric: str, title: str, top_n: int = 10
 ) -> str:
     sorted_teams = sorted(evaluations, key=lambda x: x.ratings[metric], reverse=True)
 
@@ -92,7 +91,7 @@ def format_rankings(
     return "\n".join(lines)
 
 
-def format_summary(evaluations: List[TeamEvaluation]) -> str:
+def format_summary(evaluations: list[TeamEvaluation]) -> str:
     averages = calculate_averages(evaluations)
 
     lines = [
@@ -111,7 +110,7 @@ def format_summary(evaluations: List[TeamEvaluation]) -> str:
 
 
 def format_full_report(
-    evaluations: List[TeamEvaluation], top_n: int = 10, year: str | None = None
+    evaluations: list[TeamEvaluation], top_n: int = 10, year: str | None = None
 ) -> str:
     heading = f"{year} TEAM EVALUATION REPORT" if year else "TEAM EVALUATION REPORT"
 
@@ -140,7 +139,7 @@ def format_full_report(
     return "\n".join(sections)
 
 
-def export_to_csv(all_evaluations: Dict[str, List[TeamEvaluation]], output_path: Path):
+def export_to_csv(all_evaluations: dict[str, list[TeamEvaluation]], output_path: Path):
     """Export all evaluations across all years to a single CSV."""
     with open(output_path, "w", newline="") as f:
         writer = csv_module.writer(f)
@@ -183,7 +182,7 @@ def export_to_csv(all_evaluations: Dict[str, List[TeamEvaluation]], output_path:
     print(f"Exported CSV to {output_path}")
 
 
-def find_year_directories(base_dir: Path) -> List[tuple[Path, str]]:
+def find_year_directories(base_dir: Path) -> list[tuple[Path, str]]:
     """Return sorted list of (path, year_str) for all numeric subdirectories."""
     subdirs = sorted(
         [d for d in base_dir.iterdir() if d.is_dir() and d.name.isdigit()],
@@ -244,7 +243,7 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    all_evaluations: Dict[str, List[TeamEvaluation]] = {}
+    all_evaluations: dict[str, list[TeamEvaluation]] = {}
 
     with open(output_path, "w") as out_file:
         for directory, year in year_dirs:

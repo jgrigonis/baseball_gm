@@ -1,6 +1,5 @@
 # src/game/events/steal.py
 from dataclasses import dataclass
-from typing import Optional
 
 from src.game.event import GameEvent
 from src.player.player_in_game import PlayerInGame
@@ -36,7 +35,7 @@ class StolenBaseEvent(GameEvent):
     runner: PlayerInGame
     from_base: int
     to_base: int
-    catcher: Optional[PlayerInGame] = None
+    catcher: PlayerInGame | None = None
 
     def apply(self, game):
         """
@@ -62,7 +61,7 @@ class CaughtStealingEvent(GameEvent):
     runner: PlayerInGame
     from_base: int
     to_base: int
-    catcher: Optional[PlayerInGame] = None
+    catcher: PlayerInGame | None = None
 
     def apply(self, game):
         """

@@ -55,7 +55,7 @@ import src.util.logger as _logger  # registers logging.Logger.trace
 _ = _logger  # noqa
 
 
-class PlayerFactory(object):
+class PlayerFactory:
     """Factory for creating persistent PlayerRecord instances."""
 
     def __init__(
