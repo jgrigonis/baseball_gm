@@ -12,23 +12,25 @@ authors = [
 requires-python = ">=3.14"
 
 dependencies = [
-  "numpy",
-  "scipy",
-  "pydantic-settings",
-  "fastapi",
-  "uvicorn[standard]",
-  "jinja2 @ git+https://github.com/pallets/jinja2.git",
-  "python-multipart",
-  "psycopg[binary]",
-  "argon2-cffi",
+  "numpy>=2.5",
+  "scipy>=1.18",
+  "pydantic-settings>=2.16",
+  "fastapi>=0.162",
+  "uvicorn[standard]>=0.54",
+  "jinja2>=3.1.6",
+  # Needed by FastAPI's Form() even though nothing imports it directly.
+  "python-multipart>=0.0.32",
+  "psycopg[binary]>=3.3",
+  # Not imported yet; reserved for password hashing.
+  "argon2-cffi>=25.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "coverage",
-  "httpx",
-  "pytest",
-  "ruff",
+  "coverage>=7.17",
+  "httpx>=0.28",
+  "pytest>=9.1",
+  "ruff>=0.17",
 ]
 
 [tool.pytest.ini_options]

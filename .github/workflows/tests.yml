@@ -38,19 +38,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.14"
-          cache: pip
+          enable-cache: true
 
+      # --locked fails the job if uv.lock is out of date with pyproject.toml.
       - name: Install
-        run: pip install -e ".[dev]"
+        run: uv sync --locked --extra dev
 
       - name: Lint
-        run: ruff check src tests scripts
+        run: uv run --locked ruff check src tests scripts
 
       - name: Format check
-        run: ruff format --check .
+        run: uv run --locked ruff format --check .
 
       - name: Test
-        run: pytest -q
+        run: uv run --locked pytest -q
