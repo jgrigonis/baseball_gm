@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch
-from src.api.routers.web import _compute_ratings
+from src.api.view_models.player_cards import compute_ratings
 
 
 @pytest.fixture
@@ -21,14 +21,14 @@ def mock_skills_data():
 
 
 # Useless test, just run smart queries and not *
-# @patch("src.api.routers.web.PlayerEvaluator")
-# @patch("src.api.routers.web.PlayerSkills")
+# @patch("src.api.view_models.player_cards.PlayerEvaluator")
+# @patch("src.api.view_models.player_cards.PlayerSkills")
 # def test_compute_ratings_success(mock_ps_cls, mock_pe_cls, mock_skills_data):
 #     # Setup mock return for PlayerEvaluator.rate_player
 #     mock_ratings = {k: v for k, v in mock_skills_data.items() if k != "extra_field"}
 #     mock_pe_cls.rate_player.return_value = mock_ratings.copy()
 
-#     result = _compute_ratings(mock_skills_data, "R")
+#     result = compute_ratings(mock_skills_data, "R")
 
 #     # Verify filtering: PlayerSkills should be called without "extra_field"
 #     # Note: This depends on what's in your SKILLS constant
@@ -51,8 +51,8 @@ def mock_skills_data():
         ({"ss": 90, "c": 10}, "IF"),
     ],
 )
-@patch("src.api.routers.web.PlayerEvaluator")
-@patch("src.api.routers.web.PlayerSkills")
+@patch("src.api.view_models.player_cards.PlayerEvaluator")
+@patch("src.api.view_models.player_cards.PlayerSkills")
 def test_compute_ratings_labels(mock_ps, mock_pe, high_skill, expected_label):
     # Mocking different high scores to test the if/elif logic
     mock_pe.rate_player.return_value = {
@@ -67,12 +67,12 @@ def test_compute_ratings_labels(mock_ps, mock_pe, high_skill, expected_label):
         **high_skill,
     }
 
-    result = _compute_ratings({}, "L")
+    result = compute_ratings({}, "L")
     assert result["best_def_label"] == expected_label
 
 
 # This isn't True.
 # def test_compute_ratings_exception():
 #     # Test that it returns an empty dict on failure (e.g., passing None)
-#     result = _compute_ratings(None, "R")
+#     result = compute_ratings(None, "R")
 #     assert result == {}
