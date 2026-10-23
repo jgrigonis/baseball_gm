@@ -8,6 +8,7 @@ from src.db.repositories.pitcher_state import (
     _daily_recovery_rate,
     _apply_recovery,
     availability_weight,
+    recover_pitcher_state,
     MIN_ENERGY_STARTER,
 )
 
@@ -267,6 +268,90 @@ def test_update_after_game_consecutive_days(repo, players):
 
     state = repo.get(p1.id)
     assert state.consecutive_days == 3
+
+
+# ---------------------------------------------------------------------------
+# Batch methods
+# ---------------------------------------------------------------------------
+
+
+def test_get_many_returns_stored_states_only(repo, players):
+    p1, p2 = players
+    repo.save_pitcher_state(PitcherState(p1.id, 0.5, 0.9, date(2026, 1, 1), 40, 2))
+
+    states = repo.get_many([p1.id, p2.id])
+
+    assert set(states) == {p1.id}
+    assert states[p1.id] == repo.get(p1.id)
+
+
+def test_get_many_empty_list(repo):
+    assert repo.get_many([]) == {}
+
+
+def test_save_many_upserts_all(repo, players):
+    p1, p2 = players
+    repo.save_pitcher_state(PitcherState(p1.id, 0.9, 1.0))
+
+    repo.save_many(
+        [
+            PitcherState(p1.id, 0.3, 0.95, date(2026, 1, 2), 80, 1),
+            PitcherState(p2.id, 0.6, 1.0, date(2026, 1, 2), 20, 1),
+        ]
+    )
+
+    assert repo.get(p1.id).current_energy == pytest.approx(0.3)
+    assert repo.get(p1.id).last_pitch_count == 80
+    assert repo.get(p2.id).current_energy == pytest.approx(0.6)
+
+
+def test_update_many_after_game_matches_single_updates(repo, players):
+    p1, p2 = players
+    today = date(2026, 5, 2)
+    repo.save_pitcher_state(
+        PitcherState(p1.id, 0.5, 1.0, today - timedelta(days=1), 20, 2)
+    )
+
+    repo.update_many_after_game(
+        [(p1.id, 0.3, 0.98, 25), (p2.id, 0.4, 1.0, 90)],
+        today,
+    )
+
+    s1, s2 = repo.get(p1.id), repo.get(p2.id)
+    assert s1.consecutive_days == 3
+    assert s1.current_energy == pytest.approx(0.3)
+    assert s1.max_energy == pytest.approx(0.98)
+    assert s2.consecutive_days == 1
+    assert s2.last_pitch_count == 90
+    assert s2.last_game_date == today
+
+
+def test_update_many_after_game_skips_zero_pitches(repo, players):
+    p1, p2 = players
+    repo.update_many_after_game(
+        [(p1.id, 0.3, 1.0, 0), (p2.id, 0.4, 1.0, 30)], date(2026, 5, 2)
+    )
+    assert repo.get(p1.id) is None
+    assert repo.get(p2.id) is not None
+
+
+def test_recover_pitcher_state_does_not_modify_input():
+    stored = PitcherState("p", 0.2, 0.9, date(2026, 5, 1), 90, 3)
+    recovered = recover_pitcher_state(stored, "p", date(2026, 5, 6), 50)
+
+    assert recovered.current_energy > 0.2
+    assert recovered.consecutive_days == 0
+    assert stored == PitcherState("p", 0.2, 0.9, date(2026, 5, 1), 90, 3)
+
+
+def test_recover_pitcher_state_matches_get_with_recovery(repo, players):
+    p1, _ = players
+    game_date = date(2026, 5, 6)
+    repo.save_pitcher_state(PitcherState(p1.id, 0.2, 0.9, date(2026, 5, 1), 90, 3))
+
+    assert recover_pitcher_state(
+        repo.get_many([p1.id])[p1.id], p1.id, game_date, 70
+    ) == repo.get_with_recovery(p1.id, game_date, 70)
 
 
 # ---------------------------------------------------------------------------

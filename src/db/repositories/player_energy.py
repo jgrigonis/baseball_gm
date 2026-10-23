@@ -41,8 +41,8 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, replace
+from typing import Iterable, Optional
 
 from src.util.clamp import clamp
 
@@ -125,6 +125,76 @@ class PlayerEnergyState:
         return self.current_energy < MIN_ENERGY_AVAILABLE
 
 
+def recover_player_energy(
+    state: Optional[PlayerEnergyState],
+    player_id: str,
+    game_date: date,
+    durability: int = 50,
+) -> PlayerEnergyState:
+    """
+    Return a copy of a stored energy state with recovery applied up to game_date.
+
+    ``state`` is the raw row as returned by ``PlayerEnergyRepository.get`` or
+    ``get_many`` (None when the player has no history). It is not modified.
+    """
+    if not state:
+        return PlayerEnergyState(player_id=player_id)
+
+    state = replace(state)
+    if not state.last_game_date:
+        state.current_energy = 1.0
+        return state
+
+    days_rest = (game_date - state.last_game_date).days
+
+    if days_rest < 0:
+        logger.warning(
+            "Data inconsistency for player %s: game_date %s is before "
+            "last_game_date %s. Returning fresh state.",
+            player_id,
+            game_date,
+            state.last_game_date,
+        )
+        return PlayerEnergyState(player_id=player_id)
+
+    if days_rest > 0:
+        if days_rest >= 2:
+            state.consecutive_days = 0
+
+        # Exponential approach toward max_energy
+        rate = _daily_recovery_rate(durability)
+        energy = state.current_energy
+        for _ in range(days_rest):
+            energy += (state.max_energy - energy) * rate
+        state.current_energy = max(0.0, min(state.max_energy, energy))
+
+        # Cap slow regeneration
+        state.max_energy = min(1.0, state.max_energy + 0.003 * days_rest)
+
+        # state.current_energy = _apply_recovery(
+        #     state.current_energy, days_rest, durability
+        # )
+
+    return state
+
+
+def _row_to_state(row) -> PlayerEnergyState:
+    last_game_date = (
+        datetime.fromisoformat(row["last_game_date"]).date()
+        if row["last_game_date"]
+        else None
+    )
+
+    return PlayerEnergyState(
+        player_id=row["player_id"],
+        current_energy=row["current_energy"],
+        max_energy=row["max_energy"],
+        last_game_date=last_game_date,
+        consecutive_days=row["consecutive_days"],
+        season_games_played=row["season_games_played"],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Repository
 # ---------------------------------------------------------------------------
@@ -160,22 +230,29 @@ class PlayerEnergyRepository:
         row = cursor.fetchone()
         if not row:
             return None
+        return _row_to_state(row)
 
-        last_game_date = None
-        last_game_date = (
-            datetime.fromisoformat(row["last_game_date"]).date()
-            if row["last_game_date"]
-            else None
-        )
+    def get_many(self, player_ids: Iterable[str]) -> dict[str, PlayerEnergyState]:
+        """
+        Fetch raw energy states for many players in one query.
 
-        return PlayerEnergyState(
-            player_id=row["player_id"],
-            current_energy=row["current_energy"],
-            max_energy=row["max_energy"],
-            last_game_date=last_game_date,
-            consecutive_days=row["consecutive_days"],
-            season_games_played=row["season_games_played"],
+        Returns a dict keyed by player_id. Players with no recorded history
+        are left out.
+        """
+        player_ids = list(player_ids)
+        if not player_ids:
+            return {}
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            SELECT player_id, current_energy, max_energy, last_game_date,
+                   consecutive_days, season_games_played
+            FROM player_energy
+            WHERE player_id = ANY(%s) AND league_id = %s
+            """,
+            (player_ids, self.league_id),
         )
+        return {row["player_id"]: _row_to_state(row) for row in cursor.fetchall()}
 
     def get_with_recovery(
         self,
@@ -199,46 +276,29 @@ class PlayerEnergyRepository:
             PlayerEnergyState with current_energy and consecutive_days
             reflecting time elapsed since last appearance.
         """
-        state = self.get(player_id)
+        return recover_player_energy(
+            self.get(player_id), player_id, game_date, durability
+        )
 
-        if not state:
-            return PlayerEnergyState(player_id=player_id)
+    def get_many_with_recovery(
+        self,
+        durabilities: dict[str, int],
+        game_date: date,
+    ) -> dict[str, PlayerEnergyState]:
+        """
+        Batch version of get_with_recovery, using one query.
 
-        if not state.last_game_date:
-            state.current_energy = 1.0
-            return state
-
-        days_rest = (game_date - state.last_game_date).days
-
-        if days_rest < 0:
-            logger.warning(
-                "Data inconsistency for player %s: game_date %s is before "
-                "last_game_date %s. Returning fresh state.",
-                player_id,
-                game_date,
-                state.last_game_date,
-            )
-            return PlayerEnergyState(player_id=player_id)
-
-        if days_rest > 0:
-            if days_rest >= 2:
-                state.consecutive_days = 0
-
-            # Exponential approach toward max_energy
-            rate = _daily_recovery_rate(durability)
-            energy = state.current_energy
-            for _ in range(days_rest):
-                energy += (state.max_energy - energy) * rate
-            state.current_energy = max(0.0, min(state.max_energy, energy))
-
-            # Cap slow regeneration
-            state.max_energy = min(1.0, state.max_energy + 0.003 * days_rest)
-
-            # state.current_energy = _apply_recovery(
-            #     state.current_energy, days_rest, durability
-            # )
-
-        return state
+        Args:
+            durabilities: Mapping of player_id → durability skill. Every
+                          player in it gets an entry in the result, in the
+                          same order.
+            game_date:    Date of the upcoming game.
+        """
+        raw = self.get_many(durabilities)
+        return {
+            pid: recover_player_energy(raw.get(pid), pid, game_date, durability)
+            for pid, durability in durabilities.items()
+        }
 
     # THIS CODE IS NOT USED, BUT MAY BE USEFUL
     # def days_until_ready(
@@ -319,17 +379,15 @@ class PlayerEnergyRepository:
         Energy is clamped to [0.0, 1.0] and rounded to 4 decimal places
         before storage to avoid floating-point noise accumulating over time.
         """
+        self.save_many([state])
+
+    def save_many(self, states: Iterable[PlayerEnergyState]) -> None:
+        """Upsert many player energy rows in one batch (see save_player_energy)."""
+        params = [self._save_params(state) for state in states]
+        if not params:
+            return
         cursor = self.conn.cursor()
-
-        last_game_date_str = None
-        if state.last_game_date:
-            if isinstance(state.last_game_date, str):
-                last_game_date_str = state.last_game_date
-            else:
-                last_game_date_str = state.last_game_date.isoformat()
-
-        energy = clamp(state.current_energy, 0.0, 1.0, 4)
-        cursor.execute(
+        cursor.executemany(
             """
             INSERT INTO player_energy
                 (player_id, league_id, current_energy, max_energy, last_game_date, consecutive_days, season_games_played)
@@ -341,17 +399,26 @@ class PlayerEnergyRepository:
                 consecutive_days     = excluded.consecutive_days,
                 season_games_played  = excluded.season_games_played
             """,
-            (
-                state.player_id,
-                self.league_id,
-                energy,
-                state.max_energy,
-                last_game_date_str,
-                state.consecutive_days,
-                state.season_games_played,
-            ),
+            params,
         )
-        # self.conn.commit()
+
+    def _save_params(self, state: PlayerEnergyState) -> tuple:
+        last_game_date_str = None
+        if state.last_game_date:
+            if isinstance(state.last_game_date, str):
+                last_game_date_str = state.last_game_date
+            else:
+                last_game_date_str = state.last_game_date.isoformat()
+
+        return (
+            state.player_id,
+            self.league_id,
+            clamp(state.current_energy, 0.0, 1.0, 4),
+            state.max_energy,
+            last_game_date_str,
+            state.consecutive_days,
+            state.season_games_played,
+        )
 
     def update_after_game(
         self,

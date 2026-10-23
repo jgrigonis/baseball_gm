@@ -21,8 +21,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, date
-from typing import Optional
-from dataclasses import dataclass
+from typing import Iterable, Optional
+from dataclasses import dataclass, replace
 
 from src.util.clamp import clamp
 
@@ -101,6 +101,59 @@ class PitcherState:
     consecutive_days: int = 0
 
 
+def recover_pitcher_state(
+    state: Optional[PitcherState],
+    player_id: str,
+    game_date: date,
+    recovery_skill: int = 50,
+) -> PitcherState:
+    """
+    Return a copy of a stored pitcher state with recovery applied up to game_date.
+
+    ``state`` is the raw row as returned by ``PitcherStateRepository.get`` or
+    ``get_many`` (None when the pitcher has no history). It is not modified,
+    so one set of raw states can be reused for several recovery calculations.
+    """
+    if not state:
+        return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
+
+    state = replace(state)
+    if not state.last_game_date:
+        state.current_energy = 1.0
+        return state
+
+    days_rest = max(0, (game_date - state.last_game_date).days - 1)
+    if days_rest > 0:
+        state.consecutive_days = 0
+
+    rate = _daily_recovery_rate(recovery_skill)
+    energy = state.current_energy
+    for _ in range(days_rest):
+        energy += (state.max_energy - energy) * rate
+    state.current_energy = max(0.0, min(state.max_energy, energy))
+    cap_regen = CAP_REGEN_PER_DAY * recovery_skill / 50
+    state.max_energy = min(1.0, state.max_energy + (cap_regen * days_rest))
+    state.current_energy = _apply_recovery(
+        state.current_energy, days_rest, recovery_skill
+    )
+    return state
+
+
+def _row_to_state(row) -> PitcherState:
+    last_game_date = None
+    if row["last_game_date"]:
+        last_game_date = datetime.fromisoformat(row["last_game_date"]).date()
+
+    return PitcherState(
+        player_id=row["player_id"],
+        current_energy=row["current_energy"],
+        max_energy=row["max_energy"],
+        last_game_date=last_game_date,
+        last_pitch_count=row["last_pitch_count"],
+        consecutive_days=row["consecutive_days"] or 0,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Repository
 # ---------------------------------------------------------------------------
@@ -131,19 +184,29 @@ class PitcherStateRepository:
         row = cursor.fetchone()
         if not row:
             return None
+        return _row_to_state(row)
 
-        last_game_date = None
-        if row["last_game_date"]:
-            last_game_date = datetime.fromisoformat(row["last_game_date"]).date()
+    def get_many(self, player_ids: Iterable[str]) -> dict[str, PitcherState]:
+        """
+        Fetch stored states for many pitchers in one query.
 
-        return PitcherState(
-            player_id=row["player_id"],
-            current_energy=row["current_energy"],
-            max_energy=row["max_energy"],
-            last_game_date=last_game_date,
-            last_pitch_count=row["last_pitch_count"],
-            consecutive_days=row["consecutive_days"] or 0,
+        Returns a dict keyed by player_id. Pitchers with no stored state are
+        left out.
+        """
+        player_ids = list(player_ids)
+        if not player_ids:
+            return {}
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            SELECT player_id, current_energy, max_energy, last_game_date,
+                   last_pitch_count, consecutive_days
+            FROM pitcher_state
+            WHERE player_id = ANY(%s) AND league_id = %s
+            """,
+            (player_ids, self.league_id),
         )
+        return {row["player_id"]: _row_to_state(row) for row in cursor.fetchall()}
 
     def get_with_recovery(
         self,
@@ -165,30 +228,9 @@ class PitcherStateRepository:
             PitcherState with current_energy reflecting time elapsed since
             last appearance.
         """
-        state = self.get(player_id)
-
-        if not state:
-            return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
-
-        if not state.last_game_date:
-            state.current_energy = 1.0
-            return state
-
-        days_rest = max(0, (game_date - state.last_game_date).days - 1)
-        if days_rest > 0:
-            state.consecutive_days = 0
-
-        rate = _daily_recovery_rate(recovery_skill)
-        energy = state.current_energy
-        for _ in range(days_rest):
-            energy += (state.max_energy - energy) * rate
-        state.current_energy = max(0.0, min(state.max_energy, energy))
-        cap_regen = CAP_REGEN_PER_DAY * recovery_skill / 50
-        state.max_energy = min(1.0, state.max_energy + (cap_regen * days_rest))
-        state.current_energy = _apply_recovery(
-            state.current_energy, days_rest, recovery_skill
+        return recover_pitcher_state(
+            self.get(player_id), player_id, game_date, recovery_skill
         )
-        return state
 
     # THIS CODE IS NOT USED, BUT MAY BE USEFUL
     # def days_until_ready(
@@ -263,18 +305,15 @@ class PitcherStateRepository:
         Energy is clamped to [0.0, 1.0] and rounded to 4 decimal places
         before storage to avoid floating-point noise accumulating over time.
         """
+        self.save_many([state])
+
+    def save_many(self, states: Iterable[PitcherState]) -> None:
+        """Upsert many pitcher state rows in one batch (see save_pitcher_state)."""
+        params = [self._save_params(state) for state in states]
+        if not params:
+            return
         cursor = self.conn.cursor()
-
-        last_game_date_str = None
-        if state.last_game_date:
-            if isinstance(state.last_game_date, str):
-                last_game_date_str = state.last_game_date
-            else:
-                last_game_date_str = state.last_game_date.isoformat()
-
-        energy = clamp(state.current_energy, 0.0, 1.0, 4)
-
-        cursor.execute(
+        cursor.executemany(
             """
             INSERT INTO pitcher_state
                 (player_id, league_id, current_energy, max_energy,
@@ -287,15 +326,25 @@ class PitcherStateRepository:
                 last_pitch_count = excluded.last_pitch_count,
                 consecutive_days = excluded.consecutive_days
             """,
-            (
-                state.player_id,
-                self.league_id,
-                energy,
-                max(0.0, min(1.0, round(state.max_energy, 4))),
-                last_game_date_str,
-                state.last_pitch_count,
-                state.consecutive_days,
-            ),
+            params,
+        )
+
+    def _save_params(self, state: PitcherState) -> tuple:
+        last_game_date_str = None
+        if state.last_game_date:
+            if isinstance(state.last_game_date, str):
+                last_game_date_str = state.last_game_date
+            else:
+                last_game_date_str = state.last_game_date.isoformat()
+
+        return (
+            state.player_id,
+            self.league_id,
+            clamp(state.current_energy, 0.0, 1.0, 4),
+            max(0.0, min(1.0, round(state.max_energy, 4))),
+            last_game_date_str,
+            state.last_pitch_count,
+            state.consecutive_days,
         )
 
     def update_after_game(
@@ -322,26 +371,52 @@ class PitcherStateRepository:
             pitch_count:  fatigue.pitches_thrown for the game.
             game_date:    Date the game was played.
         """
-        if pitch_count == 0:
+        self.update_many_after_game(
+            [(player_id, final_energy, max_energy, pitch_count)], game_date
+        )
+
+    def update_many_after_game(
+        self,
+        appearances: Iterable[tuple[str, float, float, int]],
+        game_date: date,
+    ) -> None:
+        """
+        Batch version of update_after_game: one read and one write for the
+        whole game instead of two queries per pitcher.
+
+        Args:
+            appearances: (player_id, final_energy, max_energy, pitch_count)
+                         for each pitcher. Entries with a pitch_count of 0
+                         are skipped, as in update_after_game.
+            game_date:   Date the game was played.
+        """
+        appearances = [a for a in appearances if a[3] != 0]
+        if not appearances:
             return
 
-        existing = self.get(player_id)
-        if existing and existing.last_game_date:
-            days_rest = (game_date - existing.last_game_date).days
-            consecutive_days = existing.consecutive_days + 1 if days_rest == 1 else 1
-        else:
-            consecutive_days = 1
+        existing_states = self.get_many(a[0] for a in appearances)
+        new_states = []
+        for player_id, final_energy, max_energy, pitch_count in appearances:
+            existing = existing_states.get(player_id)
+            if existing and existing.last_game_date:
+                days_rest = (game_date - existing.last_game_date).days
+                consecutive_days = (
+                    existing.consecutive_days + 1 if days_rest == 1 else 1
+                )
+            else:
+                consecutive_days = 1
 
-        self.save_pitcher_state(
-            PitcherState(
-                player_id=player_id,
-                current_energy=final_energy,
-                max_energy=max_energy,
-                last_game_date=game_date,
-                last_pitch_count=pitch_count,
-                consecutive_days=consecutive_days,
+            new_states.append(
+                PitcherState(
+                    player_id=player_id,
+                    current_energy=final_energy,
+                    max_energy=max_energy,
+                    last_game_date=game_date,
+                    last_pitch_count=pitch_count,
+                    consecutive_days=consecutive_days,
+                )
             )
-        )
+        self.save_many(new_states)
 
     def delete(self, player_id: str) -> bool:
         """
