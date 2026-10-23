@@ -13,7 +13,8 @@ class FielderSelector:
                 "third_baseman": 20,
                 "pitcher": 15,
                 "catcher": 20,
-            }
+            },
+            rng=rng,
         )
         # Infielder selection chooser
         self.infielder_choice = WeightedChoice(
@@ -85,7 +86,8 @@ class FielderSelector:
                 "6-5-3": 25,
                 "5-3": 25,
                 "4-6": 25,
-            }
+            },
+            rng=rng,
         )
 
     def select_infielder(self, game) -> PlayerInGame:
