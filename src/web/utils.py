@@ -4,7 +4,6 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from jinja2 import Environment, FileSystemLoader
 
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -14,16 +13,13 @@ from src.db.repositories.team_repo import TeamRepository
 # Templates are in src/web/templates/ relative to the project root
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
-templates = Jinja2Templates(directory="src/web/templates")
-
-_jinja_env = Environment(
-    loader=FileSystemLoader(str(_TEMPLATES_DIR)),
-    autoescape=True,
-)
+# The single Jinja2 environment for the whole app: routers render through
+# templates.TemplateResponse and tab partials render through render().
+templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 
 
 def render(name: str, context: dict) -> HTMLResponse:
-    template = _jinja_env.get_template(name)
+    template = templates.get_template(name)
     return HTMLResponse(template.render(**context))
 
 
