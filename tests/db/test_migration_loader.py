@@ -1,6 +1,6 @@
-# tests/db/test_migration_runner.py
+# tests/db/test_migration_loader.py
 
-from src.db.migration_files.runner import load_migrations
+from src.db.migration_files.loader import load_migrations
 
 
 def test_load_migrations_returns_sorted_list():

@@ -1,4 +1,4 @@
-# src/db/migration_files/runner.py
+# src/db/migration_files/loader.py
 
 import pkgutil
 import importlib
