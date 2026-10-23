@@ -120,7 +120,6 @@ def sample_fielding_positions_two_way():
 
 
 class TestPlayerGameRepositoryInsert:
-
     def test_insert_basic(self, player_games_repo, ctx, sample_stats):
         player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
@@ -246,7 +245,6 @@ class TestPlayerGameRepositoryInsert:
 
 
 class TestPlayerGameRepositoryFieldingPositions:
-
     def test_insert_single_fielding_position(
         self, player_games_repo, ctx, sample_stats, sample_fielding_positions
     ):
@@ -389,7 +387,6 @@ class TestPlayerGameRepositoryFieldingPositions:
 
 
 class TestPlayerGameRepositoryDeleteGameStats:
-
     def test_delete_cleans_player_game_stats(
         self, player_games_repo, ctx, sample_stats
     ):
@@ -477,7 +474,6 @@ class TestPlayerGameRepositoryDeleteGameStats:
 
 
 class TestPlayerGameRepositoryGetForGame:
-
     def test_get_for_game_existing(self, player_games_repo, ctx, sample_stats):
         player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
@@ -544,7 +540,6 @@ class TestPlayerGameRepositoryGetForGame:
 
 
 class TestPlayerGameRepositoryFetchPlayerGames:
-
     def test_fetch_player_games_single(self, player_games_repo, ctx, sample_stats):
         player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
@@ -564,7 +559,7 @@ class TestPlayerGameRepositoryFetchPlayerGames:
             ctx.conn.execute(
                 "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)"
                 " VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                (gid, f"2025-04-{i+1:02d}", ctx.season.id, ctx.home.id, ctx.away.id),
+                (gid, f"2025-04-{i + 1:02d}", ctx.season.id, ctx.home.id, ctx.away.id),
             )
             player_games_repo.insert_player_game(
                 gid, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
@@ -587,7 +582,7 @@ class TestPlayerGameRepositoryFetchPlayerGames:
             ctx.conn.execute(
                 "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)"
                 " VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                (gid, f"2025-04-{i+1:02d}", ctx.season.id, ctx.home.id, ctx.away.id),
+                (gid, f"2025-04-{i + 1:02d}", ctx.season.id, ctx.home.id, ctx.away.id),
             )
             player_games_repo.insert_player_game(
                 gid, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats
@@ -604,7 +599,7 @@ class TestPlayerGameRepositoryFetchPlayerGames:
             ctx.conn.execute(
                 "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)"
                 " VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                (gid, f"2025-04-{i+1:02d}", ctx.season.id, ctx.home.id, ctx.away.id),
+                (gid, f"2025-04-{i + 1:02d}", ctx.season.id, ctx.home.id, ctx.away.id),
             )
             s = Stats()
             s.batting.hits = i
@@ -648,7 +643,6 @@ class TestPlayerGameRepositoryFetchPlayerGames:
 
 
 class TestPlayerGameRepositoryLoadSeasonStats:
-
     @pytest.fixture
     def season_setup(self, db_conn, factory):
         """Four games across two seasons."""
@@ -667,7 +661,7 @@ class TestPlayerGameRepositoryLoadSeasonStats:
             db_conn.execute(
                 "INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id)"
                 " VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                (gid, f"2025-04-{i+1:02d}", season1.id, home.id, away.id),
+                (gid, f"2025-04-{i + 1:02d}", season1.id, home.id, away.id),
             )
             games_s1.append(gid)
 
@@ -791,7 +785,6 @@ class TestPlayerGameRepositoryLoadSeasonStats:
 
 
 class TestPlayerGameRepositoryRowToStats:
-
     def test_row_to_stats_round_trip(self, player_games_repo, ctx, sample_stats):
         player_games_repo.insert_player_game(
             ctx.game_id, ctx.p1.id, ctx.home.id, ctx.away.id, sample_stats

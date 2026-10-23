@@ -14,7 +14,7 @@ class Stats(object):
 
     def __str__(self):
         """Return the string representation of the statistics."""
-        return f"{self.batting}\n\n" f"{self.pitching}\n\n" f"{self.fielding}"
+        return f"{self.batting}\n\n{self.pitching}\n\n{self.fielding}"
 
     def add(self, other):
         """Add the statistics from another object."""

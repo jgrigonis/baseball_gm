@@ -52,7 +52,7 @@ def _create_next_season(
     parts = current_name.rsplit(" ", 1)
     try:
         new_name = f"{parts[0]} {int(parts[1]) + 1}"
-    except (IndexError, ValueError):
+    except IndexError, ValueError:
         new_name = f"Season {next_year}"
 
     new_season_id = sr.create_season(next_year, new_name)
@@ -149,7 +149,6 @@ def run_offseason(league_id: str, conn) -> dict:
     existing_draft_id = dr.get_draft_id(league_id, new_season_id)
 
     if not existing_draft_id:
-
         draft_format = "preference" if league_mode == "blitz" else "interactive"
         draft_id = dr.create_draft(league_id, new_season_id, draft_format)
         conn.commit()

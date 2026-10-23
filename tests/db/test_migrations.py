@@ -28,9 +28,9 @@ def test_migrations_are_idempotent(db_conn):
         "SELECT version, COUNT(*) AS count FROM schema_migrations GROUP BY version"
     )
     for row in cursor:
-        assert (
-            row["count"] == 1
-        ), f"Migration {row['version']} was recorded {row['count']} times (should be 1)"
+        assert row["count"] == 1, (
+            f"Migration {row['version']} was recorded {row['count']} times (should be 1)"
+        )
 
 
 def test_migrations_run_in_order(db_conn):

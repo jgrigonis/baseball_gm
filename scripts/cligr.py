@@ -420,7 +420,7 @@ def pick_league_interactively() -> str | None:
             print("  Invalid choice")
             return None
         return rows[idx]["id"]
-    except (ValueError, KeyboardInterrupt):
+    except ValueError, KeyboardInterrupt:
         print("\n  Cancelled")
         return None
 
@@ -522,7 +522,7 @@ def _create_next_season_cli(
     parts = current_name.rsplit(" ", 1)
     try:
         new_name = f"{parts[0]} {int(parts[1]) + 1}"
-    except (IndexError, ValueError):
+    except IndexError, ValueError:
         new_name = f"Season {next_year}"
 
     # Check if already exists
@@ -849,9 +849,9 @@ def _run_reports(season_id: str, logs: bool = False):
 
 def _run_one_season(conn, season_id: str, league_id: str, year: int, args) -> None:
     """Play one complete season: regular season → reports → playoffs → offseason."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Season {year}  (season_id={season_id[:8]}...)")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     _play_regular_season(conn, season_id, league_id, args.seed, args.game_logs)
 

@@ -197,7 +197,7 @@ def get_season_stats(player_id: str, season_id: str) -> dict:
     bb = batting["BB"]
     hbp = batting["HBP"]
     sf = batting["SF"]
-    batting["AVG"] = f"{h/ab:.3f}" if batting["AB"] else ".000"
+    batting["AVG"] = f"{h / ab:.3f}" if batting["AB"] else ".000"
     batting["OBP"] = f"{formulas.on_base_pct(h, bb, hbp, ab, sf):.3f}"
 
     outs = pitching["OUTS"] or 0
@@ -207,7 +207,7 @@ def get_season_stats(player_id: str, season_id: str) -> dict:
     pitching["ERA"] = f"{formulas.era(er, outs):.2f}" if outs else "-.--"
     gs = pitching["GS"]
     pc = pitching["PC"]
-    pitching["AVG PC"] = f"{pc/gs:.1f}" if gs else "—"
+    pitching["AVG PC"] = f"{pc / gs:.1f}" if gs else "—"
 
     return {
         "games": row["games_played"],
@@ -232,7 +232,7 @@ def get_career_stats(player_id: str) -> dict:
     bb = batting["BB"]
     hbp = batting["HBP"]
     sf = batting["SF"]
-    batting["AVG"] = f"{h/ab:.3f}" if batting["AB"] else ".000"
+    batting["AVG"] = f"{h / ab:.3f}" if batting["AB"] else ".000"
     batting["OBP"] = f"{formulas.on_base_pct(h, bb, hbp, ab, sf):.3f}"
 
     outs = pitching["OUTS"] or 0
@@ -241,7 +241,7 @@ def get_career_stats(player_id: str) -> dict:
     pitching["ERA"] = f"{formulas.era(er, outs):.2f}" if outs else "-.--"
     gs = pitching["GS"]
     pc = pitching["PC"]
-    pitching["AVG PC"] = f"{pc/gs:.1f}" if gs else "—"
+    pitching["AVG PC"] = f"{pc / gs:.1f}" if gs else "—"
 
     return {
         "games": row["games_played"],
@@ -303,7 +303,7 @@ def format_ratings_line(ratings: dict) -> str:
     if not ratings:
         return "  (ratings unavailable)"
     def_pos = ["c", "1b", "2b", "ss", "3b", "lf", "cf", "rf"]
-    line1 = "  " + "   ".join(f"{p.upper():3s}:{ratings.get(p,0):>3}" for p in def_pos)
+    line1 = "  " + "   ".join(f"{p.upper():3s}:{ratings.get(p, 0):>3}" for p in def_pos)
     line2 = "  SP:{:>3}   RP:{:>3}   P:{:>3}".format(
         ratings.get("sp", 0), ratings.get("rp", 0), ratings.get("p", 0)
     )
@@ -314,7 +314,7 @@ def format_ratings_line(ratings: dict) -> str:
         ("overall_offense", "OFF"),
         ("overall_player", "OVR"),
     ]
-    line3 = "  " + "   ".join(f"{a}:{ratings.get(k,0):>3}" for k, a in off)
+    line3 = "  " + "   ".join(f"{a}:{ratings.get(k, 0):>3}" for k, a in off)
     return "\n".join([line1, line2, line3])
 
 
@@ -370,7 +370,7 @@ def build_report(
         bats = row.get("B", "?")
         throws = row.get("T", "?")
 
-        lines.append(f"\n{'─'*62}")
+        lines.append(f"\n{'─' * 62}")
         lines.append(
             f"  {year or '????'} / {team}  |  Age {age}  |  {pos}  |  B:{bats} T:{throws}"
         )
@@ -437,7 +437,7 @@ def build_report(
             lines.append("SEASON STATS: (season not in DB)")
 
     # ── Career totals ──
-    lines.append(f"\n{'═'*62}")
+    lines.append(f"\n{'═' * 62}")
     lines.append("  CAREER TOTALS")
     lines.append("═" * 62)
 

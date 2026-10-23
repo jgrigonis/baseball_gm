@@ -21,7 +21,6 @@ def sample_team(factory):
 
 
 class TestLeagueRepositoryCreateLeague:
-
     def test_create_new_league(self, league_repo, db_conn):
         league_id = league_repo.get_or_create_by_name("MLB")
 
@@ -67,7 +66,6 @@ class TestLeagueRepositoryCreateLeague:
 
 
 class TestLeagueRepositoryAssignSeasonToLeague:
-
     def test_assign_season_to_league(self, league_repo, db_conn, sample_season):
         league_id = league_repo.get_or_create_by_name("MLB")
         league_repo.assign_season_to_league(league_id, sample_season.id)
@@ -110,7 +108,6 @@ class TestLeagueRepositoryAssignSeasonToLeague:
 
 
 class TestLeagueRepositoryAssignToLeague:
-
     def test_assign_team_to_league(
         self, league_repo, db_conn, sample_season, sample_team
     ):
@@ -186,7 +183,6 @@ class TestLeagueRepositoryAssignToLeague:
 
 
 class TestLeagueRepositoryHasSeason:
-
     def test_has_season_true(self, league_repo, sample_season):
         league_id = league_repo.get_or_create_by_name("MLB")
         league_repo.assign_season_to_league(league_id, sample_season.id)
@@ -217,7 +213,6 @@ class TestLeagueRepositoryHasSeason:
 
 
 class TestLeagueRepositoryIntegration:
-
     def test_full_league_setup_workflow(self, league_repo, db_conn, factory):
         league_id = league_repo.get_or_create_by_name("MLB")
         season = factory.season()

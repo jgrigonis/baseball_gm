@@ -57,7 +57,6 @@ def _make_player(pid: str, rating: int = 50) -> PlayerRecord:
 
 
 class TestExecuteBlitzDraftGuards:
-
     def test_raises_if_draft_not_found(self, db_conn):
         with pytest.raises(ValueError, match="not found"):
             execute_blitz_draft("nonexistent-draft", db_conn)
@@ -84,7 +83,6 @@ class TestExecuteBlitzDraftGuards:
 
 
 class TestExecuteBlitzDraftStateTransitions:
-
     @pytest.fixture
     def setup(self, db_conn, factory):
         league = factory.league(state="draft")
@@ -151,7 +149,6 @@ class TestExecuteBlitzDraftStateTransitions:
 
 
 class TestDraftPicksTable:
-
     @pytest.fixture
     def setup(self, db_conn, factory):
         league = factory.league(state="draft")
@@ -213,7 +210,6 @@ class TestDraftPicksTable:
 
 
 class TestPreferenceList:
-
     @pytest.fixture
     def setup(self, db_conn, factory):
         league = factory.league(state="draft")
@@ -271,7 +267,6 @@ class TestPreferenceList:
 
 
 class TestBlitzDraftRunSnake:
-
     @pytest.fixture
     def blitz(self, db_conn, factory):
         factory.draft()

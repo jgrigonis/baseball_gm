@@ -180,9 +180,9 @@ def play_series(
     """
     # wins_needed = _WINS_NEEDED[best_of]
     lines = []
-    lines.append(f"\n{'='*60}")
+    lines.append(f"\n{'=' * 60}")
     lines.append(f"  {series_name}  (Best of {best_of})")
-    lines.append(f"{'='*60}")
+    lines.append(f"{'=' * 60}")
     output = "\n".join(lines)
     log_print(output, logger)
 
@@ -403,9 +403,9 @@ def main():
     champ_name = team_repo.get_name(champion)
 
     lines = []
-    lines.append(f"\n{'='*60}")
+    lines.append(f"\n{'=' * 60}")
     lines.append(f"  🎉 CHAMPION: {champ_name}")
-    lines.append(f"{'='*60}\n")
+    lines.append(f"{'=' * 60}\n")
     output = "\n".join(lines)
     log_print(output, logger)
 

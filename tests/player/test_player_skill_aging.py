@@ -41,7 +41,6 @@ def _mean_delta(fn, age: int, val: float, n: int = 2000, **kwargs) -> float:
 
 
 class TestCapDampen(unittest.TestCase):
-
     def test_no_cap_returns_raw(self):
         """cap=None means no dampening — raw delta passes through unchanged."""
         self.assertEqual(_cap_dampen(5.0, 60.0, None), 5.0)
@@ -108,7 +107,6 @@ class TestCapDampen(unittest.TestCase):
 
 
 class TestPhasedDelta(unittest.TestCase):
-
     def setUp(self):
         self.sa = SkillAging()
 
@@ -501,7 +499,6 @@ class TestDeltaFunctionsWithCap(unittest.TestCase):
 
 
 class TestDeltaCL(unittest.TestCase):
-
     def test_vet_bonus_applied_at_and_after_vet_age(self):
         """Players 28+ should trend slightly positive on average."""
         mean_vet = _mean_delta(

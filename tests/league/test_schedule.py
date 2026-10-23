@@ -72,7 +72,9 @@ class TestScheduleGenerator:
     def test_round_robin_correct_pairings(self, generator, four_teams):
         """Test that all team pairings are present."""
         matchups = generator.generate_round_robin(
-            four_teams, games_per_matchup=1, home_and_away=False  # Easier to verify
+            four_teams,
+            games_per_matchup=1,
+            home_and_away=False,  # Easier to verify
         )
 
         # Convert to set to ignore order

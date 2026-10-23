@@ -57,7 +57,7 @@ def print_game_record(label, rows, value_label, team_col=True):
         print(
             f"  {'#':<4} {'Team':<26} {'Date':<12} {'Season':<7} {value_label:<8} {'Inn'}"
         )
-        print(f"  {'-'*4} {'-'*26} {'-'*12} {'-'*7} {'-'*8} {'-'*4}")
+        print(f"  {'-' * 4} {'-' * 26} {'-' * 12} {'-' * 7} {'-' * 8} {'-' * 4}")
         for i, row in enumerate(rows, 1):
             team, date, season, value, innings = row
             print(
@@ -65,7 +65,7 @@ def print_game_record(label, rows, value_label, team_col=True):
             )
     else:
         print(f"  {'#':<4} {'Date':<12} {'Season':<7} {value_label:<8} {'Inn'}")
-        print(f"  {'-'*4} {'-'*12} {'-'*7} {'-'*8} {'-'*4}")
+        print(f"  {'-' * 4} {'-' * 12} {'-' * 7} {'-' * 8} {'-' * 4}")
         for i, row in enumerate(rows, 1):
             date, season, value, innings = row
             print(f"  {i:<4} {date:<12} {season:<7} {str(value):<8} {innings}")
@@ -82,13 +82,13 @@ def print_season_record(label, rows, value_label, team_col=True):
     print(f"\n  {label}")
     if team_col:
         print(f"  {'#':<4} {'Team':<26} {'Season':<7} {value_label}")
-        print(f"  {'-'*4} {'-'*26} {'-'*7} {'-'*10}")
+        print(f"  {'-' * 4} {'-' * 26} {'-' * 7} {'-' * 10}")
         for i, row in enumerate(rows, 1):
             team, season, value = row
             print(f"  {i:<4} {team:<26} {season:<7} {value}")
     else:
         print(f"  {'#':<4} {'Season':<7} {value_label}")
-        print(f"  {'-'*4} {'-'*7} {'-'*10}")
+        print(f"  {'-' * 4} {'-' * 7} {'-' * 10}")
         for i, row in enumerate(rows, 1):
             season, value = row
             print(f"  {i:<4} {season:<7} {value}")
@@ -105,13 +105,13 @@ def print_series_record(label, rows, value_label, team_col=True):
     print(f"\n  {label}")
     if team_col:
         print(f"  {'#':<4} {'Team':<26} {'Series':<24} {'Season':<7} {value_label}")
-        print(f"  {'-'*4} {'-'*26} {'-'*24} {'-'*7} {'-'*10}")
+        print(f"  {'-' * 4} {'-' * 26} {'-' * 24} {'-' * 7} {'-' * 10}")
         for i, row in enumerate(rows, 1):
             team, series, season, value = row
             print(f"  {i:<4} {team:<26} {series:<24} {season:<7} {value}")
     else:
         print(f"  {'#':<4} {'Series':<24} {'Season':<7} {value_label}")
-        print(f"  {'-'*4} {'-'*24} {'-'*7} {'-'*10}")
+        print(f"  {'-' * 4} {'-' * 24} {'-' * 7} {'-' * 10}")
         for i, row in enumerate(rows, 1):
             series, season, value = row
             print(f"  {i:<4} {series:<24} {season:<7} {value}")
@@ -542,7 +542,7 @@ def main():
     if args.teams:
         teams = list_teams(conn)
         print(f"\n  {'City':<20} {'Mascot':<20} {'ID'}")
-        print(f"  {'-'*20} {'-'*20} {'-'*36}")
+        print(f"  {'-' * 20} {'-' * 20} {'-' * 36}")
         for t in teams:
             print(f"  {t['city']:<20} {t['mascot']:<20} {t['id']}")
         conn.close()

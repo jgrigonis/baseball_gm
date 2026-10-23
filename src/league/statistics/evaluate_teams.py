@@ -261,7 +261,7 @@ def pick_year_directory(base_dir: Path) -> tuple[Path, str | None]:
     for i, d in enumerate(subdirs):
         print(f"  [{i}] {d.name}")
 
-    choice = input(f"Select [0-{len(subdirs)-1}]: ").strip()
+    choice = input(f"Select [0-{len(subdirs) - 1}]: ").strip()
     idx = int(choice) if choice.isdigit() and int(choice) < len(subdirs) else 0
     return subdirs[idx], subdirs[idx].name
 

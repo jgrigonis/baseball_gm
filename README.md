@@ -67,9 +67,7 @@ Create a fun, interactive game, where you manage and run a baseball team.
 
 At the root of the project you can run `pytest` to run the unit tests
 
-You can run `black .` to update the code with black formatting standards
-
-You can run `./pyflake.sh` to run pyflakes against the src, tests and scripts directories.
+You can run `ruff format .` to format the code, and `ruff check src tests scripts` to lint it (ruff's `F` rules cover pyflakes).
 
 ---
 

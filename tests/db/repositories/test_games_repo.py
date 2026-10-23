@@ -76,7 +76,6 @@ def completed_game(base):
 
 
 class TestGameRepositoryGet:
-
     def test_get_existing_game(self, game_repo, sample_game):
         result = game_repo.get(sample_game.gid)
         assert result is not None
@@ -122,7 +121,6 @@ class TestGameRepositoryGet:
 
 
 class TestGameRepositorySaveResult:
-
     def test_save_result_basic(self, game_repo, sample_game):
         result = GameResult(
             home_team="Home Team",
@@ -206,7 +204,6 @@ class TestGameRepositorySaveResult:
 
 
 class TestGameRepositoryGetSeasonGames:
-
     @pytest.fixture
     def season_games(self, db_conn, factory):
         """Two seasons with multiple games each."""
@@ -235,7 +232,7 @@ class TestGameRepositoryGetSeasonGames:
                 """,
                 (
                     gid,
-                    f"2025-04-{i+1:02d}",
+                    f"2025-04-{i + 1:02d}",
                     s1.id,
                     None,
                     home.id,
@@ -313,7 +310,6 @@ class TestGameRepositoryGetSeasonGames:
 
 
 class TestGameRepositoryClearResult:
-
     def test_clear_result_completed_game(self, game_repo, completed_game):
         row = completed_game.conn.execute(
             "SELECT * FROM games WHERE id = %s", (completed_game.gid,)
@@ -355,7 +351,6 @@ class TestGameRepositoryClearResult:
 
 
 class TestGameRepositoryIsCompleted:
-
     def test_is_completed_true(self, game_repo, completed_game):
         assert game_repo.is_completed(completed_game.gid) is True
 

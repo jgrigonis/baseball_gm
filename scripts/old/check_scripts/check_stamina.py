@@ -42,7 +42,7 @@ def scan_directory(directory: Path, position_filter: str | None = None):
                     st = int(row[STAMINA_COL])
                     team_stamina.append(st)
                     all_stamina.append(st)
-                except (ValueError, KeyError):
+                except ValueError, KeyError:
                     pass
 
         if team_stamina:
@@ -53,17 +53,17 @@ def scan_directory(directory: Path, position_filter: str | None = None):
         return
 
     label = f" (position={position_filter})" if position_filter else ""
-    print(f"\n{'='*55}")
+    print(f"\n{'=' * 55}")
     print(f"  Stamina Report{label}")
     print(f"  Directory: {directory}")
     print(f"  Files scanned: {len(csv_files)}  |  Players: {len(all_stamina)}")
-    print(f"{'='*55}")
+    print(f"{'=' * 55}")
 
     print(f"\n{'LEAGUE-WIDE SUMMARY':}")
     print(f"  Min:    {min(all_stamina)}")
     print(f"  Max:    {max(all_stamina)}")
-    print(f"  Avg:    {sum(all_stamina)/len(all_stamina):.1f}")
-    print(f"  Median: {sorted(all_stamina)[len(all_stamina)//2]}")
+    print(f"  Avg:    {sum(all_stamina) / len(all_stamina):.1f}")
+    print(f"  Median: {sorted(all_stamina)[len(all_stamina) // 2]}")
 
     # Bucket distribution
     buckets = {"1-30": 0, "31-50": 0, "51-70": 0, "71-90": 0, "91-100": 0}
@@ -87,7 +87,7 @@ def scan_directory(directory: Path, position_filter: str | None = None):
     # Per-team summary
     print(f"\n{'TEAM BREAKDOWN':}")
     print(f"  {'Team':<28} {'Count':>5}  {'Min':>4}  {'Avg':>5}  {'Max':>4}")
-    print(f"  {'-'*52}")
+    print(f"  {'-' * 52}")
     for team, values in sorted(by_team.items()):
         avg = sum(values) / len(values)
         print(

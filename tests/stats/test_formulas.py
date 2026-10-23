@@ -10,7 +10,6 @@ from src.stats.pitching_stats import PitchingStats
 
 
 class TestBatting:
-
     def test_total_bases(self):
         # 10 hits: 4 singles, 3 doubles, 1 triple, 2 homers
         assert formulas.total_bases(10, 3, 1, 2) == 4 + 6 + 3 + 8
@@ -38,7 +37,6 @@ class TestBatting:
 
 
 class TestPitching:
-
     @pytest.mark.parametrize(
         "outs, expected",
         [(0, "0.0"), (1, "0.1"), (2, "0.2"), (27, "9.0"), (61, "20.1")],
@@ -71,7 +69,6 @@ class TestPitching:
 
 
 class TestStatsClassesUseFormulas:
-
     def test_obp_excludes_sac_bunts(self):
         stats = BattingStats(
             at_bats=100, hits=30, walks=10, hbp=2, sac_flys=3, sac_bunts=5
@@ -86,7 +83,6 @@ class TestStatsClassesUseFormulas:
 
 
 class TestAnalyzerEra:
-
     def test_era_leaderboard_uses_earned_runs(self):
         pitching = PitchingStats(outs=27, runs=5, earned_runs=2)
         player = SimpleNamespace(

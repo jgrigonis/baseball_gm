@@ -65,7 +65,7 @@ def print_histogram(ages, width=50):
     peak = max(counts.values())
 
     print(f"\nAge distribution across {total:,} players")
-    print(f"Mean: {sum(ages)/total:.1f}  Min: {min_age}  Max: {max_age}\n")
+    print(f"Mean: {sum(ages) / total:.1f}  Min: {min_age}  Max: {max_age}\n")
 
     for age in range(min_age, max_age + 1):
         count = counts.get(age, 0)

@@ -42,7 +42,9 @@ def print_record(label, rows, value_label="Value", show_innings=True):
         print(
             f"  {'#':<4} {'Player':<24} {'Team':<26} {'Date':<12} {'Season':<7} {value_label:<8} {'Inn'}"
         )
-        print(f"  {'-'*4} {'-'*24} {'-'*26} {'-'*12} {'-'*7} {'-'*8} {'-'*4}")
+        print(
+            f"  {'-' * 4} {'-' * 24} {'-' * 26} {'-' * 12} {'-' * 7} {'-' * 8} {'-' * 4}"
+        )
         for i, row in enumerate(rows, 1):
             player, team, date, season, value, innings = row
             print(
@@ -52,7 +54,7 @@ def print_record(label, rows, value_label="Value", show_innings=True):
         print(
             f"  {'#':<4} {'Player':<24} {'Team':<26} {'Date':<12} {'Season':<7} {value_label}"
         )
-        print(f"  {'-'*4} {'-'*24} {'-'*26} {'-'*12} {'-'*7} {'-'*8}")
+        print(f"  {'-' * 4} {'-' * 24} {'-' * 26} {'-' * 12} {'-' * 7} {'-' * 8}")
         for i, row in enumerate(rows, 1):
             player, team, date, season, value, _innings = row
             print(

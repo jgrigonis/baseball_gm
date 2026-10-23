@@ -65,7 +65,7 @@ def scan_directory(
                     st = int(row[stat_filter])
                     team_stat.append(st)
                     all_stat.append(st)
-                except (ValueError, KeyError):
+                except ValueError, KeyError:
                     pass
 
         if team_stat:
@@ -76,17 +76,17 @@ def scan_directory(
         return
 
     label = f" (position={position_filter})" if position_filter else ""
-    print(f"\n{'='*55}")
+    print(f"\n{'=' * 55}")
     print(f"  Stat Report{label}")
     print(f"  Directory: {directory}")
     print(f"  Files scanned: {len(csv_files)}  |  Players: {len(all_stat)}")
-    print(f"{'='*55}")
+    print(f"{'=' * 55}")
 
     print(f"\n{'LEAGUE-WIDE SUMMARY':}")
     print(f"  Min:    {min(all_stat)}")
     print(f"  Max:    {max(all_stat)}")
-    print(f"  Avg:    {sum(all_stat)/len(all_stat):.1f}")
-    print(f"  Median: {sorted(all_stat)[len(all_stat)//2]}")
+    print(f"  Avg:    {sum(all_stat) / len(all_stat):.1f}")
+    print(f"  Median: {sorted(all_stat)[len(all_stat) // 2]}")
 
     # Bucket distribution
     buckets = {"1-30": 0, "31-50": 0, "51-70": 0, "71-90": 0, "91-100": 0}
@@ -110,7 +110,7 @@ def scan_directory(
     # Per-team summary
     print(f"\n{'TEAM BREAKDOWN':}")
     print(f"  {'Team':<28} {'Count':>5}  {'Min':>4}  {'Avg':>5}  {'Max':>4}")
-    print(f"  {'-'*52}")
+    print(f"  {'-' * 52}")
     for team, values in sorted(by_team.items()):
         avg = sum(values) / len(values)
         print(

@@ -185,7 +185,6 @@ class TestShouldRetire:
 
 
 class TestStepTracking:
-
     @pytest.mark.slow
     def test_step_not_done_initially(self, db_conn):
         season_id = seed_season(db_conn)
@@ -255,7 +254,6 @@ class TestStepTracking:
 
 
 class TestPlayoffsComplete:
-
     def test_returns_false_when_no_finals(self, db_conn):
         new_id = str(uuid.uuid4())
         seed_season(db_conn, season_id=new_id)

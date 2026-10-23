@@ -14,7 +14,6 @@ def season_repo(db_conn):
 
 
 class TestSeasonRepositoryCreateSeason:
-
     def test_create_new_season(self, season_repo, db_conn):
         season_id = season_repo.create_season(_BASE + 1)
         assert season_id is not None
@@ -69,7 +68,6 @@ class TestSeasonRepositoryCreateSeason:
 
 
 class TestSeasonRepositoryGetSeason:
-
     def test_get_existing_season(self, season_repo):
         season_id = season_repo.create_season(_BASE + 20, "Test Season")
         season = season_repo.get_season(season_id)
@@ -88,7 +86,6 @@ class TestSeasonRepositoryGetSeason:
 
 
 class TestSeasonRepositoryGetSeasonsByYear:
-
     def test_get_seasons_by_year_single(self, season_repo):
         season_id = season_repo.create_season(_BASE + 30)
         seasons = season_repo.get_seasons_by_year(_BASE + 30)
@@ -193,7 +190,6 @@ class TestSeasonRepositoryGetAllSeasons:
 
 
 class TestSeasonRepositoryExists:
-
     def test_exists_true(self, season_repo):
         season_id = season_repo.create_season(_BASE + 60)
         assert season_repo.exists(season_id) is True
@@ -210,7 +206,6 @@ class TestSeasonRepositoryExists:
 
 
 class TestSeasonRepositoryDeleteSeason:
-
     def test_delete_existing_season(self, season_repo):
         season_id = season_repo.create_season(_BASE + 70)
         assert season_repo.exists(season_id)
@@ -248,7 +243,6 @@ class TestSeasonRepositoryDeleteSeason:
 
 
 class TestSeasonRepositoryIntegration:
-
     def test_full_season_lifecycle(self, season_repo):
         season_id = season_repo.create_season(_BASE + 80, "Test Season")
         assert season_repo.exists(season_id)

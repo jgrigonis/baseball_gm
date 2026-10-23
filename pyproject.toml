@@ -25,10 +25,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "black",
   "coverage",
   "httpx",
-  "pyflakes",
   "pytest",
   "ruff",
 ]
@@ -40,7 +38,7 @@ markers = [
 ]
 
 [tool.ruff.lint]
-# Same checks as pyflake.sh (pyflakes) plus syntax errors.
+# Pyflakes checks (F) plus syntax errors (E9).
 select = ["F", "E9"]
 
 [tool.setuptools.packages.find]

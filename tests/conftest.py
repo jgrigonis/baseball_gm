@@ -205,7 +205,7 @@ def db_seed(db_conn):
                 " VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
                 (
                     f"game-{i}",
-                    f"2025-04-{i+1:02d}",
+                    f"2025-04-{i + 1:02d}",
                     "season-1",
                     "team-home",
                     "team-away",

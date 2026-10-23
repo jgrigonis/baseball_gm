@@ -95,7 +95,6 @@ def _age_distribution_positions(rng: random.Random, n: int) -> list[tuple[int, s
 
 
 class DraftGenerator:
-
     def __init__(self, conn, rng: random.Random | None = None):
         self.conn = conn
         self.rng = rng or random.Random()

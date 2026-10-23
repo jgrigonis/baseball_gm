@@ -127,7 +127,6 @@ ALWAYS_MISS = _always(1.0)  # random() == 1.0 → never < any prob < 1.0
 
 
 class TestShouldAttemptPickoff:
-
     def test_empty_bases_never_pickoff(self):
         bases = _make_bases()
         score = _make_score()
@@ -167,7 +166,6 @@ class TestShouldAttemptPickoff:
 
 
 class TestSelectPickoffTarget:
-
     def test_prefers_third_when_occupied(self):
         bases = _make_bases(first=_make_runner(), third=_make_runner())
         rng = _always(0.9)  # > 0.1, so won't pick second
@@ -198,7 +196,6 @@ class TestSelectPickoffTarget:
 
 
 class TestShouldAttemptSteal:
-
     def _bases_clear_second(self):
         bases = MagicMock()
         bases.runner_on.return_value = False  # no base is occupied
@@ -322,7 +319,6 @@ class TestShouldAttemptSteal:
 
 
 class TestShouldAttemptDoubleSteal:
-
     def test_first_and_third_fires_with_hit(self):
         assert GameStrategy.should_attempt_double_steal(
             outs=0, double_steal_bases=[FIRST, THIRD], rng=ALWAYS_HIT
@@ -363,7 +359,6 @@ class TestShouldAttemptDoubleSteal:
 
 
 class TestShouldBunt:
-
     def test_no_bunt_with_two_outs(self):
         assert not GameStrategy.should_bunt(
             _make_bases(first=_make_runner()),
@@ -450,7 +445,6 @@ class TestShouldBunt:
 
 
 class TestShouldIntentionalWalk:
-
     def test_no_ibb_if_first_occupied(self):
         bases = _make_bases(first=_make_runner())
         assert not GameStrategy.should_intentional_walk(
@@ -502,7 +496,6 @@ class TestShouldIntentionalWalk:
 
 
 class TestShouldPitchOut:
-
     def test_empty_bases_no_pitchout(self):
         assert not GameStrategy.should_pitch_out(_make_bases(), outs=0, rng=ALWAYS_HIT)
 
@@ -551,7 +544,6 @@ class TestShouldPitchOut:
 
 
 class TestShouldHitAndRun:
-
     def test_no_hnr_with_two_outs(self):
         assert not GameStrategy.should_hit_and_run(
             _make_bases(first=_make_runner()), outs=2, rng=ALWAYS_HIT
@@ -599,7 +591,6 @@ class TestShouldHitAndRun:
 
 
 class TestGetDoubleStealCandidates:
-
     def _game(self, first=None, second=None, third=None):
         g = MagicMock()
         g.bases = _make_bases(first=first, second=second, third=third)
@@ -634,7 +625,6 @@ class TestGetDoubleStealCandidates:
 
 
 class TestShouldConsiderPitchingChange:
-
     def test_no_pitcher_returns_false(self):
         assert not GameStrategy.should_consider_pitching_change(None, _make_inning(), 0)
 
@@ -682,7 +672,6 @@ class TestShouldConsiderPitchingChange:
 
 
 class TestShouldBringInCloser:
-
     def _available_closer(self, pitch_count=0, fatigue=None):
         if fatigue is None:
             fatigue = FatigueLevel.FRESH
@@ -773,7 +762,6 @@ class TestShouldBringInCloser:
     "src.game.strategy.PlayerEvaluator.rate_player", return_value={"rp": 60, "sp": 55}
 )
 class TestSelectReliefPitcher:
-
     def _make_available(self, role, fatigue=None, is_starter=False):
         p = MagicMock()
         p.id = str(uuid.uuid4())  # ← explicit string id

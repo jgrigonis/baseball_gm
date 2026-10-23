@@ -289,7 +289,7 @@ def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
         if s and p.get("player_type") != "pitcher":
             ab = s["bat_ab"] or 0
             p["stat_g"] = s["bat_games_played"] or 0
-            p["stat_avg"] = f"{s['bat_hits']/ab:.3f}" if ab else None
+            p["stat_avg"] = f"{s['bat_hits'] / ab:.3f}" if ab else None
             p["stat_hr"] = s["bat_home_runs"] or 0
             p["stat_rbi"] = s["bat_rbi"] or 0
         elif s and p.get("player_type") == "pitcher":

@@ -56,9 +56,9 @@ def test_schema_has_required_tables(db_conn):
         "player_game_stats",
         "team_game_stats",
     }
-    assert expected_tables.issubset(
-        tables
-    ), f"Missing tables: {expected_tables - tables}"
+    assert expected_tables.issubset(tables), (
+        f"Missing tables: {expected_tables - tables}"
+    )
 
 
 def test_verify_schema_fails_on_missing_tables():

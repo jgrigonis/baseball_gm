@@ -248,9 +248,11 @@ class TeamRotationsRepository:
         # All pitchers tired — return the most-rested one as fallback
         best = max(
             rotation,
-            key=lambda r: pitcher_repo.get_with_recovery(
-                r["player_id"], game_date, 50
-            ).current_energy,
+            key=lambda r: (
+                pitcher_repo.get_with_recovery(
+                    r["player_id"], game_date, 50
+                ).current_energy
+            ),
         )
         return best["player_id"]
 
