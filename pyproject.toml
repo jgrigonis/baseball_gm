@@ -21,7 +21,7 @@ dependencies = [
   # Needed by FastAPI's Form() even though nothing imports it directly.
   "python-multipart>=0.0.32",
   "psycopg[binary]>=3.3",
-  # Not imported yet; reserved for password hashing.
+  # Password hashing (src/api/services/passwords.py).
   "argon2-cffi>=25.1",
 ]
 

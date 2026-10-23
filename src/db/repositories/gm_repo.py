@@ -68,27 +68,6 @@ class GMRepository:
             (gm_id, league_id),
         )
 
-    def auto_link_gm_account(self, user_id: str, user_display_name: str):
-        """
-        Identity Reclaim (Auto-linking)
-        We still need this for now since we aren't doing 2FA/Logins yet,
-        but the dependency ensures 'user' is already valid.
-        Auto-reclaim: any gm row with same display_name but different user_id
-        gets reassigned to the current user. This handles the common case where
-        the browser cookie was cleared and a new guest identity was created.
-        """
-        self.conn.execute(
-            """
-                UPDATE gms SET user_id = %s
-                WHERE NOT is_ai
-                    AND user_id != %s
-                    AND user_id IN (
-                    SELECT id FROM users WHERE display_name = %s
-                    )
-            """,
-            (user_id, user_id, user_display_name),
-        )
-
     def get_users_leagues(self, user_id: str) -> list[dict]:
         """Fetch the user's leagues"""
         rows = self.conn.execute(

@@ -31,18 +31,12 @@ def leagues_index(
     db: DB,
     user: User,
 ):
+    # Guests from before passwords existed choose a login before going on.
+    if not user["has_password"]:
+        return RedirectResponse("/auth/set-password", status_code=302)
+
     gm_repo = GMRepository(db)
-    # 1. Identity Reclaim (Auto-linking)
-    # We still need this for now since we aren't doing 2FA/Logins yet,
-    # but the dependency ensures 'user' is already valid.
-    # Auto-reclaim: any gm row with same display_name but different user_id
-    # gets reassigned to the current user. This handles the common case where
-    # the browser cookie was cleared and a new guest identity was created.
-    gm_repo.auto_link_gm_account(user["id"], user["display_name"])
-
-    db.commit()
-
-    # 2. Fetch User's Leagues
+    # Fetch User's Leagues
     rows = gm_repo.get_users_leagues(user["id"])
 
     return templates.TemplateResponse(
