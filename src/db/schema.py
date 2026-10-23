@@ -54,12 +54,14 @@ CREATE TABLE IF NOT EXISTS teams (
 
 -- users: one row per human across all leagues and sessions.
 --   session_token is the opaque credential stored in the browser cookie.
---   A future login system would link a new token to an existing user row.
+--   username + password_hash are the login. Both are NULL for guests created
+--   before passwords existed; those users set them on their next visit.
 CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
     session_token TEXT UNIQUE NOT NULL,   
     display_name  TEXT NOT NULL,
-    password_hash TEXT,
+    username      TEXT,                   -- unique ignoring case (index in migration 003)
+    password_hash TEXT,                   -- argon2id
     email         TEXT UNIQUE,
     is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
     totp_secret   TEXT,
