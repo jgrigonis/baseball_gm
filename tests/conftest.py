@@ -40,17 +40,22 @@ def _session_conn(request):
             "No test database URL found. Set DATABASE_TEST_URL or pass --db-url."
         )
     conn = psycopg.connect(db_url, row_factory=dict_row)
-    conn.execute(
-        "DROP TABLE IF EXISTS leagues, seasons, teams, players, users, gms, draft_picks, offseason_steps CASCADE"
-    )
+    # Drop every table (schema_migrations included) so the test DB is rebuilt
+    # from the current schema each session.  The schema uses CREATE TABLE IF
+    # NOT EXISTS, so any table left over from an older run would keep its old
+    # columns and types.
+    conn.execute("""
+        DO $$
+        DECLARE t text;
+        BEGIN
+            FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = current_schema()
+            LOOP
+                EXECUTE format('DROP TABLE IF EXISTS %I CASCADE', t);
+            END LOOP;
+        END $$
+        """)
     conn.commit()
     init_db(conn)
-    # Wipe any data left over from a previous test session.
-    # CASCADE handles all dependent tables.  schema_migrations is preserved.
-    conn.execute(
-        "TRUNCATE TABLE leagues, seasons, teams, players, users, gms, draft_picks, offseason_steps CASCADE"
-    )
-    conn.commit()
     yield conn
     conn.close()
 
