@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+from src.stats import formulas
+
 if TYPE_CHECKING:
     from src.team.team_in_game import TeamInGame
 
@@ -357,13 +359,8 @@ class PlayerTableFormatter:
         # Derived stats
         era = stats.pitching.era
         whip = stats.pitching.whip
-        ip_float = stats.pitching.ip_float
-
-        # K/9 (strikeouts per 9 innings)
-        k_per_9 = (stats.pitching.strike_outs / ip_float * 9) if ip_float > 0 else 0.0
-
-        # BB/9 (walks per 9 innings)
-        bb_per_9 = (stats.pitching.walks / ip_float * 9) if ip_float > 0 else 0.0
+        k_per_9 = formulas.per_nine(stats.pitching.strike_outs, stats.pitching.outs)
+        bb_per_9 = formulas.per_nine(stats.pitching.walks, stats.pitching.outs)
 
         output += "{:>6.2f}".format(era)
         output += "{:>6.2f}".format(whip)

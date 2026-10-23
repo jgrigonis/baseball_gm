@@ -1,6 +1,8 @@
 # src/stats/pitching_stats.py
 from dataclasses import dataclass
 
+from src.stats import formulas
+
 
 @dataclass
 class PitchingStats:
@@ -52,24 +54,22 @@ class PitchingStats:
     @property
     def ip_float(self):
         """Return the innings pitched as a float."""
-        return self.outs / 3.0
+        return formulas.innings(self.outs)
 
     @property
     def ip_str(self):
         """Return the innings pitched as a string."""
-        innings = self.outs // 3
-        remainder = self.outs % 3
-        return f"{innings}.{remainder}"
+        return formulas.ip_str(self.outs)
 
     @property
     def era(self):
         """Return the earned run average."""
-        return self.earned_runs / self.ip_float * 9 if self.ip_float > 0 else 0
+        return formulas.era(self.earned_runs, self.outs)
 
     @property
     def whip(self):
         """Return the walks plus hits per inning pitched."""
-        return (self.walks + self.hits) / self.ip_float if self.ip_float > 0 else 0
+        return formulas.whip(self.hits, self.walks, self.outs)
 
     def __str__(self):
         """Return the string representation of the pitching statistics."""

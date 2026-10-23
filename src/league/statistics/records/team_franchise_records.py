@@ -28,14 +28,13 @@ except ImportError:
     from src.util.team_resolver import resolve_team, list_teams, TeamResolverError
 
 from src.db.connection import get_connection
+from src.stats import formulas
 
 # ── Formatting ────────────────────────────────────────────────────────────────
 
 
 def fmt_ip(outs):
-    if outs is None:
-        return "0.0"
-    return f"{outs // 3}.{outs % 3}"
+    return formulas.ip_str(outs or 0)
 
 
 def print_section(title):

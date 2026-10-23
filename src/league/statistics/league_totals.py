@@ -12,6 +12,7 @@ import logging
 
 from src.db.connection import get_connection
 from src.league.season_resolver import resolve_season
+from src.stats import formulas
 
 WIDTH = 72
 
@@ -165,15 +166,13 @@ def fetch_totals(conn, season_id: str) -> dict:
     triples = row["triples"] or 0
     hrs = row["home_runs"] or 0
 
-    obp_denom = ab + walks + hbp + sf
-    avg = hits / ab
-    obp = (hits + walks + hbp) / obp_denom if obp_denom else 0
-    slg = (hits + doubles + 2 * triples + 3 * hrs) / ab
+    avg = formulas.batting_average(hits, ab)
+    obp = formulas.on_base_pct(hits, walks, hbp, ab, sf)
+    slg = formulas.slugging_pct(formulas.total_bases(hits, doubles, triples, hrs), ab)
     ops = obp + slg
 
     p_outs = row["p_outs"] or 1
-    p_ip = p_outs / 3
-    whip = (row["p_walks"] + row["p_hits"]) / p_ip if p_ip else 0
+    whip = formulas.whip(row["p_hits"], row["p_walks"], p_outs)
 
     sb = row["stolen_bases"] or 0
     cs = row["caught_stealing"] or 0

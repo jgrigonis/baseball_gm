@@ -61,6 +61,7 @@ from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
+from src.stats import formulas
 from src.web.utils import tab_response, _shell_ctx, _current_league_date
 
 router = APIRouter(tags=["web"])
@@ -1088,11 +1089,9 @@ def leaders(
             sb = r["bat_stolen_bases"] or 0
             hbp = r["bat_hbp"] or 0
             sf = r["bat_sac_flys"] or 0
-            avg = h / ab if ab else 0.0
-            obp_d = ab + bb + hbp + sf
-            obp = (h + bb + hbp) / obp_d if obp_d else 0.0
-            tb = h - d - tr - hr + 2 * d + 3 * tr + 4 * hr
-            slg = tb / ab if ab else 0.0
+            avg = formulas.batting_average(h, ab)
+            obp = formulas.on_base_pct(h, bb, hbp, ab, sf)
+            slg = formulas.slugging_pct(formulas.total_bases(h, d, tr, hr), ab)
             qualifies = ab >= min_ab
             ab_k = ab / k if k else 0.0
             ab_hr = ab / hr if hr else None
@@ -1199,13 +1198,13 @@ def leaders(
             pbb = r["pitch_walks"] or 0
             pk = r["pitch_strike_outs"] or 0
             hr = r["pitch_home_runs"] or 0
-            ip_f = outs / 3
-            era = (er * 27) / outs if outs else 0.0
-            whip = (pbb + ph) / ip_f if ip_f else 0.0
+            ip_f = formulas.innings(outs)
+            era = formulas.era(er, outs)
+            whip = formulas.whip(ph, pbb, outs)
             qualifies_p = outs >= min_outs
-            bb9 = (pbb * 27) / outs if outs else 0.0
-            hr9 = (hr * 27) / outs if outs else 0.0
-            k9 = (pk * 27) / outs if outs else 0.0
+            bb9 = formulas.per_nine(pbb, outs)
+            hr9 = formulas.per_nine(hr, outs)
+            k9 = formulas.per_nine(pk, outs)
             pitchers.append(
                 {
                     "player_id": r["player_id"],
@@ -1238,8 +1237,7 @@ def leaders(
                 if fmt:
                     disp = fmt(val)
                 elif key == "IP":
-                    o = int(val * 3)
-                    disp = f"{o//3}.{o%3}"
+                    disp = formulas.ip_str(round(val * formulas.OUTS_PER_INNING))
                 else:
                     disp = str(int(val)) if val == int(val) else f"{val:.2f}"
                 rows.append(
@@ -1441,9 +1439,11 @@ def roster(
             elif s and p.get("player_type") == "pitcher":
                 outs = s["pitch_outs"] or 0
                 p["stat_gs"] = s["pitch_games_started"] or 0
-                p["stat_ip"] = f"{outs//3}.{outs%3}" if outs else None
+                p["stat_ip"] = formulas.ip_str(outs) if outs else None
                 p["stat_era"] = (
-                    f"{(s['pitch_earned_runs']*27)/outs:.2f}" if outs else None
+                    f"{formulas.era(s['pitch_earned_runs'], outs):.2f}"
+                    if outs
+                    else None
                 )
                 p["stat_w"] = s["pitch_wins"] or 0
                 p["stat_l"] = s["pitch_losses"] or 0
@@ -1592,9 +1592,11 @@ def lineup(
                 outs = s["pitch_outs"] or 0
                 p["stat_gs"] = s["pitch_games_started"] or 0
                 p["stat_era"] = (
-                    f"{(s['pitch_earned_runs'] * 27) / outs:.2f}" if outs else "--"
+                    f"{formulas.era(s['pitch_earned_runs'], outs):.2f}"
+                    if outs
+                    else "--"
                 )
-                p["stat_ip"] = f"{outs // 3}.{outs % 3}"
+                p["stat_ip"] = formulas.ip_str(outs)
                 p["stat_w"] = s["pitch_wins"] or 0
                 p["stat_l"] = s["pitch_losses"] or 0
                 p["stat_sv"] = s["pitch_saves"] or 0
@@ -2024,11 +2026,10 @@ def stats(
             g = s.get("bat_games_played") or 0
 
             if g > 0 or ab > 0:
-                avg = round(h / ab, 3) if ab else 0.0
-                obp_d = ab + bb + hbp + sf
-                obp = round((h + bb + hbp) / obp_d, 3) if obp_d else 0.0
-                tb = h - d - tr - hr + 2 * d + 3 * tr + 4 * hr
-                slg = round(tb / ab, 3) if ab else 0.0
+                avg = round(formulas.batting_average(h, ab), 3)
+                obp = round(formulas.on_base_pct(h, bb, hbp, ab, sf), 3)
+                tb = formulas.total_bases(h, d, tr, hr)
+                slg = round(formulas.slugging_pct(tb, ab), 3)
                 qualifies_bat = ab >= min_ab
                 ab_k = round(ab / k, 2) if k else None
                 hr_ab = round(hr / ab, 3) if ab else None
@@ -2068,14 +2069,14 @@ def stats(
                 w = s.get("pitch_wins") or 0
                 l = s.get("pitch_losses") or 0
                 sv = s.get("pitch_saves") or 0
-                ip_f = outs / 3
-                era = round((er * 27) / outs, 2) if outs else 0.0
-                whip = round((pbb + ph) / ip_f, 2) if ip_f else 0.0
-                bb9 = round((pbb * 27) / outs, 2) if outs else 0.0
-                hr9 = round((phr * 27) / outs, 2) if outs else 0.0
-                k9 = round((pk * 27) / outs, 2) if outs else 0.0
+                ip_f = formulas.innings(outs)
+                era = round(formulas.era(er, outs), 2)
+                whip = round(formulas.whip(ph, pbb, outs), 2)
+                bb9 = round(formulas.per_nine(pbb, outs), 2)
+                hr9 = round(formulas.per_nine(phr, outs), 2)
+                k9 = round(formulas.per_nine(pk, outs), 2)
                 gs = s.get("pitch_games_started") or 0
-                ip_disp = f"{outs//3}.{outs%3}"
+                ip_disp = formulas.ip_str(outs)
                 qualifies_pit = outs >= min_outs
                 pitchers.append(
                     {
@@ -2360,8 +2361,7 @@ def game_panel(
     bat_rows = pgs_repo.get_batting_box_score(game_id)
     pit_rows = pgs_repo.get_pitching_box_score(game_id)
 
-    def fmt_ip(outs):
-        return f"{outs//3}.{outs%3}"
+    fmt_ip = formulas.ip_str
 
     home_bat = [r for r in bat_rows if r["team_id"] == game["home_team_id"]]
     away_bat = [r for r in bat_rows if r["team_id"] == game["away_team_id"]]
@@ -2533,17 +2533,23 @@ def retirement(
             bb = r.get("bat_walks") or 0
             outs = r.get("pitch_outs") or 0
             er = r.get("pitch_earned_runs") or 0
-            pk = r.get("pitch_walks") or 0
+            hbp = r.get("bat_hbp") or 0
+            sf = r.get("bat_sac_flys") or 0
+            pbb = r.get("pitch_walks") or 0
             ph = r.get("pitch_hits") or 0
             r["has_bat_stats"] = ab > 0
             r["has_pit_stats"] = outs > 0
             # is_pitcher: used for games column; show pitching if outs dominate or no AB
             r["is_pitcher"] = outs > 0 and (ab == 0 or outs / 3 >= ab / 10)
-            r["avg"] = f"{hits / ab:.3f}" if ab >= 1 else "—"
-            r["obp"] = f"{(hits + bb) / (ab + bb):.3f}" if (ab + bb) >= 1 else "—"
-            r["era"] = f"{(er * 27) / outs:.2f}" if outs >= 1 else "—"
-            r["ip"] = f"{outs // 3}.{outs % 3}" if outs >= 1 else "0.0"
-            r["whip"] = f"{(pk + ph) / (outs / 3):.2f}" if outs >= 1 else "—"
+            r["avg"] = f"{formulas.batting_average(hits, ab):.3f}" if ab else "—"
+            r["obp"] = (
+                f"{formulas.on_base_pct(hits, bb, hbp, ab, sf):.3f}"
+                if ab + bb + hbp + sf
+                else "—"
+            )
+            r["era"] = f"{formulas.era(er, outs):.2f}" if outs else "—"
+            r["ip"] = formulas.ip_str(outs)
+            r["whip"] = f"{formulas.whip(ph, pbb, outs):.2f}" if outs else "—"
             retired_players.append(r)
 
     ctx.update({"retired_players": retired_players, "my_team_id": my_team_id})
@@ -2676,19 +2682,18 @@ def player_panel(
                 s = stats_row
                 if s.get("pitch_games_played", 0) > 0:
                     outs = s.get("pitch_outs", 0) or 0
-                    # ip = outs // 3 + (outs % 3) / 10
                     er = s.get("pitch_earned_runs", 0) or 0
-                    era = round((er * 27) / outs, 2) if outs > 0 else 0.0
+                    era = round(formulas.era(er, outs), 2)
                     walks = s.get("pitch_walks", 0) or 0
                     hits = s.get("pitch_hits", 0) or 0
-                    whip = round((walks + hits) / (outs / 3), 2) if outs > 0 else 0.0
+                    whip = round(formulas.whip(hits, walks, outs), 2)
                     pitch_stats = {
                         "G": s.get("pitch_games_played", 0),
                         "GS": s.get("pitch_games_started", 0),
                         "W": s.get("pitch_wins", 0),
                         "L": s.get("pitch_losses", 0),
                         "SV": s.get("pitch_saves", 0),
-                        "IP": f"{outs // 3}.{outs % 3}",
+                        "IP": formulas.ip_str(outs),
                         "H": hits,
                         "ER": er,
                         "BB": walks,
@@ -2702,23 +2707,15 @@ def player_panel(
                     bb = s.get("bat_walks", 0) or 0
                     hbp = s.get("bat_hbp", 0) or 0
                     sf = s.get("bat_sac_flys", 0) or 0
-                    avg = round(hits / ab, 3) if ab > 0 else 0.0
-                    obp_denom = ab + bb + hbp + sf
-                    obp = (
-                        round((hits + bb + hbp) / obp_denom, 3)
-                        if obp_denom > 0
-                        else 0.0
+                    avg = round(formulas.batting_average(hits, ab), 3)
+                    obp = round(formulas.on_base_pct(hits, bb, hbp, ab, sf), 3)
+                    tb = formulas.total_bases(
+                        hits,
+                        s.get("bat_doubles", 0) or 0,
+                        s.get("bat_triples", 0) or 0,
+                        s.get("bat_home_runs", 0) or 0,
                     )
-                    tb = (
-                        hits
-                        - (s.get("bat_doubles", 0) or 0)
-                        - (s.get("bat_triples", 0) or 0)
-                        - (s.get("bat_home_runs", 0) or 0)
-                        + 2 * (s.get("bat_doubles", 0) or 0)
-                        + 3 * (s.get("bat_triples", 0) or 0)
-                        + 4 * (s.get("bat_home_runs", 0) or 0)
-                    )
-                    slg = round(tb / ab, 3) if ab > 0 else 0.0
+                    slg = round(formulas.slugging_pct(tb, ab), 3)
                     bat_stats = {
                         "G": s.get("bat_games_played", 0),
                         "AB": ab,
@@ -2915,12 +2912,11 @@ def player_career(
 
             if (r.get("pitch_games_played") or 0) > 0:
                 outs = r.get("pitch_outs", 0) or 0
-                ip = outs / 3.0
                 er = r.get("pitch_earned_runs", 0) or 0
                 hits = r.get("pitch_hits", 0) or 0
                 bb = r.get("pitch_walks", 0) or 0
-                era = round(er / ip * 9, 2) if ip > 0 else 0.0
-                whip = round((hits + bb) / ip, 2) if ip > 0 else 0.0
+                era = round(formulas.era(er, outs), 2)
+                whip = round(formulas.whip(hits, bb, outs), 2)
                 prow = {
                     "year": yr,
                     "team": team,
@@ -2930,7 +2926,7 @@ def player_career(
                     "W": r.get("pitch_wins", 0),
                     "L": r.get("pitch_losses", 0),
                     "SV": r.get("pitch_saves", 0),
-                    "IP": f"{outs // 3}.{outs % 3}",
+                    "IP": formulas.ip_str(outs),
                     "H": hits,
                     "ER": er,
                     "BB": bb,
@@ -2954,8 +2950,9 @@ def player_career(
                 dbl = r.get("bat_doubles", 0) or 0
                 trp = r.get("bat_triples", 0) or 0
                 hr = r.get("bat_home_runs", 0) or 0
-                slg_num = h + dbl + 2 * trp + 3 * hr
-                obp_d = ab + bb + hbp + sf
+                slg_num = formulas.total_bases(h, dbl, trp, hr)
+                obp = formulas.on_base_pct(h, bb, hbp, ab, sf)
+                slg = formulas.slugging_pct(slg_num, ab)
                 brow = {
                     "year": yr,
                     "team": team,
@@ -2971,14 +2968,10 @@ def player_career(
                     "BB": bb,
                     "K": r.get("bat_strike_outs", 0) or 0,
                     "SB": r.get("bat_stolen_bases", 0) or 0,
-                    "AVG": round(h / ab, 3) if ab > 0 else 0.0,
-                    "OBP": round((h + bb + hbp) / obp_d, 3) if obp_d > 0 else 0.0,
-                    "SLG": round(slg_num / ab, 3) if ab > 0 else 0.0,
-                    "OPS": round(
-                        ((h + bb + hbp) / obp_d if obp_d > 0 else 0)
-                        + (slg_num / ab if ab > 0 else 0),
-                        3,
-                    ),
+                    "AVG": round(formulas.batting_average(h, ab), 3),
+                    "OBP": round(obp, 3),
+                    "SLG": round(slg, 3),
+                    "OPS": round(obp + slg, 3),
                 }
                 batting_seasons.append(brow)
                 t = b_totals if not is_post else pb_totals
@@ -3007,14 +3000,11 @@ def player_career(
             if not d:
                 return None
             outs = d.pop("_outs", 0)
-            ip = outs / 3.0
             return {
                 **d,
-                "IP": f"{outs // 3}.{outs % 3}",
-                "ERA": round(d.get("ER", 0) / ip * 9, 2) if ip > 0 else 0.0,
-                "WHIP": (
-                    round((d.get("H", 0) + d.get("BB", 0)) / ip, 2) if ip > 0 else 0.0
-                ),
+                "IP": formulas.ip_str(outs),
+                "ERA": round(formulas.era(d.get("ER", 0), outs), 2),
+                "WHIP": round(formulas.whip(d.get("H", 0), d.get("BB", 0), outs), 2),
             }
 
         def _bat_totals(d: dict) -> dict | None:
@@ -3026,14 +3016,13 @@ def player_career(
             hbp = d.pop("_hbp", 0)
             sf = d.pop("_sf", 0)
             slg_num = d.pop("_slg_num", 0)
-            obp_d = ab + bb + hbp + sf
-            obp = round((h + bb + hbp) / obp_d, 3) if obp_d > 0 else 0.0
-            slg = round(slg_num / ab, 3) if ab > 0 else 0.0
+            obp = formulas.on_base_pct(h, bb, hbp, ab, sf)
+            slg = formulas.slugging_pct(slg_num, ab)
             return {
                 **d,
-                "AVG": round(h / ab, 3) if ab > 0 else 0.0,
-                "OBP": obp,
-                "SLG": slg,
+                "AVG": round(formulas.batting_average(h, ab), 3),
+                "OBP": round(obp, 3),
+                "SLG": round(slg, 3),
                 "OPS": round(obp + slg, 3),
             }
 
