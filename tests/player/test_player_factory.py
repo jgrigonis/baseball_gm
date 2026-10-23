@@ -11,7 +11,6 @@ The tests explicitly lock down that PlayerFactory:
 ✔ Does not depend on randomness leaking outside the RNG
 """
 
-# tests/test_player_factory.py
 import pytest
 import random
 

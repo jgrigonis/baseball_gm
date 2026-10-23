@@ -7,6 +7,8 @@ import psycopg
 from src.api.database import get_db
 from src.db.repositories.user_repo import UserRepository
 
+# ── TYPE ALIAS (For clean route signatures) ────────────────────────────────
+DB = Annotated[psycopg.Connection, Depends(get_db)]
 
 # Your reusable dependency function
 def is_htmx(request: Request) -> bool:
@@ -46,7 +48,6 @@ async def get_commissioner(league_id: str, db: DB, gm: Any = Depends(get_current
 
 
 # ── TYPE ALIASES (For clean route signatures) ────────────────────────────────
-DB = Annotated[psycopg.Connection, Depends(get_db)]
 IsHTMX = Annotated[bool, Depends(is_htmx)]
 
 User = Annotated[Any, Depends(get_current_user)]
