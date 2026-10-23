@@ -240,7 +240,7 @@ class OffseasonPipeline:
                 inj_repo.count_player_injuries(player.id, season_id) if season_id else 0
             )
             games_missed = (
-                inj_repo.get_games_missed_in_season(player.id, season_id)
+                inj_repo.get_days_missed_in_season(player.id, season_id)
                 if season_id
                 else 0
             )

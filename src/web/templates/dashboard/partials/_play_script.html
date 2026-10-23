@@ -83,7 +83,7 @@ async function schedSim(count) {
       var injNews = '';
       var injDest = 'batting';  // default destination: lineup batting tab
       if (d.new_injuries && d.new_injuries.length > 0) {
-        injNews += d.new_injuries.map(i => `🚑 ${i.name} (${i.days}g)`).join('  ');
+        injNews += d.new_injuries.map(i => `🚑 ${i.name} (${i.days}d)`).join('  ');
         // A new pitcher injury → pitching tab; hitter injury keeps batting
         if (d.new_injuries.some(i => i.is_pitcher)) injDest = 'pitching';
       }

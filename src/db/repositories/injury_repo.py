@@ -4,17 +4,18 @@ src/db/repositories/injury_repo.py
 
 Repository for player injury tracking, scoped per league.
 
-Injury duration table (games missed, not counting the game of injury):
-    minor strain / bruise:   3-7
-    muscle pull:            10-20
-    ligament / sprain:      15-30
-    fracture:               30-50
-    serious (e.g. ACL):     50-80
+Injuries are measured in calendar days, not games. An injury stores the
+date the player is available again (return_date), so off days, the gap
+before the playoffs and the offseason all count toward recovery.
+
+A player injured on day D who misses N days sits out D+1 .. D+N and is
+available again on D+N+1.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 import logging
 import random
 from typing import Optional
@@ -22,7 +23,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Injury severity tiers
+# Injury severity tiers (days missed)
 # ---------------------------------------------------------------------------
 
 INJURY_TIERS = {
@@ -34,11 +35,17 @@ INJURY_TIERS = {
 }
 
 
-def roll_games_missed(severity: str, rng: random.Random | None = None) -> int:
+def roll_days_missed(severity: str, rng: random.Random | None = None) -> int:
     lo, hi = INJURY_TIERS.get(severity, INJURY_TIERS["minor"])
     if rng:
         return rng.randint(lo, hi)
     return random.randint(lo, hi)
+
+
+def _to_date(value) -> date:
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value)[:10])
 
 
 # ---------------------------------------------------------------------------
@@ -49,11 +56,12 @@ def roll_games_missed(severity: str, rng: random.Random | None = None) -> int:
 @dataclass
 class PlayerInjury:
     player_id: str
-    games_remaining: int
+    return_date: date
+    days_remaining: int
 
     @property
     def is_active(self) -> bool:
-        return self.games_remaining > 0
+        return self.days_remaining > 0
 
 
 # ---------------------------------------------------------------------------
@@ -72,23 +80,62 @@ class InjuryRepository:
     # Read
     # ------------------------------------------------------------------
 
-    def get(self, player_id: str) -> Optional[PlayerInjury]:
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """SELECT player_id, games_remaining FROM player_injuries
-               WHERE player_id = %s AND league_id = %s""",
-            (player_id, self.league_id),
-        )
-        row = cursor.fetchone()
+    def current_date(self) -> date:
+        """
+        The league's "today" for injury purposes: the day after the most
+        recent completed game in this league. Before any game is played,
+        the first scheduled game date; failing that, the real date.
+        """
+        row = self.conn.execute(
+            """SELECT MAX(g.game_date) FILTER (WHERE g.completed = 1) AS last_played,
+                      MIN(g.game_date) FILTER (WHERE g.completed = 0) AS next_up
+               FROM games g
+               JOIN league_seasons ls ON ls.season_id = g.season_id
+               WHERE ls.league_id = %s""",
+            (self.league_id,),
+        ).fetchone()
+        if row and row["last_played"]:
+            return _to_date(row["last_played"]) + timedelta(days=1)
+        if row and row["next_up"]:
+            return _to_date(row["next_up"])
+        return date.today()
+
+    def _as_of(self, as_of) -> str:
+        return (_to_date(as_of) if as_of else self.current_date()).isoformat()
+
+    def get(self, player_id: str, as_of=None) -> Optional[PlayerInjury]:
+        as_of = self._as_of(as_of)
+        row = self.conn.execute(
+            """SELECT player_id, return_date,
+                      (return_date::date - %s::date) AS days_remaining
+               FROM player_injuries
+               WHERE player_id = %s AND league_id = %s
+                 AND return_date IS NOT NULL""",
+            (as_of, player_id, self.league_id),
+        ).fetchone()
         if not row:
             return None
         return PlayerInjury(
-            player_id=row["player_id"], games_remaining=row["games_remaining"]
+            player_id=row["player_id"],
+            return_date=_to_date(row["return_date"]),
+            days_remaining=max(0, row["days_remaining"]),
         )
 
-    def is_injured(self, player_id: str) -> bool:
-        injury = self.get(player_id)
+    def is_injured(self, player_id: str, as_of=None) -> bool:
+        injury = self.get(player_id, as_of)
         return injury is not None and injury.is_active
+
+    def get_injured_ids(self, player_ids, as_of) -> set[str]:
+        """Return the subset of player_ids who are still injured on as_of."""
+        if not player_ids:
+            return set()
+        rows = self.conn.execute(
+            """SELECT player_id FROM player_injuries
+               WHERE league_id = %s AND player_id = ANY(%s)
+                 AND return_date::date > %s::date""",
+            (self.league_id, list(player_ids), self._as_of(as_of)),
+        ).fetchall()
+        return {r["player_id"] for r in rows}
 
     def get_injury_log(self, player_id: str, limit: int = 5) -> list[dict]:
         """Return recent injury log entries for a player, newest first."""
@@ -99,73 +146,86 @@ class InjuryRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_team_injury_report(self, team_id: str, league_id: str) -> list[dict]:
-        """Return injured players for a team with names, ordered by games_remaining DESC."""
+    def get_team_injury_report(
+        self, team_id: str, league_id: str, as_of=None
+    ) -> list[dict]:
+        """Return injured players for a team with names, ordered by days_remaining DESC."""
         if not team_id:
             return []
+        as_of = self._as_of(as_of)
         rows = self.conn.execute(
-            """SELECT p.id as player_id, p.first_name, p.last_name, pi.games_remaining
+            """SELECT p.id as player_id, p.first_name, p.last_name,
+                      (pi.return_date::date - %s::date) AS days_remaining
                FROM player_injuries pi
                JOIN players p ON p.id = pi.player_id
                JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
-               WHERE pi.games_remaining > 0
+               WHERE pi.return_date::date > %s::date
                  AND (pi.league_id = %s OR pi.league_id = '')
-               ORDER BY pi.games_remaining DESC""",
-            (team_id, league_id),
+               ORDER BY days_remaining DESC""",
+            (as_of, team_id, as_of, league_id),
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_active_for_team(self, team_id: str) -> dict[str, dict]:
-        """Return {player_id: {"name": ..., "days": games_remaining, "is_pitcher": bool}} for all active injuries on a team."""
+    def get_active_for_team(self, team_id: str, as_of=None) -> dict[str, dict]:
+        """Return {player_id: {"name": ..., "days": days_remaining, "is_pitcher": bool}} for all active injuries on a team."""
         if not team_id:
             return {}
+        as_of = self._as_of(as_of)
         rows = self.conn.execute(
-            """SELECT pi.player_id, pi.games_remaining,
+            """SELECT pi.player_id,
+                      (pi.return_date::date - %s::date) AS days_remaining,
                       p.first_name || ' ' || p.last_name as name,
                       ps.player_id IS NOT NULL as is_pitcher
                FROM player_injuries pi
                JOIN players p ON p.id = pi.player_id
                JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
                LEFT JOIN pitcher_state ps ON ps.player_id = pi.player_id AND ps.league_id = %s
-               WHERE pi.games_remaining > 0 AND (pi.league_id = %s OR pi.league_id = '')""",
-            (team_id, self.league_id, self.league_id),
+               WHERE pi.return_date::date > %s::date
+                 AND (pi.league_id = %s OR pi.league_id = '')""",
+            (as_of, team_id, self.league_id, as_of, self.league_id),
         ).fetchall()
         return {
             r["player_id"]: {
                 "name": r["name"],
-                "days": r["games_remaining"],
+                "days": r["days_remaining"],
                 "is_pitcher": bool(r["is_pitcher"]),
             }
             for r in rows
         }
 
-    def get_team_injuries(self, team_id: str) -> dict[str, int]:
-        """Return {player_id: games_remaining} for all injured players on a team."""
+    def get_team_injuries(self, team_id: str, as_of=None) -> dict[str, int]:
+        """Return {player_id: days_remaining} for all injured players on a team."""
         if not team_id:
             return {}
+        as_of = self._as_of(as_of)
         rows = self.conn.execute(
-            """SELECT pi.player_id, pi.games_remaining 
+            """SELECT pi.player_id,
+                      (pi.return_date::date - %s::date) AS days_remaining
                 FROM player_injuries pi
                 JOIN team_players tp ON tp.player_id = pi.player_id
                 WHERE tp.team_id = %s
-                AND pi.games_remaining > 0
+                AND pi.return_date::date > %s::date
                 AND pi.league_id = %s""",
-            (team_id, self.league_id),
+            (as_of, team_id, as_of, self.league_id),
         ).fetchall()
-        return {r["player_id"]: r["games_remaining"] for r in rows}
+        return {r["player_id"]: r["days_remaining"] for r in rows}
 
-    def get_all_injured(self) -> list[PlayerInjury]:
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """SELECT player_id, games_remaining FROM player_injuries
-               WHERE games_remaining > 0 AND league_id = %s""",
-            (self.league_id,),
-        )
+    def get_all_injured(self, as_of=None) -> list[PlayerInjury]:
+        as_of = self._as_of(as_of)
+        rows = self.conn.execute(
+            """SELECT player_id, return_date,
+                      (return_date::date - %s::date) AS days_remaining
+               FROM player_injuries
+               WHERE return_date::date > %s::date AND league_id = %s""",
+            (as_of, as_of, self.league_id),
+        ).fetchall()
         return [
             PlayerInjury(
-                player_id=row["player_id"], games_remaining=row["games_remaining"]
+                player_id=row["player_id"],
+                return_date=_to_date(row["return_date"]),
+                days_remaining=row["days_remaining"],
             )
-            for row in cursor.fetchall()
+            for row in rows
         ]
 
     def get_injuries_by_year(self, player_id: str) -> list[dict]:
@@ -189,7 +249,8 @@ class InjuryRepository:
         ).fetchone()
         return result["count"] if result else 0
 
-    def get_games_missed_in_season(self, player_id: str, season_id: str) -> int:
+    def get_days_missed_in_season(self, player_id: str, season_id: str) -> int:
+        """Total days missed to injuries suffered this season (log column is games_missed)."""
         result = self.conn.execute(
             "SELECT COALESCE(SUM(games_missed), 0) AS total FROM player_injury_log WHERE player_id = %s AND season_id = %s",
             (player_id, season_id),
@@ -208,27 +269,42 @@ class InjuryRepository:
         severity="minor",
         activity=None,
         rng=None,
-        games=None,
+        days=None,
     ):
-        games_missed = games if games is not None else roll_games_missed(severity, rng)
+        """
+        Record an injury suffered on game_date. The player misses `days`
+        calendar days (rolled from the severity tier if not given) and is
+        available again the day after that.
+        """
+        injury_day = _to_date(game_date)
+        days_missed = days if days is not None else roll_days_missed(severity, rng)
+        return_date = injury_day + timedelta(days=days_missed + 1)
 
-        existing = self.get(player_id)
-        if existing and existing.games_remaining >= games_missed:
+        existing = self.get(player_id, as_of=injury_day + timedelta(days=1))
+        if existing and existing.return_date >= return_date:
             logger.debug("Player %s already has a worse injury, skipping.", player_id)
             return existing
 
-        injury = PlayerInjury(player_id=player_id, games_remaining=games_missed)
+        injury = PlayerInjury(
+            player_id=player_id,
+            return_date=return_date,
+            days_remaining=days_missed,
+        )
 
         cursor = self.conn.cursor()
         with self.conn.transaction():
+            # games_remaining is legacy (pre day-based injuries); it now just
+            # records the length of the current injury in days.
             cursor.execute(
                 """
-                INSERT INTO player_injuries (player_id, league_id, games_remaining)
-                VALUES (%s, %s, %s)
+                INSERT INTO player_injuries
+                    (player_id, league_id, games_remaining, return_date)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT(player_id, league_id) DO UPDATE SET
-                    games_remaining = excluded.games_remaining
+                    games_remaining = excluded.games_remaining,
+                    return_date = excluded.return_date
                 """,
-                (injury.player_id, self.league_id, injury.games_remaining),
+                (player_id, self.league_id, days_missed, return_date.isoformat()),
             )
             cursor.execute(
                 """
@@ -239,43 +315,21 @@ class InjuryRepository:
                 (
                     player_id,
                     season_id,
-                    games_missed,
+                    days_missed,
                     severity,
-                    (
-                        game_date.isoformat()
-                        if hasattr(game_date, "isoformat")
-                        else game_date
-                    ),
+                    injury_day.isoformat(),
                     activity,
                 ),
             )
 
         logger.info(
-            "Player %s injured: %s (%d games).", player_id, severity, games_missed
+            "Player %s injured: %s (%d days, back %s).",
+            player_id,
+            severity,
+            days_missed,
+            return_date.isoformat(),
         )
         return injury
-
-    def tick(self, player_id: str) -> Optional[PlayerInjury]:
-        injury = self.get(player_id)
-        if not injury:
-            return None
-
-        injury.games_remaining -= 1
-
-        if injury.games_remaining <= 0:
-            self.clear_injuries(player_id)
-            logger.info("Player %s injury cleared — available to play.", player_id)
-            return None
-
-        self._save(injury)
-        return injury
-
-    def tick_all(self, player_ids: list[str]) -> dict[str, Optional[PlayerInjury]]:
-        results = {}
-        for player_id in player_ids:
-            if self.is_injured(player_id):
-                results[player_id] = self.tick(player_id)
-        return results
 
     def clear_injuries(self, player_id: str) -> bool:
         cursor = self.conn.cursor()
@@ -296,19 +350,3 @@ class InjuryRepository:
         )
         deleted = cursor.rowcount
         return deleted
-
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
-
-    def _save(self, injury: PlayerInjury) -> None:
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO player_injuries (player_id, league_id, games_remaining)
-            VALUES (%s, %s, %s)
-            ON CONFLICT(player_id, league_id) DO UPDATE SET
-                games_remaining = excluded.games_remaining
-            """,
-            (injury.player_id, self.league_id, injury.games_remaining),
-        )

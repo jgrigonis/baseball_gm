@@ -233,7 +233,7 @@ def _ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 
 
 def _injured_player_ids(db, team_id: str, league_id: str = "") -> dict:
-    """Return dict of {player_id: games_remaining} for players on IL for a team."""
+    """Return dict of {player_id: days_remaining} for players on IL for a team."""
     return InjuryRepository(db, league_id).get_team_injuries(team_id)
 
 
@@ -2792,8 +2792,8 @@ def player_panel(
                 }
 
         # Injury status
-        injury = inj_repo.get(pid)
-        raw_injury = injury.games_remaining if injury and injury.is_active else None
+        injury = inj_repo.get(pid, as_of=_current_date)
+        raw_injury = injury.days_remaining if injury and injury.is_active else None
 
         return {
             **grades.model_dump(),
@@ -2809,7 +2809,7 @@ def player_panel(
             "pitch_stats": pitch_stats,
             "bat_stats": bat_stats,
             "injured": raw_injury is not None,
-            "games_remaining": raw_injury,
+            "injury_days": raw_injury,
             "returning": False,
         }
 

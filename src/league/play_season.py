@@ -315,12 +315,11 @@ def play_game(
     home_eligible = _load_eligible_ids(conn, home_team.record.id, blitz)
     away_eligible = _load_eligible_ids(conn, away_team.record.id, blitz)
 
-    # Build injured_ids BEFORE ticking so players finishing their last game of injury
-    # are still excluded from today's game (they return for the next game).
+    # Injuries are tracked in days: a player is out until their return date,
+    # whether or not their team plays in the meantime.
     all_player_ids = [p.id for p in home_team.players + away_team.players]
     injury_repo = InjuryRepository(conn, league_id=league_id)
-    injured_ids = {pid for pid in all_player_ids if injury_repo.is_injured(pid)}
-    injury_repo.tick_all(all_player_ids)
+    injured_ids = injury_repo.get_injured_ids(all_player_ids, as_of=game_date)
 
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     series_id = game_info.get("series_id") or ""

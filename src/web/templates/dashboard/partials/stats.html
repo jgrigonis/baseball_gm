@@ -259,7 +259,7 @@ function renderTable() {
       var val = fmtVal(row[col.key], col.fmt);
       if (isName && row.injured) {
         var ilLabel = row.injury_days
-          ? ' <span style="font-size:10px;color:var(--red);">IL (' + row.injury_days + 'g)</span>'
+          ? ' <span style="font-size:10px;color:var(--red);">IL (' + row.injury_days + 'd)</span>'
           : ' <span style="font-size:10px;color:var(--red);">IL</span>';
         val = '<span style="color:var(--red);">' + val + '</span>' + ilLabel;
       }
