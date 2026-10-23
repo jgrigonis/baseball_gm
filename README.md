@@ -6,7 +6,18 @@
 
 ### Create a virtual environment
 
-Recommend .venv
+Recommended: install [uv](https://docs.astral.sh/uv/) and run
+
+`uv sync --extra dev`
+
+This creates `.venv` and installs the exact versions recorded in `uv.lock`.
+Run tools inside it with `uv run`, for example `uv run pytest`.
+
+After changing dependencies in `pyproject.toml`, run `uv lock` and commit the
+updated `uv.lock`. To upgrade everything to the newest allowed versions, run
+`uv lock --upgrade`.
+
+Without uv (versions are not locked this way):
 
 `python3 -m venv .venv`
 

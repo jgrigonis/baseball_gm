@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-python -m pip install -e ".[dev]"
-python -m coverage run -m pytest "$@"
-python -m coverage report -m
+uv sync --locked --extra dev
+uv run --locked coverage run -m pytest "$@"
+uv run --locked coverage report -m
