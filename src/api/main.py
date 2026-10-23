@@ -13,8 +13,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-# from src.api.routers import draft, gms, leagues, web
-from src.api.routers import web
+from src.api.routers import (
+    auth,
+    draft,
+    games,
+    history,
+    leaders,
+    leagues,
+    lineup,
+    players,
+    playoffs,
+    roster,
+    seasons,
+    sim,
+    standings,
+    stats,
+    strategy,
+)
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
@@ -49,10 +64,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Web UI router registered FIRST — its specific routes like /leagues/new
-# and /leagues/join must take priority over the API's /leagues/{join_code}
-# wildcard, which would otherwise swallow them.
-app.include_router(web.router)
+# Web UI routers, one per area of the app.
+for _module in (
+    auth,
+    leagues,
+    draft,
+    roster,
+    sim,
+    standings,
+    leaders,
+    lineup,
+    strategy,
+    stats,
+    playoffs,
+    games,
+    seasons,
+    history,
+    players,
+):
+    app.include_router(_module.router)
 
 # Static files
 app.mount("/static", StaticFiles(directory="src/web/static"), name="static")

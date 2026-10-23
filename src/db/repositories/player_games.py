@@ -451,3 +451,73 @@ class PlayerGameRepository:
             (game_id,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------
+    # FIELDING AGGREGATES
+    # ------------------------------------------------------------
+
+    def get_league_fielding_by_position(self, season_id: str) -> list[dict]:
+        """Season fielding totals per player and position across the league
+        (pitchers and DH excluded), for the defensive leaderboards."""
+        return self.conn.execute(
+            """SELECT p.first_name || ' ' || p.last_name AS name,
+                      pgf.player_id, pgf.position,
+                      t.city, t.mascot, pgs.team_id,
+                      COUNT(DISTINCT pgf.game_id)        AS g,
+                      SUM(pgf.putouts)                   AS po,
+                      SUM(pgf.assists)                   AS a,
+                      SUM(pgf.errors)                    AS e,
+                      SUM(COALESCE(pgf.passed_balls, 0)) AS pb
+               FROM player_game_fielding pgf
+               JOIN games gm  ON gm.id  = pgf.game_id
+               JOIN players p ON p.id   = pgf.player_id
+               JOIN player_game_stats pgs
+                    ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
+               JOIN teams t   ON t.id   = pgs.team_id
+               WHERE gm.season_id = %s AND pgf.position NOT IN ('p', 'dh')
+               GROUP BY pgf.player_id, pgf.position, pgs.team_id,
+                        p.first_name, p.last_name, t.city, t.mascot""",
+            (season_id,),
+        ).fetchall()
+
+    def get_team_fielding_by_position(self, season_id: str, team_id: str) -> list[dict]:
+        """Season fielding totals per player and position for one team
+        (pitchers and DH excluded), for the lineup page."""
+        return self.conn.execute(
+            """SELECT pgf.player_id, pgf.position,
+                      COUNT(DISTINCT pgf.game_id) AS g,
+                      SUM(pgf.putouts)  AS po,
+                      SUM(pgf.assists)  AS a,
+                      SUM(pgf.errors)   AS e,
+                      SUM(COALESCE(pgf.passed_balls, 0)) AS pb
+               FROM player_game_fielding pgf
+               JOIN games gm ON gm.id = pgf.game_id
+               JOIN player_game_stats pgs
+                 ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
+               WHERE gm.season_id = %s AND pgs.team_id = %s
+                 AND pgf.position NOT IN ('p', 'dh')
+               GROUP BY pgf.player_id, pgf.position""",
+            (season_id, team_id),
+        ).fetchall()
+
+    def get_team_fielding_lines(self, season_id: str, team_id: str) -> list[dict]:
+        """Season fielding totals per player and position for one team, with
+        names, ordered for the team stats table (only DH excluded)."""
+        return self.conn.execute(
+            """SELECT p.first_name || ' ' || p.last_name AS name,
+                      pgf.player_id, pgf.position,
+                      COUNT(DISTINCT pgf.game_id)   AS g,
+                      SUM(pgf.putouts)              AS po,
+                      SUM(pgf.assists)              AS a,
+                      SUM(pgf.errors)               AS e,
+                      SUM(pgf.passed_balls)         AS pb
+               FROM player_game_fielding pgf
+               JOIN games g    ON g.id = pgf.game_id
+               JOIN players p  ON p.id = pgf.player_id
+               JOIN player_game_stats pgs
+                    ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
+               WHERE g.season_id = %s AND pgs.team_id = %s AND pgf.position != 'dh'
+               GROUP BY pgf.player_id, pgf.position, p.first_name, p.last_name
+               ORDER BY name, pgf.position""",
+            (season_id, team_id),
+        ).fetchall()

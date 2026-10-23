@@ -585,3 +585,18 @@ class PlayerRepository:
             (player_id,),
         ).fetchall()
         return rows
+
+    def get_skills_history(self, player_id: str) -> list[dict]:
+        """One row of skill values per season the player has a snapshot for, oldest first."""
+        return self.conn.execute(
+            """SELECT s.year, psh.age,
+                      psh.durability, psh.clutch, psh.speed, psh.power, psh.eye,
+                      psh.contact, psh.base_running, psh.bunting,
+                      psh.catching, psh.infield, psh.outfield, psh.arm,
+                      psh.accuracy, psh.stamina, psh.recovery, psh.ground_balls, psh.strikes
+               FROM player_skills_history psh
+               JOIN seasons s ON s.id = psh.season_id
+               WHERE psh.player_id = %s
+               ORDER BY s.year""",
+            (player_id,),
+        ).fetchall()

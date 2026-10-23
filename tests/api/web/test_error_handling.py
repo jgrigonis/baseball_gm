@@ -37,7 +37,7 @@ def client(conn):
 class TestUnexpectedErrors:
     def test_json_caller_gets_generic_message(self, client, conn):
         with patch(
-            "src.api.routers.web.run_offseason", side_effect=RuntimeError(SECRET)
+            "src.api.routers.sim.run_offseason", side_effect=RuntimeError(SECRET)
         ):
             r = client.post(f"/leagues/{LEAGUE}/offseason/begin")
 
@@ -48,7 +48,7 @@ class TestUnexpectedErrors:
 
     def test_form_post_gets_error_page(self, client, conn):
         with patch(
-            "src.api.routers.web.start_league", side_effect=RuntimeError(SECRET)
+            "src.api.routers.leagues.start_league", side_effect=RuntimeError(SECRET)
         ):
             r = client.post(
                 f"/leagues/{LEAGUE}/start",
@@ -65,7 +65,7 @@ class TestUnexpectedErrors:
     def test_transaction_is_rolled_back(self, client, conn):
         """A failed offseason used to be committed because the route caught
         the error before get_db could see it."""
-        with patch("src.api.routers.web.run_offseason", side_effect=RuntimeError):
+        with patch("src.api.routers.sim.run_offseason", side_effect=RuntimeError):
             client.post(f"/leagues/{LEAGUE}/offseason/begin")
 
         conn.rollback.assert_called_once()
@@ -73,7 +73,7 @@ class TestUnexpectedErrors:
 
     def test_error_is_logged_with_traceback(self, client, conn, caplog):
         with patch(
-            "src.api.routers.web.run_offseason", side_effect=RuntimeError(SECRET)
+            "src.api.routers.sim.run_offseason", side_effect=RuntimeError(SECRET)
         ):
             client.post(f"/leagues/{LEAGUE}/offseason/begin")
 
@@ -84,7 +84,7 @@ class TestUnexpectedErrors:
 class TestRuleErrors:
     def test_value_error_message_is_shown(self, client, conn):
         msg = "League must be in 'offseason' state, currently 'playoffs'"
-        with patch("src.api.routers.web.run_offseason", side_effect=ValueError(msg)):
+        with patch("src.api.routers.sim.run_offseason", side_effect=ValueError(msg)):
             r = client.post(f"/leagues/{LEAGUE}/offseason/begin")
 
         assert r.status_code == 400
