@@ -19,7 +19,11 @@ def parse_args():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("name", nargs="?", help="Player name (partial match ok)")
     group.add_argument("--id", dest="player_id", help="Player ID to look up")
-    parser.add_argument("--dir", default="team_files", help="Directory of team CSVs")
+    parser.add_argument(
+        "--dir",
+        default=str(Path(__file__).resolve().parent.parent / "team_files"),
+        help="Directory of team CSVs",
+    )
     return parser.parse_args()
 
 

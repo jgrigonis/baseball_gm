@@ -1,6 +1,9 @@
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
+
+from src.util.locations import LOG_FILES
 
 TRACE_LEVEL_NUM = 5
 logging.addLevelName(TRACE_LEVEL_NUM, "TRACE")
@@ -16,7 +19,7 @@ logging.Logger.trace = trace
 
 def setup_logger(
     name: str,
-    log_dir: str = "logs",
+    log_dir: str | Path = LOG_FILES,
     level=logging.INFO,
     console_level=logging.INFO,
     log_id: str | None = None,

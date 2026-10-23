@@ -21,6 +21,7 @@ from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.stats import formulas
+from src.util.locations import TEAM_FILES_DIR, TEMP_FILES
 from src.player.skill_map import SKILL_MAP, SKILL_ABBREVIATIONS
 
 # ---------------------------------------------------------------------------
@@ -108,7 +109,7 @@ def parse_args():
     grp = p.add_mutually_exclusive_group(required=True)
     grp.add_argument("name", nargs="?", help="Player name (partial ok)")
     grp.add_argument("--id", dest="player_id", help="Player UUID")
-    p.add_argument("--dir", default="team_files", help="Root dir of team CSVs")
+    p.add_argument("--dir", default=str(TEAM_FILES_DIR), help="Root dir of team CSVs")
     return p.parse_args()
 
 
@@ -502,7 +503,7 @@ def main():
 
     name_parts = canonical_name.lower().split()
     filename = "_".join(name_parts) + f"_{player_id[:8]}.txt"
-    out_dir = Path("temp_files")
+    out_dir = TEMP_FILES
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / filename
     out_path.write_text(report, encoding="utf-8")

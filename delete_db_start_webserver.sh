@@ -1,4 +1,6 @@
 #!/bin/bash
+# Run from the repo root no matter where the script is called from.
+cd "$(dirname "$0")" || exit 1
 source .venv/bin/activate
 
 # Default to current system user if PGUSER is unset or empty
