@@ -38,7 +38,6 @@ from src.player.player_constants import (
     VALID_BATS,
     VALID_THROWS,
     DEFAULT_LEFT_HANDED_PROB,
-    START_AGE,
 )
 from src.player.positions import is_valid_affinity_position
 from src.player.player_record import PlayerRecord
