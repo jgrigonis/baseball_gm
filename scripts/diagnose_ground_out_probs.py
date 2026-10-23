@@ -158,11 +158,11 @@ def pct(w: dict, key: str) -> float:
 
 def print_table(label: str, weights: dict) -> None:
     total = sum(max(v, 0) for v in weights.values())
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(f"  {label}   (total weight: {total:.0f})")
-    print(f"{'─'*60}")
+    print(f"{'─' * 60}")
     print(f"  {'outcome':<20} {'weight':>8}  {'%':>6}")
-    print(f"  {'─'*20} {'─'*8}  {'─'*6}")
+    print(f"  {'─' * 20} {'─' * 8}  {'─' * 6}")
     for outcome in OUTCOMES:
         w = weights.get(outcome, 0)
         p = pct(weights, outcome)
@@ -187,20 +187,20 @@ SCENARIOS = [
 
 
 def run_diagnostics(skill: int = 50) -> None:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  IN-PLAY OUTCOME PROBABILITIES  (all skills = {skill})")
     print("  Outcomes of interest marked with ◄")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     for label, outs, bases in SCENARIOS:
         w = snapshot_in_play_weights(outs, bases, skill)
         print_table(f"{label}", w)
 
     # Extra: show how ground-ball pitcher skill shifts the numbers
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  EFFECT OF PITCHER 'ground_balls' SKILL")
     print("  Scenario: runner on 1st, 0 outs")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for gb_skill in (30, 50, 70, 90):
         w = snapshot_in_play_weights(outs=0, runner_bases=[FIRST], skill=gb_skill)
         go_pct = pct(w, "ground_out")

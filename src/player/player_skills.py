@@ -344,7 +344,9 @@ class PlayerSkills:
         # Apply position-specific restrictions
         cls._apply_position_restrictions(skills, position, throws, rng)
 
-        return cls(skills, age=age, validate=False)  # Already validated in generate_stat
+        return cls(
+            skills, age=age, validate=False
+        )  # Already validated in generate_stat
 
     @classmethod
     def _apply_position_restrictions(

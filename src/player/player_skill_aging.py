@@ -183,7 +183,6 @@ def _cap_dampen(raw: float, val: float, cap: int | None) -> float:
 
 
 class SkillAging:
-
     def phased_delta(
         self,
         age: int,

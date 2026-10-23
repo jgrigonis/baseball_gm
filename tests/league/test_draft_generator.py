@@ -41,7 +41,7 @@ def generator(db_conn, rng):
 
 def insert_league(db_conn, league_id, name):
     db_conn.execute(
-        "INSERT INTO leagues (id, name) VALUES (%s, %s)" " ON CONFLICT DO NOTHING",
+        "INSERT INTO leagues (id, name) VALUES (%s, %s) ON CONFLICT DO NOTHING",
         (league_id, name),
     )
 
@@ -139,9 +139,9 @@ class TestAgeDistributionPositions:
             age_counts[age] = age_counts.get(age, 0) + 1
         for expected_age, expected_pct in AGE_DISTRIBUTION:
             actual_pct = age_counts.get(expected_age, 0) / 10000
-            assert (
-                abs(actual_pct - expected_pct) < 0.05
-            ), f"Age {expected_age}: expected ~{expected_pct:.0%}, got {actual_pct:.0%}"
+            assert abs(actual_pct - expected_pct) < 0.05, (
+                f"Age {expected_age}: expected ~{expected_pct:.0%}, got {actual_pct:.0%}"
+            )
 
     def test_position_distribution_55_percent_pitchers(self):
         result = _age_distribution_positions(random.Random(42), 10000)
@@ -210,7 +210,6 @@ class TestGenerateProspects:
 
 
 class TestGetExistingDraftable:
-
     def test_returns_prospect_without_team(self, db_conn, generator):
         pid = _uid()
         league_id = _league_id()

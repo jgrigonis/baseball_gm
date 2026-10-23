@@ -71,7 +71,6 @@ def saved_slot(pid, batting_order, position):
 
 
 class TestSetLineupFromSaved:
-
     def test_all_healthy_uses_saved_order(self):
         """All 9 players healthy — lineup matches saved order exactly."""
         players = [make_player(f"p{i}") for i in range(1, 10)]

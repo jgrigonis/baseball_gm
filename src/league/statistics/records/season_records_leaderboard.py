@@ -46,7 +46,7 @@ def print_record(label, rows, value_label="Value"):
         return
     print(f"\n  {label}")
     print(f"  {'#':<4} {'Player':<24} {'Team':<26} {'Season':<7} {value_label}")
-    print(f"  {'-'*4} {'-'*24} {'-'*26} {'-'*7} {'-'*10}")
+    print(f"  {'-' * 4} {'-' * 24} {'-' * 26} {'-' * 7} {'-' * 10}")
     for i, row in enumerate(rows, 1):
         player, team, season, value = row
         print(f"  {i:<4} {player:<24} {team:<26} {season:<7} {value}")
@@ -274,7 +274,7 @@ PITCHING_COUNTING = [
 PITCH_QUALIFY = f"(SUM(pss.pitch_outs) / 3.0) >= {IP_PER_GAME} * gpt.games_per_team"
 
 ERA_EXPR = (
-    "CAST(SUM(pss.pitch_earned_runs) AS REAL)" " / NULLIF(SUM(pss.pitch_outs), 0) * 27"
+    "CAST(SUM(pss.pitch_earned_runs) AS REAL) / NULLIF(SUM(pss.pitch_outs), 0) * 27"
 )
 WHIP_EXPR = (
     "CAST(SUM(pss.pitch_walks) + SUM(pss.pitch_hits) AS REAL)"

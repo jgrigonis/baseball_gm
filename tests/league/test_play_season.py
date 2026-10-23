@@ -77,7 +77,6 @@ def _rotation_row(pid: str, order: int) -> dict:
 
 
 class TestPickStarterNoRotation:
-
     def test_returns_none_when_no_scheduled_starter(self):
         rot = _make_rot_repo(scheduled=None)
         pit = _make_pitcher_repo({})
@@ -99,7 +98,6 @@ class TestPickStarterNoRotation:
 
 
 class TestPickStarterHealthyScheduled:
-
     def test_returns_scheduled_pitcher_when_rested(self):
         rot = _make_rot_repo(
             scheduled="p1",
@@ -149,7 +147,6 @@ class TestPickStarterHealthyScheduled:
 
 
 class TestPickStarterInjuredScheduled:
-
     def test_spot_start_from_bullpen_when_scheduled_injured(self):
         """Scheduled p1 is injured — pick bullpen pitcher p3."""
         rot = _make_rot_repo(
@@ -295,7 +292,6 @@ class TestPickStarterInjuredScheduled:
 
 
 class TestClearGameData:
-
     @pytest.fixture
     def game(self, factory):
         return factory.game_with_teams()
@@ -367,7 +363,6 @@ class TestClearGameData:
 
 
 class TestLoadEligibleIds:
-
     @pytest.fixture
     def seeded(self, factory, db_conn):
         team = factory.team()
@@ -464,7 +459,6 @@ class TestLoadEligibleIds:
 
 
 class TestPlayGameAtomic:
-
     @pytest.fixture
     def game(self, factory):
         return factory.game_with_teams()

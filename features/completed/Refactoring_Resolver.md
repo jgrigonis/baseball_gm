@@ -120,6 +120,7 @@ def _determine_pitch_outcome(self, intent, game) -> str:
     self.update_probs(game)
     return self.random_event(self.probs)
 
+
 def set_probs(self):
     self.probs = {
         "ball": 10800,
@@ -127,12 +128,14 @@ def set_probs(self):
         # ... 8 more outcomes
     }
 
+
 def update_probs(self, game):
     self.update_probs_for_bases(game.bases)
     self.update_probs_for_situation(game.situation, game.current_batter.player)
     self.update_probs_for_count(game.count)
     self.update_probs_for_batter(game.current_batter.player)
     self.update_probs_for_pitcher(game.current_pitcher)
+
 
 def update_probs_for_bases(self, bases: Bases):
     if bases.is_empty:
@@ -152,6 +155,7 @@ def _determine_pitch_outcome(self, intent, game) -> str:
     self._apply_pitch_modifiers(game)
     return self.pitch_outcome.choose()
 
+
 def _apply_pitch_modifiers(self, game):
     """Single orchestration method."""
     self._modify_for_bases(game.bases)
@@ -159,6 +163,7 @@ def _apply_pitch_modifiers(self, game):
     self._modify_for_count(game.count)
     self._modify_for_batter(game.current_batter.player)
     self._modify_for_pitcher(game.current_pitcher)
+
 
 def _modify_for_bases(self, bases: Bases):
     """Focused modifier - clear intent."""

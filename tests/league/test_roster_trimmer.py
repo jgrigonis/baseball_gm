@@ -261,9 +261,9 @@ class TestTrimTeam:
         db_conn.commit()
 
         for pid in protected_ids:
-            assert (
-                get_status(db_conn, pid) == "26man"
-            ), f"26man player {pid} should be protected"
+            assert get_status(db_conn, pid) == "26man", (
+                f"26man player {pid} should be protected"
+            )
             assert in_team(db_conn, t1, pid)
 
     def test_40man_players_never_cut(self, db_conn, trimmer):
@@ -281,9 +281,9 @@ class TestTrimTeam:
         db_conn.commit()
 
         for pid in protected_ids:
-            assert (
-                get_status(db_conn, pid) == "40man"
-            ), f"40man player {pid} should be protected"
+            assert get_status(db_conn, pid) == "40man", (
+                f"40man player {pid} should be protected"
+            )
             assert in_team(db_conn, t1, pid)
 
     def test_no_minors_no_cut(self, db_conn, trimmer):

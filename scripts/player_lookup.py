@@ -347,7 +347,7 @@ def main():
         print(f"Found {len(matches)} players matching '{args.name}':")
         for i, m in enumerate(matches):
             print(
-                f"  [{i}] {m['Name']}  ({m.get('_source_file','?')})  Age:{m.get('Age','?')}  Pos:{m.get('PS','?')}"
+                f"  [{i}] {m['Name']}  ({m.get('_source_file', '?')})  Age:{m.get('Age', '?')}  Pos:{m.get('PS', '?')}"
             )
         choice = input("Select [0]: ").strip()
         idx = int(choice) if choice.isdigit() else 0

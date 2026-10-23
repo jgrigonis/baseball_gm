@@ -475,8 +475,7 @@ def get_position_name(position: str) -> str:
     """
     if position not in POSITION_NAME:
         raise ValueError(
-            f"Unknown position: '{position}'. "
-            f"Valid positions: {', '.join(POSITIONS)}"
+            f"Unknown position: '{position}'. Valid positions: {', '.join(POSITIONS)}"
         )
     return POSITION_NAME[position]
 

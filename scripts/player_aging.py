@@ -254,11 +254,11 @@ if __name__ == "__main__":
     ]
 
     for label, coaching_val, seed_val in configs:
-        print(f"\n{'═'*72}")
+        print(f"\n{'═' * 72}")
         print(
             f"  {label}  (coaching={coaching_val})  —  Age 17-37, all skills start at 50"
         )
-        print(f"{'═'*72}")
+        print(f"{'═' * 72}")
 
         career = age_player_career(
             name=f"PLAYER ({label})",
@@ -269,7 +269,7 @@ if __name__ == "__main__":
             position="sp",
             throws="R",
             bats="R",
-            player_id=f"sim_{label.lower().replace(' ','_')}",
+            player_id=f"sim_{label.lower().replace(' ', '_')}",
             seed=seed_val,
         )
 
@@ -284,9 +284,9 @@ if __name__ == "__main__":
         ("POOR PLAYER", 20, 42),
     ]
     for label, starting_skill, seed_val in start_configs:
-        print(f"\n{'═'*72}")
+        print(f"\n{'═' * 72}")
         print(f"  {label}  (starting_skill={starting_skill})  —  Age 17-37")
-        print(f"{'═'*72}")
+        print(f"{'═' * 72}")
 
         career = age_player_career(
             name=f"PLAYER ({label})",
@@ -297,7 +297,7 @@ if __name__ == "__main__":
             position="sp",
             throws="R",
             bats="R",
-            player_id=f"sim_{label.lower().replace(' ','_')}",
+            player_id=f"sim_{label.lower().replace(' ', '_')}",
             seed=seed_val,
         )
 

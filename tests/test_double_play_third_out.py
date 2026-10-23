@@ -137,9 +137,9 @@ class TestDoublePlayRunnerOnFirstAndThird:
         # The runner on first must be removed (force out)
         removed = [e for e in events if isinstance(e, RunnerRemovedEvent)]
         removed_runners = [e.runner for e in removed]
-        assert (
-            runner_on_first in removed_runners
-        ), "Runner on first should be removed on force out"
+        assert runner_on_first in removed_runners, (
+            "Runner on first should be removed on force out"
+        )
 
         # *** The key assertion: runner from 3rd must NOT reach HOME ***
         runner_scored = next(
@@ -187,6 +187,6 @@ class TestDoublePlayRunnerOnFirstAndThird:
             ),
             None,
         )
-        assert (
-            runner_scored is not None
-        ), "Runner from third SHOULD score on a double play that ends with only 2 outs total"
+        assert runner_scored is not None, (
+            "Runner from third SHOULD score on a double play that ends with only 2 outs total"
+        )

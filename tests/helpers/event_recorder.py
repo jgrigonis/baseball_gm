@@ -62,6 +62,6 @@ class EventRecorder:
             for i, event in enumerate(self.events):
                 print(f"  {i}: {type(event).__name__}")
 
-        assert (
-            actual == expected
-        ), f"Expected {expected} {event_type.__name__} events, got {actual}"
+        assert actual == expected, (
+            f"Expected {expected} {event_type.__name__} events, got {actual}"
+        )

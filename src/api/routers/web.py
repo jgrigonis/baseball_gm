@@ -613,7 +613,6 @@ def draft_tab(
     if gm["team_id"]:
         roster_rows = player_repo.get_team_roster_with_skills(gm["team_id"])
         for row in roster_rows:
-
             skills = player_repo.get_player_skills(row["id"])
             d = dict(row)
 
@@ -1413,7 +1412,7 @@ def roster(
             if s and p.get("player_type") != "pitcher":
                 ab = s["bat_ab"] or 0
                 p["stat_g"] = s["bat_games_played"] or 0
-                p["stat_avg"] = f"{s['bat_hits']/ab:.3f}" if ab else None
+                p["stat_avg"] = f"{s['bat_hits'] / ab:.3f}" if ab else None
                 p["stat_hr"] = s["bat_home_runs"] or 0
                 p["stat_rbi"] = s["bat_rbi"] or 0
             elif s and p.get("player_type") == "pitcher":
@@ -1698,7 +1697,7 @@ async def save_rotation(
     try:
         # .index() returns 0-4, so we add 1 for the DB's 1-5 scale
         next_order = rotation.index(pointer_pid) + 1
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         # Fallback if the pointer_pid is missing or not in the rotation
         next_order = 1
 

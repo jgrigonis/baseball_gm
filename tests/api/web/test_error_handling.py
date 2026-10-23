@@ -35,7 +35,6 @@ def client(conn):
 
 
 class TestUnexpectedErrors:
-
     def test_json_caller_gets_generic_message(self, client, conn):
         with patch(
             "src.api.routers.web.run_offseason", side_effect=RuntimeError(SECRET)
@@ -83,7 +82,6 @@ class TestUnexpectedErrors:
 
 
 class TestRuleErrors:
-
     def test_value_error_message_is_shown(self, client, conn):
         msg = "League must be in 'offseason' state, currently 'playoffs'"
         with patch("src.api.routers.web.run_offseason", side_effect=ValueError(msg)):
@@ -95,7 +93,6 @@ class TestRuleErrors:
 
 
 class TestHttpExceptions:
-
     def test_forbidden_stays_403(self, client):
         def forbidden():
             raise HTTPException(status_code=403, detail="Not a GM in this league")

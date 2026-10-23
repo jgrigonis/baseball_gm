@@ -422,9 +422,9 @@ class TestGenerate:
         for position in ["sp", "c", "ss", "1b", "cf", "dh"]:
             skills = PlayerSkills.generate(rng, position)
             for skill_name, value in skills.items():
-                assert (
-                    SKILL_MIN <= value <= SKILL_MAX
-                ), f"{position} {skill_name} = {value} out of range"
+                assert SKILL_MIN <= value <= SKILL_MAX, (
+                    f"{position} {skill_name} = {value} out of range"
+                )
 
 
 class TestGenerateStat:

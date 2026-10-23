@@ -56,7 +56,6 @@ def ctx(db_conn, factory):
 
 
 class TestPlayerRepositoryInsert:
-
     def test_insert_new_player(self, player_repo, ctx, sample_skills):
         player_repo.insert(
             ctx.p1.id, "Mike", "Trout", "R", "R", "of", sample_skills, ctx.league_id
@@ -156,7 +155,6 @@ class TestPlayerRepositoryInsert:
 
 
 class TestPlayerRepositoryUpdateSkills:
-
     def test_update_skills(self, player_repo, ctx, db_conn, sample_skills):
         player_repo.insert(
             ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
@@ -234,7 +232,6 @@ class TestPlayerRepositoryUpdateSkills:
 
 
 class TestPlayerRepositorySnapshotSkills:
-
     def test_snapshot_skills(self, player_repo, ctx, db_conn, sample_skills):
         player_repo.insert(
             ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
@@ -312,7 +309,6 @@ class TestPlayerRepositorySnapshotSkills:
 
 
 class TestPlayerRepositoryLookUp:
-
     def test_look_up_existing_player(self, player_repo, ctx, sample_skills):
         player_repo.insert(
             ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
@@ -369,7 +365,6 @@ class TestPlayerRepositoryLookUp:
 
 
 class TestPlayerRepositoryGetSkillHistory:
-
     def test_get_skill_history_empty(self, player_repo, ctx, sample_skills):
         player_repo.insert(
             ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
@@ -445,7 +440,6 @@ class TestPlayerRepositoryGetSkillHistory:
 
 
 class TestPlayerRepositoryExists:
-
     def test_exists_true(self, player_repo, ctx, sample_skills):
         player_repo.insert(
             ctx.p1.id, "Mike", "Trout", "r", "r", "of", sample_skills, ctx.league_id
@@ -474,7 +468,6 @@ class TestPlayerRepositoryExists:
 
 
 class TestPlayerRepositoryGetAllPlayers:
-
     def test_get_all_players_single(self, player_repo, ctx, sample_skills):
         player_repo.insert(
             ctx.p1.id, "Mike", "Trout", "r", "r", "rf", sample_skills, ctx.league_id
@@ -514,7 +507,6 @@ class TestPlayerRepositoryGetAllPlayers:
 
 
 class TestPlayerRepositoryIntegration:
-
     def test_full_player_lifecycle(self, player_repo, ctx, sample_skills, factory):
         player_repo.insert(
             ctx.p1.id, "Mike", "Trout", "R", "R", "rf", sample_skills, ctx.league_id
@@ -570,7 +562,6 @@ class TestPlayerRepositoryIntegration:
 
 
 class TestRetiredPlayersCareerStats:
-
     def _season_stats(self, conn, player_id, season_id, team_id, **stats):
         cols = ["player_id", "season_id", "team_id", *stats]
         conn.execute(
@@ -579,19 +570,33 @@ class TestRetiredPlayersCareerStats:
             (player_id, season_id, team_id, *stats.values()),
         )
 
-    def test_returns_career_totals_not_final_season(self, player_repo, factory, db_conn):
+    def test_returns_career_totals_not_final_season(
+        self, player_repo, factory, db_conn
+    ):
         league = factory.league()
         team = factory.team()
         s1, s2 = factory.season(2025), factory.season(2026)
         player = factory.prospect(league.id)
 
         self._season_stats(
-            db_conn, player.id, s1.id, team.id,
-            bat_games_played=100, bat_ab=400, bat_hits=120, bat_home_runs=20,
+            db_conn,
+            player.id,
+            s1.id,
+            team.id,
+            bat_games_played=100,
+            bat_ab=400,
+            bat_hits=120,
+            bat_home_runs=20,
         )
         self._season_stats(
-            db_conn, player.id, s2.id, team.id,
-            bat_games_played=50, bat_ab=200, bat_hits=50, bat_home_runs=5,
+            db_conn,
+            player.id,
+            s2.id,
+            team.id,
+            bat_games_played=50,
+            bat_ab=200,
+            bat_hits=50,
+            bat_home_runs=5,
         )
         # Postseason stats should not be counted
         db_conn.execute(

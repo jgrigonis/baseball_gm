@@ -46,7 +46,6 @@ def ctx(factory):
 
 
 class TestInsert:
-
     def test_insert_persists_all_skills(self, repo, ctx):
         caps = _varied_caps()
         repo.insert_talent_caps(ctx.p1.id, caps)
@@ -80,7 +79,6 @@ class TestInsert:
 
 
 class TestInsertMany:
-
     def test_insert_many_persists_all_records(self, repo, ctx):
         records = [
             (ctx.p1.id, _full_caps(60)),
@@ -120,7 +118,6 @@ class TestInsertMany:
 
 
 class TestGet:
-
     def test_get_returns_none_for_missing_player(self, repo):
         assert repo.get("nonexistent") is None
 
@@ -146,7 +143,6 @@ class TestGet:
 
 
 class TestGetMany:
-
     @pytest.fixture
     def setup_players(self, repo, ctx):
         repo.insert_talent_caps(ctx.p1.id, _full_caps(60))
@@ -190,7 +186,6 @@ class TestGetMany:
 
 
 class TestExists:
-
     def test_exists_false_for_missing(self, repo):
         assert repo.exists("nobody") is False
 
@@ -209,7 +204,6 @@ class TestExists:
 
 
 class TestEdgeCases:
-
     def test_cap_value_at_minimum(self, repo, ctx):
         repo.insert_talent_caps(ctx.p1.id, _full_caps(1))
         result = repo.get(ctx.p1.id)

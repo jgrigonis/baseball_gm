@@ -65,7 +65,6 @@ _SAMPLE_SKILLS: dict[str, int] = {
 
 
 class TestExpectedGrowth(unittest.TestCase):
-
     def test_floor_tier(self):
         """Values below 25 return minimal growth."""
         for base in [1, 10, 20, 24]:
@@ -126,7 +125,6 @@ class TestExpectedGrowth(unittest.TestCase):
 
 
 class TestTalentSigma(unittest.TestCase):
-
     def test_all_skills_have_sigma(self):
         """Every skill should have an explicit sigma entry."""
         for sk in _ALL_SKILLS:
@@ -240,7 +238,6 @@ class TestGenerateTalentCapsInvariants(unittest.TestCase):
 
 
 class TestGenerateTalentCapsReproducibility(unittest.TestCase):
-
     def test_same_seed_same_caps(self):
         """Identical seed and skills produce identical caps."""
         caps1 = generate_talent_caps(_SAMPLE_SKILLS, random.Random(99))
@@ -304,7 +301,6 @@ class TestGenerateTalentCapsVariance(unittest.TestCase):
 
 
 class TestGenerateTalentCapsMissingSkills(unittest.TestCase):
-
     def test_empty_skills_dict_returns_empty(self):
         caps = generate_talent_caps({}, random.Random(1))
         self.assertEqual(caps, {})

@@ -374,7 +374,7 @@ class TeamInGame:
         try:
             pos = Position(outgoing.current_position)
             self._positions[pos] = incoming
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             pass
         outgoing.current_position = None
         self.logger.debug(

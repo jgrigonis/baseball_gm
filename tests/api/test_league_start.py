@@ -93,7 +93,6 @@ def patched(ctx):
         patch("src.api.services.league_start.save_schedule_to_db"),
         patch("src.api.services.league_start.write_draft_order"),
     ):
-
         # --- Bootstrapper ---
         MockBootstrapper.return_value.bootstrap_from_manifest.return_value = (
             ctx.league.id,
@@ -142,7 +141,6 @@ def patched(ctx):
 
 
 class TestStartLeagueGuards:
-
     def test_raises_if_league_not_found(self, db_conn):
         with pytest.raises(ValueError, match="not found"):
             start_league("nonexistent-league", db_conn)
@@ -164,7 +162,6 @@ class TestStartLeagueGuards:
 
 
 class TestStartLeagueReturnValue:
-
     def test_returns_expected_keys(self, patched):
         result = start_league(patched.league.id, patched.conn)
         assert set(result.keys()) == {
@@ -211,7 +208,6 @@ class TestStartLeagueReturnValue:
 
 
 class TestLeagueStateTransition:
-
     def test_league_state_becomes_draft(self, patched):
         start_league(patched.league.id, patched.conn)
         row = patched.conn.execute(
@@ -232,7 +228,6 @@ class TestLeagueStateTransition:
 
 
 class TestDraftCreation:
-
     def test_draft_record_created(self, patched):
         result = start_league(patched.league.id, patched.conn)
         row = patched.conn.execute(
@@ -265,7 +260,6 @@ class TestDraftCreation:
 
 
 class TestGMAssignment:
-
     def test_human_gm_assigned_to_a_team(self, patched):
         start_league(patched.league.id, patched.conn)
         row = patched.conn.execute(

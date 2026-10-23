@@ -224,7 +224,7 @@ def build_bracket(
         )
         _insert_games(conn, games)
         log_print(
-            f"  📋 Series {name}: {seeds[hi-1]['team_name']} vs {seeds[lo-1]['team_name']} ({len(games)} games)",
+            f"  📋 Series {name}: {seeds[hi - 1]['team_name']} vs {seeds[lo - 1]['team_name']} ({len(games)} games)",
             logger=logger,
         )
 

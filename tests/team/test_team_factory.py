@@ -86,7 +86,7 @@ class TestTeamFactoryFromCSV:
         mock_open,
     ):
         """Fewer than 9 players is rejected."""
-        csv_data = "ID,Name,B,T\n" "1,A,R,R\n" "2,C,R,R\n"
+        csv_data = "ID,Name,B,T\n1,A,R,R\n2,C,R,R\n"
         mock_open.return_value.__enter__.return_value = io.StringIO(csv_data)
         mock_from_csv_row.return_value = MagicMock(spec=PlayerRecord)
 

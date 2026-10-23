@@ -75,9 +75,9 @@ class TestSkillMapStructure:
 
     def test_all_skill_names_are_lowercase(self):
         for name in SKILL_MAP.values():
-            assert (
-                name.islower() or "_" in name
-            ), f"Skill name '{name}' contains uppercase"
+            assert name.islower() or "_" in name, (
+                f"Skill name '{name}' contains uppercase"
+            )
 
     def test_no_duplicate_abbreviations(self):
         abbrs = list(SKILL_MAP.keys())
@@ -114,9 +114,9 @@ class TestSkillCategories:
         for skills in SKILL_CATEGORIES.values():
             all_skills.extend(skills)
 
-        assert len(all_skills) == len(
-            set(all_skills)
-        ), "Skill appears in multiple categories"
+        assert len(all_skills) == len(set(all_skills)), (
+            "Skill appears in multiple categories"
+        )
 
     def test_hitting_skills_correct(self):
         expected = ["PO", "EY", "CT", "BR", "BU"]

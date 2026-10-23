@@ -191,9 +191,7 @@ TARGET_AGES = [20, 25, 30, 35, 40]
 def print_scenario(scenario: Scenario, results: dict) -> None:
     print(f"\n{'═' * FULL_WIDTH}")
     print(f"  {scenario.name}")
-    print(
-        f"  N={scenario.n_sims}  " f"ages {scenario.start_age}-{scenario.end_age - 1}"
-    )
+    print(f"  N={scenario.n_sims}  ages {scenario.start_age}-{scenario.end_age - 1}")
     print(f"{'═' * FULL_WIDTH}")
 
     header = f"  {'Skill':<{HEADER_WIDTH}}" + "".join(

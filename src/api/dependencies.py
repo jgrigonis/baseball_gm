@@ -10,6 +10,7 @@ from src.db.repositories.user_repo import UserRepository
 # ── TYPE ALIAS (For clean route signatures) ────────────────────────────────
 DB = Annotated[psycopg.Connection, Depends(get_db)]
 
+
 # Your reusable dependency function
 def is_htmx(request: Request) -> bool:
     return request.headers.get("HX-Request") == "true"

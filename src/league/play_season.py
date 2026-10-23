@@ -224,9 +224,11 @@ def _pick_starter(
             return None, False
         best_r = max(
             healthy_rotation,
-            key=lambda r: pitcher_repo.get_with_recovery(
-                r["player_id"], game_date, 50
-            ).current_energy,
+            key=lambda r: (
+                pitcher_repo.get_with_recovery(
+                    r["player_id"], game_date, 50
+                ).current_energy
+            ),
         )
         return best_r["player_id"], True
 
@@ -260,9 +262,9 @@ def _pick_starter(
         return None, False
     best = max(
         healthy,
-        key=lambda r: pitcher_repo.get_with_recovery(
-            r["player_id"], game_date, 50
-        ).current_energy,
+        key=lambda r: (
+            pitcher_repo.get_with_recovery(r["player_id"], game_date, 50).current_energy
+        ),
     )
     return best["player_id"], True
 
@@ -670,7 +672,7 @@ def main():
     elapsed = (datetime.now() - start_time).total_seconds()
     msg_complete = (
         f"✅ Season complete! Games played: {completed},"
-        f" Time: {elapsed:.1f}s ({completed/elapsed:.2f} games/sec)"
+        f" Time: {elapsed:.1f}s ({completed / elapsed:.2f} games/sec)"
     )
     print("\n" + msg_complete)
     season_logger.info(msg_complete)

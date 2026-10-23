@@ -55,7 +55,7 @@ def print_record(label, rows, value_label="Value", show_date=False, show_innings
         print(
             f"  {'#':<4} {'Player':<24} {'Date':<12} {'Season':<7} {value_label:<8} {'Inn'}"
         )
-        print(f"  {'-'*4} {'-'*24} {'-'*12} {'-'*7} {'-'*8} {'-'*4}")
+        print(f"  {'-' * 4} {'-' * 24} {'-' * 12} {'-' * 7} {'-' * 8} {'-' * 4}")
         for i, row in enumerate(rows, 1):
             player, date, season, value, innings = row
             print(
@@ -63,13 +63,13 @@ def print_record(label, rows, value_label="Value", show_date=False, show_innings
             )
     elif show_date:
         print(f"  {'#':<4} {'Player':<24} {'Date':<12} {'Season':<7} {value_label}")
-        print(f"  {'-'*4} {'-'*24} {'-'*12} {'-'*7} {'-'*10}")
+        print(f"  {'-' * 4} {'-' * 24} {'-' * 12} {'-' * 7} {'-' * 10}")
         for i, row in enumerate(rows, 1):
             player, date, season, value = row
             print(f"  {i:<4} {player:<24} {date:<12} {season:<7} {value}")
     else:
         print(f"  {'#':<4} {'Player':<24} {'Season':<7} {value_label}")
-        print(f"  {'-'*4} {'-'*24} {'-'*7} {'-'*10}")
+        print(f"  {'-' * 4} {'-' * 24} {'-' * 7} {'-' * 10}")
         for i, row in enumerate(rows, 1):
             player, season, value = row
             print(f"  {i:<4} {player:<24} {season:<7} {value}")
@@ -392,7 +392,7 @@ SEASON_PITCH_COUNTING = [
 ]
 
 ERA_EXPR = (
-    "CAST(SUM(pss.pitch_earned_runs) AS REAL)" " / NULLIF(SUM(pss.pitch_outs), 0) * 27"
+    "CAST(SUM(pss.pitch_earned_runs) AS REAL) / NULLIF(SUM(pss.pitch_outs), 0) * 27"
 )
 WHIP_EXPR = (
     "CAST(SUM(pss.pitch_walks) + SUM(pss.pitch_hits) AS REAL)"
@@ -541,7 +541,7 @@ def main():
     if args.teams:
         teams = list_teams(conn)
         print(f"\n  {'City':<20} {'Mascot':<20} {'ID'}")
-        print(f"  {'-'*20} {'-'*20} {'-'*36}")
+        print(f"  {'-' * 20} {'-' * 20} {'-' * 36}")
         for t in teams:
             print(f"  {t['city']:<20} {t['mascot']:<20} {t['id']}")
         conn.close()

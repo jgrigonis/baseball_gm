@@ -502,7 +502,6 @@ class OffseasonPipeline:
             # breaking down. Only meaningful for players 33+.
             availability_factor = 0.0
             if age >= 33 and max_games > 0:
-
                 missed_fraction = games_missed / max_games
                 if missed_fraction > 0.5:
                     availability_factor = 0.10
