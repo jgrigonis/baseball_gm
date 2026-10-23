@@ -21,6 +21,7 @@ from src.db.connection import get_connection
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.stats import formulas
+from src.util.locations import TEAM_FILES_DIR
 
 # ---------------------------------------------------------------------------
 # Args
@@ -30,7 +31,9 @@ from src.stats import formulas
 def parse_args():
     parser = argparse.ArgumentParser(description="Look up a player by name.")
     parser.add_argument("name", help="Player name (case-insensitive, partial match ok)")
-    parser.add_argument("--dir", default="team_files", help="Directory of team CSVs")
+    parser.add_argument(
+        "--dir", default=str(TEAM_FILES_DIR), help="Directory of team CSVs"
+    )
     parser.add_argument(
         "--season", help="Season year or name to filter stats (e.g. 2025)"
     )

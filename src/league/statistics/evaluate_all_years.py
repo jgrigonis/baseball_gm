@@ -7,7 +7,7 @@ import csv as csv_module
 
 from src.team.team_evaluator import TeamEvaluator
 from src.team.team_factory import TeamFactory
-from src.util.locations import TEAM_FILES_DIR
+from src.util.locations import TEAM_FILES_DIR, TEMP_FILES
 
 SKIP_FILES = {"draft.csv", "draft_results.csv"}
 
@@ -207,7 +207,7 @@ def get_args():
         "--output",
         "-o",
         type=str,
-        default=str(Path("temp_files") / "all_years_report.txt"),
+        default=str(TEMP_FILES / "all_years_report.txt"),
         help="Output file for the combined text report (default: temp_files/all_years_report.txt)",
     )
     parser.add_argument(
@@ -221,7 +221,7 @@ def get_args():
         "--export",
         "-e",
         type=str,
-        default=str(Path("temp_files") / "all_years_results.csv"),
+        default=str(TEMP_FILES / "all_years_results.csv"),
         help="Also export all results to a CSV file (default: temp_files/all_years_results.csv)",
     )
     return parser.parse_args()

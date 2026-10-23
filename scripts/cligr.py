@@ -305,21 +305,16 @@ def build_parser() -> argparse.ArgumentParser:
 # ── Directory helpers ──────────────────────────────────────────────────────────
 
 
-def _project_root() -> Path:
-    """Resolve the project root (parent of scripts/)."""
-    return Path(__file__).resolve().parent.parent
-
-
 def _logs_dir() -> Path:
-    return _project_root() / LOG_FILES
+    return LOG_FILES
 
 
 def _temp_dir() -> Path:
-    return _project_root() / TEMP_FILES
+    return TEMP_FILES
 
 
 def _team_files_dir() -> Path:
-    return Path(TEAM_FILES_DIR)
+    return TEAM_FILES_DIR
 
 
 # ── Clear helpers ───────────────────────────────────────────────────────────────

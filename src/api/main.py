@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exception_handlers import (
@@ -87,7 +88,11 @@ for _module in (
     app.include_router(_module.router)
 
 # Static files
-app.mount("/static", StaticFiles(directory="src/web/static"), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory=Path(__file__).resolve().parents[1] / "web" / "static"),
+    name="static",
+)
 
 
 @app.get("/health", tags=["meta"])

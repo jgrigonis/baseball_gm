@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.util.locations import PROJECT_ROOT
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env", env_file_encoding="utf-8"
+    )
 
     # Space-separated list, e.g. "http://localhost:5173 http://localhost:3000"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
