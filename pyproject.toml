@@ -29,6 +29,7 @@ dev = [
   "coverage",
   "pyflakes",
   "pytest",
+  "ruff",
 ]
 
 [tool.pytest.ini_options]
@@ -36,6 +37,10 @@ markers = [
     "slow: marks tests as slow (run with -m slow)",
     "veryslow: marks tests that take a significantly long time to run (run with -m veryslow)"
 ]
+
+[tool.ruff.lint]
+# Same checks as pyflake.sh (pyflakes) plus syntax errors.
+select = ["F", "E9"]
 
 [tool.setuptools.packages.find]
 where = ["."]
