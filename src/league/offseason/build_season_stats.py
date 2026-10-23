@@ -137,13 +137,17 @@ def build_season(conn, season_id: str) -> int:
     Deletes existing rows for that season first to make it safe to re-run.
     Returns number of rows inserted.
     """
-    deleted = delete_season_rows(conn, season_id)
+    # Delete and rebuild in one transaction so a failed insert never leaves
+    # the season with no rollup rows.
+    with conn.transaction():
+        deleted = conn.execute(
+            "DELETE FROM player_season_stats WHERE season_id = %s", (season_id,)
+        ).rowcount
+        sql = INSERT_SQL.format(where_clause="WHERE g.season_id = %s")
+        cur = conn.execute(sql, (season_id,))
+    conn.commit()
     if deleted:
         print(f"  Cleared {deleted} existing rows for season {season_id}")
-
-    sql = INSERT_SQL.format(where_clause="WHERE g.season_id = %s")
-    cur = conn.execute(sql, (season_id,))
-    conn.commit()
     return cur.rowcount
 
 

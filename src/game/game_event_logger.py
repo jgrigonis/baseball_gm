@@ -151,23 +151,21 @@ class GameEventLogger:
         inning = inning if inning is not None else self._inning
         half = half if half is not None else self._half
         try:
-            ger = GameEventRepository(self.conn)
-            ger.insert_game_event(
-                game_id=self.game_id,
-                inning=inning,
-                half=half,
-                team_id=team_id,
-                event_type=event_type,
-                player_id=player_id,
-                player_id_2=player_id_2,
-                reason=reason,
-                detail=detail,
-            )
-            self.conn.commit()
+            # Savepoint: a failed insert is undone on its own without
+            # committing or discarding the rest of the game's writes.
+            with self.conn.transaction():
+                ger = GameEventRepository(self.conn)
+                ger.insert_game_event(
+                    game_id=self.game_id,
+                    inning=inning,
+                    half=half,
+                    team_id=team_id,
+                    event_type=event_type,
+                    player_id=player_id,
+                    player_id_2=player_id_2,
+                    reason=reason,
+                    detail=detail,
+                )
         except Exception as e:
-            # Never let logging crash a game — rollback to clear aborted txn state
-            try:
-                self.conn.rollback()
-            except Exception:
-                pass
+            # Never let logging crash a game
             _log.warning(f"Failed to log event {event_type}: {e}")

@@ -8,14 +8,16 @@ Testable surface:
 - _load_eligible_ids   — simple DB query
 
 play_game() is too integrated (full game engine + 10+ repos) to unit test —
-that belongs in integration tests.
+that belongs in integration tests. Its transaction wrapper is tested here
+by patching out the game itself.
 """
 
 from datetime import date
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+import src.league.play_season as play_season
 from src.league.play_season import _pick_starter, clear_game_data, _load_eligible_ids
 from src.db.repositories.pitcher_state import PitcherState
 
@@ -454,3 +456,62 @@ class TestLoadEligibleIds:
         db_conn.commit()
         ids = _load_eligible_ids(db_conn, "empty-team", blitz=True)
         assert ids == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# play_game — atomic saves
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestPlayGameAtomic:
+
+    @pytest.fixture
+    def game(self, factory):
+        return factory.game_with_teams()
+
+    def _play(self, db_conn, game):
+        return play_season.play_game(
+            db_conn,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            game.season.id,
+            {"game_id": game.id},
+            MagicMock(),
+            league_id="league-1",
+        )
+
+    def test_failed_game_keeps_none_of_its_writes(self, db_conn, game):
+        def half_saved_game(conn, *args):
+            conn.execute("UPDATE games SET home_score = 99 WHERE id = %s", (game.id,))
+            raise RuntimeError("failed after saving the result")
+
+        with patch.object(play_season, "_play_game", side_effect=half_saved_game):
+            with pytest.raises(RuntimeError):
+                self._play(db_conn, game)
+
+        row = db_conn.execute(
+            "SELECT home_score FROM games WHERE id = %s", (game.id,)
+        ).fetchone()
+        assert row["home_score"] == 5
+
+    def test_failed_game_keeps_earlier_writes(self, db_conn, game):
+        """Only the failed game is undone, not work done before it."""
+        with patch.object(play_season, "_play_game", side_effect=RuntimeError):
+            with pytest.raises(RuntimeError):
+                self._play(db_conn, game)
+
+        row = db_conn.execute("SELECT id FROM games WHERE id = %s", (game.id,))
+        assert row.fetchone() is not None
+
+    def test_helpers_cannot_commit_mid_game(self, db_conn, game):
+        """A helper that commits inside the game is a bug and fails loudly."""
+
+        def committing_game(conn, *args):
+            conn.commit()
+
+        with patch.object(play_season, "_play_game", side_effect=committing_game):
+            with pytest.raises(Exception, match="commit"):
+                self._play(db_conn, game)

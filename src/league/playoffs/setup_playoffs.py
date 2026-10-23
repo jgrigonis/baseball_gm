@@ -129,8 +129,6 @@ def demote_extra_starters(
                 logger=logger,
             )
 
-    conn.commit()
-
 
 # ---------------------------------------------------------------------------
 # Bracket / series helpers
@@ -242,8 +240,6 @@ def build_bracket(
             logger=logger,
         )
 
-    conn.commit()
-
 
 # ---------------------------------------------------------------------------
 # Shared setup entry point (used by both CLI and UI)
@@ -261,13 +257,17 @@ def setup_playoff_bracket(
     """
     Full one-time playoff setup: seed teams, demote extra starters, reset
     rotation pointers, and build the bracket.  Returns the ordered seed list.
+
+    All of it is saved atomically, so a failure never leaves a half-built
+    bracket behind.
     """
-    seeds = get_top_N(conn, season_id)
-    demote_extra_starters(
-        conn, season_id, seeds, keep=keep, league_id=league_id, logger=logger
-    )
-    reset_playoff_rotation_pointers(conn, season_id, league_id)
-    build_bracket(conn, season_id, seeds, start_date, logger=logger)
+    with conn.transaction():
+        seeds = get_top_N(conn, season_id)
+        demote_extra_starters(
+            conn, season_id, seeds, keep=keep, league_id=league_id, logger=logger
+        )
+        reset_playoff_rotation_pointers(conn, season_id, league_id)
+        build_bracket(conn, season_id, seeds, start_date, logger=logger)
     conn.commit()
     return seeds
 
