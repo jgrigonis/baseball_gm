@@ -116,7 +116,7 @@ requires-dist = [
     { name = "argon2-cffi", specifier = ">=25.1" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.17" },
     { name = "fastapi", specifier = ">=0.162" },
-    { name = "httpx2", marker = "extra == 'dev'", specifier = ">=0" },
+    { name = "httpx2", marker = "extra == 'dev'", specifier = ">=2.16" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "numpy", specifier = ">=2.5" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3" },
