@@ -16,19 +16,19 @@ def is_htmx(request: Request) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
-async def get_current_user(db: DB, gm_session: str = Cookie(None)):
+def get_current_user(db: DB, gm_session: str = Cookie(None)):
     user = UserRepository(db).get_by_token(gm_session)
     if not user:
         raise HTTPException(status_code=401, detail="Please log in")
     return user
 
 
-async def get_optional_user(db: DB, gm_session: str = Cookie(None)):
+def get_optional_user(db: DB, gm_session: str = Cookie(None)):
     """Use this for public pages that change if you are logged in."""
     return UserRepository(db).get_by_token(gm_session)
 
 
-async def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)):
+def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)):
     # This automatically uses the 'user' we already resolved!
     gm = db.execute(
         "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
@@ -39,7 +39,7 @@ async def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current
     return gm
 
 
-async def get_commissioner(league_id: str, db: DB, gm: Any = Depends(get_current_gm)):
+def get_commissioner(league_id: str, db: DB, gm: Any = Depends(get_current_gm)):
     league = db.execute(
         "SELECT commissioner_gm_id FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()

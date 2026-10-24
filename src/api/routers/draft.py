@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.schemas import DraftPreferencesRequest
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
 from src.db.repositories.draft_repo import DraftRepository
@@ -23,9 +24,9 @@ router = APIRouter(tags=["web"])
 
 
 @router.put("/leagues/{league_id}/draft/preferences")
-async def save_draft_preferences(
-    request: Request,
+def save_draft_preferences(
     league_id: str,
+    body: DraftPreferencesRequest,
     db: DB,
     user: User,
     gm: GM,
@@ -44,8 +45,7 @@ async def save_draft_preferences(
     if draft["state"] == "complete":
         return JSONResponse({"detail": "Draft is already complete"}, status_code=409)
 
-    body = await request.json()
-    player_ids = body.get("player_ids", [])
+    player_ids = body.player_ids
     if not player_ids:
         return JSONResponse({"detail": "player_ids required"}, status_code=422)
 
