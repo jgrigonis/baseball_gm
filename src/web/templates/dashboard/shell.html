@@ -142,7 +142,7 @@ async function simGames(count) {
       if (o3)  o3.disabled  = r <= 3;
       if (o10) o10.disabled = r <= 10;
     } else {
-      if (fb) { fb.textContent = '✗ Sim failed'; fb.style.color = 'var(--red)'; fb.style.display = 'inline'; }
+      if (fb) { fb.textContent = '✗ ' + (d.detail || 'Sim failed'); fb.style.color = 'var(--red)'; fb.style.display = 'inline'; }
     }
   } catch(err) {
     if (fb) { fb.textContent = '✗ Error'; fb.style.display = 'inline'; }
@@ -295,6 +295,36 @@ function setInjuryNews(msg, dest) {
   el.style.display = msg ? 'block' : 'none';
 }
 window.setInjuryNews = setInjuryNews;
+
+// Show the new_injuries / returned lists from a sim response or /news.
+// Returns true if there was any news.
+function showInjuryNews(d) {
+  var injNews = '';
+  var injDest = 'batting';  // default destination: lineup batting tab
+  if (d.new_injuries && d.new_injuries.length > 0) {
+    injNews += d.new_injuries.map(i => `🚑 ${i.name} (${i.days}d)`).join('  ');
+    // A new pitcher injury → pitching tab; hitter injury keeps batting
+    if (d.new_injuries.some(i => i.is_pitcher)) injDest = 'pitching';
+  }
+  if (d.returned && d.returned.length > 0) {
+    injNews += (injNews ? '  ' : '') + d.returned.map(i => `✅ ${i.name} returned`).join('  ');
+    // Returned player not on 40-man → roster tab (needs to be placed first)
+    if (d.returned.some(i => !i.on_40man)) {
+      injDest = 'roster';
+    } else if (injDest !== 'roster' && d.returned.some(i => i.is_pitcher)) {
+      injDest = 'pitching';
+    }
+  }
+  setInjuryNews(injNews, injDest);  // clears if empty, shows if not
+  return !!injNews;
+}
+window.showInjuryNews = showInjuryNews;
+
+// News from sims this GM didn't run, e.g. another GM's in a multiplayer league
+fetch(`/leagues/${LEAGUE_ID}/news`)
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d) showInjuryNews(d); })
+  .catch(() => {});
 
 function injuryNewsClick() {
   var el = document.getElementById('sim-injury-news');

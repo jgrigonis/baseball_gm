@@ -103,6 +103,12 @@ def test_playoff_sim_returns_its_result():
             patch("src.api.database.get_connection", return_value=MagicMock()),
             patch.object(sim, "sim_playoff", return_value={"games_played": 2}),
             patch.object(sim, "LeagueRepository") as repo,
+            patch.object(sim, "league_lock"),
+            patch.object(
+                sim,
+                "take_injury_news",
+                return_value={"new_injuries": [], "returned": []},
+            ),
         ):
             repo.return_value.get_state.return_value = "playoffs"
             r = TestClient(app).post("/leagues/L/playoffs/sim?mode=game")
@@ -110,4 +116,9 @@ def test_playoff_sim_returns_its_result():
         app.dependency_overrides.clear()
 
     assert r.status_code == 200
-    assert r.json() == {"games_played": 2, "league_state": "playoffs"}
+    assert r.json() == {
+        "games_played": 2,
+        "league_state": "playoffs",
+        "new_injuries": [],
+        "returned": [],
+    }

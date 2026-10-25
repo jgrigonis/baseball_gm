@@ -34,6 +34,7 @@ from src.api.routers import (
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
+from src.db.locks import LeagueBusy
 from src.util.logger import configure_app_logging
 from src.web.utils import templates
 
@@ -135,6 +136,14 @@ async def value_error_handler(request: Request, exc: ValueError):
     e.g. simming a league that isn't in season. Show the user why."""
     log.info("Rejected %s %s: %s", request.method, request.url.path, exc)
     return _error_response(request, str(exc), 400)
+
+
+@app.exception_handler(LeagueBusy)
+async def league_busy_handler(request: Request, exc: LeagueBusy):
+    """Two requests tried to advance the same league at once (another tab, or
+    another GM). The first one keeps going; tell the second why it stopped."""
+    log.info("Rejected %s %s: %s", request.method, request.url.path, exc)
+    return _error_response(request, str(exc), 409)
 
 
 @app.exception_handler(Exception)

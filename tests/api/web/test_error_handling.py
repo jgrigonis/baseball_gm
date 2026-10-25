@@ -130,3 +130,17 @@ class TestRosterSaveBody:
         r = client.put(f"/leagues/{LEAGUE}/roster/save", json=["p1", "p2"])
         assert r.status_code == 422
         assert r.json()["detail"][0]["type"] == "model_attributes_type"
+
+
+class TestLeagueBusy:
+    @pytest.mark.parametrize(
+        "path",
+        ["/sim", "/playoffs/sim", "/offseason/begin"],
+    )
+    def test_second_sim_gets_409(self, client, conn, path):
+        """Another request is already advancing this league."""
+        conn.execute.return_value.fetchone.return_value = {"got": False}
+        r = client.post(f"/leagues/{LEAGUE}{path}", json={"count": 1})
+
+        assert r.status_code == 409
+        assert r.json() == {"detail": "A sim is already running for this league."}

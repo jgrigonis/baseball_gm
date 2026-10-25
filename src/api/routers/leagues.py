@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, Commissioner, User
 from src.api.services.league_start import start_league
+from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.web.utils import templates
@@ -150,8 +151,9 @@ def start_league_router(
     db: DB,
     _: Commissioner,
 ):
-    start_league(league_id, db)
-    db.commit()
+    with league_lock(db, league_id):
+        start_league(league_id, db)
+        db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 

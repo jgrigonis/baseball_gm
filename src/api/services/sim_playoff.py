@@ -16,16 +16,14 @@ from itertools import groupby
 
 import psycopg
 
+from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
-from src.db.repositories.gm_repo import GMRepository
-from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.build_season_stats import build_season
 from src.league.playoffs.play_playoffs import (
@@ -199,8 +197,6 @@ def sim_playoff(
     Returns summary dict.
     """
     lr = LeagueRepository(conn)
-    gm_repo = GMRepository(conn)
-    inj_repo = InjuryRepository(conn, league_id)
     league = lr.get_by_id(league_id)
     league_mode = lr.get_league_mode(league_id)
     if not league:
@@ -221,9 +217,8 @@ def sim_playoff(
     current_round = None
     champion = None
 
-    # Track injuries for the GM's team so we can report new injuries / returns
-    gm_team_id = gm_repo.get_first_human_team_id(league_id)
-    injured_before = inj_repo.get_active_for_team(gm_team_id)
+    # Snapshot the human teams' injuries so each GM hears about changes
+    injury_news = InjuryNews(conn, league_id)
 
     def _get_next_day_games() -> list[dict]:
         """Return all unplayed games on the earliest unplayed game_date,
@@ -345,23 +340,7 @@ def sim_playoff(
         lr.set_state(league_id, "offseason")
         conn.commit()
 
-    # Diff injuries to find new injuries and returns for GM's team
-    injured_after = inj_repo.get_active_for_team(gm_team_id)
-    new_injuries = [
-        {"name": v["name"], "days": v["days"], "is_pitcher": v["is_pitcher"]}
-        for pid, v in injured_after.items()
-        if pid not in injured_before
-    ]
-    status_repo = PlayerStatusRepository(conn)
-    returned = [
-        {
-            "name": v["name"],
-            "is_pitcher": v["is_pitcher"],
-            "on_40man": status_repo.get_status(pid) in ("26man", "40man"),
-        }
-        for pid, v in injured_before.items()
-        if pid not in injured_after
-    ]
+    injury_news.record()
 
     # Most recently played game date
     game_repo = GameRepository(conn)
@@ -372,7 +351,5 @@ def sim_playoff(
         "results": results,
         "current_round": current_round,
         "champion": champion,
-        "new_injuries": new_injuries,
-        "returned": returned,
         "current_date": current_date,
     }
