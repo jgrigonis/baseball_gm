@@ -5,7 +5,9 @@
 # Ready, or, under timer pace, when the Decision Window runs out.
 #
 # pace_control:
-#   timer      every GM ready, or the window (decision_window_sec) runs out
+#   timer      every GM ready, or the window runs out: draft_window_sec for
+#              the draft, lineup_window_sec for the preseason period (setting
+#              the first lineup), decision_window_sec for everything else
 #   confirmed  every GM ready; no clock
 #   scheduled  a fixed real-world interval (not built yet)
 #

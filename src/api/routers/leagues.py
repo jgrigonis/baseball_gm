@@ -64,6 +64,7 @@ def new_league(
     mode: str = Form("blitz"),
     decision_window_sec: int = Form(120),
     draft_window_sec: int = Form(300),
+    lineup_window_sec: int = Form(600),
     reentry_enabled: bool = Form(True),
     pace_control: str = Form("timer"),
     sim_period_days: int = Form(3),
@@ -90,6 +91,7 @@ def new_league(
         settings={
             "decision_window_sec": decision_window_sec,
             "draft_window_sec": draft_window_sec,
+            "lineup_window_sec": lineup_window_sec,
             "reentry_enabled": reentry_enabled,
             "pace_control": pace_control,
             "sim_period_days": sim_period_days,
@@ -239,6 +241,7 @@ def dashboard(
             "league_mode": league["mode"],
             "league_decision_window_sec": league["decision_window_sec"],
             "league_draft_window_sec": league["draft_window_sec"],
+            "league_lineup_window_sec": league["lineup_window_sec"],
             "league_pace_control": league["pace_control"],
             "league_sim_period_days": league["sim_period_days"],
         }

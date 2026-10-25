@@ -3,11 +3,21 @@
 
 class ReadyCheckRepository:
     """Who has to be ready before a multiplayer league sims its next period,
-    who is, and when the Decision Window ends."""
+    who is, and when the period's window ends."""
 
     # Human GMs still running a team. Away GMs are counted separately: they
     # don't hold the league up.
     _HUMAN = "league_id = %s AND NOT is_ai AND user_id IS NOT NULL AND fired_at IS NULL"
+
+    # Seconds in the current period's window: the draft gets the Draft Window,
+    # the preseason period (setting the first lineup) the Lineup Window, and
+    # every other period the Decision Window. Read after the period has run,
+    # so it times the period that is starting.
+    _WINDOW = """CASE state
+                     WHEN 'draft' THEN draft_window_sec
+                     WHEN 'preseason' THEN lineup_window_sec
+                     ELSE decision_window_sec
+                 END"""
 
     def __init__(self, conn):
         self.conn = conn
@@ -19,7 +29,7 @@ class ReadyCheckRepository:
 
     def period(self, league_id: str) -> dict | None:
         """The league's state, pace, current period and the seconds left in its
-        Decision Window (negative once it has run out; None with no window)."""
+        window (negative once it has run out; None with no window)."""
         row = self.conn.execute(
             """SELECT state, pace_control, decision_window_sec, sim_period,
                       sim_period_days, period_deadline,
@@ -55,21 +65,21 @@ class ReadyCheckRepository:
         self.conn.execute("UPDATE gms SET is_away = %s WHERE id = %s", (away, gm_id))
 
     def open_window(self, league_id: str) -> None:
-        """Start the Decision Window for the current period now."""
+        """Start the current period's window now."""
         self.conn.execute(
-            """UPDATE leagues
-               SET period_deadline = NOW() + decision_window_sec * INTERVAL '1 second'
+            f"""UPDATE leagues
+               SET period_deadline = NOW() + ({self._WINDOW}) * INTERVAL '1 second'
                WHERE id = %s""",
             (league_id,),
         )
 
     def next_period(self, league_id: str) -> None:
         """Move to the next period: everyone becomes un-ready, and under timer
-        pace its Decision Window starts now."""
+        pace its window starts now."""
         self.conn.execute(
-            """UPDATE leagues SET sim_period = sim_period + 1,
+            f"""UPDATE leagues SET sim_period = sim_period + 1,
                    period_deadline = CASE WHEN pace_control = 'timer'
-                       THEN NOW() + decision_window_sec * INTERVAL '1 second'
+                       THEN NOW() + ({self._WINDOW}) * INTERVAL '1 second'
                    END
                WHERE id = %s""",
             (league_id,),

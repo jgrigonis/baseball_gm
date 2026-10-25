@@ -191,3 +191,49 @@ def test_next_window_starts_when_the_period_ends(db_conn, factory, run_period):
         ready_check.set_ready(db_conn, league.id, gm.id, True)
     ready_check.advance_if_due(db_conn, league.id)
     assert 55 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 60
+
+
+class TestWhichWindow:
+    """The draft gets the Draft Window and the preseason period, when GMs set
+    their first lineup, gets the Lineup Window."""
+
+    def _set_windows(self, db, league):
+        db.execute(
+            """UPDATE leagues SET decision_window_sec = 60, draft_window_sec = 900,
+                   lineup_window_sec = 1800 WHERE id = %s""",
+            (league.id,),
+        )
+
+    def test_draft_opens_the_draft_window(self, db_conn, factory, run_period):
+        league, (a, _) = _league(db_conn, factory, state="draft")
+        self._set_windows(db_conn, league)
+        ready_check.advance_if_due(db_conn, league.id)
+        assert (
+            895 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 900
+        )
+
+    def test_after_the_draft_comes_the_lineup_window(
+        self, db_conn, factory, run_period
+    ):
+        league, (a, b) = _league(db_conn, factory, state="draft")
+        self._set_windows(db_conn, league)
+        run_period.side_effect = lambda conn, league_id, *_: conn.execute(
+            "UPDATE leagues SET state = 'preseason' WHERE id = %s", (league_id,)
+        )
+        for gm in (a, b):
+            ready_check.set_ready(db_conn, league.id, gm.id, True)
+        assert ready_check.advance_if_due(db_conn, league.id)
+        assert (
+            1795 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 1800
+        )
+
+    def test_season_uses_the_decision_window(self, db_conn, factory, run_period):
+        league, (a, b) = _league(db_conn, factory, state="preseason")
+        self._set_windows(db_conn, league)
+        run_period.side_effect = lambda conn, league_id, *_: conn.execute(
+            "UPDATE leagues SET state = 'season' WHERE id = %s", (league_id,)
+        )
+        for gm in (a, b):
+            ready_check.set_ready(db_conn, league.id, gm.id, True)
+        assert ready_check.advance_if_due(db_conn, league.id)
+        assert 55 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 60
