@@ -21,6 +21,8 @@ var URL = '/leagues/{{ league_id }}';
 var PAGE_STATE = '{{ league_state }}';  // the state this page was rendered for
 var PHASES = {draft: 'Draft', preseason: 'Season', season: 'Season',
               playoffs: 'Playoffs', offseason: 'Offseason'};
+// Where a GM goes when a period moves the league into this state.
+var NEXT_PAGE = {playoffs: '/playoffs', offseason: '/playoffs', draft: '/retirement'};
 var last = null;       // last status from the server
 var deadline = null;   // Date.now() at which the window runs out
 var timer = null;
@@ -91,7 +93,16 @@ function apply(d) {
     // otherwise refresh the tab and show this GM's injury news. The draft
     // period ends the draft, so go straight to its results.
     if (PAGE_STATE === 'draft') { window.location.href = URL + '/draft/results'; return; }
-    if (d.league_state !== PAGE_STATE) { window.location.reload(); return; }
+    if (d.league_state !== PAGE_STATE) {
+      // Follow the end of the season the way single player does: the
+      // playoffs (where the champion links to the season summary), then the
+      // retirements, which lead on to the draft. That goes for every GM,
+      // in the playoffs or not.
+      var next = NEXT_PAGE[d.league_state];
+      if (next) window.location.href = URL + next;
+      else window.location.reload();
+      return;
+    }
     refreshTab();
     fetch(URL + '/news').then(function(r) { return r.json(); })
       .then(function(n) { if (window.showInjuryNews) window.showInjuryNews(n); })
