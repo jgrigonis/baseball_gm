@@ -22,15 +22,18 @@
       <div class="field timer-only">
         <label>Decision Window (sec)</label>
         <input name="decision_window_sec" type="number" value="120" min="30" max="600">
+        <span class="timer-only-note">Only used with Timer pace</span>
       </div>
       <div class="field timer-only">
         <label>Draft Window (sec)</label>
         <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
+        <span class="timer-only-note">Only used with Timer pace</span>
       </div>
       <div class="field timer-only">
         <label>Lineup Window (sec)</label>
         <input name="lineup_window_sec" type="number" value="600" min="60" max="3600"
                title="Time to set up your first lineup after the draft">
+        <span class="timer-only-note">Only used with Timer pace</span>
       </div>
     </div>
     <div class="row">
@@ -53,6 +56,12 @@
     </div>
   </form>
 </div></div>
+<style>
+.timer-only-note { display: none; font-size: 11px; color: var(--text-dim); font-style: italic; }
+.field-disabled .timer-only-note { display: block; }
+.field-disabled label { opacity: 0.45; }
+.field-disabled input { opacity: 0.45; background: transparent; border-style: dashed; cursor: not-allowed; }
+</style>
 <script>
 // The timing windows only apply to Timer pace; grey them out otherwise.
 (function () {
