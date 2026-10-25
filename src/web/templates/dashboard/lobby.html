@@ -12,52 +12,7 @@
 
   <div class="grid-2" style="gap:24px;align-items:start;">
 
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">GMs ({{ gms|length }} / {{ num_teams }})</span>
-        <span class="spacer"></span>
-        {% if join_code %}
-        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-          Join code: <strong style="color:var(--amber);letter-spacing:.2em;">{{ join_code }}</strong>
-        </span>
-        {% endif %}
-      </div>
-      <div class="card-body">
-        <table class="data-table">
-          <thead>
-            <tr><th>GM</th><th>Team</th><th>Type</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {% for gm in gms %}
-            <tr {% if gm.id == current_gm_id %}class="my-team"{% endif %}>
-              <td class="team-name">{{ gm.display_name }}</td>
-              <td style="color:var(--text-dim);">
-                {% if gm.city %}{{ gm.city }} {{ gm.mascot }}{% else %}—{% endif %}
-              </td>
-              <td>
-                {% if gm.is_ai %}
-                  <span class="badge badge-40man">AI</span>
-                {% else %}
-                  <span class="badge badge-human">Human</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if gm.is_away %}
-                  <span style="color:var(--text-dim);font-size:11px;">Away</span>
-                {% else %}
-                  <span style="color:var(--green);font-size:11px;">● Ready</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:24px;">
-              No GMs yet — share the join code
-            </td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    {% include "dashboard/partials/_lobby_gms.html" %}
 
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="card">
