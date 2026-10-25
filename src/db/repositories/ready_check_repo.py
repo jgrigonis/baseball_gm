@@ -42,7 +42,7 @@ class ReadyCheckRepository:
     def gms(self, league_id: str) -> list[dict]:
         """The human GMs with whether each is away and ready for this period."""
         rows = self.conn.execute(
-            """SELECT g.id, g.display_name, g.is_away,
+            """SELECT g.id, g.team_id, g.display_name, g.is_away,
                        g.ready_period IS NOT DISTINCT FROM l.sim_period AS ready
                 FROM gms g JOIN leagues l ON l.id = g.league_id
                 WHERE g.league_id = %s AND NOT g.is_ai

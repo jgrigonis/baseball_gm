@@ -237,3 +237,131 @@ class TestWhichWindow:
             ready_check.set_ready(db_conn, league.id, gm.id, True)
         assert ready_check.advance_if_due(db_conn, league.id)
         assert 55 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 60
+
+
+class TestPlayoffs:
+    """In the playoffs a GM whose team didn't make it, or is knocked out,
+    counts as away; with nobody left, the playoffs sim straight through."""
+
+    def _team_of(self, db, gm):
+        return db.execute("SELECT team_id FROM gms WHERE id = %s", (gm.id,)).fetchone()[
+            "team_id"
+        ]
+
+    def _bracket(self, db, factory, league, series):
+        """series: (name, high_team_id, low_team_id, high_wins, low_wins)."""
+        season = factory.season()
+        factory.league_season(league, season)
+        for name, high, low, high_wins, low_wins in series:
+            sid = str(uuid.uuid4())
+            db.execute(
+                "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s)",
+                (sid, season.id, name),
+            )
+            results = [high] * high_wins + [low] * low_wins + [None]
+            for i, winner in enumerate(results):
+                db.execute(
+                    """INSERT INTO games (id, game_date, season_id, series_id,
+                           home_team_id, away_team_id, completed, winner_id)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (
+                        str(uuid.uuid4()),
+                        f"2025-10-{i + 1:02d}",
+                        season.id,
+                        sid,
+                        high,
+                        low,
+                        1 if winner else 0,
+                        winner,
+                    ),
+                )
+
+    def _playoff_league(self, db, factory):
+        league, (a, b) = _league(db, factory, state="playoffs")
+        return league, a, b, self._team_of(db, a), self._team_of(db, b)
+
+    def test_gm_who_missed_the_playoffs_is_away(self, db_conn, factory, run_period):
+        league, a, b, team_a, _ = self._playoff_league(db_conn, factory)
+        self._bracket(
+            db_conn, factory, league, [("1v8", team_a, factory.team().id, 0, 0)]
+        )
+        status = ready_check.status(db_conn, league.id, b.id)
+        assert status["you_out"] and not status["you_away"]
+        assert status["waiting_on"] == ["GM 0"]
+        ready_check.set_ready(db_conn, league.id, a.id, True)
+        assert ready_check.advance_if_due(db_conn, league.id)
+        run_period.assert_called_once()
+
+    def test_eliminated_gm_is_away(self, db_conn, factory, run_period):
+        league, a, b, team_a, team_b = self._playoff_league(db_conn, factory)
+        self._bracket(
+            db_conn,
+            factory,
+            league,
+            [
+                ("1v8", team_a, factory.team().id, 1, 0),
+                ("2v7", factory.team().id, team_b, 3, 1),
+            ],
+        )
+        assert ready_check.status(db_conn, league.id, a.id)["waiting_on"] == ["GM 0"]
+        assert ready_check.status(db_conn, league.id, b.id)["you_out"]
+        assert not ready_check.advance_if_due(db_conn, league.id)
+        ready_check.set_ready(db_conn, league.id, a.id, True)
+        assert ready_check.advance_if_due(db_conn, league.id)
+
+    def test_no_gm_in_the_playoffs_sims_straight_through(
+        self, db_conn, factory, run_period
+    ):
+        league, a, b, _, _ = self._playoff_league(db_conn, factory)
+        self._bracket(
+            db_conn,
+            factory,
+            league,
+            [("1v8", factory.team().id, factory.team().id, 0, 0)],
+        )
+        days = []
+
+        def play_day(conn, league_id, *_):
+            days.append(1)
+            if len(days) == 5:
+                conn.execute(
+                    "UPDATE leagues SET state = 'offseason' WHERE id = %s", (league_id,)
+                )
+
+        run_period.side_effect = play_day
+        # No one ready and the window still open, yet it runs to the end.
+        assert ready_check.advance_if_due(db_conn, league.id)
+        assert run_period.call_count == 5
+        assert (
+            ready_check.status(db_conn, league.id, a.id)["league_state"] == "offseason"
+        )
+
+    def test_everyone_away_sims_straight_through(self, db_conn, factory, run_period):
+        league, a, b, team_a, team_b = self._playoff_league(db_conn, factory)
+        self._bracket(db_conn, factory, league, [("1v8", team_a, team_b, 0, 0)])
+        ready_check.set_away(db_conn, a.id, True)
+        ready_check.set_away(db_conn, b.id, True)
+        run_period.side_effect = lambda conn, league_id, *_: conn.execute(
+            "UPDATE leagues SET state = 'offseason' WHERE id = %s", (league_id,)
+        )
+        assert ready_check.advance_if_due(db_conn, league.id)
+        run_period.assert_called_once()
+
+    def test_stops_once_a_gm_is_back(self, db_conn, factory, run_period):
+        league, a, b, team_a, _ = self._playoff_league(db_conn, factory)
+        self._bracket(
+            db_conn, factory, league, [("1v8", team_a, factory.team().id, 0, 0)]
+        )
+        ready_check.set_away(db_conn, a.id, True)
+        run_period.side_effect = lambda conn, *_: conn.execute(
+            "UPDATE gms SET is_away = FALSE WHERE id = %s", (a.id,)
+        )
+        assert ready_check.advance_if_due(db_conn, league.id)
+        run_period.assert_called_once()
+        assert ready_check.status(db_conn, league.id, a.id)["waiting_on"] == ["GM 0"]
+
+    def test_outside_the_playoffs_nobody_is_out(self, db_conn, factory, run_period):
+        league, (a, b) = _league(db_conn, factory, state="season")
+        status = ready_check.status(db_conn, league.id, a.id)
+        assert not status["you_out"]
+        assert sorted(status["waiting_on"]) == ["GM 0", "GM 1"]
