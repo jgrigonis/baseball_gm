@@ -157,3 +157,31 @@ class PlayoffRepository:
             "SELECT name FROM series WHERE id = %s", (series_id,)
         ).fetchone()
         return series
+
+    def alive_team_ids(self, season_id: str) -> set[str]:
+        """The playoff teams that haven't lost a series yet."""
+        rows = self.conn.execute(
+            """SELECT s.id, s.name, g.home_team_id, g.away_team_id,
+                      g.winner_id, g.completed
+               FROM series s JOIN games g ON g.series_id = s.id
+               WHERE s.season_id = %s""",
+            (season_id,),
+        ).fetchall()
+        teams: dict[str, set[str]] = {}
+        wins: dict[str, dict[str, int]] = {}
+        best_of: dict[str, int] = {}
+        for r in rows:
+            teams.setdefault(r["id"], set()).update(
+                (r["home_team_id"], r["away_team_id"])
+            )
+            best_of[r["id"]] = 5 if r["name"] in ("1v8", "2v7", "3v6", "4v5") else 7
+            if r["completed"] and r["winner_id"]:
+                w = wins.setdefault(r["id"], {})
+                w[r["winner_id"]] = w.get(r["winner_id"], 0) + 1
+        alive = set().union(*teams.values()) if teams else set()
+        for sid, series_wins in wins.items():
+            needed = _WINS_NEEDED[best_of[sid]]
+            winner = next((t for t, n in series_wins.items() if n >= needed), None)
+            if winner:
+                alive -= teams[sid] - {winner}
+        return alive

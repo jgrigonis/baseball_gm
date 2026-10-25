@@ -14,6 +14,10 @@
 # What a period does depends on the league's state: sim_period_days of the
 # regular season, one playoff day, the offseason, or the draft.
 #
+# In the playoffs, a GM whose team didn't make it, or has been knocked out,
+# counts as away. With no GM left who isn't away, nobody has a decision to
+# make, so the playoffs sim straight through without waiting on the clock.
+#
 # There is no background worker. The check runs whenever a GM clicks Ready or
 # asks for the status, and the league lock decides which request runs the
 # period, so it works with any number of server processes.
@@ -28,21 +32,48 @@ from src.api.services.sim_next import sim_days
 from src.api.services.sim_playoff import sim_playoff
 from src.db.locks import LeagueBusy, league_busy, league_lock
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
+from src.db.repositories.season_repo import SeasonRepository
 
 log = logging.getLogger(__name__)
 
 # League states in which a period can run.
 READY_CHECK_STATES = ("draft", "preseason", "season", "playoffs", "offseason")
 
+# More periods than a full playoffs takes, so a sim that stops advancing can't
+# keep the straight-through loop going forever.
+MAX_STRAIGHT_THROUGH = 40
+
 
 def is_multiplayer(conn, league_id: str) -> bool:
     return ReadyCheckRepository(conn).human_gm_count(league_id) > 1
 
 
+def _gms(conn, league_id: str, state: str) -> list[dict]:
+    """The human GMs, each marked `out` if it's the playoffs and their team
+    isn't still in them. An out GM counts as away."""
+    gms = ReadyCheckRepository(conn).gms(league_id)
+    alive = None
+    if state == "playoffs":
+        season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+        alive = PlayoffRepository(conn).alive_team_ids(season_id)
+    for g in gms:
+        g["out"] = alive is not None and g["team_id"] not in alive
+        g["is_away"] = g["is_away"] or g["out"]
+    return gms
+
+
+def _nobody_present(period: dict, gms: list[dict]) -> bool:
+    """The playoffs with every GM away or out: nobody to wait for."""
+    return period["state"] == "playoffs" and all(g["is_away"] for g in gms)
+
+
 def _due(period: dict, gms: list[dict]) -> bool:
     present = [g for g in gms if not g["is_away"]]
-    # With everyone away only the clock moves the league.
+    if _nobody_present(period, gms):
+        return True
+    # Otherwise, with everyone away only the clock moves the league.
     if present and all(g["ready"] for g in present):
         return True
     return (
@@ -84,7 +115,7 @@ def advance_if_due(conn, league_id: str) -> bool:
         conn.commit()
         period = repo.period(league_id)
 
-    if not _due(period, repo.gms(league_id)):
+    if not _due(period, _gms(conn, league_id, period["state"])):
         return False
 
     try:
@@ -92,18 +123,24 @@ def advance_if_due(conn, league_id: str) -> bool:
             # Another request may have run it while we looked.
             now = repo.period(league_id)
             if now["sim_period"] != period["sim_period"] or not _due(
-                now, repo.gms(league_id)
+                now, _gms(conn, league_id, now["state"])
             ):
                 return False
-            log.info(
-                "League %s: running period %s (%s)",
-                league_id,
-                now["sim_period"],
-                now["state"],
-            )
-            _run_period(conn, league_id, now["state"], now["sim_period_days"])
-            repo.next_period(league_id)
-            conn.commit()
+            # Keep going while it's the playoffs and there's nobody to wait
+            # for: straight through to the offseason.
+            for _ in range(MAX_STRAIGHT_THROUGH):
+                log.info(
+                    "League %s: running period %s (%s)",
+                    league_id,
+                    now["sim_period"],
+                    now["state"],
+                )
+                _run_period(conn, league_id, now["state"], now["sim_period_days"])
+                repo.next_period(league_id)
+                conn.commit()
+                now = repo.period(league_id)
+                if not _nobody_present(now, _gms(conn, league_id, now["state"])):
+                    break
     except LeagueBusy:
         return False
     return True
@@ -113,9 +150,8 @@ def status(conn, league_id: str, gm_id: str) -> dict:
     """What the ready-check bar shows one GM."""
     if not is_multiplayer(conn, league_id):
         return {"multiplayer": False}
-    repo = ReadyCheckRepository(conn)
-    period = repo.period(league_id)
-    gms = repo.gms(league_id)
+    period = ReadyCheckRepository(conn).period(league_id)
+    gms = _gms(conn, league_id, period["state"])
     me = next((g for g in gms if g["id"] == gm_id), None)
     seconds_left = period["seconds_left"]
     return {
@@ -129,9 +165,15 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         else None,
         "simming": league_busy(conn, league_id),
         "you_ready": bool(me and me["ready"]),
-        "you_away": bool(me and me["is_away"]),
+        "you_away": bool(me and me["is_away"] and not me["out"]),
+        "you_out": bool(me and me["out"]),
         "gms": [
-            {"name": g["display_name"], "ready": g["ready"], "away": g["is_away"]}
+            {
+                "name": g["display_name"],
+                "ready": g["ready"],
+                "away": g["is_away"],
+                "out": g["out"],
+            }
             for g in gms
         ],
         "waiting_on": [
