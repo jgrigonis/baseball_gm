@@ -7,8 +7,9 @@
   <form method="POST" action="/leagues/join" style="display:flex;flex-direction:column;gap:16px;">
     <div class="field">
       <label>Join Code</label>
-      <input name="join_code" placeholder="ABC123" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:18px;" required>
+      <input name="join_code" value="{{ join_code or '' }}" placeholder="ABC123" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:18px;" required>
     </div>
+    {% if error %}<div role="alert" style="font-family:var(--font-mono);font-size:12px;color:var(--red);">{{ error }}</div>{% endif %}
     <div style="display:flex;gap:8px;">
       <button type="submit" class="btn btn-primary">Join →</button>
       <a href="/leagues/" class="btn btn-secondary">Cancel</a>

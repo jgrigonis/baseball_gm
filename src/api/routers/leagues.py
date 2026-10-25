@@ -120,20 +120,29 @@ def join_league(
     gm_repo = GMRepository(db)
 
     # 1. Use repo to find the league
-    league = league_repo.get_by_join_code(join_code.upper())
+    join_code = join_code.strip().upper()
+    league = league_repo.get_by_join_code(join_code)
     if not league:
         return templates.TemplateResponse(
-            request, "leagues/join.html", {"error": "League not found."}
-        )
-    if league["state"] != "lobby":
-        return templates.TemplateResponse(
-            request, "leagues/join.html", {"error": "League has already started."}
+            request,
+            "leagues/join.html",
+            {"error": "No league found with that join code.", "join_code": join_code},
         )
 
-    # 2. Check for existing membership via repo
+    # 2. A GM already in the league goes straight to it, started or not
     existing_gm = gm_repo.get_by_user_and_league(user["id"], league["id"])
     if existing_gm:
         return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
+
+    if league["state"] != "lobby":
+        return templates.TemplateResponse(
+            request,
+            "leagues/join.html",
+            {
+                "error": f"{league['name']} has already started, so it can't take new GMs.",
+                "join_code": join_code,
+            },
+        )
 
     # 3. Join the league using our clean GM creator
     gm_repo.create_gm(

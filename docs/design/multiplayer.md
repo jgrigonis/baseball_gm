@@ -38,6 +38,10 @@ The lobby's GM list polls every few seconds, so the commissioner sees GMs
 join, and every GM waiting there is taken to the draft once the league
 starts.
 
+New GMs can join only while the league is in the lobby. Entering the join
+code of a league that has started shows an error on the join page; a GM who
+is already in that league is taken straight to it.
+
 ## The ready-check
 
 A multiplayer league advances one **period** at a time. What a period does
