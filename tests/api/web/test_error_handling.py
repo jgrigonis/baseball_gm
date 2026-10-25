@@ -10,7 +10,11 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from src.api.dependencies import get_commissioner, get_current_gm
+from src.api.dependencies import (
+    get_commissioner,
+    get_current_gm,
+    require_single_player,
+)
 from src.api.main import app
 
 LEAGUE = "league-1"
@@ -30,6 +34,7 @@ def client(conn):
     gm = {"id": "gm-1", "team_id": "team-1"}
     app.dependency_overrides[get_current_gm] = lambda: gm
     app.dependency_overrides[get_commissioner] = lambda: gm
+    app.dependency_overrides[require_single_player] = lambda: None
     yield TestClient(app, raise_server_exceptions=False)
     app.dependency_overrides.clear()
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GM, IsHTMX, SinglePlayer, User
 from src.api.schemas import DraftPreferencesRequest
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
@@ -122,6 +122,7 @@ def execute_draft(
     league_id: str,
     db: DB,
     gm: GM,
+    _: SinglePlayer,
 ):
     """Execute the blitz auto-draft and redirect to results."""
     with league_lock(db, league_id):

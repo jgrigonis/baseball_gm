@@ -5,6 +5,7 @@ from fastapi import Request, Depends, Cookie, HTTPException
 import psycopg
 
 from src.api.database import get_db
+from src.api.services.ready_check import is_multiplayer
 from src.db.repositories.user_repo import UserRepository
 
 # ── TYPE ALIAS (For clean route signatures) ────────────────────────────────
@@ -48,6 +49,15 @@ def get_commissioner(league_id: str, db: DB, gm: Any = Depends(get_current_gm)):
     return gm
 
 
+def require_single_player(league_id: str, db: DB):
+    """For routes that advance the league on one GM's say. With several human
+    GMs the league advances by ready-check instead."""
+    if is_multiplayer(db, league_id):
+        raise HTTPException(
+            status_code=403, detail="This league advances when every GM is ready."
+        )
+
+
 # ── TYPE ALIASES (For clean route signatures) ────────────────────────────────
 IsHTMX = Annotated[bool, Depends(is_htmx)]
 
@@ -55,3 +65,4 @@ User = Annotated[Any, Depends(get_current_user)]
 OptionalUser = Annotated[Any, Depends(get_optional_user)]
 GM = Annotated[Any, Depends(get_current_gm)]
 Commissioner = Annotated[Any, Depends(get_commissioner)]
+SinglePlayer = Annotated[None, Depends(require_single_player)]

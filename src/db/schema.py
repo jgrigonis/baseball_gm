@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS leagues (
                              )),
     commissioner_gm_id   TEXT,
     draft_window_sec     INTEGER NOT NULL DEFAULT 300,
+
+    -- Ready-check (multiplayer). A GM is ready when gms.ready_period equals
+    -- sim_period; moving to the next period un-readies everyone at once.
+    sim_period           INTEGER NOT NULL DEFAULT 0,
+    period_deadline      TIMESTAMPTZ,      -- end of the Decision Window (timer pace)
+    sim_period_days      INTEGER NOT NULL DEFAULT 3,  -- season days per period
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -182,6 +188,7 @@ CREATE TABLE IF NOT EXISTS gms (
     career_seasons INTEGER NOT NULL DEFAULT 0,
     warned_at      TEXT,                  -- ISO datetime of performance warning
     fired_at       TEXT,                  -- ISO datetime of firing; NULL = active
+    ready_period   INTEGER,               -- ready when = leagues.sim_period
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,

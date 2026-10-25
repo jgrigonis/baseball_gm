@@ -94,10 +94,11 @@ def test_playoff_sim_returns_its_result():
 
     from fastapi.testclient import TestClient
 
-    from src.api.dependencies import get_current_gm
+    from src.api.dependencies import get_current_gm, require_single_player
     from src.api.main import app
 
     app.dependency_overrides[get_current_gm] = lambda: {"id": "gm", "team_id": "t"}
+    app.dependency_overrides[require_single_player] = lambda: None
     try:
         with (
             patch("src.api.database.get_connection", return_value=MagicMock()),

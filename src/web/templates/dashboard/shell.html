@@ -222,6 +222,7 @@ window.closeGamePanel = function() {
 </nav>
 {% endif %}
 
+{% if multiplayer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
 <div id="sim-status" style="display:none;padding:6px 24px;
      background:var(--green-dim);border-bottom:1px solid var(--green-mid);
      font-family:var(--font-mono);font-size:11px;color:var(--green);

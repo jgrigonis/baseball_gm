@@ -8,7 +8,7 @@
      class="btn btn-primary" style="border-color:var(--amber);color:var(--amber);">
     🥇 Go to Playoffs
   </a>
-  {% elif league_state in ('season', 'preseason') %}
+  {% elif league_state in ('season', 'preseason') and not multiplayer %}
   <button class="btn btn-secondary" id="sched-stop-btn"
           onclick="schedStop()"
           style="display:none;border-color:var(--red);color:var(--red);">

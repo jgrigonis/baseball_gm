@@ -5,6 +5,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.api.services.ready_check import is_multiplayer
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -166,6 +167,9 @@ def _shell_ctx(
                     "pace_control": league["pace_control"],
                     "is_commissioner": league["commissioner_gm_id"] == gm.get("id"),
                     "draft_complete": draft_complete,
+                    # Several human GMs: the league advances by ready-check,
+                    # so the Sim buttons give way to the ready bar.
+                    "multiplayer": is_multiplayer(db, league_id),
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)
