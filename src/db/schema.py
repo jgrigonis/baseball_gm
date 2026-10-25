@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS leagues (
                              )),
     commissioner_gm_id   TEXT,
     draft_window_sec     INTEGER NOT NULL DEFAULT 300,
+    lineup_window_sec    INTEGER NOT NULL DEFAULT 600,  -- the first period after the draft
 
     -- Ready-check (multiplayer). A GM is ready when gms.ready_period equals
     -- sim_period; moving to the next period un-readies everyone at once.

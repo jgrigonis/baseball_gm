@@ -59,7 +59,7 @@ is created:
 
 | pace_control | The period runs when |
 | --- | --- |
-| timer (default) | every GM who isn't away is ready, or the Decision Window (`decision_window_sec`) runs out |
+| timer (default) | every GM who isn't away is ready, or the period's window runs out |
 | confirmed | every GM who isn't away is ready; there is no clock |
 | scheduled | a fixed real-world interval passes, e.g. once a day (not built yet) |
 
@@ -68,6 +68,10 @@ is created:
 - Under confirmed pace, a GM who leaves without marking themselves away
   stalls the league. The ready bar names who it is waiting on.
 - Under timer pace, the next window starts as soon as a period finishes.
+  The draft gets the Draft Window (`draft_window_sec`), the preseason period
+  right after it, where GMs set their first lineup, gets the Lineup Window
+  (`lineup_window_sec`), and every other period gets the Decision Window
+  (`decision_window_sec`).
 
 ### How it is built
 
