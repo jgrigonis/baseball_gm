@@ -68,6 +68,32 @@ class GMRepository:
             (gm_id, league_id),
         )
 
+    def next_commissioner(self, league_id: str, leaving_gm_id: str) -> str | None:
+        """The human GM who has been in the league longest, other than the one
+        leaving, or None if there is nobody left."""
+        row = self.conn.execute(
+            """SELECT id FROM gms
+               WHERE league_id = %s AND id <> %s
+                 AND NOT is_ai AND user_id IS NOT NULL AND fired_at IS NULL
+               ORDER BY created_at, id LIMIT 1""",
+            (league_id, leaving_gm_id),
+        ).fetchone()
+        return row["id"] if row else None
+
+    def hand_team_to_ai(self, gm_id: str) -> None:
+        """Turn a human GM into an AI one. The row keeps its team, so the
+        team's draft picks and history stay attached to it."""
+        self.conn.execute(
+            """UPDATE gms SET is_ai = TRUE, user_id = NULL,
+                   display_name = 'AI Manager', is_away = FALSE, ready_period = NULL
+               WHERE id = %s""",
+            (gm_id,),
+        )
+        self.conn.execute("DELETE FROM gm_notifications WHERE gm_id = %s", (gm_id,))
+
+    def delete_gm(self, gm_id: str) -> None:
+        self.conn.execute("DELETE FROM gms WHERE id = %s", (gm_id,))
+
     def get_users_leagues(self, user_id: str) -> list[dict]:
         """Fetch the user's leagues"""
         rows = self.conn.execute(

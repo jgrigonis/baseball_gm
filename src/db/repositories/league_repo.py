@@ -223,6 +223,10 @@ class LeagueRepository:
             (new_name.strip(), league_id),
         )
 
+    def delete(self, league_id: str) -> None:
+        """Delete a league and, by cascade, its GMs."""
+        self.conn.execute("DELETE FROM leagues WHERE id = %s", (league_id,))
+
     def get_league_mode(self, league_id: str) -> str:
         """Get the mode of the league."""
         if league_id is None:
