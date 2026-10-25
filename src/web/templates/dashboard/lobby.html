@@ -7,7 +7,7 @@
 
   <div class="page-header">
     <h1 class="page-title">{{ league_name }}</h1>
-    <span class="page-subtitle">Waiting for league to start</span>
+    <span class="page-subtitle" id="lobby-subtitle">Waiting for league to start</span>
   </div>
 
   <div class="grid-2" style="gap:24px;align-items:start;">
@@ -92,6 +92,9 @@ document.body.addEventListener('htmx:beforeSwap', function(evt) {
   copy.querySelector('.card-body').innerHTML =
     '<p style="color:var(--text-dim);font-size:12px;">This league is no longer available (signed out or league removed). Reload the page.</p>';
   elt.replaceWith(copy);
+  document.getElementById('lobby-subtitle').textContent = 'League no longer available';
+  var start = document.getElementById('start-form');
+  if (start) start.style.display = 'none';
 });
 </script>
 {% endblock %}
