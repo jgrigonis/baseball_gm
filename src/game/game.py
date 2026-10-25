@@ -155,6 +155,7 @@ class Game:
         event_logger: GameEventLogger | None = None,
         home_eligible: set[str] | None = None,
         away_eligible: set[str] | None = None,
+        injuries_enabled: bool = True,
     ) -> None:
         """
         Initialize a new game.
@@ -174,6 +175,7 @@ class Game:
             event_logger: The GameEventLogger to write to (default: None)
             home_eligible: A set of player_ids eligible to play on the home team (default: None)
             away_eligible: A set of player_ids eligible to play on the away team (default: None)
+            injuries_enabled: Whether players can get hurt in this game (default: True)
 
         Raises:
             ValueError: If teams are invalid/missing
@@ -235,6 +237,7 @@ class Game:
 
         # Injury info
         self.injured_ids = set(injured_ids or {})
+        self.injuries_enabled = injuries_enabled
         self.new_injuries: list[tuple[str, str, str]] = []  # (player_id, severity)
 
         # Logging
@@ -778,6 +781,8 @@ class Game:
 
     def _check_injuries(self, reason: str = None) -> None:
         """Random injury check for active position players."""
+        if not self.injuries_enabled:
+            return
         self.logger.debug(f"Checking injuries. reason: {reason}")
 
         # Build candidates as (player, activity) tuples

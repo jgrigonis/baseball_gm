@@ -30,6 +30,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.game.game import Game
 from src.game.game_event_logger import GameEventLogger
+from src.league.league_modes import injuries_allowed
 from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
 from src.util.logger import setup_logger
@@ -500,6 +501,7 @@ def _play_game(
         event_logger=event_logger,
         home_eligible=home_eligible,
         away_eligible=away_eligible,
+        injuries_enabled=injuries_allowed(league_mode),
     )
 
     home_team.set_lineup(

@@ -198,6 +198,7 @@ class TestNewLeagueSettings:
     @pytest.mark.parametrize(
         "field, value",
         [
+            ("mode", "turbo"),
             ("pace_control", "scheduled"),
             ("sim_period_days", "0"),
             ("num_seasons", "0"),

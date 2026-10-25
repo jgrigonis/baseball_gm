@@ -19,6 +19,7 @@ from src.api.services.league_start import start_league
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.league.league_modes import BLITZ, DEFAULT_MODE, get_mode
 from src.web.utils import templates
 
 router = APIRouter(tags=["web"])
@@ -53,7 +54,11 @@ def leagues_index(
 
 @router.get("/leagues/new", response_class=HTMLResponse)
 def new_league_page(request: Request):
-    return templates.TemplateResponse(request, "leagues/new.html", {})
+    return templates.TemplateResponse(
+        request,
+        "leagues/new.html",
+        {"default_mode": DEFAULT_MODE, "blitz": BLITZ},
+    )
 
 
 # was create_league
@@ -62,7 +67,7 @@ def new_league(
     db: DB,
     user: User,
     name: str = Form(...),
-    mode: str = Form("blitz"),
+    mode: str = Form(DEFAULT_MODE),
     decision_window_sec: int = Form(120),
     draft_window_sec: int = Form(300),
     lineup_window_sec: int = Form(600),
@@ -71,6 +76,7 @@ def new_league(
     sim_period_days: int = Form(3),
     num_seasons: int = Form(10),
 ):
+    get_mode(mode)  # rejects an unknown mode
     if pace_control not in ("timer", "confirmed"):
         raise ValueError(f"Unknown pace '{pace_control}'.")
     if not 1 <= sim_period_days <= 30:
