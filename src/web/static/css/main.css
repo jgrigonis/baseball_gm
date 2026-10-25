@@ -445,6 +445,8 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus { border-color: var(--amber); }
 select option { background: var(--bg-3); }
 textarea { resize: vertical; min-height: 80px; }
+input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-allowed; }
+.field-disabled label { opacity: 0.4; }
 
 /* ── Layout Helpers ─────────────────────────────────────────────────────────── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
