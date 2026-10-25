@@ -202,3 +202,46 @@ def sim_next_day(league_id: str, conn) -> dict:
         "results": results,
         "league_state": "season",
     }
+
+
+def sim_days(league_id: str, conn, count: int | str) -> dict:
+    """
+    Play the next ``count`` days of the regular season, or the rest of it
+    when count is "season". When the season ends, sets up the playoffs.
+    Returns a summary of what was played.
+    """
+    season_repo = SeasonRepository(conn)
+    game_repo = GameRepository(conn)
+
+    results = []
+    remaining = game_repo.games_remaining(
+        season_repo.get_current_id_for_league(league_id)
+    )
+    limit = remaining if count == "season" else min(int(count), remaining)
+
+    for _ in range(limit):
+        day_result = sim_next_day(league_id, conn)
+        gp = day_result.get("games_played", 0)
+        if gp > 0:
+            results.append(day_result)
+        # Stop if season ended (no game_date) or if state changed out of season
+        if not day_result.get("game_date"):
+            break
+        # Stop if no games played and it wasn't a transient error
+        if gp == 0 and not day_result.get("errors"):
+            break
+
+    new_remaining = game_repo.games_remaining(
+        season_repo.get_current_id_for_league(league_id)
+    )
+    # Season over: move on to the playoffs (sets up the bracket). Also covers
+    # an earlier call whose playoff setup failed and left nothing to play.
+    if new_remaining == 0:
+        sim_next_day(league_id, conn)
+
+    return {
+        "days_simmed": len(results),
+        "games_played": sum(r.get("games_played", 0) for r in results),
+        "games_remaining": new_remaining,
+        "last_date": results[-1]["game_date"] if results else None,
+    }

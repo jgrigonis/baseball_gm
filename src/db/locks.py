@@ -63,3 +63,12 @@ def league_lock(conn, league_id: str) -> Generator[None]:
                 "SELECT pg_advisory_unlock(hashtextextended(%s, 0))",
                 (_key(league_id),),
             )
+
+
+def league_busy(conn, league_id: str) -> bool:
+    """Whether another connection holds the league's lock right now."""
+    try:
+        with league_lock(conn, league_id):
+            return False
+    except LeagueBusy:
+        return True

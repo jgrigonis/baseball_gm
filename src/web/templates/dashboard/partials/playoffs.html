@@ -18,7 +18,7 @@
     {% endif %}
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
       <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
-      {% if not champion %}
+      {% if not champion and not multiplayer %}
       <button id="po-day-btn" onclick="simPlayoffs('game')"
               class="btn btn-primary">
         ▶ Sim Day

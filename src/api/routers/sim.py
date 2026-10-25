@@ -8,24 +8,18 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from src.api.dependencies import DB, GM
+from src.api.dependencies import DB, GM, SinglePlayer
 from src.api.schemas import SimRequest
 from src.api.services.injury_news import take_injury_news
 from src.api.services.offseason_service import run_offseason
-from src.api.services.sim_next import sim_next_day
+from src.api.services.sim_next import sim_days
 from src.api.services.sim_playoff import sim_playoff
 from src.db.locks import league_lock
-from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.web.utils import _current_league_date
 
 router = APIRouter(tags=["web"])
-
-
-def _games_remaining(db, season_id: str | None) -> int:
-    """Return the number of unplayed games remaining in a season."""
-    return GameRepository(db).games_remaining(season_id)
 
 
 @router.post("/leagues/{league_id}/sim")
@@ -34,43 +28,14 @@ def sim_games(
     body: SimRequest,
     db: DB,
     gm: GM,
+    _: SinglePlayer,
 ):
     """Sim N games (or until season end). Returns JSON with results summary."""
     with league_lock(db, league_id):
-        count = body.count
+        summary = sim_days(league_id, db, body.count)
 
-        season_repo = SeasonRepository(db)
-        league_repo = LeagueRepository(db)
-
-        results = []
-        days_simmed = 0
-        remaining = _games_remaining(
-            db, season_repo.get_current_id_for_league(league_id)
-        )
-
-        limit = remaining if count == "season" else min(int(count), remaining)
-
-        for _ in range(limit):
-            day_result = sim_next_day(league_id, db)
-            gp = day_result.get("games_played", 0)
-            if gp > 0:
-                results.append(day_result)
-                days_simmed += 1
-            # Stop if season ended (no game_date) or if state changed out of season
-            if not day_result.get("game_date"):
-                break
-            # Stop if no games played and it wasn't a transient error
-            if gp == 0 and not day_result.get("errors"):
-                break
-
-        games_played = sum(r.get("games_played", 0) for r in results)
-        new_remaining = _games_remaining(
-            db, season_repo.get_current_id_for_league(league_id)
-        )
-        # If season just ended, trigger the state transition (playoffs setup)
-        if new_remaining == 0 and days_simmed > 0:
-            sim_next_day(league_id, db)
-
+    season_repo = SeasonRepository(db)
+    league_repo = LeagueRepository(db)
     league = league_repo.get_by_id(league_id)
     league_state = league["state"] if league else "lobby"
     current_season_id = season_repo.get_current_id_for_league(league_id)
@@ -78,10 +43,7 @@ def sim_games(
 
     return JSONResponse(
         {
-            "days_simmed": days_simmed,
-            "games_played": games_played,
-            "games_remaining": new_remaining,
-            "last_date": results[-1]["game_date"] if results else None,
+            **summary,
             "league_state": league_state,
             "current_date": current_date,
             **take_injury_news(db, gm["id"]),
@@ -95,6 +57,7 @@ def sim_playoff_route(
     league_id: str,
     db: DB,
     gm: GM,
+    _: SinglePlayer,
     mode: str = "game",
 ):
     with league_lock(db, league_id):
@@ -110,6 +73,7 @@ def begin_offseason(
     league_id: str,
     db: DB,
     gm: GM,
+    _: SinglePlayer,
 ):
     with league_lock(db, league_id):
         result = run_offseason(league_id, db)

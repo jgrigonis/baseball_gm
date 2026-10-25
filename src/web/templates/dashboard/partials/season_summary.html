@@ -87,7 +87,7 @@
   {% endif %}
 
   {# Begin Offseason / continue to draft #}
-  {% if league_state == 'offseason' %}
+  {% if league_state == 'offseason' and not multiplayer %}
   <div style="text-align:center;">
     <button id="begin-offseason-btn" onclick="beginOffseason()"
             class="btn btn-primary" style="padding:10px 32px;font-size:14px;">

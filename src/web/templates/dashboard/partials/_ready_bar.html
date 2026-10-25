@@ -1,0 +1,134 @@
+{# templates/dashboard/partials/_ready_bar.html
+   Multiplayer leagues only. The league sims its next period when every GM
+   who isn't away is ready, or (timer pace) when the Decision Window runs
+   out. Polls /sim/status, which also runs the period once it is due. #}
+<div id="ready-bar"
+     style="display:flex;align-items:center;gap:12px;padding:6px 24px;
+            background:var(--bg-2);border-bottom:1px solid var(--border);
+            font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+  <span id="ready-text">Loading…</span>
+  <span id="ready-waiting" style="color:var(--amber);"></span>
+  <span style="margin-left:auto;display:flex;gap:8px;">
+    <button class="btn btn-secondary" id="ready-away-btn" onclick="readyToggleAway()"
+            style="font-size:11px;padding:4px 10px;">Mark me away</button>
+    <button class="btn btn-primary" id="ready-btn" onclick="readyToggle()"
+            style="font-size:11px;padding:4px 12px;">I'm ready</button>
+  </span>
+</div>
+<script>
+(function() {
+var URL = '/leagues/{{ league_id }}';
+var PAGE_STATE = '{{ league_state }}';  // the state this page was rendered for
+var PHASES = {draft: 'Draft', preseason: 'Season', season: 'Season',
+              playoffs: 'Playoffs', offseason: 'Offseason'};
+var last = null;       // last status from the server
+var deadline = null;   // Date.now() at which the window runs out
+var timer = null;
+
+function fmt(sec) {
+  var m = Math.floor(sec / 60), s = sec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function render() {
+  var d = last;
+  if (!d || !d.multiplayer) return;
+  var text = document.getElementById('ready-text');
+  var waiting = document.getElementById('ready-waiting');
+  var btn = document.getElementById('ready-btn');
+  var away = document.getElementById('ready-away-btn');
+  var present = d.gms.filter(function(g) { return !g.away; });
+  var readyCount = present.filter(function(g) { return g.ready; }).length;
+
+  if (!d.active) {
+    text.textContent = 'Nothing to get ready for right now.';
+    waiting.textContent = '';
+    btn.style.display = 'none';
+  } else if (d.simming) {
+    text.textContent = '▶ ' + PHASES[d.league_state] + ' period ' + d.period + ' is simming…';
+    waiting.textContent = '';
+    btn.disabled = true;
+  } else {
+    var parts = [PHASES[d.league_state] + ' · period ' + d.period];
+    if (deadline !== null) {
+      var left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      parts.push('next sim in ' + fmt(left));
+    }
+    parts.push('ready ' + readyCount + '/' + present.length);
+    text.textContent = parts.join(' · ');
+    waiting.textContent = d.waiting_on.length ? 'waiting on ' + d.waiting_on.join(', ') : '';
+    btn.style.display = '';
+    btn.disabled = d.you_away;
+    btn.textContent = d.you_ready ? '✓ Ready (undo)' : "I'm ready";
+  }
+  away.textContent = d.you_away ? "I'm back" : 'Mark me away';
+}
+
+function refreshTab() {
+  var activeLink = document.querySelector('.tab-link.active');
+  if (!activeLink) return;
+  var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
+  fetch(url, {headers: {'HX-Request': 'true'}})
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      var tc = document.getElementById('tab-content');
+      if (tc) tc.innerHTML = html;
+    })
+    .catch(function() {});
+}
+
+function apply(d) {
+  if (!d || !d.multiplayer) return;
+  var prev = last;
+  last = d;
+  deadline = d.seconds_left === null ? null : Date.now() + d.seconds_left * 1000;
+  if (prev && prev.period !== d.period) {
+    // A period ran. A new league state means different tabs, so reload;
+    // otherwise refresh the tab and show this GM's injury news.
+    if (d.league_state !== PAGE_STATE) { window.location.reload(); return; }
+    refreshTab();
+    fetch(URL + '/news').then(function(r) { return r.json(); })
+      .then(function(n) { if (window.showInjuryNews) window.showInjuryNews(n); })
+      .catch(function() {});
+  }
+  render();
+}
+
+function send(method, path, body) {
+  var opts = {method: method};
+  if (body) {
+    opts.headers = {'Content-Type': 'application/json'};
+    opts.body = JSON.stringify(body);
+  }
+  return fetch(URL + path, opts)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.detail) { document.getElementById('ready-waiting').textContent = '✗ ' + d.detail; return; }
+      apply(d);
+    })
+    .catch(function() {});
+}
+
+window.readyToggle = function() {
+  if (!last) return;
+  send(last.you_ready ? 'DELETE' : 'POST', '/ready');
+};
+window.readyToggleAway = function() {
+  if (!last) return;
+  send('POST', '/away', {away: !last.you_away});
+};
+
+// Poll one request at a time: the request that finds a period due runs it,
+// which can take a while.
+function poll() {
+  fetch(URL + '/sim/status')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(apply)
+    .catch(function() {})
+    .finally(function() { setTimeout(poll, 3000); });
+}
+
+if (timer === null) timer = setInterval(render, 1000);
+poll();
+})();
+</script>

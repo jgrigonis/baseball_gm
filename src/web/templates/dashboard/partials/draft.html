@@ -23,7 +23,7 @@
            style="margin-left:16px;border-color:var(--green);color:var(--green);">
           View Results →
         </a>
-      {% else %}
+      {% elif not multiplayer %}
         <form method="POST" action="/leagues/{{ league_id }}/draft/execute"
               style="margin-left:16px;display:inline;" onsubmit="onExecute(this)">
           <button type="submit" id="execute-btn" class="btn btn-secondary"
