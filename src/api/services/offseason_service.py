@@ -30,6 +30,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.league.league_modes import is_blitz_style
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.rotation_seeder import seed_ai_rotations
 from src.league.offseason.snake_draft import write_draft_order
@@ -154,7 +155,7 @@ def run_offseason(league_id: str, conn) -> dict:
     existing_draft_id = dr.get_draft_id(league_id, new_season_id)
 
     if not existing_draft_id:
-        draft_format = "preference" if league_mode == "blitz" else "interactive"
+        draft_format = "preference" if is_blitz_style(league_mode) else "interactive"
         draft_id = dr.create_draft(league_id, new_season_id, draft_format)
         conn.commit()
 

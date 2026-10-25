@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     -- GM layer fields
     join_code            TEXT UNIQUE,
     mode                 TEXT NOT NULL DEFAULT 'blitz'
-                             CHECK (mode IN ('blitz', 'longform')),
+                             CHECK (mode IN ('blitz', 'speed_blitz', 'longform')),
     num_teams            INTEGER NOT NULL DEFAULT 30,
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
     reentry_enabled      BOOLEAN NOT NULL DEFAULT FALSE,

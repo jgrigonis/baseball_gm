@@ -30,7 +30,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.game.game import Game
 from src.game.game_event_logger import GameEventLogger
-from src.league.league_modes import injuries_allowed
+from src.league.league_modes import injuries_allowed, is_blitz_style
 from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
 from src.util.logger import setup_logger
@@ -350,7 +350,7 @@ def _play_game(
     league_id: str,
     league_mode: str,
 ):
-    blitz = league_mode == "blitz"
+    blitz = is_blitz_style(league_mode)
 
     home_record = team_repo.get(game_info["home_team_id"])
     away_record = team_repo.get(game_info["away_team_id"])

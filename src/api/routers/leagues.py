@@ -19,7 +19,7 @@ from src.api.services.league_start import start_league
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
-from src.league.league_modes import BLITZ, DEFAULT_MODE, get_mode
+from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
 from src.web.utils import templates
 
 router = APIRouter(tags=["web"])
@@ -57,7 +57,7 @@ def new_league_page(request: Request):
     return templates.TemplateResponse(
         request,
         "leagues/new.html",
-        {"default_mode": DEFAULT_MODE, "blitz": BLITZ},
+        {"default_mode": DEFAULT_MODE, "modes": [BLITZ, SPEED_BLITZ]},
     )
 
 
