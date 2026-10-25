@@ -23,24 +23,6 @@
       </div>
     </div>
     <div class="row">
-      <div class="field timer-only">
-        <label>Decision Window (sec)</label>
-        <input name="decision_window_sec" type="number" value="120" min="30" max="600">
-        <span class="timer-only-note">Only used with Timer pace</span>
-      </div>
-      <div class="field timer-only">
-        <label>Draft Window (sec)</label>
-        <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
-        <span class="timer-only-note">Only used with Timer pace</span>
-      </div>
-      <div class="field timer-only">
-        <label>Lineup Window (sec)</label>
-        <input name="lineup_window_sec" type="number" value="600" min="60" max="3600"
-               title="Time to set up your first lineup after the draft">
-        <span class="timer-only-note">Only used with Timer pace</span>
-      </div>
-    </div>
-    <div class="row">
       <div class="field">
         <label>Pace (multiplayer)</label>
         <select name="pace_control" id="pace-control">
@@ -57,6 +39,24 @@
         <label>Number of Seasons</label>
         <input name="num_seasons" type="number" value="10" min="1" max="420"
                title="How many seasons the league runs">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field timer-only">
+        <label>Decision Window (sec)</label>
+        <input name="decision_window_sec" type="number" value="120" min="30" max="600">
+        <span class="timer-only-note">Only used with Timer pace</span>
+      </div>
+      <div class="field timer-only">
+        <label>Draft Window (sec)</label>
+        <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
+        <span class="timer-only-note">Only used with Timer pace</span>
+      </div>
+      <div class="field timer-only">
+        <label>Lineup Window (sec)</label>
+        <input name="lineup_window_sec" type="number" value="600" min="60" max="3600"
+               title="Time to set up your first lineup after the draft">
+        <span class="timer-only-note">Only used with Timer pace</span>
       </div>
     </div>
     <div style="display:flex;gap:8px;">
