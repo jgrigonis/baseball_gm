@@ -4,12 +4,11 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.schemas import RosterSaveRequest
 from src.api.view_models.player_cards import (
     attach_injuries,
     attach_roster_stats,
@@ -66,38 +65,19 @@ def save_roster(
     gm: GM,
 ):
     """Save 40-man roster. Enforces the 40-player limit."""
-    # Read JSON body
-    _ = (
-        asyncio.get_event_loop().run_until_complete(request.body())
-        if hasattr(request, "_body")
-        else None
-    )
-
     return HTMLResponse("ok")  # placeholder — real logic below
 
 
 @router.put("/leagues/{league_id}/roster/save")
 def save_roster_put(
-    request: Request,
     league_id: str,
+    body: RosterSaveRequest,
     db: DB,
     gm: GM,
 ):
     """PUT endpoint for roster save from JS fetch."""
     team_id = gm["team_id"]
-
-    # Parse body synchronously via stored body
-    body = None
-    try:
-        loop = asyncio.new_event_loop()
-        body = loop.run_until_complete(request.json())
-        loop.close()
-    except ValueError:  # json.JSONDecodeError is a ValueError
-        return JSONResponse({"detail": "Invalid JSON"}, status_code=422)
-    if not isinstance(body, dict):
-        return JSONResponse({"detail": "Expected a JSON object"}, status_code=422)
-
-    forty_man_ids = body.get("forty_man", [])
+    forty_man_ids = body.forty_man
 
     if len(forty_man_ids) > 40:
         return JSONResponse(

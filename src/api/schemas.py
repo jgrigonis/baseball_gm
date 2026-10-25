@@ -184,3 +184,37 @@ def expand_distribution(value: float, factor: float = 1.28) -> int:
 
 class BullpenSaveRequest(BaseModel):
     bullpen: dict[str, str]  # Matches {"player_id": "role"}
+
+
+# ── Request bodies ───────────────────────────────────────────────
+# Unknown fields are ignored (pydantic's default), so these accept every
+# payload the dashboard JS sends.
+
+
+class SimRequest(BaseModel):
+    # Game-days to sim, or "season" to sim to the end of the regular season.
+    count: int | Literal["season"] = 1
+
+
+class LineupSlot(BaseModel):
+    player_id: str
+    batting_order: int
+    position: str | None = None
+
+
+class LineupSaveRequest(BaseModel):
+    lineup: list[LineupSlot] = []
+
+
+class RotationSaveRequest(BaseModel):
+    rotation: list[str] = []
+    # The pitcher due to start next; falls back to the first slot.
+    pointer_pid: str | None = None
+
+
+class RosterSaveRequest(BaseModel):
+    forty_man: list[str] = []
+
+
+class DraftPreferencesRequest(BaseModel):
+    player_ids: list[str] = []

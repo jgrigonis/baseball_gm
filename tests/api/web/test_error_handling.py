@@ -115,6 +115,8 @@ class TestHttpExceptions:
 
 
 class TestRosterSaveBody:
+    """The body is a RosterSaveRequest, so FastAPI rejects bad JSON with 422."""
+
     def test_invalid_json_is_rejected(self, client):
         r = client.put(
             f"/leagues/{LEAGUE}/roster/save",
@@ -122,9 +124,9 @@ class TestRosterSaveBody:
             headers={"Content-Type": "application/json"},
         )
         assert r.status_code == 422
-        assert r.json() == {"detail": "Invalid JSON"}
+        assert r.json()["detail"][0]["type"] == "json_invalid"
 
     def test_non_object_json_is_rejected(self, client):
         r = client.put(f"/leagues/{LEAGUE}/roster/save", json=["p1", "p2"])
         assert r.status_code == 422
-        assert r.json() == {"detail": "Expected a JSON object"}
+        assert r.json()["detail"][0]["type"] == "model_attributes_type"

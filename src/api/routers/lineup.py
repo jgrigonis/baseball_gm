@@ -8,7 +8,11 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api.dependencies import DB, GM, IsHTMX, User
-from src.api.schemas import BullpenSaveRequest
+from src.api.schemas import (
+    BullpenSaveRequest,
+    LineupSaveRequest,
+    RotationSaveRequest,
+)
 from src.api.view_models.lineup import lineup_context
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -44,17 +48,16 @@ def lineup(
 
 
 @router.put("/leagues/{league_id}/lineup/save")
-async def save_lineup_prefs(
-    request: Request,
+def save_lineup_prefs(
     league_id: str,
+    body: LineupSaveRequest,
     db: DB,
     gm: GM,
 ):
     if not gm["team_id"]:
         return JSONResponse({"detail": "No team"}, status_code=400)
 
-    body = await request.json()
-    lineup = body.get("lineup", [])  # [{player_id, batting_order, position}]
+    lineup = [slot.model_dump() for slot in body.lineup]
 
     if len(lineup) > 9:
         return JSONResponse(
@@ -75,18 +78,17 @@ async def save_lineup_prefs(
 
 
 @router.put("/leagues/{league_id}/rotation/save")
-async def save_rotation(
-    request: Request,
+def save_rotation(
     league_id: str,
+    body: RotationSaveRequest,
     db: DB,
     gm: GM,
 ):
     if not gm["team_id"]:
         return JSONResponse({"detail": "No team"}, status_code=400)
 
-    body = await request.json()
-    rotation = body.get("rotation", [])
-    pointer_pid = body.get("pointer_pid", None)
+    rotation = body.rotation
+    pointer_pid = body.pointer_pid
     season_repo = SeasonRepository(db)
     season_id = season_repo.get_most_recent_season_from_league(league_id)
     if not season_id:
@@ -119,7 +121,7 @@ async def save_rotation(
 
 
 @router.put("/leagues/{league_id}/bullpen/save")
-async def save_bullpen(
+def save_bullpen(
     league_id: str,
     body: BullpenSaveRequest,
     db: DB,
