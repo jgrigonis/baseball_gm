@@ -12,10 +12,12 @@
       </div>
       <div class="field">
         <label>Mode</label>
-        <select name="mode">
-          <option value="blitz">Blitz</option>
+        <select name="mode" id="league-mode">
+          <option value="{{ blitz.key }}" data-presets='{{ blitz.form_presets | tojson }}'
+                  {% if default_mode == blitz.key %}selected{% endif %}>{{ blitz.label }}</option>
           <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
         </select>
+        <span class="mode-note" id="blitz-note">No injuries or trades. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
       </div>
     </div>
     <div class="row">
@@ -62,12 +64,30 @@
   </form>
 </div></div>
 <style>
+.mode-note { font-size: 11px; color: var(--text-dim); font-style: italic; }
 .timer-only-note { display: none; font-size: 11px; color: var(--text-dim); font-style: italic; }
 .field-disabled .timer-only-note { display: block; }
 .field-disabled label { opacity: 0.45; }
 .field-disabled input { opacity: 0.45; background: transparent; border-style: dashed; cursor: not-allowed; }
 </style>
 <script>
+// Picking a mode fills in its preset settings. Settings the mode doesn't
+// preset keep whatever the form has.
+(function () {
+  const mode = document.getElementById('league-mode');
+  const blitzNote = document.getElementById('blitz-note');
+  function applyModePresets() {
+    const opt = mode.options[mode.selectedIndex];
+    const presets = JSON.parse(opt.dataset.presets || '{}');
+    Object.keys(presets).forEach(function (name) {
+      const input = mode.form.querySelector('[name="' + name + '"]');
+      if (input) input.value = presets[name];
+    });
+    blitzNote.style.display = mode.value === '{{ blitz.key }}' ? '' : 'none';
+  }
+  mode.addEventListener('change', applyModePresets);
+  applyModePresets();
+})();
 // The timing windows only apply to Timer pace; grey them out otherwise.
 (function () {
   const pace = document.getElementById('pace-control');
