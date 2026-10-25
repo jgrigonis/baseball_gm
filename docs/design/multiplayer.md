@@ -42,6 +42,29 @@ New GMs can join only while the league is in the lobby. Entering the join
 code of a league that has started shows an error on the join page; a GM who
 is already in that league is taken straight to it.
 
+## Leaving a league
+
+A GM leaves from the Leave button on `/leagues/` (`POST /leagues/{id}/leave`,
+`src/api/services/leave_league.py`).
+
+- **In the lobby** the GM's row is deleted. No team has been handed out yet,
+  and AI GMs fill the empty teams when the league starts.
+- **Once the league has started** AI takes over the team. The GM's row
+  becomes an AI GM (`is_ai = true`, `user_id` null, "AI Manager") and keeps
+  its `team_id`, so the team keeps its draft picks, pick rights, results and
+  name in the standings. From then on the AI drafts for it, sets its lineup
+  and rebuilds its rotation each offseason, and the standings stop marking
+  it as a human team. The GM can't rejoin, since joining is lobby-only.
+- The ready-check and injury news only look at human GMs, so the leaver
+  drops out of both straight away, and their unseen news is deleted. If
+  everyone left is ready, the period runs on the next status poll. A league
+  that drops to one human GM becomes single-player.
+- A **commissioner** who leaves hands the role to the human GM who has been
+  in the league longest. With no humans left, a started league has no
+  commissioner and a lobby league is deleted.
+- Leaving takes the league lock, so it can't land in the middle of a sim
+  (409 while one is running).
+
 ## The ready-check
 
 A multiplayer league advances one **period** at a time. What a period does

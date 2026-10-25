@@ -26,6 +26,7 @@
             {% if l.is_commissioner %}
             <button onclick="openRenameModal('{{ l.id }}','{{ l.name }}')" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Rename</button>
             {% endif %}
+            <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" onclick="leaveLeague(this)" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Leave</button>
             <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Open →</a>
           </td>
         </tr>
@@ -56,6 +57,18 @@
   </div>
 </div>
 <script>
+function leaveLeague(btn) {
+  const id = btn.dataset.leagueId, name = btn.dataset.leagueName;
+  const msg = btn.dataset.started
+    ? 'Leave ' + name + '? An AI manager will take over your team, and you can\'t come back.'
+    : 'Leave ' + name + '?';
+  if (!confirm(msg)) return;
+  fetch('/leagues/' + id + '/leave', {method: 'POST'}).then(r => {
+    if (r.ok) { location.reload(); return; }
+    r.json().then(d => alert(d.detail || 'Could not leave the league.'),
+                 () => alert('Could not leave the league.'));
+  });
+}
 var _renameLeagueId = null;
 function openRenameModal(id, name) {
   _renameLeagueId = id;

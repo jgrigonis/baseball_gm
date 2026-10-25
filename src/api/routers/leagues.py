@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, Commissioner, User
+from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
@@ -175,6 +176,17 @@ def start_league_router(
         start_league(league_id, db)
         db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+
+@router.post("/leagues/{league_id}/leave")
+def leave_league_router(
+    league_id: str,
+    db: DB,
+    gm: GM,
+):
+    """Leave the league. Once it has started, AI takes over the GM's team."""
+    leave_league(db, league_id, gm["id"])
+    return JSONResponse({"left": True})
 
 
 # ── League rename ──────────────────────────────────────────────────────────────
