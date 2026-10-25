@@ -22,10 +22,25 @@ class LeagueMode:
     # Trades don't exist yet. Check trades_allowed() before offering or
     # accepting one once they do.
     trades_enabled: bool = True
+    # Blitz-style leagues run a preference-list draft and play off the 40-man
+    # roster; long form drafts interactively and plays off the 26-man.
+    blitz_style: bool = False
 
 
 BLITZ = LeagueMode(
     key="blitz",
+    label="Blitz",
+    # The form's own defaults, so switching back from speed blitz restores them.
+    form_presets={
+        "sim_period_days": 3,
+        "decision_window_sec": 120,
+        "num_seasons": 10,
+    },
+    blitz_style=True,
+)
+
+SPEED_BLITZ = LeagueMode(
+    key="speed_blitz",
     label="Speed Blitz",
     form_presets={
         "sim_period_days": 30,
@@ -34,11 +49,12 @@ BLITZ = LeagueMode(
     },
     injuries_enabled=False,
     trades_enabled=False,
+    blitz_style=True,
 )
 
 LONGFORM = LeagueMode(key="longform", label="Long Form")
 
-LEAGUE_MODES: dict[str, LeagueMode] = {m.key: m for m in (BLITZ, LONGFORM)}
+LEAGUE_MODES: dict[str, LeagueMode] = {m.key: m for m in (BLITZ, SPEED_BLITZ, LONGFORM)}
 
 DEFAULT_MODE = BLITZ.key
 
@@ -58,3 +74,7 @@ def injuries_allowed(mode: str | None) -> bool:
 
 def trades_allowed(mode: str | None) -> bool:
     return get_mode(mode).trades_enabled
+
+
+def is_blitz_style(mode: str | None) -> bool:
+    return get_mode(mode).blitz_style
