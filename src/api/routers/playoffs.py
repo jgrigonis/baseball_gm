@@ -24,5 +24,5 @@ def playoffs(
     gm: GM,
 ):
     ctx = _shell_ctx(request, db, gm, league_id, "playoffs", user)
-    ctx.update(playoffs_context(db, ctx["season_id"], gm["team_id"]))
+    ctx.update(playoffs_context(db, league_id, ctx["season_id"], gm["team_id"]))
     return tab_response(request, htmx, "dashboard/partials/playoffs.html", ctx)
