@@ -149,7 +149,7 @@ Different formats per mode, reflecting the time available:
 - Each pick has a configurable timer (default 90 seconds)
 - If a GM doesn't pick in time, auto-selects from their submitted preference list
 - Preference list acts as a fallback, not the primary mechanism
-- Draft can be paused by Commissioner
+- No one can pause the draft, the Commissioner included (see [multiplayer.md](multiplayer.md))
 
 ---
 
