@@ -24,6 +24,7 @@ var PHASES = {draft: 'Draft', preseason: 'Season', season: 'Season',
 var last = null;       // last status from the server
 var deadline = null;   // Date.now() at which the window runs out
 var timer = null;
+var stopped = false;  // set once the league can't be reached
 
 function fmt(sec) {
   var m = Math.floor(sec / 60), s = sec % 60;
@@ -32,7 +33,7 @@ function fmt(sec) {
 
 function render() {
   var d = last;
-  if (!d || !d.multiplayer) return;
+  if (stopped || !d || !d.multiplayer) return;
   var text = document.getElementById('ready-text');
   var waiting = document.getElementById('ready-waiting');
   var btn = document.getElementById('ready-btn');
@@ -119,13 +120,28 @@ window.readyToggleAway = function() {
 };
 
 // Poll one request at a time: the request that finds a period due runs it,
-// which can take a while.
+// which can take a while. Skip polls while the tab is hidden, and stop for
+// good once this page can't reach the league any more: signed out (the
+// server redirects to the landing page), or the league or this GM is gone,
+// e.g. a window left open on a deleted league or a wiped database.
 function poll() {
+  if (stopped) return;
+  if (document.hidden) { setTimeout(poll, 3000); return; }
   fetch(URL + '/sim/status')
-    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(r) {
+      if (r.redirected || [401, 403, 404].indexOf(r.status) !== -1) {
+        stopped = true;
+        document.getElementById('ready-btn').style.display = 'none';
+        document.getElementById('ready-away-btn').style.display = 'none';
+        document.getElementById('ready-text').textContent = 'This league is no longer available (signed out or league removed). Reload the page.';
+        document.getElementById('ready-waiting').textContent = '';
+        return null;
+      }
+      return r.ok ? r.json() : null;
+    })
     .then(apply)
     .catch(function() {})
-    .finally(function() { setTimeout(poll, 3000); });
+    .finally(function() { if (!stopped) setTimeout(poll, 3000); });
 }
 
 if (timer === null) timer = setInterval(render, 1000);
