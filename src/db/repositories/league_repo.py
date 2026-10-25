@@ -224,8 +224,52 @@ class LeagueRepository:
         )
 
     def delete(self, league_id: str) -> None:
-        """Delete a league and, by cascade, its GMs."""
+        """Delete a league and everything it owns: GMs, drafts, seasons (and
+        with them games and stats), teams and players.
+
+        Seasons and teams are only deleted when no other league uses them.
+        Players belong to the league that created them (players.league_id),
+        plus anyone on one of its teams who isn't tagged to another league.
+        """
+        season_ids = self._column(
+            """SELECT season_id AS id FROM league_seasons ls
+               WHERE league_id = %s AND NOT EXISTS (
+                   SELECT 1 FROM league_seasons o
+                   WHERE o.season_id = ls.season_id AND o.league_id <> %s)""",
+            (league_id, league_id),
+        )
+        team_ids = self._column(
+            """SELECT DISTINCT team_id AS id FROM league_season_teams lst
+               WHERE league_id = %s AND NOT EXISTS (
+                   SELECT 1 FROM league_season_teams o
+                   WHERE o.team_id = lst.team_id AND o.league_id <> %s)""",
+            (league_id, league_id),
+        )
+        player_ids = self._column(
+            """SELECT id FROM players WHERE league_id = %s
+               UNION
+               SELECT p.id FROM players p
+               JOIN team_players tp ON tp.player_id = p.id
+               WHERE tp.team_id = ANY(%s)
+                 AND (p.league_id IS NULL OR p.league_id = %s)""",
+            (league_id, team_ids, league_id),
+        )
+
+        # Per-league player state, keyed by league_id with no foreign key.
+        for table in ("pitcher_state", "player_energy", "player_injuries"):
+            self.conn.execute(f"DELETE FROM {table} WHERE league_id = %s", (league_id,))
+        # Cascades to GMs, drafts and their picks, pick rights, retirements and
+        # the league's season and team links.
         self.conn.execute("DELETE FROM leagues WHERE id = %s", (league_id,))
+        # Cascades to games and their stats, series and offseason steps.
+        self.conn.execute("DELETE FROM seasons WHERE id = ANY(%s)", (season_ids,))
+        # Cascades to rosters, rotations and bullpen roles.
+        self.conn.execute("DELETE FROM teams WHERE id = ANY(%s)", (team_ids,))
+        # Cascades to skills, status, caps, season stats and the injury log.
+        self.conn.execute("DELETE FROM players WHERE id = ANY(%s)", (player_ids,))
+
+    def _column(self, sql: str, params: tuple) -> list[str]:
+        return [r["id"] for r in self.conn.execute(sql, params).fetchall()]
 
     def get_league_mode(self, league_id: str) -> str:
         """Get the mode of the league."""

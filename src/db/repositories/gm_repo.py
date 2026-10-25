@@ -91,6 +91,15 @@ class GMRepository:
         )
         self.conn.execute("DELETE FROM gm_notifications WHERE gm_id = %s", (gm_id,))
 
+    def has_people(self, league_id: str) -> bool:
+        """Whether any person can still open the league, fired GMs included."""
+        return bool(
+            self.conn.execute(
+                "SELECT 1 FROM gms WHERE league_id = %s AND user_id IS NOT NULL LIMIT 1",
+                (league_id,),
+            ).fetchone()
+        )
+
     def delete_gm(self, gm_id: str) -> None:
         self.conn.execute("DELETE FROM gms WHERE id = %s", (gm_id,))
 
@@ -99,7 +108,9 @@ class GMRepository:
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
                       MAX(s.year) as current_year,
-                      (l.commissioner_gm_id = g.id) as is_commissioner
+                      (l.commissioner_gm_id = g.id) as is_commissioner,
+                      (SELECT COUNT(*) FROM gms o
+                       WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
             FROM leagues l
             JOIN gms g ON g.league_id = l.id
             LEFT JOIN league_seasons ls ON ls.league_id = l.id

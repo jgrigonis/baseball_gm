@@ -60,8 +60,14 @@ A GM leaves from the Leave button on `/leagues/` (`POST /leagues/{id}/leave`,
   everyone left is ready, the period runs on the next status poll. A league
   that drops to one human GM becomes single-player.
 - A **commissioner** who leaves hands the role to the human GM who has been
-  in the league longest. With no humans left, a started league has no
-  commissioner and a lobby league is deleted.
+  in the league longest.
+- When the **last person** leaves (fired GMs count, since they can still
+  open the league), the league is deleted with everything it owns:
+  `LeagueRepository.delete()` removes its GMs, drafts, seasons with their
+  games and stats, teams, players and per-league player state, and the
+  service removes its CSVs under `team_files/{league_id}/`. Seasons and teams
+  shared with another league are left alone. The Leave dialog warns the
+  last GM first.
 - Leaving takes the league lock, so it can't land in the middle of a sim
   (409 while one is running).
 
