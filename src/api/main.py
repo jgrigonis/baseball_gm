@@ -33,6 +33,7 @@ from src.api.routers import (
     stats,
     strategy,
 )
+from src.api.dependencies import NotLeagueGM
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
@@ -132,10 +133,15 @@ def health() -> dict:
 # message; the traceback only goes to the server log.
 
 
+def _wants_page(request: Request) -> bool:
+    """A browser loading a page or posting a form, not fetch/HTMX."""
+    wants_html = "text/html" in request.headers.get("accept", "")
+    return wants_html and request.headers.get("HX-Request") != "true"
+
+
 def _error_response(request: Request, message: str, status_code: int):
     """A small HTML page for page loads and form posts, JSON for fetch/HTMX."""
-    wants_html = "text/html" in request.headers.get("accept", "")
-    if wants_html and request.headers.get("HX-Request") != "true":
+    if _wants_page(request):
         return templates.TemplateResponse(
             request,
             "error.html",
@@ -149,6 +155,14 @@ def _error_response(request: Request, message: str, status_code: int):
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
         return RedirectResponse("/")
+    if (
+        isinstance(exc, NotLeagueGM)
+        and request.method == "GET"
+        and _wants_page(request)
+    ):
+        # A league page for a league this user isn't in, or one that was
+        # deleted (e.g. a bookmark, or a refresh after a reset).
+        return RedirectResponse("/leagues/", status_code=303)
     return await default_http_exception_handler(request, exc)
 
 

@@ -29,6 +29,15 @@ def get_optional_user(db: DB, gm_session: str = Cookie(None)):
     return UserRepository(db).get_by_token(gm_session)
 
 
+class NotLeagueGM(HTTPException):
+    """The user has no GM in this league, or the league no longer exists.
+    Page loads are sent back to the league list (see main.py); API and fetch
+    callers get the 403."""
+
+    def __init__(self):
+        super().__init__(status_code=403, detail="Not a GM in this league")
+
+
 def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)):
     # This automatically uses the 'user' we already resolved!
     gm = db.execute(
@@ -36,7 +45,7 @@ def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)
         (user["id"], league_id),
     ).fetchone()
     if not gm:
-        raise HTTPException(status_code=403, detail="Not a GM in this league")
+        raise NotLeagueGM()
     return gm
 
 

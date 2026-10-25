@@ -71,5 +71,27 @@ function onStartLeague(form) {
   btn.textContent = 'Starting…';
   spinner.style.display = 'flex';
 }
+
+// Stop the GM list's poll for good once this page can't reach the league:
+// signed out (the server redirects to the landing page), or the league or
+// this GM is gone, e.g. a window left open on a deleted league or a wiped
+// database. Swapping in a copy without the hx- attributes ends htmx's poll.
+document.body.addEventListener('htmx:beforeSwap', function(evt) {
+  var elt = evt.detail.elt;
+  if (elt.id !== 'lobby-gms') return;
+  var xhr = evt.detail.xhr;
+  var url = elt.getAttribute('hx-get');
+  var redirected = xhr.responseURL && new URL(xhr.responseURL).pathname !== url;
+  if (!redirected && [401, 403, 404].indexOf(xhr.status) === -1) return;
+  evt.detail.shouldSwap = false;
+  evt.detail.isError = false;
+  var copy = elt.cloneNode(true);
+  copy.removeAttribute('hx-get');
+  copy.removeAttribute('hx-trigger');
+  copy.removeAttribute('hx-swap');
+  copy.querySelector('.card-body').innerHTML =
+    '<p style="color:var(--text-dim);font-size:12px;">This league is no longer available (signed out or league removed). Reload the page.</p>';
+  elt.replaceWith(copy);
+});
 </script>
 {% endblock %}

@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from src.api.dependencies import (
+    NotLeagueGM,
     get_commissioner,
     get_current_gm,
     get_current_user,
@@ -107,6 +108,37 @@ class TestHttpExceptions:
 
         app.dependency_overrides[get_current_gm] = forbidden
         r = client.post(f"/leagues/{LEAGUE}/offseason/begin")
+
+        assert r.status_code == 403
+        assert r.json() == {"detail": "Not a GM in this league"}
+
+    def test_page_for_league_im_not_in_goes_to_league_list(self, client):
+        """A refresh on a deleted league, or a link to someone else's."""
+
+        def not_a_gm():
+            raise NotLeagueGM()
+
+        app.dependency_overrides[get_current_user] = lambda: {"id": "u-1"}
+        app.dependency_overrides[get_current_gm] = not_a_gm
+        r = client.get(
+            f"/leagues/{LEAGUE}/",
+            headers={"Accept": "text/html"},
+            follow_redirects=False,
+        )
+
+        assert r.status_code == 303
+        assert r.headers["location"] == "/leagues/"
+
+    @pytest.mark.parametrize(
+        "headers",
+        [{"Accept": "application/json"}, {"Accept": "text/html", "HX-Request": "true"}],
+    )
+    def test_fetch_for_league_im_not_in_stays_403(self, client, headers):
+        def not_a_gm():
+            raise NotLeagueGM()
+
+        app.dependency_overrides[get_current_gm] = not_a_gm
+        r = client.get(f"/leagues/{LEAGUE}/lobby/gms", headers=headers)
 
         assert r.status_code == 403
         assert r.json() == {"detail": "Not a GM in this league"}
