@@ -211,7 +211,10 @@ def sim_playoff(
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     playoff_repo = PlayoffRepository(conn)
     seeds = playoff_repo.get_seeds(season_id)
-    rng = random.Random()
+    # Seed from the global RNG, as sim_next_day does, so seeding random
+    # replays the playoffs too.
+    seed = random.randint(0, 999_999)
+    rng = random.Random(seed)
 
     games_played = 0
     results = []
