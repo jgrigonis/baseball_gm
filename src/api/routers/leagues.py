@@ -69,11 +69,14 @@ def new_league(
     reentry_enabled: bool = Form(True),
     pace_control: str = Form("timer"),
     sim_period_days: int = Form(3),
+    num_seasons: int = Form(10),
 ):
     if pace_control not in ("timer", "confirmed"):
         raise ValueError(f"Unknown pace '{pace_control}'.")
     if not 1 <= sim_period_days <= 30:
         raise ValueError("Days per sim period must be between 1 and 30.")
+    if not 1 <= num_seasons <= 420:
+        raise ValueError("Number of seasons must be between 1 and 420.")
 
     league_id = str(uuid.uuid4())
     # gm_id = str(uuid.uuid4())
@@ -96,6 +99,7 @@ def new_league(
             "reentry_enabled": reentry_enabled,
             "pace_control": pace_control,
             "sim_period_days": sim_period_days,
+            "num_seasons": num_seasons,
         },
     )
     # 2. GM setup
@@ -256,6 +260,7 @@ def dashboard(
             "league_lineup_window_sec": league["lineup_window_sec"],
             "league_pace_control": league["pace_control"],
             "league_sim_period_days": league["sim_period_days"],
+            "league_num_seasons": league["num_seasons"],
         }
     )
 

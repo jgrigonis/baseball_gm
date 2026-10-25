@@ -163,7 +163,12 @@ class TestNewLeagueSettings:
 
     @pytest.mark.parametrize(
         "field, value",
-        [("pace_control", "scheduled"), ("sim_period_days", "0")],
+        [
+            ("pace_control", "scheduled"),
+            ("sim_period_days", "0"),
+            ("num_seasons", "0"),
+            ("num_seasons", "421"),
+        ],
     )
     def test_bad_ready_check_setting_is_rejected(self, user_client, field, value):
         r = user_client.post("/leagues/new", data={"name": "L", field: value})
