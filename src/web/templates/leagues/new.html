@@ -28,6 +28,20 @@
         <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
       </div>
     </div>
+    <div class="row">
+      <div class="field">
+        <label>Pace (multiplayer)</label>
+        <select name="pace_control">
+          <option value="timer">Timer: when everyone is ready or the window runs out</option>
+          <option value="confirmed">Confirmed: only when everyone is ready</option>
+          <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Days per Sim Period</label>
+        <input name="sim_period_days" type="number" value="3" min="1" max="30">
+      </div>
+    </div>
     <div style="display:flex;gap:8px;">
       <button type="submit" class="btn btn-primary">Create League →</button>
       <a href="/leagues/" class="btn btn-secondary">Cancel</a>

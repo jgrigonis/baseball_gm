@@ -28,8 +28,9 @@ class LeagueRepository:
         self.conn.execute(
             """INSERT INTO leagues
                 (id, name, join_code, mode, num_teams, decision_window_sec,
-                draft_window_sec, reentry_enabled, pace_control, state, commissioner_gm_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'timer', 'lobby', NULL)""",
+                draft_window_sec, reentry_enabled, pace_control, sim_period_days,
+                state, commissioner_gm_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -39,6 +40,8 @@ class LeagueRepository:
                 settings.get("decision_window_sec", 120),
                 settings.get("draft_window_sec", 300),
                 settings.get("reentry_enabled", True),
+                settings.get("pace_control", "timer"),
+                settings.get("sim_period_days", 3),
             ),
         )
 
