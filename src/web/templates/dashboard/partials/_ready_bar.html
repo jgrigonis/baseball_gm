@@ -65,17 +65,17 @@ function render() {
   away.textContent = d.you_away ? "I'm back" : 'Mark me away';
 }
 
+// Swap through htmx so the tab's inline script runs again; setting innerHTML
+// doesn't run scripts, which left script-built tabs like Lineup empty. Save
+// the Lineup tab's unsaved edits first so its init restores them.
 function refreshTab() {
   var activeLink = document.querySelector('.tab-link.active');
-  if (!activeLink) return;
+  if (!activeLink || !document.getElementById('tab-content')) return;
   var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
-  fetch(url, {headers: {'HX-Request': 'true'}})
-    .then(function(r) { return r.text(); })
-    .then(function(html) {
-      var tc = document.getElementById('tab-content');
-      if (tc) tc.innerHTML = html;
-    })
-    .catch(function() {});
+  if (document.getElementById('pane-batting') && window.saveLineupToStorage) {
+    window.saveLineupToStorage();
+  }
+  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
 }
 
 function apply(d) {
