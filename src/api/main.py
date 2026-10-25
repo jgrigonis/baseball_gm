@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -41,6 +42,25 @@ from src.web.utils import templates
 
 configure_app_logging(fmt="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
+
+
+class _QuietPolls(logging.Filter):
+    """Leave the pages' background polls (the ready bar, the lobby's GM list)
+    out of the access log while they succeed. Failures are still logged."""
+
+    POLLS = re.compile(r"^/leagues/[^/]+/(sim/status|lobby/gms)$")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # uvicorn.access args: (client, method, path, http_version, status)
+        args = record.args
+        if isinstance(args, tuple) and len(args) == 5:
+            path, status = str(args[2]).split("?")[0], args[4]
+            if self.POLLS.match(path) and isinstance(status, int) and status < 300:
+                return False
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_QuietPolls())
 
 
 @asynccontextmanager
