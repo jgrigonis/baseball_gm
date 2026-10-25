@@ -189,6 +189,22 @@ CREATE TABLE IF NOT EXISTS gms (
     FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
 );
 
+-- News for one GM, e.g. a player on their team got hurt during a sim. Kept
+-- per GM so everyone sees their own news, whoever ran the sim.
+CREATE TABLE IF NOT EXISTS gm_notifications (
+    id         SERIAL PRIMARY KEY,
+    gm_id      TEXT NOT NULL,
+    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned')),
+    payload    JSONB NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (NOW()),
+    seen_at    TEXT,                  -- NULL until shown to the GM
+
+    FOREIGN KEY (gm_id) REFERENCES gms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_gm_notifications_unseen
+    ON gm_notifications(gm_id) WHERE seen_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS bullpen_roles (
     team_id TEXT NOT NULL,
     player_id TEXT NOT NULL,

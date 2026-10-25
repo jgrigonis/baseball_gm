@@ -14,16 +14,14 @@ import random
 
 import psycopg
 
+from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
-from src.db.repositories.gm_repo import GMRepository
-from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
 from src.league.playoffs.setup_playoffs import setup_playoff_bracket
@@ -137,12 +135,8 @@ def sim_next_day(league_id: str, conn) -> dict:
     results = []
     errors = []
 
-    # Snapshot GM team injuries before this day to detect changes
-    gm_repo = GMRepository(conn)
-    gm_team_id = gm_repo.get_first_human_team_id(league_id)
-
-    inj_repo = InjuryRepository(conn, league_id)
-    injured_before = inj_repo.get_active_for_team(gm_team_id)
+    # Snapshot the human teams' injuries so each GM hears about changes
+    injury_news = InjuryNews(conn, league_id)
 
     for game_info in games:
         game_dict = dict(game_info)
@@ -197,23 +191,7 @@ def sim_next_day(league_id: str, conn) -> dict:
             rollback_quietly(conn)
             log.warning("build_season failed, will retry next day", exc_info=True)
 
-    # Diff injuries to find new injuries and returns for GM's team
-    injured_after = inj_repo.get_active_for_team(gm_team_id)
-    new_injuries = [
-        {"name": v["name"], "days": v["days"], "is_pitcher": v["is_pitcher"]}
-        for pid, v in injured_after.items()
-        if pid not in injured_before
-    ]
-    status_repo = PlayerStatusRepository(conn)
-    returned = [
-        {
-            "name": v["name"],
-            "is_pitcher": v["is_pitcher"],
-            "on_40man": status_repo.get_status(pid) in ("26man", "40man"),
-        }
-        for pid, v in injured_before.items()
-        if pid not in injured_after
-    ]
+    injury_news.record()
 
     return {
         "game_date": game_date,
@@ -223,6 +201,4 @@ def sim_next_day(league_id: str, conn) -> dict:
         "seed": seed,
         "results": results,
         "league_state": "season",
-        "new_injuries": new_injuries,
-        "returned": returned,
     }

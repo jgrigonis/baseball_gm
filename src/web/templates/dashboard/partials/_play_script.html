@@ -65,7 +65,7 @@ async function schedSim(count) {
         body: JSON.stringify({count: 1}),
       });
       var d = await res.json();
-      if (!res.ok) { setStatus('✗ Server error', 'red'); break; }
+      if (!res.ok) { setStatus('✗ ' + (d.detail || 'Server error'), 'red'); break; }
       if (!d.games_played) {
         if (!d.games_remaining || d.games_remaining <= 0) break;
         setStatus('⚠ No games played', 'var(--amber)');
@@ -79,27 +79,10 @@ async function schedSim(count) {
       var statusMsg = '▶ Day ' + daysSimmed + ' done · ' + totalGames + ' games · ' + remaining + ' remaining';
       setStatus(statusMsg);
 
-      // Build injury news
-      var injNews = '';
-      var injDest = 'batting';  // default destination: lineup batting tab
-      if (d.new_injuries && d.new_injuries.length > 0) {
-        injNews += d.new_injuries.map(i => `🚑 ${i.name} (${i.days}d)`).join('  ');
-        // A new pitcher injury → pitching tab; hitter injury keeps batting
-        if (d.new_injuries.some(i => i.is_pitcher)) injDest = 'pitching';
-      }
-      if (d.returned && d.returned.length > 0) {
-        injNews += (injNews ? '  ' : '') + d.returned.map(i => `✅ ${i.name} returned`).join('  ');
-        // Returned player not on 40-man → roster tab (needs to be placed first)
-        if (d.returned.some(i => !i.on_40man)) {
-          injDest = 'roster';
-        } else if (injDest !== 'roster' && d.returned.some(i => i.is_pitcher)) {
-          injDest = 'pitching';
-        }
-      }
-      setInjuryNews(injNews, injDest);  // clears if empty, shows if not
+      var hasNews = showInjuryNews(d);
 
       // Stop on injury — read from window._stopOnInjury which persists across tab re-renders
-      if (injNews && (count === 'injury')) {
+      if (hasNews && (count === 'injury')) {
         window._simStop = true;
       }
 

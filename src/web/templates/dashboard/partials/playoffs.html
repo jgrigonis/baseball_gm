@@ -208,6 +208,7 @@ function simPlayoffs(mode) {
     .then(function(r){ return r.json(); })
     .then(function(d){
       _poSetDisabled(false);
+      if (d.detail) { if (fb) fb.textContent = '✗ ' + d.detail; return; }
       if (fb) fb.textContent = d.games_played + ' game' + (d.games_played !== 1 ? 's' : '') + ' played';
 
       if (d.current_date) {
@@ -215,12 +216,7 @@ function simPlayoffs(mode) {
         if (dateEl) dateEl.textContent = d.current_date;
       }
 
-      var injNews = '';
-      if (d.new_injuries && d.new_injuries.length > 0)
-        injNews += d.new_injuries.map(function(i){ return '🚑 ' + i.name + ' (' + i.days + 'd)'; }).join('  ');
-      if (d.returned && d.returned.length > 0)
-        injNews += (injNews ? '  ' : '') + d.returned.map(function(i){ return '✅ ' + i.name + ' returned'; }).join('  ');
-      setInjuryNews(injNews);
+      showInjuryNews(d);
 
       htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
     })

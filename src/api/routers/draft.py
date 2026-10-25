@@ -12,6 +12,7 @@ from src.api.dependencies import DB, GM, IsHTMX, User
 from src.api.schemas import DraftPreferencesRequest
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
+from src.db.locks import league_lock
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -123,17 +124,20 @@ def execute_draft(
     gm: GM,
 ):
     """Execute the blitz auto-draft and redirect to results."""
-    draft = DraftRepository(db).get_current_for_league(league_id)
+    with league_lock(db, league_id):
+        draft = DraftRepository(db).get_current_for_league(league_id)
 
-    if not draft:
-        return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
+        if not draft:
+            return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
 
-    # If already complete, just go to results
-    if draft["state"] == "complete":
-        return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
+        # If already complete, just go to results
+        if draft["state"] == "complete":
+            return RedirectResponse(
+                f"/leagues/{league_id}/draft/results", status_code=302
+            )
 
-    execute_blitz_draft(draft["id"], db)
-    db.commit()
+        execute_blitz_draft(draft["id"], db)
+        db.commit()
     return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
 
 
