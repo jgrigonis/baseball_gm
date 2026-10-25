@@ -19,11 +19,11 @@
       </div>
     </div>
     <div class="row">
-      <div class="field">
+      <div class="field timer-only">
         <label>Decision Window (sec)</label>
         <input name="decision_window_sec" type="number" value="120" min="30" max="600">
       </div>
-      <div class="field">
+      <div class="field timer-only">
         <label>Draft Window (sec)</label>
         <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
       </div>
@@ -31,7 +31,7 @@
     <div class="row">
       <div class="field">
         <label>Pace (multiplayer)</label>
-        <select name="pace_control">
+        <select name="pace_control" id="pace-control">
           <option value="timer">Timer: when everyone is ready or the window runs out</option>
           <option value="confirmed">Confirmed: only when everyone is ready</option>
           <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
@@ -48,4 +48,19 @@
     </div>
   </form>
 </div></div>
+<script>
+// The timing windows only apply to Timer pace; grey them out otherwise.
+(function () {
+  const pace = document.getElementById('pace-control');
+  function syncTimerFields() {
+    const isTimer = pace.value === 'timer';
+    document.querySelectorAll('.timer-only').forEach(function (f) {
+      f.classList.toggle('field-disabled', !isTimer);
+      f.querySelectorAll('input').forEach(function (i) { i.disabled = !isTimer; });
+    });
+  }
+  pace.addEventListener('change', syncTimerFields);
+  syncTimerFields();
+})();
+</script>
 {% endblock %}
