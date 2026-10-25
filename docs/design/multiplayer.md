@@ -34,6 +34,10 @@ control over when the league sims: there is no force and no pause, so
 organising a league gives no competitive advantage. Once the league leaves
 the lobby the commissioner plays like any other GM.
 
+The lobby's GM list polls every few seconds, so the commissioner sees GMs
+join, and every GM waiting there is taken to the draft once the league
+starts.
+
 ## The ready-check
 
 A multiplayer league advances one **period** at a time. What a period does

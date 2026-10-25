@@ -221,26 +221,53 @@ def dashboard(
         # Simplified the season fetch for now to get you back to green
         return RedirectResponse(f"/leagues/{league_id}/history/1/")
 
-    gms_in_league = gm_repo.get_all_in_league(league_id)
-    # This boolean is what the Jinja template is looking for
-    is_commish = league["commissioner_gm_id"] == gm["id"]
+    context = _lobby_gms_context(gm_repo, league, gm)
+    context.update(
+        {
+            "league_name": league["name"],
+            "is_commissioner": bool(is_commish),
+            "league_num_teams": league["num_teams"],  # Dual-mapping for safety
+            "league_mode": league["mode"],
+            "league_decision_window_sec": league["decision_window_sec"],
+            "league_draft_window_sec": league["draft_window_sec"],
+            "league_pace_control": league["pace_control"],
+            "league_sim_period_days": league["sim_period_days"],
+        }
+    )
 
-    context_drawer = {
-        "league_id": league_id,
-        "league_name": league["name"],
-        "is_commissioner": bool(is_commish),
-        "gms": list(gms_in_league),
+    return templates.TemplateResponse(
+        request=request, name="dashboard/lobby.html", context=context
+    )
+
+
+def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
+    return {
+        "league_id": league["id"],
+        "league_state": league["state"],
+        "gms": list(gm_repo.get_all_in_league(league["id"])),
         "num_teams": league["num_teams"],
-        "league_num_teams": league["num_teams"],  # Dual-mapping for safety
-        "league_mode": league["mode"],
         "join_code": league.get("join_code"),
-        "league_decision_window_sec": league["decision_window_sec"],
-        "league_draft_window_sec": league["draft_window_sec"],
-        "league_pace_control": league["pace_control"],
-        "league_sim_period_days": league["sim_period_days"],
         "current_gm_id": str(gm["id"]),
     }
 
+
+@router.get("/leagues/{league_id}/lobby/gms", response_class=HTMLResponse)
+def lobby_gms(
+    request: Request,
+    league_id: str,
+    db: DB,
+    gm: GM,
+):
+    """The lobby's GM list, polled while GMs wait for the league to start.
+
+    Once the league has started, HX-Redirect sends the page to the dashboard,
+    which redirects on to wherever the league is now.
+    """
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] != "lobby":
+        return HTMLResponse("", headers={"HX-Redirect": f"/leagues/{league_id}/"})
     return templates.TemplateResponse(
-        request=request, name="dashboard/lobby.html", context=context_drawer
+        request,
+        "dashboard/partials/_lobby_gms.html",
+        _lobby_gms_context(GMRepository(db), league, gm),
     )

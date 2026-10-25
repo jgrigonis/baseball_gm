@@ -1,0 +1,66 @@
+# tests/api/web/test_lobby.py
+"""
+The lobby's GM list polls /lobby/gms, so the commissioner sees GMs join and
+everyone waiting finds out when the league starts.
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+
+from src.api.database import get_db
+from src.api.dependencies import get_current_gm, get_current_user
+from src.api.main import app
+
+
+@pytest.fixture
+def lobby(db_conn, factory):
+    league = factory.league(state="lobby")
+    gm = factory.gm(league=league, is_ai=False)
+    return league, gm
+
+
+@pytest.fixture
+def client(db_conn, lobby):
+    _, gm = lobby
+    app.dependency_overrides[get_db] = lambda: db_conn
+    app.dependency_overrides[get_current_gm] = lambda: {"id": gm.id}
+    yield TestClient(app, follow_redirects=False)
+    app.dependency_overrides.clear()
+
+
+def _gms(client, league):
+    return client.get(f"/leagues/{league.id}/lobby/gms")
+
+
+def test_lists_a_gm_who_just_joined(client, db_conn, factory, lobby):
+    league, _ = lobby
+    db_conn.execute(
+        "INSERT INTO gms (id, league_id, display_name, is_ai)"
+        " VALUES (gen_random_uuid(), %s, 'Newcomer', false)",
+        (league.id,),
+    )
+
+    r = _gms(client, league)
+
+    assert r.status_code == 200
+    assert "Newcomer" in r.text
+    assert 'hx-trigger="every 3s"' in r.text
+
+
+def test_started_league_redirects_the_page(client, db_conn, lobby):
+    league, _ = lobby
+    db_conn.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (league.id,))
+
+    r = _gms(client, league)
+
+    assert r.headers["HX-Redirect"] == f"/leagues/{league.id}/"
+
+
+def test_lobby_page_polls_the_gm_list(client, lobby):
+    league, _ = lobby
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+
+    r = client.get(f"/leagues/{league.id}/")
+
+    assert r.status_code == 200
+    assert f'hx-get="/leagues/{league.id}/lobby/gms"' in r.text
