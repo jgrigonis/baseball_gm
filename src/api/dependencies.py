@@ -58,6 +58,16 @@ def require_single_player(league_id: str, db: DB):
         )
 
 
+def require_active_league(league_id: str, db: DB):
+    """For routes that change a league. A complete league is read-only: its
+    history and records stay viewable, but nothing in it changes."""
+    league = db.execute(
+        "SELECT state FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
+    if league and league["state"] == "complete":
+        raise HTTPException(status_code=409, detail="This league is complete.")
+
+
 # ── TYPE ALIASES (For clean route signatures) ────────────────────────────────
 IsHTMX = Annotated[bool, Depends(is_htmx)]
 
@@ -66,3 +76,4 @@ OptionalUser = Annotated[Any, Depends(get_optional_user)]
 GM = Annotated[Any, Depends(get_current_gm)]
 Commissioner = Annotated[Any, Depends(get_commissioner)]
 SinglePlayer = Annotated[None, Depends(require_single_player)]
+ActiveLeague = Annotated[None, Depends(require_active_league)]

@@ -14,6 +14,7 @@ from src.api.dependencies import (
     get_commissioner,
     get_current_gm,
     get_current_user,
+    require_active_league,
     require_single_player,
 )
 from src.api.main import app
@@ -36,6 +37,7 @@ def client(conn):
     app.dependency_overrides[get_current_gm] = lambda: gm
     app.dependency_overrides[get_commissioner] = lambda: gm
     app.dependency_overrides[require_single_player] = lambda: None
+    app.dependency_overrides[require_active_league] = lambda: None
     yield TestClient(app, raise_server_exceptions=False)
     app.dependency_overrides.clear()
 
@@ -163,7 +165,12 @@ class TestNewLeagueSettings:
 
     @pytest.mark.parametrize(
         "field, value",
-        [("pace_control", "scheduled"), ("sim_period_days", "0")],
+        [
+            ("pace_control", "scheduled"),
+            ("sim_period_days", "0"),
+            ("num_seasons", "0"),
+            ("num_seasons", "421"),
+        ],
     )
     def test_bad_ready_check_setting_is_rejected(self, user_client, field, value):
         r = user_client.post("/leagues/new", data={"name": "L", field: value})

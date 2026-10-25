@@ -126,6 +126,7 @@ body {
 .topbar-state.state-playoffs  { color: var(--sky);   border-color: var(--sky-dim);   background: var(--sky-dim); }
 .topbar-state.state-lobby     { color: var(--text-dim); }
 .topbar-state.state-offseason { color: var(--text-dim); }
+.topbar-state.state-complete  { color: var(--amber); border-color: var(--amber-dim); }
 
 .topbar-spacer { flex: 1; }
 

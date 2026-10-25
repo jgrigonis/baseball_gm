@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.api.schemas import RosterSaveRequest
 from src.api.view_models.player_cards import (
     attach_injuries,
@@ -63,6 +63,7 @@ def save_roster(
     league_id: str,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     """Save 40-man roster. Enforces the 40-player limit."""
     return HTMLResponse("ok")  # placeholder — real logic below
@@ -74,6 +75,7 @@ def save_roster_put(
     body: RosterSaveRequest,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     """PUT endpoint for roster save from JS fetch."""
     team_id = gm["team_id"]

@@ -42,7 +42,8 @@ function render() {
   var readyCount = present.filter(function(g) { return g.ready; }).length;
 
   if (!d.active) {
-    text.textContent = 'Nothing to get ready for right now.';
+    text.textContent = d.league_state === 'complete'
+      ? 'This league is complete.' : 'Nothing to get ready for right now.';
     waiting.textContent = '';
     btn.style.display = 'none';
   } else if (d.simming) {

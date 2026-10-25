@@ -82,6 +82,18 @@ depends on the league's state:
 | preseason, season | `sim_period_days` days of the regular season (default 3); the last one sets up the playoffs |
 | playoffs | one playoff day |
 | offseason | runs the offseason |
+| complete | nothing: the league is over |
+
+## How a league ends
+
+A league runs for `leagues.num_seasons` seasons (default 10, 1 to 420),
+chosen when it is created. When the Finals of its last season are decided,
+`end_playoffs` archives that season and sets the league to `complete`
+instead of `offseason`. A complete league is read-only: every route that
+changes a league depends on `require_active_league`, which answers 409.
+Leaving still works, so GMs can clear a finished league off their list.
+History, records, standings, stats and the final playoff bracket stay
+viewable, and the league's page opens on its History.
 
 When a period runs is set by `leagues.pace_control`, chosen when the league
 is created:

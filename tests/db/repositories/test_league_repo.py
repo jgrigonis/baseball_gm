@@ -82,12 +82,17 @@ class TestLeagueRepositoryCreateNewLeague:
         league = self._create(league_repo)
         assert league["pace_control"] == "timer"
         assert league["sim_period_days"] == 3
+        assert league["num_seasons"] == 10
         assert league["state"] == "lobby"
 
     def test_ready_check_settings(self, league_repo):
         league = self._create(league_repo, pace_control="confirmed", sim_period_days=7)
         assert league["pace_control"] == "confirmed"
         assert league["sim_period_days"] == 7
+
+    def test_num_seasons_setting(self, league_repo):
+        league = self._create(league_repo, num_seasons=420)
+        assert league["num_seasons"] == 420
 
 
 class TestLeagueRepositoryAssignSeasonToLeague:
