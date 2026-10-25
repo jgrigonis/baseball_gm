@@ -91,7 +91,7 @@
     {% for t in s.teams %}
     {% set win_game_ids = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | map(attribute='id') | list %}
     <div class="sc-team">
-      <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+      <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% elif t.is_human %}var(--sky){% else %}var(--text){% endif %};">
         {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
       </span>
       <div class="sc-dots">
