@@ -26,7 +26,7 @@
             {% if l.is_commissioner %}
             <button onclick="openRenameModal('{{ l.id }}','{{ l.name }}')" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Rename</button>
             {% endif %}
-            <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" onclick="leaveLeague(this)" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Leave</button>
+            <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" data-last="{{ 'yes' if l.people <= 1 else '' }}" onclick="leaveLeague(this)" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Leave</button>
             <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Open →</a>
           </td>
         </tr>
@@ -59,7 +59,9 @@
 <script>
 function leaveLeague(btn) {
   const id = btn.dataset.leagueId, name = btn.dataset.leagueName;
-  const msg = btn.dataset.started
+  const msg = btn.dataset.last
+    ? 'Leave ' + name + '? You\'re the last GM in it, so the league will be deleted for good.'
+    : btn.dataset.started
     ? 'Leave ' + name + '? An AI manager will take over your team, and you can\'t come back.'
     : 'Leave ' + name + '?';
   if (!confirm(msg)) return;

@@ -7,14 +7,18 @@
 # ready-check and injury news stop counting it.
 #
 # A leaving commissioner hands the role to the human GM who has been in the
-# league longest. A lobby league with no humans left is deleted, because
-# nobody could ever start it.
+# league longest. When the last person leaves, the league is deleted with
+# everything it owns, since nobody could ever open it again.
 
 from __future__ import annotations
+
+import shutil
+from pathlib import Path
 
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.util.locations import TEAM_FILES_DIR
 
 
 def leave_league(conn, league_id: str, gm_id: str) -> None:
@@ -35,8 +39,14 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
 
         if league["state"] == "lobby":
             gm_repo.delete_gm(gm_id)
-            if not gm_repo.get_human_gm_ids(league_id):
-                league_repo.delete(league_id)
         else:
             gm_repo.hand_team_to_ai(gm_id)
+
+        deleted = not gm_repo.has_people(league_id)
+        if deleted:
+            league_repo.delete(league_id)
         conn.commit()
+
+    if deleted:
+        # The team and draft-class CSVs the league was built from.
+        shutil.rmtree(Path(TEAM_FILES_DIR) / league_id, ignore_errors=True)

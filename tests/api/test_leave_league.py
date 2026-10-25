@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
+from src.api.services import leave_league as leave_league_module
 from src.api.services import ready_check
 from src.api.services.injury_news import InjuryNews
 from src.api.services.leave_league import leave_league
@@ -57,6 +58,7 @@ class TestStartedLeague:
         league = factory.league(state="season")
         team = factory.team()
         gm, user_id = _human(db_conn, factory, league, "Alice", team=team)
+        _human(db_conn, factory, league, "Bob")
 
         leave_league(db_conn, league.id, gm.id)
 
@@ -73,6 +75,7 @@ class TestStartedLeague:
         draft = factory.draft(league=league, season=season)
         team, other = factory.team(), factory.team()
         gm, _ = _human(db_conn, factory, league, "Alice", team=team)
+        _human(db_conn, factory, league, "Bob")
         player = factory.player_row()
         db_conn.execute(
             "INSERT INTO draft_picks (draft_id, pick_number, round, gm_id, team_id, player_id)"
@@ -109,6 +112,7 @@ class TestStartedLeague:
         team = factory.team(city="Springfield", mascot="Isotopes")
         factory.league_season_team(league, season, team)
         gm, _ = _human(db_conn, factory, league, "Alice", team=team)
+        _human(db_conn, factory, league, "Bob")
 
         leave_league(db_conn, league.id, gm.id)
 
@@ -183,16 +187,6 @@ class TestCommissioner:
 
         assert _commissioner(db_conn, league) == older.id
 
-    def test_no_humans_left_means_no_commissioner(self, db_conn, factory):
-        league = factory.league(state="season")
-        boss, _ = _human(db_conn, factory, league, "Al")
-        factory.gm(league=league, is_ai=True)
-        _set_commissioner(db_conn, league, boss)
-
-        leave_league(db_conn, league.id, boss.id)
-
-        assert _commissioner(db_conn, league) is None
-
     def test_other_gm_leaving_keeps_the_commissioner(self, db_conn, factory):
         league = factory.league(state="season")
         boss, _ = _human(db_conn, factory, league, "Al")
@@ -259,10 +253,13 @@ class TestPage:
 
         assert f'data-league-id="{league.id}"' in r.text
         assert "leaveLeague(this)" in r.text
+        # Alice is the only person in it, so leaving would delete it.
+        assert 'data-last="yes"' in r.text
 
     def test_leave_route(self, client, db_conn, factory):
         league = factory.league(state="season")
         gm, user_id = _human(db_conn, factory, league, "Alice")
+        _human(db_conn, factory, league, "Bob")
         app.dependency_overrides[get_current_user] = lambda: {"id": user_id}
 
         r = client.post(f"/leagues/{league.id}/leave")
@@ -271,3 +268,158 @@ class TestPage:
         assert _gm(db_conn, gm)["is_ai"]
         # They're out: the league turns them away now.
         assert client.post(f"/leagues/{league.id}/leave").status_code == 403
+
+
+# ── The last person out deletes the league ────────────────────────────────────
+
+
+def _row(db, table, **values):
+    """Insert a row, filling the other required columns with placeholders."""
+    cols = db.execute(
+        """SELECT column_name, data_type FROM information_schema.columns
+           WHERE table_schema = current_schema() AND table_name = %s
+             AND is_nullable = 'NO' AND column_default IS NULL""",
+        (table,),
+    ).fetchall()
+    filler = {"integer": 1, "bigint": 1, "real": 0.5, "boolean": False}
+    for c in cols:
+        values.setdefault(
+            c["column_name"], filler.get(c["data_type"], str(uuid.uuid4()))
+        )
+    db.execute(
+        f"INSERT INTO {table} ({', '.join(values)})"
+        f" VALUES ({', '.join(['%s'] * len(values))})",
+        list(values.values()),
+    )
+
+
+def _league_with_history(db, factory):
+    """A league that has played: rows in every table a league fills, from
+    drafts and games through to the offseason. Returns its league and its
+    one human GM."""
+    league = factory.league(state="season")
+    season = factory.season()
+    factory.league_season(league, season)
+    home, away = factory.team(), factory.team()
+    for t in (home, away):
+        factory.league_season_team(league, season, t)
+    gm, _ = _human(db, factory, league, "Alice", team=home)
+    ai = factory.gm(team=away, league=league, is_ai=True)
+    # One player created by the league, one only known from its roster.
+    tagged = factory.prospect(league.id)
+    untagged = factory.player_row()
+    for team, p in ((home, tagged), (away, untagged)):
+        _row(db, "team_players", team_id=team.id, player_id=p.id)
+    p, s, lg = tagged.id, season.id, league.id
+
+    _row(db, "player_talent_caps", player_id=p)
+    _row(db, "player_skills_history", player_id=p, season_id=s)
+    _row(db, "player_season_stats", player_id=p, season_id=s, team_id=home.id)
+    _row(db, "player_injury_log", player_id=p, season_id=s)
+    for table in ("pitcher_state", "player_energy", "player_injuries"):
+        _row(db, table, player_id=p, league_id=lg)
+    _row(db, "team_rotations", team_id=home.id, season_id=s, player_id=p)
+    _row(db, "bullpen_roles", team_id=home.id, season_id=s, player_id=p, role="Closer")
+    _row(db, "team_rotation_pointer", team_id=home.id, season_id=s)
+    _row(db, "offseason_steps", season_id=s)
+    series_id = str(uuid.uuid4())
+    _row(db, "series", id=series_id, season_id=s)
+    game_id = str(uuid.uuid4())
+    _row(
+        db,
+        "games",
+        id=game_id,
+        season_id=s,
+        series_id=series_id,
+        home_team_id=home.id,
+        away_team_id=away.id,
+    )
+    _row(db, "team_game_stats", game_id=game_id, team_id=home.id)
+    _row(
+        db,
+        "player_game_stats",
+        game_id=game_id,
+        player_id=p,
+        team_id=home.id,
+        opponent_team_id=away.id,
+    )
+    _row(db, "player_game_fielding", game_id=game_id, player_id=p, position="c")
+    _row(db, "game_lineup_slots", game_id=game_id, team_id=home.id, player_id=p)
+    _row(db, "game_events", game_id=game_id, team_id=home.id, event_type="injury")
+    draft = factory.draft(league=league, season=season)
+    _row(db, "draft_order", draft_id=draft.id, team_id=home.id)
+    _row(
+        db,
+        "draft_pick_rights",
+        league_id=lg,
+        original_team_id=home.id,
+        current_owner_id=away.id,
+    )
+    _row(
+        db, "draft_picks", draft_id=draft.id, gm_id=ai.id, team_id=away.id, player_id=p
+    )
+    _row(db, "draft_preferences", draft_id=draft.id, gm_id=gm.id, player_id=p)
+    _row(db, "gm_lineup_preferences", gm_id=gm.id, player_id=p)
+    _row(db, "gm_notifications", gm_id=gm.id, kind="injury", payload="{}")
+    _row(db, "gm_season_evaluations", gm_id=gm.id, season_id=s)
+    _row(db, "player_retirements", player_id=p, league_id=lg, season_id=s)
+    return league, gm
+
+
+def _row_counts(db):
+    tables = db.execute(
+        "SELECT tablename FROM pg_tables WHERE schemaname = current_schema()"
+    ).fetchall()
+    return {
+        t["tablename"]: db.execute(
+            f"SELECT COUNT(*) AS n FROM {t['tablename']}"
+        ).fetchone()["n"]
+        for t in tables
+    }
+
+
+class TestLastOneOut:
+    @pytest.fixture(autouse=True)
+    def team_files(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(leave_league_module, "TEAM_FILES_DIR", tmp_path)
+        return tmp_path
+
+    def test_deletes_everything_the_league_owns(self, db_conn, factory, team_files):
+        other, _ = _league_with_history(db_conn, factory)
+        before = _row_counts(db_conn)
+        league, gm = _league_with_history(db_conn, factory)
+        (team_files / league.id / "2025").mkdir(parents=True)
+        (team_files / other.id).mkdir()
+
+        leave_league(db_conn, league.id, gm.id)
+
+        after = _row_counts(db_conn)
+        # Alice keeps her account; nothing of the league is left, and the
+        # other league is untouched.
+        before["users"] += 1
+        assert {t: n for t, n in after.items() if n != before[t]} == {}
+        assert not (team_files / league.id).exists()
+        assert (team_files / other.id).exists()
+
+    def test_started_single_player_league(self, db_conn, factory):
+        league = factory.league(state="season")
+        gm, _ = _human(db_conn, factory, league, "Alice")
+        factory.gm(league=league, is_ai=True)
+
+        leave_league(db_conn, league.id, gm.id)
+
+        assert not db_conn.execute(
+            "SELECT 1 FROM leagues WHERE id = %s", (league.id,)
+        ).fetchone()
+
+    def test_a_fired_gm_still_keeps_it(self, db_conn, factory):
+        league = factory.league(state="season")
+        gm, _ = _human(db_conn, factory, league, "Alice")
+        fired, _ = _human(db_conn, factory, league, "Bob")
+        db_conn.execute("UPDATE gms SET fired_at = NOW() WHERE id = %s", (fired.id,))
+
+        leave_league(db_conn, league.id, gm.id)
+
+        assert db_conn.execute(
+            "SELECT 1 FROM leagues WHERE id = %s", (league.id,)
+        ).fetchone()
