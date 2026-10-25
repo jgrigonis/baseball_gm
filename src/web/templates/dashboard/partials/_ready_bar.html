@@ -85,7 +85,9 @@ function apply(d) {
   deadline = d.seconds_left === null ? null : Date.now() + d.seconds_left * 1000;
   if (prev && prev.period !== d.period) {
     // A period ran. A new league state means different tabs, so reload;
-    // otherwise refresh the tab and show this GM's injury news.
+    // otherwise refresh the tab and show this GM's injury news. The draft
+    // period ends the draft, so go straight to its results.
+    if (PAGE_STATE === 'draft') { window.location.href = URL + '/draft/results'; return; }
     if (d.league_state !== PAGE_STATE) { window.location.reload(); return; }
     refreshTab();
     fetch(URL + '/news').then(function(r) { return r.json(); })
