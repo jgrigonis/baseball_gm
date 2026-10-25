@@ -65,6 +65,31 @@ class TestLeagueRepositoryCreateLeague:
             assert league_repo.get_or_create_by_name(name) == league_id
 
 
+class TestLeagueRepositoryCreateNewLeague:
+    def _create(self, league_repo, **settings):
+        league_id = str(uuid.uuid4())
+        league_repo.create_new_league(
+            league_id=league_id,
+            name="Friends",
+            join_code=league_id[:6].upper(),
+            mode="blitz",
+            commissioner_gm_id=None,
+            settings=settings,
+        )
+        return league_repo.get_by_id(league_id)
+
+    def test_ready_check_defaults(self, league_repo):
+        league = self._create(league_repo)
+        assert league["pace_control"] == "timer"
+        assert league["sim_period_days"] == 3
+        assert league["state"] == "lobby"
+
+    def test_ready_check_settings(self, league_repo):
+        league = self._create(league_repo, pace_control="confirmed", sim_period_days=7)
+        assert league["pace_control"] == "confirmed"
+        assert league["sim_period_days"] == 7
+
+
 class TestLeagueRepositoryAssignSeasonToLeague:
     def test_assign_season_to_league(self, league_repo, db_conn, sample_season):
         league_id = league_repo.get_or_create_by_name("MLB")

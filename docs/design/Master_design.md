@@ -149,7 +149,7 @@ Different formats per mode, reflecting the time available:
 - Each pick has a configurable timer (default 90 seconds)
 - If a GM doesn't pick in time, auto-selects from their submitted preference list
 - Preference list acts as a fallback, not the primary mechanism
-- Draft can be paused by Commissioner
+- No one can pause the draft, the Commissioner included (see [multiplayer.md](multiplayer.md))
 
 ---
 
@@ -381,16 +381,20 @@ Each GM is evaluated at season end on:
 
 ### League Codes
 - Any player can create a league and share a join code
-- League creator becomes Commissioner (admin controls)
+- League creator becomes Commissioner (admin controls). The commissioner has
+  no control over when the league sims; see [multiplayer.md](multiplayer.md)
 - Empty GM slots filled by AI — league always runs at full size
 - Public Lobby. Can put a league in the public lobby, then anyone can join
   simply with a click.
 
-### Pace Control (Commissioner setting)
-- **WindowTimed**: sim advances on the agreed decision window timer and frequency (Blitz)
-- **Confirmed**: sim advances when all GMs confirm ready, or timeout expires (Long Form)
+### Pace Control (chosen when the league is created)
+- **Timer**: sim advances when all GMs are ready, or the decision window runs out (Blitz)
+- **Confirmed**: sim advances only when all GMs are ready (Long Form)
 - **Scheduled**: sim runs at fixed real-world times (e.g. one series per day
-  at 8pm) (Long Form)
+  at 8pm) (Long Form; not built yet)
+
+Timer and Confirmed are built as a ready-check; see
+[multiplayer.md](multiplayer.md) for the rules and how they work.
 
 ### AI Fallback
 - If a human GM is absent when the sim runs, their strategic profile governs

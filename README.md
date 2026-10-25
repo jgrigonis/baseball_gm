@@ -64,7 +64,7 @@ Create a fun, interactive game, where you manage and run a baseball team.
 
 ### Eventual Gameplay modes:
 
-* Multiplayer League
+* Multiplayer League (see [docs/design/multiplayer.md](docs/design/multiplayer.md))
 
 * Single player League vs AI
 

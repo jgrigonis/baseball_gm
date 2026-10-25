@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from src.api.dependencies import (
     get_commissioner,
     get_current_gm,
+    get_current_user,
     require_single_player,
 )
 from src.api.main import app
@@ -149,3 +150,21 @@ class TestLeagueBusy:
 
         assert r.status_code == 409
         assert r.json() == {"detail": "A sim is already running for this league."}
+
+
+class TestNewLeagueSettings:
+    @pytest.fixture
+    def user_client(self, client):
+        app.dependency_overrides[get_current_user] = lambda: {
+            "id": "u-1",
+            "display_name": "Alice",
+        }
+        return client
+
+    @pytest.mark.parametrize(
+        "field, value",
+        [("pace_control", "scheduled"), ("sim_period_days", "0")],
+    )
+    def test_bad_ready_check_setting_is_rejected(self, user_client, field, value):
+        r = user_client.post("/leagues/new", data={"name": "L", field: value})
+        assert r.status_code == 400

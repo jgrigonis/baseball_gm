@@ -65,7 +65,14 @@ def new_league(
     decision_window_sec: int = Form(120),
     draft_window_sec: int = Form(300),
     reentry_enabled: bool = Form(True),
+    pace_control: str = Form("timer"),
+    sim_period_days: int = Form(3),
 ):
+    if pace_control not in ("timer", "confirmed"):
+        raise ValueError(f"Unknown pace '{pace_control}'.")
+    if not 1 <= sim_period_days <= 30:
+        raise ValueError("Days per sim period must be between 1 and 30.")
+
     league_id = str(uuid.uuid4())
     # gm_id = str(uuid.uuid4())
     join_code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -84,6 +91,8 @@ def new_league(
             "decision_window_sec": decision_window_sec,
             "draft_window_sec": draft_window_sec,
             "reentry_enabled": reentry_enabled,
+            "pace_control": pace_control,
+            "sim_period_days": sim_period_days,
         },
     )
     # 2. GM setup
@@ -227,7 +236,8 @@ def dashboard(
         "join_code": league.get("join_code"),
         "league_decision_window_sec": league["decision_window_sec"],
         "league_draft_window_sec": league["draft_window_sec"],
-        "league_pace_control": league.get("pace_control", "manual"),
+        "league_pace_control": league["pace_control"],
+        "league_sim_period_days": league["sim_period_days"],
         "current_gm_id": str(gm["id"]),
     }
 
