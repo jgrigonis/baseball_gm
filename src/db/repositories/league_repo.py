@@ -175,6 +175,14 @@ class LeagueRepository:
 
         return row is not None
 
+    def count_seasons(self, league_id: str) -> int:
+        """How many seasons the league has started, the current one included."""
+        row = self.conn.execute(
+            "SELECT COUNT(*) AS n FROM league_seasons WHERE league_id = %s",
+            (league_id,),
+        ).fetchone()
+        return row["n"]
+
     def get_league_teams(self, league_id: str, season_id: str) -> list[str]:
         """
         Get all team IDs in a league for a specific season.

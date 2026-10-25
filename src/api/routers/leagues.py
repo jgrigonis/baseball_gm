@@ -13,7 +13,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from src.api.dependencies import DB, GM, Commissioner, User
+from src.api.dependencies import DB, GM, ActiveLeague, Commissioner, User
 from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
 from src.db.locks import league_lock
@@ -206,6 +206,7 @@ def rename_league(
     body: RenameLeagueRequest,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     name = body.name.strip()
     if not name:
@@ -247,6 +248,8 @@ def dashboard(
     if state == "evaluation":
         # Simplified the season fetch for now to get you back to green
         return RedirectResponse(f"/leagues/{league_id}/history/1/")
+    if state == "complete":
+        return RedirectResponse(f"/leagues/{league_id}/history")
 
     context = _lobby_gms_context(gm_repo, league, gm)
     context.update(

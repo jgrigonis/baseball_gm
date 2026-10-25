@@ -96,6 +96,10 @@
     <div id="offseason-status" style="font-family:var(--font-mono);font-size:11px;
                                        color:var(--text-dim);margin-top:12px;"></div>
   </div>
+  {% elif league_state == 'complete' %}
+  <div style="text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--amber);">
+    That was the league's final season. The league is complete.
+  </div>
   {% elif league_state == 'draft' %}
   <div style="text-align:center;">
     <a href="/leagues/{{ league_id }}/retirement"
