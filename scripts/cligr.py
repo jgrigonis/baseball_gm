@@ -14,6 +14,10 @@ Usage examples:
   python cligr.py clear --all-teams        # ⚠ destroys all team files
   python cligr.py clear --logs --temp      # combine as needed
 
+  # Delete every league but keep user accounts (asks first; --yes skips that)
+  python cligr.py reset-leagues
+  python cligr.py reset-leagues --yes
+
   # Create a new league (no games run)
   python cligr.py new-league
   python cligr.py new-league --year 2030 --seed 42
@@ -49,6 +53,7 @@ from pathlib import Path
 from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
 from src.db.init import init_db
+from src.db.locks import LeagueBusy, league_lock
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -151,6 +156,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--all-teams",
         action="store_true",
         help="⚠ Delete ALL team files for ALL leagues (destructive)",
+    )
+
+    # ── reset-leagues ──────────────────────────────────────────────────────────
+    reset = sub.add_parser(
+        "reset-leagues",
+        help="Delete every league but keep user accounts",
+        description=(
+            "Delete every league with everything it owns, plus its team_files "
+            "folder, the same way the last GM leaving a league does. User "
+            "accounts stay, so nobody has to sign up again."
+        ),
+    )
+    reset.add_argument(
+        "--yes",
+        "-y",
+        action="store_true",
+        help="Skip the confirmation prompt",
     )
 
     # ── new-league ─────────────────────────────────────────────────────────────
@@ -387,6 +409,16 @@ def clear_teams_for_league(league_id: str) -> None:
         return
     shutil.rmtree(league_dir)
     print(f"  Deleted {league_dir}")
+
+
+def delete_league(conn, league_id: str) -> None:
+    """Delete a league with everything it owns, then its team files."""
+    # Not while a sim is running for it.
+    with league_lock(conn, league_id):
+        LeagueRepository(conn).delete(league_id)
+        conn.commit()
+    # The team and draft-class CSVs the league was built from.
+    shutil.rmtree(_team_files_dir() / league_id, ignore_errors=True)
 
 
 def pick_league_interactively() -> str | None:
@@ -989,6 +1021,41 @@ def cmd_clear(args) -> None:
         clear_temp()
 
 
+# ── Reset leagues handler ──────────────────────────────────────────────────────
+
+
+def cmd_reset_leagues(args) -> None:
+    conn = get_connection()
+    init_db(conn)
+
+    leagues = LeagueRepository(conn).list_all()
+    if not leagues:
+        print("No leagues to delete.")
+        return
+
+    print(f"This deletes all {len(leagues)} league(s) and their team files:")
+    for league in leagues:
+        print(f"  {league['name']} ({league['state']})  [{league['id']}]")
+    print("User accounts are kept.")
+
+    if not args.yes:
+        confirm = input("⚠️  Delete these leagues? [y/N] ").strip()
+        if confirm.lower() not in ("y", "yes"):
+            print("  Aborted")
+            return
+
+    for league in leagues:
+        try:
+            delete_league(conn, league["id"])
+        except LeagueBusy:
+            print(f"  ❌ A sim is running for {league['name']}, stop it and try again")
+            sys.exit(1)
+        print(f"  Deleted {league['name']}  [{league['id']}]")
+
+    users = conn.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"]
+    print(f"\n✅ Deleted {len(leagues)} league(s), kept {users} user account(s).")
+
+
 def _resolve_league(conn, league_id_arg):
     """Return league_id, prompting if needed."""
     if league_id_arg:
@@ -1075,6 +1142,9 @@ def main():
 
     elif args.command == "clear":
         cmd_clear(args)
+
+    elif args.command == "reset-leagues":
+        cmd_reset_leagues(args)
 
     elif args.command == "new-league":
         cmd_new_league(args)
