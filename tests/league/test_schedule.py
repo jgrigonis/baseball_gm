@@ -274,6 +274,98 @@ class TestScheduleGenerator:
         assert len(schedule) == 24
 
 
+class TestSeasonSchedule:
+    """Test target_games schedules: whole cycles with 2/3/4-game rounds."""
+
+    @staticmethod
+    def build(num_teams, target_games=162, break_after=None, break_days=0, seed=7):
+        teams = [f"team-{i}" for i in range(num_teams)]
+        schedule = ScheduleGenerator(rng=random.Random(seed)).create_schedule(
+            season_id="season-1",
+            team_ids=teams,
+            start_date=date(2025, 4, 1),
+            target_games=target_games,
+            all_star_break_after=break_after,
+            all_star_break_days=break_days,
+        )
+        return teams, schedule
+
+    @pytest.mark.parametrize(
+        "num_teams, expected",
+        [
+            (16, (4, 18, 2)),
+            (18, (3, 9, 4)),
+            (20, (3, 9, 2)),
+            (22, (3, 27, 2)),
+            (24, (2, 24, 4)),
+            (26, (2, 12, 4)),
+            (28, (2, 0, 3)),
+            (30, (2, 12, 2)),
+            (32, (2, 24, 2)),
+        ],
+    )
+    def test_season_shape(self, num_teams, expected):
+        cycles, off_rounds, off_length = ScheduleGenerator.season_shape(num_teams, 162)
+        assert (cycles, off_rounds) == expected[:2]
+        if off_rounds:
+            assert off_length == expected[2]
+
+    def test_odd_team_count_rejected(self):
+        with pytest.raises(ValueError, match="even"):
+            ScheduleGenerator.season_shape(17, 162)
+
+    @pytest.mark.parametrize("num_teams", range(16, 34, 2))
+    def test_every_team_plays_target_games_once_a_day(self, num_teams):
+        teams, schedule = self.build(num_teams)
+
+        games = Counter()
+        playing_on = Counter()
+        for g in schedule:
+            games[g.home_team_id] += 1
+            games[g.away_team_id] += 1
+            playing_on[(g.game_date, g.home_team_id)] += 1
+            playing_on[(g.game_date, g.away_team_id)] += 1
+
+        assert set(games.values()) == {162}
+        assert set(playing_on.values()) == {1}
+        # No off days without a break: every team plays every day.
+        assert len({g.game_date for g in schedule}) == 162
+
+    def test_thirty_teams_split_home_and_away_evenly(self):
+        teams, schedule = self.build(30)
+
+        ordered = Counter((g.home_team_id, g.away_team_id) for g in schedule)
+        home = Counter(g.home_team_id for g in schedule)
+
+        assert set(home.values()) == {81}
+        for (h, a), count in ordered.items():
+            assert ordered[(a, h)] == count
+        # Every pair meets home and away; 6 pairs per team play 2-game series.
+        assert set(ordered.values()) == {2, 3}
+
+    def test_all_star_break(self):
+        teams, schedule = self.build(30, break_after=96, break_days=4)
+
+        dates = sorted({g.game_date for g in schedule})
+        gaps = [
+            (before, (after - before).days - 1)
+            for before, after in zip(dates, dates[1:])
+            if (after - before).days > 1
+        ]
+        assert len(gaps) == 1
+        last_before_break, days_off = gaps[0]
+        assert days_off == 4
+        assert dates[-1] - dates[0] == timedelta(days=162 + 4 - 1)
+
+        games_before = sum(
+            1
+            for g in schedule
+            if g.game_date <= last_before_break
+            and "team-0" in (g.home_team_id, g.away_team_id)
+        )
+        assert abs(games_before - 96) <= 2
+
+
 class TestSaveScheduleToDB:
     """Test save_schedule_to_db function."""
 

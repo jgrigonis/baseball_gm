@@ -35,6 +35,11 @@ from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.rotation_seeder import seed_ai_rotations
 from src.league.offseason.snake_draft import write_draft_order
 from src.league.offseason.snake_draft import SnakeDraft
+from src.league.league_constants import (
+    ALL_STAR_BREAK_AFTER_GAMES,
+    ALL_STAR_BREAK_DAYS,
+    SEASON_LENGTH,
+)
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 
 log = logging.getLogger(__name__)
@@ -140,8 +145,9 @@ def run_offseason(league_id: str, conn) -> dict:
             season_id=new_season_id,
             team_ids=team_ids,
             start_date=start_date,
-            games_per_series=3,
-            home_and_away=True,
+            target_games=SEASON_LENGTH,
+            all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
+            all_star_break_days=ALL_STAR_BREAK_DAYS,
         )
         save_schedule_to_db(conn, schedule)
         game_count = len(schedule)
