@@ -11,7 +11,10 @@ Tests cover:
 import random
 import unittest
 
+from src.player.player_skill_aging import planned_growth
 from src.player.talent_caps import (
+    ELITE_MIN_ROOM,
+    FLOOR_ROOM,
     TALENT_SIGMA,
     _DEFAULT_SIGMA,
     expected_growth,
@@ -65,58 +68,47 @@ _SAMPLE_SKILLS: dict[str, int] = {
 
 
 class TestExpectedGrowth(unittest.TestCase):
-    def test_floor_tier(self):
-        """Values below 25 return minimal growth."""
-        for base in [1, 10, 20, 24]:
+    def test_normal_range_gets_full_planned_growth(self):
+        """Across the normal range a cap leaves room for the whole curve."""
+        for base in [25, 40, 55, 69]:
             with self.subTest(base=base):
-                self.assertEqual(expected_growth(base), 4.0)
+                self.assertEqual(
+                    expected_growth(base, "contact"), planned_growth("contact")
+                )
 
-    def test_below_average_tier(self):
-        """25-39 returns modest growth."""
-        for base in [25, 30, 39]:
+    def test_floor_skill_gets_a_fraction(self):
+        """Floor-level skills (no latent talent) barely grow."""
+        for base in [1, 10, 24]:
             with self.subTest(base=base):
-                self.assertEqual(expected_growth(base), 12.0)
+                self.assertAlmostEqual(
+                    expected_growth(base, "contact"),
+                    planned_growth("contact") * FLOOR_ROOM,
+                )
 
-    def test_average_tier(self):
-        """40-54 returns maximum growth (peak development potential)."""
-        for base in [40, 47, 54]:
+    def test_elite_skill_tapers_but_keeps_half(self):
+        """Elite skills have less room, but never less than half the curve."""
+        full = planned_growth("contact")
+        self.assertLess(expected_growth(80, "contact"), full)
+        self.assertGreater(expected_growth(80, "contact"), full * ELITE_MIN_ROOM)
+        for base in [90, 100]:
             with self.subTest(base=base):
-                self.assertEqual(expected_growth(base), 20.0)
-
-    def test_above_average_tier(self):
-        """55-69 returns slightly reduced growth."""
-        for base in [55, 62, 69]:
-            with self.subTest(base=base):
-                self.assertEqual(expected_growth(base), 15.0)
-
-    def test_elite_tier(self):
-        """70+ returns minimal growth (already near ceiling)."""
-        for base in [70, 80, 90, 100]:
-            with self.subTest(base=base):
-                self.assertEqual(expected_growth(base), 8.0)
-
-    def test_boundary_24_25(self):
-        self.assertEqual(expected_growth(24), 4.0)
-        self.assertEqual(expected_growth(25), 12.0)
-
-    def test_boundary_39_40(self):
-        self.assertEqual(expected_growth(39), 12.0)
-        self.assertEqual(expected_growth(40), 20.0)
-
-    def test_boundary_54_55(self):
-        self.assertEqual(expected_growth(54), 20.0)
-        self.assertEqual(expected_growth(55), 15.0)
-
-    def test_boundary_69_70(self):
-        self.assertEqual(expected_growth(69), 15.0)
-        self.assertEqual(expected_growth(70), 8.0)
+                self.assertAlmostEqual(
+                    expected_growth(base, "contact"), full * ELITE_MIN_ROOM
+                )
 
     def test_growth_decreases_at_high_end(self):
         """Elite players have less room to grow than average players."""
-        self.assertGreater(expected_growth(50), expected_growth(80))
+        self.assertGreater(expected_growth(50, "eye"), expected_growth(80, "eye"))
+
+    def test_follows_the_aging_curve(self):
+        """Skills the curve grows more get more room (eye vs speed)."""
+        self.assertGreater(expected_growth(50, "eye"), expected_growth(50, "speed"))
+
+    def test_unknown_skill_uses_default(self):
+        self.assertGreater(expected_growth(50, "mystery_skill"), 0)
 
     def test_returns_float(self):
-        self.assertIsInstance(expected_growth(50), float)
+        self.assertIsInstance(expected_growth(50, "eye"), float)
 
 
 # ─────────────────────────────────────────────
@@ -215,7 +207,7 @@ class TestGenerateTalentCapsInvariants(unittest.TestCase):
         results = [generate_talent_caps(floor_skills, rng) for _ in range(300)]
         for sk in _ALL_SKILLS:
             avg_cap = sum(r[sk] for r in results) / len(results)
-            # Expected growth is 4.0, so avg cap should be near 14
+            # Floor skills get FLOOR_ROOM of the planned growth (at most ~8)
             self.assertLess(
                 avg_cap, 30, f"{sk}: floor skill cap too high ({avg_cap:.1f})"
             )

@@ -8,9 +8,11 @@ generated with identical base skills can have genuinely different ceilings,
 making scouting non-trivial and development unpredictable.
 
 Design:
-- Cap = base + growth, where growth ~ Normal(expected_growth(base), sigma)
-- expected_growth() is a tent function: most room in the middle (40-60),
-  less room at the extremes (already elite, or floor-level with no talent)
+- Cap = base + growth, where growth ~ Normal(expected_growth(base, skill), sigma)
+- expected_growth() starts from the aging curve's planned_growth() for the
+  skill, so the cap leaves room for the whole curve and the curve, not the
+  cap, decides when a player peaks. Floor-level skills (no latent talent)
+  get a fraction of it, and elite skills get somewhat less room
 - sigma varies by skill: physical tools observable with radar/timing are
   more predictable; mental/craft skills are harder to project
 - Cap is soft: the aging curve dampens growth as value approaches cap,
@@ -22,6 +24,8 @@ Design:
 """
 
 import random
+
+from src.player.player_skill_aging import SKILL_CURVES, planned_growth
 
 # ── Skill sigma: how unpredictable is the ceiling for this skill? ──
 # Lower = more predictable (scouts can evaluate it early)
@@ -54,29 +58,49 @@ TALENT_SIGMA: dict[str, float] = {
 _DEFAULT_SIGMA = 9.0
 
 
-def expected_growth(base: int) -> float:
+# Planned growth for any skill without an aging curve
+_DEFAULT_GROWTH = 15.0
+
+# Below this base a skill is floor-level (e.g. a pitcher's hitting) and
+# gets only FLOOR_ROOM of the planned growth.
+FLOOR_BASE = 25
+FLOOR_ROOM = 0.3
+
+# From ELITE_BASE up, room shrinks linearly to ELITE_MIN_ROOM at ELITE_FULL_BASE.
+ELITE_BASE = 70
+ELITE_FULL_BASE = 90
+ELITE_MIN_ROOM = 0.5
+
+
+def growth_room(base: int) -> float:
+    """
+    Share of the curve's planned growth a skill at *base* has room for.
+
+    1.0 across the normal range, a small share for floor-level skills, and
+    tapering for already-elite skills (but never below half, so a top
+    prospect still develops).
+    """
+    if base < FLOOR_BASE:
+        return FLOOR_ROOM
+    if base < ELITE_BASE:
+        return 1.0
+    taper = (base - ELITE_BASE) / (ELITE_FULL_BASE - ELITE_BASE)
+    return max(ELITE_MIN_ROOM, 1.0 - taper * (1.0 - ELITE_MIN_ROOM))
+
+
+def expected_growth(base: int, skill: str) -> float:
     """
     Central tendency for how much a skill grows from base to peak.
 
-    Tent-shaped: most room to grow in the 40-55 range (average player
-    with real development potential). Less room at the top (already elite)
-    and very little at the bottom (floor-level, no latent talent).
-
     Args:
-        base: Starting skill value (1-100)
+        base:  Starting skill value (1-100)
+        skill: Full skill name, e.g. "contact"
 
     Returns:
         Expected growth in skill points over career
     """
-    if base < 25:
-        return 4.0  # near floor — almost no ceiling, skill is essentially frozen
-    if base < 40:
-        return 12.0  # below average — modest ceiling
-    if base < 55:
-        return 20.0  # average — most development potential
-    if base < 70:
-        return 15.0  # above average — less room to grow
-    return 8.0  # already elite — near their ceiling at generation
+    growth = planned_growth(skill) if skill in SKILL_CURVES else _DEFAULT_GROWTH
+    return growth * growth_room(base)
 
 
 def generate_talent_caps(
@@ -87,7 +111,7 @@ def generate_talent_caps(
     Generate per-player talent caps for all skills.
 
     Each cap is drawn from a normal distribution centered at
-    base + expected_growth(base), with skill-specific sigma.
+    base + expected_growth(base, skill), with skill-specific sigma.
     Growth is floored at 0 so the cap is always >= base.
 
     Args:
@@ -98,14 +122,14 @@ def generate_talent_caps(
         Dictionary mapping skill name → talent cap (1-100)
 
     Example:
-        Two players with stamina=50:
-          player A: cap = 50 + gauss(20, 10) = 50 + 23 = 73
-          player B: cap = 50 + gauss(20, 10) = 50 + 7  = 57
+        Two players with stamina=50 (planned growth 11.6):
+          player A: cap = 50 + gauss(11.6, 10) = 50 + 19 = 69
+          player B: cap = 50 + gauss(11.6, 10) = 50 + 4  = 54
     """
     caps = {}
     for skill, base in skills.items():
         sigma = TALENT_SIGMA.get(skill, _DEFAULT_SIGMA)
-        growth = rng.gauss(expected_growth(base), sigma)
+        growth = rng.gauss(expected_growth(base, skill), sigma)
         growth = max(0.0, growth)  # never below base
         cap = base + int(round(growth))
         caps[skill] = min(cap, 100)  # absolute ceiling
