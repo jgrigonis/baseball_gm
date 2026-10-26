@@ -1,0 +1,49 @@
+{# templates/admin/leagues.html #}
+{% extends "base.html" %}
+{% block title %}Admin: Leagues — GM Sim{% endblock %}
+{% block main %}
+{% set section = 'leagues' %}
+<div class="page-content"><div class="content-inner">
+  <div class="page-header"><h1 class="page-title">All Leagues</h1></div>
+  {% include "admin/_header.html" %}
+
+  {% if leagues %}
+  <div class="card" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr>
+        <th>League</th><th>State</th><th>Mode</th><th>Pace</th>
+        <th class="num" title="Days per sim period">Days</th>
+        <th class="num" title="Decision / draft / lineup windows, in seconds">Windows (s)</th>
+        <th class="num">Seasons</th><th class="num">Teams</th><th class="num" title="Human GMs">GMs</th>
+        <th>Commissioner</th><th>Public</th><th>Code</th><th>Created</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for l in leagues %}
+        <tr>
+          <td class="team-name">{{ l.name }}</td>
+          <td>
+            <span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span>
+            {% if l.is_paused %}<span class="topbar-state" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red);">Paused</span>{% endif %}
+          </td>
+          <td class="admin-dim">{{ l.mode | replace('_', ' ') | title }}</td>
+          <td class="admin-dim">{{ l.pace_control | title }}</td>
+          <td class="num">{{ l.sim_period_days }}</td>
+          <td class="num">{{ l.decision_window_sec }} / {{ l.draft_window_sec }} / {{ l.lineup_window_sec }}</td>
+          <td class="num">{{ l.season_number }} of {{ l.num_seasons }}</td>
+          <td class="num">{{ l.num_teams }}</td>
+          <td class="num">{{ l.people }}</td>
+          <td class="admin-dim">{{ l.commissioner_name or '—' }}</td>
+          <td class="admin-dim">{{ 'Yes' if l.is_public else 'No' }}</td>
+          <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>
+          <td class="admin-dim">{{ (l.created_at or '')[:10] }}</td>
+          <td style="text-align:right;"><a href="/admin/leagues/{{ l.id }}" class="btn btn-secondary admin-small">Manage →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:60px 0;text-align:center;" class="admin-dim">No leagues yet.</div>
+  {% endif %}
+</div></div>
+{% endblock %}

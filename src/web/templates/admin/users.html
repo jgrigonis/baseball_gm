@@ -1,0 +1,56 @@
+{# templates/admin/users.html #}
+{% extends "base.html" %}
+{% block title %}Admin: Users — GM Sim{% endblock %}
+{% block main %}
+{% set section = 'users' %}
+{% set form = form or {} %}
+<div class="page-content"><div class="content-inner">
+  <div class="page-header"><h1 class="page-title">All Users</h1></div>
+  {% include "admin/_header.html" %}
+
+  <div class="card" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr><th>Username</th><th>Display Name</th><th>Email</th><th class="num">Leagues</th><th>Role</th><th>Created</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="team-name">{{ u.username or '—' }}</td>
+          <td class="admin-dim">{{ u.display_name }}</td>
+          <td class="admin-dim">{{ u.email or '—' }}</td>
+          <td class="num">{{ u.leagues }}</td>
+          <td class="admin-dim">
+            {% if u.is_admin %}<span style="color:var(--amber);">Admin</span>{% else %}GM{% endif %}
+            {% if not u.has_password %} · no password{% elif u.must_change_password %} · must change password{% endif %}
+          </td>
+          <td class="admin-dim">{{ (u.created_at or '')[:10] }}</td>
+          <td style="text-align:right;"><a href="/admin/users/{{ u.id }}" class="btn btn-secondary admin-small">Manage →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-section">
+    <div class="page-header"><h1 class="page-title" style="font-size:20px;">Add a User</h1></div>
+    <div class="card"><div class="card-body">
+      <form method="POST" action="/admin/users" class="admin-form" autocomplete="off">
+        <div class="field">
+          <label>Username</label>
+          <input name="username" value="{{ form.username or '' }}" minlength="3" maxlength="30" pattern="[A-Za-z0-9_.\-]+" required>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+        </div>
+        <div class="field">
+          <label>Email (optional)</label>
+          <input name="email" type="email" value="{{ form.email or '' }}">
+        </div>
+        <label class="admin-check"><input type="checkbox" name="must_change" value="true" checked> Must change password at first sign-in</label>
+        <label class="admin-check"><input type="checkbox" name="is_admin" value="true" {% if form.is_admin %}checked{% endif %}> Admin</label>
+        <div class="wide"><button type="submit" class="btn btn-primary">Add User</button></div>
+      </form>
+    </div></div>
+  </div>
+</div></div>
+{% endblock %}

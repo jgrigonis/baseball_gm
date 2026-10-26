@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     num_seasons          INTEGER NOT NULL DEFAULT 10, -- how many seasons the league runs
     last_played_at       TIMESTAMPTZ,      -- last real-world time games were played or the league moved on
     is_public            BOOLEAN NOT NULL DEFAULT FALSE, -- listed under Public Leagues
+    is_paused            BOOLEAN NOT NULL DEFAULT FALSE, -- an admin stopped it moving on
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -75,6 +76,8 @@ CREATE TABLE IF NOT EXISTS users (
     email         TEXT UNIQUE,
     is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
     totp_secret   TEXT,
+    is_admin      BOOLEAN NOT NULL DEFAULT FALSE, -- can open /admin/
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TEXT NOT NULL DEFAULT (NOW())
 );
 

@@ -13,7 +13,15 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from src.api.dependencies import DB, GM, ActiveLeague, Commissioner, GMOrViewer, User
+from src.api.dependencies import (
+    DB,
+    GM,
+    ActiveLeague,
+    Commissioner,
+    GMOrViewer,
+    Unpaused,
+    User,
+)
 from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
 from src.db.locks import league_lock
@@ -221,6 +229,7 @@ def start_league_router(
     league_id: str,
     db: DB,
     _: Commissioner,
+    _unpaused: Unpaused,
 ):
     with league_lock(db, league_id):
         start_league(league_id, db)

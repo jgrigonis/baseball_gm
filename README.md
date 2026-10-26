@@ -59,6 +59,25 @@ same cleanup as when the last GM leaves a league. It reads `DATABASE_URL` and
 runs any pending migrations first, like the web server does. Then start the
 server again with `./start_webserver.sh`.
 
+### Admin pages
+
+Admins get an Admin link in the top bar, which opens `/admin/`: every league
+with all its settings (change them, pause or resume the league, remove GMs)
+and every user (add or delete accounts, set passwords and email addresses,
+give or take away admin access).
+
+The first time the server starts on a database, it creates an `admin` login
+with the password `changeme`, or whatever `ADMIN_INITIAL_PASSWORD` is set to
+in the environment or `.env`. Signing in with it asks for a new password
+before anything else. Set `ADMIN_INITIAL_PASSWORD` before that first start
+if anyone else can reach the server.
+
+To make any account an admin, or get back in if the admin login is lost, run
+this from the repo root (it creates the account if it doesn't exist, and
+`--reset-password` asks for a new password):
+
+`uv run python scripts/cligr.py make-admin USERNAME`
+
 ### Editor Notes
 
 To get rid of syntax highlight errors in the .html files

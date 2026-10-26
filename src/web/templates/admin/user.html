@@ -1,0 +1,104 @@
+{# templates/admin/user.html #}
+{% extends "base.html" %}
+{% block title %}Admin: {{ account.username or account.display_name }} — GM Sim{% endblock %}
+{% block main %}
+{% set section = 'users' %}
+{% set err_style = 'font-family:var(--font-mono);font-size:12px;color:var(--red);' %}
+<div class="page-content"><div class="content-inner" style="max-width:760px;">
+  <div class="page-header">
+    <h1 class="page-title">{{ account.username or account.display_name }}</h1>
+    {% if account.is_admin %}<span class="topbar-state" style="margin-left:12px;color:var(--amber);border-color:var(--amber-dim);">Admin</span>{% endif %}
+  </div>
+  {% include "admin/_header.html" %}
+
+  <div class="admin-dim" style="font-size:11px;margin-bottom:20px;line-height:1.8;">
+    Display name {{ account.display_name }} · created {{ (account.created_at or '')[:16] }}
+    {% if not account.has_password %}· a guest from before passwords, with no login yet{% elif account.must_change_password %}· has to change their password at next sign-in{% endif %}
+  </div>
+
+  <div class="card"><div class="card-header"><span class="card-title">Email</span></div><div class="card-body">
+    <form method="POST" action="/admin/users/{{ account.id }}/email" class="admin-form">
+      <div class="field wide">
+        <label>Email address</label>
+        <input name="email" type="email" value="{{ email if email is defined else (account.email or '') }}" placeholder="none">
+        {% if email_error %}<span style="{{ err_style }}">{{ email_error }}</span>{% endif %}
+        <span class="hint">Leave it blank to clear it.</span>
+      </div>
+      <div class="wide"><button type="submit" class="btn btn-primary">Save Email</button></div>
+    </form>
+  </div></div>
+
+  <div class="card admin-section"><div class="card-header"><span class="card-title">Password</span></div><div class="card-body">
+    {% if account.has_password %}
+    <form method="POST" action="/admin/users/{{ account.id }}/password" class="admin-form" autocomplete="off">
+      <div class="field">
+        <label>New password</label>
+        <input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+      </div>
+      <div class="field">
+        <label>Confirm</label>
+        <input name="confirm" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+      </div>
+      {% if password_error %}<div class="wide" style="{{ err_style }}">{{ password_error }}</div>{% endif %}
+      <label class="admin-check wide"><input type="checkbox" name="must_change" value="true" {% if not is_self %}checked{% endif %}> Must change it at next sign-in</label>
+      <div class="wide">
+        <button type="submit" class="btn btn-primary">Set Password</button>
+        <span class="hint admin-dim" style="font-size:10px;margin-left:8px;">Signs {{ 'you' if is_self else 'them' }} out everywhere.</span>
+      </div>
+    </form>
+    {% else %}
+    <div class="admin-dim" style="font-size:12px;">They have no username yet. They'll pick one, and a password, the next time they visit.</div>
+    {% endif %}
+  </div></div>
+
+  <div class="card admin-section"><div class="card-header"><span class="card-title">Admin access</span></div><div class="card-body">
+    <form method="POST" action="/admin/users/{{ account.id }}/admin" style="display:flex;align-items:center;gap:12px;">
+      {% if account.is_admin %}
+      <span class="admin-dim" style="font-size:12px;">They can open these admin pages.</span>
+      <div class="spacer"></div>
+      <button type="submit" class="btn btn-secondary" {% if is_self %}disabled title="You can't take away your own admin access"{% endif %}>Remove Admin</button>
+      {% else %}
+      <input type="hidden" name="is_admin" value="true">
+      <span class="admin-dim" style="font-size:12px;">They're a regular GM.</span>
+      <div class="spacer"></div>
+      <button type="submit" class="btn btn-secondary">Make Admin</button>
+      {% endif %}
+    </form>
+    {% if admin_error %}<div style="{{ err_style }}margin-top:8px;">{{ admin_error }}</div>{% endif %}
+  </div></div>
+
+  <div class="admin-section">
+    <div class="page-header"><h1 class="page-title" style="font-size:20px;">Leagues</h1></div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr><th>League</th><th>State</th><th></th></tr></thead>
+        <tbody>
+          {% for l in leagues %}
+          <tr>
+            <td class="team-name">{{ l.name }}{% if l.is_commissioner %} <span class="admin-dim" style="font-size:10px;">★ commissioner</span>{% endif %}</td>
+            <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state | title }}</span>{% if l.is_paused %} <span class="admin-dim" style="color:var(--red);font-size:10px;">Paused</span>{% endif %}</td>
+            <td style="text-align:right;"><a href="/admin/leagues/{{ l.id }}" class="btn btn-secondary admin-small">Manage →</a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="admin-dim">Not in any leagues.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card admin-section" style="border-color:var(--red);"><div class="card-header"><span class="card-title" style="color:var(--red);">Delete user</span></div><div class="card-body">
+    {% if is_self %}
+    <div class="admin-dim" style="font-size:12px;">You can't delete your own account.</div>
+    {% else %}
+    <form method="POST" action="/admin/users/{{ account.id }}/delete" style="display:flex;align-items:center;gap:12px;"
+          onsubmit="return confirm({{ ('Delete ' ~ (account.username or account.display_name) ~ '? They leave every league first: AI takes over their teams, and a league with nobody left is deleted. This cannot be undone.') | tojson | forceescape }})">
+      <span class="admin-dim" style="font-size:12px;">They leave each of their leagues first, the same as leaving by hand. A league with nobody left in it is deleted.</span>
+      <div class="spacer"></div>
+      <button type="submit" class="btn btn-danger">Delete User</button>
+    </form>
+    {% endif %}
+    {% if delete_error %}<div style="{{ err_style }}margin-top:8px;">{{ delete_error }}</div>{% endif %}
+  </div></div>
+</div></div>
+{% endblock %}

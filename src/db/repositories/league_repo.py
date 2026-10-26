@@ -300,6 +300,49 @@ class LeagueRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # Settings an admin can change (see src/api/services/admin.py).
+    EDITABLE_SETTINGS = (
+        "name",
+        "mode",
+        "pace_control",
+        "decision_window_sec",
+        "draft_window_sec",
+        "lineup_window_sec",
+        "sim_period_days",
+        "num_seasons",
+        "reentry_enabled",
+        "is_public",
+    )
+
+    def update_settings(self, league_id: str, settings: dict) -> None:
+        cols = [c for c in self.EDITABLE_SETTINGS if c in settings]
+        set_clause = ", ".join(f"{c} = %s" for c in cols)
+        self.conn.execute(
+            f"UPDATE leagues SET {set_clause} WHERE id = %s",
+            [*(settings[c] for c in cols), league_id],
+        )
+
+    def set_paused(self, league_id: str, paused: bool) -> None:
+        self.conn.execute(
+            "UPDATE leagues SET is_paused = %s WHERE id = %s", (paused, league_id)
+        )
+
+    def list_for_admin(self) -> list[dict]:
+        """Every league with all its settings, its season count, and how many
+        people are in it, newest first."""
+        rows = self.conn.execute(
+            """SELECT l.*,
+                      (SELECT COUNT(*) FROM league_seasons ls
+                       WHERE ls.league_id = l.id) AS season_number,
+                      (SELECT COUNT(*) FROM gms g
+                       WHERE g.league_id = l.id AND g.user_id IS NOT NULL) AS people,
+                      (SELECT g.display_name FROM gms g
+                       WHERE g.id = l.commissioner_gm_id) AS commissioner_name
+               FROM leagues l
+               ORDER BY l.created_at DESC"""
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def mark_played(self, league_id: str) -> None:
         """Record that the league was just played (shown on the leagues page)."""
         self.conn.execute(

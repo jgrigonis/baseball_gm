@@ -193,3 +193,54 @@ def logout(db: DB, user: OptionalUser):
         UserRepository(db).invalidate_session(user["id"])
         db.commit()
     return resp
+
+
+# ── Changing a password ───────────────────────────────────────────────────────
+#
+# Required before anything else for the default admin and for anyone whose
+# password an admin set (users.must_change_password, see dependencies.py).
+
+
+def _change_password_page(request: Request, user, status_code: int = 200, **ctx):
+    return templates.TemplateResponse(
+        request,
+        "change_password.html",
+        {"forced": user["must_change_password"], "username": user["username"], **ctx},
+        status_code=status_code,
+    )
+
+
+@router.get("/auth/change-password", response_class=HTMLResponse)
+def change_password_page(request: Request, user: User):
+    if not user["has_password"]:
+        return RedirectResponse("/auth/set-password", status_code=302)
+    return _change_password_page(request, user)
+
+
+@router.post("/auth/change-password")
+def change_password(
+    request: Request,
+    db: DB,
+    user: User,
+    current: str = Form(...),
+    password: str = Form(...),
+    confirm: str = Form(...),
+):
+    user_repo = UserRepository(db)
+    row = user_repo.get_login(user["username"] or "")
+    error = None
+    if not verify_password(row["password_hash"] if row else None, current):
+        error = "Your current password is wrong."
+    else:
+        error = password_error(password, confirm)
+    if not error and password == current:
+        error = "Choose a password different from the current one."
+    if error:
+        return _change_password_page(request, user, 400, error=error)
+
+    token = _new_token()
+    user_repo.set_password(
+        user["id"], hash_password(password), token, must_change=False
+    )
+    db.commit()
+    return _signed_in(token)

@@ -18,6 +18,7 @@ from src.api.dependencies import (
     get_current_user,
     require_active_league,
     require_single_player,
+    require_unpaused,
 )
 from src.api.main import app
 
@@ -40,6 +41,7 @@ def client(conn):
     app.dependency_overrides[get_commissioner] = lambda: gm
     app.dependency_overrides[require_single_player] = lambda: None
     app.dependency_overrides[require_active_league] = lambda: None
+    app.dependency_overrides[require_unpaused] = lambda: None
     yield TestClient(app, raise_server_exceptions=False)
     app.dependency_overrides.clear()
 
