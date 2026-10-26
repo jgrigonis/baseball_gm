@@ -126,6 +126,7 @@ body {
 .topbar-state.state-playoffs  { color: var(--sky);   border-color: var(--sky-dim);   background: var(--sky-dim); }
 .topbar-state.state-lobby     { color: var(--text-dim); }
 .topbar-state.state-offseason { color: var(--text-dim); }
+.topbar-state.state-complete  { color: var(--amber); border-color: var(--amber-dim); }
 
 .topbar-spacer { flex: 1; }
 
@@ -445,6 +446,8 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus { border-color: var(--amber); }
 select option { background: var(--bg-3); }
 textarea { resize: vertical; min-height: 80px; }
+input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-allowed; }
+.field-disabled label { opacity: 0.4; }
 
 /* ── Layout Helpers ─────────────────────────────────────────────────────────── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -667,3 +670,36 @@ textarea { resize: vertical; min-height: 80px; }
   font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
   margin-top: 4px; gap: 8px;
 }
+
+/* ── Hover help ─────────────────────────────────────────────────────────────── */
+/* A label with an explanation that shows on hover, or on focus for touch and
+   keyboard users. The text comes from the element's data-tip. */
+.setting-tip {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted var(--muted);
+  outline: none;
+}
+.setting-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  width: 260px;
+  padding: 8px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-hi);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.setting-tip:hover::after,
+.setting-tip:focus::after { opacity: 1; visibility: visible; }

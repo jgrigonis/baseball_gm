@@ -3,6 +3,11 @@
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:12px 24px;border-bottom:1px solid var(--border);">
   <h1 class="page-title">History</h1>
+  {% if league_state == 'complete' %}
+  <div style="font-family:var(--font-mono);font-size:12px;color:var(--amber);margin-top:4px;">
+    This league is complete. Its history and records stay here to look back on.
+  </div>
+  {% endif %}
 </div>
 
 <div style="padding:16px 24px 32px;">
@@ -36,11 +41,15 @@
               <span style="color:var(--red);">{{ row.my_l }}</span>
             {% else %}—{% endif %}
           </td>
-          <td style="text-align:right;">
+          <td style="text-align:right;white-space:nowrap;">
+            {% if row.has_draft %}
+            <a href="/leagues/{{ league_id }}/draft/results?season_id={{ row.season_id }}"
+               class="history-link">Draft</a>
+            {% endif %}
+            <a href="/leagues/{{ league_id }}/standings?season_id={{ row.season_id }}"
+               class="history-link">Standings</a>
             <a href="/leagues/{{ league_id }}/season-summary?season_id={{ row.season_id }}"
-               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-              Summary →
-            </a>
+               class="history-link">Summary →</a>
           </td>
         </tr>
         {% endfor %}
@@ -49,3 +58,11 @@
   </div>
   {% endif %}
 </div>
+
+<style>
+.history-link {
+  font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+  text-decoration:none;margin-left:12px;
+}
+.history-link:hover { color:var(--amber); }
+</style>

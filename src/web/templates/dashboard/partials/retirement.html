@@ -27,20 +27,26 @@
 {% else %}
 
 <div style="padding:24px;">
-  <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px;">
+  <table id="retirement-table" style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px;">
     <thead>
       <tr style="border-bottom:2px solid var(--border);color:var(--text-dim);font-size:10px;letter-spacing:.06em;text-transform:uppercase;">
-        <th style="text-align:left;padding:6px 10px;">Player</th>
-        <th style="text-align:center;padding:6px 8px;">Age</th>
-        <th style="text-align:center;padding:6px 8px;">Pos</th>
-        <th style="text-align:left;padding:6px 10px;">Team</th>
-        <th style="text-align:center;padding:6px 8px;">Seasons</th>
-        <th style="text-align:center;padding:6px 8px;">G</th>
-        {% for col in ['AVG','OBP','HR','RBI','SB'] %}
-        <th class="ret-bat-col" style="text-align:center;padding:6px 8px;">{{ col }}</th>
-        {% endfor %}
-        {% for col in ['W','L','ERA','IP','K','WHIP'] %}
-        <th class="ret-pit-col" style="text-align:center;padding:6px 8px;">{{ col }}</th>
+        {#- (label, alignment, column class, first-click ascending?) — names and
+            text sort A→Z first; ERA and WHIP low→high; everything else high→low. #}
+        {% set ret_cols = [
+          ('Player', 'left', '', true), ('Age', 'center', '', false),
+          ('Pos', 'center', '', true), ('Team', 'left', '', true),
+          ('Seasons', 'center', '', false), ('G', 'center', '', false),
+          ('AVG', 'center', 'ret-bat-col', false), ('OBP', 'center', 'ret-bat-col', false),
+          ('HR', 'center', 'ret-bat-col', false), ('RBI', 'center', 'ret-bat-col', false),
+          ('SB', 'center', 'ret-bat-col', false),
+          ('W', 'center', 'ret-pit-col', false), ('L', 'center', 'ret-pit-col', false),
+          ('ERA', 'center', 'ret-pit-col', true), ('IP', 'center', 'ret-pit-col', false),
+          ('K', 'center', 'ret-pit-col', false), ('WHIP', 'center', 'ret-pit-col', true),
+        ] %}
+        {% for label, align, cls, asc in ret_cols %}
+        <th {% if cls %}class="{{ cls }}" {% endif %}data-asc="{{ 'true' if asc else 'false' }}"
+            onclick="sortRetirements(this)"
+            style="text-align:{{ align }};padding:6px {{ '10px' if align == 'left' else '8px' }};cursor:pointer;user-select:none;white-space:nowrap;">{{ label }}<span class="sort-arrow"></span></th>
         {% endfor %}
       </tr>
     </thead>
@@ -53,7 +59,7 @@
           onmouseout="this.style.background='{% if p.is_mine %}rgba(245,197,24,.06){% else %}transparent{% endif %}'">
 
         {# Name — clickable #}
-        <td style="padding:8px 10px;">
+        <td data-sort="{{ p.last_name }} {{ p.first_name }}" style="padding:8px 10px;">
           <button onclick="openPlayerPanel('{{ p.player_id }}')"
                   style="background:none;border:none;cursor:pointer;padding:0;
                          font-family:var(--font-mono);font-size:12px;font-weight:600;
@@ -63,28 +69,29 @@
           </button>
         </td>
 
-        <td style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.age }}</td>
-        <td style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.position or '—' }}</td>
+        <td data-sort="{{ p.age }}" style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.age }}</td>
+        <td data-sort="{{ p.position or '' }}" style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.position or '—' }}</td>
 
         {# Team #}
-        <td style="padding:8px 10px;color:{% if p.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
+        <td data-sort="{{ p.team_name }}" style="padding:8px 10px;color:{% if p.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
           {{ p.team_name }}
         </td>
 
-        <td style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.seasons_played or 0 }}</td>
+        <td data-sort="{{ p.seasons_played or 0 }}" style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.seasons_played or 0 }}</td>
 
         {# Games — show whichever is larger for two-way players #}
-        <td style="text-align:center;padding:8px;">
-          {{ [p.pitch_games_played or 0, p.bat_games_played or 0] | max }}
+        {% set games = [p.pitch_games_played or 0, p.bat_games_played or 0] | max %}
+        <td data-sort="{{ games }}" style="text-align:center;padding:8px;">
+          {{ games }}
         </td>
 
         {# Batting columns — show real stats if they had ABs, else — #}
         {% if p.has_bat_stats %}
-          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.avg }}</td>
-          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.obp }}</td>
-          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.bat_home_runs }}</td>
-          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.bat_rbi }}</td>
-          <td class="ret-bat-col" style="text-align:center;padding:8px;">{{ p.bat_stolen_bases }}</td>
+          <td class="ret-bat-col" data-sort="{{ p.avg }}" style="text-align:center;padding:8px;">{{ p.avg }}</td>
+          <td class="ret-bat-col" data-sort="{{ p.obp }}" style="text-align:center;padding:8px;">{{ p.obp }}</td>
+          <td class="ret-bat-col" data-sort="{{ p.bat_home_runs }}" style="text-align:center;padding:8px;">{{ p.bat_home_runs }}</td>
+          <td class="ret-bat-col" data-sort="{{ p.bat_rbi }}" style="text-align:center;padding:8px;">{{ p.bat_rbi }}</td>
+          <td class="ret-bat-col" data-sort="{{ p.bat_stolen_bases }}" style="text-align:center;padding:8px;">{{ p.bat_stolen_bases }}</td>
         {% else %}
           <td class="ret-bat-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
           <td class="ret-bat-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
@@ -95,12 +102,12 @@
 
         {# Pitching columns — show real stats if they pitched, else — #}
         {% if p.has_pit_stats %}
-          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.pitch_wins }}</td>
-          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.pitch_losses }}</td>
-          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.era }}</td>
-          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.ip }}</td>
-          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.pitch_strike_outs }}</td>
-          <td class="ret-pit-col" style="text-align:center;padding:8px;">{{ p.whip }}</td>
+          <td class="ret-pit-col" data-sort="{{ p.pitch_wins }}" style="text-align:center;padding:8px;">{{ p.pitch_wins }}</td>
+          <td class="ret-pit-col" data-sort="{{ p.pitch_losses }}" style="text-align:center;padding:8px;">{{ p.pitch_losses }}</td>
+          <td class="ret-pit-col" data-sort="{{ p.era }}" style="text-align:center;padding:8px;">{{ p.era }}</td>
+          <td class="ret-pit-col" data-sort="{{ p.pitch_outs }}" style="text-align:center;padding:8px;">{{ p.ip }}</td>
+          <td class="ret-pit-col" data-sort="{{ p.pitch_strike_outs }}" style="text-align:center;padding:8px;">{{ p.pitch_strike_outs }}</td>
+          <td class="ret-pit-col" data-sort="{{ p.whip }}" style="text-align:center;padding:8px;">{{ p.whip }}</td>
         {% else %}
           <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
           <td class="ret-pit-col" style="text-align:center;padding:8px;color:var(--text-dim);">—</td>
@@ -120,4 +127,38 @@
     </a>
   </div>
 </div>
+
+<script>
+// Click a header to sort by it; click it again to reverse. Players without
+// stats in a column (shown as —) always sort to the bottom.
+function sortRetirements(th) {
+  var table = document.getElementById('retirement-table');
+  var col = Array.prototype.indexOf.call(th.parentNode.children, th);
+  var asc = table.dataset.sortCol === String(col)
+    ? table.dataset.sortAsc !== 'true'
+    : th.dataset.asc === 'true';
+  table.dataset.sortCol = col;
+  table.dataset.sortAsc = asc;
+
+  var tbody = table.tBodies[0];
+  var rows = Array.prototype.slice.call(tbody.rows);
+  function key(row) {
+    var raw = row.cells[col].dataset.sort;
+    if (raw === undefined || raw === '' || raw === '—') return null;
+    var n = Number(raw);
+    return isNaN(n) ? raw : n;
+  }
+  rows.sort(function(a, b) {
+    var av = key(a), bv = key(b);
+    if (av === null || bv === null) return (av === null) - (bv === null);
+    var cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+    return asc ? cmp : -cmp;
+  });
+  rows.forEach(function(row) { tbody.appendChild(row); });
+
+  Array.prototype.forEach.call(th.parentNode.children, function(h) {
+    h.querySelector('.sort-arrow').textContent = h === th ? (asc ? ' ↑' : ' ↓') : '';
+  });
+}
+</script>
 {% endif %}

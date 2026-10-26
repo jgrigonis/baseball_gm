@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.api.schemas import (
     BullpenSaveRequest,
     LineupSaveRequest,
@@ -53,6 +53,7 @@ def save_lineup_prefs(
     body: LineupSaveRequest,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     if not gm["team_id"]:
         return JSONResponse({"detail": "No team"}, status_code=400)
@@ -83,6 +84,7 @@ def save_rotation(
     body: RotationSaveRequest,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     if not gm["team_id"]:
         return JSONResponse({"detail": "No team"}, status_code=400)
@@ -126,6 +128,7 @@ def save_bullpen(
     body: BullpenSaveRequest,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     season_repo = SeasonRepository(db)
     # Resolve Season

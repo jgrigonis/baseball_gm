@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.db.repositories.gm_repo import GMRepository
 from src.web.utils import _shell_ctx, tab_response
 
@@ -74,6 +74,7 @@ async def save_strategy(
     league_id: str,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     if not gm:
         return HTMLResponse("Not a member of this league", status_code=403)

@@ -8,14 +8,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, SinglePlayer, User
+from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, SinglePlayer, User
 from src.api.schemas import DraftPreferencesRequest
 from src.api.services.draft_execute import execute_blitz_draft
+from src.api.view_models.draft import draft_rounds
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
 from src.db.locks import league_lock
 from src.db.repositories.draft_repo import DraftRepository
-from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
@@ -31,6 +32,7 @@ def save_draft_preferences(
     db: DB,
     user: User,
     gm: GM,
+    _active: ActiveLeague,
     # gm_session: str | None = Cookie(default=None),
 ):
     """
@@ -122,6 +124,7 @@ def execute_draft(
     league_id: str,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
     _: SinglePlayer,
 ):
     """Execute the blitz auto-draft and redirect to results."""
@@ -150,47 +153,24 @@ def draft_results(
     db: DB,
     user: User,
     gm: GM,
+    season_id: str | None = None,
 ):
-    """Show completed draft results — all picks by round, your picks highlighted."""
+    """Show completed draft results — all picks by round, your picks highlighted.
+    `season_id` (from the History tab) shows the draft held before that season."""
     ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
 
     draft_repo = DraftRepository(db)
-    draft = draft_repo.get_current_for_league(league_id)
+    season = (
+        SeasonRepository(db).get_for_league(league_id, season_id) if season_id else None
+    )
+    if season:
+        draft = draft_repo.get_for_season(league_id, season["id"])
+    else:
+        draft = draft_repo.get_current_for_league(league_id)
 
-    rounds = []
-    my_team_id = gm["team_id"]
-
-    if draft:
-        picks = draft_repo.get_picks_with_details(draft["id"])
-
-        gm_repo = GMRepository(db)
-        human_team_ids = gm_repo.get_human_team_ids(league_id)
-
-        # Group by round
-        rounds_map = {}
-        for pick in picks:
-            r = pick["round"]
-            if r not in rounds_map:
-                rounds_map[r] = []
-            is_mine = pick["team_id"] == my_team_id
-            is_human = pick["team_id"] in human_team_ids and not is_mine
-            rounds_map[r].append(
-                {
-                    "pick_number": pick["pick_number"],
-                    "team_id": pick["team_id"],
-                    "player_id": pick["player_id"],
-                    "team_name": f"{pick['city']} {pick['mascot']}",
-                    "player_name": f"{pick['first_name']} {pick['last_name']}",
-                    "position": pick["position"] or "%s",
-                    "auto_picked": bool(pick["auto_picked"]),
-                    "is_mine": is_mine,
-                    "is_human": is_human,
-                }
-            )
-        rounds = [
-            {"round": r, "picks": picks} for r, picks in sorted(rounds_map.items())
-        ]
+    rounds = draft_rounds(db, league_id, draft["id"], gm["team_id"]) if draft else []
 
     ctx["rounds"] = rounds
     ctx["draft_done"] = bool(draft and draft["state"] == "complete")
+    ctx["draft_year"] = season["year"] if season else None
     return tab_response(request, htmx, "dashboard/partials/draft_results.html", ctx)

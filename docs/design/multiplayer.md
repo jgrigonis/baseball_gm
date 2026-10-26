@@ -42,6 +42,35 @@ New GMs can join only while the league is in the lobby. Entering the join
 code of a league that has started shows an error on the join page; a GM who
 is already in that league is taken straight to it.
 
+## Leaving a league
+
+A GM leaves from the Leave button on `/leagues/` (`POST /leagues/{id}/leave`,
+`src/api/services/leave_league.py`).
+
+- **In the lobby** the GM's row is deleted. No team has been handed out yet,
+  and AI GMs fill the empty teams when the league starts.
+- **Once the league has started** AI takes over the team. The GM's row
+  becomes an AI GM (`is_ai = true`, `user_id` null, "AI Manager") and keeps
+  its `team_id`, so the team keeps its draft picks, pick rights, results and
+  name in the standings. From then on the AI drafts for it, sets its lineup
+  and rebuilds its rotation each offseason, and the standings stop marking
+  it as a human team. The GM can't rejoin, since joining is lobby-only.
+- The ready-check and injury news only look at human GMs, so the leaver
+  drops out of both straight away, and their unseen news is deleted. If
+  everyone left is ready, the period runs on the next status poll. A league
+  that drops to one human GM becomes single-player.
+- A **commissioner** who leaves hands the role to the human GM who has been
+  in the league longest.
+- When the **last person** leaves (fired GMs count, since they can still
+  open the league), the league is deleted with everything it owns:
+  `LeagueRepository.delete()` removes its GMs, drafts, seasons with their
+  games and stats, teams, players and per-league player state, and the
+  service removes its CSVs under `team_files/{league_id}/`. Seasons and teams
+  shared with another league are left alone. The Leave dialog warns the
+  last GM first.
+- Leaving takes the league lock, so it can't land in the middle of a sim
+  (409 while one is running).
+
 ## The ready-check
 
 A multiplayer league advances one **period** at a time. What a period does
@@ -53,13 +82,25 @@ depends on the league's state:
 | preseason, season | `sim_period_days` days of the regular season (default 3); the last one sets up the playoffs |
 | playoffs | one playoff day |
 | offseason | runs the offseason |
+| complete | nothing: the league is over |
+
+## How a league ends
+
+A league runs for `leagues.num_seasons` seasons (default 10, 1 to 420),
+chosen when it is created. When the Finals of its last season are decided,
+`end_playoffs` archives that season and sets the league to `complete`
+instead of `offseason`. A complete league is read-only: every route that
+changes a league depends on `require_active_league`, which answers 409.
+Leaving still works, so GMs can clear a finished league off their list.
+History, records, standings, stats and the final playoff bracket stay
+viewable, and the league's page opens on its History.
 
 When a period runs is set by `leagues.pace_control`, chosen when the league
 is created:
 
 | pace_control | The period runs when |
 | --- | --- |
-| timer (default) | every GM who isn't away is ready, or the Decision Window (`decision_window_sec`) runs out |
+| timer (default) | every GM who isn't away is ready, or the period's window runs out |
 | confirmed | every GM who isn't away is ready; there is no clock |
 | scheduled | a fixed real-world interval passes, e.g. once a day (not built yet) |
 
@@ -68,6 +109,10 @@ is created:
 - Under confirmed pace, a GM who leaves without marking themselves away
   stalls the league. The ready bar names who it is waiting on.
 - Under timer pace, the next window starts as soon as a period finishes.
+  The draft gets the Draft Window (`draft_window_sec`), the preseason period
+  right after it, where GMs set their first lineup, gets the Lineup Window
+  (`lineup_window_sec`), and every other period gets the Decision Window
+  (`decision_window_sec`).
 
 ### How it is built
 

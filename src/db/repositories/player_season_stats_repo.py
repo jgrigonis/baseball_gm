@@ -41,42 +41,6 @@ class PlayerSeasonStatsRepository:
         ).fetchone()
         return dict(row) if row else None
 
-    def get_batting_leader(
-        self, league_id: str, season_id: str, min_ab: int
-    ) -> dict | None:
-        """Return the batting average leader (first_name, last_name, city, mascot, avg), or None."""
-        row = self.conn.execute(
-            """SELECT p.first_name, p.last_name, t.city, t.mascot,
-                      CAST(pss.bat_hits AS REAL)/NULLIF(pss.bat_ab, 0) as avg
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.bat_ab >= %s
-               ORDER BY avg DESC LIMIT 1""",
-            (league_id, season_id, min_ab),
-        ).fetchone()
-        return dict(row) if row else None
-
-    def get_pitching_leader(
-        self, league_id: str, season_id: str, min_outs: int
-    ) -> dict | None:
-        """Return the ERA leader (first_name, last_name, city, mascot, era), or None."""
-        row = self.conn.execute(
-            """SELECT p.first_name, p.last_name, t.city, t.mascot,
-                      CAST(pss.pitch_earned_runs * 27 AS REAL)/NULLIF(pss.pitch_outs, 0) as era
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.pitch_outs >= %s
-               ORDER BY era ASC LIMIT 1""",
-            (league_id, season_id, min_outs),
-        ).fetchone()
-        return dict(row) if row else None
-
     def get_team_stats_map(self, season_id: str, team_id: str) -> dict[str, dict]:
         """Return {player_id: stat_dict} for all players on a team in a season (regular season)."""
         rows = self.conn.execute(

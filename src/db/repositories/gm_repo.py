@@ -68,18 +68,58 @@ class GMRepository:
             (gm_id, league_id),
         )
 
+    def next_commissioner(self, league_id: str, leaving_gm_id: str) -> str | None:
+        """The human GM who has been in the league longest, other than the one
+        leaving, or None if there is nobody left."""
+        row = self.conn.execute(
+            """SELECT id FROM gms
+               WHERE league_id = %s AND id <> %s
+                 AND NOT is_ai AND user_id IS NOT NULL AND fired_at IS NULL
+               ORDER BY created_at, id LIMIT 1""",
+            (league_id, leaving_gm_id),
+        ).fetchone()
+        return row["id"] if row else None
+
+    def hand_team_to_ai(self, gm_id: str) -> None:
+        """Turn a human GM into an AI one. The row keeps its team, so the
+        team's draft picks and history stay attached to it."""
+        self.conn.execute(
+            """UPDATE gms SET is_ai = TRUE, user_id = NULL,
+                   display_name = 'AI Manager', is_away = FALSE, ready_period = NULL
+               WHERE id = %s""",
+            (gm_id,),
+        )
+        self.conn.execute("DELETE FROM gm_notifications WHERE gm_id = %s", (gm_id,))
+
+    def has_people(self, league_id: str) -> bool:
+        """Whether any person can still open the league, fired GMs included."""
+        return bool(
+            self.conn.execute(
+                "SELECT 1 FROM gms WHERE league_id = %s AND user_id IS NOT NULL LIMIT 1",
+                (league_id,),
+            ).fetchone()
+        )
+
+    def delete_gm(self, gm_id: str) -> None:
+        self.conn.execute("DELETE FROM gms WHERE id = %s", (gm_id,))
+
     def get_users_leagues(self, user_id: str) -> list[dict]:
         """Fetch the user's leagues"""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
+                      l.last_played_at,
                       MAX(s.year) as current_year,
-                      (l.commissioner_gm_id = g.id) as is_commissioner
+                      COUNT(DISTINCT ls.season_id) as season_number,
+                      (l.commissioner_gm_id = g.id) as is_commissioner,
+                      (SELECT COUNT(*) FROM gms o
+                       WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
             FROM leagues l
             JOIN gms g ON g.league_id = l.id
             LEFT JOIN league_seasons ls ON ls.league_id = l.id
             LEFT JOIN seasons s ON s.id = ls.season_id
             WHERE g.user_id = %s AND NOT g.is_ai
-            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.join_code, g.id
+            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
+                     l.last_played_at, g.id
             ORDER BY l.created_at DESC""",
             (user_id,),
         ).fetchall()

@@ -13,11 +13,13 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from src.api.dependencies import DB, GM, Commissioner, User
+from src.api.dependencies import DB, GM, ActiveLeague, Commissioner, User
+from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
 from src.web.utils import templates
 
 router = APIRouter(tags=["web"])
@@ -38,21 +40,35 @@ def leagues_index(
 
     gm_repo = GMRepository(db)
     # Fetch User's Leagues
-    rows = gm_repo.get_users_leagues(user["id"])
+    leagues = [dict(r) for r in gm_repo.get_users_leagues(user["id"])]
+    for league in leagues:
+        league["state_label"] = state_label(league["state"], league["season_number"])
 
     return templates.TemplateResponse(
         request,
         "leagues/index.html",
         {
             "user": user,
-            "leagues": [dict(r) for r in rows],
+            "leagues": leagues,
         },
     )
 
 
+def state_label(state: str, season_number: int) -> str:
+    """The league's phase and which season it's in, e.g. "Draft 1" or
+    "Playoffs 3". The lobby and a finished league have no season number."""
+    if state in ("lobby", "complete") or not season_number:
+        return state.title()
+    return f"{state.title()} {season_number}"
+
+
 @router.get("/leagues/new", response_class=HTMLResponse)
 def new_league_page(request: Request):
-    return templates.TemplateResponse(request, "leagues/new.html", {})
+    return templates.TemplateResponse(
+        request,
+        "leagues/new.html",
+        {"default_mode": DEFAULT_MODE, "modes": [BLITZ, SPEED_BLITZ]},
+    )
 
 
 # was create_league
@@ -61,17 +77,22 @@ def new_league(
     db: DB,
     user: User,
     name: str = Form(...),
-    mode: str = Form("blitz"),
+    mode: str = Form(DEFAULT_MODE),
     decision_window_sec: int = Form(120),
     draft_window_sec: int = Form(300),
+    lineup_window_sec: int = Form(600),
     reentry_enabled: bool = Form(True),
     pace_control: str = Form("timer"),
     sim_period_days: int = Form(3),
+    num_seasons: int = Form(10),
 ):
+    get_mode(mode)  # rejects an unknown mode
     if pace_control not in ("timer", "confirmed"):
         raise ValueError(f"Unknown pace '{pace_control}'.")
     if not 1 <= sim_period_days <= 30:
         raise ValueError("Days per sim period must be between 1 and 30.")
+    if not 1 <= num_seasons <= 420:
+        raise ValueError("Number of seasons must be between 1 and 420.")
 
     league_id = str(uuid.uuid4())
     # gm_id = str(uuid.uuid4())
@@ -90,9 +111,11 @@ def new_league(
         settings={
             "decision_window_sec": decision_window_sec,
             "draft_window_sec": draft_window_sec,
+            "lineup_window_sec": lineup_window_sec,
             "reentry_enabled": reentry_enabled,
             "pace_control": pace_control,
             "sim_period_days": sim_period_days,
+            "num_seasons": num_seasons,
         },
     )
     # 2. GM setup
@@ -175,6 +198,17 @@ def start_league_router(
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 
+@router.post("/leagues/{league_id}/leave")
+def leave_league_router(
+    league_id: str,
+    db: DB,
+    gm: GM,
+):
+    """Leave the league. Once it has started, AI takes over the GM's team."""
+    leave_league(db, league_id, gm["id"])
+    return JSONResponse({"left": True})
+
+
 # ── League rename ──────────────────────────────────────────────────────────────
 
 
@@ -188,6 +222,7 @@ def rename_league(
     body: RenameLeagueRequest,
     db: DB,
     gm: GM,
+    _active: ActiveLeague,
 ):
     name = body.name.strip()
     if not name:
@@ -229,6 +264,8 @@ def dashboard(
     if state == "evaluation":
         # Simplified the season fetch for now to get you back to green
         return RedirectResponse(f"/leagues/{league_id}/history/1/")
+    if state == "complete":
+        return RedirectResponse(f"/leagues/{league_id}/history")
 
     context = _lobby_gms_context(gm_repo, league, gm)
     context.update(
@@ -236,11 +273,14 @@ def dashboard(
             "league_name": league["name"],
             "is_commissioner": bool(is_commish),
             "league_num_teams": league["num_teams"],  # Dual-mapping for safety
-            "league_mode": league["mode"],
+            "league_mode": get_mode(league["mode"]),
             "league_decision_window_sec": league["decision_window_sec"],
             "league_draft_window_sec": league["draft_window_sec"],
+            "league_lineup_window_sec": league["lineup_window_sec"],
+            "league_reentry_enabled": bool(league["reentry_enabled"]),
             "league_pace_control": league["pace_control"],
             "league_sim_period_days": league["sim_period_days"],
+            "league_num_seasons": league["num_seasons"],
         }
     )
 
@@ -250,10 +290,14 @@ def dashboard(
 
 
 def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
+    # Every team without a human GM gets an AI one when the league starts, so
+    # the lobby shows those open slots as AI GMs. Each GM who joins takes one.
+    gms = list(gm_repo.get_all_in_league(league["id"]))
     return {
         "league_id": league["id"],
         "league_state": league["state"],
-        "gms": list(gm_repo.get_all_in_league(league["id"])),
+        "gms": gms,
+        "ai_slots": max(league["num_teams"] - len(gms), 0),
         "num_teams": league["num_teams"],
         "join_code": league.get("join_code"),
         "current_gm_id": str(gm["id"]),

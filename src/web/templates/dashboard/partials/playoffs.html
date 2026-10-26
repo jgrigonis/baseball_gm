@@ -4,13 +4,14 @@
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:12px 24px;border-bottom:1px solid var(--border);">
   <div style="display:flex;align-items:center;gap:16px;">
-    <h1 class="page-title">Playoffs</h1>
+    <h1 class="page-title">{% if past_season %}{{ past_season.year }} {% endif %}Playoffs</h1>
     {% if champion %}
     <span style="font-family:var(--font-mono);font-size:13px;color:var(--amber);font-weight:600;">
       🏆 Champion: {{ champion.name }}
     </span>
-    <a href="/leagues/{{ league_id }}/season-summary"
-       hx-get="/leagues/{{ league_id }}/season-summary"
+    {% set summary_qs = '?season_id=' ~ past_season.id if past_season else '' %}
+    <a href="/leagues/{{ league_id }}/season-summary{{ summary_qs }}"
+       hx-get="/leagues/{{ league_id }}/season-summary{{ summary_qs }}"
        hx-target="#tab-content" hx-swap="innerHTML"
        class="btn btn-secondary" style="margin-left:8px;border-color:var(--amber);color:var(--amber);">
       View Season Summary →
@@ -18,7 +19,7 @@
     {% endif %}
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
       <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
-      {% if not champion and not multiplayer %}
+      {% if not champion and not multiplayer and not past_season %}
       <button id="po-day-btn" onclick="simPlayoffs('game')"
               class="btn btn-primary">
         ▶ Sim Day
@@ -91,7 +92,7 @@
     {% for t in s.teams %}
     {% set win_game_ids = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | map(attribute='id') | list %}
     <div class="sc-team">
-      <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+      <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% elif t.is_human %}var(--sky){% else %}var(--text){% endif %};">
         {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
       </span>
       <div class="sc-dots">

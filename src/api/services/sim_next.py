@@ -183,8 +183,10 @@ def sim_next_day(league_id: str, conn) -> dict:
             )
             log.exception("Game %s failed", game_dict["game_id"])
 
-    # Rollup game stats into player_season_stats after each day
     if results:
+        lr.mark_played(league_id)
+        conn.commit()
+        # Rollup game stats into player_season_stats after each day
         try:
             build_season(conn, season_id)
         except psycopg.Error:

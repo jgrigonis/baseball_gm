@@ -64,3 +64,45 @@ def test_lobby_page_polls_the_gm_list(client, lobby):
 
     assert r.status_code == 200
     assert f'hx-get="/leagues/{league.id}/lobby/gms"' in r.text
+
+
+def test_open_slots_show_as_ai_gms(client, db_conn, lobby):
+    league, _ = lobby
+    db_conn.execute("UPDATE leagues SET num_teams = 4 WHERE id = %s", (league.id,))
+
+    r = _gms(client, league)
+
+    assert r.text.count('class="ai-slot"') == 3
+    assert "1 human · 3 AI" in r.text
+
+
+def test_a_gm_who_joins_takes_an_ai_slot(client, db_conn, lobby):
+    league, _ = lobby
+    db_conn.execute("UPDATE leagues SET num_teams = 4 WHERE id = %s", (league.id,))
+    db_conn.execute(
+        "INSERT INTO gms (id, league_id, display_name, is_ai)"
+        " VALUES (gen_random_uuid(), %s, 'Newcomer', false)",
+        (league.id,),
+    )
+
+    r = _gms(client, league)
+
+    assert r.text.count('class="ai-slot"') == 2
+    assert "2 human · 2 AI" in r.text
+
+
+def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
+    league, _ = lobby
+    db_conn.execute(
+        "UPDATE leagues SET mode = 'speed_blitz', reentry_enabled = true WHERE id = %s",
+        (league.id,),
+    )
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+
+    r = client.get(f"/leagues/{league.id}/")
+
+    assert r.text.count('class="setting-tip"') == 9
+    assert "Speed Blitz" in r.text
+    assert "no injuries or trades" in r.text
+    assert "Total teams in the league" in r.text
+    assert "<td>Enabled</td>" in r.text

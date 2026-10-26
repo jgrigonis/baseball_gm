@@ -24,7 +24,7 @@ def season_summary(
     gm: GM,
     season_id: str | None = None,
 ):
-    ctx = _shell_ctx(request, db, gm, league_id, user)
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
     my_team_id = gm["team_id"] if gm else None
     ctx.update(
         season_summary_context(db, league_id, season_id, ctx["season_id"], my_team_id)

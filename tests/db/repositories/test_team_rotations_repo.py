@@ -278,3 +278,43 @@ class TestSwapRotationSpots:
             repo.swap_rotation_spots(
                 rot.team_id, rot.season_id, rot.p[0], rot.p[6], "2024-05-01"
             )
+
+
+class TestAdvanceRotationPointer:
+    def test_advances_one_slot_from_pointer(self, repo, rot):
+        repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
+        repo.assign_rotation_pointer(rot.team_id, rot.season_id, 2)
+
+        repo.advance_rotation_pointer(rot.team_id, rot.season_id)
+
+        assert repo.get_rotation_pointer_player(rot.team_id, rot.season_id) == rot.p[2]
+
+    def test_advances_past_pitcher_who_actually_started(self, repo, rot):
+        # sp1 was scheduled but tired, so sp3 started: sp4 is next, not sp2.
+        repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
+        repo.assign_rotation_pointer(rot.team_id, rot.season_id, 1)
+
+        repo.advance_rotation_pointer(
+            rot.team_id, rot.season_id, after_player_id=rot.p[2]
+        )
+
+        assert repo.get_rotation_pointer_player(rot.team_id, rot.season_id) == rot.p[3]
+
+    def test_wraps_after_last_starter(self, repo, rot):
+        repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
+
+        repo.advance_rotation_pointer(
+            rot.team_id, rot.season_id, after_player_id=rot.p[4]
+        )
+
+        assert repo.get_rotation_pointer_player(rot.team_id, rot.season_id) == rot.p[0]
+
+    def test_starter_outside_rotation_advances_from_pointer(self, repo, rot):
+        repo.set_rotation(rot.team_id, rot.season_id, rot.p[:5], "2024-04-01")
+        repo.assign_rotation_pointer(rot.team_id, rot.season_id, 3)
+
+        repo.advance_rotation_pointer(
+            rot.team_id, rot.season_id, after_player_id=rot.p[6]
+        )
+
+        assert repo.get_rotation_pointer_player(rot.team_id, rot.season_id) == rot.p[3]

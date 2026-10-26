@@ -43,11 +43,11 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
     # Standard season tabs
     post = ["roster", "lineup", "schedule", "standings", "leaders", "stats", "strategy"]
 
-    if state not in ("season", "playoffs", "preseason", "offseason"):
+    if state not in ("season", "playoffs", "preseason", "offseason", "complete"):
         if "schedule" in post:
             post.remove("schedule")
 
-    if state in ("playoffs", "offseason"):
+    if state in ("playoffs", "offseason", "complete"):
         post.append("playoffs")
 
     post.append("draft")  # Results tab
@@ -70,7 +70,14 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     """Return the next unplayed game date, or last played date if season is over."""
     if not season_id:
         return None
-    if state not in ("draft", "preseason", "season", "playoffs", "offseason"):
+    if state not in (
+        "draft",
+        "preseason",
+        "season",
+        "playoffs",
+        "offseason",
+        "complete",
+    ):
         return None
     if state in ("draft", "offseason"):
         sr = SeasonRepository(db)
@@ -194,8 +201,8 @@ def _shell_ctx(
         season = sr.get_last_with_completed_games(
             league_id
         ) or sr.get_newest_for_league(league_id)
-    elif league_state_for_season in ("playoffs", "offseason"):
-        # During playoffs/offseason, use the season that has series records.
+    elif league_state_for_season in ("playoffs", "offseason", "complete"):
+        # During playoffs/offseason, and once the league is complete, use the season that has series records.
         # Fallback to newest if no series yet.
         season = sr.get_last_with_series_row(league_id) or sr.get_newest_for_league(
             league_id

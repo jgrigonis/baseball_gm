@@ -14,6 +14,7 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.league.bootstrap import LeagueBootstrapper
+from src.league.league_modes import is_blitz_style
 from src.league.manifest_helper import (
     create_team_files,
     load_manifest,
@@ -134,7 +135,7 @@ def start_league(
     )
 
     # ── 7. Create draft ───────────────────────────────────────────────────────
-    if league["mode"] == "blitz":
+    if is_blitz_style(league["mode"]):
         draft_format = "preference"
     else:
         draft_format = "interactive"

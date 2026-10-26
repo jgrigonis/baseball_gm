@@ -29,6 +29,15 @@ def get_optional_user(db: DB, gm_session: str = Cookie(None)):
     return UserRepository(db).get_by_token(gm_session)
 
 
+class NotLeagueGM(HTTPException):
+    """The user has no GM in this league, or the league no longer exists.
+    Page loads are sent back to the league list (see main.py); API and fetch
+    callers get the 403."""
+
+    def __init__(self):
+        super().__init__(status_code=403, detail="Not a GM in this league")
+
+
 def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)):
     # This automatically uses the 'user' we already resolved!
     gm = db.execute(
@@ -36,7 +45,7 @@ def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)
         (user["id"], league_id),
     ).fetchone()
     if not gm:
-        raise HTTPException(status_code=403, detail="Not a GM in this league")
+        raise NotLeagueGM()
     return gm
 
 
@@ -58,6 +67,16 @@ def require_single_player(league_id: str, db: DB):
         )
 
 
+def require_active_league(league_id: str, db: DB):
+    """For routes that change a league. A complete league is read-only: its
+    history and records stay viewable, but nothing in it changes."""
+    league = db.execute(
+        "SELECT state FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
+    if league and league["state"] == "complete":
+        raise HTTPException(status_code=409, detail="This league is complete.")
+
+
 # ── TYPE ALIASES (For clean route signatures) ────────────────────────────────
 IsHTMX = Annotated[bool, Depends(is_htmx)]
 
@@ -66,3 +85,4 @@ OptionalUser = Annotated[Any, Depends(get_optional_user)]
 GM = Annotated[Any, Depends(get_current_gm)]
 Commissioner = Annotated[Any, Depends(get_commissioner)]
 SinglePlayer = Annotated[None, Depends(require_single_player)]
+ActiveLeague = Annotated[None, Depends(require_active_league)]

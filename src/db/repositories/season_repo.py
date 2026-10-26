@@ -166,6 +166,16 @@ class SeasonRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_for_league(self, league_id: str, season_id: str) -> dict | None:
+        """Return the season row if it belongs to the league, or None."""
+        row = self.conn.execute(
+            """SELECT s.id, s.year, s.name FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s AND s.id = %s""",
+            (league_id, season_id),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_last_with_series(self, league_id: str) -> str | None:
         """Return the season_id of the most recent season that has any series records."""
         row = self.conn.execute(

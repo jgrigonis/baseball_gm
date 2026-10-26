@@ -5,42 +5,53 @@
 <div class="page-content"><div class="content-inner" style="max-width:520px;">
   <div class="page-header"><h1 class="page-title">New League</h1></div>
   <form method="POST" action="/leagues/new" style="display:flex;flex-direction:column;gap:16px;">
-    <div class="row">
-      <div class="field">
-        <label>League Name</label>
-        <input name="name" value="My League" required>
-      </div>
-      <div class="field">
-        <label>Mode</label>
-        <select name="mode">
-          <option value="blitz">Blitz</option>
-          <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
-        </select>
-      </div>
+    <div class="field">
+      <label>League Name</label>
+      <input name="name" value="My League" required>
     </div>
-    <div class="row">
-      <div class="field">
-        <label>Decision Window (sec)</label>
-        <input name="decision_window_sec" type="number" value="120" min="30" max="600">
-      </div>
-      <div class="field">
-        <label>Draft Window (sec)</label>
-        <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
-      </div>
+    <div class="field">
+      <label>Mode</label>
+      <select name="mode" id="league-mode">
+        {% for m in modes %}
+        <option value="{{ m.key }}" data-presets='{{ m.form_presets | tojson }}'
+                {% if default_mode == m.key %}selected{% endif %}>{{ m.label }}</option>
+        {% endfor %}
+        <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
+      </select>
+      <span class="mode-note" id="speed-blitz-note">No injuries or trades. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
     </div>
-    <div class="row">
-      <div class="field">
-        <label>Pace (multiplayer)</label>
-        <select name="pace_control">
-          <option value="timer">Timer: when everyone is ready or the window runs out</option>
-          <option value="confirmed">Confirmed: only when everyone is ready</option>
-          <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Days per Sim Period</label>
-        <input name="sim_period_days" type="number" value="3" min="1" max="30">
-      </div>
+    <div class="field">
+      <label>Days per Sim Period</label>
+      <input name="sim_period_days" type="number" value="3" min="1" max="30">
+    </div>
+    <div class="field">
+      <label>Number of Seasons</label>
+      <input name="num_seasons" type="number" value="10" min="1" max="420"
+             title="How many seasons the league runs">
+    </div>
+    <div class="field">
+      <label>Pace (multiplayer)</label>
+      <select name="pace_control" id="pace-control">
+        <option value="timer">Timer: when everyone is ready or the window runs out</option>
+        <option value="confirmed">Confirmed: only when everyone is ready</option>
+        <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
+      </select>
+    </div>
+    <div class="field timer-only">
+      <label>Decision Window (sec)</label>
+      <input name="decision_window_sec" type="number" value="120" min="30" max="600">
+      <span class="timer-only-note">Only used with Timer pace</span>
+    </div>
+    <div class="field timer-only">
+      <label>Draft Window (sec)</label>
+      <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
+      <span class="timer-only-note">Only used with Timer pace</span>
+    </div>
+    <div class="field timer-only">
+      <label>Lineup Window (sec)</label>
+      <input name="lineup_window_sec" type="number" value="600" min="60" max="3600"
+             title="Time to set up your first lineup after the draft">
+      <span class="timer-only-note">Only used with Timer pace</span>
     </div>
     <div style="display:flex;gap:8px;">
       <button type="submit" class="btn btn-primary">Create League →</button>
@@ -48,4 +59,43 @@
     </div>
   </form>
 </div></div>
+<style>
+.mode-note { font-size: 11px; color: var(--text-dim); font-style: italic; }
+.timer-only-note { display: none; font-size: 11px; color: var(--text-dim); font-style: italic; }
+.field-disabled .timer-only-note { display: block; }
+.field-disabled label { opacity: 0.45; }
+.field-disabled input { opacity: 0.45; background: transparent; border-style: dashed; cursor: not-allowed; }
+</style>
+<script>
+// Picking a mode fills in its preset settings. Settings the mode doesn't
+// preset keep whatever the form has.
+(function () {
+  const mode = document.getElementById('league-mode');
+  const speedBlitzNote = document.getElementById('speed-blitz-note');
+  function applyModePresets() {
+    const opt = mode.options[mode.selectedIndex];
+    const presets = JSON.parse(opt.dataset.presets || '{}');
+    Object.keys(presets).forEach(function (name) {
+      const input = mode.form.querySelector('[name="' + name + '"]');
+      if (input) input.value = presets[name];
+    });
+    speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
+  }
+  mode.addEventListener('change', applyModePresets);
+  applyModePresets();
+})();
+// The timing windows only apply to Timer pace; grey them out otherwise.
+(function () {
+  const pace = document.getElementById('pace-control');
+  function syncTimerFields() {
+    const isTimer = pace.value === 'timer';
+    document.querySelectorAll('.timer-only').forEach(function (f) {
+      f.classList.toggle('field-disabled', !isTimer);
+      f.querySelectorAll('input').forEach(function (i) { i.disabled = !isTimer; });
+    });
+  }
+  pace.addEventListener('change', syncTimerFields);
+  syncTimerFields();
+})();
+</script>
 {% endblock %}

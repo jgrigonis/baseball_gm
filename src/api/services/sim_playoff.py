@@ -26,6 +26,7 @@ from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.offseason.build_season_stats import build_season
+from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.playoffs.play_playoffs import (
     _HOME_MAP_BO7,
     _SEMI_27_36_OFFSETS,
@@ -186,6 +187,17 @@ def _play_one_game(
 # ---------------------------------------------------------------------------
 
 
+def end_playoffs(conn, league: dict, season_id: str) -> None:
+    """The Finals are decided. On to the offseason, unless that was the
+    league's last season: then the league is complete, and read-only."""
+    lr = LeagueRepository(conn)
+    if lr.count_seasons(league["id"]) >= league["num_seasons"]:
+        OffseasonPipeline(conn).run_final(season_id, league["id"])
+        lr.set_state(league["id"], "complete")
+    else:
+        lr.set_state(league["id"], "offseason")
+
+
 def sim_playoff(
     league_id: str,
     conn,
@@ -285,8 +297,10 @@ def sim_playoff(
             if r:
                 results.append({"series": g["series_name"], "result": str(r)})
                 count += 1
-        # Rollup game stats into player_season_stats after each day
         if results:
+            lr.mark_played(league_id)
+            conn.commit()
+            # Rollup game stats into player_season_stats after each day
             try:
                 build_season(conn, season_id)
             except psycopg.Error:
@@ -337,7 +351,7 @@ def sim_playoff(
     finals_sid = playoff_repo.get_series_id(season_id, "Finals")
     if finals_sid and playoff_repo.is_decided(finals_sid, 7):
         champion = playoff_repo.get_series_winner(finals_sid, 7)
-        lr.set_state(league_id, "offseason")
+        end_playoffs(conn, league, season_id)
         conn.commit()
 
     injury_news.record()

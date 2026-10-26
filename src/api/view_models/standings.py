@@ -25,9 +25,95 @@ def calc_streak(results: list) -> str:
     return f"{letter}{count}"
 
 
+def standings_rows(
+    db, league_id: str, season_id: str, my_team_id: str | None
+) -> list[dict]:
+    """The ranked standings table for one season, best record first."""
+    gm_repo = GMRepository(db)
+    st_repo = StandingsRepository(db)
+    ra_map = st_repo.get_runs_allowed(season_id)
+    ha_map = st_repo.get_home_away_splits(season_id)
+    human_team_ids = gm_repo.get_human_team_ids(league_id)
+    recent_rows = st_repo.get_recent_results(season_id)
+
+    # Build per-team recent results
+    team_recent: dict[str, list] = {}
+    for r in recent_rows:
+        tid = r["team_id"]
+        if tid not in team_recent:
+            team_recent[tid] = []
+        if len(team_recent[tid]) < 10:
+            team_recent[tid].append(r["win"])
+
+    # Sort by win pct descending, with H2H and RS tiebreakers
+    rows = st_repo.get_records(league_id, season_id)
+    raw_rows = [
+        {
+            **r,
+            "win_pct": (
+                r["wins"] / (r["wins"] + r["losses"])
+                if (r["wins"] + r["losses"])
+                else 0.0
+            ),
+        }
+        for r in rows
+    ]
+    ranked = st_repo.sort(season_id, raw_rows)
+    leader_wins = ranked[0]["wins"] or 0 if ranked else 0
+    leader_losses = ranked[0]["losses"] or 0 if ranked else 0
+
+    teams = []
+    for rank, r in enumerate(ranked, 1):
+        wins = r["wins"] or 0
+        losses = r["losses"] or 0
+        played = wins + losses
+        pct = wins / played if played else 0.0
+        gb_val = ((leader_wins - wins) + (losses - leader_losses)) / 2
+        gb = (
+            "—"
+            if rank == 1
+            else (f"{gb_val:.1f}" if gb_val != int(gb_val) else str(int(gb_val)))
+        )
+        recent = team_recent.get(r["team_id"], [])
+        rs = r["runs_scored"] or 0
+        ra = ra_map.get(r["team_id"], 0)
+        ha = ha_map.get(r["team_id"], {"hw": 0, "hl": 0, "aw": 0, "al": 0})
+        l10_wins = sum(1 for w in recent[:10] if w)
+        l10_losses = 10 - l10_wins if len(recent) >= 10 else len(recent) - l10_wins
+        pct_str = f"{pct:.3f}"
+        pct_str = pct_str[1:] if pct_str.startswith("0") else pct_str
+        teams.append(
+            {
+                "rank": rank,
+                "team_id": r["team_id"],
+                "city": r["city"],
+                "mascot": r["mascot"],
+                "wins": wins,
+                "losses": losses,
+                "pct": pct_str,
+                "gb": gb,
+                "streak": calc_streak(recent),
+                "home": f"{ha['hw']}-{ha['hl']}",
+                "away": f"{ha['aw']}-{ha['al']}",
+                "l10": f"{l10_wins}-{l10_losses}",
+                "rs": rs,
+                "ra": ra,
+                "is_human": r["team_id"] in human_team_ids,
+                "is_mine": r["team_id"] == my_team_id,
+            }
+        )
+    return teams
+
+
 def standings_context(
-    db, league_id: str, season_id: str | None, my_team_id: str | None
+    db,
+    league_id: str,
+    season_id: str | None,
+    my_team_id: str | None,
+    past_season: bool = False,
 ) -> dict:
+    """`past_season` drops the GM's upcoming games and injury report, which
+    only make sense for the season being played."""
     teams = []
     upcoming = []
     recent_games = []
@@ -35,86 +121,12 @@ def standings_context(
 
     if season_id:
         game_repo = GameRepository(db)
-        gm_repo = GMRepository(db)
         inj_repo = InjuryRepository(db, league_id)
-
-        st_repo = StandingsRepository(db)
-        ra_map = st_repo.get_runs_allowed(season_id)
-        ha_map = st_repo.get_home_away_splits(season_id)
-        human_team_ids = gm_repo.get_human_team_ids(league_id)
-        recent_rows = st_repo.get_recent_results(season_id)
-
-        # Build per-team recent results
-        team_recent: dict[str, list] = {}
-        for r in recent_rows:
-            tid = r["team_id"]
-            if tid not in team_recent:
-                team_recent[tid] = []
-            if len(team_recent[tid]) < 10:
-                team_recent[tid].append(r["win"])
-
-        # Sort by win pct descending, with H2H and RS tiebreakers
-        rows = st_repo.get_records(league_id, season_id)
-        raw_rows = [
-            {
-                **r,
-                "win_pct": (
-                    r["wins"] / (r["wins"] + r["losses"])
-                    if (r["wins"] + r["losses"])
-                    else 0.0
-                ),
-            }
-            for r in rows
-        ]
-        ranked = st_repo.sort(season_id, raw_rows)
-        leader_wins = ranked[0]["wins"] or 0 if ranked else 0
-        leader_losses = ranked[0]["losses"] or 0 if ranked else 0
-
-        for rank, r in enumerate(ranked, 1):
-            wins = r["wins"] or 0
-            losses = r["losses"] or 0
-            _ = r["runs_scored"] or 0
-            _ = ra_map.get(r["team_id"], 0)
-            played = wins + losses
-            pct = wins / played if played else 0.0
-            gb_val = ((leader_wins - wins) + (losses - leader_losses)) / 2
-            gb = (
-                "—"
-                if rank == 1
-                else (f"{gb_val:.1f}" if gb_val != int(gb_val) else str(int(gb_val)))
-            )
-            recent = team_recent.get(r["team_id"], [])
-            rs = r["runs_scored"] or 0
-            ra = ra_map.get(r["team_id"], 0)
-            ha = ha_map.get(r["team_id"], {"hw": 0, "hl": 0, "aw": 0, "al": 0})
-            l10_wins = sum(1 for w in recent[:10] if w)
-            l10_losses = 10 - l10_wins if len(recent) >= 10 else len(recent) - l10_wins
-            pct_str = f"{pct:.3f}"
-            pct_str = pct_str[1:] if pct_str.startswith("0") else pct_str
-            teams.append(
-                {
-                    "rank": rank,
-                    "team_id": r["team_id"],
-                    "city": r["city"],
-                    "mascot": r["mascot"],
-                    "wins": wins,
-                    "losses": losses,
-                    "pct": pct_str,
-                    "gb": gb,
-                    "streak": calc_streak(recent),
-                    "home": f"{ha['hw']}-{ha['hl']}",
-                    "away": f"{ha['aw']}-{ha['al']}",
-                    "l10": f"{l10_wins}-{l10_losses}",
-                    "rs": rs,
-                    "ra": ra,
-                    "is_human": r["team_id"] in human_team_ids,
-                    "is_mine": r["team_id"] == my_team_id,
-                }
-            )
+        teams = standings_rows(db, league_id, season_id, my_team_id)
 
         # ── My next 5 upcoming games ──────────────────────────────────────────
         upcoming = []
-        if my_team_id:
+        if my_team_id and not past_season:
             for g_row in game_repo.get_team_upcoming(season_id, my_team_id, limit=5):
                 is_home = g_row["home_team_id"] == my_team_id
                 opp_city = g_row["away_city"] if is_home else g_row["home_city"]
@@ -151,7 +163,7 @@ def standings_context(
 
         # ── Injury report ─────────────────────────────────────────────────────
         injuries = []
-        if my_team_id:
+        if my_team_id and not past_season:
             injuries = inj_repo.get_team_injury_report(my_team_id, league_id)
 
     return {

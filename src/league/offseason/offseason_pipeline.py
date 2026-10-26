@@ -144,6 +144,14 @@ class OffseasonPipeline:
         else:
             log.info("Skipping CSV export (already done)")
 
+    def run_final(self, season_id: str, league_id: str) -> None:
+        """The league's last season is over: archive it for the history pages.
+        No aging, retirements or draft, since no season follows."""
+        self.league_id = league_id
+        if not self.os_repo.is_done(season_id, "archive"):
+            self._archive(season_id)
+            self._mark_done(season_id, "archive")
+
     def _archive(self, season_id: str) -> None:
         """Snapshot player skills at end of season, scoped to this league."""
         if self.league_id:

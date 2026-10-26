@@ -5,12 +5,18 @@
 from __future__ import annotations
 
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.team_repo import TeamRepository
 
 
-def playoffs_context(db, season_id: str | None, my_team_id: str | None) -> dict:
-    bracket = load_bracket(db, season_id, my_team_id) if season_id else []
+def playoffs_context(
+    db, league_id: str, season_id: str | None, my_team_id: str | None
+) -> dict:
+    human_team_ids = GMRepository(db).get_human_team_ids(league_id)
+    bracket = (
+        load_bracket(db, season_id, my_team_id, human_team_ids) if season_id else []
+    )
     champion = None
     if bracket and bracket[-1]["decided"]:
         finals = bracket[-1]["series"][0]
@@ -20,7 +26,12 @@ def playoffs_context(db, season_id: str | None, my_team_id: str | None) -> dict:
     return {"bracket": bracket, "champion": champion, "my_team_id": my_team_id}
 
 
-def load_bracket(db, season_id: str, my_team_id: str | None) -> list:
+def load_bracket(
+    db,
+    season_id: str,
+    my_team_id: str | None,
+    human_team_ids: set[str] | None = None,
+) -> list:
     """Load full bracket state for template rendering."""
     ROUND_DEFS = [
         {"name": "Round 1", "series_names": ["1v8", "4v5", "2v7", "3v6"], "best_of": 5},
@@ -85,6 +96,7 @@ def load_bracket(db, season_id: str, my_team_id: str | None) -> list:
                     "name": _team_name(tid),
                     "wins": wins,
                     "is_mine": tid == my_team_id,
+                    "is_human": tid in (human_team_ids or ()) and tid != my_team_id,
                     "pending": len(games) == 0,
                 }
             )

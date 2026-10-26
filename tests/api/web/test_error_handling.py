@@ -11,9 +11,11 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from src.api.dependencies import (
+    NotLeagueGM,
     get_commissioner,
     get_current_gm,
     get_current_user,
+    require_active_league,
     require_single_player,
 )
 from src.api.main import app
@@ -36,6 +38,7 @@ def client(conn):
     app.dependency_overrides[get_current_gm] = lambda: gm
     app.dependency_overrides[get_commissioner] = lambda: gm
     app.dependency_overrides[require_single_player] = lambda: None
+    app.dependency_overrides[require_active_league] = lambda: None
     yield TestClient(app, raise_server_exceptions=False)
     app.dependency_overrides.clear()
 
@@ -109,6 +112,37 @@ class TestHttpExceptions:
         assert r.status_code == 403
         assert r.json() == {"detail": "Not a GM in this league"}
 
+    def test_page_for_league_im_not_in_goes_to_league_list(self, client):
+        """A refresh on a deleted league, or a link to someone else's."""
+
+        def not_a_gm():
+            raise NotLeagueGM()
+
+        app.dependency_overrides[get_current_user] = lambda: {"id": "u-1"}
+        app.dependency_overrides[get_current_gm] = not_a_gm
+        r = client.get(
+            f"/leagues/{LEAGUE}/",
+            headers={"Accept": "text/html"},
+            follow_redirects=False,
+        )
+
+        assert r.status_code == 303
+        assert r.headers["location"] == "/leagues/"
+
+    @pytest.mark.parametrize(
+        "headers",
+        [{"Accept": "application/json"}, {"Accept": "text/html", "HX-Request": "true"}],
+    )
+    def test_fetch_for_league_im_not_in_stays_403(self, client, headers):
+        def not_a_gm():
+            raise NotLeagueGM()
+
+        app.dependency_overrides[get_current_gm] = not_a_gm
+        r = client.get(f"/leagues/{LEAGUE}/lobby/gms", headers=headers)
+
+        assert r.status_code == 403
+        assert r.json() == {"detail": "Not a GM in this league"}
+
     def test_unauthorized_redirects_home(self, client):
         def unauthorized():
             raise HTTPException(status_code=401, detail="Please log in")
@@ -163,7 +197,13 @@ class TestNewLeagueSettings:
 
     @pytest.mark.parametrize(
         "field, value",
-        [("pace_control", "scheduled"), ("sim_period_days", "0")],
+        [
+            ("mode", "turbo"),
+            ("pace_control", "scheduled"),
+            ("sim_period_days", "0"),
+            ("num_seasons", "0"),
+            ("num_seasons", "421"),
+        ],
     )
     def test_bad_ready_check_setting_is_rejected(self, user_client, field, value):
         r = user_client.post("/leagues/new", data={"name": "L", field: value})

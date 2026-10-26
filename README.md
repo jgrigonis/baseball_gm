@@ -44,6 +44,21 @@ A handy script alias for your .zshrc file:
 
 `alias cligr='python scripts/cligr.py'`
 
+### Reset every league but keep user accounts
+
+After pulling new code, instead of dropping the whole database you can delete
+every league and keep everyone's account. Stop the web server first, then run
+this from the repo root:
+
+`uv run python scripts/cligr.py reset-leagues`
+
+It lists the leagues it will delete and asks first; add `--yes` to skip the
+question. Each league goes with everything it owns (GMs, drafts, seasons,
+games, stats, teams and players) and its `team_files/<league_id>` folder, the
+same cleanup as when the last GM leaves a league. It reads `DATABASE_URL` and
+runs any pending migrations first, like the web server does. Then start the
+server again with `./start_webserver.sh`.
+
 ### Editor Notes
 
 To get rid of syntax highlight errors in the .html files

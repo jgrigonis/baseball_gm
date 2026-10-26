@@ -7,7 +7,7 @@
 
   <div class="page-header">
     <h1 class="page-title">{{ league_name }}</h1>
-    <span class="page-subtitle">Waiting for league to start</span>
+    <span class="page-subtitle" id="lobby-subtitle">Waiting for league to start</span>
   </div>
 
   <div class="grid-2" style="gap:24px;align-items:start;">
@@ -20,13 +20,36 @@
         <div class="card-body">
           <table class="data-table">
             <tbody>
-              <tr><td style="color:var(--text-dim);">Mode</td><td class="team-name">{{ league_mode | title }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Teams</td><td>{{ league_num_teams }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Decision window</td><td>{{ league_decision_window_sec }}s</td></tr>
-              <tr><td style="color:var(--text-dim);">Draft window</td><td>{{ league_draft_window_sec }}s</td></tr>
-              <tr><td style="color:var(--text-dim);">Re-entry</td><td>{{ 'Enabled' if league_reentry_enabled else 'Disabled' }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Pace</td><td>{{ league_pace_control | title }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Days per sim period</td><td>{{ league_sim_period_days }}</td></tr>
+              {% set timer_note = " Only used with Timer pace." if league_pace_control != "timer" else "" %}
+              {% set settings = [
+                ("Mode", league_mode.label,
+                 league_mode.description),
+                ("Teams", league_num_teams,
+                 "Total teams in the league. Each human GM runs one; AI GMs run the rest."),
+                ("Decision window", league_decision_window_sec ~ "s",
+                 "How long GMs get to make moves between sim periods. The league moves on early once every GM clicks Ready." ~ timer_note),
+                ("Draft window", league_draft_window_sec ~ "s",
+                 "How long GMs get to set their draft before it runs. It runs early once every GM clicks Ready." ~ timer_note),
+                ("Lineup window", league_lineup_window_sec ~ "s",
+                 "How long GMs get after the draft to set their first lineup before the season starts." ~ timer_note),
+                ("Re-entry", "Enabled" if league_reentry_enabled else "Disabled",
+                 "Whether a fired GM can be handed another open team instead of sitting out. GM firing isn't in the game yet, so this has no effect for now."),
+                ("Pace", league_pace_control | title,
+                 "Timer: the league moves on when every GM clicks Ready, or when the window runs out." if league_pace_control == "timer"
+                 else "Confirmed: the league only moves on when every GM clicks Ready. There's no clock."),
+                ("Days per sim period", league_sim_period_days,
+                 "How many days of the regular season each sim period plays before GMs get their next decision window."),
+                ("Seasons", league_num_seasons,
+                 "How many seasons the league runs before it ends."),
+              ] %}
+              {% for label, value, tip in settings %}
+              <tr>
+                <td style="color:var(--text-dim);">
+                  <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
+                </td>
+                <td{% if loop.first %} class="team-name"{% endif %}>{{ value }}</td>
+              </tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
@@ -69,5 +92,30 @@ function onStartLeague(form) {
   btn.textContent = 'Starting…';
   spinner.style.display = 'flex';
 }
+
+// Stop the GM list's poll for good once this page can't reach the league:
+// signed out (the server redirects to the landing page), or the league or
+// this GM is gone, e.g. a window left open on a deleted league or a wiped
+// database. Swapping in a copy without the hx- attributes ends htmx's poll.
+document.body.addEventListener('htmx:beforeSwap', function(evt) {
+  var elt = evt.detail.elt;
+  if (elt.id !== 'lobby-gms') return;
+  var xhr = evt.detail.xhr;
+  var url = elt.getAttribute('hx-get');
+  var redirected = xhr.responseURL && new URL(xhr.responseURL).pathname !== url;
+  if (!redirected && [401, 403, 404].indexOf(xhr.status) === -1) return;
+  evt.detail.shouldSwap = false;
+  evt.detail.isError = false;
+  var copy = elt.cloneNode(true);
+  copy.removeAttribute('hx-get');
+  copy.removeAttribute('hx-trigger');
+  copy.removeAttribute('hx-swap');
+  copy.querySelector('.card-body').innerHTML =
+    '<p style="color:var(--text-dim);font-size:12px;">This league is no longer available (signed out or league removed). Reload the page.</p>';
+  elt.replaceWith(copy);
+  document.getElementById('lobby-subtitle').textContent = 'League no longer available';
+  var start = document.getElementById('start-form');
+  if (start) start.style.display = 'none';
+});
 </script>
 {% endblock %}

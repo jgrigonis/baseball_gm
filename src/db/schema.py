@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     -- GM layer fields
     join_code            TEXT UNIQUE,
     mode                 TEXT NOT NULL DEFAULT 'blitz'
-                             CHECK (mode IN ('blitz', 'longform')),
+                             CHECK (mode IN ('blitz', 'speed_blitz', 'longform')),
     num_teams            INTEGER NOT NULL DEFAULT 30,
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
     reentry_enabled      BOOLEAN NOT NULL DEFAULT FALSE,
@@ -27,12 +27,15 @@ CREATE TABLE IF NOT EXISTS leagues (
                              )),
     commissioner_gm_id   TEXT,
     draft_window_sec     INTEGER NOT NULL DEFAULT 300,
+    lineup_window_sec    INTEGER NOT NULL DEFAULT 600,  -- the first period after the draft
 
     -- Ready-check (multiplayer). A GM is ready when gms.ready_period equals
     -- sim_period; moving to the next period un-readies everyone at once.
     sim_period           INTEGER NOT NULL DEFAULT 0,
     period_deadline      TIMESTAMPTZ,      -- end of the Decision Window (timer pace)
     sim_period_days      INTEGER NOT NULL DEFAULT 3,  -- season days per period
+    num_seasons          INTEGER NOT NULL DEFAULT 10, -- how many seasons the league runs
+    last_played_at       TIMESTAMPTZ,      -- last real-world time games were played or the league moved on
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -165,7 +168,7 @@ CREATE TABLE IF NOT EXISTS team_rotation_pointer (
     updated_at TEXT    NOT NULL DEFAULT (NOW()),
 
     PRIMARY KEY (team_id, season_id, series_id),
-    -- series_id = '' for regular season, series.id for playoffs
+    -- series_id = '' is the season pointer, used for regular season and playoffs
     
     FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE CASCADE,
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE

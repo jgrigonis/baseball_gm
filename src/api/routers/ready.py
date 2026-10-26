@@ -10,7 +10,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from src.api.dependencies import DB, GM
+from src.api.dependencies import DB, GM, ActiveLeague
 from src.api.services import ready_check
 
 router = APIRouter(tags=["web"])
@@ -29,13 +29,13 @@ def sim_status(league_id: str, db: DB, gm: GM):
 
 
 @router.post("/leagues/{league_id}/ready")
-def mark_ready(league_id: str, db: DB, gm: GM):
+def mark_ready(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
     ready_check.set_ready(db, league_id, gm["id"], True)
     return _status(db, league_id, gm)
 
 
 @router.delete("/leagues/{league_id}/ready")
-def unmark_ready(league_id: str, db: DB, gm: GM):
+def unmark_ready(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
     ready_check.set_ready(db, league_id, gm["id"], False)
     return _status(db, league_id, gm)
 
@@ -45,6 +45,6 @@ class AwayRequest(BaseModel):
 
 
 @router.post("/leagues/{league_id}/away")
-def mark_away(league_id: str, body: AwayRequest, db: DB, gm: GM):
+def mark_away(league_id: str, body: AwayRequest, db: DB, gm: GM, _active: ActiveLeague):
     ready_check.set_away(db, gm["id"], body.away)
     return _status(db, league_id, gm)
