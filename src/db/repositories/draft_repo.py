@@ -110,6 +110,14 @@ class DraftRepository:
         if row:
             return row["id"]
 
+    def get_for_season(self, league_id: str, season_id: str) -> dict | None:
+        """Return the draft held before this season, or None."""
+        row = self.conn.execute(
+            "SELECT * FROM drafts WHERE league_id = %s AND season_id = %s",
+            (league_id, season_id),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_draft(self, draft_id: str) -> dict | None:
         draft = self.conn.execute(
             "SELECT id, league_id, season_id, format, state FROM drafts WHERE id = %s",

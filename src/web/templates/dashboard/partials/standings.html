@@ -3,13 +3,23 @@
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:16px 24px 12px;border-bottom:1px solid var(--border);">
   <div class="page-header" style="margin-bottom:0;">
-    <h1 class="page-title">Standings</h1>
+    <h1 class="page-title">{% if past_season %}{{ past_season.year }} {% endif %}Standings</h1>
+    {% if past_season %}
+    <span class="page-subtitle">Final</span>
+    <a href="/leagues/{{ league_id }}/standings"
+       hx-get="/leagues/{{ league_id }}/standings"
+       hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+       style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+      Current season →
+    </a>
+    {% else %}
     {% if games_played %}
     <span class="page-subtitle">{{ games_played }} league games played</span>
     {% endif %}
     <div style="margin-left:auto;">
       {% include "dashboard/partials/_play_button.html" %}
     </div>
+    {% endif %}
   </div>
 </div>
 
@@ -132,6 +142,7 @@
       {% endif %}
 
       {# Injury report #}
+      {% if not past_season %}
       <div class="card">
         <div class="card-header" style="padding:8px 14px;">
           <span class="card-title">Injury Report</span>
@@ -156,6 +167,7 @@
                       color:var(--green);">✓ No injuries</div>
         {% endif %}
       </div>
+      {% endif %}
 
     </div>
   </div>

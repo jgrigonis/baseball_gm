@@ -5,13 +5,42 @@
 
 from __future__ import annotations
 
-from src.db.repositories.games_repo import GameRepository
+from src.api.view_models.draft import draft_rounds
+from src.api.view_models.leaders import leaders_context
+from src.api.view_models.playoffs import playoffs_context
+from src.api.view_models.standings import standings_rows
+from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
-from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.stats import formulas
+
+
+def past_season(
+    db, league_id: str, season_id: str | None, current_season_id: str | None
+) -> dict | None:
+    """The season row a history link asked for, when it belongs to the league
+    and isn't the season the tabs already show; otherwise None."""
+    if not season_id or season_id == current_season_id:
+        return None
+    return SeasonRepository(db).get_for_league(league_id, season_id)
+
+
+# Leader categories the summary lists, in display order: (pane, label).
+SUMMARY_LEADER_CATS = [
+    ("bat", "AVG"),
+    ("bat", "HR"),
+    ("bat", "RBI"),
+    ("bat", "SB"),
+    ("pit", "ERA"),
+    ("pit", "W"),
+    ("pit", "K"),
+    ("pit", "SV"),
+]
+# The top leader card, left to right.
+TOP_LEADER_CATS = [("bat", "AVG"), ("bat", "HR"), ("pit", "ERA"), ("pit", "K")]
+SUMMARY_LEADERS_SHOWN = 5
 
 
 def season_summary_context(
@@ -26,75 +55,106 @@ def season_summary_context(
     season_repo = SeasonRepository(db)
     series_repo = SeriesRepository(db)
     tg_repo = TeamGameRepository(db)
-    game_repo = GameRepository(db)
-    pss_repo = PlayerSeasonStatsRepository(db)
 
     # Use explicit season_id (from history link) or fall back to last season with series
+    if season_id and not season_repo.get_for_league(league_id, season_id):
+        season_id = None
     if not season_id:
         season_id = season_repo.get_last_with_series(league_id) or default_season_id
 
-    # My team record
-    my_record = None
-    if my_team_id and season_id:
-        my_record = tg_repo.get_team_wl(my_team_id, season_id)
+    ctx = {
+        "summary_season_id": season_id,
+        "my_record": None,
+        "champion": None,
+        "best_record": None,
+        "my_playoff_result": None,
+        "top_leaders": [],
+        "leader_cats": [],
+        "standings": [],
+        "playoff_rounds": [],
+        "draft_round": None,
+        "draft_rounds_total": 0,
+        "season_year": None,
+    }
+    if not season_id:
+        return ctx
+
+    s = season_repo.get_season(season_id)
+    ctx["season_year"] = s["year"] if s else None
+
+    # My team record and playoff result
+    if my_team_id:
+        ctx["my_record"] = tg_repo.get_team_wl(my_team_id, season_id)
+        ctx["my_playoff_result"] = series_repo.get_team_playoff_result(
+            my_team_id, season_id
+        )
 
     # Champion
-    champion = None
-    if season_id:
-        champ = series_repo.get_champion(season_id)
-        if champ:
-            champion = {
-                "team_id": champ["team_id"],
-                "name": f"{champ['city']} {champ['mascot']}",
-                "is_mine": champ["team_id"] == my_team_id,
-            }
+    champ = series_repo.get_champion(season_id)
+    if champ:
+        ctx["champion"] = {
+            "team_id": champ["team_id"],
+            "name": f"{champ['city']} {champ['mascot']}",
+            "is_mine": champ["team_id"] == my_team_id,
+        }
 
-    # My playoff result
-    my_playoff_result = None
-    if my_team_id and season_id:
-        my_playoff_result = series_repo.get_team_playoff_result(my_team_id, season_id)
+    # Final standings; the first row is the best regular-season record
+    standings = standings_rows(db, league_id, season_id, my_team_id)
+    if standings and standings[0]["wins"] + standings[0]["losses"]:
+        ctx["standings"] = standings
+        best = standings[0]
+        ctx["best_record"] = {
+            "team_id": best["team_id"],
+            "name": f"{best['city']} {best['mascot']}",
+            "wins": best["wins"],
+            "losses": best["losses"],
+            "is_mine": best["is_mine"],
+        }
 
-    # Stat leaders — compute qualification thresholds from actual games played
-    bat_leader = pit_leader = None
-    if season_id:
-        games_total = game_repo.get_completed_regular_season_count(season_id)
-        num_teams = season_repo.get_team_count(season_id) or 30
-        games_per_team = (games_total * 2) / num_teams if num_teams else 0
-        min_ab = int(3.1 * games_per_team)
-        min_outs = int(3 * games_per_team)
-
-        br = pss_repo.get_batting_leader(league_id, season_id, min_ab)
-        if br:
-            bat_leader = {
-                "name": f"{br['first_name']} {br['last_name']}",
-                "team": f"{br['city']} {br['mascot']}",
-                "stat": f"{br['avg']:.3f}",
-                "label": "AVG",
-            }
-
-        pr = pss_repo.get_pitching_leader(league_id, season_id, min_outs)
-        if pr:
-            pit_leader = {
-                "name": f"{pr['first_name']} {pr['last_name']}",
-                "team": f"{pr['city']} {pr['mascot']}",
-                "stat": f"{pr['era']:.2f}",
-                "label": "ERA",
-            }
-
-    # Season year
-    season_year = None
-    if season_id:
-        s = season_repo.get_season(season_id)
-        season_year = s["year"] if s else None
-
-    return {
-        "my_record": my_record,
-        "champion": champion,
-        "my_playoff_result": my_playoff_result,
-        "bat_leader": bat_leader,
-        "pit_leader": pit_leader,
-        "season_year": season_year,
+    # Stat leaders, the same lists the Leaders tab shows for this season
+    leaders = leaders_context(db, league_id, season_id, my_team_id)
+    cats = {
+        "bat": {c["label"]: c for c in leaders["bat_cats"]},
+        "pit": {c["label"]: c for c in leaders["pit_cats"]},
     }
+    for pane, label in TOP_LEADER_CATS:
+        cat = cats[pane].get(label)
+        if cat and cat["rows"]:
+            ctx["top_leaders"].append({"label": label, **cat["rows"][0]})
+    for pane, label in SUMMARY_LEADER_CATS:
+        cat = cats[pane].get(label)
+        if cat and cat["rows"]:
+            ctx["leader_cats"].append(
+                {"label": label, "rows": cat["rows"][:SUMMARY_LEADERS_SHOWN]}
+            )
+
+    # Playoff results, one line per decided or started series
+    bracket = playoffs_context(db, league_id, season_id, my_team_id)["bracket"]
+    for rd in bracket:
+        series = []
+        for sr in rd["series"]:
+            if len(sr["teams"]) < 2 or not sr["games_played"]:
+                continue
+            ordered = sorted(sr["teams"], key=lambda t: -t["wins"])
+            series.append(
+                {
+                    "leader": ordered[0],
+                    "trailer": ordered[1],
+                    "decided": sr["decided"],
+                }
+            )
+        if series:
+            ctx["playoff_rounds"].append({"name": rd["name"], "series": series})
+
+    # The draft held before this season: its first round here, the rest a link away
+    draft = DraftRepository(db).get_for_season(league_id, season_id)
+    if draft:
+        rounds = draft_rounds(db, league_id, draft["id"], my_team_id)
+        if rounds:
+            ctx["draft_round"] = rounds[0]
+            ctx["draft_rounds_total"] = len(rounds)
+
+    return ctx
 
 
 def retirement_context(db, league_id: str, my_team_id: str | None) -> dict:
@@ -148,10 +208,12 @@ def retirement_context(db, league_id: str, my_team_id: str | None) -> dict:
 
 
 def history_context(db, league_id: str, my_team_id: str | None) -> dict:
-    """One row per season: champion and the GM's record."""
+    """One row per season: champion, the GM's record, and whether the season
+    has a draft to link to."""
     season_repo = SeasonRepository(db)
     series_repo = SeriesRepository(db)
     tg_repo = TeamGameRepository(db)
+    draft_repo = DraftRepository(db)
 
     seasons = season_repo.get_seasons_for_league(league_id)
 
@@ -174,6 +236,7 @@ def history_context(db, league_id: str, my_team_id: str | None) -> dict:
                 "champion": champion_name,
                 "my_w": my_w,
                 "my_l": my_l,
+                "has_draft": draft_repo.get_for_season(league_id, s["id"]) is not None,
             }
         )
 
