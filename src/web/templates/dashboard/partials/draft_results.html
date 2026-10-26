@@ -2,7 +2,7 @@
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:16px 24px 12px;border-bottom:1px solid var(--border);">
   <div class="page-header" style="margin-bottom:0;">
-    <h1 class="page-title">Draft Results</h1>
+    <h1 class="page-title">{% if draft_year %}{{ draft_year }} {% endif %}Draft Results</h1>
     <span class="page-subtitle">{{ rounds|length }} rounds</span>
     <div style="display:flex;gap:16px;align-items:center;margin-left:20px;
                 font-family:var(--font-mono);font-size:11px;">

@@ -1,36 +1,55 @@
 {# templates/dashboard/partials/season_summary.html #}
-{# Season Summary — shown after playoffs complete #}
-<div style="max-width:600px;margin:40px auto;padding:0 24px;">
+{# Season Summary — shown after playoffs complete, and from the History tab #}
+{% macro tab_link(path, label) -%}
+<a href="/leagues/{{ league_id }}/{{ path }}"
+   hx-get="/leagues/{{ league_id }}/{{ path }}"
+   hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+   class="ss-link">{{ label }}</a>
+{%- endmacro %}
+{% set sid = summary_season_id %}
+
+<div class="ss-page">
 
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">
-      Season {{ season_year }} Complete
+    <div class="ss-kicker" style="margin-bottom:8px;">
+      Season {{ season_year }}{% if champion %} Complete{% endif %}
     </div>
     <h1 style="font-size:28px;font-weight:800;margin:0;">Season Summary</h1>
   </div>
 
-  {# Champion #}
-  {% if champion %}
-  <div class="card" style="margin-bottom:16px;text-align:center;padding:24px;">
-    <div style="font-size:32px;margin-bottom:8px;">🏆</div>
-    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">
-      World Champion
+  {# Top row: champion and best regular-season record #}
+  {% if champion or best_record %}
+  <div class="card ss-top">
+    {% if champion %}
+    <div class="ss-top-cell">
+      <div style="font-size:32px;margin-bottom:8px;">🏆</div>
+      <div class="ss-kicker" style="margin-bottom:4px;">World Champion</div>
+      <div class="ss-top-name" style="color:{% if champion.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+        {{ champion.name }}{% if champion.is_mine %}&nbsp;⭐{% endif %}
+      </div>
     </div>
-    <div style="font-size:22px;font-weight:700;
-                color:{% if champion.is_mine %}var(--amber){% else %}var(--text){% endif %};">
-      {{ champion.name }}
-      {% if champion.is_mine %}&nbsp;⭐{% endif %}
+    {% endif %}
+    {% if best_record %}
+    <div class="ss-top-cell">
+      <div style="font-size:32px;margin-bottom:8px;">📈</div>
+      <div class="ss-kicker" style="margin-bottom:4px;">Best Record</div>
+      <div class="ss-top-name" style="color:{% if best_record.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+        {{ best_record.name }}{% if best_record.is_mine %}&nbsp;⭐{% endif %}
+      </div>
+      <div style="font-family:var(--font-mono);font-size:14px;margin-top:4px;">
+        <span style="color:var(--green);">{{ best_record.wins }}</span>
+        <span style="color:var(--text-dim);">–</span>
+        <span style="color:var(--red);">{{ best_record.losses }}</span>
+      </div>
     </div>
+    {% endif %}
   </div>
   {% endif %}
 
   {# My team record #}
   {% if my_record %}
   <div class="card" style="margin-bottom:16px;padding:20px 24px;">
-    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">
+    <div class="ss-kicker" style="margin-bottom:12px;">
       {{ my_team_name or 'Your Team' }}
     </div>
     <div style="display:flex;gap:32px;align-items:baseline;">
@@ -58,29 +77,26 @@
   </div>
   {% endif %}
 
-  {# Stat leaders #}
-  {% if bat_leader or pit_leader %}
+  {# Bottom row: one leader each for AVG, HR, ERA and K #}
+  {% if top_leaders %}
   <div class="card" style="margin-bottom:24px;padding:20px 24px;">
-    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">
-      League Leaders
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      {% for leader in [bat_leader, pit_leader] %}
-      {% if leader %}
-      <div>
+    <div class="ss-kicker" style="margin-bottom:12px;">League Leaders</div>
+    <div class="ss-leader-row">
+      {% for leader in top_leaders %}
+      <div class="ss-clickable" onclick="openPlayerPanel('{{ leader.player_id }}')"
+           title="View {{ leader.name }}">
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);
                     margin-bottom:2px;">{{ leader.label }}</div>
         <div style="font-size:22px;font-weight:700;font-family:var(--font-mono);
-                    color:var(--amber);">{{ leader.stat }}</div>
-        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;">
+                    color:var(--amber);">{{ leader.val }}</div>
+        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
+                    color:{% if leader.is_mine %}var(--green){% else %}var(--text){% endif %};">
           {{ leader.name }}
         </div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
           {{ leader.team }}
         </div>
       </div>
-      {% endif %}
       {% endfor %}
     </div>
   </div>
@@ -88,7 +104,7 @@
 
   {# Begin Offseason / continue to draft #}
   {% if league_state == 'offseason' and not multiplayer %}
-  <div style="text-align:center;">
+  <div style="text-align:center;margin-bottom:32px;">
     <button id="begin-offseason-btn" onclick="beginOffseason()"
             class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
       Begin Offseason →
@@ -97,11 +113,11 @@
                                        color:var(--text-dim);margin-top:12px;"></div>
   </div>
   {% elif league_state == 'complete' %}
-  <div style="text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--amber);">
+  <div style="text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--amber);margin-bottom:32px;">
     That was the league's final season. The league is complete.
   </div>
   {% elif league_state == 'draft' %}
-  <div style="text-align:center;">
+  <div style="text-align:center;margin-bottom:32px;">
     <a href="/leagues/{{ league_id }}/retirement"
        class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
       View Retirements →
@@ -109,7 +125,172 @@
   </div>
   {% endif %}
 
+  <div class="ss-two-col">
+
+    {# Final standings #}
+    {% if standings %}
+    <div class="card">
+      <div class="card-header ss-card-header">
+        <span class="card-title">Standings</span>
+        {{ tab_link('standings?season_id=' ~ sid, 'Full standings →') }}
+      </div>
+      <table class="data-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th style="width:28px;">#</th>
+            <th>Team</th>
+            <th style="text-align:center;">W</th>
+            <th style="text-align:center;">L</th>
+            <th style="text-align:center;">PCT</th>
+            <th style="text-align:center;">GB</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for team in standings %}
+          <tr class="{% if team.is_mine %}ss-mine{% elif team.is_human %}ss-human{% endif %}">
+            <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">{{ team.rank }}</td>
+            <td style="font-weight:600;
+                       color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
+              {{ team.city }} {{ team.mascot }}
+            </td>
+            <td class="ss-num">{{ team.wins }}</td>
+            <td class="ss-num">{{ team.losses }}</td>
+            <td class="ss-num">{{ team.pct }}</td>
+            <td class="ss-num" style="color:var(--text-dim);">{{ team.gb }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {# Playoff results #}
+    {% if playoff_rounds %}
+    <div class="card" style="align-self:start;">
+      <div class="card-header ss-card-header">
+        <span class="card-title">Playoffs</span>
+        {{ tab_link('playoffs?season_id=' ~ sid, 'Bracket →') }}
+      </div>
+      {% for rd in playoff_rounds %}
+      <div style="padding:10px 14px;{% if not loop.first %}border-top:1px solid var(--border);{% endif %}">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);
+                    letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">{{ rd.name }}</div>
+        {% for sr in rd.series %}
+        <div style="font-size:12px;padding:2px 0;display:flex;gap:6px;align-items:baseline;">
+          <span style="font-weight:600;
+                       color:{% if sr.leader.is_mine %}var(--amber){% elif sr.decided %}var(--green){% else %}var(--text){% endif %};">
+            {{ sr.leader.name }}</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+            {% if sr.decided %}def.{% else %}vs{% endif %}</span>
+          <span style="color:{% if sr.trailer.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
+            {{ sr.trailer.name }}</span>
+          <span style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--text);">
+            {{ sr.leader.wins }}–{{ sr.trailer.wins }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# Season leaders, top five per category #}
+  {% if leader_cats %}
+  <div class="ss-section-head">
+    <span class="ss-kicker">Season Leaders</span>
+    {{ tab_link('leaders?season=' ~ sid, 'All leaders →') }}
+  </div>
+  <div class="ss-grid">
+    {% for cat in leader_cats %}
+    <div class="card" style="min-width:0;">
+      <div class="card-header" style="padding:8px 12px;">
+        <span class="card-title" style="font-size:13px;letter-spacing:.06em;">{{ cat.label }}</span>
+      </div>
+      {% for row in cat.rows %}
+      <div class="ss-clickable ss-list-row{% if row.is_mine %} ss-mine{% endif %}"
+           onclick="openPlayerPanel('{{ row.player_id }}')">
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">{{ row.rank }}</span>
+        <div style="min-width:0;">
+          <div class="ss-ellipsis" style="font-size:12px;font-weight:600;
+                      color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ row.name }}</div>
+          <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">{{ row.team }}</div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--amber);">{{ row.val }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# The draft held before this season: first round here, the rest a link away #}
+  {% if draft_round %}
+  <div class="ss-section-head">
+    <span class="ss-kicker">{{ season_year }} Draft · Round 1</span>
+    {{ tab_link('draft/results?season_id=' ~ sid,
+                'All ' ~ draft_rounds_total ~ ' rounds →' if draft_rounds_total > 1 else 'Draft results →') }}
+  </div>
+  <div class="card ss-draft">
+    {% for pick in draft_round.picks %}
+    <div class="ss-clickable ss-list-row{% if pick.is_mine %} ss-mine{% elif pick.is_human %} ss-human{% endif %}"
+         onclick="openPlayerPanel('{{ pick.player_id }}')">
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">#{{ pick.pick_number }}</span>
+      <div style="min-width:0;">
+        <div class="ss-ellipsis" style="font-size:12px;font-weight:600;
+                    color:{% if pick.is_mine %}var(--green){% elif pick.is_human %}var(--sky){% else %}var(--text){% endif %};">
+          {{ pick.player_name }}</div>
+        <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          {{ pick.position }} · {{ pick.team_name }}</div>
+      </div>
+      <span></span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
 </div>
+
+<style>
+.ss-page { max-width:960px;margin:40px auto;padding:0 24px; }
+.ss-kicker {
+  font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+  letter-spacing:.08em;text-transform:uppercase;
+}
+.ss-top { margin-bottom:16px;padding:24px;display:flex;flex-wrap:wrap;gap:24px; }
+.ss-top-cell { flex:1 1 220px;text-align:center; }
+.ss-top-name { font-size:22px;font-weight:700; }
+.ss-leader-row { display:grid;grid-template-columns:repeat(4,1fr);gap:16px; }
+.ss-clickable { cursor:pointer;transition:background .08s; }
+.ss-clickable:hover { background:var(--bg-3); }
+.ss-two-col {
+  display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;
+  align-items:start;margin-bottom:24px;
+}
+.ss-card-header { display:flex;align-items:center;justify-content:space-between;padding:8px 14px; }
+.ss-link { font-family:var(--font-mono);font-size:11px;color:var(--text-dim);text-decoration:none; }
+.ss-link:hover { color:var(--amber); }
+.ss-num { text-align:center;font-family:var(--font-mono); }
+.ss-mine  { background:var(--green-dim); }
+.ss-human { background:var(--sky-dim); }
+.ss-section-head {
+  display:flex;align-items:baseline;justify-content:space-between;margin:0 0 12px;
+}
+.ss-grid {
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:12px;margin-bottom:24px;
+}
+.ss-list-row {
+  display:grid;grid-template-columns:26px 1fr auto;gap:6px;align-items:baseline;
+  padding:6px 12px;border-top:1px solid var(--border);
+}
+.ss-draft { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-bottom:24px; }
+.ss-ellipsis { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+@media (max-width: 720px) {
+  .ss-leader-row { grid-template-columns:repeat(2,1fr); }
+  .ss-two-col { grid-template-columns:1fr; }
+}
+</style>
 
 <script>
 (function(){

@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GM, IsHTMX, User
 from src.api.view_models.schedule import schedule_context
+from src.api.view_models.seasons import past_season
 from src.api.view_models.standings import standings_context
 from src.web.utils import _shell_ctx, tab_response
 
@@ -23,10 +24,22 @@ def standings(
     db: DB,
     user: User,
     gm: GM,
+    season_id: str | None = None,
 ):
+    """`season_id` (from the History tab) shows that season's final standings."""
     ctx = _shell_ctx(request, db, gm, league_id, "standings", user)
     my_team_id = gm["team_id"] if gm else None
-    ctx.update(standings_context(db, league_id, ctx["season_id"], my_team_id))
+    past = past_season(db, league_id, season_id, ctx["season_id"])
+    ctx.update(
+        standings_context(
+            db,
+            league_id,
+            past["id"] if past else ctx["season_id"],
+            my_team_id,
+            past_season=bool(past),
+        )
+    )
+    ctx["past_season"] = past
     return tab_response(request, htmx, "dashboard/partials/standings.html", ctx)
 
 
