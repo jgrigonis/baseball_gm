@@ -17,10 +17,31 @@ def is_htmx(request: Request) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
-def get_current_user(db: DB, gm_session: str = Cookie(None)):
+class PasswordChangeRequired(HTTPException):
+    """The user has to choose a new password before going on: the default
+    admin, or someone whose password an admin set. Page loads are sent to the
+    change-password page (see main.py)."""
+
+    def __init__(self):
+        super().__init__(status_code=403, detail="Choose a new password first.")
+
+
+# Open to a user who still has to change their password.
+_PASSWORD_CHANGE_PATHS = ("/auth/change-password", "/auth/logout")
+
+
+def get_current_user(request: Request, db: DB, gm_session: str = Cookie(None)):
     user = UserRepository(db).get_by_token(gm_session)
     if not user:
         raise HTTPException(status_code=401, detail="Please log in")
+    if user["must_change_password"] and request.url.path not in _PASSWORD_CHANGE_PATHS:
+        raise PasswordChangeRequired()
+    return user
+
+
+def get_admin(user: Any = Depends(get_current_user)):
+    if not user["is_admin"]:
+        raise HTTPException(status_code=403, detail="Admins only")
     return user
 
 
@@ -100,13 +121,25 @@ def require_active_league(league_id: str, db: DB):
         raise HTTPException(status_code=409, detail="This league is complete.")
 
 
+def require_unpaused(league_id: str, db: DB):
+    """For routes that move a league on. An admin can pause a league, which
+    holds it where it is until they resume it."""
+    league = db.execute(
+        "SELECT is_paused FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
+    if league and league["is_paused"]:
+        raise HTTPException(status_code=409, detail="An admin has paused this league.")
+
+
 # ── TYPE ALIASES (For clean route signatures) ────────────────────────────────
 IsHTMX = Annotated[bool, Depends(is_htmx)]
 
 User = Annotated[Any, Depends(get_current_user)]
 OptionalUser = Annotated[Any, Depends(get_optional_user)]
+Admin = Annotated[Any, Depends(get_admin)]
 GM = Annotated[Any, Depends(get_current_gm)]
 GMOrViewer = Annotated[Any, Depends(get_gm_or_viewer)]
 Commissioner = Annotated[Any, Depends(get_commissioner)]
 SinglePlayer = Annotated[None, Depends(require_single_player)]
 ActiveLeague = Annotated[None, Depends(require_active_league)]
+Unpaused = Annotated[None, Depends(require_unpaused)]

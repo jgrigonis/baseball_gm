@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from src.api.dependencies import DB, GM, ActiveLeague, SinglePlayer
+from src.api.dependencies import DB, GM, ActiveLeague, SinglePlayer, Unpaused
 from src.api.schemas import SimRequest
 from src.api.services.injury_news import take_injury_news
 from src.api.services.offseason_service import run_offseason
@@ -30,6 +30,7 @@ def sim_games(
     gm: GM,
     _active: ActiveLeague,
     _: SinglePlayer,
+    _unpaused: Unpaused,
 ):
     """Sim N games (or until season end). Returns JSON with results summary."""
     with league_lock(db, league_id):
@@ -60,6 +61,7 @@ def sim_playoff_route(
     gm: GM,
     _active: ActiveLeague,
     _: SinglePlayer,
+    _unpaused: Unpaused,
     mode: str = "game",
 ):
     with league_lock(db, league_id):
@@ -77,6 +79,7 @@ def begin_offseason(
     gm: GM,
     _active: ActiveLeague,
     _: SinglePlayer,
+    _unpaused: Unpaused,
 ):
     with league_lock(db, league_id):
         result = run_offseason(league_id, db)

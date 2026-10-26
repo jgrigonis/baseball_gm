@@ -18,6 +18,11 @@ Usage examples:
   python cligr.py reset-leagues
   python cligr.py reset-leagues --yes
 
+  # Make a user an admin (creates the account if it doesn't exist, asking
+  # for a password); --reset-password also sets a new password
+  python cligr.py make-admin USERNAME
+  python cligr.py make-admin USERNAME --reset-password
+
   # Create a new league (no games run)
   python cligr.py new-league
   python cligr.py new-league --year 2030 --seed 42
@@ -40,6 +45,7 @@ Common options (all subcommands):
 import argparse
 import contextlib
 import datetime
+import getpass
 import io
 import logging
 import os
@@ -54,6 +60,8 @@ from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
 from src.db.init import init_db
 from src.db.locks import LeagueBusy, league_lock
+from src.api.services import admin as admin_service
+from src.api.services.passwords import password_error, username_error
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -61,6 +69,7 @@ from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.db.repositories.user_repo import UserRepository
 
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
@@ -173,6 +182,23 @@ def build_parser() -> argparse.ArgumentParser:
         "-y",
         action="store_true",
         help="Skip the confirmation prompt",
+    )
+
+    # ── make-admin ─────────────────────────────────────────────────────────────
+    make_admin = sub.add_parser(
+        "make-admin",
+        help="Give a user admin access, creating the account if needed",
+        description=(
+            "Give USERNAME access to the admin pages (/admin/). If there's no "
+            "such account, it is created and you're asked for its password. "
+            "Use it to get back in if the admin login is lost."
+        ),
+    )
+    make_admin.add_argument("username", help="The login name")
+    make_admin.add_argument(
+        "--reset-password",
+        action="store_true",
+        help="Also ask for a new password for an existing account",
     )
 
     # ── new-league ─────────────────────────────────────────────────────────────
@@ -1056,6 +1082,41 @@ def cmd_reset_leagues(args) -> None:
     print(f"\n✅ Deleted {len(leagues)} league(s), kept {users} user account(s).")
 
 
+def _ask_password() -> str:
+    while True:
+        password = getpass.getpass("Password: ")
+        error = password_error(password, getpass.getpass("Confirm password: "))
+        if not error:
+            return password
+        print(f"  ❌ {error}")
+
+
+def cmd_make_admin(args) -> None:
+    conn = get_connection()
+    init_db(conn)
+    user_repo = UserRepository(conn)
+
+    user = user_repo.get_by_username(args.username)
+    if not user:
+        error = username_error(args.username)
+        if error:
+            print(f"❌ {error}")
+            sys.exit(1)
+        print(f"No user {args.username!r} yet, creating one.")
+        admin_service.create_user(
+            conn, args.username, _ask_password(), None, True, must_change=False
+        )
+        print(f"✅ Created admin {args.username}.")
+        return
+
+    if args.reset_password:
+        admin_service.set_password(conn, user["id"], _ask_password(), must_change=False)
+        print(f"  New password set for {user['username']}.")
+    user_repo.set_admin(user["id"], True)
+    conn.commit()
+    print(f"✅ {user['username']} is an admin.")
+
+
 def _resolve_league(conn, league_id_arg):
     """Return league_id, prompting if needed."""
     if league_id_arg:
@@ -1145,6 +1206,9 @@ def main():
 
     elif args.command == "reset-leagues":
         cmd_reset_leagues(args)
+
+    elif args.command == "make-admin":
+        cmd_make_admin(args)
 
     elif args.command == "new-league":
         cmd_new_league(args)

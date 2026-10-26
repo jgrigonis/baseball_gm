@@ -1,0 +1,119 @@
+{# templates/admin/league.html #}
+{% extends "base.html" %}
+{% block title %}Admin: {{ league.name }} — GM Sim{% endblock %}
+{% block main %}
+{% set section = 'leagues' %}
+{% set started = league.state != 'lobby' %}
+<div class="page-content"><div class="content-inner" style="max-width:960px;">
+  <div class="page-header">
+    <h1 class="page-title">{{ league.name }}</h1>
+    <span class="topbar-state state-{{ league.state }}" style="margin-left:12px;">{{ state_label }}</span>
+    {% if league.is_paused %}<span class="topbar-state" style="margin-left:8px;color:var(--red);border-color:var(--red);">Paused</span>{% endif %}
+    <div class="spacer"></div>
+    {% if league.is_paused %}
+    <form method="POST" action="/admin/leagues/{{ league.id }}/resume">
+      <button type="submit" class="btn btn-primary">Resume League</button>
+    </form>
+    {% else %}
+    <form method="POST" action="/admin/leagues/{{ league.id }}/pause"
+          onsubmit="return confirm({{ ('Pause ' ~ league.name ~ '? Nothing sims, drafts or starts until you resume it.') | tojson | forceescape }})">
+      <button type="submit" class="btn btn-secondary">Pause League</button>
+    </form>
+    {% endif %}
+  </div>
+  {% include "admin/_header.html" %}
+
+  <div class="admin-dim" style="font-size:11px;margin-bottom:20px;line-height:1.8;">
+    ID {{ league.id }} · join code <span style="color:var(--amber);letter-spacing:.1em;">{{ league.join_code or '—' }}</span>
+    · {{ league.num_teams }} teams · season {{ season_number }} of {{ league.num_seasons }}
+    · period {{ league.sim_period }} · created {{ (league.created_at or '')[:16] }}
+    {% if league.last_played_at %}· last played {{ league.last_played_at.strftime('%b %-d, %Y %H:%M') }}{% endif %}
+    {% if league.period_deadline %}· window ends {{ league.period_deadline.strftime('%b %-d %H:%M:%S') }}{% endif %}
+  </div>
+
+  <div class="card"><div class="card-header"><span class="card-title">Settings</span></div><div class="card-body">
+    <form method="POST" action="/admin/leagues/{{ league.id }}/settings" class="admin-form">
+      <div class="field wide">
+        <label>League Name</label>
+        <input name="name" value="{{ league.name }}" required>
+      </div>
+      <div class="field">
+        <label>Mode</label>
+        {% if started %}
+        <input type="hidden" name="mode" value="{{ league.mode }}">
+        <input value="{{ league.mode | replace('_', ' ') | title }}" disabled>
+        <span class="hint">Fixed once the league starts.</span>
+        {% else %}
+        <select name="mode">
+          {% for m in modes %}<option value="{{ m.key }}" {% if m.key == league.mode %}selected{% endif %}>{{ m.label }}</option>{% endfor %}
+        </select>
+        {% endif %}
+      </div>
+      <div class="field">
+        <label>Pace</label>
+        <select name="pace_control">
+          <option value="timer" {% if league.pace_control == 'timer' %}selected{% endif %}>Timer</option>
+          <option value="confirmed" {% if league.pace_control == 'confirmed' %}selected{% endif %}>Confirmed</option>
+        </select>
+      </div>
+      {% for key, label in [
+           ('sim_period_days', 'Days per Sim Period'),
+           ('num_seasons', 'Number of Seasons'),
+           ('decision_window_sec', 'Decision Window (sec)'),
+           ('draft_window_sec', 'Draft Window (sec)'),
+           ('lineup_window_sec', 'Lineup Window (sec)')] %}
+      <div class="field">
+        <label>{{ label }}</label>
+        <input name="{{ key }}" type="number" value="{{ league[key] }}" min="{{ ranges[key][0] }}" max="{{ ranges[key][1] }}" required>
+      </div>
+      {% endfor %}
+      <div class="field">
+        <label>Commissioner</label>
+        <select name="commissioner_gm_id">
+          {% if not league.commissioner_gm_id %}<option value="">— none —</option>{% endif %}
+          {% for g in gms if g.user_id and not g.is_ai %}
+          <option value="{{ g.id }}" {% if g.id == league.commissioner_gm_id %}selected{% endif %}>{{ g.display_name }}{% if g.username and g.username != g.display_name %} ({{ g.username }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <label class="admin-check"><input type="checkbox" name="is_public" value="true" {% if league.is_public %}checked{% endif %}> Public league</label>
+      <label class="admin-check"><input type="checkbox" name="reentry_enabled" value="true" {% if league.reentry_enabled %}checked{% endif %}> Re-entry enabled</label>
+      <div class="wide">
+        <span class="hint admin-dim" style="font-size:10px;">Changing the pace or a window starts the current period's window over.</span>
+      </div>
+      <div class="wide"><button type="submit" class="btn btn-primary">Save Settings</button></div>
+    </form>
+  </div></div>
+
+  <div class="admin-section">
+    <div class="page-header"><h1 class="page-title" style="font-size:20px;">GMs</h1></div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr><th>GM</th><th>User</th><th>Team</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+        <tbody>
+          {% for g in gms %}
+          <tr>
+            <td class="team-name">{{ g.display_name }}{% if g.id == league.commissioner_gm_id %} <span class="admin-dim" style="font-size:10px;">★ commissioner</span>{% endif %}</td>
+            <td class="admin-dim">{% if g.user_id %}<a href="/admin/users/{{ g.user_id }}" style="color:var(--amber);">{{ g.username or '(guest)' }}</a>{% else %}AI{% endif %}</td>
+            <td class="admin-dim">{% if g.city %}{{ g.city }} {{ g.mascot }}{% else %}—{% endif %}</td>
+            <td class="admin-dim">{% if g.fired_at %}Fired{% elif g.is_away %}Away{% elif g.is_ai %}AI{% else %}Active{% endif %}</td>
+            <td class="admin-dim">{{ (g.created_at or '')[:10] }}</td>
+            <td style="text-align:right;">
+              {% if g.user_id and not g.is_ai %}
+              <form method="POST" action="/admin/leagues/{{ league.id }}/gms/{{ g.id }}/remove" style="display:inline;"
+                    onsubmit="return confirm({{ ('Remove ' ~ g.display_name ~ ' from ' ~ league.name ~ '? ' ~ ('AI takes over their team.' if started else 'They drop off the lobby.') ~ ' If nobody is left, the league is deleted.') | tojson | forceescape }})">
+                <button type="submit" class="btn btn-danger admin-small">Remove</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="admin-dim">No GMs.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div></div>
+{% endblock %}

@@ -18,5 +18,10 @@ class Settings(BaseSettings):
     # Set to True only in dev — exposes raw skill integers on player endpoints
     debug_mode: bool = False
 
+    # The default admin's password, until they change it at first sign-in
+    # (see migration 010). Set ADMIN_INITIAL_PASSWORD before the first start
+    # if the server is reachable by anyone else.
+    admin_initial_password: str = "changeme"
+
 
 settings = Settings()

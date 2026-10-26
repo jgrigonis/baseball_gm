@@ -94,6 +94,8 @@ class TestCompleteLeagueIsReadOnly:
             if "{league_id}" in route.path
             and route.methods & {"POST", "PUT", "PATCH", "DELETE"}
             and route.path not in exempt
+            # Admins can still tidy up a finished league.
+            and not route.path.startswith("/admin/")
             and require_active_league not in set(calls(route.dependant))
         ]
         assert len(routes) > 15

@@ -54,6 +54,10 @@ class GMRepository:
         ).fetchall()
         return {r["id"]: r["team_id"] for r in rows}
 
+    def get_by_id(self, gm_id: str) -> dict | None:
+        row = self.conn.execute("SELECT * FROM gms WHERE id = %s", (gm_id,)).fetchone()
+        return dict(row) if row else None
+
     def get_by_user_and_league(self, user_id: str, league_id: str) -> dict | None:
         row = self.conn.execute(
             "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",

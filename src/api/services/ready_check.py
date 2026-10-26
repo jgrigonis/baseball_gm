@@ -18,6 +18,9 @@
 # counts as away. With no GM left who isn't away, nobody has a decision to
 # make, so the playoffs sim straight through without waiting on the clock.
 #
+# An admin can pause a league: nothing runs until they resume it, and resuming
+# starts the period's window over.
+#
 # There is no background worker. The check runs whenever a GM clicks Ready or
 # asks for the status, and the league lock decides which request runs the
 # period, so it works with any number of server processes.
@@ -106,6 +109,7 @@ def advance_if_due(conn, league_id: str) -> bool:
         not period
         or period["state"] not in READY_CHECK_STATES
         or period["pace_control"] == "scheduled"
+        or period["is_paused"]
         or not is_multiplayer(conn, league_id)
     ):
         return False
@@ -122,8 +126,10 @@ def advance_if_due(conn, league_id: str) -> bool:
         with league_lock(conn, league_id):
             # Another request may have run it while we looked.
             now = repo.period(league_id)
-            if now["sim_period"] != period["sim_period"] or not _due(
-                now, _gms(conn, league_id, now["state"])
+            if (
+                now["is_paused"]
+                or now["sim_period"] != period["sim_period"]
+                or not _due(now, _gms(conn, league_id, now["state"]))
             ):
                 return False
             # Keep going while it's the playoffs and there's nobody to wait
@@ -159,6 +165,7 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         "pace": period["pace_control"],
         "league_state": period["state"],
         "active": period["state"] in READY_CHECK_STATES,
+        "paused": period["is_paused"],
         "period": period["sim_period"],
         "seconds_left": max(0, round(seconds_left))
         if seconds_left is not None

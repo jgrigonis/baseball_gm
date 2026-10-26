@@ -15,6 +15,7 @@ from src.api.dependencies import (
     GMOrViewer,
     IsHTMX,
     SinglePlayer,
+    Unpaused,
     User,
 )
 from src.api.schemas import DraftPreferencesRequest
@@ -134,6 +135,7 @@ def execute_draft(
     gm: GM,
     _active: ActiveLeague,
     _: SinglePlayer,
+    _unpaused: Unpaused,
 ):
     """Execute the blitz auto-draft and redirect to results."""
     with league_lock(db, league_id):

@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routers import (
+    admin,
     auth,
     draft,
     games,
@@ -33,7 +34,7 @@ from src.api.routers import (
     stats,
     strategy,
 )
-from src.api.dependencies import NotLeagueGM
+from src.api.dependencies import NotLeagueGM, PasswordChangeRequired
 from src.config import settings
 from src.db.init import init_db
 from src.db.connection import get_connection
@@ -110,6 +111,7 @@ for _module in (
     seasons,
     history,
     players,
+    admin,
 ):
     app.include_router(_module.router)
 
@@ -155,6 +157,8 @@ def _error_response(request: Request, message: str, status_code: int):
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
         return RedirectResponse("/")
+    if isinstance(exc, PasswordChangeRequired) and _wants_page(request):
+        return RedirectResponse("/auth/change-password", status_code=303)
     if (
         isinstance(exc, NotLeagueGM)
         and request.method == "GET"
