@@ -65,9 +65,7 @@ SPEED_BLITZ = LeagueMode(
 LONGFORM = LeagueMode(
     key="longform",
     label="Long Form",
-    description=(
-        "GMs draft one pick at a time, and teams play off the 26-man roster."
-    ),
+    description=("GMs draft one pick at a time, and teams play off the 26-man roster."),
 )
 
 LEAGUE_MODES: dict[str, LeagueMode] = {m.key: m for m in (BLITZ, SPEED_BLITZ, LONGFORM)}
