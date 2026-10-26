@@ -6,7 +6,7 @@
     <span class="page-subtitle">{{ rounds|length }} rounds</span>
     <div style="display:flex;gap:16px;align-items:center;margin-left:20px;
                 font-family:var(--font-mono);font-size:11px;">
-      <span><span style="color:var(--green);">■</span> Your pick</span>
+      {% if not is_viewer %}<span><span style="color:var(--green);">■</span> Your pick</span>{% endif %}
       <span><span style="color:var(--sky);">■</span> Human GM</span>
       <span style="color:var(--text-dim);">■ AI pick</span>
     </div>
@@ -14,9 +14,11 @@
     <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-right:12px;">
       Click any pick to inspect
     </span>
+    {% if not is_viewer %}
     <a href="/leagues/{{ league_id }}/roster" class="btn btn-primary">
       Go to Roster →
     </a>
+    {% endif %}
   </div>
 </div>
 

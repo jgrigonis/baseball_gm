@@ -69,6 +69,9 @@
     {% if league_state %}
       <span class="topbar-state state-{{ league_state }}">{{ league_state }}</span>
     {% endif %}
+    {% if is_viewer %}
+      <span class="topbar-state" style="margin-left:8px;" title="You're viewing this public league. Only its GMs can make moves.">Viewing</span>
+    {% endif %}
     {% if current_date %}
       <span class="topbar-date" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">{{ current_date }}</span>
     {% endif %}

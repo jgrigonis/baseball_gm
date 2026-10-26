@@ -14,6 +14,7 @@ from src.api.dependencies import (
     NotLeagueGM,
     get_commissioner,
     get_current_gm,
+    get_gm_or_viewer,
     get_current_user,
     require_active_league,
     require_single_player,
@@ -120,6 +121,7 @@ class TestHttpExceptions:
 
         app.dependency_overrides[get_current_user] = lambda: {"id": "u-1"}
         app.dependency_overrides[get_current_gm] = not_a_gm
+        app.dependency_overrides[get_gm_or_viewer] = not_a_gm
         r = client.get(
             f"/leagues/{LEAGUE}/",
             headers={"Accept": "text/html"},

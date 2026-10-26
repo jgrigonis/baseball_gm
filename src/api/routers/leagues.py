@@ -13,7 +13,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from src.api.dependencies import DB, GM, ActiveLeague, Commissioner, User
+from src.api.dependencies import DB, GM, ActiveLeague, Commissioner, GMOrViewer, User
 from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
 from src.db.locks import league_lock
@@ -275,13 +275,20 @@ def dashboard(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
 ):
     gm_repo = GMRepository(db)
     league_repo = LeagueRepository(db)
     league = league_repo.get_by_id(league_id)
     if not league:
         return RedirectResponse("/leagues/")
+
+    # Viewers of a public league land on its standings, or its history once
+    # it's over. The pages built around a GM's own team aren't open to them.
+    if gm.get("is_viewer"):
+        if league["state"] == "complete":
+            return RedirectResponse(f"/leagues/{league_id}/history")
+        return RedirectResponse(f"/leagues/{league_id}/standings")
 
     is_commish = league["commissioner_gm_id"] == gm["id"]
 

@@ -128,8 +128,8 @@ class GMRepository:
         return [dict(row) for row in rows]
 
     def get_public_leagues(self, user_id: str) -> list[dict]:
-        """Public leagues the user isn't in, leaving out finished ones.
-        Leagues still in the lobby come first, since those can be joined."""
+        """Public leagues the user isn't in. Leagues still in the lobby come
+        first, since those can be joined, and finished ones last."""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at,
                       l.last_played_at,
@@ -140,11 +140,12 @@ class GMRepository:
             FROM leagues l
             LEFT JOIN league_seasons ls ON ls.league_id = l.id
             LEFT JOIN seasons s ON s.id = ls.season_id
-            WHERE l.is_public AND l.state <> 'complete'
+            WHERE l.is_public
               AND NOT EXISTS (SELECT 1 FROM gms m
                               WHERE m.league_id = l.id AND m.user_id = %s)
             GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.last_played_at
-            ORDER BY (l.state = 'lobby') DESC, l.created_at DESC""",
+            ORDER BY (l.state = 'lobby') DESC, (l.state = 'complete'),
+                     l.created_at DESC""",
             (user_id,),
         ).fetchall()
         return [dict(row) for row in rows]

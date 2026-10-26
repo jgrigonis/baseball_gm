@@ -44,9 +44,10 @@ def team_stats_context(
         else []
     )
 
-    # If selected team isn't in selected season's teams, reset to first available
+    # With no team of their own (a viewer), or a team that isn't in the
+    # selected season, start from the first team
     team_ids_in_season = {t["id"] for t in all_teams}
-    if selected_team_id and selected_team_id not in team_ids_in_season:
+    if selected_team_id not in team_ids_in_season:
         selected_team_id = all_teams[0]["id"] if all_teams else None
 
     batters = []

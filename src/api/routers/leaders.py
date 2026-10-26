@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
 from src.api.view_models.leaders import leaders_context
 from src.web.utils import _shell_ctx, tab_response
 
@@ -21,7 +21,7 @@ def leaders(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     category: str = "batting",
     season: str | None = None,
 ):

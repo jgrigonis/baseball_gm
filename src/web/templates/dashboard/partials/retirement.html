@@ -8,21 +8,25 @@
     <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
       {{ retired_players | length }} player{{ 's' if retired_players | length != 1 else '' }} retired this offseason · career regular-season stats
     </span>
+    {% if not is_viewer %}
     <div style="margin-left:auto;">
       <a href="/leagues/{{ league_id }}/draft"
          class="btn btn-primary" style="padding:6px 18px;">
         Continue to Draft →
       </a>
     </div>
+    {% endif %}
   </div>
 </div>
 
 {% if not retired_players %}
 <div style="padding:48px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
   No players retired this offseason.
+  {% if not is_viewer %}
   <div style="margin-top:24px;">
     <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to Draft →</a>
   </div>
+  {% endif %}
 </div>
 {% else %}
 

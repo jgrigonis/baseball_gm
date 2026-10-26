@@ -222,7 +222,7 @@ window.closeGamePanel = function() {
 </nav>
 {% endif %}
 
-{% if multiplayer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
+{% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
 <div id="sim-status" style="display:none;padding:6px 24px;
      background:var(--green-dim);border-bottom:1px solid var(--green-mid);
      font-family:var(--font-mono);font-size:11px;color:var(--green);
@@ -321,11 +321,13 @@ function showInjuryNews(d) {
 }
 window.showInjuryNews = showInjuryNews;
 
+{% if not is_viewer %}
 // News from sims this GM didn't run, e.g. another GM's in a multiplayer league
 fetch(`/leagues/${LEAGUE_ID}/news`)
   .then(r => r.ok ? r.json() : null)
   .then(d => { if (d) showInjuryNews(d); })
   .catch(() => {});
+{% endif %}
 
 function injuryNewsClick() {
   var el = document.getElementById('sim-injury-news');

@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GM, GMOrViewer, IsHTMX, User
 from src.api.view_models.schedule import schedule_context
 from src.api.view_models.seasons import past_season
 from src.api.view_models.standings import standings_context
@@ -23,7 +23,7 @@ def standings(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     season_id: str | None = None,
 ):
     """`season_id` (from the History tab) shows that season's final standings."""
