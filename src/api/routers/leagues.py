@@ -335,6 +335,10 @@ def dashboard(
     state = league["state"]
     # Redirect logic
     if state in ("preseason", "draft"):
+        # Once the draft is done, coming back in shows its results; the
+        # board is only for a draft still to run.
+        if league_repo.draft_complete(league_id):
+            return RedirectResponse(f"/leagues/{league_id}/draft/results")
         return RedirectResponse(f"/leagues/{league_id}/draft")
     if state in ("season", "playoffs"):
         return RedirectResponse(f"/leagues/{league_id}/standings")

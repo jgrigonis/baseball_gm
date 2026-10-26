@@ -83,10 +83,12 @@ def draft_tab(
     user: User,
     gm: GM,
 ):
-    ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
-
     draft_repo = DraftRepository(db)
     draft = draft_repo.get_current_for_league(league_id)
+    if draft and draft["state"] == "complete":
+        return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
+
+    ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
     player_repo = PlayerRepository(db)
 
     if draft:
