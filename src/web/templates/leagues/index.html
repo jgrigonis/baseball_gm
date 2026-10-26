@@ -42,6 +42,43 @@
   </div>
   {% endif %}
 
+  <div class="page-header" style="margin-top:40px;">
+    <h1 class="page-title">Public Leagues</h1>
+  </div>
+
+  {% if public_leagues %}
+  <div class="card">
+    <table class="data-table">
+      <thead><tr><th>League</th><th>Year</th><th>Mode</th><th>State</th><th>GMs</th><th>Last Played</th><th></th></tr></thead>
+      <tbody>
+        {% for l in public_leagues %}
+        <tr>
+          <td class="team-name">{{ l.name }}</td>
+          <td style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
+          <td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>
+          <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
+          <td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>
+          <td style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
+          <td style="text-align:right;">
+            {% if l.state == 'lobby' %}
+            <form method="POST" action="/leagues/{{ l.id }}/join" style="display:inline;">
+              <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;">Join →</button>
+            </form>
+            {% else %}
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);" title="Leagues can only take new GMs before they start">Started</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+    No public leagues right now. Make one public when you <a href="/leagues/new" style="color:var(--amber);">create a league</a>.
+  </div>
+  {% endif %}
+
 </div></div>
 {% endblock %}
 

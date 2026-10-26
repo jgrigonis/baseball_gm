@@ -41,7 +41,8 @@ def leagues_index(
     gm_repo = GMRepository(db)
     # Fetch User's Leagues
     leagues = [dict(r) for r in gm_repo.get_users_leagues(user["id"])]
-    for league in leagues:
+    public_leagues = gm_repo.get_public_leagues(user["id"])
+    for league in leagues + public_leagues:
         league["state_label"] = state_label(league["state"], league["season_number"])
 
     return templates.TemplateResponse(
@@ -50,6 +51,7 @@ def leagues_index(
         {
             "user": user,
             "leagues": leagues,
+            "public_leagues": public_leagues,
         },
     )
 
@@ -85,6 +87,7 @@ def new_league(
     pace_control: str = Form("timer"),
     sim_period_days: int = Form(3),
     num_seasons: int = Form(10),
+    is_public: bool = Form(False),
 ):
     get_mode(mode)  # rejects an unknown mode
     if pace_control not in ("timer", "confirmed"):
@@ -116,6 +119,7 @@ def new_league(
             "pace_control": pace_control,
             "sim_period_days": sim_period_days,
             "num_seasons": num_seasons,
+            "is_public": is_public,
         },
     )
     # 2. GM setup
@@ -176,6 +180,32 @@ def join_league(
     db.commit()
 
     return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
+
+
+@router.post("/leagues/{league_id}/join")
+def join_public_league(
+    league_id: str,
+    db: DB,
+    user: User,
+):
+    """Join a public league from the leagues page, no code needed."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or not league["is_public"]:
+        return RedirectResponse("/leagues/", status_code=302)
+
+    gm_repo = GMRepository(db)
+    if gm_repo.get_by_user_and_league(user["id"], league_id):
+        return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+    if league["state"] != "lobby":
+        return RedirectResponse("/leagues/", status_code=302)
+
+    gm_repo.create_gm(
+        league_id=league_id,
+        user_id=user["id"],
+        display_name=user["display_name"],
+    )
+    db.commit()
+    return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 
 @router.get("/leagues/join", response_class=HTMLResponse)
@@ -281,6 +311,7 @@ def dashboard(
             "league_pace_control": league["pace_control"],
             "league_sim_period_days": league["sim_period_days"],
             "league_num_seasons": league["num_seasons"],
+            "league_is_public": bool(league["is_public"]),
         }
     )
 

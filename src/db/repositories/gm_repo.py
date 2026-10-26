@@ -127,6 +127,28 @@ class GMRepository:
         # Convert rows to plain dicts if your driver doesn't do it automatically
         return [dict(row) for row in rows]
 
+    def get_public_leagues(self, user_id: str) -> list[dict]:
+        """Public leagues the user isn't in, leaving out finished ones.
+        Leagues still in the lobby come first, since those can be joined."""
+        rows = self.conn.execute(
+            """SELECT l.id, l.name, l.state, l.mode, l.created_at,
+                      l.last_played_at,
+                      MAX(s.year) as current_year,
+                      COUNT(DISTINCT ls.season_id) as season_number,
+                      (SELECT COUNT(*) FROM gms o
+                       WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
+            FROM leagues l
+            LEFT JOIN league_seasons ls ON ls.league_id = l.id
+            LEFT JOIN seasons s ON s.id = ls.season_id
+            WHERE l.is_public AND l.state <> 'complete'
+              AND NOT EXISTS (SELECT 1 FROM gms m
+                              WHERE m.league_id = l.id AND m.user_id = %s)
+            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.last_played_at
+            ORDER BY (l.state = 'lobby') DESC, l.created_at DESC""",
+            (user_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     def get_profile(self, gm_id: str) -> dict | None:
         """Return the gm_profiles row for a GM, or None."""
         row = self.conn.execute(

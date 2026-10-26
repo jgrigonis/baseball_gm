@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     sim_period_days      INTEGER NOT NULL DEFAULT 3,  -- season days per period
     num_seasons          INTEGER NOT NULL DEFAULT 10, -- how many seasons the league runs
     last_played_at       TIMESTAMPTZ,      -- last real-world time games were played or the league moved on
+    is_public            BOOLEAN NOT NULL DEFAULT FALSE, -- listed under Public Leagues
     created_at TEXT DEFAULT (NOW())
 );
 

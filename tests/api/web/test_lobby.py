@@ -101,7 +101,7 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
 
     r = client.get(f"/leagues/{league.id}/")
 
-    assert r.text.count('class="setting-tip"') == 9
+    assert r.text.count('class="setting-tip"') == 10
     assert "Speed Blitz" in r.text
     assert "no injuries or trades" in r.text
     assert "Total teams in the league" in r.text
