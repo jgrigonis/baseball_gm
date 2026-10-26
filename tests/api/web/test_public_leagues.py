@@ -133,3 +133,36 @@ def test_new_league_visibility(client, db_conn, form, expected):
         "SELECT is_public FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     assert row["is_public"] is expected
+
+
+def test_completed_leagues_show_by_default(client, db_conn):
+    _league(db_conn, "All Done", state="complete")
+
+    html = client.get("/leagues/").text
+
+    assert "All Done" in _public_section(html)
+    assert 'id="completed-toggle"' in html
+
+
+def test_hiding_completed_leagues(client, db_conn, user_id):
+    _league(db_conn, "All Done", state="complete")
+    _league(db_conn, "In Season", state="season")
+    mine = _league(db_conn, "My Old One", state="complete", is_public=False)
+    _gm(db_conn, mine, user_id)
+
+    r = client.get("/leagues/?completed=hide")
+
+    assert "All Done" not in r.text
+    assert "My Old One" not in r.text
+    assert "In Season" in _public_section(r.text)
+    assert "All 1 of your leagues are complete" in r.text
+
+
+def test_hiding_completed_is_remembered(client, db_conn):
+    _league(db_conn, "All Done", state="complete")
+
+    client.get("/leagues/?completed=hide")
+    assert "All Done" not in client.get("/leagues/").text
+
+    client.get("/leagues/?completed=show")
+    assert "All Done" in client.get("/leagues/").text

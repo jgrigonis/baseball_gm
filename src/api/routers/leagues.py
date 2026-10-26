@@ -35,16 +35,26 @@ router = APIRouter(tags=["web"])
 
 # ── League list ────────────────────────────────────────────────────────────────
 
+HIDE_COMPLETED_COOKIE = "hide_completed_leagues"
+
 
 @router.get("/leagues/", response_class=HTMLResponse)
 def leagues_index(
     request: Request,
     db: DB,
     user: User,
+    completed: str | None = None,
 ):
+    """`completed` is "show" or "hide", for finished leagues. The choice is
+    kept in a cookie, so the page comes back the way the GM left it."""
     # Guests from before passwords existed choose a login before going on.
     if not user["has_password"]:
         return RedirectResponse("/auth/set-password", status_code=302)
+
+    if completed in ("show", "hide"):
+        hide_completed = completed == "hide"
+    else:
+        hide_completed = request.cookies.get(HIDE_COMPLETED_COOKIE) == "1"
 
     gm_repo = GMRepository(db)
     # Fetch User's Leagues
@@ -53,15 +63,34 @@ def leagues_index(
     for league in leagues + public_leagues:
         league["state_label"] = state_label(league["state"], league["season_number"])
 
-    return templates.TemplateResponse(
+    hidden_mine = hidden_public = 0
+    if hide_completed:
+        hidden_mine = sum(1 for lg in leagues if lg["state"] == "complete")
+        hidden_public = sum(1 for lg in public_leagues if lg["state"] == "complete")
+        leagues = [lg for lg in leagues if lg["state"] != "complete"]
+        public_leagues = [lg for lg in public_leagues if lg["state"] != "complete"]
+
+    resp = templates.TemplateResponse(
         request,
         "leagues/index.html",
         {
             "user": user,
             "leagues": leagues,
             "public_leagues": public_leagues,
+            "hide_completed": hide_completed,
+            "hidden_mine": hidden_mine,
+            "hidden_public": hidden_public,
         },
     )
+    if completed in ("show", "hide"):
+        resp.set_cookie(
+            HIDE_COMPLETED_COOKIE,
+            "1" if hide_completed else "0",
+            max_age=60 * 60 * 24 * 365,
+            httponly=True,
+            samesite="lax",
+        )
+    return resp
 
 
 def state_label(state: str, season_number: int) -> str:
