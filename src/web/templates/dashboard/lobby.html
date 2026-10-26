@@ -20,15 +20,36 @@
         <div class="card-body">
           <table class="data-table">
             <tbody>
-              <tr><td style="color:var(--text-dim);">Mode</td><td class="team-name">{{ league_mode | title }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Teams</td><td>{{ league_num_teams }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Decision window</td><td>{{ league_decision_window_sec }}s</td></tr>
-              <tr><td style="color:var(--text-dim);">Draft window</td><td>{{ league_draft_window_sec }}s</td></tr>
-              <tr><td style="color:var(--text-dim);">Lineup window</td><td>{{ league_lineup_window_sec }}s</td></tr>
-              <tr><td style="color:var(--text-dim);">Re-entry</td><td>{{ 'Enabled' if league_reentry_enabled else 'Disabled' }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Pace</td><td>{{ league_pace_control | title }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Days per sim period</td><td>{{ league_sim_period_days }}</td></tr>
-              <tr><td style="color:var(--text-dim);">Seasons</td><td>{{ league_num_seasons }}</td></tr>
+              {% set timer_note = " Only used with Timer pace." if league_pace_control != "timer" else "" %}
+              {% set settings = [
+                ("Mode", league_mode.label,
+                 league_mode.description),
+                ("Teams", league_num_teams,
+                 "Total teams in the league. Each human GM runs one; AI GMs run the rest."),
+                ("Decision window", league_decision_window_sec ~ "s",
+                 "How long GMs get to make moves between sim periods. The league moves on early once every GM clicks Ready." ~ timer_note),
+                ("Draft window", league_draft_window_sec ~ "s",
+                 "How long GMs get to set their draft before it runs. It runs early once every GM clicks Ready." ~ timer_note),
+                ("Lineup window", league_lineup_window_sec ~ "s",
+                 "How long GMs get after the draft to set their first lineup before the season starts." ~ timer_note),
+                ("Re-entry", "Enabled" if league_reentry_enabled else "Disabled",
+                 "Whether a fired GM can be handed another open team instead of sitting out. GM firing isn't in the game yet, so this has no effect for now."),
+                ("Pace", league_pace_control | title,
+                 "Timer: the league moves on when every GM clicks Ready, or when the window runs out." if league_pace_control == "timer"
+                 else "Confirmed: the league only moves on when every GM clicks Ready. There's no clock."),
+                ("Days per sim period", league_sim_period_days,
+                 "How many days of the regular season each sim period plays before GMs get their next decision window."),
+                ("Seasons", league_num_seasons,
+                 "How many seasons the league runs before it ends."),
+              ] %}
+              {% for label, value, tip in settings %}
+              <tr>
+                <td style="color:var(--text-dim);">
+                  <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
+                </td>
+                <td{% if loop.first %} class="team-name"{% endif %}>{{ value }}</td>
+              </tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>

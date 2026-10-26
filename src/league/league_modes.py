@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 class LeagueMode:
     key: str
     label: str
+    # One or two sentences on how the mode plays, for the lobby's hover help.
+    description: str = ""
     # Settings the create form switches to when this mode is picked. Settings
     # left out keep whatever the form already has.
     form_presets: dict[str, int] = field(default_factory=dict)
@@ -30,6 +32,10 @@ class LeagueMode:
 BLITZ = LeagueMode(
     key="blitz",
     label="Blitz",
+    description=(
+        "The draft runs from preference lists each GM ranks ahead of time, and "
+        "teams play off the full 40-man roster. Injuries are on."
+    ),
     # The form's own defaults, so switching back from speed blitz restores them.
     form_presets={
         "sim_period_days": 3,
@@ -42,6 +48,10 @@ BLITZ = LeagueMode(
 SPEED_BLITZ = LeagueMode(
     key="speed_blitz",
     label="Speed Blitz",
+    description=(
+        "A faster Blitz: preference-list draft and 40-man rosters, with no "
+        "injuries or trades."
+    ),
     form_presets={
         "sim_period_days": 30,
         "decision_window_sec": 30,
@@ -52,7 +62,11 @@ SPEED_BLITZ = LeagueMode(
     blitz_style=True,
 )
 
-LONGFORM = LeagueMode(key="longform", label="Long Form")
+LONGFORM = LeagueMode(
+    key="longform",
+    label="Long Form",
+    description=("GMs draft one pick at a time, and teams play off the 26-man roster."),
+)
 
 LEAGUE_MODES: dict[str, LeagueMode] = {m.key: m for m in (BLITZ, SPEED_BLITZ, LONGFORM)}
 
