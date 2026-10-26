@@ -170,7 +170,48 @@ function sortVal(row, key) {
   return (v === null || v === undefined) ? -999 : v;
 }
 
-function showCategory(cat) {
+function colsFor(cat) {
+  return cat === 'batting' ? BAT_COLS : cat === 'pitching' ? PIT_COLS : DEF_COLS;
+}
+
+// The view lives in the page's query string, so a refresh comes back to it.
+// The server reads team_id, season_id and postseason; the rest are read here.
+function viewParams(teamId, seasonId, ps) {
+  var q = new URLSearchParams();
+  q.set('team_id',    teamId   || document.getElementById('team-select').value);
+  q.set('season_id',  seasonId || document.getElementById('season-select').value);
+  q.set('postseason', (ps !== undefined) ? ps : (STATS_POSTSEASON ? 1 : 0));
+  q.set('cat',  category);
+  q.set('sort', sortKey);
+  q.set('asc',  sortAsc ? 1 : 0);
+  if (hidePitchers) q.set('hide_p', 1);
+  return q.toString();
+}
+
+function isStatsPage() {
+  return /\/leagues\/[^\/]+\/stats\/?$/.test(window.location.pathname);
+}
+
+function saveView() {
+  if (!isStatsPage()) return;
+  history.replaceState(history.state, '', window.location.pathname + '?' + viewParams());
+}
+
+function restoreView() {
+  if (!isStatsPage()) return;
+  var q = new URLSearchParams(window.location.search);
+  var cat = q.get('cat');
+  if (cat !== 'batting' && cat !== 'pitching' && cat !== 'defense') return;
+  setCategory(cat);
+  var key = q.get('sort');
+  if (colsFor(cat).some(function(c) { return c.key === key; })) {
+    sortKey = key;
+    sortAsc = q.get('asc') === '1';
+  }
+  if (q.get('hide_p') === '1') setHidePitchers(true);
+}
+
+function setCategory(cat) {
   category = cat;
   sortKey  = cat === 'batting' ? 'AVG' : cat === 'pitching' ? 'ERA' : 'FPCT';
   sortAsc  = cat === 'pitching';
@@ -182,14 +223,24 @@ function showCategory(cat) {
     document.getElementById(btns[i]).style.color      = on ? 'var(--green)'     : 'var(--text-dim)';
   });
   document.getElementById('btn-hide-pit').style.display = cat === 'defense' ? '' : 'none';
+}
+
+function showCategory(cat) {
+  setCategory(cat);
+  saveView();
   renderTable();
 }
 
-function toggleHidePitchers() {
-  hidePitchers = !hidePitchers;
+function setHidePitchers(on) {
+  hidePitchers = on;
   var btn = document.getElementById('btn-hide-pit');
   btn.style.background = hidePitchers ? 'var(--green-dim)' : 'transparent';
   btn.style.color      = hidePitchers ? 'var(--green)'     : 'var(--text-dim)';
+}
+
+function toggleHidePitchers() {
+  setHidePitchers(!hidePitchers);
+  saveView();
   renderTable();
 }
 
@@ -200,11 +251,12 @@ function setSort(key, defaultAsc) {
     sortKey = key;
     sortAsc = defaultAsc !== undefined ? defaultAsc : false;
   }
+  saveView();
   renderTable();
 }
 
 function renderTable() {
-  var cols = category === 'batting' ? BAT_COLS : category === 'pitching' ? PIT_COLS : DEF_COLS;
+  var cols = colsFor(category);
   var rows = category === 'batting' ? BATTERS  : category === 'pitching' ? PITCHERS : FIELDERS;
   if (category === 'defense' && hidePitchers) rows = rows.filter(function(r) { return r.pos !== 'P'; });
 
@@ -270,20 +322,21 @@ function renderTable() {
   document.getElementById('stats-body').innerHTML = bodyHtml;
 }
 
-function statsUrl(teamId, seasonId, ps) {
-  var t = teamId  || document.getElementById('team-select').value;
-  var s = seasonId|| document.getElementById('season-select').value;
-  var p = (ps !== undefined) ? ps : (STATS_POSTSEASON ? 1 : 0);
-  return '/leagues/' + LEAGUE_ID + '/stats?team_id=' + t + '&season_id=' + s + '&postseason=' + p;
+// Reloads the tab for another team, season or phase, keeping the category
+// and sort. The URL is updated first so the reloaded tab restores from it.
+function reloadStats(teamId, seasonId, ps) {
+  var url = '/leagues/' + LEAGUE_ID + '/stats?' + viewParams(teamId, seasonId, ps);
+  if (isStatsPage()) history.replaceState(history.state, '', url);
+  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
 }
 function switchTeam(teamId) {
-  htmx.ajax('GET', statsUrl(teamId), {target: '#tab-content', swap: 'innerHTML'});
+  reloadStats(teamId);
 }
 function switchSeason(seasonId) {
-  htmx.ajax('GET', statsUrl(null, seasonId), {target: '#tab-content', swap: 'innerHTML'});
+  reloadStats(null, seasonId);
 }
 function switchPostseason(ps) {
-  htmx.ajax('GET', statsUrl(null, null, ps), {target: '#tab-content', swap: 'innerHTML'});
+  reloadStats(null, null, ps);
 }
 
 // Init
@@ -295,6 +348,7 @@ function sizeStatsScroll() {
 }
 sizeStatsScroll();
 window.addEventListener('resize', sizeStatsScroll);
+restoreView();
 renderTable();
 
 window.setSort          = setSort;
