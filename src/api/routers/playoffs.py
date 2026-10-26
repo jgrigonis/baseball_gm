@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
 from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.seasons import past_season
 from src.web.utils import _shell_ctx, tab_response
@@ -22,7 +22,7 @@ def playoffs(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     season_id: str | None = None,
 ):
     """`season_id` (from a season summary) shows that season's bracket."""

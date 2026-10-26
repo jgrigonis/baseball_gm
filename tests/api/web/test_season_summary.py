@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.database import get_db
-from src.api.dependencies import get_current_gm, get_current_user
+from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
 from src.api.view_models.seasons import season_summary_context
 
@@ -129,10 +129,9 @@ def league(db_conn, factory):
 @pytest.fixture
 def client(db_conn, league):
     app.dependency_overrides[get_db] = lambda: db_conn
-    app.dependency_overrides[get_current_gm] = lambda: {
-        "id": league["gm"].id,
-        "team_id": league["mine"].id,
-    }
+    gm = {"id": league["gm"].id, "team_id": league["mine"].id}
+    app.dependency_overrides[get_current_gm] = lambda: gm
+    app.dependency_overrides[get_gm_or_viewer] = lambda: gm
     app.dependency_overrides[get_current_user] = lambda: {"id": None}
     yield TestClient(app, follow_redirects=False)
     app.dependency_overrides.clear()

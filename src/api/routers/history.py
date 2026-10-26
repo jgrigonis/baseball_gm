@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GM, GMOrViewer, IsHTMX, User
 from src.api.view_models.seasons import history_context
 from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -23,7 +23,7 @@ def history(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
 ):
     ctx = _shell_ctx(request, db, gm, league_id, user)
     my_team_id = gm["team_id"] if gm else None

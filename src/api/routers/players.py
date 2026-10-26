@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, User
+from src.api.dependencies import DB, GMOrViewer, User
 from src.api.view_models.player_detail import (
     league_current_date,
     player_career_data,
@@ -28,7 +28,7 @@ def player_panel(
     player_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     compare: str | None = None,
 ):
     current_date = league_current_date(db, league_id)
@@ -51,7 +51,7 @@ def player_career(
     player_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     compare: str | None = None,
 ):
     ctx = _shell_ctx(request, db, gm, league_id, user)

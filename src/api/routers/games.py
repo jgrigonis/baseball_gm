@@ -10,7 +10,7 @@ import logging
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, User
+from src.api.dependencies import DB, GMOrViewer, User
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.stats import formulas
@@ -28,7 +28,7 @@ def game_panel(
     game_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
 ):
     my_team_id = gm["team_id"]
 

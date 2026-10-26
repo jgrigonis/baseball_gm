@@ -49,6 +49,29 @@ def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)
     return gm
 
 
+def get_gm_or_viewer(league_id: str, db: DB, user: Any = Depends(get_current_user)):
+    """For read-only league pages. A GM gets their own row. Anyone else signed
+    in can view a public league once it has started, as a viewer: a stand-in
+    GM with no id and no team, so "your team" highlights and actions drop out."""
+    gm = db.execute(
+        "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
+        (user["id"], league_id),
+    ).fetchone()
+    if gm:
+        return gm
+    league = db.execute(
+        "SELECT is_public, state FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
+    if not league or not league["is_public"] or league["state"] == "lobby":
+        raise NotLeagueGM()
+    return {
+        "id": None,
+        "team_id": None,
+        "display_name": user["display_name"],
+        "is_viewer": True,
+    }
+
+
 def get_commissioner(league_id: str, db: DB, gm: Any = Depends(get_current_gm)):
     league = db.execute(
         "SELECT commissioner_gm_id FROM leagues WHERE id = %s", (league_id,)
@@ -83,6 +106,7 @@ IsHTMX = Annotated[bool, Depends(is_htmx)]
 User = Annotated[Any, Depends(get_current_user)]
 OptionalUser = Annotated[Any, Depends(get_optional_user)]
 GM = Annotated[Any, Depends(get_current_gm)]
+GMOrViewer = Annotated[Any, Depends(get_gm_or_viewer)]
 Commissioner = Annotated[Any, Depends(get_commissioner)]
 SinglePlayer = Annotated[None, Depends(require_single_player)]
 ActiveLeague = Annotated[None, Depends(require_active_league)]

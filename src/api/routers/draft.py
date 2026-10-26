@@ -8,7 +8,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, SinglePlayer, User
+from src.api.dependencies import (
+    DB,
+    ActiveLeague,
+    GM,
+    GMOrViewer,
+    IsHTMX,
+    SinglePlayer,
+    User,
+)
 from src.api.schemas import DraftPreferencesRequest
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.view_models.draft import draft_rounds
@@ -152,7 +160,7 @@ def draft_results(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     season_id: str | None = None,
 ):
     """Show completed draft results — all picks by round, your picks highlighted.

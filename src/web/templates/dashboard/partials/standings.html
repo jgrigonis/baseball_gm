@@ -16,9 +16,11 @@
     {% if games_played %}
     <span class="page-subtitle">{{ games_played }} league games played</span>
     {% endif %}
+    {% if not is_viewer %}
     <div style="margin-left:auto;">
       {% include "dashboard/partials/_play_button.html" %}
     </div>
+    {% endif %}
     {% endif %}
   </div>
 </div>
@@ -60,10 +62,13 @@
           <tr class="{% if team.is_mine %}my-team{% elif team.is_human %}human-team{% endif %}">
             <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">{{ team.rank }}</td>
             <td>
-              <span style="font-family:var(--font-sans);font-weight:600;
-                           color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
+              {# The team's roster and stats, for that season #}
+              <a href="/leagues/{{ league_id }}/stats?team_id={{ team.team_id }}{% if past_season %}&season_id={{ past_season.id }}{% endif %}"
+                 title="Roster and stats"
+                 style="font-family:var(--font-sans);font-weight:600;text-decoration:none;
+                        color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
                 {{ team.city }} {{ team.mascot }}
-              </span>
+              </a>
               {% if team.is_mine %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--green);margin-left:6px;">YOU</span>{% endif %}
             </td>
             <td class="tc mono">{{ team.wins }}</td>

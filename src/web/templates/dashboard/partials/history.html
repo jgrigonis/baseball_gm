@@ -24,7 +24,7 @@
           <th>Season</th>
           <th>Year</th>
           <th>Champion</th>
-          <th style="text-align:center;">Your Record</th>
+          {% if not is_viewer %}<th style="text-align:center;">Your Record</th>{% endif %}
           <th></th>
         </tr>
       </thead>
@@ -34,6 +34,7 @@
           <td style="font-family:var(--font-mono);font-size:12px;">{{ row.name }}</td>
           <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">{{ row.year }}</td>
           <td style="font-weight:600;">{{ row.champion or '—' }}</td>
+          {% if not is_viewer %}
           <td style="text-align:center;font-family:var(--font-mono);font-size:12px;">
             {% if row.my_w is not none %}
               <span style="color:var(--green);">{{ row.my_w }}</span>
@@ -41,6 +42,7 @@
               <span style="color:var(--red);">{{ row.my_l }}</span>
             {% else %}—{% endif %}
           </td>
+          {% endif %}
           <td style="text-align:right;white-space:nowrap;">
             {% if row.has_draft %}
             <a href="/leagues/{{ league_id }}/draft/results?season_id={{ row.season_id }}"

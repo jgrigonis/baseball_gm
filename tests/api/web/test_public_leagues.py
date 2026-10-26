@@ -1,8 +1,8 @@
 # tests/api/web/test_public_leagues.py
 """
 A league can be made public when it's created. Public leagues the user isn't
-in show under Public Leagues on the leagues page, and the ones still in the
-lobby can be joined from there without a code.
+in show under Public Leagues on the leagues page. The ones still in the lobby
+can be joined from there without a code, and the rest can be viewed.
 """
 
 import uuid
@@ -77,10 +77,13 @@ def test_leaves_out_leagues_the_user_is_in(client, db_conn, user_id):
     assert "Already Mine" not in section
 
 
-def test_leaves_out_finished_leagues(client, db_conn):
+def test_lists_finished_leagues_last(client, db_conn):
     _league(db_conn, "All Done", state="complete")
+    _league(db_conn, "In Season", state="season")
 
-    assert "All Done" not in _public_section(client.get("/leagues/").text)
+    section = _public_section(client.get("/leagues/").text)
+
+    assert section.index("In Season") < section.index("All Done")
 
 
 def test_only_lobby_leagues_can_be_joined(client, db_conn):
@@ -91,7 +94,7 @@ def test_only_lobby_leagues_can_be_joined(client, db_conn):
 
     assert f"/leagues/{lobby}/join" in section
     assert f"/leagues/{started}/join" not in section
-    assert "Started" in section
+    assert f'href="/leagues/{started}/"' in section
 
 
 def test_joining_a_public_league(client, db_conn, user_id):

@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
 from src.api.view_models.team_stats import team_stats_context
 from src.web.utils import _shell_ctx, tab_response
 
@@ -21,7 +21,7 @@ def stats(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     team_id: str | None = None,
     season_id: str | None = None,
     postseason: int = 0,

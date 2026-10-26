@@ -54,6 +54,16 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
     return post
 
 
+# The tabs a viewer of a public league sees: the ones that read the same
+# whoever is looking. Schedule, roster, lineup and strategy are one GM's own.
+_VIEWER_TABS = ("standings", "leaders", "stats", "playoffs")
+
+
+def _viewer_tabs(tabs: list[str], draft_complete: bool) -> list[str]:
+    """Only the draft's results are open to viewers, not the board in progress."""
+    return [t for t in tabs if t in _VIEWER_TABS or (t == "draft" and draft_complete)]
+
+
 def tab_response(request: Request, htmx: bool, template_name: str, ctx: dict):
     """The main entry point for your route responses."""
     # Ensure tab visibility is always calculated here so you don't
@@ -148,6 +158,7 @@ def _shell_ctx(
         # "gm_display_name": gm.get("display_name"),
         "league_id": league_id,
         "team_id": gm.get("team_id"),
+        "is_viewer": bool(gm.get("is_viewer")),
         "league_state": "lobby",  # Default
         "reentry_enabled": True,
         "season_id": None,
@@ -172,7 +183,8 @@ def _shell_ctx(
                     "draft_window_sec": league["draft_window_sec"],
                     "reentry_enabled": bool(league["reentry_enabled"]),
                     "pace_control": league["pace_control"],
-                    "is_commissioner": league["commissioner_gm_id"] == gm.get("id"),
+                    "is_commissioner": gm.get("id") is not None
+                    and league["commissioner_gm_id"] == gm["id"],
                     "draft_complete": draft_complete,
                     # Several human GMs: the league advances by ready-check,
                     # so the Sim buttons give way to the ready bar.
@@ -180,6 +192,8 @@ def _shell_ctx(
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)
+            if ctx["is_viewer"]:
+                tabs = _viewer_tabs(tabs, draft_complete)
             # Now we have the state, so calculate visibility automatically
             ctx["visible_tabs"] = tabs
 
