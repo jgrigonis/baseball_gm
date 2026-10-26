@@ -175,7 +175,6 @@ def _pick_starter(
     team_id: str,
     season_id: str,
     game_date,
-    series_id: str = "",
     injured_ids: set | None = None,
     team_players: list | None = None,
     eligible_ids: set | None = None,
@@ -183,6 +182,11 @@ def _pick_starter(
 ) -> tuple[str | None, bool]:
     """
     Returns (starter_id, should_advance_pointer).
+
+    The rotation pointer is one per team per season, shared by the regular
+    season and the playoffs, so the next starter a GM picks on the Lineup tab
+    is the one who pitches whatever game comes next.  When the pointer
+    advances, it moves to the slot after the pitcher who actually started.
 
     ``pitcher_states`` holds stored (pre-recovery) states already loaded for
     this game, keyed by player id, so energy checks don't query the database
@@ -214,7 +218,7 @@ def _pick_starter(
             state = pitcher_repo.get_with_recovery(pid, game_date, recovery_skill)
         return state.current_energy
 
-    scheduled = rotations_repo.get_scheduled_starter(team_id, season_id, series_id)
+    scheduled = rotations_repo.get_scheduled_starter(team_id, season_id)
     if not scheduled:
         return None, False
 
@@ -400,14 +404,12 @@ def _play_game(
     injured_ids = injury_repo.get_injured_ids(all_player_ids, as_of=game_date)
 
     pitcher_states = {pid: stored_pitcher_states.get(pid) for pid in all_player_ids}
-    series_id = game_info.get("series_id") or ""
     home_starter_id, home_advance = _pick_starter(
         rotations_repo,
         pitcher_repo,
         home_team.record.id,
         season_id,
         game_date,
-        series_id,
         injured_ids=injured_ids,
         team_players=list(home_team.players),
         eligible_ids=home_eligible,
@@ -419,7 +421,6 @@ def _play_game(
         away_team.record.id,
         season_id,
         game_date,
-        series_id,
         injured_ids=injured_ids,
         team_players=list(away_team.players),
         eligible_ids=away_eligible,
@@ -575,11 +576,11 @@ def _play_game(
     game_repo.save_game_result(game_info["game_id"], result, winner_id)
     if home_advance:
         rotations_repo.advance_rotation_pointer(
-            home_team.record.id, season_id, series_id
+            home_team.record.id, season_id, after_player_id=home_starter_id
         )
     if away_advance:
         rotations_repo.advance_rotation_pointer(
-            away_team.record.id, season_id, series_id
+            away_team.record.id, season_id, after_player_id=away_starter_id
         )
     team_game_repo.save_game_stats(
         game_info["game_id"],

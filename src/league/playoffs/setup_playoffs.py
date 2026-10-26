@@ -84,7 +84,11 @@ def get_top_N(conn, season_id: str, num_teams: int = 8) -> list[dict]:
 
 
 def reset_playoff_rotation_pointers(conn, season_id: str, league_id: str) -> None:
-    """Reset all rotation pointers for a season back to order 1."""
+    """
+    Reset all rotation pointers for a season back to order 1, so every
+    playoff team opens with its #1 starter.  The playoffs share the season
+    pointer with the regular season, so this is the one reset they get.
+    """
     rot_repo = TeamRotationsRepository(conn, league_id)
     reset = rot_repo.reset_rotation_pointers(season_id)
     print(f"  Reset rotation pointers to sp1 for {reset} teams")
@@ -97,12 +101,16 @@ def demote_extra_starters(
     keep: int,
     league_id: str,
     logger: logging.Logger = None,
+    effective_date: date | None = None,
 ) -> None:
     """
     For each team, keep only `keep` rotation slots active.
     Demote remaining starters to Long bullpen role.
+
+    ``effective_date`` should be the playoff start date (league time, not
+    the real-world date), so the demotions are in force for game 1.
     """
-    today = date.today().isoformat()
+    today = (effective_date or date.today()).isoformat()
     rot_repo = TeamRotationsRepository(conn, league_id)
     bull_repo = BullpenRepository(conn)
 
@@ -264,7 +272,13 @@ def setup_playoff_bracket(
     with conn.transaction():
         seeds = get_top_N(conn, season_id)
         demote_extra_starters(
-            conn, season_id, seeds, keep=keep, league_id=league_id, logger=logger
+            conn,
+            season_id,
+            seeds,
+            keep=keep,
+            league_id=league_id,
+            logger=logger,
+            effective_date=start_date,
         )
         reset_playoff_rotation_pointers(conn, season_id, league_id)
         build_bracket(conn, season_id, seeds, start_date, logger=logger)
