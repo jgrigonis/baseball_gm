@@ -14,6 +14,11 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.league.bootstrap import LeagueBootstrapper
+from src.league.league_constants import (
+    ALL_STAR_BREAK_AFTER_GAMES,
+    ALL_STAR_BREAK_DAYS,
+    SEASON_LENGTH,
+)
 from src.league.league_modes import is_blitz_style
 from src.league.manifest_helper import (
     create_team_files,
@@ -96,8 +101,9 @@ def start_league(
             season_id=season_id,
             team_ids=[t.id for t in teams],
             start_date=start_date,
-            games_per_series=3,
-            home_and_away=True,
+            target_games=SEASON_LENGTH,
+            all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
+            all_star_break_days=ALL_STAR_BREAK_DAYS,
         )
         save_schedule_to_db(conn, schedule)
         game_count = len(schedule)

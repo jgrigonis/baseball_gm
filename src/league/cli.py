@@ -18,6 +18,11 @@ from src.league.manifest_helper import (
     find_missing_team_files,
     create_team_files,
 )
+from src.league.league_constants import (
+    ALL_STAR_BREAK_AFTER_GAMES,
+    ALL_STAR_BREAK_DAYS,
+    SEASON_LENGTH,
+)
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import MANIFEST_FILES_DIR
 
@@ -130,8 +135,9 @@ def main():
         season_id=season_id,
         team_ids=team_ids,
         start_date=start_date,
-        games_per_series=3,
-        home_and_away=True,
+        target_games=SEASON_LENGTH,
+        all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
+        all_star_break_days=ALL_STAR_BREAK_DAYS,
     )
 
     save_schedule_to_db(conn, schedule)

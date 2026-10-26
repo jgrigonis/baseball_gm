@@ -121,37 +121,192 @@ class ScheduleGenerator:
         start_date: date,
         games_per_series: int = 3,
         home_and_away: bool = True,
+        target_games: int | None = None,
+        all_star_break_after: int | None = None,
+        all_star_break_days: int = 0,
     ) -> list[ScheduledGame]:
         """
-        Create a full season schedule built around 3-game series with no gaps.
+        Create a full season schedule built around series with no gaps.
 
         The circle algorithm guarantees every team plays in every round, so
         series can be laid out round by round with no team ever sitting idle
         while others are playing.
+
+        With ``target_games`` set, the season is built from whole round-robin
+        cycles instead, and each round's series length (2, 3 or 4 games) is
+        chosen so every team plays exactly ``target_games``. See
+        ``_season_rounds``. ``all_star_break_after`` and
+        ``all_star_break_days`` then leave that many off days after the round
+        that ends nearest that game number.
         """
-        matchups = self.generate_series_matchups(team_ids, home_and_away)
+        if target_games is None:
+            matchups = self.generate_series_matchups(team_ids, home_and_away)
+            games_per_round = len(team_ids) // 2
+            rounds = [
+                (matchups[i : i + games_per_round], games_per_series)
+                for i in range(0, len(matchups), games_per_round)
+            ]
+        else:
+            rounds = self._season_rounds(team_ids, target_games)
 
-        # matchups arrive in round order: n//2 matchups per round, each round
-        # is games_per_series days wide.
-        games_per_round = len(team_ids) // 2
+        break_round = None
+        if all_star_break_after is not None and all_star_break_days > 0:
+            break_round = self._break_round(
+                [length for _, length in rounds], all_star_break_after
+            )
+
         schedule: list[ScheduledGame] = []
-
-        for i, (home_id, away_id) in enumerate(matchups):
-            round_index = i // games_per_round
-            series_start = start_date + timedelta(days=round_index * games_per_series)
-            for day_offset in range(games_per_series):
-                schedule.append(
-                    ScheduledGame(
-                        id=str(uuid.uuid4()),
-                        season_id=season_id,
-                        home_team_id=home_id,
-                        away_team_id=away_id,
-                        game_date=series_start + timedelta(days=day_offset),
+        series_start = start_date
+        for round_index, (pairs, length) in enumerate(rounds):
+            for home_id, away_id in pairs:
+                for day_offset in range(length):
+                    schedule.append(
+                        ScheduledGame(
+                            id=str(uuid.uuid4()),
+                            season_id=season_id,
+                            home_team_id=home_id,
+                            away_team_id=away_id,
+                            game_date=series_start + timedelta(days=day_offset),
+                        )
                     )
-                )
+            series_start += timedelta(days=length)
+            if round_index == break_round:
+                series_start += timedelta(days=all_star_break_days)
 
         schedule.sort(key=lambda g: g.game_date)
         return schedule
+
+    @staticmethod
+    def season_shape(num_teams: int, target_games: int) -> tuple[int, int, int]:
+        """
+        Pick how many round-robin cycles to play and how many rounds need a
+        series length other than 3, so every team plays exactly
+        ``target_games``.
+
+        A cycle is num_teams - 1 rounds, and every team plays one series per
+        round. Series are 3 games, except that some rounds are 2 or 4 games to
+        land on the target. The cycle count that needs the fewest of those
+        rounds wins, with ties going to fewer cycles.
+
+        Returns (cycles, number of off-length rounds, their series length).
+        """
+        if num_teams < 2 or num_teams % 2:
+            raise ValueError(f"Need an even number of teams, got {num_teams}")
+
+        best = None
+        for cycles in range(1, target_games + 1):
+            num_rounds = cycles * (num_teams - 1)
+            if 4 * num_rounds < target_games:
+                continue
+            if 2 * num_rounds > target_games:
+                break
+            off_rounds = abs(target_games - 3 * num_rounds)
+            if best is None or off_rounds < best[1]:
+                off_length = 4 if target_games > 3 * num_rounds else 2
+                best = (cycles, off_rounds, off_length)
+        if best is None:
+            raise ValueError(
+                f"Can't schedule {target_games} games for {num_teams} teams"
+            )
+        return best
+
+    def _season_rounds(
+        self, team_ids: list[str], target_games: int
+    ) -> list[tuple[list[tuple[str, str]], int]]:
+        """
+        Build the season as (pairs, series length) rounds over whole cycles.
+
+        Cycles come in home/away pairs: the second of each pair replays the
+        first's rounds with every matchup flipped and the same series length,
+        so each pair of teams splits those games evenly. A leftover odd cycle
+        gives the home series in each matchup to whichever team has had fewer
+        home games so far. Off-length rounds go to the paired cycles first,
+        two at a time, and are spaced evenly through each cycle.
+        """
+        num_teams = len(team_ids)
+        cycles, off_rounds, off_length = self.season_shape(num_teams, target_games)
+        rounds_per_cycle = num_teams - 1
+        cycle_pairs = cycles // 2
+
+        # How many off-length rounds each cycle gets.
+        paired_off = min(off_rounds // 2, cycle_pairs * rounds_per_cycle)
+        off_per_cycle = []
+        for i in range(cycle_pairs):
+            share = paired_off // cycle_pairs + (i < paired_off % cycle_pairs)
+            off_per_cycle += [share, share]
+        if cycles % 2:
+            off_per_cycle.append(off_rounds - 2 * paired_off)
+
+        season: list[tuple[list[tuple[str, str]], int]] = []
+        home_games = {t: 0 for t in team_ids}
+        for cycle in range(cycles):
+            if cycle % 2 == 0:
+                shuffled = list(team_ids)
+                self.rng.shuffle(shuffled)
+                matchings = self._circle_rounds(shuffled)
+                self.rng.shuffle(matchings)
+                # The first off_per_cycle matchings are the off-length ones,
+                # in both this cycle and its flipped partner.
+                lengths = [
+                    off_length if i < off_per_cycle[cycle] else 3
+                    for i in range(rounds_per_cycle)
+                ]
+                cycle_rounds = list(zip(matchings, lengths))
+            else:
+                cycle_rounds = [
+                    ([(b, a) for a, b in pairs], length)
+                    for pairs, length in cycle_rounds
+                ]
+
+            balance = cycle == cycles - 1 and cycle % 2 == 0
+            for pairs, length in self._spread(cycle_rounds, off_per_cycle[cycle]):
+                if balance:
+                    pairs = [self._balance_home(a, b, home_games) for a, b in pairs]
+                pairs = list(pairs)
+                self.rng.shuffle(pairs)
+                for home, _ in pairs:
+                    home_games[home] += length
+                season.append((pairs, length))
+
+        return season
+
+    def _spread(
+        self, cycle_rounds: list[tuple[list[tuple[str, str]], int]], off_count: int
+    ) -> list[tuple[list[tuple[str, str]], int]]:
+        """
+        Order a cycle's rounds randomly, with its ``off_count`` off-length
+        rounds (the first ones in ``cycle_rounds``) evenly spaced.
+        """
+        off = cycle_rounds[:off_count]
+        regular = cycle_rounds[off_count:]
+        self.rng.shuffle(off)
+        self.rng.shuffle(regular)
+        n = len(cycle_rounds)
+        off_slots = {int((i + 0.5) * n / off_count) for i in range(off_count)}
+        off_iter, regular_iter = iter(off), iter(regular)
+        return [
+            next(off_iter) if i in off_slots else next(regular_iter) for i in range(n)
+        ]
+
+    def _balance_home(
+        self, a: str, b: str, home_games: dict[str, int]
+    ) -> tuple[str, str]:
+        """Give the home series to whichever team has fewer home games so far."""
+        if home_games[a] != home_games[b]:
+            return (a, b) if home_games[a] < home_games[b] else (b, a)
+        return (a, b) if self.rng.random() < 0.5 else (b, a)
+
+    @staticmethod
+    def _break_round(lengths: list[int], after_games: int) -> int:
+        """The index of the round that ends nearest game ``after_games``."""
+        played = 0
+        best_index, best_gap = 0, None
+        for i, length in enumerate(lengths[:-1]):
+            played += length
+            gap = abs(played - after_games)
+            if best_gap is None or gap < best_gap:
+                best_index, best_gap = i, gap
+        return best_index
 
     # def generate_series_matchups(
     #     self,
