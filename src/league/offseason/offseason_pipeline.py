@@ -177,9 +177,11 @@ class OffseasonPipeline:
             players = self.player_repo.get_all_players()
         player_ids = [p.id for p in players]
         all_caps = cap_repo.get_many(player_ids)
+        all_fractions = self.player_repo.get_skill_fractions_many(player_ids)
 
         for player in players:
             caps = all_caps.get(player.id)
+            skills = player.skills.with_fractions(all_fractions.get(player.id))
             energy_state = energy_repo.get(player.id)
             coaching = 1.0
             if energy_state is not None:
@@ -201,7 +203,7 @@ class OffseasonPipeline:
                 if energy_state.current_energy < 0.20:
                     coaching = min(coaching, 0.80)
 
-            new_skills = player.skills.age_to(
+            new_skills = skills.age_to(
                 player.age + 1,
                 from_age=player.age,
                 rng=rng,

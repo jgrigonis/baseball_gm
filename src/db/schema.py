@@ -403,6 +403,31 @@ CREATE TABLE IF NOT EXISTS player_skills_history (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
+-- Fractional part of each skill (-0.5 to 0.5) so aging keeps sub-point progress
+CREATE TABLE IF NOT EXISTS player_skill_fractions (
+    player_id    TEXT PRIMARY KEY,
+
+    clutch       REAL NOT NULL DEFAULT 0,
+    speed        REAL NOT NULL DEFAULT 0,
+    durability   REAL NOT NULL DEFAULT 0,
+    power        REAL NOT NULL DEFAULT 0,
+    eye          REAL NOT NULL DEFAULT 0,
+    contact      REAL NOT NULL DEFAULT 0,
+    base_running REAL NOT NULL DEFAULT 0,
+    bunting      REAL NOT NULL DEFAULT 0,
+    catching     REAL NOT NULL DEFAULT 0,
+    infield      REAL NOT NULL DEFAULT 0,
+    outfield     REAL NOT NULL DEFAULT 0,
+    arm          REAL NOT NULL DEFAULT 0,
+    accuracy     REAL NOT NULL DEFAULT 0,
+    stamina      REAL NOT NULL DEFAULT 0,
+    recovery     REAL NOT NULL DEFAULT 0,
+    ground_balls REAL NOT NULL DEFAULT 0,
+    strikes      REAL NOT NULL DEFAULT 0,
+
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS player_status (
     player_id TEXT PRIMARY KEY,
     status TEXT NOT NULL CHECK (status IN (

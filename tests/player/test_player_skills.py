@@ -76,11 +76,50 @@ class TestPlayerSkillsInitialization:
         with pytest.raises(ValueError, match="invalid value"):
             PlayerSkills({"power": "not_a_number"})
 
-    def test_init_rejects_float_string(self):
-        with pytest.raises(ValueError, match="invalid value"):
-            ps = PlayerSkills({"power": "85.5"})
+    def test_init_rounds_fraction_and_keeps_exact(self):
+        ps = PlayerSkills({"power": 85.6, "speed": 60.4, "eye": 49.5})
+        assert ps["power"] == 86
+        assert ps["speed"] == 60
+        assert ps["eye"] == 50  # halves round up
+        assert isinstance(ps["power"], int)
+        assert ps.exact("power") == pytest.approx(85.6)
 
-            assert ps["power"] == 85  # Truncated to int
+
+class TestFractions:
+    """Exact values carry sub-point progress through a save and load."""
+
+    def test_fractions_are_exact_minus_int(self):
+        ps = PlayerSkills({"power": 85.6, "speed": 60.4})
+        fractions = ps.fractions()
+        assert fractions["power"] == pytest.approx(-0.4)
+        assert fractions["speed"] == pytest.approx(0.4)
+        assert fractions["eye"] == 0
+
+    def test_with_fractions_round_trips(self):
+        original = PlayerSkills({"power": 85.6, "speed": 60.4}, age=23)
+        whole = PlayerSkills(original.as_dict(), age=23)
+        restored = whole.with_fractions(original.fractions())
+        assert restored.exact("power") == pytest.approx(85.6)
+        assert restored.exact("speed") == pytest.approx(60.4)
+        assert restored.age == 23
+
+    def test_with_no_fractions_is_unchanged(self):
+        ps = PlayerSkills({"power": 70})
+        assert ps.with_fractions(None) is ps
+
+    def test_yearly_aging_keeps_small_gains(self):
+        """A gain under one point a year still adds up over several years."""
+        skills = PlayerSkills({"bunting": 50}, age=20)
+        caps = {"bunting": 100}
+        rng = random.Random(3)
+        for age in range(20, 30):
+            aged = skills.age_to(age + 1, from_age=age, rng=rng, caps=caps)
+            # Save and reload the way the offseason does
+            skills = PlayerSkills(aged.as_dict(), age=aged.age).with_fractions(
+                aged.fractions()
+            )
+        # Bunting grows 0.5/yr; truncating every year would lose almost all of it
+        assert skills.exact("bunting") > 52
 
 
 class TestDictionaryInterface:

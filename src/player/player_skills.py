@@ -5,7 +5,10 @@ Player skill management.
 PlayerSkills is an immutable value object that represents a player's
 intrinsic abilities across all baseball skills (hitting, pitching, defense).
 
-Skills are stored as integers from 1-100, where:
+Skills are read as integers from 1-100. Each skill also keeps its exact
+float value, so yearly aging can carry fractional progress forward instead
+of losing it to rounding (see exact() and fractions()). Integer values are
+the exact values rounded half up. Ranges:
 - 1-30: Below average
 - 30-50: Average
 - 50-70: Above average
@@ -16,6 +19,7 @@ from positions.py and skill_map.py.
 """
 
 from __future__ import annotations
+import math
 import random
 from types import MappingProxyType
 from collections.abc import ItemsView, KeysView, ValuesView, Iterator
@@ -34,6 +38,36 @@ DEFAULT_SIGMA_DIVISOR = (
 )
 # Increase to cluster skills closer to position means;
 # decrease to produce more extreme outliers.
+
+# Added to each position template mean when generating a 17-year-old.
+# The aging curves give players more growth than the templates were tuned
+# for, so 17-year-olds start a little lower; this keeps the skill levels of
+# players at their peak (and of freshly generated leagues) where the game is
+# balanced. Re-measure if the aging curves or talent caps change.
+GENERATION_ADJUST: dict[str, float] = {
+    "accuracy": -2.5,
+    "stamina": -2.0,
+    "recovery": -1.5,
+    "ground_balls": -1.0,
+    "strikes": -1.8,
+    "clutch": -3.4,
+    "speed": -1.5,
+    "durability": 1.5,
+    "power": -3.2,
+    "eye": -3.0,
+    "contact": -3.6,
+    "base_running": -1.4,
+    "bunting": -0.7,
+    "catching": -3.5,
+    "infield": -0.6,
+    "outfield": -0.2,
+    "arm": 1.3,
+}
+
+
+def _round_half_up(value: float) -> int:
+    """Round to the nearest integer, halves up (round() rounds halves to even)."""
+    return math.floor(value + 0.5)
 
 
 class PlayerSkills:
@@ -82,18 +116,18 @@ class PlayerSkills:
         self.age = age
 
         normalized = {}
+        exact = {}
 
         for skill_name in SKILLS:
             value = skills.get(skill_name, DEFAULT_SKILL_MEAN)
 
-            # Convert to int if needed
-            if not isinstance(value, int):
-                try:
-                    value = int(value)
-                except (TypeError, ValueError) as e:
-                    raise ValueError(
-                        f"Skill '{skill_name}' has invalid value: {value}"
-                    ) from e
+            try:
+                exact_value = float(value)
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    f"Skill '{skill_name}' has invalid value: {value}"
+                ) from e
+            value = _round_half_up(exact_value)
 
             # Validate range
             if validate and not (SKILL_MIN <= value <= SKILL_MAX):
@@ -103,8 +137,10 @@ class PlayerSkills:
                 )
 
             normalized[skill_name] = value
+            exact[skill_name] = exact_value
 
         self._skills = MappingProxyType(normalized)
+        self._exact = MappingProxyType(exact)
 
     # ---------- Dictionary-like Interface ----------
 
@@ -143,6 +179,32 @@ class PlayerSkills:
     def as_dict(self) -> dict[str, int]:
         """Return a mutable copy of skills as a dictionary."""
         return dict(self._skills)
+
+    # ---------- Exact (fractional) values ----------
+
+    def exact(self, key: str) -> float:
+        """The skill's exact value, including progress below one point."""
+        return self._exact[key]
+
+    def fractions(self) -> dict[str, float]:
+        """
+        Each skill's exact value minus its integer value, in [-0.5, 0.5).
+        Stored next to the integer skills so aging keeps partial progress.
+        """
+        return {k: self._exact[k] - self._skills[k] for k in self._skills}
+
+    def with_fractions(self, fractions: dict[str, float] | None) -> PlayerSkills:
+        """
+        A copy whose exact values are the integer skills plus *fractions*
+        (as saved by fractions()). Skills missing from *fractions* stay whole.
+        """
+        if not fractions:
+            return self
+        exact = {
+            k: float(clamp(v + fractions.get(k, 0.0), SKILL_MIN, SKILL_MAX))
+            for k, v in self._skills.items()
+        }
+        return PlayerSkills(exact, age=self.age)
 
     # ---------- Comparison ----------
 
@@ -339,6 +401,9 @@ class PlayerSkills:
         # Generate each skill based on position template
         for skill_name, default_mean in SKILLS.items():
             mean = SKILL_TEMPLATE[position].get(skill_name, default_mean)
+            mean = clamp(
+                mean + GENERATION_ADJUST.get(skill_name, 0.0), SKILL_MIN, SKILL_MAX
+            )
             skills[skill_name] = cls.generate_stat(rng=rng, mean=mean)
 
         # Apply position-specific restrictions
@@ -484,26 +549,8 @@ class PlayerSkills:
         def cap(skill_name: str) -> int | None:
             return caps.get(skill_name) if caps else None
 
-        # Work with floats internally
-        s = {
-            "clutch": float(self["clutch"]),
-            "speed": float(self["speed"]),
-            "power": float(self["power"]),
-            "eye": float(self["eye"]),
-            "contact": float(self["contact"]),
-            "base_running": float(self["base_running"]),
-            "bunting": float(self["bunting"]),
-            "catching": float(self["catching"]),
-            "infield": float(self["infield"]),
-            "outfield": float(self["outfield"]),
-            "arm": float(self["arm"]),
-            "accuracy": float(self["accuracy"]),
-            "stamina": float(self["stamina"]),
-            "recovery": float(self["recovery"]),
-            "ground_balls": float(self["ground_balls"]),
-            "strikes": float(self["strikes"]),
-            "durability": float(self["durability"]),
-        }
+        # Work with exact floats so partial progress carries year to year
+        s = dict(self._exact)
         SA = SkillAging()
 
         for current_age in range(from_age, age):

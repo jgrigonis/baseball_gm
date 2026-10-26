@@ -473,10 +473,11 @@ class TestCreatePositionSpecificBehavior:
 
     def test_create_first_baseman_has_good_power(self):
         factory = PlayerFactory(rng=random.Random(42))
-        first_baseman = factory.create(position="1b")
+        first_basemen = [factory.create(position="1b") for _ in range(50)]
 
         # 1B should have above average power
-        assert first_baseman.skills["power"] > 50
+        mean_power = sum(p.skills["power"] for p in first_basemen) / 50
+        assert mean_power > 50
 
     def test_create_catcher_left_handed_rare(self):
         """Left-handed catchers should be very rare."""

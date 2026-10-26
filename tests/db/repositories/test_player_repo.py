@@ -188,6 +188,27 @@ class TestPlayerRepositoryUpdateSkills:
         assert row["power"] == 75
         assert row["contact"] == 90
 
+    def test_update_skills_saves_fractions(self, player_repo, ctx, sample_skills):
+        """Sub-point progress is saved beside the whole-number skills."""
+        player_repo.insert(
+            ctx.p1.id, "First", "Player", "r", "r", "1b", sample_skills, ctx.league_id
+        )
+        exact = sample_skills.as_dict() | {"power": 70.3, "eye": 64.6}
+        player_repo.update_skills(ctx.p1.id, PlayerSkills(exact))
+
+        fractions = player_repo.get_skill_fractions_many([ctx.p1.id])[ctx.p1.id]
+        assert fractions["power"] == pytest.approx(0.3, abs=1e-5)
+        assert fractions["eye"] == pytest.approx(-0.4, abs=1e-5)
+        assert fractions["speed"] == 0
+
+        loaded = player_repo.get_player_skills(ctx.p1.id)
+        assert loaded["power"] == 70
+        assert loaded["eye"] == 65
+
+    def test_get_skill_fractions_many_skips_unknown(self, player_repo):
+        assert player_repo.get_skill_fractions_many([str(uuid.uuid4())]) == {}
+        assert player_repo.get_skill_fractions_many([]) == {}
+
     def test_update_skills_creates_new_timestamp(
         self, player_repo, ctx, db_conn, sample_skills
     ):

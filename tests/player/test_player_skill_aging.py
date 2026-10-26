@@ -16,8 +16,10 @@ import unittest
 
 from src.player.player_skill_aging import (
     CAP_BRAKE,
+    SKILL_CURVES,
     SkillAging,
     _cap_dampen,
+    planned_growth,
 )
 
 # ─────────────────────────────────────────────
@@ -211,6 +213,40 @@ class TestPhasedDelta(unittest.TestCase):
             val=70.0,
         )
         self.assertAlmostEqual(mean_no_cap, mean_with_cap, delta=0.1)
+
+
+class TestNoiseAtCap(unittest.TestCase):
+    """Only the rate is dampened, so a player at his cap doesn't drift down."""
+
+    def setUp(self):
+        self.sa = SkillAging()
+
+    def test_clutch_at_cap_has_no_downward_drift(self):
+        mean = _mean_delta(self.sa.delta_CL, age=24, val=60.0, n=5000, cap=60)
+        self.assertAlmostEqual(mean, 0.0, delta=0.1)
+
+    def test_growth_phase_at_cap_is_a_random_walk(self):
+        mean = _mean_delta(self.sa.delta_RE, age=22, val=60.0, n=5000, cap=60)
+        self.assertAlmostEqual(mean, 0.0, delta=0.1)
+
+    def test_noise_still_applies_at_cap(self):
+        rng = _fixed_rng()
+        deltas = {self.sa.delta_EY(22, 60.0, rng, cap=60) for _ in range(20)}
+        self.assertGreater(len(deltas), 1)
+
+
+class TestPlannedGrowth(unittest.TestCase):
+    def test_every_skill_has_a_curve(self):
+        from src.player.positions import SKILLS
+
+        self.assertEqual(set(SKILL_CURVES), set(SKILLS))
+
+    def test_sums_positive_rates(self):
+        # Eye: 2.0/yr for 17-27 (11 yrs) + 0.6/yr for 28-32 (5 yrs)
+        self.assertAlmostEqual(planned_growth("eye"), 11 * 2.0 + 5 * 0.6)
+
+    def test_craft_skills_plan_more_growth_than_speed(self):
+        self.assertGreater(planned_growth("contact"), planned_growth("speed"))
 
 
 # ─────────────────────────────────────────────

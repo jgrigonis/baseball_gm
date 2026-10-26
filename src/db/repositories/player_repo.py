@@ -139,8 +139,41 @@ class PlayerRepository:
                 now,
             ),
         )
+        self._save_skill_fractions(player_id, skills)
 
         # self.conn.commit()
+
+    def _save_skill_fractions(self, player_id: str, skills: PlayerSkills) -> None:
+        """Save the sub-point part of each skill so aging can carry it forward."""
+        fractions = skills.fractions()
+        cols = list(fractions)
+        updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols)
+        self.conn.execute(
+            f"""
+            INSERT INTO player_skill_fractions (player_id, {", ".join(cols)})
+            VALUES (%s, {", ".join("%s" for _ in cols)})
+            ON CONFLICT (player_id) DO UPDATE SET {updates}
+            """,
+            (player_id, *fractions.values()),
+        )
+
+    def get_skill_fractions_many(
+        self, player_ids: list[str]
+    ) -> dict[str, dict[str, float]]:
+        """
+        Sub-point skill progress for each player, as saved with their skills.
+        Players with nothing saved are left out (treat their skills as whole).
+        """
+        if not player_ids:
+            return {}
+        rows = self.conn.execute(
+            "SELECT * FROM player_skill_fractions WHERE player_id = ANY(%s)",
+            (list(player_ids),),
+        ).fetchall()
+        return {
+            row["player_id"]: {k: v for k, v in row.items() if k != "player_id"}
+            for row in rows
+        }
 
     def snapshot_skills(self, player_id: str, season_id: str) -> None:
         """
