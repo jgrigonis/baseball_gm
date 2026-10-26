@@ -10,6 +10,13 @@
     <a href="/leagues/join" class="btn btn-secondary" style="margin-left:8px;">Join by Code</a>
   </div>
 
+  {# Finished leagues, in both lists. The choice is remembered. #}
+  <label id="completed-toggle" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);cursor:pointer;">
+    <input type="checkbox" {% if not hide_completed %}checked{% endif %}
+           onchange="location.href='/leagues/?completed=' + (this.checked ? 'show' : 'hide')">
+    Show completed leagues
+  </label>
+
   {% if leagues %}
   <div class="card">
     <table class="data-table">
@@ -35,6 +42,10 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+  {% elif hidden_mine %}
+  <div style="padding:60px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+    All {{ hidden_mine }} of your leagues are complete. <a href="/leagues/?completed=show" style="color:var(--amber);">Show them</a>, <a href="/leagues/new" style="color:var(--amber);">create one</a>, or <a href="/leagues/join" style="color:var(--amber);">join with a code</a>.
   </div>
   {% else %}
   <div style="padding:60px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
@@ -72,6 +83,10 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+  {% elif hidden_public %}
+  <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+    No public leagues in progress. {{ hidden_public }} completed {{ 'league is' if hidden_public == 1 else 'leagues are' }} hidden. <a href="/leagues/?completed=show" style="color:var(--amber);">Show them</a>.
   </div>
   {% else %}
   <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
