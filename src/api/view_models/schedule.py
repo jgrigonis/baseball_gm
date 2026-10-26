@@ -31,6 +31,7 @@ def schedule_context(db, season_id: str | None, my_team_id: str | None) -> dict:
                 {
                     "date": r["game_date"],
                     "home_away": "vs" if is_home else "@",
+                    "opp_id": opp_id,
                     "opp_city": r["away_city"] if is_home else r["home_city"],
                     "opp_mascot": r["away_mascot"] if is_home else r["home_mascot"],
                     "opp_record": opp_records.get(opp_id, "0-0"),
