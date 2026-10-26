@@ -297,8 +297,10 @@ def sim_playoff(
             if r:
                 results.append({"series": g["series_name"], "result": str(r)})
                 count += 1
-        # Rollup game stats into player_season_stats after each day
         if results:
+            lr.mark_played(league_id)
+            conn.commit()
+            # Rollup game stats into player_season_stats after each day
             try:
                 build_season(conn, season_id)
             except psycopg.Error:

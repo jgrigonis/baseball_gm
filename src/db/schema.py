@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     period_deadline      TIMESTAMPTZ,      -- end of the Decision Window (timer pace)
     sim_period_days      INTEGER NOT NULL DEFAULT 3,  -- season days per period
     num_seasons          INTEGER NOT NULL DEFAULT 10, -- how many seasons the league runs
+    last_played_at       TIMESTAMPTZ,      -- last real-world time games were played or the league moved on
     created_at TEXT DEFAULT (NOW())
 );
 

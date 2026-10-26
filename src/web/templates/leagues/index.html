@@ -13,14 +13,16 @@
   {% if leagues %}
   <div class="card">
     <table class="data-table">
-      <thead><tr><th>League</th><th>Year</th><th>Mode</th><th>State</th><th>Code</th><th></th></tr></thead>
+      <thead><tr><th>League</th><th>Year</th><th>Mode</th><th>State</th><th>GMs</th><th>Last Played</th><th>Code</th><th></th></tr></thead>
       <tbody>
         {% for l in leagues %}
         <tr>
           <td class="team-name">{{ l.name }}</td>
           <td style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
           <td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>
-          <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state }}</span></td>
+          <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
+          <td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>
+          <td style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
           <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code }}</td>
           <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
             {% if l.is_commissioner %}
@@ -57,6 +59,13 @@
   </div>
 </div>
 <script>
+// Show last-played times in the viewer's own time zone.
+document.querySelectorAll('time.local-time').forEach(t => {
+  const d = new Date(t.dateTime);
+  if (isNaN(d)) return;
+  t.textContent = d.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+  t.title = d.toLocaleString();
+});
 function leaveLeague(btn) {
   const id = btn.dataset.leagueId, name = btn.dataset.leagueName;
   const msg = btn.dataset.last

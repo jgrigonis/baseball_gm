@@ -299,10 +299,16 @@ class LeagueRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def set_state(self, league_id: str, state: str) -> None:
-        """Set the league to state: state."""
+    def mark_played(self, league_id: str) -> None:
+        """Record that the league was just played (shown on the leagues page)."""
         self.conn.execute(
-            "UPDATE leagues SET state = %s WHERE id = %s",
+            "UPDATE leagues SET last_played_at = NOW() WHERE id = %s", (league_id,)
+        )
+
+    def set_state(self, league_id: str, state: str) -> None:
+        """Set the league to state: state. Moving on counts as playing."""
+        self.conn.execute(
+            "UPDATE leagues SET state = %s, last_played_at = NOW() WHERE id = %s",
             (
                 state,
                 league_id,

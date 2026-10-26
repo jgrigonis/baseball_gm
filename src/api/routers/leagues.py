@@ -40,16 +40,26 @@ def leagues_index(
 
     gm_repo = GMRepository(db)
     # Fetch User's Leagues
-    rows = gm_repo.get_users_leagues(user["id"])
+    leagues = [dict(r) for r in gm_repo.get_users_leagues(user["id"])]
+    for league in leagues:
+        league["state_label"] = state_label(league["state"], league["season_number"])
 
     return templates.TemplateResponse(
         request,
         "leagues/index.html",
         {
             "user": user,
-            "leagues": [dict(r) for r in rows],
+            "leagues": leagues,
         },
     )
+
+
+def state_label(state: str, season_number: int) -> str:
+    """The league's phase and which season it's in, e.g. "Draft 1" or
+    "Playoffs 3". The lobby and a finished league have no season number."""
+    if state in ("lobby", "complete") or not season_number:
+        return state.title()
+    return f"{state.title()} {season_number}"
 
 
 @router.get("/leagues/new", response_class=HTMLResponse)

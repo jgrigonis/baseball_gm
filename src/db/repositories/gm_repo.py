@@ -107,7 +107,9 @@ class GMRepository:
         """Fetch the user's leagues"""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
+                      l.last_played_at,
                       MAX(s.year) as current_year,
+                      COUNT(DISTINCT ls.season_id) as season_number,
                       (l.commissioner_gm_id = g.id) as is_commissioner,
                       (SELECT COUNT(*) FROM gms o
                        WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
@@ -116,7 +118,8 @@ class GMRepository:
             LEFT JOIN league_seasons ls ON ls.league_id = l.id
             LEFT JOIN seasons s ON s.id = ls.season_id
             WHERE g.user_id = %s AND NOT g.is_ai
-            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.join_code, g.id
+            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
+                     l.last_played_at, g.id
             ORDER BY l.created_at DESC""",
             (user_id,),
         ).fetchall()
