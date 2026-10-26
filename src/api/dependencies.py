@@ -72,8 +72,9 @@ def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)
 
 def get_gm_or_viewer(league_id: str, db: DB, user: Any = Depends(get_current_user)):
     """For read-only league pages. A GM gets their own row. Anyone else signed
-    in can view a public league once it has started, as a viewer: a stand-in
-    GM with no id and no team, so "your team" highlights and actions drop out."""
+    in can view a public league once it has started, and an admin any league
+    that has started, as a viewer: a stand-in GM with no id and no team, so
+    "your team" highlights and actions drop out."""
     gm = db.execute(
         "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
         (user["id"], league_id),
@@ -83,7 +84,8 @@ def get_gm_or_viewer(league_id: str, db: DB, user: Any = Depends(get_current_use
     league = db.execute(
         "SELECT is_public, state FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
-    if not league or not league["is_public"] or league["state"] == "lobby":
+    can_view = league and (league["is_public"] or user.get("is_admin"))
+    if not can_view or league["state"] == "lobby":
         raise NotLeagueGM()
     return {
         "id": None,
