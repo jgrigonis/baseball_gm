@@ -53,6 +53,14 @@
              title="Time to set up your first lineup after the draft">
       <span class="timer-only-note">Only used with Timer pace</span>
     </div>
+    <div class="field">
+      <label for="is-public">Public League</label>
+      <label class="toggle-row">
+        <input type="checkbox" name="is_public" id="is-public" value="true">
+        <span>List it under Public Leagues so anyone can join while it's in the lobby</span>
+      </label>
+      <span class="mode-note">Off: only people with the join code can find it.</span>
+    </div>
     <div style="display:flex;gap:8px;">
       <button type="submit" class="btn btn-primary">Create League →</button>
       <a href="/leagues/" class="btn btn-secondary">Cancel</a>
@@ -60,6 +68,9 @@
   </form>
 </div></div>
 <style>
+.toggle-row { display: flex; align-items: center; gap: 10px; cursor: pointer;
+  text-transform: none !important; letter-spacing: 0 !important; font-size: 12px !important; color: var(--text) !important; }
+.toggle-row input { width: auto; accent-color: var(--amber); }
 .mode-note { font-size: 11px; color: var(--text-dim); font-style: italic; }
 .timer-only-note { display: none; font-size: 11px; color: var(--text-dim); font-style: italic; }
 .field-disabled .timer-only-note { display: block; }

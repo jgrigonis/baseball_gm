@@ -41,6 +41,9 @@
                  "How many days of the regular season each sim period plays before GMs get their next decision window."),
                 ("Seasons", league_num_seasons,
                  "How many seasons the league runs before it ends."),
+                ("Visibility", "Public" if league_is_public else "Private",
+                 "Public: listed under Public Leagues, where anyone can join while it's in the lobby." if league_is_public
+                 else "Private: only people with the join code can find it."),
               ] %}
               {% for label, value, tip in settings %}
               <tr>

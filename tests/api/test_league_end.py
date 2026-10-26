@@ -76,8 +76,12 @@ class TestCompleteLeagueIsReadOnly:
             ).router.routes
         ]
         # Leaving stays open so GMs can clear a finished league off their
-        # list; starting needs the lobby anyway.
-        exempt = {"/leagues/{league_id}/leave", "/leagues/{league_id}/start"}
+        # list; starting and joining need the lobby anyway.
+        exempt = {
+            "/leagues/{league_id}/leave",
+            "/leagues/{league_id}/start",
+            "/leagues/{league_id}/join",
+        }
 
         def calls(dependant):
             for d in dependant.dependencies:
