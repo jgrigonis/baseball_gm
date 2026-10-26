@@ -2,13 +2,15 @@
    The lobby's GM list. Polls /lobby/gms every few seconds so the commissioner
    sees GMs join; once the league starts that answers with HX-Redirect, which
    takes everyone waiting in the lobby on to the draft. Leagues in states the
-   dashboard has no page for yet also land on the lobby; those don't poll. #}
+   dashboard has no page for yet also land on the lobby; those don't poll.
+   Teams nobody has joined yet show as AI GMs, which is who runs them if the
+   league starts now; each GM who joins takes one of those slots. #}
 <div class="card" id="lobby-gms"
      {% if league_state == "lobby" %}
      hx-get="/leagues/{{ league_id }}/lobby/gms" hx-trigger="every 3s" hx-swap="outerHTML"
      {% endif %}>
   <div class="card-header">
-    <span class="card-title">GMs ({{ gms|length }} / {{ num_teams }})</span>
+    <span class="card-title">GMs ({{ gms|length }} human · {{ ai_slots }} AI)</span>
     <span class="spacer"></span>
     {% if join_code %}
     <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
@@ -43,10 +45,14 @@
             {% endif %}
           </td>
         </tr>
-        {% else %}
-        <tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:24px;">
-          No GMs yet — share the join code
-        </td></tr>
+        {% endfor %}
+        {% for _ in range(ai_slots) %}
+        <tr class="ai-slot">
+          <td class="team-name" style="color:var(--text-dim);">AI Manager</td>
+          <td style="color:var(--text-dim);">—</td>
+          <td><span class="badge badge-40man">AI</span></td>
+          <td><span style="color:var(--text-dim);font-size:11px;">Open slot</span></td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

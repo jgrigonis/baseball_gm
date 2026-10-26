@@ -263,10 +263,11 @@ def dashboard(
             "league_name": league["name"],
             "is_commissioner": bool(is_commish),
             "league_num_teams": league["num_teams"],  # Dual-mapping for safety
-            "league_mode": league["mode"],
+            "league_mode": get_mode(league["mode"]),
             "league_decision_window_sec": league["decision_window_sec"],
             "league_draft_window_sec": league["draft_window_sec"],
             "league_lineup_window_sec": league["lineup_window_sec"],
+            "league_reentry_enabled": bool(league["reentry_enabled"]),
             "league_pace_control": league["pace_control"],
             "league_sim_period_days": league["sim_period_days"],
             "league_num_seasons": league["num_seasons"],
@@ -279,10 +280,14 @@ def dashboard(
 
 
 def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
+    # Every team without a human GM gets an AI one when the league starts, so
+    # the lobby shows those open slots as AI GMs. Each GM who joins takes one.
+    gms = list(gm_repo.get_all_in_league(league["id"]))
     return {
         "league_id": league["id"],
         "league_state": league["state"],
-        "gms": list(gm_repo.get_all_in_league(league["id"])),
+        "gms": gms,
+        "ai_slots": max(league["num_teams"] - len(gms), 0),
         "num_teams": league["num_teams"],
         "join_code": league.get("join_code"),
         "current_gm_id": str(gm["id"]),
