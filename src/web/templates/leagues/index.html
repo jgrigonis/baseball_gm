@@ -11,11 +11,14 @@
   </div>
 
   {# Finished leagues, in both lists. The choice is remembered. #}
-  <label id="completed-toggle" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);cursor:pointer;">
-    <input type="checkbox" {% if not hide_completed %}checked{% endif %}
-           onchange="location.href='/leagues/?completed=' + (this.checked ? 'show' : 'hide')">
-    Show completed leagues
-  </label>
+  <div id="completed-toggle" style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;">
+    <span style="color:var(--text-dim);">Completed leagues:</span>
+    {% for value, text in [('show', 'Shown'), ('hide', 'Hidden')] %}
+    {% set active = hide_completed == (value == 'hide') %}
+    <a href="/leagues/?completed={{ value }}"{% if active %} aria-current="true"{% endif %}
+       style="text-decoration:none;padding-bottom:2px;border-bottom:1px solid {% if active %}var(--amber){% else %}transparent{% endif %};color:{% if active %}var(--amber){% else %}var(--text-dim){% endif %};">{{ text }}</a>
+    {% endfor %}
+  </div>
 
   {% if leagues %}
   <div class="card">
