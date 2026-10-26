@@ -11,3 +11,6 @@ number of games per team and dividing by two (since two teams play in every game
 
 This total excludes any potential tie-breaker games or the games played during the 
 postseason playoffs and World Series.
+
+1961 to present has had a 162 game season
+1904-1960 had 154 game season.
