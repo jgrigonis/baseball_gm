@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from src.api.services.ready_check import is_multiplayer
+from src.api.view_models.league_info import league_info
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -196,6 +197,9 @@ def _shell_ctx(
                 tabs = _viewer_tabs(tabs, draft_complete)
             # Now we have the state, so calculate visibility automatically
             ctx["visible_tabs"] = tabs
+            # The top bar's season pill opens the league's settings.
+            if league["state"] != "lobby":
+                ctx["league_info"] = league_info(db, league)
 
     # 3. Fetch Team Data if team_id exists
     if ctx["team_id"]:

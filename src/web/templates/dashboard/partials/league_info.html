@@ -1,0 +1,63 @@
+{# templates/dashboard/partials/league_info.html
+   The League page: the league's settings, the same rows the lobby shows, and
+   who runs each team. Open to the league's GMs and to viewers of a public
+   league. Takes `league_info` (src/api/view_models/league_info.py). #}
+{% set info = league_info %}
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:12px 24px;border-bottom:1px solid var(--border);">
+  <h1 class="page-title">League</h1>
+  <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px;">
+    {% if info.state == "complete" %}
+      Complete after {{ info.num_seasons }} season{{ "s" if info.num_seasons != 1 }}.
+    {% elif info.season_number %}
+      Season {{ info.season_number }} of {{ info.num_seasons }} · {{ info.state | title }}
+    {% endif %}
+  </div>
+</div>
+
+<div style="padding:16px 24px 32px;">
+  <div class="grid-2" style="gap:24px;align-items:start;">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">GMs ({{ info.human_gms }} human · {{ info.ai_gms }} AI)</span>
+      </div>
+      <div class="card-body">
+        <table class="data-table">
+          <thead>
+            <tr><th>GM</th><th>Team</th><th>Type</th></tr>
+          </thead>
+          <tbody>
+            {% for g in info.gms %}
+            <tr {% if g.id == gm_id %}class="my-team"{% endif %}>
+              <td class="team-name">{{ g.display_name }}</td>
+              <td style="color:var(--text-dim);">
+                {% if g.city %}{{ g.city }} {{ g.mascot }}{% else %}—{% endif %}
+              </td>
+              <td>
+                {% if g.is_ai %}
+                  <span class="badge badge-40man">AI</span>
+                {% else %}
+                  <span class="badge badge-human">Human</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">League Settings</span></div>
+      <div class="card-body">
+        <table class="data-table">
+          <tbody>
+            {% include "dashboard/partials/_league_settings_rows.html" %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

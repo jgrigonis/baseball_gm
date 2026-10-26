@@ -66,7 +66,35 @@
     }
     </script>
     {% endif %}
-    {% if league_state %}
+    {% if league_info %}
+      {# The season pill opens the league's settings, the same ones the lobby
+         shows, so GMs and viewers can check them once the league is going. #}
+      {% set li = league_info %}
+      <details class="league-info" id="league-info">
+        <summary class="topbar-state state-{{ league_state }}" title="League settings">
+          {{ league_state }}{% if li.season_number and league_state != "complete" %} {{ li.season_number }}/{{ li.num_seasons }}{% endif %} ▾
+        </summary>
+        <div class="league-info-panel">
+          <table class="data-table">
+            <tbody>
+              {% with info = li %}{% include "dashboard/partials/_league_settings_rows.html" %}{% endwith %}
+            </tbody>
+          </table>
+          <a class="league-info-more" href="/leagues/{{ league_id }}/league">League page: GMs and teams →</a>
+        </div>
+      </details>
+      <script>
+      // Close the settings panel on a click outside it, or Escape.
+      document.addEventListener('click', function(e) {
+        var d = document.getElementById('league-info');
+        if (d && d.open && !d.contains(e.target)) d.open = false;
+      });
+      document.addEventListener('keydown', function(e) {
+        var d = document.getElementById('league-info');
+        if (e.key === 'Escape' && d && d.open) d.open = false;
+      });
+      </script>
+    {% elif league_state %}
       <span class="topbar-state state-{{ league_state }}">{{ league_state }}</span>
     {% endif %}
     {% if is_viewer %}
@@ -84,6 +112,7 @@
     <nav class="topbar-nav">
       <a href="/leagues/">Leagues</a>
       {% if user and user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
+      {% if league_info %}<a href="/leagues/{{ league_id }}/league">League</a>{% endif %}
       {% if league_id %}<a href="/leagues/{{ league_id }}/history">History</a>{% endif %}
       <form method="POST" action="/auth/logout" style="display:inline;">
         <button type="submit" style="background:none;border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">Sign Out</button>

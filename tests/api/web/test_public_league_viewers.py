@@ -72,6 +72,7 @@ VIEWABLE = [
     "season-summary",
     "retirement",
     "draft/results",
+    "league",
 ]
 GM_ONLY = ["schedule", "roster", "lineup", "strategy", "draft"]
 

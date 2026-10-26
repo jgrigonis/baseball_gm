@@ -19,16 +19,18 @@ from src.api.dependencies import (
     ActiveLeague,
     Commissioner,
     GMOrViewer,
+    IsHTMX,
     Unpaused,
     User,
 )
 from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
+from src.api.view_models.league_info import league_info
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
-from src.web.utils import templates
+from src.web.utils import _shell_ctx, tab_response, templates
 
 router = APIRouter(tags=["web"])
 
@@ -347,22 +349,31 @@ def dashboard(
         {
             "league_name": league["name"],
             "is_commissioner": bool(is_commish),
-            "league_num_teams": league["num_teams"],  # Dual-mapping for safety
-            "league_mode": get_mode(league["mode"]),
-            "league_decision_window_sec": league["decision_window_sec"],
-            "league_draft_window_sec": league["draft_window_sec"],
-            "league_lineup_window_sec": league["lineup_window_sec"],
-            "league_reentry_enabled": bool(league["reentry_enabled"]),
-            "league_pace_control": league["pace_control"],
-            "league_sim_period_days": league["sim_period_days"],
-            "league_num_seasons": league["num_seasons"],
-            "league_is_public": bool(league["is_public"]),
+            "info": league_info(db, league),
         }
     )
 
     return templates.TemplateResponse(
         request=request, name="dashboard/lobby.html", context=context
     )
+
+
+@router.get("/leagues/{league_id}/league", response_class=HTMLResponse)
+def league_page(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+):
+    """The league's settings and who runs each team, for GMs and viewers once
+    the league has started. The lobby shows the same before then."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] == "lobby":
+        return RedirectResponse(f"/leagues/{league_id}/")
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    return tab_response(request, htmx, "dashboard/partials/league_info.html", ctx)
 
 
 def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:

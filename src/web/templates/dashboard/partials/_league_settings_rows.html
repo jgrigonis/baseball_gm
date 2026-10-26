@@ -1,0 +1,48 @@
+{# templates/dashboard/partials/_league_settings_rows.html
+   A league's settings as table rows, each label with a hover explanation.
+   Takes `info` (src/api/view_models/league_info.py). Shared by the lobby, the
+   top bar's season pill and the League page. Once the league has started it
+   also shows who runs the teams and how many seasons are done. #}
+{% set started = info.state != "lobby" %}
+{% set timer_note = " Only used with Timer pace." if info.pace_control != "timer" else "" %}
+{% set settings = [
+  ("Mode", info.mode.label,
+   info.mode.description),
+  ("Teams", info.num_teams,
+   "Total teams in the league. Each human GM runs one; AI GMs run the rest."),
+] %}
+{% if started %}
+  {% set settings = settings + [
+    ("GMs", info.human_gms ~ " human · " ~ info.ai_gms ~ " AI",
+     "How many teams people run, and how many the AI runs."),
+  ] %}
+{% endif %}
+{% set settings = settings + [
+  ("Decision window", info.decision_window_sec ~ "s",
+   "How long GMs get to make moves between sim periods. The league moves on early once every GM clicks Ready." ~ timer_note),
+  ("Draft window", info.draft_window_sec ~ "s",
+   "How long GMs get to set their draft before it runs. It runs early once every GM clicks Ready." ~ timer_note),
+  ("Lineup window", info.lineup_window_sec ~ "s",
+   "How long GMs get after the draft to set their first lineup before the season starts." ~ timer_note),
+  ("Re-entry", "Enabled" if info.reentry_enabled else "Disabled",
+   "Whether a fired GM can be handed another open team instead of sitting out. GM firing isn't in the game yet, so this has no effect for now."),
+  ("Pace", info.pace_control | title,
+   "Timer: the league moves on when every GM clicks Ready, or when the window runs out." if info.pace_control == "timer"
+   else "Confirmed: the league only moves on when every GM clicks Ready. There's no clock."),
+  ("Days per sim period", info.sim_period_days,
+   "How many days of the regular season each sim period plays before GMs get their next decision window."),
+  ("Seasons", (info.season_number ~ " of " ~ info.num_seasons) if started and info.season_number else info.num_seasons,
+   "Which season the league is in, out of how many it runs before it ends." if started and info.season_number
+   else "How many seasons the league runs before it ends."),
+  ("Visibility", "Public" if info.is_public else "Private",
+   "Public: listed under Public Leagues, where anyone can join while it's in the lobby." if info.is_public
+   else "Private: only people with the join code can find it."),
+] %}
+{% for label, value, tip in settings %}
+<tr>
+  <td style="color:var(--text-dim);">
+    <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
+  </td>
+  <td{% if loop.first %} class="team-name"{% endif %}>{{ value }}</td>
+</tr>
+{% endfor %}
