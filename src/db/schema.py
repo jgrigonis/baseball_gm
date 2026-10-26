@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS team_rotation_pointer (
     updated_at TEXT    NOT NULL DEFAULT (NOW()),
 
     PRIMARY KEY (team_id, season_id, series_id),
-    -- series_id = '' for regular season, series.id for playoffs
+    -- series_id = '' is the season pointer, used for regular season and playoffs
     
     FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE CASCADE,
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE

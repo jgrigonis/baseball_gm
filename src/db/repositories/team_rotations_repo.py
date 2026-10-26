@@ -589,16 +589,22 @@ class TeamRotationsRepository:
         team_id: str,
         season_id: str,
         series_id: str = "",
+        after_player_id: str | None = None,
     ) -> None:
         """
         Advance the rotation pointer to the next actual rotation_order slot,
         wrapping around. Safe against gaps caused by remove_from_rotation.
         No-op if the team has no active rotation entries.
+
+        With ``after_player_id`` (the pitcher who just started), the pointer
+        moves to the slot after that pitcher's, so a rested pitcher filling
+        in for a tired one isn't scheduled again next game.  If that pitcher
+        isn't in the rotation, it advances from the current pointer instead.
         """
         # Get actual sorted rotation_orders (may have gaps after removals)
         order_rows = self.conn.execute(
             """
-            SELECT rotation_order FROM team_rotations
+            SELECT rotation_order, player_id FROM team_rotations
             WHERE team_id = %s AND season_id = %s AND end_date IS NULL
             ORDER BY rotation_order
             """,
@@ -609,16 +615,27 @@ class TeamRotationsRepository:
         if not orders:
             return
 
-        pointer_row = self.conn.execute(
-            """
-            SELECT next_order
-            FROM team_rotation_pointer
-            WHERE team_id = %s AND season_id = %s AND series_id = %s
-            """,
-            (team_id, season_id, series_id),
-        ).fetchone()
+        started_order = next(
+            (
+                r["rotation_order"]
+                for r in order_rows
+                if after_player_id and r["player_id"] == after_player_id
+            ),
+            None,
+        )
 
-        current = pointer_row["next_order"] if pointer_row else orders[0]
+        if started_order is not None:
+            current = started_order
+        else:
+            pointer_row = self.conn.execute(
+                """
+                SELECT next_order
+                FROM team_rotation_pointer
+                WHERE team_id = %s AND season_id = %s AND series_id = %s
+                """,
+                (team_id, season_id, series_id),
+            ).fetchone()
+            current = pointer_row["next_order"] if pointer_row else orders[0]
 
         # Find the next order after current in the actual list, wrapping around
         orders_after = [o for o in orders if o > current]
