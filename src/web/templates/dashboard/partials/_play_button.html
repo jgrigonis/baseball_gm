@@ -18,11 +18,13 @@
           onclick="schedSim(1)">
     ▶ Play Day
   </button>
+  {% if injuries_enabled %}
   <button class="btn btn-secondary" id="sched-injury-btn"
           onclick="schedSim('injury')"
           style="font-size:11px;padding:5px 10px;">
     ▶ Until Injury
   </button>
+  {% endif %}
   <button class="btn btn-secondary" id="sched-season-btn"
           onclick="schedSim('season')"
           style="font-size:11px;padding:5px 10px;">
