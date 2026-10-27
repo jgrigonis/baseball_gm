@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS leagues (
     last_played_at       TIMESTAMPTZ,      -- last real-world time games were played or the league moved on
     is_public            BOOLEAN NOT NULL DEFAULT FALSE, -- listed under Public Leagues
     is_paused            BOOLEAN NOT NULL DEFAULT FALSE, -- an admin stopped it moving on
+    is_practice          BOOLEAN NOT NULL DEFAULT FALSE, -- a solo tutorial league
+    coach_done           TEXT[] NOT NULL DEFAULT '{{}}',   -- coach steps done (src/api/services/coach.py)
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -78,6 +80,7 @@ CREATE TABLE IF NOT EXISTS users (
     totp_secret   TEXT,
     is_admin      BOOLEAN NOT NULL DEFAULT FALSE, -- can open /admin/
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+    dismissed_tips TEXT[] NOT NULL DEFAULT '{{}}', -- first-visit tab tips closed
     created_at    TEXT NOT NULL DEFAULT (NOW())
 );
 

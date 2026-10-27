@@ -1,8 +1,8 @@
 # tests/api/web/test_public_leagues.py
 """
 A league can be made public when it's created. Public leagues the user isn't
-in show under Public Leagues on the leagues page. The ones still in the lobby
-can be joined from there without a code, and the rest can be viewed.
+in show on the leagues page: the ones still in the lobby on the Join tab,
+where they can be joined without a code, and the rest on the Watch tab.
 """
 
 import uuid
@@ -54,15 +54,16 @@ def client(db_conn, user_id):
     app.dependency_overrides.clear()
 
 
-def _public_section(html):
-    return html.split("Public Leagues</h1>")[1]
+def _tab(client, tab):
+    """The league table under one tab of the leagues page."""
+    return client.get(f"/leagues/?tab={tab}").text.split('id="leagues-tabs"')[1]
 
 
 def test_lists_public_leagues_only(client, db_conn):
     _league(db_conn, "Open Lobby")
     _league(db_conn, "Secret League", is_public=False)
 
-    section = _public_section(client.get("/leagues/").text)
+    section = _tab(client, "join")
 
     assert "Open Lobby" in section
     assert "Secret League" not in section
@@ -72,29 +73,30 @@ def test_leaves_out_leagues_the_user_is_in(client, db_conn, user_id):
     mine = _league(db_conn, "Already Mine")
     _gm(db_conn, mine, user_id)
 
-    section = _public_section(client.get("/leagues/").text)
-
-    assert "Already Mine" not in section
+    assert "Already Mine" not in _tab(client, "join")
 
 
 def test_lists_finished_leagues_last(client, db_conn):
     _league(db_conn, "All Done", state="complete")
     _league(db_conn, "In Season", state="season")
 
-    section = _public_section(client.get("/leagues/").text)
+    section = _tab(client, "watch")
 
     assert section.index("In Season") < section.index("All Done")
 
 
-def test_only_lobby_leagues_can_be_joined(client, db_conn):
+def test_lobby_leagues_are_to_join_and_started_ones_to_watch(client, db_conn):
     lobby = _league(db_conn, "Open Lobby")
     started = _league(db_conn, "In Season", state="season")
 
-    section = _public_section(client.get("/leagues/").text)
+    join = _tab(client, "join")
+    watch = _tab(client, "watch")
 
-    assert f"/leagues/{lobby}/join" in section
-    assert f"/leagues/{started}/join" not in section
-    assert f'href="/leagues/{started}/"' in section
+    assert f"/leagues/{lobby}/join" in join
+    assert "In Season" not in join
+    assert f'href="/leagues/{started}/"' in watch
+    assert f"/leagues/{started}/join" not in watch
+    assert "Open Lobby" not in watch
 
 
 def test_joining_a_public_league(client, db_conn, user_id):
@@ -133,36 +135,3 @@ def test_new_league_visibility(client, db_conn, form, expected):
         "SELECT is_public FROM leagues WHERE id = %s", (league_id,)
     ).fetchone()
     assert row["is_public"] is expected
-
-
-def test_completed_leagues_show_by_default(client, db_conn):
-    _league(db_conn, "All Done", state="complete")
-
-    html = client.get("/leagues/").text
-
-    assert "All Done" in _public_section(html)
-    assert 'id="completed-toggle"' in html
-
-
-def test_hiding_completed_leagues(client, db_conn, user_id):
-    _league(db_conn, "All Done", state="complete")
-    _league(db_conn, "In Season", state="season")
-    mine = _league(db_conn, "My Old One", state="complete", is_public=False)
-    _gm(db_conn, mine, user_id)
-
-    r = client.get("/leagues/?completed=hide")
-
-    assert "All Done" not in r.text
-    assert "My Old One" not in r.text
-    assert "In Season" in _public_section(r.text)
-    assert "All 1 of your leagues are complete" in r.text
-
-
-def test_hiding_completed_is_remembered(client, db_conn):
-    _league(db_conn, "All Done", state="complete")
-
-    client.get("/leagues/?completed=hide")
-    assert "All Done" not in client.get("/leagues/").text
-
-    client.get("/leagues/?completed=show")
-    assert "All Done" in client.get("/leagues/").text

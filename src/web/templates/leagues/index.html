@@ -1,85 +1,81 @@
 {# templates/leagues/index.html #}
 {% extends "base.html" %}
-{% block title %}Your Leagues — GM Sim{% endblock %}
+{% block title %}Leagues — GM Sim{% endblock %}
 {% block main %}
 <div class="page-content"><div class="content-inner">
   <div class="page-header">
-    <h1 class="page-title">Your Leagues</h1>
+    <h1 class="page-title">Leagues</h1>
     <div class="spacer"></div>
     <a href="/leagues/new" class="btn btn-primary">New League</a>
-    <a href="/leagues/join" class="btn btn-secondary" style="margin-left:8px;">Join by Code</a>
   </div>
 
-  {# Finished leagues, in both lists. The choice is remembered. #}
-  <div id="completed-toggle" style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;">
-    <span style="color:var(--text-dim);">Completed leagues:</span>
-    {% for value, text in [('show', 'Shown'), ('hide', 'Hidden')] %}
-    {% set active = hide_completed == (value == 'hide') %}
-    <a href="/leagues/?completed={{ value }}"{% if active %} aria-current="true"{% endif %}
-       style="text-decoration:none;padding-bottom:2px;border-bottom:1px solid {% if active %}var(--amber){% else %}transparent{% endif %};color:{% if active %}var(--amber){% else %}var(--text-dim){% endif %};">{{ text }}</a>
+  {# Five groups: the user's practice, running and finished leagues, and the
+     public ones they can join or watch. The tab picked is remembered. #}
+  <nav class="tab-bar leagues-tabs" id="leagues-tabs" aria-label="League groups">
+    {% for key, label, count in tabs %}
+    <a href="/leagues/?tab={{ key }}" class="tab-link {% if key == active_tab %}active{% endif %}"
+       {% if key == active_tab %}aria-current="page"{% endif %}>{{ label }} <span class="tab-count">{{ count }}</span></a>
     {% endfor %}
+  </nav>
+
+  {% set empty_style = "padding:48px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);line-height:1.8;" %}
+
+  {% if active_tab == 'practice' %}
+  <div class="card practice-intro">
+    <div class="card-body">
+      {% if brand_new %}<div class="practice-welcome">Welcome to GM Sim.</div>{% endif %}
+      <p>A practice league is a quick solo league, just you and AI managers. A coach walks
+        you through it step by step: the lobby, the draft, setting your roster and lineup,
+        playing games, the playoffs and the offseason. Start as many as you like, and leave
+        one whenever you're done with it.</p>
+      <form method="POST" action="/leagues/practice">
+        <button type="submit" class="btn btn-primary">Start a practice league →</button>
+      </form>
+      {% if user.dismissed_tips %}
+      <p class="practice-reset">Closed the tips on each tab? <button type="button" class="link-btn" onclick="resetTips(this)">Show them again</button></p>
+      {% endif %}
+    </div>
   </div>
+  {% elif active_tab == 'join' %}
+  <div class="card join-code-card">
+    <div class="card-body">
+      <form method="POST" action="/leagues/join" class="join-code-form">
+        <label for="join-code-input">Have a join code?</label>
+        <input id="join-code-input" name="join_code" placeholder="ABC123" maxlength="6" required>
+        <button type="submit" class="btn btn-secondary">Join →</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 
   {% if leagues %}
+  {% set mine = active_tab in ('practice', 'running', 'completed') %}
   <div class="card">
     <table class="data-table">
-      <thead><tr><th>League</th><th>Year</th><th>Mode</th><th>State</th><th>GMs</th><th>Last Played</th><th>Code</th><th></th></tr></thead>
+      <thead><tr><th>League</th><th>Year</th>{% if active_tab != 'practice' %}<th>Mode</th>{% endif %}<th>State</th>{% if active_tab != 'practice' %}<th>GMs</th>{% endif %}<th>Last Played</th>{% if active_tab in ('running', 'completed') %}<th>Code</th>{% endif %}<th></th></tr></thead>
       <tbody>
         {% for l in leagues %}
         <tr>
           <td class="team-name">{{ l.name }}</td>
           <td style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
-          <td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>
+          {% if active_tab != 'practice' %}<td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
           <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
-          <td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>
+          {% if active_tab != 'practice' %}<td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>{% endif %}
           <td style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
-          <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code }}</td>
+          {% if active_tab in ('running', 'completed') %}<td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>{% endif %}
           <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
+            {% if mine %}
             {% if l.is_commissioner %}
             <button onclick="openRenameModal('{{ l.id }}','{{ l.name }}')" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Rename</button>
             {% endif %}
             <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" data-last="{{ 'yes' if l.people <= 1 else '' }}" onclick="leaveLeague(this)" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Leave</button>
             <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Open →</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% elif hidden_mine %}
-  <div style="padding:60px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
-    All {{ hidden_mine }} of your leagues are complete. <a href="/leagues/?completed=show" style="color:var(--amber);">Show them</a>, <a href="/leagues/new" style="color:var(--amber);">create one</a>, or <a href="/leagues/join" style="color:var(--amber);">join with a code</a>.
-  </div>
-  {% else %}
-  <div style="padding:60px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
-    No leagues yet. <a href="/leagues/new" style="color:var(--amber);">Create one</a> or <a href="/leagues/join" style="color:var(--amber);">join with a code</a>.
-  </div>
-  {% endif %}
-
-  <div class="page-header" style="margin-top:40px;">
-    <h1 class="page-title">Public Leagues</h1>
-  </div>
-
-  {% if public_leagues %}
-  <div class="card">
-    <table class="data-table">
-      <thead><tr><th>League</th><th>Year</th><th>Mode</th><th>State</th><th>GMs</th><th>Last Played</th><th></th></tr></thead>
-      <tbody>
-        {% for l in public_leagues %}
-        <tr>
-          <td class="team-name">{{ l.name }}</td>
-          <td style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
-          <td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>
-          <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
-          <td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>
-          <td style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
-          <td style="text-align:right;">
-            {% if l.state == 'lobby' %}
+            {% elif active_tab == 'join' %}
             <form method="POST" action="/leagues/{{ l.id }}/join" style="display:inline;">
               <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;">Join →</button>
             </form>
             {% else %}
-            <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;" title="Leagues can only take new GMs before they start, but anyone can follow along">View →</a>
+            <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;" title="Leagues can only take new GMs before they start, but anyone can follow along">Watch →</a>
             {% endif %}
           </td>
         </tr>
@@ -87,17 +83,40 @@
       </tbody>
     </table>
   </div>
-  {% elif hidden_public %}
-  <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
-    No public leagues in progress. {{ hidden_public }} completed {{ 'league is' if hidden_public == 1 else 'leagues are' }} hidden. <a href="/leagues/?completed=show" style="color:var(--amber);">Show them</a>.
+  {% elif active_tab == 'practice' %}
+  {# The intro card above says it all. #}
+  {% elif active_tab == 'running' %}
+  <div style="{{ empty_style }}">
+    You're not in any leagues right now. <a href="/leagues/new" style="color:var(--amber);">Create one</a>,
+    find one to <a href="/leagues/?tab=join" style="color:var(--amber);">join</a>,
+    or learn the ropes in a <a href="/leagues/?tab=practice" style="color:var(--amber);">practice league</a>.
   </div>
+  {% elif active_tab == 'join' %}
+  <div style="{{ empty_style }}">
+    No public leagues are open to join right now.
+    <a href="/leagues/new" style="color:var(--amber);">Create one</a> and make it public, or ask a friend for their join code.
+  </div>
+  {% elif active_tab == 'watch' %}
+  <div style="{{ empty_style }}">No public leagues have started yet.</div>
   {% else %}
-  <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
-    No public leagues right now. Make one public when you <a href="/leagues/new" style="color:var(--amber);">create a league</a>.
-  </div>
+  <div style="{{ empty_style }}">None of your leagues have finished yet.</div>
   {% endif %}
 
 </div></div>
+
+<style>
+.leagues-tabs { position: static; margin: 0 0 16px; padding: 0; background: none; }
+.tab-count { color: var(--muted); margin-left: 4px; }
+.tab-link.active .tab-count { color: var(--amber-dim); }
+.practice-intro, .join-code-card { margin-bottom: 16px; }
+.practice-intro p { font-size: 13px; line-height: 1.7; color: var(--text-dim); margin: 0 0 14px; max-width: 640px; }
+.practice-intro p.practice-reset { margin: 14px 0 0; font-size: 12px; }
+.link-btn { background: none; border: none; padding: 0; color: var(--amber); cursor: pointer; font: inherit; text-decoration: underline; }
+.practice-welcome { font-family: var(--font-mono); font-size: 14px; color: var(--amber); margin-bottom: 8px; }
+.join-code-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+.join-code-form input { width: 120px; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--font-mono); font-size: 14px; letter-spacing: .2em; text-transform: uppercase; padding: 6px 10px; }
+</style>
 {% endblock %}
 
 {% block scripts %}
@@ -142,6 +161,12 @@ function leaveLeague(btn) {
     if (r.ok) { location.reload(); return; }
     r.json().then(d => failed(d.detail), () => failed());
   }, () => failed());
+}
+function resetTips(btn) {
+  btn.disabled = true;
+  fetch('/tips/reset', {method: 'POST'}).then(r => {
+    btn.closest('p').textContent = r.ok ? 'Done. Each tab shows its tip again.' : 'Could not reset the tips.';
+  });
 }
 var _renameLeagueId = null;
 function openRenameModal(id, name) {

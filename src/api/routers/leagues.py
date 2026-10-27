@@ -23,6 +23,7 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
+from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
 from src.api.view_models.league_info import league_info
@@ -37,7 +38,16 @@ router = APIRouter(tags=["web"])
 
 # ── League list ────────────────────────────────────────────────────────────────
 
-HIDE_COMPLETED_COOKIE = "hide_completed_leagues"
+LEAGUES_TAB_COOKIE = "leagues_tab"
+
+# The leagues page's tabs, in order, with the label each one shows.
+LEAGUE_TABS = (
+    ("practice", "Practice"),
+    ("running", "Running"),
+    ("join", "Join"),
+    ("watch", "Watch"),
+    ("completed", "Completed"),
+)
 
 
 @router.get("/leagues/", response_class=HTMLResponse)
@@ -45,49 +55,53 @@ def leagues_index(
     request: Request,
     db: DB,
     user: User,
-    completed: str | None = None,
+    tab: str | None = None,
 ):
-    """`completed` is "show" or "hide", for finished leagues. The choice is
-    kept in a cookie, so the page comes back the way the GM left it."""
+    """The user's leagues and the public ones, split into tabs. The tab picked
+    is kept in a cookie, so the page comes back the way the GM left it."""
     # Guests from before passwords existed choose a login before going on.
     if not user["has_password"]:
         return RedirectResponse("/auth/set-password", status_code=302)
 
-    if completed in ("show", "hide"):
-        hide_completed = completed == "hide"
-    else:
-        hide_completed = request.cookies.get(HIDE_COMPLETED_COOKIE) == "1"
-
     gm_repo = GMRepository(db)
-    # Fetch User's Leagues
-    leagues = [dict(r) for r in gm_repo.get_users_leagues(user["id"])]
-    public_leagues = gm_repo.get_public_leagues(user["id"])
-    for league in leagues + public_leagues:
+    mine = [dict(r) for r in gm_repo.get_users_leagues(user["id"])]
+    public = gm_repo.get_public_leagues(user["id"])
+    for league in mine + public:
         league["state_label"] = state_label(league["state"], league["season_number"])
 
-    hidden_mine = hidden_public = 0
-    if hide_completed:
-        hidden_mine = sum(1 for lg in leagues if lg["state"] == "complete")
-        hidden_public = sum(1 for lg in public_leagues if lg["state"] == "complete")
-        leagues = [lg for lg in leagues if lg["state"] != "complete"]
-        public_leagues = [lg for lg in public_leagues if lg["state"] != "complete"]
+    groups = {
+        "practice": [lg for lg in mine if lg["is_practice"]],
+        "running": [
+            lg for lg in mine if not lg["is_practice"] and lg["state"] != "complete"
+        ],
+        "join": [lg for lg in public if lg["state"] == "lobby"],
+        "watch": [lg for lg in public if lg["state"] != "lobby"],
+        "completed": [
+            lg for lg in mine if not lg["is_practice"] and lg["state"] == "complete"
+        ],
+    }
+
+    chosen = tab if tab in groups else None
+    active = chosen or request.cookies.get(LEAGUES_TAB_COOKIE)
+    if active not in groups:
+        # Someone new starts on Practice; anyone with a league on Running.
+        active = "running" if groups["running"] or groups["completed"] else "practice"
 
     resp = templates.TemplateResponse(
         request,
         "leagues/index.html",
         {
             "user": user,
-            "leagues": leagues,
-            "public_leagues": public_leagues,
-            "hide_completed": hide_completed,
-            "hidden_mine": hidden_mine,
-            "hidden_public": hidden_public,
+            "tabs": [(key, label, len(groups[key])) for key, label in LEAGUE_TABS],
+            "active_tab": active,
+            "leagues": groups[active],
+            "brand_new": not mine,
         },
     )
-    if completed in ("show", "hide"):
+    if chosen:
         resp.set_cookie(
-            HIDE_COMPLETED_COOKIE,
-            "1" if hide_completed else "0",
+            LEAGUES_TAB_COOKIE,
+            chosen,
             max_age=60 * 60 * 24 * 365,
             httponly=True,
             samesite="lax",
@@ -171,6 +185,44 @@ def new_league(
     # 3. Update the League (Now the GM exists, so the commish ID is valid)
     gm_repo.set_commissioner(gm_id=gm_id, league_id=league_id)
 
+    db.commit()
+    return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+
+# A practice league's settings: Speed Blitz, the quickest mode, and no clock,
+# since the only human GM is the one learning.
+PRACTICE_SETTINGS = {
+    **SPEED_BLITZ.form_presets,
+    "pace_control": "confirmed",
+    "is_public": False,
+    "is_practice": True,
+}
+
+
+@router.post("/leagues/practice")
+def new_practice_league(db: DB, user: User):
+    """A solo Speed Blitz league with the coach panel. It has no join code,
+    so nobody else can get in, and it only shows on its owner's Practice tab.
+    There's no limit on how many a user starts."""
+    league_repo = LeagueRepository(db)
+    gm_repo = GMRepository(db)
+    count = sum(1 for lg in gm_repo.get_users_leagues(user["id"]) if lg["is_practice"])
+
+    league_id = str(uuid.uuid4())
+    league_repo.create_new_league(
+        league_id=league_id,
+        name=f"Practice League {count + 1}",
+        join_code=None,
+        mode=SPEED_BLITZ.key,
+        commissioner_gm_id=None,
+        settings=PRACTICE_SETTINGS,
+    )
+    gm_id = gm_repo.create_gm(
+        league_id=league_id,
+        user_id=user["id"],
+        display_name=user["display_name"],
+    )
+    gm_repo.set_commissioner(gm_id=gm_id, league_id=league_id)
     db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
@@ -354,6 +406,7 @@ def dashboard(
             "league_name": league["name"],
             "is_commissioner": bool(is_commish),
             "info": league_info(db, league),
+            "coach": coach_ctx(db, league),
         }
     )
 

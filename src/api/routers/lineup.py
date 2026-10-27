@@ -13,6 +13,7 @@ from src.api.schemas import (
     LineupSaveRequest,
     RotationSaveRequest,
 )
+from src.api.services import coach
 from src.api.view_models.lineup import lineup_context
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -73,6 +74,7 @@ def save_lineup_prefs(
 
     lpr = LineupPreferenceRepository(db)
     lpr.save_preferences(gm["id"], lineup)
+    coach.mark(db, league_id, "lineup")
 
     db.commit()
     return JSONResponse({"saved": True})
@@ -117,6 +119,7 @@ def save_rotation(
         effective_date=effective_date,
         next_order=next_order,
     )
+    coach.mark(db, league_id, "lineup")
 
     db.commit()
     return JSONResponse({"saved": True})
@@ -166,6 +169,7 @@ def save_bullpen(
             assignments=assignments,
             effective_date=effective_date,
         )
+        coach.mark(db, league_id, "lineup")
         db.commit()
     except ValueError as e:
         db.rollback()

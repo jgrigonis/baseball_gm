@@ -1,0 +1,96 @@
+{# templates/dashboard/partials/_coach_panel.html
+   The practice league's coach, pinned to the corner of the lobby and the
+   dashboard. It reloads itself after a tab change, and after any save or sim
+   (any POST or PUT to the league), since those are what tick steps off.
+   Collapsing it is remembered per league in this browser. Takes `coach` and
+   `league_id`. #}
+<aside id="coach-panel" class="coach-panel" aria-label="Practice league coach"
+       hx-get="/leagues/{{ league_id }}/coach" hx-trigger="coach-refresh from:body" hx-swap="innerHTML">
+  {% include "dashboard/partials/_coach.html" %}
+</aside>
+<style>
+.coach-panel {
+  position: fixed; right: 20px; bottom: 20px; z-index: 300; width: 320px;
+  max-height: calc(100vh - 120px); overflow-y: auto;
+  background: var(--bg-2); border: 1px solid var(--amber-dim);
+  box-shadow: 0 8px 28px rgba(0,0,0,.45); font-size: 12px;
+}
+.coach-head { border-bottom: 1px solid var(--border); }
+.coach-toggle {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  background: none; border: none; cursor: pointer; color: var(--text);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+}
+.coach-badge { color: var(--amber); font-weight: 700; }
+.coach-count { color: var(--text-dim); }
+.coach-caret { margin-left: auto; color: var(--text-dim); transition: transform .15s; }
+.coach-panel.collapsed .coach-body { display: none; }
+.coach-panel.collapsed .coach-head { border-bottom: none; }
+.coach-panel.collapsed .coach-caret { transform: rotate(180deg); }
+.coach-body { padding: 12px 14px 10px; }
+.coach-step-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); }
+.coach-title { font-family: var(--font-mono); font-size: 14px; color: var(--amber); margin: 2px 0 6px; }
+.coach-text { line-height: 1.6; color: var(--text); margin: 0 0 10px; }
+.coach-go { font-size: 11px; padding: 5px 10px; }
+.coach-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.coach-chip {
+  font-family: var(--font-mono); font-size: 11px; padding: 4px 9px; cursor: pointer; text-decoration: none;
+  background: var(--bg); border: 1px solid var(--border-hi); color: var(--text);
+}
+.coach-chip.done { color: var(--green); border-color: var(--green-dim); }
+.coach-list { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+.coach-list summary { cursor: pointer; font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); }
+.coach-list ol { list-style: none; margin: 8px 0 0; padding: 0; }
+.coach-list li { display: flex; gap: 8px; padding: 2px 0; color: var(--text-dim); }
+.coach-list li.done { color: var(--green); }
+.coach-list li.now { color: var(--text); }
+.coach-mark { width: 12px; flex: none; text-align: center; }
+@media (max-width: 600px) {
+  .coach-panel { left: 16px; right: 16px; bottom: 16px; width: auto; max-height: 55vh; }
+}
+</style>
+<script>
+(function() {
+  var KEY = 'coach-collapsed:{{ league_id }}';
+  function stored() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+  function apply() {
+    var p = document.getElementById('coach-panel');
+    if (!p) return;
+    var shut = stored();
+    p.classList.toggle('collapsed', shut);
+    var b = p.querySelector('.coach-toggle');
+    if (b) b.setAttribute('aria-expanded', shut ? 'false' : 'true');
+    // No "Go to" button for the tab the GM is already on.
+    var go = p.querySelector('.coach-go');
+    if (go) go.hidden = location.pathname.endsWith('/' + go.dataset.tab);
+  }
+  window.coachToggle = function() {
+    try { localStorage.setItem(KEY, stored() ? '0' : '1'); } catch (e) {}
+    apply();
+  };
+  // Open a tab the step points to: click its tab link so htmx swaps it in
+  // the usual way, or load the page if it has no tab link here.
+  window.coachGo = function(tab) {
+    var link = document.querySelector('.tab-link[href$="/' + tab + '"]');
+    if (link) { link.click(); return; }
+    location.href = '/leagues/{{ league_id }}/' + tab;
+  };
+  function refresh() { htmx.trigger(document.body, 'coach-refresh'); }
+  document.body.addEventListener('htmx:afterSettle', function(e) {
+    if (e.detail.target.id === 'coach-panel') apply();
+    else if (e.detail.target.id === 'tab-content') { apply(); refresh(); }
+  });
+  // Saves and sims go through fetch, not htmx. Once one to this league
+  // succeeds, the coach checks whether it finished a step.
+  var origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    var p = origFetch.apply(this, arguments);
+    var method = ((opts && opts.method) || 'GET').toUpperCase();
+    if (method !== 'GET' && String(url).indexOf('/leagues/{{ league_id }}/') === 0) {
+      p.then(function(r) { if (r.ok) setTimeout(refresh, 300); }, function() {});
+    }
+    return p;
+  };
+  apply();
+})();
+</script>

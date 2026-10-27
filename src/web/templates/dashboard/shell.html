@@ -260,6 +260,8 @@ window.closeGamePanel = function() {
 
 <div id="player-panel-mount"></div>
 {% include "dashboard/partials/game_panel.html" %}
+{% if not is_viewer %}{% include "dashboard/partials/_tab_tips.html" %}{% endif %}
+{% if coach %}{% include "dashboard/partials/_coach_panel.html" %}{% endif %}
 
 {% endblock %}
 

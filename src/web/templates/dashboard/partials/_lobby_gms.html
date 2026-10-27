@@ -10,11 +10,11 @@
      hx-get="/leagues/{{ league_id }}/lobby/gms" hx-trigger="every 3s" hx-swap="outerHTML"
      {% endif %}>
   <div class="card-header">
-    <span class="card-title">GMs ({{ gms|length }} human · {{ ai_slots }} AI)</span>
+    <span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Each GM runs one team. People who join take a team each, and AI managers run the rest. Status shows who's here: a GM who steps away is marked Away.">GMs ({{ gms|length }} human · {{ ai_slots }} AI)</span></span>
     <span class="spacer"></span>
     {% if join_code %}
     <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-      Join code: <strong style="color:var(--amber);letter-spacing:.2em;">{{ join_code }}</strong>
+      <span class="setting-tip" tabindex="0" data-tip="Give this code to friends so they can join from the Join tab on the Leagues page. Nobody can join once the league starts.">Join code</span>: <strong style="color:var(--amber);letter-spacing:.2em;">{{ join_code }}</strong>
     </span>
     {% endif %}
   </div>

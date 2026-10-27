@@ -1,0 +1,55 @@
+{# templates/dashboard/partials/_coach.html
+   The coach panel's contents in a practice league: the step to do now, and
+   the whole checklist below it. Takes `coach` (src/api/services/coach.py)
+   and `league_id`. _coach_panel.html holds it and refreshes it. #}
+{% set total = coach.steps | length %}
+<div class="coach-head">
+  <button type="button" class="coach-toggle" onclick="coachToggle()" aria-expanded="true" aria-controls="coach-body">
+    <span class="coach-badge">Coach</span>
+    <span class="coach-count">{{ coach.done_count }} of {{ total }}</span>
+    <span class="coach-caret" aria-hidden="true">▾</span>
+  </button>
+</div>
+<div class="coach-body" id="coach-body">
+  {% if coach.current %}
+  {% set step_no = coach.steps.index(coach.current) + 1 %}
+  <div class="coach-now">
+    <div class="coach-step-label">Step {{ step_no }}</div>
+    <div class="coach-title">{{ coach.current.title }}</div>
+    <p class="coach-text">{{ coach.current.text }}</p>
+    {% if coach.current.key == 'explore' %}
+    <div class="coach-chips">
+      {% for t in ['schedule', 'standings', 'stats', 'leaders'] %}
+      <button type="button" class="coach-chip{% if t not in coach.explore_left %} done{% endif %}" onclick="coachGo('{{ t }}')">
+        {% if t not in coach.explore_left %}✓ {% endif %}{{ t | title }}
+      </button>
+      {% endfor %}
+    </div>
+    {% elif coach.current.tab %}
+    <button type="button" class="btn btn-secondary coach-go" data-tab="{{ coach.current.tab }}" onclick="coachGo('{{ coach.current.tab }}')">Go to {{ coach.current.tab | title }} →</button>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="coach-now">
+    <div class="coach-title">That's the tour!</div>
+    <p class="coach-text">You've been through a whole season: the draft, your roster and lineup,
+      the games, the playoffs and the offseason. This league keeps going if you want to play on.
+      When you're ready, play with other people.</p>
+    <div class="coach-chips">
+      <a class="coach-chip" href="/leagues/new">Create a league</a>
+      <a class="coach-chip" href="/leagues/?tab=join">Find one to join</a>
+    </div>
+  </div>
+  {% endif %}
+  <details class="coach-list">
+    <summary>All steps</summary>
+    <ol>
+      {% for s in coach.steps %}
+      <li class="{% if s.done %}done{% elif coach.current and s.key == coach.current.key %}now{% endif %}">
+        <span class="coach-mark" aria-hidden="true">{% if s.done %}✓{% elif coach.current and s.key == coach.current.key %}●{% else %}○{% endif %}</span>
+        {{ s.title }}
+      </li>
+      {% endfor %}
+    </ol>
+  </details>
+</div>

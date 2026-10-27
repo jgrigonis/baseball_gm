@@ -19,6 +19,7 @@ from src.api.dependencies import (
     User,
 )
 from src.api.schemas import DraftPreferencesRequest
+from src.api.services import coach
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.view_models.draft import draft_rounds
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
@@ -66,6 +67,7 @@ def save_draft_preferences(
         return JSONResponse({"detail": f"Unknown player: {missing}"}, status_code=422)
 
     draft_repo.save_preferences(draft["id"], gm["id"], player_ids)
+    coach.mark(db, league_id, "prefs")
     db.commit()
 
     return JSONResponse({"saved": len(player_ids)})

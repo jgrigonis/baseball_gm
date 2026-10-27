@@ -17,6 +17,7 @@ from src.api.dependencies import (
     Unpaused,
 )
 from src.api.schemas import SimRequest
+from src.api.services import coach
 from src.api.services.injury_news import take_injury_news
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
@@ -42,6 +43,8 @@ def sim_games(
     """Sim N games (or until season end). Returns JSON with results summary."""
     with league_lock(db, league_id):
         summary = sim_days(league_id, db, body.count)
+        coach.mark(db, league_id, "play")
+        db.commit()
 
     season_repo = SeasonRepository(db)
     league_repo = LeagueRepository(db)
