@@ -32,9 +32,9 @@ STEPS = (
     (
         "prefs",
         "Set your draft strategy",
-        "Pick what your team needs, by position or type of player, and pin "
-        "any prospects you really want. Watch your projected picks change, "
-        "then press Save Strategy.",
+        "Your team's needs start out filled in from your roster. Change "
+        "them, pin any prospects you really want, and watch your projected "
+        "picks change, then press Save Strategy.",
         "draft",
     ),
     (

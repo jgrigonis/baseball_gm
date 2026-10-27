@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user
 from src.api.main import app
+from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.draft_repo import DraftRepository
 from src.league.offseason.draft_strategy import DraftStrategy
 
@@ -170,6 +171,7 @@ class TestDraftTabMode:
         assert 'id="strategy-pane"' in page
         assert '"key": "if"' in page and '"label": "Relief Ace"' in page
         assert "const SAVED_PREFS = [];" in page
+        assert 'const SUGGESTED   = {"chips": {}, "reasons": {}};' in page
 
     def test_saved_strategy_is_on_the_page(self, client, db_conn, setup):
         league, gm, draft, prospects = setup
@@ -179,3 +181,18 @@ class TestDraftTabMode:
         page = self._page(client, league)
         assert '"chips": {"of": 2}' in page
         assert prospects[1].id in page
+
+
+def test_teams_without_a_saved_strategy_draft_by_need(db_conn, factory, setup):
+    league, gm, draft, _ = setup
+    ai_team = factory.team()
+    factory.gm(team=ai_team, league=league, is_ai=True)
+    factory.draft_order(draft, [SimpleNamespace(id=gm.team_id), ai_team])
+    saved = DraftStrategy(chips={"of": 3})
+    DraftRepository(db_conn).save_strategy(draft.id, gm.id, saved)
+
+    strategies = draft_strategies(db_conn, draft.id, league.id, cached=False)
+
+    assert strategies[gm.team_id] == saved
+    # No roster to be short against, so the AI's needs are empty
+    assert strategies[ai_team.id] == DraftStrategy()

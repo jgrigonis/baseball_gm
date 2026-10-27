@@ -84,6 +84,13 @@ class TestGroup:
         )
         assert group(p, ratings(p)) == "of"
 
+    def test_first_baseman_counts_as_infield(self):
+        p = make_player_record(
+            position="1b",
+            skills=PlayerSkills({"infield": 90, "outfield": 5, "catching": 5}),
+        )
+        assert group(p, ratings(p)) == "if"
+
     def test_pitchers_use_their_listed_role(self):
         sp = make_player_record(position="sp")
         rp = make_player_record(position="rp")
