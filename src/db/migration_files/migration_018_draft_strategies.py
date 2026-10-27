@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_017_draft_strategies.py
+# src/db/migration_files/migration_018_draft_strategies.py
 """
 Draft strategies.
 
@@ -7,7 +7,7 @@ preference and a few pinned players for a draft. The Blitz draft uses them
 after any hand-ordered preference list (see src/league/offseason/draft_strategy.py).
 """
 
-VERSION = 17
+VERSION = 18
 
 
 def upgrade(conn):

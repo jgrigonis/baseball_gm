@@ -47,7 +47,7 @@ class ReadyCheckRepository:
                 FROM gms g JOIN leagues l ON l.id = g.league_id
                 WHERE g.league_id = %s AND NOT g.is_ai
                   AND g.user_id IS NOT NULL AND g.fired_at IS NULL
-                ORDER BY g.created_at""",
+                ORDER BY g.created_at, g.display_name""",
             (league_id,),
         ).fetchall()
         return [dict(r) for r in rows]
