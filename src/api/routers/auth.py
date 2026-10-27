@@ -32,6 +32,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, OptionalUser, User
 from src.api.services.passwords import (
+    clean_email,
     hash_password,
     needs_rehash,
     password_error,
@@ -68,11 +69,24 @@ def _landing(request: Request, status_code: int = 200, **ctx) -> HTMLResponse:
     )
 
 
+def _signup(request: Request, status_code: int = 200, **ctx) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "signup.html", ctx, status_code=status_code
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
 def landing(request: Request, user: OptionalUser):
     if user:
         return RedirectResponse("/leagues/")
     return _landing(request)
+
+
+@router.get("/signup", response_class=HTMLResponse)
+def signup_page(request: Request, user: OptionalUser):
+    if user:
+        return RedirectResponse("/leagues/")
+    return _signup(request)
 
 
 @router.post("/auth/register")
@@ -82,29 +96,39 @@ def register(
     username: str = Form(...),
     password: str = Form(...),
     confirm: str = Form(...),
+    email: str = Form(""),
 ):
     username = username.strip()
-    error = username_error(username) or password_error(password, confirm)
+    clean, email_error = clean_email(email)
+    error = username_error(username) or email_error or password_error(password, confirm)
     user_repo = UserRepository(db)
     if not error and user_repo.username_taken(username):
         error = "That username is taken."
+    if not error and clean and user_repo.email_taken(clean):
+        error = "Another account has that email."
     if error:
-        return _landing(request, 400, register_error=error, register_username=username)
+        return _signup(request, 400, error=error, username=username, email=email)
 
     token = _new_token()
     try:
         user_repo.insert_user(
-            str(uuid.uuid4()), token, username, username, hash_password(password)
+            str(uuid.uuid4()),
+            token,
+            username,
+            username,
+            hash_password(password),
+            email=clean,
         )
         db.commit()
     except psycopg.errors.UniqueViolation:
-        # Someone took the name between the check and the insert.
+        # Someone took the name or email between the check and the insert.
         db.rollback()
-        return _landing(
+        return _signup(
             request,
             400,
-            register_error="That username is taken.",
-            register_username=username,
+            error="That username or email is taken.",
+            username=username,
+            email=email,
         )
     return _signed_in(token)
 
@@ -123,8 +147,8 @@ def login(
         return _landing(
             request,
             401,
-            login_error="Wrong username or password.",
-            login_username=username,
+            error="Wrong username or password.",
+            username=username,
         )
 
     if needs_rehash(row["password_hash"]):

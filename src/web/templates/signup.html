@@ -1,0 +1,29 @@
+{# src/web/templates/signup.html — create an account #}
+{% extends "auth_base.html" %}
+{% block title %}Sign Up · GM Sim{% endblock %}
+{% block form %}
+  <form method="POST" action="/auth/register" style="display:flex;flex-direction:column;gap:12px;">
+    <p class="auth-heading">Create an account</p>
+    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+    <div class="field">
+      <label>Username</label>
+      <input type="text" name="username" value="{{ username or '' }}" minlength="3" maxlength="30" pattern="[A-Za-z0-9_.\-]+" autocomplete="username" required autofocus>
+    </div>
+    <div class="field">
+      <label>Email <span class="field-optional">(optional)</span></label>
+      <input type="email" name="email" value="{{ email or '' }}" maxlength="254" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" name="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+    </div>
+    <div class="field">
+      <label>Confirm password</label>
+      <input type="password" name="confirm" minlength="8" maxlength="128" autocomplete="new-password" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+      Create Account →
+    </button>
+  </form>
+  <p class="auth-switch">Already have an account? <a href="/">Sign in</a></p>
+{% endblock %}

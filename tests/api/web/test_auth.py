@@ -30,15 +30,15 @@ def client(db_conn):
     app.dependency_overrides.clear()
 
 
-def _register(client, username, password=PASSWORD, confirm=None):
-    return client.post(
-        "/auth/register",
-        data={
-            "username": username,
-            "password": password,
-            "confirm": PASSWORD if confirm is None else confirm,
-        },
-    )
+def _register(client, username, password=PASSWORD, confirm=None, email=None):
+    data = {
+        "username": username,
+        "password": password,
+        "confirm": PASSWORD if confirm is None else confirm,
+    }
+    if email is not None:
+        data["email"] = email
+    return client.post("/auth/register", data=data)
 
 
 def _login(client, username, password=PASSWORD):
@@ -60,6 +60,29 @@ def _legacy_guest(db_conn, display_name):
     return user_id, token
 
 
+class TestPages:
+    def test_landing_is_sign_in_and_links_to_sign_up(self, client):
+        r = client.get("/")
+        assert r.status_code == 200
+        assert 'action="/auth/login"' in r.text
+        assert 'action="/auth/register"' not in r.text
+        assert 'href="/signup"' in r.text
+
+    def test_signup_page_links_back_to_sign_in(self, client):
+        r = client.get("/signup")
+        assert r.status_code == 200
+        assert 'action="/auth/register"' in r.text
+        assert 'action="/auth/login"' not in r.text
+        assert 'name="email"' in r.text
+        assert 'href="/"' in r.text
+
+    def test_signed_in_users_skip_signup(self, client):
+        _register(client, _name())
+        r = client.get("/signup")
+        assert r.status_code == 307
+        assert r.headers["location"] == "/leagues/"
+
+
 class TestRegister:
     def test_creates_user_and_signs_in(self, client, db_conn):
         name = _name()
@@ -76,6 +99,39 @@ class TestRegister:
         assert row["password_hash"].startswith("$argon2id$")
         assert PASSWORD not in row["password_hash"]
         assert client.cookies["gm_session"] == row["session_token"]
+
+    def test_email_is_optional(self, client, db_conn):
+        name = _name()
+        assert _register(client, name, email="").status_code == 302
+        row = db_conn.execute(
+            "SELECT email FROM users WHERE username = %s", (name,)
+        ).fetchone()
+        assert row["email"] is None
+
+    def test_stores_email(self, client, db_conn):
+        name = _name()
+        email = f"{name}@example.com"
+        assert _register(client, name, email=f"  {email} ").status_code == 302
+        row = db_conn.execute(
+            "SELECT email FROM users WHERE username = %s", (name,)
+        ).fetchone()
+        assert row["email"] == email
+
+    def test_rejects_bad_email(self, client):
+        r = _register(client, _name(), email="not-an-email")
+        assert r.status_code == 400
+        assert "email address" in r.text
+        assert "gm_session" not in r.cookies
+
+    def test_email_taken_ignoring_case(self, client):
+        email = f"{_name()}@example.com"
+        assert _register(client, _name(), email=email).status_code == 302
+        client.cookies.clear()
+
+        r = _register(client, _name(), email=email.upper())
+        assert r.status_code == 400
+        assert "has that email" in r.text
+        assert 'href="/"' in r.text
 
     def test_username_taken_ignoring_case(self, client):
         name = _name()

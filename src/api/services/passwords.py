@@ -1,7 +1,7 @@
 # src/api/services/passwords.py
 #
-# Password hashing (argon2id via argon2-cffi) and the rules for usernames and
-# passwords. Kept apart from the routes so the rules have one home.
+# Password hashing (argon2id via argon2-cffi) and the rules for usernames,
+# passwords and emails. Kept apart from the routes so the rules have one home.
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ _hasher = PasswordHasher()
 _DUMMY_HASH = _hasher.hash("not-a-real-password")
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,30}$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LEN = 8
 MAX_PASSWORD_LEN = 128
 
@@ -53,3 +54,13 @@ def password_error(password: str, confirm: str) -> str | None:
     if password != confirm:
         return "The passwords don't match."
     return None
+
+
+def clean_email(email: str) -> tuple[str | None, str | None]:
+    """(email, error). A blank email means none."""
+    email = email.strip()
+    if not email:
+        return None, None
+    if len(email) > 254 or not EMAIL_RE.match(email):
+        return None, "That doesn't look like an email address."
+    return email, None

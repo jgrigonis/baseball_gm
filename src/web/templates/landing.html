@@ -1,28 +1,12 @@
-{# src/web/templates/landing.html #} 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>GM Sim</title>
-  <link rel="stylesheet" href="/static/css/main.css">
-  <style>
-    .auth-error { font-family:var(--font-mono);font-size:12px;color:var(--red);text-align:left; }
-    .auth-heading { font-family:var(--font-mono);font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin:0; }
-  </style>
-</head>
-<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
-<div style="text-align:center;max-width:400px;width:100%;padding:40px;">
-  <div style="font-family:var(--font-display);font-size:64px;color:var(--amber);letter-spacing:.04em;line-height:1;">⚾<br>GM Sim</div>
-  <p style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin:16px 0 32px;line-height:1.8;">
-    Manage a franchise. Build a roster. Win a championship.
-  </p>
-
+{# src/web/templates/landing.html — sign in #}
+{% extends "auth_base.html" %}
+{% block form %}
   <form method="POST" action="/auth/login" style="display:flex;flex-direction:column;gap:12px;">
     <p class="auth-heading">Sign in</p>
-    {% if login_error %}<div class="auth-error">{{ login_error }}</div>{% endif %}
+    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
     <div class="field">
       <label>Username</label>
-      <input type="text" name="username" value="{{ login_username or '' }}" maxlength="30" autocomplete="username" required>
+      <input type="text" name="username" value="{{ username or '' }}" maxlength="30" autocomplete="username" required autofocus>
     </div>
     <div class="field">
       <label>Password</label>
@@ -32,26 +16,5 @@
       Sign In →
     </button>
   </form>
-
-  <form method="POST" action="/auth/register" style="display:flex;flex-direction:column;gap:12px;margin-top:40px;">
-    <p class="auth-heading">New here? Create an account</p>
-    {% if register_error %}<div class="auth-error">{{ register_error }}</div>{% endif %}
-    <div class="field">
-      <label>Username</label>
-      <input type="text" name="username" value="{{ register_username or '' }}" minlength="3" maxlength="30" pattern="[A-Za-z0-9_.\-]+" autocomplete="username" required>
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" name="password" minlength="8" maxlength="128" autocomplete="new-password" required>
-    </div>
-    <div class="field">
-      <label>Confirm password</label>
-      <input type="password" name="confirm" minlength="8" maxlength="128" autocomplete="new-password" required>
-    </div>
-    <button type="submit" class="btn btn-secondary" style="width:100%;justify-content:center;">
-      Create Account →
-    </button>
-  </form>
-</div>
-</body>
-</html>
+  <p class="auth-switch">New here? <a href="/signup">Create an account</a></p>
+{% endblock %}
