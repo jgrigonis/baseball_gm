@@ -31,16 +31,18 @@ STEPS = (
     ),
     (
         "prefs",
-        "Rank your draft preferences",
-        "Every team drafts from a ranked list. Add prospects to your list in "
-        "the order you want them, then press Submit Preferences.",
+        "Set your draft strategy",
+        "Pick what your team needs, by position or type of player, and pin "
+        "any prospects you really want. Watch your projected picks change, "
+        "then press Save Strategy.",
         "draft",
     ),
     (
         "draft",
         "Run the draft",
-        "Press Run Draft. Each pick goes to the highest player left on that "
-        "team's list, and the AI ranks for the other teams.",
+        "Press Run Draft. Each of your picks goes to your highest pinned "
+        "player still there, else the best prospect for your needs. The AI "
+        "picks for the other teams.",
         "draft",
     ),
     (

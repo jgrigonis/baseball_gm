@@ -203,10 +203,12 @@ def project_picks(
     strategies: dict[str, DraftStrategy],
     team_id: str,
     n: int = 5,
+    taken_by_others: dict[str, int] | None = None,
 ) -> list[tuple[int, str]]:
     """Simulate the snake draft in memory and return `team_id`'s first `n`
     picks as (overall pick, player_id). Teams without a strategy take the best
-    prospect rating, as AI GMs do."""
+    prospect rating, as AI GMs do. If `taken_by_others` is given, it's filled
+    with player_id → overall pick for every other team's pick along the way."""
     available = set(scorer.order)
     working = {tid: s.copy() for tid, s in strategies.items()}
     mine: list[tuple[int, str]] = []
@@ -225,5 +227,7 @@ def project_picks(
             available.discard(pid)
             if tid == team_id:
                 mine.append((overall, pid))
+            elif taken_by_others is not None:
+                taken_by_others[pid] = overall
             overall += 1
     return mine

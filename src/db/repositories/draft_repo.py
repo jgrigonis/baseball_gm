@@ -4,6 +4,8 @@ import uuid
 from psycopg.types.json import Jsonb
 
 from src.league.offseason.draft_strategy import DraftStrategy
+from src.player.player_record import PlayerRecord
+from src.player.player_skills import PlayerSkills
 
 
 class DraftRepository:
@@ -51,6 +53,32 @@ class DraftRepository:
             (draft_id, gm_id),
         ).fetchall()
         return [r["player_id"] for r in rows]
+
+    def get_prospect_records(self, league_id: str) -> list[PlayerRecord]:
+        """Every prospect in the league's pool with skills, in one query, in
+        the same name order the draft loads them."""
+        rows = self.conn.execute(
+            """SELECT p.id, p.first_name, p.last_name, p.bats, p.throws,
+                      p.position, sk.*
+               FROM players p
+               JOIN player_status ps ON ps.player_id = p.id
+               JOIN player_skills sk ON sk.player_id = p.id
+               WHERE ps.status = 'prospect' AND p.league_id = %s
+               ORDER BY p.last_name, p.first_name""",
+            (league_id,),
+        ).fetchall()
+        return [
+            PlayerRecord(
+                id=r["id"],
+                first_name=r["first_name"],
+                last_name=r["last_name"],
+                bats=r["bats"],
+                throws=r["throws"],
+                position=r["position"],
+                skills=PlayerSkills.from_db_row(r),
+            )
+            for r in rows
+        ]
 
     def get_ids_and_rank_from_preferences(
         self, draft_id: str, league_id: str
@@ -194,6 +222,13 @@ class DraftRepository:
                     for rank, pid in enumerate(player_ids)
                 ],
             )
+
+    def clear_preferences(self, draft_id: str, gm_id: str) -> None:
+        """Drop a GM's hand-ordered preference list."""
+        self.conn.execute(
+            "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
+            (gm_id, draft_id),
+        )
 
     def save_strategy(self, draft_id: str, gm_id: str, strategy: DraftStrategy) -> None:
         """Insert or replace a GM's draft strategy."""

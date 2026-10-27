@@ -199,3 +199,11 @@ class TestProjectPicks:
         catchers = [pid for _, pid in picks if scorer.group[pid] == "c"]
         assert 1 <= len(catchers) < len(picks)
         assert strategy.chips == {"c": HIGH}  # the caller's strategy is untouched
+
+    def test_reports_who_other_teams_take(self, scorer):
+        taken = {}
+        mine = project_picks(
+            scorer, self.teams, 20, {}, "t2", n=1, taken_by_others=taken
+        )
+        assert mine == [(2, scorer.order[1])]
+        assert taken == {scorer.order[0]: 1}

@@ -5,7 +5,7 @@
    bring them all back. Viewers don't get them: they talk about your team. #}
 {% set tip_user = request.state.user if request is defined and request.state.user is defined else none %}
 {% set tab_tips = {
-  "draft": "The draft board. Add prospects to your preference list in the order you want them and submit it. When the draft runs, each pick goes to the highest player left on that team's list.",
+  "draft": "The draft. Mark what your team needs and pin any prospects you really want, then save your strategy. The right column shows the first picks it would likely make. Advanced lets you rank the whole list yourself.",
   "draft-results": "Every pick from the draft, round by round, and who each team took.",
   "roster": " The right column is your farm roster, every prospect you own. The left column is your major league roster, with your active lineup and bench. Click a player to see their stats and history.",
   "lineup": "Your batting order, starting rotation and bullpen roles. Your team uses them every game until you change them, so save when you're done.",

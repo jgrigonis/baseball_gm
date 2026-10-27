@@ -33,7 +33,7 @@ BLITZ = LeagueMode(
     key="blitz",
     label="Blitz",
     description=(
-        "The draft runs from preference lists each GM ranks ahead of time, and "
+        "The draft runs ahead of time from each GM's strategy or ranked list, and "
         "teams play off the full 40-man roster. Injuries are on."
     ),
     # The form's own defaults, so switching back from speed blitz restores them.
