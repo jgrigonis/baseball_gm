@@ -780,6 +780,38 @@ class Game:
 
         self.logger.info(f"⚾ {self.inning}")
 
+    def _live_energy(self, player) -> float | None:
+        """Position player's in-game energy, or None for pitchers."""
+        if not player.player_energy:
+            return None
+        state = self.player_energy_states.get(player.id)
+        return state.current_energy if state else player.player_energy.energy
+
+    def _injury_probability(self, player, activity: str) -> float:
+        """Chance this player gets hurt on this play doing `activity`."""
+        # Compute probability with activity and position weights
+        activity_mult = INJURY_ACTIVITY_WEIGHT.get(activity, 1.0)
+        if activity == "fielding":
+            pos = getattr(player, "current_position", None) or ""
+            pos_mult = INJURY_POSITION_WEIGHT.get(pos, 1.0)
+            activity_mult *= pos_mult
+
+        if activity != "pitching":
+            durability = (
+                player.skills.get("durability", 50) if hasattr(player, "skills") else 50
+            )
+            durability_mult = 1.0 - ((durability - 50) / 50) * DURABILITY_MOD
+            activity_mult *= durability_mult
+
+        # Tired position players get hurt more often. Pitchers have no
+        # player_energy (their fatigue is handled separately), so this
+        # never applies to them, even when they bat or run.
+        energy = self._live_energy(player)
+        if energy is not None:
+            activity_mult *= player.player_energy.get_injury_risk_multiplier(energy)
+
+        return INJURY_BASE_PROB * activity_mult
+
     def _check_injuries(self, reason: str = None) -> None:
         """Random injury check for active position players."""
         if not self.injuries_enabled:
@@ -810,23 +842,7 @@ class Game:
             if getattr(player, "is_injured", False):
                 continue
 
-            # Compute probability with activity and position weights
-            activity_mult = INJURY_ACTIVITY_WEIGHT.get(activity, 1.0)
-            if activity == "fielding":
-                pos = getattr(player, "current_position", None) or ""
-                pos_mult = INJURY_POSITION_WEIGHT.get(pos, 1.0)
-                activity_mult *= pos_mult
-
-            if activity != "pitching":
-                durability = (
-                    player.skills.get("durability", 50)
-                    if hasattr(player, "skills")
-                    else 50
-                )
-                durability_mult = 1.0 - ((durability - 50) / 50) * DURABILITY_MOD
-                activity_mult *= durability_mult
-
-            prob = INJURY_BASE_PROB * activity_mult
+            prob = self._injury_probability(player, activity)
             if prob <= 0:
                 continue
 
@@ -841,8 +857,8 @@ class Game:
                         "surgery": SURGERY_INJURY_PROB,
                     }
                 )
-                fatigue = player.player_energy
-                if fatigue and fatigue.energy < LOW_ENERGY:
+                energy = self._live_energy(player)
+                if energy is not None and energy < LOW_ENERGY:
                     injury_types.multiply("moderate", FATIGUE_MULTIPLIER)
                     injury_types.multiply("severe", FATIGUE_MULTIPLIER)
                     injury_types.multiply("surgery", FATIGUE_MULTIPLIER)

@@ -70,15 +70,17 @@ class PositionPlayerFatigue:
     # Core state
     # ------------------------------------------------------------------
 
-    def get_level(self) -> FatigueLevel:
-        """Determine current fatigue level."""
-        if self.energy >= FRESH_THRESHOLD:
+    def get_level(self, energy: float | None = None) -> FatigueLevel:
+        """Determine fatigue level for `energy` (defaults to current energy)."""
+        if energy is None:
+            energy = self.energy
+        if energy >= FRESH_THRESHOLD:
             return FatigueLevel.FRESH
-        elif self.energy >= GOOD_THRESHOLD:
+        elif energy >= GOOD_THRESHOLD:
             return FatigueLevel.GOOD
-        elif self.energy >= TIRED_THRESHOLD:
+        elif energy >= TIRED_THRESHOLD:
             return FatigueLevel.TIRED
-        elif self.energy >= EXHAUSTED_THRESHOLD:
+        elif energy >= EXHAUSTED_THRESHOLD:
             return FatigueLevel.EXHAUSTED
         return FatigueLevel.ZERO
 
@@ -162,18 +164,21 @@ class PositionPlayerFatigue:
     #     self.season_games_played = 0
 
     # ------------------------------------------------------------------
-    # Injury risk (to wire up to your injury system later)
+    # Injury risk
     # ------------------------------------------------------------------
 
-    def get_injury_risk_multiplier(self) -> float:
+    def get_injury_risk_multiplier(self, energy: float | None = None) -> float:
         """
-        Returns a multiplier for injury probability based on current fatigue.
+        Returns a multiplier for injury probability based on fatigue.
         1.0 = baseline risk, higher = more likely to get hurt.
 
-        Plug this into your injury roll:
-            actual_risk = base_position_risk * fatigue.get_injury_risk_multiplier()
+        Used by Game._check_injuries for position players. Pitchers have no
+        PositionPlayerFatigue, so they never get this multiplier.
+
+        Args:
+            energy: Live in-game energy; defaults to the pre-game energy.
         """
-        level = self.get_level()
+        level = self.get_level(energy)
         multipliers = {
             FatigueLevel.FRESH: MOD_INJURY_FRESH,
             FatigueLevel.GOOD: MOD_INJURY_GOOD,
