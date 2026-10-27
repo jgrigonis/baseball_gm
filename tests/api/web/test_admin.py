@@ -195,6 +195,16 @@ class TestAdminOnly:
         _sign_in(client, _user(db_conn, is_admin=True))
         assert 'href="/admin/"' in client.get("/leagues/").text
 
+    def test_admin_link_on_league_and_history_pages(self, client, db_conn, factory):
+        user = _user(db_conn, is_admin=True)
+        league = _league(db_conn, factory)
+        _human_gm(db_conn, league, user, factory.team())
+        _sign_in(client, user)
+        for page in (f"/leagues/{league.id}/league", f"/leagues/{league.id}/history"):
+            r = client.get(page)
+            assert r.status_code == 200, page
+            assert 'href="/admin/"' in r.text, page
+
 
 # ── Leagues ───────────────────────────────────────────────────────────────────
 
