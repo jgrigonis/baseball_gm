@@ -42,7 +42,7 @@ MAX_PINS = 10
 POSITION_WINDOW = (0.50, 0.80)
 ARCHETYPE_WINDOW = (0.75, 0.97)
 
-HITTER_GROUPS = ("c", "if", "of", "1b")
+HITTER_GROUPS = ("c", "if", "of")
 HITTERS = "hitters"
 
 
@@ -88,10 +88,12 @@ def ratings(player: PlayerRecord) -> dict[str, int]:
 
 def group(player: PlayerRecord, r: dict[str, int]) -> str:
     """Where a player will most likely play: sp or rp for pitchers (their
-    listed role), else whichever of C, IF, OF or 1B they rate best at."""
+    listed role), else whichever of C, IF or OF they rate best at. First
+    base counts as infield: there's no 1B chip, and the IF chip's own fit
+    (the best of 2B, 3B and SS) still tells a real infielder from a pure 1B."""
     if player.is_pitcher():
         return "sp" if player.position == "sp" else "rp"
-    return max(HITTER_GROUPS, key=lambda g: r[g])
+    return max(HITTER_GROUPS, key=lambda g: max(r[g], r["1b"]) if g == "if" else r[g])
 
 
 @dataclass

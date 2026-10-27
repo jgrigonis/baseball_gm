@@ -2,9 +2,9 @@
 #
 # Blitz preference-list draft. Subclasses SnakeDraft and overrides
 # _run_snake so that human GMs pick from their submitted preference
-# list first, then from their draft strategy (pins, then need chips),
-# falling back to best prospect rating when they have neither (same as
-# AI GMs).
+# list first, then from their draft strategy (pins, then need chips).
+# A team with no saved strategy, which includes every AI team, drafts by
+# the needs its roster suggests.
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import logging
 import random
 from datetime import datetime, UTC
 
+from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -193,7 +194,8 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     for row in pref_rows:
         gm_preferences.setdefault(row["team_id"], []).append(row["player_id"])
 
-    gm_strategies = dr.get_strategies_by_team(draft_id, league_id)
+    # Every team drafts by its saved strategy or, failing that, its needs
+    gm_strategies = draft_strategies(conn, draft_id, league_id, cached=False)
 
     sr = SeasonRepository(conn)
     row = sr.get_year(season_id)

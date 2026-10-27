@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.draft_repo import DraftRepository
 from src.league.offseason.draft_strategy import (
     DraftStrategy,
@@ -24,9 +25,9 @@ def preview_picks(
     the team's first PREVIEW_PICKS picks, and which of its pins other teams
     take before then.
 
-    Other human GMs follow their saved strategies and AI GMs take the best
-    prospect rating. Saved preference lists are left out, so it's a guide,
-    not a promise."""
+    Other teams draft by their saved strategy or else their needs, as they
+    will in the real draft. Saved preference lists are left out, so it's a
+    guide, not a promise."""
     draft_repo = DraftRepository(db)
     order = [r["team_id"] for r in draft_repo.get_team_id_draft_order(draft_id)]
     empty = {"picks": [], "pins_gone": {}}
@@ -44,7 +45,7 @@ def preview_picks(
     if not rated:
         return empty
 
-    strategies = draft_repo.get_strategies_by_team(draft_id, league_id)
+    strategies = draft_strategies(db, draft_id, league_id)
     strategies[team_id] = strategy
 
     taken: dict[str, int] = {}

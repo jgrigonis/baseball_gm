@@ -72,8 +72,13 @@
       <div class="draft-col-hdr">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span class="col-label" style="color:var(--amber);">Draft Strategy</span>
-          <button class="btn btn-secondary" id="strategy-clear-btn" onclick="clearStrategy()"
-                  style="font-size:11px;padding:4px 10px;">↺ Clear all</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-secondary" id="strategy-suggest-btn" onclick="useSuggested()"
+                    title="Set the needs your roster suggests"
+                    style="font-size:11px;padding:4px 10px;">✦ Suggested</button>
+            <button class="btn btn-secondary" id="strategy-clear-btn" onclick="clearStrategy()"
+                    style="font-size:11px;padding:4px 10px;">↺ Clear all</button>
+          </div>
         </div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">
           At each pick you take your highest pinned player still there, else the best
@@ -93,6 +98,7 @@
           <div class="chip-row" id="chips-type"></div>
           <div class="strat-hint">Click a need to step it Off → Low → Med → High. A need
             counts less after you draft someone who fills it.</div>
+          <div id="needs-why" class="needs-why"></div>
         </div>
 
         <div class="strat-section">
@@ -214,7 +220,7 @@
       <div class="draft-col-hdr">
         <span class="col-label" style="color:var(--amber);">Your first 5 picks · projected</span>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:4px;">
-          If the AI teams take the best prospect left. A guide, not a promise.
+          If the other teams draft for their own needs. A guide, not a promise.
         </div>
       </div>
       <div id="preview-list"></div>
@@ -390,6 +396,11 @@
   color: var(--amber); border: 1px solid var(--amber); background: var(--amber-lo);
   padding: 6px 8px; margin: 0 0 8px;
 }
+.needs-why {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  margin-top: 8px; line-height: 1.6;
+}
+.needs-why b { color: var(--amber); font-weight: 600; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .need-chip {
   font-family: var(--font-mono); font-size: 11px; padding: 4px 8px;
@@ -452,6 +463,7 @@ window.setMode          = setMode;
 window.saveCurrent      = saveCurrent;
 window.clearStrategy    = clearStrategy;
 window.setAgePref       = setAgePref;
+window.useSuggested     = useSuggested;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 const DRAFT_ID    = "{{ draft_id }}";
@@ -461,6 +473,7 @@ const ALL_ROSTER  = {{ players     | tojson }};
 const SAVED_PREFS = {{ preferences | tojson }};
 const SAVED_STRATEGY = {{ strategy | tojson }};
 const CHIPS       = {{ chips       | tojson }};
+const SUGGESTED   = {{ suggested   | tojson }};  // {chips, reasons} from the roster
 const MAX_PINS    = 10;
 const LEVELS      = ['Off', 'Low', 'Med', 'High'];
 const STORAGE_KEY = `draft3col_${DRAFT_ID}`;
@@ -483,8 +496,11 @@ let dragSource = null;  // 'prefs' | 'explore'
 // has a ranked list saved starts in Advanced, since the draft uses it first.
 let mode           = SAVED_PREFS.length ? 'advanced' : 'strategy';
 const EMPTY_STRATEGY = { chips: {}, age_pref: 0, pins: [] };
+// With nothing saved the draft uses the suggested needs, so they're where a
+// new GM starts and what "unsaved" is measured against.
+const SUGGESTED_STRATEGY = { chips: SUGGESTED.chips, age_pref: 0, pins: [] };
 let savedStrategy  = SAVED_STRATEGY ? normStrategy(SAVED_STRATEGY) : null;
-let strategy       = normStrategy(savedStrategy || EMPTY_STRATEGY);
+let strategy       = normStrategy(savedStrategy || SUGGESTED_STRATEGY);
 let previewTimer   = null;
 let previewSeq     = 0;
 let pinsGone       = {};  // pinned player_id → the pick another team takes them at
@@ -763,9 +779,22 @@ function clearStrategy() {
   strategyChanged();
 }
 
+// Put back the suggested needs, keeping pins and the age slider
+function useSuggested() {
+  strategy.chips = { ...SUGGESTED.chips };
+  strategyChanged();
+}
+
+function unsavedStrategy() {
+  const base = savedStrategy || normStrategy(SUGGESTED_STRATEGY);
+  return strategyKey(strategy) !== strategyKey(base);
+}
+
 function chipHtml(c) {
   const lvl = strategy.chips[c.key] || 0;
+  const why = SUGGESTED.reasons[c.key];
   return `<button class="need-chip l${lvl}" data-chip="${c.key}"
+                  ${why ? `title="Suggested: ${why}"` : ''}
                   aria-label="${c.label}: ${LEVELS[lvl]}">${c.label}<span class="lvl">${LEVELS[lvl]}</span></button>`;
 }
 
@@ -778,6 +807,13 @@ function renderStrategy() {
       if (b) cycleChip(b.dataset.chip);
     };
   });
+
+  const why = Object.entries(SUGGESTED.reasons);
+  document.getElementById('needs-why').innerHTML = why.length
+    ? 'Suggested from your roster:<br>' + why.map(([k, r]) =>
+        `<b>${CHIPS.find(c => c.key === k).label}</b> · ${r}`).join('<br>')
+    : '';
+  document.getElementById('strategy-suggest-btn').style.display = why.length ? '' : 'none';
 
   document.getElementById('age-pref').value = strategy.age_pref;
   document.getElementById('pin-count').textContent =
@@ -1040,9 +1076,7 @@ function updateCheckmark() {
   const text    = document.getElementById('draft-unsaved-text');
   let isMatch;
   if (mode === 'strategy') {
-    // Nothing set and nothing saved drafts the same as an empty strategy
-    const base = savedStrategy || normStrategy(EMPTY_STRATEGY);
-    isMatch = strategyKey(strategy) === strategyKey(base);
+    isMatch = !unsavedStrategy();
     if (retBtn) retBtn.style.display = 'none';
     if (text)   text.textContent = '⚠ Strategy not yet saved';
     if (check)  check.style.display = isMatch && savedStrategy ? 'inline' : 'none';
@@ -1087,8 +1121,7 @@ async function submitPrefs() {
 function onExecute(form) {
   const btn = document.getElementById('execute-btn');
   btn.disabled = true; btn.textContent = 'Running…';
-  const unsaved = !savedStrategy || strategyKey(strategy) !== strategyKey(savedStrategy);
-  if (mode !== 'strategy' || !unsaved) return true;
+  if (mode !== 'strategy' || !unsavedStrategy()) return true;
   saveStrategy().then(ok => {
     if (ok) form.submit();
     else { btn.disabled = false; btn.textContent = 'Run Draft ▶'; }

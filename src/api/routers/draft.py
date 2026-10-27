@@ -22,6 +22,7 @@ from src.api.dependencies import (
 from src.api.schemas import DraftPreferencesRequest, DraftStrategyRequest
 from src.api.services import coach
 from src.api.services.draft_execute import execute_blitz_draft
+from src.api.services.draft_needs import needs_for_draft
 from src.api.services.draft_preview import preview_picks
 from src.api.view_models.draft import draft_rounds
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
@@ -195,12 +196,23 @@ def draft_tab(
         ctx["board"] = board
         ctx["preferences"] = prefs
         ctx["strategy"] = vars(strategy) if strategy else None
+        needs = (
+            needs_for_draft(db, draft["id"]).get(gm["team_id"])
+            if gm["team_id"]
+            else None
+        )
+        ctx["suggested"] = (
+            {"chips": needs.chips, "reasons": needs.reasons}
+            if needs
+            else {"chips": {}, "reasons": {}}
+        )
         ctx["pick_position"] = pick_position
     else:
         ctx["draft_id"] = None
         ctx["board"] = []
         ctx["preferences"] = []
         ctx["strategy"] = None
+        ctx["suggested"] = {"chips": {}, "reasons": {}}
         ctx["pick_position"] = None
     ctx["chips"] = [
         {

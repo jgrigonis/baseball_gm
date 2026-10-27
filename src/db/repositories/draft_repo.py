@@ -67,18 +67,28 @@ class DraftRepository:
                ORDER BY p.last_name, p.first_name""",
             (league_id,),
         ).fetchall()
-        return [
-            PlayerRecord(
-                id=r["id"],
-                first_name=r["first_name"],
-                last_name=r["last_name"],
-                bats=r["bats"],
-                throws=r["throws"],
-                position=r["position"],
-                skills=PlayerSkills.from_db_row(r),
-            )
-            for r in rows
-        ]
+        return [_record(r) for r in rows]
+
+    def get_roster_records(
+        self, team_ids: list[str]
+    ) -> dict[str, list[tuple[PlayerRecord, str]]]:
+        """{team_id: [(player, status)]} for every player the teams own, in
+        one query."""
+        rows = self.conn.execute(
+            """SELECT tp.team_id, ps.status, p.id, p.first_name, p.last_name,
+                      p.bats, p.throws, p.position, sk.*
+               FROM team_players tp
+               JOIN players p ON p.id = tp.player_id
+               JOIN player_status ps ON ps.player_id = p.id
+               JOIN player_skills sk ON sk.player_id = p.id
+               WHERE tp.team_id = ANY(%s)
+               ORDER BY tp.team_id, p.last_name, p.first_name""",
+            (team_ids,),
+        ).fetchall()
+        rosters: dict[str, list[tuple[PlayerRecord, str]]] = {t: [] for t in team_ids}
+        for r in rows:
+            rosters[r["team_id"]].append((_record(r), r["status"]))
+        return rosters
 
     def get_ids_and_rank_from_preferences(
         self, draft_id: str, league_id: str
@@ -335,4 +345,16 @@ class DraftRepository:
 def _strategy(row) -> DraftStrategy:
     return DraftStrategy(
         chips=dict(row["chips"]), age_pref=row["age_pref"], pins=list(row["pins"])
+    )
+
+
+def _record(row) -> PlayerRecord:
+    return PlayerRecord(
+        id=row["id"],
+        first_name=row["first_name"],
+        last_name=row["last_name"],
+        bats=row["bats"],
+        throws=row["throws"],
+        position=row["position"],
+        skills=PlayerSkills.from_db_row(row),
     )
