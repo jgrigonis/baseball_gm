@@ -120,7 +120,7 @@ PITCH_COUNT_THRESHOLD = 100
 CLOSER_ENTRANCE_PROB = 0.92
 
 # Injury/Fatigue
-INJURY_BASE_PROB = 0.00025  # per plate appearance
+INJURY_BASE_PROB = 0.000225  # per plate appearance (lowered from 0.00025 when fatigue multipliers were added)
 FATIGUE_MULTIPLIER = 1.6  # injury multiplier for fatigued players
 LOW_ENERGY = 0.50  # threshold for low player energy
 BASE_ENERGY_DEPLETION = 0.035  # base energy depletion per plate appearance
@@ -139,7 +139,7 @@ SURGERY_INJURY_PROB = 2
 
 # Injury probability multipliers by activity
 INJURY_ACTIVITY_WEIGHT = {
-    "pitching": 6.8,
+    "pitching": 7.55,  # raised from 6.8 to keep pitcher injury rate unchanged when INJURY_BASE_PROB was lowered
     "batting": 0.6,
     "running": 1.2,
     "fielding": 1.0,  # baseline, modified by position below

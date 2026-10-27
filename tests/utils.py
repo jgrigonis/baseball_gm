@@ -12,6 +12,7 @@ from src.game.resolver import Resolver
 from src.game.game import Game
 from src.player.player_in_game import PlayerInGame
 from src.player.player_skills import PlayerSkills
+from src.player.position_fatigue import PositionPlayerFatigue
 from src.player.positions import SKILLS
 from src.util.logger import setup_logger
 from tests.factories.player_record_factory import make_player_record
@@ -23,7 +24,7 @@ class FakePlayer:
         self.name = id
         # Add pitcher_fatigue attribute
         self.pitcher_fatigue = None  # Or initialize properly if is_pitcher
-        self.player_energy = 1.0
+        self.player_energy = PositionPlayerFatigue()
 
     def init_game_stats(self):
         pass  # Game calls this, but we don't care in tests
@@ -51,7 +52,7 @@ class FakePlayerInGame:
         # self.stats = None
         self.skills = PlayerSkills(deepcopy(dict(SKILLS)))
         self.pitcher_fatigue = None
-        self.player_energy = 1.0
+        self.player_energy = PositionPlayerFatigue()
 
     def get_effective_stat(self, stat: int):
         return stat
