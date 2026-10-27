@@ -909,6 +909,30 @@ CREATE INDEX IF NOT EXISTS idx_pick_rights_owner
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
+-- One per foreign key that no other index starts with. Deleting a row checks
+-- every table that references it, and without an index each check scans the
+-- whole table: deleting a league's ~1,400 players scanned the per-game tables
+-- once per player, so leaving a league took minutes once others had history.
+CREATE INDEX IF NOT EXISTS idx_lineup_slots_player     ON game_lineup_slots(player_id);
+CREATE INDEX IF NOT EXISTS idx_game_fielding_player    ON player_game_fielding(player_id);
+CREATE INDEX IF NOT EXISTS idx_player_game_stats_team  ON player_game_stats(team_id);
+CREATE INDEX IF NOT EXISTS idx_games_series            ON games(series_id);
+CREATE INDEX IF NOT EXISTS idx_series_season           ON series(season_id);
+CREATE INDEX IF NOT EXISTS idx_bullpen_roles_season    ON bullpen_roles(season_id);
+CREATE INDEX IF NOT EXISTS idx_team_rotations_player   ON team_rotations(player_id);
+CREATE INDEX IF NOT EXISTS idx_team_rotations_season   ON team_rotations(season_id);
+CREATE INDEX IF NOT EXISTS idx_rotation_pointer_season ON team_rotation_pointer(season_id);
+CREATE INDEX IF NOT EXISTS idx_drafts_season           ON drafts(season_id);
+CREATE INDEX IF NOT EXISTS idx_draft_order_team        ON draft_order(team_id);
+CREATE INDEX IF NOT EXISTS idx_draft_picks_team        ON draft_picks(team_id);
+CREATE INDEX IF NOT EXISTS idx_pick_rights_original    ON draft_pick_rights(original_team_id);
+CREATE INDEX IF NOT EXISTS idx_draft_prefs_draft       ON draft_preferences(draft_id);
+CREATE INDEX IF NOT EXISTS idx_draft_prefs_player      ON draft_preferences(player_id);
+CREATE INDEX IF NOT EXISTS idx_lineup_pref_player      ON gm_lineup_preferences(player_id);
+CREATE INDEX IF NOT EXISTS idx_league_seasons_season   ON league_seasons(season_id);
+CREATE INDEX IF NOT EXISTS idx_player_retirements_player ON player_retirements(player_id);
+CREATE INDEX IF NOT EXISTS idx_player_retirements_season ON player_retirements(season_id);
+
 -- Deferred FK: leagues.commissioner_gm_id → gms (circular; added after gms exists)
 ALTER TABLE leagues
     DROP CONSTRAINT IF EXISTS leagues_commissioner_gm_id_fkey;

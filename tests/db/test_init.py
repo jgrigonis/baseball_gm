@@ -75,3 +75,27 @@ def test_verify_schema_fails_on_missing_tables():
 def test_verify_schema_passes_after_init(db_conn):
     """verify_schema returns True on a fully-initialised database."""
     assert verify_schema(db_conn) is True
+
+
+def test_every_foreign_key_is_indexed(db_conn):
+    """Deleting a row checks each table that references it, which scans the
+    whole table unless an index starts with the referencing column. Leaving a
+    league deletes its players, so one missing index made that take minutes."""
+    unindexed = db_conn.execute("""
+        SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
+        FROM pg_constraint c
+        JOIN pg_attribute a
+          ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+        WHERE c.contype = 'f'
+          AND c.connamespace = current_schema()::regnamespace
+          AND NOT EXISTS (
+              SELECT 1 FROM pg_index i
+              WHERE i.indrelid = c.conrelid AND i.indkey[0] = c.conkey[1])
+        """).fetchall()
+    # The commissioner is one row per league; nothing deletes GMs in bulk.
+    missing = [
+        f"{r['tbl']}({r['col']})"
+        for r in unindexed
+        if (r["tbl"], r["col"]) != ("leagues", "commissioner_gm_id")
+    ]
+    assert missing == []
