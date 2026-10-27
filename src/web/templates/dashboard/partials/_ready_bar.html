@@ -74,19 +74,6 @@ function render() {
   away.style.display = d.you_out ? 'none' : '';
 }
 
-// Swap through htmx so the tab's inline script runs again; setting innerHTML
-// doesn't run scripts, which left script-built tabs like Lineup empty. Save
-// the Lineup tab's unsaved edits first so its init restores them.
-function refreshTab() {
-  var activeLink = document.querySelector('.tab-link.active');
-  if (!activeLink || !document.getElementById('tab-content')) return;
-  var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
-  if (document.getElementById('pane-batting') && window.saveLineupToStorage) {
-    window.saveLineupToStorage();
-  }
-  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
-}
-
 function apply(d) {
   if (!d || !d.multiplayer) return;
   var prev = last;
@@ -107,7 +94,7 @@ function apply(d) {
       else window.location.reload();
       return;
     }
-    refreshTab();
+    window.refreshActiveTab();
     fetch(URL + '/news').then(function(r) { return r.json(); })
       .then(function(n) { if (window.showInjuryNews) window.showInjuryNews(n); })
       .catch(function() {});

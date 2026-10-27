@@ -25,6 +25,7 @@ def _record(path, status):
     [
         ("/leagues/abc/sim/status", 200, False),
         ("/leagues/abc/lobby/gms", 200, False),
+        ("/leagues/abc/progress", 200, False),
         ("/leagues/abc/sim/status", 307, True),  # signed out: still logged
         ("/leagues/abc/sim/status", 403, True),
         ("/leagues/abc/sim", 200, True),

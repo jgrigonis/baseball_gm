@@ -369,3 +369,18 @@ class LeagueRepository:
             (league_id,),
         ).fetchone()
         return bool(row and row["state"] == "complete")
+
+    def progress(self, league_id: str) -> dict | None:
+        """How far the league has got: its state, its ready-check period and
+        the games played across all its seasons. Any of these changes when
+        the league moves on, however it was moved."""
+        row = self.conn.execute(
+            """SELECT l.state, l.sim_period,
+                      (SELECT COUNT(*) FROM games g
+                         JOIN league_seasons ls ON ls.season_id = g.season_id
+                        WHERE ls.league_id = l.id AND g.completed = 1)
+                      AS games_played
+               FROM leagues l WHERE l.id = %s""",
+            (league_id,),
+        ).fetchone()
+        return dict(row) if row else None
