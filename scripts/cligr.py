@@ -72,6 +72,11 @@ from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.user_repo import UserRepository
 
 from src.league.bootstrap import LeagueBootstrapper
+from src.league.league_constants import (
+    ALL_STAR_BREAK_AFTER_GAMES,
+    ALL_STAR_BREAK_DAYS,
+    SEASON_LENGTH,
+)
 from src.league.manifest_helper import (
     load_manifest,
     validate_manifest_structure,
@@ -548,8 +553,9 @@ def _bootstrap_first_season(
             season_id=season_id,
             team_ids=[t.id for t in teams],
             start_date=start_date,
-            games_per_series=3,
-            home_and_away=True,
+            target_games=SEASON_LENGTH,
+            all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
+            all_star_break_days=ALL_STAR_BREAK_DAYS,
         )
         save_schedule_to_db(conn, schedule)
         print(f"  Schedule: {len(schedule)} games")
@@ -600,8 +606,9 @@ def _create_next_season_cli(
         season_id=season_id,
         team_ids=team_ids,
         start_date=start_date,
-        games_per_series=3,
-        home_and_away=True,
+        target_games=SEASON_LENGTH,
+        all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
+        all_star_break_days=ALL_STAR_BREAK_DAYS,
     )
     save_schedule_to_db(conn, schedule)
 
@@ -837,7 +844,9 @@ def _play_playoffs(
 
 def _run_offseason_pipeline(conn, season_id: str, league_id: str, seed: int | None):
     """Run the full offseason pipeline (AI snake draft runs for all teams)."""
-    rng = random.Random(seed)
+    # Mix in the season so each offseason (and league creation, which uses
+    # the bare seed) draws different player ids.
+    rng = random.Random(f"{seed}:{season_id}") if seed is not None else random.Random()
     pipeline = OffseasonPipeline(conn, rng)
     # CLI mode: let run_draft execute (all-AI snake draft — do NOT pre-mark done)
     pipeline.run(season_id, league_id=league_id)
