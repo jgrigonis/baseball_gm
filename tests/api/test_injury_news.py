@@ -69,3 +69,51 @@ def test_news_is_shown_once(db_conn, factory):
 
     assert len(take_injury_news(db_conn, gm.id)["new_injuries"]) == 1
     assert take_injury_news(db_conn, gm.id) == {"new_injuries": [], "returned": []}
+
+
+def _returned_is_pitcher(db, factory, position, outs=0, ab=0, skills=False):
+    """Bring a player back from injury and return the news's is_pitcher."""
+    league = factory.league(state="season")
+    season = factory.season()
+    factory.league_season(league, season)
+    team = factory.team()
+    gm = factory.gm(team=team, league=league, is_ai=False)
+    if skills:
+        player = factory.prospect(league.id)
+        db.execute(
+            "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s)",
+            (team.id, player.id),
+        )
+    else:
+        player = _player_on(db, factory, team, "Pat")
+    db.execute("UPDATE players SET position = %s WHERE id = %s", (position, player.id))
+    if outs or ab:
+        db.execute(
+            "INSERT INTO player_season_stats"
+            " (player_id, season_id, team_id, pitch_outs, bat_ab)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (player.id, season.id, team.id, outs, ab),
+        )
+    _injure(db, league, player, 3)
+
+    news = InjuryNews(db, league.id)
+    db.execute("DELETE FROM player_injuries WHERE player_id = %s", (player.id,))
+    news.record()
+    return take_injury_news(db, gm.id)["returned"][0]["is_pitcher"]
+
+
+def test_returning_pitcher_with_no_stats_goes_by_position(db_conn, factory):
+    assert _returned_is_pitcher(db_conn, factory, "sp") is True
+    assert _returned_is_pitcher(db_conn, factory, "ss") is False
+
+
+def test_returning_player_with_no_stats_goes_by_ratings(db_conn, factory):
+    # The prospect's skills rate as a hitter, so the listed position loses
+    assert _returned_is_pitcher(db_conn, factory, "sp", skills=True) is False
+
+
+def test_returning_player_with_stats_goes_by_usage(db_conn, factory):
+    assert _returned_is_pitcher(db_conn, factory, "ss", outs=30) is True
+    assert _returned_is_pitcher(db_conn, factory, "sp", ab=40) is False
+    # A pitcher who also bats a little is still a pitcher
+    assert _returned_is_pitcher(db_conn, factory, "ss", outs=150, ab=20) is True

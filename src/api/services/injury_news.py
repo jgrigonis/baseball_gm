@@ -6,10 +6,13 @@
 
 from __future__ import annotations
 
+from src.api.view_models.player_cards import compute_ratings
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.notification_repo import NotificationRepository
+from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.player.positions import is_pitcher
 
 
 class InjuryNews:
@@ -39,7 +42,7 @@ class InjuryNews:
                         {
                             "name": v["name"],
                             "days": v["days"],
-                            "is_pitcher": v["is_pitcher"],
+                            "is_pitcher": self._is_pitcher(pid, v),
                         },
                     )
             for pid, v in before.items():
@@ -49,11 +52,30 @@ class InjuryNews:
                         "returned",
                         {
                             "name": v["name"],
-                            "is_pitcher": v["is_pitcher"],
+                            "is_pitcher": self._is_pitcher(pid, v),
                             "on_40man": status_repo.get_status(pid)
                             in ("26man", "40man"),
                         },
                     )
+
+    def _is_pitcher(self, player_id: str, injury: dict) -> bool:
+        """Whether the alert should link to the pitching tab for this player.
+
+        Go by this season's usage when there is any. A player with no innings
+        and no at-bats (e.g. hurt since last season) is classified the way the
+        lineup tab does it, by whether the pitching or hitting rating is
+        higher, falling back to the listed position if there are no skills."""
+        outs, ab = injury["outs"], injury["ab"]
+        if outs or ab:
+            return outs > 0 and (ab == 0 or outs / 3 >= ab / 10)
+        row = PlayerRepository(self.conn).get_with_skills(player_id)
+        # player_id only comes from the player_skills side of the join
+        if row and row.get("player_id"):
+            ratings = compute_ratings(row, row.get("throws") or "R")
+            if ratings:
+                pitching = max(ratings.get("sp", 0), ratings.get("rp", 0))
+                return pitching > ratings.get("overall_player", 0)
+        return is_pitcher(injury["position"] or "")
 
 
 def take_injury_news(conn, gm_id: str) -> dict:
