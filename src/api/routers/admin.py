@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from src.api.dependencies import DB, Admin
 from src.api.routers.leagues import state_label
 from src.api.services import admin as admin_service
-from src.api.services.passwords import password_error, username_error
+from src.api.services.passwords import clean_email, password_error, username_error
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.user_repo import UserRepository
 from src.league.league_modes import LEAGUE_MODES
@@ -205,7 +205,7 @@ def add_user(
 ):
     username = username.strip()
     user_repo = UserRepository(db)
-    clean, error = admin_service.clean_email(email)
+    clean, error = clean_email(email)
     error = username_error(username) or password_error(password, password) or error
     if not error and user_repo.username_taken(username):
         error = "That username is taken."
@@ -257,7 +257,7 @@ def set_email(
     request: Request, user_id: str, db: DB, user: Admin, email: str = Form("")
 ):
     _user_or_404(db, user_id)
-    clean, error = admin_service.clean_email(email)
+    clean, error = clean_email(email)
     if not error and clean and UserRepository(db).email_taken(clean, user_id):
         error = "Another user has that email."
     if error:

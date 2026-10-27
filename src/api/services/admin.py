@@ -11,7 +11,6 @@
 
 from __future__ import annotations
 
-import re
 import uuid
 
 from src.api.services.leave_league import leave_league
@@ -48,8 +47,6 @@ NUMBER_LABELS = {
 # Settings that time the ready-check window. Changing one starts the current
 # period's window over, so the new length applies now.
 _WINDOW_SETTINGS = ("pace_control", *(k for k in NUMBER_RANGES if k.endswith("_sec")))
-
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _new_token() -> str:
@@ -139,16 +136,6 @@ def remove_gm(conn, league_id: str, gm_id: str) -> None:
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
-
-
-def clean_email(email: str) -> tuple[str | None, str | None]:
-    """(email, error). A blank email clears it."""
-    email = email.strip()
-    if not email:
-        return None, None
-    if len(email) > 254 or not EMAIL_RE.match(email):
-        return None, "That doesn't look like an email address."
-    return email, None
 
 
 def create_user(
