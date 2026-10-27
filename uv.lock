@@ -89,7 +89,7 @@ wheels = [
 
 [[package]]
 name = "baseball-manager"
-version = "0.5.8"
+version = "0.5.9"
 source = { editable = "." }
 dependencies = [
     { name = "argon2-cffi" },
