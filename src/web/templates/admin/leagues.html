@@ -36,7 +36,10 @@
           <td class="admin-dim">{{ 'Yes' if l.is_public else 'No' }}</td>
           <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>
           <td class="admin-dim">{{ (l.created_at or '')[:10] }}</td>
-          <td style="text-align:right;"><a href="/admin/leagues/{{ l.id }}" class="btn btn-secondary admin-small">Manage →</a></td>
+          <td style="text-align:right;white-space:nowrap;">
+            {% if l.state != 'lobby' %}<a href="/leagues/{{ l.id }}/" class="btn btn-secondary admin-small">View</a>{% endif %}
+            <a href="/admin/leagues/{{ l.id }}" class="btn btn-secondary admin-small">Manage →</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

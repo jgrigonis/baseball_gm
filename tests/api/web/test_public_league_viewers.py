@@ -3,7 +3,8 @@
 Anyone signed in can follow a public league once it has started, without
 joining: its standings, leaders, team stats, playoffs, draft results and
 history. The pages built around one GM's own team stay GM-only, and so does
-every action. Private leagues stay GM-only throughout.
+every action. Private leagues stay GM-only throughout, except to admins,
+who can view any league once it has started.
 """
 
 import uuid
@@ -27,16 +28,26 @@ def user_id(db_conn):
     return uid
 
 
-@pytest.fixture
-def client(db_conn, user_id):
+def _client(db_conn, user_id, is_admin=False):
     app.dependency_overrides[get_db] = lambda: db_conn
     app.dependency_overrides[get_current_user] = lambda: {
         "id": user_id,
         "has_password": True,
         "display_name": "Viewer",
+        "is_admin": is_admin,
     }
     yield TestClient(app, follow_redirects=False)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client(db_conn, user_id):
+    yield from _client(db_conn, user_id)
+
+
+@pytest.fixture
+def admin_client(db_conn, user_id):
+    yield from _client(db_conn, user_id, is_admin=True)
 
 
 def _league(db, factory, state="season", is_public=True):
@@ -162,5 +173,38 @@ def test_private_and_lobby_leagues_stay_closed(
     league, _ = _league(db_conn, factory, state=state, is_public=is_public)
 
     r = client.get(f"/leagues/{league.id}/standings", headers={"accept": "text/html"})
+
+    assert r.headers["location"] == "/leagues/"
+
+
+@pytest.mark.parametrize("page", VIEWABLE)
+def test_admin_views_private_league(admin_client, db_conn, factory, page):
+    league, _ = _league(db_conn, factory, is_public=False)
+
+    r = admin_client.get(f"/leagues/{league.id}/{page}")
+
+    assert r.status_code == 200
+    assert "Viewing" in r.text
+
+
+def test_admin_still_cant_act_in_private_league(admin_client, db_conn, factory):
+    league, _ = _league(db_conn, factory, is_public=False)
+
+    assert (
+        admin_client.post(f"/leagues/{league.id}/sim", json={"count": 1}).status_code
+        == 403
+    )
+    r = admin_client.get(
+        f"/leagues/{league.id}/roster", headers={"accept": "text/html"}
+    )
+    assert r.headers["location"] == "/leagues/"
+
+
+def test_admin_cant_view_private_lobby(admin_client, db_conn, factory):
+    league, _ = _league(db_conn, factory, state="lobby", is_public=False)
+
+    r = admin_client.get(
+        f"/leagues/{league.id}/standings", headers={"accept": "text/html"}
+    )
 
     assert r.headers["location"] == "/leagues/"

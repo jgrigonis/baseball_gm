@@ -10,6 +10,7 @@
     <span class="topbar-state state-{{ league.state }}" style="margin-left:12px;">{{ state_label }}</span>
     {% if league.is_paused %}<span class="topbar-state" style="margin-left:8px;color:var(--red);border-color:var(--red);">Paused</span>{% endif %}
     <div class="spacer"></div>
+    {% if started %}<a href="/leagues/{{ league.id }}/" class="btn btn-secondary" style="margin-right:8px;" title="Standings, stats and history, read-only">View League</a>{% endif %}
     {% if league.is_paused %}
     <form method="POST" action="/admin/leagues/{{ league.id }}/resume">
       <button type="submit" class="btn btn-primary">Resume League</button>
