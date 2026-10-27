@@ -168,6 +168,7 @@ body {
 }
 .topbar-team strong { color: var(--amber); display: block; font-size: 13px; }
 
+.topbar-nav, .topbar-nav form { display: flex; align-items: center; }
 .topbar-nav a {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -178,6 +179,27 @@ body {
   transition: color 0.1s;
 }
 .topbar-nav a:hover { color: var(--text); }
+.topbar-signout {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  padding: 4px 8px 4px 0;
+}
+.topbar-signout:hover { color: var(--text); }
+/* A dot between each top-right link. A link's left padding gives way to
+   the dot so the gap is even on both sides. */
+.topbar-nav > * + *::before {
+  content: "\2022";
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-right: 8px;
+}
+.topbar-nav > a + a { padding-left: 0; }
 
 /* ── Sim Bar ────────────────────────────────────────────────────────────────── */
 /* Persistent strip below topbar showing current game date + sim controls */

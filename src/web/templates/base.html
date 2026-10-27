@@ -109,13 +109,14 @@
         <strong>{{ team_name }}</strong>{{ gm_display_name }}
       </div>
     {% endif %}
+    {% set nav_user = user or (request.state.user if request is defined else none) %}
     <nav class="topbar-nav">
       <a href="/leagues/">Leagues</a>
-      {% if user and user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
+      {% if nav_user and nav_user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
       {% if league_info %}<a href="/leagues/{{ league_id }}/league">League</a>{% endif %}
       {% if league_id %}<a href="/leagues/{{ league_id }}/history">History</a>{% endif %}
-      <form method="POST" action="/auth/logout" style="display:inline;">
-        <button type="submit" style="background:none;border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">Sign Out</button>
+      <form method="POST" action="/auth/logout">
+        <button type="submit" class="topbar-signout">Sign Out</button>
       </form>
     </nav>
   </header>
