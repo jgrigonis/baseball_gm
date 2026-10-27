@@ -218,3 +218,12 @@ class RosterSaveRequest(BaseModel):
 
 class DraftPreferencesRequest(BaseModel):
     player_ids: list[str] = []
+
+
+class DraftStrategyRequest(BaseModel):
+    """Need chips (chip key → level 0-3), age preference (-1 upside … 1 ready
+    sooner) and pinned player ids. Checked by DraftStrategy."""
+
+    chips: dict[str, int] = {}
+    age_pref: float = 0.0
+    pins: list[str] = []

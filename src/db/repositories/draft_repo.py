@@ -1,6 +1,10 @@
 # src/db/repositories/draft_repo.py
 import uuid
 
+from psycopg.types.json import Jsonb
+
+from src.league.offseason.draft_strategy import DraftStrategy
+
 
 class DraftRepository:
     def __init__(self, conn):
@@ -65,6 +69,33 @@ class DraftRepository:
             (draft_id, league_id),
         ).fetchall()
         return pref_rows
+
+    def get_strategy(self, draft_id: str, gm_id: str) -> DraftStrategy | None:
+        """Return a GM's saved draft strategy, or None."""
+        row = self.conn.execute(
+            """SELECT chips, age_pref, pins FROM draft_strategies
+               WHERE draft_id = %s AND gm_id = %s""",
+            (draft_id, gm_id),
+        ).fetchone()
+        return _strategy(row) if row else None
+
+    def get_strategies_by_team(
+        self, draft_id: str, league_id: str
+    ) -> dict[str, DraftStrategy]:
+        """{team_id: DraftStrategy} for the league's human GMs who saved one."""
+        rows = self.conn.execute(
+            """
+            SELECT g.team_id, ds.chips, ds.age_pref, ds.pins
+            FROM draft_strategies ds
+            JOIN gms g ON g.id = ds.gm_id
+            WHERE ds.draft_id = %s
+            AND g.league_id = %s
+            AND NOT g.is_ai
+            AND g.team_id IS NOT NULL
+            """,
+            (draft_id, league_id),
+        ).fetchall()
+        return {r["team_id"]: _strategy(r) for r in rows}
 
     def get_pick_position(self, draft_id: str, team_id: str) -> int | None:
         """Return the team's pick position from draft_order, or None."""
@@ -164,6 +195,23 @@ class DraftRepository:
                 ],
             )
 
+    def save_strategy(self, draft_id: str, gm_id: str, strategy: DraftStrategy) -> None:
+        """Insert or replace a GM's draft strategy."""
+        self.conn.execute(
+            """INSERT INTO draft_strategies (gm_id, draft_id, chips, age_pref, pins)
+               VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (gm_id, draft_id) DO UPDATE
+               SET chips = EXCLUDED.chips, age_pref = EXCLUDED.age_pref,
+                   pins = EXCLUDED.pins, updated_at = NOW()""",
+            (
+                gm_id,
+                draft_id,
+                Jsonb(strategy.chips),
+                strategy.age_pref,
+                strategy.pins,
+            ),
+        )
+
     def create_draft(self, league_id: str, season_id: str, draft_format: str) -> str:
         draft_id = str(uuid.uuid4())
         self.conn.execute(
@@ -247,3 +295,9 @@ class DraftRepository:
                 VALUES (%s, %s, %s, %s, %s)""",
             (league_id, draft_year, round, og_team_id, cur_team_id),
         )
+
+
+def _strategy(row) -> DraftStrategy:
+    return DraftStrategy(
+        chips=dict(row["chips"]), age_pref=row["age_pref"], pins=list(row["pins"])
+    )

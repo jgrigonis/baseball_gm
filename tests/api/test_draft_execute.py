@@ -10,6 +10,8 @@ Coverage:
 - Auto-pick flag correct: 0 for preference picks, 1 for AI/fallback picks
 - draft_picks table populated correctly
 - BlitzDraft._run_snake directly: preference order, fallback, pool exhaustion
+- Draft strategy: saving and loading, pins picked in order, and a preference
+  list still wins over a strategy
 """
 
 import random
@@ -19,6 +21,8 @@ import uuid
 import pytest
 
 from src.api.services.draft_execute import execute_blitz_draft, BlitzDraft
+from src.db.repositories.draft_repo import DraftRepository
+from src.league.offseason.draft_strategy import HIGH, DraftStrategy
 from src.league.offseason.snake_draft import ROUNDS
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
@@ -382,3 +386,73 @@ class TestBlitzDraftRunSnake:
             picks = blitz._run_snake(order, rated)
 
         assert len(picks) == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Draft strategy
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestDraftStrategy:
+    @pytest.fixture
+    def setup(self, db_conn, factory):
+        league = factory.league(state="draft")
+        season = factory.season()
+        factory.league_season(league, season)
+        draft = factory.draft(league=league, season=season)
+        human_team = factory.team()
+        ai_team = factory.team()
+        human_gm = factory.gm(team=human_team, league=league, is_ai=False)
+        factory.gm(team=ai_team, league=league, is_ai=True)
+        factory.draft_order(draft, [human_team, ai_team])
+        prospects = [
+            factory.prospect(league_id=league.id) for _ in range(ROUNDS * 2 + 5)
+        ]
+        return db_conn, draft, league, human_gm, human_team, prospects
+
+    def _pick_number(self, db_conn, draft, player_id):
+        return db_conn.execute(
+            "SELECT team_id, pick_number FROM draft_picks"
+            " WHERE draft_id = %s AND player_id = %s",
+            (draft.id, player_id),
+        ).fetchone()
+
+    def test_strategy_round_trips(self, setup):
+        db_conn, draft, league, human_gm, human_team, prospects = setup
+        repo = DraftRepository(db_conn)
+        saved = DraftStrategy(chips={"if": HIGH}, age_pref=-0.5, pins=[prospects[3].id])
+        repo.save_strategy(draft.id, human_gm.id, saved)
+        repo.save_strategy(draft.id, human_gm.id, saved)  # replaces, no conflict
+
+        assert repo.get_strategy(draft.id, human_gm.id) == saved
+        assert repo.get_strategies_by_team(draft.id, league.id) == {
+            human_team.id: saved
+        }
+
+    def test_pinned_players_are_picked_in_order(self, setup):
+        db_conn, draft, _, human_gm, human_team, prospects = setup
+        pins = [prospects[-1].id, prospects[-2].id]
+        DraftRepository(db_conn).save_strategy(
+            draft.id, human_gm.id, DraftStrategy(pins=pins)
+        )
+
+        execute_blitz_draft(draft.id, db_conn)
+
+        first = self._pick_number(db_conn, draft, pins[0])
+        second = self._pick_number(db_conn, draft, pins[1])
+        assert (first["team_id"], first["pick_number"]) == (human_team.id, 1)
+        # Snake: the human's second pick is overall pick 4 in a 2-team draft
+        assert (second["team_id"], second["pick_number"]) == (human_team.id, 4)
+
+    def test_preference_list_beats_strategy(self, setup):
+        db_conn, draft, _, human_gm, human_team, prospects = setup
+        repo = DraftRepository(db_conn)
+        repo.save_preferences(draft.id, human_gm.id, [prospects[0].id])
+        repo.save_strategy(
+            draft.id, human_gm.id, DraftStrategy(pins=[prospects[-1].id])
+        )
+
+        execute_blitz_draft(draft.id, db_conn)
+
+        assert self._pick_number(db_conn, draft, prospects[0].id)["pick_number"] == 1
+        assert self._pick_number(db_conn, draft, prospects[-1].id)["pick_number"] == 4
