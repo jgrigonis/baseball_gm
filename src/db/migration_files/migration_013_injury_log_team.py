@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_012_injury_log_team.py
+# src/db/migration_files/migration_013_injury_log_team.py
 """
 The injury log records which team a player was on when hurt, so a season
 summary can list the injuries each team suffered that season even after
@@ -10,7 +10,7 @@ day. Entries neither can place get the team the player played the most
 games for that season, and stay NULL when the player never played.
 """
 
-VERSION = 12
+VERSION = 13
 
 
 def upgrade(conn):
