@@ -52,6 +52,21 @@ def game_panel(
     for p in home_pit + away_pit:
         p["IP"] = fmt_ip(p["outs"] or 0)
 
+    # A staff that held the other side hitless over nine or more innings
+    no_hitters = []
+    for pit, team in ((away_pit, "away"), (home_pit, "home")):
+        outs = sum(p["outs"] or 0 for p in pit)
+        if pit and outs >= 27 and not any(p["H"] for p in pit):
+            no_hitters.append(
+                {
+                    "team": f"{game[team + '_city']} {game[team + '_mascot']}",
+                    "pitchers": ", ".join(
+                        f"{p['first_name'][0]}. {p['last_name']}" for p in pit
+                    ),
+                    "combined": len(pit) > 1,
+                }
+            )
+
     # Event log
     events_out = []
     for ed in game_repo.get_events(game_id):
@@ -77,6 +92,7 @@ def game_panel(
             "away_bat": away_bat,
             "home_pit": home_pit,
             "away_pit": away_pit,
+            "no_hitters": no_hitters,
             "events": events_out,
             "my_team_id": my_team_id,
             "fmt_ip": fmt_ip,

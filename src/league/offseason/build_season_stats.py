@@ -40,7 +40,7 @@ INSERT INTO player_season_stats (
     bat_sac_flys, bat_sac_bunts, bat_gdp, bat_gtp,
     bat_stolen_bases, bat_caught_stealing,
 
-    pitch_games_played, pitch_games_started, pitch_complete_games, pitch_shutouts,
+    pitch_games_played, pitch_games_started, pitch_complete_games, pitch_shutouts, pitch_no_hitters,
     pitch_wins, pitch_losses, pitch_saves, pitch_holds,
     pitch_outs, pitch_hits, pitch_runs, pitch_earned_runs, pitch_home_runs,
     pitch_walks, pitch_strike_outs, pitch_hit_batters,
@@ -79,6 +79,7 @@ SELECT
     SUM(pgs.pitch_game_started),
     SUM(pgs.pitch_complete_game),
     SUM(pgs.pitch_shutout),
+    SUM(pgs.pitch_no_hitter),
     SUM(pgs.pitch_win),
     SUM(pgs.pitch_loss),
     SUM(pgs.pitch_save),

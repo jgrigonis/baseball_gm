@@ -65,7 +65,7 @@ class PlayerGameRepository:
                 bat_sac_bunts, bat_gdp, bat_gtp, bat_stolen_bases, bat_caught_stealing,
 
                 pitch_game_played, pitch_game_started,
-                pitch_complete_game, pitch_shutout, pitch_win, pitch_loss, pitch_save, pitch_hold,
+                pitch_complete_game, pitch_shutout, pitch_no_hitter, pitch_win, pitch_loss, pitch_save, pitch_hold,
                 pitch_outs, pitch_hits, pitch_runs, pitch_earned_runs,
                 pitch_home_runs, pitch_walks, pitch_strike_outs,
                 pitch_hit_batters, pitch_doubles, pitch_triples, pitch_pickoffs, 
@@ -74,7 +74,7 @@ class PlayerGameRepository:
                 field_putouts, field_assists, field_errors, passed_balls, 
                 catcher_interferences, catcher_cs, catcher_sb
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (game_id, player_id) DO UPDATE SET
                 team_id = EXCLUDED.team_id, opponent_team_id = EXCLUDED.opponent_team_id,
                 bat_game_played = EXCLUDED.bat_game_played, bat_game_started = EXCLUDED.bat_game_started,
@@ -88,6 +88,7 @@ class PlayerGameRepository:
                 bat_stolen_bases = EXCLUDED.bat_stolen_bases, bat_caught_stealing = EXCLUDED.bat_caught_stealing,
                 pitch_game_played = EXCLUDED.pitch_game_played, pitch_game_started = EXCLUDED.pitch_game_started,
                 pitch_complete_game = EXCLUDED.pitch_complete_game, pitch_shutout = EXCLUDED.pitch_shutout,
+                pitch_no_hitter = EXCLUDED.pitch_no_hitter,
                 pitch_win = EXCLUDED.pitch_win, pitch_loss = EXCLUDED.pitch_loss,
                 pitch_save = EXCLUDED.pitch_save, pitch_hold = EXCLUDED.pitch_hold,
                 pitch_outs = EXCLUDED.pitch_outs, pitch_hits = EXCLUDED.pitch_hits,
@@ -129,6 +130,7 @@ class PlayerGameRepository:
                 p.game_started,
                 p.complete_game,
                 p.shut_out,
+                p.no_hitter,
                 p.win,
                 p.loss,
                 p.save,
@@ -397,6 +399,7 @@ class PlayerGameRepository:
                 SUM(pgs.pitch_hold) AS pitch_hold,
                 SUM(pgs.pitch_complete_game) AS pitch_complete_game,
                 SUM(pgs.pitch_shutout) AS pitch_shutout,
+                SUM(pgs.pitch_no_hitter) AS pitch_no_hitter,
                 SUM(pgs.pitch_outs) AS pitch_outs,
                 SUM(pgs.pitch_hits) AS pitch_hits,
                 SUM(pgs.pitch_runs) AS pitch_runs,
@@ -434,6 +437,24 @@ class PlayerGameRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_no_hitters(self, season_id: str) -> list[dict]:
+        """Return the season's no-hitters, regular season and playoffs, in date order."""
+        rows = self.conn.execute(
+            """SELECT p.id as player_id, p.first_name, p.last_name, g.id as game_id,
+                      g.game_date, g.series_id IS NOT NULL AS postseason,
+                      pgs.team_id, t.city, t.mascot, o.city as opp_city, o.mascot as opp_mascot,
+                      pgs.pitch_strike_outs as "K", pgs.pitch_walks as "BB"
+               FROM player_game_stats pgs
+               JOIN games g ON g.id = pgs.game_id
+               JOIN players p ON p.id = pgs.player_id
+               JOIN teams t ON t.id = pgs.team_id
+               JOIN teams o ON o.id = pgs.opponent_team_id
+               WHERE g.season_id = %s AND pgs.pitch_no_hitter = 1
+               ORDER BY g.game_date, g.id""",
+            (season_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_pitching_box_score(self, game_id: str) -> list[dict]:
         """Return pitching lines for all pitchers who appeared in a game, ordered for display."""
         rows = self.conn.execute(
@@ -443,6 +464,8 @@ class PlayerGameRepository:
                       pgs.pitch_walks as "BB", pgs.pitch_strike_outs as "K",
                       pgs.pitch_home_runs as "HR", pgs.pitch_win as "W",
                       pgs.pitch_loss as "L", pgs.pitch_save as "SV",
+                      pgs.pitch_complete_game as "CG", pgs.pitch_shutout as "SHO",
+                      pgs.pitch_no_hitter as "NH",
                       pgs.pitch_game_started as started
                FROM player_game_stats pgs
                JOIN players p ON p.id = pgs.player_id

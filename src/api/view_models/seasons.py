@@ -11,6 +11,7 @@ from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.standings import standings_rows
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
@@ -79,6 +80,7 @@ def season_summary_context(
         "injuries_league_wide": my_team_id is None,
         "injury_days_total": 0,
         "season_year": None,
+        "no_hitters": [],
     }
     if not season_id:
         return ctx
@@ -131,6 +133,22 @@ def season_summary_context(
             ctx["leader_cats"].append(
                 {"label": label, "rows": cat["rows"][:SUMMARY_LEADERS_SHOWN]}
             )
+
+    # No-hitters thrown this season
+    for nh in PlayerGameRepository(db).get_no_hitters(season_id):
+        ctx["no_hitters"].append(
+            {
+                "player_id": nh["player_id"],
+                "name": f"{nh['first_name']} {nh['last_name']}",
+                "team": f"{nh['city']} {nh['mascot']}",
+                "opponent": f"{nh['opp_city']} {nh['opp_mascot']}",
+                "game_date": nh["game_date"],
+                "postseason": nh["postseason"],
+                "K": nh["K"],
+                "BB": nh["BB"],
+                "is_mine": nh["team_id"] == my_team_id,
+            }
+        )
 
     # Playoff results, one line per decided or started series
     bracket = playoffs_context(db, league_id, season_id, my_team_id)["bracket"]

@@ -315,6 +315,7 @@ class Game:
         if decisions.save:
             decisions.save.pitcher.game_stats.pitching.save = 1
 
+        self._credit_complete_games()
         self.decisions = decisions
 
         return result
@@ -969,6 +970,25 @@ class Game:
             )
 
         self._last_known_leader = leader
+
+    def _credit_complete_games(self) -> None:
+        """A starter who was his team's only pitcher threw a complete game.
+        Allowing no runs makes it a shutout, and no hits over at least nine
+        innings a no-hitter."""
+        for team_id in {a.team_id for a in self.pitcher_appearances}:
+            pitchers = {
+                a.pitcher for a in self.pitcher_appearances if a.team_id == team_id
+            }
+            if len(pitchers) != 1:
+                continue
+            p = next(iter(pitchers)).game_stats.pitching
+            if not p.game_started:
+                continue
+            p.complete_game = 1
+            if p.runs == 0:
+                p.shut_out = 1
+            if p.hits == 0 and p.outs >= 27:
+                p.no_hitter = 1
 
     def _open_pitcher_appearance(self, pitcher) -> None:
         already_appearing = any(
