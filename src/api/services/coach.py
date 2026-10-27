@@ -67,8 +67,7 @@ STEPS = (
         "play",
         "Play some games",
         "Use the play buttons on Standings or Schedule. Play Day plays one "
-        "day, Until Injury stops when someone gets hurt, and Full Season "
-        "plays to the end.",
+        "day and Full Season plays to the end.",
         "standings",
     ),
     (
