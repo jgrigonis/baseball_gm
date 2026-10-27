@@ -241,6 +241,29 @@ class InjuryRepository:
         ).fetchall()
         return rows
 
+    def get_season_injuries(
+        self, season_id: str, team_id: str | None = None
+    ) -> list[dict]:
+        """Every injury suffered in a season, oldest first, with the player's
+        name and position and the team the player was on when hurt. Limit to one
+        team with `team_id`."""
+        rows = self.conn.execute(
+            """
+            SELECT pil.player_id, p.first_name || ' ' || p.last_name AS name,
+                   p.position, pil.team_id, t.city, t.mascot,
+                   pil.injury_date, pil.severity, pil.activity,
+                   pil.games_missed AS days_missed
+            FROM player_injury_log pil
+            JOIN players p ON p.id = pil.player_id
+            LEFT JOIN teams t ON t.id = pil.team_id
+            WHERE pil.season_id = %s
+              AND (%s::text IS NULL OR pil.team_id = %s)
+            ORDER BY pil.injury_date, pil.id
+            """,
+            (season_id, team_id, team_id),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def count_player_injuries(self, player_id: str, season_id: str) -> int:
         result = self.conn.execute(
             "SELECT COUNT(*) FROM player_injury_log WHERE player_id = %s AND season_id = %s",
@@ -269,11 +292,13 @@ class InjuryRepository:
         activity=None,
         rng=None,
         days=None,
+        team_id=None,
     ):
         """
         Record an injury suffered on game_date. The player misses `days`
         calendar days (rolled from the severity tier if not given) and is
-        available again the day after that.
+        available again the day after that. `team_id` is the team the
+        player was hurt playing for.
         """
         injury_day = _to_date(game_date)
         days_missed = days if days is not None else roll_days_missed(severity, rng)
@@ -308,12 +333,14 @@ class InjuryRepository:
             cursor.execute(
                 """
                 INSERT INTO player_injury_log
-                    (player_id, season_id, games_missed, severity, injury_date, activity)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                    (player_id, season_id, team_id, games_missed, severity,
+                     injury_date, activity)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     player_id,
                     season_id,
+                    team_id,
                     days_missed,
                     severity,
                     injury_day.isoformat(),

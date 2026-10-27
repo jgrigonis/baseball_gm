@@ -224,6 +224,37 @@
   </div>
   {% endif %}
 
+  {# Injuries suffered this season: the GM's team, or every team for a viewer #}
+  {% if standings %}
+  <div class="ss-section-head" id="injuries">
+    <span class="ss-kicker">
+      {% if injuries_league_wide %}League Injuries{% else %}{{ my_team_name or 'Your Team' }} Injuries{% endif %}
+    </span>
+    {% if injuries %}
+    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+      {{ injuries|length }} injur{{ 'y' if injuries|length == 1 else 'ies' }} · {{ injury_days_total }} days lost
+    </span>
+    {% endif %}
+  </div>
+  <div class="card" style="margin-bottom:24px;">
+    {% for inj in injuries %}
+    <div class="ss-clickable ss-inj-row" onclick="openPlayerPanel('{{ inj.player_id }}')"
+         title="View {{ inj.name }}">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ inj.injury_date }}</span>
+      <div style="min-width:0;">
+        <div class="ss-ellipsis" style="font-size:12px;font-weight:600;">{{ inj.name }}</div>
+        <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          {{ inj.position|upper }}{% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</div>
+      </div>
+      <div class="ss-ellipsis" style="font-size:12px;">
+        <span class="ss-sev-{{ inj.severity }}">{{ inj.severity|capitalize }}</span>
+        {% if inj.activity %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);"> · {{ inj.activity }}</span>{% endif %}
+      </div>
+      <span style="font-family:var(--font-mono);font-size:12px;text-align:right;">{{ inj.days_missed }}d</span>
+    </div>
+    {% else %}
+    <div style="padding:16px;text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
+      No injuries this season.
   {# No-hitters thrown this season #}
   {% if no_hitters %}
   <div class="ss-section-head">
@@ -308,9 +339,19 @@
 }
 .ss-draft { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-bottom:24px; }
 .ss-ellipsis { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.ss-inj-row {
+  display:grid;grid-template-columns:84px minmax(0,1fr) 200px 48px;gap:10px;
+  align-items:baseline;padding:6px 14px;
+}
+.ss-inj-row + .ss-inj-row { border-top:1px solid var(--border); }
+.ss-sev-minor    { color:var(--text-dim); }
+.ss-sev-moderate { color:var(--amber); }
+.ss-sev-severe, .ss-sev-surgery { color:var(--red); }
 @media (max-width: 720px) {
   .ss-leader-row { grid-template-columns:repeat(2,1fr); }
   .ss-two-col { grid-template-columns:1fr; }
+  .ss-inj-row { grid-template-columns:minmax(0,1fr) auto 40px; }
+  .ss-inj-row > :first-child { display:none; }
 }
 </style>
 

@@ -273,6 +273,7 @@ CREATE TABLE IF NOT EXISTS player_injury_log (
     id              SERIAL PRIMARY KEY,
     player_id       TEXT NOT NULL,
     season_id       TEXT,                   -- nullable for pre-season injuries
+    team_id         TEXT,                   -- the team the player was on when hurt
     injury_date     TEXT NOT NULL,
     severity        TEXT NOT NULL,
     activity        TEXT,

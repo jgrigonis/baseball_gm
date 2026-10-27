@@ -230,3 +230,58 @@ def test_playoffs_for_a_past_season(client, league):
     assert "2025 Playoffs" in r.text
     assert "Champion: Chicago Champs" in r.text
     assert f"/season-summary?season_id={sid}" in r.text
+
+
+def _injure(db, league, player_id, season, team, day, days):
+    from src.db.repositories.injury_repo import InjuryRepository
+
+    InjuryRepository(db, league.id).injure(
+        player_id, season.id, day, severity="moderate", activity="fielding",
+        days=days, team_id=team.id,
+    )  # fmt: skip
+
+
+def test_summary_lists_my_teams_injuries(db_conn, league):
+    lg, past = league["league"], league["past"]
+    players = league["players"]
+    _injure(db_conn, lg, players["era"], past, league["mine"], "2025-05-01", 12)
+    _injure(db_conn, lg, players["hr"], past, league["best"], "2025-05-02", 30)
+    # The same player hurt again the next season belongs to that season
+    _injure(
+        db_conn, lg, players["era"], league["current"], league["mine"], "2026-05-01", 4
+    )
+
+    ctx = _summary(db_conn, league)
+    assert [i["player_id"] for i in ctx["injuries"]] == [players["era"]]
+    assert ctx["injury_days_total"] == 12
+    assert not ctx["injuries_league_wide"]
+
+    # A viewer with no team sees every team's injuries
+    ctx = season_summary_context(db_conn, lg.id, past.id, None, None)
+    assert ctx["injuries_league_wide"]
+    assert [i["player_id"] for i in ctx["injuries"]] == [players["era"], players["hr"]]
+    assert ctx["injuries"][1]["team"] == "Boston Best"
+
+
+def test_summary_page_shows_injuries(client, db_conn, league):
+    lg, past = league["league"], league["past"]
+    _injure(
+        db_conn, lg, league["players"]["era"], past, league["mine"], "2025-05-01", 12
+    )
+    r = client.get(f"/leagues/{lg.id}/season-summary?season_id={past.id}")
+    assert 'id="injuries"' in r.text
+    assert "My Team Injuries" in r.text or "Your Team Injuries" in r.text
+    assert "Will Wilson" in r.text
+    assert "12d" in r.text
+
+
+def test_summary_page_with_no_injuries_says_so(client, league):
+    lg, past = league["league"], league["past"]
+    r = client.get(f"/leagues/{lg.id}/season-summary?season_id={past.id}")
+    assert "No injuries this season." in r.text
+
+
+def test_history_links_each_seasons_injuries(client, league):
+    lid, sid = league["league"].id, league["past"].id
+    r = client.get(f"/leagues/{lid}/history")
+    assert f"/leagues/{lid}/season-summary?season_id={sid}#injuries" in r.text
