@@ -595,6 +595,22 @@ CREATE TABLE IF NOT EXISTS draft_preferences (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+-- draft_strategies: a GM's need chips, age preference and pinned players for
+--   one draft (src/league/offseason/draft_strategy.py, migration 017).
+CREATE TABLE IF NOT EXISTS draft_strategies (
+    gm_id      TEXT   NOT NULL,
+    draft_id   TEXT   NOT NULL,
+    chips      JSONB  NOT NULL DEFAULT '{{}}',  -- chip key -> level 0-3
+    age_pref   REAL   NOT NULL DEFAULT 0,      -- -1 upside .. 1 ready sooner
+    pins       TEXT[] NOT NULL DEFAULT '{{}}',  -- player_ids, in order
+    updated_at TEXT   NOT NULL DEFAULT (NOW()),
+
+    PRIMARY KEY (gm_id, draft_id),
+
+    FOREIGN KEY (gm_id)    REFERENCES gms(id)    ON DELETE CASCADE,
+    FOREIGN KEY (draft_id) REFERENCES drafts(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS gm_lineup_preferences (
     gm_id        TEXT NOT NULL,
     player_id    TEXT NOT NULL,
@@ -962,6 +978,7 @@ CREATE INDEX IF NOT EXISTS idx_draft_picks_team        ON draft_picks(team_id);
 CREATE INDEX IF NOT EXISTS idx_pick_rights_original    ON draft_pick_rights(original_team_id);
 CREATE INDEX IF NOT EXISTS idx_draft_prefs_draft       ON draft_preferences(draft_id);
 CREATE INDEX IF NOT EXISTS idx_draft_prefs_player      ON draft_preferences(player_id);
+CREATE INDEX IF NOT EXISTS idx_draft_strategies_draft ON draft_strategies(draft_id);
 CREATE INDEX IF NOT EXISTS idx_lineup_pref_player      ON gm_lineup_preferences(player_id);
 CREATE INDEX IF NOT EXISTS idx_league_seasons_season   ON league_seasons(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_retirements_player ON player_retirements(player_id);

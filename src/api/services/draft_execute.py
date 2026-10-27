@@ -2,8 +2,9 @@
 #
 # Blitz preference-list draft. Subclasses SnakeDraft and overrides
 # _run_snake so that human GMs pick from their submitted preference
-# list first, falling back to best prospect rating when the list is
-# exhausted or missing (same as AI GMs).
+# list first, then from their draft strategy (pins, then need chips),
+# falling back to best prospect rating when they have neither (same as
+# AI GMs).
 
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.rotation_seeder import seed_ai_rotations
+from src.league.offseason.draft_strategy import DraftStrategy, StrategyScorer
 from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
@@ -31,13 +33,19 @@ class BlitzDraft(SnakeDraft):
     """
     Snake draft variant for blitz leagues.
 
-    Human GMs pick their highest available preference-list player.
+    Human GMs pick their highest available preference-list player, then
+    follow their draft strategy if they saved one.
     AI GMs (and human GMs with exhausted/missing lists) fall back to
     best prospect rating — identical to the base SnakeDraft behaviour.
     """
 
     def __init__(
-        self, conn, league_id: str, gm_preferences: dict[str, list[str]], rng=None
+        self,
+        conn,
+        league_id: str,
+        gm_preferences: dict[str, list[str]],
+        rng=None,
+        gm_strategies: dict[str, DraftStrategy] | None = None,
     ):
         """
         Args:
@@ -45,10 +53,15 @@ class BlitzDraft(SnakeDraft):
             league_id: League to scope the draft pool to
             gm_preferences: { team_id: [player_id, ...] } in rank order.
                             Only human GMs will have entries; AI GMs won't.
+            gm_strategies: { team_id: DraftStrategy } for GMs who saved one.
         """
         super().__init__(conn, league_id, rng)
         self._prefs: dict[str, list[str]] = {
             tid: list(pids) for tid, pids in gm_preferences.items()
+        }
+        # Copied: chip levels wear off as picks are made
+        self._strategies: dict[str, DraftStrategy] = {
+            tid: s.copy() for tid, s in (gm_strategies or {}).items()
         }
 
     def _run_snake(
@@ -61,6 +74,8 @@ class BlitzDraft(SnakeDraft):
         overall_pick = 1
         available: set[str] = {p.id for p, _ in rated}
         fallback: list[tuple[PlayerRecord, int]] = list(rated)
+        by_id = {p.id: p for p, _ in rated}
+        scorer = StrategyScorer(rated) if self._strategies and rated else None
 
         for round_num in range(1, ROUNDS + 1):
             order = draft_order if round_num % 2 == 1 else list(reversed(draft_order))
@@ -85,6 +100,11 @@ class BlitzDraft(SnakeDraft):
                             # is_auto = False
                             break
 
+                strategy = self._strategies.get(team_id)
+                if chosen is None and strategy is not None:
+                    pid = scorer.choose(available, strategy)
+                    chosen = by_id.get(pid) if pid else None
+
                 if chosen is None:
                     for player, _ in fallback:
                         if player.id in available:
@@ -95,6 +115,8 @@ class BlitzDraft(SnakeDraft):
                     break
 
                 available.discard(chosen.id)
+                if strategy is not None:
+                    scorer.wear_off(chosen.id, strategy)
                 rating = PlayerEvaluator.prospect_rating(chosen.skills)
                 tr = TeamRepository(self.conn)
                 tr.add_player(team_id, chosen.id)
@@ -171,6 +193,8 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     for row in pref_rows:
         gm_preferences.setdefault(row["team_id"], []).append(row["player_id"])
 
+    gm_strategies = dr.get_strategies_by_team(draft_id, league_id)
+
     sr = SeasonRepository(conn)
     row = sr.get_year(season_id)
     year = row["year"] if row else 2025
@@ -179,7 +203,12 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     # league_start or offseason_pipeline — never recompute from standings here)
     stored_order = dr.get_team_id_draft_order(draft_id)
 
-    blitz = BlitzDraft(conn, league_id=league_id, gm_preferences=gm_preferences)
+    blitz = BlitzDraft(
+        conn,
+        league_id=league_id,
+        gm_preferences=gm_preferences,
+        gm_strategies=gm_strategies,
+    )
 
     if stored_order:
         draft_order = [{"team_id": r["team_id"], "team_name": ""} for r in stored_order]

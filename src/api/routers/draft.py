@@ -1,6 +1,6 @@
 # src/api/routers/draft.py
 #
-# Draft tab: the prospect board, saving draft preferences, running the
+# Draft tab: the prospect board, saving draft preferences and strategy, running the
 # blitz draft, and the results page.
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
-from src.api.schemas import DraftPreferencesRequest
+from src.api.schemas import DraftPreferencesRequest, DraftStrategyRequest
 from src.api.services import coach
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.view_models.draft import draft_rounds
@@ -27,6 +27,7 @@ from src.db.locks import league_lock
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.league.offseason.draft_strategy import DraftStrategy
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
@@ -71,6 +72,45 @@ def save_draft_preferences(
     db.commit()
 
     return JSONResponse({"saved": len(player_ids)})
+
+
+@router.put("/leagues/{league_id}/draft/strategy")
+def save_draft_strategy(
+    league_id: str,
+    body: DraftStrategyRequest,
+    db: DB,
+    user: User,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Save the GM's draft strategy: need chips, age preference and pins."""
+    draft_repo = DraftRepository(db)
+
+    draft = draft_repo.get_current_for_league(league_id)
+    if not draft:
+        return JSONResponse({"detail": "No draft found"}, status_code=404)
+    if draft["state"] == "complete":
+        return JSONResponse({"detail": "Draft is already complete"}, status_code=409)
+
+    try:
+        strategy = DraftStrategy(
+            chips=body.chips,
+            age_pref=body.age_pref,
+            pins=list(dict.fromkeys(body.pins)),
+        )
+    except ValueError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+
+    prospect_ids = {p["id"] for p in draft_repo.get_prospects(league_id)}
+    missing = next((pid for pid in strategy.pins if pid not in prospect_ids), None)
+    if missing:
+        return JSONResponse({"detail": f"Unknown prospect: {missing}"}, status_code=422)
+
+    draft_repo.save_strategy(draft["id"], gm["id"], strategy)
+    coach.mark(db, league_id, "prefs")
+    db.commit()
+
+    return JSONResponse({"saved": True})
 
 
 # ── Tab: Draft ─────────────────────────────────────────────────────────────────
