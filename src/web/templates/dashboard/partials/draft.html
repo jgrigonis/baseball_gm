@@ -9,14 +9,21 @@
       <span class="page-subtitle" style="margin-left:10px;">{{ board|length }} prospects</span>
       {% if pick_position %}<span class="page-subtitle" style="color:var(--amber);margin-left:8px;">Pick #{{ pick_position }}</span>{% endif %}
 
+      <div class="mode-toggle" style="margin-left:16px;" role="group" aria-label="Draft mode">
+        <button class="type-btn" data-mode="strategy" onclick="setMode('strategy')"
+                title="Say what your team needs and pin a few players">Strategy</button>
+        <button class="type-btn" data-mode="advanced" onclick="setMode('advanced')"
+                title="Rank the whole prospect list yourself">Advanced</button>
+      </div>
+
       <div class="spacer"></div>
       <button class="btn btn-secondary" id="return-submitted-btn"
               onclick="returnToSubmitted()" style="display:none;">⟳ Return to Submitted</button>
-      <button class="btn btn-primary" id="submit-btn" onclick="submitPrefs()"
-              style="margin-left:8px;">Submit Preferences</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="saveCurrent()"
+              style="margin-left:8px;">Save Strategy</button>
       <span id="submit-check"
             style="font-family:var(--font-mono);font-size:13px;color:var(--green);
-                   margin-left:8px;display:none;">✓ Submitted</span>
+                   margin-left:8px;display:none;">✓ Saved</span>
       {% if draft_complete %}
         <a href="/leagues/{{ league_id }}/draft/results"
            class="btn btn-secondary"
@@ -25,7 +32,7 @@
         </a>
       {% elif not multiplayer %}
         <form method="POST" action="/leagues/{{ league_id }}/draft/execute"
-              style="margin-left:16px;display:inline;" onsubmit="onExecute(this)">
+              style="margin-left:16px;display:inline;" onsubmit="return onExecute(this)">
           <button type="submit" id="execute-btn" class="btn btn-secondary"
                   style="border-color:var(--green);color:var(--green);">
             Run Draft ▶
@@ -44,10 +51,10 @@
               background:var(--amber-lo);border:1px solid var(--amber);
               font-family:var(--font-mono);font-size:11px;color:var(--amber);
               display:flex;align-items:center;gap:10px;">
-    <span>⚠ Preferences not yet submitted</span>
-    <button class="btn btn-secondary" onclick="submitPrefs()"
+    <span id="draft-unsaved-text">⚠ Strategy not yet saved</span>
+    <button class="btn btn-secondary" onclick="saveCurrent()"
             style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
-      Submit now
+      Save now
     </button>
   </div>
   {% endif %}
@@ -59,8 +66,51 @@
 {# ── Three-column layout ───────────────────────────────────────────────────── #}
 <div class="draft-cols">
 
-  {# ── Left: Draft Preferences ─────────────────────────────────────────────── #}
+  {# ── Left: Strategy (default) or Draft Preferences (Advanced) ─────────────── #}
   <div class="draft-col">
+    <div class="mode-pane" id="strategy-pane">
+      <div class="draft-col-hdr">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="col-label" style="color:var(--amber);">Draft Strategy</span>
+          <button class="btn btn-secondary" id="strategy-clear-btn" onclick="clearStrategy()"
+                  style="font-size:11px;padding:4px 10px;">↺ Clear all</button>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">
+          At each pick you take your highest pinned player still there, else the best
+          prospect for your needs.
+        </div>
+      </div>
+      <div class="draft-col-body" style="padding:10px 12px;">
+        <div id="strategy-list-note" class="strat-note" style="display:none;">
+          You have a ranked list from Advanced. The draft uses it before your strategy,
+          until you save a strategy here, which replaces it.
+        </div>
+
+        <div class="strat-section">
+          <div class="strat-label">Needs · positions</div>
+          <div class="chip-row" id="chips-position"></div>
+          <div class="strat-label">Needs · player types</div>
+          <div class="chip-row" id="chips-type"></div>
+          <div class="strat-hint">Click a need to step it Off → Low → Med → High. A need
+            counts less after you draft someone who fills it.</div>
+        </div>
+
+        <div class="strat-section">
+          <div class="strat-label">Age</div>
+          <input type="range" id="age-pref" min="-1" max="1" step="0.5" value="0"
+                 oninput="setAgePref(this.value)" style="width:100%;"
+                 aria-label="Age preference">
+          <div class="age-scale"><span>Upside (younger)</span><span>Balanced</span><span>Ready sooner</span></div>
+        </div>
+
+        <div class="strat-section">
+          <div class="strat-label">Pinned players <span id="pin-count"></span></div>
+          <div id="pins-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mode-pane" id="advanced-pane">
     <div class="draft-col-hdr">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span class="col-label" style="color:var(--amber);">Draft Preferences</span>
@@ -75,6 +125,7 @@
     </div>
     <div class="draft-col-body" id="prefs-list"
          ondragover="prefsZoneOver(event)" ondrop="prefsZoneDrop(event)">
+    </div>
     </div>
   </div>
 
@@ -157,8 +208,17 @@
     <div class="draft-col-body" id="explore-list"></div>
   </div>
 
-  {# ── Right: Your Roster ───────────────────────────────────────────────────── #}
+  {# ── Right: Projected picks (Strategy) and Your Roster ───────────────────── #}
   <div class="draft-col">
+    <div id="preview-section">
+      <div class="draft-col-hdr">
+        <span class="col-label" style="color:var(--amber);">Your first 5 picks · projected</span>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:4px;">
+          If the AI teams take the best prospect left. A guide, not a promise.
+        </div>
+      </div>
+      <div id="preview-list"></div>
+    </div>
     <div class="draft-col-hdr">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
         <span class="col-label" style="color:var(--amber);">Your Roster</span>
@@ -315,6 +375,61 @@
   margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;
 }
 .d-skills .gl { color: var(--muted); margin-right: 1px; }
+/* ── Mode toggle and strategy panel ───────────────────────────────────────── */
+.mode-toggle { display: flex; border: 1px solid var(--border); }
+.mode-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.strat-section { margin-bottom: 16px; }
+.strat-label {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-dim); margin: 8px 0 6px;
+}
+.strat-hint, .strat-note {
+  font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 6px;
+}
+.strat-note {
+  color: var(--amber); border: 1px solid var(--amber); background: var(--amber-lo);
+  padding: 6px 8px; margin: 0 0 8px;
+}
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.need-chip {
+  font-family: var(--font-mono); font-size: 11px; padding: 4px 8px;
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-dim);
+  cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline;
+}
+.need-chip .lvl { font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.need-chip:hover { color: var(--text); background: var(--bg-3); }
+.need-chip.l1 { border-color: var(--amber); color: var(--text); }
+.need-chip.l2 { border-color: var(--amber); color: var(--amber); background: var(--amber-lo); }
+.need-chip.l3 { border-color: var(--amber); color: var(--bg); background: var(--amber); }
+.need-chip.l1 .lvl, .need-chip.l2 .lvl { color: var(--amber); }
+.need-chip.l3 .lvl { color: var(--bg); }
+.age-scale {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+}
+.pin-row {
+  display: grid; grid-template-columns: 22px 1fr auto auto; gap: 0 6px;
+  align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.pin-gone { color: var(--red); }
+.pin-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); padding: 4px 0; }
+.pin-btn {
+  background: none; border: none; cursor: pointer; font-size: 15px; line-height: 1;
+  color: var(--muted); padding: 2px 4px;
+}
+.pin-btn:hover { color: var(--amber); }
+.pin-btn.on { color: var(--amber); }
+.pin-btn:disabled { opacity: .25; cursor: default; }
+.exp-row.pinnable { grid-template-columns: 36px 1fr auto; }
+.prev-row {
+  display: grid; grid-template-columns: 54px 1fr auto; gap: 0 8px; align-items: center;
+  padding: 7px 12px; border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.prev-row:hover { background: var(--bg-3); }
+.prev-slot { font-family: var(--font-mono); font-size: 10px; color: var(--amber); line-height: 1.3; }
+.prev-empty { padding: 10px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+#preview-section { border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
 /* ── Drop zone highlight ────────────────────────────────────────────────────── */
 .draft-col-body.drop-active { background: var(--amber-lo); }
 </style>
@@ -333,6 +448,10 @@ window.onExecute        = onExecute;
 window.prefsZoneOver    = prefsZoneOver;
 window.prefsZoneDrop    = prefsZoneDrop;
 window.renderRoster     = renderRoster;
+window.setMode          = setMode;
+window.saveCurrent      = saveCurrent;
+window.clearStrategy    = clearStrategy;
+window.setAgePref       = setAgePref;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 const DRAFT_ID    = "{{ draft_id }}";
@@ -340,6 +459,10 @@ var   LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ board       | tojson }};
 const ALL_ROSTER  = {{ players     | tojson }};
 const SAVED_PREFS = {{ preferences | tojson }};
+const SAVED_STRATEGY = {{ strategy | tojson }};
+const CHIPS       = {{ chips       | tojson }};
+const MAX_PINS    = 10;
+const LEVELS      = ['Off', 'Low', 'Med', 'High'];
 const STORAGE_KEY = `draft3col_${DRAFT_ID}`;
 
 
@@ -355,6 +478,16 @@ let exploreSort     = { s1: 'overall', s2: '', s3: '' };
 
 let dragId     = null;
 let dragSource = null;  // 'prefs' | 'explore'
+
+// Strategy mode is the default; Advanced is the hand-ranked list. A GM who
+// has a ranked list saved starts in Advanced, since the draft uses it first.
+let mode           = SAVED_PREFS.length ? 'advanced' : 'strategy';
+const EMPTY_STRATEGY = { chips: {}, age_pref: 0, pins: [] };
+let savedStrategy  = SAVED_STRATEGY ? normStrategy(SAVED_STRATEGY) : null;
+let strategy       = normStrategy(savedStrategy || EMPTY_STRATEGY);
+let previewTimer   = null;
+let previewSeq     = 0;
+let pinsGone       = {};  // pinned player_id → the pick another team takes them at
 
 /* ── Grade helpers ──────────────────────────────────────────────────────────── */
 function skillVal(p, key) { return gradeVal(p[key] || null); }
@@ -497,13 +630,27 @@ function renderExplore() {
     row.dataset.pid = p.player_id;
     row.draggable   = true;
 
+    const pinned = strategy.pins.includes(p.player_id);
+    const pinBtn = mode === 'strategy' ? `
+      <button class="pin-btn ${pinned ? 'on' : ''}" data-pin="${p.player_id}"
+              title="${pinned ? 'Unpin' : 'Pin'}"
+              ${!pinned && strategy.pins.length >= MAX_PINS ? 'disabled' : ''}>${pinned ? '★' : '☆'}</button>` : '';
+    if (pinBtn) row.classList.add('pinnable');
+
     row.innerHTML = `
       <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
       <div style="min-width:0;">
         <div class="d-name">${p.first_name} ${p.last_name}</div>
         <div class="d-meta">${playerMetaHtml(p)}</div>
         <div class="d-skills">${playerGradesHtml(p)}</div>
-      </div>`;
+      </div>${pinBtn}`;
+
+    const btn = row.querySelector('.pin-btn');
+    if (btn) {
+      btn.addEventListener('mousedown', e => e.stopPropagation());
+      btn.addEventListener('mouseup',   e => e.stopPropagation());
+      btn.addEventListener('click', e => { e.stopPropagation(); togglePin(p.player_id); });
+    }
 
     row.addEventListener('dragstart', e => {
       dragId = p.player_id; dragSource = 'explore';
@@ -556,6 +703,218 @@ function renderRoster() {
       <div class="d-meta">${playerMetaHtml(p)}</div>
       <div class="d-skills">${playerGradesHtml(p)}</div>
     </div>`).join('');
+}
+
+/* ── Strategy ────────────────────────────────────────────────────────────────── */
+function normStrategy(st) {
+  const chips = {};
+  Object.entries(st.chips || {}).forEach(([k, v]) => { if (v > 0) chips[k] = v; });
+  const known = new Set(ALL_PLAYERS.map(p => p.player_id));
+  return {
+    chips,
+    age_pref: Number(st.age_pref) || 0,
+    pins: (st.pins || []).filter(id => known.has(id)).slice(0, MAX_PINS),
+  };
+}
+
+function strategyKey(st) {
+  const chips = Object.keys(st.chips).sort().map(k => [k, st.chips[k]]);
+  return JSON.stringify([chips, st.age_pref, st.pins]);
+}
+
+function strategyChanged() {
+  normalizeStrategyInPlace();
+  saveToStorage();
+  renderStrategy();
+  renderExplore();
+  updateCheckmark();
+  schedulePreview();
+}
+
+function normalizeStrategyInPlace() { strategy = normStrategy(strategy); }
+
+function cycleChip(key) {
+  strategy.chips[key] = ((strategy.chips[key] || 0) + 1) % LEVELS.length;
+  strategyChanged();
+}
+
+function setAgePref(v) {
+  strategy.age_pref = Number(v);
+  strategyChanged();
+}
+
+function togglePin(pid) {
+  const i = strategy.pins.indexOf(pid);
+  if (i !== -1) strategy.pins.splice(i, 1);
+  else if (strategy.pins.length < MAX_PINS) strategy.pins.push(pid);
+  strategyChanged();
+}
+
+function movePin(pid, dir) {
+  const i = strategy.pins.indexOf(pid);
+  const j = i + dir;
+  if (i === -1 || j < 0 || j >= strategy.pins.length) return;
+  strategy.pins.splice(j, 0, strategy.pins.splice(i, 1)[0]);
+  strategyChanged();
+}
+
+function clearStrategy() {
+  strategy = normStrategy(EMPTY_STRATEGY);
+  strategyChanged();
+}
+
+function chipHtml(c) {
+  const lvl = strategy.chips[c.key] || 0;
+  return `<button class="need-chip l${lvl}" data-chip="${c.key}"
+                  aria-label="${c.label}: ${LEVELS[lvl]}">${c.label}<span class="lvl">${LEVELS[lvl]}</span></button>`;
+}
+
+function renderStrategy() {
+  ['position', 'type'].forEach(kind => {
+    const el = document.getElementById(`chips-${kind}`);
+    el.innerHTML = CHIPS.filter(c => c.kind === kind).map(chipHtml).join('');
+    el.onclick = e => {
+      const b = e.target.closest('.need-chip');
+      if (b) cycleChip(b.dataset.chip);
+    };
+  });
+
+  document.getElementById('age-pref').value = strategy.age_pref;
+  document.getElementById('pin-count').textContent =
+    `(${strategy.pins.length}/${MAX_PINS})`;
+
+  const pins = document.getElementById('pins-list');
+  if (!strategy.pins.length) {
+    pins.innerHTML = `<div class="pin-empty">Pin up to ${MAX_PINS} players with ☆ in the
+      list. You'll take the highest one still there at each pick.</div>`;
+  } else {
+    pins.innerHTML = strategy.pins.map((pid, i) => {
+      const p = ALL_PLAYERS.find(x => x.player_id === pid);
+      return `
+        <div class="pin-row">
+          <span class="pref-rank">${i + 1}</span>
+          <div style="min-width:0;">
+            <div class="d-name" style="cursor:pointer;"
+                 onclick="openPlayerPanel('${pid}')">${p.first_name} ${p.last_name}</div>
+            <div class="d-meta">${playerMetaHtml(p)}${pinsGone[pid]
+              ? ` · <span class="pin-gone">likely gone at #${pinsGone[pid]}</span>` : ''}</div>
+          </div>
+          <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+          <div style="display:flex;align-items:center;">
+            <div class="pref-arrows">
+              <button class="pref-arrow" data-move="${pid}" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
+              <button class="pref-arrow" data-move="${pid}" data-dir="1"
+                      ${i === strategy.pins.length - 1 ? 'disabled' : ''}>▼</button>
+            </div>
+            <button class="pin-btn" data-unpin="${pid}" title="Unpin">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+  pins.onclick = e => {
+    const mv = e.target.closest('[data-move]');
+    if (mv) return movePin(mv.dataset.move, Number(mv.dataset.dir));
+    const un = e.target.closest('[data-unpin]');
+    if (un) togglePin(un.dataset.unpin);
+  };
+
+  document.getElementById('strategy-list-note').style.display =
+    submittedOrder ? 'block' : 'none';
+}
+
+/* ── Projected picks ─────────────────────────────────────────────────────────── */
+function schedulePreview() {
+  if (mode !== 'strategy') return;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(loadPreview, 250);
+}
+
+async function loadPreview() {
+  const el  = document.getElementById('preview-list');
+  const seq = ++previewSeq;
+  el.style.opacity = '0.5';
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(strategy),
+    });
+    if (seq !== previewSeq) return;  // a newer request is on its way
+    const data = res.ok ? await res.json() : { picks: [] };
+    pinsGone = data.pins_gone || {};
+    renderPreview(data.picks || []);
+    renderStrategy();
+  } catch (err) {
+    if (seq === previewSeq) renderPreview([]);
+  } finally {
+    if (seq === previewSeq) el.style.opacity = '';
+  }
+}
+
+function renderPreview(picks) {
+  const el = document.getElementById('preview-list');
+  if (!picks.length) {
+    el.innerHTML = '<div class="prev-empty">No projection yet.</div>';
+    return;
+  }
+  el.innerHTML = picks.map(pk => {
+    const p = ALL_PLAYERS.find(x => x.player_id === pk.player_id);
+    if (!p) return '';
+    const star = strategy.pins.includes(pk.player_id) ? ' ★' : '';
+    return `
+      <div class="prev-row" onclick="openPlayerPanel('${p.player_id}')">
+        <div class="prev-slot">#${pk.pick}<br>Rd ${pk.round}</div>
+        <div style="min-width:0;">
+          <div class="d-name">${p.first_name} ${p.last_name}${star}</div>
+          <div class="d-meta">${playerMetaHtml(p)}</div>
+        </div>
+        <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+      </div>`;
+  }).join('');
+}
+
+/* ── Mode ────────────────────────────────────────────────────────────────────── */
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-toggle .type-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('strategy-pane').style.display = mode === 'strategy' ? 'flex' : 'none';
+  document.getElementById('advanced-pane').style.display = mode === 'advanced' ? 'flex' : 'none';
+  document.getElementById('preview-section').style.display = mode === 'strategy' ? 'block' : 'none';
+  document.getElementById('submit-btn').textContent =
+    mode === 'strategy' ? 'Save Strategy' : 'Submit Preferences';
+  saveToStorage();
+  renderStrategy();
+  renderExplore();
+  updateCheckmark();
+  schedulePreview();
+}
+
+function saveCurrent() {
+  return mode === 'strategy' ? saveStrategy() : submitPrefs();
+}
+
+async function saveStrategy() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  let ok = false;
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/strategy`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(strategy),
+    });
+    ok = res.ok;
+    if (ok) {
+      savedStrategy  = normStrategy(strategy);
+      submittedOrder = null;  // the server dropped the Advanced list
+      saveToStorage();
+      renderStrategy();
+      updateCheckmark();
+    }
+  } catch (err) { console.error('Save failed', err); }
+  finally { btn.disabled = false; btn.textContent = 'Save Strategy'; }
+  return ok;
 }
 
 /* ── Pref manipulation ───────────────────────────────────────────────────────── */
@@ -678,9 +1037,23 @@ function updateCheckmark() {
   const check   = document.getElementById('submit-check');
   const retBtn  = document.getElementById('return-submitted-btn');
   const banner  = document.getElementById('draft-unsaved-banner');
-  const isMatch = submittedOrder && JSON.stringify(prefOrder) === JSON.stringify(submittedOrder);
+  const text    = document.getElementById('draft-unsaved-text');
+  let isMatch;
+  if (mode === 'strategy') {
+    // Nothing set and nothing saved drafts the same as an empty strategy
+    const base = savedStrategy || normStrategy(EMPTY_STRATEGY);
+    isMatch = strategyKey(strategy) === strategyKey(base);
+    if (retBtn) retBtn.style.display = 'none';
+    if (text)   text.textContent = '⚠ Strategy not yet saved';
+    if (check)  check.style.display = isMatch && savedStrategy ? 'inline' : 'none';
+    if (banner) banner.style.display = isMatch ? 'none' : 'flex';
+    return;
+  } else {
+    isMatch = submittedOrder && JSON.stringify(prefOrder) === JSON.stringify(submittedOrder);
+    if (retBtn) retBtn.style.display = (submittedOrder && !isMatch) ? 'inline-block' : 'none';
+    if (text)   text.textContent = '⚠ Preferences not yet submitted';
+  }
   if (check)  check.style.display  = isMatch ? 'inline' : 'none';
-  if (retBtn) retBtn.style.display = (submittedOrder && !isMatch) ? 'inline-block' : 'none';
   if (banner) banner.style.display = isMatch ? 'none' : 'flex';
 }
 
@@ -710,9 +1083,17 @@ async function submitPrefs() {
   finally { btn.disabled = false; btn.textContent = 'Submit Preferences'; }
 }
 
+// Run Draft saves an unsaved strategy first, so what you see is what runs.
 function onExecute(form) {
   const btn = document.getElementById('execute-btn');
   btn.disabled = true; btn.textContent = 'Running…';
+  const unsaved = !savedStrategy || strategyKey(strategy) !== strategyKey(savedStrategy);
+  if (mode !== 'strategy' || !unsaved) return true;
+  saveStrategy().then(ok => {
+    if (ok) form.submit();
+    else { btn.disabled = false; btn.textContent = 'Run Draft ▶'; }
+  });
+  return false;
 }
 
 /* ── Storage ─────────────────────────────────────────────────────────────────── */
@@ -721,6 +1102,7 @@ function saveToStorage() {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
       prefOrder, submittedOrder,
       exploreFilter, exploreSort, exploreReversed,
+      mode, strategy,
     }));
   } catch (e) {}
 }
@@ -773,6 +1155,8 @@ if (stored) {
   prefOrder = stored.prefOrder;
   if (stored.submittedOrder) submittedOrder = stored.submittedOrder;
   restoreUiState(stored);
+  if (stored.mode) mode = stored.mode;
+  if (stored.strategy) strategy = normStrategy(stored.strategy);
   dirty = JSON.stringify(prefOrder) !== JSON.stringify(defaultOrder);
 } else if (SAVED_PREFS.length > 0) {
   const known   = new Set(prefOrder);
@@ -786,9 +1170,10 @@ if (stored) {
 }
 
 renderPrefs();
-renderExplore();
+renderStrategy();
 renderRoster();
 updateSortConstraints();
+setMode(mode);  // renders Explore, the checkmark and the preview
 requestAnimationFrame(measureHeader);
 window.addEventListener('resize', measureHeader);
 

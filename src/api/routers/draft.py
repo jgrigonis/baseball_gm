@@ -1,6 +1,7 @@
 # src/api/routers/draft.py
 #
-# Draft tab: the prospect board, saving draft preferences and strategy, running the
+# Draft tab: the prospect board, saving draft preferences and strategy,
+# previewing a strategy's picks, running the
 # blitz draft, and the results page.
 
 from __future__ import annotations
@@ -21,13 +22,14 @@ from src.api.dependencies import (
 from src.api.schemas import DraftPreferencesRequest, DraftStrategyRequest
 from src.api.services import coach
 from src.api.services.draft_execute import execute_blitz_draft
+from src.api.services.draft_preview import preview_picks
 from src.api.view_models.draft import draft_rounds
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
 from src.db.locks import league_lock
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
-from src.league.offseason.draft_strategy import DraftStrategy
+from src.league.offseason.draft_strategy import CHIPS, DraftStrategy
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
@@ -74,24 +76,10 @@ def save_draft_preferences(
     return JSONResponse({"saved": len(player_ids)})
 
 
-@router.put("/leagues/{league_id}/draft/strategy")
-def save_draft_strategy(
-    league_id: str,
-    body: DraftStrategyRequest,
-    db: DB,
-    user: User,
-    gm: GM,
-    _active: ActiveLeague,
-):
-    """Save the GM's draft strategy: need chips, age preference and pins."""
-    draft_repo = DraftRepository(db)
-
-    draft = draft_repo.get_current_for_league(league_id)
-    if not draft:
-        return JSONResponse({"detail": "No draft found"}, status_code=404)
-    if draft["state"] == "complete":
-        return JSONResponse({"detail": "Draft is already complete"}, status_code=409)
-
+def _strategy_or_error(
+    draft_repo: DraftRepository, league_id: str, body: DraftStrategyRequest
+) -> DraftStrategy | JSONResponse:
+    """The request as a DraftStrategy, or a 422 saying what's wrong with it."""
     try:
         strategy = DraftStrategy(
             chips=body.chips,
@@ -105,12 +93,65 @@ def save_draft_strategy(
     missing = next((pid for pid in strategy.pins if pid not in prospect_ids), None)
     if missing:
         return JSONResponse({"detail": f"Unknown prospect: {missing}"}, status_code=422)
+    return strategy
+
+
+@router.put("/leagues/{league_id}/draft/strategy")
+def save_draft_strategy(
+    league_id: str,
+    body: DraftStrategyRequest,
+    db: DB,
+    user: User,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Save the GM's draft strategy: need chips, age preference and pins.
+    It replaces any ranked list from the Advanced board, which the draft
+    would otherwise use first."""
+    draft_repo = DraftRepository(db)
+
+    draft = draft_repo.get_current_for_league(league_id)
+    if not draft:
+        return JSONResponse({"detail": "No draft found"}, status_code=404)
+    if draft["state"] == "complete":
+        return JSONResponse({"detail": "Draft is already complete"}, status_code=409)
+
+    strategy = _strategy_or_error(draft_repo, league_id, body)
+    if isinstance(strategy, JSONResponse):
+        return strategy
 
     draft_repo.save_strategy(draft["id"], gm["id"], strategy)
+    draft_repo.clear_preferences(draft["id"], gm["id"])
     coach.mark(db, league_id, "prefs")
     db.commit()
 
     return JSONResponse({"saved": True})
+
+
+@router.post("/leagues/{league_id}/draft/preview")
+def preview_draft_strategy(
+    league_id: str,
+    body: DraftStrategyRequest,
+    db: DB,
+    user: User,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """The GM's first few projected picks with the strategy in the body,
+    which doesn't need to be saved, and which pins go to other teams first."""
+    draft_repo = DraftRepository(db)
+
+    draft = draft_repo.get_current_for_league(league_id)
+    if not draft or draft["state"] == "complete" or not gm["team_id"]:
+        return JSONResponse({"picks": [], "pins_gone": {}})
+
+    strategy = _strategy_or_error(draft_repo, league_id, body)
+    if isinstance(strategy, JSONResponse):
+        return strategy
+
+    return JSONResponse(
+        preview_picks(db, league_id, draft["id"], gm["team_id"], strategy)
+    )
 
 
 # ── Tab: Draft ─────────────────────────────────────────────────────────────────
@@ -144,6 +185,7 @@ def draft_tab(
             board.append(prospect_card(row, player_repo.get_player_skills(row["id"])))
 
         prefs = draft_repo.get_preferences(draft["id"], gm["id"]) if gm else []
+        strategy = draft_repo.get_strategy(draft["id"], gm["id"])
 
         pick_position = None
         if gm["team_id"]:
@@ -152,12 +194,22 @@ def draft_tab(
         ctx["draft_id"] = draft["id"]
         ctx["board"] = board
         ctx["preferences"] = prefs
+        ctx["strategy"] = vars(strategy) if strategy else None
         ctx["pick_position"] = pick_position
     else:
         ctx["draft_id"] = None
         ctx["board"] = []
         ctx["preferences"] = []
+        ctx["strategy"] = None
         ctx["pick_position"] = None
+    ctx["chips"] = [
+        {
+            "key": c.key,
+            "label": c.label,
+            "kind": "position" if c.group == c.key else "type",
+        }
+        for c in CHIPS.values()
+    ]
 
     # Load GM's current roster for the right-hand column
     players = []
