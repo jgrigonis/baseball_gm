@@ -36,14 +36,14 @@ INSERT INTO player_season_stats (
 
     bat_games_played, bat_games_started,
     bat_ab, bat_hits, bat_doubles, bat_triples, bat_home_runs,
-    bat_rbi, bat_runs, bat_walks, bat_strike_outs, bat_hbp,
+    bat_rbi, bat_runs, bat_walks, bat_strike_outs, bat_strike_outs_looking, bat_hbp,
     bat_sac_flys, bat_sac_bunts, bat_gdp, bat_gtp,
     bat_stolen_bases, bat_caught_stealing,
 
     pitch_games_played, pitch_games_started, pitch_complete_games, pitch_shutouts, pitch_no_hitters,
     pitch_wins, pitch_losses, pitch_saves, pitch_holds,
     pitch_outs, pitch_hits, pitch_runs, pitch_earned_runs, pitch_home_runs,
-    pitch_walks, pitch_strike_outs, pitch_hit_batters,
+    pitch_walks, pitch_strike_outs, pitch_strike_outs_looking, pitch_hit_batters,
     pitch_doubles, pitch_triples, pitch_pickoffs, pitch_balks, pitch_wild_pitches,
     pitch_count,
 
@@ -67,6 +67,7 @@ SELECT
     SUM(pgs.bat_runs),
     SUM(pgs.bat_walks),
     SUM(pgs.bat_strike_outs),
+    SUM(pgs.bat_strike_outs_looking),
     SUM(pgs.bat_hbp),
     SUM(pgs.bat_sac_flys),
     SUM(pgs.bat_sac_bunts),
@@ -91,6 +92,7 @@ SELECT
     SUM(pgs.pitch_home_runs),
     SUM(pgs.pitch_walks),
     SUM(pgs.pitch_strike_outs),
+    SUM(pgs.pitch_strike_outs_looking),
     SUM(pgs.pitch_hit_batters),
     SUM(pgs.pitch_doubles),
     SUM(pgs.pitch_triples),

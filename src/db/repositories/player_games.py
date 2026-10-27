@@ -61,20 +61,20 @@ class PlayerGameRepository:
                 bat_game_played, bat_game_started,
                 bat_ab, bat_hits, bat_doubles, bat_triples,
                 bat_home_runs, bat_rbi, bat_runs,
-                bat_walks, bat_strike_outs, bat_hbp, bat_sac_flys,
+                bat_walks, bat_strike_outs, bat_strike_outs_looking, bat_hbp, bat_sac_flys,
                 bat_sac_bunts, bat_gdp, bat_gtp, bat_stolen_bases, bat_caught_stealing,
 
                 pitch_game_played, pitch_game_started,
                 pitch_complete_game, pitch_shutout, pitch_no_hitter, pitch_win, pitch_loss, pitch_save, pitch_hold,
                 pitch_outs, pitch_hits, pitch_runs, pitch_earned_runs,
-                pitch_home_runs, pitch_walks, pitch_strike_outs,
+                pitch_home_runs, pitch_walks, pitch_strike_outs, pitch_strike_outs_looking,
                 pitch_hit_batters, pitch_doubles, pitch_triples, pitch_pickoffs, 
                 pitch_balks, pitch_wild_pitches, pitch_count,
 
                 field_putouts, field_assists, field_errors, passed_balls, 
                 catcher_interferences, catcher_cs, catcher_sb
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (game_id, player_id) DO UPDATE SET
                 team_id = EXCLUDED.team_id, opponent_team_id = EXCLUDED.opponent_team_id,
                 bat_game_played = EXCLUDED.bat_game_played, bat_game_started = EXCLUDED.bat_game_started,
@@ -82,7 +82,8 @@ class PlayerGameRepository:
                 bat_doubles = EXCLUDED.bat_doubles, bat_triples = EXCLUDED.bat_triples,
                 bat_home_runs = EXCLUDED.bat_home_runs, bat_rbi = EXCLUDED.bat_rbi,
                 bat_runs = EXCLUDED.bat_runs, bat_walks = EXCLUDED.bat_walks,
-                bat_strike_outs = EXCLUDED.bat_strike_outs, bat_hbp = EXCLUDED.bat_hbp,
+                bat_strike_outs = EXCLUDED.bat_strike_outs,
+                bat_strike_outs_looking = EXCLUDED.bat_strike_outs_looking, bat_hbp = EXCLUDED.bat_hbp,
                 bat_sac_flys = EXCLUDED.bat_sac_flys, bat_sac_bunts = EXCLUDED.bat_sac_bunts,
                 bat_gdp = EXCLUDED.bat_gdp, bat_gtp = EXCLUDED.bat_gtp,
                 bat_stolen_bases = EXCLUDED.bat_stolen_bases, bat_caught_stealing = EXCLUDED.bat_caught_stealing,
@@ -94,7 +95,9 @@ class PlayerGameRepository:
                 pitch_outs = EXCLUDED.pitch_outs, pitch_hits = EXCLUDED.pitch_hits,
                 pitch_runs = EXCLUDED.pitch_runs, pitch_earned_runs = EXCLUDED.pitch_earned_runs,
                 pitch_home_runs = EXCLUDED.pitch_home_runs, pitch_walks = EXCLUDED.pitch_walks,
-                pitch_strike_outs = EXCLUDED.pitch_strike_outs, pitch_hit_batters = EXCLUDED.pitch_hit_batters,
+                pitch_strike_outs = EXCLUDED.pitch_strike_outs,
+                pitch_strike_outs_looking = EXCLUDED.pitch_strike_outs_looking,
+                pitch_hit_batters = EXCLUDED.pitch_hit_batters,
                 pitch_doubles = EXCLUDED.pitch_doubles, pitch_triples = EXCLUDED.pitch_triples,
                 pitch_pickoffs = EXCLUDED.pitch_pickoffs, pitch_balks = EXCLUDED.pitch_balks,
                 pitch_wild_pitches = EXCLUDED.pitch_wild_pitches, pitch_count = EXCLUDED.pitch_count,
@@ -119,6 +122,7 @@ class PlayerGameRepository:
                 b.runs,
                 b.walks,
                 b.strike_outs,
+                b.strike_outs_looking,
                 b.hbp,
                 b.sac_flys,
                 b.sac_bunts,
@@ -142,6 +146,7 @@ class PlayerGameRepository:
                 p.home_runs,
                 p.walks,
                 p.strike_outs,
+                p.strike_outs_looking,
                 p.hb,
                 p.doubles,
                 p.triples,
@@ -331,6 +336,7 @@ class PlayerGameRepository:
         b.runs = row["bat_runs"]
         b.walks = row["bat_walks"]
         b.strike_outs = row["bat_strike_outs"]
+        b.strike_outs_looking = row["bat_strike_outs_looking"]
         b.hbp = row["bat_hbp"]
         b.sac_flys = row["bat_sac_flys"]
         b.sac_bunts = row["bat_sac_bunts"]
@@ -350,6 +356,7 @@ class PlayerGameRepository:
         p.home_runs = row["pitch_home_runs"]
         p.walks = row["pitch_walks"]
         p.strike_outs = row["pitch_strike_outs"]
+        p.strike_outs_looking = row["pitch_strike_outs_looking"]
         p.hb = row["pitch_hit_batters"]
         p.pitch_count = row["pitch_count"]
         p.doubles = row["pitch_doubles"]
@@ -388,6 +395,7 @@ class PlayerGameRepository:
                 SUM(pgs.bat_runs) AS bat_runs,
                 SUM(pgs.bat_walks) AS bat_walks,
                 SUM(pgs.bat_strike_outs) AS bat_strike_outs,
+                SUM(pgs.bat_strike_outs_looking) AS bat_strike_outs_looking,
                 SUM(pgs.bat_stolen_bases) AS bat_stolen_bases,
                 SUM(pgs.bat_hbp) AS bat_hbp,
                 SUM(pgs.bat_sac_flys) AS bat_sac_flys,
@@ -406,6 +414,7 @@ class PlayerGameRepository:
                 SUM(pgs.pitch_earned_runs) AS pitch_earned_runs,
                 SUM(pgs.pitch_walks) AS pitch_walks,
                 SUM(pgs.pitch_strike_outs) AS pitch_strike_outs,
+                SUM(pgs.pitch_strike_outs_looking) AS pitch_strike_outs_looking,
                 SUM(pgs.pitch_home_runs) AS pitch_home_runs,
                 SUM(pgs.pitch_count) AS pitch_count
             FROM player_game_stats pgs
