@@ -88,6 +88,8 @@ def player_panel_data(
                 pitch_stats = {
                     "G": s.get("pitch_games_played", 0),
                     "GS": s.get("pitch_games_started", 0),
+                    "CG": s.get("pitch_complete_games", 0),
+                    "SHO": s.get("pitch_shutouts", 0),
                     "W": s.get("pitch_wins", 0),
                     "L": s.get("pitch_losses", 0),
                     "SV": s.get("pitch_saves", 0),
@@ -99,6 +101,8 @@ def player_panel_data(
                     "ERA": era,
                     "WHIP": whip,
                 }
+                if s.get("pitch_no_hitters"):
+                    pitch_stats["NH"] = s["pitch_no_hitters"]
             if s.get("bat_games_played", 0) > 0:
                 ab = s.get("bat_ab", 0) or 0
                 hits = s.get("bat_hits", 0) or 0
@@ -287,6 +291,9 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
                 "postseason": is_post,
                 "G": r.get("pitch_games_played", 0),
                 "GS": r.get("pitch_games_started", 0),
+                "CG": r.get("pitch_complete_games", 0),
+                "SHO": r.get("pitch_shutouts", 0),
+                "NH": r.get("pitch_no_hitters", 0),
                 "W": r.get("pitch_wins", 0),
                 "L": r.get("pitch_losses", 0),
                 "SV": r.get("pitch_saves", 0),
@@ -301,7 +308,21 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             }
             pitching_seasons.append(prow)
             t = p_totals if not is_post else pp_totals
-            for k in ("G", "GS", "W", "L", "SV", "H", "ER", "BB", "K", "HR"):
+            for k in (
+                "G",
+                "GS",
+                "CG",
+                "SHO",
+                "NH",
+                "W",
+                "L",
+                "SV",
+                "H",
+                "ER",
+                "BB",
+                "K",
+                "HR",
+            ):
                 t[k] = t.get(k, 0) + prow[k]
             t["_outs"] = t.get("_outs", 0) + outs
 

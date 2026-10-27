@@ -224,6 +224,28 @@
   </div>
   {% endif %}
 
+  {# No-hitters thrown this season #}
+  {% if no_hitters %}
+  <div class="ss-section-head">
+    <span class="ss-kicker">No-Hitters</span>
+  </div>
+  <div class="card ss-draft">
+    {% for nh in no_hitters %}
+    <div class="ss-clickable ss-list-row{% if nh.is_mine %} ss-mine{% endif %}"
+         onclick="openPlayerPanel('{{ nh.player_id }}')">
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">{{ loop.index }}</span>
+      <div style="min-width:0;">
+        <div class="ss-ellipsis" style="font-size:12px;font-weight:600;
+                    color:{% if nh.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ nh.name }}</div>
+        <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+          {{ nh.team }} vs {{ nh.opponent }} · {{ nh.game_date }}{% if nh.postseason %} · Playoffs{% endif %}</div>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--amber);">{{ nh.K }}K {{ nh.BB }}BB</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {# The draft held before this season: first round here, the rest a link away #}
   {% if draft_round %}
   <div class="ss-section-head">

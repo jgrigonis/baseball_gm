@@ -138,7 +138,7 @@
         <table class="cs-table">
           <thead><tr>
             <th>Year</th><th>Team</th>
-            <th>G</th><th>GS</th><th>W</th><th>L</th><th>SV</th>
+            <th>G</th><th>GS</th><th>CG</th><th>SHO</th><th>NH</th><th>W</th><th>L</th><th>SV</th>
             <th>IP</th><th>H</th><th>ER</th><th>BB</th><th>K</th><th>HR</th>
             <th>ERA</th><th>WHIP</th>
           </tr></thead>
@@ -146,7 +146,7 @@
             {% for s in p.pitching_seasons %}
             <tr{% if s.postseason %} class="postseason-row"{% endif %}>
               <td>{% if s.postseason %}<span class="plff-tag">PLFF</span>{% else %}{{ s.year }}{% endif %}</td><td>{{ s.team }}</td>
-              <td>{{ s.G }}</td><td>{{ s.GS }}</td><td>{{ s.W }}</td><td>{{ s.L }}</td><td>{{ s.SV }}</td>
+              <td>{{ s.G }}</td><td>{{ s.GS }}</td><td>{{ s.CG }}</td><td>{{ s.SHO }}</td><td>{{ s.NH }}</td><td>{{ s.W }}</td><td>{{ s.L }}</td><td>{{ s.SV }}</td>
               <td>{{ s.IP }}</td><td>{{ s.H }}</td><td>{{ s.ER }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.HR }}</td>
               <td class="stat-hi">{{ "%.2f"|format(s.ERA) }}</td>
               <td class="stat-hi">{{ "%.2f"|format(s.WHIP) }}</td>
@@ -155,7 +155,7 @@
             {% if p.pitching_playoff_totals %}{% set t = p.pitching_playoff_totals %}
             <tr class="tot postseason-row">
               <td><span class="plff-tag">PLFF</span></td><td>—</td>
-              <td>{{ t.G }}</td><td>{{ t.GS }}</td><td>{{ t.W }}</td><td>{{ t.L }}</td><td>{{ t.SV }}</td>
+              <td>{{ t.G }}</td><td>{{ t.GS }}</td><td>{{ t.CG }}</td><td>{{ t.SHO }}</td><td>{{ t.NH }}</td><td>{{ t.W }}</td><td>{{ t.L }}</td><td>{{ t.SV }}</td>
               <td>{{ t.IP }}</td><td>{{ t.H }}</td><td>{{ t.ER }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.HR }}</td>
               <td>{{ "%.2f"|format(t.ERA) }}</td>
               <td>{{ "%.2f"|format(t.WHIP) }}</td>
@@ -164,7 +164,7 @@
             {% if p.pitching_totals %}{% set t = p.pitching_totals %}
             <tr class="tot">
               <td>Total</td><td>—</td>
-              <td>{{ t.G }}</td><td>{{ t.GS }}</td><td>{{ t.W }}</td><td>{{ t.L }}</td><td>{{ t.SV }}</td>
+              <td>{{ t.G }}</td><td>{{ t.GS }}</td><td>{{ t.CG }}</td><td>{{ t.SHO }}</td><td>{{ t.NH }}</td><td>{{ t.W }}</td><td>{{ t.L }}</td><td>{{ t.SV }}</td>
               <td>{{ t.IP }}</td><td>{{ t.H }}</td><td>{{ t.ER }}</td><td>{{ t.BB }}</td><td>{{ t.K }}</td><td>{{ t.HR }}</td>
               <td class="stat-hi">{{ "%.2f"|format(t.ERA) }}</td>
               <td class="stat-hi">{{ "%.2f"|format(t.WHIP) }}</td>
