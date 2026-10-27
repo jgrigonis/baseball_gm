@@ -111,7 +111,7 @@ class GMRepository:
         """Fetch the user's leagues"""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
-                      l.last_played_at,
+                      l.last_played_at, l.is_practice,
                       MAX(s.year) as current_year,
                       COUNT(DISTINCT ls.season_id) as season_number,
                       (l.commissioner_gm_id = g.id) as is_commissioner,
@@ -123,7 +123,7 @@ class GMRepository:
             LEFT JOIN seasons s ON s.id = ls.season_id
             WHERE g.user_id = %s AND NOT g.is_ai
             GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
-                     l.last_played_at, g.id
+                     l.last_played_at, l.is_practice, g.id
             ORDER BY l.created_at DESC""",
             (user_id,),
         ).fetchall()
@@ -133,7 +133,8 @@ class GMRepository:
 
     def get_public_leagues(self, user_id: str) -> list[dict]:
         """Public leagues the user isn't in. Leagues still in the lobby come
-        first, since those can be joined, and finished ones last."""
+        first, since those can be joined, and finished ones last. Practice
+        leagues never show here, even if an admin made one public."""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at,
                       l.last_played_at,
@@ -144,7 +145,7 @@ class GMRepository:
             FROM leagues l
             LEFT JOIN league_seasons ls ON ls.league_id = l.id
             LEFT JOIN seasons s ON s.id = ls.season_id
-            WHERE l.is_public
+            WHERE l.is_public AND NOT l.is_practice
               AND NOT EXISTS (SELECT 1 FROM gms m
                               WHERE m.league_id = l.id AND m.user_id = %s)
             GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.last_played_at

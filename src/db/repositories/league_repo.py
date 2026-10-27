@@ -29,8 +29,9 @@ class LeagueRepository:
             """INSERT INTO leagues
                 (id, name, join_code, mode, num_teams, decision_window_sec,
                 draft_window_sec, lineup_window_sec, reentry_enabled, pace_control,
-                sim_period_days, num_seasons, is_public, state, commissioner_gm_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
+                sim_period_days, num_seasons, is_public, is_practice, state,
+                commissioner_gm_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -45,6 +46,7 @@ class LeagueRepository:
                 settings.get("sim_period_days", 3),
                 settings.get("num_seasons", 10),
                 settings.get("is_public", False),
+                settings.get("is_practice", False),
             ),
         )
 
@@ -357,6 +359,15 @@ class LeagueRepository:
                 state,
                 league_id,
             ),
+        )
+
+    def mark_coach_step(self, league_id: str, step: str) -> None:
+        """Record that the GM did one of the coach's steps. Only practice
+        leagues have a coach, so this does nothing in any other league."""
+        self.conn.execute(
+            """UPDATE leagues SET coach_done = array_append(coach_done, %s)
+               WHERE id = %s AND is_practice AND NOT (%s = ANY(coach_done))""",
+            (step, league_id, step),
         )
 
     def draft_complete(self, league_id: str) -> bool:

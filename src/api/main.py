@@ -33,6 +33,7 @@ from src.api.routers import (
     standings,
     stats,
     strategy,
+    tutorial,
 )
 from src.api.dependencies import NotLeagueGM, PasswordChangeRequired
 from src.config import settings
@@ -113,6 +114,7 @@ for _module in (
     history,
     players,
     admin,
+    tutorial,
 ):
     app.include_router(_module.router)
 

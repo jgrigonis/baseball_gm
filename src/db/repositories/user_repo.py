@@ -16,7 +16,7 @@ class UserRepository:
         row = self.db.execute(
             """
             SELECT id, display_name, username, email, is_verified, created_at,
-                   is_admin, must_change_password,
+                   is_admin, must_change_password, dismissed_tips,
                    password_hash IS NOT NULL AS has_password
             FROM users
             WHERE session_token = %s
@@ -25,6 +25,20 @@ class UserRepository:
         ).fetchone()
 
         return dict(row) if row else None
+
+    def dismiss_tip(self, user_id: str, tip: str) -> None:
+        """Stop showing one of the first-visit tab tips to this user."""
+        self.db.execute(
+            """UPDATE users SET dismissed_tips = array_append(dismissed_tips, %s)
+               WHERE id = %s AND NOT (%s = ANY(dismissed_tips))""",
+            (tip, user_id, tip),
+        )
+
+    def reset_tips(self, user_id: str) -> None:
+        """Show every first-visit tab tip again."""
+        self.db.execute(
+            "UPDATE users SET dismissed_tips = '{}' WHERE id = %s", (user_id,)
+        )
 
     def get_login(self, username: str) -> dict | None:
         """Return id, session_token and password_hash for a username (any case)."""

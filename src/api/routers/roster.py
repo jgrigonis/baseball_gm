@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.api.schemas import RosterSaveRequest
+from src.api.services import coach
 from src.api.view_models.player_cards import (
     attach_injuries,
     attach_roster_stats,
@@ -100,5 +101,6 @@ def save_roster_put(
             )
 
     status_repo.set_40man_roster(team_player_ids, forty_man_ids)
+    coach.mark(db, league_id, "roster")
     db.commit()
     return JSONResponse({"saved": len(forty_man_ids)})

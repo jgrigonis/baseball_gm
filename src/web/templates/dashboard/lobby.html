@@ -7,7 +7,7 @@
 
   <div class="page-header">
     <h1 class="page-title">{{ league_name }}</h1>
-    <span class="page-subtitle" id="lobby-subtitle">Waiting for league to start</span>
+    <span class="page-subtitle" id="lobby-subtitle">{% if coach %}Practice league · start whenever you're ready{% else %}Waiting for league to start{% endif %}</span>
   </div>
 
   <div class="grid-2" style="gap:24px;align-items:start;">
@@ -16,7 +16,7 @@
 
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="card">
-        <div class="card-header"><span class="card-title">League Settings</span></div>
+        <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="How this league runs. Hover or tap any setting's name to see what it does. Only an admin can change them once the league exists.">League Settings</span></span></div>
         <div class="card-body">
           <table class="data-table">
             <tbody>
@@ -28,7 +28,7 @@
 
       {% if is_commissioner %}
       <div class="card">
-        <div class="card-header"><span class="card-title">Commissioner Controls</span></div>
+        <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="The commissioner is whoever created the league. Only they can start it.">Commissioner Controls</span></span></div>
         <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
           <p style="font-size:12px;color:var(--text-dim);line-height:1.6;">
             Starting generates teams, assigns GMs, creates the draft, and generates
@@ -54,6 +54,7 @@
   </div>
 </div>
 </div>
+{% if coach %}{% include "dashboard/partials/_coach_panel.html" %}{% endif %}
 
 <script>
 function onStartLeague(form) {

@@ -1,0 +1,68 @@
+{# templates/dashboard/partials/_tab_tips.html
+   A short "what is this?" card the first time a GM opens each dashboard
+   tab, in every league. "Got it" hides that tab's card for good (saved on
+   the user, see /tips/dismiss); the Practice tab on the leagues page can
+   bring them all back. Viewers don't get them: they talk about your team. #}
+{% set tip_user = request.state.user if request is defined and request.state.user is defined else none %}
+{% set tab_tips = {
+  "draft": "The draft board. Add prospects to your preference list in the order you want them and submit it. When the draft runs, each pick goes to the highest player left on that team's list.",
+  "draft-results": "Every pick from the draft, round by round, and who each team took.",
+  "roster": "Everyone your team owns. Up to 40 fit on the 40-man roster; in a Blitz league those are the players who can play. Save after any change.",
+  "lineup": "Your batting order, starting rotation and bullpen roles. Your team uses them every game until you change them, so save when you're done.",
+  "schedule": "Every game this season. Click a finished game for its box score. The play buttons sim forward when the league is yours to run.",
+  "standings": "The division races and the playoff picture.",
+  "leaders": "The league's top hitters and pitchers in each category.",
+  "stats": "Player stats for any team and season, for the regular season or the playoffs. Your team is marked with a star.",
+  "strategy": "How your manager plays the game: stealing, bunting, platoons, how long starters go and how the bullpen is used. Changes apply from the next game.",
+  "playoffs": "The playoff bracket. Every series is shown as it's played, through to the champion.",
+  "history": "Every season the league has played, with its champion. Open a season for its summary.",
+} %}
+<script>
+(function() {
+  var TIPS = {{ tab_tips | tojson }};
+  var dismissed = {{ ((tip_user.dismissed_tips if tip_user and tip_user.dismissed_tips) or []) | list | tojson }};
+  function tabKey() {
+    var m = location.pathname.match(/^\/leagues\/[^/]+\/([a-z-]+)(\/results)?/);
+    if (!m) return null;
+    return m[2] ? m[1] + '-results' : m[1];
+  }
+  function show() {
+    var host = document.getElementById('tab-content');
+    var key = tabKey();
+    if (!host || !key || !TIPS[key] || dismissed.indexOf(key) !== -1) return;
+    if (host.querySelector('.tab-tip')) return;
+    var card = document.createElement('div');
+    card.className = 'tab-tip';
+    card.setAttribute('role', 'note');
+    var text = document.createElement('span');
+    text.textContent = TIPS[key];
+    var ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'btn btn-secondary';
+    ok.textContent = 'Got it';
+    ok.onclick = function() {
+      dismissed.push(key);
+      card.remove();
+      fetch('/tips/dismiss', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                              body: JSON.stringify({tip: key})}).catch(function() {});
+    };
+    card.appendChild(text);
+    card.appendChild(ok);
+    host.insertBefore(card, host.firstChild);
+  }
+  document.body.addEventListener('htmx:afterSettle', function(e) {
+    if (e.detail.target.id === 'tab-content') show();
+  });
+  show();
+})();
+</script>
+<style>
+.tab-tip {
+  display: flex; align-items: center; gap: 14px; margin: 12px 24px 0; padding: 10px 14px;
+  background: var(--amber-lo); border: 1px solid var(--amber-dim); color: var(--text);
+  font-size: 12px; line-height: 1.6;
+}
+.tab-tip::before { content: "ⓘ"; color: var(--amber); font-size: 14px; }
+.tab-tip span { flex: 1; }
+.tab-tip .btn { font-size: 10px; padding: 4px 10px; flex: none; }
+</style>

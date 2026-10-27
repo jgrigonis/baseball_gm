@@ -5,6 +5,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
 from src.api.view_models.league_info import league_info
 from src.db.repositories.games_repo import GameRepository
@@ -200,6 +201,9 @@ def _shell_ctx(
             # The top bar's season pill opens the league's settings.
             if league["state"] != "lobby":
                 ctx["league_info"] = league_info(db, league)
+            if not ctx["is_viewer"]:
+                mark_visit(db, league, active_tab)
+                ctx["coach"] = coach_ctx(db, league)
 
     # 3. Fetch Team Data if team_id exists
     if ctx["team_id"]:

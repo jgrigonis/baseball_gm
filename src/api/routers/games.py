@@ -84,7 +84,7 @@ def game_panel(
             ed["detail_parsed"] = None
         events_out.append(ed)
 
-    ctx = _shell_ctx(request, db, gm, league_id, user)
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
     ctx.update(
         {
             "game": game,

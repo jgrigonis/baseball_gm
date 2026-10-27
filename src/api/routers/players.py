@@ -32,7 +32,7 @@ def player_panel(
     compare: str | None = None,
 ):
     current_date = league_current_date(db, league_id)
-    ctx = _shell_ctx(request, db, gm, league_id, user)
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
     ctx["player"] = player_panel_data(db, league_id, player_id, current_date)
     ctx["compare_player"] = (
         player_panel_data(db, league_id, compare, current_date) if compare else None
@@ -54,7 +54,7 @@ def player_career(
     gm: GMOrViewer,
     compare: str | None = None,
 ):
-    ctx = _shell_ctx(request, db, gm, league_id, user)
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
     ctx["player"] = player_career_data(db, league_id, player_id)
     ctx["compare_player"] = (
         player_career_data(db, league_id, compare) if compare else None
