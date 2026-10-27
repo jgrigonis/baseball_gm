@@ -250,7 +250,8 @@ class InjuryRepository:
         rows = self.conn.execute(
             """
             SELECT pil.player_id, p.first_name || ' ' || p.last_name AS name,
-                   p.position, pil.team_id, t.city, t.mascot,
+                   p.last_name || ' ' || p.first_name AS sort_name, p.position,
+                   pil.team_id, t.city, t.mascot,
                    pil.injury_date, pil.severity, pil.activity,
                    pil.games_missed AS days_missed
             FROM player_injury_log pil

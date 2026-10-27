@@ -10,7 +10,7 @@ from src.api.view_models.leaders import leaders_context
 from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.standings import standings_rows
 from src.db.repositories.draft_repo import DraftRepository
-from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.injury_repo import INJURY_TIERS, InjuryRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -79,6 +79,8 @@ def season_summary_context(
         "injuries": [],
         "injuries_league_wide": my_team_id is None,
         "injury_days_total": 0,
+        # Sorts the Injury column worst first: each tier by its longest layoff
+        "severity_rank": {tier: hi for tier, (_, hi) in INJURY_TIERS.items()},
         "season_year": None,
         "no_hitters": [],
     }
