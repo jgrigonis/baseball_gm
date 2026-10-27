@@ -26,6 +26,13 @@
       {% endfor %}
     </div>
     {% elif coach.current.tab %}
+    {% if coach.current.key == 'lineup' %}
+    <div class="coach-chips coach-saves">
+      {% for s in ['batting', 'rotation', 'bullpen'] %}
+      <span class="coach-chip{% if s in coach.lineup_saved %} done{% endif %}">{% if s in coach.lineup_saved %}✓ {% endif %}{{ s | title }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
     <button type="button" class="btn btn-secondary coach-go" data-tab="{{ coach.current.tab }}" onclick="coachGo('{{ coach.current.tab }}')">Go to {{ coach.current.tab | title }} →</button>
     {% endif %}
   </div>

@@ -235,6 +235,17 @@ def test_exploring_needs_all_four_tabs(db_conn):
     assert _steps(db_conn, league_id)["explore"]
 
 
+def test_the_lineup_step_waits_for_the_pitchers_too(db_conn):
+    league_id = _league(db_conn, "P", "preseason", is_practice=True)
+
+    coach.mark(db_conn, league_id, "batting")
+    coach.mark(db_conn, league_id, "rotation")
+    assert not _steps(db_conn, league_id)["lineup"]
+
+    coach.mark(db_conn, league_id, "bullpen")
+    assert _steps(db_conn, league_id)["lineup"]
+
+
 def test_the_playoffs_mean_the_season_and_its_games_are_done(db_conn, factory):
     league_id = _league(db_conn, "P", "playoffs", is_practice=True)
     factory.league_season(SimpleNamespace(id=league_id), factory.season(year=2025))
@@ -251,7 +262,7 @@ def test_a_second_season_finishes_the_tour(db_conn, factory):
         factory.league_season(SimpleNamespace(id=league_id), factory.season(year=year))
     for tab in coach.VISIT_STEPS:
         coach.mark(db_conn, league_id, tab)
-    for step in ("roster", "lineup"):
+    for step in ("roster", *coach.LINEUP_SAVES):
         coach.mark(db_conn, league_id, step)
 
     ctx = coach.coach_ctx(db_conn, LeagueRepository(db_conn).get_by_id(league_id))

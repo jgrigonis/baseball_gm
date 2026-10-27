@@ -74,7 +74,7 @@ def save_lineup_prefs(
 
     lpr = LineupPreferenceRepository(db)
     lpr.save_preferences(gm["id"], lineup)
-    coach.mark(db, league_id, "lineup")
+    coach.mark(db, league_id, "batting")
 
     db.commit()
     return JSONResponse({"saved": True})
@@ -119,7 +119,7 @@ def save_rotation(
         effective_date=effective_date,
         next_order=next_order,
     )
-    coach.mark(db, league_id, "lineup")
+    coach.mark(db, league_id, "rotation")
 
     db.commit()
     return JSONResponse({"saved": True})
@@ -169,7 +169,7 @@ def save_bullpen(
             assignments=assignments,
             effective_date=effective_date,
         )
-        coach.mark(db, league_id, "lineup")
+        coach.mark(db, league_id, "bullpen")
         db.commit()
     except ValueError as e:
         db.rollback()

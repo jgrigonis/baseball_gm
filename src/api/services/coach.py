@@ -15,6 +15,8 @@ from src.db.repositories.league_repo import LeagueRepository
 # Tabs whose first visit counts toward a step. Explore needs all four.
 EXPLORE_TABS = ("schedule", "standings", "stats", "leaders")
 VISIT_STEPS = ("strategy", *EXPLORE_TABS)
+# The lineup step needs all three of the Lineup tab's saves.
+LINEUP_SAVES = ("batting", "rotation", "bullpen")
 
 # key, title, what to do, the tab it happens on (None: the page it's on)
 STEPS = (
@@ -53,7 +55,8 @@ STEPS = (
         "lineup",
         "Set your lineup",
         "On the Lineup tab, set the batting order, the rotation and the "
-        "bullpen, and save. Your team plays them until you change them.",
+        "bullpen, and save each one (or press Save All Lineups). Your team "
+        "plays them until you change them.",
         "lineup",
     ),
     (
@@ -143,6 +146,8 @@ def coach_steps(db, league: dict) -> list[dict]:
         if key == "explore":
             is_done = not explore_left
             tab = explore_left[0] if explore_left else None
+        elif key == "lineup":
+            is_done = all(s in done for s in LINEUP_SAVES)
         else:
             is_done = key in done or reached.get(key, False)
         steps.append(
@@ -164,5 +169,8 @@ def coach_ctx(db, league: dict) -> dict | None:
         "done_count": sum(1 for s in steps if s["done"]),
         "explore_left": [
             t for t in EXPLORE_TABS if t not in (league.get("coach_done") or [])
+        ],
+        "lineup_saved": [
+            s for s in LINEUP_SAVES if s in (league.get("coach_done") or [])
         ],
     }
