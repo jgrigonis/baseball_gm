@@ -307,3 +307,24 @@ def test_summary_page_shows_no_hitters_and_injuries_together(client, db_conn, le
     assert injuries < no_hitters < draft
     assert "11K 2BB" in text
     assert "Hal Homer" in text[injuries:no_hitters]
+
+
+def test_injury_table_has_sortable_headers(client, db_conn, league):
+    lg, past = league["league"], league["past"]
+    _injure(
+        db_conn, lg, league["players"]["era"], past, league["mine"], "2025-05-01", 12
+    )
+    r = client.get(f"/leagues/{lg.id}/season-summary?season_id={past.id}")
+    table = r.text[
+        r.text.index('id="injury-table"') : r.text.index(
+            "</table>", r.text.index('id="injury-table"')
+        )
+    ]
+    for label in ("Date", "Player", "Injury", "Days"):
+        assert f">{label}<span" in table
+    assert table.count('onclick="sortInjuries(this)"') == 4
+    # Each column carries a value to sort by; severity sorts by its longest layoff
+    assert 'data-sort="2025-05-01"' in table
+    assert 'data-sort="Wilson Will"' in table  # last name first
+    assert 'data-sort="50"' in table  # moderate
+    assert 'data-sort="12"' in table

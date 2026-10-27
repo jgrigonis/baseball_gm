@@ -237,26 +237,45 @@
     {% endif %}
   </div>
   <div class="card" style="margin-bottom:24px;">
-    {% for inj in injuries %}
-    <div class="ss-clickable ss-inj-row" onclick="openPlayerPanel('{{ inj.player_id }}')"
-         title="View {{ inj.name }}">
-      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ inj.injury_date }}</span>
-      <div style="min-width:0;">
-        <div class="ss-ellipsis" style="font-size:12px;font-weight:600;">{{ inj.name }}</div>
-        <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
-          {{ inj.position|upper }}{% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</div>
-      </div>
-      <div class="ss-ellipsis" style="font-size:12px;">
-        <span class="ss-sev-{{ inj.severity }}">{{ inj.severity|capitalize }}</span>
-        {% if inj.activity %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);"> · {{ inj.activity }}</span>{% endif %}
-      </div>
-      <span style="font-family:var(--font-mono);font-size:12px;text-align:right;">{{ inj.days_missed }}d</span>
-    </div>
+    {% if injuries %}
+    {#- (label, alignment, first-click ascending?): dates and names run A→Z
+        first, injuries and days worst first. #}
+    {% set inj_cols = [('Date', 'left', true), ('Player', 'left', true),
+                       ('Injury', 'left', false), ('Days', 'right', false)] %}
+    <table id="injury-table" class="data-table ss-inj-table" data-sort-col="0" data-sort-asc="true">
+      <thead>
+        <tr>
+          {% for label, align, asc in inj_cols %}
+          <th data-asc="{{ 'true' if asc else 'false' }}" onclick="sortInjuries(this)"
+              style="text-align:{{ align }};">{{ label }}<span class="sort-arrow">{{ ' ↑' if loop.first }}</span></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for inj in injuries %}
+        <tr class="ss-clickable" onclick="openPlayerPanel('{{ inj.player_id }}')" title="View {{ inj.name }}">
+          <td data-sort="{{ inj.injury_date }}"
+              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">{{ inj.injury_date }}</td>
+          <td data-sort="{{ inj.sort_name }}">
+            <div class="ss-ellipsis" style="font-size:12px;font-weight:600;">{{ inj.name }}</div>
+            <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+              {{ inj.position|upper }}{% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</div>
+          </td>
+          <td data-sort="{{ severity_rank.get(inj.severity, 0) }}" style="font-size:12px;">
+            <span class="ss-sev-{{ inj.severity }}">{{ inj.severity|capitalize }}</span>
+            {% if inj.activity %}<span class="ss-inj-activity"> · {{ inj.activity }}</span>{% endif %}
+          </td>
+          <td data-sort="{{ inj.days_missed }}"
+              style="font-family:var(--font-mono);font-size:12px;text-align:right;">{{ inj.days_missed }}d</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% else %}
     <div style="padding:16px;text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
       No injuries this season.
     </div>
-    {% endfor %}
+    {% endif %}
   </div>
   {% endif %}
 
@@ -344,19 +363,22 @@
 }
 .ss-draft { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-bottom:24px; }
 .ss-ellipsis { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.ss-inj-row {
-  display:grid;grid-template-columns:84px minmax(0,1fr) 200px 48px;gap:10px;
-  align-items:baseline;padding:6px 14px;
-}
-.ss-inj-row + .ss-inj-row { border-top:1px solid var(--border); }
+.ss-inj-table { width:100%;table-layout:fixed; }
+.ss-inj-table th { cursor:pointer;user-select:none;white-space:nowrap; }
+.ss-inj-table th:nth-child(1) { width:96px; }
+.ss-inj-table th:nth-child(3) { width:190px; }
+.ss-inj-table th:nth-child(4) { width:64px; }
+.ss-inj-activity { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
 .ss-sev-minor    { color:var(--text-dim); }
 .ss-sev-moderate { color:var(--amber); }
 .ss-sev-severe, .ss-sev-surgery { color:var(--red); }
 @media (max-width: 720px) {
   .ss-leader-row { grid-template-columns:repeat(2,1fr); }
   .ss-two-col { grid-template-columns:1fr; }
-  .ss-inj-row { grid-template-columns:minmax(0,1fr) auto 40px; }
-  .ss-inj-row > :first-child { display:none; }
+  .ss-inj-table th:nth-child(1) { width:84px; }
+  .ss-inj-table th:nth-child(3) { width:84px; }
+  .ss-inj-table th:nth-child(4) { width:52px; }
+  .ss-inj-activity { display:none; }
 }
 </style>
 
@@ -395,5 +417,36 @@ function beginOffseason() {
 }
 
 window.beginOffseason = beginOffseason;
+
+// Click an injury header to sort by it; click it again to reverse.
+function sortInjuries(th) {
+  var table = document.getElementById('injury-table');
+  var col = Array.prototype.indexOf.call(th.parentNode.children, th);
+  var asc = table.dataset.sortCol === String(col)
+    ? table.dataset.sortAsc !== 'true'
+    : th.dataset.asc === 'true';
+  table.dataset.sortCol = col;
+  table.dataset.sortAsc = asc;
+
+  var tbody = table.tBodies[0];
+  var rows = Array.prototype.slice.call(tbody.rows);
+  function key(row) {
+    var raw = row.cells[col].dataset.sort;
+    var n = Number(raw);
+    return raw === '' || isNaN(n) ? raw : n;
+  }
+  rows.sort(function(a, b) {
+    var av = key(a), bv = key(b);
+    var cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+    return asc ? cmp : -cmp;
+  });
+  rows.forEach(function(row) { tbody.appendChild(row); });
+
+  Array.prototype.forEach.call(th.parentNode.children, function(h) {
+    h.querySelector('.sort-arrow').textContent = h === th ? (asc ? ' ↑' : ' ↓') : '';
+  });
+}
+
+window.sortInjuries = sortInjuries;
 })();
 </script>
