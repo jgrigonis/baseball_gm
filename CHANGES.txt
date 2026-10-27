@@ -1,3 +1,9 @@
+0.5.7
+-----
+
+- 53 major changes and features, and a few bugs fixed
+
+
 0.5.6
 -----
 
