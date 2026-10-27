@@ -25,6 +25,9 @@ log = logging.getLogger(__name__)
 RESET_TTL_MINUTES = 60
 # Emails per account per hour, so nobody can flood someone's inbox.
 MAX_PER_HOUR = 3
+# Emails asked for from one IP per hour, across all accounts, so one machine
+# can't send mail to everyone.
+MAX_PER_IP_PER_HOUR = 10
 
 
 @dataclass
@@ -55,12 +58,15 @@ def request_reset(
 ) -> ResetEmail | None:
     """Make a reset link for the account named by username or email. Returns
     the email to send, or None when there is nothing to send: no such
-    account, no email on file, or too many links in the last hour. Callers
+    account, no email on file, or too many links in the last hour for the
+    account or from the IP. Callers
     must answer the same way in every case."""
     login = login.strip()
     if not login:
         return None
     repo = PasswordResetRepository(conn)
+    if ip and repo.recent_count_for_ip(ip, 60) >= MAX_PER_IP_PER_HOUR:
+        return None
     account = repo.find_account(login)
     if not account or not account["email"]:
         return None
