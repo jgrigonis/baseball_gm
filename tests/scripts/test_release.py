@@ -1,7 +1,8 @@
 # tests/scripts/test_release.py
-"""`scripts/release.py` bumps the version, adds a CHANGES.txt entry, commits,
-tags and pushes, all against a throwaway repo and remote."""
+"""`scripts/release.py` bumps the version, re-locks uv.lock, adds a CHANGES.txt
+entry, commits, tags and pushes, all against a throwaway repo and remote."""
 
+import re
 import subprocess
 
 import pytest
@@ -15,6 +16,7 @@ requires = ["setuptools>=61.0"]
 [project]
 name = "baseball_manager"
 version = "0.5.6"
+requires-python = ">=3.12"
 
 [tool.other]
 version = "9.9.9"
@@ -33,6 +35,11 @@ def _git(cwd, *args):
     ).stdout.strip()
 
 
+def _locked_version(work):
+    lock = (work / "uv.lock").read_text()
+    return re.search(r'name = "baseball-manager"\nversion = "([^"]+)"', lock).group(1)
+
+
 @pytest.fixture
 def repo(tmp_path):
     remote = tmp_path / "remote.git"
@@ -43,6 +50,7 @@ def repo(tmp_path):
     _git(work, "config", "user.name", "Test")
     (work / "pyproject.toml").write_text(PYPROJECT)
     (work / "CHANGES.txt").write_text(CHANGES)
+    release.update_lockfile(cwd=work)
     _git(work, "add", ".")
     _git(work, "commit", "-q", "-m", "init")
     _git(work, "remote", "add", "origin", str(remote))
@@ -86,7 +94,13 @@ def test_release_commits_tags_and_pushes(repo):
         "0.5.7\n-----\n\n- Fix the box score\n- Faster sims\n\n\n" + CHANGES
     )
     assert release.read_version((work / "pyproject.toml").read_text()) == "0.5.7"
+    assert _locked_version(work) == "0.5.7"
     assert _git(remote, "log", "-1", "--format=%s", "main") == "Release 0.5.7"
+    assert _git(remote, "show", "--format=", "--name-only", "main").split() == [
+        "CHANGES.txt",
+        "pyproject.toml",
+        "uv.lock",
+    ]
     assert _git(remote, "cat-file", "-t", "v0.5.7") == "tag"
     assert (
         _git(remote, "tag", "-l", "--format=%(contents:subject)", "v0.5.7")
@@ -151,3 +165,17 @@ def test_needs_notes(repo):
     work, _remote = repo
     with pytest.raises(ReleaseError, match="change note"):
         release.release("patch", ["  "], cwd=work)
+
+
+def test_failed_lock_restores_the_tree(repo):
+    work, remote = repo
+
+    def broken_lock(cwd):
+        (cwd / "uv.lock").write_text("garbage")
+        raise ReleaseError("uv lock failed")
+
+    with pytest.raises(ReleaseError, match="uv lock failed"):
+        release.release("patch", ["Notes"], cwd=work, lock=broken_lock)
+    assert _git(work, "status", "--porcelain") == ""
+    assert _locked_version(work) == "0.5.6"
+    assert _git(work, "tag") == ""

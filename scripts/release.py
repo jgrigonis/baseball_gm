@@ -6,13 +6,15 @@
     python scripts/release.py minor            # prompts for the change notes
     python scripts/release.py 0.6.0 --dry-run  # show what would happen
 
-The new version goes into pyproject.toml and on top of CHANGES.txt, both are
-committed as "Release X.Y.Z" and pushed, then an annotated tag vX.Y.Z is
-created and pushed. Run it from a clean, up to date main branch.
+The new version goes into pyproject.toml, uv.lock (via `uv lock`) and on top
+of CHANGES.txt, all three are committed as "Release X.Y.Z" and pushed, then an
+annotated tag vX.Y.Z is created and pushed. Run it from a clean, up to date
+main branch.
 """
 
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -106,6 +108,15 @@ def git(*args, cwd=REPO_ROOT):
     return result.stdout.strip()
 
 
+def update_lockfile(cwd=REPO_ROOT):
+    """Re-lock so uv.lock carries the new version; `uv sync --locked` fails otherwise."""
+    if shutil.which("uv") is None:
+        raise ReleaseError("uv is not installed; it is needed to update uv.lock")
+    result = subprocess.run(["uv", "lock"], cwd=cwd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ReleaseError(f"uv lock failed:\n{result.stderr.strip()}")
+
+
 def check_repo(version, cwd=REPO_ROOT, branch=RELEASE_BRANCH, remote=REMOTE):
     """Refuse to release from anywhere but a clean main that matches the remote."""
     current_branch = git("rev-parse", "--abbrev-ref", "HEAD", cwd=cwd)
@@ -138,11 +149,12 @@ def release(
     branch=RELEASE_BRANCH,
     remote=REMOTE,
     confirm=None,
+    lock=update_lockfile,
 ):
     """Do the release and return the new version.
 
     `confirm` is called with a summary before anything changes; returning False
-    stops the release.
+    stops the release. `lock` updates uv.lock after pyproject.toml changes.
     """
     pyproject = cwd / "pyproject.toml"
     changes = cwd / "CHANGES.txt"
@@ -163,6 +175,7 @@ def release(
     summary = (
         f"Release {current} -> {version}\n\n"
         f"CHANGES.txt entry:\n\n{changes_entry(version, notes).rstrip()}\n\n"
+        "Update pyproject.toml and uv.lock\n"
         f'Commit "Release {version}" and tag {tag} on {branch}'
         + (f", then push both to {remote}." if push else " (not pushed).")
     )
@@ -174,9 +187,16 @@ def release(
         print("Stopped: nothing changed.")
         return None
 
+    release_files = ["pyproject.toml", "uv.lock", "CHANGES.txt"]
     pyproject.write_text(new_pyproject)
     changes.write_text(new_changes)
-    git("add", "pyproject.toml", "CHANGES.txt", cwd=cwd)
+    try:
+        lock(cwd=cwd)
+    except ReleaseError:
+        # Put the tree back so the next attempt starts clean.
+        git("checkout", "--", *release_files, cwd=cwd)
+        raise
+    git("add", *release_files, cwd=cwd)
     git("commit", "-m", f"Release {version}", cwd=cwd)
     git("tag", "-a", tag, "-m", f"version {version}", cwd=cwd)
     if push:
