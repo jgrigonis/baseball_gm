@@ -596,7 +596,7 @@ CREATE TABLE IF NOT EXISTS draft_preferences (
 );
 
 -- draft_strategies: a GM's need chips, age preference and pinned players for
---   one draft (src/league/offseason/draft_strategy.py, migration 017).
+--   one draft (src/league/offseason/draft_strategy.py, migration 018).
 CREATE TABLE IF NOT EXISTS draft_strategies (
     gm_id      TEXT   NOT NULL,
     draft_id   TEXT   NOT NULL,
