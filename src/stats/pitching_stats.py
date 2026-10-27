@@ -13,6 +13,7 @@ class PitchingStats:
     game_started: int = 0
     complete_game: int = 0
     shut_out: int = 0
+    no_hitter: int = 0
 
     # Win/Loss/Save
     win: int = 0
@@ -75,7 +76,7 @@ class PitchingStats:
         """Return the string representation of the pitching statistics."""
         return (
             "Pitching Stats:\n"
-            f"  G: {self.game_played} (GS: {self.game_started}, CG: {self.complete_game})\n"
+            f"  G: {self.game_played} (GS: {self.game_started}, CG: {self.complete_game}, SHO: {self.shut_out}, NH: {self.no_hitter})\n"
             f"  W-L: {self.win}-{self.loss} (SV: {self.save}, HLD: {self.hold})\n"
             f"  IP: {self.ip_str}\n"
             f"  H: {self.hits}\n"

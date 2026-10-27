@@ -89,7 +89,8 @@ class PlayerSeasonStatsRepository:
                       pss.pitch_games_played, pss.pitch_games_started, pss.pitch_wins,
                       pss.pitch_losses, pss.pitch_saves, pss.pitch_outs,
                       pss.pitch_hits, pss.pitch_earned_runs, pss.pitch_walks,
-                      pss.pitch_strike_outs, pss.pitch_home_runs
+                      pss.pitch_strike_outs, pss.pitch_home_runs,
+                      pss.pitch_complete_games, pss.pitch_shutouts
                FROM player_season_stats pss
                JOIN players p ON p.id = pss.player_id
                JOIN teams t ON t.id = pss.team_id

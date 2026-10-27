@@ -18,6 +18,11 @@
         {{ game.home_city }} {{ game.home_mascot }}
       </span>
     </div>
+    {% for nh in no_hitters %}
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--amber);margin-top:2px;">
+      {% if nh.combined %}Combined no-hitter{% else %}No-hitter{% endif %}: {{ nh.pitchers }} ({{ nh.team }})
+    </div>
+    {% endfor %}
   </div>
 </div>
 
@@ -79,7 +84,7 @@
       <tbody>
         {% for p in pit_rows %}
         <tr>
-          <td style="font-family:var(--font-sans);"><button onclick="openPlayerPanel('{{ p.player_id }}')" class="gp-player-btn">{{ p.first_name[0] }}. {{ p.last_name }}</button></td>
+          <td style="font-family:var(--font-sans);"><button onclick="openPlayerPanel('{{ p.player_id }}')" class="gp-player-btn">{{ p.first_name[0] }}. {{ p.last_name }}</button>{% if p.CG %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--amber);margin-left:4px;">{% if p.NH %}NH{% elif p.SHO %}SHO{% else %}CG{% endif %}</span>{% endif %}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.IP }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.H }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
