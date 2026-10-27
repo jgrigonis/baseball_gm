@@ -53,6 +53,7 @@ def _game(db, season, winner, loser, series_id=None):
             " VALUES (%s, %s, %s, %s, %s)",
             (gid, team.id, runs, won, 1 - won),
         )
+    return gid
 
 
 @pytest.fixture
@@ -285,3 +286,24 @@ def test_history_links_each_seasons_injuries(client, league):
     lid, sid = league["league"].id, league["past"].id
     r = client.get(f"/leagues/{lid}/history")
     assert f"/leagues/{lid}/season-summary?season_id={sid}#injuries" in r.text
+
+
+def test_summary_page_shows_no_hitters_and_injuries_together(client, db_conn, league):
+    """Both sections render side by side, each closed off before the draft."""
+    lg, past, players = league["league"], league["past"], league["players"]
+    gid = _game(db_conn, past, league["mine"], league["champ"])
+    db_conn.execute(
+        """INSERT INTO player_game_stats (player_id, game_id, team_id, opponent_team_id,
+               pitch_no_hitter, pitch_strike_outs, pitch_walks)
+           VALUES (%s, %s, %s, %s, 1, 11, 2)""",
+        (players["era"], gid, league["mine"].id, league["champ"].id),
+    )
+    _injure(db_conn, lg, players["hr"], past, league["mine"], "2025-05-01", 12)
+    r = client.get(f"/leagues/{lg.id}/season-summary?season_id={past.id}")
+    assert r.status_code == 200
+    text = r.text
+    injuries, no_hitters = text.index('id="injuries"'), text.index("No-Hitters")
+    draft = text.index("Draft · Round 1")
+    assert injuries < no_hitters < draft
+    assert "11K 2BB" in text
+    assert "Hal Homer" in text[injuries:no_hitters]

@@ -133,7 +133,7 @@ def test_injury_log_keeps_the_team_and_lists_by_season(setup):
 
 
 def test_migration_backfills_injury_log_team(setup):
-    from src.db.migration_files.migration_012_injury_log_team import (
+    from src.db.migration_files.migration_013_injury_log_team import (
         upgrade as add_team,
     )
 
