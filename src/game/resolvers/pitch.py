@@ -30,21 +30,18 @@ def resolve_strike(
     resolver, outcome: str, intent: PitchIntent, game
 ) -> list[GameEvent]:
     """Handle different types of strikes"""
-    events = []
-
-    if outcome == "strike":
-        events.append(StrikeEvent())
-    elif outcome == "called_strike":
-        events.append(StrikeEvent(swinging=False))
-    elif outcome == "swinging_strike":
-        events.append(StrikeEvent(swinging=True))
+    # A bare "strike" (test overrides) counts as called.
+    swinging = outcome == "swinging_strike"
+    events = [StrikeEvent(swinging=swinging)]
 
     # Check for strikeout
     if game.count.strikes + 1 >= 3:
         resolver.logger.debug("strike out ending pa")
         events.extend(
             [
-                StrikeOutEvent(batter=intent.batter, pitcher=intent.pitcher),
+                StrikeOutEvent(
+                    batter=intent.batter, pitcher=intent.pitcher, swinging=swinging
+                ),
                 PutOutEvent(game.pos("c")),
                 OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
                 PlateAppearanceEndEvent(reason="strikeout", batter=intent.batter),

@@ -41,7 +41,9 @@ def resolve_foul(resolver, intent, game) -> list[GameEvent]:
             events.extend(
                 [
                     FoulTipCaughtThirdStrikeEvent(),
-                    StrikeOutEvent(batter=intent.batter, pitcher=intent.pitcher),
+                    StrikeOutEvent(
+                        batter=intent.batter, pitcher=intent.pitcher, swinging=True
+                    ),
                     PutOutEvent(game.pos("c")),
                     OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
                     PlateAppearanceEndEvent(reason="strikeout", batter=intent.batter),

@@ -22,6 +22,7 @@ class BattingStats:
     walks: int = 0
     intentional_walks: int = 0
     strike_outs: int = 0
+    strike_outs_looking: int = 0
     hbp: int = 0
     sac_flys: int = 0
     sac_bunts: int = 0
@@ -189,9 +190,11 @@ class BattingStats:
         """Add a ground triple play."""
         self.gtp += 1
 
-    def strike_out(self):
+    def strike_out(self, looking: bool = False):
         """Add a strike out."""
         self.strike_outs += 1
+        if looking:
+            self.strike_outs_looking += 1
 
     def sac_fly(self):
         """Add a sac fly."""

@@ -16,7 +16,8 @@ class StrikeEvent(GameEvent):
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return f"Strike {game.count.strikes}"
+        kind = "Swinging" if self.swinging else "Called"
+        return f"{kind} strike {game.count.strikes}"
 
 
 @dataclass(frozen=True)

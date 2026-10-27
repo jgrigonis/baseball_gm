@@ -39,6 +39,7 @@ class PitchingStats:
 
     # Strikeouts and outs
     strike_outs: int = 0
+    strike_outs_looking: int = 0
     ground_double_plays: int = 0
 
     # Baserunning plays
@@ -126,9 +127,11 @@ class PitchingStats:
         """Add a walk."""
         self.walks += 1
 
-    def strike_out(self):
+    def strike_out(self, looking: bool = False):
         """Add a strike out."""
         self.strike_outs += 1
+        if looking:
+            self.strike_outs_looking += 1
 
     def run(self):
         """Add a run."""

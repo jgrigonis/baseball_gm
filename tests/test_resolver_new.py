@@ -287,6 +287,21 @@ class TestStrikes:
         assert strike is not None
         assert strike.swinging is True
 
+    @pytest.mark.parametrize(
+        "outcome,swinging",
+        [("called_strike", False), ("swinging_strike", True), ("strike", False)],
+    )
+    def test_strikeout_carries_swinging(
+        self, resolver, game, pitch_intent, outcome, swinging
+    ):
+        """Third strike passes looking/swinging on to the strikeout"""
+        game.count.strikes = 2
+        with patch.object(resolver, "determine_pitch_outcome", return_value=outcome):
+            events = resolve_pitch(resolver, pitch_intent, game)
+
+        strikeout = next(e for e in events if isinstance(e, StrikeOutEvent))
+        assert strikeout.swinging is swinging
+
     def test_strikeout_on_third_strike(self, resolver, game, pitch_intent):
         """Test strikeout on third strike"""
         game.count.strikes = 2  # 2 strikes already

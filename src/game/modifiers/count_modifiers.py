@@ -95,6 +95,24 @@ PITCH_COUNT_MODIFIERS = {
     },
 }
 
+# Share of strikes taken (called) vs swung through, by count (balls, strikes).
+# Applied after PITCH_COUNT_MODIFIERS; moves weight between called_strike
+# and swinging_strike without changing the total strike weight.
+CALLED_STRIKE_MIX_BY_COUNT = {
+    (0, 0): 1.45,
+    (1, 0): 1.15,
+    (2, 0): 1.35,
+    (3, 0): 1.7,
+    (0, 1): 0.9,
+    (1, 1): 0.9,
+    (2, 1): 1.0,
+    (3, 1): 1.2,
+    (0, 2): 0.6,
+    (1, 2): 0.6,
+    (2, 2): 0.6,
+    (3, 2): 0.6,
+}
+
 # In-play outcome modifiers by count (balls, strikes)
 IN_PLAY_COUNT_MODIFIERS = {
     (0, 0): {
