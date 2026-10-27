@@ -21,16 +21,21 @@
 #
 # Account creation only makes a users row. The gms row is created when the
 # user creates or joins a league (see leagues.py).
+#
+# A forgotten password is reset through an emailed link (/auth/forgot, then
+# /auth/reset; see services/password_reset.py). /account is where a user adds
+# or changes the email those links go to.
 
 from __future__ import annotations
 
 import uuid
 
 import psycopg
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, BackgroundTasks, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, OptionalUser, User
+from src.api.services import mailer, password_reset
 from src.api.services.passwords import (
     clean_email,
     hash_password,
@@ -268,3 +273,149 @@ def change_password(
     )
     db.commit()
     return _signed_in(token)
+
+
+# ── Forgotten passwords ───────────────────────────────────────────────────────
+#
+# Every request gets the same answer, whether or not the account exists or has
+# an email, so the page can't be used to find out who has an account. The
+# email goes out after the response, so timing doesn't tell either.
+
+
+def _forgot_page(request: Request, status_code: int = 200, **ctx) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "forgot_password.html",
+        {"ttl_minutes": password_reset.RESET_TTL_MINUTES, **ctx},
+        status_code=status_code,
+    )
+
+
+@router.get("/auth/forgot", response_class=HTMLResponse)
+def forgot_page(request: Request):
+    return _forgot_page(request)
+
+
+@router.post("/auth/forgot")
+def forgot(
+    request: Request,
+    db: DB,
+    background_tasks: BackgroundTasks,
+    login: str = Form(...),
+):
+    email = password_reset.request_reset(
+        db,
+        login,
+        request.client.host if request.client else None,
+        str(request.base_url),
+    )
+    if email:
+        background_tasks.add_task(mailer.send, email.to, email.subject, email.text)
+    return _forgot_page(request, sent=True)
+
+
+def _reset_page(request: Request, status_code: int = 200, **ctx) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "reset_password.html", ctx, status_code=status_code
+    )
+
+
+@router.get("/auth/reset", response_class=HTMLResponse)
+def reset_page(request: Request, db: DB, token: str = ""):
+    # Opening the link doesn't use it up: some mail scanners open links
+    # before the person does. Only the form below spends it.
+    account = password_reset.account_for_token(db, token)
+    if not account:
+        return _reset_page(request, 400, expired=True)
+    return _reset_page(request, token=token, username=account["username"])
+
+
+@router.post("/auth/reset")
+def reset(
+    request: Request,
+    db: DB,
+    token: str = Form(""),
+    password: str = Form(...),
+    confirm: str = Form(...),
+):
+    account = password_reset.account_for_token(db, token)
+    if not account:
+        return _reset_page(request, 400, expired=True)
+    # Check the new password before spending the link, so a typo doesn't
+    # mean asking for another email.
+    error = password_error(password, confirm)
+    if error:
+        return _reset_page(
+            request, 400, token=token, username=account["username"], error=error
+        )
+
+    user_id = password_reset.use_token(db, token)
+    if not user_id:
+        # Used by another tab or expired in the last moment.
+        return _reset_page(request, 400, expired=True)
+    session = _new_token()
+    UserRepository(db).set_password(
+        user_id, hash_password(password), session, must_change=False
+    )
+    db.commit()
+    return _signed_in(session)
+
+
+# ── Account ───────────────────────────────────────────────────────────────────
+
+_ACCOUNT_SAVED = {"email": "Email saved."}
+
+
+def _account_page(request: Request, user, status_code: int = 200, **ctx):
+    return templates.TemplateResponse(
+        request,
+        "account.html",
+        {"user": user, "email": user["email"] or "", **ctx},
+        status_code=status_code,
+    )
+
+
+@router.get("/account", response_class=HTMLResponse)
+def account_page(request: Request, user: User, saved: str = ""):
+    if not user["has_password"]:
+        return RedirectResponse("/auth/set-password", status_code=302)
+    return _account_page(request, user, saved=_ACCOUNT_SAVED.get(saved))
+
+
+@router.post("/account/email")
+def set_account_email(
+    request: Request,
+    db: DB,
+    user: User,
+    current: str = Form(...),
+    email: str = Form(""),
+):
+    """Add, change or clear your email. The current password is asked for
+    because whoever controls the email can reset the password."""
+    if not user["has_password"]:
+        return RedirectResponse("/auth/set-password", status_code=302)
+    user_repo = UserRepository(db)
+    clean, error = clean_email(email)
+    row = user_repo.get_login(user["username"] or "")
+    if not error and not verify_password(
+        row["password_hash"] if row else None, current
+    ):
+        error = "Your current password is wrong."
+    if not error and clean and user_repo.email_taken(clean, user["id"]):
+        error = "Another account has that email."
+    if error:
+        return _account_page(request, user, 400, email=email, email_error=error)
+
+    try:
+        user_repo.set_email(user["id"], clean)
+        db.commit()
+    except psycopg.errors.UniqueViolation:
+        db.rollback()
+        return _account_page(
+            request,
+            user,
+            400,
+            email=email,
+            email_error="Another account has that email.",
+        )
+    return RedirectResponse("/account?saved=email", status_code=303)

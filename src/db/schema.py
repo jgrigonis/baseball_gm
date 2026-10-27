@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TEXT NOT NULL DEFAULT (NOW())
 );
 
+-- password_resets: one row per emailed reset link. Only a SHA-256 hash of the
+--   token is kept. A link works for an hour, once (migration 016).
+CREATE TABLE IF NOT EXISTS password_resets (
+    id           TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash   TEXT UNIQUE NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ NOT NULL,
+    used_at      TIMESTAMPTZ,
+    requested_ip TEXT
+);
+
 -- 1 row per player
 CREATE TABLE IF NOT EXISTS players (
     id         TEXT PRIMARY KEY,
@@ -915,6 +927,8 @@ CREATE INDEX IF NOT EXISTS idx_pick_rights_owner
     ON draft_pick_rights(current_owner_id);
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
 
 -- One per foreign key that no other index starts with. Deleting a row checks
 -- every table that references it, and without an index each check scans the
