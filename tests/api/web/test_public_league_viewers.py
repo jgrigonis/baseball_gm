@@ -129,6 +129,33 @@ def test_viewer_gets_no_sim_controls(client, db_conn, factory):
     assert "/news`" not in html
 
 
+def test_viewer_page_follows_the_league(client, db_conn, factory):
+    """With no ready bar, a viewer's page polls /progress to refresh the open
+    tab once the league moves on."""
+    league, _ = _league(db_conn, factory)
+
+    html = client.get(f"/leagues/{league.id}/standings").text
+
+    assert "/progress')" in html
+    assert 'id="ready-bar"' not in html
+
+
+def test_viewer_reads_league_progress(client, db_conn, factory):
+    league, _ = _league(db_conn, factory)
+    db_conn.execute("UPDATE leagues SET sim_period = 4 WHERE id = %s", (league.id,))
+
+    r = client.get(f"/leagues/{league.id}/progress")
+
+    assert r.status_code == 200
+    assert r.json() == {"state": "season", "sim_period": 4, "games_played": 1}
+
+
+def test_private_league_progress_stays_closed(client, db_conn, factory):
+    league, _ = _league(db_conn, factory, is_public=False)
+
+    assert client.get(f"/leagues/{league.id}/progress").status_code == 403
+
+
 def test_standings_link_each_team_to_its_roster(client, db_conn, factory):
     league, home = _league(db_conn, factory)
 

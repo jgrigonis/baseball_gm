@@ -47,10 +47,11 @@ log = logging.getLogger(__name__)
 
 
 class _QuietPolls(logging.Filter):
-    """Leave the pages' background polls (the ready bar, the lobby's GM list)
-    out of the access log while they succeed. Failures are still logged."""
+    """Leave the pages' background polls (the ready bar, a viewer's refresh,
+    the lobby's GM list) out of the access log while they succeed. Failures
+    are still logged."""
 
-    POLLS = re.compile(r"^/leagues/[^/]+/(sim/status|lobby/gms)$")
+    POLLS = re.compile(r"^/leagues/[^/]+/(sim/status|progress|lobby/gms)$")
 
     def filter(self, record: logging.LogRecord) -> bool:
         # uvicorn.access args: (client, method, path, http_version, status)

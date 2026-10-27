@@ -8,7 +8,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from src.api.dependencies import DB, GM, ActiveLeague, SinglePlayer, Unpaused
+from src.api.dependencies import (
+    DB,
+    GM,
+    ActiveLeague,
+    GMOrViewer,
+    SinglePlayer,
+    Unpaused,
+)
 from src.api.schemas import SimRequest
 from src.api.services.injury_news import take_injury_news
 from src.api.services.offseason_service import run_offseason
@@ -91,3 +98,11 @@ def injury_news(league_id: str, db: DB, gm: GM):
     """The GM's injury news from sims they didn't see, e.g. ones another GM
     ran. Marked seen once returned."""
     return JSONResponse(take_injury_news(db, gm["id"]))
+
+
+@router.get("/leagues/{league_id}/progress")
+def league_progress(league_id: str, db: DB, _gm: GMOrViewer):
+    """Polled by pages that don't move the league on themselves, e.g. a
+    viewer's, so they can refresh once it has. Only reads; unlike
+    /sim/status it never runs a period."""
+    return JSONResponse(LeagueRepository(db).progress(league_id))

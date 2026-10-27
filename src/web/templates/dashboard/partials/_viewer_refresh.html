@@ -1,0 +1,40 @@
+{# templates/dashboard/partials/_viewer_refresh.html
+   Viewers only (a public league's, or an admin's). They have no ready bar,
+   so nothing told their page the league had moved on. Polls /progress and
+   refreshes the open tab when games are played or a period runs, and
+   reloads the page when the league's state changes, since that changes the
+   tabs. #}
+<script>
+(function() {
+var URL = '/leagues/{{ league_id }}';
+var PAGE_STATE = '{{ league_state }}';  // the state this page was rendered for
+var last = null;
+
+function apply(d) {
+  if (!d) return;
+  if (d.state !== PAGE_STATE) { window.location.reload(); return; }
+  if (last && (last.sim_period !== d.sim_period || last.games_played !== d.games_played)) {
+    window.refreshActiveTab();
+  }
+  last = d;
+}
+
+// One request at a time, skipped while the tab is hidden. A complete league
+// doesn't change, and once the league can't be reached (signed out, or it
+// was removed or made private) the poll stops for good.
+function poll() {
+  if (PAGE_STATE === 'complete') return;
+  if (document.hidden) { setTimeout(poll, 5000); return; }
+  var stopped = false;
+  fetch(URL + '/progress')
+    .then(function(r) {
+      if (r.redirected || [401, 403, 404].indexOf(r.status) !== -1) { stopped = true; return null; }
+      return r.ok ? r.json() : null;
+    })
+    .then(apply)
+    .catch(function() {})
+    .finally(function() { if (!stopped) setTimeout(poll, 5000); });
+}
+poll();
+})();
+</script>

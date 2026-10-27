@@ -152,6 +152,21 @@ async function simGames(count) {
   }
 }
 
+// Reload the open tab after the league has moved on without this page, e.g.
+// a ready-check period or another GM's sim. Swap through htmx so the tab's
+// inline script runs again; setting innerHTML doesn't run scripts, which left
+// script-built tabs like Lineup empty. Save the Lineup tab's unsaved edits
+// first so its init restores them.
+window.refreshActiveTab = function() {
+  var activeLink = document.querySelector('.tab-link.active');
+  if (!activeLink || !document.getElementById('tab-content')) return;
+  var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
+  if (document.getElementById('pane-batting') && window.saveLineupToStorage) {
+    window.saveLineupToStorage();
+  }
+  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+};
+
 document.addEventListener('keydown', e => { if(e.key==='Escape') { closePlayerPanel(); closeGamePanel(); } });
 
 // ── Game panel ─────────────────────────────────────────────────────────────
@@ -223,6 +238,7 @@ window.closeGamePanel = function() {
 {% endif %}
 
 {% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
+{% if is_viewer %}{% include "dashboard/partials/_viewer_refresh.html" %}{% endif %}
 <div id="sim-status" style="display:none;padding:6px 24px;
      background:var(--green-dim);border-bottom:1px solid var(--green-mid);
      font-family:var(--font-mono);font-size:11px;color:var(--green);
