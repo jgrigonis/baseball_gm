@@ -51,7 +51,8 @@ from src.game.probabilities import (
     WILD_PITCH_PROB,
     PASSED_BALL_PROB,
     IN_PLAY_PROB,
-    STRIKE_PROB,
+    CALLED_STRIKE_PROB,
+    SWINGING_STRIKE_PROB,
     # In play outcome weights
     FLY_OUT_PROB,
     GROUND_OUT_PROB,
@@ -120,7 +121,8 @@ class Resolver:
                 "wild_pitch": WILD_PITCH_PROB,
                 "passed_ball": PASSED_BALL_PROB,
                 "in_play": IN_PLAY_PROB,
-                "strike": STRIKE_PROB,  # TODO replace with called_strike and swinging_strike
+                "called_strike": CALLED_STRIKE_PROB,
+                "swinging_strike": SWINGING_STRIKE_PROB,
             }
         )
 
@@ -376,7 +378,7 @@ class Resolver:
         - Count
         - Batter and pitcher skills
 
-        Returns one of: ball, strike, foul, hit_by_pitch, catcher_interference,
+        Returns one of: ball, called_strike, swinging_strike, foul, hit_by_pitch, catcher_interference,
                         illegal_pitch, balk, wild_pitch, passed_ball, home_run, in_play
         """
         self.pitch_outcome.reset()

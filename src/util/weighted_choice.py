@@ -47,6 +47,10 @@ class WeightedChoice:
         else:
             self._current_weights[outcome] = amount
 
+    def get(self, outcome: str) -> int:
+        """Get a specific current weight (0 when unset)."""
+        return self._current_weights.get(outcome, 0)
+
     def set(self, outcome: str, value: int) -> None:
         """Set a specific weight value."""
         self._current_weights[outcome] = value

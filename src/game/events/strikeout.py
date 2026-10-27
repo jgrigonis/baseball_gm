@@ -16,10 +16,11 @@ class StrikeOutEvent(GameEvent):
     swinging: bool = False
 
     def apply(self, game):
-        self.batter.game_stats.batting.strike_out()
+        looking = not self.swinging
+        self.batter.game_stats.batting.strike_out(looking=looking)
         self.batter.game_stats.batting.at_bat()
-        self.pitcher.game_stats.pitching.strike_out()
+        self.pitcher.game_stats.pitching.strike_out(looking=looking)
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return "Strikeout"
+        return "Strikeout swinging" if self.swinging else "Strikeout looking"
