@@ -22,6 +22,9 @@
 # Account creation only makes a users row. The gms row is created when the
 # user creates or joins a league (see leagues.py).
 #
+# Too many wrong passwords for one username, or from one IP, and sign-in is
+# refused for a while (services/login_limits.py).
+#
 # A forgotten password is reset through an emailed link (/auth/forgot, then
 # /auth/reset; see services/password_reset.py). /account is where a user adds
 # or changes the email those links go to.
@@ -35,7 +38,7 @@ from fastapi import APIRouter, BackgroundTasks, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, OptionalUser, User
-from src.api.services import mailer, password_reset
+from src.api.services import login_limits, mailer, password_reset
 from src.api.services.passwords import (
     clean_email,
     hash_password,
@@ -146,9 +149,25 @@ def login(
     password: str = Form(...),
 ):
     username = username.strip()
+    ip = login_limits.client_ip(request)
+    # Checked before the password, so a blocked guess costs no hashing.
+    wait = login_limits.minutes_blocked(db, username, ip)
+    if wait:
+        return _landing(
+            request,
+            429,
+            error=(
+                f"Too many sign-in attempts. Try again in {wait} "
+                f"minute{'s' if wait != 1 else ''}, or reset your password."
+            ),
+            username=username,
+        )
+
     user_repo = UserRepository(db)
     row = user_repo.get_login(username)
     if not verify_password(row["password_hash"] if row else None, password):
+        login_limits.record_failure(db, username, ip)
+        db.commit()
         return _landing(
             request,
             401,
@@ -158,7 +177,8 @@ def login(
 
     if needs_rehash(row["password_hash"]):
         user_repo.set_password_hash(row["id"], hash_password(password))
-        db.commit()
+    login_limits.clear(db, username)
+    db.commit()
     return _signed_in(row["session_token"])
 
 
@@ -279,7 +299,9 @@ def change_password(
 #
 # Every request gets the same answer, whether or not the account exists or has
 # an email, so the page can't be used to find out who has an account. The
-# email goes out after the response, so timing doesn't tell either.
+# email goes out after the response, so timing doesn't tell either. That
+# includes requests over the per-account or per-IP limits: they get the same
+# page and no email.
 
 
 def _forgot_page(request: Request, status_code: int = 200, **ctx) -> HTMLResponse:
@@ -306,7 +328,7 @@ def forgot(
     email = password_reset.request_reset(
         db,
         login,
-        request.client.host if request.client else None,
+        login_limits.client_ip(request),
         str(request.base_url),
     )
     if email:

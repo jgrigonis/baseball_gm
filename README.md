@@ -101,6 +101,28 @@ PUBLIC_BASE_URL=https://your-domain.com
 `PUBLIC_BASE_URL` is required once `SMTP_HOST` is set, since it's what the
 links in the emails point to. Port 465 uses SSL; other ports use STARTTLS.
 
+### Sign-in limits
+
+Ten wrong passwords for one username in 15 minutes, or thirty from one IP,
+and sign-in is refused for the rest of those 15 minutes, even with the right
+password. One IP can ask for ten reset emails an hour. The counts are kept in
+Postgres, so they hold across restarts and gunicorn workers.
+
+The per-IP limits need the visitor's real IP. Plain uvicorn sees it already.
+Behind nginx, every request seems to come from nginx unless nginx passes the
+address along and the server trusts it from there:
+
+```
+# nginx: replace the header rather than appending to it, so visitors can't
+# fake their own address
+proxy_set_header X-Forwarded-For $remote_addr;
+```
+
+Gunicorn's uvicorn workers and uvicorn itself only trust that header from the
+addresses in `forwarded_allow_ips` (`127.0.0.1` by default), which is right
+when nginx runs on the same machine. Otherwise set it to nginx's address, for
+example `--forwarded-allow-ips=10.0.0.5`.
+
 ### Editor Notes
 
 To get rid of syntax highlight errors in the .html files

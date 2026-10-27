@@ -30,7 +30,10 @@ def _name():
 @pytest.fixture
 def client(db_conn):
     app.dependency_overrides[get_db] = lambda: db_conn
-    yield TestClient(app, follow_redirects=False)
+    # A fresh IP per test, so failures and emails committed by earlier tests
+    # don't count toward the per-IP limits.
+    ip = f"10.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250}"
+    yield TestClient(app, follow_redirects=False, client=(ip, 50000))
     app.dependency_overrides.clear()
 
 

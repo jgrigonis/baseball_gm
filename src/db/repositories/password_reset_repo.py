@@ -27,6 +27,14 @@ class PasswordResetRepository:
             (user_id, window_minutes),
         ).fetchone()["n"]
 
+    def recent_count_for_ip(self, ip: str, window_minutes: int) -> int:
+        return self.db.execute(
+            """SELECT COUNT(*) AS n FROM password_resets
+               WHERE requested_ip = %s
+                 AND created_at > NOW() - make_interval(mins => %s)""",
+            (ip, window_minutes),
+        ).fetchone()["n"]
+
     def insert(self, user_id: str, token_hash: str, ttl_minutes: int, ip: str | None):
         """A new link. Any earlier link for the account stops working, but
         its row stays so it still counts toward recent_count."""

@@ -96,6 +96,15 @@ CREATE TABLE IF NOT EXISTS password_resets (
     requested_ip TEXT
 );
 
+-- login_failures: one row per wrong password at sign-in, so repeated guesses
+--   are turned away for a while. username is lowercased (migration 017).
+CREATE TABLE IF NOT EXISTS login_failures (
+    id         BIGSERIAL PRIMARY KEY,
+    username   TEXT NOT NULL,
+    ip         TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 1 row per player
 CREATE TABLE IF NOT EXISTS players (
     id         TEXT PRIMARY KEY,
@@ -929,6 +938,10 @@ CREATE INDEX IF NOT EXISTS idx_pick_rights_owner
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_login_failures_username ON login_failures(username, created_at);
+CREATE INDEX IF NOT EXISTS idx_login_failures_ip ON login_failures(ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_password_resets_ip ON password_resets(requested_ip, created_at);
 
 -- One per foreign key that no other index starts with. Deleting a row checks
 -- every table that references it, and without an index each check scans the
