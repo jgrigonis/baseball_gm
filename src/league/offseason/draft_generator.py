@@ -11,10 +11,12 @@ Steps:
 4. Write draft.csv with all draftable players
 """
 
-import logging
 import csv
+import dataclasses
+import logging
 import random
 from pathlib import Path
+import uuid
 
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -122,7 +124,7 @@ class DraftGenerator:
         existing = self._get_existing_draftable(league_id)
         log.info("Found %s existing undrafted prospects", len(existing))
 
-        new_players = self._generate_prospects()
+        new_players = [self._with_unused_id(p) for p in self._generate_prospects()]
         log.info("Generated %s new prospects", len(new_players))
 
         for player in new_players:
@@ -147,6 +149,19 @@ class DraftGenerator:
         log.info("Wrote %s (%s players)", out_path, len(all_draftable))
 
         return len(all_draftable)
+
+    def _with_unused_id(self, player: PlayerRecord) -> PlayerRecord:
+        """
+        Give a prospect a fresh id if its seeded id is already taken.
+
+        Ids come from the seeded rng, so an rng seeded the same way as an
+        earlier one repeats its ids. Inserting over an existing player would
+        overwrite that player's skills and bring him back as a prospect.
+        """
+        if not self.player_repo.exists(player.id):
+            return player
+        log.warning("Prospect id %s is already taken; using a new one", player.id)
+        return dataclasses.replace(player, id=uuid.uuid4().hex)
 
     def _generate_prospects(self):
         age_positions = _age_distribution_positions(self.rng, DRAFT_POOL_SIZE)

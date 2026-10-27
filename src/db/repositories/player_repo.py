@@ -351,6 +351,28 @@ class PlayerRepository:
 
         return [dict(row) for row in rows]
 
+    def get_skill_history_many(self, player_ids: list[str]) -> dict[str, list[dict]]:
+        """
+        Skill snapshots for many players at once: {player_id: [rows]},
+        oldest season first.
+        """
+        if not player_ids:
+            return {}
+        rows = self.conn.execute(
+            """
+            SELECT psh.*
+            FROM player_skills_history psh
+            JOIN seasons s ON s.id = psh.season_id
+            WHERE psh.player_id = ANY(%s)
+            ORDER BY s.year
+            """,
+            (player_ids,),
+        ).fetchall()
+        history: dict[str, list[dict]] = {}
+        for row in rows:
+            history.setdefault(row["player_id"], []).append(dict(row))
+        return history
+
     def exists(self, player_id: str) -> bool:
         """
         Check if a player exists.

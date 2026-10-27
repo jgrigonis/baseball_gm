@@ -837,7 +837,9 @@ def _play_playoffs(
 
 def _run_offseason_pipeline(conn, season_id: str, league_id: str, seed: int | None):
     """Run the full offseason pipeline (AI snake draft runs for all teams)."""
-    rng = random.Random(seed)
+    # Mix in the season so each offseason (and league creation, which uses
+    # the bare seed) draws different player ids.
+    rng = random.Random(f"{seed}:{season_id}") if seed is not None else random.Random()
     pipeline = OffseasonPipeline(conn, rng)
     # CLI mode: let run_draft execute (all-AI snake draft — do NOT pre-mark done)
     pipeline.run(season_id, league_id=league_id)

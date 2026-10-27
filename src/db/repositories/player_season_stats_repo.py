@@ -41,6 +41,35 @@ class PlayerSeasonStatsRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_player_season_totals(self, season_id: str) -> dict[str, dict]:
+        """
+        Return {player_id: regular season totals} for a season, summed across
+        teams so a traded player's games all count.
+        """
+        rows = self.conn.execute(
+            """SELECT player_id,
+                      SUM(bat_games_played) AS bat_games_played,
+                      SUM(bat_ab) AS bat_ab, SUM(bat_hits) AS bat_hits,
+                      SUM(bat_doubles) AS bat_doubles, SUM(bat_triples) AS bat_triples,
+                      SUM(bat_home_runs) AS bat_home_runs, SUM(bat_walks) AS bat_walks,
+                      SUM(bat_hbp) AS bat_hbp, SUM(bat_sac_flys) AS bat_sac_flys,
+                      SUM(pitch_games_played) AS pitch_games_played,
+                      SUM(pitch_games_started) AS pitch_games_started,
+                      SUM(pitch_outs) AS pitch_outs,
+                      SUM(pitch_earned_runs) AS pitch_earned_runs
+               FROM player_season_stats
+               WHERE season_id = %s AND NOT is_postseason
+               GROUP BY player_id""",
+            (season_id,),
+        ).fetchall()
+        totals = {}
+        for row in rows:
+            row = dict(row)
+            player_id = row.pop("player_id")
+            # SUM comes back as a Decimal
+            totals[player_id] = {k: int(v or 0) for k, v in row.items()}
+        return totals
+
     def get_team_stats_map(self, season_id: str, team_id: str) -> dict[str, dict]:
         """Return {player_id: stat_dict} for all players on a team in a season (regular season)."""
         rows = self.conn.execute(
