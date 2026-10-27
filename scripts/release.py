@@ -60,7 +60,9 @@ def next_version(current, bump):
         else:
             new = f"{major}.{minor}.{patch + 1}"
     else:
-        raise ReleaseError(f"Version must be patch, minor, major or X.Y.Z, not {bump!r}")
+        raise ReleaseError(
+            f"Version must be patch, minor, major or X.Y.Z, not {bump!r}"
+        )
 
     if VERSION_RE.match(current) and _key(new) <= _key(current):
         raise ReleaseError(f"New version {new} is not newer than {current}")
@@ -98,9 +100,7 @@ def prompt_for_notes():
 
 
 def git(*args, cwd=REPO_ROOT):
-    result = subprocess.run(
-        ["git", *args], cwd=cwd, capture_output=True, text=True
-    )
+    result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
     if result.returncode != 0:
         raise ReleaseError(f"git {' '.join(args)} failed:\n{result.stderr.strip()}")
     return result.stdout.strip()
@@ -110,7 +110,9 @@ def check_repo(version, cwd=REPO_ROOT, branch=RELEASE_BRANCH, remote=REMOTE):
     """Refuse to release from anywhere but a clean main that matches the remote."""
     current_branch = git("rev-parse", "--abbrev-ref", "HEAD", cwd=cwd)
     if current_branch != branch:
-        raise ReleaseError(f"On branch {current_branch}, releases are cut from {branch}")
+        raise ReleaseError(
+            f"On branch {current_branch}, releases are cut from {branch}"
+        )
     if git("status", "--porcelain", cwd=cwd):
         raise ReleaseError("Working tree has uncommitted changes")
 
@@ -118,15 +120,25 @@ def check_repo(version, cwd=REPO_ROOT, branch=RELEASE_BRANCH, remote=REMOTE):
     local = git("rev-parse", "HEAD", cwd=cwd)
     upstream = git("rev-parse", f"{remote}/{branch}", cwd=cwd)
     if local != upstream:
-        raise ReleaseError(f"{branch} is not in sync with {remote}/{branch}; pull or push first")
+        raise ReleaseError(
+            f"{branch} is not in sync with {remote}/{branch}; pull or push first"
+        )
 
     tag = f"v{version}"
     if git("tag", "--list", tag, cwd=cwd):
         raise ReleaseError(f"Tag {tag} already exists")
 
 
-def release(bump, notes, cwd=REPO_ROOT, dry_run=False, push=True,
-            branch=RELEASE_BRANCH, remote=REMOTE, confirm=None):
+def release(
+    bump,
+    notes,
+    cwd=REPO_ROOT,
+    dry_run=False,
+    push=True,
+    branch=RELEASE_BRANCH,
+    remote=REMOTE,
+    confirm=None,
+):
     """Do the release and return the new version.
 
     `confirm` is called with a summary before anything changes; returning False
@@ -151,7 +163,7 @@ def release(bump, notes, cwd=REPO_ROOT, dry_run=False, push=True,
     summary = (
         f"Release {current} -> {version}\n\n"
         f"CHANGES.txt entry:\n\n{changes_entry(version, notes).rstrip()}\n\n"
-        f"Commit \"Release {version}\" and tag {tag} on {branch}"
+        f'Commit "Release {version}" and tag {tag} on {branch}'
         + (f", then push both to {remote}." if push else " (not pushed).")
     )
     print(summary)
@@ -172,8 +184,10 @@ def release(bump, notes, cwd=REPO_ROOT, dry_run=False, push=True,
         git("push", remote, tag, cwd=cwd)
         print(f"\nReleased {version} and pushed {tag}.")
     else:
-        print(f"\nCommitted and tagged {tag} locally. Push with:\n"
-              f"  git push {remote} {branch} && git push {remote} {tag}")
+        print(
+            f"\nCommitted and tagged {tag} locally. Push with:\n"
+            f"  git push {remote} {branch} && git push {remote} {tag}"
+        )
     return version
 
 
@@ -184,21 +198,39 @@ def _ask(_summary):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("version", help="patch, minor, major, or an explicit X.Y.Z")
-    parser.add_argument("-m", "--note", action="append", default=[],
-                        help="A CHANGES.txt line; repeat for more. Prompts when left out.")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would happen without changing anything")
-    parser.add_argument("--no-push", action="store_true",
-                        help="Commit and tag locally but don't push")
-    parser.add_argument("-y", "--yes", action="store_true", help="Don't ask before releasing")
+    parser.add_argument(
+        "-m",
+        "--note",
+        action="append",
+        default=[],
+        help="A CHANGES.txt line; repeat for more. Prompts when left out.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would happen without changing anything",
+    )
+    parser.add_argument(
+        "--no-push", action="store_true", help="Commit and tag locally but don't push"
+    )
+    parser.add_argument(
+        "-y", "--yes", action="store_true", help="Don't ask before releasing"
+    )
     args = parser.parse_args(argv)
 
     try:
         # Catch a bad version before asking for notes.
-        next_version(read_version((REPO_ROOT / "pyproject.toml").read_text()), args.version)
+        next_version(
+            read_version((REPO_ROOT / "pyproject.toml").read_text()), args.version
+        )
         notes = args.note or prompt_for_notes()
-        release(args.version, notes, dry_run=args.dry_run, push=not args.no_push,
-                confirm=None if args.yes else _ask)
+        release(
+            args.version,
+            notes,
+            dry_run=args.dry_run,
+            push=not args.no_push,
+            confirm=None if args.yes else _ask,
+        )
     except ReleaseError as exc:
         print(f"release: {exc}", file=sys.stderr)
         return 1

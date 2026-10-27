@@ -28,8 +28,9 @@ CHANGES = """0.5.6
 
 
 def _git(cwd, *args):
-    return subprocess.run(["git", *args], cwd=cwd, check=True,
-                          capture_output=True, text=True).stdout.strip()
+    return subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    ).stdout.strip()
 
 
 @pytest.fixture
@@ -49,9 +50,15 @@ def repo(tmp_path):
     return work, remote
 
 
-@pytest.mark.parametrize("bump, expected", [
-    ("patch", "0.5.7"), ("minor", "0.6.0"), ("major", "1.0.0"), ("0.7.2", "0.7.2"),
-])
+@pytest.mark.parametrize(
+    "bump, expected",
+    [
+        ("patch", "0.5.7"),
+        ("minor", "0.6.0"),
+        ("major", "1.0.0"),
+        ("0.7.2", "0.7.2"),
+    ],
+)
 def test_next_version(bump, expected):
     assert release.next_version("0.5.6", bump) == expected
 
@@ -70,7 +77,10 @@ def test_set_version_only_touches_project_table():
 
 def test_release_commits_tags_and_pushes(repo):
     work, remote = repo
-    assert release.release("patch", ["Fix the box score", "Faster sims"], cwd=work) == "0.5.7"
+    assert (
+        release.release("patch", ["Fix the box score", "Faster sims"], cwd=work)
+        == "0.5.7"
+    )
 
     assert (work / "CHANGES.txt").read_text() == (
         "0.5.7\n-----\n\n- Fix the box score\n- Faster sims\n\n\n" + CHANGES
@@ -78,7 +88,10 @@ def test_release_commits_tags_and_pushes(repo):
     assert release.read_version((work / "pyproject.toml").read_text()) == "0.5.7"
     assert _git(remote, "log", "-1", "--format=%s", "main") == "Release 0.5.7"
     assert _git(remote, "cat-file", "-t", "v0.5.7") == "tag"
-    assert _git(remote, "tag", "-l", "--format=%(contents:subject)", "v0.5.7") == "version 0.5.7"
+    assert (
+        _git(remote, "tag", "-l", "--format=%(contents:subject)", "v0.5.7")
+        == "version 0.5.7"
+    )
     assert _git(remote, "rev-parse", "v0.5.7^{}") == _git(remote, "rev-parse", "main")
 
 
@@ -100,7 +113,9 @@ def test_no_push_keeps_it_local(repo):
 
 def test_declining_confirmation_changes_nothing(repo):
     work, _remote = repo
-    assert release.release("patch", ["Notes"], cwd=work, confirm=lambda _s: False) is None
+    assert (
+        release.release("patch", ["Notes"], cwd=work, confirm=lambda _s: False) is None
+    )
     assert _git(work, "status", "--porcelain") == ""
 
 
