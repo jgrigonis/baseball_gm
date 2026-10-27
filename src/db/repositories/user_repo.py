@@ -107,12 +107,16 @@ class UserRepository:
 
     def set_password(self, user_id, password_hash, token, must_change: bool):
         """A new password and a fresh session, which signs out every browser
-        using the old one."""
+        using the old one. Unused reset links for the account stop working."""
         self.db.execute(
             """UPDATE users
                SET password_hash = %s, session_token = %s, must_change_password = %s
                WHERE id = %s""",
             (password_hash, token, must_change, user_id),
+        )
+        self.db.execute(
+            "DELETE FROM password_resets WHERE user_id = %s AND used_at IS NULL",
+            (user_id,),
         )
 
     def set_session_token(self, user_id, token):

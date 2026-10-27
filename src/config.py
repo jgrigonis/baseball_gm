@@ -23,5 +23,21 @@ class Settings(BaseSettings):
     # if the server is reachable by anyone else.
     admin_initial_password: str = "changeme"
 
+    # Outgoing email, for password reset links (src/api/services/mailer.py).
+    # With no SMTP_HOST, emails are written to the server log instead of sent.
+    # Port 465 uses SSL; any other port uses STARTTLS unless SMTP_STARTTLS is
+    # false.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = True
+    mail_from: str = "GM Sim <noreply@localhost>"
+
+    # The site's address as users reach it, e.g. "https://gm.example.com",
+    # used to build links in emails. Required once SMTP_HOST is set: without
+    # it, links would trust the request's Host header, which anyone can fake.
+    public_base_url: str = ""
+
 
 settings = Settings()

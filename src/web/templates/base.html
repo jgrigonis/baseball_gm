@@ -115,6 +115,7 @@
       {% if nav_user and nav_user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
       {% if league_info %}<a href="/leagues/{{ league_id }}/league">League</a>{% endif %}
       {% if league_id %}<a href="/leagues/{{ league_id }}/history">History</a>{% endif %}
+      {% if nav_user and nav_user.has_password %}<a href="/account">Account</a>{% endif %}
       <form method="POST" action="/auth/logout">
         <button type="submit" class="topbar-signout">Sign Out</button>
       </form>

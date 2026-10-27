@@ -78,6 +78,29 @@ this from the repo root (it creates the account if it doesn't exist, and
 
 `uv run python scripts/cligr.py make-admin USERNAME`
 
+### Password reset emails
+
+"Forgot your password?" on the sign-in page emails a reset link to the
+address on the account. The link works once, for an hour. Users add or change
+their email on the Account page; anyone without one asks an admin to set a
+password for them.
+
+Until SMTP is set up, these emails are written to the server log instead of
+sent. To send them, set these in the environment or `.env` (any SMTP provider
+works; this example is Resend):
+
+```
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USERNAME=resend
+SMTP_PASSWORD=<API key>
+MAIL_FROM=GM Sim <noreply@your-domain.com>
+PUBLIC_BASE_URL=https://your-domain.com
+```
+
+`PUBLIC_BASE_URL` is required once `SMTP_HOST` is set, since it's what the
+links in the emails point to. Port 465 uses SSL; other ports use STARTTLS.
+
 ### Editor Notes
 
 To get rid of syntax highlight errors in the .html files
