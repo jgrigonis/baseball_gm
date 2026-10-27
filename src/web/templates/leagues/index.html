@@ -129,11 +129,19 @@ function leaveLeague(btn) {
     ? 'Leave ' + name + '? An AI manager will take over your team, and you can\'t come back.'
     : 'Leave ' + name + '?';
   if (!confirm(msg)) return;
+  // Deleting a league can take a moment; a second click would find the
+  // first still holding the league and fail.
+  btn.disabled = true;
+  btn.textContent = 'Leaving…';
+  const failed = detail => {
+    btn.disabled = false;
+    btn.textContent = 'Leave';
+    alert(detail || 'Could not leave the league.');
+  };
   fetch('/leagues/' + id + '/leave', {method: 'POST'}).then(r => {
     if (r.ok) { location.reload(); return; }
-    r.json().then(d => alert(d.detail || 'Could not leave the league.'),
-                 () => alert('Could not leave the league.'));
-  });
+    r.json().then(d => failed(d.detail), () => failed());
+  }, () => failed());
 }
 var _renameLeagueId = null;
 function openRenameModal(id, name) {
