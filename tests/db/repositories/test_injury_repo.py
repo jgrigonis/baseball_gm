@@ -111,3 +111,59 @@ def test_migration_backfills_return_date_from_games_remaining(setup):
     injury = s.repo.get(s.player.id)
     assert injury.return_date == date(2025, 4, 9)
     assert injury.days_remaining == 7
+
+
+def test_injury_log_keeps_the_team_and_lists_by_season(setup):
+    s = setup
+    s.repo.injure(s.player.id, s.season.id, date(2025, 4, 1), days=3, team_id=s.team.id)
+    other_player = s.factory.player_row()
+    s.repo.injure(
+        other_player.id, s.season.id, date(2025, 3, 30), days=8, team_id=s.other.id
+    )
+    later = s.factory.season(year=2026)
+    s.repo.injure(s.player.id, later.id, date(2026, 4, 1), days=1, team_id=s.team.id)
+
+    league = s.repo.get_season_injuries(s.season.id)
+    assert [i["player_id"] for i in league] == [other_player.id, s.player.id]
+    assert league[1]["team_id"] == s.team.id
+    assert league[1]["days_missed"] == 3
+
+    mine = s.repo.get_season_injuries(s.season.id, s.team.id)
+    assert [i["player_id"] for i in mine] == [s.player.id]
+
+
+def test_migration_backfills_injury_log_team(setup):
+    from src.db.migration_files.migration_012_injury_log_team import (
+        upgrade as add_team,
+    )
+
+    s = setup
+    game_id = s.factory._id()
+    s.conn.execute(
+        """INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)
+           VALUES (%s, '2025-04-01', %s, %s, %s, 1)""",
+        (game_id, s.season.id, s.team.id, s.other.id),
+    )
+    s.conn.execute(
+        """INSERT INTO player_game_stats (game_id, player_id, team_id, opponent_team_id)
+           VALUES (%s, %s, %s, %s)""",
+        (game_id, s.player.id, s.other.id, s.team.id),
+    )
+    # Hurt in that game, then again on a day with no box score line
+    s.repo.injure(s.player.id, s.season.id, date(2025, 4, 1), days=2)
+    s.repo.injure(s.player.id, s.season.id, date(2025, 4, 9), days=2)
+    s.conn.execute(
+        """INSERT INTO player_season_stats (player_id, season_id, team_id, bat_games_played)
+           VALUES (%s, %s, %s, 30)""",
+        (s.player.id, s.season.id, s.team.id),
+    )
+
+    add_team(s.conn)
+    teams = [
+        r["team_id"]
+        for r in s.conn.execute(
+            "SELECT team_id FROM player_injury_log WHERE player_id = %s ORDER BY injury_date",
+            (s.player.id,),
+        ).fetchall()
+    ]
+    assert teams == [s.other.id, s.team.id]

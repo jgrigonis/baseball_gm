@@ -10,6 +10,7 @@ from src.api.view_models.leaders import leaders_context
 from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.standings import standings_rows
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
@@ -74,6 +75,9 @@ def season_summary_context(
         "playoff_rounds": [],
         "draft_round": None,
         "draft_rounds_total": 0,
+        "injuries": [],
+        "injuries_league_wide": my_team_id is None,
+        "injury_days_total": 0,
         "season_year": None,
     }
     if not season_id:
@@ -153,6 +157,15 @@ def season_summary_context(
         if rounds:
             ctx["draft_round"] = rounds[0]
             ctx["draft_rounds_total"] = len(rounds)
+
+    # Injuries: the GM's own team; a viewer with no team sees every team's
+    injuries = InjuryRepository(db, league_id).get_season_injuries(
+        season_id, my_team_id
+    )
+    for inj in injuries:
+        inj["team"] = f"{inj['city']} {inj['mascot']}" if inj["city"] else ""
+    ctx["injuries"] = injuries
+    ctx["injury_days_total"] = sum(inj["days_missed"] for inj in injuries)
 
     return ctx
 

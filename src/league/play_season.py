@@ -603,6 +603,11 @@ def _play_game(
     save_energy(conn, game_date, home_team, away_team, league_id=league_id)
     save_position_energy(conn, player_energy_states, league_id)
 
+    team_of = {
+        player.id: team.record.id
+        for team in (home_team, away_team)
+        for player in team.players
+    }
     for player_id, severity, activity in game.new_injuries:
         injury_repo.injure(
             player_id,
@@ -611,6 +616,7 @@ def _play_game(
             severity=severity,
             activity=activity,
             rng=rng,
+            team_id=team_of.get(player_id),
         )
 
     logger.info(home_team.output_defensive_stats())
