@@ -166,7 +166,9 @@ class InjuryRepository:
         return [dict(r) for r in rows]
 
     def get_active_for_team(self, team_id: str, as_of=None) -> dict[str, dict]:
-        """Return {player_id: {"name": ..., "days": days_remaining, "is_pitcher": bool}} for all active injuries on a team."""
+        """Return {player_id: {"name", "days", "position", "outs", "ab"}} for all
+        active injuries on a team. outs and ab are the player's regular-season
+        pitching outs and at-bats in the league's current season (0 if none)."""
         if not team_id:
             return {}
         as_of = self._as_of(as_of)
@@ -174,11 +176,23 @@ class InjuryRepository:
             """SELECT pi.player_id,
                       (pi.return_date::date - %s::date) AS days_remaining,
                       p.first_name || ' ' || p.last_name as name,
-                      ps.player_id IS NOT NULL as is_pitcher
+                      p.position,
+                      COALESCE(st.outs, 0) AS outs,
+                      COALESCE(st.ab, 0) AS ab
                FROM player_injuries pi
                JOIN players p ON p.id = pi.player_id
                JOIN team_players tp ON tp.player_id = pi.player_id AND tp.team_id = %s
-               LEFT JOIN pitcher_state ps ON ps.player_id = pi.player_id AND ps.league_id = %s
+               LEFT JOIN (
+                   SELECT pss.player_id, SUM(pss.pitch_outs) AS outs,
+                          SUM(pss.bat_ab) AS ab
+                   FROM player_season_stats pss
+                   WHERE NOT pss.is_postseason
+                     AND pss.season_id = (
+                         SELECT s.id FROM seasons s
+                         JOIN league_seasons ls ON ls.season_id = s.id
+                         WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1)
+                   GROUP BY pss.player_id
+               ) st ON st.player_id = pi.player_id
                WHERE pi.return_date::date > %s::date
                  AND (pi.league_id = %s OR pi.league_id = '')""",
             (as_of, team_id, self.league_id, as_of, self.league_id),
@@ -187,7 +201,9 @@ class InjuryRepository:
             r["player_id"]: {
                 "name": r["name"],
                 "days": r["days_remaining"],
-                "is_pitcher": bool(r["is_pitcher"]),
+                "position": r["position"],
+                "outs": int(r["outs"]),
+                "ab": int(r["ab"]),
             }
             for r in rows
         }
