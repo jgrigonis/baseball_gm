@@ -542,3 +542,61 @@ class TestPlayGameAtomic:
         with patch.object(play_season, "_play_game", side_effect=committing_game):
             with pytest.raises(Exception, match="commit"):
                 self._play(db_conn, game)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _pick_starter — the Strategy tab's rotation settings
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestPickStarterRotationSettings:
+    ROTATION = [_rotation_row(f"p{i}", i) for i in range(1, 6)]
+
+    def _pick(self, scheduled, energy=None, **kwargs):
+        rot = _make_rot_repo(scheduled=scheduled, rotation=self.ROTATION)
+        pit = _make_pitcher_repo(energy or {})
+        return _pick_starter(rot, pit, TEAM_ID, SEASON_ID, GAME_DATE, **kwargs)
+
+    def test_tired_starters_sets_how_rested_he_must_be(self):
+        from src.team.manager_profile import ManagerProfile
+
+        energy = {"p1": 0.8}
+        assert self._pick("p1", energy)[0] == "p2"  # standard needs 0.83
+        push = ManagerProfile(tired_starters="push")
+        assert self._pick("p1", energy, profile=push)[0] == "p1"
+        protect = ManagerProfile(tired_starters="protect")
+        assert self._pick("p1", {"p1": 0.85}, profile=protect)[0] == "p2"
+
+    def test_skip_fifth_starter_after_an_off_day(self):
+        from src.team.manager_profile import ManagerProfile
+
+        skip = ManagerProfile(skip_fifth_starter=True)
+        assert self._pick("p5", profile=skip, off_day=True)[0] == "p1"
+        assert self._pick("p5", profile=skip, off_day=False)[0] == "p5"
+        assert self._pick("p5", off_day=True)[0] == "p5"  # setting off
+        assert self._pick("p4", profile=skip, off_day=True)[0] == "p4"
+
+    def test_playoff_rotation_uses_the_top_starters(self):
+        from src.team.manager_profile import ManagerProfile
+
+        three = ManagerProfile(playoff_rotation="3")
+        assert self._pick("p4", profile=three, playoffs=True)[0] == "p1"
+        assert self._pick("p3", profile=three, playoffs=True)[0] == "p3"
+        assert self._pick("p4", profile=three, playoffs=False)[0] == "p4"
+
+
+class TestHadOffDay:
+    def test_off_day_after_a_gap(self, db_conn, factory):
+        season = factory.season()
+        home, away = factory.team(), factory.team()
+        db_conn.execute(
+            """INSERT INTO games (id, game_date, season_id, home_team_id,
+                                  away_team_id, completed)
+               VALUES ('g-off-day', '2025-04-01', %s, %s, %s, 1)""",
+            (season.id, home.id, away.id),
+        )
+
+        off = play_season._had_off_day
+        assert not off(db_conn, away.id, season.id, date(2025, 4, 2))
+        assert off(db_conn, away.id, season.id, date(2025, 4, 3))
+        assert not off(db_conn, home.id, season.id, date(2025, 4, 1))  # first game

@@ -1,17 +1,178 @@
 # src/api/routers/strategy.py
 #
-# Strategy tab: the GM's managerial tendencies.
+# Strategy tab: the GM's managerial tendencies, stored in gm_profiles and read
+# by the game engine every game (src/team/manager_profile.py). Each setting is
+# a slider; SETTINGS below drives both the page and the save.
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.db.repositories.gm_repo import GMRepository
+from src.team import manager_profile as mp
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
+
+
+@dataclass(frozen=True)
+class Setting:
+    name: str  # gm_profiles column
+    label: str
+    values: tuple  # stored values, in slider order
+    labels: tuple[str, ...]  # what the slider shows for each
+    ends: tuple[str, str]
+    hint: str
+
+
+SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
+    (
+        "Batting",
+        (
+            Setting(
+                "lineup_style",
+                "Lineup Construction",
+                mp.LINEUP_STYLE,
+                ("Traditional", "Analytics", "Speed-first", "Power-first"),
+                ("Traditional", "Power-first"),
+                "How Auto-fill, Rebuild and the AI order your lineup. Traditional "
+                "leads off with speed and bats the best hitter 3rd; Analytics leads "
+                "off with on-base and bats the best hitter 2nd.",
+            ),
+            Setting(
+                "baserunning",
+                "Baserunning",
+                mp.BASERUNNING,
+                (
+                    "Very conservative",
+                    "Conservative",
+                    "Standard",
+                    "Aggressive",
+                    "Very aggressive",
+                ),
+                ("Station to station", "Run wild"),
+                "How often runners steal and hit and run, and how often they try "
+                "for the extra base on a hit. Aggressive runners take more bases, "
+                "and some of the extra tries are thrown out.",
+            ),
+            Setting(
+                "sac_bunt",
+                "Sacrifice Bunt Usage",
+                mp.SAC_BUNT,
+                ("Never", "Situational", "Frequent"),
+                ("Never bunt", "Bunt often"),
+                "How often the manager calls a sacrifice bunt with a runner on and "
+                "fewer than two outs. Frequent bunts about twice as often.",
+            ),
+            Setting(
+                "rest_days",
+                "Rest Days",
+                mp.REST_DAYS,
+                ("Iron man", "Standard", "Rest often"),
+                ("Play every day", "Rest often"),
+                "When a tired regular gets the day off. Standard sits a hitter "
+                "below 40% energy, Rest often below 60%, and catchers a little "
+                "sooner. Iron man never rests anyone: a tired player just plays "
+                "worse.",
+            ),
+        ),
+    ),
+    (
+        "Platoon",
+        (
+            Setting(
+                "platoon_usage",
+                "Platoon Usage",
+                mp.PLATOON_USAGE,
+                ("None", "vs Handedness", "Aggressive"),
+                ("Set lineup", "Always split"),
+                "Coming soon: how much your lineup changes against left- and "
+                "right-handed starters.",
+            ),
+        ),
+    ),
+    (
+        "Pitching",
+        (
+            Setting(
+                "starter_usage",
+                "Starter Leash",
+                mp.STARTER_USAGE,
+                ("Let them work", "Pitch-count strict", "Matchup-based"),
+                ("Long leash", "Short leash"),
+                "Let them work allows about 15 more pitches and pulls a starter "
+                "less often. Pitch-count strict goes to the pen around 100 "
+                "pitches. Matchup-based also pulls him sooner the third time "
+                "through the order.",
+            ),
+            Setting(
+                "closer_usage",
+                "Closer Deployment",
+                mp.CLOSER_USAGE,
+                ("Saves only", "High-leverage", "Best available"),
+                ("9th inning only", "Any big spot"),
+                "Saves only brings the closer in for a save in the 9th. "
+                "High-leverage also uses him in a tie or a 1-2 run lead from the "
+                "8th on. Best available gives the save to the best rested reliever "
+                "by closer rating, whatever his role.",
+            ),
+            Setting(
+                "bullpen_pref",
+                "Bullpen Shape",
+                mp.BULLPEN_PREF,
+                ("Deep pen", "Starter-heavy"),
+                ("Use the pen", "Ride the starter"),
+                "Starter-heavy keeps starters in a little longer; Deep pen goes "
+                "to the bullpen sooner.",
+            ),
+        ),
+    ),
+    (
+        "Rotation",
+        (
+            Setting(
+                "rotation_size",
+                "Rotation Size",
+                mp.ROTATION_SIZE,
+                ("4-man", "5-man", "6-man"),
+                ("4", "6"),
+                "How many starters Auto-fill puts in your rotation on the Lineup "
+                "tab. Whoever is in your saved rotation is who pitches.",
+            ),
+            Setting(
+                "skip_fifth_starter",
+                "Skip the 5th Starter",
+                (False, True),
+                ("Off", "On"),
+                ("Off", "On"),
+                "After an off day, skip the last starter in a rotation of five or "
+                "more, so your ace pitches again on normal rest.",
+            ),
+            Setting(
+                "playoff_rotation",
+                "Playoff Rotation",
+                mp.PLAYOFF_ROTATION,
+                ("3-man", "4-man", "Same as season"),
+                ("Short", "Full"),
+                "Shortens the rotation in the playoffs to your top starters.",
+            ),
+            Setting(
+                "tired_starters",
+                "Tired Starters",
+                mp.TIRED_STARTERS,
+                ("Push through", "Standard", "Protect"),
+                ("Push", "Protect"),
+                "How rested a scheduled starter must be. Push starts him at 75% "
+                "energy, Standard at 83%, Protect at 90%; otherwise the next "
+                "rested starter takes the game.",
+            ),
+        ),
+    ),
+)
 
 
 @router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
@@ -25,46 +186,25 @@ def strategy(
 ):
     ctx = _shell_ctx(request, db, gm, league_id, "strategy", user)
 
-    profile_row = GMRepository(db).get_profile(gm["id"])
-
-    _L = ["traditional", "analytics", "speed-first", "power-first"]
-    _S = ["conservative", "standard", "aggressive"]
-    _B = ["never", "situational", "frequent"]
-    _P = ["none", "vs-handedness", "aggressive"]
-    _U = ["let-them-work", "pitch-count-strict", "matchup-based"]
-    _C = ["saves-only", "high-leverage", "best-available"]
-    _N = ["deep-pen", "starter-heavy"]
-
-    def idx(lst, val, default=0):
-        try:
-            return lst.index(val)
-        except ValueError:
-            return default
-
-    if profile_row:
-        p = profile_row
-        ctx["profile"] = {
-            "lineup_style_index": idx(_L, p.get("lineup_style", "analytics"), 1),
-            "steal_aggression_index": idx(_S, p.get("steal_aggression", "standard"), 1),
-            "sac_bunt_index": idx(_B, p.get("sac_bunt", "situational"), 1),
-            "platoon_usage_index": idx(_P, p.get("platoon_usage", "none"), 0),
-            "starter_usage_index": idx(
-                _U, p.get("starter_usage", "pitch-count-strict"), 1
-            ),
-            "closer_usage_index": idx(_C, p.get("closer_usage", "saves-only"), 0),
-            "bullpen_pref_index": idx(_N, p.get("bullpen_pref", "deep-pen"), 0),
-        }
-    else:
-        ctx["profile"] = {
-            "lineup_style_index": 1,
-            "steal_aggression_index": 1,
-            "sac_bunt_index": 1,
-            "platoon_usage_index": 0,
-            "starter_usage_index": 1,
-            "closer_usage_index": 0,
-            "bullpen_pref_index": 0,
-        }
-
+    row = GMRepository(db).get_profile(gm["id"]) if gm else None
+    current = vars(mp.ManagerProfile.from_row(row))
+    ctx["cards"] = [
+        (
+            title,
+            [
+                {
+                    "name": s.name,
+                    "label": s.label,
+                    "labels": s.labels,
+                    "ends": s.ends,
+                    "hint": s.hint,
+                    "index": s.values.index(current[s.name]),
+                }
+                for s in settings
+            ],
+        )
+        for title, settings in SETTINGS
+    ]
     return tab_response(request, htmx, "dashboard/partials/strategy.html", ctx)
 
 
@@ -80,22 +220,19 @@ async def save_strategy(
         return HTMLResponse("Not a member of this league", status_code=403)
 
     form = await request.form()
-    _MAPS = {
-        "lineup_style": ["traditional", "analytics", "speed-first", "power-first"],
-        "steal_aggression": ["conservative", "standard", "aggressive"],
-        "sac_bunt": ["never", "situational", "frequent"],
-        "platoon_usage": ["none", "vs-handedness", "aggressive"],
-        "starter_usage": ["let-them-work", "pitch-count-strict", "matchup-based"],
-        "closer_usage": ["saves-only", "high-leverage", "best-available"],
-        "bullpen_pref": ["deep-pen", "starter-heavy"],
-    }
     updates = {}
-    for field, options in _MAPS.items():
-        i = int(form.get(field, 0))
-        updates[field] = options[min(i, len(options) - 1)]
+    for _, settings in SETTINGS:
+        for s in settings:
+            if s.name in form:
+                try:
+                    i = int(form[s.name])
+                except ValueError:
+                    continue
+                updates[s.name] = s.values[max(0, min(i, len(s.values) - 1))]
 
-    GMRepository(db).save_profile(gm["id"], updates)
-    db.commit()
+    if updates:
+        GMRepository(db).save_profile(gm["id"], updates)
+        db.commit()
     return HTMLResponse(
         '<span style="color:var(--green);font-family:var(--font-mono);font-size:11px;">✓ Saved</span>'
     )

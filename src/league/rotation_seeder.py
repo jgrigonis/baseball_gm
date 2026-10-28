@@ -1,11 +1,13 @@
 # src/league/rotation_seeder.py
 import logging
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.player.player_evaluator import PlayerEvaluator
+from src.team.manager_profile import ManagerProfile
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +47,7 @@ def seed_ai_rotations(
     rot_repo = TeamRotationsRepository(conn, league_id)
     bp_repo = BullpenRepository(conn)
     team_repo = TeamRepository(conn)
+    gm_repo = GMRepository(conn)
 
     teams = team_repo.get_teams_by_season(season_id)
     seeded = 0
@@ -65,7 +68,8 @@ def seed_ai_rotations(
             key=lambda p: PlayerEvaluator.rate_player(p.skills).get("sp", 0),
             reverse=True,
         )
-        rotation = [p.id for p in pitchers[:5]]
+        profile = ManagerProfile.from_row(gm_repo.get_team_profile(team.id, league_id))
+        rotation = [p.id for p in pitchers[: profile.rotation_size]]
         if not rotation:
             log.warning(
                 "No pitchers found for AI team %s, skipping rotation.", team.name

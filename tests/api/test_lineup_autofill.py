@@ -4,7 +4,7 @@
 import pytest
 
 from src.api.services.lineup_autofill import autofill, eligible_hitters
-from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+from src.db.repositories.gm_repo import GMRepository
 
 POSITIONS = {"c", "1b", "2b", "3b", "ss", "lf", "cf", "rf", "dh"}
 
@@ -90,17 +90,17 @@ def test_not_enough_hitters_raises(db_conn, factory):
         autofill(db_conn, league.id, team.id, [], rebuild=True)
 
 
-def test_lineup_style_comes_from_the_strategy_tab(db_conn, factory):
+def test_profile_comes_from_the_strategy_tab(db_conn, factory):
     league = factory.league(state="season")
     team = factory.team()
     gm = factory.gm(team=team, league=league, is_ai=True)
-    repo = LineupPreferenceRepository(db_conn)
+    repo = GMRepository(db_conn)
 
-    assert repo.get_lineup_style(team.id, league.id) == "traditional"
+    assert repo.get_team_profile(team.id, league.id)["lineup_style"] == "traditional"
 
     db_conn.execute(
         "UPDATE gm_profiles SET lineup_style = 'power-first' WHERE gm_id = %s",
         (gm.id,),
     )
-    assert repo.get_lineup_style(team.id, league.id) == "power-first"
-    assert repo.get_lineup_style(factory.team().id, league.id) is None
+    assert repo.get_team_profile(team.id, league.id)["lineup_style"] == "power-first"
+    assert repo.get_team_profile(factory.team().id, league.id) is None

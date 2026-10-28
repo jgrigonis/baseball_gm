@@ -1,144 +1,62 @@
 {# templates/dashboard/partials/strategy.html
-   GM strategic profile — slider-based tendencies that bias the sim's dice rolls.
-   Each slider adjusts a probability range the engine already uses.
+   How the GM's team is managed in games. The sliders come from SETTINGS in
+   src/api/routers/strategy.py; the game engine reads them through
+   src/team/manager_profile.py.
 #}
+{% macro slider(s) %}
+<div class="strategy-slider">
+  <div class="ss-header">
+    <span class="ss-label">{{ s.label }}</span>
+    <span class="ss-value" id="val-{{ s.name }}">{{ s.labels[s.index] }}</span>
+  </div>
+  <input type="range" name="{{ s.name }}" min="0" max="{{ s.labels | length - 1 }}" step="1"
+         value="{{ s.index }}" data-labels="{{ s.labels | tojson | forceescape }}"
+         oninput="updateLabel(this)">
+  <div class="ss-ends"><span>{{ s.ends[0] }}</span><span>{{ s.ends[1] }}</span></div>
+  <p class="ss-hint">{{ s.hint }}</p>
+</div>
+{% endmacro %}
+{% macro card(title, settings) %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">{{ title }}</span>
+  </div>
+  <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
+    {% for s in settings %}{{ slider(s) }}{% endfor %}
+  </div>
+</div>
+{% endmacro %}
 <div class="content-inner tab-fade">
 
   <div class="page-header">
     <h1 class="page-title">Strategy</h1>
-    <span class="page-subtitle">Your AI plays these tendencies when you're away or between decisions</span>
+    <span class="page-subtitle">How your team is managed in every game, and by the AI when it fills in for you</span>
   </div>
 
-  <form hx-patch="/leagues/{{ league_id }}/strategy"
+  <form hx-post="/leagues/{{ league_id }}/strategy"
         hx-target="#strategy-feedback"
         hx-swap="innerHTML"
         id="strategy-form">
 
     <div class="grid-2" style="gap: 24px; align-items: start;">
 
-      {# ── Batting ──────────────────────────────────────────────────────────── #}
+      {# ── Batting and platoon ──────────────────────────────────────────────── #}
       <div style="display: flex; flex-direction: column; gap: 16px;">
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Batting</span>
-          </div>
-          <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
-
-            <div class="strategy-slider">
-              <div class="ss-header">
-                <span class="ss-label">Lineup Construction</span>
-                <span class="ss-value" id="val-lineup">Analytics</span>
-              </div>
-              <input type="range" name="lineup_style" min="0" max="3" step="1"
-                     value="{{ profile.lineup_style_index | default(1) }}"
-                     oninput="updateLabel('lineup', this.value, ['Traditional','Analytics','Speed-first','Power-first'])">
-              <div class="ss-ends"><span>Traditional</span><span>Power-first</span></div>
-              <p class="ss-hint">How Auto-fill, Rebuild and the AI filling in for an injured player order your lineup. Traditional leads off with speed and bats the best hitter 3rd; Analytics leads off with on-base and bats the best hitter 2nd.</p>
-            </div>
-
-            <div class="strategy-slider">
-              <div class="ss-header">
-                <span class="ss-label">Steal Aggression</span>
-                <span class="ss-value" id="val-steal">Standard</span>
-              </div>
-              <input type="range" name="steal_aggression" min="0" max="2" step="1"
-                     value="{{ profile.steal_aggression_index | default(1) }}"
-                     oninput="updateLabel('steal', this.value, ['Conservative','Standard','Aggressive'])">
-              <div class="ss-ends"><span>Never run</span><span>Run freely</span></div>
-              <p class="ss-hint">Raises or lowers the base steal-attempt threshold on each at-bat when a runner is on first.</p>
-            </div>
-
-            <div class="strategy-slider">
-              <div class="ss-header">
-                <span class="ss-label">Sacrifice Bunt Usage</span>
-                <span class="ss-value" id="val-bunt">Situational</span>
-              </div>
-              <input type="range" name="sac_bunt" min="0" max="2" step="1"
-                     value="{{ profile.sac_bunt_index | default(1) }}"
-                     oninput="updateLabel('bunt', this.value, ['Never','Situational','Frequent'])">
-              <div class="ss-ends"><span>Never bunt</span><span>Bunt often</span></div>
-              <p class="ss-hint">Controls how often the AI calls for a sacrifice attempt with a runner on and less than two outs.</p>
-            </div>
-
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Platoon</span>
-          </div>
-          <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
-
-            <div class="strategy-slider">
-              <div class="ss-header">
-                <span class="ss-label">Platoon Usage</span>
-                <span class="ss-value" id="val-platoon">None</span>
-              </div>
-              <input type="range" name="platoon_usage" min="0" max="2" step="1"
-                     value="{{ profile.platoon_usage_index | default(0) }}"
-                     oninput="updateLabel('platoon', this.value, ['None','vs Handedness','Aggressive'])">
-              <div class="ss-ends"><span>Set lineup</span><span>Always split</span></div>
-              <p class="ss-hint">How aggressively the AI substitutes bench players to exploit L/R matchup advantages.</p>
-            </div>
-
-          </div>
-        </div>
-
+        {% for title, settings in cards if title in ("Batting", "Platoon") %}
+          {{ card(title, settings) }}
+        {% endfor %}
       </div>
 
-      {# ── Pitching ─────────────────────────────────────────────────────────── #}
+      {# ── Pitching and rotation ────────────────────────────────────────────── #}
       <div style="display: flex; flex-direction: column; gap: 16px;">
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Pitching</span>
-          </div>
-          <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
-
-            <div class="strategy-slider">
-              <div class="ss-header">
-                <span class="ss-label">Starter Leash</span>
-                <span class="ss-value" id="val-starter">Pitch-count strict</span>
-              </div>
-              <input type="range" name="starter_usage" min="0" max="2" step="1"
-                     value="{{ profile.starter_usage_index | default(1) }}"
-                     oninput="updateLabel('starter', this.value, ['Let them work','Pitch-count strict','Matchup-based'])">
-              <div class="ss-ends"><span>Complete games</span><span>Pull early</span></div>
-              <p class="ss-hint">Sets the threshold at which the AI's per-plate-appearance check can pull a starter, even if he's dealing.</p>
-            </div>
-
-            <div class="strategy-slider">
-              <div class="ss-header">
-                <span class="ss-label">Closer Deployment</span>
-                <span class="ss-value" id="val-closer">Saves only</span>
-              </div>
-              <input type="range" name="closer_usage" min="0" max="2" step="1"
-                     value="{{ profile.closer_usage_index | default(0) }}"
-                     oninput="updateLabel('closer', this.value, ['Saves only','High-leverage','Best available'])">
-              <div class="ss-ends"><span>9th inning only</span><span>Any big spot</span></div>
-              <p class="ss-hint">How willing the AI is to burn your closer in a tie game in the 7th, not just protecting a lead in the 9th.</p>
-            </div>
-
-            <div class="strategy-slider">
-              <div class="ss-header">
-                <span class="ss-label">Bullpen Shape</span>
-                <span class="ss-value" id="val-bullpen">Deep pen</span>
-              </div>
-              <input type="range" name="bullpen_pref" min="0" max="1" step="1"
-                     value="{{ profile.bullpen_pref_index | default(0) }}"
-                     oninput="updateLabel('bullpen', this.value, ['Deep pen','Starter-heavy'])">
-              <div class="ss-ends"><span>Many relievers</span><span>Fewer, longer</span></div>
-              <p class="ss-hint">Biases roster construction recommendations and callup decisions toward depth relievers or a larger rotation.</p>
-            </div>
-
-          </div>
-        </div>
+        {% for title, settings in cards if title in ("Pitching", "Rotation") %}
+          {{ card(title, settings) }}
+        {% endfor %}
 
         {# Save + feedback #}
         <div style="display: flex; align-items: center; gap: 12px;">
           <button type="submit" class="btn btn-primary">Save Strategy</button>
-          <span id="strategy-feedback" class="htmx-indicator"
+          <span id="strategy-feedback"
                 style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
           </span>
         </div>
@@ -146,14 +64,13 @@
         <div class="card" style="border-color: var(--amber-dim);">
           <div class="card-body">
             <p style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.8;">
-              <span style="color: var(--amber);">How these work:</span> Each slider nudges a probability range in the sim engine.
-              At <em>Aggressive</em> steals, the base steal-attempt roll shifts from ~15% to ~35%.
-              At <em>Let them work</em>, the per-batter pull-check threshold rises from ~95 pitches to ~115.
-              The AI still rolls dice — it just rolls with your thumb on the scale.
+              <span style="color: var(--amber);">How these work:</span> Each setting changes the odds of a
+              move the sim already makes: a steal, a bunt, a trip to the bullpen. The middle settings play the
+              game the way it played before these settings existed. The AI still rolls the dice; your settings
+              tilt them.
             </p>
           </div>
         </div>
-
       </div>
 
     </div>
@@ -198,24 +115,8 @@ input[type=range]::-moz-range-thumb {
 </style>
 
 <script>
-function updateLabel(key, val, labels) {
-  document.getElementById('val-' + key).textContent = labels[parseInt(val)];
+function updateLabel(input) {
+  const labels = JSON.parse(input.dataset.labels);
+  document.getElementById('val-' + input.name).textContent = labels[parseInt(input.value)];
 }
-// Init all labels on load
-document.querySelectorAll('input[type=range]').forEach(input => {
-  const map = {
-    'lineup_style':    ['Traditional','Analytics','Speed-first','Power-first'],
-    'steal_aggression':['Conservative','Standard','Aggressive'],
-    'sac_bunt':        ['Never','Situational','Frequent'],
-    'platoon_usage':   ['None','vs Handedness','Aggressive'],
-    'starter_usage':   ['Let them work','Pitch-count strict','Matchup-based'],
-    'closer_usage':    ['Saves only','High-leverage','Best available'],
-    'bullpen_pref':    ['Deep pen','Starter-heavy'],
-  };
-  const key = input.name.replace('_usage','').replace('_aggression','').replace('_style','').replace('sac_bunt','bunt').replace('bullpen_pref','bullpen').replace('platoon_usage','platoon').replace('starter_usage','starter').replace('closer_usage','closer').replace('lineup_style','lineup').replace('steal_aggression','steal');
-  if (map[input.name]) {
-    const el = document.getElementById('val-' + key);
-    if (el) el.textContent = map[input.name][parseInt(input.value)];
-  }
-});
 </script>

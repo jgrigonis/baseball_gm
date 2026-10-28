@@ -55,6 +55,7 @@ from src.game.probabilities import (
 from src.game.resolver import Resolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
+from src.team.manager_profile import profile_of
 from src.player.fatigue import FatigueLevel
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.weighted_choice import WeightedChoice
@@ -1068,7 +1069,10 @@ class Game:
         rnd = self.rng.random()
         change = (
             GameStrategy.should_consider_pitching_change(
-                self.current_pitcher, self.inning, self.score_differential
+                self.current_pitcher,
+                self.inning,
+                self.score_differential,
+                profile_of(self.pitch_team),
             )
             if not force
             else 1.0
