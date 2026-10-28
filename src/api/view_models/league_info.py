@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from src.db.repositories.league_repo import LeagueRepository
 from src.league.league_modes import get_mode
+from src.league.trade_deadline import trades_enabled_for
 
 
 def league_info(db, league: dict) -> dict:
@@ -27,6 +28,8 @@ def league_info(db, league: dict) -> dict:
         "sim_period_days": league["sim_period_days"],
         "num_seasons": league["num_seasons"],
         "is_public": bool(league["is_public"]),
+        "trades_enabled": trades_enabled_for(league["mode"]),
+        "trade_vote": bool(league["trade_vote"]),
         # Seasons started so far, the current one included. 0 in the lobby.
         "season_number": LeagueRepository(db).count_seasons(league["id"]),
         "gms": gms,

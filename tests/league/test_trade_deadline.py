@@ -1,9 +1,12 @@
 # tests/league/test_trade_deadline.py
-"""When the trade window is open, and the sim stopping at the deadline."""
+"""When the trade window is open, and the sim stopping at the deadline or for
+a trade offer."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from src.api.services import sim_next
+from src.db.repositories.trade_repo import TradeRepository
 from src.league import trade_deadline
 from src.league.trade_deadline import _nearest_series_end
 
@@ -129,3 +132,60 @@ class TestSimStopsAtTheDeadline:
         summary, days = self._sim(db_conn, factory, "speed_blitz", 3)
         assert days == 3
         assert summary["trade_deadline"] is False
+
+
+class TestSimStopsForAnOffer:
+    """Single player: with stop_for_trade_offers on, a sim stops the day an
+    offer arrives for the GM."""
+
+    def _sim(self, db, factory, stop=True, humans=1):
+        league, season = _season_with_games(db, factory)
+        db.execute(
+            "UPDATE leagues SET stop_for_trade_offers = %s WHERE id = %s",
+            (stop, league.id),
+        )
+        teams = db.execute(
+            "SELECT DISTINCT home_team_id, away_team_id FROM games WHERE season_id = %s",
+            (season.id,),
+        ).fetchall()
+        mine = SimpleNamespace(id=teams[0]["home_team_id"])
+        other = teams[0]["away_team_id"]
+        factory.gm(team=mine, league=league, is_ai=False)
+        for _ in range(humans - 1):
+            factory.gm(league=league, is_ai=False)
+        # Human GMs are only counted once they have a user.
+        for g in db.execute(
+            "SELECT id FROM gms WHERE league_id = %s AND NOT is_ai", (league.id,)
+        ).fetchall():
+            db.execute(
+                "INSERT INTO users (id, session_token, display_name) VALUES (%s, %s, 'x')",
+                (g["id"], g["id"]),
+            )
+            db.execute("UPDATE gms SET user_id = id WHERE id = %s", (g["id"],))
+        dates = iter(["2025-04-01", "2025-04-02", "2025-04-03", "2025-04-04"])
+
+        def one_day(league_id, conn):
+            d = next(dates)
+            if d == "2025-04-01":
+                TradeRepository(conn).create_offer(
+                    league_id, season.id, other, mine.id, None, d, []
+                )
+            return {"game_date": d, "games_played": 1}
+
+        with patch.object(sim_next, "sim_next_day", side_effect=one_day) as day:
+            summary = sim_next.sim_days(league.id, db, 2)
+        return summary, day.call_count
+
+    def test_the_sim_stops_the_day_an_offer_arrives(self, db_conn, factory):
+        summary, days = self._sim(db_conn, factory)
+        assert days == 1
+        assert summary["trade_offer"] is True
+
+    def test_with_the_toggle_off_it_plays_on(self, db_conn, factory):
+        summary, days = self._sim(db_conn, factory, stop=False)
+        assert days == 2
+        assert summary["trade_offer"] is False
+
+    def test_multiplayer_sims_never_stop_for_offers(self, db_conn, factory):
+        summary, days = self._sim(db_conn, factory, humans=2)
+        assert days == 2

@@ -17,6 +17,8 @@
 # In leagues that trade, the period that reaches the trade deadline stops
 # after deadline day's games, and the next window is
 # TRADE_DEADLINE_WINDOW_MULTIPLIER times as long, for last-minute deals.
+# Before each period runs, trade offers between GMs whose time is up expire
+# and league votes that end close (src/api/services/trades.py).
 #
 # In the playoffs, a GM whose team didn't make it, or has been knocked out,
 # counts as away. With no GM left who isn't away, nobody has a decision to
@@ -33,12 +35,14 @@ from __future__ import annotations
 
 import logging
 
+from src.api.services import trades
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
 from src.api.services.sim_playoff import sim_playoff
 from src.db.locks import LeagueBusy, league_busy, league_lock
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -150,6 +154,7 @@ def advance_if_due(conn, league_id: str) -> bool:
                     now["sim_period"],
                     now["state"],
                 )
+                trades.close_due(conn, league_id, now["sim_period"])
                 at_deadline = _run_period(
                     conn, league_id, now["state"], now["sim_period_days"]
                 )
@@ -177,7 +182,7 @@ def status(conn, league_id: str, gm_id: str) -> dict:
     me = next((g for g in gms if g["id"] == gm_id), None)
     seconds_left = period["seconds_left"]
     league = {"mode": period["mode"], "state": period["state"]}
-    trades = trade_deadline.window(
+    window = trade_deadline.window(
         conn, league, SeasonRepository(conn).get_current_id_for_league(league_id)
     )
     return {
@@ -192,7 +197,11 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         else None,
         "simming": league_busy(conn, league_id),
         # The sim stopped after deadline day's games: last chance to trade.
-        "trade_deadline": trades["open"] and trades["deadline_day"],
+        "trade_deadline": window["open"] and window["deadline_day"],
+        # Offers and votes waiting on this GM, and whether they have news
+        # to fetch (e.g. an offer another GM just made them).
+        "trade_inbox": trades.inbox_count(conn, league_id, me or {}) if me else 0,
+        "has_news": NotificationRepository(conn).has_unseen(gm_id),
         "you_ready": bool(me and me["ready"]),
         "you_away": bool(me and me["is_away"] and not me["out"]),
         "you_out": bool(me and me["out"]),

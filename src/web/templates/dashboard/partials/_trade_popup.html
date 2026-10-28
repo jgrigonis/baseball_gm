@@ -1,0 +1,89 @@
+{# templates/dashboard/partials/_trade_popup.html
+   The card that pops up when a trade needs this GM: another team's offer or
+   counter, or a league vote on two other GMs' trade. It comes from the
+   GM's trade news (src/api/services/trades.py, POPUP_EVENTS), shown once;
+   "Later" leaves it on the Trades tab, counted by the tab's badge. #}
+<div id="trade-popup" class="trade-popup" role="dialog" aria-modal="true"
+     aria-labelledby="trade-popup-title" style="display:none;">
+  <div class="trade-popup-card">
+    <div class="trade-popup-title" id="trade-popup-title"></div>
+    <p class="trade-popup-text" id="trade-popup-text"></p>
+    <div class="trade-popup-actions">
+      <button type="button" class="btn btn-secondary" onclick="tradePopupLater()">Later</button>
+      <button type="button" class="btn btn-primary" id="trade-popup-go" onclick="tradePopupGo()"></button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var queue = [];
+  var TITLES = {offer: '📨 Trade offer', counter: '📨 Counteroffer', vote: '🗳 League vote'};
+  var ACTIONS = {offer: 'View offer', counter: 'View counter', vote: 'Vote'};
+
+  function next() {
+    var el = document.getElementById('trade-popup');
+    var t = queue[0];
+    if (!t) { el.style.display = 'none'; return; }
+    document.getElementById('trade-popup-title').textContent = TITLES[t.event] || '📨 Trade';
+    document.getElementById('trade-popup-text').textContent =
+      t.text + (queue.length > 1 ? '  (' + (queue.length - 1) + ' more)' : '');
+    document.getElementById('trade-popup-go').textContent = ACTIONS[t.event] || 'Open Trades';
+    el.style.display = 'flex';
+    document.getElementById('trade-popup-go').focus();
+  }
+
+  window.showTradePopup = function(t) {
+    if (queue.some(function(q) { return q.offer_id === t.offer_id && q.event === t.event; })) return;
+    queue.push(t);
+    if (queue.length === 1) next();
+  };
+  window.tradePopupLater = function() { queue.shift(); next(); };
+  window.tradePopupGo = function() {
+    queue = [];
+    next();
+    var link = document.getElementById('trade-badge');
+    link = link && link.closest('a');
+    if (!link || !window.htmx) { location.href = '/leagues/{{ league_id }}/trades'; return; }
+    if (link.classList.contains('active') && window.refreshActiveTab) { window.refreshActiveTab(); return; }
+    if (typeof setActiveTab === 'function') setActiveTab(link);
+    link.click();
+  };
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && queue.length) window.tradePopupLater();
+  });
+
+  window.setTradeBadge = function(n) {
+    var b = document.getElementById('trade-badge');
+    if (!b) return;
+    b.textContent = n;
+    b.style.display = n > 0 ? '' : 'none';
+  };
+  window.refreshTradeBadge = function() {
+    fetch('/leagues/{{ league_id }}/trades/inbox')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) { if (d) window.setTradeBadge(d.count); })
+      .catch(function() {});
+  };
+})();
+</script>
+<style>
+.tab-badge {
+  display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 4px;
+  background: var(--amber); color: var(--bg); border-radius: 8px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  line-height: 16px; text-align: center; vertical-align: 1px;
+}
+.trade-popup {
+  position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .55); padding: 16px;
+}
+.trade-popup-card {
+  width: 100%; max-width: 420px; padding: 16px 18px;
+  background: var(--bg-2); border: 1px solid var(--amber-dim);
+  box-shadow: 0 0 0 1px var(--amber-lo), 0 8px 32px rgba(0, 0, 0, .5);
+}
+.trade-popup-title { color: var(--amber); font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+.trade-popup-text { margin: 10px 0 16px; color: var(--text); font-size: 13px; line-height: 1.6; }
+.trade-popup-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.trade-popup-actions .btn { font-size: 11px; padding: 5px 12px; }
+</style>

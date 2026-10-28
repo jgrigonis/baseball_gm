@@ -84,6 +84,9 @@ async function schedSim(count) {
       // Every sim stops after the games of trade deadline day
       var atDeadline = !!d.trade_deadline;
       if (atDeadline) window._simStop = true;
+      // ...and, if the GM asked for it, the day a trade offer arrives
+      var newOffer = !!d.trade_offer;
+      if (newOffer) window._simStop = true;
 
       // Stop on injury — read from window._stopOnInjury which persists across tab re-renders
       if (hasNews && (count === 'injury')) {
@@ -138,6 +141,11 @@ async function schedSim(count) {
       if (atDeadline) {
         setSimMode(false);
         setStatus('⏰ Trade deadline · trades close once the next day is played · ' + remaining + ' games remaining');
+        return;
+      }
+      if (newOffer) {
+        setSimMode(false);
+        setStatus('📨 Trade offer · answer it on the Trades tab · ' + remaining + ' games remaining');
         return;
       }
       if (remaining <= 0) break;

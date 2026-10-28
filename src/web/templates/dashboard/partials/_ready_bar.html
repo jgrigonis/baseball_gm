@@ -1,7 +1,9 @@
 {# templates/dashboard/partials/_ready_bar.html
    Multiplayer leagues only. The league sims its next period when every GM
    who isn't away is ready, or (timer pace) when the Decision Window runs
-   out. In the playoffs, a GM whose team is out counts as away. Polls /sim/status, which also runs the period once it is due. #}
+   out. In the playoffs, a GM whose team is out counts as away. Polls /sim/status, which also runs the period once it is due.
+   The poll also brings this GM's news as soon as there is any (e.g. a trade
+   offer another GM just made them) and keeps the Trades tab's badge right. #}
 <div id="ready-bar"
      style="display:flex;align-items:center;gap:12px;padding:6px 24px;
             background:var(--bg-2);border-bottom:1px solid var(--border);
@@ -27,6 +29,16 @@ var last = null;       // last status from the server
 var deadline = null;   // Date.now() at which the window runs out
 var timer = null;
 var stopped = false;  // set once the league can't be reached
+var fetchingNews = false;
+
+function fetchNews() {
+  if (fetchingNews) return;
+  fetchingNews = true;
+  fetch(URL + '/news').then(function(r) { return r.json(); })
+    .then(function(n) { if (window.showInjuryNews) window.showInjuryNews(n); })
+    .catch(function() {})
+    .finally(function() { fetchingNews = false; });
+}
 
 function fmt(sec) {
   var m = Math.floor(sec / 60), s = sec % 60;
@@ -64,6 +76,7 @@ function render() {
       parts.push('next sim in ' + fmt(left));
     }
     parts.push('ready ' + readyCount + '/' + present.length);
+    if (d.trade_inbox) parts.push('📨 ' + d.trade_inbox + ' waiting on you in Trades');
     text.textContent = parts.join(' · ');
     waiting.textContent = d.waiting_on.length ? 'waiting on ' + d.waiting_on.join(', ') : '';
     if (d.you_out) waiting.textContent = "you're out of the playoffs" + (waiting.textContent ? ' · ' + waiting.textContent : '');
@@ -96,10 +109,12 @@ function apply(d) {
       return;
     }
     window.refreshActiveTab();
-    fetch(URL + '/news').then(function(r) { return r.json(); })
-      .then(function(n) { if (window.showInjuryNews) window.showInjuryNews(n); })
-      .catch(function() {});
+    fetchNews();
+  } else if (d.has_news && prev) {
+    // (The shell fetches the news on page load, before the first poll.)
+    fetchNews();
   }
+  if (window.setTradeBadge && d.trade_inbox !== undefined) window.setTradeBadge(d.trade_inbox);
   render();
 }
 

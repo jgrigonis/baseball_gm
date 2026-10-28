@@ -51,11 +51,13 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
         "new_injuries": [{"name": "Alice ", "days": 10, "is_pitcher": False}],
         "returned": [],
         "roster_moves": [],
+        "trades": [],
     }
     assert b == {
         "new_injuries": [],
         "returned": [{"name": "Bob ", "is_pitcher": False, "on_40man": False}],
         "roster_moves": [],
+        "trades": [],
     }
 
 
@@ -74,6 +76,7 @@ def test_news_is_shown_once(db_conn, factory):
         "new_injuries": [],
         "returned": [],
         "roster_moves": [],
+        "trades": [],
     }
 
 

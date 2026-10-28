@@ -14,11 +14,13 @@ import random
 
 import psycopg
 
+from src.api.services import trades
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
+from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -218,7 +220,10 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     Play the next ``count`` days of the regular season, or the rest of it
     when count is "season". When the season ends, sets up the playoffs.
     Stops early after the games of trade deadline day, in leagues that
-    trade, so every GM gets a last look. Returns a summary of what was played.
+    trade, so every GM gets a last look, and, in a single-player league that
+    asks for it (stop_for_trade_offers), when a trade offer arrives for the
+    GM. Playing past the deadline expires every open offer first. Returns a
+    summary of what was played.
     """
     season_repo = SeasonRepository(conn)
     game_repo = GameRepository(conn)
@@ -235,6 +240,16 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         else None
     )
     at_deadline = False
+    if deadline:
+        trades.close_at_deadline(conn, league_id)
+        conn.commit()
+    watch_offers = bool(
+        deadline
+        and league["stop_for_trade_offers"]
+        and ReadyCheckRepository(conn).human_gm_count(league_id) <= 1
+    )
+    offers_before = trades.offers_to_humans(conn, league_id) if watch_offers else 0
+    new_offer = False
 
     for _ in range(limit):
         day_result = sim_next_day(league_id, conn)
@@ -249,6 +264,9 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
             break
         if deadline and day_result["game_date"] == deadline:
             at_deadline = True
+            break
+        if watch_offers and trades.offers_to_humans(conn, league_id) > offers_before:
+            new_offer = True
             break
 
     new_remaining = game_repo.games_remaining(
@@ -265,4 +283,5 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         "games_remaining": new_remaining,
         "last_date": results[-1]["game_date"] if results else None,
         "trade_deadline": at_deadline,
+        "trade_offer": new_offer,
     }
