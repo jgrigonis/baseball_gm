@@ -61,6 +61,14 @@
       </label>
       <span class="mode-note">Off: only people with the join code can find it.</span>
     </div>
+    <div class="field" id="trade-vote-field">
+      <label for="trade-vote">Trade Vote</label>
+      <label class="toggle-row">
+        <input type="checkbox" name="trade_vote" id="trade-vote" value="true" checked>
+        <span>Other GMs vote on every trade between two GMs</span>
+      </label>
+      <span class="mode-note">A trade needs yes votes from more than half of them, and a GM who doesn't vote counts as a no. With only two GMs, trades go straight through.</span>
+    </div>
     <div style="display:flex;gap:8px;">
       <button type="submit" class="btn btn-primary">Create League →</button>
       <a href="/leagues/" class="btn btn-secondary">Cancel</a>
@@ -91,6 +99,8 @@
       if (input) input.value = presets[name];
     });
     speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
+    // Speed Blitz has no trades, so nothing to vote on.
+    document.getElementById('trade-vote-field').style.display = mode.value === 'speed_blitz' ? 'none' : '';
   }
   mode.addEventListener('change', applyModePresets);
   applyModePresets();

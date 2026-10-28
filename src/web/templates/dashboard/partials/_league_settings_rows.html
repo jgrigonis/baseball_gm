@@ -34,6 +34,15 @@
   ("Seasons", (info.season_number ~ " of " ~ info.num_seasons) if started and info.season_number else info.num_seasons,
    "Which season the league is in, out of how many it runs before it ends." if started and info.season_number
    else "How many seasons the league runs before it ends."),
+] %}
+{% if info.trades_enabled %}
+  {% set settings = settings + [
+    ("Trade vote", "On" if info.trade_vote else "Off",
+     "On: a trade between two GMs goes to a vote of the league's other GMs, and needs yes votes from more than half of them. A GM who doesn't vote counts as a no. With only two GMs there's nobody to vote, so trades go straight through." if info.trade_vote
+     else "Off: a trade between two GMs goes through as soon as they both agree."),
+  ] %}
+{% endif %}
+{% set settings = settings + [
   ("Visibility", "Public" if info.is_public else "Private",
    "Public: listed under Public Leagues, where anyone can join while it's in the lobby." if info.is_public
    else "Private: only people with the join code can find it."),

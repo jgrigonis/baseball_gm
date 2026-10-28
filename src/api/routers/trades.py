@@ -1,8 +1,8 @@
 # src/api/routers/trades.py
 #
-# The Trades tab: build an offer to an AI team, see its answer, and the
-# league's trade history. Rules and the AI's answer live in
-# src/api/services/trades.py.
+# The Trades tab: build an offer to another team, answer the offers made to
+# you, vote on other GMs' trades, and the league's trade history. Rules, the
+# AI's answer and the league vote live in src/api/services/trades.py.
 
 from __future__ import annotations
 
@@ -10,7 +10,12 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, Unpaused, User
-from src.api.schemas import TradeOfferRequest
+from src.api.schemas import (
+    TradeOfferRequest,
+    TradeSettingsRequest,
+    TradeVoteRequest,
+)
+from src.api.services.ready_check import is_multiplayer
 from src.api.services import trades
 from src.api.view_models.player_cards import (
     attach_injuries,
@@ -93,13 +98,29 @@ def trades_tab(
             "min_roster": MIN_PLAYING_ROSTER,
             "max_roster": MAX_PLAYING_ROSTER,
             "max_per_side": trades.MAX_PER_SIDE,
-            "my_offers": trade_repo.offers_from_team(league_id, team_id)
+            "my_offers": trade_repo.offers_for_team(league_id, team_id)
             if team_id
             else [],
+            "offers_to_me": trade_repo.offers_to_team(league_id, team_id)
+            if team_id
+            else [],
+            "my_votes": trade_repo.votes_for_gm(league_id, gm["id"])
+            if gm.get("id")
+            else [],
             "league_trades": trade_repo.history(league_id),
+            # Single player: whether sims stop when an offer arrives.
+            "solo": not is_multiplayer(db, league_id),
+            "stop_for_trade_offers": bool(league["stop_for_trade_offers"]),
         }
     )
     return tab_response(request, htmx, "dashboard/partials/trades.html", ctx)
+
+
+@router.get("/leagues/{league_id}/trades/inbox")
+def trade_inbox(league_id: str, db: DB, gm: GM):
+    """How many offers and votes are waiting on the GM: the Trades tab's
+    badge."""
+    return JSONResponse({"count": trades.inbox_count(db, league_id, gm)})
 
 
 @router.get("/leagues/{league_id}/trades/team/{team_id}")
@@ -124,9 +145,70 @@ def propose_trade(
     _active: ActiveLeague,
     _unpaused: Unpaused,
 ):
-    """Offer players to an AI team. Its answer comes straight back."""
+    """Offer players to another team, or counter an offer made to you. An AI
+    team's answer comes straight back; another GM's comes later."""
     try:
-        result = trades.propose(db, league_id, gm, body.to_team_id, body.give, body.get)
+        result = trades.propose(
+            db,
+            league_id,
+            gm,
+            body.to_team_id,
+            body.give,
+            body.get,
+            counter_of=body.counter_of,
+        )
     except trades.TradeError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/trades/{offer_id}/vote")
+def vote_on_trade(
+    league_id: str,
+    offer_id: str,
+    body: TradeVoteRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """Your vote on a trade between two other GMs. (Before the route
+    below, which would take "vote" for an action.)"""
+    try:
+        return JSONResponse(trades.vote(db, league_id, gm, offer_id, body.yes))
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+
+
+@router.post("/leagues/{league_id}/trades/{offer_id}/{action}")
+def answer_trade(
+    league_id: str,
+    offer_id: str,
+    action: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """Accept or reject an offer made to you, or withdraw one you made."""
+    if action not in ("accept", "reject", "withdraw"):
+        return JSONResponse({"detail": "Unknown action."}, status_code=404)
+    try:
+        return JSONResponse(trades.respond(db, league_id, gm, offer_id, action))
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+
+
+@router.post("/leagues/{league_id}/trade-settings")
+def trade_settings(
+    league_id: str, body: TradeSettingsRequest, db: DB, gm: GM, _active: ActiveLeague
+):
+    """Single player: whether sims stop when a trade offer arrives."""
+    if is_multiplayer(db, league_id):
+        return JSONResponse(
+            {"detail": "Only single-player leagues stop for offers."},
+            status_code=422,
+        )
+    LeagueRepository(db).set_stop_for_trade_offers(league_id, body.stop_for_offers)
+    db.commit()
+    return JSONResponse({"stop_for_offers": body.stop_for_offers})

@@ -5,6 +5,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.api.services import trades
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
 from src.api.view_models.league_info import league_info
@@ -206,6 +207,9 @@ def _shell_ctx(
                 and trades_enabled_for(league["mode"])
             ):
                 tabs.insert(tabs.index("roster") + 1, "trades")
+                if not ctx["is_viewer"]:
+                    # Offers and votes waiting on this GM: the tab's badge.
+                    ctx["trade_inbox"] = trades.inbox_count(db, league_id, gm)
             if ctx["is_viewer"]:
                 tabs = _viewer_tabs(tabs, draft_complete)
             # Now we have the state, so calculate visibility automatically

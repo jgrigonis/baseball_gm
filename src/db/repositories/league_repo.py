@@ -29,9 +29,10 @@ class LeagueRepository:
             """INSERT INTO leagues
                 (id, name, join_code, mode, num_teams, decision_window_sec,
                 draft_window_sec, lineup_window_sec, reentry_enabled, pace_control,
-                sim_period_days, num_seasons, is_public, is_practice, state,
-                commissioner_gm_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
+                sim_period_days, num_seasons, is_public, is_practice, trade_vote,
+                state, commissioner_gm_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -47,6 +48,7 @@ class LeagueRepository:
                 settings.get("num_seasons", 10),
                 settings.get("is_public", False),
                 settings.get("is_practice", False),
+                settings.get("trade_vote", True),
             ),
         )
 
@@ -322,6 +324,12 @@ class LeagueRepository:
         self.conn.execute(
             f"UPDATE leagues SET {set_clause} WHERE id = %s",
             [*(settings[c] for c in cols), league_id],
+        )
+
+    def set_stop_for_trade_offers(self, league_id: str, on: bool) -> None:
+        self.conn.execute(
+            "UPDATE leagues SET stop_for_trade_offers = %s WHERE id = %s",
+            (on, league_id),
         )
 
     def set_paused(self, league_id: str, paused: bool) -> None:

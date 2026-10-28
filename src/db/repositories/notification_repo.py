@@ -14,6 +14,15 @@ class NotificationRepository:
             (gm_id, kind, Jsonb(payload)),
         )
 
+    def has_unseen(self, gm_id: str) -> bool:
+        return bool(
+            self.conn.execute(
+                "SELECT 1 FROM gm_notifications"
+                " WHERE gm_id = %s AND seen_at IS NULL LIMIT 1",
+                (gm_id,),
+            ).fetchone()
+        )
+
     def take_unseen(self, gm_id: str) -> list[dict]:
         """Return the GM's unseen news, oldest first, and mark it seen."""
         rows = self.conn.execute(

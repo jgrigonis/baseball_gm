@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS leagues (
     is_paused            BOOLEAN NOT NULL DEFAULT FALSE, -- an admin stopped it moving on
     is_practice          BOOLEAN NOT NULL DEFAULT FALSE, -- a solo tutorial league
     coach_done           TEXT[] NOT NULL DEFAULT '{{}}',   -- coach steps done (src/api/services/coach.py)
+    trade_vote           BOOLEAN NOT NULL DEFAULT TRUE,  -- other GMs vote on trades between GMs
+    stop_for_trade_offers BOOLEAN NOT NULL DEFAULT TRUE, -- single player: sims stop for an offer
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -233,7 +235,7 @@ CREATE TABLE IF NOT EXISTS gms (
 CREATE TABLE IF NOT EXISTS gm_notifications (
     id         SERIAL PRIMARY KEY,
     gm_id      TEXT NOT NULL,
-    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster')),
+    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster', 'trade')),
     payload    JSONB NOT NULL,
     created_at TEXT NOT NULL DEFAULT (NOW()),
     seen_at    TEXT,                  -- NULL until shown to the GM
@@ -622,20 +624,24 @@ CREATE TABLE IF NOT EXISTS trade_offers (
     from_team_id TEXT NOT NULL,
     to_team_id   TEXT NOT NULL,
     from_gm_id   TEXT,
+    parent_id    TEXT,              -- the offer this one counters
     status       TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
-                     'pending', 'accepted', 'rejected', 'countered',
-                     'withdrawn', 'expired', 'void'
+                     'pending', 'pending_vote', 'accepted', 'rejected',
+                     'countered', 'withdrawn', 'expired', 'void', 'voted_down'
                  )),
     reason       TEXT,              -- the answer shown to the proposer
     created_on   TEXT NOT NULL,     -- league date (ISO)
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     decided_at   TIMESTAMPTZ,
+    expires_period INTEGER,         -- an offer to a GM: expires before this period runs
+    vote_period  INTEGER,           -- pending_vote: the vote closes before this period runs
 
     FOREIGN KEY (league_id)    REFERENCES leagues(id) ON DELETE CASCADE,
     FOREIGN KEY (season_id)    REFERENCES seasons(id) ON DELETE CASCADE,
     FOREIGN KEY (from_team_id) REFERENCES teams(id)   ON DELETE CASCADE,
     FOREIGN KEY (to_team_id)   REFERENCES teams(id)   ON DELETE CASCADE,
-    FOREIGN KEY (from_gm_id)   REFERENCES gms(id)     ON DELETE SET NULL
+    FOREIGN KEY (from_gm_id)   REFERENCES gms(id)     ON DELETE SET NULL,
+    FOREIGN KEY (parent_id)    REFERENCES trade_offers(id) ON DELETE SET NULL
 );
 
 -- The players in an offer. from_team_id is the side giving the player up.
@@ -649,6 +655,21 @@ CREATE TABLE IF NOT EXISTS trade_offer_items (
     FOREIGN KEY (offer_id)     REFERENCES trade_offers(id) ON DELETE CASCADE,
     FOREIGN KEY (player_id)    REFERENCES players(id)      ON DELETE CASCADE,
     FOREIGN KEY (from_team_id) REFERENCES teams(id)        ON DELETE CASCADE
+);
+
+-- The league's vote on a trade between two GMs: one row per voter (every
+-- other GM in the league, not away, when the vote opened). vote is NULL until
+-- they vote, and a missing vote counts as no.
+CREATE TABLE IF NOT EXISTS trade_votes (
+    offer_id  TEXT NOT NULL,
+    gm_id     TEXT NOT NULL,
+    vote      BOOLEAN,
+    voted_at  TIMESTAMPTZ,
+
+    PRIMARY KEY (offer_id, gm_id),
+
+    FOREIGN KEY (offer_id) REFERENCES trade_offers(id) ON DELETE CASCADE,
+    FOREIGN KEY (gm_id)    REFERENCES gms(id)          ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS gm_lineup_preferences (
@@ -1002,6 +1023,7 @@ CREATE INDEX IF NOT EXISTS idx_trade_offers_from_team ON trade_offers(from_team_
 CREATE INDEX IF NOT EXISTS idx_trade_offers_to_team   ON trade_offers(to_team_id);
 CREATE INDEX IF NOT EXISTS idx_trade_offers_from_gm   ON trade_offers(from_gm_id);
 CREATE INDEX IF NOT EXISTS idx_trade_offer_items_team ON trade_offer_items(from_team_id);
+CREATE INDEX IF NOT EXISTS idx_trade_votes_gm         ON trade_votes(gm_id);
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 

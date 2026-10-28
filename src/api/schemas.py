@@ -220,6 +220,15 @@ class TradeOfferRequest(BaseModel):
     to_team_id: str
     give: list[str] = []  # player ids from the GM's own team
     get: list[str] = []  # player ids from to_team_id
+    counter_of: str | None = None  # the offer to the GM this one answers
+
+
+class TradeVoteRequest(BaseModel):
+    yes: bool
+
+
+class TradeSettingsRequest(BaseModel):
+    stop_for_offers: bool
 
 
 class DraftPreferencesRequest(BaseModel):

@@ -141,6 +141,7 @@ def new_league(
     sim_period_days: int = Form(3),
     num_seasons: int = Form(10),
     is_public: bool = Form(False),
+    trade_vote: bool = Form(False),
 ):
     get_mode(mode)  # rejects an unknown mode
     if pace_control not in ("timer", "confirmed"):
@@ -173,6 +174,7 @@ def new_league(
             "sim_period_days": sim_period_days,
             "num_seasons": num_seasons,
             "is_public": is_public,
+            "trade_vote": trade_vote,
         },
     )
     # 2. GM setup

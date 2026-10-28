@@ -4,7 +4,8 @@
 # GMs only fill the empty teams when the league starts. Once the league has
 # started, their team carries on under AI control: the GM row becomes an AI
 # GM, so the team keeps its draft picks, results and standings, and the
-# ready-check and injury news stop counting it.
+# ready-check and injury news stop counting it. Their open trade offers are
+# called off, and they drop out of the league's trade votes.
 #
 # A leaving commissioner hands the role to the human GM who has been in the
 # league longest. When the last person leaves, the league is deleted with
@@ -15,6 +16,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from src.api.services import trades
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -40,6 +42,9 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
         if league["state"] == "lobby":
             gm_repo.delete_gm(gm_id)
         else:
+            gm = gm_repo.get_by_id(gm_id)
+            if gm and gm["team_id"]:
+                trades.team_leaving(conn, league_id, gm["team_id"], gm_id)
             gm_repo.hand_team_to_ai(gm_id)
 
         deleted = not gm_repo.has_people(league_id)

@@ -94,3 +94,54 @@ def test_a_team_with_fewer_than_25_players_can_still_save(client_for):
         f"/leagues/{league.id}/roster/save", json={"forty_man": [p.id for p in roster]}
     )
     assert r.status_code == 200
+
+
+def test_single_player_gets_the_stop_for_offers_toggle(client_for, db_conn):
+    client, league, _, _ = client_for("blitz")
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert "Stop the sim when a team offers me a trade" in html
+    r = client.post(
+        f"/leagues/{league.id}/trade-settings", json={"stop_for_offers": False}
+    )
+    assert r.status_code == 200
+    assert not db_conn.execute(
+        "SELECT stop_for_trade_offers FROM leagues WHERE id = %s", (league.id,)
+    ).fetchone()["stop_for_trade_offers"]
+
+
+def test_an_offer_to_you_shows_with_its_answers_and_a_badge(
+    client_for, db_conn, factory
+):
+    from src.db.repositories.trade_repo import TradeRepository
+
+    client, league, theirs, roster = client_for("blitz", players=1)
+    other = factory.rated_player(theirs, league, 60)
+    mine = db_conn.execute(
+        "SELECT team_id FROM team_players WHERE player_id = %s", (roster[0].id,)
+    ).fetchone()["team_id"]
+    season_id = db_conn.execute(
+        "SELECT season_id FROM games WHERE home_team_id = %s LIMIT 1", (mine,)
+    ).fetchone()["season_id"]
+    TradeRepository(db_conn).create_offer(
+        league.id,
+        season_id,
+        theirs.id,
+        mine,
+        None,
+        "2025-04-01",
+        [(other.id, theirs.id), (roster[0].id, mine)],
+    )
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert "Offers to you" in html
+    for button in ("Accept", "Counter", "Reject"):
+        assert f">{button}</button>" in html
+    assert 'id="trade-badge"' in html
+    assert client.get(f"/leagues/{league.id}/trades/inbox").json() == {"count": 1}
+
+
+def test_trades_with_gm_teams_are_offered(client_for, db_conn):
+    client, league, theirs, _ = client_for("blitz")
+    db_conn.execute("UPDATE gms SET is_ai = FALSE WHERE team_id = %s", (theirs.id,))
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert "AI Club (GM)" in html
+    assert "coming soon" not in html

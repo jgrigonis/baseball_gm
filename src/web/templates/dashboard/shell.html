@@ -230,6 +230,9 @@ window.closeGamePanel = function() {
      hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
      onclick="setActiveTab(this)">
     {{ icons.get(tab,'') }} {{ labels.get(tab, tab) }}
+    {% if tab == 'trades' and not is_viewer %}<span class="tab-badge" id="trade-badge"
+      title="Offers and votes waiting on you"
+      {% if not trade_inbox %}style="display:none;"{% endif %}>{{ trade_inbox or 0 }}</span>{% endif %}
   </a>
   {% endif %}
   {% endfor %}
@@ -259,6 +262,7 @@ window.closeGamePanel = function() {
 </div>
 
 <div id="player-panel-mount"></div>
+{% if not is_viewer and 'trades' in (visible_tabs or []) %}{% include "dashboard/partials/_trade_popup.html" %}{% endif %}
 {% include "dashboard/partials/game_panel.html" %}
 {% if not is_viewer %}{% include "dashboard/partials/_tab_tips.html" %}{% endif %}
 {% if coach %}{% include "dashboard/partials/_coach_panel.html" %}{% endif %}
@@ -340,8 +344,20 @@ function showInjuryNews(d) {
                        : `⇣ ${m.name} sent down, 40-man was full`).join('  ');
     injDest = 'roster';
   }
+  // Only injury and roster news stop a sim that runs until an injury.
+  var hadInjuryNews = !!injNews;
+  // Trade news: offers and votes pop up, answers go in the news bar.
+  if (d.trades && d.trades.length > 0) {
+    var tradeNews = d.trades.filter(t => !t.popup).map(t => `📨 ${t.text}`).join('  ');
+    if (tradeNews) {
+      if (!injNews) injDest = 'trades';
+      injNews += (injNews ? '  ' : '') + tradeNews;
+    }
+    d.trades.filter(t => t.popup).forEach(t => window.showTradePopup && window.showTradePopup(t));
+    if (window.refreshTradeBadge) window.refreshTradeBadge();
+  }
   setInjuryNews(injNews, injDest);  // clears if empty, shows if not
-  return !!injNews;
+  return hadInjuryNews;
 }
 window.showInjuryNews = showInjuryNews;
 
@@ -357,9 +373,9 @@ function injuryNewsClick() {
   var el = document.getElementById('sim-injury-news');
   var dest = el ? el.dataset.dest : 'batting';
   var links = document.querySelectorAll('.tab-link');
-  if (dest === 'roster') {
+  if (dest === 'roster' || dest === 'trades') {
     for (var i = 0; i < links.length; i++) {
-      if ((links[i].getAttribute('hx-get') || '').indexOf('/roster') !== -1) {
+      if ((links[i].getAttribute('hx-get') || '').indexOf('/' + dest) !== -1) {
         setActiveTab(links[i]); links[i].click(); break;
       }
     }

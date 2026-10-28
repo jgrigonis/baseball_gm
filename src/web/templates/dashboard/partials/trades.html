@@ -1,7 +1,12 @@
 {# templates/dashboard/partials/trades.html
-   The Trades tab: pick players from your organization and another team's,
-   send the offer, and the AI team answers at once. Below: your recent offers
-   and every trade in the league. Rules: src/api/services/trades.py. #}
+   The Trades tab: offers and votes waiting on you, then the builder (pick
+   players from your organization and another team's and send the offer: an
+   AI team answers at once, another GM later). Below: your recent offers and
+   every trade in the league. Rules: src/api/services/trades.py. #}
+{% macro plist(players) -%}
+{% for p in players %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+{%- endmacro %}
+{% set status_labels = {'pending': 'waiting', 'pending_vote': 'league vote', 'voted_down': 'voted down'} %}
 <div class="content-inner tab-fade" id="trades-page">
 
   <div class="page-header">
@@ -18,6 +23,58 @@
       {% endif %}
     </span>
   </div>
+
+  {% if trade_window.open and solo %}
+  <label class="tr-toggle">
+    <input type="checkbox" {% if stop_for_trade_offers %}checked{% endif %} onchange="trStopForOffers(this.checked)">
+    Stop the sim when a team offers me a trade
+  </label>
+  {% endif %}
+
+  {% if offers_to_me %}
+  <div class="card tr-inbox">
+    <div class="card-header"><span class="card-title">📨 Offers to you</span>
+      <span class="tr-hint">Answer before the next sim period ends, or the offer expires</span></div>
+    <div class="card-body">
+      {% for o in offers_to_me %}
+      <div class="tr-offer" id="offer-{{ o.id }}">
+        <div class="tr-offer-text">
+          <div>{% if o.parent_id %}<span class="tr-tag">counter</span>{% endif %}
+            The <strong>{{ o.from_name }}</strong> give {{ plist(o.sent) }}</div>
+          <div>You give {{ plist(o.received) }}</div>
+        </div>
+        <div class="tr-offer-btns">
+          <button class="btn btn-primary" onclick="trAnswer('{{ o.id }}', 'accept')">Accept</button>
+          <button class="btn btn-secondary" onclick='trCounter({{ {"id": o.id, "team": o.from_team_id, "theirs": o.sent | map(attribute="player_id") | list, "mine": o.received | map(attribute="player_id") | list} | tojson }})'>Counter</button>
+          <button class="btn btn-secondary" onclick="trAnswer('{{ o.id }}', 'reject')">Reject</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if my_votes %}
+  <div class="card tr-inbox">
+    <div class="card-header"><span class="card-title">🗳 League votes</span>
+      <span class="tr-hint">A trade needs yes votes from more than half the voters. Not voting counts as no.</span></div>
+    <div class="card-body">
+      {% for o in my_votes %}
+      <div class="tr-offer">
+        <div class="tr-offer-text">
+          <div>The <strong>{{ o.from_name }}</strong> get {{ plist(o.received) }}</div>
+          <div>The <strong>{{ o.to_name }}</strong> get {{ plist(o.sent) }}</div>
+          <div class="tr-reason">{{ o.tally.yes }} yes · {{ o.tally.no }} no · {{ o.tally.voters }} {{ 'voter' if o.tally.voters == 1 else 'voters' }}{% if o.my_vote is not none %} · you voted {{ 'yes' if o.my_vote else 'no' }}{% endif %}</div>
+        </div>
+        <div class="tr-offer-btns">
+          <button class="btn {{ 'btn-primary' if o.my_vote else 'btn-secondary' }}" onclick="trVote('{{ o.id }}', true)">Yes</button>
+          <button class="btn {{ 'btn-primary' if o.my_vote == false else 'btn-secondary' }}" onclick="trVote('{{ o.id }}', false)">No</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   {% if trade_window.open %}
   <div class="trade-note">
@@ -42,8 +99,8 @@
         <select id="tr-team" class="tr-team" onchange="trLoadTeam(this.value)">
           <option value="">Pick a team…</option>
           {% for t in trade_teams %}
-          <option value="{{ t.id }}" {% if t.human %}disabled{% endif %}>
-            {{ t.name }}{% if t.human %} (GM trades coming soon){% endif %}
+          <option value="{{ t.id }}" data-human="{{ 1 if t.human else 0 }}">
+            {{ t.name }}{% if t.human %} (GM){% endif %}
           </option>
           {% endfor %}
         </select>
@@ -55,8 +112,9 @@
     </div>
   </div>
 
-  <div class="trade-bar">
+  <div class="trade-bar" id="tr-bar">
     <div id="tr-summary" class="tr-summary">Pick up to {{ max_per_side }} players a side.</div>
+    <button class="btn btn-secondary" id="tr-cancel-counter" onclick="trCancelCounter()" style="display:none;">Cancel counter</button>
     <button class="btn btn-primary" id="tr-send" onclick="trSend()" disabled>Propose trade</button>
   </div>
   <div id="tr-result" class="tr-result" style="display:none;"></div>
@@ -70,15 +128,25 @@
         <table class="data-table tr-table">
           <tbody>
           {% for o in my_offers %}
+          {% set mine = o.from_team_id == team_id %}
           <tr>
             <td class="tr-date">{{ o.created_on }}</td>
             <td>
+              {% if mine %}
               <div>To the <strong>{{ o.to_name }}</strong>:
                 {{ o.sent | map(attribute='last_name') | join(', ') }}
                 for {{ o.received | map(attribute='last_name') | join(', ') }}</div>
-              {% if o.reason and o.status != 'accepted' %}<div class="tr-reason">“{{ o.reason }}”</div>{% endif %}
+              {% else %}
+              <div>From the <strong>{{ o.from_name }}</strong>:
+                {{ o.sent | map(attribute='last_name') | join(', ') }}
+                for {{ o.received | map(attribute='last_name') | join(', ') }}</div>
+              {% endif %}
+              {% if o.status == 'pending_vote' and o.tally %}<div class="tr-reason">League vote: {{ o.tally.yes }} yes, {{ o.tally.no }} no of {{ o.tally.voters }}</div>
+              {% elif o.reason and o.status != 'accepted' %}<div class="tr-reason">“{{ o.reason }}”</div>{% endif %}
             </td>
-            <td class="tr-status tr-{{ o.status }}">{{ o.status }}</td>
+            <td class="tr-status tr-{{ o.status }}">{{ status_labels.get(o.status, o.status) }}
+              {% if mine and o.status == 'pending' and trade_window.open %}<br><button class="tr-link" onclick="trAnswer('{{ o.id }}', 'withdraw')">withdraw</button>{% endif %}
+            </td>
           </tr>
           {% endfor %}
           </tbody>
@@ -126,6 +194,7 @@ var SIDES = {
   theirs: {players: [], picked: new Set(), filter: 'all', el: 'tr-theirs', team: ''},
 };
 var FILTERS = [['all', 'All'], ['40', '40-man'], ['org', 'Org'], ['hit', 'Hit'], ['pit', 'Pit']];
+var COUNTER = null;  // the offer to you this one counters
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
@@ -201,6 +270,8 @@ function summarize() {
                    '  <span class="tr-k">You get</span> ' + (esc(get.join(', ')) || '—');
   }
   btn.disabled = !give.length || !get.length || !SIDES.theirs.team;
+  btn.textContent = COUNTER ? 'Send counter' : 'Propose trade';
+  document.getElementById('tr-cancel-counter').style.display = COUNTER ? '' : 'none';
 }
 
 window.trFilter = function(key, f) { SIDES[key].filter = f; render(key); };
@@ -217,9 +288,10 @@ window.trPick = function(key, pid, on) {
   summarize();
 };
 
-window.trLoadTeam = function(teamId) {
+window.trLoadTeam = function(teamId, picked) {
   var side = SIDES.theirs;
-  side.team = teamId; side.picked = new Set(); side.players = [];
+  if (!picked) COUNTER = null;  // picking a team by hand starts a new offer
+  side.team = teamId; side.picked = new Set(picked || []); side.players = [];
   var el = document.getElementById(side.el);
   if (!teamId) { el.innerHTML = '<div class="tr-empty">Pick a team to see their players.</div>'; summarize(); return; }
   el.innerHTML = '<div class="tr-empty">Loading…</div>';
@@ -227,6 +299,78 @@ window.trLoadTeam = function(teamId) {
     .then(function(r) { return r.json(); })
     .then(function(d) { side.players = d.players || []; render('theirs'); summarize(); })
     .catch(function() { el.innerHTML = '<div class="tr-empty">Couldn\'t load that team.</div>'; });
+};
+
+// Counter an offer to you: the builder starts from it, with their team picked.
+window.trCounter = function(o) {
+  COUNTER = o.id;
+  document.getElementById('tr-team').value = o.team;
+  SIDES.mine.picked = new Set(o.mine);
+  render('mine');
+  trLoadTeam(o.team, o.theirs);
+  showResult('Change the players on either side, then send your counter. ' +
+             'Their offer is replaced by yours.', 'warn');
+  document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+window.trCancelCounter = function() {
+  COUNTER = null;
+  document.getElementById('tr-result').style.display = 'none';
+  summarize();
+};
+
+function post(path, body) {
+  return fetch(URL + path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body || {}),
+  }).then(function(r) { return r.json().then(function(d) { return [r.ok, d]; }); });
+}
+
+// Reload the tab to show the new rosters and offers, then the message.
+function reloadWith(msg) {
+  window._tradeResult = msg;
+  if (window.refreshTradeBadge) window.refreshTradeBadge();
+  if (window.htmx && window.refreshActiveTab) { window.refreshActiveTab(); return; }
+  try { sessionStorage.setItem('tradeResult', msg); } catch (e) {}
+  location.reload();
+}
+
+function arrivedMsg(arrived, count) {
+  var msg = '✓ Trade done. ' + esc(arrived.join(', ')) +
+    (arrived.length > 1 ? ' join' : ' joins') + ' your organization. ' +
+    'Move ' + (arrived.length > 1 ? 'them' : 'him') + ' to your 40-man on the Roster tab.';
+  if (count < {{ min_roster }})
+    msg += ' Your 40-man is down to ' + count + ': call up at least ' +
+           ({{ min_roster }} - count) + ' before your next game, or your best healthy players will be.';
+  return msg;
+}
+
+window.trAnswer = function(offerId, action) {
+  post('/' + encodeURIComponent(offerId) + '/' + action).then(function(res) {
+    var ok = res[0], d = res[1];
+    if (!ok) { showResult('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad'); return; }
+    if (d.status === 'accepted') return reloadWith(arrivedMsg(d.arrived, d.playing_count));
+    if (d.status === 'pending_vote')
+      return reloadWith('✓ Accepted. The trade goes to a vote of the league\'s other ' +
+        (d.voters > 1 ? d.voters + ' GMs' : 'GM') + ' before the next sim.');
+    reloadWith(d.status === 'withdrawn' ? 'Offer withdrawn.' : 'Offer turned down.');
+  }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
+};
+
+window.trVote = function(offerId, yes) {
+  post('/' + encodeURIComponent(offerId) + '/vote', {yes: yes}).then(function(res) {
+    var ok = res[0], d = res[1];
+    if (!ok) { showResult('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad'); return; }
+    var done = {accepted: ' The trade passed.', voted_down: ' The trade was voted down.'}[d.status] || '';
+    reloadWith('✓ You voted ' + (yes ? 'yes' : 'no') + '.' + done);
+  }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
+};
+
+window.trStopForOffers = function(on) {
+  fetch('/leagues/{{ league_id }}/trade-settings', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({stop_for_offers: on}),
+  }).catch(function() {});
 };
 
 function showResult(html, kind) {
@@ -240,40 +384,32 @@ function showResult(html, kind) {
 window.trSend = function() {
   var btn = document.getElementById('tr-send');
   var teamSel = document.getElementById('tr-team');
-  var teamName = teamSel.options[teamSel.selectedIndex].text.trim();
+  var opt = teamSel.options[teamSel.selectedIndex];
+  var teamName = opt.text.replace(/\s*\(GM\)$/, '').trim();
+  var human = opt.dataset.human === '1';
   btn.disabled = true;
-  btn.textContent = 'Waiting for an answer…';
-  fetch(URL, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      to_team_id: SIDES.theirs.team,
-      give: Array.from(SIDES.mine.picked),
-      get: Array.from(SIDES.theirs.picked),
-    }),
-  }).then(function(r) { return r.json().then(function(d) { return [r.ok, d]; }); })
-    .then(function(res) {
+  btn.textContent = human ? 'Sending…' : 'Waiting for an answer…';
+  post('', {
+    to_team_id: SIDES.theirs.team,
+    give: Array.from(SIDES.mine.picked),
+    get: Array.from(SIDES.theirs.picked),
+    counter_of: COUNTER,
+  }).then(function(res) {
       var ok = res[0], d = res[1];
-      btn.textContent = 'Propose trade';
       if (!ok) { showResult('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad'); summarize(); return; }
+      if (d.pending) {
+        COUNTER = null;
+        return reloadWith('✓ Offer sent to the ' + esc(teamName) + '. Their GM has until the end ' +
+                          'of the next sim period to answer. You\'ll hear back in the news bar.');
+      }
       if (!d.accepted) {
         showResult('✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”', 'warn');
         summarize();
         return;
       }
-      var msg = '✓ Trade done. ' + esc(d.arrived.join(', ')) +
-        (d.arrived.length > 1 ? ' join' : ' joins') + ' your organization. ' +
-        'Move ' + (d.arrived.length > 1 ? 'them' : 'him') + ' to your 40-man on the Roster tab.';
-      if (d.playing_count < {{ min_roster }})
-        msg += ' Your 40-man is down to ' + d.playing_count + ': call up at least ' +
-               ({{ min_roster }} - d.playing_count) + ' before your next game, or your best healthy players will be.';
-      // Reload the tab to show the new rosters, then the message.
-      window._tradeResult = msg;
-      if (window.htmx && window.refreshActiveTab) { window.refreshActiveTab(); return; }
-      try { sessionStorage.setItem('tradeResult', msg); } catch (e) {}
-      location.reload();
+      reloadWith(arrivedMsg(d.arrived, d.playing_count));
     })
-    .catch(function() { btn.textContent = 'Propose trade'; showResult('✗ Couldn\'t reach the server.', 'bad'); summarize(); });
+    .catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); summarize(); });
 };
 
 render('mine');
@@ -327,9 +463,28 @@ if (done) { showResult(done, 'good'); window._tradeResult = null; }
 #trades-page .tr-reason { color: var(--text-dim); font-style: italic; margin-top: 2px; }
 #trades-page .tr-status { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; text-align: right; }
 #trades-page .tr-accepted { color: var(--green); }
-#trades-page .tr-rejected { color: var(--red); }
+#trades-page .tr-rejected, #trades-page .tr-voted_down, #trades-page .tr-void { color: var(--red); }
+#trades-page .tr-pending, #trades-page .tr-pending_vote { color: var(--amber); }
+#trades-page .tr-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 12px;
+  color: var(--text-dim); cursor: pointer; }
+#trades-page .tr-toggle input { width: auto; margin: 0; accent-color: var(--amber); }
+#trades-page .tr-inbox { margin-bottom: 14px; border-color: var(--amber-dim); }
+#trades-page .tr-hint { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+#trades-page .tr-offer { display: flex; align-items: center; gap: 12px; padding: 8px 4px;
+  border-bottom: 1px solid var(--border); font-size: 12px; }
+#trades-page .tr-offer:last-child { border-bottom: none; }
+#trades-page .tr-offer-text { flex: 1; min-width: 0; line-height: 1.6; }
+#trades-page .tr-offer-text a { color: var(--sky); text-decoration: none; }
+#trades-page .tr-offer-btns { display: flex; gap: 6px; flex: none; }
+#trades-page .tr-offer-btns .btn { font-size: 11px; padding: 4px 10px; }
+#trades-page .tr-tag { font-family: var(--font-mono); font-size: 10px; color: var(--amber); border: 1px solid var(--amber-dim);
+  padding: 0 4px; margin-right: 6px; text-transform: uppercase; }
+#trades-page .tr-link { background: none; border: none; padding: 0; color: var(--sky); cursor: pointer;
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
 @media (max-width: 760px) {
   #trades-page .grid-2 { grid-template-columns: 1fr; }
   #trades-page .trade-bar { flex-direction: column; align-items: stretch; }
+  #trades-page .tr-offer { flex-direction: column; align-items: stretch; }
+  #trades-page .tr-hint { margin-left: 0; }
 }
 </style>
