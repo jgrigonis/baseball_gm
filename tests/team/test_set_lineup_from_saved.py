@@ -77,7 +77,8 @@ class TestSetLineupFromSaved:
         pitcher = make_player("pitcher")
         team = make_team(players + [pitcher], pitcher=pitcher)
 
-        saved = [saved_slot(f"p{i}", i, "dh") for i in range(1, 10)]
+        positions = ["c", "1b", "2b", "3b", "ss", "lf", "cf", "rf", "dh"]
+        saved = [saved_slot(f"p{i}", i, pos) for i, pos in enumerate(positions, 1)]
         available = players  # pitcher excluded by _set_lineup_from_saved
 
         team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
@@ -198,6 +199,62 @@ class TestSetLineupFromSaved:
         assert len(pids) == len(set(pids)), f"Duplicates: {pids}"
         for pid in [f"inj{i}" for i in range(4)]:
             assert pid not in pids, f"Injured player {pid} in lineup"
+
+    def test_traded_player_slot_missing_fills_that_position(self):
+        """A trade deletes the traded player's saved slot outright, leaving 8
+        saved slots with no 3b. The hole must be filled at 3b specifically —
+        the sim crashes if any defensive position is uncovered."""
+        positions = ["c", "1b", "2b", "ss", "lf", "cf", "rf", "dh"]  # no 3b
+        starters = [make_player(f"s{i}") for i in range(len(positions))]
+        bench_c = make_player("bench_c", ratings={"c": 90, "3b": 10})
+        bench_3b = make_player("bench_3b", ratings={"c": 10, "3b": 80})
+        pitcher = make_player("pitcher")
+        team = make_team(starters + [bench_c, bench_3b, pitcher], pitcher=pitcher)
+
+        saved = [
+            saved_slot(p.id, order, pos)
+            for order, (p, pos) in enumerate(zip(starters, positions), start=1)
+        ]
+        available = starters + [bench_c, bench_3b]
+
+        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+
+        by_pos = {s.position: s.player.id for s in team.lineup}
+        assert len(team.lineup) == 9
+        assert set(by_pos) == set(positions) | {"3b"}
+        assert by_pos["3b"] == "bench_3b"
+        # The GM's saved starters keep their spots
+        for p, pos in zip(starters, positions):
+            assert by_pos[pos] == p.id
+
+    def test_set_lineup_covers_every_position_after_trade(self):
+        """End to end through set_lineup: every position the game asks for
+        (team.current_third_baseman etc.) resolves instead of raising."""
+        positions = ["c", "1b", "2b", "ss", "lf", "cf", "rf", "dh"]
+        starters = [make_player(f"s{i}") for i in range(len(positions))]
+        bench = [make_player(f"b{i}", ratings={"3b": 50 + i}) for i in range(3)]
+        pitcher = make_player("pitcher")
+        team = make_team(starters + bench + [pitcher])
+        team._ensure_players_rated = MagicMock()
+
+        saved = [
+            saved_slot(p.id, order, pos)
+            for order, (p, pos) in enumerate(zip(starters, positions), start=1)
+        ]
+        team.set_lineup(starting_pitcher_id="pitcher", dh=True, saved_lineup=saved)
+
+        assert team.current_third_baseman.id == "b2"
+        for prop in (
+            "current_catcher",
+            "current_first_baseman",
+            "current_second_baseman",
+            "current_shortstop",
+            "current_left_fielder",
+            "current_center_fielder",
+            "current_right_fielder",
+            "current_dh",
+        ):
+            getattr(team, prop)
 
 
 if __name__ == "__main__":
