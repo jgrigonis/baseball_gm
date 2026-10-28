@@ -27,20 +27,21 @@
 # An admin can pause a league: nothing runs until they resume it, and resuming
 # starts the period's window over.
 #
-# There is no background worker. The check runs whenever a GM clicks Ready or
-# asks for the status, and the league lock decides which request runs the
-# period, so it works with any number of server processes.
+# The check runs whenever a GM clicks Ready or asks for the status. A period
+# that's due is queued as a job for the sim worker (src/api/services/
+# sim_jobs.py), which runs it; a league has one job at most, so however many
+# requests see it come due at once, it runs once.
 
 from __future__ import annotations
 
 import logging
 
-from src.api.services import trades
+from src.api.services import sim_jobs, trades
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
 from src.api.services.sim_playoff import sim_playoff
-from src.db.locks import LeagueBusy, league_busy, league_lock
+from src.db.locks import LeagueBusy, league_busy
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
@@ -113,8 +114,8 @@ def _run_period(conn, league_id: str, state: str, days: int) -> bool:
 
 
 def advance_if_due(conn, league_id: str) -> bool:
-    """Run the league's next period if it is due. Returns True if this call
-    ran it. Opens the Decision Window for a period that has none yet (the
+    """Queue the league's next period for the sim worker if it is due.
+    Returns True if this call queued it. Opens the Decision Window for a period that has none yet (the
     first one, or after a switch to timer pace)."""
     repo = ReadyCheckRepository(conn)
     period = repo.period(league_id)
@@ -136,40 +137,46 @@ def advance_if_due(conn, league_id: str) -> bool:
         return False
 
     try:
-        with league_lock(conn, league_id):
-            # Another request may have run it while we looked.
-            now = repo.period(league_id)
-            if (
-                now["is_paused"]
-                or now["sim_period"] != period["sim_period"]
-                or not _due(now, _gms(conn, league_id, now["state"]))
-            ):
-                return False
-            # Keep going while it's the playoffs and there's nobody to wait
-            # for: straight through to the offseason.
-            for _ in range(MAX_STRAIGHT_THROUGH):
-                log.info(
-                    "League %s: running period %s (%s)",
-                    league_id,
-                    now["sim_period"],
-                    now["state"],
-                )
-                trades.close_due(conn, league_id, now["sim_period"])
-                at_deadline = _run_period(
-                    conn, league_id, now["state"], now["sim_period_days"]
-                )
-                repo.next_period(
-                    league_id,
-                    window_multiplier=TRADE_DEADLINE_WINDOW_MULTIPLIER
-                    if at_deadline
-                    else 1,
-                )
-                conn.commit()
-                now = repo.period(league_id)
-                if not _nobody_present(now, _gms(conn, league_id, now["state"])):
-                    break
+        sim_jobs.submit(conn, league_id, "period", {"sim_period": period["sim_period"]})
     except LeagueBusy:
+        # Already queued, or something else is moving the league on.
         return False
+    return True
+
+
+def run_period(conn, league_id: str, sim_period: int) -> bool:
+    """Run the period that was due when its job was queued, holding the
+    league lock (the sim worker's job, src/api/services/sim_jobs.py).
+    Returns False without running anything if it isn't due any more."""
+    repo = ReadyCheckRepository(conn)
+    now = repo.period(league_id)
+    # Another job may have run it, or an admin paused the league, since.
+    if (
+        not now
+        or now["is_paused"]
+        or now["sim_period"] != sim_period
+        or not _due(now, _gms(conn, league_id, now["state"]))
+    ):
+        return False
+    # Keep going while it's the playoffs and there's nobody to wait for:
+    # straight through to the offseason.
+    for _ in range(MAX_STRAIGHT_THROUGH):
+        log.info(
+            "League %s: running period %s (%s)",
+            league_id,
+            now["sim_period"],
+            now["state"],
+        )
+        trades.close_due(conn, league_id, now["sim_period"])
+        at_deadline = _run_period(conn, league_id, now["state"], now["sim_period_days"])
+        repo.next_period(
+            league_id,
+            window_multiplier=TRADE_DEADLINE_WINDOW_MULTIPLIER if at_deadline else 1,
+        )
+        conn.commit()
+        now = repo.period(league_id)
+        if not _nobody_present(now, _gms(conn, league_id, now["state"])):
+            break
     return True
 
 
@@ -195,7 +202,8 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         "seconds_left": max(0, round(seconds_left))
         if seconds_left is not None
         else None,
-        "simming": league_busy(conn, league_id),
+        "simming": sim_jobs.league_has_job(conn, league_id)
+        or league_busy(conn, league_id),
         # The sim stopped after deadline day's games: last chance to trade.
         "trade_deadline": window["open"] and window["deadline_day"],
         # Offers and votes waiting on this GM, and whether they have news

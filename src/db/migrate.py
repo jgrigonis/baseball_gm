@@ -22,7 +22,8 @@ from src.db.init import init_db
 from src.db.migrations import pending_migrations
 from src.util.logger import configure_app_logging
 
-log = logging.getLogger(__name__)
+# Named, not __name__: run with -m, that would be "__main__", outside "src".
+log = logging.getLogger("src.db.migrate")
 
 # The advisory lock that queues up concurrent runs.
 _LOCK_KEY = "schema_migrations"

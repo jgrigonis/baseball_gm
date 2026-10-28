@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.util.locations import PROJECT_ROOT
@@ -38,6 +40,12 @@ class Settings(BaseSettings):
     # used to build links in emails. Required once SMTP_HOST is set: without
     # it, links would trust the request's Host header, which anyone can fake.
     public_base_url: str = ""
+
+    # Who runs sims (src/api/services/sim_jobs.py). "separate": the sim worker
+    # process (`python -m src.worker`), which must be running alongside the
+    # web server. "inline": the web request that asks for one, with no worker;
+    # the tests use this.
+    sim_worker: Literal["separate", "inline"] = "separate"
 
 
 settings = Settings()

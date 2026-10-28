@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from src.api.dependencies import (
@@ -17,17 +17,26 @@ from src.api.dependencies import (
     Unpaused,
 )
 from src.api.schemas import SimRequest
-from src.api.services import coach
+from src.api.services import sim_jobs
 from src.api.services.injury_news import take_injury_news
-from src.api.services.offseason_service import run_offseason
-from src.api.services.sim_next import sim_days
-from src.api.services.sim_playoff import sim_playoff
-from src.db.locks import league_lock
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.sim_job_repo import SimJobRepository
 from src.web.utils import _current_league_date
 
 router = APIRouter(tags=["web"])
+
+
+# Each of these queues a job for the sim worker and answers 202 with its id at
+# once; the page polls /leagues/{id}/jobs/{job_id} for the result
+# (src/api/services/sim_jobs.py).
+
+
+def _queued(league_id: str, job_id: str) -> JSONResponse:
+    return JSONResponse(
+        {"job_id": job_id, "poll": f"/leagues/{league_id}/jobs/{job_id}"},
+        status_code=202,
+    )
 
 
 @router.post("/leagues/{league_id}/sim")
@@ -40,27 +49,9 @@ def sim_games(
     _: SinglePlayer,
     _unpaused: Unpaused,
 ):
-    """Sim N games (or until season end). Returns JSON with results summary."""
-    with league_lock(db, league_id):
-        summary = sim_days(league_id, db, body.count)
-        coach.mark(db, league_id, "play")
-        db.commit()
-
-    season_repo = SeasonRepository(db)
-    league_repo = LeagueRepository(db)
-    league = league_repo.get_by_id(league_id)
-    league_state = league["state"] if league else "lobby"
-    current_season_id = season_repo.get_current_id_for_league(league_id)
-    current_date = _current_league_date(db, current_season_id, league_state)
-
-    return JSONResponse(
-        {
-            **summary,
-            "league_state": league_state,
-            "current_date": current_date,
-            **take_injury_news(db, gm["id"]),
-        }
-    )
+    """Sim N games (or until season end)."""
+    job_id = sim_jobs.submit(db, league_id, "sim", {"count": body.count}, gm["id"])
+    return _queued(league_id, job_id)
 
 
 @router.post("/leagues/{league_id}/playoffs/sim")
@@ -74,12 +65,8 @@ def sim_playoff_route(
     _unpaused: Unpaused,
     mode: str = "game",
 ):
-    with league_lock(db, league_id):
-        result = sim_playoff(league_id, db, mode=mode)
-    lr = LeagueRepository(db)
-    result["league_state"] = lr.get_state(league_id)
-    result.update(take_injury_news(db, gm["id"]))
-    return JSONResponse(result)
+    job_id = sim_jobs.submit(db, league_id, "playoffs", {"mode": mode}, gm["id"])
+    return _queued(league_id, job_id)
 
 
 @router.post("/leagues/{league_id}/offseason/begin")
@@ -91,9 +78,43 @@ def begin_offseason(
     _: SinglePlayer,
     _unpaused: Unpaused,
 ):
-    with league_lock(db, league_id):
-        result = run_offseason(league_id, db)
-    return JSONResponse({"ok": True, **result})
+    job_id = sim_jobs.submit(db, league_id, "offseason", gm_id=gm["id"])
+    return _queued(league_id, job_id)
+
+
+# A job still queued this long after it was asked for suggests no sim worker
+# is running; the page says so rather than waiting quietly.
+WORKER_MISSING_SECONDS = 15
+
+
+@router.get("/leagues/{league_id}/jobs/{job_id}")
+def job_status(league_id: str, job_id: str, db: DB, gm: GM):
+    """Where a queued sim has got to. Once it's done, its result in the shape
+    the page expects, plus this GM's injury news for the sims that have
+    any."""
+    job = SimJobRepository(db).get(job_id)
+    if not job or job["league_id"] != league_id:
+        raise HTTPException(status_code=404, detail="No such sim.")
+    if job["state"] in ("queued", "running"):
+        return JSONResponse(
+            {
+                "state": job["state"],
+                "waiting_for_worker": job["state"] == "queued"
+                and job["age_seconds"] > WORKER_MISSING_SECONDS,
+            }
+        )
+    if job["state"] == "failed":
+        return JSONResponse({"state": "failed", "detail": job["error"]})
+
+    body = {"state": "done", **(job["result"] or {})}
+    if job["kind"] in ("sim", "playoffs"):
+        league = LeagueRepository(db).get_by_id(league_id)
+        body["league_state"] = league["state"] if league else "lobby"
+        body.update(take_injury_news(db, gm["id"]))
+    if job["kind"] == "sim":
+        season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+        body["current_date"] = _current_league_date(db, season_id, body["league_state"])
+    return JSONResponse(body)
 
 
 @router.get("/leagues/{league_id}/news")

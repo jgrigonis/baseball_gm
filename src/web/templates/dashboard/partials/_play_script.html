@@ -59,13 +59,13 @@ async function schedSim(count) {
     setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' league games played)' : ''));
 
     try {
-      var res = await fetch('/leagues/{{ league_id }}/sim', {
+      var dayMsg = 'Simming day ' + (daysSimmed + 1) + '…';
+      var d = await runLeagueJob('/leagues/{{ league_id }}/sim', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({count: 1}),
-      });
-      var d = await res.json();
-      if (!res.ok) { setStatus('✗ ' + (d.detail || 'Server error'), 'red'); break; }
+      }, function(job) { setStatus(leagueJobWaitingText(job) || dayMsg); });
+      if (d.failed) { setStatus('✗ ' + (d.detail || 'Server error'), 'red'); break; }
       if (!d.games_played) {
         if (!d.games_remaining || d.games_remaining <= 0) break;
         setStatus('⚠ No games played', 'var(--amber)');

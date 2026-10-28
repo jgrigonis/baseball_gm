@@ -23,12 +23,10 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
-from src.api.services import personas
+from src.api.services import personas, sim_jobs
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
-from src.api.services.league_start import start_league
 from src.api.view_models.league_info import league_info
-from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
@@ -319,10 +317,13 @@ def start_league_router(
     _: Commissioner,
     _unpaused: Unpaused,
 ):
-    with league_lock(db, league_id):
-        start_league(league_id, db)
-        db.commit()
-    return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+    """Queue the league's start (teams, players, the draft) for the sim
+    worker. The lobby polls the job, then opens the league."""
+    job_id = sim_jobs.submit(db, league_id, "start")
+    return JSONResponse(
+        {"job_id": job_id, "poll": f"/leagues/{league_id}/jobs/{job_id}"},
+        status_code=202,
+    )
 
 
 @router.post("/leagues/{league_id}/leave")

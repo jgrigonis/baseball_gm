@@ -108,6 +108,28 @@ CREATE TABLE IF NOT EXISTS login_failures (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- sim_jobs: work that moves a league on (simming days, the playoffs, the
+--   offseason, the draft, starting the league, a ready-check period), queued
+--   by the web server and run by the sim worker (src/worker.py), so no web
+--   request waits on it. At most one job per league is queued or running.
+CREATE TABLE IF NOT EXISTS sim_jobs (
+    id              TEXT PRIMARY KEY,
+    league_id       TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    kind            TEXT NOT NULL,
+    params          JSONB NOT NULL DEFAULT '{{}}',
+    gm_id           TEXT,             -- who asked for it; NULL for a ready-check period
+    state           TEXT NOT NULL DEFAULT 'queued'
+                        CHECK (state IN ('queued', 'running', 'done', 'failed')),
+    result          JSONB,
+    error           TEXT,             -- shown to the GM when state is 'failed'
+    attempts        INTEGER NOT NULL DEFAULT 0, -- times the worker found the league locked
+    run_after       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    started_at      TIMESTAMPTZ,
+    heartbeat_at    TIMESTAMPTZ,      -- the worker running it is still alive
+    finished_at     TIMESTAMPTZ
+);
+
 -- 1 row per player
 CREATE TABLE IF NOT EXISTS players (
     id         TEXT PRIMARY KEY,
@@ -1154,6 +1176,8 @@ CREATE INDEX IF NOT EXISTS idx_lineup_pref_player      ON gm_lineup_preferences(
 CREATE INDEX IF NOT EXISTS idx_league_seasons_season   ON league_seasons(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_retirements_player ON player_retirements(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_retirements_season ON player_retirements(season_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sim_jobs_one_active  ON sim_jobs(league_id) WHERE state IN ('queued', 'running');
+CREATE INDEX IF NOT EXISTS idx_sim_jobs_queue          ON sim_jobs(run_after) WHERE state = 'queued';
 
 -- Deferred FK: leagues.commissioner_gm_id → gms (circular; added after gms exists)
 ALTER TABLE leagues

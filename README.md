@@ -49,6 +49,29 @@ date first (it's safe to run any time; with nothing pending it does nothing):
 step before starting the new version. The server refuses to start while
 migrations are pending, and says which.
 
+### The sim worker
+
+Anything that moves a league on (simming days, the playoffs, the offseason,
+the draft, starting a league, a multiplayer ready-check period) runs in a
+separate process, the sim worker, not in the web request. The request queues
+a job in Postgres and answers at once; the page polls until it's done. A full
+season can take minutes, which would otherwise hold a web worker that long
+and run into server timeouts.
+
+`uv run python -m src.worker`
+
+`./start_webserver.sh` starts one alongside the server. In a deployment, run
+it as its own process (or container) next to the web server, with the same
+`DATABASE_URL`. Run more than one for more leagues at once: they share the
+queue and never run the same job, and each league has one job at a time.
+Without a worker, sims wait in the queue and the page says it's waiting for
+the sim worker.
+
+To stop a worker, send it SIGTERM (what `docker stop` sends): it finishes the
+job in hand first, so allow it a few minutes. A worker killed partway through
+a job leaves that job to fail after about a minute with "try again"; every
+game played up to then is kept.
+
 ### Useful script alias 
 
 A handy script alias for your .zshrc file:
