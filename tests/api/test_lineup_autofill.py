@@ -116,6 +116,7 @@ def test_platoon_setting_uses_the_hand_of_the_starter(db_conn, factory, team_set
     gm_id = db_conn.execute(
         "SELECT id FROM gms WHERE team_id = %s", (team.id,)
     ).fetchone()["id"]
+    GMRepository(db_conn).save_profile(gm_id, {"platoon_usage": "none"})
     off = autofill(db_conn, league.id, team.id, [None] * 9, True, vs_hand="R")
     assert lefty.id not in ids(off)
 
@@ -126,3 +127,9 @@ def test_platoon_setting_uses_the_hand_of_the_starter(db_conn, factory, team_set
 
     assert lefty.id in ids(vs_r)
     assert lefty.id not in ids(vs_l)
+
+
+def test_platoons_default_to_vs_handedness(db_conn, team_setup):
+    league, team, *_ = team_setup
+    row = GMRepository(db_conn).get_team_profile(team.id, league.id)
+    assert row["platoon_usage"] == "vs-handedness"

@@ -5,7 +5,8 @@ engine. A person's team uses what they set; an AI team uses its own row
 (set from its persona, src/league/personas.py). Every team has a gm_profiles row.
 
 The middle (default) value of each setting reproduces how the engine played
-before these settings existed, except rest days, which are new. Each
+before these settings existed, except rest days, which are new, and
+platoons, which default to vs-handedness (the middle setting). Each
 multiplier below is 1.0 at the default, so a default profile changes nothing.
 """
 
@@ -67,7 +68,7 @@ class ManagerProfile:
     starter_usage: str = "pitch-count-strict"
     closer_usage: str = "saves-only"
     bullpen_pref: str = "deep-pen"
-    platoon_usage: str = "none"
+    platoon_usage: str = "vs-handedness"
     rotation_size: int = 5
     skip_fifth_starter: bool = False
     playoff_rotation: str = "same"
