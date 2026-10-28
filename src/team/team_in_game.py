@@ -193,6 +193,26 @@ class TeamInGame:
             lineup_slots.append(LineupSlot(player, position))
             used_ids.add(pid)
 
+        # Fill any defensive position the saved lineup no longer covers — e.g.
+        # its player was traded away, which deletes their saved slot outright.
+        required = [
+            pos.value
+            for pos in Position
+            if pos is not Position.PITCHER
+            and (dh or pos is not Position.DESIGNATED_HITTER)
+        ]
+        filled = {slot.position for slot in lineup_slots}
+        for position in required:
+            if position in filled:
+                continue
+            sub = best_for_position(position)
+            if not sub:
+                break
+            self.logger.info(f"Saved lineup has no {position}, filling with {sub.id}")
+            lineup_slots.append(LineupSlot(sub, position))
+            used_ids.add(sub.id)
+            filled.add(position)
+
         # Fill any remaining batting order gaps (shouldn't happen often)
         needed = 9 if dh else 8
         gap_count = needed - len(lineup_slots)
@@ -227,10 +247,11 @@ class TeamInGame:
         valid_slots = [
             s for s in lineup_slots if s is not None and s.player is not None
         ]
-        if len(valid_slots) < (9 if dh else 8):
+        missing = set(required) - {slot.position for slot in valid_slots}
+        if len(valid_slots) < (9 if dh else 8) or missing:
             self.logger.warning(
-                f"Saved lineup only produced {len(valid_slots)} valid slots, "
-                f"falling back to optimizer"
+                f"Saved lineup only produced {len(valid_slots)} valid slots "
+                f"(missing {sorted(missing)}), falling back to optimizer"
             )
             self._set_lineup_from_optimizer(available, style, dh)
         else:
