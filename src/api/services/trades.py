@@ -154,7 +154,7 @@ def _propose(conn, league_id, gm, to_team_id, give_ids, get_ids, counter_of):
             f"The {team_repo.get_name(to_team_id)} aren't taking any more calls today."
         )
     if parent:
-        trade_repo.decide(parent["id"], "countered", None)
+        _decide(conn, parent["id"], "countered", None)
 
     offer_id = trade_repo.create_offer(
         league_id,
@@ -170,7 +170,7 @@ def _propose(conn, league_id, gm, to_team_id, give_ids, get_ids, counter_of):
         conn, league_id, season_id, to_team_id, my_team_id, get_ids, give_ids, today
     )
     if not verdict.accept:
-        trade_repo.decide(offer_id, "rejected", verdict.reason)
+        _decide(conn, offer_id, "rejected", verdict.reason)
         conn.commit()
         return {
             "accepted": False,
@@ -178,7 +178,7 @@ def _propose(conn, league_id, gm, to_team_id, give_ids, get_ids, counter_of):
             "offer_id": offer_id,
         }
 
-    trade_repo.decide(offer_id, "accepted", verdict.reason)
+    _decide(conn, offer_id, "accepted", verdict.reason)
     execute(
         conn,
         league_id,
@@ -246,7 +246,7 @@ def _offer_to_gm(conn, league_id, season_id, gm, to_team_id, items, today, paren
     trade_repo = TradeRepository(conn)
     team_name = TeamRepository(conn).get_name(to_team_id)
     if parent:
-        trade_repo.decide(parent["id"], "countered", None)
+        _decide(conn, parent["id"], "countered", None)
     if trade_repo.count_pending_from(league_id, my_team_id, to_team_id):
         raise TradeError(
             f"You already have an offer out to the {team_name}. "
@@ -309,7 +309,7 @@ def _respond(conn, league_id, gm, offer_id, action) -> dict:
     if action == "withdraw":
         if offer["from_team_id"] != mine:
             raise TradeError("Only the team that made an offer can withdraw it.")
-        trade_repo.decide(offer_id, "withdrawn", None)
+        _decide(conn, offer_id, "withdrawn", None)
         _notify(
             conn,
             league_id,
@@ -326,7 +326,7 @@ def _respond(conn, league_id, gm, offer_id, action) -> dict:
         raise TradeError("That offer wasn't made to you.")
 
     if action == "reject":
-        trade_repo.decide(offer_id, "rejected", None)
+        _decide(conn, offer_id, "rejected", None)
         _notify(
             conn,
             league_id,
@@ -431,12 +431,15 @@ def _settle_vote(conn, league_id: str, offer: dict, final: bool) -> str:
         problem = _problem(conn, league, offer)
         if problem:
             _void(conn, league_id, offer, problem)
+            _tell_waiting_voters(conn, offer, "was called off")
             return "void"
         _complete(conn, league_id, offer, by_vote=True)
+        _tell_waiting_voters(conn, offer, "passed")
         return "accepted"
     if final or t["voters"] - t["no"] < needed:
-        TradeRepository(conn).decide(
-            offer["id"], "voted_down", f"{t['yes']} of {t['voters']} voted yes"
+        _tell_waiting_voters(conn, offer, "was voted down")
+        _decide(
+            conn, offer["id"], "voted_down", f"{t['yes']} of {t['voters']} voted yes"
         )
         for team, other in (
             (offer["from_team_id"], offer["to_name"]),
@@ -453,6 +456,20 @@ def _settle_vote(conn, league_id: str, offer: dict, final: bool) -> str:
             )
         return "voted_down"
     return "pending_vote"
+
+
+def _tell_waiting_voters(conn, offer: dict, outcome: str) -> None:
+    """The vote is over before everyone voted (the result couldn't change,
+    or a trade in it went elsewhere): tell the GMs who hadn't voted yet."""
+    for gm_id in TradeRepository(conn).waiting_voters(offer["id"]):
+        _notify_gm(
+            conn,
+            gm_id,
+            "vote_over",
+            offer,
+            f"The vote on the {offer['from_name']} and {offer['to_name']} trade "
+            f"is over: it {outcome}.",
+        )
 
 
 def _problem(conn, league: dict, offer: dict) -> str | None:
@@ -474,7 +491,7 @@ def _problem(conn, league: dict, offer: dict) -> str | None:
 
 def _complete(conn, league_id: str, offer: dict, by_vote: bool = False) -> None:
     """Carry out an agreed trade and tell both GMs."""
-    TradeRepository(conn).decide(offer["id"], "accepted", None)
+    _decide(conn, offer["id"], "accepted", None)
     execute(
         conn,
         league_id,
@@ -505,7 +522,7 @@ def _complete(conn, league_id: str, offer: dict, by_vote: bool = False) -> None:
 
 
 def _void(conn, league_id: str, offer: dict, reason: str) -> None:
-    TradeRepository(conn).decide(offer["id"], "void", reason)
+    _decide(conn, offer["id"], "void", reason)
     for team, other in (
         (offer["from_team_id"], offer["to_name"]),
         (offer["to_team_id"], offer["from_name"]),
@@ -557,7 +574,7 @@ def close_at_deadline(conn, league_id: str) -> None:
 
 
 def _expire(conn, league_id: str, offer: dict) -> None:
-    TradeRepository(conn).decide(offer["id"], "expired", None)
+    _decide(conn, offer["id"], "expired", None)
     _notify(
         conn,
         league_id,
@@ -602,6 +619,14 @@ def offers_to_humans(conn, league_id: str) -> int:
     arrives, if the league says so."""
     teams = GMRepository(conn).get_human_team_ids(league_id)
     return TradeRepository(conn).count_open_to_teams(league_id, teams) if teams else 0
+
+
+def _decide(conn, offer_id: str, status: str, reason: str | None) -> None:
+    """Settle an offer (or move it on to the vote). A popup about it that
+    a GM hasn't seen yet is dropped: there's nothing left for them to
+    answer."""
+    TradeRepository(conn).decide(offer_id, status, reason)
+    NotificationRepository(conn).drop_trade_popups(offer_id)
 
 
 def _notify(conn, league_id: str, team_id: str, event: str, offer, text) -> None:

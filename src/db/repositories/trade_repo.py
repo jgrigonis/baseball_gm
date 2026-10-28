@@ -204,6 +204,14 @@ class TradeRepository:
             o["tally"] = self.tally(o["id"])
         return offers
 
+    def waiting_voters(self, offer_id: str) -> list[str]:
+        """The voters on a trade who haven't voted."""
+        rows = self.conn.execute(
+            "SELECT gm_id FROM trade_votes WHERE offer_id = %s AND vote IS NULL",
+            (offer_id,),
+        ).fetchall()
+        return [r["gm_id"] for r in rows]
+
     def unvoted_count(self, league_id: str, gm_id: str) -> int:
         return self.conn.execute(
             """SELECT COUNT(*) AS n FROM trade_votes v
