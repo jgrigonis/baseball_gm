@@ -456,3 +456,39 @@ class TestDraftStrategy:
 
         assert self._pick_number(db_conn, draft, prospects[0].id)["pick_number"] == 1
         assert self._pick_number(db_conn, draft, prospects[-1].id)["pick_number"] == 4
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Traded picks
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestTradedPicks:
+    def test_a_traded_pick_is_made_by_its_owner(self, db_conn, factory):
+        league = factory.league(state="draft")
+        season = factory.season()
+        factory.league_season(league, season)
+        draft = factory.draft(league=league, season=season)
+        team1, team2 = factory.team(), factory.team()
+        factory.gm(team=team1, league=league, is_ai=True)
+        factory.gm(team=team2, league=league, is_ai=True)
+        factory.draft_order(draft, [team1, team2])
+        for _ in range(ROUNDS * 2 + 5):
+            factory.prospect(league_id=league.id)
+        # team1 traded its 1st-round pick to team2.
+        db_conn.execute(
+            """INSERT INTO draft_pick_rights
+                   (league_id, draft_year, round, original_team_id, current_owner_id)
+               VALUES (%s, %s, 1, %s, %s)""",
+            (league.id, season.year, team1.id, team2.id),
+        )
+
+        execute_blitz_draft(draft.id, db_conn)
+
+        rows = db_conn.execute(
+            """SELECT round, team_id FROM draft_picks WHERE draft_id = %s
+               ORDER BY pick_number""",
+            (draft.id,),
+        ).fetchall()
+        assert [r["team_id"] for r in rows if r["round"] == 1] == [team2.id] * 2
+        assert [r["team_id"] for r in rows if r["round"] == 2] == [team2.id, team1.id]

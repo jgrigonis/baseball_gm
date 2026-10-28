@@ -1,8 +1,9 @@
 # src/league/trade_deadline.py
 #
-# When a season's trade window is open. Trades open once the draft is done
-# (preseason) and close after the games of deadline day: the last day of the
-# round that ends nearest game TRADE_DEADLINE_AFTER_GAMES. Every team plays one
+# When a league's trade window is open. It opens again once the playoffs are
+# over (the offseason and the draft) and stays open through the preseason and
+# the season until after the games of deadline day: the last day of the round
+# that ends nearest game TRADE_DEADLINE_AFTER_GAMES. Every team plays one
 # series per round, so one team's schedule gives the round boundaries.
 #
 # The deadline is worked out from the games already scheduled, so leagues
@@ -14,7 +15,10 @@ from src.league.league_constants import TRADE_DEADLINE_AFTER_GAMES
 from src.league.league_modes import is_blitz_style, trades_allowed
 
 # League states trades can happen in, as long as the deadline hasn't passed.
-TRADE_STATES = ("preseason", "season")
+TRADE_STATES = ("draft", "preseason", "season")
+# Between seasons: open whatever the deadline. In the offseason the league's
+# season is still the one just played, its deadline long gone.
+OFFSEASON_STATES = ("offseason", "draft")
 
 
 def deadline_date(conn, season_id: str | None) -> str | None:
@@ -75,19 +79,20 @@ def trades_enabled_for(mode: str | None) -> bool:
 
 
 def window(conn, league: dict, season_id: str | None) -> dict:
-    """Whether trades are open in this league right now, the deadline, and
-    whether today is deadline day (the games are done and trades close with
-    the next one)."""
+    """Whether trades are open in this league right now, the deadline,
+    whether it's the offseason, and whether today is deadline day (the games
+    are done and trades close with the next one)."""
     enabled = trades_enabled_for(league.get("mode"))
+    state = league.get("state")
+    offseason = enabled and state in OFFSEASON_STATES
     deadline = deadline_date(conn, season_id) if enabled else None
     last = last_played_date(conn, season_id) if deadline else None
     passed = bool(deadline and last and last > deadline)
     return {
         "enabled": enabled,
-        "deadline": deadline,
-        "open": enabled
-        and deadline is not None
-        and league.get("state") in TRADE_STATES
-        and not passed,
-        "deadline_day": bool(deadline and last == deadline),
+        "deadline": None if state == "offseason" else deadline,
+        "open": offseason
+        or (enabled and deadline is not None and state in TRADE_STATES and not passed),
+        "offseason": offseason,
+        "deadline_day": bool(not offseason and deadline and last == deadline),
     }

@@ -145,3 +145,22 @@ def test_trades_with_gm_teams_are_offered(client_for, db_conn):
     html = client.get(f"/leagues/{league.id}/trades").text
     assert "AI Club (GM)" in html
     assert "coming soon" not in html
+
+
+def test_with_pick_trades_on_the_builder_lists_picks(client_for, db_conn):
+    client, league, theirs, _ = client_for("blitz", players=2)
+    db_conn.execute("UPDATE leagues SET pick_trades = TRUE WHERE id = %s", (league.id,))
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert "2026 1st round (My Team)" in html
+    assert "players or picks" in html
+    data = client.get(f"/leagues/{league.id}/trades/team/{theirs.id}").json()
+    picks = [p for p in data["players"] if p["roster_status"] == "pick"]
+    assert [p["pick_round"] for p in picks] == [1, 2, 3, 4, 5]
+
+
+def test_without_pick_trades_there_are_no_picks(client_for):
+    client, league, theirs, _ = client_for("blitz", players=2)
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert "1st round" not in html
+    data = client.get(f"/leagues/{league.id}/trades/team/{theirs.id}").json()
+    assert all(p["roster_status"] != "pick" for p in data["players"])

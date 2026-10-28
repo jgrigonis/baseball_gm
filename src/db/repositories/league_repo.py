@@ -30,9 +30,9 @@ class LeagueRepository:
                 (id, name, join_code, mode, num_teams, decision_window_sec,
                 draft_window_sec, lineup_window_sec, reentry_enabled, pace_control,
                 sim_period_days, num_seasons, is_public, is_practice, trade_vote,
-                state, commissioner_gm_id)
+                pick_trades, state, commissioner_gm_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    'lobby', NULL)""",
+                    %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -49,6 +49,7 @@ class LeagueRepository:
                 settings.get("is_public", False),
                 settings.get("is_practice", False),
                 settings.get("trade_vote", True),
+                settings.get("pick_trades", False),
             ),
         )
 

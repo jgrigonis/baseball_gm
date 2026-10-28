@@ -159,7 +159,7 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
         give = [a.id for a in deal.give]
         get = [a.id for a in deal.get]
         try:
-            trades._check_players(conn, season_id, team_id, partner, give, get)
+            trades._check_assets(conn, league, season_id, team_id, partner, give, get)
         except trades.TradeError:
             continue
         if partner in humans:

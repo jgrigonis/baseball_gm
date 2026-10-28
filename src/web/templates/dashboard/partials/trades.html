@@ -4,7 +4,7 @@
    AI team answers at once, another GM later). Below: your recent offers and
    every trade in the league. Rules: src/api/services/trades.py. #}
 {% macro plist(players) -%}
-{% for p in players %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+{% for p in players %}{% if p.is_pick %}<span class="tr-pick">{{ p.last_name }}</span>{% else %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
 {%- endmacro %}
 {% set status_labels = {'pending': 'waiting', 'pending_vote': 'league vote', 'voted_down': 'voted down'} %}
 <div class="content-inner tab-fade" id="trades-page">
@@ -14,10 +14,12 @@
     <span class="page-subtitle">
       {% if trade_window.open and trade_window.deadline_day %}
         ⏰ Deadline day: trades close once the next day is played
+      {% elif trade_window.open and trade_window.offseason %}
+        Offseason: trades are open through the draft and on into next season
       {% elif trade_window.open %}
         Trade deadline: {{ trade_window.deadline }}
       {% elif trade_window.deadline %}
-        The trade window is closed. It opens again after next season's draft.
+        The trade window is closed. It opens again once the playoffs are over.
       {% else %}
         Trades open once the season is scheduled.
       {% endif %}
@@ -118,7 +120,7 @@
   </div>
 
   <div class="trade-bar" id="tr-bar">
-    <div id="tr-summary" class="tr-summary">Pick up to {{ max_per_side }} players a side.</div>
+    <div id="tr-summary" class="tr-summary">Pick up to {{ max_per_side }} {{ 'players or picks' if pick_trades else 'players' }} a side.</div>
     <button class="btn btn-secondary" id="tr-cancel-counter" onclick="trCancelCounter()" style="display:none;">Cancel counter</button>
     <button class="btn btn-primary" id="tr-send" onclick="trSend()" disabled>Propose trade</button>
   </div>
@@ -172,9 +174,9 @@
             <td class="tr-date">{{ t.created_on }}</td>
             <td>
               <div><strong>{{ t.from_name }}</strong> get
-                {% for p in t.received %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>
+                {{ plist(t.received) }}</div>
               <div><strong>{{ t.to_name }}</strong> get
-                {% for p in t.sent %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>
+                {{ plist(t.sent) }}</div>
             </td>
           </tr>
           {% endfor %}
@@ -198,6 +200,8 @@ var SIDES = {
   theirs: {players: [], picked: new Set(), filter: 'all', el: 'tr-theirs', team: ''},
 };
 var FILTERS = [['all', 'All'], ['40', '40-man'], ['org', 'Org'], ['hit', 'Hit'], ['pit', 'Pit']];
+{% if pick_trades %}FILTERS.push(['pick', 'Picks']);{% endif %}
+var UNIT = {{ ('players or picks' if pick_trades else 'players') | tojson }};
 var COUNTER = null;  // the offer to you this one counters
 
 function esc(s) {
@@ -207,8 +211,11 @@ function esc(s) {
 }
 
 function onForty(p) { return p.roster_status === '26man' || p.roster_status === '40man'; }
+function isPick(p) { return p.roster_status === 'pick'; }
 
 function keep(p, f) {
+  if (f === 'pick') return isPick(p);
+  if (isPick(p)) return f === 'all';
   if (f === '40') return onForty(p);
   if (f === 'org') return !onForty(p);
   if (f === 'hit') return p.player_type !== 'pitcher';
@@ -239,11 +246,20 @@ function render(key) {
   if (key === 'theirs' && !side.team) return;
   var list = side.players.filter(function(p) { return keep(p, side.filter) || side.picked.has(p.player_id); });
   list.sort(function(a, b) {
-    return (onForty(b) - onForty(a)) || (gradeVal(a.overall) - gradeVal(b.overall));
+    return (isPick(a) - isPick(b)) || (a.projected_pick || 0) - (b.projected_pick || 0) ||
+      (onForty(b) - onForty(a)) || (gradeVal(a.overall) - gradeVal(b.overall));
   });
   if (!list.length) { el.innerHTML = '<div class="tr-empty">No players here.</div>'; return; }
   el.innerHTML = list.map(function(p) {
     var on = side.picked.has(p.player_id);
+    if (isPick(p)) return '<label class="tr-row' + (on ? ' on' : '') + '">' +
+      '<input type="checkbox" ' + (on ? 'checked ' : '') +
+        'onchange="trPick(\'' + key + '\',\'' + esc(p.player_id) + '\',this.checked)">' +
+      '<span class="tr-grade tr-pick-grade">R' + p.pick_round + '</span>' +
+      '<span class="tr-name">' + esc(p.last_name) +
+        '<span class="tr-meta">projected pick #' + p.projected_pick + '</span></span>' +
+      '<span class="badge badge-minors">PICK</span>' +
+    '</label>';
     return '<label class="tr-row' + (on ? ' on' : '') + '">' +
       '<input type="checkbox" ' + (on ? 'checked ' : '') +
         'onchange="trPick(\'' + key + '\',\'' + p.player_id + '\',this.checked)">' +
@@ -260,7 +276,7 @@ function render(key) {
 function names(key) {
   var side = SIDES[key];
   return side.players.filter(function(p) { return side.picked.has(p.player_id); })
-    .map(function(p) { return p.first_name + ' ' + p.last_name; });
+    .map(function(p) { return (p.first_name + ' ' + p.last_name).trim(); });
 }
 
 function summarize() {
@@ -268,7 +284,7 @@ function summarize() {
   var el = document.getElementById('tr-summary');
   var btn = document.getElementById('tr-send');
   if (!give.length && !get.length) {
-    el.textContent = 'Pick up to ' + MAX + ' players a side.';
+    el.textContent = 'Pick up to ' + MAX + ' ' + UNIT + ' a side.';
   } else {
     el.innerHTML = '<span class="tr-k">You give</span> ' + (esc(give.join(', ')) || '—') +
                    '  <span class="tr-k">You get</span> ' + (esc(get.join(', ')) || '—');
@@ -283,7 +299,7 @@ window.trFilter = function(key, f) { SIDES[key].filter = f; render(key); };
 window.trPick = function(key, pid, on) {
   var side = SIDES[key];
   if (on && side.picked.size >= MAX) {
-    showResult('At most ' + MAX + ' players a side.', 'warn');
+    showResult('At most ' + MAX + ' ' + UNIT + ' a side.', 'warn');
     render(key);
     return;
   }
@@ -468,6 +484,7 @@ if (done) { showResult(done.msg, done.kind); window._tradeResult = null; }
 #trades-page .tr-table td { font-size: 12px; vertical-align: top; padding: 6px 4px; }
 #trades-page .tr-table a { color: var(--sky); text-decoration: none; }
 #trades-page .tr-date { font-family: var(--font-mono); color: var(--text-dim); white-space: nowrap; width: 1%; }
+#trades-page .tr-pick-grade { color: var(--amber); font-family: var(--font-mono); font-size: 11px; }
 #trades-page .tr-reason { color: var(--text-dim); font-style: italic; margin-top: 2px; }
 #trades-page .tr-status { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; text-align: right; }
 #trades-page .tr-accepted { color: var(--green); }

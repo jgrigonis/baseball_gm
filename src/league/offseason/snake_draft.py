@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.pick_rights_repo import PickRightsRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
@@ -46,15 +47,15 @@ def write_draft_order(
     """
     Persist the draft order and default pick rights for a draft.
     ordered_team_ids should be in pick order (index 0 = picks first).
-    Safe to call on a fresh draft — clears any existing rows first.
+    Safe to call on a fresh draft — clears any existing order first. Pick
+    rights already written (and maybe traded, see
+    src/league/trades/draft_picks.py) are kept.
     """
     draft_repo = DraftRepository(conn)
-    draft_repo.clear_draft(draft_id, league_id, draft_year)
+    draft_repo.clear_draft(draft_id)
     for pos, tid in enumerate(ordered_team_ids, 1):
         draft_repo.insert_draft_order(draft_id, tid, pos)
-    for tid in ordered_team_ids:
-        for rnd in range(1, ROUNDS + 1):
-            draft_repo.insert_draft_pick_rights(league_id, draft_year, rnd, tid, tid)
+    PickRightsRepository(conn).ensure(league_id, draft_year, ordered_team_ids, ROUNDS)
     conn.commit()
 
 
@@ -81,6 +82,12 @@ class SnakeDraft:
         self.draft_repo = DraftRepository(conn)
         self.team_repo = TeamRepository(conn)
         self.team_game_repo = TeamGameRepository(conn)
+        # {(round, original team): owner}, for picks traded away
+        self._owners: dict[tuple[int, str], str] = {}
+
+    def _owner(self, round_num: int, team_id: str) -> str:
+        """The team that makes this team's pick in a round."""
+        return self._owners.get((round_num, team_id), team_id)
 
     def run_snake_draft_with_order(
         self,
@@ -109,7 +116,10 @@ class SnakeDraft:
         # 2. Pre-compute prospect ratings
         rated = self._rate_pool(pool)
 
-        # 3. Run snake — respects current_owner_id from draft_pick_rights if available
+        # 3. Run snake: each pick goes to its owner in draft_pick_rights
+        self._owners = PickRightsRepository(self.conn).owners(
+            league_id or self.league_id, year
+        )
         picks = self._run_snake(draft_order, rated)
         self.conn.commit()
         log.info("Completed %s picks across %s rounds", len(picks), ROUNDS)
@@ -201,6 +211,7 @@ class SnakeDraft:
 
         # available pool as ordered list — pop from front (best first)
         available = list(rated)
+        names = {t["team_id"]: t["team_name"] for t in draft_order}
 
         for round_num in range(1, ROUNDS + 1):
             # Odd rounds: worst→best, even rounds: best→worst (snake)
@@ -215,8 +226,8 @@ class SnakeDraft:
                     return picks
 
                 player, rating = available.pop(0)
-                team_id = team_entry["team_id"]
-                team_name = team_entry["team_name"]
+                team_id = self._owner(round_num, team_entry["team_id"])
+                team_name = names.get(team_id, "")
 
                 # Add to team_players
                 self.team_repo.add_player(team_id, player.id)

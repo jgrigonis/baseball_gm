@@ -40,6 +40,9 @@
     ("Trade vote", "On" if info.trade_vote else "Off",
      "On: a trade between two GMs goes to a vote of the league's other GMs, and needs yes votes from more than half of them. A GM who doesn't vote counts as a no. With only two GMs there's nobody to vote, so trades go straight through." if info.trade_vote
      else "Off: a trade between two GMs goes through as soon as they both agree."),
+    ("Draft pick trades", "On" if info.pick_trades else "Off",
+     "On: teams can trade picks in the first five rounds of the next draft along with players." if info.pick_trades
+     else "Off: only players can be traded, as in MLB."),
   ] %}
 {% endif %}
 {% set settings = settings + [

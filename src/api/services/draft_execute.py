@@ -12,6 +12,7 @@ import logging
 import random
 from datetime import datetime, UTC
 
+from src.api.services import trades
 from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -77,6 +78,7 @@ class BlitzDraft(SnakeDraft):
         fallback: list[tuple[PlayerRecord, int]] = list(rated)
         by_id = {p.id: p for p, _ in rated}
         scorer = StrategyScorer(rated) if self._strategies and rated else None
+        names = {t["team_id"]: t["team_name"] for t in draft_order}
 
         for round_num in range(1, ROUNDS + 1):
             order = draft_order if round_num % 2 == 1 else list(reversed(draft_order))
@@ -86,7 +88,8 @@ class BlitzDraft(SnakeDraft):
                     log.info("Draft pool exhausted at pick %s", overall_pick)
                     return picks
 
-                team_id = team_entry["team_id"]
+                # The pick's owner makes it: it may have been traded.
+                team_id = self._owner(round_num, team_entry["team_id"])
 
                 chosen: PlayerRecord | None = None
                 # is_auto = True
@@ -128,7 +131,7 @@ class BlitzDraft(SnakeDraft):
                         round=round_num,
                         pick=overall_pick,
                         team_id=team_id,
-                        team_name=team_entry["team_name"],
+                        team_name=names.get(team_id, ""),
                         player_id=chosen.id,
                         player_name=chosen.name,
                         age=chosen.age,
@@ -236,6 +239,8 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         )
 
     dr.set_complete_current_pick(draft_id, len(picks) + 1)
+    # Offers with this draft's picks in them have nothing left to trade.
+    trades.draft_run(conn, league_id, year)
 
     # Seed rotations/bullpen for AI teams using full post-draft roster.
     # Human teams are excluded — they set their own lineups.

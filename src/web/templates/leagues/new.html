@@ -69,6 +69,14 @@
       </label>
       <span class="mode-note">A trade needs yes votes from more than half of them, and a GM who doesn't vote counts as a no. With only two GMs, trades go straight through.</span>
     </div>
+    <div class="field" id="pick-trades-field">
+      <label for="pick-trades">Draft Pick Trades</label>
+      <label class="toggle-row">
+        <input type="checkbox" name="pick_trades" id="pick-trades" value="true">
+        <span>Teams can trade draft picks as well as players</span>
+      </label>
+      <span class="mode-note">Picks in the first five rounds of the next draft. MLB doesn't allow it, so it's off unless you turn it on.</span>
+    </div>
     <div style="display:flex;gap:8px;">
       <button type="submit" class="btn btn-primary">Create League →</button>
       <a href="/leagues/" class="btn btn-secondary">Cancel</a>
@@ -99,8 +107,9 @@
       if (input) input.value = presets[name];
     });
     speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
-    // Speed Blitz has no trades, so nothing to vote on.
+    // Speed Blitz has no trades, so no vote and no picks to trade.
     document.getElementById('trade-vote-field').style.display = mode.value === 'speed_blitz' ? 'none' : '';
+    document.getElementById('pick-trades-field').style.display = mode.value === 'speed_blitz' ? 'none' : '';
   }
   mode.addEventListener('change', applyModePresets);
   applyModePresets();
