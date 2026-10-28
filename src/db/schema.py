@@ -784,7 +784,7 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
                            CHECK (tired_starters IN ('push', 'standard', 'protect')),
 
     -- Roster tendencies
-    platoon_usage TEXT NOT NULL DEFAULT 'none'
+    platoon_usage TEXT NOT NULL DEFAULT 'vs-handedness'
                       CHECK (platoon_usage IN ('none', 'vs-handedness', 'aggressive')),
     -- How much a player's season stats count against his ratings, 0-100.
     stats_vs_scouting INTEGER NOT NULL DEFAULT 50

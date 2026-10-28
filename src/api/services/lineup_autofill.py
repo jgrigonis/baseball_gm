@@ -6,12 +6,9 @@
 #   - Auto-fill keeps every healthy, eligible player already in the lineup in
 #     his slot and position, and fills the rest.
 #   - Rebuild starts over from the whole eligible roster.
-# Both build for the hand the lineup is for (the Lineup tab's vs RHP / vs LHP
-# toggle), and weigh each hitter's season stats against his ratings by the
-# Strategy tab's stats-vs-scouting setting. Building a lineup for one hand is
-# itself a platoon, so with the Strategy tab's platoons off it builds as
-# "vs-handedness" does: a regular keeps his spot unless a bench bat from the
-# other side is close. Otherwise both lineups would always come out the same.
+# Both use the platoon setting against the hand the lineup is for (the Lineup
+# tab's vs RHP / vs LHP toggle), and weigh each hitter's season stats against
+# his ratings by the Strategy tab's stats-vs-scouting setting.
 # Eligible is who can play in a game: the 26-man, plus the 40-man in Blitz
 # leagues, minus the injured and pitchers.
 
@@ -79,16 +76,10 @@ def autofill(
         style=profile.lineup_style,
         dh=True,
         vs_hand=vs_hand,
-        platoon=_platoon(profile),
+        platoon=profile.platoon_usage,
         form=_form(db, league_id, hitters, profile.stats_weight),
     )
     return [{"player_id": s.player.id, "position": s.position} for s in lineup]
-
-
-def _platoon(profile: ManagerProfile) -> str:
-    """The platoon setting a lineup built for one hand uses: the Strategy
-    tab's, or vs-handedness if platoons are off."""
-    return "vs-handedness" if profile.platoon_usage == "none" else profile.platoon_usage
 
 
 def _form(db, league_id: str, hitters: list[PlayerInGame], weight: float) -> dict:

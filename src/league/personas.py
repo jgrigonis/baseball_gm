@@ -323,10 +323,10 @@ def profile(dials: dict) -> dict:
 
     if modern >= 80 and loyal < 34:
         platoon = "aggressive"
-    elif modern >= 60 and loyal < 67:
-        platoon = "vs-handedness"
-    else:
+    elif modern < 34 or loyal >= 67:
         platoon = "none"
+    else:
+        platoon = "vs-handedness"
 
     if hook < 34:
         starter = "let-them-work"
