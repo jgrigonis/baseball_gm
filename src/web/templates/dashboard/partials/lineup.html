@@ -42,6 +42,13 @@
         <span id="lu-slot-count"
               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
                      margin-left:8px;"></span>
+        {# One saved lineup for each hand of opposing starter #}
+        <span style="margin-left:12px;display:inline-flex;gap:3px;">
+          <button class="lu-filter active" id="vs-hand-R" onclick="switchHand('R')"
+                  title="The lineup for games against right-handed starters">vs RHP</button>
+          <button class="lu-filter" id="vs-hand-L" onclick="switchHand('L')"
+                  title="The lineup for games against left-handed starters">vs LHP</button>
+        </span>
         <div class="spacer"></div>
         <button class="btn btn-secondary" onclick="autoFill()"
                 title="Keep the players in the lineup and fill the empty and injured spots"
@@ -56,6 +63,8 @@
         </button>
       </div>
       <div class="lu-col-body">
+        <div id="vs-hand-note" style="display:none;padding:8px 14px 0;font-family:var(--font-mono);
+             font-size:11px;color:var(--text-dim);"></div>
         <div id="batting-order"></div>
         <div style="padding:12px 14px 4px;font-family:var(--font-mono);font-size:10px;
                     letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);
@@ -442,6 +451,7 @@ window.setRosterFilter     = setRosterFilter;
 window.handleBullpenRoleChange = handleBullpenRoleChange;
 window.setBullpenRole      = setBullpenRole;
 window.saveLineupToStorage = saveToStorage;
+window.switchHand          = switchHand;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 var  LEAGUE_ID        = "{{ league_id }}";
@@ -449,7 +459,7 @@ const ALL_HITTERS     = {{ hitters          | tojson }};
 const ALL_PITCHERS    = {{ pitchers         | tojson }};
 const ROTATION_SIZE   = {{ rotation_size | default(5) | tojson }};  // Strategy tab
 const FIELDING_STATS  = {{ fielding_stats_map | tojson }};  // {player_id: {pos: {po,a,e,pb,fpct}}}
-const SAVED_LINEUP  = {{ saved_lineup  | tojson }};
+const SAVED_LINEUP  = {{ saved_lineup  | tojson }};  // {R: [...], L: [...]}
 const SAVED_ROT     = {{ saved_rotation | tojson }};
 const SAVED_BP      = {{ saved_bullpen  | tojson }};
 const SAVED_POINTER = {{ saved_rotation_pointer | tojson }};
@@ -461,7 +471,14 @@ const POS_LABEL = {c:'C',  '1b':'1B','2b':'2B','3b':'3B','ss':'SS',
 
 
 /* ── Batting state ──────────────────────────────────────────────────────────── */
-let lineup = Array(9).fill(null); // {player_id, position} | null
+// One lineup per hand of opposing starter; `lineup` is the one on screen.
+const HAND_LABEL = { R: 'RHP', L: 'LHP' };
+const lineups = { R: Array(9).fill(null), L: Array(9).fill(null) };  // {player_id, position} | null
+let vsHand = 'R';
+let lineup = lineups.R;
+// Which hands have a lineup saved on the server. With only one, games against
+// either hand use it.
+const savedHands = { R: false, L: false };
 
 /* ── Pitching state ─────────────────────────────────────────────────────────── */
 let rotation   = [];    // (player_id | null)[]  — nulls are drag zones
@@ -756,7 +773,7 @@ function updateSaveBattingBtn() {
 }
 
 function clearLineup() {
-  lineup = Array(9).fill(null);
+  lineup = lineups[vsHand] = Array(9).fill(null);
   renderBattingOrder();
   renderRoster();
   updateSaveBattingBtn();
@@ -857,6 +874,7 @@ async function autoFill(rebuild = false) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         rebuild,
+        vs_hand: vsHand,
         lineup: lineup.slice(0, 9).map(s => s ? { player_id: s.player_id, position: s.position } : null),
       }),
     });
@@ -871,6 +889,31 @@ async function autoFill(rebuild = false) {
 
 function rebuildLineup() { return autoFill(true); }
 
+/* ── Batting: vs RHP / vs LHP ────────────────────────────────────────────────── */
+function switchHand(hand) {
+  vsHand = hand;
+  lineup = lineups[hand];
+  ['R', 'L'].forEach(h =>
+    document.getElementById(`vs-hand-${h}`)?.classList.toggle('active', h === hand));
+  updateHandNote();
+  renderBattingOrder();
+  renderRoster();
+  updateSaveBattingBtn();
+  saveToStorage();
+}
+
+function updateHandNote() {
+  const note = document.getElementById('vs-hand-note');
+  if (!note) return;
+  const other = vsHand === 'R' ? 'L' : 'R';
+  let msg = '';
+  if (!savedHands[vsHand] && savedHands[other]) {
+    msg = `No lineup saved vs ${HAND_LABEL[vsHand]} yet: those games use your vs ${HAND_LABEL[other]} lineup.`;
+  }
+  note.textContent = msg;
+  note.style.display = msg ? '' : 'none';
+}
+
 /* ── Batting: save ───────────────────────────────────────────────────────────── */
 async function saveBatting() {
   if (!lineupValid()) return;
@@ -881,6 +924,7 @@ async function saveBatting() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        vs_hand: vsHand,
         lineup: lineup
           .map((s, i) => s ? { player_id: s.player_id, batting_order: i+1, position: s.position } : null)
           .filter(Boolean),
@@ -888,6 +932,8 @@ async function saveBatting() {
     });
     if (res.ok) {
       battingSaved = true;
+      savedHands[vsHand] = true;
+      updateHandNote();
       showFeedback('✓ Batting saved', 'var(--green)');
       updateScheduleBtn();
       // Clear stored lineup so the next page load reads fresh from the server
@@ -895,7 +941,7 @@ async function saveBatting() {
         const stored = sessionStorage.getItem(STORAGE_KEY);
         if (stored) {
           const data = JSON.parse(stored);
-          delete data.lineup;
+          if (data.lineups) delete data.lineups[vsHand];
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
       } catch(e) {}
@@ -1450,7 +1496,7 @@ function saveToStorage() {
     const bs1 = document.getElementById('bp-s1')?.value   || 'sp_grade';
     const bs2 = document.getElementById('bp-s2')?.value   || '';
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      lineup, rotation, pointerPid, bullpen,
+      lineups, vsHand, rotation, pointerPid, bullpen,
       rosterFilter, activeTab,
       rosterSort: { s1, s2, s3 },
       bullpenSort: { s1: bs1, s2: bs2 },
@@ -1482,14 +1528,23 @@ const knownHitterIds  = new Set(ALL_HITTERS.map(p => p.player_id));
 const knownPitcherIds = new Set(ALL_PITCHERS.map(p => p.player_id));
 const knownAll = new Set([...knownHitterIds, ...knownPitcherIds]);
 
-if (SAVED_LINEUP.length > 0) {
-  SAVED_LINEUP.sort((a,b) => a.batting_order - b.batting_order).forEach(s => {
+['R', 'L'].forEach(hand => {
+  const saved = (SAVED_LINEUP && SAVED_LINEUP[hand]) || [];
+  savedHands[hand] = saved.length > 0;
+  saved.sort((a,b) => a.batting_order - b.batting_order).forEach(s => {
     const idx = s.batting_order - 1;
     if (idx >= 0 && idx < 9 && knownAll.has(s.player_id)) {
-      lineup[idx] = { player_id: s.player_id, position: s.position || '' };
+      lineups[hand][idx] = { player_id: s.player_id, position: s.position || '' };
     }
   });
-}
+});
+// With one lineup saved, start the other from a copy of it.
+['R', 'L'].forEach(hand => {
+  const other = hand === 'R' ? 'L' : 'R';
+  if (!savedHands[hand] && savedHands[other]) {
+    lineups[other].forEach((s, i) => { lineups[hand][i] = s ? { ...s } : null; });
+  }
+});
 
 // Pitching: load saved rotation only — no auto-fill on first visit
 SAVED_ROT.filter(pid => knownPitcherIds.has(pid)).forEach(pid => rotation.push(pid));
@@ -1505,12 +1560,13 @@ ensureValidPointer();
 const stored = loadFromStorage();
 if (stored) {
   // Validate and apply stored lineup
-  if (Array.isArray(stored.lineup) && stored.lineup.length === 9) {
-    const validLineup = stored.lineup.map(s =>
-      s && knownAll.has(s.player_id) ? s : null
-    );
-    lineup = validLineup;
-  }
+  ['R', 'L'].forEach(hand => {
+    const l = stored.lineups && stored.lineups[hand];
+    if (Array.isArray(l) && l.length === 9) {
+      lineups[hand] = l.map(s => s && knownAll.has(s.player_id) ? s : null);
+    }
+  });
+  lineup = lineups[vsHand];
   // Validate and apply stored rotation — only if DB also has a saved rotation,
   // so an auto-filled-but-never-saved session rotation can't survive a reload
   if (Array.isArray(stored.rotation) && SAVED_ROT.length > 0) {
@@ -1550,6 +1606,7 @@ const _urlTab = new URLSearchParams(window.location.search).get('tab');
 if (_urlTab === 'pitching') switchTab('pitching');
 
 ensureValidPointer();
+switchHand(stored && (stored.vsHand === 'L' || stored.vsHand === 'R') ? stored.vsHand : 'R');
 renderBattingOrder();
 renderRoster();
 renderRotation();

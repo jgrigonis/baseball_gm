@@ -90,8 +90,13 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 mp.PLATOON_USAGE,
                 ("None", "vs Handedness", "Aggressive"),
                 ("Set lineup", "Always split"),
-                "Coming soon: how much your lineup changes against left- and "
-                "right-handed starters.",
+                "How much the lineup changes with the other team's starter. A "
+                "hitter facing a pitcher who throws from his side hits worse. "
+                "None plays the same lineup every day. vs Handedness benches a "
+                "regular only for a bench player who's close to him and has the "
+                "better matchup. Aggressive plays the best matchup lineup. Used "
+                "by Auto-fill, Rebuild and the AI, and to fill gaps in your "
+                "saved lineups; a lineup you save is played as you set it.",
             ),
         ),
     ),

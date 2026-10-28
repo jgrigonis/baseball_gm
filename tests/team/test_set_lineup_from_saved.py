@@ -41,6 +41,7 @@ def make_team(players, pitcher=None):
     """Build a minimal TeamInGame with controlled players."""
     from src.team.team_in_game import TeamInGame
     from src.team.lineup_optimizer import LineupOptimizer
+    from src.team.manager_profile import DEFAULT_PROFILE
 
     record = MagicMock()
     record.players = []  # not used in _set_lineup_from_saved directly
@@ -54,6 +55,8 @@ def make_team(players, pitcher=None):
     team.batter_index = 0
     team.logger = MagicMock()
     team._optimizer = LineupOptimizer.optimize
+    team.profile = DEFAULT_PROFILE
+    team._vs_hand = None
     return team
 
 
