@@ -14,6 +14,7 @@ from src.api import dependencies
 from src.api.routers import draft, lineup, roster, sim
 from src.api.schemas import (
     DraftPreferencesRequest,
+    LineupAutofillRequest,
     LineupSaveRequest,
     RosterSaveRequest,
     RotationSaveRequest,
@@ -26,6 +27,7 @@ from src.api.schemas import (
     [
         sim.sim_games,
         lineup.save_lineup_prefs,
+        lineup.autofill_lineup,
         lineup.save_rotation,
         lineup.save_bullpen,
         roster.save_roster_put,
@@ -70,6 +72,20 @@ class TestLineupSaveRequest:
 
     def test_missing_lineup_is_empty(self):
         assert LineupSaveRequest().lineup == []
+
+
+class TestLineupAutofillRequest:
+    def test_dashboard_payload_with_empty_slots(self):
+        body = LineupAutofillRequest(
+            rebuild=True,
+            lineup=[{"player_id": "p1", "position": "ss"}, None],
+        )
+        assert body.rebuild
+        assert body.lineup[0].player_id == "p1" and body.lineup[1] is None
+
+    def test_defaults_to_fill_with_nothing(self):
+        body = LineupAutofillRequest()
+        assert body.lineup == [] and not body.rebuild
 
 
 class TestRotationSaveRequest:

@@ -27,6 +27,7 @@ def make_player(pid, ratings=None, is_injured=False):
     # apply_fatigue_to_ratings is a no-op
     p.apply_fatigue_to_ratings = MagicMock()
     p.is_rated.return_value = True
+    p.skills = {}
     return p
 
 
@@ -81,7 +82,7 @@ class TestSetLineupFromSaved:
         saved = [saved_slot(f"p{i}", i, pos) for i, pos in enumerate(positions, 1)]
         available = players  # pitcher excluded by _set_lineup_from_saved
 
-        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+        team._set_lineup_from_saved(saved, available, "analytics", dh=True)
 
         assert len(team.lineup) == 9
         pids = [s.player.id for s in team.lineup]
@@ -110,7 +111,7 @@ class TestSetLineupFromSaved:
         ]
         available = healthy  # only healthy players available
 
-        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+        team._set_lineup_from_saved(saved, available, "analytics", dh=True)
 
         pids = [s.player.id for s in team.lineup]
         assert len(pids) == len(set(pids)), f"Duplicate players: {pids}"
@@ -135,7 +136,7 @@ class TestSetLineupFromSaved:
         available = [healthy] + extra
         team.players = [healthy, injured, pitcher] + extra
 
-        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+        team._set_lineup_from_saved(saved, available, "analytics", dh=True)
 
         pids = [s.player.id for s in team.lineup]
         assert "inj" not in pids, "Injured player should not be in lineup"
@@ -166,7 +167,7 @@ class TestSetLineupFromSaved:
         ]
         available = [player_a] + others
 
-        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+        team._set_lineup_from_saved(saved, available, "analytics", dh=True)
 
         pids = [s.player.id for s in team.lineup]
         assert pids.count("A") == 1, f"Player A appears {pids.count('A')} times"
@@ -192,7 +193,7 @@ class TestSetLineupFromSaved:
         ]
         available = healthy
 
-        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+        team._set_lineup_from_saved(saved, available, "analytics", dh=True)
 
         pids = [s.player.id for s in team.lineup]
         assert len(pids) == 9, f"Expected 9 players, got {len(pids)}: {pids}"
@@ -217,7 +218,7 @@ class TestSetLineupFromSaved:
         ]
         available = starters + [bench_c, bench_3b]
 
-        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+        team._set_lineup_from_saved(saved, available, "analytics", dh=True)
 
         by_pos = {s.position: s.player.id for s in team.lineup}
         assert len(team.lineup) == 9
@@ -244,7 +245,7 @@ class TestSetLineupFromSaved:
         ]
         available = starters + [bench_if, reliever]
 
-        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+        team._set_lineup_from_saved(saved, available, "analytics", dh=True)
 
         by_pos = {s.position: s.player.id for s in team.lineup}
         assert by_pos["2b"] == "bench_if"

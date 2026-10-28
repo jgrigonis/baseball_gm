@@ -1,154 +1,206 @@
 # tests/team/test_lineup_optimizer.py
 """
-Testing Philosophy for LineupOptimizer
+LineupOptimizer: contracts and invariants, plus the simple cases where the
+right answer is obvious (the only catcher catches, the best hitter bats high).
 
-We test contracts and invariants, not baseball opinions.
-
-We verify that it:
-
-✅ Selects pitchers deterministically
-✅ Produces correct lineup sizes
-✅ Preserves batting order
-✅ Assigns valid positions
-✅ Respects DH rules
-✅ Never mutates players
-✅ Fails loudly on invalid inputs
-
-We do not test:
-Exact batting orders beyond simple dominance cases
-Relative baseball “correctness”
-PlayerEvaluator logic
+We do not test exact batting orders beyond simple dominance cases, or
+PlayerEvaluator.
 """
 
-# tests/conftest.py (or inline)
-
-from unittest.mock import MagicMock
-from src.player.player_in_game import PlayerInGame
 from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
+
+from src.player.player_in_game import PlayerInGame
+from src.team.lineup_optimizer import (
+    FIELD_POSITIONS,
+    LINEUP_STYLES,
+    LineupOptimizer,
+)
+
+HITTING = ("contact", "power", "eye", "speed", "base_running", "bunting", "clutch")
 
 
-def make_player(id, ratings):
+def make_player(id, ratings=None, skills=None, throws="R"):
     p = MagicMock(spec=PlayerInGame)
-
-    # record is a runtime attribute → must be mocked explicitly
     p.record = SimpleNamespace(id=id)
-
-    p.ratings = ratings
-    p.throws = "R"
+    p.id = id
+    p.ratings = ratings or {}
+    p.skills = skills or {}
+    p.throws = throws
     p.is_injured = False
     return p
 
 
-def test_select_pitcher_uses_p_rating_then_id():
-    """select_pitcher chooses highest pitcher rating"""
-    from src.team.lineup_optimizer import LineupOptimizer
+def hitter(id, bat=50, glove=None, throws="R", **skills):
+    """A hitter with overall_offense `bat`, a rating at each position from
+    `glove` (default 40 everywhere), and hitting skills all at `bat` unless
+    given."""
+    ratings = {pos: 40 for pos in FIELD_POSITIONS}
+    ratings.update(glove or {})
+    ratings["overall_offense"] = bat
+    return make_player(
+        id, ratings, {k: skills.get(k, bat) for k in HITTING}, throws=throws
+    )
 
+
+def nine_plus(extra=()):
+    return [hitter(f"h{i}") for i in range(9)] + list(extra)
+
+
+def by_position(lineup):
+    return {s.position: s.player.id for s in lineup}
+
+
+def test_select_pitcher_uses_p_rating_then_id():
     p1 = make_player("a", {"p": 80})
     p2 = make_player("b", {"p": 90})
     p3 = make_player("c", {"p": 90})  # tie → higher id wins
 
-    pitcher = LineupOptimizer.select_pitcher([p1, p2, p3])
-
-    assert pitcher is p3
+    assert LineupOptimizer.select_pitcher([p1, p2, p3]) is p3
 
 
 def test_optimize_returns_lineup_and_pitcher():
-    from src.team.lineup_optimizer import LineupOptimizer
+    pitcher = make_player("p", {"p": 99})
+    players = nine_plus([pitcher])
 
-    players = [make_player(str(i), {"p": i}) for i in range(10)]
+    lineup, chosen = LineupOptimizer.optimize(players)
 
-    lineup, pitcher = LineupOptimizer.optimize(players)
-
-    assert pitcher in players
-    assert isinstance(lineup, list)
+    assert chosen is pitcher
+    assert pitcher not in [s.player for s in lineup]
 
 
 def test_optimize_respects_dh_rule():
-    from src.team.lineup_optimizer import LineupOptimizer
+    players = nine_plus([hitter("x")])
+    pitcher = make_player("p", {"p": 99})
 
-    players = [make_player(str(i), {}) for i in range(10)]
-
-    lineup_dh, _ = LineupOptimizer.optimize(players, dh=True)
-    lineup_no_dh, _ = LineupOptimizer.optimize(players, dh=False)
+    lineup_dh, _ = LineupOptimizer.optimize(players, dh=True, pitcher=pitcher)
+    lineup_no_dh, _ = LineupOptimizer.optimize(players, dh=False, pitcher=pitcher)
 
     assert len(lineup_dh) == 9
+    assert sorted(by_position(lineup_dh)) == sorted(FIELD_POSITIONS + ["dh"])
     assert len(lineup_no_dh) == 8
+    assert sorted(by_position(lineup_no_dh)) == sorted(FIELD_POSITIONS)
 
 
-def test_build_lineup_preserves_order():
-    from src.team.lineup_optimizer import LineupOptimizer
-
-    p1, p2, p3 = (
-        make_player("1", {}),
-        make_player("2", {}),
-        make_player("3", {}),
+@pytest.mark.parametrize("style", LINEUP_STYLES)
+def test_every_style_builds_a_full_lineup(style):
+    lineup, _ = LineupOptimizer.optimize(
+        nine_plus(), style=style, pitcher=make_player("p")
     )
-
-    assignments = {p1: "cf", p2: "ss", p3: "2b"}
-
-    lineup = LineupOptimizer.build_lineup([p1, p2, p3], assignments)
-
-    assert [slot.player for slot in lineup] == [p1, p2, p3]
-
-
-import pytest
-
-
-def test_offensive_batting_order_requires_minimum_hitters():
-    from src.team.lineup_optimizer import LineupOptimizer
-
-    hitters = [make_player(str(i), {}) for i in range(5)]
-
-    with pytest.raises(ValueError):
-        LineupOptimizer.offensive_batting_order(hitters, dh=True)
-
-
-from src.team.lineup_slot import LINEUP_SLOTS
-
-
-def test_assign_positions_priority_uses_valid_positions():
-    from src.team.lineup_optimizer import LineupOptimizer
-
-    players = [make_player(str(i), {"ss": i}) for i in range(8)]
-
-    assignments = LineupOptimizer.assign_positions_priority(players, dh=True)
-
-    for pos in assignments.values():
-        assert pos in LINEUP_SLOTS or pos == "dh"
-
-
-def test_assign_positions_greedy_assigns_all_players():
-    from src.team.lineup_optimizer import LineupOptimizer
-
-    players = [make_player(str(i), {"cf": i}) for i in range(9)]
-
-    assignments = LineupOptimizer.assign_positions_greedy(players, dh=True)
-
-    assert set(assignments.keys()) == set(players)
-
-
-from unittest.mock import patch
-
-
-def test_optimizer_does_not_mutate_players():
-    from src.team.lineup_optimizer import LineupOptimizer
-
-    p = make_player("1", {"p": 10})
-    original_ratings = dict(p.ratings)
-
-    with (
-        patch.object(LineupOptimizer, "prioritized_lineup", return_value=[]),
-        patch.object(LineupOptimizer, "select_pitcher", return_value=None),
-    ):
-        LineupOptimizer.optimize([p, make_player("2", {})])
-
-    assert p.ratings == original_ratings
+    ids = [s.player.id for s in lineup]
+    assert len(ids) == len(set(ids)) == 9
 
 
 def test_unknown_style_raises():
-    from src.team.lineup_optimizer import LineupOptimizer
-
-    players = [make_player(str(i), {}) for i in range(10)]
-
     with pytest.raises(ValueError):
-        LineupOptimizer.optimize(players, style="chaos")
+        LineupOptimizer.optimize(nine_plus(), style="chaos")
+
+
+def test_not_enough_hitters_raises():
+    with pytest.raises(ValueError):
+        LineupOptimizer.fill([None] * 9, [hitter(f"h{i}") for i in range(5)])
+
+
+def test_injured_players_are_left_out():
+    hurt = hitter("hurt", bat=99)
+    hurt.is_injured = True
+    lineup, _ = LineupOptimizer.optimize(nine_plus([hurt]), pitcher=make_player("p"))
+    assert "hurt" not in [s.player.id for s in lineup]
+
+
+def test_only_catcher_catches_even_if_he_cant_hit():
+    """The old optimizer picked 9 bats first and could leave the catcher out."""
+    catcher = hitter("catcher", bat=30, glove={"c": 80})
+    bats = [hitter(f"bat{i}", bat=70, glove={"c": 5}) for i in range(9)]
+
+    lineup = LineupOptimizer.fill([None] * 9, bats + [catcher])
+
+    assert by_position(lineup)["c"] == "catcher"
+
+
+def test_glove_matters_most_up_the_middle():
+    """Two equal bats: the better fielder plays short, not first."""
+    shortstop = hitter("ss", glove={"ss": 80, "1b": 80})
+    first = hitter("1b", glove={"ss": 40, "1b": 60})
+
+    lineup = LineupOptimizer.fill([None] * 9, nine_plus([shortstop, first]))
+
+    assert by_position(lineup)["ss"] == "ss"
+
+
+def test_big_bat_without_glove_still_plays():
+    slugger = hitter("slugger", bat=90, glove={p: 10 for p in FIELD_POSITIONS})
+
+    lineup = LineupOptimizer.fill([None] * 9, nine_plus([slugger]))
+
+    assert by_position(lineup)["dh"] == "slugger"
+
+
+def test_lefty_kept_off_shortstop_when_a_righty_can_play():
+    lefty = hitter("lefty", glove={"ss": 20}, throws="L")
+    righty = hitter("righty", glove={"ss": 15})
+    players = [lefty, righty] + [hitter(f"h{i}", glove={"ss": 0}) for i in range(8)]
+
+    lineup = LineupOptimizer.fill([None] * 9, players)
+
+    assert by_position(lineup)["ss"] == "righty"
+
+
+def test_best_hitter_bats_near_the_top():
+    star = hitter("star", bat=90)
+    lineup = LineupOptimizer.fill([None] * 9, nine_plus([star]))
+
+    assert [s.player.id for s in lineup].index("star") < 4
+
+
+def test_fast_on_base_hitter_leads_off_traditional():
+    leadoff = hitter("leadoff", bat=55, speed=95, contact=70, eye=70, power=20)
+    lineup = LineupOptimizer.fill([None] * 9, nine_plus([leadoff]), style="traditional")
+    assert lineup[0].player.id == "leadoff"
+
+
+def test_fill_keeps_locked_players_where_they_are():
+    players = nine_plus([hitter("x"), hitter("y")])
+    locked = [None] * 9
+    locked[2] = (players[0], "cf")
+    locked[6] = (players[1], "c")
+
+    lineup = LineupOptimizer.fill(locked, players)
+
+    assert (lineup[2].player.id, lineup[2].position) == ("h0", "cf")
+    assert (lineup[6].player.id, lineup[6].position) == ("h1", "c")
+    ids = [s.player.id for s in lineup]
+    assert len(ids) == len(set(ids)) == 9
+    assert sorted(by_position(lineup)) == sorted(FIELD_POSITIONS + ["dh"])
+
+
+def test_fill_gives_a_locked_player_without_a_position_one():
+    players = nine_plus()
+    weak = hitter("weak", bat=10)
+    locked = [None] * 9
+    locked[0] = (weak, None)
+
+    lineup = LineupOptimizer.fill(locked, players + [weak])
+
+    assert lineup[0].player.id == "weak"
+    assert lineup[0].position in FIELD_POSITIONS + ["dh"]
+
+
+def test_optimizer_does_not_mutate_players():
+    players = nine_plus()
+    before = [(dict(p.ratings), dict(p.skills)) for p in players]
+
+    LineupOptimizer.optimize(players, pitcher=make_player("p"))
+
+    assert [(p.ratings, p.skills) for p in players] == before
+
+
+def test_deterministic_whatever_the_input_order():
+    players = [hitter(f"h{i}", bat=50 + i % 3) for i in range(14)]
+    a = LineupOptimizer.fill([None] * 9, players)
+    b = LineupOptimizer.fill([None] * 9, list(reversed(players)))
+    assert [(s.player.id, s.position) for s in a] == [
+        (s.player.id, s.position) for s in b
+    ]
