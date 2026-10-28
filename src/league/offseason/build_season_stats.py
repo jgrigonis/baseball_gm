@@ -48,7 +48,8 @@ INSERT INTO player_season_stats (
     pitch_count,
 
     field_putouts, field_assists, field_errors,
-    field_passed_balls, field_catcher_cs, field_catcher_sb
+    field_passed_balls, field_catcher_cs, field_catcher_sb,
+    field_double_plays, field_triple_plays
 )
 SELECT
     pgs.player_id,
@@ -106,7 +107,9 @@ SELECT
     SUM(pgs.field_errors),
     SUM(pgs.passed_balls),
     SUM(pgs.catcher_cs),
-    SUM(pgs.catcher_sb)
+    SUM(pgs.catcher_sb),
+    SUM(pgs.field_double_plays),
+    SUM(pgs.field_triple_plays)
 
 FROM player_game_stats pgs
 JOIN games g ON pgs.game_id = g.id

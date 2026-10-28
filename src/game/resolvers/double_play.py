@@ -6,6 +6,7 @@ from src.game.events.double_play import DoublePlayEvent
 from src.game.events.out import (
     PutOutEvent,
     OutRecordedEvent,
+    fielders_on,
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
@@ -33,10 +34,22 @@ def resolve_double_play(resolver, intent, game) -> list[GameEvent]:
 
     events: list[GameEvent] = []
 
-    events.append(DoublePlayEvent(batter=intent.batter, pitcher=intent.pitcher))
     if game.bases.runner_on(FIRST):
-        # pick double play type
-        events.extend(_choose_double_play(resolver, game))
+        putouts = _choose_double_play(resolver, game)
+    elif game.bases.runner_on(THIRD):
+        putouts = _3to1_double_play(resolver, game)
+    else:
+        putouts = _2to1_double_play(resolver, game)
+    events.append(
+        DoublePlayEvent(
+            batter=intent.batter,
+            pitcher=intent.pitcher,
+            fielders=fielders_on(putouts),
+        )
+    )
+    events.extend(putouts)
+
+    if game.bases.runner_on(FIRST):
         events.append(
             RunnerRemovedEvent(
                 runner=game.bases.runner_on(FIRST),
@@ -57,7 +70,6 @@ def resolve_double_play(resolver, intent, game) -> list[GameEvent]:
     # No runner was on first, but we still need a double play
     # try third next.
     elif game.bases.runner_on(THIRD):
-        events.extend(_3to1_double_play(resolver, game))
         events.append(
             RunnerRemovedEvent(
                 runner=game.bases.runner_on(THIRD),
@@ -112,7 +124,6 @@ def resolve_double_play(resolver, intent, game) -> list[GameEvent]:
             )
     else:
         # must be a runner on second.
-        events.extend(_2to1_double_play(resolver, game))
         events.append(
             RunnerRemovedEvent(
                 runner=game.bases.runner_on(SECOND),
