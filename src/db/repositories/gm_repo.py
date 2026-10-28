@@ -173,6 +173,18 @@ class GMRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def get_team_profile(self, team_id: str, league_id: str) -> dict | None:
+        """The gm_profiles row of whoever runs this team, person or AI. None
+        if the team has no GM."""
+        row = self.conn.execute(
+            """SELECT gp.* FROM gms g
+               JOIN gm_profiles gp ON gp.gm_id = g.id
+               WHERE g.team_id = %s AND g.league_id = %s AND g.fired_at IS NULL
+               ORDER BY g.is_ai LIMIT 1""",
+            (team_id, league_id),
+        ).fetchone()
+        return dict(row) if row else None
+
     def save_profile(self, gm_id: str, updates: dict) -> None:
         """Update strategy fields on gm_profiles."""
         set_clause = ", ".join(f"{col} = %s" for col in updates)

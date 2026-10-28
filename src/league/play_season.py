@@ -4,7 +4,7 @@ Play games in a season.
 """
 
 import argparse
-from datetime import datetime
+from datetime import date, datetime
 import logging
 import random
 import traceback
@@ -13,12 +13,12 @@ from src.db.connection import get_connection
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
-from src.team.lineup_optimizer import DEFAULT_STYLE
+from src.team.manager_profile import DEFAULT_PROFILE, ManagerProfile
 from src.db.repositories.pitcher_state import (
-    MIN_ENERGY_STARTER,
     PitcherState,
     PitcherStateRepository,
     recover_pitcher_state,
@@ -170,6 +170,28 @@ def _load_eligible_ids(conn, team_id: str, blitz: bool) -> list[str]:
     return ids
 
 
+def _is_playoff_game(conn, game_id: str) -> bool:
+    row = conn.execute(
+        "SELECT series_id FROM games WHERE id = %s", (game_id,)
+    ).fetchone()
+    return bool(row and row["series_id"])
+
+
+def _had_off_day(conn, team_id: str, season_id: str, game_date) -> bool:
+    """True if the team didn't play the day before game_date (but has played
+    this season)."""
+    row = conn.execute(
+        """SELECT MAX(game_date) AS last FROM games
+           WHERE season_id = %s AND completed = 1 AND game_date < %s
+             AND (home_team_id = %s OR away_team_id = %s)""",
+        (season_id, str(game_date), team_id, team_id),
+    ).fetchone()
+    if not row or not row["last"]:
+        return False
+    last = date.fromisoformat(row["last"][:10])
+    return (date.fromisoformat(str(game_date)[:10]) - last).days >= 2
+
+
 def _pick_starter(
     rotations_repo: TeamRotationsRepository,
     pitcher_repo: PitcherStateRepository,
@@ -180,6 +202,9 @@ def _pick_starter(
     team_players: list | None = None,
     eligible_ids: set | None = None,
     pitcher_states: dict[str, PitcherState | None] | None = None,
+    profile: ManagerProfile = DEFAULT_PROFILE,
+    playoffs: bool = False,
+    off_day: bool = False,
 ) -> tuple[str | None, bool]:
     """
     Returns (starter_id, should_advance_pointer).
@@ -203,7 +228,13 @@ def _pick_starter(
 
     No rotation or all pitchers unavailable:
         (None, False) — caller falls back to stamina-based selection
+
+    The team's rotation settings (``profile``) decide how rested a starter
+    must be (tired starters), whether the last starter is skipped after an
+    off day (``off_day``) so the ace goes on normal rest, and how many
+    starters cycle in the ``playoffs``.
     """
+    min_energy = profile.starter_min_energy
     injured_ids = injured_ids or set()
     team_players = team_players or []
 
@@ -245,7 +276,7 @@ def _pick_starter(
             ready = [
                 p
                 for p in bullpen
-                if _energy(p.id, p.skills.get("recovery", 50)) >= MIN_ENERGY_STARTER
+                if _energy(p.id, p.skills.get("recovery", 50)) >= min_energy
                 and getattr(p, "bullpen_role", None) != "Closer"
             ]
             pool = (
@@ -276,6 +307,9 @@ def _pick_starter(
 
     # ── Scheduled pitcher is healthy — check energy ───────────────────────────
     rotation_sorted = sorted(rotation, key=lambda r: r["rotation_order"])
+    # A shorter playoff rotation: only the first few starters cycle.
+    if playoffs and profile.playoff_rotation_size:
+        rotation_sorted = rotation_sorted[: profile.playoff_rotation_size]
     orders = [r["rotation_order"] for r in rotation_sorted]
     scheduled_entry = next(
         (r for r in rotation_sorted if r["player_id"] == scheduled), None
@@ -283,6 +317,15 @@ def _pick_starter(
     start_idx = (
         orders.index(scheduled_entry["rotation_order"]) if scheduled_entry else 0
     )
+    # Skip the 5th starter: after an off day, the last man in a rotation of
+    # five or more waits and the top of the rotation goes again.
+    if (
+        off_day
+        and profile.skip_fifth_starter
+        and len(rotation_sorted) >= 5
+        and start_idx == len(rotation_sorted) - 1
+    ):
+        start_idx = 0
 
     # Walk forward through healthy rotation pitchers looking for rested one
     for i in range(len(rotation_sorted)):
@@ -290,7 +333,7 @@ def _pick_starter(
         candidate = rotation_sorted[idx]
         if candidate["player_id"] in injured_ids:
             continue
-        if _energy(candidate["player_id"], 50) >= MIN_ENERGY_STARTER:
+        if _energy(candidate["player_id"], 50) >= min_energy:
             return candidate["player_id"], True
 
     # All healthy rotation pitchers tired — most rested healthy one
@@ -361,6 +404,11 @@ def _play_game(
     away_record = team_repo.get(game_info["away_team_id"])
     home_team = TeamInGame(home_record)
     away_team = TeamInGame(away_record)
+    gm_repo = GMRepository(conn)
+    for team in (home_team, away_team):
+        team.profile = ManagerProfile.from_row(
+            gm_repo.get_team_profile(team.record.id, league_id)
+        )
 
     # Stored pitcher states for everyone in the game, loaded once and shared
     # by the energy setup, starter selection and the game itself.
@@ -405,6 +453,7 @@ def _play_game(
     injured_ids = injury_repo.get_injured_ids(all_player_ids, as_of=game_date)
 
     pitcher_states = {pid: stored_pitcher_states.get(pid) for pid in all_player_ids}
+    playoffs = _is_playoff_game(conn, game_info["game_id"])
     home_starter_id, home_advance = _pick_starter(
         rotations_repo,
         pitcher_repo,
@@ -415,6 +464,9 @@ def _play_game(
         team_players=list(home_team.players),
         eligible_ids=home_eligible,
         pitcher_states=pitcher_states,
+        profile=home_team.profile,
+        playoffs=playoffs,
+        off_day=_had_off_day(conn, home_team.record.id, season_id, game_date),
     )
     away_starter_id, away_advance = _pick_starter(
         rotations_repo,
@@ -426,6 +478,9 @@ def _play_game(
         team_players=list(away_team.players),
         eligible_ids=away_eligible,
         pitcher_states=pitcher_states,
+        profile=away_team.profile,
+        playoffs=playoffs,
+        off_day=_had_off_day(conn, away_team.record.id, season_id, game_date),
     )
 
     # Fallback: if no rotation set, pick the best healthy pitcher by fatigue-adjusted stamina
@@ -490,8 +545,6 @@ def _play_game(
     home_saved = lpr.get_preferences(home_team.record.id, league_id)
     away_saved = lpr.get_preferences(away_team.record.id, league_id)
     # AI teams have no saved lineup, so theirs is built fresh for every game.
-    home_style = lpr.get_lineup_style(home_team.record.id, league_id) or DEFAULT_STYLE
-    away_style = lpr.get_lineup_style(away_team.record.id, league_id) or DEFAULT_STYLE
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
     game = Game(
@@ -515,7 +568,7 @@ def _play_game(
         injured_ids=injured_ids,
         restrict_to_ids=home_eligible or None,
         saved_lineup=home_saved,
-        style=home_style,
+        style=home_team.profile.lineup_style,
     )
     away_team.set_lineup(
         starting_pitcher_id=away_starter_id,
@@ -523,7 +576,7 @@ def _play_game(
         injured_ids=injured_ids,
         restrict_to_ids=away_eligible or None,
         saved_lineup=away_saved,
-        style=away_style,
+        style=away_team.profile.lineup_style,
     )
 
     lineup_repo = LineupRepository(conn)

@@ -48,6 +48,7 @@ from src.game.score import Score
 from src.player.fatigue import FatigueLevel
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_in_game import PlayerInGame
+from src.team.manager_profile import DEFAULT_PROFILE, ManagerProfile, profile_of
 from src.team.team_in_game import TeamInGame
 
 
@@ -78,6 +79,7 @@ class GameStrategy:
         pickoff_attempt: Optional[int] = None  # Which base?
         """
         rng = _get_rng(rng)
+        offense = profile_of(getattr(game, "bat_team", None))
         steal_attempt = None
         double_steal_attempt = None
         pickoff_attempt = None
@@ -105,7 +107,11 @@ class GameStrategy:
                 for base in double_steal_bases:
                     runner_speeds[base] = game.bases.runner_on(base).skills["speed"]
                 if GameStrategy.should_attempt_double_steal(
-                    game.inning.outs, double_steal_bases, runner_speeds, rng
+                    game.inning.outs,
+                    double_steal_bases,
+                    runner_speeds,
+                    rng,
+                    aggression=offense.steal_factor,
                 ):
                     double_steal_attempt = double_steal_bases
             else:
@@ -135,6 +141,7 @@ class GameStrategy:
                         br_skill,
                         arm,
                         rng,
+                        aggression=offense.steal_factor,
                     ):
                         steal_attempt = base
 
@@ -148,6 +155,7 @@ class GameStrategy:
             game.score.differential,
             game.inning.number,
             rng,
+            bunt_factor=offense.bunt_factor,
         ):
             bunt_attempt = True
         if not bunt_attempt:
@@ -158,6 +166,7 @@ class GameStrategy:
                 game.count.balls,
                 game.count.strikes,
                 rng,
+                aggression=offense.steal_factor,
             ):
                 hit_and_run = True
         if runner_speeds:
@@ -253,6 +262,7 @@ class GameStrategy:
         base_running_skill: int = 50,
         catcher_arm: int = 50,
         rng: random.Random | None = None,
+        aggression: float = 1.0,
     ) -> bool:
         """
         Decide if runner should attempt to steal.
@@ -312,6 +322,9 @@ class GameStrategy:
         elif score.differential > 2:
             prob *= STEAL_BLOWOUT_MOD
 
+        # The manager's baserunning setting
+        prob *= aggression
+
         return rng.random() < prob
 
     @staticmethod
@@ -320,6 +333,7 @@ class GameStrategy:
         double_steal_bases: list[int] = None,
         runner_speeds: dict[int, int] = None,  # {base: speed}
         rng: random.Random | None = None,
+        aggression: float = 1.0,
     ) -> bool:
         """Decide if double steal should be attempted."""
         rng = _get_rng(rng)
@@ -347,6 +361,8 @@ class GameStrategy:
         if outs == 2:
             prob *= DOUBLE_STEAL_TWO_OUT_MOD
 
+        prob *= aggression
+
         return rng.random() < prob
 
     @staticmethod
@@ -360,6 +376,7 @@ class GameStrategy:
         score_differential: int = 0,
         inning: int = 1,
         rng: random.Random | None = None,
+        bunt_factor: float = 1.0,
     ) -> bool:
         """
         Decide if batter should attempt a bunt.
@@ -410,6 +427,9 @@ class GameStrategy:
         # More likely in late innings
         if inning >= 7:
             prob *= BUNT_LATE_INNING_MOD
+
+        # The manager's sac bunt setting
+        prob *= bunt_factor
 
         return rng.random() < prob
 
@@ -513,6 +533,7 @@ class GameStrategy:
         count_balls: int = 0,
         count_strikes: int = 0,
         rng: random.Random | None = None,
+        aggression: float = 1.0,
     ) -> bool:
         """
         Decide if offense should call hit-and-run.
@@ -566,6 +587,8 @@ class GameStrategy:
         if count_balls >= count_strikes:
             prob *= HNR_FAVORABLE_COUNT_MOD
 
+        prob *= aggression
+
         return rng.random() < prob
 
     @staticmethod
@@ -613,6 +636,7 @@ class GameStrategy:
         pitcher: PlayerInGame,
         inning: Inning,
         score_differential: int,
+        profile: ManagerProfile = DEFAULT_PROFILE,
     ) -> float:
         """
         Determine if manager should consider pitching change.
@@ -621,6 +645,8 @@ class GameStrategy:
             pitcher: The current pitcher
             score_differential: Team's score minus opponent's score (positive = winning)
             inning: The current inning
+            profile: The pitching team's manager: starter usage and bullpen
+                settings set how long a starter's leash is.
 
         Returns:
             1.0 if should consider a change, 0.0 if not, or some value in between
@@ -636,13 +662,14 @@ class GameStrategy:
         stats = pitcher.game_stats.pitching
 
         if pitcher.is_starter:
+            threshold = PITCH_COUNT_THRESHOLD + profile.pitch_count_offset
             if stats.runs == 0:
                 prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_0", 0.21)
             elif stats.runs == 1:
                 prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_1", 0.52)
             elif stats.runs == 2 and score_differential > 0:
                 prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_2_positive_diff", 0.61)
-            if pitcher.game_stats.pitching.pitch_count < PITCH_COUNT_THRESHOLD:
+            if pitcher.game_stats.pitching.pitch_count < threshold:
                 if stats.hits == 0:
                     prob *= PITCHER_CHANGE_MULTIPLIERS.get("no_hits", 0.11)
 
@@ -650,8 +677,10 @@ class GameStrategy:
             if score_differential > 0 and stats.outs < 18:  # Haven't gone 6 innings yet
                 # Winning and starter hasn't gone 5 innings yet
                 prob *= 0.33  # About 1/3 as likely to pull
-            if stats.pitch_count >= PITCH_COUNT_THRESHOLD:
+            if stats.pitch_count >= threshold:
                 prob = max(prob, 0.72)
+            batters_faced = stats.outs + stats.hits + stats.walks + stats.hb
+            prob = min(1.0, prob * profile.starter_hook(batters_faced))
 
         elif pitcher.bullpen_role == "Closer":
             outs = stats.outs
@@ -682,36 +711,60 @@ class GameStrategy:
         rng: random.Random | None = None,
     ) -> PlayerInGame | None:
         """
-        Return the closer to bring in if this is a save situation, else None.
+        Return the closer to bring in if this is a closer situation, else None.
 
-        Triggers when ALL of the following are true:
-        - Inning 9 or later
-        - Pitching team leads by 1-3 runs (classic save situation)
-        - A fresh/good Closer is available on the roster
-        - The current pitcher IS NOT already the Closer role
+        The team's closer usage setting decides what that means:
+        - saves-only: inning 9 or later, leading by 1-3 (a save situation)
+        - high-leverage: also a tie or a lead of 1-2 in the 8th or later
+        - best-available: save situations, but the best fresh reliever by
+          closer rating comes in, whatever his bullpen role
 
-        Returns the closer with probability CLOSER_ENTRANCE_PROB so the manager
-        almost always makes the move, but not robotically 100%.
+        A fresh/good pitcher must be available, and the current pitcher must
+        not already be the Closer. Returns the closer with probability
+        CLOSER_ENTRANCE_PROB so the manager almost always makes the move, but
+        not robotically 100%.
         """
         rng = _get_rng(rng)
+        usage = profile_of(team).closer_usage
 
-        if inning.number < 9:
-            return None
-        if not (1 <= score_diff <= 3):
+        save_situation = inning.number >= 9 and 1 <= score_diff <= 3
+        late_and_close = inning.number >= 8 and 0 <= score_diff <= 2
+        if not (save_situation or (usage == "high-leverage" and late_and_close)):
             return None
         if getattr(current_pitcher, "bullpen_role", None) == "Closer":
             return None
 
-        available_closers = [
-            p
-            for p in team.players
-            if p != current_pitcher
-            and getattr(p, "bullpen_role", None) == "Closer"
-            and p.game_stats.pitching.pitch_count == 0
-            and p.pitcher_fatigue is not None
-            and p.pitcher_fatigue.get_level() in (FatigueLevel.FRESH, FatigueLevel.GOOD)
-            and p.current_position is None
-        ]
+        def _fresh(p: PlayerInGame) -> bool:
+            return (
+                p != current_pitcher
+                and p.game_stats.pitching.pitch_count == 0
+                and p.pitcher_fatigue is not None
+                and p.pitcher_fatigue.get_level()
+                in (FatigueLevel.FRESH, FatigueLevel.GOOD)
+                and p.current_position is None
+            )
+
+        if usage == "best-available":
+
+            def _cp(p: PlayerInGame) -> int:
+                return (getattr(p, "ratings", None) or {}).get("cp", 0)
+
+            relievers = [
+                p
+                for p in team.players
+                if getattr(p, "bullpen_role", None) and _fresh(p)
+            ]
+            best = max(relievers, key=_cp, default=None)
+            # Already have the best arm in? Leave him.
+            if best is None or _cp(best) <= _cp(current_pitcher):
+                return None
+            available_closers = [best]
+        else:
+            available_closers = [
+                p
+                for p in team.players
+                if getattr(p, "bullpen_role", None) == "Closer" and _fresh(p)
+            ]
 
         if not available_closers:
             return None

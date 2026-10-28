@@ -447,6 +447,7 @@ window.saveLineupToStorage = saveToStorage;
 var  LEAGUE_ID        = "{{ league_id }}";
 const ALL_HITTERS     = {{ hitters          | tojson }};
 const ALL_PITCHERS    = {{ pitchers         | tojson }};
+const ROTATION_SIZE   = {{ rotation_size | default(5) | tojson }};  // Strategy tab
 const FIELDING_STATS  = {{ fielding_stats_map | tojson }};  // {player_id: {pos: {po,a,e,pb,fpct}}}
 const SAVED_LINEUP  = {{ saved_lineup  | tojson }};
 const SAVED_ROT     = {{ saved_rotation | tojson }};
@@ -1282,7 +1283,7 @@ function autoFillRotation() {
   const candidates = ALL_PITCHERS
     .filter(p => !p.injured && !inRot.has(p.player_id))
     .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall));
-  const needed = Math.max(0, 5 - rotation.length);
+  const needed = Math.max(0, ROTATION_SIZE - rotation.length);
   candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
   ensureValidPointer();
 

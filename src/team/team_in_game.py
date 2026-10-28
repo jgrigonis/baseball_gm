@@ -8,7 +8,9 @@ from collections.abc import Callable
 from src.player.player_formatters import PlayerTableFormatter
 from src.player.player_in_game import PlayerInGame
 from src.team.lineup_optimizer import DEFAULT_STYLE, LineupOptimizer
+from src.player.position_fatigue import PositionPlayerFatigue
 from src.team.lineup_slot import LineupSlot
+from src.team.manager_profile import DEFAULT_PROFILE, ManagerProfile
 from src.team.team_record import TeamRecord
 from src.util.logger import logging
 
@@ -52,6 +54,8 @@ class TeamInGame:
         self._positions: dict[Position, PlayerInGame] = {}
         self.batter_index: int = 0
         self.logger = logger or logging.getLogger("game.details")
+        # How the team is managed (the Strategy tab); play_season sets it.
+        self.profile: ManagerProfile = DEFAULT_PROFILE
 
     @property
     def has_lineup(self) -> bool:
@@ -111,6 +115,13 @@ class TeamInGame:
                     f"Starting pitcher {starting_pitcher_id} not found on {self.record.name}"
                 )
 
+        resting = self._rest_days(available, saved_lineup)
+        if resting:
+            self.logger.info(
+                f"{self.record.name} resting: {', '.join(sorted(p.id for p in resting))}"
+            )
+            available = [p for p in available if p not in resting]
+
         if saved_lineup:
             self._set_lineup_from_saved(saved_lineup, available, style, dh)
         else:
@@ -130,6 +141,25 @@ class TeamInGame:
             self.pitcher.game_stats.pitching.game_played = 1
             self.pitcher.current_position = Position.PITCHER.value
             self.pitcher.is_starter = True
+
+    def _rest_days(
+        self, available: list[PlayerInGame], saved: list[dict] | None
+    ) -> set[PlayerInGame]:
+        """Tired regulars who get today off, by the rest days setting: anyone
+        whose energy is below its threshold, most tired first, as long as
+        enough hitters are left to field a lineup."""
+        saved_position = {s["player_id"]: s.get("position") for s in saved or []}
+        hitters = [
+            p for p in available if isinstance(p.player_energy, PositionPlayerFatigue)
+        ]
+        tired = []
+        for p in hitters:
+            position = saved_position.get(p.id) or (p.record.position or "").lower()
+            if p.player_energy.energy < self.profile.rest_energy(position):
+                tired.append(p)
+        tired.sort(key=lambda p: (p.player_energy.energy, p.id))
+        spare = max(0, len(hitters) - len(Position) + 1)  # keep 9 hitters
+        return set(tired[:spare])
 
     def _set_lineup_from_saved(
         self,

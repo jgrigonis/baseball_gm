@@ -13,12 +13,13 @@ from __future__ import annotations
 
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
-from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.league.league_modes import is_blitz_style
 from src.player.player_in_game import PlayerInGame
-from src.team.lineup_optimizer import DEFAULT_STYLE, LineupOptimizer
+from src.team.lineup_optimizer import LineupOptimizer
+from src.team.manager_profile import ManagerProfile
 
 
 def eligible_hitters(db, league_id: str, team_id: str) -> list[PlayerInGame]:
@@ -55,9 +56,8 @@ def autofill(
             if player:
                 locked[i] = (player, slot.get("position"))
 
-    style = (
-        LineupPreferenceRepository(db).get_lineup_style(team_id, league_id)
-        or DEFAULT_STYLE
+    profile = ManagerProfile.from_row(
+        GMRepository(db).get_team_profile(team_id, league_id)
     )
-    lineup = LineupOptimizer.fill(locked, hitters, style=style, dh=True)
+    lineup = LineupOptimizer.fill(locked, hitters, style=profile.lineup_style, dh=True)
     return [{"player_id": s.player.id, "position": s.position} for s in lineup]

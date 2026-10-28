@@ -8,6 +8,7 @@ from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
 from src.game.resolvers.fielder_selector import FielderSelector
+from src.team.manager_profile import profile_of
 from src.game.probabilities import (
     SCORE_FROM_SECOND_ON_SINGLE,
     FIRST_TO_THIRD_ON_SINGLE,
@@ -58,7 +59,10 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
 
         score_prob = base_score_prob * runner_factor * arm_factor
 
-        if resolver.rng.random() < score_prob:
+        send = _send_runner(
+            resolver, game, score_prob, arm_strength, speed, baserunning
+        )
+        if send == SAFE:
             events.append(
                 RunnerAdvancedEvent(
                     runner=runner,
@@ -69,6 +73,8 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
                     pitcher=intent.pitcher,
                 )
             )
+        elif send == OUT:
+            events.extend(_thrown_out(game, fielder, intent, runner, SECOND, HOME, "c"))
         else:
             held_at_third = True
             events.append(
@@ -95,7 +101,29 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
 
         first_to_third_prob = base_f2t_prob * runner_factor * arm_factor
 
-        if resolver.rng.random() < base_fth_prob and not held_at_third:
+        to_home = _send_runner(
+            resolver,
+            game,
+            base_fth_prob,
+            arm_strength,
+            speed,
+            baserunning,
+            allowed=not held_at_third,
+        )
+        to_third = (
+            _send_runner(
+                resolver,
+                game,
+                first_to_third_prob,
+                arm_strength,
+                speed,
+                baserunning,
+                allowed=not held_at_third,
+            )
+            if to_home == HELD
+            else HELD
+        )
+        if to_home == SAFE:
             # First to home
             events.append(
                 RunnerAdvancedEvent(
@@ -107,7 +135,9 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
                     pitcher=intent.pitcher,
                 )
             )
-        elif resolver.rng.random() < first_to_third_prob and not held_at_third:
+        elif to_home == OUT:
+            events.extend(_thrown_out(game, fielder, intent, runner, FIRST, HOME, "c"))
+        elif to_third == SAFE:
             # First to third
             events.append(
                 RunnerAdvancedEvent(
@@ -117,6 +147,10 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
                     reason="single",
                     pitcher=intent.pitcher,
                 )
+            )
+        elif to_third == OUT:
+            events.extend(
+                _thrown_out(game, fielder, intent, runner, FIRST, THIRD, "3b")
             )
         else:
             # First to second
@@ -175,7 +209,14 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
         runner_factor = (speed + skill) / 100
         score_prob = base_score_prob * runner_factor * arm_factor
 
-        if resolver.rng.random() < score_prob:
+        send = _send_runner(resolver, game, score_prob, arm_strength, speed, skill)
+        if send == OUT:
+            events.extend(
+                _thrown_out(
+                    game, fielder, intent, game.bases.runner_on(FIRST), FIRST, HOME, "c"
+                )
+            )
+        elif send == SAFE:
             events.append(
                 RunnerAdvancedEvent(
                     runner=game.bases.runner_on(FIRST),
@@ -236,6 +277,48 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
     events.append(PlateAppearanceEndEvent(reason="double", batter=intent.batter))
 
     return events
+
+
+SAFE, OUT, HELD = "safe", "out", "held"
+
+
+def _send_runner(
+    resolver,
+    game,
+    prob: float,
+    arm: int,
+    speed: int,
+    baserunning: int,
+    allowed: bool = True,
+) -> str:
+    """Does a runner try for the extra base, and how does it go?
+
+    prob is how often he makes it at the standard baserunning setting. A more
+    cautious manager sends him less often (and he always makes it); a more
+    aggressive one sends him more often, and those extra tries can be thrown
+    out. At the standard setting this draws exactly the same random numbers
+    as before the setting existed.
+    """
+    factor = profile_of(getattr(game, "bat_team", None)).extra_base_factor
+    r = resolver.rng.random()
+    if not allowed:
+        return HELD
+    if r < prob * min(factor, 1.0):
+        return SAFE
+    if factor > 1.0 and r < prob * factor:
+        throw_out = _calculate_throw_out_probability(resolver, arm, speed, baserunning)
+        return OUT if resolver.rng.random() < throw_out else SAFE
+    return HELD
+
+
+def _thrown_out(game, fielder, intent, runner, from_base, to_base, tagger):
+    """A runner thrown out trying for the extra base."""
+    reason = "thrown_out_at_home" if to_base == HOME else "thrown_out_at_third"
+    return [
+        PutOutEvent(fielder=game.pos(tagger), assist=fielder),
+        OutRecordedEvent(reason=reason, pitcher=intent.pitcher),
+        RunnerRemovedEvent(runner=runner, from_base=from_base, reason=reason),
+    ]
 
 
 def _calculate_throw_out_probability(

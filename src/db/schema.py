@@ -713,8 +713,14 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     -- Batting tendencies
     lineup_style     TEXT NOT NULL DEFAULT 'traditional'
                          CHECK (lineup_style     IN ('traditional', 'analytics', 'speed-first', 'power-first')),
+    -- Replaced by baserunning (migration 023); no longer read.
     steal_aggression TEXT NOT NULL DEFAULT 'standard'
                          CHECK (steal_aggression IN ('conservative', 'standard', 'aggressive')),
+    baserunning      TEXT NOT NULL DEFAULT 'standard'
+                         CHECK (baserunning IN ('very-conservative', 'conservative', 'standard',
+                                                'aggressive', 'very-aggressive')),
+    rest_days        TEXT NOT NULL DEFAULT 'standard'
+                         CHECK (rest_days IN ('iron-man', 'standard', 'rest-often')),
     sac_bunt         TEXT NOT NULL DEFAULT 'situational'
                          CHECK (sac_bunt         IN ('never', 'situational', 'frequent')),
 
@@ -725,6 +731,14 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
                       CHECK (closer_usage  IN ('saves-only', 'high-leverage', 'best-available')),
     bullpen_pref  TEXT NOT NULL DEFAULT 'deep-pen'
                       CHECK (bullpen_pref  IN ('deep-pen', 'starter-heavy')),
+
+    -- Rotation
+    rotation_size      INTEGER NOT NULL DEFAULT 5 CHECK (rotation_size IN (4, 5, 6)),
+    skip_fifth_starter BOOLEAN NOT NULL DEFAULT FALSE,
+    playoff_rotation   TEXT    NOT NULL DEFAULT 'same'
+                           CHECK (playoff_rotation IN ('3', '4', 'same')),
+    tired_starters     TEXT    NOT NULL DEFAULT 'standard'
+                           CHECK (tired_starters IN ('push', 'standard', 'protect')),
 
     -- Roster tendencies
     platoon_usage TEXT NOT NULL DEFAULT 'none'
