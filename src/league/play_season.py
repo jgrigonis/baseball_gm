@@ -24,16 +24,19 @@ from src.db.repositories.pitcher_state import (
     recover_pitcher_state,
 )
 from src.db.repositories.player_energy import PlayerEnergyRepository
+from src.db.repositories.persona_repo import PersonaRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.db.repositories.team_state_repo import TeamStateRepository
 from src.game.game import Game
 from src.game.game_event_logger import GameEventLogger
-from src.league import performance
+from src.league import front_office, performance
 from src.league.league_modes import injuries_allowed, is_blitz_style
+from src.league.personas import Leanings
 from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
 from src.util.logger import setup_logger
@@ -196,6 +199,31 @@ def _set_form(conn, season_id: str, *teams: TeamInGame) -> None:
         form = performance.form_by_player(hitters[team.record.id], totals)
         w = team.profile.stats_weight
         team.form = {pid: w * hit for pid, (hit, _) in form.items() if hit}
+
+
+def _set_front_office(conn, league_id: str, season_id: str, *teams: TeamInGame) -> None:
+    """AI teams play by their state and persona (src/league/front_office.py):
+    young hitters get playing time on a team leaning young (veterans on one
+    leaning old), a glove-first GM weighs defense more in the lineup, and a
+    rebuilding or ramping-up team protects its starters' arms. Run after
+    _set_form. People's teams are left alone."""
+    dials = PersonaRepository(conn).ai_dials(league_id)
+    ai = [t for t in teams if t.record.id in dials]
+    if not ai:
+        return
+    states = TeamStateRepository(conn).latest(league_id, season_id)
+    for team in ai:
+        lean = Leanings.from_dials(dials[team.record.id])
+        row = states.get(team.record.id)
+        state = row["state"] if row else None
+        tilt = front_office.youth_tilt(state, lean)
+        for p in team.record.players:
+            points = 0.0 if p.is_pitcher() else front_office.age_points(p.age, tilt)
+            if points:
+                team.form[p.id] = team.form.get(p.id, 0.0) + points
+        team.defense_weight = front_office.defense_weight(lean)
+        if state in front_office.PROTECT_ARMS:
+            team.profile = front_office.protect_arms(team.profile)
 
 
 def _is_playoff_game(conn, game_id: str) -> bool:
@@ -438,6 +466,7 @@ def _play_game(
             gm_repo.get_team_profile(team.record.id, league_id)
         )
     _set_form(conn, season_id, home_team, away_team)
+    _set_front_office(conn, league_id, season_id, home_team, away_team)
 
     # Stored pitcher states for everyone in the game, loaded once and shared
     # by the energy setup, starter selection and the game itself.

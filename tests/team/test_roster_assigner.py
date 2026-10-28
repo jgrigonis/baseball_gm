@@ -368,3 +368,24 @@ class TestEdgeCases:
         players = make_full_roster()
         assignments = RosterAssigner().assign(players)
         assert len(assignments) == len(players)
+
+
+class TestAgeBonus:
+    def test_bonus_breaks_a_close_call(self):
+        """Two near-equal hitters for the last flex spot: the bonus decides."""
+        players = make_full_roster()
+        # h020 and h021 are one point apart; find who made the 26-man.
+        base = RosterAssigner().assign(players)
+        last_in = max(
+            (p.id for p in players if p.id.startswith("h") and base[p.id] == "26man"),
+        )
+        first_out = min(
+            (p.id for p in players if p.id.startswith("h") and base[p.id] != "26man"),
+        )
+        swapped = RosterAssigner().assign(players, {first_out: 3.0, last_in: -3.0})
+        assert swapped[first_out] == "26man"
+        assert swapped[last_in] != "26man"
+
+    def test_no_bonus_changes_nothing(self):
+        players = make_full_roster()
+        assert RosterAssigner().assign(players, {}) == RosterAssigner().assign(players)

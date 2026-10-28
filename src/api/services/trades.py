@@ -45,7 +45,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.api.services import personas, team_states
+from src.api.services import front_office, personas, team_states
 from src.db.locks import LeagueBusy, league_lock
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -60,10 +60,8 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import performance, trade_deadline
-from src.league.rotation_seeder import seed_ai_rotations
 from src.league.trades import ai_evaluator, draft_picks
 from src.league.trades.ai_evaluator import Asset
-from src.team.roster_assigner import RosterAssigner
 from src.team.roster_limits import playing_count
 
 MAX_PER_SIDE = 5
@@ -1002,17 +1000,13 @@ def _clear_roles(conn, team_id, season_id, player_ids, effective_date) -> None:
 
 
 def _replan_ai_team(conn, league_id, season_id, team_id, effective_date) -> None:
-    """An AI team re-picks its 40-man and its rotation and bullpen."""
-    players = PlayerRepository(conn).get_players_by_team(team_id)
-    if players:
-        PlayerStatusRepository(conn).bulk_set(RosterAssigner().assign(players))
-    seed_ai_rotations(
-        conn,
-        season_id,
-        {team_id},
-        statuses=["26man", "40man"],
-        effective_date=effective_date,
-        league_id=league_id,
+    """An AI team re-picks its 40-man, as its state and persona lean, and its
+    rotation and bullpen."""
+    outlook = front_office.outlooks(conn, league_id, season_id, effective_date).get(
+        team_id
+    )
+    front_office.replan_roster(
+        conn, league_id, season_id, team_id, outlook, effective_date
     )
 
 

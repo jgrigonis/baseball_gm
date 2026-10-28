@@ -32,19 +32,24 @@ CORE_SIZE = 15
 FARM_MAX_AGE = 25
 
 
-def refresh_if_due(conn, league_id: str, game_date: str) -> None:
-    """After a day's games: store a checkpoint if one is due."""
+def refresh_if_due(conn, league_id: str, game_date: str) -> dict[str, str]:
+    """After a day's games: store a checkpoint if one is due. Returns the
+    teams whose state changed at it, with their new state."""
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     if not season_id:
-        return
-    last = TeamStateRepository(conn).last_checkpoint(league_id, season_id)
+        return {}
+    repo = TeamStateRepository(conn)
+    last = repo.last_checkpoint(league_id, season_id)
     deadline = trade_deadline.deadline_date(conn, season_id)
     if (
         last is None
         or _days(last, game_date) >= CHECKPOINT_DAYS
         or (game_date == deadline and last != game_date)
     ):
-        refresh(conn, league_id, season_id, game_date)
+        before = {t: r["state"] for t, r in repo.latest(league_id, season_id).items()}
+        after = refresh(conn, league_id, season_id, game_date)
+        return {t: s for t, s in after.items() if t in before and before[t] != s}
+    return {}
 
 
 def current(conn, league_id: str, season_id: str, today: str) -> dict[str, dict]:
