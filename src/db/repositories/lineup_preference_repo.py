@@ -40,3 +40,15 @@ class LineupPreferenceRepository:
             (gm["id"],),
         ).fetchall()
         return [dict(r) for r in rows] if rows else None
+
+    def get_lineup_style(self, team_id: str, league_id: str) -> str | None:
+        """The lineup style on the Strategy tab of whoever runs this team,
+        person or AI. None if the team has no GM."""
+        row = self.conn.execute(
+            """SELECT gp.lineup_style FROM gms g
+               JOIN gm_profiles gp ON gp.gm_id = g.id
+               WHERE g.team_id = %s AND g.league_id = %s AND g.fired_at IS NULL
+               ORDER BY g.is_ai LIMIT 1""",
+            (team_id, league_id),
+        ).fetchone()
+        return row["lineup_style"] if row else None

@@ -206,6 +206,18 @@ class LineupSaveRequest(BaseModel):
     lineup: list[LineupSlot] = []
 
 
+class LineupAutofillSlot(BaseModel):
+    player_id: str
+    position: str | None = None
+
+
+class LineupAutofillRequest(BaseModel):
+    # The lineup on screen, one entry per batting slot (None for empty).
+    lineup: list[LineupAutofillSlot | None] = []
+    # True starts over; False keeps the players already in the lineup.
+    rebuild: bool = False
+
+
 class RotationSaveRequest(BaseModel):
     rotation: list[str] = []
     # The pitcher due to start next; falls back to the first slot.

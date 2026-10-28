@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 from src.player.player_formatters import PlayerTableFormatter
 from src.player.player_in_game import PlayerInGame
-from src.team.lineup_optimizer import LineupOptimizer
+from src.team.lineup_optimizer import DEFAULT_STYLE, LineupOptimizer
 from src.team.lineup_slot import LineupSlot
 from src.team.team_record import TeamRecord
 from src.util.logger import logging
@@ -61,7 +61,7 @@ class TeamInGame:
         self,
         *,
         starting_pitcher_id: str | None = None,
-        style: str = "prioritized",
+        style: str = DEFAULT_STYLE,
         dh: bool = True,
         injured_ids: set[str] | None = None,
         restrict_to_ids: set[str] | None = None,
@@ -139,131 +139,40 @@ class TeamInGame:
         dh: bool,
     ) -> None:
         """
-        Build lineup from GM's saved preferences.
-        When a saved player is injured/ineligible, immediately find the best
-        available replacement for their specific position so no defensive
-        position is left uncovered.
+        Build lineup from GM's saved preferences. Saved players who can play
+        keep their batting slot and position; the optimizer fills the slots of
+        anyone injured, ineligible or traded away, choosing the replacements
+        and their positions together so no position is left uncovered.
         """
         available_by_id = {p.id: p for p in available}
         # Pitcher doesn't bat
         if self.pitcher:
             available_by_id.pop(self.pitcher.id, None)
 
-        lineup_slots: list[LineupSlot] = []
-        used_ids: set[str] = set()
-
-        def best_for_position(pos: str) -> PlayerInGame | None:
-            """Pick the best available player for a given position: glove at
-            that position and bat count equally (a DH is all bat). Fielding
-            alone would happily start a slick-fielding pitcher who can't hit."""
-            candidates = [p for p in available_by_id.values() if p.id not in used_ids]
-            if not candidates:
-                return None
-
-            def score(p: PlayerInGame) -> tuple[int, str]:
-                offense = p.ratings.get("overall_offense", 0)
-                defense = 0 if pos == "dh" else p.ratings.get(pos, 0)
-                return offense + defense, p.id
-
-            return max(candidates, key=score)
-
-        for slot in sorted(saved, key=lambda s: s["batting_order"]):
+        size = 9 if dh else 8
+        locked: list[tuple[PlayerInGame, str | None] | None] = [None] * size
+        for slot in sorted(saved, key=lambda s: s["batting_order"] or 99):
             pid = slot["player_id"]
-            position = slot.get("position") or "dh"
             player = available_by_id.get(pid)
-
             if not player:
-                # Injured or ineligible — find best replacement for their position
-                sub = best_for_position(position)
-                if sub:
-                    self.logger.info(
-                        f"Saved lineup: {pid} unavailable, subbing {sub.id} at {position}"
-                    )
-                    lineup_slots.append(LineupSlot(sub, position))
-                    used_ids.add(sub.id)
-                else:
-                    self.logger.info(
-                        f"Saved lineup: {pid} unavailable, no sub found for {position}"
-                    )
+                self.logger.info(f"Saved lineup: {pid} unavailable, filling his slot")
                 continue
+            index = (slot["batting_order"] or 0) - 1
+            if not 0 <= index < size or locked[index] is not None:
+                index = next((i for i, e in enumerate(locked) if e is None), None)
+                if index is None:
+                    continue
+            locked[index] = (player, slot.get("position"))
 
-            # Guard: player may have already been used as a sub for an earlier injured slot
-            if pid in used_ids:
-                sub = best_for_position(position)
-                if sub:
-                    self.logger.info(
-                        f"Saved lineup: {pid} already used, subbing {sub.id} at {position}"
-                    )
-                    lineup_slots.append(LineupSlot(sub, position))
-                    used_ids.add(sub.id)
-                continue
-
-            lineup_slots.append(LineupSlot(player, position))
-            used_ids.add(pid)
-
-        # Fill any defensive position the saved lineup no longer covers — e.g.
-        # its player was traded away, which deletes their saved slot outright.
-        required = [
-            pos.value
-            for pos in Position
-            if pos is not Position.PITCHER
-            and (dh or pos is not Position.DESIGNATED_HITTER)
-        ]
-        filled = {slot.position for slot in lineup_slots}
-        for position in required:
-            if position in filled:
-                continue
-            sub = best_for_position(position)
-            if not sub:
-                break
-            self.logger.info(f"Saved lineup has no {position}, filling with {sub.id}")
-            lineup_slots.append(LineupSlot(sub, position))
-            used_ids.add(sub.id)
-            filled.add(position)
-
-        # Fill any remaining batting order gaps (shouldn't happen often)
-        needed = 9 if dh else 8
-        gap_count = needed - len(lineup_slots)
-        if gap_count > 0:
-            remaining = [
-                p
-                for p in available
-                if p.id not in used_ids
-                and (self.pitcher is None or p.id != self.pitcher.id)
-            ]
-            if remaining:
-                self.logger.info(
-                    f"Saved lineup has {gap_count} remaining gap(s), filling with optimizer"
-                )
-                try:
-                    gap_lineup, _ = self._optimizer(
-                        remaining,
-                        style=style,
-                        dh=True,
-                        pitcher=self.pitcher,
-                    )
-                    valid_gap = [
-                        s
-                        for s in gap_lineup[:gap_count]
-                        if s is not None and s.player is not None
-                    ]
-                    lineup_slots.extend(valid_gap)
-                except Exception as e:
-                    self.logger.warning(f"Gap-fill optimizer failed: {e}")
-
-        # Safety check — if we couldn't fill all slots, fall back to optimizer
-        valid_slots = [
-            s for s in lineup_slots if s is not None and s.player is not None
-        ]
-        missing = set(required) - {slot.position for slot in valid_slots}
-        if len(valid_slots) < (9 if dh else 8) or missing:
+        try:
+            self.lineup = LineupOptimizer.fill(
+                locked, list(available_by_id.values()), style=style, dh=dh
+            )
+        except ValueError as e:
             self.logger.warning(
-                f"Saved lineup only produced {len(valid_slots)} valid slots "
-                f"(missing {sorted(missing)}), falling back to optimizer"
+                f"Saved lineup couldn't be filled ({e}), falling back to optimizer"
             )
             self._set_lineup_from_optimizer(available, style, dh)
-        else:
-            self.lineup = valid_slots
 
     def _set_lineup_from_optimizer(
         self,

@@ -44,7 +44,11 @@
                      margin-left:8px;"></span>
         <div class="spacer"></div>
         <button class="btn btn-secondary" onclick="autoFill()"
+                title="Keep the players in the lineup and fill the empty and injured spots"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
+        <button class="btn btn-secondary" onclick="rebuildLineup()"
+                title="Start over: the best lineup from your whole roster, by your Strategy tab's lineup style"
+                style="font-size:11px;padding:4px 10px;margin-right:6px;">Rebuild</button>
         <button class="btn btn-secondary" onclick="clearLineup()"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;border-color:var(--red);color:var(--red);">Clear All</button>
         <button class="btn btn-primary" id="save-batting-btn" onclick="saveBatting()">
@@ -421,6 +425,7 @@ window.saveRotation    = saveRotation;
 window.saveAll         = saveAll;
 window.saveBullpen     = saveBullpen;
 window.autoFill        = autoFill;
+window.rebuildLineup   = rebuildLineup;
 window.setPosition     = setPosition;
 window.removeFromLineup= removeFromLineup;
 window.addToLineup     = addToLineup;
@@ -840,46 +845,30 @@ function renderRoster() {
   saveToStorage();
 }
 
-/* ── Batting: auto-fill ──────────────────────────────────────────────────────── */
-function autoFill() {
-  const healthyHitters = ALL_HITTERS.filter(p => !p.injured);
-  const pos_priority = {
-    c:    p => p.best_def_label==='CA' ? gradeVal(p.best_def_grade) : 90,
-    ss:   p => gradeVal(p.best_def_grade),
-    cf:   p => gradeVal(p.best_def_grade),
-    '2b': p => gradeVal(p.best_def_grade),
-    '3b': p => gradeVal(p.best_def_grade),
-    '1b': p => gradeVal(p.overall),
-    lf:   p => gradeVal(p.overall),
-    rf:   p => gradeVal(p.overall),
-    dh:   p => gradeVal(p.overall),
-  };
-  // Keep healthy filled slots; clear injured slots and true nulls
-  const used = new Set(
-    lineup.filter(s => s && !ALL_HITTERS.find(p => p.player_id === s.player_id && p.injured))
-          .map(s => s ? s.player_id : null).filter(Boolean)
-  );
-  for (let i = 0; i < 9; i++) {
-    const s = lineup[i];
-    if (s) {
-      const p = ALL_HITTERS.find(x => x.player_id === s.player_id);
-      if (p && p.injured) lineup[i] = null;  // clear injured
-    }
-  }
-  // Fill nulls with best available
-  const posOrder = ['ss','cf','2b','3b','1b','lf','c','rf','dh'];
-  for (let i = 0; i < 9; i++) {
-    if (lineup[i]) continue;  // already filled with healthy player
-    const pos = posOrder[i] || 'dh';
-    const best = healthyHitters
-      .filter(p => !used.has(p.player_id))
-      .sort((a,b) => pos_priority[pos](a) - pos_priority[pos](b))[0];
-    if (best) { lineup[i] = { player_id: best.player_id, position: pos }; used.add(best.player_id); }
-  }
+/* ── Batting: auto-fill / rebuild ───────────────────────────────────────────── */
+// The server picks the players, positions and batting order, the same way the
+// AI does (src/team/lineup_optimizer.py). Auto-fill keeps the healthy players
+// already in the lineup and fills the gaps; Rebuild starts over.
+async function autoFill(rebuild = false) {
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/lineup/autofill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rebuild,
+        lineup: lineup.slice(0, 9).map(s => s ? { player_id: s.player_id, position: s.position } : null),
+      }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { showFeedback('✗ ' + (d.detail || 'Error'), 'var(--red)'); return; }
+    for (let i = 0; i < 9; i++) lineup[i] = d.lineup[i] || null;
+  } catch (e) { showFeedback('✗ Network error', 'var(--red)'); return; }
   renderBattingOrder();
   renderRoster();
   updateSaveBattingBtn();
 }
+
+function rebuildLineup() { return autoFill(true); }
 
 /* ── Batting: save ───────────────────────────────────────────────────────────── */
 async function saveBatting() {

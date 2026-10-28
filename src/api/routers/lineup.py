@@ -10,10 +10,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.api.schemas import (
     BullpenSaveRequest,
+    LineupAutofillRequest,
     LineupSaveRequest,
     RotationSaveRequest,
 )
 from src.api.services import coach
+from src.api.services.lineup_autofill import autofill
 from src.api.view_models.lineup import lineup_context
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -78,6 +80,29 @@ def save_lineup_prefs(
 
     db.commit()
     return JSONResponse({"saved": True})
+
+
+@router.post("/leagues/{league_id}/lineup/autofill")
+def autofill_lineup(
+    league_id: str,
+    body: LineupAutofillRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Auto-fill (keep who's there, fill the gaps) or Rebuild (start over).
+    Returns the lineup for the page to show; nothing is saved."""
+    if not gm or not gm["team_id"]:
+        return JSONResponse({"detail": "No team"}, status_code=400)
+    current = [slot.model_dump() if slot else None for slot in body.lineup]
+    try:
+        lineup = autofill(db, league_id, gm["team_id"], current, body.rebuild)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "Not enough healthy hitters to fill the lineup"},
+            status_code=422,
+        )
+    return JSONResponse({"lineup": lineup})
 
 
 @router.put("/leagues/{league_id}/rotation/save")

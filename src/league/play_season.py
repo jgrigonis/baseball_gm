@@ -16,6 +16,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+from src.team.lineup_optimizer import DEFAULT_STYLE
 from src.db.repositories.pitcher_state import (
     MIN_ENERGY_STARTER,
     PitcherState,
@@ -488,6 +489,9 @@ def _play_game(
     lpr = LineupPreferenceRepository(conn)
     home_saved = lpr.get_preferences(home_team.record.id, league_id)
     away_saved = lpr.get_preferences(away_team.record.id, league_id)
+    # AI teams have no saved lineup, so theirs is built fresh for every game.
+    home_style = lpr.get_lineup_style(home_team.record.id, league_id) or DEFAULT_STYLE
+    away_style = lpr.get_lineup_style(away_team.record.id, league_id) or DEFAULT_STYLE
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
     game = Game(
@@ -511,6 +515,7 @@ def _play_game(
         injured_ids=injured_ids,
         restrict_to_ids=home_eligible or None,
         saved_lineup=home_saved,
+        style=home_style,
     )
     away_team.set_lineup(
         starting_pitcher_id=away_starter_id,
@@ -518,6 +523,7 @@ def _play_game(
         injured_ids=injured_ids,
         restrict_to_ids=away_eligible or None,
         saved_lineup=away_saved,
+        style=away_style,
     )
 
     lineup_repo = LineupRepository(conn)
