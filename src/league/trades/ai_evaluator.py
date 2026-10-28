@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import random
 from dataclasses import dataclass, field
+from functools import cached_property
 
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
@@ -98,6 +99,16 @@ class Asset:
     def rating(self) -> int:
         return max(self.sp, self.rp) if self.is_pitcher else self.hit
 
+    @cached_property
+    def values(self) -> dict[str, tuple[float, float]]:
+        """(now, future) value of each rating, worked out once: the AI's
+        trade search weighs the same players many times."""
+        shift = age_shift(self.age)
+        return {
+            k: (value(r), value(r + shift))
+            for k, r in (("hit", self.hit), ("sp", self.sp), ("rp", self.rp))
+        }
+
 
 def team_strength(
     assets: list[Asset], future: bool = False, days_left: int = 1
@@ -106,21 +117,33 @@ def team_strength(
     play. For now: injured players count for the share of the remaining
     season they're back for. For the future: ratings shift with age."""
 
-    def adj(a: Asset, rating: int) -> float:
+    def adj(a: Asset, kind: str) -> float:
+        now, later = a.values[kind]
         if future:
-            return value(rating + age_shift(a.age))
-        healthy = 1 - min(1.0, a.injured_days / max(1, days_left))
-        return value(rating) * healthy
+            return later
+        if not a.injured_days:
+            return now
+        return now * (1 - min(1.0, a.injured_days / max(1, days_left)))
 
-    hitters = sorted((adj(a, a.hit) for a in assets if not a.is_pitcher), reverse=True)
-    pitchers = [a for a in assets if a.is_pitcher]
-    by_sp = sorted(pitchers, key=lambda a: adj(a, a.sp), reverse=True)
-    starters = by_sp[: len(STARTER_DEPTH)]
-    relief = sorted((adj(a, a.rp) for a in by_sp[len(STARTER_DEPTH) :]), reverse=True)
+    hitters = sorted((adj(a, "hit") for a in assets if not a.is_pitcher), reverse=True)
+    pitchers = [(adj(a, "sp"), a) for a in assets if a.is_pitcher]
+    pitchers.sort(key=lambda x: x[0], reverse=True)
+    starters = [v for v, _ in pitchers[: len(STARTER_DEPTH)]]
+    relief = sorted(
+        (adj(a, "rp") for _, a in pitchers[len(STARTER_DEPTH) :]), reverse=True
+    )
     total = sum(w * v for w, v in zip(HITTER_DEPTH, hitters))
-    total += sum(w * adj(a, a.sp) for w, a in zip(STARTER_DEPTH, starters))
+    total += sum(w * v for w, v in zip(STARTER_DEPTH, starters))
     total += sum(w * v for w, v in zip(RELIEVER_DEPTH, relief))
     return total
+
+
+def strengths(assets: list[Asset], days_left: int) -> tuple[float, float]:
+    """A team's (now, future) strength."""
+    return (
+        team_strength(assets, days_left=days_left),
+        team_strength(assets, future=True),
+    )
 
 
 @dataclass
@@ -147,17 +170,19 @@ def evaluate(
     stance: str,
     days_left: int,
     margin_share: float,
+    base: tuple[float, float] | None = None,
 ) -> Verdict:
     """Judge a deal from the AI team's side. roster is its whole organization
-    today; giving is what it would send, getting what it would receive."""
+    today; giving is what it would send, getting what it would receive. base
+    is the roster's (now, future) strength, when the caller already has it."""
     w_now, w_future = STANCE_WEIGHTS[stance]
     give_ids = {a.id for a in giving}
     after = [a for a in roster if a.id not in give_ids] + list(getting)
+    if base is None:
+        base = strengths(roster, days_left)
 
-    d_now = team_strength(after, days_left=days_left) - team_strength(
-        roster, days_left=days_left
-    )
-    d_future = team_strength(after, future=True) - team_strength(roster, future=True)
+    d_now = team_strength(after, days_left=days_left) - base[0]
+    d_future = team_strength(after, future=True) - base[1]
     score = w_now * d_now + w_future * d_future
 
     # What it gives up, player by player, is what the margin is measured on.

@@ -348,6 +348,11 @@ def _respond(conn, league_id, gm, offer_id, action) -> dict:
         _void(conn, league_id, offer, problem)
         conn.commit()
         raise TradeError(f"This trade can't go through: {problem}")
+    if offer["from_ai"] and not _ai_still_wants(conn, league_id, offer):
+        reason = f"the {offer['from_name']} changed their mind."
+        _void(conn, league_id, offer, reason)
+        conn.commit()
+        raise TradeError(f"This trade can't go through: {reason}")
 
     voters = _voters(conn, league, offer)
     if voters:
@@ -456,6 +461,105 @@ def _settle_vote(conn, league_id: str, offer: dict, final: bool) -> str:
             )
         return "voted_down"
     return "pending_vote"
+
+
+def _ai_still_wants(conn, league_id: str, offer: dict) -> bool:
+    """An AI team's own offer, being accepted days later: does it still come
+    out ahead? (Injuries, or other trades, may have changed things.) It
+    doesn't need its margin any more, only not to lose."""
+    season_id = offer["season_id"]
+    return ai_answer(
+        conn,
+        league_id,
+        season_id,
+        offer["from_team_id"],
+        offer["to_team_id"],
+        [p["player_id"] for p in offer["sent"]],
+        [p["player_id"] for p in offer["received"]],
+        _league_date(conn, season_id),
+        margin_share=0.0,
+    ).accept
+
+
+def ai_offer(
+    conn,
+    league_id: str,
+    season_id: str,
+    from_team: str,
+    to_team: str,
+    give: list[str],
+    get: list[str],
+    today: str,
+    expiry: dict,
+) -> str:
+    """An AI team's offer to a team a person runs (src/api/services/
+    ai_trades.py). It pops up for them. expiry is expires_period or
+    expires_on."""
+    trade_repo = TradeRepository(conn)
+    offer_id = trade_repo.create_offer(
+        league_id,
+        season_id,
+        from_team,
+        to_team,
+        GMRepository(conn).get_gm_id_from_team_id(league_id, from_team),
+        today,
+        [(pid, from_team) for pid in give] + [(pid, to_team) for pid in get],
+        from_ai=True,
+        **expiry,
+    )
+    offer = trade_repo.get(offer_id)
+    _notify(
+        conn,
+        league_id,
+        to_team,
+        "offer",
+        offer,
+        f"The {offer['from_name']} offer {_names(offer['sent'])} "
+        f"for {_names(offer['received'])}.",
+    )
+    return offer_id
+
+
+def ai_trade(
+    conn,
+    league_id: str,
+    season_id: str,
+    from_team: str,
+    to_team: str,
+    give: list[str],
+    get: list[str],
+    today: str,
+) -> str:
+    """A trade two AI teams agreed on: it goes through at once and shows in
+    the league's trades."""
+    trade_repo = TradeRepository(conn)
+    offer_id = trade_repo.create_offer(
+        league_id,
+        season_id,
+        from_team,
+        to_team,
+        GMRepository(conn).get_gm_id_from_team_id(league_id, from_team),
+        today,
+        [(pid, from_team) for pid in give] + [(pid, to_team) for pid in get],
+        from_ai=True,
+    )
+    _decide(conn, offer_id, "accepted", None)
+    execute(
+        conn,
+        league_id,
+        season_id,
+        {from_team: give, to_team: get},
+        _next_game_date(conn, season_id),
+    )
+    return offer_id
+
+
+def close_due_on(conn, league_id: str, on: str) -> None:
+    """After a day's games: expire offers whose last day (expires_on) was
+    this one or earlier. Run under the league lock."""
+    trade_repo = TradeRepository(conn)
+    for offer_id in trade_repo.pending_due_on(league_id, on):
+        _expire(conn, league_id, trade_repo.get(offer_id))
 
 
 def _tell_waiting_voters(conn, offer: dict, outcome: str) -> None:
@@ -589,7 +693,8 @@ def _expire(conn, league_id: str, offer: dict) -> None:
         offer["to_team_id"],
         "expired",
         offer,
-        f"The {offer['from_name']}'s offer for {_names(offer['received'])} expired.",
+        f"The {_their(offer['from_name'])} offer for {_names(offer['received'])} "
+        "expired.",
     )
 
 
@@ -614,11 +719,11 @@ def inbox_count(conn, league_id: str, gm: dict) -> int:
     ) + trade_repo.unvoted_count(league_id, gm["id"])
 
 
-def offers_to_humans(conn, league_id: str) -> int:
-    """Offers waiting on a human GM: a single-player sim stops when one
-    arrives, if the league says so."""
+def offers_to_humans(conn, league_id: str) -> set[str]:
+    """Ids of the offers waiting on a human GM: a single-player sim stops
+    when a new one arrives, if the league says so."""
     teams = GMRepository(conn).get_human_team_ids(league_id)
-    return TradeRepository(conn).count_open_to_teams(league_id, teams) if teams else 0
+    return TradeRepository(conn).open_to_teams(league_id, teams) if teams else set()
 
 
 def _decide(conn, offer_id: str, status: str, reason: str | None) -> None:
@@ -649,6 +754,11 @@ def _notify_gm(conn, gm_id: str, event: str, offer: dict, text: str) -> None:
     )
 
 
+def _their(team: str) -> str:
+    """The possessive of a team name: the Falcons' offer, the Heat's."""
+    return f"{team}'" if team.endswith("s") else f"{team}'s"
+
+
 def _name(p: dict) -> str:
     return f"{p['first_name']} {p['last_name']}".strip()
 
@@ -666,8 +776,10 @@ def ai_answer(
     giving: list[str],
     getting: list[str],
     today: str,
+    margin_share: float | None = None,
 ) -> ai_evaluator.Verdict:
-    """The AI team's answer to giving `giving` for `getting`."""
+    """The AI team's answer to giving `giving` for `getting`, wanting to win
+    by margin_share (by default its margin for this team today)."""
     injuries = InjuryRepository(conn, league_id)
     roster = _assets(conn, ai_team_id, injuries.get_team_injuries(ai_team_id, today))
     theirs = _assets(
@@ -680,7 +792,9 @@ def ai_answer(
         getting=[by_id[pid] for pid in getting],
         stance=stance(conn, league_id, season_id, ai_team_id),
         days_left=_days_left(conn, season_id, today),
-        margin_share=ai_evaluator.margin(ai_team_id, other_team_id, today),
+        margin_share=ai_evaluator.margin(ai_team_id, other_team_id, today)
+        if margin_share is None
+        else margin_share,
     )
 
 

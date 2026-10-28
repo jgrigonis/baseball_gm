@@ -14,7 +14,7 @@ import random
 
 import psycopg
 
-from src.api.services import trades
+from src.api.services import ai_trades, trades
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
@@ -222,7 +222,7 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     Stops early after the games of trade deadline day, in leagues that
     trade, so every GM gets a last look, and, in a single-player league that
     asks for it (stop_for_trade_offers), when a trade offer arrives for the
-    GM. Playing past the deadline expires every open offer first. Returns a
+    GM. Between days, AI teams make offers and trades (ai_trades). Playing past the deadline expires every open offer first. Returns a
     summary of what was played.
     """
     season_repo = SeasonRepository(conn)
@@ -248,7 +248,7 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         and league["stop_for_trade_offers"]
         and ReadyCheckRepository(conn).human_gm_count(league_id) <= 1
     )
-    offers_before = trades.offers_to_humans(conn, league_id) if watch_offers else 0
+    offers_before = trades.offers_to_humans(conn, league_id) if watch_offers else set()
     new_offer = False
 
     for _ in range(limit):
@@ -262,10 +262,15 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         # Stop if no games played and it wasn't a transient error
         if gp == 0 and not day_result.get("errors"):
             break
+        # AI teams make offers and trades between game days.
+        if deadline and gp > 0:
+            ai_trades.after_day(conn, league_id, day_result["game_date"])
         if deadline and day_result["game_date"] == deadline:
             at_deadline = True
             break
-        if watch_offers and trades.offers_to_humans(conn, league_id) > offers_before:
+        # An offer can expire mid-sim, so look for one that's new, not for
+        # more of them.
+        if watch_offers and trades.offers_to_humans(conn, league_id) - offers_before:
             new_offer = True
             break
 

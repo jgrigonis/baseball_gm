@@ -30,14 +30,17 @@ class TradeRepository:
         items: list[tuple[str, str]],
         parent_id: str | None = None,
         expires_period: int | None = None,
+        expires_on: str | None = None,
+        from_ai: bool = False,
     ) -> str:
         """Store a pending offer. items are (player_id, from_team_id) pairs."""
         offer_id = str(uuid.uuid4())
         self.conn.execute(
             """INSERT INTO trade_offers
                    (id, league_id, season_id, from_team_id, to_team_id,
-                    from_gm_id, created_on, parent_id, expires_period)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    from_gm_id, created_on, parent_id, expires_period,
+                    expires_on, from_ai)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
                 offer_id,
                 league_id,
@@ -48,6 +51,8 @@ class TradeRepository:
                 created_on,
                 parent_id,
                 expires_period,
+                expires_on,
+                from_ai,
             ),
         )
         for player_id, side in items:
@@ -107,13 +112,15 @@ class TradeRepository:
             (league_id, team_id, to_team_id, to_team_id),
         ).fetchone()["n"]
 
-    def count_open_to_teams(self, league_id: str, team_ids) -> int:
-        """Pending offers to any of these teams (single player: the GM's)."""
-        return self.conn.execute(
-            """SELECT COUNT(*) AS n FROM trade_offers
+    def open_to_teams(self, league_id: str, team_ids) -> set[str]:
+        """Ids of pending offers to any of these teams (single player: the
+        GM's)."""
+        rows = self.conn.execute(
+            """SELECT id FROM trade_offers
                WHERE league_id = %s AND to_team_id = ANY(%s) AND status = 'pending'""",
             (league_id, list(team_ids)),
-        ).fetchone()["n"]
+        ).fetchall()
+        return {r["id"] for r in rows}
 
     def open_offers_with_players(
         self, league_id: str, player_ids: list[str]
@@ -135,6 +142,76 @@ class TradeRepository:
                WHERE league_id = %s AND status = ANY(%s)
                  AND (from_team_id = %s OR to_team_id = %s)""",
             (league_id, list(OPEN), team_id, team_id),
+        ).fetchall()
+        return [r["id"] for r in rows]
+
+    # ── Offers AI teams make ─────────────────────────────────────────────
+
+    def open_ai_offers_to(self, league_id: str, team_id: str) -> int:
+        return self.conn.execute(
+            """SELECT COUNT(*) AS n FROM trade_offers
+               WHERE league_id = %s AND to_team_id = %s AND from_ai
+                 AND status = 'pending'""",
+            (league_id, team_id),
+        ).fetchone()["n"]
+
+    def ai_offers_to_this_season(self, season_id: str, team_id: str) -> int:
+        return self.conn.execute(
+            """SELECT COUNT(*) AS n FROM trade_offers
+               WHERE season_id = %s AND to_team_id = %s AND from_ai""",
+            (season_id, team_id),
+        ).fetchone()["n"]
+
+    def last_ai_offer_to(self, season_id: str, team_id: str) -> str | None:
+        """The league date of the latest AI offer to this team this season."""
+        return self.conn.execute(
+            """SELECT MAX(created_on) AS d FROM trade_offers
+               WHERE season_id = %s AND to_team_id = %s AND from_ai""",
+            (season_id, team_id),
+        ).fetchone()["d"]
+
+    def ai_offers_made(
+        self, season_id: str, from_team_id: str, to_team_id: str
+    ) -> set[frozenset[str]]:
+        """The AI offers one team has made another this season, each as the
+        set of players in it."""
+        rows = self.conn.execute(
+            """SELECT o.id, i.player_id FROM trade_offers o
+               JOIN trade_offer_items i ON i.offer_id = o.id
+               WHERE o.season_id = %s AND o.from_team_id = %s
+                 AND o.to_team_id = %s AND o.from_ai""",
+            (season_id, from_team_id, to_team_id),
+        ).fetchall()
+        offers: dict[str, set[str]] = {}
+        for r in rows:
+            offers.setdefault(r["id"], set()).add(r["player_id"])
+        return {frozenset(p) for p in offers.values()}
+
+    def ai_trades_this_season(self, season_id: str) -> dict[str, int]:
+        """Trades between two AI teams this season: how many each team was
+        in, and the league's total under "all"."""
+        rows = self.conn.execute(
+            """SELECT o.from_team_id, o.to_team_id FROM trade_offers o
+               WHERE o.season_id = %s AND o.from_ai AND o.status = 'accepted'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM gms g
+                     WHERE g.team_id = o.to_team_id AND g.league_id = o.league_id
+                       AND NOT g.is_ai)""",
+            (season_id,),
+        ).fetchall()
+        counts = {"all": len(rows)}
+        for r in rows:
+            for t in (r["from_team_id"], r["to_team_id"]):
+                counts[t] = counts.get(t, 0) + 1
+        return counts
+
+    def pending_due_on(self, league_id: str, on: str) -> list[str]:
+        """Pending offers whose last day (expires_on) has been played."""
+        rows = self.conn.execute(
+            """SELECT id FROM trade_offers
+               WHERE league_id = %s AND status = 'pending'
+                 AND expires_on IS NOT NULL AND expires_on <= %s""",
+            (league_id, on),
         ).fetchall()
         return [r["id"] for r in rows]
 
