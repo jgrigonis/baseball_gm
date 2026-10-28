@@ -339,12 +339,16 @@ class LeagueRepository:
         )
 
     def list_for_admin(self) -> list[dict]:
-        """Every league with all its settings, its season count, and how many
-        people are in it, newest first."""
+        """Every league with all its settings, its season count, its current
+        season's id, and how many people are in it, newest first."""
         rows = self.conn.execute(
             """SELECT l.*,
                       (SELECT COUNT(*) FROM league_seasons ls
                        WHERE ls.league_id = l.id) AS season_number,
+                      (SELECT s.id FROM seasons s
+                       JOIN league_seasons ls ON ls.season_id = s.id
+                       WHERE ls.league_id = l.id
+                       ORDER BY s.year DESC LIMIT 1) AS season_id,
                       (SELECT COUNT(*) FROM gms g
                        WHERE g.league_id = l.id AND g.user_id IS NOT NULL) AS people,
                       (SELECT g.display_name FROM gms g

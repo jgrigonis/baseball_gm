@@ -219,6 +219,17 @@ class TestLeagues:
         assert league.name in r.text
         assert "95 / 300 / 600" in r.text
 
+    def test_lists_league_and_current_season_ids(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory)
+        factory.league_season(league, factory.season(year=2025))
+        newest = factory.season(year=2026)
+        factory.league_season(league, newest)
+
+        r = client.get("/admin/leagues")
+
+        assert f'title="league_id">{league.id}<' in r.text
+        assert f'title="season_id">{newest.id}<' in r.text
+
     def test_league_page_shows_gms(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory)
         gm_user = _user(db_conn)

@@ -164,6 +164,8 @@ def _shell_ctx(
         "league_id": league_id,
         "team_id": gm.get("team_id"),
         "is_viewer": bool(gm.get("is_viewer")),
+        # Admins see ids and the numbers behind letter grades.
+        "is_admin": bool(user and user.get("is_admin")),
         "league_state": "lobby",  # Default
         "reentry_enabled": True,
         "season_id": None,

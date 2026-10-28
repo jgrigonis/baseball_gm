@@ -52,15 +52,42 @@ def compute_ratings(skills: dict, throws: str) -> dict:
     return ratings
 
 
-def overall_grade(status: str, grades, ratings: dict) -> str:
-    """Prospect rating for undrafted players, position-aware rating for rostered."""
+def overall_value(status: str, grades, ratings: dict) -> float | None:
+    """The number behind overall_grade, or None when it falls back to
+    grades.overall."""
+    if not ratings:
+        return None
     if status in ("prospect", "unassigned", "free_agent"):
-        return skill_to_grade(ratings.get("prospect")) if ratings else grades.overall
+        return ratings.get("prospect")
     if grades.player_type == "pitcher":
         # Pitchers: best of SP/RP rating — overall_player is offense-based and useless
-        best_p = max(ratings.get("sp", 0), ratings.get("rp", 0)) if ratings else 0
-        return skill_to_grade(best_p) if best_p else grades.overall
-    return skill_to_grade(ratings.get("overall_player")) if ratings else grades.overall
+        return max(ratings.get("sp", 0), ratings.get("rp", 0)) or None
+    return ratings.get("overall_player")
+
+
+def overall_grade(status: str, grades, ratings: dict) -> str:
+    """Prospect rating for undrafted players, position-aware rating for rostered."""
+    value = overall_value(status, grades, ratings)
+    return skill_to_grade(value) if value is not None else grades.overall
+
+
+# grade_map keys graded from compute_ratings; the rest are raw skills.
+_RATING_KEYS = {
+    "sp",
+    "rp",
+    "lead_off",
+    "power_hitter",
+    "contact_hitter",
+    "overall_offense",
+    "c",
+    "1b",
+    "2b",
+    "3b",
+    "ss",
+    "lf",
+    "cf",
+    "rf",
+}
 
 
 def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
@@ -178,6 +205,18 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
             },
         ],
     }
+
+    # The number behind each grade, shown only to admins.
+    for section in (
+        pitching_section,
+        hitting_section,
+        defense_section,
+        general_section,
+    ):
+        for skill in section["skills"]:
+            source = ratings if skill["key"] in _RATING_KEYS else skills
+            value = (source or {}).get(skill["key"])
+            skill["value"] = round(value) if value is not None else None
 
     if grades.player_type == "pitcher":
         return [pitching_section, general_section, defense_section, hitting_section]

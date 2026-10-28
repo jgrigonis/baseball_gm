@@ -66,7 +66,7 @@
             <td>
               {# The team's roster and stats, for that season #}
               <a href="/leagues/{{ league_id }}/stats?team_id={{ team.team_id }}{% if past_season %}&season_id={{ past_season.id }}{% endif %}"
-                 title="Roster and stats"
+                 title="Roster and stats{% if is_admin %} · team_id: {{ team.team_id }}{% endif %}"
                  style="font-family:var(--font-sans);font-weight:600;text-decoration:none;
                         color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
                 {{ team.city }} {{ team.mascot }}

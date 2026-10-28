@@ -18,10 +18,12 @@
      {{ player.position or '?' }} ·
      {{ player.bats }}/{{ player.throws }} ·
      Age {{ player.age }} ·
-     {{ player.team_city }} {{ player.team_mascot }}
+     <span {% if is_admin and player.team_id %}title="team_id: {{ player.team_id }}"{% endif %}>{{ player.team_city }} {{ player.team_mascot }}</span>
    </div>
+   {% if is_admin %}<div class="admin-id" title="player_id">{{ player.player_id }}</div>{% endif %}
  </div>
- <div class="pd-overall grade-{{ player.overall_grade | replace('+','-plus') | replace('-','-minus') }}">
+ <div class="pd-overall grade-{{ player.overall_grade | replace('+','-plus') | replace('-','-minus') }}"
+      {% if is_admin and player.overall_value is not none %}title="{{ player.overall_value }}"{% endif %}>
    {{ player.overall_grade }}
  </div>
 </div>
@@ -87,8 +89,9 @@
          {% if g and g.startswith('A') %}elite
          {% elif g and (g.startswith('B') or g == 'C+') %}good
          {% elif g and (g.startswith('D') or g == 'F') %}poor
-         {% endif %}">
-         {{ skill.grade or '?' }}
+         {% endif %}"
+         {% if is_admin and skill.value is not none %}title="{{ skill.value }}"{% endif %}>
+         {{ skill.grade or '?' }}{% if is_admin and skill.value is not none %} <span class="admin-value">{{ skill.value }}</span>{% endif %}
        </span>
      </div>
      {% endfor %}
