@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <clipPath id="ball"><circle cx="32" cy="32" r="27.5"/></clipPath>
+  <circle cx="32" cy="32" r="29" fill="#f8f6f0" stroke="#9a948a" stroke-width="3"/>
+  <g clip-path="url(#ball)">
+    <g transform="rotate(-35 32 32)" fill="none" stroke="#d2302c" stroke-linecap="round">
+      <path stroke-width="3" d="M14 9.5C22 20 22 44 14 54.5M50 9.5C42 20 42 44 50 54.5"/>
+      <path stroke-width="2.4" d="M15 16.5l6-2.5M17.5 24l6-1.5M18.5 32h6M17.5 40l6 1.5M15 47.5l6 2.5"/>
+      <path stroke-width="2.4" d="M49 16.5l-6-2.5M46.5 24l-6-1.5M45.5 32h-6M46.5 40l-6 1.5M49 47.5l-6 2.5"/>
+    </g>
+  </g>
+</svg>
