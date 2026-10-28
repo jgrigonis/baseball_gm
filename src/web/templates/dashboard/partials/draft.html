@@ -809,8 +809,11 @@ function renderStrategy() {
   });
 
   const why = Object.entries(SUGGESTED.reasons);
+  const noneSet = !Object.values(strategy.chips).some(l => l > 0);
   document.getElementById('needs-why').innerHTML = why.length
-    ? 'Suggested from your roster:<br>' + why.map(([k, r]) =>
+    ? (noneSet ? 'No needs set, so you\'ll draft by these, suggested from your roster:<br>'
+               : 'Suggested from your roster:<br>')
+      + why.map(([k, r]) =>
         `<b>${CHIPS.find(c => c.key === k).label}</b> · ${r}`).join('<br>')
     : '';
   document.getElementById('strategy-suggest-btn').style.display = why.length ? '' : 'none';

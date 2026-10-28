@@ -73,6 +73,18 @@ class TestDraftStrategyValidation:
         assert s.chips["if"] == HIGH and s.pins == ["a"]
 
 
+class TestOrNeeds:
+    def test_no_chips_on_takes_the_needs(self):
+        s = DraftStrategy(chips={"c": OFF}, age_pref=0.5, pins=["a"])
+        assert s.or_needs({"sp": HIGH}) == DraftStrategy(
+            chips={"sp": HIGH}, age_pref=0.5, pins=["a"]
+        )
+
+    def test_any_chip_on_keeps_the_strategy(self):
+        s = DraftStrategy(chips={"c": LOW})
+        assert s.or_needs({"sp": HIGH}) is s
+
+
 # ── Groups ────────────────────────────────────────────────────────────────────
 
 

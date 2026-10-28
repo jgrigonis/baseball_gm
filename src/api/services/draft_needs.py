@@ -1,8 +1,9 @@
 # src/api/services/draft_needs.py
 #
 # Each team's suggested draft needs, from its roster, and the strategy each
-# team drafts with: its saved strategy, or else those needs. AI GMs never save
-# one, so they always draft by need.
+# team drafts with: its saved strategy, or else those needs. A saved strategy
+# with every need chip Off still drafts by those needs, keeping its pins and
+# age slider. AI GMs never save one, so they always draft by need.
 
 from __future__ import annotations
 
@@ -36,4 +37,7 @@ def draft_strategies(
     """{team_id: DraftStrategy} for every team: saved, or else by need."""
     saved = DraftRepository(db).get_strategies_by_team(draft_id, league_id)
     needs = needs_for_draft(db, draft_id, cached)
-    return {tid: saved.get(tid) or n.strategy() for tid, n in needs.items()}
+    return {
+        tid: saved[tid].or_needs(n.chips) if tid in saved else n.strategy()
+        for tid, n in needs.items()
+    }
