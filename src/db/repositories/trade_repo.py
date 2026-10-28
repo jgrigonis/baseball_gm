@@ -1,6 +1,8 @@
 # src/db/repositories/trade_repo.py
 import uuid
 
+from src.league.trades.draft_picks import Pick, is_pick, label, parse
+
 # An offer still waiting on someone: the other GM's answer, or the league's
 # vote.
 OPEN = ("pending", "pending_vote")
@@ -33,7 +35,8 @@ class TradeRepository:
         expires_on: str | None = None,
         from_ai: bool = False,
     ) -> str:
-        """Store a pending offer. items are (player_id, from_team_id) pairs."""
+        """Store a pending offer. items are (asset id, from_team_id) pairs: a
+        player's id, or a draft pick's (src/league/trades/draft_picks.py)."""
         offer_id = str(uuid.uuid4())
         self.conn.execute(
             """INSERT INTO trade_offers
@@ -55,12 +58,27 @@ class TradeRepository:
                 from_ai,
             ),
         )
-        for player_id, side in items:
-            self.conn.execute(
-                """INSERT INTO trade_offer_items (offer_id, player_id, from_team_id)
-                   VALUES (%s, %s, %s)""",
-                (offer_id, player_id, side),
-            )
+        for asset_id, side in items:
+            pick = parse(asset_id)
+            if pick:
+                self.conn.execute(
+                    """INSERT INTO trade_offer_picks
+                           (offer_id, draft_year, round, original_team_id, from_team_id)
+                       VALUES (%s, %s, %s, %s, %s)""",
+                    (
+                        offer_id,
+                        pick.draft_year,
+                        pick.round,
+                        pick.original_team_id,
+                        side,
+                    ),
+                )
+            else:
+                self.conn.execute(
+                    """INSERT INTO trade_offer_items (offer_id, player_id, from_team_id)
+                       VALUES (%s, %s, %s)""",
+                    (offer_id, asset_id, side),
+                )
         return offer_id
 
     def decide(self, offer_id: str, status: str, reason: str | None) -> None:
@@ -123,9 +141,11 @@ class TradeRepository:
         return {r["id"] for r in rows}
 
     def open_offers_with_players(
-        self, league_id: str, player_ids: list[str]
+        self, league_id: str, asset_ids: list[str]
     ) -> list[str]:
-        """Ids of the open offers naming any of these players."""
+        """Ids of the open offers naming any of these players or picks."""
+        player_ids = [a for a in asset_ids if not is_pick(a)]
+        picks = [parse(a) for a in asset_ids if is_pick(a)]
         rows = self.conn.execute(
             """SELECT DISTINCT o.id FROM trade_offers o
                JOIN trade_offer_items i ON i.offer_id = o.id
@@ -133,7 +153,24 @@ class TradeRepository:
                  AND i.player_id = ANY(%s)""",
             (league_id, list(OPEN), player_ids),
         ).fetchall()
-        return [r["id"] for r in rows]
+        ids = {r["id"] for r in rows}
+        for pick in picks:
+            rows = self.conn.execute(
+                """SELECT o.id FROM trade_offers o
+                   JOIN trade_offer_picks k ON k.offer_id = o.id
+                   WHERE o.league_id = %s AND o.status = ANY(%s)
+                     AND k.draft_year = %s AND k.round = %s
+                     AND k.original_team_id = %s""",
+                (
+                    league_id,
+                    list(OPEN),
+                    pick.draft_year,
+                    pick.round,
+                    pick.original_team_id,
+                ),
+            ).fetchall()
+            ids.update(r["id"] for r in rows)
+        return sorted(ids)
 
     def open_offers_for_team(self, league_id: str, team_id: str) -> list[str]:
         """Ids of the open offers a team is on either side of."""
@@ -378,6 +415,29 @@ class TradeRepository:
         by_offer: dict[str, list] = {}
         for r in rows:
             by_offer.setdefault(r["offer_id"], []).append(dict(r))
+        # Picks read like players: player_id is the pick's id, last_name its
+        # label.
+        picks = self.conn.execute(
+            """SELECT k.*, t.city || ' ' || t.mascot AS team_name
+               FROM trade_offer_picks k
+               JOIN teams t ON t.id = k.original_team_id
+               WHERE k.offer_id = ANY(%s)
+               ORDER BY k.draft_year, k.round, team_name""",
+            ([o["id"] for o in offers],),
+        ).fetchall()
+        for k in picks:
+            pick = Pick(k["draft_year"], k["round"], k["original_team_id"])
+            by_offer.setdefault(k["offer_id"], []).append(
+                {
+                    "offer_id": k["offer_id"],
+                    "from_team_id": k["from_team_id"],
+                    "player_id": pick.id,
+                    "first_name": "",
+                    "last_name": label(pick, k["team_name"]),
+                    "position": "",
+                    "is_pick": True,
+                }
+            )
         for o in offers:
             items = by_offer.get(o["id"], [])
             o["sent"] = [i for i in items if i["from_team_id"] == o["from_team_id"]]

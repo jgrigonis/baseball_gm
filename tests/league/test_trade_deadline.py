@@ -73,6 +73,7 @@ def test_window_is_open_until_deadline_days_games_are_followed_by_more(
         "enabled": True,
         "deadline": "2025-04-02",
         "open": True,
+        "offseason": False,
         "deadline_day": False,
     }
 
@@ -100,6 +101,29 @@ def test_the_playoffs_are_closed(db_conn, factory):
     _, season = _season_with_games(db_conn, factory)
     w = trade_deadline.window(
         db_conn, {"mode": "blitz", "state": "playoffs"}, season.id
+    )
+    assert not w["open"]
+
+
+def test_the_offseason_is_open_though_the_deadline_has_passed(db_conn, factory):
+    _, season = _season_with_games(db_conn, factory, played_through="2025-04-04")
+    w = trade_deadline.window(
+        db_conn, {"mode": "blitz", "state": "offseason"}, season.id
+    )
+    assert w["open"] and w["offseason"] and not w["deadline_day"]
+    assert w["deadline"] is None
+
+
+def test_the_draft_is_open(db_conn, factory):
+    _, season = _season_with_games(db_conn, factory)
+    w = trade_deadline.window(db_conn, {"mode": "blitz", "state": "draft"}, season.id)
+    assert w["open"] and w["offseason"]
+
+
+def test_the_offseason_has_no_trades_in_speed_blitz(db_conn, factory):
+    _, season = _season_with_games(db_conn, factory)
+    w = trade_deadline.window(
+        db_conn, {"mode": "speed_blitz", "state": "offseason"}, season.id
     )
     assert not w["open"]
 

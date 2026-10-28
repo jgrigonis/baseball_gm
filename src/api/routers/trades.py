@@ -1,7 +1,8 @@
 # src/api/routers/trades.py
 #
-# The Trades tab: build an offer to another team, answer the offers made to
-# you, vote on other GMs' trades, and the league's trade history. Rules, the
+# The Trades tab: build an offer to another team (players, and draft picks if
+# the league trades them), answer the offers made to you, vote on other GMs'
+# trades, and the league's trade history. Rules, the
 # AI's answer and the league vote live in src/api/services/trades.py.
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import trade_deadline
+from src.league.trades import draft_picks
 from src.team.roster_limits import (
     MAX_PLAYING_ROSTER,
     MIN_PLAYING_ROSTER,
@@ -92,8 +94,10 @@ def trades_tab(
             "trade_window": trade_deadline.window(db, dict(league), season_id),
             "trade_teams": teams,
             "my_players": team_cards(db, league_id, season_id, team_id)
+            + trades.pick_cards(db, dict(league), season_id, team_id)
             if team_id
             else [],
+            "pick_trades": draft_picks.enabled(dict(league)),
             "my_playing_count": playing_count(db, team_id) if team_id else 0,
             "min_roster": MIN_PLAYING_ROSTER,
             "max_roster": MAX_PLAYING_ROSTER,
@@ -133,7 +137,13 @@ def trade_team_roster(league_id: str, team_id: str, db: DB, gm: GM):
         return JSONResponse(
             {"detail": "That team isn't in this league."}, status_code=404
         )
-    return JSONResponse({"players": team_cards(db, league_id, season_id, team_id)})
+    league = dict(LeagueRepository(db).get_by_id(league_id))
+    return JSONResponse(
+        {
+            "players": team_cards(db, league_id, season_id, team_id)
+            + trades.pick_cards(db, league, season_id, team_id)
+        }
+    )
 
 
 @router.post("/leagues/{league_id}/trades")

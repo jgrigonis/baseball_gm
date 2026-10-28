@@ -312,33 +312,14 @@ class DraftRepository:
             ),
         )
 
-    def clear_draft(self, draft_id: str, league_id: str, draft_year: int) -> None:
-        with self.conn.cursor() as cur:
-            cur.execute("DELETE FROM draft_order WHERE draft_id = %s", (draft_id,))
-            cur.execute(
-                "DELETE FROM draft_pick_rights WHERE league_id = %s AND draft_year = %s",
-                (league_id, draft_year),
-            )
+    def clear_draft(self, draft_id: str) -> None:
+        """Clear a draft's order. Pick rights stay: picks may have been traded."""
+        self.conn.execute("DELETE FROM draft_order WHERE draft_id = %s", (draft_id,))
 
     def insert_draft_order(self, draft_id: str, team_id: str, position: int) -> None:
         self.conn.execute(
             "INSERT INTO draft_order (draft_id, team_id, pick_position) VALUES (%s, %s, %s)",
             (draft_id, team_id, position),
-        )
-
-    def insert_draft_pick_rights(
-        self,
-        league_id: str,
-        draft_year: int,
-        round: int,
-        og_team_id: str,
-        cur_team_id: str,
-    ) -> None:
-        self.conn.execute(
-            """INSERT INTO draft_pick_rights
-                (league_id, draft_year, round, original_team_id, current_owner_id)
-                VALUES (%s, %s, %s, %s, %s)""",
-            (league_id, draft_year, round, og_team_id, cur_team_id),
         )
 
 

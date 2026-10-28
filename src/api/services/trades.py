@@ -18,8 +18,11 @@
 #
 # Rules checked on every offer, and again when a GM accepts one:
 #   - the league trades (Blitz; not Speed Blitz, not Long Form yet) and the
-#     window is open: from the end of the draft until deadline day's games
-#   - 1 to MAX_PER_SIDE players a side, each owned by the side giving him up
+#     window is open: from the end of the playoffs, through the offseason and
+#     the draft, until deadline day's games (src/league/trade_deadline.py)
+#   - 1 to MAX_PER_SIDE players or draft picks a side, each owned by the side
+#     giving it up. Picks only with the league's pick_trades on, and only the
+#     next draft's first rounds (src/league/trades/draft_picks.py)
 #   - no player goes back to a team that traded him away this season
 #   - an AI team that turned down MAX_REJECTIONS_A_DAY offers from a team
 #     today won't hear another until tomorrow
@@ -27,7 +30,8 @@
 #     any one team
 #
 # A trade runs under the league lock, so it can't overlap a sim, and counts
-# from the next game. Traded players arrive in the organization (minors),
+# from the next game. Running the offseason (a new season) closes every open
+# offer, and the draft calls off the ones with its picks in them. Traded players arrive in the organization (minors),
 # never on the 40-man, so a trade can't push a roster over 40. A team left
 # under 25 has the best of its organization called up before its next game
 # (src/team/roster_limits.py), unless the GM does it first. Every other open
@@ -56,7 +60,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import trade_deadline
 from src.league.rotation_seeder import seed_ai_rotations
-from src.league.trades import ai_evaluator
+from src.league.trades import ai_evaluator, draft_picks
 from src.league.trades.ai_evaluator import Asset
 from src.team.roster_assigner import RosterAssigner
 from src.team.roster_limits import playing_count
@@ -71,6 +75,10 @@ POPUP_EVENTS = ("offer", "counter", "vote")
 
 # Statuses a player can be traded from.
 TRADEABLE = ("26man", "40man", "minors")
+
+# How much of a season the AI looks ahead to in the offseason, when there's
+# no season left to play: about a whole one.
+OFFSEASON_DAYS_LEFT = 180
 
 # Stances, once STANCE_MIN_GAMES are played: a team in the playoff picture
 # (top PLAYOFF_SPOTS, or within CONTENDER_GB games of the last spot) buys for
@@ -135,7 +143,9 @@ def _propose(conn, league_id, gm, to_team_id, give_ids, get_ids, counter_of):
             raise TradeError("That offer can't be countered any more.")
 
     give_ids, get_ids = _dedupe(give_ids), _dedupe(get_ids)
-    names = _check_players(conn, season_id, my_team_id, to_team_id, give_ids, get_ids)
+    names = _check_assets(
+        conn, league, season_id, my_team_id, to_team_id, give_ids, get_ids
+    )
     today = _league_date(conn, season_id)
     items = [(pid, my_team_id) for pid in give_ids] + [
         (pid, to_team_id) for pid in get_ids
@@ -204,17 +214,28 @@ def _check_window(conn, league: dict, season_id) -> None:
         raise TradeError("The trade window is closed.")
 
 
-def _check_players(conn, season_id, from_team, to_team, give_ids, get_ids) -> dict:
+def _check_assets(
+    conn, league: dict, season_id, from_team, to_team, give_ids, get_ids
+) -> dict:
     """Raise TradeError unless from_team can trade give_ids for to_team's
-    get_ids. Returns {player_id: name}."""
+    get_ids (players and draft picks). Returns {id: name}."""
     if not give_ids or not get_ids:
-        raise TradeError("Each side has to give up at least one player.")
+        raise TradeError("Each side has to give up at least one player or pick.")
     if len(give_ids) > MAX_PER_SIDE or len(get_ids) > MAX_PER_SIDE:
-        raise TradeError(f"At most {MAX_PER_SIDE} players a side.")
+        raise TradeError(f"At most {MAX_PER_SIDE} players or picks a side.")
+
+    names = _check_picks(
+        conn,
+        league,
+        season_id,
+        [(from_team, i) for i in give_ids if draft_picks.is_pick(i)]
+        + [(to_team, i) for i in get_ids if draft_picks.is_pick(i)],
+    )
+    give_ids = [i for i in give_ids if not draft_picks.is_pick(i)]
+    get_ids = [i for i in get_ids if not draft_picks.is_pick(i)]
 
     player_repo = PlayerRepository(conn)
     status_repo = PlayerStatusRepository(conn)
-    names = {}
     for side, ids in ((from_team, give_ids), (to_team, get_ids)):
         owned = player_repo.get_player_ids_from_team_players(side)
         for pid in ids:
@@ -238,6 +259,74 @@ def _check_players(conn, season_id, from_team, to_team, give_ids, get_ids) -> di
                 f"{names[pid]} can't go back to the {team_repo.get_name(from_team)} this season."
             )
     return names
+
+
+def _check_picks(conn, league: dict, season_id, picks) -> dict:
+    """Raise TradeError unless each (team, pick id) is a pick that team owns
+    and can trade. Returns {pick id: label}."""
+    if not picks:
+        return {}
+    if not draft_picks.enabled(league):
+        raise TradeError("This league doesn't trade draft picks.")
+    year = _pick_year(conn, league, season_id)
+    team_repo = TeamRepository(conn)
+    names = {}
+    for team_id, pick_id in picks:
+        pick = draft_picks.parse(pick_id)
+        if not pick or pick.draft_year != year:
+            raise TradeError(f"Only picks in the {year} draft can be traded.")
+        if pick.round > draft_picks.TRADEABLE_ROUNDS:
+            raise TradeError(
+                f"Only the first {draft_picks.TRADEABLE_ROUNDS} rounds' picks trade."
+            )
+        if draft_picks.owner(conn, league["id"], pick) != team_id:
+            raise TradeError("A pick in the offer isn't that team's any more.")
+        names[pick_id] = draft_picks.label(
+            pick, team_repo.get_name(pick.original_team_id)
+        )
+    return names
+
+
+def _pick_year(conn, league: dict, season_id) -> int | None:
+    """The draft whose picks trade now. Its rights are written the first time
+    they're needed."""
+    season = SeasonRepository(conn).get_season(season_id) if season_id else None
+    year = draft_picks.draft_year(conn, league, season["year"] if season else None)
+    if year is not None:
+        teams = TeamRepository(conn).get_teams_in_league_season(league["id"], season_id)
+        draft_picks.ensure_rights(conn, league["id"], year, [t["id"] for t in teams])
+    return year
+
+
+def pick_cards(conn, league: dict, season_id, team_id: str) -> list[dict]:
+    """A team's tradeable draft picks for the offer builder, shaped like its
+    player cards (roster_status 'pick'). Empty unless the league trades
+    picks."""
+    if not draft_picks.enabled(league) or not season_id:
+        return []
+    year = _pick_year(conn, league, season_id)
+    if year is None:
+        return []
+    slots, teams = draft_picks.projected_slots(conn, league["id"], season_id, year)
+    team_repo = TeamRepository(conn)
+    cards = []
+    for pick in draft_picks.owned(conn, league["id"], year, team_id):
+        slot = draft_picks.slot_in_round(
+            pick, slots.get(pick.original_team_id, (teams + 1) // 2), teams
+        )
+        cards.append(
+            {
+                "player_id": pick.id,
+                "first_name": "",
+                "last_name": draft_picks.label(
+                    pick, team_repo.get_name(pick.original_team_id)
+                ),
+                "roster_status": "pick",
+                "pick_round": pick.round,
+                "projected_pick": (pick.round - 1) * teams + slot,
+            }
+        )
+    return cards
 
 
 def _offer_to_gm(conn, league_id, season_id, gm, to_team_id, items, today, parent):
@@ -580,8 +669,9 @@ def _problem(conn, league: dict, offer: dict) -> str | None:
     """Why an agreed trade can no longer go through, or None."""
     try:
         _check_window(conn, league, offer["season_id"])
-        _check_players(
+        _check_assets(
             conn,
+            league,
             offer["season_id"],
             offer["from_team_id"],
             offer["to_team_id"],
@@ -620,8 +710,7 @@ def _complete(conn, league_id: str, offer: dict, by_vote: bool = False) -> None:
             team,
             "accepted",
             offer,
-            f"{how} the {other}: {_names(got)} "
-            f"{'join' if len(got) > 1 else 'joins'} your organization.",
+            f"{how} the {other}: you get {_names(got)}.",
         )
 
 
@@ -670,11 +759,28 @@ def close_at_deadline(conn, league_id: str) -> None:
     window = trade_deadline.window(conn, dict(league), season_id)
     if window["open"] and not window["deadline_day"]:
         return
+    close_all(conn, league_id)
+
+
+def close_all(conn, league_id: str) -> None:
+    """Every open offer expires and every vote closes: at the deadline, and
+    when the offseason starts a new season. Run under the league lock."""
     for offer in TradeRepository(conn).open_offers(league_id):
         if offer["status"] == "pending":
             _expire(conn, league_id, offer)
         else:
             _settle_vote(conn, league_id, offer, final=True)
+
+
+def draft_run(conn, league_id: str, draft_year: int) -> None:
+    """A draft has used its picks: call off the open offers with any in."""
+    for offer in TradeRepository(conn).open_offers(league_id):
+        if any(
+            p.get("is_pick")
+            and draft_picks.parse(p["player_id"]).draft_year == draft_year
+            for p in offer["sent"] + offer["received"]
+        ):
+            _void(conn, league_id, offer, "the draft has used its picks.")
 
 
 def _expire(conn, league_id: str, offer: dict) -> None:
@@ -786,16 +892,45 @@ def ai_answer(
         conn, other_team_id, injuries.get_team_injuries(other_team_id, today)
     )
     by_id = {a.id: a for a in roster + theirs}
+    by_id.update(_pick_assets(conn, league_id, season_id, giving + getting))
     return ai_evaluator.evaluate(
         roster=roster,
         giving=[by_id[pid] for pid in giving],
         getting=[by_id[pid] for pid in getting],
         stance=stance(conn, league_id, season_id, ai_team_id),
-        days_left=_days_left(conn, season_id, today),
+        days_left=_season_days_left(conn, league_id, season_id, today),
         margin_share=ai_evaluator.margin(ai_team_id, other_team_id, today)
         if margin_share is None
         else margin_share,
     )
+
+
+def _pick_assets(conn, league_id: str, season_id: str, ids) -> dict[str, Asset]:
+    """The draft picks among ids, as the AI sees them."""
+    picks = [draft_picks.parse(i) for i in ids if draft_picks.is_pick(i)]
+    if not picks:
+        return {}
+    team_repo = TeamRepository(conn)
+    out = {}
+    for pick in picks:
+        slots, teams = draft_picks.projected_slots(
+            conn, league_id, season_id, pick.draft_year
+        )
+        out[pick.id] = draft_picks.asset(
+            pick,
+            slots.get(pick.original_team_id, (teams + 1) // 2),
+            teams,
+            team_repo.get_name(pick.original_team_id),
+        )
+    return out
+
+
+def _season_days_left(conn, league_id: str, season_id: str, today: str) -> int:
+    """Days of the season left to play; in the offseason, the next one."""
+    league = LeagueRepository(conn).get_by_id(league_id)
+    if league and league["state"] in trade_deadline.OFFSEASON_STATES:
+        return OFFSEASON_DAYS_LEFT
+    return _days_left(conn, season_id, today)
 
 
 def execute(
@@ -805,18 +940,24 @@ def execute(
     sides: dict[str, list[str]],
     effective_date: str,
 ) -> None:
-    """Move each team's players in `sides` ({team_id: player_ids it gives
-    up}) to the other team. Two teams only."""
+    """Move each team's players and draft picks in `sides` ({team_id: ids it
+    gives up}) to the other team. Two teams only."""
     (team_a, give_a), (team_b, give_b) = sides.items()
     team_repo = TeamRepository(conn)
     status_repo = PlayerStatusRepository(conn)
     since = date.fromisoformat(effective_date)
     for from_team, to_team, ids in ((team_a, team_b, give_a), (team_b, team_a, give_b)):
-        for pid in ids:
-            team_repo.remove_player(from_team, pid)
-            team_repo.add_player(to_team, pid)
-            status_repo.set_status(pid, "minors", since=since)
-        _clear_roles(conn, from_team, season_id, ids, effective_date)
+        players = []
+        for asset_id in ids:
+            pick = draft_picks.parse(asset_id)
+            if pick:
+                draft_picks.move(conn, league_id, pick, to_team)
+                continue
+            players.append(asset_id)
+            team_repo.remove_player(from_team, asset_id)
+            team_repo.add_player(to_team, asset_id)
+            status_repo.set_status(asset_id, "minors", since=since)
+        _clear_roles(conn, from_team, season_id, players, effective_date)
 
     gm_repo = GMRepository(conn)
     for team_id in (team_a, team_b):
@@ -825,7 +966,12 @@ def execute(
 
     trade_repo = TradeRepository(conn)
     for offer_id in trade_repo.open_offers_with_players(league_id, give_a + give_b):
-        _void(conn, league_id, trade_repo.get(offer_id), "a player in it was traded.")
+        _void(
+            conn,
+            league_id,
+            trade_repo.get(offer_id),
+            "a player or pick in it was traded.",
+        )
 
 
 def _clear_roles(conn, team_id, season_id, player_ids, effective_date) -> None:
@@ -867,7 +1013,11 @@ def _replan_ai_team(conn, league_id, season_id, team_id, effective_date) -> None
 
 
 def stance(conn, league_id: str, season_id: str, team_id: str) -> str:
-    """contender, seller or neutral, from the standings."""
+    """contender, seller or neutral, from the standings. Everyone's neutral
+    in the offseason: last season's race is over."""
+    league = LeagueRepository(conn).get_by_id(league_id)
+    if league and league["state"] in trade_deadline.OFFSEASON_STATES:
+        return "neutral"
     rows = StandingsRepository(conn).get_records(league_id, season_id)
     me = next((r for r in rows if r["team_id"] == team_id), None)
     if not me:

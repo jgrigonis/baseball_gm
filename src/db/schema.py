@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     coach_done           TEXT[] NOT NULL DEFAULT '{{}}',   -- coach steps done (src/api/services/coach.py)
     trade_vote           BOOLEAN NOT NULL DEFAULT TRUE,  -- other GMs vote on trades between GMs
     stop_for_trade_offers BOOLEAN NOT NULL DEFAULT TRUE, -- single player: sims stop for an offer
+    pick_trades          BOOLEAN NOT NULL DEFAULT FALSE, -- teams can trade draft picks
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -659,6 +660,23 @@ CREATE TABLE IF NOT EXISTS trade_offer_items (
     FOREIGN KEY (from_team_id) REFERENCES teams(id)        ON DELETE CASCADE
 );
 
+-- The draft picks in an offer (src/league/trades/draft_picks.py): a pick is
+-- the original team's pick in a round of a year's draft. from_team_id is the
+-- side giving it up.
+CREATE TABLE IF NOT EXISTS trade_offer_picks (
+    offer_id         TEXT    NOT NULL,
+    draft_year       INTEGER NOT NULL,
+    round            INTEGER NOT NULL,
+    original_team_id TEXT    NOT NULL,
+    from_team_id     TEXT    NOT NULL,
+
+    PRIMARY KEY (offer_id, draft_year, round, original_team_id),
+
+    FOREIGN KEY (offer_id)         REFERENCES trade_offers(id) ON DELETE CASCADE,
+    FOREIGN KEY (original_team_id) REFERENCES teams(id)        ON DELETE CASCADE,
+    FOREIGN KEY (from_team_id)     REFERENCES teams(id)        ON DELETE CASCADE
+);
+
 -- The league's vote on a trade between two GMs: one row per voter (every
 -- other GM in the league, not away, when the vote opened). vote is NULL until
 -- they vote, and a missing vote counts as no.
@@ -1025,6 +1043,9 @@ CREATE INDEX IF NOT EXISTS idx_trade_offers_from_team ON trade_offers(from_team_
 CREATE INDEX IF NOT EXISTS idx_trade_offers_to_team   ON trade_offers(to_team_id);
 CREATE INDEX IF NOT EXISTS idx_trade_offers_from_gm   ON trade_offers(from_gm_id);
 CREATE INDEX IF NOT EXISTS idx_trade_offer_items_team ON trade_offer_items(from_team_id);
+CREATE INDEX IF NOT EXISTS idx_trade_offer_picks_original
+    ON trade_offer_picks(original_team_id);
+CREATE INDEX IF NOT EXISTS idx_trade_offer_picks_team ON trade_offer_picks(from_team_id);
 CREATE INDEX IF NOT EXISTS idx_trade_votes_gm         ON trade_votes(gm_id);
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

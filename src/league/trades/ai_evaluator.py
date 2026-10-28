@@ -11,7 +11,8 @@
 # The AI scores the deal twice, for this season (injured players count for the
 # share of the season they'll be back for) and for the future (ratings moved by
 # the age curve), and blends the two by its stance: a contender cares about
-# now, a seller about later.
+# now, a seller about later. A draft pick counts as the prospect it's expected
+# to bring, for the future only.
 #
 # It accepts if the gain beats a margin of what it gives up. The margin moves a
 # little, seeded by the two teams and the league date, so sending the same
@@ -80,6 +81,9 @@ class Asset:
     rp: int  # already discounted to starter terms
     age: int
     injured_days: int = 0
+    # A draft pick (src/league/trades/draft_picks.py): a prospect who counts
+    # for the future but doesn't play this season.
+    future_only: bool = False
 
     @classmethod
     def from_record(cls, p: PlayerRecord, injured_days: int = 0) -> Asset:
@@ -121,6 +125,8 @@ def team_strength(
         now, later = a.values[kind]
         if future:
             return later
+        if a.future_only:
+            return 0.0
         if not a.injured_days:
             return now
         return now * (1 - min(1.0, a.injured_days / max(1, days_left)))
