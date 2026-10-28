@@ -73,8 +73,20 @@ def overall_grade(status: str, grades, ratings: dict) -> str:
 
 # grade_map keys graded from compute_ratings; the rest are raw skills.
 _RATING_KEYS = {
-    "sp", "rp", "lead_off", "power_hitter", "contact_hitter", "overall_offense",
-    "c", "1b", "2b", "3b", "ss", "lf", "cf", "rf",
+    "sp",
+    "rp",
+    "lead_off",
+    "power_hitter",
+    "contact_hitter",
+    "overall_offense",
+    "c",
+    "1b",
+    "2b",
+    "3b",
+    "ss",
+    "lf",
+    "cf",
+    "rf",
 }
 
 
@@ -195,7 +207,12 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
     }
 
     # The number behind each grade, shown only to admins.
-    for section in (pitching_section, hitting_section, defense_section, general_section):
+    for section in (
+        pitching_section,
+        hitting_section,
+        defense_section,
+        general_section,
+    ):
         for skill in section["skills"]:
             source = ratings if skill["key"] in _RATING_KEYS else skills
             value = (source or {}).get(skill["key"])

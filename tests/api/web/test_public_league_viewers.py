@@ -253,9 +253,7 @@ def test_admin_sees_ids_and_exact_ratings_in_player_panel(
     assert '<span class="admin-value">61</span>' in html
 
 
-def test_viewer_sees_no_ids_or_exact_ratings_in_player_panel(
-    client, db_conn, factory
-):
+def test_viewer_sees_no_ids_or_exact_ratings_in_player_panel(client, db_conn, factory):
     league, home = _league(db_conn, factory)
     player = factory.rated_player(home, league, level=61)
 
