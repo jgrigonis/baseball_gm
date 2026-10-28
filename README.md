@@ -38,6 +38,40 @@ On windows you should also do this in a powershell as an admin:
 
 `[System.Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Machine")`
 
+### Migrations
+
+The web server doesn't change the database schema itself. Bring it up to
+date first (it's safe to run any time; with nothing pending it does nothing):
+
+`uv run python -m src.db.migrate`
+
+`./start_webserver.sh` does this for you. In a deployment, run it once as a
+step before starting the new version. The server refuses to start while
+migrations are pending, and says which.
+
+### The sim worker
+
+Anything that moves a league on (simming days, the playoffs, the offseason,
+the draft, starting a league, a multiplayer ready-check period) runs in a
+separate process, the sim worker, not in the web request. The request queues
+a job in Postgres and answers at once; the page polls until it's done. A full
+season can take minutes, which would otherwise hold a web worker that long
+and run into server timeouts.
+
+`uv run python -m src.worker`
+
+`./start_webserver.sh` starts one alongside the server. In a deployment, run
+it as its own process (or container) next to the web server, with the same
+`DATABASE_URL`. Run more than one for more leagues at once: they share the
+queue and never run the same job, and each league has one job at a time.
+Without a worker, sims wait in the queue and the page says it's waiting for
+the sim worker.
+
+To stop a worker, send it SIGTERM (what `docker stop` sends): it finishes the
+job in hand first, so allow it a few minutes. A worker killed partway through
+a job leaves that job to fail after about a minute with "try again"; every
+game played up to then is kept.
+
 ### Useful script alias 
 
 A handy script alias for your .zshrc file:
@@ -56,7 +90,7 @@ It lists the leagues it will delete and asks first; add `--yes` to skip the
 question. Each league goes with everything it owns (GMs, drafts, seasons,
 games, stats, teams and players) and its `team_files/<league_id>` folder, the
 same cleanup as when the last GM leaves a league. It reads `DATABASE_URL` and
-runs any pending migrations first, like the web server does. Then start the
+runs any pending migrations first. Then start the
 server again with `./start_webserver.sh`.
 
 ### Admin pages

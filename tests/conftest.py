@@ -1,5 +1,10 @@
 # tests/conftest.py
 import os
+
+# No sim worker in the tests: a queued sim runs inside the request that asks
+# for it (src/api/services/sim_jobs.py). Set before src.config is imported.
+os.environ["SIM_WORKER"] = "inline"
+
 import pytest
 import psycopg
 from psycopg.pq import TransactionStatus

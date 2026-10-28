@@ -104,41 +104,41 @@ def test_extra_fields_are_ignored():
 
 
 def test_playoff_sim_returns_its_result():
-    """The playoffs page reads games_played etc. from this response; the
-    router split had dropped the return, so it answered null."""
+    """The playoffs page reads games_played etc. from the finished job; the
+    router split had once dropped the result, so it answered null."""
     from unittest.mock import MagicMock, patch
 
     from fastapi.testclient import TestClient
 
-    from src.api.dependencies import (
-        get_current_gm,
-        require_single_player,
-        require_unpaused,
-    )
+    from src.api.dependencies import get_current_gm
     from src.api.main import app
 
     app.dependency_overrides[get_current_gm] = lambda: {"id": "gm", "team_id": "t"}
-    app.dependency_overrides[require_single_player] = lambda: None
-    app.dependency_overrides[require_unpaused] = lambda: None
     try:
         with (
             patch("src.api.database.get_connection", return_value=MagicMock()),
-            patch.object(sim, "sim_playoff", return_value={"games_played": 2}),
+            patch.object(sim, "SimJobRepository") as jobs,
             patch.object(sim, "LeagueRepository") as repo,
-            patch.object(sim, "league_lock"),
             patch.object(
                 sim,
                 "take_injury_news",
                 return_value={"new_injuries": [], "returned": []},
             ),
         ):
-            repo.return_value.get_state.return_value = "playoffs"
-            r = TestClient(app).post("/leagues/L/playoffs/sim?mode=game")
+            jobs.return_value.get.return_value = {
+                "league_id": "L",
+                "kind": "playoffs",
+                "state": "done",
+                "result": {"games_played": 2},
+            }
+            repo.return_value.get_by_id.return_value = {"state": "playoffs"}
+            r = TestClient(app).get("/leagues/L/jobs/j")
     finally:
         app.dependency_overrides.clear()
 
     assert r.status_code == 200
     assert r.json() == {
+        "state": "done",
         "games_played": 2,
         "league_state": "playoffs",
         "new_injuries": [],

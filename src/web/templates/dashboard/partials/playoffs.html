@@ -205,8 +205,8 @@ function simPlayoffs(mode) {
   _poSetDisabled(true);
   if (fb) fb.textContent = '';
 
-  fetch('/leagues/' + LEAGUE_ID + '/playoffs/sim?mode=' + mode, {method:'POST'})
-    .then(function(r){ return r.json(); })
+  runLeagueJob('/leagues/' + LEAGUE_ID + '/playoffs/sim?mode=' + mode, {method:'POST'},
+               function(job){ if (fb) fb.textContent = leagueJobWaitingText(job) || ''; })
     .then(function(d){
       _poSetDisabled(false);
       if (d.detail) { if (fb) fb.textContent = '✗ ' + d.detail; return; }

@@ -38,4 +38,10 @@ psql -U "$PGUSER" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHE
 psql -U "$PGUSER" -c "DROP DATABASE baseball_manager;" postgres
 psql -U "$PGUSER" -c "CREATE DATABASE baseball_manager;" postgres
 
+python -m src.db.migrate || exit 1
+# The sim worker runs the sims the server queues (src/worker.py). It stops
+# with the server.
+python -m src.worker &
+WORKER_PID=$!
+trap 'kill $WORKER_PID 2>/dev/null' EXIT
 uvicorn src.api.main:app --reload

@@ -14,6 +14,7 @@ from psycopg.rows import dict_row
 from src.api.dependencies import require_single_player
 from src.api.services import ready_check
 from src.db.locks import league_lock
+from src.db.repositories.sim_job_repo import SimJobRepository
 
 
 @pytest.fixture
@@ -175,14 +176,27 @@ class TestWhenNothingRuns:
     def test_another_request_already_running_it(
         self, db_conn, factory, run_period, request
     ):
+        """The period is queued, but the job can't run while something else
+        holds the league (the worker would try again)."""
         league, gms = _league(db_conn, factory)
         for gm in gms:
             ready_check.set_ready(db_conn, league.id, gm.id, True)
         url = request.config.getoption("--db-url") or os.environ["DATABASE_TEST_URL"]
         with psycopg.connect(url, row_factory=dict_row) as other:
             with league_lock(other, league.id):
-                assert not ready_check.advance_if_due(db_conn, league.id)
+                ready_check.advance_if_due(db_conn, league.id)
                 assert ready_check.status(db_conn, league.id, gms[0].id)["simming"]
+        run_period.assert_not_called()
+
+    def test_already_queued(self, db_conn, factory, run_period):
+        """However many polls see the period come due, it's queued once."""
+        league, gms = _league(db_conn, factory)
+        for gm in gms:
+            ready_check.set_ready(db_conn, league.id, gm.id, True)
+        SimJobRepository(db_conn).add(league.id, "period", {"sim_period": 0}, None)
+
+        assert not ready_check.advance_if_due(db_conn, league.id)
+        assert ready_check.status(db_conn, league.id, gms[0].id)["simming"]
         run_period.assert_not_called()
 
 

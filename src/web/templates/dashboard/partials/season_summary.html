@@ -393,8 +393,9 @@ function beginOffseason() {
   btn.textContent = 'Running offseason…';
   status.textContent = 'Aging players, generating prospects, preparing draft…';
 
-  fetch('/leagues/' + LEAGUE_ID + '/offseason/begin', {method: 'POST'})
-    .then(function(r){ return r.json(); })
+  var running = status.textContent;
+  runLeagueJob('/leagues/' + LEAGUE_ID + '/offseason/begin', {method: 'POST'},
+               function(job){ status.textContent = leagueJobWaitingText(job) || running; })
     .then(function(d){
       if (d.ok) {
         status.textContent = '✓ Offseason complete — ' + d.game_count + ' games scheduled for ' + d.new_year;

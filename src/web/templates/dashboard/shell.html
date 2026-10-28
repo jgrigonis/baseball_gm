@@ -113,13 +113,12 @@ async function simGames(count) {
   if (fb)  { fb.style.display = 'inline'; fb.textContent = ''; }
 
   try {
-    const res = await fetch(`/leagues/${LEAGUE_ID}/sim`, {
+    const d = await runLeagueJob(`/leagues/${LEAGUE_ID}/sim`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({count}),
     });
-    const d = await res.json();
-    if (res.ok) {
+    if (!d.failed) {
       const msg = `✓ ${d.games_played} game${d.games_played!==1?'s':''} · ${d.games_remaining} remaining`;
       if (fb) { fb.textContent = msg; fb.style.display = 'inline'; }
       setTimeout(() => { if(fb) fb.style.display = 'none'; }, 8000);

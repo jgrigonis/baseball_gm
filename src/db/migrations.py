@@ -51,6 +51,19 @@ def run_migrations(conn):
                 raise  # Re-raise the error
 
 
+def pending_migrations(conn) -> list[int]:
+    """
+    Versions of the migrations not yet applied, in order, without applying
+    them. Every version is pending on a database that has never been
+    migrated.
+    """
+    exists = conn.execute(
+        "SELECT to_regclass('schema_migrations') IS NOT NULL AS exists"
+    ).fetchone()["exists"]
+    applied = _applied_versions(conn) if exists else set()
+    return [version for version, _ in load_migrations() if version not in applied]
+
+
 def _ensure_migration_table(conn):
     """Create the schema_migrations table if it doesn't exist."""
     conn.execute("""

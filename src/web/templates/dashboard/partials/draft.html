@@ -1124,11 +1124,16 @@ async function submitPrefs() {
 function onExecute(form) {
   const btn = document.getElementById('execute-btn');
   btn.disabled = true; btn.textContent = 'Running…';
-  if (mode !== 'strategy' || !unsavedStrategy()) return true;
-  saveStrategy().then(ok => {
-    if (ok) form.submit();
-    else { btn.disabled = false; btn.textContent = 'Run Draft ▶'; }
+  const reset = () => { btn.disabled = false; btn.textContent = 'Run Draft ▶'; };
+  // The draft runs on the server as a job; go to the results once it's done.
+  const run = () => runLeagueJob(form.action, {method: 'POST'}, job => {
+    btn.textContent = job.waiting_for_worker ? 'Waiting for the sim worker…' : 'Running…';
+  }).then(d => {
+    if (d.failed) { reset(); alert(d.detail || 'The draft failed.'); return; }
+    window.location.href = d.redirect;
   });
+  if (mode !== 'strategy' || !unsavedStrategy()) { run(); return false; }
+  saveStrategy().then(ok => { if (ok) run(); else reset(); });
   return false;
 }
 

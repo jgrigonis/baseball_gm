@@ -35,7 +35,7 @@
             the player pool. AI GMs fill any empty slots. This takes ~10 seconds.
           </p>
           <form method="POST" action="/leagues/{{ league_id }}/start" id="start-form"
-                onsubmit="onStartLeague(this)">
+                onsubmit="return onStartLeague(this)">
             <div style="display:flex;align-items:center;gap:12px;">
               <button type="submit" id="start-btn" class="btn btn-primary">
                 Start League →
@@ -60,9 +60,24 @@
 function onStartLeague(form) {
   const btn = document.getElementById('start-btn');
   const spinner = document.getElementById('start-spinner');
+  const label = spinner.lastChild;
+  const generating = label.textContent;
   btn.disabled = true;
   btn.textContent = 'Starting…';
   spinner.style.display = 'flex';
+  // Starting runs on the server as a job; open the league once it's done.
+  runLeagueJob(form.action, {method: 'POST'}, job => {
+    label.textContent = ' ' + (leagueJobWaitingText(job) || generating.trim());
+  }).then(d => {
+    if (d.failed) {
+      btn.disabled = false;
+      btn.textContent = 'Start League →';
+      label.textContent = ' ✗ ' + (d.detail || 'Starting the league failed.');
+      return;
+    }
+    window.location.href = d.redirect;
+  });
+  return false;
 }
 
 // Stop the GM list's poll for good once this page can't reach the league:

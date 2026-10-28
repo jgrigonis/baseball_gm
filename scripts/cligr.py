@@ -58,7 +58,7 @@ from pathlib import Path
 
 from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
-from src.db.init import init_db
+from src.db.migrate import migrate
 from src.db.locks import LeagueBusy, league_lock
 from src.api.services import admin as admin_service
 from src.api.services.passwords import password_error, username_error
@@ -500,7 +500,7 @@ def _bootstrap_first_season(
          so bootstrap_from_manifest finds files in the right place
     """
     conn = get_connection()
-    init_db(conn)
+    migrate(conn)
 
     if year is None:
         year = "2025"
@@ -1061,7 +1061,7 @@ def cmd_clear(args) -> None:
 
 def cmd_reset_leagues(args) -> None:
     conn = get_connection()
-    init_db(conn)
+    migrate(conn)
 
     leagues = LeagueRepository(conn).list_all()
     if not leagues:
@@ -1102,7 +1102,7 @@ def _ask_password() -> str:
 
 def cmd_make_admin(args) -> None:
     conn = get_connection()
-    init_db(conn)
+    migrate(conn)
     user_repo = UserRepository(conn)
 
     user = user_repo.get_by_username(args.username)

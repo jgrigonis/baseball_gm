@@ -20,13 +20,11 @@ from src.api.dependencies import (
     User,
 )
 from src.api.schemas import DraftPreferencesRequest, DraftStrategyRequest
-from src.api.services import coach
-from src.api.services.draft_execute import execute_blitz_draft
+from src.api.services import coach, sim_jobs
 from src.api.services.draft_needs import needs_for_draft
 from src.api.services.draft_preview import preview_picks
 from src.api.view_models.draft import draft_rounds
 from src.api.view_models.player_cards import draft_roster_card, prospect_card
-from src.db.locks import league_lock
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -245,22 +243,13 @@ def execute_draft(
     _: SinglePlayer,
     _unpaused: Unpaused,
 ):
-    """Execute the blitz auto-draft and redirect to results."""
-    with league_lock(db, league_id):
-        draft = DraftRepository(db).get_current_for_league(league_id)
-
-        if not draft:
-            return RedirectResponse(f"/leagues/{league_id}/draft", status_code=302)
-
-        # If already complete, just go to results
-        if draft["state"] == "complete":
-            return RedirectResponse(
-                f"/leagues/{league_id}/draft/results", status_code=302
-            )
-
-        execute_blitz_draft(draft["id"], db)
-        db.commit()
-    return RedirectResponse(f"/leagues/{league_id}/draft/results", status_code=302)
+    """Queue the blitz auto-draft for the sim worker. The page polls the job,
+    then goes to the results."""
+    job_id = sim_jobs.submit(db, league_id, "draft", gm_id=gm["id"])
+    return JSONResponse(
+        {"job_id": job_id, "poll": f"/leagues/{league_id}/jobs/{job_id}"},
+        status_code=202,
+    )
 
 
 @router.get("/leagues/{league_id}/draft/results", response_class=HTMLResponse)
