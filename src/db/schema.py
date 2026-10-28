@@ -1059,7 +1059,8 @@ CREATE INDEX IF NOT EXISTS idx_gms_user             ON gms(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_gms_team             ON gms(team_id);
 
-CREATE INDEX IF NOT EXISTS idx_gms_persona          ON gms(persona_id);
+-- idx_gms_persona (gms.persona_id) is made by migration 026: on a database
+-- from before it, gms has no persona_id yet when this file runs.
 
 CREATE INDEX IF NOT EXISTS idx_leagues_join_code    ON leagues(join_code);
 
