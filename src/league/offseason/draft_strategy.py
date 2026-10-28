@@ -120,6 +120,16 @@ class DraftStrategy:
     def copy(self) -> DraftStrategy:
         return DraftStrategy(dict(self.chips), self.age_pref, list(self.pins))
 
+    def has_chips(self) -> bool:
+        return any(level > OFF for level in self.chips.values())
+
+    def or_needs(self, needs: dict[str, int]) -> DraftStrategy:
+        """This strategy, or with every chip Off, a copy that uses `needs`
+        (the suggested chips) instead. Pins and the age slider are kept."""
+        if self.has_chips():
+            return self
+        return DraftStrategy(dict(needs), self.age_pref, list(self.pins))
+
 
 def _percentile(sorted_vals: list[int], q: float) -> float:
     if not sorted_vals:
