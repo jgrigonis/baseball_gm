@@ -699,8 +699,10 @@ CREATE TABLE IF NOT EXISTS gm_lineup_preferences (
     position     TEXT,            -- defensive position
     is_starter   BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at   TEXT NOT NULL DEFAULT (NOW()),
+    -- The opposing starter's hand this lineup is for (Lineup tab toggle)
+    vs_hand      TEXT NOT NULL DEFAULT 'R' CHECK (vs_hand IN ('R', 'L')),
 
-    PRIMARY KEY (gm_id, player_id),
+    PRIMARY KEY (gm_id, vs_hand, player_id),
 
     FOREIGN KEY (gm_id)     REFERENCES gms(id)     ON DELETE CASCADE,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE

@@ -170,6 +170,12 @@ def _load_eligible_ids(conn, team_id: str, blitz: bool) -> list[str]:
     return ids
 
 
+def _throws(team: TeamInGame, player_id: str | None) -> str | None:
+    """The throwing hand (R or L) of one of a team's players."""
+    player = next((p for p in team.players if p.id == player_id), None)
+    return (player.throws or "R").upper() if player else None
+
+
 def _is_playoff_game(conn, game_id: str) -> bool:
     row = conn.execute(
         "SELECT series_id FROM games WHERE id = %s", (game_id,)
@@ -541,9 +547,13 @@ def _play_game(
                 state.current_energy, state.max_energy
             )
 
+    # Each lineup faces the other team's starter: a person's saved lineup for
+    # that hand, and the platoon setting, go by his throwing hand.
+    home_vs = _throws(away_team, away_starter_id)
+    away_vs = _throws(home_team, home_starter_id)
     lpr = LineupPreferenceRepository(conn)
-    home_saved = lpr.get_preferences(home_team.record.id, league_id)
-    away_saved = lpr.get_preferences(away_team.record.id, league_id)
+    home_saved = lpr.get_preferences(home_team.record.id, league_id, home_vs)
+    away_saved = lpr.get_preferences(away_team.record.id, league_id, away_vs)
     # AI teams have no saved lineup, so theirs is built fresh for every game.
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
@@ -569,6 +579,7 @@ def _play_game(
         restrict_to_ids=home_eligible or None,
         saved_lineup=home_saved,
         style=home_team.profile.lineup_style,
+        vs_hand=home_vs,
     )
     away_team.set_lineup(
         starting_pitcher_id=away_starter_id,
@@ -577,6 +588,7 @@ def _play_game(
         restrict_to_ids=away_eligible or None,
         saved_lineup=away_saved,
         style=away_team.profile.lineup_style,
+        vs_hand=away_vs,
     )
 
     lineup_repo = LineupRepository(conn)

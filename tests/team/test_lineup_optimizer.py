@@ -16,24 +16,27 @@ from src.player.player_in_game import PlayerInGame
 from src.team.lineup_optimizer import (
     FIELD_POSITIONS,
     LINEUP_STYLES,
+    PLATOON_PENALTY,
+    REGULAR_BONUS,
     LineupOptimizer,
 )
 
 HITTING = ("contact", "power", "eye", "speed", "base_running", "bunting", "clutch")
 
 
-def make_player(id, ratings=None, skills=None, throws="R"):
+def make_player(id, ratings=None, skills=None, throws="R", bats="R"):
     p = MagicMock(spec=PlayerInGame)
     p.record = SimpleNamespace(id=id)
     p.id = id
     p.ratings = ratings or {}
     p.skills = skills or {}
     p.throws = throws
+    p.bats = bats
     p.is_injured = False
     return p
 
 
-def hitter(id, bat=50, glove=None, throws="R", **skills):
+def hitter(id, bat=50, glove=None, throws="R", bats="R", **skills):
     """A hitter with overall_offense `bat`, a rating at each position from
     `glove` (default 40 everywhere), and hitting skills all at `bat` unless
     given."""
@@ -41,7 +44,11 @@ def hitter(id, bat=50, glove=None, throws="R", **skills):
     ratings.update(glove or {})
     ratings["overall_offense"] = bat
     return make_player(
-        id, ratings, {k: skills.get(k, bat) for k in HITTING}, throws=throws
+        id,
+        ratings,
+        {k: skills.get(k, bat) for k in HITTING},
+        throws=throws,
+        bats=bats,
     )
 
 
@@ -204,3 +211,45 @@ def test_deterministic_whatever_the_input_order():
     assert [(s.player.id, s.position) for s in a] == [
         (s.player.id, s.position) for s in b
     ]
+
+
+# ── Platoons ──────────────────────────────────────────────────────────────────
+
+
+def test_only_same_side_hitters_lose_offense():
+    righty, lefty, switch = hitter("r"), hitter("l", bats="L"), hitter("s", bats="S")
+    assert LineupOptimizer.matchup(righty, "R") == PLATOON_PENALTY
+    assert LineupOptimizer.matchup(lefty, "R") == 0
+    assert LineupOptimizer.matchup(switch, "L") == 0
+    assert LineupOptimizer.matchup(righty, None) == 0
+
+
+def platoon_lineup(bench_bat, platoon, vs_hand="R"):
+    """Nine right-handed regulars and a left-handed bench bat who can only DH
+    (no glove). Who's the DH?"""
+    regulars = [hitter(f"h{i}", bat=60) for i in range(9)]
+    bench = hitter(
+        "lefty", bat=bench_bat, glove={p: 0 for p in FIELD_POSITIONS}, bats="L"
+    )
+    lineup = LineupOptimizer.fill(
+        [None] * 9, regulars + [bench], vs_hand=vs_hand, platoon=platoon
+    )
+    return "lefty" in {s.player.id for s in lineup}
+
+
+def test_platoon_none_ignores_the_starter():
+    assert not platoon_lineup(58, "none")
+
+
+def test_aggressive_plays_the_best_matchup():
+    # 60 less the same-side penalty is below 58.
+    assert 60 - PLATOON_PENALTY < 58
+    assert platoon_lineup(58, "aggressive")
+    # Against a lefty the righties have the platoon edge.
+    assert not platoon_lineup(58, "aggressive", vs_hand="L")
+
+
+def test_vs_handedness_keeps_a_regular_unless_the_bench_is_close():
+    edge = 60 - PLATOON_PENALTY + REGULAR_BONUS
+    assert not platoon_lineup(edge - 1, "vs-handedness")
+    assert platoon_lineup(edge + 1, "vs-handedness")

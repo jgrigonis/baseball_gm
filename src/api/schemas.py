@@ -204,6 +204,8 @@ class LineupSlot(BaseModel):
 
 class LineupSaveRequest(BaseModel):
     lineup: list[LineupSlot] = []
+    # The opposing starter's hand this lineup is for (R or L).
+    vs_hand: Literal["R", "L"] = "R"
 
 
 class LineupAutofillSlot(BaseModel):
@@ -216,6 +218,8 @@ class LineupAutofillRequest(BaseModel):
     lineup: list[LineupAutofillSlot | None] = []
     # True starts over; False keeps the players already in the lineup.
     rebuild: bool = False
+    # The opposing starter's hand, for the Strategy tab's platoon setting.
+    vs_hand: Literal["R", "L"] = "R"
 
 
 class RotationSaveRequest(BaseModel):

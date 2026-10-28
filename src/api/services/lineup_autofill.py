@@ -6,6 +6,8 @@
 #   - Auto-fill keeps every healthy, eligible player already in the lineup in
 #     his slot and position, and fills the rest.
 #   - Rebuild starts over from the whole eligible roster.
+# Both use the platoon setting against the hand the lineup is for (the Lineup
+# tab's vs RHP / vs LHP toggle).
 # Eligible is who can play in a game: the 26-man, plus the 40-man in Blitz
 # leagues, minus the injured and pitchers.
 
@@ -41,7 +43,12 @@ def eligible_hitters(db, league_id: str, team_id: str) -> list[PlayerInGame]:
 
 
 def autofill(
-    db, league_id: str, team_id: str, current: list[dict | None], rebuild: bool
+    db,
+    league_id: str,
+    team_id: str,
+    current: list[dict | None],
+    rebuild: bool,
+    vs_hand: str = "R",
 ) -> list[dict]:
     """The filled lineup as [{player_id, position}], one per batting slot.
     current is the lineup on screen, one entry (or None) per slot. Raises
@@ -59,5 +66,12 @@ def autofill(
     profile = ManagerProfile.from_row(
         GMRepository(db).get_team_profile(team_id, league_id)
     )
-    lineup = LineupOptimizer.fill(locked, hitters, style=profile.lineup_style, dh=True)
+    lineup = LineupOptimizer.fill(
+        locked,
+        hitters,
+        style=profile.lineup_style,
+        dh=True,
+        vs_hand=vs_hand,
+        platoon=profile.platoon_usage,
+    )
     return [{"player_id": s.player.id, "position": s.position} for s in lineup]

@@ -56,6 +56,8 @@ class TeamInGame:
         self.logger = logger or logging.getLogger("game.details")
         # How the team is managed (the Strategy tab); play_season sets it.
         self.profile: ManagerProfile = DEFAULT_PROFILE
+        # The opposing starter's throwing hand, for platoons; set_lineup sets it.
+        self._vs_hand: str | None = None
 
     @property
     def has_lineup(self) -> bool:
@@ -70,6 +72,7 @@ class TeamInGame:
         injured_ids: set[str] | None = None,
         restrict_to_ids: set[str] | None = None,
         saved_lineup: list[dict] | None = None,
+        vs_hand: str | None = None,
     ) -> None:
         """
         Set the lineup for the game.
@@ -85,6 +88,8 @@ class TeamInGame:
                          List of {player_id, batting_order, position} dicts.
                          If provided, used as-is; injured/ineligible players are
                          skipped and the optimizer fills any gaps.
+            vs_hand: Throwing hand of the opposing starter (R or L), for the
+                     platoon setting. None ignores it.
         """
         self._ensure_players_rated()
 
@@ -122,6 +127,7 @@ class TeamInGame:
             )
             available = [p for p in available if p not in resting]
 
+        self._vs_hand = vs_hand
         if saved_lineup:
             self._set_lineup_from_saved(saved_lineup, available, style, dh)
         else:
@@ -196,7 +202,11 @@ class TeamInGame:
 
         try:
             self.lineup = LineupOptimizer.fill(
-                locked, list(available_by_id.values()), style=style, dh=dh
+                locked,
+                list(available_by_id.values()),
+                style=style,
+                dh=dh,
+                **self._platoon(),
             )
         except ValueError as e:
             self.logger.warning(
@@ -213,11 +223,21 @@ class TeamInGame:
         """Full optimizer-driven lineup — used for AI teams and when no saved lineup."""
         if self.pitcher:
             lineup, _ = self._optimizer(
-                available, style=style, dh=dh, pitcher=self.pitcher
+                available, style=style, dh=dh, pitcher=self.pitcher, **self._platoon()
             )
         else:
-            lineup, self.pitcher = self._optimizer(available, style=style, dh=dh)
+            lineup, self.pitcher = self._optimizer(
+                available, style=style, dh=dh, **self._platoon()
+            )
         self.lineup = lineup
+
+    def _platoon(self) -> dict:
+        """The optimizer's platoon arguments: today's starter's hand and the
+        platoon setting."""
+        return {
+            "vs_hand": self._vs_hand,
+            "platoon": self.profile.platoon_usage,
+        }
 
     @property
     def bench_players(self) -> list[PlayerInGame]:

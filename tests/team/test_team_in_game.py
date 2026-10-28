@@ -119,6 +119,20 @@ def test_set_lineup_assigns_lineup_and_pitcher(team_in_game):
     assert fake_pitcher.game_stats.pitching.game_played == 1
 
 
+def test_set_lineup_passes_the_starters_hand_and_platoon_setting(team_in_game):
+    from src.team.manager_profile import ManagerProfile
+
+    slot = LineupSlot(player=MagicMock(pitcher_fatigue=None), position="c")
+    mock_optimize = MagicMock(return_value=([slot], MagicMock(pitcher_fatigue=None)))
+    team_in_game._optimizer = mock_optimize
+    team_in_game.profile = ManagerProfile(platoon_usage="aggressive")
+
+    team_in_game.set_lineup(vs_hand="L")
+
+    kwargs = mock_optimize.call_args.kwargs
+    assert kwargs["vs_hand"] == "L" and kwargs["platoon"] == "aggressive"
+
+
 def test_next_batter_cycles():
     """Batter iteration wraps correctly
 

@@ -41,7 +41,7 @@ def lineup(
     if not gm or not gm["team_id"]:
         ctx["hitters"] = []
         ctx["pitchers"] = []
-        ctx["saved_lineup"] = []
+        ctx["saved_lineup"] = {"R": [], "L": []}
         ctx["saved_rotation"] = []
         ctx["saved_bullpen"] = []
         return tab_response(request, htmx, "dashboard/partials/lineup.html", ctx)
@@ -75,7 +75,7 @@ def save_lineup_prefs(
         )
 
     lpr = LineupPreferenceRepository(db)
-    lpr.save_preferences(gm["id"], lineup)
+    lpr.save_preferences(gm["id"], lineup, body.vs_hand)
     coach.mark(db, league_id, "batting")
 
     db.commit()
@@ -96,7 +96,9 @@ def autofill_lineup(
         return JSONResponse({"detail": "No team"}, status_code=400)
     current = [slot.model_dump() if slot else None for slot in body.lineup]
     try:
-        lineup = autofill(db, league_id, gm["team_id"], current, body.rebuild)
+        lineup = autofill(
+            db, league_id, gm["team_id"], current, body.rebuild, body.vs_hand
+        )
     except ValueError:
         return JSONResponse(
             {"detail": "Not enough healthy hitters to fill the lineup"},
