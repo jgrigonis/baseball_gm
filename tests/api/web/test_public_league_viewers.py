@@ -235,3 +235,46 @@ def test_admin_cant_view_private_lobby(admin_client, db_conn, factory):
     )
 
     assert r.headers["location"] == "/leagues/"
+
+
+# ── Ids and exact ratings: admins only ────────────────────────────────────────
+
+
+def test_admin_sees_ids_and_exact_ratings_in_player_panel(
+    admin_client, db_conn, factory
+):
+    league, home = _league(db_conn, factory)
+    player = factory.rated_player(home, league, level=61)
+
+    html = admin_client.get(f"/leagues/{league.id}/players/{player.id}/panel").text
+
+    assert player.id in html
+    assert f'title="team_id: {home.id}"' in html
+    assert '<span class="admin-value">61</span>' in html
+
+
+def test_viewer_sees_no_ids_or_exact_ratings_in_player_panel(
+    client, db_conn, factory
+):
+    league, home = _league(db_conn, factory)
+    player = factory.rated_player(home, league, level=61)
+
+    html = client.get(f"/leagues/{league.id}/players/{player.id}/panel").text
+
+    assert "team_id: " not in html
+    assert "admin-value" not in html
+    assert "admin-id" not in html
+
+
+def test_admin_sees_team_ids_in_standings(admin_client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+
+    html = admin_client.get(f"/leagues/{league.id}/standings").text
+
+    assert f"team_id: {home.id}" in html
+
+
+def test_viewer_sees_no_team_ids_in_standings(client, db_conn, factory):
+    league, _ = _league(db_conn, factory)
+
+    assert "team_id: " not in client.get(f"/leagues/{league.id}/standings").text

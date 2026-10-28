@@ -10,6 +10,7 @@ from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.api.view_models.player_cards import (
     compute_ratings,
     overall_grade as player_overall_grade,
+    overall_value as player_overall_value,
     ratings_to_grade_map,
 )
 from src.db.repositories.injury_repo import InjuryRepository
@@ -137,6 +138,7 @@ def player_panel_data(
                 }
 
     overall_grade = player_overall_grade(status, grades, ratings)
+    overall_value = player_overall_value(status, grades, ratings)
 
     grade_map = ratings_to_grade_map(grades, p, ratings)
 
@@ -183,10 +185,12 @@ def player_panel_data(
     return {
         **grades.model_dump(),
         "player_id": pid,
+        "team_id": team["id"] if team else None,
         "team_city": team["city"] if team else "—",
         "team_mascot": team["mascot"] if team else "",
         "grades": grade_map,
         "overall_grade": overall_grade,
+        "overall_value": round(overall_value) if overall_value is not None else None,
         "best_def_grade": best_def_grade,
         "best_def_label": best_def_label,
         "energy": energy,

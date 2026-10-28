@@ -20,10 +20,12 @@
       <tbody>
         {% for l in leagues %}
         <tr>
-          <td class="team-name">{{ l.name }}{% if l.is_practice %} <span class="admin-dim" style="font-size:10px;">· practice</span>{% endif %}</td>
+          <td class="team-name">{{ l.name }}{% if l.is_practice %} <span class="admin-dim" style="font-size:10px;">· practice</span>{% endif %}
+            <div class="admin-id" title="league_id">{{ l.id }}</div></td>
           <td>
             <span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span>
             {% if l.is_paused %}<span class="topbar-state" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red);">Paused</span>{% endif %}
+            {% if l.season_id %}<div class="admin-id" title="season_id">{{ l.season_id }}</div>{% endif %}
           </td>
           <td class="admin-dim">{{ l.mode | replace('_', ' ') | title }}</td>
           <td class="admin-dim">{{ l.pace_control | title }}</td>

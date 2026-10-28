@@ -771,5 +771,8 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .admin-check { display: flex; align-items: center; justify-content: flex-start; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
 .admin-small { font-size: 10px; padding: 4px 10px; }
 .admin-dim { font-family: var(--font-mono); color: var(--text-dim); }
+/* Ids and exact ratings, shown only to admins. */
+.admin-id { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-dim); user-select: all; margin-top: 2px; }
+.admin-value { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-dim); }
 .admin-section { margin-top: 32px; }
 .admin-check input[type=checkbox] { width: auto; flex: none; margin: 0; }

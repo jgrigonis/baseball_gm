@@ -106,7 +106,7 @@
     <div class="topbar-spacer"></div>
     {% if team_name %}
       <div class="topbar-team">
-        <strong>{{ team_name }}</strong>{{ gm_display_name }}
+        <strong {% if is_admin and team_id %}title="team_id: {{ team_id }}"{% endif %}>{{ team_name }}</strong>{{ gm_display_name }}
       </div>
     {% endif %}
     {% set nav_user = user or (request.state.user if request is defined else none) %}
