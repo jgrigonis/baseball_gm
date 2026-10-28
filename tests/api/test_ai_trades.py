@@ -4,7 +4,7 @@ which pop up and wait, and the rare trade between two AI teams."""
 
 import pytest
 
-from src.api.services import ai_trades, trades
+from src.api.services import ai_trades, team_states, trades
 from src.api.services.trades import TradeError
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.trade_repo import TradeRepository
@@ -19,14 +19,23 @@ def ai(lg, monkeypatch):  # noqa: F811
     """lg where the AI team is in the race and has a prospect to spare, and
     my team is out of it with a veteran it should sell. Every AI team looks
     for a deal on every run, wanting to win by the same margin every day."""
-    stances = {lg.mine.id: "seller", lg.theirs.id: "contender"}
+    states = {lg.mine.id: "rebuilding", lg.theirs.id: "contending"}
+
+    class Rows(dict):
+        """Every team's team_states row, well into the season."""
+
+        def __missing__(self, team_id):
+            state = states.get(team_id, "retooling")
+            return {"state": state, "inputs": {"games_back": 0.0, "played": 40}}
+
+    monkeypatch.setattr(team_states, "current", lambda *a: Rows())
     monkeypatch.setattr(
-        trades, "stance", lambda conn, l, s, team_id: stances.get(team_id, "neutral")
+        team_states, "state_of", lambda *a: states.get(a[3], "retooling")
     )
     monkeypatch.setattr(ai_evaluator, "margin", lambda *a: ai_evaluator.BASE_MARGIN)
     for chance in ("ACT_CHANCE", "RUSH_ACT_CHANCE"):
-        monkeypatch.setattr(ai_trades, chance, dict.fromkeys(stances.values(), 1.0))
-    lg.stances = stances
+        monkeypatch.setattr(ai_trades, chance, {"buyer": 1.0, "seller": 1.0})
+    lg.states = states
     lg.veteran = lg.factory.rated_player(lg.mine, lg.league, 70, age=35, name="Vet")
     lg.prospect = lg.factory.rated_player(lg.theirs, lg.league, 65, age=22, name="Kid")
     return lg
@@ -158,7 +167,7 @@ def test_a_counter_to_an_ai_offer_gets_an_answer_at_once(ai):
 def _all_ai(ctx):
     """Nobody runs my team any more: both teams are the AI's."""
     ctx.db.execute("UPDATE gms SET is_ai = TRUE WHERE team_id = %s", (ctx.mine.id,))
-    ctx.stances[ctx.mine.id] = "seller"
+    ctx.states[ctx.mine.id] = "rebuilding"
 
 
 def test_two_ai_teams_trade_at_once(ai):
@@ -199,10 +208,10 @@ def test_the_ai_looks_every_day_in_the_deadline_rush():
     assert sum(looks) == 10  # every third day before it
 
 
-def test_neutral_ai_teams_dont_trade_with_each_other(ai):
+def test_retooling_ai_teams_dont_trade_with_each_other(ai):
     _all_ai(ai)
-    ai.stances[ai.mine.id] = ai.stances[ai.theirs.id] = "neutral"
-    ai_trades.ACT_CHANCE["neutral"] = ai_trades.RUSH_ACT_CHANCE["neutral"] = 1.0
+    ai.states[ai.mine.id] = ai.states[ai.theirs.id] = "retooling"
+    ai_trades.ACT_CHANCE["other"] = ai_trades.RUSH_ACT_CHANCE["other"] = 1.0
     assert _run(ai)["trades"] == 0
 
 

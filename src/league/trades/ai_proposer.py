@@ -12,8 +12,9 @@
 #     most to the other side (MAX_GIVERS of them), one at a time and then in
 #     pairs, cheapest first
 # Of the deals that work for both sides, it keeps the one that helps it most.
-# Stances drive the trades: a contender buys players who help now, a seller
-# sells veterans for younger ones, because each judges by its own weights.
+# Team states drive the trades: a contender buys players who help now, a
+# rebuilding team sells veterans for younger ones, because each judges by its
+# own weights.
 
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ class Side:
     """One team as the search sees it."""
 
     team_id: str
-    stance: str
+    state: str  # its team state (src/league/team_state.py)
     roster: list[Asset]  # everyone it owns
     tradeable: set[str]  # ids it can trade (organization, healthy)
     margin: float  # the share of what it gives up it wants to win by
@@ -48,7 +49,7 @@ class Deal:
 
 def _verdict(side: Side, giving, getting, days_left, margin, base):
     return ai_evaluator.evaluate(
-        side.roster, giving, getting, side.stance, days_left, margin, base
+        side.roster, giving, getting, side.state, days_left, margin, base
     )
 
 

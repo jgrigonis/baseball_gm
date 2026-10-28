@@ -4,9 +4,11 @@
 # after a day's games, every RUN_EVERY_DAYS days, and every day in the
 # DEADLINE_RUSH_DAYS before the trade deadline.
 #
-# Each run, each AI team gets a chance to look for a deal: contenders and
-# sellers have a reason to trade and look more often (ACT_CHANCE), neutral
-# teams rarely. It looks at a few other teams (PARTNERS_PER_LOOK) and keeps the
+# Each run, each AI team gets a chance to look for a deal. Its team state
+# (src/api/services/team_states.py) decides how it judges one, and how keen it
+# is: once the standings have had their say, buyers (all-in, contending) and
+# sellers (rebuilding, aging out) look more often (ACT_CHANCE); everyone else,
+# and everyone early in the season, rarely. It looks at a few other teams (PARTNERS_PER_LOOK) and keeps the
 # best deal it finds (src/league/trades/ai_proposer.py):
 #   - with a team a person runs, it makes an offer, which pops up for them
 #     and waits for their answer: until after EXPIRES_AFTER_DAYS league days
@@ -16,8 +18,8 @@
 #     MAX_AI_OFFERS_A_SEASON a season, only MAX_AI_OFFERS_BEFORE_RUSH of them
 #     before the rush.
 #   - with another AI team, both have already agreed, so it goes through at
-#     once. Only a contender or a seller starts one, so they wait until the
-#     standings say who's who. They're rare: one a season for each AI team
+#     once. Only a buyer or a seller starts one, once the standings have had
+#     their say. They're rare: one a season for each AI team
 #     (MAX_AI_TRADES_A_SEASON), one for every TEAMS_PER_AI_TRADE teams in the
 #     league, most of them saved for the rush (SHARE_OF_AI_TRADES_BEFORE_RUSH),
 #     and AI_TRADES_PER_RUN a run (more in the rush), so AI teams move players
@@ -32,7 +34,7 @@ import hashlib
 import random
 from datetime import date, timedelta
 
-from src.api.services import trades
+from src.api.services import team_states, trades
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -41,13 +43,14 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import trade_deadline
+from src.league.team_state import BUYERS, SELLERS
 from src.league.trades import ai_evaluator
 from src.league.trades.ai_proposer import Side, find_deal
 
 RUN_EVERY_DAYS = 3
 DEADLINE_RUSH_DAYS = 14
-ACT_CHANCE = {"contender": 0.3, "seller": 0.3, "neutral": 0.08}
-RUSH_ACT_CHANCE = {"contender": 0.5, "seller": 0.5, "neutral": 0.12}
+ACT_CHANCE = {"buyer": 0.3, "seller": 0.3, "other": 0.08}
+RUSH_ACT_CHANCE = {"buyer": 0.5, "seller": 0.5, "other": 0.12}
 PARTNERS_PER_LOOK = 4
 EXPIRES_AFTER_DAYS = 3
 DAYS_BETWEEN_OFFERS = 10
@@ -104,7 +107,9 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
     ]
     humans = set(GMRepository(conn).get_human_team_ids(league_id))
     ai_teams = [t for t in teams if t not in humans]
-    stances = {t: trades.stance(conn, league_id, season_id, t) for t in teams}
+    rows = team_states.current(conn, league_id, season_id, game_date)
+    states = {t: rows[t]["state"] for t in teams}
+    roles = {t: _role(rows[t]) for t in teams}
     days_left = trades._days_left(conn, season_id, game_date)
     trade_repo = TradeRepository(conn)
     ai_made = trade_repo.ai_trades_this_season(season_id)
@@ -116,10 +121,10 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
     def can_offer_to(t):
         return _can_offer_to(trade_repo, league_id, season_id, t, game_date, rush)
 
-    actors = [t for t in ai_teams if rng.random() < chance[stances[t]]]
+    actors = [t for t in ai_teams if rng.random() < chance[roles[t]]]
     if not actors:
         return {"offers": 0, "trades": 0}
-    sides = _sides(conn, league_id, teams, stances, game_date)
+    sides = _sides(conn, league_id, teams, states, game_date)
 
     offers = made = 0
     for team_id in actors:
@@ -130,9 +135,7 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
             and (
                 can_offer_to(t)
                 if t in humans
-                else stances[team_id] != "neutral"
-                and can_trade(t)
-                and can_trade(team_id)
+                else roles[team_id] != "other" and can_trade(t) and can_trade(team_id)
             )
         ]
         rng.shuffle(partners)
@@ -143,7 +146,7 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
             if partner in humans:
                 # A person decides: offer what would make their team better,
                 # with no margin of their own.
-                them = Side(them.team_id, them.stance, them.roster, them.tradeable, 0.0)
+                them = Side(them.team_id, them.state, them.roster, them.tradeable, 0.0)
             # Don't make a GM the same offer twice.
             avoid = (
                 trade_repo.ai_offers_made(season_id, team_id, partner)
@@ -176,9 +179,7 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
             for t in (team_id, partner, "all"):
                 ai_made[t] = ai_made.get(t, 0) + 1
             # Their rosters changed: look at them afresh next run.
-            sides.update(
-                _sides(conn, league_id, [team_id, partner], stances, game_date)
-            )
+            sides.update(_sides(conn, league_id, [team_id, partner], states, game_date))
     conn.commit()
     return {"offers": offers, "trades": made}
 
@@ -192,7 +193,19 @@ def league_ai_trades(team_count: int, rush: bool) -> int:
     return max(1, round(cap * SHARE_OF_AI_TRADES_BEFORE_RUSH))
 
 
-def _sides(conn, league_id, team_ids, stances, game_date) -> dict[str, Side]:
+def _role(row: dict) -> str:
+    """buyer, seller or other: what a team's state means for how keen it is
+    to deal. Everyone's other until the standings have had their say."""
+    if not team_states.in_race(row):
+        return "other"
+    if row["state"] in BUYERS:
+        return "buyer"
+    if row["state"] in SELLERS:
+        return "seller"
+    return "other"
+
+
+def _sides(conn, league_id, team_ids, states, game_date) -> dict[str, Side]:
     injuries = InjuryRepository(conn, league_id)
     statuses = _statuses(conn, team_ids)
     out = {}
@@ -201,7 +214,7 @@ def _sides(conn, league_id, team_ids, stances, game_date) -> dict[str, Side]:
         roster = trades._assets(conn, t, hurt)
         out[t] = Side(
             team_id=t,
-            stance=stances[t],
+            state=states[t],
             roster=roster,
             tradeable={a.id for a in roster if statuses.get(a.id) in trades.TRADEABLE},
             margin=ai_evaluator.margin(t, "offer", game_date),

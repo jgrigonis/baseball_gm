@@ -663,6 +663,29 @@ CREATE TABLE IF NOT EXISTS trade_offer_items (
 -- The draft picks in an offer (src/league/trades/draft_picks.py): a pick is
 -- the original team's pick in a round of a year's draft. from_team_id is the
 -- side giving it up.
+-- Team states (src/league/team_state.py): where each front office sees its
+-- team, worked out at checkpoints through the season. The latest row for a
+-- team and season is its state; the rest is history.
+CREATE TABLE IF NOT EXISTS team_states (
+    id         BIGSERIAL PRIMARY KEY,
+    league_id  TEXT NOT NULL,
+    season_id  TEXT NOT NULL,
+    team_id    TEXT NOT NULL,
+    as_of      TEXT NOT NULL,        -- league date of the checkpoint
+    state      TEXT NOT NULL CHECK (state IN (
+                   'all-in', 'contending', 'retooling',
+                   'ramping-up', 'rebuilding', 'aging-out'
+               )),
+    held       INTEGER NOT NULL DEFAULT 1,  -- checkpoints the state has held
+    candidate  TEXT NOT NULL,        -- what the inputs said before stickiness
+    inputs     JSONB NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (NOW()),
+
+    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE,
+    FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS trade_offer_picks (
     offer_id         TEXT    NOT NULL,
     draft_year       INTEGER NOT NULL,
@@ -1062,6 +1085,11 @@ CREATE INDEX IF NOT EXISTS idx_trade_offer_items_team ON trade_offer_items(from_
 CREATE INDEX IF NOT EXISTS idx_trade_offer_picks_original
     ON trade_offer_picks(original_team_id);
 CREATE INDEX IF NOT EXISTS idx_trade_offer_picks_team ON trade_offer_picks(from_team_id);
+CREATE INDEX IF NOT EXISTS idx_team_states_team
+    ON team_states(team_id, season_id, id);
+CREATE INDEX IF NOT EXISTS idx_team_states_league
+    ON team_states(league_id, season_id);
+CREATE INDEX IF NOT EXISTS idx_team_states_season ON team_states(season_id);
 CREATE INDEX IF NOT EXISTS idx_trade_votes_gm         ON trade_votes(gm_id);
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

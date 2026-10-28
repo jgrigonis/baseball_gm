@@ -45,6 +45,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from src.api.services import team_states
 from src.db.locks import LeagueBusy, league_lock
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -55,7 +56,6 @@ from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.season_repo import SeasonRepository
-from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import trade_deadline
@@ -79,14 +79,6 @@ TRADEABLE = ("26man", "40man", "minors")
 # How much of a season the AI looks ahead to in the offseason, when there's
 # no season left to play: about a whole one.
 OFFSEASON_DAYS_LEFT = 180
-
-# Stances, once STANCE_MIN_GAMES are played: a team in the playoff picture
-# (top PLAYOFF_SPOTS, or within CONTENDER_GB games of the last spot) buys for
-# now, and one more than SELLER_GB back sells. Everyone else is neutral.
-PLAYOFF_SPOTS = 8
-CONTENDER_GB = 5
-SELLER_GB = 10
-STANCE_MIN_GAMES = 20
 
 
 class TradeError(ValueError):
@@ -897,7 +889,7 @@ def ai_answer(
         roster=roster,
         giving=[by_id[pid] for pid in giving],
         getting=[by_id[pid] for pid in getting],
-        stance=stance(conn, league_id, season_id, ai_team_id),
+        state=team_states.state_of(conn, league_id, season_id, ai_team_id, today),
         days_left=_season_days_left(conn, league_id, season_id, today),
         margin_share=ai_evaluator.margin(ai_team_id, other_team_id, today)
         if margin_share is None
@@ -1010,31 +1002,6 @@ def _replan_ai_team(conn, league_id, season_id, team_id, effective_date) -> None
         effective_date=effective_date,
         league_id=league_id,
     )
-
-
-def stance(conn, league_id: str, season_id: str, team_id: str) -> str:
-    """contender, seller or neutral, from the standings. Everyone's neutral
-    in the offseason: last season's race is over."""
-    league = LeagueRepository(conn).get_by_id(league_id)
-    if league and league["state"] in trade_deadline.OFFSEASON_STATES:
-        return "neutral"
-    rows = StandingsRepository(conn).get_records(league_id, season_id)
-    me = next((r for r in rows if r["team_id"] == team_id), None)
-    if not me:
-        return "neutral"
-    played = me["wins"] + me["losses"]
-    if played < STANCE_MIN_GAMES or len(rows) <= PLAYOFF_SPOTS:
-        return "neutral"
-    ranked = sorted(rows, key=lambda r: r["losses"] - r["wins"])
-    last_spot = ranked[PLAYOFF_SPOTS - 1]
-    games_back = (
-        (last_spot["wins"] - me["wins"]) + (me["losses"] - last_spot["losses"])
-    ) / 2
-    if ranked.index(me) < PLAYOFF_SPOTS or games_back <= CONTENDER_GB:
-        return "contender"
-    if games_back > SELLER_GB:
-        return "seller"
-    return "neutral"
 
 
 def _assets(conn, team_id: str, injuries: dict[str, int]) -> list[Asset]:
