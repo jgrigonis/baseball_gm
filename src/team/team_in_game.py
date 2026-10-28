@@ -153,11 +153,19 @@ class TeamInGame:
         used_ids: set[str] = set()
 
         def best_for_position(pos: str) -> PlayerInGame | None:
-            """Pick the highest-rated available player for a given position."""
+            """Pick the best available player for a given position: glove at
+            that position and bat count equally (a DH is all bat). Fielding
+            alone would happily start a slick-fielding pitcher who can't hit."""
             candidates = [p for p in available_by_id.values() if p.id not in used_ids]
             if not candidates:
                 return None
-            return max(candidates, key=lambda p: p.ratings.get(pos, 0))
+
+            def score(p: PlayerInGame) -> tuple[int, str]:
+                offense = p.ratings.get("overall_offense", 0)
+                defense = 0 if pos == "dh" else p.ratings.get(pos, 0)
+                return offense + defense, p.id
+
+            return max(candidates, key=score)
 
         for slot in sorted(saved, key=lambda s: s["batting_order"]):
             pid = slot["player_id"]
