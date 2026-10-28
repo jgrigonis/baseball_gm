@@ -38,4 +38,5 @@ psql -U "$PGUSER" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHE
 psql -U "$PGUSER" -c "DROP DATABASE baseball_manager;" postgres
 psql -U "$PGUSER" -c "CREATE DATABASE baseball_manager;" postgres
 
+python -m src.db.migrate || exit 1
 uvicorn src.api.main:app --reload

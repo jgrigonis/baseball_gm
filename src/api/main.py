@@ -38,9 +38,9 @@ from src.api.routers import (
 )
 from src.api.dependencies import NotLeagueGM, PasswordChangeRequired
 from src.config import settings
-from src.db.init import init_db
 from src.db.connection import get_connection
 from src.db.locks import LeagueBusy
+from src.db.migrations import pending_migrations
 from src.util.logger import configure_app_logging
 from src.web.utils import templates
 
@@ -70,12 +70,19 @@ logging.getLogger("uvicorn.access").addFilter(_QuietPolls())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Initializing database…")
+    # Migrations are a separate step (src/db/migrate.py), run once before
+    # the server starts, rather than by each worker process at once.
     conn = get_connection()
     try:
-        init_db(conn)
+        pending = pending_migrations(conn)
     finally:
         conn.close()
+    if pending:
+        raise RuntimeError(
+            "The database has migrations to apply: "
+            + ", ".join(str(v) for v in pending)
+            + ". Run `uv run python -m src.db.migrate` first."
+        )
     yield
 
 

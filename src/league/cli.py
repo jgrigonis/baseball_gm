@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 from src.db.connection import get_connection
-from src.db.init import init_db
+from src.db.migrate import migrate
 from src.db.repositories.games_repo import GameRepository
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.manifest_helper import (
@@ -79,7 +79,7 @@ def main():
 
     conn = get_connection()
 
-    init_db(conn)
+    migrate(conn)
 
     boot = LeagueBootstrapper(conn, rng=rng)
     manifest = load_manifest(man_path / args.manifest)

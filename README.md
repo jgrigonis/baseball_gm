@@ -38,6 +38,17 @@ On windows you should also do this in a powershell as an admin:
 
 `[System.Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Machine")`
 
+### Migrations
+
+The web server doesn't change the database schema itself. Bring it up to
+date first (it's safe to run any time; with nothing pending it does nothing):
+
+`uv run python -m src.db.migrate`
+
+`./start_webserver.sh` does this for you. In a deployment, run it once as a
+step before starting the new version. The server refuses to start while
+migrations are pending, and says which.
+
 ### Useful script alias 
 
 A handy script alias for your .zshrc file:
@@ -56,7 +67,7 @@ It lists the leagues it will delete and asks first; add `--yes` to skip the
 question. Each league goes with everything it owns (GMs, drafts, seasons,
 games, stats, teams and players) and its `team_files/<league_id>` folder, the
 same cleanup as when the last GM leaves a league. It reads `DATABASE_URL` and
-runs any pending migrations first, like the web server does. Then start the
+runs any pending migrations first. Then start the
 server again with `./start_webserver.sh`.
 
 ### Admin pages
