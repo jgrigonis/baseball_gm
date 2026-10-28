@@ -389,3 +389,27 @@ class TestRosterTrimmerRun:
 
         assert count_team_players(db_conn, t1, status="minors") == MINORS_LIMIT
         assert count_team_players(db_conn, t2, status="minors") == 50
+
+
+class TestYouthTilt:
+    def _team(self, db_conn):
+        t1 = str(uuid.uuid4())
+        setup_season(db_conn, team_ids=[t1])
+        insert_n_minors(db_conn, t1, MINORS_LIMIT, base_strikes=40)
+        # A 29-year-old a little better than the worst of the kids
+        old = insert_player(db_conn, t1, "minors", strikes=40, speed=60)
+        db_conn.execute(
+            "UPDATE player_skills SET age = 29 WHERE player_id = %s", (old,)
+        )
+        db_conn.commit()
+        return t1, old
+
+    def test_untilted_team_keeps_the_better_prospect(self, db_conn):
+        t1, old = self._team(db_conn)
+        RosterTrimmer(db_conn)._trim_team(t1)
+        assert in_team(db_conn, t1, old)
+
+    def test_team_leaning_young_cuts_the_older_prospect(self, db_conn):
+        t1, old = self._team(db_conn)
+        RosterTrimmer(db_conn, {t1: 1.0})._trim_team(t1)
+        assert not in_team(db_conn, t1, old)

@@ -49,8 +49,15 @@ RECENT_PEAK_SEASONS = 3
 
 
 class OffseasonPipeline:
-    def __init__(self, conn, rng: random.Random | None = None):
+    def __init__(
+        self,
+        conn,
+        rng: random.Random | None = None,
+        tilts: dict[str, float] | None = None,
+    ):
+        """tilts: each AI team's youth tilt, by team id, for roster trimming."""
         self.conn = conn
+        self.tilts = tilts or {}
         self.player_repo = PlayerRepository(conn)
         self.player_status_repo = PlayerStatusRepository(conn)
         self.draft_repo = DraftRepository(conn)
@@ -475,7 +482,7 @@ class OffseasonPipeline:
         log.info("Draft complete: %s total picks", len(picks))
 
     def _trim_rosters(self, season_id: str) -> None:
-        trimmer = RosterTrimmer(self.conn)
+        trimmer = RosterTrimmer(self.conn, self.tilts)
         trimmer.run(season_id)
 
     @staticmethod

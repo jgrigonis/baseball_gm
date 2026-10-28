@@ -151,6 +151,7 @@ class LineupOptimizer:
         vs_hand: str | None = None,
         platoon: str = "none",
         form: dict[str, float] | None = None,
+        defense: float = 1.0,
     ) -> tuple[list[LineupSlot], PlayerInGame]:
         """The best lineup from these players. Picks a pitcher if none is
         given; he doesn't bat with a DH."""
@@ -168,6 +169,7 @@ class LineupOptimizer:
             vs_hand=vs_hand,
             platoon=platoon,
             form=form,
+            defense=defense,
         )
         return lineup, pitcher
 
@@ -185,6 +187,7 @@ class LineupOptimizer:
         vs_hand: str | None = None,
         platoon: str = "none",
         form: dict[str, float] | None = None,
+        defense: float = 1.0,
     ) -> list[LineupSlot]:
         """Fill the empty slots of a lineup.
 
@@ -195,7 +198,8 @@ class LineupOptimizer:
         every slot None. vs_hand is the throwing hand of the opposing starter
         (R or L), used as the platoon setting says. form adds to a hitter's
         offense (by player id): how his season stats look to this GM
-        (src/league/performance.py).
+        (src/league/performance.py). defense multiplies how much a glove
+        counts: above 1 for a glove-first GM, below for a bat-first one.
         """
         size = 9 if dh else 8
         positions = FIELD_POSITIONS + (["dh"] if dh else [])
@@ -235,7 +239,11 @@ class LineupOptimizer:
         bonus: dict[str, float] = dict(form)
         if hand and platoon == "vs-handedness":
             everyday = LineupOptimizer.assign_positions(
-                pool, open_positions, must_play=set(must_play.values()), bonus=form
+                pool,
+                open_positions,
+                must_play=set(must_play.values()),
+                bonus=form,
+                defense=defense,
             )
             for p, _ in everyday:
                 bonus[p.record.id] = bonus.get(p.record.id, 0) + REGULAR_BONUS
@@ -245,6 +253,7 @@ class LineupOptimizer:
             must_play=set(must_play.values()),
             vs_hand=hand,
             bonus=bonus,
+            defense=defense,
         )
 
         # Step 2: the new players' batting slots. Locked-without-position
@@ -275,16 +284,19 @@ class LineupOptimizer:
 
     @staticmethod
     def position_value(
-        player: PlayerInGame, pos: str, vs_hand: str | None = None
+        player: PlayerInGame,
+        pos: str,
+        vs_hand: str | None = None,
+        defense: float = 1.0,
     ) -> float:
         """What a player is worth at a spot: his bat (against today's starter,
         if given), plus his glove there weighted by how much defense matters
-        at that spot."""
+        at that spot (times defense, the GM's taste)."""
         offense = player.ratings.get("overall_offense", 0)
         offense -= LineupOptimizer.matchup(player, vs_hand)
         if pos == "dh":
             return offense
-        value = offense + DEFENSE_IMPORTANCE[pos] * player.ratings.get(pos, 0)
+        value = offense + defense * DEFENSE_IMPORTANCE[pos] * player.ratings.get(pos, 0)
         if pos in LEFT_HAND_CAPPED_POSITIONS and (player.throws or "R").upper() == "L":
             value -= LEFTY_PENALTY
         return value
@@ -296,6 +308,7 @@ class LineupOptimizer:
         must_play: set[PlayerInGame] = frozenset(),
         vs_hand: str | None = None,
         bonus: dict[str, float] | None = None,
+        defense: float = 1.0,
     ) -> list[tuple[PlayerInGame, str]]:
         """The best player at each position, all chosen together. bonus adds
         to a player's value everywhere (by player id). Returns (player,
@@ -306,7 +319,7 @@ class LineupOptimizer:
         value = np.array(
             [
                 [
-                    LineupOptimizer.position_value(p, pos, vs_hand)
+                    LineupOptimizer.position_value(p, pos, vs_hand, defense)
                     + bonus.get(p.record.id, 0)
                     + (MUST_PLAY_BONUS if p in must_play else 0)
                     for pos in positions

@@ -291,3 +291,24 @@ def test_form_counts_with_the_regulars_bonus():
     assert 54 < edge < 57
     assert not plays(None)
     assert plays({"lefty": 3.0})
+
+
+def test_defense_weight_decides_a_glove_first_shortstop():
+    """A weak bat with a good glove at short plays for a normal GM, but a
+    bat-first GM (glove counts half) plays a better hitter there."""
+    glove = hitter("glove", bat=32, glove={"ss": 70})
+
+    normal = LineupOptimizer.fill([None] * 8, nine_plus([glove]), dh=False)
+    bat_first = LineupOptimizer.fill(
+        [None] * 8, nine_plus([glove]), dh=False, defense=0.5
+    )
+
+    assert by_position(normal)["ss"] == "glove"
+    assert "glove" not in by_position(bat_first).values()
+
+
+def test_position_value_scales_the_glove():
+    p = hitter("p", bat=50, glove={"c": 60})
+    assert LineupOptimizer.position_value(p, "c") == 110
+    assert LineupOptimizer.position_value(p, "c", defense=1.5) == 140
+    assert LineupOptimizer.position_value(p, "dh", defense=1.5) == 50

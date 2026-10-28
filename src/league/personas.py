@@ -361,13 +361,13 @@ class Leanings:
     risk: int = 50
     trade_activity: int = 50
     stats_vs_scouting: int = 50
+    youth: int = 50
+    offense_defense: int = 50
 
     @classmethod
     def from_dials(cls, dials: dict | None) -> Leanings:
         d = clean(dials or {})
-        return cls(
-            d["time_horizon"], d["risk"], d["trade_activity"], d["stats_vs_scouting"]
-        )
+        return cls(**{f: d[f] for f in cls.__dataclass_fields__})
 
     @property
     def lean(self) -> float:

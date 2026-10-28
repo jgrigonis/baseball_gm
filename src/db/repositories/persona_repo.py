@@ -93,3 +93,19 @@ class PersonaRepository:
             (league_id,),
         ).fetchall()
         return {r["team_id"]: dict(r) for r in rows}
+
+    def ai_dials(self, league_id: str) -> dict[str, dict]:
+        """The persona dials of each AI-run team in a league, by team id.
+        Teams a person runs are left out."""
+        rows = self.conn.execute(
+            """SELECT g.team_id, p.dials FROM gms g
+               JOIN gm_personas p ON p.id = g.persona_id
+               WHERE g.league_id = %s AND g.is_ai AND g.team_id IS NOT NULL
+                 AND g.fired_at IS NULL
+                 AND NOT EXISTS (
+                     SELECT 1 FROM gms h
+                     WHERE h.league_id = g.league_id AND h.team_id = g.team_id
+                       AND NOT h.is_ai AND h.fired_at IS NULL)""",
+            (league_id,),
+        ).fetchall()
+        return {r["team_id"]: r["dials"] for r in rows}

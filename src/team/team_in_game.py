@@ -61,6 +61,9 @@ class TeamInGame:
         # How the GM sees each hitter's season, in offense points by player
         # id (src/league/performance.py); play_season sets it.
         self.form: dict[str, float] = {}
+        # How much a glove counts in the lineup (1 is normal): an AI GM's
+        # offense-vs-defense dial (src/league/front_office.py).
+        self.defense_weight = 1.0
 
     @property
     def has_lineup(self) -> bool:
@@ -241,6 +244,9 @@ class TeamInGame:
         form = getattr(self, "form", None)
         if form:
             args["form"] = form
+        defense = getattr(self, "defense_weight", 1.0)
+        if defense != 1.0:
+            args["defense"] = defense
         return args
 
     @property

@@ -9,6 +9,9 @@ Tiers:
 
 Uses PlayerEvaluator for position-weighted ratings.
 Treats all players as potentially two-way — no hard position filtering.
+
+An AI team can lean young or veteran: bonus adds rating points to players by
+id wherever they're ranked (src/league/front_office.py).
 """
 
 from src.player.player_evaluator import PlayerEvaluator
@@ -34,12 +37,15 @@ class RosterAssigner:
         # assignments = {"player_id": "26man" | "40man" | "minors" | "unassigned"}
     """
 
-    def assign(self, players: list[PlayerRecord]) -> dict[str, str]:
+    def assign(
+        self, players: list[PlayerRecord], bonus: dict[str, float] | None = None
+    ) -> dict[str, str]:
         """
         Assign all players to roster tiers.
 
         Args:
             players: Full player pool for a team
+            bonus: rating points to add to players, by id, in every ranking
 
         Returns:
             Dict of player_id -> status string
@@ -49,6 +55,11 @@ class RosterAssigner:
 
         # --- Pre-compute ratings for all players once ---
         rated = {p.id: PlayerEvaluator.rate_player(p.skills, p.throws) for p in players}
+        if bonus:
+            rated = {
+                pid: {k: v + bonus.get(pid, 0) for k, v in r.items()}
+                for pid, r in rated.items()
+            }
 
         # 1. Pick 5 starters (best sp rating)
         starters = self._pick_top(remaining, rated, "sp", STARTERS)

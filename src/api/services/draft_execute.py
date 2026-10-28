@@ -4,7 +4,9 @@
 # _run_snake so that human GMs pick from their submitted preference
 # list first, then from their draft strategy (pins, then need chips).
 # A team with no saved strategy, which includes every AI team, drafts by
-# the needs its roster suggests.
+# the needs its roster suggests; an AI team's state and persona weigh them
+# (src/league/front_office.py). Afterwards each AI team picks its 26-man and
+# 40-man, and trims its minors, leaning young or veteran as its outlook says.
 
 from __future__ import annotations
 
@@ -12,7 +14,7 @@ import logging
 import random
 from datetime import datetime, UTC
 
-from src.api.services import trades
+from src.api.services import front_office, trades
 from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -48,6 +50,7 @@ class BlitzDraft(SnakeDraft):
         gm_preferences: dict[str, list[str]],
         rng=None,
         gm_strategies: dict[str, DraftStrategy] | None = None,
+        outlooks: dict[str, front_office.Outlook] | None = None,
     ):
         """
         Args:
@@ -56,6 +59,7 @@ class BlitzDraft(SnakeDraft):
             gm_preferences: { team_id: [player_id, ...] } in rank order.
                             Only human GMs will have entries; AI GMs won't.
             gm_strategies: { team_id: DraftStrategy } for GMs who saved one.
+            outlooks: { team_id: Outlook } for AI teams, for their rosters.
         """
         super().__init__(conn, league_id, rng)
         self._prefs: dict[str, list[str]] = {
@@ -65,6 +69,7 @@ class BlitzDraft(SnakeDraft):
         self._strategies: dict[str, DraftStrategy] = {
             tid: s.copy() for tid, s in (gm_strategies or {}).items()
         }
+        self._outlooks = outlooks or {}
 
     def _run_snake(
         self,
@@ -160,7 +165,9 @@ class BlitzDraft(SnakeDraft):
                     players.append(p)
             if not players:
                 continue
-            assignments = assigner.assign(players)
+            outlook = self._outlooks.get(team_id)
+            bonus = outlook.age_bonus(players) if outlook else None
+            assignments = assigner.assign(players, bonus)
             self.status_repo.bulk_set(assignments)
 
         log.info("Reassigned rosters for %s AI teams", len(ai_teams))
@@ -208,11 +215,13 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     # league_start or offseason_pipeline — never recompute from standings here)
     stored_order = dr.get_team_id_draft_order(draft_id)
 
+    outlooks = front_office.outlooks(conn, league_id, season_id)
     blitz = BlitzDraft(
         conn,
         league_id=league_id,
         gm_preferences=gm_preferences,
         gm_strategies=gm_strategies,
+        outlooks=outlooks,
     )
 
     if stored_order:
@@ -264,7 +273,8 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     prev_season_id = osr.find_season_with_offseason_steps(league_id, season_id)
     if prev_season_id:
         log.info("Running post-draft pipeline steps for season %s...", prev_season_id)
-        pipeline = OffseasonPipeline(conn, random.Random())
+        tilts = {tid: o.tilt for tid, o in outlooks.items()}
+        pipeline = OffseasonPipeline(conn, random.Random(), tilts=tilts)
         pipeline.run(prev_season_id, league_id=league_id, skip_auto_draft=True)
 
     return {
