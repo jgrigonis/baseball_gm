@@ -126,6 +126,37 @@ class PlayerSeasonStatsRepository:
             totals[player_id] = {k: int(v or 0) for k, v in row.items()}
         return totals
 
+    def get_form_totals(self, season_id: str, player_ids) -> dict[str, dict]:
+        """{player_id: regular season totals} for these players: what
+        src/league/performance.py needs to judge how they've played."""
+        if not player_ids:
+            return {}
+        rows = self.conn.execute(
+            """SELECT player_id,
+                      SUM(bat_ab) AS bat_ab, SUM(bat_hits) AS bat_hits,
+                      SUM(bat_doubles) AS bat_doubles, SUM(bat_triples) AS bat_triples,
+                      SUM(bat_home_runs) AS bat_home_runs, SUM(bat_walks) AS bat_walks,
+                      SUM(bat_hbp) AS bat_hbp, SUM(bat_sac_flys) AS bat_sac_flys,
+                      SUM(pitch_games_played) AS pitch_games_played,
+                      SUM(pitch_games_started) AS pitch_games_started,
+                      SUM(pitch_outs) AS pitch_outs,
+                      SUM(pitch_home_runs) AS pitch_home_runs,
+                      SUM(pitch_walks) AS pitch_walks,
+                      SUM(pitch_hit_batters) AS pitch_hit_batters,
+                      SUM(pitch_strike_outs) AS pitch_strike_outs
+               FROM player_season_stats
+               WHERE season_id = %s AND NOT is_postseason AND player_id = ANY(%s)
+               GROUP BY player_id""",
+            (season_id, list(player_ids)),
+        ).fetchall()
+        out = {}
+        for row in rows:
+            row = dict(row)
+            player_id = row.pop("player_id")
+            # SUM comes back as a Decimal
+            out[player_id] = {k: int(v or 0) for k, v in row.items()}
+        return out
+
     def get_team_stats_map(self, season_id: str, team_id: str) -> dict[str, dict]:
         """Return {player_id: stat_dict} for all players on a team in a season
         (regular season). A player traded during the season gets his totals

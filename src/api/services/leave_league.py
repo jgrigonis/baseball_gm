@@ -13,10 +13,11 @@
 
 from __future__ import annotations
 
+import random
 import shutil
 from pathlib import Path
 
-from src.api.services import trades
+from src.api.services import personas, trades
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -46,6 +47,7 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
             if gm and gm["team_id"]:
                 trades.team_leaving(conn, league_id, gm["team_id"], gm_id)
             gm_repo.hand_team_to_ai(gm_id)
+            personas.give_persona(conn, league_id, gm_id, random.Random())
 
         deleted = not gm_repo.has_people(league_id)
         if deleted:

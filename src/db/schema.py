@@ -207,6 +207,22 @@ CREATE TABLE IF NOT EXISTS team_rotation_pointer (
 
 -- ── GM / Identity layer ───────────────────────────────────────────────────────
 --
+-- gm_personas: the site-wide library of AI GM personas (src/league/personas.py).
+--   A persona never changes once created; only its chance of being picked for
+--   a new league (0 never, 100 twice as likely as 50) can. Seeded by
+--   migration 026.
+CREATE TABLE IF NOT EXISTS gm_personas (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE,
+    bio        TEXT NOT NULL DEFAULT '',
+    archetype  TEXT NOT NULL DEFAULT '',
+    dials      JSONB NOT NULL,
+    chance     INTEGER NOT NULL DEFAULT 50 CHECK (chance BETWEEN 0 AND 100),
+    created_at TEXT NOT NULL DEFAULT (NOW()),
+    updated_at TEXT NOT NULL DEFAULT (NOW())
+);
+
+--
 -- gms: one row per user per league (plus one per AI slot).
 --   user_id is NULL for AI GMs.
 --   All league-specific state (team, performance, fired status) lives here.
@@ -223,9 +239,11 @@ CREATE TABLE IF NOT EXISTS gms (
     warned_at      TEXT,                  -- ISO datetime of performance warning
     fired_at       TEXT,                  -- ISO datetime of firing; NULL = active
     ready_period   INTEGER,               -- ready when = leagues.sim_period
+    persona_id     TEXT,                  -- AI GMs: who they are (gm_personas)
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (persona_id) REFERENCES gm_personas(id) ON DELETE SET NULL,
     FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE SET NULL,
     FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
 );
@@ -768,6 +786,9 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     -- Roster tendencies
     platoon_usage TEXT NOT NULL DEFAULT 'none'
                       CHECK (platoon_usage IN ('none', 'vs-handedness', 'aggressive')),
+    -- How much a player's season stats count against his ratings, 0-100.
+    stats_vs_scouting INTEGER NOT NULL DEFAULT 50
+                          CHECK (stats_vs_scouting BETWEEN 0 AND 100),
 
     updated_at TEXT NOT NULL DEFAULT (NOW()),
 
@@ -1037,6 +1058,8 @@ CREATE INDEX IF NOT EXISTS idx_gms_league           ON gms(league_id);
 CREATE INDEX IF NOT EXISTS idx_gms_user             ON gms(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_gms_team             ON gms(team_id);
+
+CREATE INDEX IF NOT EXISTS idx_gms_persona          ON gms(persona_id);
 
 CREATE INDEX IF NOT EXISTS idx_leagues_join_code    ON leagues(join_code);
 

@@ -66,7 +66,11 @@ class TestStartedLeague:
         assert row["is_ai"]
         assert row["user_id"] is None
         assert row["team_id"] == team.id
-        assert row["display_name"] == "AI Manager"
+        # A persona from the library takes over, under its own name.
+        persona = db_conn.execute(
+            "SELECT name FROM gm_personas WHERE id = %s", (row["persona_id"],)
+        ).fetchone()
+        assert row["display_name"] == persona["name"]
         assert GMRepository(db_conn).get_users_leagues(user_id) == []
 
     def test_draft_picks_stay_with_the_team(self, db_conn, factory):

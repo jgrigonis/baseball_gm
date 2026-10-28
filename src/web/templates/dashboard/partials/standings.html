@@ -45,6 +45,7 @@
           <tr>
             <th style="width:28px;">#</th>
             <th>Team</th>
+            <th>GM</th>
             <th style="text-align:center;">W</th>
             <th style="text-align:center;">L</th>
             <th style="text-align:center;">PCT</th>
@@ -71,6 +72,13 @@
                 {{ team.city }} {{ team.mascot }}
               </a>
               {% if team.is_mine %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--green);margin-left:6px;">YOU</span>{% endif %}
+            </td>
+            <td class="dim" style="font-size:12px;white-space:nowrap;">
+              {% if team.gm and team.gm.persona_id %}
+                <a href="/leagues/{{ league_id }}/personas/{{ team.gm.persona_id }}"
+                   hx-get="/leagues/{{ league_id }}/personas/{{ team.gm.persona_id }}" hx-target="#tab-content" hx-push-url="true"
+                   class="standings-gm" title="Persona card">{{ team.gm.name }}</a>
+              {% elif team.gm %}{{ team.gm.name }}{% else %}<span style="color:var(--muted);">—</span>{% endif %}
             </td>
             <td class="tc mono">{{ team.wins }}</td>
             <td class="tc mono">{{ team.losses }}</td>
@@ -200,6 +208,8 @@
 /* Give the table more room; sidebar stays fixed */
 .standings-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
 /* Team states: buyers green, sellers amber, the rest plain */
+.standings-gm { color: var(--text-dim); text-decoration: none; }
+.standings-gm:hover { color: var(--sky); }
 .team-state-all-in, .team-state-contending { color: var(--green); }
 .team-state-rebuilding, .team-state-aging-out { color: var(--amber); }
 </style>

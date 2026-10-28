@@ -2,7 +2,7 @@
 """
 How a team is managed in games: the Strategy tab's settings, read by the game
 engine. A person's team uses what they set; an AI team uses its own row
-(set from its persona later). Every team has a gm_profiles row.
+(set from its persona, src/league/personas.py). Every team has a gm_profiles row.
 
 The middle (default) value of each setting reproduces how the engine played
 before these settings existed, except rest days, which are new. Each
@@ -32,6 +32,7 @@ ROTATION_SIZE = (4, 5, 6)
 PLAYOFF_ROTATION = ("3", "4", "same")
 TIRED_STARTERS = ("push", "standard", "protect")
 REST_DAYS = ("iron-man", "standard", "rest-often")
+STATS_VS_SCOUTING = (0, 25, 50, 75, 100)
 
 # Baserunning: how often runners steal (and hit and run), and how often they
 # try for the extra base on a hit. Extra-base tries beyond the standard
@@ -72,6 +73,9 @@ class ManagerProfile:
     playoff_rotation: str = "same"
     tired_starters: str = "standard"
     rest_days: str = "standard"
+    # How much a player's season stats count against his ratings, 0 to 100
+    # (src/league/performance.py). 50 weighs them equally.
+    stats_vs_scouting: int = 50
 
     @classmethod
     def from_row(cls, row: dict | None) -> ManagerProfile:
@@ -95,7 +99,15 @@ class ManagerProfile:
         values = {k: row[k] for k, ok in allowed.items() if row.get(k) in ok}
         if row.get("skip_fifth_starter") is not None:
             values["skip_fifth_starter"] = bool(row["skip_fifth_starter"])
+        stats = row.get("stats_vs_scouting")
+        if isinstance(stats, int) and 0 <= stats <= 100:
+            values["stats_vs_scouting"] = stats
         return cls(**values)
+
+    @property
+    def stats_weight(self) -> float:
+        """The share of a player's value that comes from his stats."""
+        return self.stats_vs_scouting / 100
 
     @property
     def steal_factor(self) -> float:

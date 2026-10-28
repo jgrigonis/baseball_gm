@@ -42,7 +42,7 @@
 
       {# ── Batting and platoon ──────────────────────────────────────────────── #}
       <div style="display: flex; flex-direction: column; gap: 16px;">
-        {% for title, settings in cards if title in ("Batting", "Platoon") %}
+        {% for title, settings in cards if title in ("Batting", "Platoon", "Scouting") %}
           {{ card(title, settings) }}
         {% endfor %}
       </div>

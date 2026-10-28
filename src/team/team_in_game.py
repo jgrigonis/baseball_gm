@@ -58,6 +58,9 @@ class TeamInGame:
         self.profile: ManagerProfile = DEFAULT_PROFILE
         # The opposing starter's throwing hand, for platoons; set_lineup sets it.
         self._vs_hand: str | None = None
+        # How the GM sees each hitter's season, in offense points by player
+        # id (src/league/performance.py); play_season sets it.
+        self.form: dict[str, float] = {}
 
     @property
     def has_lineup(self) -> bool:
@@ -233,11 +236,12 @@ class TeamInGame:
 
     def _platoon(self) -> dict:
         """The optimizer's platoon arguments: today's starter's hand and the
-        platoon setting."""
-        return {
-            "vs_hand": self._vs_hand,
-            "platoon": self.profile.platoon_usage,
-        }
+        platoon setting, and how the GM sees each hitter's season (form)."""
+        args = {"vs_hand": self._vs_hand, "platoon": self.profile.platoon_usage}
+        form = getattr(self, "form", None)
+        if form:
+            args["form"] = form
+        return args
 
     @property
     def bench_players(self) -> list[PlayerInGame]:

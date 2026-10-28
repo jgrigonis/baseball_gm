@@ -101,6 +101,28 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
         ),
     ),
     (
+        "Scouting",
+        (
+            Setting(
+                "stats_vs_scouting",
+                "Stats vs Scouting",
+                mp.STATS_VS_SCOUTING,
+                (
+                    "Trust the scouts",
+                    "Lean on the scouts",
+                    "Both equally",
+                    "Lean on the stats",
+                    "Trust the stats",
+                ),
+                ("Ratings", "Results"),
+                "How much a player's stats this season count against his "
+                "ratings when Auto-fill, Rebuild and the AI pick who plays. Stats "
+                "are regressed to the ratings by how much he's played, so a hot "
+                "couple of weeks barely moves anyone.",
+            ),
+        ),
+    ),
+    (
         "Pitching",
         (
             Setting(
@@ -180,6 +202,14 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
 )
 
 
+def _index(values: tuple, current) -> int:
+    """The slider step for a stored value: the closest one for a number
+    between steps."""
+    if current in values:
+        return values.index(current)
+    return min(range(len(values)), key=lambda i: abs(values[i] - current))
+
+
 @router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
 def strategy(
     request: Request,
@@ -203,7 +233,7 @@ def strategy(
                     "labels": s.labels,
                     "ends": s.ends,
                     "hint": s.hint,
-                    "index": s.values.index(current[s.name]),
+                    "index": _index(s.values, current[s.name]),
                 }
                 for s in settings
             ],

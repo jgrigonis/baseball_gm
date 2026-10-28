@@ -14,11 +14,12 @@
 # Of the deals that work for both sides, it keeps the one that helps it most.
 # Team states drive the trades: a contender buys players who help now, a
 # rebuilding team sells veterans for younger ones, because each judges by its
-# own weights.
+# own weights. Each side also sees every player through its own GM's
+# stats-vs-scouting lens, and tilts now against later by its time horizon.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
 
 from src.league.trades import ai_evaluator
@@ -38,6 +39,19 @@ class Side:
     roster: list[Asset]  # everyone it owns
     tradeable: set[str]  # ids it can trade (organization, healthy)
     margin: float  # the share of what it gives up it wants to win by
+    stats_weight: float = 0.0  # its GM's stats-vs-scouting, 0 to 1
+    horizon: float = 0.0  # its GM's, -1 (builds for later) to 1 (wins now)
+    _seen: dict[str, Asset] = field(default_factory=dict, repr=False)
+
+    def see(self, assets: list[Asset]) -> list[Asset]:
+        """Players as this side's GM sees them."""
+        out = []
+        for a in assets:
+            seen = self._seen.get(a.id)
+            if seen is None:
+                seen = self._seen[a.id] = a.seen(self.stats_weight)
+            out.append(seen)
+        return out
 
 
 @dataclass
@@ -49,7 +63,14 @@ class Deal:
 
 def _verdict(side: Side, giving, getting, days_left, margin, base):
     return ai_evaluator.evaluate(
-        side.roster, giving, getting, side.state, days_left, margin, base
+        side.see(side.roster),
+        side.see(giving),
+        side.see(getting),
+        side.state,
+        days_left,
+        margin,
+        base,
+        side.horizon,
     )
 
 
@@ -59,8 +80,8 @@ def find_deal(
     """The best one-for-one or two-for-one deal for `me` that `them` would
     also take, or None. avoid: deals (each the set of player ids in it)
     already offered."""
-    my_base = ai_evaluator.strengths(me.roster, days_left)
-    their_base = ai_evaluator.strengths(them.roster, days_left)
+    my_base = ai_evaluator.strengths(me.see(me.roster), days_left)
+    their_base = ai_evaluator.strengths(them.see(them.roster), days_left)
 
     def gain(side, base, giving, getting):
         return _verdict(side, giving, getting, days_left, 0.0, base).score

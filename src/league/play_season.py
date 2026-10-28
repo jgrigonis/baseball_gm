@@ -25,12 +25,14 @@ from src.db.repositories.pitcher_state import (
 )
 from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.db.repositories.player_games import PlayerGameRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.game.game import Game
 from src.game.game_event_logger import GameEventLogger
+from src.league import performance
 from src.league.league_modes import injuries_allowed, is_blitz_style
 from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
@@ -174,6 +176,26 @@ def _throws(team: TeamInGame, player_id: str | None) -> str | None:
     """The throwing hand (R or L) of one of a team's players."""
     player = next((p for p in team.players if p.id == player_id), None)
     return (player.throws or "R").upper() if player else None
+
+
+def _set_form(conn, season_id: str, *teams: TeamInGame) -> None:
+    """How each team's GM sees its hitters' seasons, for the lineup: their
+    form (src/league/performance.py) times the GM's stats-vs-scouting
+    weight."""
+    weighing = [t for t in teams if t.profile.stats_weight]
+    if not weighing:
+        return
+    hitters = {
+        t.record.id: [p for p in t.record.players if not p.is_pitcher()]
+        for t in weighing
+    }
+    totals = PlayerSeasonStatsRepository(conn).get_form_totals(
+        season_id, [p.id for ps in hitters.values() for p in ps]
+    )
+    for team in weighing:
+        form = performance.form_by_player(hitters[team.record.id], totals)
+        w = team.profile.stats_weight
+        team.form = {pid: w * hit for pid, (hit, _) in form.items() if hit}
 
 
 def _is_playoff_game(conn, game_id: str) -> bool:
@@ -415,6 +437,7 @@ def _play_game(
         team.profile = ManagerProfile.from_row(
             gm_repo.get_team_profile(team.record.id, league_id)
         )
+    _set_form(conn, season_id, home_team, away_team)
 
     # Stored pitcher states for everyone in the game, loaded once and shared
     # by the energy setup, starter selection and the game itself.

@@ -1,7 +1,8 @@
 # src/api/routers/admin.py
 #
-# The admin pages: every league with its settings and GMs, and every user
-# account. Only users with users.is_admin can open them (dependencies.Admin).
+# The admin pages: every league with its settings and GMs, every user
+# account, and the AI GM persona library. Only users with users.is_admin can
+# open them (dependencies.Admin).
 #
 # Forms post back and redirect to the page they came from with ?done=<code>,
 # which the page turns into a short note. A form that can't be saved renders
@@ -20,6 +21,8 @@ from src.api.routers.leagues import state_label
 from src.api.services import admin as admin_service
 from src.api.services.passwords import clean_email, password_error, username_error
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.persona_repo import PersonaRepository
+from src.league import personas
 from src.db.repositories.user_repo import UserRepository
 from src.league.league_modes import LEAGUE_MODES
 from src.web.utils import templates
@@ -39,6 +42,9 @@ NOTES = {
     "admin_on": "They're an admin now.",
     "admin_off": "They're no longer an admin.",
     "user_deleted": "User deleted.",
+    "persona_created": "Persona created.",
+    "chance": "Chance saved.",
+    "persona_deleted": "Persona deleted.",
 }
 
 
@@ -336,3 +342,154 @@ def delete_user(request: Request, user_id: str, db: DB, user: Admin):
         )
     admin_service.delete_user(db, user_id)
     return _done("/admin/users", "user_deleted")
+
+
+# ── Personas ──────────────────────────────────────────────────────────────────
+# Created once and never edited (src/league/personas.py); only the chance of
+# being picked for a new league changes. Duplicate pre-fills the create form.
+
+
+def _personas_page(request, db, user, status_code=200, **ctx):
+    rows = PersonaRepository(db).all()
+    form = ctx.pop("form", None)
+    source = request.query_params.get("from")
+    if form is None and source:
+        p = PersonaRepository(db).get(source)
+        if p:
+            form = {
+                "name": "",
+                "bio": p["bio"],
+                "archetype": p["archetype"],
+                "dials": personas.clean(p["dials"]),
+                "chance": p["chance"],
+                "from_name": p["name"],
+            }
+    form = form or {
+        "dials": dict(personas.NEUTRAL),
+        "chance": personas.DEFAULT_CHANCE,
+    }
+    return _page(
+        request,
+        "personas.html",
+        {
+            "user": user,
+            "personas": rows,
+            "archetypes": sorted({r["archetype"] for r in rows if r["archetype"]}),
+            "traits": personas.TRAITS,
+            "form": form,
+            **ctx,
+        },
+        status_code,
+    )
+
+
+@router.get("/personas", response_class=HTMLResponse)
+def persona_list(request: Request, db: DB, user: Admin):
+    return _personas_page(request, db, user)
+
+
+@router.post("/personas")
+async def create_persona(request: Request, db: DB, user: Admin):
+    data = await request.form()
+    name = " ".join(str(data.get("name", "")).split())
+    bio = str(data.get("bio", "")).strip()
+    archetype = " ".join(str(data.get("archetype", "")).split())
+    dials = personas.clean({k: data.get(k) for k in personas.DIALS})
+    chance = _chance(data.get("chance"))
+    form = {
+        "name": name,
+        "bio": bio,
+        "archetype": archetype,
+        "dials": dials,
+        "chance": personas.DEFAULT_CHANCE if chance is None else chance,
+    }
+    repo = PersonaRepository(db)
+    error = None
+    if not 2 <= len(name) <= 60:
+        error = "A persona needs a name of 2 to 60 characters."
+    elif len(bio) > 200 or len(archetype) > 60:
+        error = "Keep the bio under 200 characters and the archetype under 60."
+    elif chance is None:
+        error = "Chance is a whole number from 0 to 100."
+    elif repo.name_taken(name):
+        error = "There's already a persona with that name."
+    if error:
+        return _personas_page(request, db, user, 400, error=error, form=form)
+    persona_id = repo.create(name, bio, archetype, dials, chance)
+    db.commit()
+    return _done(f"/admin/personas/{persona_id}", "persona_created")
+
+
+def _chance(value) -> int | None:
+    try:
+        chance = int(str(value).strip())
+    except TypeError, ValueError:
+        return None
+    return chance if 0 <= chance <= personas.MAX_CHANCE else None
+
+
+def _persona_or_404(db, persona_id: str) -> dict:
+    p = PersonaRepository(db).get(persona_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return p
+
+
+def _persona_page(request, db, user, persona_id: str, status_code=200, **ctx):
+    p = _persona_or_404(db, persona_id)
+    repo = PersonaRepository(db)
+    return _page(
+        request,
+        "persona.html",
+        {
+            "user": user,
+            "persona": p,
+            "traits": personas.describe(p["dials"]),
+            "profile": personas.profile(p["dials"]),
+            "leagues": repo.leagues_using(persona_id),
+            **ctx,
+        },
+        status_code,
+    )
+
+
+@router.get("/personas/{persona_id}", response_class=HTMLResponse)
+def persona_detail(request: Request, persona_id: str, db: DB, user: Admin):
+    return _persona_page(request, db, user, persona_id)
+
+
+@router.post("/personas/{persona_id}/chance")
+def persona_chance(
+    request: Request, persona_id: str, db: DB, user: Admin, chance: str = Form(...)
+):
+    _persona_or_404(db, persona_id)
+    value = _chance(chance)
+    if value is None:
+        return _persona_page(
+            request,
+            db,
+            user,
+            persona_id,
+            400,
+            error="Chance is a whole number from 0 to 100.",
+        )
+    PersonaRepository(db).set_chance(persona_id, value)
+    db.commit()
+    return _done(f"/admin/personas/{persona_id}", "chance")
+
+
+@router.post("/personas/{persona_id}/delete")
+def persona_delete(request: Request, persona_id: str, db: DB, user: Admin):
+    _persona_or_404(db, persona_id)
+    if not PersonaRepository(db).delete(persona_id):
+        return _persona_page(
+            request,
+            db,
+            user,
+            persona_id,
+            400,
+            error="This persona is in a league, so it can't be deleted. "
+            "Set its chance to 0 to keep new leagues from picking it.",
+        )
+    db.commit()
+    return _done("/admin/personas", "persona_deleted")

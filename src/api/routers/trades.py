@@ -26,6 +26,7 @@ from src.api.view_models.player_cards import (
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.persona_repo import PersonaRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -91,6 +92,8 @@ def trades_tab(
     trade_repo = TradeRepository(db)
     ctx.update(
         {
+            # AI teams' GMs, for their names and persona cards.
+            "ai_gms": PersonaRepository(db).by_team(league_id),
             "trade_window": trade_deadline.window(db, dict(league), season_id),
             "trade_teams": teams,
             "my_players": team_cards(db, league_id, season_id, team_id)

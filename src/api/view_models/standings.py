@@ -39,6 +39,7 @@ def standings_rows(
     recent_rows = st_repo.get_recent_results(season_id)
     # Each front office's latest read on its team (src/league/team_state.py).
     states = TeamStateRepository(db).latest(league_id, season_id)
+    gms = _team_gms(db, league_id)
 
     # Build per-team recent results
     team_recent: dict[str, list] = {}
@@ -108,9 +109,23 @@ def standings_rows(
                     states.get(r["team_id"], {}).get("state"), ""
                 ),
                 "is_mine": r["team_id"] == my_team_id,
+                "gm": gms.get(r["team_id"]),
             }
         )
     return teams
+
+
+def _team_gms(db, league_id: str) -> dict[str, dict]:
+    """Who runs each team now ({name, persona_id}), the person if there is
+    one."""
+    rows = db.execute(
+        """SELECT team_id, display_name AS name, persona_id FROM gms
+           WHERE league_id = %s AND team_id IS NOT NULL AND fired_at IS NULL
+           ORDER BY is_ai DESC""",
+        (league_id,),
+    ).fetchall()
+    # People come last, so theirs wins.
+    return {r["team_id"]: dict(r) for r in rows}
 
 
 def standings_context(

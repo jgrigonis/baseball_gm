@@ -150,6 +150,7 @@ class LineupOptimizer:
         pitcher: PlayerInGame | None = None,
         vs_hand: str | None = None,
         platoon: str = "none",
+        form: dict[str, float] | None = None,
     ) -> tuple[list[LineupSlot], PlayerInGame]:
         """The best lineup from these players. Picks a pitcher if none is
         given; he doesn't bat with a DH."""
@@ -160,7 +161,13 @@ class LineupOptimizer:
             pitcher = LineupOptimizer.select_pitcher(players)
         hitters = [p for p in players if p is not pitcher]
         lineup = LineupOptimizer.fill(
-            [None] * 9, hitters, style=style, dh=dh, vs_hand=vs_hand, platoon=platoon
+            [None] * 9,
+            hitters,
+            style=style,
+            dh=dh,
+            vs_hand=vs_hand,
+            platoon=platoon,
+            form=form,
         )
         return lineup, pitcher
 
@@ -177,6 +184,7 @@ class LineupOptimizer:
         dh: bool = True,
         vs_hand: str | None = None,
         platoon: str = "none",
+        form: dict[str, float] | None = None,
     ) -> list[LineupSlot]:
         """Fill the empty slots of a lineup.
 
@@ -185,7 +193,9 @@ class LineupOptimizer:
         slot and gets the best open position. hitters is everyone eligible to
         play; locked players may be in it or not. Rebuild is fill() with
         every slot None. vs_hand is the throwing hand of the opposing starter
-        (R or L), used as the platoon setting says.
+        (R or L), used as the platoon setting says. form adds to a hitter's
+        offense (by player id): how his season stats look to this GM
+        (src/league/performance.py).
         """
         size = 9 if dh else 8
         positions = FIELD_POSITIONS + (["dh"] if dh else [])
@@ -221,12 +231,14 @@ class LineupOptimizer:
 
         # Step 1: who plays where.
         hand = vs_hand if platoon in ("vs-handedness", "aggressive") else None
-        bonus: dict[str, float] = {}
+        form = form or {}
+        bonus: dict[str, float] = dict(form)
         if hand and platoon == "vs-handedness":
             everyday = LineupOptimizer.assign_positions(
-                pool, open_positions, must_play=set(must_play.values())
+                pool, open_positions, must_play=set(must_play.values()), bonus=form
             )
-            bonus = {p.record.id: REGULAR_BONUS for p, _ in everyday}
+            for p, _ in everyday:
+                bonus[p.record.id] = bonus.get(p.record.id, 0) + REGULAR_BONUS
         chosen = LineupOptimizer.assign_positions(
             pool,
             open_positions,

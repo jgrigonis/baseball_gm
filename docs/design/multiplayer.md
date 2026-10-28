@@ -50,8 +50,9 @@ A GM leaves from the Leave button on `/leagues/` (`POST /leagues/{id}/leave`,
 - **In the lobby** the GM's row is deleted. No team has been handed out yet,
   and AI GMs fill the empty teams when the league starts.
 - **Once the league has started** AI takes over the team. The GM's row
-  becomes an AI GM (`is_ai = true`, `user_id` null, "AI Manager") and keeps
-  its `team_id`, so the team keeps its draft picks, pick rights, results and
+  becomes an AI GM (`is_ai = true`, `user_id` null) named after a persona
+  drawn from the library (`src/league/personas.py`), and keeps its
+  `team_id`, so the team keeps its draft picks, pick rights, results and
   name in the standings. From then on the AI drafts for it, sets its lineup
   and rebuilds its rotation each offseason, and the standings stop marking
   it as a human team. The GM can't rejoin, since joining is lobby-only.

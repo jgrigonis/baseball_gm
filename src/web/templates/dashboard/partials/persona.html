@@ -1,0 +1,42 @@
+{# templates/dashboard/partials/persona.html
+   An AI GM's persona card: who they are and how they lean
+   (src/league/personas.py). Players see each dial as words; admins also see
+   the number. Takes `persona` (services/personas.card) and `team`, the team
+   they run in this league, if any. #}
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:12px 24px;border-bottom:1px solid var(--border);">
+  <h1 class="page-title">{{ persona.name }}</h1>
+  <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px;">
+    AI GM · {{ persona.archetype }}{% if team %} · {{ team.city }} {{ team.mascot }}{% endif %}
+  </div>
+</div>
+
+<div style="padding:16px 24px 32px;max-width:720px;">
+  <div class="card">
+    <div class="card-body">
+      <p class="persona-bio">“{{ persona.bio }}”</p>
+      <table class="data-table persona-dials">
+        <tbody>
+          {% for t in persona.traits %}
+          <tr>
+            <td class="persona-label">{{ t.label }}</td>
+            <td class="persona-word">{{ t.word | capitalize }}</td>
+            {% if is_admin %}<td class="mono dim" title="{{ t.ends[0] }} (0) to {{ t.ends[1] }} (100)">{{ t.value }}</td>{% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
+    A persona never changes. {{ persona.name }} leans the same way in every league,
+    in trades, in how the team is managed in games and in where the front office sees the team.
+    <a href="/leagues/{{ league_id }}/league" style="color:var(--sky);">Back to the League page</a>
+  </p>
+</div>
+
+<style>
+.persona-bio { font-family: var(--font-sans); font-size: 14px; color: var(--text); margin-bottom: 12px; }
+.persona-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); width: 45%; }
+.persona-word { font-family: var(--font-mono); font-size: 12px; color: var(--amber); }
+</style>

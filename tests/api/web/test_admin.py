@@ -182,7 +182,7 @@ class TestForcedPasswordChange:
 class TestAdminOnly:
     def test_regular_user_gets_403(self, client, db_conn):
         _sign_in(client, _user(db_conn))
-        for page in ("/admin/leagues", "/admin/users"):
+        for page in ("/admin/leagues", "/admin/users", "/admin/personas"):
             assert client.get(page).status_code == 403
         assert client.post("/admin/users", data={}).status_code in (403, 422)
 
@@ -562,3 +562,96 @@ class TestMakeAdminCommand:
         self._run(username)
         row = UserRepository(db_conn).get_by_username(username)
         assert row["is_admin"]
+
+
+class TestPersonas:
+    def _create(self, client, name, **extra):
+        data = {
+            "name": name,
+            "bio": "Loves a bunt.",
+            "archetype": "Small-Ball Sam",
+            "chance": "70",
+            "small_ball": "90",
+        } | extra
+        return client.post("/admin/personas", data=data)
+
+    def _get(self, db, name):
+        row = db.execute(
+            "SELECT * FROM gm_personas WHERE name = %s", (name,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def test_list_shows_the_library(self, client, admin):
+        r = client.get("/admin/personas")
+        assert r.status_code == 200
+        assert "GM Personas" in r.text
+        assert "The Old Scout" in r.text
+        assert "Create a Persona" in r.text
+
+    def test_create(self, client, db_conn, admin):
+        name = _name("Persona")
+        r = self._create(client, name)
+        p = self._get(db_conn, name)
+        assert r.status_code == 303
+        assert (
+            r.headers["location"] == f"/admin/personas/{p['id']}?done=persona_created"
+        )
+        assert p["chance"] == 70
+        assert p["dials"]["small_ball"] == 90
+        assert p["dials"]["risk"] == 50  # not on the form: neutral
+
+        page = client.get(f"/admin/personas/{p['id']}").text
+        assert name in page
+        assert "small ball all day" in page
+        assert ">90<" in page  # admins see the numbers
+
+    def test_create_checks_the_form(self, client, db_conn, admin):
+        name = _name("Persona")
+        assert self._create(client, name).status_code == 303
+        r = self._create(client, name)
+        assert r.status_code == 400
+        assert "already a persona with that name" in r.text
+        r = self._create(client, _name("Persona"), chance="101")
+        assert r.status_code == 400
+        assert "Chance is a whole number" in r.text
+        assert self._create(client, "x").status_code == 400
+
+    def test_duplicate_prefills_the_form(self, client, db_conn, admin):
+        name = _name("Persona")
+        self._create(client, name, risk="12")
+        p = self._get(db_conn, name)
+        page = client.get(f"/admin/personas?from={p['id']}").text
+        assert f"Duplicate {name}" in page
+        assert 'name="risk" min="0" max="100" step="1" value="12"' in page
+        assert 'name="name" value=""' in page
+
+    def test_only_chance_changes(self, client, db_conn, admin):
+        name = _name("Persona")
+        self._create(client, name)
+        p = self._get(db_conn, name)
+        r = client.post(f"/admin/personas/{p['id']}/chance", data={"chance": "0"})
+        assert r.status_code == 303
+        after = self._get(db_conn, name)
+        assert after["chance"] == 0
+        assert after["dials"] == p["dials"]
+        r = client.post(f"/admin/personas/{p['id']}/chance", data={"chance": "abc"})
+        assert r.status_code == 400
+
+    def test_delete_only_when_no_league_uses_it(self, client, db_conn, factory, admin):
+        name = _name("Persona")
+        self._create(client, name)
+        p = self._get(db_conn, name)
+        gm = factory.gm(team=factory.team(), league=_league(db_conn, factory))
+        db_conn.execute(
+            "UPDATE gms SET persona_id = %s WHERE id = %s", (p["id"], gm.id)
+        )
+
+        r = client.post(f"/admin/personas/{p['id']}/delete")
+        assert r.status_code == 400
+        assert "can't be deleted" in r.text
+        assert self._get(db_conn, name)
+
+        db_conn.execute("UPDATE gms SET persona_id = NULL WHERE id = %s", (gm.id,))
+        r = client.post(f"/admin/personas/{p['id']}/delete")
+        assert r.status_code == 303
+        assert self._get(db_conn, name) is None

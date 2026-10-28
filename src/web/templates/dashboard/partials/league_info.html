@@ -30,7 +30,14 @@
           <tbody>
             {% for g in info.gms %}
             <tr {% if g.id == gm_id %}class="my-team"{% endif %}>
-              <td class="team-name">{{ g.display_name }}</td>
+              <td class="team-name">
+                {% if g.persona_id %}
+                  <a href="/leagues/{{ league_id }}/personas/{{ g.persona_id }}"
+                     hx-get="/leagues/{{ league_id }}/personas/{{ g.persona_id }}" hx-target="#tab-content" hx-push-url="true"
+                     style="color:inherit;" title="Persona card">{{ g.display_name }}</a>
+                  <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);font-weight:400;">{{ g.archetype }}</div>
+                {% else %}{{ g.display_name }}{% endif %}
+              </td>
               <td style="color:var(--text-dim);">
                 {% if g.city %}{{ g.city }} {{ g.mascot }}{% else %}—{% endif %}
               </td>
