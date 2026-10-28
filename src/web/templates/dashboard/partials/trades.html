@@ -1,0 +1,335 @@
+{# templates/dashboard/partials/trades.html
+   The Trades tab: pick players from your organization and another team's,
+   send the offer, and the AI team answers at once. Below: your recent offers
+   and every trade in the league. Rules: src/api/services/trades.py. #}
+<div class="content-inner tab-fade" id="trades-page">
+
+  <div class="page-header">
+    <h1 class="page-title">Trades</h1>
+    <span class="page-subtitle">
+      {% if trade_window.open and trade_window.deadline_day %}
+        ⏰ Deadline day: trades close once the next day is played
+      {% elif trade_window.open %}
+        Trade deadline: {{ trade_window.deadline }}
+      {% elif trade_window.deadline %}
+        The trade window is closed. It opens again after next season's draft.
+      {% else %}
+        Trades open once the season is scheduled.
+      {% endif %}
+    </span>
+  </div>
+
+  {% if trade_window.open %}
+  <div class="trade-note">
+    Traded players join your organization, not your 40-man. Your 40-man has
+    <strong id="tr-playing">{{ my_playing_count }}</strong> players
+    ({{ min_roster }} to {{ max_roster }} allowed). If it's under {{ min_roster }}
+    before your next game, your best healthy players are called up for you.
+  </div>
+
+  <div class="grid-2 trade-cols">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">You give</span>
+        <span class="tr-filters" data-side="mine"></span>
+      </div>
+      <div class="card-body tr-list" id="tr-mine"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">You get</span>
+        <select id="tr-team" class="tr-team" onchange="trLoadTeam(this.value)">
+          <option value="">Pick a team…</option>
+          {% for t in trade_teams %}
+          <option value="{{ t.id }}" {% if t.human %}disabled{% endif %}>
+            {{ t.name }}{% if t.human %} (GM trades coming soon){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <span class="tr-filters" data-side="theirs"></span>
+      </div>
+      <div class="card-body tr-list" id="tr-theirs">
+        <div class="tr-empty">Pick a team to see their players.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="trade-bar">
+    <div id="tr-summary" class="tr-summary">Pick up to {{ max_per_side }} players a side.</div>
+    <button class="btn btn-primary" id="tr-send" onclick="trSend()" disabled>Propose trade</button>
+  </div>
+  <div id="tr-result" class="tr-result" style="display:none;"></div>
+  {% endif %}
+
+  <div class="grid-2 mt-24">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Your offers</span></div>
+      <div class="card-body">
+        {% if my_offers %}
+        <table class="data-table tr-table">
+          <tbody>
+          {% for o in my_offers %}
+          <tr>
+            <td class="tr-date">{{ o.created_on }}</td>
+            <td>
+              <div>To the <strong>{{ o.to_name }}</strong>:
+                {{ o.sent | map(attribute='last_name') | join(', ') }}
+                for {{ o.received | map(attribute='last_name') | join(', ') }}</div>
+              {% if o.reason and o.status != 'accepted' %}<div class="tr-reason">“{{ o.reason }}”</div>{% endif %}
+            </td>
+            <td class="tr-status tr-{{ o.status }}">{{ o.status }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="tr-empty">You haven't made an offer yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">League trades</span></div>
+      <div class="card-body">
+        {% if league_trades %}
+        <table class="data-table tr-table">
+          <tbody>
+          {% for t in league_trades %}
+          <tr>
+            <td class="tr-date">{{ t.created_on }}</td>
+            <td>
+              <div><strong>{{ t.from_name }}</strong> get
+                {% for p in t.received %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>
+              <div><strong>{{ t.to_name }}</strong> get
+                {% for p in t.sent %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="tr-empty">No trades yet this league.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if trade_window.open %}
+<script>
+(function() {
+var URL = '/leagues/{{ league_id }}/trades';
+var MAX = {{ max_per_side }};
+var SIDES = {
+  mine:   {players: {{ my_players | tojson }}, picked: new Set(), filter: 'all', el: 'tr-mine'},
+  theirs: {players: [], picked: new Set(), filter: 'all', el: 'tr-theirs', team: ''},
+};
+var FILTERS = [['all', 'All'], ['40', '40-man'], ['org', 'Org'], ['hit', 'Hit'], ['pit', 'Pit']];
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+  });
+}
+
+function onForty(p) { return p.roster_status === '26man' || p.roster_status === '40man'; }
+
+function keep(p, f) {
+  if (f === '40') return onForty(p);
+  if (f === 'org') return !onForty(p);
+  if (f === 'hit') return p.player_type !== 'pitcher';
+  if (f === 'pit') return p.player_type === 'pitcher';
+  return true;
+}
+
+function statLine(p) {
+  if (p.player_type === 'pitcher')
+    return p.stat_ip ? p.stat_w + '-' + p.stat_l + ', ' + p.stat_era + ' ERA, ' + p.stat_ip + ' IP' : '';
+  return p.stat_avg ? p.stat_avg.replace(/^0\./, '.') + ', ' + p.stat_hr + ' HR, ' + p.stat_rbi + ' RBI' : '';
+}
+
+function renderFilters(key) {
+  var host = document.querySelector('.tr-filters[data-side="' + key + '"]');
+  if (!host) return;
+  host.innerHTML = FILTERS.map(function(f) {
+    return '<button type="button" class="tr-fbtn' + (SIDES[key].filter === f[0] ? ' active' : '') +
+      '" onclick="trFilter(\'' + key + '\',\'' + f[0] + '\')">' + f[1] + '</button>';
+  }).join('');
+}
+
+function render(key) {
+  var side = SIDES[key];
+  var el = document.getElementById(side.el);
+  if (!el) return;
+  renderFilters(key);
+  if (key === 'theirs' && !side.team) return;
+  var list = side.players.filter(function(p) { return keep(p, side.filter) || side.picked.has(p.player_id); });
+  list.sort(function(a, b) {
+    return (onForty(b) - onForty(a)) || (gradeVal(a.overall) - gradeVal(b.overall));
+  });
+  if (!list.length) { el.innerHTML = '<div class="tr-empty">No players here.</div>'; return; }
+  el.innerHTML = list.map(function(p) {
+    var on = side.picked.has(p.player_id);
+    return '<label class="tr-row' + (on ? ' on' : '') + '">' +
+      '<input type="checkbox" ' + (on ? 'checked ' : '') +
+        'onchange="trPick(\'' + key + '\',\'' + p.player_id + '\',this.checked)">' +
+      '<span class="' + gradeClass(p.overall) + ' tr-grade">' + esc(p.overall) + '</span>' +
+      '<span class="tr-name"><a href="#" onclick="openPlayerPanel(\'' + p.player_id + '\');return false;">' +
+        esc(p.first_name + ' ' + p.last_name) + '</a>' +
+        '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age + (statLine(p) ? ' · ' + esc(statLine(p)) : '') + '</span></span>' +
+      (p.injured ? '<span class="badge badge-injured">🚑 ' + p.injury_days + 'd</span>' : '') +
+      '<span class="badge ' + (onForty(p) ? 'badge-40man">40' : 'badge-minors">ORG') + '</span>' +
+    '</label>';
+  }).join('');
+}
+
+function names(key) {
+  var side = SIDES[key];
+  return side.players.filter(function(p) { return side.picked.has(p.player_id); })
+    .map(function(p) { return p.first_name + ' ' + p.last_name; });
+}
+
+function summarize() {
+  var give = names('mine'), get = names('theirs');
+  var el = document.getElementById('tr-summary');
+  var btn = document.getElementById('tr-send');
+  if (!give.length && !get.length) {
+    el.textContent = 'Pick up to ' + MAX + ' players a side.';
+  } else {
+    el.innerHTML = '<span class="tr-k">You give</span> ' + (esc(give.join(', ')) || '—') +
+                   '  <span class="tr-k">You get</span> ' + (esc(get.join(', ')) || '—');
+  }
+  btn.disabled = !give.length || !get.length || !SIDES.theirs.team;
+}
+
+window.trFilter = function(key, f) { SIDES[key].filter = f; render(key); };
+
+window.trPick = function(key, pid, on) {
+  var side = SIDES[key];
+  if (on && side.picked.size >= MAX) {
+    showResult('At most ' + MAX + ' players a side.', 'warn');
+    render(key);
+    return;
+  }
+  if (on) side.picked.add(pid); else side.picked.delete(pid);
+  render(key);
+  summarize();
+};
+
+window.trLoadTeam = function(teamId) {
+  var side = SIDES.theirs;
+  side.team = teamId; side.picked = new Set(); side.players = [];
+  var el = document.getElementById(side.el);
+  if (!teamId) { el.innerHTML = '<div class="tr-empty">Pick a team to see their players.</div>'; summarize(); return; }
+  el.innerHTML = '<div class="tr-empty">Loading…</div>';
+  fetch(URL + '/team/' + encodeURIComponent(teamId))
+    .then(function(r) { return r.json(); })
+    .then(function(d) { side.players = d.players || []; render('theirs'); summarize(); })
+    .catch(function() { el.innerHTML = '<div class="tr-empty">Couldn\'t load that team.</div>'; });
+};
+
+function showResult(html, kind) {
+  var el = document.getElementById('tr-result');
+  if (!el) return;
+  el.className = 'tr-result tr-' + kind;
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+window.trSend = function() {
+  var btn = document.getElementById('tr-send');
+  var teamSel = document.getElementById('tr-team');
+  var teamName = teamSel.options[teamSel.selectedIndex].text.trim();
+  btn.disabled = true;
+  btn.textContent = 'Waiting for an answer…';
+  fetch(URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      to_team_id: SIDES.theirs.team,
+      give: Array.from(SIDES.mine.picked),
+      get: Array.from(SIDES.theirs.picked),
+    }),
+  }).then(function(r) { return r.json().then(function(d) { return [r.ok, d]; }); })
+    .then(function(res) {
+      var ok = res[0], d = res[1];
+      btn.textContent = 'Propose trade';
+      if (!ok) { showResult('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad'); summarize(); return; }
+      if (!d.accepted) {
+        showResult('✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”', 'warn');
+        summarize();
+        return;
+      }
+      var msg = '✓ Trade done. ' + esc(d.arrived.join(', ')) +
+        (d.arrived.length > 1 ? ' join' : ' joins') + ' your organization. ' +
+        'Move ' + (d.arrived.length > 1 ? 'them' : 'him') + ' to your 40-man on the Roster tab.';
+      if (d.playing_count < {{ min_roster }})
+        msg += ' Your 40-man is down to ' + d.playing_count + ': call up at least ' +
+               ({{ min_roster }} - d.playing_count) + ' before your next game, or your best healthy players will be.';
+      // Reload the tab to show the new rosters, then the message.
+      window._tradeResult = msg;
+      if (window.htmx && window.refreshActiveTab) { window.refreshActiveTab(); return; }
+      try { sessionStorage.setItem('tradeResult', msg); } catch (e) {}
+      location.reload();
+    })
+    .catch(function() { btn.textContent = 'Propose trade'; showResult('✗ Couldn\'t reach the server.', 'bad'); summarize(); });
+};
+
+render('mine');
+renderFilters('theirs');
+var done = window._tradeResult;
+try { done = done || sessionStorage.getItem('tradeResult'); sessionStorage.removeItem('tradeResult'); } catch (e) {}
+if (done) { showResult(done, 'good'); window._tradeResult = null; }
+})();
+</script>
+{% endif %}
+
+<style>
+#trades-page .trade-note { margin: 0 0 14px; padding: 8px 12px; font-size: 12px; color: var(--text-dim);
+  border: 1px solid var(--border); background: var(--bg-2); }
+#trades-page .trade-note strong { color: var(--text); }
+#trades-page .card-header { gap: 8px; flex-wrap: wrap; }
+#trades-page .grid-2 > * { min-width: 0; }
+#trades-page .tr-team { min-width: 0; }
+#trades-page .tr-team { background: var(--bg-3); color: var(--text); border: 1px solid var(--border-hi);
+  font-size: 12px; padding: 3px 6px; max-width: 100%; }
+#trades-page .tr-filters { margin-left: auto; display: flex; gap: 2px; }
+#trades-page .tr-fbtn { background: none; border: 1px solid var(--border); color: var(--text-dim);
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 6px; cursor: pointer; }
+#trades-page .tr-fbtn.active { color: var(--amber); border-color: var(--amber-dim); }
+#trades-page .tr-list { max-height: 420px; overflow-y: auto; padding: 6px 8px; }
+#trades-page .tr-row { display: flex; align-items: center; gap: 8px; padding: 5px 6px; cursor: pointer;
+  border-bottom: 1px solid var(--border); font-size: 12px; }
+#trades-page .tr-row input { width: auto; flex: none; margin: 0; }
+#trades-page .tr-row .badge { flex: none; }
+#trades-page .tr-row:hover { background: var(--bg-3); }
+#trades-page .tr-row.on { background: var(--amber-lo); }
+#trades-page .tr-grade { width: 26px; text-align: center; font-family: var(--font-mono); font-weight: 600; }
+#trades-page .tr-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#trades-page .tr-name a { color: var(--text); text-decoration: none; }
+#trades-page .tr-name a:hover { color: var(--amber); }
+#trades-page .tr-meta { color: var(--text-dim); font-size: 11px; font-family: var(--font-mono); }
+#trades-page .tr-empty { color: var(--text-dim); font-size: 12px; padding: 10px 4px; }
+#trades-page .trade-bar { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 10px 12px;
+  border: 1px solid var(--border-hi); background: var(--bg-2); }
+#trades-page .tr-summary { flex: 1; font-size: 12px; }
+#trades-page .tr-k { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-transform: uppercase;
+  margin-left: 8px; }
+#trades-page .tr-k:first-child { margin-left: 0; }
+#trades-page .tr-result { margin-top: 10px; padding: 8px 12px; font-size: 12px; border: 1px solid; }
+#trades-page .tr-result.tr-good { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+#trades-page .tr-result.tr-warn { color: var(--amber); border-color: var(--amber-dim); background: var(--amber-lo); }
+#trades-page .tr-result.tr-bad { color: var(--red); border-color: var(--red); background: var(--red-dim); }
+#trades-page .tr-table td { font-size: 12px; vertical-align: top; padding: 6px 4px; }
+#trades-page .tr-table a { color: var(--sky); text-decoration: none; }
+#trades-page .tr-date { font-family: var(--font-mono); color: var(--text-dim); white-space: nowrap; width: 1%; }
+#trades-page .tr-reason { color: var(--text-dim); font-style: italic; margin-top: 2px; }
+#trades-page .tr-status { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; text-align: right; }
+#trades-page .tr-accepted { color: var(--green); }
+#trades-page .tr-rejected { color: var(--red); }
+@media (max-width: 760px) {
+  #trades-page .grid-2 { grid-template-columns: 1fr; }
+  #trades-page .trade-bar { flex-direction: column; align-items: stretch; }
+}
+</style>

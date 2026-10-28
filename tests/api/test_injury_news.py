@@ -50,10 +50,12 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
     assert a == {
         "new_injuries": [{"name": "Alice ", "days": 10, "is_pitcher": False}],
         "returned": [],
+        "roster_moves": [],
     }
     assert b == {
         "new_injuries": [],
         "returned": [{"name": "Bob ", "is_pitcher": False, "on_40man": False}],
+        "roster_moves": [],
     }
 
 
@@ -68,7 +70,11 @@ def test_news_is_shown_once(db_conn, factory):
     news.record()
 
     assert len(take_injury_news(db_conn, gm.id)["new_injuries"]) == 1
-    assert take_injury_news(db_conn, gm.id) == {"new_injuries": [], "returned": []}
+    assert take_injury_news(db_conn, gm.id) == {
+        "new_injuries": [],
+        "returned": [],
+        "roster_moves": [],
+    }
 
 
 def _returned_is_pitcher(db, factory, position, outs=0, ab=0, skills=False):

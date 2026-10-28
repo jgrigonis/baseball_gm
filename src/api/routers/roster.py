@@ -19,6 +19,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.team.roster_limits import MIN_PLAYING_ROSTER
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
@@ -78,7 +79,7 @@ def save_roster_put(
     gm: GM,
     _active: ActiveLeague,
 ):
-    """PUT endpoint for roster save from JS fetch."""
+    """PUT endpoint for roster save from JS fetch. The 40-man holds 25 to 40."""
     team_id = gm["team_id"]
     forty_man_ids = body.forty_man
 
@@ -93,6 +94,17 @@ def save_roster_put(
     player_repo = PlayerRepository(db)
     status_repo = PlayerStatusRepository(db)
     team_player_ids = player_repo.get_player_ids_from_team_players(team_id)
+
+    # A team that owns enough players has to keep 25 of them playing.
+    minimum = min(MIN_PLAYING_ROSTER, len(team_player_ids))
+    if len(forty_man_ids) < minimum:
+        return JSONResponse(
+            {
+                "detail": f"40-man roster needs at least {MIN_PLAYING_ROSTER} players "
+                f"({len(forty_man_ids)} submitted)"
+            },
+            status_code=422,
+        )
 
     for pid in forty_man_ids:
         if pid not in team_player_ids:

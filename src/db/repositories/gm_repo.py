@@ -46,6 +46,17 @@ class GMRepository:
         ).fetchone()
         return row["id"] if row else None
 
+    def get_human_gm_for_team(self, league_id: str, team_id: str) -> str | None:
+        """The id of the human GM running a team, or None if the AI runs it."""
+        row = self.conn.execute(
+            """SELECT id FROM gms
+               WHERE league_id = %s AND team_id = %s AND NOT is_ai
+                 AND fired_at IS NULL
+               LIMIT 1""",
+            (league_id, team_id),
+        ).fetchone()
+        return row["id"] if row else None
+
     def get_human_gm_teams(self, league_id: str) -> dict[str, str]:
         """Return {gm_id: team_id} for the human GMs in a league that have a team."""
         rows = self.conn.execute(

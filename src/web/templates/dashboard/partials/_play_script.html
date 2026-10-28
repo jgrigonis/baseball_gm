@@ -81,6 +81,10 @@ async function schedSim(count) {
 
       var hasNews = showInjuryNews(d);
 
+      // Every sim stops after the games of trade deadline day
+      var atDeadline = !!d.trade_deadline;
+      if (atDeadline) window._simStop = true;
+
       // Stop on injury — read from window._stopOnInjury which persists across tab re-renders
       if (hasNews && (count === 'injury')) {
         window._simStop = true;
@@ -131,6 +135,11 @@ async function schedSim(count) {
       // Only re-enter sim mode if we're continuing
       if (!window._simStop && count !== 1) setSimMode(true);
 
+      if (atDeadline) {
+        setSimMode(false);
+        setStatus('⏰ Trade deadline · trades close once the next day is played · ' + remaining + ' games remaining');
+        return;
+      }
       if (remaining <= 0) break;
       if (count !== 'season' && count !== 'injury' && daysSimmed >= count) break;
 

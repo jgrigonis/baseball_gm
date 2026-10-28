@@ -15,31 +15,87 @@ class PlayerSeasonStatsRepository:
         return row["tg"] or 1
 
     def get_batting_for_league(self, league_id: str, season_id: str) -> list[dict]:
-        """Return batting stats for all players in a league (regular season, at least 1 AB)."""
+        """Return batting stats for all players in a league (regular season, at
+        least 1 AB). A player traded during the season gets one row, his
+        totals for every team, under the team he's on now."""
+        return self._league_totals(
+            league_id,
+            season_id,
+            [
+                "bat_ab",
+                "bat_hits",
+                "bat_doubles",
+                "bat_triples",
+                "bat_home_runs",
+                "bat_rbi",
+                "bat_runs",
+                "bat_walks",
+                "bat_strike_outs",
+                "bat_stolen_bases",
+                "bat_hbp",
+                "bat_sac_flys",
+                "bat_games_played",
+            ],
+            "SUM(bat_ab) >= 1",
+        )
+
+    def _league_totals(
+        self, league_id: str, season_id: str, columns: list[str], having: str
+    ) -> list[dict]:
+        """Each player's regular season `columns`, summed across the teams he
+        played for in a league season. team_id, city and mascot are his
+        current team if he played for it, else the one he played most for."""
+        sums = ", ".join(f"SUM({c}) AS {c}" for c in columns)
         rows = self.conn.execute(
-            """SELECT pss.player_id, p.first_name, p.last_name, t.city, t.mascot, pss.team_id,
-                      pss.bat_ab, pss.bat_hits, pss.bat_doubles, pss.bat_triples,
-                      pss.bat_home_runs, pss.bat_rbi, pss.bat_runs, pss.bat_walks,
-                      pss.bat_strike_outs, pss.bat_stolen_bases, pss.bat_hbp, pss.bat_sac_flys,
-                      pss.bat_games_played
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.bat_ab >= 1""",
+            f"""WITH s AS (
+                    SELECT pss.* FROM player_season_stats pss
+                    JOIN league_season_teams lst
+                      ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id
+                     AND lst.league_id = %s
+                    WHERE pss.season_id = %s AND NOT pss.is_postseason
+                ),
+                totals AS (
+                    SELECT player_id, {sums} FROM s
+                    GROUP BY player_id HAVING {having}
+                ),
+                shown AS (
+                    SELECT DISTINCT ON (s.player_id) s.player_id, s.team_id
+                    FROM s
+                    LEFT JOIN team_players tp
+                      ON tp.player_id = s.player_id AND tp.team_id = s.team_id
+                    ORDER BY s.player_id, (tp.team_id IS NOT NULL) DESC,
+                             s.bat_games_played + s.pitch_games_played DESC
+                )
+                SELECT totals.*, p.first_name, p.last_name, t.city, t.mascot,
+                       shown.team_id
+                FROM totals
+                JOIN shown ON shown.player_id = totals.player_id
+                JOIN players p ON p.id = totals.player_id
+                JOIN teams t ON t.id = shown.team_id""",
             (league_id, season_id),
         ).fetchall()
-        return [dict(r) for r in rows]
+        # SUM comes back as a Decimal
+        return [
+            {k: int(v) if k in columns and v is not None else v for k, v in r.items()}
+            for r in rows
+        ]
 
     def get_player_season(self, player_id: str, season_id: str) -> dict | None:
-        """Return a player's regular season stat row as a dict, or None."""
-        row = self.conn.execute(
+        """Return a player's regular season stats as a dict, or None. A player
+        traded during the season gets his totals for every team."""
+        rows = self.conn.execute(
             """SELECT * FROM player_season_stats
                WHERE player_id = %s AND season_id = %s AND NOT is_postseason""",
             (player_id, season_id),
-        ).fetchone()
-        return dict(row) if row else None
+        ).fetchall()
+        if not rows:
+            return None
+        total = dict(rows[0])
+        for row in rows[1:]:
+            for k, v in row.items():
+                if isinstance(v, int) and not isinstance(v, bool):
+                    total[k] = (total[k] or 0) + v
+        return total
 
     def get_player_season_totals(self, season_id: str) -> dict[str, dict]:
         """
@@ -71,20 +127,36 @@ class PlayerSeasonStatsRepository:
         return totals
 
     def get_team_stats_map(self, season_id: str, team_id: str) -> dict[str, dict]:
-        """Return {player_id: stat_dict} for all players on a team in a season (regular season)."""
+        """Return {player_id: stat_dict} for all players on a team in a season
+        (regular season). A player traded during the season gets his totals
+        for every team he played for."""
         rows = self.conn.execute(
             """SELECT player_id,
-                      bat_games_played, bat_hits, bat_ab, bat_home_runs, bat_rbi,
-                      pitch_games_played, pitch_games_started, pitch_outs, pitch_earned_runs,
-                      pitch_wins, pitch_losses, pitch_saves
+                      SUM(bat_games_played) AS bat_games_played,
+                      SUM(bat_hits) AS bat_hits, SUM(bat_ab) AS bat_ab,
+                      SUM(bat_home_runs) AS bat_home_runs, SUM(bat_rbi) AS bat_rbi,
+                      SUM(pitch_games_played) AS pitch_games_played,
+                      SUM(pitch_games_started) AS pitch_games_started,
+                      SUM(pitch_outs) AS pitch_outs,
+                      SUM(pitch_earned_runs) AS pitch_earned_runs,
+                      SUM(pitch_wins) AS pitch_wins, SUM(pitch_losses) AS pitch_losses,
+                      SUM(pitch_saves) AS pitch_saves
                FROM player_season_stats
                WHERE season_id = %s AND NOT is_postseason
                  AND player_id IN (
                      SELECT player_id FROM team_players WHERE team_id = %s
-                 )""",
+                 )
+               GROUP BY player_id""",
             (season_id, team_id),
         ).fetchall()
-        return {r["player_id"]: dict(r) for r in rows}
+        # SUM comes back as a Decimal
+        return {
+            r["player_id"]: {
+                k: (v if k == "player_id" or v is None else int(v))
+                for k, v in r.items()
+            }
+            for r in rows
+        }
 
     def get_max_games_played_for_team(
         self, season_id: str, team_id: str, is_postseason: bool = False
@@ -112,20 +184,25 @@ class PlayerSeasonStatsRepository:
         return [dict(r) for r in rows]
 
     def get_pitching_for_league(self, league_id: str, season_id: str) -> list[dict]:
-        """Return pitching stats for all players in a league (regular season, at least 3 outs)."""
-        rows = self.conn.execute(
-            """SELECT pss.player_id, p.first_name, p.last_name, t.city, t.mascot, pss.team_id,
-                      pss.pitch_games_played, pss.pitch_games_started, pss.pitch_wins,
-                      pss.pitch_losses, pss.pitch_saves, pss.pitch_outs,
-                      pss.pitch_hits, pss.pitch_earned_runs, pss.pitch_walks,
-                      pss.pitch_strike_outs, pss.pitch_home_runs,
-                      pss.pitch_complete_games, pss.pitch_shutouts
-               FROM player_season_stats pss
-               JOIN players p ON p.id = pss.player_id
-               JOIN teams t ON t.id = pss.team_id
-               JOIN league_season_teams lst
-                 ON lst.team_id = pss.team_id AND lst.season_id = pss.season_id AND lst.league_id = %s
-               WHERE pss.season_id = %s AND NOT pss.is_postseason AND pss.pitch_outs >= 9""",
-            (league_id, season_id),
-        ).fetchall()
-        return [dict(r) for r in rows]
+        """Return pitching stats for all players in a league (regular season, at
+        least 9 outs), a traded pitcher's teams summed into one row."""
+        return self._league_totals(
+            league_id,
+            season_id,
+            [
+                "pitch_games_played",
+                "pitch_games_started",
+                "pitch_wins",
+                "pitch_losses",
+                "pitch_saves",
+                "pitch_outs",
+                "pitch_hits",
+                "pitch_earned_runs",
+                "pitch_walks",
+                "pitch_strike_outs",
+                "pitch_home_runs",
+                "pitch_complete_games",
+                "pitch_shutouts",
+            ],
+            "SUM(pitch_outs) >= 9",
+        )
