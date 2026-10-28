@@ -1,5 +1,10 @@
 # src/db/repositories/player_season_stats_repo.py
 
+# A player stays a rookie until he passes either major league limit in the
+# seasons before this one.
+ROOKIE_MAX_AB = 130
+ROOKIE_MAX_OUTS = 150  # 50 innings
+
 
 class PlayerSeasonStatsRepository:
     def __init__(self, conn):
@@ -79,6 +84,38 @@ class PlayerSeasonStatsRepository:
             {k: int(v) if k in columns and v is not None else v for k, v in r.items()}
             for r in rows
         ]
+
+    def get_rookie_ids(self, league_id: str, season_id: str) -> set[str]:
+        """Players who are rookies in this league season: drafted in the league
+        (not on the rosters it started with) and, in the regular seasons before
+        this one, under the major league limits of ROOKIE_MAX_AB at bats and
+        ROOKIE_MAX_OUTS outs pitched (50 innings)."""
+        rows = self.conn.execute(
+            """WITH cur AS (SELECT year FROM seasons WHERE id = %s),
+                drafted AS (
+                    SELECT DISTINCT dp.player_id
+                    FROM draft_picks dp
+                    JOIN drafts d ON d.id = dp.draft_id
+                    JOIN seasons ds ON ds.id = d.season_id
+                    WHERE d.league_id = %s AND ds.year <= (SELECT year FROM cur)
+                ),
+                before AS (
+                    SELECT pss.player_id, SUM(pss.bat_ab) AS ab,
+                           SUM(pss.pitch_outs) AS outs
+                    FROM player_season_stats pss
+                    JOIN seasons s ON s.id = pss.season_id
+                    WHERE NOT pss.is_postseason
+                      AND s.year < (SELECT year FROM cur)
+                      AND pss.player_id IN (SELECT player_id FROM drafted)
+                    GROUP BY pss.player_id
+                )
+                SELECT drafted.player_id FROM drafted
+                LEFT JOIN before ON before.player_id = drafted.player_id
+                WHERE COALESCE(before.ab, 0) <= %s
+                  AND COALESCE(before.outs, 0) <= %s""",
+            (season_id, league_id, ROOKIE_MAX_AB, ROOKIE_MAX_OUTS),
+        ).fetchall()
+        return {r["player_id"] for r in rows}
 
     def get_player_season(self, player_id: str, season_id: str) -> dict | None:
         """Return a player's regular season stats as a dict, or None. A player

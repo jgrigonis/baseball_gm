@@ -3,8 +3,10 @@
    players from your organization and another team's and send the offer: an
    AI team answers at once, another GM later). Below: your recent offers and
    every trade in the league. Rules: src/api/services/trades.py. #}
+{% from "dashboard/partials/_rookie.html" import rk, rookie_script with context %}
+{{ rookie_script() }}
 {% macro plist(players) -%}
-{% for p in players %}{% if p.is_pick %}<span class="tr-pick">{{ p.last_name }}</span>{% else %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+{% for p in players %}{% if p.is_pick %}<span class="tr-pick">{{ p.last_name }}</span>{% else %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{{ rk(p.player_id) }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
 {%- endmacro %}
 {# An AI team's GM, linked to their persona card. #}
 {% macro ai_gm(team_id) -%}
@@ -269,7 +271,7 @@ function render(key) {
         'onchange="trPick(\'' + key + '\',\'' + p.player_id + '\',this.checked)">' +
       '<span class="' + gradeClass(p.overall) + ' tr-grade">' + esc(p.overall) + '</span>' +
       '<span class="tr-name"><a href="#" onclick="openPlayerPanel(\'' + p.player_id + '\');return false;">' +
-        esc(p.first_name + ' ' + p.last_name) + '</a>' +
+        esc(p.first_name + ' ' + p.last_name) + '</a>' + rookieTag(p.player_id) +
         '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age + (statLine(p) ? ' · ' + esc(statLine(p)) : '') + '</span></span>' +
       (p.injured ? '<span class="badge badge-injured">🚑 ' + p.injury_days + 'd</span>' : '') +
       '<span class="badge ' + (onForty(p) ? 'badge-40man">40' : 'badge-minors">ORG') + '</span>' +

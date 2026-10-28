@@ -1,4 +1,6 @@
 {# templates/dashboard/partials/stats.html #}
+{% from "dashboard/partials/_rookie.html" import rk, rookie_script with context %}
+{{ rookie_script() }}
 {# ── Stats Tab ─────────────────────────────────────────────────────────────── #}
 
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
@@ -312,6 +314,7 @@ function renderTable() {
       if (unqual) style += 'font-style:italic;';
       if (isRate && !unqual) style += 'font-weight:600;';
       var val = fmtVal(row[col.key], col.fmt);
+      if (col.key === 'name') val += rookieTag(row.player_id);
       if (isName && row.injured) {
         var ilLabel = row.injury_days
           ? ' <span style="font-size:10px;color:var(--red);">IL (' + row.injury_days + 'd)</span>'

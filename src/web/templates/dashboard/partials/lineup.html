@@ -1,4 +1,6 @@
 {# templates/dashboard/partials/lineup.html #}
+{% from "dashboard/partials/_rookie.html" import rk, rookie_script with context %}
+{{ rookie_script() }}
 
 {# ── Sticky header ─────────────────────────────────────────────────────────── #}
 <div id="lu-header" style="position:sticky;top:0;z-index:10;background:var(--bg);
@@ -608,7 +610,7 @@ function renderBattingOrder() {
         <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
         <div style="min-width:0;">
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
-               onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+               onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.bats}/${p.throws} · Age ${p.age}</span>
             ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}
           </div>
@@ -733,7 +735,7 @@ function renderFieldingTable() {
     }
     return `<div class="fd-row" style="cursor:pointer;" onclick="openPlayerPanel('${p.player_id}')">
       <span class="fd-pos">${POS_LABEL[pos]}</span>
-      <span class="fd-name filled">${p.first_name} ${p.last_name}${gradeHtml}</span>
+      <span class="fd-name filled">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${gradeHtml}</span>
       ${statsHtml}
     </div>`;
   }).join('');
@@ -832,7 +834,7 @@ function renderRoster() {
     card.innerHTML = `
       <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
       <div style="min-width:0;">
-        <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}
+        <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
           ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}
         </div>
         <div class="lu-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
@@ -1086,7 +1088,7 @@ function renderRotation() {
       <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
       <div style="min-width:0;">
         <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
-             onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+             onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
           ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}
           <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.throws} • Age ${p.age}</span>
         </div>
@@ -1264,7 +1266,7 @@ function renderBullpen() {
         <div style="display:flex;align-items:baseline;gap:8px;">
           <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
           <span class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
-                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}
+                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
             ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''} </span>`:''}
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.throws} • Age ${p.age}</span>
           </span>

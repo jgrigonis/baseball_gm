@@ -1,4 +1,5 @@
 {# templates/dashboard/partials/leaders.html #}
+{% from "dashboard/partials/_rookie.html" import rk with context %}
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:12px 24px;border-bottom:1px solid var(--border);">
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;">
@@ -70,7 +71,7 @@
         <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
                     color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.name }}
+          {{ row.name }}{{ rk(row.player_id) }}
         </div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
@@ -124,7 +125,7 @@
         <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
                     color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.name }}
+          {{ row.name }}{{ rk(row.player_id) }}
         </div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
@@ -178,7 +179,7 @@
         <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
                     color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.name }}
+          {{ row.name }}{{ rk(row.player_id) }}
         </div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
