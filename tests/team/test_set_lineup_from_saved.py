@@ -227,6 +227,28 @@ class TestSetLineupFromSaved:
         for p, pos in zip(starters, positions):
             assert by_pos[pos] == p.id
 
+    def test_hole_filled_by_best_all_around_player_not_best_glove(self):
+        """A bench pitcher who fields 2b better than the bench infielder but
+        can't hit must not be picked to fill the hole at 2b."""
+        positions = ["c", "1b", "3b", "ss", "lf", "cf", "rf", "dh"]  # no 2b
+        starters = [make_player(f"s{i}") for i in range(len(positions))]
+        bench_if = make_player("bench_if", ratings={"2b": 40, "overall_offense": 55})
+        reliever = make_player("reliever", ratings={"2b": 70, "overall_offense": 10})
+        reliever.pitcher_fatigue = MagicMock()
+        pitcher = make_player("pitcher")
+        team = make_team(starters + [bench_if, reliever, pitcher], pitcher=pitcher)
+
+        saved = [
+            saved_slot(p.id, order, pos)
+            for order, (p, pos) in enumerate(zip(starters, positions), start=1)
+        ]
+        available = starters + [bench_if, reliever]
+
+        team._set_lineup_from_saved(saved, available, "prioritized", dh=True)
+
+        by_pos = {s.position: s.player.id for s in team.lineup}
+        assert by_pos["2b"] == "bench_if"
+
     def test_set_lineup_covers_every_position_after_trade(self):
         """End to end through set_lineup: every position the game asks for
         (team.current_third_baseman etc.) resolves instead of raising."""
