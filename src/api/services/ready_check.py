@@ -14,6 +14,10 @@
 # What a period does depends on the league's state: sim_period_days of the
 # regular season, one playoff day, the offseason, or the draft.
 #
+# In leagues that trade, the period that reaches the trade deadline stops
+# after deadline day's games, and the next window is
+# TRADE_DEADLINE_WINDOW_MULTIPLIER times as long, for last-minute deals.
+#
 # In the playoffs, a GM whose team didn't make it, or has been knocked out,
 # counts as away. With no GM left who isn't away, nobody has a decision to
 # make, so the playoffs sim straight through without waiting on the clock.
@@ -38,6 +42,8 @@ from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.league import trade_deadline
+from src.league.league_constants import TRADE_DEADLINE_WINDOW_MULTIPLIER
 
 log = logging.getLogger(__name__)
 
@@ -86,9 +92,11 @@ def _due(period: dict, gms: list[dict]) -> bool:
     )
 
 
-def _run_period(conn, league_id: str, state: str, days: int) -> None:
+def _run_period(conn, league_id: str, state: str, days: int) -> bool:
+    """Run one period. Returns True if the sim stopped at the trade deadline,
+    so the next period gets the longer deadline window."""
     if state in ("preseason", "season"):
-        sim_days(league_id, conn, days)
+        return sim_days(league_id, conn, days).get("trade_deadline", False)
     elif state == "playoffs":
         sim_playoff(league_id, conn, mode="game")
     elif state == "offseason":
@@ -97,6 +105,7 @@ def _run_period(conn, league_id: str, state: str, days: int) -> None:
         draft = DraftRepository(conn).get_current_for_league(league_id)
         if draft and draft["state"] != "complete":
             execute_blitz_draft(draft["id"], conn)
+    return False
 
 
 def advance_if_due(conn, league_id: str) -> bool:
@@ -141,8 +150,15 @@ def advance_if_due(conn, league_id: str) -> bool:
                     now["sim_period"],
                     now["state"],
                 )
-                _run_period(conn, league_id, now["state"], now["sim_period_days"])
-                repo.next_period(league_id)
+                at_deadline = _run_period(
+                    conn, league_id, now["state"], now["sim_period_days"]
+                )
+                repo.next_period(
+                    league_id,
+                    window_multiplier=TRADE_DEADLINE_WINDOW_MULTIPLIER
+                    if at_deadline
+                    else 1,
+                )
                 conn.commit()
                 now = repo.period(league_id)
                 if not _nobody_present(now, _gms(conn, league_id, now["state"])):
@@ -160,6 +176,10 @@ def status(conn, league_id: str, gm_id: str) -> dict:
     gms = _gms(conn, league_id, period["state"])
     me = next((g for g in gms if g["id"] == gm_id), None)
     seconds_left = period["seconds_left"]
+    league = {"mode": period["mode"], "state": period["state"]}
+    trades = trade_deadline.window(
+        conn, league, SeasonRepository(conn).get_current_id_for_league(league_id)
+    )
     return {
         "multiplayer": True,
         "pace": period["pace_control"],
@@ -171,6 +191,8 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         if seconds_left is not None
         else None,
         "simming": league_busy(conn, league_id),
+        # The sim stopped after deadline day's games: last chance to trade.
+        "trade_deadline": trades["open"] and trades["deadline_day"],
         "you_ready": bool(me and me["ready"]),
         "you_away": bool(me and me["is_away"] and not me["out"]),
         "you_out": bool(me and me["out"]),

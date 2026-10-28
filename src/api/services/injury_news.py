@@ -85,6 +85,8 @@ def take_injury_news(conn, gm_id: str) -> dict:
     return {
         "new_injuries": [_fields(n) for n in news if n["kind"] == "injury"],
         "returned": [_fields(n) for n in news if n["kind"] == "returned"],
+        # Players the game moved to keep the roster between 25 and 40
+        "roster_moves": [_fields(n) for n in news if n["kind"] == "roster"],
     }
 
 

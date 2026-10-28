@@ -216,6 +216,12 @@ class RosterSaveRequest(BaseModel):
     forty_man: list[str] = []
 
 
+class TradeOfferRequest(BaseModel):
+    to_team_id: str
+    give: list[str] = []  # player ids from the GM's own team
+    get: list[str] = []  # player ids from to_team_id
+
+
 class DraftPreferencesRequest(BaseModel):
     player_ids: list[str] = []
 

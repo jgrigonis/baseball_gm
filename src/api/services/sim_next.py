@@ -24,6 +24,8 @@ from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
+from src.league import trade_deadline
+from src.team.roster_limits import enforce_roster_limits
 from src.league.playoffs.setup_playoffs import setup_playoff_bracket
 from src.league.offseason.build_season_stats import build_season
 
@@ -135,6 +137,11 @@ def sim_next_day(league_id: str, conn) -> dict:
     results = []
     errors = []
 
+    # Rosters below the minimum or over the limit, e.g. after a trade, are
+    # fixed before anyone plays.
+    for team_id in team_ids:
+        enforce_roster_limits(conn, league_id, team_id, league_mode)
+
     # Snapshot the human teams' injuries so each GM hears about changes
     injury_news = InjuryNews(conn, league_id)
 
@@ -210,16 +217,24 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     """
     Play the next ``count`` days of the regular season, or the rest of it
     when count is "season". When the season ends, sets up the playoffs.
-    Returns a summary of what was played.
+    Stops early after the games of trade deadline day, in leagues that
+    trade, so every GM gets a last look. Returns a summary of what was played.
     """
     season_repo = SeasonRepository(conn)
     game_repo = GameRepository(conn)
 
+    season_id = season_repo.get_current_id_for_league(league_id)
     results = []
-    remaining = game_repo.games_remaining(
-        season_repo.get_current_id_for_league(league_id)
-    )
+    remaining = game_repo.games_remaining(season_id)
     limit = remaining if count == "season" else min(int(count), remaining)
+
+    league = LeagueRepository(conn).get_by_id(league_id)
+    deadline = (
+        trade_deadline.deadline_date(conn, season_id)
+        if league and trade_deadline.trades_enabled_for(league["mode"])
+        else None
+    )
+    at_deadline = False
 
     for _ in range(limit):
         day_result = sim_next_day(league_id, conn)
@@ -231,6 +246,9 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
             break
         # Stop if no games played and it wasn't a transient error
         if gp == 0 and not day_result.get("errors"):
+            break
+        if deadline and day_result["game_date"] == deadline:
+            at_deadline = True
             break
 
     new_remaining = game_repo.games_remaining(
@@ -246,4 +264,5 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         "games_played": sum(r.get("games_played", 0) for r in results),
         "games_remaining": new_remaining,
         "last_date": results[-1]["game_date"] if results else None,
+        "trade_deadline": at_deadline,
     }

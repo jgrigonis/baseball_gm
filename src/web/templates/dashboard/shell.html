@@ -213,8 +213,8 @@ window.closeGamePanel = function() {
 {% if visible_tabs %}
 <nav class="tab-bar" id="tab-bar">
   {% for tab in visible_tabs %}
-  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛'} %}
-  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy'} %}
+  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁'} %}
+  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades'} %}
   {% if tab == 'draft' and draft_complete %}
   <a href="/leagues/{{ league_id }}/draft/results"
      class="tab-link {% if active_tab == 'draft' %}active{% endif %}"
@@ -333,6 +333,12 @@ function showInjuryNews(d) {
     } else if (injDest !== 'roster' && d.returned.some(i => i.is_pitcher)) {
       injDest = 'pitching';
     }
+  }
+  if (d.roster_moves && d.roster_moves.length > 0) {
+    injNews += (injNews ? '  ' : '') + d.roster_moves.map(m =>
+      m.to === '40man' ? `⇡ ${m.name} called up to fill your 40-man`
+                       : `⇣ ${m.name} sent down, 40-man was full`).join('  ');
+    injDest = 'roster';
   }
   setInjuryNews(injNews, injDest);  // clears if empty, shows if not
   return !!injNews;

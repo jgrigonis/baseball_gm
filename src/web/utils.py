@@ -13,6 +13,7 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.league_modes import injuries_allowed
+from src.league.trade_deadline import trades_enabled_for
 
 # Templates are in src/web/templates/ relative to the project root
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -197,6 +198,14 @@ def _shell_ctx(
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)
+            # Leagues that trade get a Trades tab once the draft is done, next
+            # to the roster. It stays for the trade history once trades close.
+            if (
+                draft_complete
+                and "roster" in tabs
+                and trades_enabled_for(league["mode"])
+            ):
+                tabs.insert(tabs.index("roster") + 1, "trades")
             if ctx["is_viewer"]:
                 tabs = _viewer_tabs(tabs, draft_complete)
             # Now we have the state, so calculate visibility automatically

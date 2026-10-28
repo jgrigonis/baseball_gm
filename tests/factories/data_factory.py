@@ -118,6 +118,44 @@ class TestDataFactory:
         )
         return SimpleNamespace(id=player_id)
 
+    def rated_player(
+        self,
+        team,
+        league,
+        level=50,
+        status="40man",
+        pitcher=False,
+        age=27,
+        name="Player",
+    ):
+        """A player on a team with every skill at `level`, so each of his
+        ratings comes out at about `level`."""
+        player_id = self._id()
+        self.db.execute(
+            "INSERT INTO players (id, first_name, last_name, bats, throws, position, league_id)"
+            " VALUES (%s, 'Test', %s, 'R', 'R', %s, %s)",
+            (player_id, name, "sp" if pitcher else "1b", league.id),
+        )
+        self.db.execute(
+            """INSERT INTO player_skills
+               (player_id, age, durability, strikes, stamina, recovery, accuracy, clutch,
+                speed, power, arm, eye, contact, base_running,
+                bunting, catching, infield, outfield, ground_balls)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                       %s, %s, %s, %s, %s)""",
+            (player_id, age, *([level] * 17)),
+        )
+        self.db.execute(
+            "INSERT INTO player_status (player_id, status, since)"
+            " VALUES (%s, %s, '2025-01-01')",
+            (player_id, status),
+        )
+        self.db.execute(
+            "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s)",
+            (team.id, player_id),
+        )
+        return SimpleNamespace(id=player_id)
+
     def player_row(self, player_id=None):
         """Insert a bare player row (no skills/status) for FK satisfaction."""
         player_id = player_id or self._id()

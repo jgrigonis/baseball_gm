@@ -20,6 +20,7 @@ from src.db.locks import league_lock
 def run_period():
     """Stands in for the sim itself; these tests are about when it runs."""
     with patch.object(ready_check, "_run_period") as run:
+        run.return_value = False  # didn't stop at the trade deadline
         yield run
 
 
@@ -193,6 +194,27 @@ def test_next_window_starts_when_the_period_ends(db_conn, factory, run_period):
     assert 55 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 60
 
 
+def test_the_window_after_the_trade_deadline_is_three_times_as_long(
+    db_conn, factory, run_period
+):
+    league, (a, b) = _league(db_conn, factory, window=60)
+    run_period.return_value = True  # the sim stopped at the trade deadline
+    for gm in (a, b):
+        ready_check.set_ready(db_conn, league.id, gm.id, True)
+    ready_check.advance_if_due(db_conn, league.id)
+    assert 175 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 180
+
+
+def _moves_to(state):
+    """A stand-in period that moves the league to `state`."""
+
+    def run(conn, league_id, *_):
+        conn.execute("UPDATE leagues SET state = %s WHERE id = %s", (state, league_id))
+        return False  # didn't stop at the trade deadline
+
+    return run
+
+
 class TestWhichWindow:
     """The draft gets the Draft Window and the preseason period, when GMs set
     their first lineup, gets the Lineup Window."""
@@ -217,9 +239,7 @@ class TestWhichWindow:
     ):
         league, (a, b) = _league(db_conn, factory, state="draft")
         self._set_windows(db_conn, league)
-        run_period.side_effect = lambda conn, league_id, *_: conn.execute(
-            "UPDATE leagues SET state = 'preseason' WHERE id = %s", (league_id,)
-        )
+        run_period.side_effect = _moves_to("preseason")
         for gm in (a, b):
             ready_check.set_ready(db_conn, league.id, gm.id, True)
         assert ready_check.advance_if_due(db_conn, league.id)
@@ -230,9 +250,7 @@ class TestWhichWindow:
     def test_season_uses_the_decision_window(self, db_conn, factory, run_period):
         league, (a, b) = _league(db_conn, factory, state="preseason")
         self._set_windows(db_conn, league)
-        run_period.side_effect = lambda conn, league_id, *_: conn.execute(
-            "UPDATE leagues SET state = 'season' WHERE id = %s", (league_id,)
-        )
+        run_period.side_effect = _moves_to("season")
         for gm in (a, b):
             ready_check.set_ready(db_conn, league.id, gm.id, True)
         assert ready_check.advance_if_due(db_conn, league.id)

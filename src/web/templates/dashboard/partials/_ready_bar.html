@@ -58,6 +58,7 @@ function render() {
     btn.disabled = true;
   } else {
     var parts = [PHASES[d.league_state] + ' · period ' + d.period];
+    if (d.trade_deadline) parts.unshift('⏰ Trade deadline: last chance to trade');
     if (deadline !== null) {
       var left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
       parts.push('next sim in ' + fmt(left));

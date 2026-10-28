@@ -227,12 +227,13 @@ CREATE TABLE IF NOT EXISTS gms (
     FOREIGN KEY (team_id)   REFERENCES teams(id)   ON DELETE SET NULL
 );
 
--- News for one GM, e.g. a player on their team got hurt during a sim. Kept
+-- News for one GM, e.g. a player on their team got hurt during a sim, or the
+-- game moved a player to keep the roster legal (roster). Kept
 -- per GM so everyone sees their own news, whoever ran the sim.
 CREATE TABLE IF NOT EXISTS gm_notifications (
     id         SERIAL PRIMARY KEY,
     gm_id      TEXT NOT NULL,
-    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned')),
+    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster')),
     payload    JSONB NOT NULL,
     created_at TEXT NOT NULL DEFAULT (NOW()),
     seen_at    TEXT,                  -- NULL until shown to the GM
@@ -611,6 +612,45 @@ CREATE TABLE IF NOT EXISTS draft_strategies (
     FOREIGN KEY (draft_id) REFERENCES drafts(id) ON DELETE CASCADE
 );
 
+-- Trades. One row per offer from one team to another (see
+-- src/api/services/trades.py). created_on is the league date it was made,
+-- which the AI uses so the same offer gets the same answer all day.
+CREATE TABLE IF NOT EXISTS trade_offers (
+    id           TEXT PRIMARY KEY,
+    league_id    TEXT NOT NULL,
+    season_id    TEXT NOT NULL,
+    from_team_id TEXT NOT NULL,
+    to_team_id   TEXT NOT NULL,
+    from_gm_id   TEXT,
+    status       TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
+                     'pending', 'accepted', 'rejected', 'countered',
+                     'withdrawn', 'expired', 'void'
+                 )),
+    reason       TEXT,              -- the answer shown to the proposer
+    created_on   TEXT NOT NULL,     -- league date (ISO)
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    decided_at   TIMESTAMPTZ,
+
+    FOREIGN KEY (league_id)    REFERENCES leagues(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id)    REFERENCES seasons(id) ON DELETE CASCADE,
+    FOREIGN KEY (from_team_id) REFERENCES teams(id)   ON DELETE CASCADE,
+    FOREIGN KEY (to_team_id)   REFERENCES teams(id)   ON DELETE CASCADE,
+    FOREIGN KEY (from_gm_id)   REFERENCES gms(id)     ON DELETE SET NULL
+);
+
+-- The players in an offer. from_team_id is the side giving the player up.
+CREATE TABLE IF NOT EXISTS trade_offer_items (
+    offer_id     TEXT NOT NULL,
+    player_id    TEXT NOT NULL,
+    from_team_id TEXT NOT NULL,
+
+    PRIMARY KEY (offer_id, player_id),
+
+    FOREIGN KEY (offer_id)     REFERENCES trade_offers(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id)    REFERENCES players(id)      ON DELETE CASCADE,
+    FOREIGN KEY (from_team_id) REFERENCES teams(id)        ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS gm_lineup_preferences (
     gm_id        TEXT NOT NULL,
     player_id    TEXT NOT NULL,
@@ -950,6 +990,18 @@ CREATE INDEX IF NOT EXISTS idx_pick_rights_league_year
 
 CREATE INDEX IF NOT EXISTS idx_pick_rights_owner
     ON draft_pick_rights(current_owner_id);
+
+CREATE INDEX IF NOT EXISTS idx_trade_offers_league
+    ON trade_offers(league_id, season_id);
+
+CREATE INDEX IF NOT EXISTS idx_trade_offer_items_player
+    ON trade_offer_items(player_id);
+
+CREATE INDEX IF NOT EXISTS idx_trade_offers_season    ON trade_offers(season_id);
+CREATE INDEX IF NOT EXISTS idx_trade_offers_from_team ON trade_offers(from_team_id);
+CREATE INDEX IF NOT EXISTS idx_trade_offers_to_team   ON trade_offers(to_team_id);
+CREATE INDEX IF NOT EXISTS idx_trade_offers_from_gm   ON trade_offers(from_gm_id);
+CREATE INDEX IF NOT EXISTS idx_trade_offer_items_team ON trade_offer_items(from_team_id);
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
