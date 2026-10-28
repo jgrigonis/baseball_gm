@@ -12,7 +12,7 @@ from fastapi.exception_handlers import (
     http_exception_handler as default_http_exception_handler,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routers import (
@@ -121,11 +121,15 @@ for _module in (
     app.include_router(_module.router)
 
 # Static files
-app.mount(
-    "/static",
-    StaticFiles(directory=Path(__file__).resolve().parents[1] / "web" / "static"),
-    name="static",
-)
+STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    # Pages link the SVG icon; this answers browsers and tools that ask for
+    # /favicon.ico directly, e.g. when opening a JSON endpoint.
+    return FileResponse(STATIC_DIR / "img" / "apple-touch-icon.png")
 
 
 @app.get("/health", tags=["meta"])
