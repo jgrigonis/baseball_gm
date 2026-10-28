@@ -220,6 +220,8 @@ def fielding_lines(def_rows: list) -> list:
                 "PO": po,
                 "A": a,
                 "E": e,
+                "DP": r["dp"] or 0,
+                "TP": r["tp"] or 0,
                 "PB": r["pb"] if r["pb"] else None,
                 "FPCT": fpct,
             }

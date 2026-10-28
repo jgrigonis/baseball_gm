@@ -11,6 +11,8 @@ class FieldingStats:
     assists: int = 0
     errors: int = 0
     chances: int = 0  # putouts + assists + errors
+    double_plays: int = 0  # turned or took part in
+    triple_plays: int = 0
 
     # Catcher-specific
     passed_balls: int = 0
@@ -26,6 +28,8 @@ class FieldingStats:
             f"  A: {self.assists}\n"
             f"  E: {self.errors}\n"
             f"  TC: {self.chances}\n"
+            f"  DP: {self.double_plays}\n"
+            f"  TP: {self.triple_plays}\n"
             f"  FPCT: {self.fielding_percentage:.3f}"
         )
 
@@ -58,6 +62,15 @@ class FieldingStats:
         """Add an error."""
         self.errors += 1
         self.chances += 1
+
+    def double_play(self):
+        """Credit taking part in a double play (each fielder with a putout or
+        assist on it gets one)."""
+        self.double_plays += 1
+
+    def triple_play(self):
+        """Credit taking part in a triple play."""
+        self.triple_plays += 1
 
     def passed_ball(self):
         """Add a passed ball."""

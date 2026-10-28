@@ -387,6 +387,8 @@ CREATE TABLE IF NOT EXISTS player_season_stats (
     field_passed_balls      INTEGER NOT NULL DEFAULT 0,
     field_catcher_cs        INTEGER NOT NULL DEFAULT 0,
     field_catcher_sb        INTEGER NOT NULL DEFAULT 0,
+    field_double_plays      INTEGER NOT NULL DEFAULT 0,
+    field_triple_plays      INTEGER NOT NULL DEFAULT 0,
  
     PRIMARY KEY (player_id, season_id, team_id, is_postseason),
  
@@ -861,6 +863,8 @@ CREATE TABLE IF NOT EXISTS player_game_fielding (
     catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
     catcher_cs            INTEGER CHECK (catcher_cs >= 0),
     catcher_sb            INTEGER CHECK (catcher_sb >= 0),
+    double_plays          INTEGER DEFAULT 0 CHECK (double_plays >= 0),
+    triple_plays          INTEGER DEFAULT 0 CHECK (triple_plays >= 0),
 
     PRIMARY KEY (game_id, player_id, position),
 
@@ -930,6 +934,8 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     catcher_interferences INTEGER CHECK (catcher_interferences >= 0),
     catcher_cs INTEGER CHECK (catcher_cs >= 0),
     catcher_sb INTEGER CHECK (catcher_sb >= 0),
+    field_double_plays INTEGER DEFAULT 0 CHECK (field_double_plays >= 0),
+    field_triple_plays INTEGER DEFAULT 0 CHECK (field_triple_plays >= 0),
 
     PRIMARY KEY (game_id, player_id),
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,

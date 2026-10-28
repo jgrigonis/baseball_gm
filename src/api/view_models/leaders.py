@@ -292,6 +292,7 @@ def defense_leaders(
                 "PO": po,
                 "A": a,
                 "E": e,
+                "DP": r["dp"] or 0,
                 "PB": pb,
                 "PB/G": round(pb / g, 2) if g else 0.0,
                 "FPCT": fpct,
@@ -343,6 +344,8 @@ def defense_leaders(
         )
         def_cats.append(def_card(f"{pos_label} PO", "PO", pool))
         def_cats.append(def_card(f"{pos_label} A", "A", pool))
+        if pos_val in ("1B", "2B", "3B", "SS"):
+            def_cats.append(def_card(f"{pos_label} DP", "DP", pool))
         if pos_val == "C":
             def_cats.append(
                 def_card("C PB/G", "PB/G", q_pool, asc=True, fmt=lambda v: f"{v:.2f}")

@@ -96,3 +96,16 @@ class PutOutEvent(GameEvent):
                 f" {self.assist.name} ({self.assist.current_position}) with the assist"
             )
         return msg
+
+
+def fielders_on(events) -> tuple[PlayerInGame, ...]:
+    """Every fielder with a putout or assist among these events, once each,
+    in the order they handled the ball."""
+    fielders: list[PlayerInGame] = []
+    for e in events:
+        if not isinstance(e, PutOutEvent):
+            continue
+        for p in (e.assist, e.fielder):
+            if p is not None and not any(p is f for f in fielders):
+                fielders.append(p)
+    return tuple(fielders)

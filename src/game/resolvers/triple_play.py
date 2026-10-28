@@ -2,7 +2,7 @@
 
 from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
-from src.game.events.out import PutOutEvent, OutRecordedEvent
+from src.game.events.out import PutOutEvent, OutRecordedEvent, fielders_on
 from src.game.events.runners import RunnerRemovedEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
@@ -29,7 +29,6 @@ def resolve_triple_play(resolver, intent, game):
         )
 
     events: list[GameEvent] = []
-    events.append(TriplePlayEvent(batter=intent.batter))
 
     if game.bases.is_loaded:
         r = resolver.rng.random()
@@ -94,6 +93,9 @@ def resolve_triple_play(resolver, intent, game):
                     RunnerRemovedEvent(game.bases.runner_on(base), base, "triple_play")
                 )
 
+    events.insert(
+        0, TriplePlayEvent(batter=intent.batter, fielders=fielders_on(events))
+    )
     events.extend(
         [
             OutRecordedEvent(reason="triple_play", pitcher=intent.pitcher),
