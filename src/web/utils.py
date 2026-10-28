@@ -11,6 +11,7 @@ from src.api.services.ready_check import is_multiplayer
 from src.api.view_models.league_info import league_info
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.league_modes import injuries_allowed
@@ -261,5 +262,13 @@ def _shell_ctx(
                 ),
             }
         )
+    # Rookies get an (R) by their name. Status goes by the newest season, so a
+    # player drafted this offseason shows as a rookie straight away.
+    newest = sr.get_newest_for_league(league_id) if league_id else None
+    ctx["rookie_ids"] = (
+        PlayerSeasonStatsRepository(db).get_rookie_ids(league_id, newest["id"])
+        if newest
+        else set()
+    )
     db.commit()
     return ctx

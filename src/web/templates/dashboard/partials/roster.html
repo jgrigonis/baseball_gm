@@ -1,4 +1,6 @@
 {# templates/dashboard/partials/roster.html #}
+{% from "dashboard/partials/_rookie.html" import rk, rookie_script with context %}
+{{ rookie_script() }}
 
 {# ── Sticky header ─────────────────────────────────────────────────────────── #}
 <div id="roster-header" style="position:sticky;top:0;z-index:10;background:var(--bg);
@@ -515,7 +517,7 @@ function makeCard(p, isIn40) {
     <span class="r-ovr ${gradeClass(p.overall)}">${p.overall}</span>
     <div style="min-width:0;">
       <div class="r-name" style="color:${p.injured?'var(--red)':''};">
-        ${p.first_name} ${p.last_name}
+        ${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
         ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}
       </div>
       <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>

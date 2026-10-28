@@ -776,3 +776,6 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .admin-value { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-dim); }
 .admin-section { margin-top: 32px; }
 .admin-check input[type=checkbox] { width: auto; flex: none; margin: 0; }
+
+/* The (R) after a rookie's name. */
+.rookie-tag { font-family: var(--font-mono); font-size: 0.75em; font-weight: 600; color: var(--amber); margin-left: 4px; white-space: nowrap; }

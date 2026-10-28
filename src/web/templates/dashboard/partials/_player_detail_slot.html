@@ -3,12 +3,13 @@
   grades is a list of {section, skills:[{key,label,grade}]}
   Sections are ordered by player_type: pitching first for pitchers, hitting first for hitters.
 #}
+{% from "dashboard/partials/_rookie.html" import rk with context %}
 
 {# ── Identity ──────────────────────────────────────────────────────────────── #}
 <div class="pd-identity">
  <div>
    <div class="pd-name">
-     {{ player.first_name }} {{ player.last_name }}
+     {{ player.first_name }} {{ player.last_name }}{{ rk(player.player_id) }}
      <button onclick="openCareerPage('{{ player.player_id }}')"
              style="font-size:10px;font-weight:400;color:var(--text-dim);margin-left:8px;background:none;border:none;cursor:pointer;padding:0;font-family:var(--font-mono);">
        Career →
