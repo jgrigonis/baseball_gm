@@ -96,7 +96,9 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "regular only for a bench player who's close to him and has the "
                 "better matchup. Aggressive plays the best matchup lineup. Used "
                 "by Auto-fill, Rebuild and the AI, and to fill gaps in your "
-                "saved lineups; a lineup you save is played as you set it.",
+                "saved lineups; a lineup you save is played as you set it. With "
+                "None, Auto-fill and Rebuild still build your vs RHP and vs LHP "
+                "lineups as vs Handedness does.",
             ),
         ),
     ),

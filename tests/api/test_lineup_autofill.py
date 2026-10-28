@@ -106,23 +106,36 @@ def test_profile_comes_from_the_strategy_tab(db_conn, factory):
     assert repo.get_team_profile(factory.team().id, league.id) is None
 
 
-def test_platoon_setting_uses_the_hand_of_the_starter(db_conn, factory, team_setup):
+@pytest.mark.parametrize("platoon", ["none", "vs-handedness", "aggressive"])
+def test_platoon_setting_uses_the_hand_of_the_starter(
+    db_conn, factory, team_setup, platoon
+):
     """A lefty bat just behind the regulars (the worst of whom is rated 52)
-    plays against a righty starter under the aggressive platoon setting, and
-    not against a lefty or with platoons off."""
+    plays against a righty starter and not against a lefty, whatever the
+    platoon setting: with platoons off, a lineup built for one hand platoons
+    as vs-handedness does."""
     league, team, hitters, *_ = team_setup
     lefty = factory.rated_player(team, league, 51, status="26man", name="Lefty")
     db_conn.execute("UPDATE players SET bats = 'L' WHERE id = %s", (lefty.id,))
     gm_id = db_conn.execute(
         "SELECT id FROM gms WHERE team_id = %s", (team.id,)
     ).fetchone()["id"]
-    off = autofill(db_conn, league.id, team.id, [None] * 9, True, vs_hand="R")
-    assert lefty.id not in ids(off)
-
-    GMRepository(db_conn).save_profile(gm_id, {"platoon_usage": "aggressive"})
+    GMRepository(db_conn).save_profile(gm_id, {"platoon_usage": platoon})
 
     vs_r = autofill(db_conn, league.id, team.id, [None] * 9, True, vs_hand="R")
     vs_l = autofill(db_conn, league.id, team.id, [None] * 9, True, vs_hand="L")
 
     assert lefty.id in ids(vs_r)
     assert lefty.id not in ids(vs_l)
+
+
+def test_a_regular_keeps_his_spot_over_a_weak_platoon_bat(db_conn, factory, team_setup):
+    """With platoons off, the vs-handedness regular's bonus still keeps a
+    regular in over a bench bat from the other side who isn't close."""
+    league, team, hitters, *_ = team_setup
+    lefty = factory.rated_player(team, league, 40, status="26man", name="Lefty")
+    db_conn.execute("UPDATE players SET bats = 'L' WHERE id = %s", (lefty.id,))
+
+    vs_r = autofill(db_conn, league.id, team.id, [None] * 9, True, vs_hand="R")
+
+    assert lefty.id not in ids(vs_r)
