@@ -14,7 +14,7 @@ import random
 
 import psycopg
 
-from src.api.services import ai_trades, trades
+from src.api.services import ai_trades, team_states, trades
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
@@ -262,6 +262,10 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         # Stop if no games played and it wasn't a transient error
         if gp == 0 and not day_result.get("errors"):
             break
+        # Front offices take stock every week or so (team states).
+        if gp > 0:
+            team_states.refresh_if_due(conn, league_id, day_result["game_date"])
+            conn.commit()
         # AI teams make offers and trades between game days.
         if deadline and gp > 0:
             ai_trades.after_day(conn, league_id, day_result["game_date"])

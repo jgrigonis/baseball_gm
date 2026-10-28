@@ -26,8 +26,8 @@ def _roster(level=58):
     return [_p(level) for _ in range(13)] + [_p(level, pitcher=True) for _ in range(13)]
 
 
-def _judge(roster, giving, getting, stance="neutral", days_left=60):
-    return evaluate(roster, giving, getting, stance, days_left, 0.08)
+def _judge(roster, giving, getting, state="retooling", days_left=60):
+    return evaluate(roster, giving, getting, state, days_left, 0.08)
 
 
 def test_trading_up_is_accepted():
@@ -57,8 +57,8 @@ def test_a_fourth_good_bench_bat_is_worth_little():
 def test_an_injured_player_is_worth_less_now():
     # Out for the rest of the season: a contender won't take him.
     roster = _roster()
-    healthy = _judge(roster, [roster[0]], [_p(62)], stance="contender")
-    hurt = _judge(roster, [roster[0]], [_p(62, injured_days=70)], stance="contender")
+    healthy = _judge(roster, [roster[0]], [_p(62)], state="contending")
+    hurt = _judge(roster, [roster[0]], [_p(62, injured_days=70)], state="contending")
     assert healthy.accept
     assert not hurt.accept
     assert "hurt" in hurt.reason
@@ -66,7 +66,7 @@ def test_an_injured_player_is_worth_less_now():
 
 def test_a_contender_wont_get_worse_this_season():
     roster = _roster()
-    verdict = _judge(roster, [roster[0]], [_p(57, age=21)], stance="contender")
+    verdict = _judge(roster, [roster[0]], [_p(57, age=21)], state="contending")
     assert not verdict.accept
     assert "race" in verdict.reason
 
@@ -74,8 +74,8 @@ def test_a_contender_wont_get_worse_this_season():
 def test_a_seller_takes_youth_for_a_veteran():
     vet = _p(64, age=34)
     roster = _roster() + [vet]
-    assert _judge(roster, [vet], [_p(62, age=22)], stance="seller").accept
-    assert not _judge(roster, [vet], [_p(62, age=22)], stance="contender").accept
+    assert _judge(roster, [vet], [_p(62, age=22)], state="rebuilding").accept
+    assert not _judge(roster, [vet], [_p(62, age=22)], state="contending").accept
 
 
 def test_the_margin_is_the_same_all_day_and_moves_between_days():

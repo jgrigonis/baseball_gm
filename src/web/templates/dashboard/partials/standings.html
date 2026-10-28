@@ -55,6 +55,7 @@
             <th style="text-align:center;">RS</th>
             <th style="text-align:center;">RA</th>
             <th style="text-align:center;">Streak</th>
+            <th title="Where each front office sees its team">Direction</th>
           </tr>
         </thead>
         <tbody>
@@ -93,6 +94,9 @@
               </span>
               {% else %}<span style="color:var(--muted);">—</span>{% endif %}
             </td>
+            <td class="mono dim" style="font-size:11px;white-space:nowrap;">
+              {% if team.state_label %}<span class="team-state team-state-{{ team.state }}">{{ team.state_label }}</span>{% else %}<span style="color:var(--muted);">—</span>{% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -101,6 +105,13 @@
 
     {# ── Right sidebar ────────────────────────────────────────────────── #}
     <div style="display:flex;flex-direction:column;gap:12px;">
+
+      {# The front office's read on the GM's team (team state) #}
+      {% if my_state %}
+      <div class="card" style="padding:10px 14px;font-size:12px;color:var(--text-dim);">
+        The front office sees {{ my_state }}.
+      </div>
+      {% endif %}
 
       {# Recent results #}
       {% if recent_games %}
@@ -188,6 +199,9 @@
 .dim  { color: var(--text-dim); }
 /* Give the table more room; sidebar stays fixed */
 .standings-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
+/* Team states: buyers green, sellers amber, the rest plain */
+.team-state-all-in, .team-state-contending { color: var(--green); }
+.team-state-rebuilding, .team-state-aging-out { color: var(--amber); }
 </style>
 
 {% include "dashboard/partials/_play_script.html" %}

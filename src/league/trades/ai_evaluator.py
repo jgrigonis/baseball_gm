@@ -10,8 +10,9 @@
 # and 5 starters count in full, the bench and bullpen less, the rest barely.
 # The AI scores the deal twice, for this season (injured players count for the
 # share of the season they'll be back for) and for the future (ratings moved by
-# the age curve), and blends the two by its stance: a contender cares about
-# now, a seller about later. A draft pick counts as the prospect it's expected
+# the age curve), and blends the two by its team state
+# (src/league/team_state.py): a contender cares about now, a rebuilding team
+# about later. A draft pick counts as the prospect it's expected
 # to bring, for the future only.
 #
 # It accepts if the gain beats a margin of what it gives up. The margin moves a
@@ -26,6 +27,7 @@ import random
 from dataclasses import dataclass, field
 from functools import cached_property
 
+from src.league.team_state import BUYERS, SELLERS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.player.player_value import RELIEVER_DISCOUNT
@@ -39,11 +41,14 @@ HITTER_DEPTH = [1.0] * 9 + [0.35] * 4 + [0.1] * 4
 STARTER_DEPTH = [1.0] * 5
 RELIEVER_DEPTH = [0.5] * 8 + [0.1] * 3
 
-# Blend of (now, future) by stance.
-STANCE_WEIGHTS = {
-    "contender": (0.8, 0.2),
-    "neutral": (0.5, 0.5),
-    "seller": (0.2, 0.8),
+# Blend of (now, future) by team state.
+STATE_WEIGHTS = {
+    "all-in": (0.95, 0.05),
+    "contending": (0.8, 0.2),
+    "retooling": (0.55, 0.45),
+    "ramping-up": (0.35, 0.65),
+    "rebuilding": (0.15, 0.85),
+    "aging-out": (0.3, 0.7),
 }
 
 BASE_MARGIN = 0.08
@@ -173,7 +178,7 @@ def evaluate(
     roster: list[Asset],
     giving: list[Asset],
     getting: list[Asset],
-    stance: str,
+    state: str,
     days_left: int,
     margin_share: float,
     base: tuple[float, float] | None = None,
@@ -181,7 +186,7 @@ def evaluate(
     """Judge a deal from the AI team's side. roster is its whole organization
     today; giving is what it would send, getting what it would receive. base
     is the roster's (now, future) strength, when the caller already has it."""
-    w_now, w_future = STANCE_WEIGHTS[stance]
+    w_now, w_future = STATE_WEIGHTS[state]
     give_ids = {a.id for a in giving}
     after = [a for a in roster if a.id not in give_ids] + list(getting)
     if base is None:
@@ -204,21 +209,21 @@ def evaluate(
         return Verdict(True, "Deal.", score, threshold, details)
     return Verdict(
         False,
-        _reason(giving, getting, stance, d_now, d_future, score, days_left),
+        _reason(giving, getting, state, d_now, d_future, score, days_left),
         score,
         threshold,
         details,
     )
 
 
-def _reason(giving, getting, stance, d_now, d_future, score, days_left) -> str:
+def _reason(giving, getting, state, d_now, d_future, score, days_left) -> str:
     best = max(giving, key=lambda a: a.rating) if giving else None
     hurt = [a for a in getting if a.injured_days > days_left / 2]
     if hurt:
         return f"We can't take on {hurt[0].name} while he's hurt."
-    if stance == "contender" and d_now < 0:
+    if state in BUYERS and d_now < 0:
         return "We're in the race. This makes us worse this season."
-    if stance == "seller" and d_future < 0:
+    if state in SELLERS and d_future < 0:
         return "We're building for later. We'd want younger talent back."
     if len(getting) > len(giving) and d_now <= 0:
         return "That's a lot of players for not much. We'd rather have one good one."

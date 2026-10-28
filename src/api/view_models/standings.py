@@ -9,6 +9,8 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.standings_repo import StandingsRepository
+from src.db.repositories.team_state_repo import TeamStateRepository
+from src.league import team_state
 
 
 def calc_streak(results: list) -> str:
@@ -35,6 +37,8 @@ def standings_rows(
     ha_map = st_repo.get_home_away_splits(season_id)
     human_team_ids = gm_repo.get_human_team_ids(league_id)
     recent_rows = st_repo.get_recent_results(season_id)
+    # Each front office's latest read on its team (src/league/team_state.py).
+    states = TeamStateRepository(db).latest(league_id, season_id)
 
     # Build per-team recent results
     team_recent: dict[str, list] = {}
@@ -99,6 +103,10 @@ def standings_rows(
                 "rs": rs,
                 "ra": ra,
                 "is_human": r["team_id"] in human_team_ids,
+                "state": states.get(r["team_id"], {}).get("state"),
+                "state_label": team_state.LABELS.get(
+                    states.get(r["team_id"], {}).get("state"), ""
+                ),
                 "is_mine": r["team_id"] == my_team_id,
             }
         )
@@ -166,8 +174,13 @@ def standings_context(
         if my_team_id and not past_season:
             injuries = inj_repo.get_team_injury_report(my_team_id, league_id)
 
+    mine = next((t for t in teams if t["team_id"] == my_team_id), None)
     return {
         "teams": teams,
+        # "The front office sees a team that's ramping up."
+        "my_state": team_state.describe(mine["state"])
+        if mine and mine["state"]
+        else "",
         "games_played": (
             sum(t["wins"] + t["losses"] for t in teams) // 2 if teams else 0
         ),

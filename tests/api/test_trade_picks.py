@@ -4,7 +4,7 @@ src/api/services/trades.py), and trades in the offseason."""
 
 import pytest
 
-from src.api.services import offseason_service, trades
+from src.api.services import offseason_service, team_states, trades
 from src.api.services.trades import TradeError
 from src.db.repositories.trade_repo import TradeRepository
 from src.league.trades import draft_picks
@@ -142,12 +142,17 @@ def test_trades_open_again_in_the_offseason(picks):
     assert result["accepted"], result["reason"]
 
 
-def test_ai_teams_are_neutral_in_the_offseason(picks):
+def test_ai_teams_judge_offseason_trades_without_last_seasons_race(picks):
     _offseason(picks)
-    assert (
-        trades.stance(picks.db, picks.league.id, picks.season.id, picks.theirs.id)
-        == "neutral"
-    )
+    [row] = [
+        r
+        for t, r in team_states.current(
+            picks.db, picks.league.id, picks.season.id, "2025-11-01"
+        ).items()
+        if t == picks.theirs.id
+    ]
+    assert row["inputs"]["games_back"] is None
+    assert not team_states.in_race(row)
 
 
 def test_the_offseason_closes_offers_from_the_season_before(picks, monkeypatch):
