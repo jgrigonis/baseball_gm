@@ -138,7 +138,7 @@ class TestSimStopsForAnOffer:
     """Single player: with stop_for_trade_offers on, a sim stops the day an
     offer arrives for the GM."""
 
-    def _sim(self, db, factory, stop=True, humans=1):
+    def _sim(self, db, factory, stop=True, humans=1, expiring=False):
         league, season = _season_with_games(db, factory)
         db.execute(
             "UPDATE leagues SET stop_for_trade_offers = %s WHERE id = %s",
@@ -163,9 +163,20 @@ class TestSimStopsForAnOffer:
             )
             db.execute("UPDATE gms SET user_id = id WHERE id = %s", (g["id"],))
         dates = iter(["2025-04-01", "2025-04-02", "2025-04-03", "2025-04-04"])
+        old = None
+        if expiring:
+            # An offer already waiting, which expires after the first day,
+            # when a new one comes.
+            old = TradeRepository(db).create_offer(
+                league.id, season.id, other, mine.id, None, "2025-03-31", []
+            )
 
         def one_day(league_id, conn):
             d = next(dates)
+            if old and d == "2025-04-01":
+                conn.execute(
+                    "UPDATE trade_offers SET status = 'expired' WHERE id = %s", (old,)
+                )
             if d == "2025-04-01":
                 TradeRepository(conn).create_offer(
                     league_id, season.id, other, mine.id, None, d, []
@@ -178,6 +189,11 @@ class TestSimStopsForAnOffer:
 
     def test_the_sim_stops_the_day_an_offer_arrives(self, db_conn, factory):
         summary, days = self._sim(db_conn, factory)
+        assert days == 1
+        assert summary["trade_offer"] is True
+
+    def test_a_new_offer_stops_it_as_an_old_one_expires(self, db_conn, factory):
+        summary, days = self._sim(db_conn, factory, expiring=True)
         assert days == 1
         assert summary["trade_offer"] is True
 

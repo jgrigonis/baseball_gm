@@ -38,7 +38,7 @@
   {% if offers_to_me %}
   <div class="card tr-inbox">
     <div class="card-header"><span class="card-title">📨 Offers to you</span>
-      <span class="tr-hint">Answer before the next sim period ends, or the offer expires</span></div>
+      <span class="tr-hint">{% if solo %}An AI team's offer stands for a few days{% else %}Answer before the next sim period ends, or the offer expires{% endif %}</span></div>
     <div class="card-body">
       {% for o in offers_to_me %}
       <div class="tr-offer" id="offer-{{ o.id }}">
@@ -46,6 +46,7 @@
           <div>{% if o.parent_id %}<span class="tr-tag">counter</span>{% endif %}
             The <strong>{{ o.from_name }}</strong> give {{ plist(o.sent) }}</div>
           <div>You give {{ plist(o.received) }}</div>
+          {% if o.expires_on %}<div class="tr-reason">Expires after the games on {{ o.expires_on }}</div>{% endif %}
         </div>
         <div class="tr-offer-btns">
           <button class="btn btn-primary" onclick="trAnswer('{{ o.id }}', 'accept')">Accept</button>

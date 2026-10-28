@@ -634,6 +634,8 @@ CREATE TABLE IF NOT EXISTS trade_offers (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     decided_at   TIMESTAMPTZ,
     expires_period INTEGER,         -- an offer to a GM: expires before this period runs
+    expires_on   TEXT,              -- single player, an AI team's offer: expires after this date
+    from_ai      BOOLEAN NOT NULL DEFAULT FALSE,  -- an AI team made it
     vote_period  INTEGER,           -- pending_vote: the vote closes before this period runs
 
     FOREIGN KEY (league_id)    REFERENCES leagues(id) ON DELETE CASCADE,
