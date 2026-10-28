@@ -23,10 +23,29 @@ from src.stats.fielding_stats import FieldingStats
 import src.stats.stats as stats
 
 from src.player.fatigue import PitcherFatigue
+from src.player.fatigue_level import FatigueLevel
+from src.player.player_constants import (
+    BAT_EXHAUSTED,
+    BAT_FRESH,
+    BAT_GOOD,
+    BAT_TIRED,
+    BAT_ZERO,
+)
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.position_fatigue import PositionPlayerFatigue
+from src.player.skill_map import SKILL_CATEGORIES, SKILL_MAP
+
+PITCHING_SKILLS = {SKILL_MAP[abbr] for abbr in SKILL_CATEGORIES["pitching"]}
+
+BAT_MODIFIERS = {
+    FatigueLevel.FRESH: BAT_FRESH,
+    FatigueLevel.GOOD: BAT_GOOD,
+    FatigueLevel.TIRED: BAT_TIRED,
+    FatigueLevel.EXHAUSTED: BAT_EXHAUSTED,
+    FatigueLevel.ZERO: BAT_ZERO,
+}
 
 
 class PlayerInGame:
@@ -118,14 +137,20 @@ class PlayerInGame:
         """Re-rate player with fatigue-adjusted skills."""
         if self.pitcher_fatigue:
             modifier = self.pitcher_fatigue.get_stat_modifier()
+            # The pitcher's freshness bonus is bigger than a hitter's and only
+            # applies to his pitching. His glove and bat get the hitter's
+            # modifier for the same fatigue level, so a rested pitcher doesn't
+            # out-rate an equal position player at a fielding spot.
+            other_modifier = BAT_MODIFIERS[self.pitcher_fatigue.get_level()]
         elif self.player_energy:
-            modifier = self.player_energy.get_stat_modifier()
+            modifier = other_modifier = self.player_energy.get_stat_modifier()
         else:
             return
 
         fatigued_skills = {}
         for skill, value in self.skills.as_dict().items():
-            adjusted = int(value * modifier)
+            skill_modifier = modifier if skill in PITCHING_SKILLS else other_modifier
+            adjusted = int(value * skill_modifier)
             fatigued_skills[skill] = max(1, min(100, adjusted))
 
         fatigued_skills_obj = PlayerSkills(**fatigued_skills)

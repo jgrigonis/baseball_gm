@@ -150,3 +150,45 @@ def test_player_record_remains_immutable(player_record):
     assert player_record.bats == "R"
     assert player_record.throws == "R"
     assert isinstance(player_record.skills, PlayerSkills)
+
+
+def test_rested_pitcher_fields_like_an_equally_rested_hitter():
+    """A fresh pitcher's bigger freshness bonus applies to his pitching only.
+    His fielding is boosted like a fresh hitter's, so with identical skills
+    he must not out-rate a position player at 2b."""
+    from src.player.fatigue_level import FatigueLevel
+    from src.player.skill_map import ALL_SKILL_NAMES
+
+    skills = {name: 60 for name in ALL_SKILL_NAMES}
+    pitcher = PlayerInGame(
+        PlayerRecord(
+            id="p1",
+            first_name="P",
+            last_name="P",
+            bats="R",
+            throws="R",
+            position="rp",
+            skills=PlayerSkills(skills),
+        )
+    )
+    hitter = PlayerInGame(
+        PlayerRecord(
+            id="h1",
+            first_name="H",
+            last_name="H",
+            bats="R",
+            throws="R",
+            position="2b",
+            skills=PlayerSkills(skills),
+        )
+    )
+    assert pitcher.pitcher_fatigue.get_level() == FatigueLevel.FRESH
+    assert hitter.player_energy.get_level() == FatigueLevel.FRESH
+
+    pitcher.apply_fatigue_to_ratings()
+    hitter.apply_fatigue_to_ratings()
+
+    assert pitcher.ratings["2b"] == hitter.ratings["2b"]
+    assert pitcher.ratings["overall_offense"] == hitter.ratings["overall_offense"]
+    # Pitching still gets the bigger pitcher freshness bonus
+    assert pitcher.ratings["rp"] > hitter.ratings["rp"]
