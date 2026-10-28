@@ -38,6 +38,12 @@
     if (queue.length === 1) next();
   };
   window.tradePopupLater = function() { queue.shift(); next(); };
+  // The offer or vote is settled (news about it arrived): stop asking.
+  window.dropTradePopup = function(offerId) {
+    var before = queue.length;
+    queue = queue.filter(function(q) { return q.offer_id !== offerId; });
+    if (queue.length !== before) next();
+  };
   window.tradePopupGo = function() {
     queue = [];
     next();

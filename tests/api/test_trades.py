@@ -578,3 +578,39 @@ def test_a_voter_leaving_can_settle_the_vote(gms):
     leave_league(lg.db, lg.league.id, lg.voters[1]["id"])
     assert TradeRepository(lg.db).get(offer_id)["status"] == "accepted"
     assert _team_of(lg.db, a) == lg.theirs.id
+
+
+def test_a_vote_that_ends_early_tells_the_voter_who_hadnt_voted(gms):
+    # Three voters: two yes votes settle it.
+    lg = gms(voters=3)
+    offer_id, _, _ = _agreed(lg)
+    _vote(lg, lg.voters[0], offer_id, True)
+    assert _vote(lg, lg.voters[1], offer_id, True)["status"] == "accepted"
+    # The third voter's vote popup, unseen, is gone; the news says it's over.
+    news = _news(lg, lg.voters[2])
+    assert [n["event"] for n in news] == ["vote_over"]
+    assert "passed" in news[0]["text"]
+    assert trades.inbox_count(lg.db, lg.league.id, lg.voters[2]) == 0
+    # The voters who voted hear nothing more (and their own popups, never
+    # opened here, are dropped too).
+    assert _news(lg, lg.voters[1]) == []
+
+
+def test_a_withdrawn_offer_doesnt_pop_up_later(gms):
+    lg = gms()
+    a, b = _two_players(lg)
+    offer_id = _offer(lg, [a], [b])["offer_id"]
+    _answer(lg, offer_id, "withdraw", gm=lg.gm)
+    assert [n["event"] for n in _news(lg, lg.other)] == ["withdrawn"]
+
+
+def test_a_counter_drops_the_popup_for_the_offer_it_replaces(gms):
+    lg = gms()
+    a, b = _two_players(lg)
+    offer_id = _offer(lg, [a], [b])["offer_id"]
+    # The proposer's own unseen popup can't exist, so check the other way:
+    # Them counter before they've seen the popup for the first offer.
+    trades.propose(
+        lg.db, lg.league.id, lg.other, lg.mine.id, [b.id], [a.id], counter_of=offer_id
+    )
+    assert _news(lg, lg.other) == []

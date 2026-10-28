@@ -23,6 +23,17 @@ class NotificationRepository:
             ).fetchone()
         )
 
+    def drop_trade_popups(self, offer_id: str) -> None:
+        """Mark unseen popups about a trade offer (offer, counter, vote) as
+        seen, once there's nothing left to answer."""
+        self.conn.execute(
+            """UPDATE gm_notifications SET seen_at = NOW()
+               WHERE seen_at IS NULL AND kind = 'trade'
+                 AND payload->>'offer_id' = %s
+                 AND (payload->>'popup')::boolean""",
+            (offer_id,),
+        )
+
     def take_unseen(self, gm_id: str) -> list[dict]:
         """Return the GM's unseen news, oldest first, and mark it seen."""
         rows = self.conn.execute(
