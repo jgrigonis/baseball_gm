@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from src.api.services import personas
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -122,7 +123,7 @@ def gather(
     conn, league_id: str, season_id: str, offseason: bool = False
 ) -> dict[str, Inputs]:
     """Every team's inputs: strength now and in a couple of years, the age of
-    its core, its farm, and (in season) the standings."""
+    its core, its farm, (in season) the standings, and its GM's lean."""
     team_ids = _team_ids(conn, league_id, season_id)
     if not team_ids:
         return {}
@@ -147,6 +148,7 @@ def gather(
         _ranks(farm, n),
     )
     league_age = round(sum(age for age, _ in core.values()) / n, 1)
+    leanings = personas.leanings(conn, league_id)
     out = {}
     for t in team_ids:
         played, gb = standings.get(t, (0, None))
@@ -161,6 +163,7 @@ def gather(
             farm_rank=rank_farm[t],
             played=played,
             games_back=gb,
+            lean=round(leanings[t].lean, 3) if t in leanings else 0.0,
         )
     return out
 

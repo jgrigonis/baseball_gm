@@ -6,6 +6,10 @@
 {% macro plist(players) -%}
 {% for p in players %}{% if p.is_pick %}<span class="tr-pick">{{ p.last_name }}</span>{% else %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
 {%- endmacro %}
+{# An AI team's GM, linked to their persona card. #}
+{% macro ai_gm(team_id) -%}
+{% set g = ai_gms.get(team_id) if ai_gms else none %}{% if g %} <a class="tr-gm" href="/leagues/{{ league_id }}/personas/{{ g.id }}" hx-get="/leagues/{{ league_id }}/personas/{{ g.id }}" hx-target="#tab-content" hx-push-url="true" title="{{ g.archetype }}">({{ g.name }})</a>{% endif %}
+{%- endmacro %}
 {% set status_labels = {'pending': 'waiting', 'pending_vote': 'league vote', 'voted_down': 'voted down'} %}
 <div class="content-inner tab-fade" id="trades-page">
 
@@ -46,7 +50,7 @@
       <div class="tr-offer" id="offer-{{ o.id }}">
         <div class="tr-offer-text">
           <div>{% if o.parent_id %}<span class="tr-tag">counter</span>{% endif %}
-            The <strong>{{ o.from_name }}</strong> give {{ plist(o.sent) }}</div>
+            The <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }} give {{ plist(o.sent) }}</div>
           <div>You give {{ plist(o.received) }}</div>
           {% if o.expires_on %}<div class="tr-reason">Expires after the games on {{ o.expires_on }}</div>{% endif %}
         </div>
@@ -107,7 +111,7 @@
           <option value="">Pick a team…</option>
           {% for t in trade_teams %}
           <option value="{{ t.id }}" data-human="{{ 1 if t.human else 0 }}">
-            {{ t.name }}{% if t.human %} (GM){% endif %}
+            {{ t.name }}{% if t.human %} (GM){% elif ai_gms.get(t.id) %} ({{ ai_gms[t.id].name }}){% endif %}
           </option>
           {% endfor %}
         </select>
@@ -139,11 +143,11 @@
             <td class="tr-date">{{ o.created_on }}</td>
             <td>
               {% if mine %}
-              <div>To the <strong>{{ o.to_name }}</strong>:
+              <div>To the <strong>{{ o.to_name }}</strong>{{ ai_gm(o.to_team_id) }}:
                 {{ o.sent | map(attribute='last_name') | join(', ') }}
                 for {{ o.received | map(attribute='last_name') | join(', ') }}</div>
               {% else %}
-              <div>From the <strong>{{ o.from_name }}</strong>:
+              <div>From the <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }}:
                 {{ o.sent | map(attribute='last_name') | join(', ') }}
                 for {{ o.received | map(attribute='last_name') | join(', ') }}</div>
               {% endif %}
@@ -446,6 +450,8 @@ if (done) { showResult(done.msg, done.kind); window._tradeResult = null; }
 {% endif %}
 
 <style>
+.tr-gm { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-decoration: none; }
+.tr-gm:hover { color: var(--sky); }
 #trades-page .trade-note { margin: 0 0 14px; padding: 8px 12px; font-size: 12px; color: var(--text-dim);
   border: 1px solid var(--border); background: var(--bg-2); }
 #trades-page .trade-note strong { color: var(--text); }

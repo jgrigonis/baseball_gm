@@ -253,3 +253,41 @@ def test_vs_handedness_keeps_a_regular_unless_the_bench_is_close():
     edge = 60 - PLATOON_PENALTY + REGULAR_BONUS
     assert not platoon_lineup(edge - 1, "vs-handedness")
     assert platoon_lineup(edge + 1, "vs-handedness")
+
+
+def test_form_moves_who_plays():
+    """A hot bench bat a few points behind a regular plays for a GM who
+    weighs stats, and doesn't without his form."""
+    regulars = [hitter(f"h{i}", bat=60) for i in range(9)]
+    bench = hitter("hot", bat=57, glove={p: 0 for p in FIELD_POSITIONS})
+
+    def plays(form):
+        lineup = LineupOptimizer.fill([None] * 9, regulars + [bench], form=form)
+        return "hot" in {s.player.id for s in lineup}
+
+    assert not plays(None)
+    assert plays({"hot": 5.0})
+    # A cold regular can lose his spot the same way.
+    assert plays({"h0": -5.0})
+
+
+def test_form_counts_with_the_regulars_bonus():
+    """Under vs-handedness, form adds to the regular's bonus rather than
+    replacing it."""
+    regulars = [hitter(f"h{i}", bat=60) for i in range(9)]
+    bench = hitter("lefty", bat=54, glove={p: 0 for p in FIELD_POSITIONS}, bats="L")
+    edge = 60 - PLATOON_PENALTY + REGULAR_BONUS
+
+    def plays(form):
+        lineup = LineupOptimizer.fill(
+            [None] * 9,
+            regulars + [bench],
+            vs_hand="R",
+            platoon="vs-handedness",
+            form=form,
+        )
+        return "lefty" in {s.player.id for s in lineup}
+
+    assert 54 < edge < 57
+    assert not plays(None)
+    assert plays({"lefty": 3.0})

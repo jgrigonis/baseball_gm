@@ -68,6 +68,14 @@ OLD_SHARE = 0.25
 RISING = 0.15
 FALLING = 0.25
 
+# A GM's lean (src/league/personas.py, -1 patient to 1 win now) moves the
+# tiers: a win-now GM counts as top tier further down the league and sees
+# the bottom later, so goes all-in sooner; a patient one rebuilds sooner.
+# At the extremes the rank cutoffs move by LEAN_RANK, and the games-back ones
+# by LEAN_GB.
+LEAN_RANK = 0.08
+LEAN_GB = 3.0
+
 # Stickiness. A state holds for at least MIN_CHECKPOINTS checkpoints, and a
 # change takes the same answer at two checkpoints in a row, unless the team
 # jumps from one end of the league to the other.
@@ -87,6 +95,7 @@ class Inputs:
     farm_rank: float  # 0 best: young players not on the 26-man, by future value
     played: int = 0  # games this season
     games_back: float | None = None  # from the last playoff spot; None out of season
+    lean: float = 0.0  # the GM's, -1 (patient) to 1 (win now)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -99,12 +108,13 @@ class Inputs:
     def tier_now(self) -> str:
         """top, middle or bottom, today."""
         if self.standings_count:
-            if self.games_back <= CONTENDER_GB:
+            shift = LEAN_GB * self.lean
+            if self.games_back <= CONTENDER_GB + shift:
                 return "top"
-            if self.games_back > SELLER_GB:
+            if self.games_back > SELLER_GB + shift:
                 return "bottom"
             return "middle"
-        return _tier(self.rank_now)
+        return _tier(self.rank_now, self.lean)
 
     @property
     def old(self) -> bool:
@@ -126,10 +136,11 @@ class Inputs:
         return self.rank_future >= self.rank_now + FALLING
 
 
-def _tier(rank: float) -> str:
-    if rank < TOP:
+def _tier(rank: float, lean: float = 0.0) -> str:
+    shift = LEAN_RANK * lean
+    if rank < TOP + shift:
         return "top"
-    if rank >= BOTTOM:
+    if rank >= BOTTOM + shift:
         return "bottom"
     return "middle"
 

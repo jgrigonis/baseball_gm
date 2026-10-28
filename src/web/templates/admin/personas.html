@@ -1,0 +1,113 @@
+{# templates/admin/personas.html
+   The AI GM persona library (src/league/personas.py). Personas are created
+   once and never edited; only chance changes, on each persona's page.
+   Duplicate (?from=<id>) pre-fills the create form. #}
+{% extends "base.html" %}
+{% block title %}Admin: Personas — GM Sim{% endblock %}
+{% block main %}
+{% set section = 'personas' %}
+<div class="page-content"><div class="content-inner">
+  <div class="page-header"><h1 class="page-title">GM Personas</h1>
+    <span class="page-subtitle">{{ personas | length }} in the library · {{ personas | selectattr('chance') | list | length }} pickable</span></div>
+  {% include "admin/_header.html" %}
+
+  <p class="admin-dim" style="font-size:11px;line-height:1.8;margin-bottom:16px;">
+    Each AI team in a new league draws a persona at random, weighted by chance, with no repeats in a league.
+    Chance 0 is never picked; 100 is twice as likely as 50. A persona can't be edited once it's created, so it
+    leans the same way in every league. Click a column to sort.
+  </p>
+
+  <div class="card" style="overflow-x:auto;">
+    <table class="data-table" id="persona-table">
+      <thead><tr>
+        <th data-sort="text">Name</th><th data-sort="text">Archetype</th>
+        <th class="num" data-sort="num">Chance</th><th class="num" data-sort="num">Leagues</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for p in personas %}
+        <tr>
+          <td class="team-name">{{ p.name }}</td>
+          <td class="admin-dim">{{ p.archetype or '—' }}</td>
+          <td class="num" {% if not p.chance %}style="color:var(--muted);"{% endif %}>{{ p.chance }}</td>
+          <td class="num">{{ p.leagues }}</td>
+          <td style="text-align:right;white-space:nowrap;">
+            <a href="/admin/personas/{{ p.id }}" class="btn btn-secondary admin-small">Open →</a>
+            <a href="/admin/personas?from={{ p.id }}#create" class="btn btn-secondary admin-small">Duplicate</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-section" id="create">
+    <div class="page-header"><h1 class="page-title" style="font-size:20px;">
+      {% if form.from_name %}Duplicate {{ form.from_name }}{% else %}Create a Persona{% endif %}</h1></div>
+    <div class="card"><div class="card-body">
+      <form method="POST" action="/admin/personas" class="admin-form" autocomplete="off">
+        <div class="field">
+          <label>Name</label>
+          <input name="name" value="{{ form.name or '' }}" minlength="2" maxlength="60" required>
+        </div>
+        <div class="field">
+          <label>Archetype</label>
+          <input name="archetype" value="{{ form.archetype or '' }}" maxlength="60" list="archetypes">
+          <datalist id="archetypes">{% for a in archetypes %}<option value="{{ a }}">{% endfor %}</datalist>
+        </div>
+        <div class="field">
+          <label>Chance (0–100)</label>
+          <input name="chance" type="number" min="0" max="100" value="{{ form.chance }}" required>
+        </div>
+        <div class="field wide">
+          <label>Bio (one line)</label>
+          <input name="bio" value="{{ form.bio or '' }}" maxlength="200">
+        </div>
+        {% for key, label, low, high, words in traits %}
+        <div class="field persona-dial">
+          <label>{{ label }} <span class="persona-dial-val" id="dv-{{ key }}">{{ form.dials[key] }}</span></label>
+          <input type="range" name="{{ key }}" min="0" max="100" step="1" value="{{ form.dials[key] }}"
+                 data-words="{{ words | tojson | forceescape }}" oninput="personaDial(this)">
+          <span class="hint persona-dial-ends"><span>{{ low }}</span><span id="dw-{{ key }}">{{ words[[form.dials[key] // 20, 4] | min] }}</span><span>{{ high }}</span></span>
+        </div>
+        {% endfor %}
+        <div class="wide"><span class="hint">Once created, only the chance can change.</span></div>
+        <div class="wide"><button type="submit" class="btn btn-primary">Create Persona</button></div>
+      </form>
+    </div></div>
+  </div>
+</div></div>
+
+<style>
+.persona-dial label { display: flex; justify-content: space-between; }
+.persona-dial-val { font-family: var(--font-mono); color: var(--amber); }
+.persona-dial-ends { display: flex; justify-content: space-between; gap: 8px; }
+.persona-dial-ends span:nth-child(2) { color: var(--amber); }
+#persona-table th[data-sort] { cursor: pointer; user-select: none; }
+</style>
+<script>
+function personaDial(input) {
+  var words = JSON.parse(input.dataset.words);
+  var v = parseInt(input.value, 10);
+  document.getElementById('dv-' + input.name).textContent = v;
+  document.getElementById('dw-' + input.name).textContent = words[Math.min(4, Math.floor(v / 20))];
+}
+(function() {
+  var table = document.getElementById('persona-table');
+  table.querySelectorAll('th[data-sort]').forEach(function(th, col) {
+    var asc = true;
+    th.addEventListener('click', function() {
+      var body = table.tBodies[0];
+      var rows = Array.from(body.rows);
+      var num = th.dataset.sort === 'num';
+      rows.sort(function(a, b) {
+        var x = a.cells[col].textContent.trim(), y = b.cells[col].textContent.trim();
+        var c = num ? (parseFloat(x) || 0) - (parseFloat(y) || 0) : x.localeCompare(y);
+        return asc ? c : -c;
+      });
+      asc = !asc;
+      rows.forEach(function(r) { body.appendChild(r); });
+    });
+  });
+})();
+</script>
+{% endblock %}

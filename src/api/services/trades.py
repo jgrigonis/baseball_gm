@@ -45,20 +45,21 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.api.services import team_states
+from src.api.services import personas, team_states
 from src.db.locks import LeagueBusy, league_lock
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
-from src.league import trade_deadline
+from src.league import performance, trade_deadline
 from src.league.rotation_seeder import seed_ai_rotations
 from src.league.trades import ai_evaluator, draft_picks
 from src.league.trades.ai_evaluator import Asset
@@ -877,23 +878,34 @@ def ai_answer(
     margin_share: float | None = None,
 ) -> ai_evaluator.Verdict:
     """The AI team's answer to giving `giving` for `getting`, wanting to win
-    by margin_share (by default its margin for this team today)."""
+    by margin_share (by default its margin for this team today). It judges
+    as its GM's persona would (src/league/personas.py)."""
+    lean = personas.leaning_of(conn, league_id, ai_team_id)
     injuries = InjuryRepository(conn, league_id)
-    roster = _assets(conn, ai_team_id, injuries.get_team_injuries(ai_team_id, today))
+    roster = _assets(
+        conn, ai_team_id, injuries.get_team_injuries(ai_team_id, today), season_id
+    )
     theirs = _assets(
-        conn, other_team_id, injuries.get_team_injuries(other_team_id, today)
+        conn,
+        other_team_id,
+        injuries.get_team_injuries(other_team_id, today),
+        season_id,
     )
     by_id = {a.id: a for a in roster + theirs}
     by_id.update(_pick_assets(conn, league_id, season_id, giving + getting))
+    w = lean.stats_weight
     return ai_evaluator.evaluate(
-        roster=roster,
-        giving=[by_id[pid] for pid in giving],
-        getting=[by_id[pid] for pid in getting],
+        roster=ai_evaluator.seen(roster, w),
+        giving=ai_evaluator.seen([by_id[pid] for pid in giving], w),
+        getting=ai_evaluator.seen([by_id[pid] for pid in getting], w),
         state=team_states.state_of(conn, league_id, season_id, ai_team_id, today),
         days_left=_season_days_left(conn, league_id, season_id, today),
-        margin_share=ai_evaluator.margin(ai_team_id, other_team_id, today)
+        margin_share=ai_evaluator.margin(
+            ai_team_id, other_team_id, today, lean.margin_factor
+        )
         if margin_share is None
         else margin_share,
+        horizon=lean.horizon,
     )
 
 
@@ -1004,10 +1016,21 @@ def _replan_ai_team(conn, league_id, season_id, team_id, effective_date) -> None
     )
 
 
-def _assets(conn, team_id: str, injuries: dict[str, int]) -> list[Asset]:
+def _assets(
+    conn, team_id: str, injuries: dict[str, int], season_id: str | None = None
+) -> list[Asset]:
+    """A team's players as the AI sees them, with how they've played this
+    season (season_id) for a GM who weighs stats."""
+    records = PlayerRepository(conn).get_players_by_team(team_id)
+    form = {}
+    if season_id:
+        totals = PlayerSeasonStatsRepository(conn).get_form_totals(
+            season_id, [p.id for p in records]
+        )
+        form = performance.form_by_player(records, totals)
     return [
-        Asset.from_record(p, injuries.get(p.id, 0))
-        for p in PlayerRepository(conn).get_players_by_team(team_id)
+        Asset.from_record(p, injuries.get(p.id, 0), form.get(p.id, (0.0, 0.0)))
+        for p in records
     ]
 
 

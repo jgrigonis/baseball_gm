@@ -90,3 +90,18 @@ def test_every_setting_is_a_profile_column(db_conn, gm):
             assert s.name in row
             assert row[s.name] in s.values
             assert len(s.labels) == len(s.values)
+
+
+def test_stats_vs_scouting_saves_and_shows_nearest_step(client, db_conn, gm):
+    client.post(f"/leagues/{gm.league_id}/strategy", data={"stats_vs_scouting": 4})
+    assert GMRepository(db_conn).get_profile(gm.id)["stats_vs_scouting"] == 100
+
+    # An AI persona's value between steps shows as the nearest one.
+    GMRepository(db_conn).save_profile(gm.id, {"stats_vs_scouting": 61})
+    html = client.get(
+        f"/leagues/{gm.league_id}/strategy", headers={"HX-Request": "true"}
+    ).text
+    assert (
+        'name="stats_vs_scouting" min="0" max="4" step="1"\n         value="2"' in html
+    )
+    assert "Stats vs Scouting" in html

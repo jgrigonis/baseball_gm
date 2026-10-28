@@ -17,14 +17,20 @@
 #
 # It accepts if the gain beats a margin of what it gives up. The margin moves a
 # little, seeded by the two teams and the league date, so sending the same
-# offer again the same day gets the same answer. Only visible ratings are
-# used, never hidden talent caps, so its answers don't give those away.
+# offer again the same day gets the same answer. Only visible ratings and
+# season stats are used, never hidden talent caps, so its answers don't give
+# those away.
+#
+# The GM's persona (src/league/personas.py) leans on all of this: its time
+# horizon tilts the now/future blend, its risk appetite scales the margin, and
+# its stats-vs-scouting dial blends each player's ratings with how he's
+# played (src/league/performance.py) before any of it is worked out.
 
 from __future__ import annotations
 
 import hashlib
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cached_property
 
 from src.league.team_state import BUYERS, SELLERS
@@ -53,6 +59,8 @@ STATE_WEIGHTS = {
 
 BASE_MARGIN = 0.08
 MARGIN_NOISE = 0.04
+# How far a win-now or a patient GM moves the now weight of its state.
+HORIZON_TILT = 0.1
 
 
 def age_shift(age: int) -> int:
@@ -89,9 +97,17 @@ class Asset:
     # A draft pick (src/league/trades/draft_picks.py): a prospect who counts
     # for the future but doesn't play this season.
     future_only: bool = False
+    # How his season stats compare to his ratings, in rating points, as a
+    # hitter and as a pitcher (src/league/performance.py).
+    form: tuple[float, float] = (0.0, 0.0)
 
     @classmethod
-    def from_record(cls, p: PlayerRecord, injured_days: int = 0) -> Asset:
+    def from_record(
+        cls,
+        p: PlayerRecord,
+        injured_days: int = 0,
+        form: tuple[float, float] = (0.0, 0.0),
+    ) -> Asset:
         r = PlayerEvaluator.rate_player(p.skills, p.throws)
         return cls(
             id=p.id,
@@ -102,6 +118,20 @@ class Asset:
             rp=round(r["rp"] * RELIEVER_DISCOUNT),
             age=p.age,
             injured_days=injured_days,
+            form=form,
+        )
+
+    def seen(self, stats_weight: float) -> Asset:
+        """The player as a GM who gives his stats this weight sees him."""
+        hit, pitch = self.form
+        if not stats_weight or (not hit and not pitch):
+            return self
+        return replace(
+            self,
+            hit=round(self.hit + stats_weight * hit),
+            sp=round(self.sp + stats_weight * pitch),
+            rp=round(self.rp + stats_weight * pitch * RELIEVER_DISCOUNT),
+            form=(0.0, 0.0),
         )
 
     @property
@@ -166,12 +196,30 @@ class Verdict:
     details: dict = field(default_factory=dict)
 
 
-def margin(ai_team_id: str, other_team_id: str, on: str) -> float:
+def seen(assets: list[Asset], stats_weight: float) -> list[Asset]:
+    """Players as a GM who gives stats this weight sees them."""
+    if not stats_weight:
+        return list(assets)
+    return [a.seen(stats_weight) for a in assets]
+
+
+def margin(ai_team_id: str, other_team_id: str, on: str, factor: float = 1.0) -> float:
     """The share of what it gives up the AI wants to win by, fixed for a pair
-    of teams on one league date."""
+    of teams on one league date. factor is the persona's (cautious GMs want
+    more)."""
     seed = hashlib.sha256(f"{ai_team_id}|{other_team_id}|{on}".encode()).digest()
     rng = random.Random(int.from_bytes(seed[:8], "big"))
-    return BASE_MARGIN + rng.uniform(-MARGIN_NOISE, MARGIN_NOISE)
+    return factor * (BASE_MARGIN + rng.uniform(-MARGIN_NOISE, MARGIN_NOISE))
+
+
+def weights(state: str, horizon: float = 0.0) -> tuple[float, float]:
+    """(now, future) weights for a team state, tilted by the GM's horizon
+    (-1 builds for later, 1 wins now)."""
+    if not horizon:
+        return STATE_WEIGHTS[state]
+    w_now = STATE_WEIGHTS[state][0] + HORIZON_TILT * horizon
+    w_now = max(0.02, min(0.98, w_now))
+    return w_now, 1 - w_now
 
 
 def evaluate(
@@ -182,11 +230,14 @@ def evaluate(
     days_left: int,
     margin_share: float,
     base: tuple[float, float] | None = None,
+    horizon: float = 0.0,
 ) -> Verdict:
     """Judge a deal from the AI team's side. roster is its whole organization
-    today; giving is what it would send, getting what it would receive. base
-    is the roster's (now, future) strength, when the caller already has it."""
-    w_now, w_future = STATE_WEIGHTS[state]
+    today; giving is what it would send, getting what it would receive, all
+    as this GM sees them (seen()). base is the roster's (now, future)
+    strength, when the caller already has it. horizon is the GM's, from -1
+    (builds for later) to 1 (wins now)."""
+    w_now, w_future = weights(state, horizon)
     give_ids = {a.id for a in giving}
     after = [a for a in roster if a.id not in give_ids] + list(getting)
     if base is None:

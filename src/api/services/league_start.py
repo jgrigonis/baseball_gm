@@ -6,6 +6,7 @@ import datetime
 import random
 from pathlib import Path
 
+from src.api.services import personas
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -127,10 +128,17 @@ def start_league(
     # 5b. Prepare Batch Insert for AI GMs
     remaining_teams = [tid for tid in team_ids_all if tid not in assigned_teams]
 
+    # Each AI GM is a persona from the library. Its own random stream, so
+    # the rest of the league comes out the same for a seed.
+    persona_rng = random.Random(f"{seed}-personas")
     for team_id in remaining_teams:
-        gm_repo.create_gm(
-            league_id=league_id, team_id=team_id, display_name="AI Manager", is_ai=True
+        ai_gm_id = gm_repo.create_gm(
+            league_id=league_id,
+            team_id=team_id,
+            display_name=personas.FALLBACK_NAME,
+            is_ai=True,
         )
+        personas.give_persona(conn, league_id, ai_gm_id, persona_rng)
     human_gm_team = gm_repo.get_human_gm_city_mascot(league_id)
 
     # ── 6. Generate prospect pool ─────────────────────────────────────────────

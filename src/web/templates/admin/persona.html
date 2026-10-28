@@ -1,0 +1,63 @@
+{# templates/admin/persona.html
+   One persona, with its dials as numbers and words and the tactics they set.
+   Only its chance can change; it can be deleted while no league uses it. #}
+{% extends "base.html" %}
+{% block title %}Admin: {{ persona.name }} — GM Sim{% endblock %}
+{% block main %}
+{% set section = 'personas' %}
+<div class="page-content"><div class="content-inner" style="max-width:760px;">
+  <div class="page-header">
+    <h1 class="page-title">{{ persona.name }}</h1>
+    <span class="page-subtitle">{{ persona.archetype or 'No archetype' }} · in {{ leagues }} league{{ '' if leagues == 1 else 's' }}</span>
+  </div>
+  {% include "admin/_header.html" %}
+
+  <div class="admin-dim" style="font-size:11px;margin-bottom:20px;line-height:1.8;">
+    “{{ persona.bio }}” · created {{ (persona.created_at or '')[:16] }}
+  </div>
+
+  <div class="card"><div class="card-header"><span class="card-title">Dials</span></div><div class="card-body">
+    <table class="data-table">
+      <thead><tr><th>Dial</th><th class="num">Value</th><th>Players see</th><th class="admin-dim">0 · 100</th></tr></thead>
+      <tbody>
+        {% for t in traits %}
+        <tr>
+          <td class="team-name">{{ t.label }}</td>
+          <td class="num">{{ t.value }}</td>
+          <td style="color:var(--amber);">{{ t.word }}</td>
+          <td class="admin-dim" style="font-size:11px;">{{ t.ends[0] }} · {{ t.ends[1] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+
+  <div class="card admin-section"><div class="card-header"><span class="card-title">Tactics they set</span></div><div class="card-body">
+    <div class="admin-dim" style="font-size:11px;line-height:1.9;">
+      {% for k, v in profile.items() %}{{ k | replace('_', ' ') }}: <span style="color:var(--text);">{{ v }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+    </div>
+  </div></div>
+
+  <div class="card admin-section"><div class="card-header"><span class="card-title">Chance</span></div><div class="card-body">
+    <form method="POST" action="/admin/personas/{{ persona.id }}/chance" class="admin-form">
+      <div class="field">
+        <label>Chance (0–100)</label>
+        <input name="chance" type="number" min="0" max="100" value="{{ persona.chance }}" required>
+        <span class="hint">0 retires them from new leagues. 100 is twice as likely as 50.</span>
+      </div>
+      <div class="wide"><button type="submit" class="btn btn-primary">Save Chance</button></div>
+    </form>
+  </div></div>
+
+  <div class="admin-section" style="display:flex;gap:12px;align-items:center;">
+    <a href="/admin/personas?from={{ persona.id }}#create" class="btn btn-secondary">Duplicate as a new persona</a>
+    {% if not leagues %}
+    <form method="POST" action="/admin/personas/{{ persona.id }}/delete" onsubmit="return confirm('Delete this persona for good?');">
+      <button type="submit" class="btn btn-secondary" style="color:var(--red);">Delete</button>
+    </form>
+    {% else %}
+    <span class="admin-dim" style="font-size:11px;">In a league, so it can't be deleted.</span>
+    {% endif %}
+  </div>
+</div></div>
+{% endblock %}

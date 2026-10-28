@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
+from src.api.services import personas
+from src.api.view_models import standings
 
 
 @pytest.fixture
@@ -85,3 +87,38 @@ def test_lobby_still_shows_its_settings(client, db_conn, league):
     assert "Decision window" in html
     assert 'id="league-info"' not in html
     assert ">10<" in html  # seasons, with no progress before the start
+
+
+def test_ai_gms_link_to_their_persona_card(client, db_conn, league):
+    lg, _ = league
+    gm_id = db_conn.execute(
+        "SELECT id FROM gms WHERE league_id = %s AND is_ai", (lg.id,)
+    ).fetchone()["id"]
+    persona = db_conn.execute(
+        "SELECT * FROM gm_personas WHERE dials->>'small_ball' >= '70' LIMIT 1"
+    ).fetchone()
+    personas.assign(db_conn, gm_id, persona)
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+    assert persona["name"] in html
+    assert f'href="/leagues/{lg.id}/personas/{persona["id"]}"' in html
+
+    card = client.get(f"/leagues/{lg.id}/personas/{persona['id']}")
+    assert card.status_code == 200
+    assert persona["name"] in card.text
+    assert persona["bio"] in card.text
+    assert "Chicago Wind" in card.text
+    assert "Small ball" in card.text
+    # Players see words, not the numbers.
+    assert f">{persona['dials']['small_ball']}<" not in card.text
+
+    # The standings' GM column: the persona for an AI team, the person's name
+    # for theirs.
+    gms = standings._team_gms(db_conn, lg.id)
+    assert {g["name"] for g in gms.values()} == {"GM", persona["name"]}
+    assert persona["id"] in {g["persona_id"] for g in gms.values()}
+
+
+def test_unknown_persona_is_404(client, league):
+    lg, _ = league
+    assert client.get(f"/leagues/{lg.id}/personas/nope").status_code == 404

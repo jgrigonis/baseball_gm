@@ -23,6 +23,7 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
+from src.api.services import personas
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.services.league_start import start_league
@@ -435,6 +436,33 @@ def league_page(
         return RedirectResponse(f"/leagues/{league_id}/")
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
     return tab_response(request, htmx, "dashboard/partials/league_info.html", ctx)
+
+
+@router.get("/leagues/{league_id}/personas/{persona_id}", response_class=HTMLResponse)
+def persona_page(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    persona_id: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+):
+    """An AI GM's persona card. Personas are a site-wide library, so any
+    persona can be shown; the team is the one it runs in this league."""
+    persona = personas.card(db, persona_id)
+    if not persona:
+        return HTMLResponse("No such GM", status_code=404)
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    ctx["persona"] = persona
+    ctx["team"] = db.execute(
+        """SELECT t.city, t.mascot FROM gms g JOIN teams t ON t.id = g.team_id
+           WHERE g.league_id = %s AND g.persona_id = %s AND g.is_ai
+           ORDER BY g.created_at LIMIT 1""",
+        (league_id, persona_id),
+    ).fetchone()
+    ctx["is_admin"] = bool(user.get("is_admin"))
+    return tab_response(request, htmx, "dashboard/partials/persona.html", ctx)
 
 
 def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:

@@ -7,7 +7,8 @@
 #     his slot and position, and fills the rest.
 #   - Rebuild starts over from the whole eligible roster.
 # Both use the platoon setting against the hand the lineup is for (the Lineup
-# tab's vs RHP / vs LHP toggle).
+# tab's vs RHP / vs LHP toggle), and weigh each hitter's season stats against
+# his ratings by the Strategy tab's stats-vs-scouting setting.
 # Eligible is who can play in a game: the 26-man, plus the 40-man in Blitz
 # leagues, minus the injured and pitchers.
 
@@ -17,7 +18,10 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.season_repo import SeasonRepository
+from src.league import performance
 from src.league.league_modes import is_blitz_style
 from src.player.player_in_game import PlayerInGame
 from src.team.lineup_optimizer import LineupOptimizer
@@ -73,5 +77,24 @@ def autofill(
         dh=True,
         vs_hand=vs_hand,
         platoon=profile.platoon_usage,
+        form=_form(db, league_id, hitters, profile.stats_weight),
     )
     return [{"player_id": s.player.id, "position": s.position} for s in lineup]
+
+
+def _form(db, league_id: str, hitters: list[PlayerInGame], weight: float) -> dict:
+    """Each hitter's form this season, as a GM with this stats weight sees
+    it, in offense points."""
+    season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+    if not weight or not season_id:
+        return {}
+    totals = PlayerSeasonStatsRepository(db).get_form_totals(
+        season_id, [p.id for p in hitters]
+    )
+    out = {}
+    for p in hitters:
+        t = totals.get(p.id)
+        hit = performance.hitter_form(p.ratings["overall_offense"], t) if t else 0.0
+        if hit:
+            out[p.id] = weight * hit
+    return out

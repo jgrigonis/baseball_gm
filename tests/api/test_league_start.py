@@ -23,6 +23,7 @@ from unittest.mock import patch
 import pytest
 
 from src.api.services.league_start import start_league
+from src.league import personas
 
 
 @dataclass
@@ -313,3 +314,21 @@ class TestGMAssignment:
                 "SELECT gm_id FROM gm_profiles WHERE gm_id = %s", (gm_id,)
             ).fetchone()
             assert row is not None, f"AI GM {gm_id} has no gm_profiles row"
+
+    def test_each_ai_gm_is_a_different_persona(self, patched):
+        start_league(patched.league.id, patched.conn)
+        rows = patched.conn.execute(
+            """SELECT g.id, g.display_name, g.persona_id, p.name, p.dials
+               FROM gms g JOIN gm_personas p ON p.id = g.persona_id
+               WHERE g.league_id = %s AND g.is_ai""",
+            (patched.league.id,),
+        ).fetchall()
+        assert len(rows) == len(patched.teams) - 1
+        assert len({r["persona_id"] for r in rows}) == len(rows)
+        for r in rows:
+            assert r["display_name"] == r["name"]
+            profile = patched.conn.execute(
+                "SELECT * FROM gm_profiles WHERE gm_id = %s", (r["id"],)
+            ).fetchone()
+            for key, value in personas.profile(r["dials"]).items():
+                assert profile[key] == value

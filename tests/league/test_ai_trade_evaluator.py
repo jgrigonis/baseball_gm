@@ -91,3 +91,69 @@ def test_value_is_zero_at_replacement_and_grows_faster_than_the_rating():
     r = ai_evaluator.REPLACEMENT
     assert ai_evaluator.value(r - 5) == 0
     assert ai_evaluator.value(r + 20) > 2 * ai_evaluator.value(r + 10)
+
+
+def test_a_gm_who_trusts_stats_sees_form():
+    hot = Asset(
+        id="hot",
+        name="Hot",
+        is_pitcher=False,
+        hit=60,
+        sp=30,
+        rp=30,
+        age=27,
+        form=(8.0, 0.0),
+    )
+    assert hot.seen(0.0) is hot
+    assert hot.seen(1.0).hit == 68
+    assert hot.seen(0.5).hit == 64
+    assert hot.seen(0.5).id == "hot"
+    arm = Asset(
+        id="arm",
+        name="Arm",
+        is_pitcher=True,
+        hit=20,
+        sp=60,
+        rp=50,
+        age=27,
+        form=(0.0, -6.0),
+    )
+    assert arm.seen(0.5).sp == 57
+    assert arm.seen(0.5).rp < 50
+    assert ai_evaluator.seen([hot, arm], 0.0) == [hot, arm]
+
+
+def test_stats_can_tip_a_close_deal():
+    roster = _roster()
+    hot = Asset(
+        id="hot2",
+        name="Hot",
+        is_pitcher=False,
+        hit=58,
+        sp=58,
+        rp=58,
+        age=27,
+        form=(10.0, 0.0),
+    )
+    giving = [roster[0]]
+    assert not _judge(roster, giving, [hot]).accept
+    seen = ai_evaluator.seen
+    assert evaluate(
+        seen(roster, 1.0), seen(giving, 1.0), seen([hot], 1.0), "retooling", 60, 0.08
+    ).accept
+
+
+def test_margin_factor_scales_the_margin():
+    base = margin("a", "b", "2026-05-01")
+    assert margin("a", "b", "2026-05-01", 1.5) == base * 1.5
+    assert margin("a", "b", "2026-05-01", 0.5) == base * 0.5
+
+
+def test_horizon_tilts_now_against_later():
+    assert ai_evaluator.weights("retooling") == ai_evaluator.STATE_WEIGHTS["retooling"]
+    now, later = ai_evaluator.weights("retooling", 1.0)
+    assert now > 0.55 and abs(now + later - 1) < 1e-9
+    now, _ = ai_evaluator.weights("retooling", -1.0)
+    assert now < 0.55
+    # Never all one or the other.
+    assert ai_evaluator.weights("all-in", 1.0)[1] > 0

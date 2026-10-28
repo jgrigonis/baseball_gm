@@ -100,3 +100,25 @@ def test_a_collapse_changes_it_at_once():
 
 def test_staying_put_counts_up():
     assert settle(previous("retooling", 2), inputs()) == ("retooling", 3)
+
+
+def test_a_win_now_gm_counts_as_top_tier_further_down():
+    # Just outside the top third by rank.
+    i = dict(rank_now=0.38, rank_future=0.4)
+    assert inputs(**i).tier_now == "middle"
+    assert inputs(**i, lean=1.0).tier_now == "top"
+    assert inputs(**i, lean=-1.0).tier_now == "middle"
+
+
+def test_a_patient_gm_sees_the_bottom_sooner():
+    i = dict(rank_now=0.62, rank_future=0.62)
+    assert classify(inputs(**i)) == "retooling"
+    assert classify(inputs(**i, lean=-1.0)) == "rebuilding"
+    assert classify(inputs(**i, lean=1.0)) == "retooling"
+
+
+def test_lean_moves_the_games_back_lines_too():
+    race = dict(played=40, rank_now=0.5, rank_future=0.5)
+    assert inputs(**race, games_back=7.0).tier_now == "middle"
+    assert inputs(**race, games_back=7.0, lean=1.0).tier_now == "top"
+    assert inputs(**race, games_back=8.0, lean=-1.0).tier_now == "bottom"
