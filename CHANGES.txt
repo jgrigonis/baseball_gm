@@ -1,3 +1,9 @@
+0.6.0
+-----
+
+- All v3 features complete
+
+
 0.5.9
 -----
 
