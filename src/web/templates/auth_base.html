@@ -4,7 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}GM Sim{% endblock %}</title>
-  <meta name="referrer" content="no-referrer">
+  {# The reset link's token is in the URL: never send it to another site. Not
+     no-referrer, which also makes the forms' Origin "null", and main.py
+     refuses posts it can't tell came from this site. #}
+  <meta name="referrer" content="same-origin">
   <link rel="stylesheet" href="/static/css/main.css">
   <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
   <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
