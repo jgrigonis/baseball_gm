@@ -13,12 +13,98 @@ The app runs on one server with Docker Compose. `docker-compose.yml` starts:
 
 ## What you need
 
-- A Linux server (a small VPS is plenty to start: 2 CPUs, 2–4 GB RAM) with
-  [Docker Engine and the Compose plugin](https://docs.docker.com/engine/install/).
-  Ports 80 and 443 open to the internet.
+- A Linux server (a small VPS is plenty to start: 2 CPUs, 2–4 GB RAM, Ubuntu),
+  set up as in [Setting up the server](#setting-up-the-server) below.
 - A domain name, with an A record (and AAAA, for IPv6) pointing at the
   server, e.g. `gm.example.com`.
 - An email provider that sends over SMTP, for password reset emails (below).
+
+## Setting up the server
+
+On a fresh Ubuntu server (e.g. a DigitalOcean droplet), signed in over SSH.
+
+### Install Docker
+
+Install Docker from Docker's own repository, not Ubuntu's `docker.io`
+package: Ubuntu's lacks the Compose plugin, and `docker compose up -d` then
+fails with `unknown shorthand flag: 'd'`.
+
+First remove any Docker packages already there (it's fine if there are
+none):
+
+```
+sudo apt remove $(dpkg --get-selections docker.io docker-compose docker-compose-v2 docker-doc docker-buildx podman-docker containerd runc | cut -f1)
+```
+
+Add Docker's repository:
+
+```
+# Docker's signing key
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# The repository
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+sudo apt update
+```
+
+Install Docker with the Compose plugin, and check it:
+
+```
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+docker compose version
+```
+
+`docker compose version` should print a version. If it says
+`'compose' is not a docker command`, the plugin is missing: run the
+install line again.
+
+If you sign in as a user other than root, add yourself to the `docker`
+group so commands don't need `sudo`, then sign out and back in:
+
+```
+sudo usermod -aG docker $USER
+```
+
+### Give the server access to the repo
+
+The server clones the repository over SSH, so it needs a key GitHub
+accepts. Make one on the server:
+
+```
+ssh-keygen -t ed25519 -C "baseball-gm server"   # press Enter at each prompt
+cat ~/.ssh/id_ed25519.pub
+```
+
+Copy the printed line into GitHub: the repo's **Settings → Deploy keys →
+Add deploy key**. Leave "Allow write access" off; the server only pulls.
+Check it works:
+
+```
+ssh -T git@github.com    # answer "yes" the first time; it greets you by repo
+```
+
+### Firewall
+
+The droplet must accept SSH (22), HTTP (80) and HTTPS (443). If you use a
+DigitalOcean cloud firewall or `ufw`, allow exactly those, e.g.:
+
+```
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443
+sudo ufw enable
+```
 
 ## Pointing the domain at the server
 
@@ -48,7 +134,7 @@ certificate attempts failing; they succeed by themselves once DNS is right.
 On the server:
 
 ```
-git clone https://github.com/jgrigonis/baseball_gm.git
+git clone git@github.com:jgrigonis/baseball_gm.git
 cd baseball_gm
 cp .env.example .env
 ```
