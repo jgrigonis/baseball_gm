@@ -6,6 +6,7 @@ import logging
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exception_handlers import (
@@ -98,13 +99,66 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
+# ── Cross-site request check (CSRF) ───────────────────────────────────────────
+#
+# The session cookie is SameSite=Lax, which keeps other sites from posting
+# with it, but SameSite counts every subdomain of the same domain as one
+# site, and it doesn't cover the login form, which needs no cookie. Browsers
+# send an Origin header with every POST, so any request that changes
+# something must come from the site's own pages. Requests with neither
+# Origin nor Referer aren't from a browser form or fetch (curl, the tests)
+# and pass: they can't carry a victim's cookie.
+
+_SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
+
+def _origin_of(url: str) -> str:
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}".lower()
+
+
+def _allowed_origins(request: Request) -> set[str]:
+    # Behind Caddy, PUBLIC_BASE_URL is the address users see. Without it
+    # (developing), the address the request was sent to.
+    site = settings.public_base_url or str(request.base_url)
+    return {_origin_of(site)} | {_origin_of(o) for o in settings.cors_origins}
+
+
+def is_cross_site(request: Request) -> bool:
+    if request.method in _SAFE_METHODS:
+        return False
+    origin = request.headers.get("origin")
+    if origin is None:
+        referer = request.headers.get("referer")
+        if referer is None:
+            return False
+        origin = referer
+    # "null" (sandboxed frames, privacy redirects) never matches.
+    return _origin_of(origin) not in _allowed_origins(request)
+
+
+@app.middleware("http")
+async def reject_cross_site_requests(request: Request, call_next):
+    if is_cross_site(request):
+        log.warning(
+            "Rejected cross-site %s %s from %s",
+            request.method,
+            request.url.path,
+            request.headers.get("origin") or request.headers.get("referer"),
+        )
+        return _error_response(request, "That request came from another site.", 403)
+    return await call_next(request)
+
 
 # Web UI routers, one per area of the app.
 for _module in (
