@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     smtp_starttls: bool = True
     mail_from: str = "GM Sim <noreply@localhost>"
 
-    # The site's address as users reach it, e.g. "https://gm.example.com",
+    # The site's address as users reach it, e.g. "https://baseball.gbros.us",
     # used to build links in emails. Required once SMTP_HOST is set: without
     # it, links would trust the request's Host header, which anyone can fake.
     public_base_url: str = ""
