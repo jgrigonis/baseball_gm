@@ -230,6 +230,10 @@ PUBLIC_BASE_URL=https://baseball.gbros.us
   what people see as the sender.
 - `PUBLIC_BASE_URL` is where the reset links point; the app won't start
   with `SMTP_HOST` set and this empty.
+- On DigitalOcean (and some other VPS providers) new servers can't
+  connect out on the usual mail ports, 25, 465 and 587; sending then fails
+  with `TimeoutError: timed out`. Use `SMTP_PORT=2587` instead, which
+  Resend also accepts.
 
 Then `docker compose up -d`, which restarts the services whose settings
 changed.
