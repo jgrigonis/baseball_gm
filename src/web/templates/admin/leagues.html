@@ -9,20 +9,20 @@
 
   {% if leagues %}
   <div class="card" style="overflow-x:auto;">
-    <table class="data-table">
+    <table class="data-table" data-sortable>
       <thead><tr>
-        <th>League</th><th>State</th><th>Mode</th><th>Pace</th>
-        <th class="num" title="Days per sim period">Days</th>
+        <th data-sort="text">League</th><th data-sort="text">State</th><th data-sort="text">Mode</th><th data-sort="text">Pace</th>
+        <th class="num" data-sort="num" title="Days per sim period">Days</th>
         <th class="num" title="Decision / draft / lineup windows, in seconds">Windows (s)</th>
-        <th class="num">Seasons</th><th class="num">Teams</th><th class="num" title="Human GMs">GMs</th>
-        <th>Commissioner</th><th>Public</th><th>Code</th><th>Created</th><th></th>
+        <th class="num" data-sort="num">Seasons</th><th class="num" data-sort="num">Teams</th><th class="num" data-sort="num" title="Human GMs">GMs</th>
+        <th data-sort="text">Commissioner</th><th data-sort="text">Public</th><th>Code</th><th data-sort="text">Created</th><th></th>
       </tr></thead>
       <tbody>
         {% for l in leagues %}
         <tr>
-          <td class="team-name">{{ l.name }}{% if l.is_practice %} <span class="admin-dim" style="font-size:10px;">· practice</span>{% endif %}
+          <td class="team-name" data-sort-value="{{ l.name }}">{{ l.name }}{% if l.is_practice %} <span class="admin-dim" style="font-size:10px;">· practice</span>{% endif %}
             <div class="admin-id" title="league_id">{{ l.id }}</div></td>
-          <td>
+          <td data-sort-value="{{ l.state_label }}">
             <span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span>
             {% if l.is_paused %}<span class="topbar-state" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red);">Paused</span>{% endif %}
             {% if l.season_id %}<div class="admin-id" title="season_id">{{ l.season_id }}</div>{% endif %}
@@ -34,10 +34,10 @@
           <td class="num">{{ l.season_number }} of {{ l.num_seasons }}</td>
           <td class="num">{{ l.num_teams }}</td>
           <td class="num">{{ l.people }}</td>
-          <td class="admin-dim">{{ l.commissioner_name or '—' }}</td>
+          <td class="admin-dim" data-sort-value="{{ l.commissioner_name or '' }}">{{ l.commissioner_name or '—' }}</td>
           <td class="admin-dim">{{ 'Yes' if l.is_public else 'No' }}</td>
           <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>
-          <td class="admin-dim">{{ (l.created_at or '')[:10] }}</td>
+          <td class="admin-dim" data-sort-value="{{ l.created_at or '' }}">{{ (l.created_at or '')[:10] }}</td>
           <td style="text-align:right;white-space:nowrap;">
             {% if l.state != 'lobby' %}<a href="/leagues/{{ l.id }}/" class="btn btn-secondary admin-small">View</a>{% endif %}
             <a href="/admin/leagues/{{ l.id }}" class="btn btn-secondary admin-small">Manage →</a>

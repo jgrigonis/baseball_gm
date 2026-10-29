@@ -335,6 +335,10 @@ body {
   white-space: nowrap;
 }
 .data-table thead th.num { text-align: right; }
+.data-table thead th[data-sort] { cursor: pointer; user-select: none; }
+.data-table thead th[data-sort]:hover { color: var(--text); }
+.data-table thead th[data-dir="asc"]::after { content: " ▲"; }
+.data-table thead th[data-dir="desc"]::after { content: " ▼"; }
 .data-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.08s; }
 .data-table tbody tr:hover { background: var(--bg-3); }
 .data-table tbody tr:last-child { border-bottom: none; }

@@ -18,7 +18,7 @@
   </p>
 
   <div class="card" style="overflow-x:auto;">
-    <table class="data-table" id="persona-table">
+    <table class="data-table" data-sortable>
       <thead><tr>
         <th data-sort="text">Name</th><th data-sort="text">Archetype</th>
         <th class="num" data-sort="num">Chance</th><th class="num" data-sort="num">Leagues</th><th></th>
@@ -82,7 +82,6 @@
 .persona-dial-val { font-family: var(--font-mono); color: var(--amber); }
 .persona-dial-ends { display: flex; justify-content: space-between; gap: 8px; }
 .persona-dial-ends span:nth-child(2) { color: var(--amber); }
-#persona-table th[data-sort] { cursor: pointer; user-select: none; }
 </style>
 <script>
 function personaDial(input) {
@@ -91,23 +90,5 @@ function personaDial(input) {
   document.getElementById('dv-' + input.name).textContent = v;
   document.getElementById('dw-' + input.name).textContent = words[Math.min(4, Math.floor(v / 20))];
 }
-(function() {
-  var table = document.getElementById('persona-table');
-  table.querySelectorAll('th[data-sort]').forEach(function(th, col) {
-    var asc = true;
-    th.addEventListener('click', function() {
-      var body = table.tBodies[0];
-      var rows = Array.from(body.rows);
-      var num = th.dataset.sort === 'num';
-      rows.sort(function(a, b) {
-        var x = a.cells[col].textContent.trim(), y = b.cells[col].textContent.trim();
-        var c = num ? (parseFloat(x) || 0) - (parseFloat(y) || 0) : x.localeCompare(y);
-        return asc ? c : -c;
-      });
-      asc = !asc;
-      rows.forEach(function(r) { body.appendChild(r); });
-    });
-  });
-})();
 </script>
 {% endblock %}
