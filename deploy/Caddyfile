@@ -1,6 +1,6 @@
 # Caddy: HTTPS for the site, passing requests to the web server.
 # SITE_ADDRESS is PUBLIC_BASE_URL (docker-compose.yml), e.g.
-# https://gm.example.com. Caddy gets a Let's Encrypt certificate for that
+# https://baseball.gbros.us. Caddy gets a Let's Encrypt certificate for that
 # host, renews it, and redirects http:// to https://.
 
 {

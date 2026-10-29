@@ -16,7 +16,7 @@ The app runs on one server with Docker Compose. `docker-compose.yml` starts:
 - A Linux server (a small VPS is plenty to start: 2 CPUs, 2–4 GB RAM, Ubuntu),
   set up as in [Setting up the server](#setting-up-the-server) below.
 - A domain name, with an A record (and AAAA, for IPv6) pointing at the
-  server, e.g. `gm.example.com`.
+  server, e.g. `baseball.gbros.us`.
 - An email provider that sends over SMTP, for password reset emails (below).
 
 ## Setting up the server
@@ -113,7 +113,7 @@ an **A** record:
 
 | Type | Name | Value | TTL |
 |------|------|-------|-----|
-| A    | `@` for the bare domain (`gbros.us`), or e.g. `gm` for `gm.gbros.us` | the server's IPv4 address | 1 hour (or the lowest offered) |
+| A    | `@` for the bare domain (`gbros.us`), or e.g. `baseball` for `baseball.gbros.us` | the server's IPv4 address | 1 hour (or the lowest offered) |
 
 If the server has an IPv6 address, add an **AAAA** record with the same name
 too. For the bare domain, delete GoDaddy's default `@` A record ("Parked")
@@ -125,7 +125,7 @@ DNS records are edited in Cloudflare instead.
 Check it before deploying; it usually takes minutes, sometimes an hour:
 
 ```
-dig +short gm.gbros.us     # should print the server's IP
+dig +short baseball.gbros.us     # should print the server's IP
 ```
 
 Caddy can only get a certificate once this resolves to the server and
@@ -179,7 +179,9 @@ minutes), so nobody's sim is cut off.
 
 Password reset links are sent over SMTP. Any provider works; Resend,
 Postmark, Amazon SES and Mailgun all have free or cheap tiers. The steps
-below are for Resend with the domain at GoDaddy.
+below are for Resend with the domain at GoDaddy. Once the domain is on
+Cloudflare ([Maintenance page](#maintenance-page-cloudflare)), add DNS
+records in Cloudflare instead (**gbros.us → DNS → Records → Add record**).
 
 ### 1. Add the domain in Resend
 
@@ -251,117 +253,157 @@ written to the `web` log instead of sent.
 
 ## Maintenance page (Cloudflare)
 
-With the droplet powered off, nothing answers at its address, and visitors
-get a browser error. Putting the domain behind Cloudflare (free) fixes that:
+With the droplet powered off, nothing answers at its address and visitors
+get a browser error. Putting `gbros.us` behind Cloudflare (free) fixes that:
 Cloudflare sits between visitors and the droplet, and a small Cloudflare
 Worker (`deploy/cloudflare/worker.js`) shows a "down for maintenance" page
 whenever the droplet doesn't answer. The rest of the time it passes every
-request straight through.
+request straight through, and the site looks the same.
 
-This moves the whole `gbros.us` domain's DNS from GoDaddy to Cloudflare.
-GoDaddy stays the registrar (you still renew there); only the DNS records
-move. After the switch, DNS changes are made in Cloudflare, not GoDaddy.
+GoDaddy stays the registrar (you still renew there). What moves is the
+DNS: after the switch, DNS records for `gbros.us` are edited in Cloudflare,
+and GoDaddy's DNS page no longer does anything.
 
-### 1. Make a Cloudflare account and add the domain
+Do the steps in this order. The site keeps working throughout.
 
-1. Sign up at [dash.cloudflare.com](https://dash.cloudflare.com/sign-up).
-2. **Add a domain** (on the account home page), enter `gbros.us`, and keep
-   "Quick scan for DNS records" selected. Choose the **Free** plan.
-3. Cloudflare lists the DNS records it copied from GoDaddy. Before going
-   on, compare them with GoDaddy's DNS page and add any that are missing.
-   In particular:
-   - The site's **A** record (`baseball`, the droplet's IP), and AAAA if
-     there is one. Leave these **Proxied** (orange cloud): that's what puts
-     Cloudflare in front.
-   - **Every Resend record**, or password reset emails stop arriving or land
-     in spam. In the Resend dashboard (**Domains → gbros.us**) they're
-     listed: usually an **MX** and a **TXT** (SPF) at `send`, a **TXT** at
-     `resend._domainkey` (DKIM), and the **TXT** at `_dmarc`. Copy each
-     value exactly. Any CNAME among them must be **DNS only** (grey cloud);
-     MX and TXT records have no cloud.
-   - Any other records you use (the bare domain, `www`, other mail).
-4. Cloudflare shows two nameservers, like `ada.ns.cloudflare.com` and
-   `bob.ns.cloudflare.com`. Keep the page open.
+### Step 1. On the droplet: update and restart Caddy
 
-### 2. Switch the nameservers at GoDaddy
+So Caddy sees visitors' real IPs once Cloudflare is in front (see
+[Visitors' IPs](#visitors-ips)). Signed in to the droplet over SSH:
 
-1. In GoDaddy: **My Products → gbros.us → DNS → Nameservers → Change
+```
+cd baseball_gm
+git pull
+docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
+docker compose up -d --force-recreate caddy
+```
+
+`validate` should end with `Valid configuration`. Open
+https://baseball.gbros.us to check the site still loads.
+
+### Step 2. Cloudflare: make an account and add the domain
+
+1. Sign up at https://dash.cloudflare.com/sign-up.
+2. On the account home page, click **Add a domain** (or **Onboard a
+   domain**). Enter `gbros.us`, keep **Quick scan for DNS records**
+   selected, and continue.
+3. Choose the **Free** plan.
+4. Cloudflare shows the DNS records it copied from GoDaddy. Open GoDaddy's
+   DNS page (**My Products → gbros.us → DNS**) next to it and make sure
+   Cloudflare has every record GoDaddy has. The quick scan misses some, so
+   check these by name and add any that are missing with **Add record**:
+
+   | Type | Name | Content | Proxy status |
+   |------|------|---------|--------------|
+   | A | `baseball` | the droplet's IPv4 address | **Proxied** (orange cloud) |
+   | AAAA | `baseball` (only if GoDaddy has one) | the droplet's IPv6 address | **Proxied** |
+   | TXT | `resend._domainkey` | copy from GoDaddy (long, starts `p=`) | — |
+   | MX | `send` | copy from GoDaddy (`feedback-smtp…amazonses.com`), priority 10 | — |
+   | TXT | `send` | `v=spf1 include:amazonses.com ~all` | — |
+   | TXT | `_dmarc` | copy from GoDaddy (`v=DMARC1; …`) | — |
+
+   Plus anything else GoDaddy lists that you use (the bare `gbros.us`,
+   `www`, other mail). Skip GoDaddy's own entries like `_domainconnect`
+   and the `NS`/`SOA` records. As with GoDaddy, type only the part before
+   `.gbros.us` in **Name**.
+
+   The `baseball` record must be **Proxied**: that is what sends visitors
+   through Cloudflare. If a Resend record is a CNAME, set it to **DNS
+   only** (grey cloud).
+5. Continue. Cloudflare shows two nameservers, like
+   `ada.ns.cloudflare.com` and `bob.ns.cloudflare.com`. Leave this page
+   open for the next step.
+
+### Step 3. GoDaddy: point the domain at Cloudflare
+
+1. GoDaddy: **My Products → gbros.us → DNS → Nameservers → Change
    Nameservers**.
-2. Pick **"I'll use my own nameservers"**, enter Cloudflare's two, and save.
-   (GoDaddy may warn that its DNS records will stop working; that's
-   expected, Cloudflare has the copies now.)
-3. Back in Cloudflare, click **Check nameservers**. It usually takes under an
-   hour, occasionally up to a day. Cloudflare emails you when the domain is
-   active. The site keeps working during the switch, since both sides have
-   the same records.
+2. Choose **I'll use my own nameservers**, enter Cloudflare's two
+   nameservers from step 2, and **Save**. GoDaddy warns that its DNS
+   records will stop working; that's expected, Cloudflare has copies.
+3. Back on the Cloudflare page, click **Check nameservers now**.
 
-Check the switch from your computer:
+Cloudflare emails you when `gbros.us` is active, usually within an hour,
+occasionally a day. To check from your own computer:
 
 ```
-dig +short NS gbros.us          # Cloudflare's two nameservers
-dig +short baseball.gbros.us    # Cloudflare addresses now, not the droplet's
+dig +short NS gbros.us             # Cloudflare's two nameservers
+dig +short baseball.gbros.us       # Cloudflare addresses, not the droplet's
 ```
 
-### 3. Set SSL to Full (strict)
+Wait for this before step 4.
 
-In Cloudflare: **gbros.us → SSL/TLS → Overview → Configure**, choose **Full
-(strict)**, and save.
+### Step 4. Cloudflare: set SSL to Full (strict)
 
-Caddy already has a real Let's Encrypt certificate, so Cloudflare can check
-it on every connection to the droplet. The default ("Flexible") talks to
-the droplet over plain http, which Caddy redirects to https, and the site
-ends up in a redirect loop ("too many redirects"). Caddy keeps renewing its
-certificate as before; the renewal requests pass through Cloudflare.
+1. Cloudflare dashboard → **gbros.us** → **SSL/TLS** → **Overview**.
+2. Click **Configure**, choose **Full (strict)**, and **Save**.
+3. Open https://baseball.gbros.us and sign in to check it works.
 
-Then sign in to the site and check that it works as before.
+Caddy on the droplet already has a real certificate, so Cloudflare can use
+encrypted connections to it. With the default ("Flexible") instead,
+Cloudflare talks to the droplet over plain http, Caddy redirects that to
+https, and the browser shows "too many redirects". Caddy keeps renewing its
+certificate by itself as before.
 
-### 4. Add the Worker
+### Step 5. Cloudflare: create the Worker
 
-1. In Cloudflare: **Compute (Workers) → Workers & Pages → Create → Create
-   Worker** (start from "Hello World"). Name it `gm-maintenance` and
+1. Cloudflare dashboard, left sidebar: **Workers & Pages** (under
+   **Compute**) → **Create** → **Create Worker** → start from
+   **Hello World**.
+2. Name it `gm-maintenance` and click **Deploy**.
+3. Click **Edit code**. Delete everything in the editor, paste in the whole
+   of [`deploy/cloudflare/worker.js`](deploy/cloudflare/worker.js) from
+   this repo, and click **Deploy**.
+4. Go back to the Worker's page → **Settings** → **Variables and Secrets**
+   → **Add**: type **Text**, name `MAINTENANCE`, value `off`. Click
    **Deploy**.
-2. **Edit code**, replace everything in the editor with the contents of
-   `deploy/cloudflare/worker.js`, and **Deploy**.
-3. In the Worker's **Settings → Variables and Secrets**, add a variable
-   (type Text) named `MAINTENANCE` with value `off`, and deploy.
-4. Still in **Settings → Domains & Routes → Add → Route**: zone `gbros.us`,
-   route `baseball.gbros.us/*`, failure mode **Fail open**. Save.
 
-The site now runs through the Worker. Nothing looks different while the
-droplet is up.
+### Step 6. Cloudflare: send the site through the Worker
 
-(Or from the repo with Node installed: `cd deploy/cloudflare && npx wrangler
-deploy`. `wrangler.toml` there has the route and the variable.)
+1. Still on the Worker: **Settings** → **Domains & Routes** → **Add** →
+   **Route**.
+2. **Zone:** `gbros.us`. **Route:** `baseball.gbros.us/*`. **Failure
+   mode:** **Fail open (proceed)**.
+3. **Add route**.
 
-The free plan allows 100,000 requests a day through the Worker. Past that,
-with fail open, requests go straight to the droplet and the maintenance page
-is skipped until the next day.
+That's it. Nothing looks different while the droplet is up. To see the
+page once without turning anything off, set `MAINTENANCE` to `on` (below),
+load the site, and set it back to `off`.
+
+(Steps 5 and 6 can instead be done from a computer with Node installed:
+`cd deploy/cloudflare && npx wrangler deploy`, using `wrangler.toml`
+there.)
 
 ### Taking the site down
 
-1. In the Worker's **Settings → Variables and Secrets**, set `MAINTENANCE`
-   to `on` and deploy. Everyone sees the maintenance page at once.
-2. Power off the droplet (or stop the containers).
+1. Cloudflare → **Workers & Pages** → `gm-maintenance` → **Settings** →
+   **Variables and Secrets**: edit `MAINTENANCE` to `on`, **Deploy**.
+   Everyone now gets the maintenance page.
+2. Power off the droplet (DigitalOcean → the droplet → **Power** → **Turn
+   off**), or stop the containers.
 
-Coming back: power on the droplet, check the app has started
-(`docker compose ps`), then set `MAINTENANCE` back to `off`.
+Bringing it back:
 
-If you skip step 1, or the droplet goes down by itself, visitors still get
-the page, after Cloudflare gives up waiting for the droplet (about 15
+1. Power on the droplet and wait until `docker compose ps` shows `web`
+   running.
+2. Set `MAINTENANCE` back to `off` and **Deploy**.
+
+If you forget step 1, or the droplet goes down by itself, visitors still
+get the page, after Cloudflare gives up waiting for the droplet (about 15
 seconds). It also shows when Caddy is up but the app isn't.
+
+The free plan allows 100,000 requests a day through the Worker. Past that,
+with fail open, requests skip the Worker and go straight to the droplet
+until the next day.
 
 ### Visitors' IPs
 
 Behind Cloudflare, every request reaches Caddy from a Cloudflare address.
 `deploy/Caddyfile` trusts Cloudflare's address ranges to pass on the
 visitor's real IP (the `CF-Connecting-IP` header), so the sign-in limits
-still count per visitor. Cloudflare changes those ranges rarely; the
-current list is at [cloudflare.com/ips](https://www.cloudflare.com/ips/).
-After pulling this change, restart Caddy so it reads the new config:
-
-```
-docker compose up -d --force-recreate caddy
-```
+still count per visitor. Without Cloudflare in front it changes nothing.
+Cloudflare changes its ranges rarely; the current list is at
+https://www.cloudflare.com/ips/.
 
 ## Backups
 
