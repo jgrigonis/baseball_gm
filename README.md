@@ -190,7 +190,25 @@ Create a fun, interactive game, where you manage and run a baseball team.
 
 ### Development notes
 
-At the root of the project you can run `pytest` to run the unit tests
+The scripts at the root run from anywhere and install what `uv.lock` lists
+first. The server ones need `DATABASE_URL` set, e.g.
+`export DATABASE_URL=postgresql://$(whoami)@localhost/baseball_manager`.
+
+- `./start_webserver.sh`: runs migrations, then starts the web server (on
+  http://127.0.0.1:8000, reloading on code changes) and a sim worker. Ctrl-C
+  stops both; the worker finishes a sim it's in the middle of unless you press
+  Ctrl-C again. Extra arguments go to uvicorn, e.g. `--port 8080`.
+- `./reset_leagues.sh`: deletes every league but keeps user accounts (see
+  above), then starts the server. Stop a running server first.
+- `./delete_db_start_webserver.sh`: drops and recreates the whole database
+  (creating it if it doesn't exist yet), deletes `team_files/`, then starts the
+  server on the empty database. It asks first; `--yes` skips that.
+- `./run_tests_with_coverage.sh`: runs the tests under coverage and prints the
+  report. Needs `DATABASE_TEST_URL`, a database the tests may wipe (e.g.
+  `createdb baseball_manager_test`). Extra arguments go to pytest, e.g.
+  `tests/api -x`.
+
+At the root of the project you can run `uv run pytest` to run the unit tests
 
 You can run `ruff format .` to format the code, and `ruff check src tests scripts` to lint it (ruff's `F` rules cover pyflakes).
 

@@ -47,8 +47,10 @@ def test_deletes_every_league_and_keeps_users(db_conn, factory, setup, monkeypat
 def test_asks_first(db_conn, factory, monkeypatch, capsys):
     factory.league()
 
-    _reset(monkeypatch, yes=False, answer="n")
+    with pytest.raises(SystemExit) as exit_info:
+        _reset(monkeypatch, yes=False, answer="n")
 
+    assert exit_info.value.code == 1
     assert _leagues(db_conn) == 1
     assert "Aborted" in capsys.readouterr().out
 

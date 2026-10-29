@@ -51,10 +51,13 @@ import logging
 import os
 import random
 import shutil
-import subprocess
 import sys
 import uuid
 from pathlib import Path
+
+import psycopg
+from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
@@ -170,6 +173,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--all-teams",
         action="store_true",
         help="⚠ Delete ALL team files for ALL leagues (destructive)",
+    )
+    clear.add_argument(
+        "--yes",
+        "-y",
+        action="store_true",
+        help="Skip the confirmation prompts for --db and --all-teams",
     )
 
     # ── reset-leagues ──────────────────────────────────────────────────────────
@@ -403,23 +412,28 @@ def clear_temp() -> None:
 
 def clear_db() -> None:
     """
-    Drop and recreate the Postgres database.
-    Reads DATABASE_URL from environment to find the DB name.
+    Drop and recreate the Postgres database DATABASE_URL names, connecting
+    as its user to the server's `postgres` database. Anything still connected
+    to it (a web server, a sim worker) is disconnected. Exits on failure.
     """
     url = os.environ.get("DATABASE_URL", "")
-    # Extract db name from URL: postgresql://user@host/dbname
-    db_name = url.rstrip("/").rsplit("/", 1)[-1].split("?")[0] if "/" in url else None
-    if not db_name:
-        print("  ❌ Could not determine DB name from DATABASE_URL")
-        return
+    if not url:
+        sys.exit("  ❌ DATABASE_URL isn't set")
+    params = conninfo_to_dict(url)
+    db_name = params.get("dbname")
+    if not db_name or db_name == "postgres":
+        sys.exit(f"  ❌ DATABASE_URL doesn't name a database to reset: {url}")
+    params["dbname"] = "postgres"
     try:
-        subprocess.run(["dropdb", "--if-exists", db_name], check=True)
-        subprocess.run(["createdb", db_name], check=True)
-        print(f"  Dropped and recreated database: {db_name}")
-    except subprocess.CalledProcessError as e:
-        print(f"  ❌ DB reset failed: {e}")
-    except FileNotFoundError:
-        print("  ❌ dropdb/createdb not found — reset the database manually")
+        with psycopg.connect(make_conninfo(**params), autocommit=True) as conn:
+            name = sql.Identifier(db_name)
+            conn.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(name)
+            )
+            conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
+    except psycopg.Error as e:
+        sys.exit(f"  ❌ DB reset failed: {e}")
+    print(f"  Dropped and recreated database: {db_name}")
 
 
 def clear_all_teams() -> None:
@@ -1031,10 +1045,11 @@ def cmd_clear(args) -> None:
         return
 
     if args.all_teams:
-        confirm = input("⚠️  Delete ALL team files for ALL leagues? [y/N] ").strip()
-        if confirm.lower() not in ("y", "yes"):
-            print("  Aborted")
-            return
+        if not args.yes:
+            confirm = input("⚠️  Delete ALL team files for ALL leagues? [y/N] ")
+            if confirm.strip().lower() not in ("y", "yes"):
+                print("  Aborted")
+                return
         clear_all_teams()
 
     if args.teams and not args.all_teams:
@@ -1043,8 +1058,8 @@ def cmd_clear(args) -> None:
             clear_teams_for_league(league_id)
 
     if args.clear_db:
-        confirm = input("⚠️  Reset the Postgres database? [y/N] ").strip()
-        if confirm.lower() not in ("y", "yes"):
+        confirm = "y" if args.yes else input("⚠️  Reset the Postgres database? [y/N] ")
+        if confirm.strip().lower() not in ("y", "yes"):
             print("  Aborted")
         else:
             clear_db()
@@ -1077,7 +1092,8 @@ def cmd_reset_leagues(args) -> None:
         confirm = input("⚠️  Delete these leagues? [y/N] ").strip()
         if confirm.lower() not in ("y", "yes"):
             print("  Aborted")
-            return
+            # Non-zero, so reset_leagues.sh doesn't go on to start the server.
+            sys.exit(1)
 
     for league in leagues:
         try:

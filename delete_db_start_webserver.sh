@@ -1,47 +1,33 @@
 #!/bin/bash
+# Wipe everything and start fresh: drop and recreate the database DATABASE_URL
+# names (every league and every user account goes), delete every league's
+# team_files, then start the web server and sim worker on the empty database.
+#
+#   ./delete_db_start_webserver.sh         # asks first
+#   ./delete_db_start_webserver.sh --yes   # doesn't ask
+#
+# To keep user accounts and only delete the leagues, use reset_leagues.sh.
+set -euo pipefail
+
 # Run from the repo root no matter where the script is called from.
-cd "$(dirname "$0")" || exit 1
-source .venv/bin/activate
+cd "$(dirname "$0")"
 
-# Default to current system user if PGUSER is unset or empty
-: "${PGUSER:=$(whoami)}"
-
-# 2. Final safety check: bail if it's still somehow empty
-if [[ -z "$PGUSER" ]]; then
-    echo "Error: Could not determine database user."
+if [[ -z "${DATABASE_URL:-}" ]]; then
+    echo "DATABASE_URL isn't set. Set it first, e.g.:" >&2
+    echo "  export DATABASE_URL=postgresql://$(whoami)@localhost/baseball_manager" >&2
     exit 1
 fi
 
-# Check if --yes was passed as an argument
-SKIP_CONFIRM=false
-for arg in "$@"; do
-  if [ "$arg" == "--yes" ]; then
-    SKIP_CONFIRM=true
-  fi
-done
-
-# If not skipping, ask the user
-if [ "$SKIP_CONFIRM" = false ]; then
-    read -p "Are you sure you want to reset the DB and start? [y/n]: " confirm
-    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+if [[ "${1:-}" != "--yes" && "${1:-}" != "-y" ]]; then
+    read -r -p "Delete the whole database (every league and user account) and start fresh? [y/N]: " confirm
+    if [[ ! $confirm =~ ^[Yy]([Ee][Ss])?$ ]]; then
         echo "Aborted."
         exit 1
     fi
 fi
 
-# clear team_files
-rm -rf team_files/*
+# Disconnects anything still using the database, e.g. a server left running.
+uv run --locked python scripts/cligr.py clear --db --all-teams --yes
 
-# echo "$PGUSER"
-# Do the needful
-psql -U "$PGUSER" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'baseball_manager';" postgres
-psql -U "$PGUSER" -c "DROP DATABASE baseball_manager;" postgres
-psql -U "$PGUSER" -c "CREATE DATABASE baseball_manager;" postgres
-
-python -m src.db.migrate || exit 1
-# The sim worker runs the sims the server queues (src/worker.py). It stops
-# with the server.
-python -m src.worker &
-WORKER_PID=$!
-trap 'kill $WORKER_PID 2>/dev/null' EXIT
-uvicorn src.api.main:app --reload
+# Creates the tables and the admin login, then starts the server and worker.
+exec ./start_webserver.sh
