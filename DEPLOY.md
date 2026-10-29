@@ -20,6 +20,29 @@ The app runs on one server with Docker Compose. `docker-compose.yml` starts:
   server, e.g. `gm.example.com`.
 - An email provider that sends over SMTP, for password reset emails (below).
 
+## Pointing the domain at the server
+
+At your domain registrar (GoDaddy: **My Products → your domain → DNS**), add
+an **A** record:
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A    | `@` for the bare domain (`gbros.us`), or e.g. `gm` for `gm.gbros.us` | the server's IPv4 address | 1 hour (or the lowest offered) |
+
+If the server has an IPv6 address, add an **AAAA** record with the same name
+too. For the bare domain, delete GoDaddy's default `@` A record ("Parked")
+first, or visitors may land on the parking page.
+
+Check it before deploying; it usually takes minutes, sometimes an hour:
+
+```
+dig +short gm.gbros.us     # should print the server's IP
+```
+
+Caddy can only get a certificate once this resolves to the server and
+ports 80 and 443 reach it. Until then `docker compose logs caddy` shows the
+certificate attempts failing; they succeed by themselves once DNS is right.
+
 ## First deploy
 
 On the server:
