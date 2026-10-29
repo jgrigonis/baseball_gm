@@ -145,3 +145,32 @@ docker compose up -d --scale worker=2
 
 Workers share the queue in Postgres, never take the same job, and never sim
 the same league at once.
+
+## Running it on your own computer
+
+To try the production setup before deploying (on a Mac, Windows or Linux),
+install and open [Docker Desktop](https://www.docker.com/products/docker-desktop/),
+then from the repo:
+
+```
+cp .env.example .env
+```
+
+and in `.env` set:
+
+```
+PUBLIC_BASE_URL=http://localhost
+POSTGRES_PASSWORD=anything-local
+ADMIN_INITIAL_PASSWORD=anything-local
+```
+
+Then `docker compose up -d --build` (the first build takes a few minutes),
+open http://localhost and sign in as `admin` with that password.
+
+- Use `http://`, not `https://`, for localhost: Caddy would make its own
+  certificate, which browsers warn about until you trust it.
+- `docker compose up -d --build` again after changing code;
+  `docker compose down` to stop (add `-v` to also wipe its database).
+- It has its own database, separate from the one `./start_webserver.sh`
+  uses. For day-to-day work `./start_webserver.sh` is quicker, since it
+  reloads on every code change.
