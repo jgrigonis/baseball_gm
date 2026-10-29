@@ -1,0 +1,15 @@
+# Caddy: HTTPS for the site, passing requests to the web server.
+# SITE_ADDRESS is PUBLIC_BASE_URL (docker-compose.yml), e.g.
+# https://gm.example.com. Caddy gets a Let's Encrypt certificate for that
+# host, renews it, and redirects http:// to https://.
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# Browsers stick to HTTPS for this site from now on.
+	header Strict-Transport-Security "max-age=31536000"
+
+	# Caddy sets X-Forwarded-For to the visitor's address, replacing any the
+	# visitor sent, so the sign-in limits see real IPs.
+	reverse_proxy web:8000
+}

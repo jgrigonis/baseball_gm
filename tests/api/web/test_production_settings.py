@@ -77,6 +77,11 @@ class TestDefaultAdmin:
             with pytest.raises(RuntimeError, match="ADMIN_INITIAL_PASSWORD"):
                 migration_010_admin.upgrade(fresh)
 
+    def test_empty_password_refused(self, fresh):
+        with patch.object(settings, "admin_initial_password", ""):
+            with pytest.raises(RuntimeError, match="ADMIN_INITIAL_PASSWORD"):
+                migration_010_admin.upgrade(fresh)
+
     def test_chosen_password_is_fine_when_deployed(self, fresh):
         with (
             patch.object(settings, "public_base_url", "https://gm.example.com"),

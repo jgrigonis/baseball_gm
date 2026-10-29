@@ -38,6 +38,11 @@ On windows you should also do this in a powershell as an admin:
 
 `[System.Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "Machine")`
 
+### Deploying
+
+See [DEPLOY.md](DEPLOY.md): Docker Compose with Postgres, HTTPS, the sim
+worker, nightly backups and email.
+
 ### Migrations
 
 The web server doesn't change the database schema itself. Bring it up to
@@ -100,7 +105,7 @@ with all its settings (change them, pause or resume the league, remove GMs)
 and every user (add or delete accounts, set passwords and email addresses,
 give or take away admin access).
 
-The first time the server starts on a database, it creates an `admin` login
+The first time migrations run on a database, they create an `admin` login
 with the password `changeme`, or whatever `ADMIN_INITIAL_PASSWORD` is set to
 in the environment or `.env`. Signing in with it asks for a new password
 before anything else. Set `ADMIN_INITIAL_PASSWORD` before that first start
