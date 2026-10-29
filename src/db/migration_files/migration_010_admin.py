@@ -49,6 +49,13 @@ def upgrade(conn):
             DEFAULT_ADMIN_USERNAME,
         )
         return
+    password = settings.admin_initial_password
+    # Anyone could sign in as admin before the owner does.
+    if not password or (settings.served_over_https and password == "changeme"):
+        raise RuntimeError(
+            "Set ADMIN_INITIAL_PASSWORD before the first deploy: it's the "
+            "password for the admin login this creates."
+        )
     conn.execute(
         """INSERT INTO users (id, session_token, display_name, username,
                               password_hash, is_admin, must_change_password)
@@ -58,6 +65,6 @@ def upgrade(conn):
             uuid.uuid4().hex + uuid.uuid4().hex,
             DEFAULT_ADMIN_USERNAME,
             DEFAULT_ADMIN_USERNAME,
-            hash_password(settings.admin_initial_password),
+            hash_password(password),
         ),
     )

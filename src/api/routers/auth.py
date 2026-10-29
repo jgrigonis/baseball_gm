@@ -47,6 +47,7 @@ from src.api.services.passwords import (
     username_error,
     verify_password,
 )
+from src.config import settings
 from src.db.repositories.user_repo import UserRepository
 from src.web.utils import templates
 
@@ -67,6 +68,7 @@ def _signed_in(token: str) -> RedirectResponse:
         max_age=60 * 60 * 24 * 365 * 5,
         httponly=True,
         samesite="lax",
+        secure=settings.served_over_https,
     )
     return resp
 
@@ -236,7 +238,12 @@ def set_password(
 @router.post("/auth/logout")
 def logout(db: DB, user: OptionalUser):
     resp = RedirectResponse("/", status_code=302)
-    resp.delete_cookie(SESSION_COOKIE, httponly=True, samesite="lax")
+    resp.delete_cookie(
+        SESSION_COOKIE,
+        httponly=True,
+        samesite="lax",
+        secure=settings.served_over_https,
+    )
 
     if user:
         UserRepository(db).invalidate_session(user["id"])

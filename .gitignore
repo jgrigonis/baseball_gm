@@ -27,3 +27,6 @@ team_files/*
 .coverage
 
 build/
+
+.env
+backups/

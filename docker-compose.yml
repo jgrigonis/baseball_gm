@@ -1,0 +1,115 @@
+# Production stack for one server. See DEPLOY.md.
+#
+#   cp .env.example .env    # then fill it in
+#   docker compose up -d --build
+#
+# Settings come from .env, which compose reads for ${...} below and the app
+# containers load whole.
+
+name: baseball-gm
+
+x-app: &app
+  build: .
+  image: baseball-gm:latest
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://gm:${POSTGRES_PASSWORD}@db:5432/baseball_manager
+  restart: unless-stopped
+  logging: &logging
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "5"
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: gm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: baseball_manager
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gm -d baseball_manager"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  # Brings the schema up to date, then exits. The web server and the worker
+  # start once it has succeeded.
+  migrate:
+    <<: *app
+    command: ["python", "-m", "src.db.migrate"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Runs the sims (src/worker.py). For more leagues simming at once:
+  #   docker compose up -d --scale worker=2
+  worker:
+    <<: *app
+    command: ["python", "-m", "src.worker"]
+    # SIGTERM lets the job in hand finish; a full season takes minutes.
+    stop_grace_period: 5m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # HTTPS in front of the web server. Caddy gets and renews the certificate
+  # for the PUBLIC_BASE_URL host by itself.
+  caddy:
+    image: caddy:2
+    environment:
+      SITE_ADDRESS: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+    logging: *logging
+
+  # A pg_dump of the database every night into ./backups (deploy/backup.sh).
+  backup:
+    image: postgres:17
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: gm
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: baseball_manager
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./deploy/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
