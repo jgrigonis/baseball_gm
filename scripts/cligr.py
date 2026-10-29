@@ -427,7 +427,9 @@ def clear_db() -> None:
     try:
         with psycopg.connect(make_conninfo(**params), autocommit=True) as conn:
             name = sql.Identifier(db_name)
-            conn.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(name))
+            conn.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(name)
+            )
             conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
     except psycopg.Error as e:
         sys.exit(f"  ❌ DB reset failed: {e}")
