@@ -47,5 +47,13 @@ class Settings(BaseSettings):
     # the tests use this.
     sim_worker: Literal["separate", "inline"] = "separate"
 
+    @property
+    def served_over_https(self) -> bool:
+        """Whether this is a real deployment, served over HTTPS, as
+        PUBLIC_BASE_URL says. Cookies are then marked Secure, so browsers only
+        send them over HTTPS, and the default admin password is refused. Off
+        for plain http://localhost while developing."""
+        return self.public_base_url.lower().startswith("https://")
+
 
 settings = Settings()

@@ -27,6 +27,7 @@ from src.api.services import personas, sim_jobs
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
+from src.config import settings
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
@@ -104,6 +105,7 @@ def leagues_index(
             max_age=60 * 60 * 24 * 365,
             httponly=True,
             samesite="lax",
+            secure=settings.served_over_https,
         )
     return resp
 

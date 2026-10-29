@@ -70,6 +70,9 @@ logging.getLogger("uvicorn.access").addFilter(_QuietPolls())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.smtp_host and not settings.public_base_url:
+        # Reset emails would have no address to link to (password_reset.py).
+        raise RuntimeError("SMTP_HOST is set, so PUBLIC_BASE_URL must be too.")
     # Migrations are a separate step (src/db/migrate.py), run once before
     # the server starts, rather than by each worker process at once.
     conn = get_connection()

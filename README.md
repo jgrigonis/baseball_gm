@@ -104,7 +104,9 @@ The first time the server starts on a database, it creates an `admin` login
 with the password `changeme`, or whatever `ADMIN_INITIAL_PASSWORD` is set to
 in the environment or `.env`. Signing in with it asks for a new password
 before anything else. Set `ADMIN_INITIAL_PASSWORD` before that first start
-if anyone else can reach the server.
+if anyone else can reach the server. Once
+`PUBLIC_BASE_URL` is an `https://` address (a real deployment), the
+migration step refuses to create the admin with `changeme`.
 
 To make any account an admin, or get back in if the admin login is lost, run
 this from the repo root (it creates the account if it doesn't exist, and

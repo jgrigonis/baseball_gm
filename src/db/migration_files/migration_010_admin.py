@@ -49,6 +49,12 @@ def upgrade(conn):
             DEFAULT_ADMIN_USERNAME,
         )
         return
+    if settings.served_over_https and settings.admin_initial_password == "changeme":
+        # Anyone could sign in as admin before the owner does.
+        raise RuntimeError(
+            "Set ADMIN_INITIAL_PASSWORD before the first deploy: the default "
+            "admin's password would otherwise be 'changeme'."
+        )
     conn.execute(
         """INSERT INTO users (id, session_token, display_name, username,
                               password_hash, is_admin, must_change_password)
