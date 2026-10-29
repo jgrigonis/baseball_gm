@@ -1,0 +1,14 @@
+# Only needed to deploy the Worker from the command line
+# (`npx wrangler deploy` in this folder). Pasting worker.js into the
+# Cloudflare dashboard does the same. See DEPLOY.md.
+name = "gm-maintenance"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+routes = [
+  { pattern = "baseball.gbros.us/*", zone_name = "gbros.us" },
+]
+
+[vars]
+# "on" shows the maintenance page without trying the droplet.
+MAINTENANCE = "off"

@@ -3,13 +3,27 @@
 # https://gm.example.com. Caddy gets a Let's Encrypt certificate for that
 # host, renews it, and redirects http:// to https://.
 
+{
+	servers {
+		# Behind Cloudflare (DEPLOY.md, "Maintenance page"), every request
+		# comes from a Cloudflare address, and the visitor's own is in
+		# CF-Connecting-IP. Caddy believes that header only from Cloudflare's
+		# ranges (https://www.cloudflare.com/ips/), so nobody else can fake
+		# it. Without Cloudflare in front, nothing here changes.
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
 	# Browsers stick to HTTPS for this site from now on.
 	header Strict-Transport-Security "max-age=31536000"
 
-	# Caddy sets X-Forwarded-For to the visitor's address, replacing any the
-	# visitor sent, so the sign-in limits see real IPs.
-	reverse_proxy web:8000
+	reverse_proxy web:8000 {
+		# Just the visitor's address, replacing any they sent, so the
+		# sign-in limits see real IPs.
+		header_up X-Forwarded-For {client_ip}
+	}
 }
