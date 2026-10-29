@@ -175,30 +175,76 @@ minutes), so nobody's sim is cut off.
 ## Email
 
 Password reset links are sent over SMTP. Any provider works; Resend,
-Postmark, Amazon SES and Mailgun all have free or cheap tiers. Set in `.env`:
+Postmark, Amazon SES and Mailgun all have free or cheap tiers. The steps
+below are for Resend with the domain at GoDaddy.
+
+### 1. Add the domain in Resend
+
+In Resend, **Domains → Add Domain**, enter the domain you'll send from
+(e.g. `gbros.us`; mail can come from it even though the site is on
+`baseball.gbros.us`), and pick a region. Resend then lists the DNS records
+it needs. Leave that page open.
+
+### 2. Add the records in GoDaddy
+
+In GoDaddy, **My Products → your domain → DNS → Add New Record**, once for
+each record Resend shows. Copy the values from Resend exactly (the region
+in them depends on the one you picked); they look like this:
+
+| Type | Name | Value | Priority |
+|------|------|-------|----------|
+| TXT  | `resend._domainkey` | `p=MIGfMA0G…` (long; DKIM) | |
+| MX   | `send` | `feedback-smtp.us-east-1.amazonses.com` | 10 |
+| TXT  | `send` | `v=spf1 include:amazonses.com ~all` (SPF) | |
+| TXT  | `_dmarc` | `v=DMARC1; p=none;` (DMARC, recommended) | |
+
+- **Name:** enter only the part before your domain. Resend may show
+  `resend._domainkey.gbros.us`; GoDaddy adds `.gbros.us` itself, so typing
+  the whole thing makes `resend._domainkey.gbros.us.gbros.us`.
+- The `send` records go on a subdomain, so they don't touch any mail
+  you already receive at the domain.
+- If GoDaddy already has a `_dmarc` TXT record, keep that one.
+
+Back in Resend, click **Verify DNS Records**. It usually turns green within
+minutes, sometimes an hour. To check a record yourself:
+`dig +short TXT resend._domainkey.gbros.us`.
+
+### 3. Make an API key
+
+**API Keys → Create API Key**, with permission **Sending access** and the
+domain set to yours. Copy it now (it starts `re_`); Resend shows it once.
+
+### 4. Set it in `.env`
 
 ```
 SMTP_HOST=smtp.resend.com
 SMTP_PORT=587
 SMTP_USERNAME=resend
-SMTP_PASSWORD=<API key>
-MAIL_FROM=GM Sim <noreply@gm.example.com>
+SMTP_PASSWORD=re_...your key...
+MAIL_FROM=GM Sim <noreply@gbros.us>
+PUBLIC_BASE_URL=https://baseball.gbros.us
 ```
 
-`MAIL_FROM` should be an address at a domain you own. To keep the emails out
-of spam folders, add the DNS records your provider gives you when you add
-that domain to it:
+- `SMTP_USERNAME` is literally `resend`; the key is the password.
+- `MAIL_FROM` must be at the domain you verified. The name before it is
+  what people see as the sender.
+- `PUBLIC_BASE_URL` is where the reset links point; the app won't start
+  with `SMTP_HOST` set and this empty.
+- On DigitalOcean (and some other VPS providers) new servers can't
+  connect out on the usual mail ports, 25, 465 and 587; sending then fails
+  with `TimeoutError: timed out`. Use `SMTP_PORT=2587` instead, which
+  Resend also accepts.
 
-- **SPF**: a TXT record listing who may send mail for the domain.
-- **DKIM**: a TXT or CNAME record with the key the provider signs mail with.
-- **DMARC** (recommended): a TXT record at `_dmarc.` your domain, e.g.
-  `v=DMARC1; p=none`, telling receivers what to do with mail that fails the
-  other two.
+Then `docker compose up -d`, which restarts the services whose settings
+changed.
 
-The provider's dashboard shows when the records check out. Then use "Forgot
-your password?" on the sign-in page to send yourself a test. `docker compose
-logs web` shows any sending error. Without `SMTP_HOST`, emails are written
-to that log instead of sent.
+### 5. Test it
+
+Use "Forgot your password?" on the sign-in page with an account whose email
+is yours. `docker compose logs web` shows any sending error, and Resend's
+**Emails** page shows each one it sent. If the email lands in spam, check
+all the records above show as verified. Without `SMTP_HOST`, emails are
+written to the `web` log instead of sent.
 
 ## Backups
 
