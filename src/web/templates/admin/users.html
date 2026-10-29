@@ -9,20 +9,23 @@
   {% include "admin/_header.html" %}
 
   <div class="card" style="overflow-x:auto;">
-    <table class="data-table">
-      <thead><tr><th>Username</th><th>Display Name</th><th>Email</th><th class="num">Leagues</th><th>Role</th><th>Created</th><th></th></tr></thead>
+    <table class="data-table" data-sortable>
+      <thead><tr>
+        <th data-sort="text">Username</th><th data-sort="text">Display Name</th><th data-sort="text">Email</th>
+        <th class="num" data-sort="num">Leagues</th><th data-sort="text">Role</th><th data-sort="text">Created</th><th></th>
+      </tr></thead>
       <tbody>
         {% for u in users %}
         <tr>
-          <td class="team-name">{{ u.username or '—' }}</td>
+          <td class="team-name" data-sort-value="{{ u.username or '' }}">{{ u.username or '—' }}</td>
           <td class="admin-dim">{{ u.display_name }}</td>
-          <td class="admin-dim">{{ u.email or '—' }}</td>
+          <td class="admin-dim" data-sort-value="{{ u.email or '' }}">{{ u.email or '—' }}</td>
           <td class="num">{{ u.leagues }}</td>
-          <td class="admin-dim">
+          <td class="admin-dim" data-sort-value="{{ 'Admin' if u.is_admin else 'GM' }}">
             {% if u.is_admin %}<span style="color:var(--amber);">Admin</span>{% else %}GM{% endif %}
             {% if not u.has_password %} · no password{% elif u.must_change_password %} · must change password{% endif %}
           </td>
-          <td class="admin-dim">{{ (u.created_at or '')[:10] }}</td>
+          <td class="admin-dim" data-sort-value="{{ u.created_at or '' }}">{{ (u.created_at or '')[:10] }}</td>
           <td style="text-align:right;"><a href="/admin/users/{{ u.id }}" class="btn btn-secondary admin-small">Manage →</a></td>
         </tr>
         {% endfor %}
