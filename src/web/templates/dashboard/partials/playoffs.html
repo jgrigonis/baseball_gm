@@ -51,8 +51,9 @@
   width:220px;flex-shrink:0;
   border:1px solid var(--border);background:var(--bg-2);
 }
-.series-card.decided { border-color:var(--green); }
-.series-card.mine    { border-color:var(--amber); }
+.series-card.decided { border-color:var(--border-hi); }
+.series-card.mine    { border-color:var(--green); }
+.sc-team.out { opacity:.5; }
 .sc-header {
   padding:6px 10px;border-bottom:1px solid var(--border);
   font-family:var(--font-mono);font-size:10px;color:var(--muted);
@@ -85,14 +86,13 @@
 </style>
 
 {% macro series_card(s, my_team_id) %}
-<div class="series-card{% if s.decided %} decided{% endif %}"
-     style="{% if s.decided and s.winner_id == my_team_id %}border-color:var(--amber);{% endif %}">
+<div class="series-card{% if s.decided %} decided{% endif %}{% if s.teams | selectattr('is_mine') | list %} mine{% endif %}">
   <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
   {% if s.teams %}
     {% for t in s.teams %}
     {% set win_game_ids = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | map(attribute='id') | list %}
-    <div class="sc-team">
-      <span class="sc-name" style="color:{% if s.decided and t.team_id == s.winner_id %}var(--green){% elif t.is_mine %}var(--amber){% elif t.is_human %}var(--sky){% else %}var(--text){% endif %};">
+    <div class="sc-team{% if s.decided and t.team_id != s.winner_id %} out{% endif %}">
+      <span class="sc-name" style="color:{% if t.is_mine %}var(--green){% elif t.is_human %}var(--sky){% else %}var(--text){% endif %};">
         {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
       </span>
       <div class="sc-dots">
