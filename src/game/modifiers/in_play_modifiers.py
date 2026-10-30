@@ -5,6 +5,11 @@ from src.game.score import Score
 from src.game.intents.pitch import PrePitchSituation
 from src.player.player_in_game import PlayerInGame
 from src.game.modifiers.count_modifiers import IN_PLAY_COUNT_MODIFIERS
+from src.game.modifiers.pitch_modifiers import TYPICAL_ACCURACY, TYPICAL_STRIKES
+
+# Share of hits on balls in play a pitcher takes away per point of strikes
+# plus accuracy above typical: good stuff and command mean weaker contact.
+WEAK_CONTACT = 0.006
 
 # A typical starting outfield's range, (speed + outfield) / 2 averaged over
 # lf, cf and rf, in league play.
@@ -150,6 +155,13 @@ class InPlayModifiers:
         current_go = resolver.in_play_outcome.get_weights().get("ground_out", 0)
         if current_go > 500:  # hasn't been suppressed by a runner-on-first situation
             resolver.in_play_outcome.add("ground_out", 4 * (ground_balls - 50))
+
+        strikes = pitcher.get_effective_stat(pitcher.skills["strikes"])
+        accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
+        edge = (strikes - TYPICAL_STRIKES) + (accuracy - TYPICAL_ACCURACY)
+        hit_factor = max(0.5, 1 - WEAK_CONTACT * edge)
+        for hit in ("single", "double", "triple"):
+            resolver.in_play_outcome.multiply(hit, hit_factor)
 
         clutch = pitcher.get_effective_stat(pitcher.skills["clutch"])
         if -2 < score.differential < 2:
