@@ -23,13 +23,13 @@
   {% if active_tab == 'practice' %}
   <div class="card practice-intro">
     <div class="card-body">
-      {% if brand_new %}<div class="practice-welcome">Welcome to GM Sim.</div>{% endif %}
-      <p>A practice league is a quick solo league, just you and AI managers. A coach walks
+      {% if brand_new %}<div class="practice-welcome">Welcome to Baseball GM Sim.</div>{% endif %}
+      <p>The tutorial league is just you and AI managers. A coach walks
         you through it step by step: the lobby, the draft, setting your roster and lineup,
         playing games, the playoffs and the offseason. Start as many as you like, and leave
         one whenever you're done with it.</p>
       <form method="POST" action="/leagues/practice">
-        <button type="submit" class="btn btn-primary">Start a practice league →</button>
+        <button type="submit" class="btn btn-primary">Start a tutorial league →</button>
       </form>
       {% if user.dismissed_tips %}
       <p class="practice-reset">Closed the tips on each tab? <button type="button" class="link-btn" onclick="resetTips(this)">Show them again</button></p>
@@ -89,7 +89,7 @@
   <div style="{{ empty_style }}">
     You're not in any leagues right now. <a href="/leagues/new" style="color:var(--amber);">Create one</a>,
     find one to <a href="/leagues/?tab=join" style="color:var(--amber);">join</a>,
-    or learn the ropes in a <a href="/leagues/?tab=practice" style="color:var(--amber);">practice league</a>.
+    or learn the ropes in a <a href="/leagues/?tab=practice" style="color:var(--amber);">tutorial league</a>.
   </div>
   {% elif active_tab == 'join' %}
   <div style="{{ empty_style }}">

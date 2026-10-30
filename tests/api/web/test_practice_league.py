@@ -162,7 +162,7 @@ def test_tabs_show_counts(client, db_conn, user_id):
 def test_someone_new_starts_on_practice(client):
     html = client.get("/leagues/").text
 
-    assert "Welcome to GM Sim." in html
+    assert "Welcome to Baseball GM Sim." in html
     assert 'action="/leagues/practice"' in html
 
 
