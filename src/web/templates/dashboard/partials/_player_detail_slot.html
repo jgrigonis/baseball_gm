@@ -77,26 +77,33 @@
 {% endif %}
 
 {# ── Skills — rendered as sections ────────────────────────────────────────── #}
+{% macro skill_grid(skills) %}
+ <div class="pd-skill-grid">
+   {% for skill in skills %}
+   <div class="pd-skill-row">
+     <span class="pd-skill-label">{{ skill.label }}</span>
+     <span class="pd-skill-grade
+       {% set g = skill.grade %}
+       {% if g and g.startswith('A') %}elite
+       {% elif g and (g.startswith('B') or g == 'C+') %}good
+       {% elif g and (g.startswith('D') or g == 'F') %}poor
+       {% endif %}"
+       {% if is_admin and skill.value is not none %}title="{{ skill.value }}"{% endif %}>
+       {{ skill.grade or '?' }}{% if is_admin and skill.value is not none %} <span class="admin-value">{{ skill.value }}</span>{% endif %}
+     </span>
+   </div>
+   {% endfor %}
+ </div>
+{% endmacro %}
 {% if player.grades %}
  {% for section in player.grades %}
  <div class="pd-section">
    <div class="pd-section-title">{{ section.section }}</div>
-   <div class="pd-skill-grid">
-     {% for skill in section.skills %}
-     <div class="pd-skill-row">
-       <span class="pd-skill-label">{{ skill.label }}</span>
-       <span class="pd-skill-grade
-         {% set g = skill.grade %}
-         {% if g and g.startswith('A') %}elite
-         {% elif g and (g.startswith('B') or g == 'C+') %}good
-         {% elif g and (g.startswith('D') or g == 'F') %}poor
-         {% endif %}"
-         {% if is_admin and skill.value is not none %}title="{{ skill.value }}"{% endif %}>
-         {{ skill.grade or '?' }}{% if is_admin and skill.value is not none %} <span class="admin-value">{{ skill.value }}</span>{% endif %}
-       </span>
-     </div>
-     {% endfor %}
-   </div>
+   {{ skill_grid(section.skills) }}
+   {% if section.roles %}
+   <div class="pd-subsection-title">Role ratings</div>
+   {{ skill_grid(section.roles) }}
+   {% endif %}
  </div>
  {% endfor %}
 {% endif %}
