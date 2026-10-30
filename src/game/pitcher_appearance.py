@@ -12,6 +12,9 @@ class PitcherAppearance:
     team_id: str
     entered_inning: int
     finished_game: bool = False
+    # Pitching team's lead when he came in (negative = trailing). None when
+    # unknown, which falls back to judging a save on the final margin.
+    lead_at_entry: int | None = None
 
     @property
     def outs_recorded(self) -> int:
