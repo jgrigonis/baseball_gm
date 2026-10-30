@@ -1,48 +1,50 @@
 /*
   GM Sim — Production Design System
-  Aesthetic: Stadium scoreboard meets modern sports analytics
-  Fonts: Bebas Neue (display) · IBM Plex Mono (stats) · IBM Plex Sans (UI)
+  Aesthetic: a hand-turned ballpark scoreboard. Outfield-wall green panels,
+  painted cream lettering and scoreboard-bulb yellow.
+  Fonts: Big Shoulders Display (display) · IBM Plex Mono (stats) · Libre Franklin (UI)
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+/* Big Shoulders loads 700+ only, so any display text renders bold. */
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Libre+Franklin:wght@400;500;600;700&display=swap');
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
 :root {
-  /* Surfaces */
-  --bg:        #0c0f1a;
-  --bg-2:      #111829;
-  --bg-3:      #192236;
-  --bg-raised: #1e2a42;
+  /* Surfaces: outfield-wall greens, darkest at the back */
+  --bg:        #0b1912;
+  --bg-2:      #133324;
+  --bg-3:      #1a3f2e;
+  --bg-raised: #214a37;
 
   /* Borders */
-  --border:    #1e2d4a;
-  --border-hi: #2d4470;
+  --border:    #24503b;
+  --border-hi: #356a50;
 
-  /* Brand */
-  --amber:     #f59e0b;
-  --amber-dim: #78460a;
-  --amber-lo:  #1a1005;
+  /* Brand: scoreboard bulb yellow */
+  --amber:     #f2c14e;
+  --amber-dim: #6b5520;
+  --amber-lo:  #2a2a10;
 
   /* Accent */
-  --sky:       #38bdf8;
-  --sky-dim:   #0c3050;
+  --sky:       #7cc6e6;
+  --sky-dim:   #143a48;
 
   /* Semantic */
-  --green:     #22c55e;
-  --green-dim: #0a2e18;
-  --red:       #ef4444;
-  --red-dim:   #2e0a0a;
-  --muted:     #374a6a;
+  --green:     #5fd98a;
+  --green-dim: #14402a;
+  --red:       #f0604f;
+  --red-dim:   #3a1410;
+  --muted:     #4a6a59;
 
-  /* Text */
-  --text:      #e2e8f0;
-  --text-dim:  #64748b;
-  --text-hi:   #f8fafc;
+  /* Text: painted cream */
+  --text:      #ebe7d8;
+  --text-dim:  #98b0a1;
+  --text-hi:   #fbf8ee;
 
   /* Typography */
-  --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --font-display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
   --font-mono:    'IBM Plex Mono', 'Courier New', monospace;
-  --font-sans:    'IBM Plex Sans', system-ui, sans-serif;
+  --font-sans:    'Libre Franklin', system-ui, sans-serif;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
@@ -50,6 +52,8 @@
 html, body { height: 100%; }
 body {
   background: var(--bg);
+  /* faint vertical seams, like the panels of a manual scoreboard */
+  background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, .14) 0 1px, transparent 1px 96px);
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -96,6 +100,7 @@ body {
 
 .topbar-logo {
   font-family: var(--font-display);
+  text-transform: uppercase;
   font-size: 22px;
   letter-spacing: 0.08em;
   color: var(--amber);
@@ -287,6 +292,7 @@ body {
 }
 .page-title {
   font-family: var(--font-display);
+  text-transform: uppercase;
   font-size: 32px;
   letter-spacing: 0.05em;
   color: var(--text-hi);
@@ -332,6 +338,7 @@ body {
   color: var(--team-ink);
   box-shadow: inset 0 0 0 1.5px var(--team-accent), 0 0 0 1px rgba(0, 0, 0, .35);
   font-family: var(--font-display);
+  text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.02em;
   line-height: 1;
