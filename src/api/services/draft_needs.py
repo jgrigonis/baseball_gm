@@ -2,7 +2,7 @@
 #
 # Each team's suggested draft needs, from its roster, and the strategy each
 # team drafts with: its saved strategy, or else those needs. A saved strategy
-# with every need chip Off still drafts by those needs, keeping its pins and
+# with every need chip Low still drafts by those needs, keeping its pins and
 # age slider. AI GMs never save one: they draft by need, weighed by their team
 # state and persona (src/league/front_office.py): best available or need, an
 # age slider, and offense for a bat-first GM.

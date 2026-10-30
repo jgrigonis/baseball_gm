@@ -252,7 +252,7 @@ class DraftPreferencesRequest(BaseModel):
 
 
 class DraftStrategyRequest(BaseModel):
-    """Need chips (chip key → level 0-3), age preference (-1 upside … 1 ready
+    """Need chips (chip key → level 0-2: Low, Med, High), age preference (-1 upside … 1 ready
     sooner) and pinned player ids. Checked by DraftStrategy."""
 
     chips: dict[str, int] = {}
