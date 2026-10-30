@@ -144,7 +144,7 @@ class GMRepository:
 
     def get_public_leagues(self, user_id: str) -> list[dict]:
         """Public leagues the user isn't in. Leagues still in the lobby come
-        first, since those can be joined, and finished ones last. Practice
+        first, since those can be joined, and finished ones last. Tutorial
         leagues never show here, even if an admin made one public."""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at,

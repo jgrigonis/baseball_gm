@@ -1,10 +1,10 @@
 {# templates/dashboard/partials/_coach_panel.html
-   The practice league's coach, pinned to the corner of the lobby and the
+   The tutorial league's coach, pinned to the corner of the lobby and the
    dashboard. It reloads itself after a tab change, and after any save or sim
    (any POST or PUT to the league), since those are what tick steps off.
    Collapsing it is remembered per league in this browser. Takes `coach` and
    `league_id`. #}
-<aside id="coach-panel" class="coach-panel" aria-label="Practice league coach"
+<aside id="coach-panel" class="coach-panel" aria-label="Tutorial league coach"
        hx-get="/leagues/{{ league_id }}/coach" hx-trigger="coach-refresh from:body" hx-swap="innerHTML">
   {% include "dashboard/partials/_coach.html" %}
 </aside>

@@ -375,7 +375,7 @@ class LeagueRepository:
         )
 
     def mark_coach_step(self, league_id: str, step: str) -> None:
-        """Record that the GM did one of the coach's steps. Only practice
+        """Record that the GM did one of the coach's steps. Only tutorial
         leagues have a coach, so this does nothing in any other league."""
         self.conn.execute(
             """UPDATE leagues SET coach_done = array_append(coach_done, %s)

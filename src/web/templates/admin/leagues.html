@@ -20,7 +20,7 @@
       <tbody>
         {% for l in leagues %}
         <tr>
-          <td class="team-name" data-sort-value="{{ l.name }}">{{ l.name }}{% if l.is_practice %} <span class="admin-dim" style="font-size:10px;">· practice</span>{% endif %}
+          <td class="team-name" data-sort-value="{{ l.name }}">{{ l.name }}{% if l.is_practice %} <span class="admin-dim" style="font-size:10px;">· tutorial</span>{% endif %}
             <div class="admin-id" title="league_id">{{ l.id }}</div></td>
           <td data-sort-value="{{ l.state_label }}">
             <span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span>

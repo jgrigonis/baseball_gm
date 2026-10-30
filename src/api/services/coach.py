@@ -1,6 +1,6 @@
 # src/api/services/coach.py
 #
-# The coach panel in a practice league: a checklist that walks a new GM from
+# The coach panel in a tutorial league: a checklist that walks a new GM from
 # the lobby through their first season and offseason, one step at a time.
 #
 # Some steps the league's own state answers (the draft has run, the playoffs
@@ -111,7 +111,7 @@ STEPS = (
 
 
 def mark(db, league_id: str, step: str) -> None:
-    """Record a coach step the GM just did. Does nothing outside a practice
+    """Record a coach step the GM just did. Does nothing outside a tutorial
     league, so callers don't need to check."""
     LeagueRepository(db).mark_coach_step(league_id, step)
 
@@ -162,7 +162,7 @@ def coach_steps(db, league: dict) -> list[dict]:
 
 
 def coach_ctx(db, league: dict) -> dict | None:
-    """What dashboard/partials/_coach.html needs, or None outside a practice
+    """What dashboard/partials/_coach.html needs, or None outside a tutorial
     league."""
     if not league or not league.get("is_practice"):
         return None

@@ -1,6 +1,6 @@
-# tests/api/web/test_practice_league.py
+# tests/api/web/test_tutorial_league.py
 """
-The new-user tutorial: practice leagues, the five tabs on the leagues page,
+The new-user tutorial: tutorial leagues, the five tabs on the leagues page,
 the coach panel's steps, and the first-visit tab tips.
 """
 
@@ -62,16 +62,16 @@ def _tab(client, tab):
     return client.get(f"/leagues/?tab={tab}").text.split('id="leagues-tabs"')[1]
 
 
-def _practice(client):
-    r = client.post("/leagues/practice")
+def _tutorial(client):
+    r = client.post("/leagues/tutorial")
     return r.headers["location"].split("/")[2]
 
 
-# ── Starting a practice league ────────────────────────────────────────────────
+# ── Starting a tutorial league ────────────────────────────────────────────────
 
 
-def test_practice_league_is_a_solo_speed_blitz(client, db_conn, user_id):
-    league_id = _practice(client)
+def test_tutorial_league_is_a_solo_speed_blitz(client, db_conn, user_id):
+    league_id = _tutorial(client)
 
     league = LeagueRepository(db_conn).get_by_id(league_id)
     assert league["is_practice"]
@@ -87,17 +87,17 @@ def test_practice_league_is_a_solo_speed_blitz(client, db_conn, user_id):
     assert league["commissioner_gm_id"] == gm["id"]
 
 
-def test_practice_leagues_have_no_limit(client, db_conn):
-    first = _practice(client)
-    second = _practice(client)
+def test_tutorial_leagues_have_no_limit(client, db_conn):
+    first = _tutorial(client)
+    second = _tutorial(client)
 
     repo = LeagueRepository(db_conn)
-    assert repo.get_by_id(first)["name"] == "Practice League 1"
-    assert repo.get_by_id(second)["name"] == "Practice League 2"
+    assert repo.get_by_id(first)["name"] == "Tutorial League 1"
+    assert repo.get_by_id(second)["name"] == "Tutorial League 2"
 
 
-def test_practice_league_opens_in_the_lobby_with_the_coach(client, db_conn, user_id):
-    league_id = _practice(client)
+def test_tutorial_league_opens_in_the_lobby_with_the_coach(client, db_conn, user_id):
+    league_id = _tutorial(client)
     gm = db_conn.execute(
         "SELECT id FROM gms WHERE league_id = %s", (league_id,)
     ).fetchone()
@@ -107,7 +107,7 @@ def test_practice_league_opens_in_the_lobby_with_the_coach(client, db_conn, user
 
     assert 'id="coach-panel"' in r.text
     assert "Start the league" in r.text
-    assert "Practice league" in r.text
+    assert "Tutorial league" in r.text
 
 
 def test_other_leagues_have_no_coach(client, db_conn, user_id):
@@ -138,10 +138,10 @@ def test_each_league_lands_in_its_tab(client, db_conn, user_id):
 
     tabs = {
         t: _tab(client, t)
-        for t in ("practice", "running", "join", "watch", "completed")
+        for t in ("tutorial", "running", "join", "watch", "completed")
     }
 
-    assert "Learning" in tabs["practice"]
+    assert "Learning" in tabs["tutorial"]
     assert "Going Now" in tabs["running"]
     assert "Long Over" in tabs["completed"]
     assert "Open Lobby" in tabs["join"]
@@ -159,11 +159,25 @@ def test_tabs_show_counts(client, db_conn, user_id):
     assert 'Running <span class="tab-count">2</span>' in html
 
 
-def test_someone_new_starts_on_practice(client):
+def test_someone_new_starts_on_tutorial(client):
     html = client.get("/leagues/").text
 
     assert "Welcome to Baseball GM Sim." in html
-    assert 'action="/leagues/practice"' in html
+    assert 'action="/leagues/tutorial"' in html
+
+
+def test_old_practice_links_open_the_tutorial_tab(client):
+    html = _tab(client, "practice")
+
+    assert 'href="/leagues/?tab=tutorial" class="tab-link active"' in html
+
+
+def test_old_practice_route_still_starts_a_tutorial(client, db_conn):
+    r = client.post("/leagues/practice")
+
+    assert r.status_code == 302
+    league_id = r.headers["location"].split("/")[2]
+    assert LeagueRepository(db_conn).get_by_id(league_id)["is_practice"]
 
 
 def test_someone_with_a_league_starts_on_running(client, db_conn, user_id):
@@ -187,10 +201,10 @@ def test_join_tab_takes_a_code(client):
     assert 'action="/leagues/join"' in _tab(client, "join")
 
 
-def test_practice_leagues_never_show_in_public_lists(client, db_conn):
-    _league(db_conn, "Someone's Practice", "season", is_public=True, is_practice=True)
+def test_tutorial_leagues_never_show_in_public_lists(client, db_conn):
+    _league(db_conn, "Someone's Tutorial", "season", is_public=True, is_practice=True)
 
-    assert "Someone's Practice" not in _tab(client, "watch")
+    assert "Someone's Tutorial" not in _tab(client, "watch")
 
 
 # ── The coach's steps ─────────────────────────────────────────────────────────
@@ -201,7 +215,7 @@ def _steps(db, league_id):
     return {s["key"]: s["done"] for s in coach.coach_steps(db, league)}
 
 
-def test_marking_a_step_only_counts_in_practice_leagues(db_conn):
+def test_marking_a_step_only_counts_in_tutorial_leagues(db_conn):
     practice = _league(db_conn, "P", "season", is_practice=True)
     real = _league(db_conn, "R", "season")
 
@@ -214,7 +228,7 @@ def test_marking_a_step_only_counts_in_practice_leagues(db_conn):
     assert repo.get_by_id(real)["coach_done"] == []
 
 
-def test_a_new_practice_league_starts_at_the_lobby(db_conn):
+def test_a_new_tutorial_league_starts_at_the_lobby(db_conn):
     league_id = _league(db_conn, "P", is_practice=True)
 
     ctx = coach.coach_ctx(db_conn, LeagueRepository(db_conn).get_by_id(league_id))

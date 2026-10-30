@@ -9,7 +9,7 @@
     <a href="/leagues/new" class="btn btn-primary">New League</a>
   </div>
 
-  {# Five groups: the user's practice, running and finished leagues, and the
+  {# Five groups: the user's tutorial, running and finished leagues, and the
      public ones they can join or watch. The tab picked is remembered. #}
   <nav class="tab-bar leagues-tabs" id="leagues-tabs" aria-label="League groups">
     {% for key, label, count in tabs %}
@@ -20,19 +20,19 @@
 
   {% set empty_style = "padding:48px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);line-height:1.8;" %}
 
-  {% if active_tab == 'practice' %}
-  <div class="card practice-intro">
+  {% if active_tab == 'tutorial' %}
+  <div class="card tutorial-intro">
     <div class="card-body">
-      {% if brand_new %}<div class="practice-welcome">Welcome to Baseball GM Sim.</div>{% endif %}
+      {% if brand_new %}<div class="tutorial-welcome">Welcome to Baseball GM Sim.</div>{% endif %}
       <p>The tutorial league is just you and AI managers. A coach walks
         you through it step by step: the lobby, the draft, setting your roster and lineup,
         playing games, the playoffs and the offseason. Start as many as you like, and leave
         one whenever you're done with it.</p>
-      <form method="POST" action="/leagues/practice">
+      <form method="POST" action="/leagues/tutorial">
         <button type="submit" class="btn btn-primary">Start a tutorial league →</button>
       </form>
       {% if user.dismissed_tips %}
-      <p class="practice-reset">Closed the tips on each tab? <button type="button" class="link-btn" onclick="resetTips(this)">Show them again</button></p>
+      <p class="tutorial-reset">Closed the tips on each tab? <button type="button" class="link-btn" onclick="resetTips(this)">Show them again</button></p>
       {% endif %}
     </div>
   </div>
@@ -49,18 +49,18 @@
   {% endif %}
 
   {% if leagues %}
-  {% set mine = active_tab in ('practice', 'running', 'completed') %}
+  {% set mine = active_tab in ('tutorial', 'running', 'completed') %}
   <div class="card">
     <table class="data-table">
-      <thead><tr><th>League</th><th>Year</th>{% if active_tab != 'practice' %}<th>Mode</th>{% endif %}<th>State</th>{% if active_tab != 'practice' %}<th>GMs</th>{% endif %}<th>Last Played</th>{% if active_tab in ('running', 'completed') %}<th>Code</th>{% endif %}<th></th></tr></thead>
+      <thead><tr><th>League</th><th>Year</th>{% if active_tab != 'tutorial' %}<th>Mode</th>{% endif %}<th>State</th>{% if active_tab != 'tutorial' %}<th>GMs</th>{% endif %}<th>Last Played</th>{% if active_tab in ('running', 'completed') %}<th>Code</th>{% endif %}<th></th></tr></thead>
       <tbody>
         {% for l in leagues %}
         <tr>
           <td class="team-name">{{ l.name }}</td>
           <td style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
-          {% if active_tab != 'practice' %}<td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
+          {% if active_tab != 'tutorial' %}<td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
           <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
-          {% if active_tab != 'practice' %}<td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>{% endif %}
+          {% if active_tab != 'tutorial' %}<td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>{% endif %}
           <td style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
           {% if active_tab in ('running', 'completed') %}<td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>{% endif %}
           <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
@@ -83,13 +83,13 @@
       </tbody>
     </table>
   </div>
-  {% elif active_tab == 'practice' %}
+  {% elif active_tab == 'tutorial' %}
   {# The intro card above says it all. #}
   {% elif active_tab == 'running' %}
   <div style="{{ empty_style }}">
     You're not in any leagues right now. <a href="/leagues/new" style="color:var(--amber);">Create one</a>,
     find one to <a href="/leagues/?tab=join" style="color:var(--amber);">join</a>,
-    or learn the ropes in a <a href="/leagues/?tab=practice" style="color:var(--amber);">tutorial league</a>.
+    or learn the ropes in a <a href="/leagues/?tab=tutorial" style="color:var(--amber);">tutorial league</a>.
   </div>
   {% elif active_tab == 'join' %}
   <div style="{{ empty_style }}">
@@ -108,11 +108,11 @@
 .leagues-tabs { position: static; margin: 0 0 16px; padding: 0; background: none; }
 .tab-count { color: var(--muted); margin-left: 4px; }
 .tab-link.active .tab-count { color: var(--amber-dim); }
-.practice-intro, .join-code-card { margin-bottom: 16px; }
-.practice-intro p { font-size: 13px; line-height: 1.7; color: var(--text-dim); margin: 0 0 14px; max-width: 640px; }
-.practice-intro p.practice-reset { margin: 14px 0 0; font-size: 12px; }
+.tutorial-intro, .join-code-card { margin-bottom: 16px; }
+.tutorial-intro p { font-size: 13px; line-height: 1.7; color: var(--text-dim); margin: 0 0 14px; max-width: 640px; }
+.tutorial-intro p.tutorial-reset { margin: 14px 0 0; font-size: 12px; }
 .link-btn { background: none; border: none; padding: 0; color: var(--amber); cursor: pointer; font: inherit; text-decoration: underline; }
-.practice-welcome { font-family: var(--font-mono); font-size: 14px; color: var(--amber); margin-bottom: 8px; }
+.tutorial-welcome { font-family: var(--font-mono); font-size: 14px; color: var(--amber); margin-bottom: 8px; }
 .join-code-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
 .join-code-form input { width: 120px; background: var(--bg); border: 1px solid var(--border); color: var(--text);
   font-family: var(--font-mono); font-size: 14px; letter-spacing: .2em; text-transform: uppercase; padding: 6px 10px; }

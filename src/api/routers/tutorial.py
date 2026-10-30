@@ -1,7 +1,7 @@
 # src/api/routers/tutorial.py
 #
-# The new-user tutorial: the coach panel in a practice league, and the
-# first-visit tips on each dashboard tab. Starting a practice league is in
+# The new-user tutorial: the coach panel in a tutorial league, and the
+# first-visit tips on each dashboard tab. Starting a tutorial league is in
 # leagues.py with the rest of league creation.
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ router = APIRouter(tags=["web"])
 @router.get("/leagues/{league_id}/coach", response_class=HTMLResponse)
 def coach_panel(request: Request, league_id: str, db: DB, gm: GM):
     """The coach panel, refreshed after each tab change or save. Empty
-    outside a practice league."""
+    outside a tutorial league."""
     coach = coach_ctx(db, LeagueRepository(db).get_by_id(league_id))
     if not coach:
         return HTMLResponse("")
