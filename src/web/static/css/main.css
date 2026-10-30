@@ -942,6 +942,12 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   color: var(--muted); margin-bottom: 8px;
 }
 
+.pd-subsection-title {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-dim); margin: 10px 0 4px;
+}
+
 .pd-skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
 .pd-skill-row {
   display: flex; justify-content: space-between;

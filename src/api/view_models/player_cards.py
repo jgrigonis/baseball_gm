@@ -75,6 +75,7 @@ def overall_grade(status: str, grades, ratings: dict) -> str:
 _RATING_KEYS = {
     "sp",
     "rp",
+    "cp",
     "lead_off",
     "power_hitter",
     "contact_hitter",
@@ -95,6 +96,8 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
     Build the section-based grade_map for the player detail panel.
     Pitchers:  Pitching / General / Defense / Hitting
     Hitters:   Hitting  / General / Defense / Pitching
+    Pitching and Hitting also carry "roles": the composite ratings (SP/RP/CP,
+    leadoff/contact/power hitter), shown under their own subheading.
     Ratings-based entries use skill_to_grade(rating_value).
     """
     g = skill_to_grade  # shorthand
@@ -130,8 +133,11 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
                 "label": "GB tendency",
                 "grade": g(skills.get("ground_balls")),
             },
-            {"key": "sp", "label": "SP rating", "grade": rg("sp")},
-            {"key": "rp", "label": "RP rating", "grade": rg("rp")},
+        ],
+        "roles": [
+            {"key": "sp", "label": "Starter", "grade": rg("sp")},
+            {"key": "rp", "label": "Reliever", "grade": rg("rp")},
+            {"key": "cp", "label": "Closer", "grade": rg("cp")},
         ],
     }
 
@@ -160,6 +166,8 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
                 "grade": g(skills.get("base_running")),
             },
             {"key": "bunting", "label": "Bunting", "grade": g(skills.get("bunting"))},
+        ],
+        "roles": [
             {"key": "lead_off", "label": "Leadoff", "grade": rg("lead_off")},
             {
                 "key": "power_hitter",
@@ -213,7 +221,7 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
         defense_section,
         general_section,
     ):
-        for skill in section["skills"]:
+        for skill in section["skills"] + section.get("roles", []):
             source = ratings if skill["key"] in _RATING_KEYS else skills
             value = (source or {}).get(skill["key"])
             skill["value"] = round(value) if value is not None else None
