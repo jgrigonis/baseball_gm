@@ -5,6 +5,7 @@ import re
 
 from fastapi.testclient import TestClient
 
+from src.api.database import get_db
 from src.api.main import app
 from src.web.utils import static_url
 
@@ -20,8 +21,12 @@ def test_missing_file_gets_a_plain_url():
     assert static_url("css/nope.css") == "/static/css/nope.css"
 
 
-def test_pages_link_the_stamped_stylesheet():
-    html = TestClient(app).get("/signup").text
+def test_pages_link_the_stamped_stylesheet(db_conn):
+    app.dependency_overrides[get_db] = lambda: db_conn
+    try:
+        html = TestClient(app).get("/signup").text
+    finally:
+        app.dependency_overrides.clear()
 
     assert f'href="{static_url("css/main.css")}"' in html
 
