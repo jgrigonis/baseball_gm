@@ -7,10 +7,11 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from src.api.services import trades
+from src.api.services import all_star, trades
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
 from src.api.view_models.league_info import league_info
+from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
@@ -87,7 +88,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
 
 # The tabs a viewer of a public league sees: the ones that read the same
 # whoever is looking. Schedule, roster, lineup and strategy are one GM's own.
-_VIEWER_TABS = ("standings", "leaders", "stats", "playoffs")
+_VIEWER_TABS = ("standings", "leaders", "stats", "playoffs", "allstar")
 
 
 def _viewer_tabs(tabs: list[str], draft_complete: bool) -> list[str]:
@@ -289,6 +290,23 @@ def _shell_ctx(
                 ),
             }
         )
+    # The All-Star tab, from the day the ballot opens to the end of the
+    # playoffs. The shown season's All-Stars get a star by their name.
+    as_phase = (
+        all_star.phase(db, ctx["season_id"])
+        if ctx["league_state"] in ("season", "playoffs")
+        else "none"
+    )
+    tabs = ctx.get("visible_tabs")
+    if as_phase in ("open", "done") and tabs and "standings" in tabs:
+        tabs.insert(tabs.index("standings"), "allstar")
+        if as_phase == "open" and not ctx["is_viewer"] and ctx["team_id"]:
+            ctx["all_star_ballot_due"] = (
+                AllStarRepository(db).ballot(ctx["season_id"], ctx["team_id"]) is None
+            )
+    ctx["all_star_ids"] = (
+        AllStarRepository(db).ids(ctx["season_id"]) if ctx["season_id"] else set()
+    )
     # Rookies get an (R) by their name. Status goes by the newest season, so a
     # player drafted this offseason shows as a rookie straight away.
     newest = sr.get_newest_for_league(league_id) if league_id else None

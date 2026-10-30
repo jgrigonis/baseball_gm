@@ -758,6 +758,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .badge-40man   { background: var(--bg-3);       border-color: var(--border-hi); color: var(--text-dim); }
 .badge-minors  { background: var(--bg-3);       border-color: var(--muted);     color: var(--muted); }
 .badge-human   { background: var(--sky-dim);    border-color: var(--sky);       color: var(--sky); }
+.badge-all-star { background: var(--amber-lo);  border-color: var(--amber);     color: var(--amber); }
 
 /* ── Game Results ───────────────────────────────────────────────────────────── */
 .game-result {
@@ -1043,3 +1044,40 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 
 /* The (R) after a rookie's name. */
 .rookie-tag { font-family: var(--font-mono); font-size: 0.75em; font-weight: 600; color: var(--amber); margin-left: 4px; white-space: nowrap; }
+/* The star after an All-Star's name. */
+.all-star-tag { font-size: 0.8em; color: var(--amber); margin-left: 4px; white-space: nowrap; }
+.cs-all-star { color: var(--amber); }
+
+/* A count or flag on a tab: trade offers waiting, an All-Star ballot to cast. */
+.tab-badge {
+  display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 4px;
+  background: var(--amber); color: var(--bg); border-radius: 8px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  line-height: 16px; text-align: center; vertical-align: 1px;
+}
+
+/* ── All-Stars tab ──────────────────────────────────────────────────────────── */
+.as-intro { margin-bottom: 16px; }
+.as-note { font-family: var(--font-mono); font-size: 12px; line-height: 1.8; color: var(--text-dim); }
+.as-ok { color: var(--green); }
+.as-warn { color: var(--amber); }
+.as-dim { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+.as-slot .card-header { justify-content: space-between; }
+.as-picks { display: flex; flex-direction: column; gap: 8px; }
+.as-pick { display: flex; align-items: center; gap: 10px; }
+.as-pick-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); width: 34px; flex: none; }
+.as-pick-choice { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.as-pick select { width: 100%; font-size: 12px; }
+.as-line { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); padding-left: 2px; }
+/* Nine pitchers: the whole row, picks side by side. */
+.as-slot-p { grid-column: 1 / -1; }
+.as-slot-p .as-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px 16px; }
+.as-save { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+.as-saved { color: var(--green); }
+.as-error { color: var(--red); }
+.as-player { cursor: pointer; }
+.as-player:hover { color: var(--amber); }
+@media (max-width: 600px) {
+  .as-grid { grid-template-columns: 1fr; }
+}

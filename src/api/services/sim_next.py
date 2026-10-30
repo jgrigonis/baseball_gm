@@ -14,7 +14,7 @@ import random
 
 import psycopg
 
-from src.api.services import ai_trades, front_office, team_states, trades
+from src.api.services import ai_trades, all_star, front_office, team_states, trades
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
@@ -204,6 +204,17 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     injury_news.record()
 
+    # All-Star voting opens, or closes and the votes are counted.
+    stars = {"all_star_voting": False, "all_stars": False}
+    if results:
+        try:
+            stars = all_star.after_day(conn, league_id, season_id, game_date)
+            conn.commit()
+        except Exception:
+            # The day's games are saved; a failed count shouldn't undo them.
+            rollback_quietly(conn)
+            log.exception("All-Star voting failed for league %s", league_id)
+
     return {
         "game_date": game_date,
         "season_id": season_id,
@@ -212,6 +223,7 @@ def sim_next_day(league_id: str, conn) -> dict:
         "seed": seed,
         "results": results,
         "league_state": "season",
+        **stars,
     }
 
 
@@ -220,7 +232,8 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     Play the next ``count`` days of the regular season, or the rest of it
     when count is "season". When the season ends, sets up the playoffs.
     Stops early after the games of trade deadline day, in leagues that
-    trade, so every GM gets a last look, and, in a single-player league that
+    trade, so every GM gets a last look, the day All-Star voting opens and
+    the day the All-Stars are picked, and, in a single-player league that
     asks for it (stop_for_trade_offers), when a trade offer arrives for the
     GM. Between days, AI teams make offers and trades (ai_trades). Playing past the deadline expires every open offer first. Returns a
     summary of what was played.
@@ -250,6 +263,7 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     )
     offers_before = trades.offers_to_humans(conn, league_id) if watch_offers else set()
     new_offer = False
+    all_star_voting = all_stars = False
 
     for _ in range(limit):
         day_result = sim_next_day(league_id, conn)
@@ -276,6 +290,11 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         if deadline and day_result["game_date"] == deadline:
             at_deadline = True
             break
+        # The All-Star ballot opened, or the All-Stars are in.
+        if day_result.get("all_star_voting") or day_result.get("all_stars"):
+            all_star_voting = all_star_voting or day_result["all_star_voting"]
+            all_stars = all_stars or day_result["all_stars"]
+            break
         # An offer can expire mid-sim, so look for one that's new, not for
         # more of them.
         if watch_offers and trades.offers_to_humans(conn, league_id) - offers_before:
@@ -297,4 +316,6 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         "last_date": results[-1]["game_date"] if results else None,
         "trade_deadline": at_deadline,
         "trade_offer": new_offer,
+        "all_star_voting": all_star_voting,
+        "all_stars": all_stars,
     }

@@ -16,6 +16,7 @@ from src.api.view_models.line_score import headline, line_score
 from src.api.view_models.standouts import standouts
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
+from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.stats import formulas
 from src.web.utils import _shell_ctx, templates
@@ -129,10 +130,11 @@ def game_panel(
             "events": events_out,
             "my_team_id": my_team_id,
             "fmt_ip": fmt_ip,
-            # Rookies of the season the game was played in.
+            # Rookies and All-Stars of the season the game was played in.
             "rookie_ids": PlayerSeasonStatsRepository(db).get_rookie_ids(
                 league_id, game["season_id"]
             ),
+            "all_star_ids": AllStarRepository(db).ids(game["season_id"]),
         }
     )
     return templates.TemplateResponse(
