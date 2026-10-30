@@ -101,3 +101,11 @@ def client_for(db_conn):
     yield make
 
     app.dependency_overrides.clear()
+
+
+def test_the_draft_page_shows_the_front_office(two, client_for):
+    two.factory.draft(league=two.league, season=two.season)
+    two.db.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (two.league.id,))
+    r = client_for(two).get(f"/leagues/{two.league.id}/draft")
+    assert r.status_code == 200
+    assert "The front office sees an all-in team" in r.text

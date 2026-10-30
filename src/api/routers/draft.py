@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
@@ -20,14 +22,15 @@ from src.api.dependencies import (
     User,
 )
 from src.api.schemas import DraftStrategyRequest
-from src.api.services import coach, sim_jobs
+from src.api.services import coach, sim_jobs, team_states
 from src.api.services.draft_needs import needs_for_draft
 from src.api.services.draft_preview import preview_picks
-from src.api.view_models.draft import draft_rounds
+from src.api.view_models.draft import draft_rounds, last_season
 from src.api.view_models.player_cards import prospect_card
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.league import team_state
 from src.league.offseason.draft_strategy import CHIPS, DraftStrategy
 from src.web.utils import _shell_ctx, tab_response
 
@@ -162,12 +165,29 @@ def draft_tab(
             else {"chips": {}, "reasons": {}}
         )
         ctx["pick_position"] = pick_position
+        # The front office's read on the GM's team, as on the standings page,
+        # for the season the AI teams draft by.
+        state = (
+            team_states.states(
+                db, league_id, draft["season_id"], date.today().isoformat()
+            ).get(gm["team_id"])
+            if gm["team_id"] and draft["season_id"]
+            else None
+        )
+        ctx["my_state"] = team_state.describe(state) if state else ""
+        ctx["last_season"] = (
+            last_season(db, league_id, gm["team_id"], draft["season_id"])
+            if gm["team_id"]
+            else None
+        )
     else:
         ctx["draft_id"] = None
         ctx["board"] = []
         ctx["strategy"] = None
         ctx["suggested"] = {"chips": {}, "reasons": {}}
         ctx["pick_position"] = None
+        ctx["my_state"] = ""
+        ctx["last_season"] = None
     ctx["chips"] = [
         {
             "key": c.key,

@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
+from src.api.view_models.draft import last_season
 from src.api.view_models.seasons import season_summary_context
 
 
@@ -328,3 +329,39 @@ def test_injury_table_has_sortable_headers(client, db_conn, league):
     assert 'data-sort="Wilson Will"' in table  # last name first
     assert 'data-sort="50"' in table  # moderate
     assert 'data-sort="12"' in table
+
+
+def test_the_draft_board_shows_how_each_team_finished(db_conn, factory, league):
+    """The next draft's board: last season's record, place and playoff run."""
+    draft = factory.draft(league=league["league"], season=league["current"])
+
+    def finish(team):
+        return last_season(db_conn, league["league"].id, team.id, draft.season_id)
+
+    assert finish(league["mine"]) == {
+        "year": 2025,
+        "w": 1,
+        "l": 3,
+        "place": "3rd",
+        "teams": 3,
+        "playoffs": "missed the playoffs",
+    }
+    assert finish(league["champ"])["playoffs"] == "won the championship"
+    assert finish(league["best"])["playoffs"] == "lost in the Finals"
+    # The league's first draft has no last season.
+    assert (
+        last_season(db_conn, league["league"].id, league["mine"].id, league["past"].id)
+        is None
+    )
+
+
+def test_the_draft_page_shows_last_season(db_conn, factory, league, client):
+    factory.draft(league=league["league"], season=league["current"])
+    db_conn.execute(
+        "UPDATE leagues SET state = 'draft' WHERE id = %s", (league["league"].id,)
+    )
+    r = client.get(f"/leagues/{league['league'].id}/draft")
+    assert r.status_code == 200
+    assert "Last season: 1–3, 3rd of 3" in r.text
+    assert "missed the playoffs" in r.text
+    assert "The front office sees" in r.text
