@@ -28,7 +28,7 @@
             {# The opponent's roster and stats #}
             <a href="/leagues/{{ league_id }}/stats?team_id={{ g.opp_id }}"
                title="Roster and stats" style="color:inherit;text-decoration:none;">
-              {{ g.opp_city }} {{ g.opp_mascot }}
+              {{ team_badge(g.opp_city, g.opp_mascot) }}{{ g.opp_city }} {{ g.opp_mascot }}
             </a>
           </td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ g.opp_record }}</td>
@@ -62,7 +62,7 @@
           <td style="text-align:center;font-family:var(--font-mono);font-weight:600;
                      color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};">{{ g.result }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-weight:600;">{{ g.my_score }}–{{ g.opp_score }}{{ g.extra }}</td>
-          <td>{{ g.opp_city }} {{ g.opp_mascot }}</td>
+          <td>{{ team_badge(g.opp_city, g.opp_mascot) }}{{ g.opp_city }} {{ g.opp_mascot }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                      color:{% if g.home_away == 'vs' %}var(--green){% else %}var(--text-dim){% endif %};">
             {{ "HOME" if g.home_away == 'vs' else "AWAY" }}

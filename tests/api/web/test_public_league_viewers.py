@@ -285,3 +285,15 @@ def test_standings_show_team_badges(client, db_conn, factory):
 
     assert html.count('class="team-badge') == 2
     assert ">BOS</span>Boston Beans" in html
+
+
+def test_game_panel_shows_both_team_badges(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game_id = db_conn.execute(
+        "SELECT id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()["id"]
+
+    html = client.get(f"/leagues/{league.id}/games/{game_id}/panel").text
+
+    assert ">CHI</span>Chicago Wind" in html
+    assert ">BOS</span>Boston Beans" in html
