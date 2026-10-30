@@ -229,9 +229,11 @@ def _shell_ctx(
     # 3. Fetch Team Data if team_id exists
     if ctx["team_id"]:
         team_repo = TeamRepository(db)
-        team = team_repo.get_city_mascot(ctx["team_id"])
+        team = team_repo.get_city_and_mascot(ctx["team_id"])
         if team:
-            ctx["team_name"] = team
+            ctx["team_name"] = f"{team['city']} {team['mascot']}"
+            ctx["team_city"] = team["city"]
+            ctx["team_mascot"] = team["mascot"]
 
     # 4. Season/Date logic
     league_state_for_season = league["state"] if league else "lobby"

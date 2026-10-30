@@ -269,6 +269,12 @@ class TeamRepository:
         ).fetchone()
         return f"{r['city']} {r['mascot']}" if r else team_id
 
+    def get_city_and_mascot(self, team_id: str) -> dict | None:
+        """Return {"city", "mascot"} for the team, or None if not found."""
+        return self.conn.execute(
+            "SELECT city, mascot FROM teams WHERE id = %s", (team_id,)
+        ).fetchone()
+
     def get_name(self, team_id: str) -> str:
         """Return a name string of city + space + mascot."""
         name = self.conn.execute(

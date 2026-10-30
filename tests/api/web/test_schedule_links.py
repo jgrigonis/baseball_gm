@@ -40,3 +40,7 @@ def test_upcoming_opponents_link_to_their_stats(db_conn, factory):
 
     upcoming = html.split("Upcoming")[1].split("Recent Results")[0]
     assert f"/leagues/{league.id}/stats?team_id={opp.id}" in upcoming
+    # Both the opponent and the top bar's own team carry their color badge
+    assert ">CHI</span>Chicago Wind" in upcoming
+    topbar = html.split('class="topbar-team"')[1].split("</div>")[0]
+    assert ">MY</span>" in topbar

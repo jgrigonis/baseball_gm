@@ -161,6 +161,8 @@ body {
 .topbar-spacer { flex: 1; }
 
 .topbar-team {
+  display: flex;
+  align-items: center;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-dim);
