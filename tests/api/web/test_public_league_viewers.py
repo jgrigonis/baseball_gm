@@ -276,3 +276,12 @@ def test_viewer_sees_no_team_ids_in_standings(client, db_conn, factory):
     league, _ = _league(db_conn, factory)
 
     assert "team_id: " not in client.get(f"/leagues/{league.id}/standings").text
+
+
+def test_standings_show_team_badges(client, db_conn, factory):
+    league, _ = _league(db_conn, factory)
+
+    html = client.get(f"/leagues/{league.id}/standings").text
+
+    assert html.count('class="team-badge') == 2
+    assert ">BOS</span>Boston Beans" in html
