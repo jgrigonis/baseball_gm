@@ -346,8 +346,8 @@ function showInjuryNews(d) {
   // Only injury and roster news stop a sim that runs until an injury.
   var hadInjuryNews = !!injNews;
   // Trade news: offers and votes pop up, answers go in the news bar. A
-  // completed trade leads to the Roster tab, which shows the players who
-  // arrived and who went down; other trade news to the Trades tab.
+  // completed trade leads to the Roster tab, where the players who arrived
+  // wait in the organization; other trade news to the Trades tab.
   if (d.trades && d.trades.length > 0) {
     var answers = d.trades.filter(t => !t.popup);
     var tradeNews = answers.map(t => `📨 ${t.text}`).join('  ');
