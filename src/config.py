@@ -10,8 +10,11 @@ from src.util.locations import PROJECT_ROOT
 
 
 class Settings(BaseSettings):
+    # .env is shared with docker-compose.yml, which reads names this class
+    # doesn't (POSTGRES_PASSWORD, WEB_CONCURRENCY, BACKUP_HOUR, ...), so
+    # those are ignored rather than refused.
     model_config = SettingsConfigDict(
-        env_file=PROJECT_ROOT / ".env", env_file_encoding="utf-8"
+        env_file=PROJECT_ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
     )
 
     # Other sites allowed to call the API with the user's cookie, as a JSON
