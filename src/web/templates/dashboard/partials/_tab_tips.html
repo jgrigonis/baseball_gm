@@ -1,7 +1,7 @@
 {# templates/dashboard/partials/_tab_tips.html
    A short "what is this?" card the first time a GM opens each dashboard
    tab, in every league. "Got it" hides that tab's card for good (saved on
-   the user, see /tips/dismiss); the Practice tab on the leagues page can
+   the user, see /tips/dismiss); the Tutorial tab on the leagues page can
    bring them all back. Viewers don't get them: they talk about your team. #}
 {% set tip_user = request.state.user if request is defined and request.state.user is defined else none %}
 {% set tab_tips = {

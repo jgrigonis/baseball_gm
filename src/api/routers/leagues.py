@@ -42,12 +42,15 @@ LEAGUES_TAB_COOKIE = "leagues_tab"
 
 # The leagues page's tabs, in order, with the label each one shows.
 LEAGUE_TABS = (
-    ("practice", "Practice"),
+    ("tutorial", "Tutorial"),
     ("running", "Running"),
     ("join", "Join"),
     ("watch", "Watch"),
     ("completed", "Completed"),
 )
+
+# Old tab names, mapped to what they're called now.
+TAB_ALIASES = {"practice": "tutorial"}
 
 
 @router.get("/leagues/", response_class=HTMLResponse)
@@ -70,7 +73,7 @@ def leagues_index(
         league["state_label"] = state_label(league["state"], league["season_number"])
 
     groups = {
-        "practice": [lg for lg in mine if lg["is_practice"]],
+        "tutorial": [lg for lg in mine if lg["is_practice"]],
         "running": [
             lg for lg in mine if not lg["is_practice"] and lg["state"] != "complete"
         ],
@@ -81,11 +84,14 @@ def leagues_index(
         ],
     }
 
+    # The Tutorial tab was called Practice, so old links and cookies still work.
+    tab = TAB_ALIASES.get(tab, tab)
     chosen = tab if tab in groups else None
     active = chosen or request.cookies.get(LEAGUES_TAB_COOKIE)
+    active = TAB_ALIASES.get(active, active)
     if active not in groups:
-        # Someone new starts on Practice; anyone with a league on Running.
-        active = "running" if groups["running"] or groups["completed"] else "practice"
+        # Someone new starts on Tutorial; anyone with a league on Running.
+        active = "running" if groups["running"] or groups["completed"] else "tutorial"
 
     resp = templates.TemplateResponse(
         request,
@@ -194,9 +200,9 @@ def new_league(
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 
-# A practice league's settings: Speed Blitz, the quickest mode, and no clock,
+# A tutorial league's settings: Speed Blitz, the quickest mode, and no clock,
 # since the only human GM is the one learning.
-PRACTICE_SETTINGS = {
+TUTORIAL_SETTINGS = {
     **SPEED_BLITZ.form_presets,
     "pace_control": "confirmed",
     "is_public": False,
@@ -204,10 +210,11 @@ PRACTICE_SETTINGS = {
 }
 
 
-@router.post("/leagues/practice")
-def new_practice_league(db: DB, user: User):
+@router.post("/leagues/tutorial")
+@router.post("/leagues/practice", include_in_schema=False)  # the old name
+def new_tutorial_league(db: DB, user: User):
     """A solo Speed Blitz league with the coach panel. It has no join code,
-    so nobody else can get in, and it only shows on its owner's Practice tab.
+    so nobody else can get in, and it only shows on its owner's Tutorial tab.
     There's no limit on how many a user starts."""
     league_repo = LeagueRepository(db)
     gm_repo = GMRepository(db)
@@ -216,11 +223,11 @@ def new_practice_league(db: DB, user: User):
     league_id = str(uuid.uuid4())
     league_repo.create_new_league(
         league_id=league_id,
-        name=f"Practice League {count + 1}",
+        name=f"Tutorial League {count + 1}",
         join_code=None,
         mode=SPEED_BLITZ.key,
         commissioner_gm_id=None,
-        settings=PRACTICE_SETTINGS,
+        settings=TUTORIAL_SETTINGS,
     )
     gm_id = gm_repo.create_gm(
         league_id=league_id,
