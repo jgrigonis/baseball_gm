@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse
 from src.api.dependencies import DB, GMOrViewer, User
 from src.api.view_models.box_score import batting_order, in_order, pitching_order
 from src.api.view_models.line_score import headline, line_score
+from src.api.view_models.standouts import standouts
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
@@ -91,14 +92,18 @@ def game_panel(
                 }
             )
 
-    # Scoreboard: runs by inning, R/H/E, a headline and the decisions
+    # Scoreboard: runs by inning, R/H/E, a headline, the game's standout
+    # performances and the decisions
     scoreboard = None
     if game["completed"] and game["home_score"] is not None:
         hits: dict[str, int] = {}
         for r in bat_rows:
             hits[r["team_id"]] = hits.get(r["team_id"], 0) + (r["H"] or 0)
-        scoreboard = line_score(game, hits, pgs_repo.get_team_errors(game_id))
-        scoreboard["headline"] = headline(game, bat_rows, pit_rows, no_hitters)
+        errors = pgs_repo.get_team_errors(game_id)
+        stars = standouts(bat_rows, pit_rows, errors)
+        scoreboard = line_score(game, hits, errors)
+        scoreboard["headline"] = headline(game, bat_rows, pit_rows, no_hitters, stars)
+        scoreboard["standouts"] = stars
         scoreboard["decisions"] = [
             (label, f"{p['first_name'][0]}. {p['last_name']}")
             for label, key in (("Win", "W"), ("Loss", "L"), ("Save", "SV"))
@@ -116,6 +121,11 @@ def game_panel(
             "away_pit": away_pit,
             "no_hitters": no_hitters,
             "scoreboard": scoreboard,
+            # Box score rows to highlight: (kind, player_id) -> feats
+            "standout_rows": {
+                (s["kind"], s["player_id"]): " · ".join(s["feats"])
+                for s in (scoreboard or {}).get("standouts", [])
+            },
             "events": events_out,
             "my_team_id": my_team_id,
             "fmt_ip": fmt_ip,

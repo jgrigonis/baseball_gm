@@ -9,6 +9,7 @@ the R/H/E tiles and a headline from the final score and box score alone.
 
 from __future__ import annotations
 
+from src.api.view_models.standouts import standouts
 from src.team.colors import colors_for
 
 
@@ -91,10 +92,13 @@ def headline(
     bat_rows: list[dict],
     pit_rows: list[dict],
     no_hitters: list[dict],
+    stars: list[dict] | None = None,
 ) -> str:
     """A one-line headline for a completed game, from its most notable
-    moment: a no-hitter, a walk-off, a comeback, a shutout, a big day from
-    one player, a rout, extra innings, or simply who beat whom."""
+    moment: a perfect game or no-hitter, a walk-off, a comeback, a shutout,
+    a big day from one player, a rout, extra innings, or simply who beat
+    whom. stars are the game's standouts (src/api/view_models/standouts.py),
+    worked out from the box score when not given."""
     home_won = game["home_score"] > game["away_score"]
     win_side, lose_side = ("home", "away") if home_won else ("away", "home")
     winner = game[f"{win_side}_mascot"]
@@ -103,6 +107,14 @@ def headline(
     w_runs, l_runs = game[f"{win_side}_score"], game[f"{lose_side}_score"]
     score = f"{w_runs}-{l_runs}"
     innings = game.get("innings_played") or 9
+
+    if stars is None:
+        stars = standouts(bat_rows, pit_rows)
+
+    for st in stars:
+        if st["label"] == "Perfect game":
+            opp = loser if st["team_id"] == win_id else winner
+            return f"{st['last_name']} throws a perfect game against the {opp}"
 
     for nh in no_hitters:
         if nh["combined"]:
@@ -131,22 +143,9 @@ def headline(
             return f"{p['last_name']} blanks the {loser} on a complete game, {score}"
         return f"{winner} blank the {loser}, {score}"
 
-    win_bats = [b for b in bat_rows if b["team_id"] == win_id]
-    big_hr = max(win_bats, key=lambda b: b["HR"] or 0, default=None)
-    if big_hr and (big_hr["HR"] or 0) >= 2:
-        return (
-            f"{big_hr['last_name']}'s {_number_word(big_hr['HR'])} homers "
-            f"power the {winner} past the {loser}, {score}"
-        )
-    big_k = max(win_pitchers, key=lambda p: p.get("K") or 0, default=None)
-    if big_k and (big_k.get("K") or 0) >= 10:
-        return f"{big_k['last_name']} fans {big_k['K']} as the {winner} top the {loser}, {score}"
-    big_h = max(win_bats, key=lambda b: b["H"] or 0, default=None)
-    if big_h and (big_h["H"] or 0) >= 4:
-        return (
-            f"{big_h['last_name']} goes {big_h['H']}-for-{big_h['AB']} "
-            f"as the {winner} beat the {loser}, {score}"
-        )
+    star = _headline_star(stars, win_id)
+    if star:
+        return _star_headline(star, star["team_id"] == win_id, winner, loser, score)
 
     if w_runs - l_runs >= 8:
         return f"{winner} rout the {loser}, {score}"
@@ -155,3 +154,42 @@ def headline(
     if w_runs - l_runs == 1:
         return f"{winner} edge the {loser}, {score}"
     return f"{winner} beat the {loser}, {score}"
+
+
+def _headline_star(stars: list[dict], win_id: str) -> dict | None:
+    """The standout worth a headline: the winners' best, or else a loser's
+    cycle or three-homer game."""
+    for st in stars:
+        if st["team_id"] == win_id:
+            return st
+    for st in stars:
+        if st["label"] == "Cycle" or st["label"] in ("3 HR", "4 HR", "5 HR"):
+            return st
+    return None
+
+
+def _star_headline(st: dict, won: bool, winner: str, loser: str, score: str) -> str:
+    name, label = st["last_name"], st["label"]
+    if not won:
+        feat = (
+            "cycle"
+            if label == "Cycle"
+            else f"{_number_word(int(label.split()[0]))} homers"
+        )
+        return f"{name}'s {feat} not enough as the {winner} beat the {loser}, {score}"
+    if label == "Cycle":
+        return f"{name} hits for the cycle as the {winner} beat the {loser}, {score}"
+    n = label.split()[0]
+    if label.endswith(" HR"):
+        return f"{name}'s {_number_word(int(n))} homers power the {winner} past the {loser}, {score}"
+    if label.endswith(" RBI"):
+        return f"{name} drives in {n} as the {winner} beat the {loser}, {score}"
+    if label.endswith(" K"):
+        return f"{name} fans {n} as the {winner} top the {loser}, {score}"
+    if label.endswith(" hits"):
+        # The line starts "4-for-5".
+        return f"{name} goes {st['line'].split(',')[0]} as the {winner} beat the {loser}, {score}"
+    if label.endswith(" scoreless IP"):
+        return f"{name} tosses {n} scoreless as the {winner} top the {loser}, {score}"
+    # A no-hitter or shutout the checks above didn't catch.
+    return f"{name} leads the {winner} past the {loser}, {score}"

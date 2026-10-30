@@ -473,6 +473,43 @@ body {
 }
 .line-score tr.won .line-score-team { color: var(--text-hi); }
 .line-score tr.mine .line-score-team span { color: var(--green); }
+.standouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.standout {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 6px 10px;
+  background: var(--tile-dark);
+  border-left: 3px solid var(--amber);
+}
+.standout.mine { border-left-color: var(--green); }
+.standout-feat {
+  display: block;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+}
+.standout-who { display: block; font-size: 13px; color: var(--text-hi); }
+.standout-team {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+.standout-line {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.data-table tr.standout-row td { background: rgba(242, 193, 78, .07); }
+.standout-star { color: var(--amber); font-size: 10px; margin-left: 4px; }
 .scoreboard-notes {
   display: flex;
   flex-wrap: wrap;
