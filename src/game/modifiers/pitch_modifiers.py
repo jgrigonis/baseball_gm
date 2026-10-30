@@ -11,6 +11,21 @@ from src.game.modifiers.count_modifiers import (
 CALLED = "called_strike"
 SWINGING = "swinging_strike"
 
+# A typical league pitcher's strikes and accuracy as he pitches: the
+# innings-weighted league averages (60 and 63) less the 2.5% fatigue takes
+# on an average pitch. The stuff and command terms below are centered here,
+# so they separate good pitchers from bad ones without moving league scoring.
+TYPICAL_STRIKES = 58
+TYPICAL_ACCURACY = 61
+# Per point of strikes above typical: strike weight added, in-play taken.
+STUFF_STRIKES = 20
+STUFF_IN_PLAY = 10
+# Per point of accuracy above typical: balls taken, strike weight added,
+# and the share of home runs (mistakes left over the plate) taken.
+COMMAND_BALLS = 25
+COMMAND_STRIKES = 15
+COMMAND_HOME_RUNS = 0.015
+
 
 def multiply_strikes(resolver, factor: float) -> None:
     """Scale both kinds of strike by the same factor."""
@@ -206,12 +221,29 @@ class PitchModifiers:
             elite_bonus = (strikes - 75) ** 1.6
             add_strikes(resolver, 7 * elite_bonus, called_share=0.2)
 
+        PitchModifiers.modify_for_stuff_and_command(resolver, strikes, accuracy)
+
         if strikes > 80 and accuracy > 80:
             super_elite_bonus = (strikes + accuracy - 150) ** 1.5
             resolver.pitch_outcome.add("ball", -5.5 * super_elite_bonus)
             add_strikes(resolver, 5.5 * super_elite_bonus, called_share=0.5)
             resolver.pitch_outcome.add("hit_by_pitch", int(-0.2 * (super_elite_bonus)))
             resolver.pitch_outcome.add("wild_pitch", int(-0.2 * (super_elite_bonus)))
+
+    @staticmethod
+    def modify_for_stuff_and_command(resolver, strikes: float, accuracy: float) -> None:
+        """Stuff misses bats and command keeps the ball out of the zone's
+        middle, relative to a typical pitcher."""
+        stuff = strikes - TYPICAL_STRIKES
+        add_strikes(resolver, STUFF_STRIKES * stuff, called_share=0.2)
+        resolver.pitch_outcome.add("in_play", -STUFF_IN_PLAY * stuff)
+
+        command = accuracy - TYPICAL_ACCURACY
+        resolver.pitch_outcome.add("ball", -COMMAND_BALLS * command)
+        add_strikes(resolver, COMMAND_STRIKES * command, called_share=0.7)
+        resolver.pitch_outcome.multiply(
+            "home_run", max(0.25, 1 - COMMAND_HOME_RUNS * command)
+        )
 
     @staticmethod
     def modify_for_platoon(
