@@ -2,6 +2,7 @@
 """A multiplayer league sims its next period when every GM who isn't away is
 ready, or, under timer pace, when the Decision Window runs out."""
 
+import json
 import os
 import uuid
 from unittest.mock import patch
@@ -397,3 +398,32 @@ class TestPlayoffs:
         status = ready_check.status(db_conn, league.id, a.id)
         assert not status["you_out"]
         assert sorted(status["waiting_on"]) == ["GM 0", "GM 1"]
+
+
+class TestTopBarDate:
+    """The status poll brings the date, so the top bar moves on after a
+    period without a reload."""
+
+    def test_status_poll_has_the_next_game_date(self, db_conn, factory, run_period):
+        from src.api.routers.ready import _status
+
+        league, (a, _) = _league(db_conn, factory)
+        season = factory.season()
+        factory.league_season(league, season)
+        for day in ("2025-04-01", "2025-04-02"):
+            factory.game_with_teams(season=season, game_date=day)
+        db_conn.execute(
+            "UPDATE games SET completed = 0 WHERE season_id = %s", (season.id,)
+        )
+
+        def date():
+            return json.loads(_status(db_conn, league.id, {"id": a.id}).body)[
+                "current_date"
+            ]
+
+        assert str(date()) == "2025-04-01"
+        db_conn.execute(
+            "UPDATE games SET completed = 1 WHERE season_id = %s AND game_date = '2025-04-01'",
+            (season.id,),
+        )
+        assert str(date()) == "2025-04-02"

@@ -12,13 +12,20 @@ from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, ActiveLeague
 from src.api.services import ready_check
+from src.db.repositories.season_repo import SeasonRepository
+from src.web.utils import _current_league_date
 
 router = APIRouter(tags=["web"])
 
 
 def _status(db, league_id: str, gm) -> JSONResponse:
     ready_check.advance_if_due(db, league_id)
-    return JSONResponse(ready_check.status(db, league_id, gm["id"]))
+    body = ready_check.status(db, league_id, gm["id"])
+    if body["multiplayer"]:
+        # The top bar's date, so the page can move it on after a period.
+        season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+        body["current_date"] = _current_league_date(db, season_id, body["league_state"])
+    return JSONResponse(body)
 
 
 @router.get("/leagues/{league_id}/sim/status")
