@@ -36,12 +36,13 @@ from __future__ import annotations
 
 import logging
 
-from src.api.services import sim_jobs, trades
+from src.api.services import all_star, sim_jobs, trades
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
 from src.api.services.sim_playoff import sim_playoff
 from src.db.locks import LeagueBusy, league_busy
+from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
@@ -189,8 +190,14 @@ def status(conn, league_id: str, gm_id: str) -> dict:
     me = next((g for g in gms if g["id"] == gm_id), None)
     seconds_left = period["seconds_left"]
     league = {"mode": period["mode"], "state": period["state"]}
-    window = trade_deadline.window(
-        conn, league, SeasonRepository(conn).get_current_id_for_league(league_id)
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+    window = trade_deadline.window(conn, league, season_id)
+    # All-Star voting (the tab shows in the season and the playoffs), and
+    # whether this GM still has a ballot to save.
+    star_phase = (
+        all_star.phase(conn, season_id)
+        if period["state"] in ("season", "playoffs")
+        else "none"
     )
     return {
         "multiplayer": True,
@@ -210,6 +217,13 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         # to fetch (e.g. an offer another GM just made them).
         "trade_inbox": trades.inbox_count(conn, league_id, me or {}) if me else 0,
         "has_news": NotificationRepository(conn).has_unseen(gm_id),
+        "all_star": star_phase,
+        "all_star_vote_due": bool(
+            star_phase == "open"
+            and me
+            and me["team_id"]
+            and AllStarRepository(conn).ballot(season_id, me["team_id"]) is None
+        ),
         "you_ready": bool(me and me["ready"]),
         "you_away": bool(me and me["is_away"] and not me["out"]),
         "you_out": bool(me and me["out"]),

@@ -297,6 +297,7 @@ def _shell_ctx(
         if ctx["league_state"] in ("season", "playoffs")
         else "none"
     )
+    ctx["all_star_phase"] = as_phase
     tabs = ctx.get("visible_tabs")
     if as_phase in ("open", "done") and tabs and "standings" in tabs:
         tabs.insert(tabs.index("standings"), "allstar")
