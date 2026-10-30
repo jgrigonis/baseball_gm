@@ -247,13 +247,10 @@ class TradeSettingsRequest(BaseModel):
     stop_for_offers: bool
 
 
-class DraftPreferencesRequest(BaseModel):
-    player_ids: list[str] = []
-
-
 class DraftStrategyRequest(BaseModel):
-    """Need chips (chip key → level 0-2: Low, Med, High), age preference (-1 upside … 1 ready
-    sooner) and pinned player ids. Checked by DraftStrategy."""
+    """Need chips (chip key → level 0-2: Low, Med, High), age preference
+    (-1 upside … 1 ready sooner) and pinned player ids. Checked by
+    DraftStrategy."""
 
     chips: dict[str, int] = {}
     age_pref: float = 0.0

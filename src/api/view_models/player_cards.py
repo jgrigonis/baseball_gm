@@ -227,6 +227,21 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 # ── Card dicts ────────────────────────────────────────────────────────────────
 
 
+def _role_grades(g: dict, ratings: dict) -> None:
+    """The role and per-position grades the lineup and draft lists sort by:
+    SP and RP for pitchers, hitter roles and positions for everyone else."""
+    if g.get("player_type") == "pitcher":
+        g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
+        g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
+    else:
+        g["leadoff_grade"] = skill_to_grade(ratings.get("lead_off", 0))
+        g["power_h_grade"] = skill_to_grade(ratings.get("power_hitter", 0))
+        g["contact_h_grade"] = skill_to_grade(ratings.get("contact_hitter", 0))
+        g["offense_h_grade"] = skill_to_grade(ratings.get("overall_offense", 0))
+    for pos in ("c", "1b", "2b", "3b", "ss", "lf", "cf", "rf", "of", "if", "dh"):
+        g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
+
+
 def prospect_card(row: dict, skills: dict) -> dict:
     """A draft-board card. Prospects use the prospect rating for overall."""
     grades = player_row_to_grades(dict(row), skills, row["status"])
@@ -236,25 +251,7 @@ def prospect_card(row: dict, skills: dict) -> dict:
         g["overall"] = skill_to_grade(ratings.get("prospect"))
         g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
-    if g.get("player_type") == "pitcher":
-        g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
-    return g
-
-
-def draft_roster_card(row: dict, skills: dict) -> dict:
-    """A card for the GM's current roster in the draft page's right-hand column."""
-    d = dict(row)
-    grades = player_row_to_grades(d, skills, d["status"])
-    ratings = compute_ratings(skills, d.get("throws", "R"))
-    g = grades.model_dump()
-    if ratings:
-        if g.get("player_type") == "pitcher":
-            best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
-            g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
-        else:
-            g["overall"] = skill_to_grade(ratings.get("overall_player"))
-        g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
-        g["best_def_label"] = ratings.get("best_def_label", "DEF")
+        _role_grades(g, ratings)
     if g.get("player_type") == "pitcher":
         g["ground_balls"] = skill_to_grade(skills.get("ground_balls"))
     return g
@@ -295,21 +292,14 @@ def lineup_card(d: dict) -> dict:
         if g.get("player_type") == "pitcher":
             best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
             g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
-            g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
-            g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
             g["bat_overall"] = skill_to_grade(ratings.get("overall_player"))
         else:
             g["overall"] = skill_to_grade(ratings.get("overall_player"))
-            g["leadoff_grade"] = skill_to_grade(ratings.get("lead_off", 0))
-            g["power_h_grade"] = skill_to_grade(ratings.get("power_hitter", 0))
-            g["contact_h_grade"] = skill_to_grade(ratings.get("contact_hitter", 0))
-            g["oofense_h_grade"] = skill_to_grade(ratings.get("offense", 0))
             g["bat_overall"] = g["overall"]
         g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
-        # Per-position ratings for assigned-position display
-        for pos in ("c", "1b", "2b", "3b", "ss", "lf", "cf", "rf", "of", "if", "dh"):
-            g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
+        # Per-position ratings also drive the assigned-position display
+        _role_grades(g, ratings)
     # Raw skill grades not in PlayerGrades — needed for sort and batting display
     g["base_running"] = skill_to_grade(d.get("base_running"))
     g["bunting"] = skill_to_grade(d.get("bunting"))

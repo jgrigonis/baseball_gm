@@ -106,7 +106,7 @@ class TestStartedLeague:
             (league.id, team.id),
         ).fetchone()
         assert rights["current_owner_id"] == team.id
-        # The AI drafts for the team from now on, not the GM's preference list.
+        # The AI drafts for the team from now on, not the GM's strategy.
         assert team.id not in GMRepository(db_conn).get_human_team_ids(league.id)
 
     def test_standings_show_the_team_as_ai(self, db_conn, factory):
@@ -362,7 +362,6 @@ def _league_with_history(db, factory):
     _row(
         db, "draft_picks", draft_id=draft.id, gm_id=ai.id, team_id=away.id, player_id=p
     )
-    _row(db, "draft_preferences", draft_id=draft.id, gm_id=gm.id, player_id=p)
     _row(db, "gm_lineup_preferences", gm_id=gm.id, player_id=p)
     _row(db, "gm_notifications", gm_id=gm.id, kind="injury", payload="{}")
     _row(db, "gm_season_evaluations", gm_id=gm.id, season_id=s)

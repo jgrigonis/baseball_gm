@@ -1,9 +1,9 @@
 # tests/api/web/test_draft_strategy_endpoint.py
 """
 PUT /leagues/{id}/draft/strategy saves a GM's need chips, age preference and
-pins, replacing any Advanced ranked list, and turns away bad input.
+pins, and turns away bad input.
 POST /leagues/{id}/draft/preview projects the GM's first picks.
-The draft tab opens in Strategy mode unless a ranked list is saved.
+The draft tab shows the strategy panel.
 """
 
 from types import SimpleNamespace
@@ -97,16 +97,6 @@ def test_completed_draft_is_rejected(client, db_conn, setup):
     assert _put(client, league, {}).status_code == 409
 
 
-def test_saving_a_strategy_replaces_the_ranked_list(client, db_conn, setup):
-    league, gm, draft, prospects = setup
-    repo = DraftRepository(db_conn)
-    repo.save_preferences(draft.id, gm.id, [p.id for p in prospects])
-
-    _put(client, league, {"chips": {"c": 1}})
-
-    assert repo.get_preferences(draft.id, gm.id) == []
-
-
 class TestPreview:
     @pytest.fixture
     def two_teams(self, db_conn, factory, setup):
@@ -161,18 +151,17 @@ class TestPreview:
         assert self._preview(client, league, {}) == []
 
 
-class TestDraftTabMode:
+class TestDraftTab:
     def _page(self, client, league):
         r = client.get(f"/leagues/{league.id}/draft", headers={"HX-Request": "true"})
         assert r.status_code == 200
         return r.text
 
-    def test_opens_in_strategy_mode(self, client, setup):
+    def test_shows_the_strategy_panel(self, client, setup):
         league, _, _, _ = setup
         page = self._page(client, league)
-        assert 'id="strategy-pane"' in page
+        assert 'class="strategy-pane"' in page and "Advanced" not in page
         assert '"key": "if"' in page and '"label": "Relief Ace"' in page
-        assert "const SAVED_PREFS = [];" in page
         assert 'const SUGGESTED   = {"chips": {}, "reasons": {}};' in page
 
     def test_saved_strategy_is_on_the_page(self, client, db_conn, setup):

@@ -1,5 +1,40 @@
 {# templates/dashboard/partials/draft.html #}
 
+{# The Explore/Search sort choices, the same as the lineup tab's. #}
+{% macro sort_options() %}
+  <option value="overall">Overall</option>
+  <optgroup label="Hitting">
+    <option value="contact">Contact</option>
+    <option value="power">Power</option>
+    <option value="eye">Eye</option>
+    <option value="speed">Speed</option>
+    <option value="arm">Arm</option>
+    <option value="leadoff_grade">Leadoff Hitter</option>
+    <option value="contact_h_grade">Contact Hitter</option>
+    <option value="power_h_grade">Power Hitter</option>
+    <option value="offense_h_grade">Overall Offense</option>
+  </optgroup>
+  <optgroup label="Defense">
+    <option value="pos_c">Catcher</option>
+    <option value="pos_1b">First Base</option>
+    <option value="pos_2b">Second Base</option>
+    <option value="pos_3b">Third Base</option>
+    <option value="pos_ss">Shortstop</option>
+    <option value="pos_lf">Left Field</option>
+    <option value="pos_cf">Center Field</option>
+    <option value="pos_rf">Right Field</option>
+  </optgroup>
+  <optgroup label="Pitching">
+    <option value="sp_grade">SP rating</option>
+    <option value="rp_grade">RP rating</option>
+    <option value="stuff">Stuff</option>
+    <option value="control">Control</option>
+    <option value="stamina">Stamina</option>
+    <option value="recovery">Recovery</option>
+    <option value="ground_balls">GB</option>
+  </optgroup>
+{% endmacro %}
+
 {# ── Sticky page header ────────────────────────────────────────────────────── #}
 <div id="draft-header" style="position:sticky;top:0;z-index:10;background:var(--bg);
      padding:16px 24px 12px;border-bottom:1px solid var(--border);">
@@ -9,17 +44,8 @@
       <span class="page-subtitle" style="margin-left:10px;">{{ board|length }} prospects</span>
       {% if pick_position %}<span class="page-subtitle" style="color:var(--amber);margin-left:8px;">Pick #{{ pick_position }}</span>{% endif %}
 
-      <div class="mode-toggle" style="margin-left:16px;" role="group" aria-label="Draft mode">
-        <button class="type-btn" data-mode="strategy" onclick="setMode('strategy')"
-                title="Say what your team needs and pin a few players">Strategy</button>
-        <button class="type-btn" data-mode="advanced" onclick="setMode('advanced')"
-                title="Rank the whole prospect list yourself">Advanced</button>
-      </div>
-
       <div class="spacer"></div>
-      <button class="btn btn-secondary" id="return-submitted-btn"
-              onclick="returnToSubmitted()" style="display:none;">⟳ Return to Submitted</button>
-      <button class="btn btn-primary" id="submit-btn" onclick="saveCurrent()"
+      <button class="btn btn-primary" id="submit-btn" onclick="saveStrategy()"
               style="margin-left:8px;">Save Strategy</button>
       <span id="submit-check"
             style="font-family:var(--font-mono);font-size:13px;color:var(--green);
@@ -52,7 +78,7 @@
               font-family:var(--font-mono);font-size:11px;color:var(--amber);
               display:flex;align-items:center;gap:10px;">
     <span id="draft-unsaved-text">⚠ Strategy not yet saved</span>
-    <button class="btn btn-secondary" onclick="saveCurrent()"
+    <button class="btn btn-secondary" onclick="saveStrategy()"
             style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
       Save now
     </button>
@@ -66,9 +92,9 @@
 {# ── Three-column layout ───────────────────────────────────────────────────── #}
 <div class="draft-cols">
 
-  {# ── Left: Strategy (default) or Draft Preferences (Advanced) ─────────────── #}
+  {# ── Left: Strategy ───────────────────────────────────────────────────────── #}
   <div class="draft-col">
-    <div class="mode-pane" id="strategy-pane">
+    <div class="strategy-pane">
       <div class="draft-col-hdr">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span class="col-label" style="color:var(--amber);">Draft Strategy</span>
@@ -86,11 +112,6 @@
         </div>
       </div>
       <div class="draft-col-body" style="padding:10px 12px;">
-        <div id="strategy-list-note" class="strat-note" style="display:none;">
-          You have a ranked list from Advanced. The draft uses it before your strategy,
-          until you save a strategy here, which replaces it.
-        </div>
-
         <div class="strat-section">
           <div class="strat-label">Needs · positions</div>
           <div class="chip-row" id="chips-position"></div>
@@ -116,23 +137,6 @@
       </div>
     </div>
 
-    <div class="mode-pane" id="advanced-pane">
-    <div class="draft-col-hdr">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span class="col-label" style="color:var(--amber);">Draft Preferences</span>
-        <button class="btn btn-secondary" id="reset-btn" onclick="resetToDefault()"
-                style="font-size:11px;padding:4px 10px;opacity:0.4;" disabled>
-          ↺ Reset
-        </button>
-      </div>
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">
-        drag to reorder · arrows to nudge · drag from Explore to promote
-      </div>
-    </div>
-    <div class="draft-col-body" id="prefs-list"
-         ondragover="prefsZoneOver(event)" ondrop="prefsZoneDrop(event)">
-    </div>
-    </div>
   </div>
 
   {# ── Middle: Explore / Sort ───────────────────────────────────────────────── #}
@@ -155,66 +159,24 @@
                   font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
         <span>Sort</span>
         <select id="s1" onchange="applyExploreSort()" style="width:auto;font-size:10px;">
-          <option value="overall">Overall</option>
-          <optgroup label="Hitting">
-            <option value="contact">Contact</option>
-            <option value="power">Power</option>
-            <option value="eye">Eye</option>
-            <option value="speed">Speed</option>
-            <option value="arm">Arm</option>
-          </optgroup>
-          <optgroup label="Pitching">
-            <option value="stuff">Stuff</option>
-            <option value="control">Control</option>
-            <option value="stamina">Stamina</option>
-            <option value="recovery">Recovery</option>
-            <option value="ground_balls">GB</option>
-          </optgroup>
+          {{ sort_options() }}
         </select>
         <span>then</span>
         <select id="s2" onchange="applyExploreSort()" style="width:auto;font-size:10px;">
           <option value="">—</option>
-          <option value="overall">Overall</option>
-          <optgroup label="Hitting">
-            <option value="contact">Contact</option>
-            <option value="power">Power</option>
-            <option value="eye">Eye</option>
-            <option value="speed">Speed</option>
-            <option value="arm">Arm</option>
-          </optgroup>
-          <optgroup label="Pitching">
-            <option value="stuff">Stuff</option>
-            <option value="control">Control</option>
-            <option value="stamina">Stamina</option>
-            <option value="recovery">Recovery</option>
-            <option value="ground_balls">GB</option>
-          </optgroup>
+          {{ sort_options() }}
         </select>
         <span>then</span>
         <select id="s3" onchange="applyExploreSort()" style="width:auto;font-size:10px;">
           <option value="">—</option>
-          <option value="overall">Overall</option>
-          <optgroup label="Hitting">
-            <option value="contact">Contact</option>
-            <option value="power">Power</option>
-            <option value="eye">Eye</option>
-            <option value="speed">Speed</option>
-            <option value="arm">Arm</option>
-          </optgroup>
-          <optgroup label="Pitching">
-            <option value="stuff">Stuff</option>
-            <option value="control">Control</option>
-            <option value="stamina">Stamina</option>
-            <option value="recovery">Recovery</option>
-            <option value="ground_balls">GB</option>
-          </optgroup>
+          {{ sort_options() }}
         </select>
       </div>
     </div>
     <div class="draft-col-body" id="explore-list"></div>
   </div>
 
-  {# ── Right: Projected picks (Strategy) and Your Roster ───────────────────── #}
+  {# ── Right: Projected picks ───────────────────────────────────────────────── #}
   <div class="draft-col">
     <div id="preview-section">
       <div class="draft-col-hdr">
@@ -225,51 +187,6 @@
       </div>
       <div id="preview-list"></div>
     </div>
-    <div class="draft-col-hdr">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-        <span class="col-label" style="color:var(--amber);">Your Roster</span>
-        <div style="display:flex;flex-direction:column;gap:3px;
-                    font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                    width:100%;overflow:hidden;">
-          <select id="roster-s1" onchange="renderRoster()" style="width:100%;max-width:160px;font-size:10px;">
-            <option value="overall">Overall</option>
-            <optgroup label="Hitting">
-              <option value="contact">Contact</option>
-              <option value="power">Power</option>
-              <option value="eye">Eye</option>
-              <option value="speed">Speed</option>
-              <option value="arm">Arm</option>
-            </optgroup>
-            <optgroup label="Pitching">
-              <option value="stuff">Stuff</option>
-              <option value="control">Control</option>
-              <option value="stamina">Stamina</option>
-              <option value="recovery">Recovery</option>
-              <option value="ground_balls">GB</option>
-            </optgroup>
-          </select>
-          <select id="roster-s2" onchange="renderRoster()" style="width:100%;max-width:160px;font-size:10px;">
-            <option value="">—</option>
-            <option value="overall">Overall</option>
-            <optgroup label="Hitting">
-              <option value="contact">Contact</option>
-              <option value="power">Power</option>
-              <option value="eye">Eye</option>
-              <option value="speed">Speed</option>
-              <option value="arm">Arm</option>
-            </optgroup>
-            <optgroup label="Pitching">
-              <option value="stuff">Stuff</option>
-              <option value="control">Control</option>
-              <option value="stamina">Stamina</option>
-              <option value="recovery">Recovery</option>
-              <option value="ground_balls">GB</option>
-            </optgroup>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="draft-col-body" id="roster-list"></div>
   </div>
 
 </div>
@@ -279,7 +196,7 @@
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 .draft-cols {
   display: grid;
-  grid-template-columns: 1fr 1.1fr 300px;
+  grid-template-columns: 1fr 1.6fr 300px;
   gap: 12px;
   padding: 12px 16px 0;
   height: calc(100vh - var(--draft-hdr-h, 64px));
@@ -321,33 +238,6 @@
 .type-btn:last-child { border-right: none; }
 .type-btn:hover { color: var(--text); background: var(--bg-3); }
 .type-btn.active { color: var(--amber); background: var(--amber-lo); }
-/* ── Prefs column rows ──────────────────────────────────────────────────────── */
-.pref-row {
-  display: grid;
-  grid-template-columns: 28px 22px 1fr auto;
-  gap: 0 6px;
-  align-items: center;
-  padding: 7px 10px 7px 6px;
-  border-bottom: 1px solid var(--border);
-  cursor: grab;
-  user-select: none;
-  transition: background .08s;
-}
-.pref-row:last-child { border-bottom: none; }
-.pref-row:hover { background: var(--bg-3); }
-.pref-row.dragging { opacity: .3; cursor: grabbing; }
-.pref-row.drag-over { border-top: 2px solid var(--amber); margin-top: -1px; }
-.pref-rank {
-  font-family: var(--font-mono); font-size: 10px;
-  color: var(--amber); text-align: right; font-weight: 600;
-}
-.pref-arrows { display: flex; flex-direction: column; gap: 1px; }
-.pref-arrow {
-  background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 10px; line-height: 1; padding: 1px 2px;
-}
-.pref-arrow:hover:not(:disabled) { color: var(--text); }
-.pref-arrow:disabled { opacity: .2; cursor: default; }
 /* ── Explore column rows ─────────────────────────────────────────────────────── */
 .exp-row {
   display: grid;
@@ -356,22 +246,11 @@
   align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  cursor: grab;
-  user-select: none;
+  cursor: pointer;
   transition: background .08s;
 }
 .exp-row:last-child { border-bottom: none; }
 .exp-row:hover { background: var(--bg-3); }
-.exp-row.dragging { opacity: .3; cursor: grabbing; }
-/* ── Roster column rows ──────────────────────────────────────────────────────── */
-.ros-row {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background .08s;
-}
-.ros-row:last-child { border-bottom: none; }
-.ros-row:hover { background: var(--bg-3); }
 /* ── Shared player card internals ───────────────────────────────────────────── */
 .d-grade { font-family: var(--font-mono); font-size: 15px; font-weight: 600; min-width: 28px; }
 .d-name  { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
@@ -381,20 +260,26 @@
   margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;
 }
 .d-skills .gl { color: var(--muted); margin-right: 1px; }
-/* ── Mode toggle and strategy panel ───────────────────────────────────────── */
-.mode-toggle { display: flex; border: 1px solid var(--border); }
-.mode-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* ── Strategy panel ───────────────────────────────────────────────────────── */
+.strategy-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.pin-rank {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--amber); text-align: right; font-weight: 600;
+}
+.pin-arrows { display: flex; flex-direction: column; gap: 1px; }
+.pin-arrow {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 10px; line-height: 1; padding: 1px 2px;
+}
+.pin-arrow:hover:not(:disabled) { color: var(--text); }
+.pin-arrow:disabled { opacity: .2; cursor: default; }
 .strat-section { margin-bottom: 16px; }
 .strat-label {
   font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em;
   text-transform: uppercase; color: var(--text-dim); margin: 8px 0 6px;
 }
-.strat-hint, .strat-note {
+.strat-hint {
   font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 6px;
-}
-.strat-note {
-  color: var(--amber); border: 1px solid var(--amber); background: var(--amber-lo);
-  padding: 6px 8px; margin: 0 0 8px;
 }
 .needs-why {
   font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
@@ -430,7 +315,7 @@
 .pin-btn:hover { color: var(--amber); }
 .pin-btn.on { color: var(--amber); }
 .pin-btn:disabled { opacity: .25; cursor: default; }
-.exp-row.pinnable { grid-template-columns: 36px 1fr auto; }
+.exp-row { grid-template-columns: 36px 1fr auto; }
 .prev-row {
   display: grid; grid-template-columns: 54px 1fr auto; gap: 0 8px; align-items: center;
   padding: 7px 12px; border-bottom: 1px solid var(--border); cursor: pointer;
@@ -438,10 +323,7 @@
 .prev-row:hover { background: var(--bg-3); }
 .prev-slot { font-family: var(--font-mono); font-size: 10px; color: var(--amber); line-height: 1.3; }
 .prev-empty { padding: 10px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
-#preview-section { border-bottom: 1px solid var(--border); flex-shrink: 0; }
-
-/* ── Drop zone highlight ────────────────────────────────────────────────────── */
-.draft-col-body.drop-active { background: var(--amber-lo); }
+#preview-section { flex-shrink: 0; }
 </style>
 
 <script>
@@ -451,15 +333,8 @@
 window.setFilter        = setFilter;
 window.applyExploreSort = applyExploreSort;
 window.toggleReverse    = toggleReverse;
-window.resetToDefault   = resetToDefault;
-window.returnToSubmitted= returnToSubmitted;
-window.submitPrefs      = submitPrefs;
 window.onExecute        = onExecute;
-window.prefsZoneOver    = prefsZoneOver;
-window.prefsZoneDrop    = prefsZoneDrop;
-window.renderRoster     = renderRoster;
-window.setMode          = setMode;
-window.saveCurrent      = saveCurrent;
+window.saveStrategy     = saveStrategy;
 window.clearStrategy    = clearStrategy;
 window.setAgePref       = setAgePref;
 window.useSuggested     = useSuggested;
@@ -468,8 +343,6 @@ window.useSuggested     = useSuggested;
 const DRAFT_ID    = "{{ draft_id }}";
 var   LEAGUE_ID   = "{{ league_id }}";
 const ALL_PLAYERS = {{ board       | tojson }};
-const ALL_ROSTER  = {{ players     | tojson }};
-const SAVED_PREFS = {{ preferences | tojson }};
 const SAVED_STRATEGY = {{ strategy | tojson }};
 const CHIPS       = {{ chips       | tojson }};
 const SUGGESTED   = {{ suggested   | tojson }};  // {chips, reasons} from the roster
@@ -479,21 +352,10 @@ const STORAGE_KEY = `draft3col_${DRAFT_ID}`;
 
 
 /* ── State ──────────────────────────────────────────────────────────────────── */
-let prefOrder      = ALL_PLAYERS.map(p => p.player_id);
-let defaultOrder   = null;
-let submittedOrder = null;
-let dirty          = false;
-
 let exploreFilter   = '';
 let exploreReversed = false;
 let exploreSort     = { s1: 'overall', s2: '', s3: '' };
 
-let dragId     = null;
-let dragSource = null;  // 'prefs' | 'explore'
-
-// Strategy mode is the default; Advanced is the hand-ranked list. A GM who
-// has a ranked list saved starts in Advanced, since the draft uses it first.
-let mode           = SAVED_PREFS.length ? 'advanced' : 'strategy';
 const EMPTY_STRATEGY = { chips: {}, age_pref: 0, pins: [] };
 // With nothing saved the draft uses the suggested needs, so they're where a
 // new GM starts and what "unsaved" is measured against.
@@ -511,24 +373,6 @@ function playerMetaHtml(p) {
   return `${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}`;
 }
 
-/* ── Default sort ───────────────────────────────────────────────────────────── */
-// Primary: overall
-// Secondary: best of (contact, stuff)
-// Tertiary: best of (power, control)
-function computeDefaultOrder() {
-  return ALL_PLAYERS.slice().sort((a, b) => {
-    const d1 = gradeVal(a.overall) - gradeVal(b.overall);
-    if (d1 !== 0) return d1;
-    const aS = Math.min(gradeVal(a.contact), gradeVal(a.stuff));
-    const bS = Math.min(gradeVal(b.contact), gradeVal(b.stuff));
-    const d2 = aS - bS;
-    if (d2 !== 0) return d2;
-    const aT = Math.min(gradeVal(a.power), gradeVal(a.control));
-    const bT = Math.min(gradeVal(b.power), gradeVal(b.control));
-    return aT - bT;
-  }).map(p => p.player_id);
-}
-
 /* ── Explore sort ───────────────────────────────────────────────────────────── */
 function computeExploreOrder() {
   const { s1, s2, s3 } = exploreSort;
@@ -544,87 +388,6 @@ function computeExploreOrder() {
   return players;
 }
 
-/* ── Render: Preferences (left) ─────────────────────────────────────────────── */
-function renderPrefs() {
-  const el    = document.getElementById('prefs-list');
-  const total = prefOrder.length;
-  el.innerHTML = '';
-
-  prefOrder.forEach((pid, idx) => {
-    const p = ALL_PLAYERS.find(x => x.player_id === pid);
-    if (!p) return;
-
-    const row = document.createElement('div');
-    row.className  = 'pref-row';
-    row.dataset.pid = pid;
-    row.draggable  = true;
-
-    row.innerHTML = `
-      <div class="pref-rank">${idx + 1}</div>
-      <div class="pref-arrows">
-        <button class="pref-arrow" data-pid="${pid}" data-dir="up"
-                ${idx === 0 ? 'disabled' : ''}>▲</button>
-        <button class="pref-arrow" data-pid="${pid}" data-dir="down"
-                ${idx === total - 1 ? 'disabled' : ''}>▼</button>
-      </div>
-      <div style="min-width:0;">
-        <div class="d-name" style="cursor:pointer;"
-             onclick="openPlayerPanel('${pid}')">${p.first_name} ${p.last_name}</div>
-        <div class="d-meta">${playerMetaHtml(p)}</div>
-        <div class="d-skills">${playerGradesHtml(p)}</div>
-      </div>
-      <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>`;
-
-    /* drag within prefs */
-    row.addEventListener('dragstart', e => {
-      dragId = pid; dragSource = 'prefs';
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.stopPropagation();
-    });
-    row.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      dragId = null; dragSource = null;
-    });
-
-    /* drop target: insert before this row */
-    row.addEventListener('dragover', e => {
-      if (!dragId) return;
-      e.preventDefault();
-      document.querySelectorAll('.pref-row').forEach(r => r.classList.remove('drag-over'));
-      row.classList.add('drag-over');
-    });
-    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-    row.addEventListener('drop', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      document.querySelectorAll('.pref-row').forEach(r => r.classList.remove('drag-over'));
-      if (!dragId || dragId === pid) return;
-      insertPrefBefore(dragId, pid);
-    });
-
-    el.appendChild(row);
-  });
-
-  /* arrow clicks via delegation */
-  el.onclick = (e) => {
-    const btn = e.target.closest('.pref-arrow');
-    if (!btn) return;
-    e.stopPropagation();
-    const pid = btn.dataset.pid;
-    const dir = btn.dataset.dir;
-    const i   = prefOrder.indexOf(pid);
-    if (i === -1) return;
-    if (dir === 'up'   && i > 0)                prefOrder.splice(i - 1, 0, prefOrder.splice(i, 1)[0]);
-    if (dir === 'down' && i < total - 1)        prefOrder.splice(i + 1, 0, prefOrder.splice(i, 1)[0]);
-    markDirty();
-    renderPrefs();
-  };
-
-  updateResetBtn();
-  updateCheckmark();
-}
-
 /* ── Render: Explore (middle) ─────────────────────────────────────────────────  */
 function renderExplore() {
   const players = computeExploreOrder();
@@ -637,20 +400,17 @@ function renderExplore() {
 
   const el = document.getElementById('explore-list');
   el.innerHTML = '';
-  let _mouseDownId = null;
 
   players.forEach(p => {
     const row = document.createElement('div');
     row.className   = 'exp-row';
     row.dataset.pid = p.player_id;
-    row.draggable   = true;
 
     const pinned = strategy.pins.includes(p.player_id);
-    const pinBtn = mode === 'strategy' ? `
+    const pinBtn = `
       <button class="pin-btn ${pinned ? 'on' : ''}" data-pin="${p.player_id}"
               title="${pinned ? 'Unpin' : 'Pin'}"
-              ${!pinned && strategy.pins.length >= MAX_PINS ? 'disabled' : ''}>${pinned ? '★' : '☆'}</button>` : '';
-    if (pinBtn) row.classList.add('pinnable');
+              ${!pinned && strategy.pins.length >= MAX_PINS ? 'disabled' : ''}>${pinned ? '★' : '☆'}</button>`;
 
     row.innerHTML = `
       <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
@@ -660,64 +420,14 @@ function renderExplore() {
         <div class="d-skills">${playerGradesHtml(p)}</div>
       </div>${pinBtn}`;
 
-    const btn = row.querySelector('.pin-btn');
-    if (btn) {
-      btn.addEventListener('mousedown', e => e.stopPropagation());
-      btn.addEventListener('mouseup',   e => e.stopPropagation());
-      btn.addEventListener('click', e => { e.stopPropagation(); togglePin(p.player_id); });
-    }
-
-    row.addEventListener('dragstart', e => {
-      dragId = p.player_id; dragSource = 'explore';
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
+    row.querySelector('.pin-btn').addEventListener('click', e => {
       e.stopPropagation();
+      togglePin(p.player_id);
     });
-    row.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      dragId = null; dragSource = null;
-    });
-
-    /* click to inspect (mousedown+up to survive drag-intent without firing) */
-    row.addEventListener('mousedown', () => { _mouseDownId = p.player_id; });
-    row.addEventListener('mouseup', () => {
-      if (!dragId && _mouseDownId === p.player_id) openPlayerPanel(p.player_id);
-      _mouseDownId = null;
-    });
+    row.addEventListener('click', () => openPlayerPanel(p.player_id));
 
     el.appendChild(row);
   });
-}
-
-/* ── Render: Roster (right) ──────────────────────────────────────────────────── */
-function renderRoster() {
-  const s1 = document.getElementById('roster-s1')?.value || 'overall';
-  const s2 = document.getElementById('roster-s2')?.value || '';
-
-  const sorted = ALL_ROSTER.slice().sort((a, b) => {
-    const d1 = skillVal(a, s1) - skillVal(b, s1);
-    if (d1 !== 0) return d1;
-    if (s2) return skillVal(a, s2) - skillVal(b, s2);
-    return 0;
-  });
-
-  const el = document.getElementById('roster-list');
-  if (!sorted.length) {
-    el.innerHTML = '<div style="padding:20px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">No roster yet</div>';
-    return;
-  }
-
-  el.innerHTML = sorted.map(p => `
-    <div class="ros-row" onclick="openPlayerPanel('${p.player_id}')">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;">
-        <span style="font-family:var(--font-sans);font-weight:600;font-size:13px;
-                     color:var(--text-hi);">${p.first_name} ${p.last_name}</span>
-        <span class="${gradeClass(p.overall)}" style="font-size:13px;font-weight:600;
-              font-family:var(--font-mono);">${p.overall}</span>
-      </div>
-      <div class="d-meta">${playerMetaHtml(p)}</div>
-      <div class="d-skills">${playerGradesHtml(p)}</div>
-    </div>`).join('');
 }
 
 /* ── Strategy ────────────────────────────────────────────────────────────────── */
@@ -830,7 +540,7 @@ function renderStrategy() {
       const p = ALL_PLAYERS.find(x => x.player_id === pid);
       return `
         <div class="pin-row">
-          <span class="pref-rank">${i + 1}</span>
+          <span class="pin-rank">${i + 1}</span>
           <div style="min-width:0;">
             <div class="d-name" style="cursor:pointer;"
                  onclick="openPlayerPanel('${pid}')">${p.first_name} ${p.last_name}</div>
@@ -839,9 +549,9 @@ function renderStrategy() {
           </div>
           <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
           <div style="display:flex;align-items:center;">
-            <div class="pref-arrows">
-              <button class="pref-arrow" data-move="${pid}" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
-              <button class="pref-arrow" data-move="${pid}" data-dir="1"
+            <div class="pin-arrows">
+              <button class="pin-arrow" data-move="${pid}" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
+              <button class="pin-arrow" data-move="${pid}" data-dir="1"
                       ${i === strategy.pins.length - 1 ? 'disabled' : ''}>▼</button>
             </div>
             <button class="pin-btn" data-unpin="${pid}" title="Unpin">✕</button>
@@ -855,14 +565,10 @@ function renderStrategy() {
     const un = e.target.closest('[data-unpin]');
     if (un) togglePin(un.dataset.unpin);
   };
-
-  document.getElementById('strategy-list-note').style.display =
-    submittedOrder ? 'block' : 'none';
 }
 
 /* ── Projected picks ─────────────────────────────────────────────────────────── */
 function schedulePreview() {
-  if (mode !== 'strategy') return;
   clearTimeout(previewTimer);
   previewTimer = setTimeout(loadPreview, 250);
 }
@@ -911,27 +617,6 @@ function renderPreview(picks) {
   }).join('');
 }
 
-/* ── Mode ────────────────────────────────────────────────────────────────────── */
-function setMode(m) {
-  mode = m;
-  document.querySelectorAll('.mode-toggle .type-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.mode === mode));
-  document.getElementById('strategy-pane').style.display = mode === 'strategy' ? 'flex' : 'none';
-  document.getElementById('advanced-pane').style.display = mode === 'advanced' ? 'flex' : 'none';
-  document.getElementById('preview-section').style.display = mode === 'strategy' ? 'block' : 'none';
-  document.getElementById('submit-btn').textContent =
-    mode === 'strategy' ? 'Save Strategy' : 'Submit Preferences';
-  saveToStorage();
-  renderStrategy();
-  renderExplore();
-  updateCheckmark();
-  schedulePreview();
-}
-
-function saveCurrent() {
-  return mode === 'strategy' ? saveStrategy() : submitPrefs();
-}
-
 async function saveStrategy() {
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -944,8 +629,7 @@ async function saveStrategy() {
     });
     ok = res.ok;
     if (ok) {
-      savedStrategy  = normStrategy(strategy);
-      submittedOrder = null;  // the server dropped the Advanced list
+      savedStrategy = normStrategy(strategy);
       saveToStorage();
       renderStrategy();
       updateCheckmark();
@@ -955,49 +639,12 @@ async function saveStrategy() {
   return ok;
 }
 
-/* ── Pref manipulation ───────────────────────────────────────────────────────── */
-// Insert movedId before targetId in prefOrder (used for both sources)
-function insertPrefBefore(movedId, targetId) {
-  const si = prefOrder.indexOf(movedId);
-  if (si !== -1) prefOrder.splice(si, 1);
-  const ti = prefOrder.indexOf(targetId);
-  if (ti === -1) { prefOrder.push(movedId); }
-  else           { prefOrder.splice(ti, 0, movedId); }
-  markDirty();
-  renderPrefs();
-}
-
-// Append movedId to end (drop on empty space below list)
-function appendToPref(movedId) {
-  const si = prefOrder.indexOf(movedId);
-  if (si !== -1) prefOrder.splice(si, 1);
-  prefOrder.push(movedId);
-  markDirty();
-  renderPrefs();
-}
-
-/* ── Drop zone: prefs column background (append) ─────────────────────────────── */
-function prefsZoneOver(e) {
-  if (e.target.closest('.pref-row')) return;
-  if (!dragId) return;
-  e.preventDefault();
-  document.getElementById('prefs-list').classList.add('drop-active');
-}
-function prefsZoneDrop(e) {
-  if (e.target.closest('.pref-row')) return;
-  e.preventDefault();
-  document.getElementById('prefs-list').classList.remove('drop-active');
-  if (!dragId) return;
-  appendToPref(dragId);
-}
-document.addEventListener('dragend', () => {
-  document.getElementById('prefs-list')?.classList.remove('drop-active');
-  document.querySelectorAll('.pref-row').forEach(r => r.classList.remove('drag-over'));
-});
-
 /* ── Controls ────────────────────────────────────────────────────────────────── */
-const HITTING_KEYS  = new Set(['contact','power','eye','speed','arm']);
-const PITCHING_KEYS = new Set(['stuff','control','stamina','recovery','ground_balls']);
+const HITTING_KEYS  = new Set(['contact','power','eye','speed','arm',
+  'leadoff_grade','contact_h_grade','power_h_grade','offense_h_grade',
+  'pos_c','pos_1b','pos_2b','pos_3b','pos_ss','pos_lf','pos_cf','pos_rf']);
+const PITCHING_KEYS = new Set(['sp_grade','rp_grade','stuff','control','stamina',
+  'recovery','ground_balls']);
 
 function getSkillType(key) {
   if (HITTING_KEYS.has(key))  return 'hitting';
@@ -1025,7 +672,7 @@ function updateSortConstraints() {
 }
 
 function setFilter(btn, type) {
-  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.parentElement.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   exploreFilter = type;
   saveToStorage();
@@ -1051,74 +698,16 @@ function toggleReverse() {
   renderExplore();
 }
 
-/* ── Dirty / reset ───────────────────────────────────────────────────────────── */
-function markDirty() {
-  dirty = JSON.stringify(prefOrder) !== JSON.stringify(defaultOrder);
-  saveToStorage();
-}
-
-function updateResetBtn() {
-  const btn = document.getElementById('reset-btn');
-  if (!btn) return;
-  btn.disabled    = !dirty;
-  btn.style.opacity = dirty ? '1' : '0.4';
-}
-
-function resetToDefault() {
-  prefOrder = [...defaultOrder];
-  dirty = false;
-  saveToStorage();
-  renderPrefs();
-}
-
+/* ── Saved check ─────────────────────────────────────────────────────────────── */
 function updateCheckmark() {
   const check   = document.getElementById('submit-check');
-  const retBtn  = document.getElementById('return-submitted-btn');
   const banner  = document.getElementById('draft-unsaved-banner');
-  const text    = document.getElementById('draft-unsaved-text');
-  let isMatch;
-  if (mode === 'strategy') {
-    isMatch = !unsavedStrategy();
-    if (retBtn) retBtn.style.display = 'none';
-    if (text)   text.textContent = '⚠ Strategy not yet saved';
-    if (check)  check.style.display = isMatch && savedStrategy ? 'inline' : 'none';
-    if (banner) banner.style.display = isMatch ? 'none' : 'flex';
-    return;
-  } else {
-    isMatch = submittedOrder && JSON.stringify(prefOrder) === JSON.stringify(submittedOrder);
-    if (retBtn) retBtn.style.display = (submittedOrder && !isMatch) ? 'inline-block' : 'none';
-    if (text)   text.textContent = '⚠ Preferences not yet submitted';
-  }
-  if (check)  check.style.display  = isMatch ? 'inline' : 'none';
+  const isMatch = !unsavedStrategy();
+  if (check)  check.style.display  = isMatch && savedStrategy ? 'inline' : 'none';
   if (banner) banner.style.display = isMatch ? 'none' : 'flex';
 }
 
-function returnToSubmitted() {
-  if (!submittedOrder) return;
-  prefOrder = [...submittedOrder];
-  markDirty();
-  renderPrefs();
-}
-
 /* ── Submit / execute ────────────────────────────────────────────────────────── */
-async function submitPrefs() {
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
-  try {
-    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/preferences`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player_ids: prefOrder }),
-    });
-    if (res.ok) {
-      submittedOrder = [...prefOrder];
-      saveToStorage();
-      updateCheckmark();
-    }
-  } catch (err) { console.error('Submit failed', err); }
-  finally { btn.disabled = false; btn.textContent = 'Submit Preferences'; }
-}
-
 // Run Draft saves an unsaved strategy first, so what you see is what runs.
 function onExecute(form) {
   const btn = document.getElementById('execute-btn');
@@ -1131,7 +720,7 @@ function onExecute(form) {
     if (d.failed) { reset(); alert(d.detail || 'The draft failed.'); return; }
     window.location.href = d.redirect;
   });
-  if (mode !== 'strategy' || !unsavedStrategy()) { run(); return false; }
+  if (!unsavedStrategy()) { run(); return false; }
   saveStrategy().then(ok => { if (ok) run(); else reset(); });
   return false;
 }
@@ -1140,9 +729,7 @@ function onExecute(form) {
 function saveToStorage() {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      prefOrder, submittedOrder,
-      exploreFilter, exploreSort, exploreReversed,
-      mode, strategy,
+      exploreFilter, exploreSort, exploreReversed, strategy,
     }));
   } catch (e) {}
 }
@@ -1151,19 +738,14 @@ function loadFromStorage() {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!Array.isArray(data.prefOrder)) return null;
-    const known = new Set(ALL_PLAYERS.map(p => p.player_id));
-    const valid = data.prefOrder.filter(id => known.has(id));
-    if (valid.length !== ALL_PLAYERS.length) return null;
-    return { ...data, prefOrder: valid };
+    return JSON.parse(raw);
   } catch (e) { return null; }
 }
 
 function restoreUiState(data) {
   if (data.exploreFilter) {
     exploreFilter = data.exploreFilter;
-    document.querySelectorAll('.type-btn').forEach(b => {
+    document.querySelectorAll('.type-btn[onclick^="setFilter"]').forEach(b => {
       b.classList.toggle('active',
         b.getAttribute('onclick').includes(`'${data.exploreFilter}'`));
     });
@@ -1188,32 +770,17 @@ function measureHeader() {
 }
 
 /* ── Init ────────────────────────────────────────────────────────────────────── */
-defaultOrder = computeDefaultOrder();
-
 const stored = loadFromStorage();
 if (stored) {
-  prefOrder = stored.prefOrder;
-  if (stored.submittedOrder) submittedOrder = stored.submittedOrder;
   restoreUiState(stored);
-  if (stored.mode) mode = stored.mode;
   if (stored.strategy) strategy = normStrategy(stored.strategy);
-  dirty = JSON.stringify(prefOrder) !== JSON.stringify(defaultOrder);
-} else if (SAVED_PREFS.length > 0) {
-  const known   = new Set(prefOrder);
-  const rest    = prefOrder.filter(id => !SAVED_PREFS.includes(id));
-  prefOrder     = [...SAVED_PREFS.filter(id => known.has(id)), ...rest];
-  submittedOrder = [...prefOrder];
-  dirty = JSON.stringify(prefOrder) !== JSON.stringify(defaultOrder);
-} else {
-  prefOrder = [...defaultOrder];
-  dirty = false;
 }
 
-renderPrefs();
 renderStrategy();
-renderRoster();
 updateSortConstraints();
-setMode(mode);  // renders Explore, the checkmark and the preview
+renderExplore();
+updateCheckmark();
+schedulePreview();
 requestAnimationFrame(measureHeader);
 window.addEventListener('resize', measureHeader);
 

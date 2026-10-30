@@ -1,8 +1,7 @@
 # src/api/services/draft_execute.py
 #
-# Blitz preference-list draft. Subclasses SnakeDraft and overrides
-# _run_snake so that human GMs pick from their submitted preference
-# list first, then from their draft strategy (pins, then need chips).
+# Blitz draft. Subclasses SnakeDraft and overrides _run_snake so that each
+# team picks by its draft strategy (pins, then need chips).
 # A team with no saved strategy, which includes every AI team, drafts by
 # the needs its roster suggests; an AI team's state and persona weigh them
 # (src/league/front_office.py). Afterwards each AI team picks its 26-man and
@@ -37,17 +36,15 @@ class BlitzDraft(SnakeDraft):
     """
     Snake draft variant for blitz leagues.
 
-    Human GMs pick their highest available preference-list player, then
-    follow their draft strategy if they saved one.
-    AI GMs (and human GMs with exhausted/missing lists) fall back to
-    best prospect rating — identical to the base SnakeDraft behaviour.
+    Each team picks by its draft strategy. A team without one takes the
+    best prospect rating, as the base SnakeDraft does.
     """
 
     def __init__(
         self,
         conn,
         league_id: str,
-        gm_preferences: dict[str, list[str]],
+        human_team_ids: set[str],
         rng=None,
         gm_strategies: dict[str, DraftStrategy] | None = None,
         outlooks: dict[str, front_office.Outlook] | None = None,
@@ -56,15 +53,13 @@ class BlitzDraft(SnakeDraft):
         Args:
             conn: DB connection
             league_id: League to scope the draft pool to
-            gm_preferences: { team_id: [player_id, ...] } in rank order.
-                            Only human GMs will have entries; AI GMs won't.
-            gm_strategies: { team_id: DraftStrategy } for GMs who saved one.
+            human_team_ids: Teams a person runs. Their picks aren't auto
+                            picks, and they set their own rosters after.
+            gm_strategies: { team_id: DraftStrategy } for each team.
             outlooks: { team_id: Outlook } for AI teams, for their rosters.
         """
         super().__init__(conn, league_id, rng)
-        self._prefs: dict[str, list[str]] = {
-            tid: list(pids) for tid, pids in gm_preferences.items()
-        }
+        self._human_team_ids = set(human_team_ids)
         # Copied: chip levels wear off as picks are made
         self._strategies: dict[str, DraftStrategy] = {
             tid: s.copy() for tid, s in (gm_strategies or {}).items()
@@ -76,7 +71,7 @@ class BlitzDraft(SnakeDraft):
         draft_order: list[dict],
         rated: list[tuple[PlayerRecord, int]],
     ) -> list[DraftPick]:
-        """Override: respect preference lists for human GMs."""
+        """Override: pick by each team's draft strategy."""
         picks = []
         overall_pick = 1
         available: set[str] = {p.id for p, _ in rated}
@@ -97,20 +92,8 @@ class BlitzDraft(SnakeDraft):
                 team_id = self._owner(round_num, team_entry["team_id"])
 
                 chosen: PlayerRecord | None = None
-                # is_auto = True
-
-                pref_list = self._prefs.get(team_id, [])
-                for pid in pref_list:
-                    if pid in available:
-                        record = next((p for p, _ in fallback if p.id == pid), None)
-                        if record:
-                            chosen = record
-                            pref_list.remove(pid)
-                            # is_auto = False
-                            break
-
                 strategy = self._strategies.get(team_id)
-                if chosen is None and strategy is not None:
+                if strategy is not None:
                     pid = scorer.choose(available, strategy)
                     chosen = by_id.get(pid) if pid else None
 
@@ -153,7 +136,7 @@ class BlitzDraft(SnakeDraft):
     def _reassign_rosters(self, draft_order: list[dict]) -> None:
         """Only reassign AI-managed teams — human GMs set their own roster."""
         assigner = RosterAssigner()
-        ai_teams = [t for t in draft_order if t["team_id"] not in self._prefs]
+        ai_teams = [t for t in draft_order if t["team_id"] not in self._human_team_ids]
 
         for team_entry in ai_teams:
             team_id = team_entry["team_id"]
@@ -175,7 +158,7 @@ class BlitzDraft(SnakeDraft):
 
 def execute_blitz_draft(draft_id: str, conn) -> dict:
     """
-    Run the full blitz preference-list draft end-to-end.
+    Run the full blitz draft end-to-end.
     Assumes DraftGenerator has already been run (prospect pool exists).
     """
     dr = DraftRepository(conn)
@@ -197,13 +180,6 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     gm_repo = GMRepository(conn)
     human_team_ids = gm_repo.get_human_team_ids(league_id)
 
-    # Load preference lists keyed by team_id (human GMs only)
-    pref_rows = dr.get_ids_and_rank_from_preferences(draft_id, league_id)
-
-    gm_preferences: dict[str, list[str]] = {tid: [] for tid in human_team_ids}
-    for row in pref_rows:
-        gm_preferences.setdefault(row["team_id"], []).append(row["player_id"])
-
     # Every team drafts by its saved strategy or, failing that, its needs
     gm_strategies = draft_strategies(conn, draft_id, league_id, cached=False)
 
@@ -219,7 +195,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     blitz = BlitzDraft(
         conn,
         league_id=league_id,
-        gm_preferences=gm_preferences,
+        human_team_ids=human_team_ids,
         gm_strategies=gm_strategies,
         outlooks=outlooks,
     )
@@ -235,7 +211,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     for pick in picks:
         gm_id = gm_repo.get_gm_id_from_team_id(league_id, pick.team_id)
         # gm_id = _gm_for_team(conn, league_id, pick.team_id)
-        auto = pick.team_id not in gm_preferences
+        auto = pick.team_id not in human_team_ids
         dr.insert_draft_picks(
             draft_id,
             pick.pick,
@@ -281,7 +257,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         "draft_id": draft_id,
         "season_id": season_id,
         "picks_made": len(picks),
-        "auto_picks": sum(1 for p in picks if p.team_id not in gm_preferences),
+        "auto_picks": sum(1 for p in picks if p.team_id not in human_team_ids),
         "rounds": ROUNDS,
         "league_state": "preseason",
     }
