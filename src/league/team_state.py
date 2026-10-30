@@ -194,7 +194,7 @@ def settle(previous: Previous | None, inputs: Inputs) -> tuple[str, int]:
 
 
 def describe(state: str) -> str:
-    """How the front office sees it, for the standings page."""
+    """How the front office sees it, for the standings and draft pages."""
     return {
         "all-in": "an all-in team: the window is now",
         "contending": "a contender",

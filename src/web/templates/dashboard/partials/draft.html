@@ -112,6 +112,16 @@
           At each pick you take your highest pinned player still there, else the best
           prospect for your needs.
         </div>
+        {% if my_state or last_season %}
+        <div id="draft-fo-state" style="font-size:12px;color:var(--text-dim);margin-top:6px;">
+          {% if last_season %}
+          {% set ls = last_season %}
+          <div>Last season: {{ ls.w }}–{{ ls.l }}, {{ ls.place }} of {{ ls.teams }}{% if ls.playoffs %},
+            <span{% if ls.playoffs == 'won the championship' %} style="color:var(--amber);font-weight:600;"{% endif %}>{{ ls.playoffs }}</span>{% endif %}.</div>
+          {% endif %}
+          {% if my_state %}<div>The front office sees {{ my_state }}.</div>{% endif %}
+        </div>
+        {% endif %}
       </div>
       <div class="draft-col-body" style="padding:10px 12px;">
         <div class="strat-section">
