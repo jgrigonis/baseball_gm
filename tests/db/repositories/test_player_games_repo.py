@@ -815,3 +815,57 @@ class TestPlayerGameRepositoryRowToStats:
 
         retrieved = player_games_repo.get_for_game(ctx.game_id, ctx.p1.id)
         assert retrieved.fielding.chances == 10
+
+
+# ---------------------------------------------------------------------------
+# get_batting_box_score
+# ---------------------------------------------------------------------------
+
+
+class TestBattingBoxScore:
+    def _batter(self, ctx, factory, last_name, at_bats, started=1):
+        player = factory.player_row()
+        ctx.conn.execute(
+            "UPDATE players SET last_name = %s WHERE id = %s", (last_name, player.id)
+        )
+        s = Stats()
+        s.batting.at_bats = at_bats
+        s.batting.walks = 0 if at_bats else 3
+        s.batting.game_started = started
+        PlayerGameRepository(ctx.conn).insert_player_game(
+            ctx.game_id, player.id, ctx.home.id, ctx.away.id, s
+        )
+        return player
+
+    def _slot(self, ctx, player, order, position):
+        ctx.conn.execute(
+            """INSERT INTO game_lineup_slots
+                   (game_id, team_id, player_id, position, batting_order, is_pitcher)
+               VALUES (%s, %s, %s, %s, %s, 0)""",
+            (ctx.game_id, ctx.home.id, player.id, position, order),
+        )
+
+    def test_starters_in_batting_order_with_positions(self, ctx, factory):
+        """The box score shows the lineup the game used, not hitters by name,
+        so a person can see their saved lineup was played."""
+        zane = self._batter(ctx, factory, "Zane", 4)
+        adams = self._batter(ctx, factory, "Adams", 4)
+        moore = self._batter(ctx, factory, "Moore", 0)  # walked every time
+        bench = self._batter(ctx, factory, "Baker", 1, started=0)
+        self._slot(ctx, zane, 1, "ss")
+        self._slot(ctx, moore, 2, "c")
+        self._slot(ctx, adams, 3, "dh")
+
+        rows = PlayerGameRepository(ctx.conn).get_batting_box_score(ctx.game_id)
+
+        assert [r["player_id"] for r in rows] == [zane.id, moore.id, adams.id, bench.id]
+        assert [r["position"] for r in rows] == ["ss", "c", "dh", None]
+
+    def test_without_a_saved_lineup_starters_come_first(self, ctx, factory):
+        """Games played before lineups were kept still list starters first."""
+        bench = self._batter(ctx, factory, "Adams", 1, started=0)
+        starter = self._batter(ctx, factory, "Zane", 4)
+
+        rows = PlayerGameRepository(ctx.conn).get_batting_box_score(ctx.game_id)
+
+        assert [r["player_id"] for r in rows] == [starter.id, bench.id]
