@@ -92,6 +92,10 @@ function apply(d) {
   if (!d || !d.multiplayer) return;
   var prev = last;
   last = d;
+  if (d.current_date) {
+    var dateEl = document.querySelector('.topbar-date');
+    if (dateEl) dateEl.textContent = d.current_date;
+  }
   deadline = d.seconds_left === null ? null : Date.now() + d.seconds_left * 1000;
   if (prev && prev.period !== d.period) {
     // A period ran. A new league state means different tabs, so reload;
