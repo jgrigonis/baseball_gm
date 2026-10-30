@@ -178,11 +178,11 @@
         {% for sr in rd.series %}
         <div style="font-size:12px;padding:2px 0;display:flex;gap:6px;align-items:baseline;">
           <span style="font-weight:600;
-                       color:{% if sr.leader.is_mine %}var(--amber){% elif sr.decided %}var(--green){% else %}var(--text){% endif %};">
+                       color:{% if sr.leader.is_mine %}var(--green){% elif sr.leader.is_human %}var(--sky){% else %}var(--text){% endif %};">
             {{ sr.leader.name }}</span>
           <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
             {% if sr.decided %}def.{% else %}vs{% endif %}</span>
-          <span style="color:{% if sr.trailer.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
+          <span style="color:{% if sr.trailer.is_mine %}var(--green){% elif sr.trailer.is_human %}var(--sky){% else %}var(--text-dim){% endif %};">
             {{ sr.trailer.name }}</span>
           <span style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--text);">
             {{ sr.leader.wins }}–{{ sr.trailer.wins }}</span>
