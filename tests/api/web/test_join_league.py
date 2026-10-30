@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
+from src.api.services import personas
 
 
 @pytest.fixture
@@ -68,6 +69,17 @@ def test_lobby_league_joins(client, db_conn, factory):
 
     assert r.status_code == 302
     assert r.headers["location"] == f"/leagues/{league.id}/"
+
+
+def test_joining_takes_an_ai_gms_place(client, db_conn, factory):
+    league = _league(db_conn, factory, "lobby", "LOBBY2")
+    db_conn.execute("UPDATE leagues SET num_teams = 4 WHERE id = %s", (league.id,))
+    personas.fill_lobby(db_conn, league.id)
+    assert len(personas.lobby_ai_gms(db_conn, league.id)) == 4
+
+    _join(client, "LOBBY2")
+
+    assert len(personas.lobby_ai_gms(db_conn, league.id)) == 3
 
 
 def test_existing_gm_of_started_league_goes_to_it(client, db_conn, factory, user):

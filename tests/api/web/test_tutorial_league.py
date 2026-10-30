@@ -87,6 +87,17 @@ def test_tutorial_league_is_a_solo_speed_blitz(client, db_conn, user_id):
     assert league["commissioner_gm_id"] == gm["id"]
 
 
+def test_tutorial_league_lobby_lists_its_ai_gms(client, db_conn):
+    league_id = _tutorial(client)
+
+    league = LeagueRepository(db_conn).get_by_id(league_id)
+    ai = db_conn.execute(
+        "SELECT persona_id FROM gms WHERE league_id = %s AND is_ai", (league_id,)
+    ).fetchall()
+    assert len(ai) == league["num_teams"] - 1
+    assert all(r["persona_id"] for r in ai)
+
+
 def test_tutorial_leagues_have_no_limit(client, db_conn):
     first = _tutorial(client)
     second = _tutorial(client)

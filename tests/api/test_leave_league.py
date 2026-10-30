@@ -14,7 +14,7 @@ from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
 from src.api.services import leave_league as leave_league_module
-from src.api.services import ready_check
+from src.api.services import personas, ready_check
 from src.api.services.injury_news import InjuryNews
 from src.api.services.leave_league import leave_league
 from src.api.view_models.standings import standings_context
@@ -224,6 +224,18 @@ class TestLobby:
 
         assert _gm(db_conn, boss) is None
         assert _commissioner(db_conn, league) == other.id
+
+    def test_an_ai_gm_takes_their_place(self, db_conn, factory):
+        league = factory.league(state="lobby")
+        db_conn.execute("UPDATE leagues SET num_teams = 4 WHERE id = %s", (league.id,))
+        boss, _ = _human(db_conn, factory, league, "Al")
+        other, _ = _human(db_conn, factory, league, "Bob")
+        _set_commissioner(db_conn, league, boss)
+        personas.fill_lobby(db_conn, league.id)
+
+        leave_league(db_conn, league.id, other.id)
+
+        assert len(personas.lobby_ai_gms(db_conn, league.id)) == 3
 
     def test_last_gm_out_deletes_the_league(self, db_conn, factory):
         league = factory.league(state="lobby")

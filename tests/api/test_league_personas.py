@@ -201,3 +201,68 @@ def test_team_state_inputs_carry_the_gms_lean(lg):
     inputs = team_states.gather(lg.db, lg.league.id, lg.season.id)
     assert inputs[lg.theirs.id].lean == 1.0
     assert inputs[lg.mine.id].lean == 0.0
+
+
+# ── The lobby ─────────────────────────────────────────────────────────────────
+
+
+def _lobby(db, factory, num_teams=4):
+    league = factory.league(state="lobby")
+    db.execute(
+        "UPDATE leagues SET num_teams = %s WHERE id = %s", (num_teams, league.id)
+    )
+    GMRepository(db).create_gm(league_id=league.id, display_name="Al")
+    return league
+
+
+def test_the_lobby_picks_an_ai_gm_for_each_open_team(db_conn, factory):
+    league = _lobby(db_conn, factory)
+
+    persona_service.fill_lobby(db_conn, league.id)
+
+    ai = persona_service.lobby_ai_gms(db_conn, league.id)
+    assert len(ai) == 3
+    assert all(g["persona_id"] and g["archetype"] for g in ai)
+    assert len({g["persona_id"] for g in ai}) == 3
+
+
+def test_filling_twice_changes_nothing(db_conn, factory):
+    league = _lobby(db_conn, factory)
+    persona_service.fill_lobby(db_conn, league.id)
+    before = persona_service.lobby_ai_gms(db_conn, league.id)
+
+    persona_service.fill_lobby(db_conn, league.id)
+
+    assert persona_service.lobby_ai_gms(db_conn, league.id) == before
+
+
+def test_a_person_joining_takes_the_newest_ai_gms_place(db_conn, factory):
+    league = _lobby(db_conn, factory)
+    persona_service.fill_lobby(db_conn, league.id)
+    before = persona_service.lobby_ai_gms(db_conn, league.id)
+
+    GMRepository(db_conn).create_gm(league_id=league.id, display_name="Bob")
+    persona_service.fill_lobby(db_conn, league.id)
+
+    assert persona_service.lobby_ai_gms(db_conn, league.id) == before[:2]
+
+
+def test_reroll_picks_a_persona_not_yet_in_the_league(db_conn, factory):
+    league = _lobby(db_conn, factory)
+    persona_service.fill_lobby(db_conn, league.id)
+    ai = persona_service.lobby_ai_gms(db_conn, league.id)
+
+    assert persona_service.reroll(db_conn, league.id, ai[0]["id"], random.Random(1))
+
+    after = persona_service.lobby_ai_gms(db_conn, league.id)
+    assert after[0]["persona_id"] not in {g["persona_id"] for g in ai}
+    assert after[1:] == ai[1:]
+    row = GMRepository(db_conn).get_by_id(ai[0]["id"])
+    assert row["display_name"] == after[0]["display_name"]
+
+
+def test_reroll_leaves_people_alone(db_conn, factory):
+    league = _lobby(db_conn, factory)
+    al = GMRepository(db_conn).get_all_in_league(league.id)[0]
+
+    assert not persona_service.reroll(db_conn, league.id, al["id"])

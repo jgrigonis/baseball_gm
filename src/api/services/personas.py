@@ -1,8 +1,11 @@
 # src/api/services/personas.py
 #
 # GM personas in a league (src/league/personas.py): picking one for an AI
-# team, when the league starts or when a person leaves, and reading what each
-# team's GM leans toward for trades and team state.
+# GM, in the lobby or when a person leaves, and reading what each team's GM
+# leans toward for trades and team state.
+#
+# The lobby already lists the AI GMs who will run the open teams: one per
+# team nobody has joined for. They have no team until the league starts.
 #
 # A pick is random, weighted by chance, with no repeats in a league unless
 # every pickable persona is already in it. The persona's name becomes the
@@ -47,6 +50,50 @@ def assign(conn, gm_id: str, persona: dict | None) -> None:
 def give_persona(conn, league_id: str, gm_id: str, rng: random.Random) -> None:
     """Pick a persona for an AI GM in this league and assign it."""
     assign(conn, gm_id, pick(conn, league_id, rng))
+
+
+def lobby_ai_gms(conn, league_id: str) -> list[dict]:
+    """The AI GMs waiting in the lobby for a team, oldest first, with their
+    persona's archetype."""
+    rows = conn.execute(
+        """SELECT g.id, g.display_name, g.persona_id, p.archetype
+           FROM gms g LEFT JOIN gm_personas p ON p.id = g.persona_id
+           WHERE g.league_id = %s AND g.is_ai AND g.team_id IS NULL
+           ORDER BY g.created_at, g.id""",
+        (league_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fill_lobby(conn, league_id: str, rng: random.Random | None = None) -> None:
+    """One lobby AI GM for each team no person has joined for. A person
+    joining takes the newest AI GM's place; a person leaving brings a new
+    one in."""
+    rng = rng or random.Random()
+    league = conn.execute(
+        "SELECT num_teams FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
+    if not league:
+        return
+    repo = GMRepository(conn)
+    want = max(league["num_teams"] - len(repo.get_human_gm_ids(league_id)), 0)
+    ai = lobby_ai_gms(conn, league_id)
+    for gm in ai[want:]:
+        repo.delete_gm(gm["id"])
+    for _ in range(want - len(ai)):
+        gm_id = repo.create_gm(
+            league_id=league_id, display_name=FALLBACK_NAME, is_ai=True
+        )
+        give_persona(conn, league_id, gm_id, rng)
+
+
+def reroll(conn, league_id: str, gm_id: str, rng: random.Random | None = None) -> bool:
+    """Swap a lobby AI GM's persona for one not yet in the league. False if
+    the GM isn't a lobby AI GM of this league."""
+    if not any(g["id"] == gm_id for g in lobby_ai_gms(conn, league_id)):
+        return False
+    give_persona(conn, league_id, gm_id, rng or random.Random())
+    return True
 
 
 def leanings(conn, league_id: str) -> dict[str, Leanings]:
