@@ -16,8 +16,9 @@ to starters and Relief Ace to relievers. Position chips ask "do we have a
 body here" so their window starts at the median; archetype chips ask for
 someone special so theirs starts higher.
 
-Needs wear off: once a pick fills a chip (fit ≥ FILL_FIT), that chip drops a
-level for the rest of the draft.
+Each chip is Low, Medium or High. Low adds nothing, so it's a chip that isn't
+a need. Needs wear off: once a pick fills a chip (fit ≥ FILL_FIT), that chip
+drops a level for the rest of the draft.
 
 Ratings are 0-100 and one letter grade is 5 points, so at High a chip is worth
 up to about one grade and all chips together about 1.5 grades. These are
@@ -31,8 +32,8 @@ from dataclasses import dataclass, field
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 
-OFF, LOW, MED, HIGH = 0, 1, 2, 3
-LEVEL_POINTS = {OFF: 0, LOW: 2, MED: 4, HIGH: 6}
+LOW, MED, HIGH = 0, 1, 2
+LEVEL_POINTS = {LOW: 0, MED: 3, HIGH: 6}
 BONUS_CAP = 8
 AGE_POINTS = 2  # the slider at either end moves a player by up to this much
 FILL_FIT = 0.5
@@ -98,7 +99,7 @@ def group(player: PlayerRecord, r: dict[str, int]) -> str:
 
 @dataclass
 class DraftStrategy:
-    """A GM's saved strategy. `chips` maps chip key → level (0-3), `age_pref`
+    """A GM's saved strategy. `chips` maps chip key → level (0-2: Low, Medium, High), `age_pref`
     runs from -1 (upside: younger) to 1 (ready sooner: older)."""
 
     chips: dict[str, int] = field(default_factory=dict)
@@ -111,7 +112,7 @@ class DraftStrategy:
             raise ValueError(f"Unknown draft chips: {sorted(unknown)}")
         for key, level in self.chips.items():
             if level not in LEVEL_POINTS:
-                raise ValueError(f"Chip {key} level must be 0-3, got {level}")
+                raise ValueError(f"Chip {key} level must be 0-2, got {level}")
         if not -1.0 <= self.age_pref <= 1.0:
             raise ValueError("age_pref must be between -1 and 1")
         if len(self.pins) > MAX_PINS:
@@ -121,10 +122,10 @@ class DraftStrategy:
         return DraftStrategy(dict(self.chips), self.age_pref, list(self.pins))
 
     def has_chips(self) -> bool:
-        return any(level > OFF for level in self.chips.values())
+        return any(level > LOW for level in self.chips.values())
 
     def or_needs(self, needs: dict[str, int]) -> DraftStrategy:
-        """This strategy, or with every chip Off, a copy that uses `needs`
+        """This strategy, or with every chip Low, a copy that uses `needs`
         (the suggested chips) instead. Pins and the age slider are kept."""
         if self.has_chips():
             return self
@@ -204,7 +205,7 @@ class StrategyScorer:
     def wear_off(self, pid: str, strategy: DraftStrategy) -> None:
         """Drop a level on every chip this pick filled."""
         for key, level in strategy.chips.items():
-            if level > OFF and self.fit(pid, key) >= FILL_FIT:
+            if level > LOW and self.fit(pid, key) >= FILL_FIT:
                 strategy.chips[key] = level - 1
 
 

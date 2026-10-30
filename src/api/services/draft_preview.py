@@ -25,7 +25,7 @@ def preview_picks(
     the team's first PREVIEW_PICKS picks, and which of its pins other teams
     take before then.
 
-    With every chip Off, the team drafts by its suggested needs, as it will
+    With every chip Low, the team drafts by its suggested needs, as it will
     in the real draft. Other teams draft by their saved strategy or else their needs, as they
     will in the real draft. Saved preference lists are left out, so it's a
     guide, not a promise."""

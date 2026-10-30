@@ -646,7 +646,7 @@ CREATE TABLE IF NOT EXISTS draft_preferences (
 CREATE TABLE IF NOT EXISTS draft_strategies (
     gm_id      TEXT   NOT NULL,
     draft_id   TEXT   NOT NULL,
-    chips      JSONB  NOT NULL DEFAULT '{{}}',  -- chip key -> level 0-3
+    chips      JSONB  NOT NULL DEFAULT '{{}}',  -- chip key -> level 0-2 (Low, Med, High)
     age_pref   REAL   NOT NULL DEFAULT 0,      -- -1 upside .. 1 ready sooner
     pins       TEXT[] NOT NULL DEFAULT '{{}}',  -- player_ids, in order
     updated_at TEXT   NOT NULL DEFAULT (NOW()),

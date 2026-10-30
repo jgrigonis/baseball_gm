@@ -38,7 +38,7 @@ def test_age_points():
 
 
 def test_best_available_states_drop_need_chips():
-    s = fo.draft_strategy({"c": HIGH, "if": LOW}, "rebuilding", Leanings())
+    s = fo.draft_strategy({"c": HIGH, "if": MED}, "rebuilding", Leanings())
     assert s.chips == {"c": MED}
 
 
@@ -49,11 +49,11 @@ def test_retooling_drafts_for_need():
 
 def test_bat_first_gm_asks_for_offense():
     assert fo.draft_strategy({}, None, Leanings(offense_defense=75)).chips == {
-        "offense": LOW
-    }
-    assert fo.draft_strategy({}, None, Leanings(offense_defense=90)).chips == {
         "offense": MED
     }
+    assert fo.draft_strategy(
+        {"offense": HIGH}, None, Leanings(offense_defense=90)
+    ).chips == {"offense": HIGH}
     assert fo.draft_strategy({}, None, Leanings()).chips == {}
 
 

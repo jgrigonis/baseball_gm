@@ -96,7 +96,7 @@
           <div class="chip-row" id="chips-position"></div>
           <div class="strat-label">Needs · player types</div>
           <div class="chip-row" id="chips-type"></div>
-          <div class="strat-hint">Click a need to step it Off → Low → Med → High. A need
+          <div class="strat-hint">Click a need to step it Low → Med → High. A need
             counts less after you draft someone who fills it.</div>
           <div id="needs-why" class="needs-why"></div>
         </div>
@@ -409,11 +409,10 @@
 }
 .need-chip .lvl { font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .need-chip:hover { color: var(--text); background: var(--bg-3); }
-.need-chip.l1 { border-color: var(--amber); color: var(--text); }
-.need-chip.l2 { border-color: var(--amber); color: var(--amber); background: var(--amber-lo); }
-.need-chip.l3 { border-color: var(--amber); color: var(--bg); background: var(--amber); }
-.need-chip.l1 .lvl, .need-chip.l2 .lvl { color: var(--amber); }
-.need-chip.l3 .lvl { color: var(--bg); }
+.need-chip.l1 { border-color: var(--amber); color: var(--amber); background: var(--amber-lo); }
+.need-chip.l2 { border-color: var(--amber); color: var(--bg); background: var(--amber); }
+.need-chip.l1 .lvl { color: var(--amber); }
+.need-chip.l2 .lvl { color: var(--bg); }
 .age-scale {
   display: flex; justify-content: space-between;
   font-family: var(--font-mono); font-size: 10px; color: var(--muted);
@@ -475,7 +474,7 @@ const SAVED_STRATEGY = {{ strategy | tojson }};
 const CHIPS       = {{ chips       | tojson }};
 const SUGGESTED   = {{ suggested   | tojson }};  // {chips, reasons} from the roster
 const MAX_PINS    = 10;
-const LEVELS      = ['Off', 'Low', 'Med', 'High'];
+const LEVELS      = ['Low', 'Med', 'High'];
 const STORAGE_KEY = `draft3col_${DRAFT_ID}`;
 
 

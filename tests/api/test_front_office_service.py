@@ -17,6 +17,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
 from src.league import front_office as rules
 from src.league import personas
+from src.league.offseason.draft_strategy import LOW, MED
 from src.league.play_season import _set_front_office
 from src.team.team_in_game import TeamInGame
 
@@ -125,7 +126,7 @@ def test_an_ai_teams_draft_strategy_reads_its_outlook(lg):
     strategies = draft_strategies(lg.db, draft.id, lg.league.id, cached=False)
 
     ai = strategies[lg.theirs.id]
-    assert ai.chips.get("offense", 0) >= 2
+    assert ai.chips.get("offense", LOW) >= MED
     assert ai.age_pref == -1.0
     assert strategies[lg.mine.id].age_pref == 0
 

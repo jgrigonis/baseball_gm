@@ -24,7 +24,6 @@ from src.league.offseason.draft_strategy import (
     HIGH,
     LOW,
     MED,
-    OFF,
     DraftStrategy,
 )
 from src.league.personas import Leanings
@@ -101,14 +100,13 @@ def draft_strategy(
     (best available or need) and persona, and an age slider from both."""
     shift = -1 if state in BEST_AVAILABLE else 1 if state in FOR_NEED else 0
     chips = {
-        k: max(OFF, min(HIGH, level + shift))
+        k: max(LOW, min(HIGH, level + shift))
         for k, level in needs.items()
         if k in CHIPS
     }
     if lean.offense_defense >= BAT_FIRST:
-        level = MED if lean.offense_defense >= 85 else LOW
-        chips["offense"] = max(chips.get("offense", OFF), level)
-    chips = {k: v for k, v in chips.items() if v > OFF}
+        chips["offense"] = max(chips.get("offense", LOW), MED)
+    chips = {k: v for k, v in chips.items() if v > LOW}
     age = (
         STATE_DRAFT_AGE.get(state or "", 0.0)
         - DRAFT_YOUTH * (lean.youth - 50) / 50

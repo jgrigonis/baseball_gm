@@ -15,6 +15,7 @@ from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user
 from src.api.main import app
 from src.api.services.draft_needs import draft_strategies
+from src.db.migration_files import migration_030_draft_chip_levels
 from src.db.repositories.draft_repo import DraftRepository
 from src.league.offseason.draft_needs import TeamNeeds
 from src.league.offseason.draft_strategy import DraftStrategy
@@ -53,12 +54,12 @@ def test_saves_strategy(client, db_conn, setup):
     pins = [prospects[2].id, prospects[0].id]
 
     r = _put(
-        client, league, {"chips": {"if": 3, "power": 1}, "age_pref": 0.5, "pins": pins}
+        client, league, {"chips": {"if": 2, "power": 1}, "age_pref": 0.5, "pins": pins}
     )
 
     assert r.status_code == 200
     assert DraftRepository(db_conn).get_strategy(draft.id, gm.id) == DraftStrategy(
-        chips={"if": 3, "power": 1}, age_pref=0.5, pins=pins
+        chips={"if": 2, "power": 1}, age_pref=0.5, pins=pins
     )
 
 
@@ -75,7 +76,7 @@ def test_duplicate_pins_are_dropped(client, db_conn, setup):
     "body",
     [
         {"chips": {"2b": 2}},
-        {"chips": {"if": 5}},
+        {"chips": {"if": 3}},
         {"age_pref": -3},
         {"pins": ["not-a-prospect"]},
     ],
@@ -189,7 +190,7 @@ def test_teams_without_a_saved_strategy_draft_by_need(db_conn, factory, setup):
     ai_team = factory.team()
     factory.gm(team=ai_team, league=league, is_ai=True)
     factory.draft_order(draft, [SimpleNamespace(id=gm.team_id), ai_team])
-    saved = DraftStrategy(chips={"of": 3})
+    saved = DraftStrategy(chips={"of": 2})
     DraftRepository(db_conn).save_strategy(draft.id, gm.id, saved)
 
     strategies = draft_strategies(db_conn, draft.id, league.id, cached=False)
@@ -206,7 +207,7 @@ def test_saved_strategy_with_no_needs_drafts_by_suggested(
     factory.draft_order(draft, [SimpleNamespace(id=gm.team_id)])
     monkeypatch.setattr(
         "src.api.services.draft_needs.needs_for_draft",
-        lambda *a: {gm.team_id: TeamNeeds(chips={"sp": 3})},
+        lambda *a: {gm.team_id: TeamNeeds(chips={"sp": 2})},
     )
     pins = [prospects[0].id]
     saved = DraftStrategy(chips={"of": 0}, age_pref=-0.5, pins=pins)
@@ -215,5 +216,23 @@ def test_saved_strategy_with_no_needs_drafts_by_suggested(
     strategies = draft_strategies(db_conn, draft.id, league.id, cached=False)
 
     assert strategies[gm.team_id] == DraftStrategy(
-        chips={"sp": 3}, age_pref=-0.5, pins=pins
+        chips={"sp": 2}, age_pref=-0.5, pins=pins
     )
+
+
+def test_migration_moves_four_levels_to_three(db_conn, setup):
+    _, gm, draft, _ = setup
+    db_conn.execute(
+        """INSERT INTO draft_strategies (gm_id, draft_id, chips)
+           VALUES (%s, %s, '{"c": 0, "power": 1, "of": 2, "if": 3}')""",
+        (gm.id, draft.id),
+    )
+
+    migration_030_draft_chip_levels.upgrade(db_conn)
+
+    assert DraftRepository(db_conn).get_strategy(draft.id, gm.id).chips == {
+        "c": 0,
+        "power": 1,
+        "of": 1,
+        "if": 2,
+    }

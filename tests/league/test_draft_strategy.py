@@ -18,7 +18,6 @@ from src.league.offseason.draft_strategy import (
     LOW,
     MAX_PINS,
     MED,
-    OFF,
     DraftStrategy,
     StrategyScorer,
     group,
@@ -54,8 +53,8 @@ class TestDraftStrategyValidation:
             DraftStrategy(chips={"2b": HIGH})
 
     def test_level_out_of_range_rejected(self):
-        with pytest.raises(ValueError, match="0-3"):
-            DraftStrategy(chips={"if": 4})
+        with pytest.raises(ValueError, match="0-2"):
+            DraftStrategy(chips={"if": 3})
 
     def test_age_pref_out_of_range_rejected(self):
         with pytest.raises(ValueError, match="age_pref"):
@@ -75,13 +74,13 @@ class TestDraftStrategyValidation:
 
 class TestOrNeeds:
     def test_no_chips_on_takes_the_needs(self):
-        s = DraftStrategy(chips={"c": OFF}, age_pref=0.5, pins=["a"])
+        s = DraftStrategy(chips={"c": LOW}, age_pref=0.5, pins=["a"])
         assert s.or_needs({"sp": HIGH}) == DraftStrategy(
             chips={"sp": HIGH}, age_pref=0.5, pins=["a"]
         )
 
     def test_any_chip_on_keeps_the_strategy(self):
-        s = DraftStrategy(chips={"c": LOW})
+        s = DraftStrategy(chips={"c": MED})
         assert s.or_needs({"sp": HIGH}) is s
 
 
@@ -191,11 +190,11 @@ class TestWearOff:
         scorer.wear_off(filler, strategy)
         assert strategy.chips == {"if": MED, "c": MED}
 
-    def test_level_never_goes_below_off(self, scorer):
-        strategy = DraftStrategy(chips={"if": OFF})
+    def test_level_never_goes_below_low(self, scorer):
+        strategy = DraftStrategy(chips={"if": LOW})
         filler = next(p for p in scorer.order if scorer.fit(p, "if") >= 0.5)
         scorer.wear_off(filler, strategy)
-        assert strategy.chips["if"] == OFF
+        assert strategy.chips["if"] == LOW
 
 
 # ── Projection ────────────────────────────────────────────────────────────────

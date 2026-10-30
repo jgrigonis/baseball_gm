@@ -33,9 +33,8 @@ STEPS = (
         "prefs",
         "Set your draft strategy",
         "Your team's needs start out filled in from your roster, with the "
-        "reason for each. Click a need to step it through Off, Low, Med and "
-        "High, press ☆ on any "
-        "prospect you really want, and set the age slider. Your first 5 "
+        "reason for each. Click a need to step it through Low, Med and High, "
+        "press ☆ on any prospect you really want, and set the age slider. Your first 5 "
         "projected picks on the right update as you go. Press Save Strategy "
         "when they look right.",
         "draft",
