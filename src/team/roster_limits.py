@@ -2,10 +2,13 @@
 #
 # The size of a team's playing roster. In Blitz-style leagues that's the
 # 40-man (26man and 40man players), which must hold 25 to 40. A trade can
-# leave a roster short, since traded players arrive in the organization
-# (minors); before the team's next game the game promotes the best healthy
-# players from the organization, or sends the lowest-rated down if it's over.
-# Each move goes in the GM's news.
+# leave a roster short; before the team's next game the game promotes the
+# best healthy players from the organization, or sends the lowest-rated down
+# if it's over. Each move goes in the GM's news.
+#
+# Players a person's team trades for go on its 40-man (place_arrivals), and
+# if that makes more than 40, the lowest-rated go down, arrivals included:
+# a star traded for plays, a scrub stays in the organization.
 #
 # Long Form's 25/26-man rule isn't enforced yet: Long Form doesn't trade.
 
@@ -71,6 +74,39 @@ def enforce_roster_limits(
 
     _tell_gm(conn, league_id, team_id, moves)
     log.info("Team %s roster had %s players: moved %s", team_id, count, len(moves))
+    return moves
+
+
+def place_arrivals(
+    conn, league_id: str, team_id: str, arrival_ids: list[str], since=None
+) -> list[dict]:
+    """Put players a team just traded for on its 40-man, sending the
+    lowest-rated down if that makes more than 40. Returns the moves the GM
+    hears about, each {"player_id", "name", "to"}."""
+    if not arrival_ids:
+        return []
+    status_repo = PlayerStatusRepository(conn)
+    for pid in arrival_ids:
+        status_repo.set_status(pid, "40man", since=since)
+
+    players = PlayerRepository(conn).get_players_by_team(team_id)
+    statuses = {p.id: status_repo.get_status(p.id) for p in players}
+    on = [p for p in players if statuses[p.id] in PLAYING_STATUSES]
+    on.sort(key=lambda p: role_rating(p))
+    down = {p.id for p in on[: max(0, len(on) - MAX_PLAYING_ROSTER)]}
+    for pid in down:
+        status_repo.set_status(pid, "minors", since=since)
+
+    moves = [
+        {"player_id": p.id, "name": p.name, "to": "minors"}
+        for p in players
+        if p.id in down and p.id not in arrival_ids
+    ] + [
+        {"player_id": p.id, "name": p.name, "to": "40man"}
+        for p in players
+        if p.id in arrival_ids and p.id not in down
+    ]
+    _tell_gm(conn, league_id, team_id, moves)
     return moves
 
 

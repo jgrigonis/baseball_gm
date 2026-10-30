@@ -31,11 +31,13 @@
 #
 # A trade runs under the league lock, so it can't overlap a sim, and counts
 # from the next game. Running the offseason (a new season) closes every open
-# offer, and the draft calls off the ones with its picks in them. Traded players arrive in the organization (minors),
-# never on the 40-man, so a trade can't push a roster over 40. A team left
-# under 25 has the best of its organization called up before its next game
-# (src/team/roster_limits.py), unless the GM does it first. Every other open
-# offer naming a traded player is called off.
+# offer, and the draft calls off the ones with its picks in them. Traded
+# players join the new team's 40-man; if that makes more than 40, its
+# lowest-rated go to the organization (minors), arrivals included, so a trade
+# can't push a roster over 40. An AI team re-picks its whole roster instead.
+# A team left under 25 has the best of its organization called up before its
+# next game (src/team/roster_limits.py), unless the GM does it first. Every
+# other open offer naming a traded player is called off.
 #
 # Each GM hears about their trades as gm_notifications kind 'trade', with an
 # `event`: offer, counter and vote pop up (the shell's trade popup); the rest
@@ -62,7 +64,7 @@ from src.db.repositories.trade_repo import TradeRepository
 from src.league import performance, trade_deadline
 from src.league.trades import ai_evaluator, draft_picks
 from src.league.trades.ai_evaluator import Asset
-from src.team.roster_limits import playing_count
+from src.team.roster_limits import place_arrivals, playing_count
 
 MAX_PER_SIDE = 5
 MAX_REJECTIONS_A_DAY = 3
@@ -948,8 +950,9 @@ def execute(
     team_repo = TeamRepository(conn)
     status_repo = PlayerStatusRepository(conn)
     since = date.fromisoformat(effective_date)
+    arrivals = {team_a: [], team_b: []}
     for from_team, to_team, ids in ((team_a, team_b, give_a), (team_b, team_a, give_b)):
-        players = []
+        players = arrivals[to_team]
         for asset_id in ids:
             pick = draft_picks.parse(asset_id)
             if pick:
@@ -963,7 +966,9 @@ def execute(
 
     gm_repo = GMRepository(conn)
     for team_id in (team_a, team_b):
-        if not gm_repo.get_human_gm_for_team(league_id, team_id):
+        if gm_repo.get_human_gm_for_team(league_id, team_id):
+            place_arrivals(conn, league_id, team_id, arrivals[team_id], since=since)
+        else:
             _replan_ai_team(conn, league_id, season_id, team_id, effective_date)
 
     trade_repo = TradeRepository(conn)

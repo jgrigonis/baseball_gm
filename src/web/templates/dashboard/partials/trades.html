@@ -91,10 +91,11 @@
 
   {% if trade_window.open %}
   <div class="trade-note">
-    Traded players join your organization, not your 40-man. Your 40-man has
+    Traded players join your 40-man. Your 40-man has
     <strong id="tr-playing">{{ my_playing_count }}</strong> players
-    ({{ min_roster }} to {{ max_roster }} allowed). If it's under {{ min_roster }}
-    before your next game, your best healthy players are called up for you.
+    ({{ min_roster }} to {{ max_roster }} allowed): if a trade takes it over
+    {{ max_roster }}, your lowest-rated go to your organization. If it's under
+    {{ min_roster }} before your next game, your best healthy players are called up for you.
   </div>
 
   <div class="grid-2 trade-cols">
@@ -364,8 +365,8 @@ function reloadWith(msg, kind) {
 
 function arrivedMsg(arrived, count) {
   var msg = '✓ Trade done. ' + esc(arrived.join(', ')) +
-    (arrived.length > 1 ? ' join' : ' joins') + ' your organization. ' +
-    'Move ' + (arrived.length > 1 ? 'them' : 'him') + ' to your 40-man on the Roster tab.';
+    (arrived.length > 1 ? ' join' : ' joins') + ' your 40-man. ' +
+    'Check your lineup and rotation on the Lineup tab.';
   if (count < {{ min_roster }})
     msg += ' Your 40-man is down to ' + count + ': call up at least ' +
            ({{ min_roster }} - count) + ' before your next game, or your best healthy players will be.';

@@ -14,6 +14,8 @@ from src.api.services.injury_news import take_injury_news
 from src.api.services.trades import TradeError
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.trade_repo import TradeRepository
+from src.league.play_season import _load_eligible_ids
+from src.team.roster_limits import playing_count
 
 
 def _schedule(db, factory, season, a, b, start=4, completed=False):
@@ -85,8 +87,8 @@ def test_a_good_offer_is_accepted_and_moves_the_players(lg):
     assert result["arrived"] == ["Test Player"]
     assert _team_of(lg.db, star) == lg.theirs.id
     assert _team_of(lg.db, spare) == lg.mine.id
-    # Players arrive in the organization, never on the 40-man.
-    assert PlayerStatusRepository(lg.db).get_status(spare.id) == "minors"
+    # A person's 40-man has room, so the arrival goes on it.
+    assert PlayerStatusRepository(lg.db).get_status(spare.id) == "40man"
     history = TradeRepository(lg.db).history(lg.league.id)
     assert len(history) == 1
     assert [p["player_id"] for p in history[0]["sent"]] == [star.id]
@@ -226,8 +228,8 @@ def test_the_answer_says_how_many_are_left_on_the_40_man(lg):
     star = lg.factory.rated_player(lg.mine, lg.league, 72)
     spare = lg.factory.rated_player(lg.theirs, lg.league, 52, status="minors")
     result = _offer(lg, [star], [spare])
-    # 26 on the 40-man to start, the star leaves, the spare joins the minors.
-    assert result["playing_count"] == 26
+    # 27 on the 40-man with the star, he leaves and the spare joins it.
+    assert result["playing_count"] == 27
 
 
 # ── Trades between GMs ───────────────────────────────────────────────────
@@ -307,8 +309,45 @@ def test_accepting_moves_the_players_and_tells_the_proposer(gms):
     assert result["status"] == "accepted"
     assert _team_of(lg.db, a) == lg.theirs.id
     assert _team_of(lg.db, b) == lg.mine.id
-    assert PlayerStatusRepository(lg.db).get_status(a.id) == "minors"
+    assert PlayerStatusRepository(lg.db).get_status(a.id) == "40man"
     assert [n["event"] for n in _news(lg, lg.gm)] == ["accepted"]
+
+
+def _fill_forty(lg, team, level=58):
+    """Top a team's 40-man up to 40 with players at `level`."""
+    return [
+        lg.factory.rated_player(team, lg.league, level)
+        for _ in range(40 - playing_count(lg.db, team.id))
+    ]
+
+
+def test_stars_traded_for_play_even_on_a_full_40_man(gms):
+    """A team loading up on stars plays them: each bumps the lowest-rated
+    player off a full 40-man, and the GM hears who went down."""
+    lg = gms()
+    low = _fill_forty(lg, lg.mine, level=45)
+    scrub = lg.factory.rated_player(lg.mine, lg.league, 40, status="minors")
+    stars = [lg.factory.rated_player(lg.theirs, lg.league, 80) for _ in range(2)]
+
+    _answer(lg, _offer(lg, [scrub], stars)["offer_id"], "accept")
+
+    eligible = set(_load_eligible_ids(lg.db, lg.mine.id, blitz=True))
+    assert {s.id for s in stars} <= eligible
+    assert len(eligible) == 40
+    status = PlayerStatusRepository(lg.db)
+    assert sum(status.get_status(p.id) == "minors" for p in low) == 2
+    moves = take_injury_news(lg.db, lg.gm["id"])["roster_moves"]
+    assert sorted(m["to"] for m in moves) == ["40man", "40man", "minors", "minors"]
+
+
+def test_a_weak_arrival_stays_off_a_full_40_man(gms):
+    lg = gms()
+    _fill_forty(lg, lg.mine)
+    scrub = lg.factory.rated_player(lg.theirs, lg.league, 40)
+    mine = lg.factory.rated_player(lg.mine, lg.league, 40, status="minors")
+    _answer(lg, _offer(lg, [mine], [scrub])["offer_id"], "accept")
+    assert PlayerStatusRepository(lg.db).get_status(scrub.id) == "minors"
+    assert take_injury_news(lg.db, lg.gm["id"])["roster_moves"] == []
 
 
 def test_rejecting_tells_the_proposer(gms):
