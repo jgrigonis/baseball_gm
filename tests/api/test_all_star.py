@@ -54,7 +54,9 @@ def lg(db_conn, factory):
         "",
         "",
         personas.clean({"loyalty": 100, "analytics": 80}),
-        50,
+        # Never picked for other leagues: the sim test commits, so this
+        # persona outlives the test and the lobby tests would draw it.
+        0,
     )
     db.execute("UPDATE gms SET persona_id = %s WHERE id = %s", (persona, ai.id))
 
