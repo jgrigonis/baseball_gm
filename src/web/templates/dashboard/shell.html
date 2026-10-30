@@ -377,23 +377,25 @@ fetch(`/leagues/${LEAGUE_ID}/news`)
   .catch(() => {});
 {% endif %}
 
+// Open a tab by the end of its URL, e.g. 'roster' or 'trades'.
+function goToTab(name) {
+  var links = document.querySelectorAll('.tab-link');
+  for (var i = 0; i < links.length; i++) {
+    if ((links[i].getAttribute('hx-get') || '').indexOf('/' + name) !== -1) {
+      setActiveTab(links[i]); links[i].click(); break;
+    }
+  }
+}
+window.goToTab = goToTab;
+
 function injuryNewsClick() {
   var el = document.getElementById('sim-injury-news');
   var dest = el ? el.dataset.dest : 'batting';
-  var links = document.querySelectorAll('.tab-link');
   if (dest === 'roster' || dest === 'trades') {
-    for (var i = 0; i < links.length; i++) {
-      if ((links[i].getAttribute('hx-get') || '').indexOf('/' + dest) !== -1) {
-        setActiveTab(links[i]); links[i].click(); break;
-      }
-    }
+    goToTab(dest);
   } else {
     window._lineupLandingTab = dest;
-    for (var i = 0; i < links.length; i++) {
-      if ((links[i].getAttribute('hx-get') || '').indexOf('/lineup') !== -1) {
-        setActiveTab(links[i]); links[i].click(); break;
-      }
-    }
+    goToTab('lineup');
   }
 }
 window.injuryNewsClick = injuryNewsClick;

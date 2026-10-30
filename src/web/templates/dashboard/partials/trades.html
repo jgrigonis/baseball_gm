@@ -353,8 +353,9 @@ function post(path, body) {
 }
 
 // Reload the tab to show the new rosters and offers, then the message.
-function reloadWith(msg, kind) {
-  var result = {msg: msg, kind: kind || 'good'};
+// dest names a tab that clicking the message opens.
+function reloadWith(msg, kind, dest) {
+  var result = {msg: msg, kind: kind || 'good', dest: dest};
   window._tradeResult = result;
   if (window.refreshTradeBadge) window.refreshTradeBadge();
   if (window.htmx && window.refreshActiveTab) { window.refreshActiveTab(); return; }
@@ -377,7 +378,7 @@ window.trAnswer = function(offerId, action) {
     var ok = res[0], d = res[1];
     // The offer or vote has usually just been settled: show it as it is now.
     if (!ok) return reloadWith('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad');
-    if (d.status === 'accepted') return reloadWith(arrivedMsg(d.arrived, d.playing_count));
+    if (d.status === 'accepted') return reloadWith(arrivedMsg(d.arrived, d.playing_count), 'good', 'roster');
     if (d.status === 'pending_vote')
       return reloadWith('✓ Accepted. The trade goes to a vote of the league\'s other ' +
         (d.voters > 1 ? d.voters + ' GMs' : 'GM') + ' before the next sim.');
@@ -402,11 +403,13 @@ window.trStopForOffers = function(on) {
   }).catch(function() {});
 };
 
-function showResult(html, kind) {
+function showResult(html, kind, dest) {
   var el = document.getElementById('tr-result');
   if (!el) return;
-  el.className = 'tr-result tr-' + kind;
+  el.className = 'tr-result tr-' + kind + (dest ? ' tr-link' : '');
   el.innerHTML = html;
+  // goToTab lives in the shell, whose script can load after this tab's.
+  el.onclick = dest ? function() { if (window.goToTab) window.goToTab(dest); } : null;
   el.style.display = 'block';
   el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
@@ -437,7 +440,7 @@ window.trSend = function() {
         summarize();
         return;
       }
-      reloadWith(arrivedMsg(d.arrived, d.playing_count));
+      reloadWith(arrivedMsg(d.arrived, d.playing_count), 'good', 'roster');
     })
     .catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); summarize(); });
 };
@@ -446,7 +449,7 @@ render('mine');
 renderFilters('theirs');
 var done = window._tradeResult;
 try { done = done || JSON.parse(sessionStorage.getItem('tradeResult')); sessionStorage.removeItem('tradeResult'); } catch (e) {}
-if (done) { showResult(done.msg, done.kind); window._tradeResult = null; }
+if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = null; }
 })();
 </script>
 {% endif %}
@@ -489,6 +492,8 @@ if (done) { showResult(done.msg, done.kind); window._tradeResult = null; }
 #trades-page .tr-result.tr-good { color: var(--green); border-color: var(--green); background: var(--green-dim); }
 #trades-page .tr-result.tr-warn { color: var(--amber); border-color: var(--amber-dim); background: var(--amber-lo); }
 #trades-page .tr-result.tr-bad { color: var(--red); border-color: var(--red); background: var(--red-dim); }
+#trades-page .tr-result.tr-link { cursor: pointer; }
+#trades-page .tr-result.tr-link:hover { text-decoration: underline; }
 #trades-page .tr-table td { font-size: 12px; vertical-align: top; padding: 6px 4px; }
 #trades-page .tr-table a { color: var(--sky); text-decoration: none; }
 #trades-page .tr-date { font-family: var(--font-mono); color: var(--text-dim); white-space: nowrap; width: 1%; }
