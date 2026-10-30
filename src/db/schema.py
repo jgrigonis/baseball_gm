@@ -1063,6 +1063,34 @@ CREATE TABLE IF NOT EXISTS player_retirements (
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
 );
 
+-- All-Star voting (plans/all-star-game.md). A team's ballot: pick 1 and 2 at
+-- each fielding position (slot c, 1b, ... rf), pick 1 at dh, picks 1-9 at p.
+CREATE TABLE IF NOT EXISTS all_star_votes (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    slot       TEXT NOT NULL,
+    pick       INTEGER NOT NULL,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    PRIMARY KEY (season_id, team_id, slot, pick)
+);
+
+-- The players voted in, with the team they were on and the slot they were
+-- voted at. wildcard: in on total points rather than his position's quota.
+CREATE TABLE IF NOT EXISTS all_stars (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    slot       TEXT NOT NULL,
+    points     INTEGER NOT NULL DEFAULT 0,
+    wildcard   BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (season_id, player_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_all_star_votes_team   ON all_star_votes(team_id);
+CREATE INDEX IF NOT EXISTS idx_all_star_votes_player ON all_star_votes(player_id);
+CREATE INDEX IF NOT EXISTS idx_all_stars_player      ON all_stars(player_id);
+CREATE INDEX IF NOT EXISTS idx_all_stars_team        ON all_stars(team_id);
+
 CREATE INDEX IF NOT EXISTS idx_player_retirements_league_season
     ON player_retirements(league_id, season_id);
 

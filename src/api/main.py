@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.routers import (
     admin,
+    all_star,
     auth,
     draft,
     games,
@@ -186,6 +187,7 @@ for _module in (
     admin,
     tutorial,
     trades,
+    all_star,
 ):
     app.include_router(_module.router)
 

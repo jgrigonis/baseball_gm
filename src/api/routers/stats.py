@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
 from src.api.view_models.team_stats import team_stats_context
+from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.web.utils import _shell_ctx, tab_response
 
@@ -41,8 +42,9 @@ def stats(
         )
     )
     if ctx["selected_season_id"]:
-        # Rookies of the season on show, which can be an earlier one.
+        # Rookies and All-Stars of the season on show, which can be an earlier one.
         ctx["rookie_ids"] = PlayerSeasonStatsRepository(db).get_rookie_ids(
             league_id, ctx["selected_season_id"]
         )
+        ctx["all_star_ids"] = AllStarRepository(db).ids(ctx["selected_season_id"])
     return tab_response(request, htmx, "dashboard/partials/stats.html", ctx)

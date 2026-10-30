@@ -1,0 +1,137 @@
+{# templates/dashboard/partials/all_star.html
+   The All-Star tab (src/api/services/all_star.py): the ballot while voting
+   is open, the All-Stars once the votes are counted.
+#}
+{% from "dashboard/partials/_rookie.html" import rk with context %}
+<div class="content-inner tab-fade">
+
+  <div class="page-header">
+    <h1 class="page-title">★ All-Stars</h1>
+    {% if as_phase == 'open' %}
+    <span class="page-subtitle">Voting is open through the games of {{ as_window.closes }}. The All-Star break starts the next day.</span>
+    {% elif as_phase == 'done' %}
+    <span class="page-subtitle">{{ total }} players, voted in by every GM in the league</span>
+    {% endif %}
+  </div>
+
+{% if as_phase == 'open' %}
+  {% if is_viewer or not team_id %}
+  <div class="card"><div class="card-body as-note">
+    Every GM in the league is voting. The All-Stars are announced at the break.
+  </div></div>
+  {% else %}
+  <div class="card as-intro">
+    <div class="card-body as-note">
+      {% if saved %}
+      <span class="as-ok">✓ Your ballot is saved.</span> You can change it until voting closes.
+      {% else %}
+      <span class="as-warn">Your ballot isn't saved yet.</span> It starts out with the stat leaders at each
+      position. Change any pick you like and save. If you don't, these picks count for you.
+      {% endif %}
+      <br>A 1st choice at a position is worth 2 points, every other vote 1. Vote for your own players as much
+      as you like. The top {{ quota['c'] }} at each position, the top {{ quota['dh'] }} DHs and the top
+      {{ quota['p'] }} pitchers make it, and the next best vote-getters fill the rest of the 64 spots.
+      <span class="as-dim">{{ voted }} of {{ teams }} teams have voted. AI GMs vote when the ballot closes.</span>
+    </div>
+  </div>
+
+  <form hx-post="/leagues/{{ league_id }}/allstar/ballot"
+        hx-target="#as-feedback" hx-swap="innerHTML" id="as-ballot">
+    <div class="as-grid">
+      {% for slot in slots %}
+      <div class="card as-slot as-slot-{{ slot }}">
+        <div class="card-header"><span class="card-title">{{ slot_labels[slot] }}</span>
+          <span class="as-dim">{{ options[slot] | length }} on the ballot</span></div>
+        <div class="card-body as-picks">
+          {% for pick in range(1, ballot_size[slot] + 1) %}
+          {% set chosen = ballot[slot][pick - 1] if ballot[slot] | length >= pick else none %}
+          <label class="as-pick">
+            <span class="as-pick-label">
+              {% if slot == 'p' %}{{ pick }}{% elif slot == 'dh' %}Pick{% else %}{{ '1st' if pick == 1 else '2nd' }}{% endif %}
+            </span>
+            <span class="as-pick-choice">
+              <select name="{{ slot }}_{{ pick }}" data-slot="{{ slot }}" onchange="asSwap(this)">
+                <option value="" data-line="">—</option>
+                {% for o in options[slot] %}
+                <option value="{{ o.id }}" data-line="{{ o.line }}" {% if o.id == chosen %}selected{% endif %}>{{ o.name }} · {{ o.mascot }}</option>
+                {% endfor %}
+              </select>
+              <span class="as-line"></span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="as-save">
+      <button type="submit" class="btn btn-primary">Save ballot</button>
+      <span id="as-feedback"></span>
+    </div>
+  </form>
+  <script>
+  // Under each pick, the stat line of the player picked.
+  function asLine(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    sel.parentNode.querySelector('.as-line').textContent = opt ? opt.dataset.line : '';
+  }
+  document.querySelectorAll('#as-ballot select').forEach(function(s) { s.dataset.prev = s.value; asLine(s); });
+  // Picking a player who's already picked at the position swaps the two.
+  window.asSwap = function(sel) {
+    if (sel.value) {
+      document.querySelectorAll('#as-ballot select[data-slot="' + sel.dataset.slot + '"]').forEach(function(o) {
+        if (o !== sel && o.value === sel.value) { o.value = sel.dataset.prev; o.dataset.prev = o.value; asLine(o); }
+      });
+    }
+    sel.dataset.prev = sel.value;
+    asLine(sel);
+    var fb = document.getElementById('as-feedback');
+    if (fb) fb.textContent = 'Not saved yet';
+  };
+  </script>
+  {% endif %}
+
+{% elif as_phase == 'done' %}
+  {% if team_id %}
+  <div class="card as-intro"><div class="card-body as-note">
+    {% if my_count %}<span class="as-ok">★ {{ my_count }} of your players {{ 'is an All-Star' if my_count == 1 else 'are All-Stars' }}.</span>
+    {% else %}None of your players made it this year.{% endif %}
+  </div></div>
+  {% endif %}
+  {% macro star_row(r, show_slot=false) %}
+  <tr class="{% if r.team_id == team_id %}my-team{% endif %}">
+    <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ rk(r.player_id) }}</td>
+    {% if show_slot %}<td>{{ r.slot | upper }}</td>{% endif %}
+    <td>{{ team_badge(r.city, r.mascot) }} {{ r.mascot }}</td>
+    <td class="num">{{ r.points }}</td>
+  </tr>
+  {% endmacro %}
+  <div class="as-grid">
+    {% for slot in slots %}
+    <div class="card as-slot">
+      <div class="card-header"><span class="card-title">{{ slot_labels[slot] }}</span></div>
+      <table class="data-table">
+        <thead><tr><th>Player</th><th>Team</th><th class="num">Pts</th></tr></thead>
+        <tbody>{% for r in by_slot[slot] %}{{ star_row(r) }}{% endfor %}</tbody>
+      </table>
+    </div>
+    {% endfor %}
+    {% if wildcards %}
+    <div class="card as-slot">
+      <div class="card-header"><span class="card-title">Wildcards</span></div>
+      <table class="data-table">
+        <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th class="num">Pts</th></tr></thead>
+        <tbody>{% for r in wildcards %}{{ star_row(r, true) }}{% endfor %}</tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+{% else %}
+  <div class="card"><div class="card-body as-note">
+    {% if as_window %}All-Star voting opens on {{ as_window.opens }}, {{ voting_days }} days before the break.
+    {% else %}This season has no All-Star break.{% endif %}
+  </div></div>
+{% endif %}
+
+</div>

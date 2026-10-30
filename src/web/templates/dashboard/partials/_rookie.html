@@ -1,18 +1,22 @@
 {# templates/dashboard/partials/_rookie.html
-  The (R) after a rookie's name. rookie_ids comes from _shell_ctx.
+  The tags after a player's name: ★ for an All-Star of the season on show,
+  (R) for a rookie. rookie_ids and all_star_ids come from _shell_ctx.
   Jinja: {% from "dashboard/partials/_rookie.html" import rk with context %}
          then {{ rk(p.player_id) }} after the name.
   JS:    {{ rookie_script() }} once in the partial, then rookieTag(p.player_id).
 #}
 {% macro rk(player_id) -%}
-{% if rookie_ids and player_id in rookie_ids %}<span class="rookie-tag" title="Rookie">(R)</span>{% endif %}
+{% if all_star_ids and player_id in all_star_ids %}<span class="all-star-tag" title="All-Star">★</span>{% endif %}
+{%- if rookie_ids and player_id in rookie_ids %}<span class="rookie-tag" title="Rookie">(R)</span>{% endif %}
 {%- endmacro %}
 
 {% macro rookie_script() -%}
 <script>
 window.ROOKIE_IDS = new Set({{ (rookie_ids or []) | list | tojson }});
+window.ALL_STAR_IDS = new Set({{ (all_star_ids or []) | list | tojson }});
 window.rookieTag = function(pid) {
-  return window.ROOKIE_IDS.has(pid) ? '<span class="rookie-tag" title="Rookie">(R)</span>' : '';
+  return (window.ALL_STAR_IDS.has(pid) ? '<span class="all-star-tag" title="All-Star">★</span>' : '') +
+    (window.ROOKIE_IDS.has(pid) ? '<span class="rookie-tag" title="Rookie">(R)</span>' : '');
 };
 </script>
 {%- endmacro %}

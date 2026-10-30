@@ -31,6 +31,11 @@
 
 {# ── Status badges ─────────────────────────────────────────────────────────── #}
 <div class="pd-badges">
+ {% if player.all_star_years %}
+   <span class="badge badge-all-star" title="All-Star {{ player.all_star_years | join(', ') }}">
+     ★ {% if player.all_star_years | length > 1 %}{{ player.all_star_years | length }}× {% endif %}All-Star
+   </span>
+ {% endif %}
  {% if player.injured %}
    <span class="badge badge-injured">IL · {{ player.injury_days }}d</span>
  {% endif %}

@@ -161,6 +161,11 @@ async function simGames(count) {
       body: JSON.stringify({count}),
     });
     if (!d.failed) {
+      // The sim stopped because All-Star voting opened or closed.
+      if (d.all_star_voting || d.all_stars) {
+        window.location.href = `/leagues/${LEAGUE_ID}/allstar`;
+        return;
+      }
       const msg = `✓ ${d.games_played} game${d.games_played!==1?'s':''} · ${d.games_remaining} remaining`;
       if (fb) { fb.textContent = msg; fb.style.display = 'inline'; }
       setTimeout(() => { if(fb) fb.style.display = 'none'; }, 8000);
@@ -254,8 +259,8 @@ window.closeGamePanel = function() {
 {% if visible_tabs %}
 <nav class="tab-bar" id="tab-bar">
   {% for tab in visible_tabs %}
-  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁'} %}
-  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades'} %}
+  {% set icons = {'draft':'📋','standings':'🏆','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁','allstar':'★'} %}
+  {% set labels = {'draft':'Draft','standings':'Standings','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades','allstar':'All-Stars'} %}
   {% if tab == 'draft' and draft_complete %}
   <a href="/leagues/{{ league_id }}/draft/results"
      class="tab-link {% if active_tab == 'draft' %}active{% endif %}"
@@ -274,6 +279,8 @@ window.closeGamePanel = function() {
     {% if tab == 'trades' and not is_viewer %}<span class="tab-badge" id="trade-badge"
       title="Offers and votes waiting on you"
       {% if not trade_inbox %}style="display:none;"{% endif %}>{{ trade_inbox or 0 }}</span>{% endif %}
+    {% if tab == 'allstar' and all_star_ballot_due %}<span class="tab-badge"
+      title="Your All-Star ballot isn't saved yet">Vote</span>{% endif %}
   </a>
   {% endif %}
   {% endfor %}

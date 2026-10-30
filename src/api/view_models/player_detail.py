@@ -13,6 +13,7 @@ from src.api.view_models.player_cards import (
     overall_value as player_overall_value,
     ratings_to_grade_map,
 )
+from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
@@ -200,7 +201,13 @@ def player_panel_data(
         "injured": raw_injury is not None,
         "injury_days": raw_injury,
         "returning": False,
+        "all_star_years": _all_star_years(db, pid),
     }
+
+
+def _all_star_years(db, pid: str) -> list[int]:
+    """The years a player was voted an All-Star."""
+    return [r["year"] for r in AllStarRepository(db).seasons_for(pid)]
 
 
 def player_career_data(db, league_id: str, pid: str) -> dict | None:
@@ -472,4 +479,5 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         "batting_playoff_totals": batting_playoff_totals,
         "injuries_by_year": injuries_by_year,
         "skills_history": skills_history,
+        "all_star_years": _all_star_years(db, pid),
     }
