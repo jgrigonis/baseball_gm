@@ -1,4 +1,6 @@
 # src/web/utils.py
+import hashlib
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import Request
@@ -25,6 +27,27 @@ _TEMPLATES_DIR = Path(__file__).parent / "templates"
 # templates.TemplateResponse and tab partials render through render().
 templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 templates.env.globals["team_badge"] = team_badge
+
+_STATIC_DIR = Path(__file__).parent / "static"
+
+
+@lru_cache(maxsize=64)
+def _static_hash(path: str, mtime_ns: int) -> str:
+    return hashlib.sha1((_STATIC_DIR / path).read_bytes()).hexdigest()[:10]
+
+
+def static_url(path: str) -> str:
+    """URL for a file under static/, stamped with a hash of its contents, so
+    a deploy that changes the file makes browsers fetch it again instead of
+    using a cached copy."""
+    try:
+        mtime_ns = (_STATIC_DIR / path).stat().st_mtime_ns
+    except FileNotFoundError:
+        return f"/static/{path}"
+    return f"/static/{path}?v={_static_hash(path, mtime_ns)}"
+
+
+templates.env.globals["static_url"] = static_url
 
 
 def render(name: str, context: dict) -> HTMLResponse:
