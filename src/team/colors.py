@@ -56,7 +56,7 @@ TEAM_COLORS: dict[tuple[str, str], TeamColors] = {
     ("Mexico City", "Aztecs"): TeamColors("MEX", "#00A19A", "#2B2B2B", "#E0A93B"),
     ("Milan", "Serpents"): TeamColors("MIL", "#5A7D2A", "#C0C5C9", "#B5121B"),
     ("Mumbai", "Mariners"): TeamColors("MUM", "#F4A300", "#0B5563", "#F7F1E3"),
-    ("São Paulo", "Bandeirantes"): TeamColors("SAO", "#FFCC00", "#3A4395", "#00A859"),
+    ("São Paulo", "Bandeirantes"): TeamColors("SAO", "#FFCC00", "#2F6FC9", "#00A859"),
     ("Seoul", "White Tigers"): TeamColors("SEO", "#F2F0EA", "#1A1A1A", "#0047A0"),
     ("Toronto", "Sentinels"): TeamColors("TOR", "#4F7F72", "#2B2F36", "#C9A44C"),
     ("Warsaw", "Hussars"): TeamColors("WAR", "#C4122F", "#ECEAE4", "#1E1E1E"),
