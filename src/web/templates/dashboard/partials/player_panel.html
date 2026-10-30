@@ -1,11 +1,12 @@
 {# templates/dashboard/partials/player_panel.html
-  Slide-in player detail panel. Supports single player or side-by-side comparison.
+  Slide-in player detail panel. Shows one player, or up to three side by side.
 
   Usage:
     Single:  hx-get="/leagues/{id}/players/{player_id}/panel"
-    Compare: hx-get="/leagues/{id}/players/{player_id}/panel?compare={other_id}"
+    Compare: hx-get="/leagues/{id}/players/{player_id}/panel?compare={other_id}&compare={third_id}"
+    Trade:   add &give={id}&get={id} to tag each player "You give" / "You get"
 
-  Triggered from any tab — roster cards, leaderboard rows, draft board.
+  Triggered from any tab — roster cards, leaderboard rows, draft board, trades.
   Target: #player-panel-mount  (exists in shell.html)
 #}
 
@@ -14,42 +15,62 @@
  Player not found.
 </div>
 {% else %}
+{% set shown = [player] + compare_players %}
+{% set n = shown | length %}
 <div id="player-panel"
-    class="player-panel {% if compare_player %}split{% endif %}"
+    class="player-panel {% if n == 2 %}split{% elif n > 2 %}split split3{% endif %}"
     data-player-id="{{ player.player_id }}">
 
  <div class="pp-header">
    <button class="pp-close" onclick="closePlayerPanel()" title="Close">✕</button>
    <span class="pp-title">
-     {% if compare_player %}Player Comparison{% else %}Player Detail{% endif %}
+     {% if n > 1 %}Player Comparison · {{ n }} of {{ max_compare }}{% else %}Player Detail{% endif %}
    </span>
    <div class="pp-header-actions">
-     {% if not compare_player %}
-       <button class="btn btn-secondary"
-               style="font-size:10px;padding:4px 10px;"
+     {% if n == 1 %}
+       <button class="btn btn-secondary pp-action"
                onclick="pinForCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')">
          Compare ↔
+       </button>
+     {% else %}
+       <button class="btn btn-secondary pp-action" onclick="addToCompare()"
+               {% if n >= max_compare %}disabled title="Remove a player to add another"{% endif %}>
+         + Add player
        </button>
      {% endif %}
    </div>
  </div>
 
- <div class="pp-body">
+ {# Phones show one player at a time: these tabs switch between them. #}
+ {% if n > 1 %}
+ <nav class="pp-tabs">
+   {% for p in shown %}
+   <button class="{% if loop.first %}on{% endif %}" onclick="ppShowSlot({{ loop.index0 }})">
+     {{ p.last_name }}
+     <small>{{ p.overall_grade }}{% if sides.get(p.player_id) %} · {{ sides[p.player_id] }}{% endif %}</small>
+   </button>
+   {% endfor %}
+ </nav>
+ {% endif %}
 
-   {# ── Player 1 ──────────────────────────────────────────────────────────── #}
-   <div class="pp-slot">
-     {% include "dashboard/partials/_player_detail_slot.html" with context %}
-   </div>
-
-   {# ── Player 2 (comparison) ─────────────────────────────────────────────── #}
-   {% if compare_player %}
-   <div class="pp-slot pp-slot-compare">
-     {% with player = compare_player %}
+ <div class="pp-body" {% if n > 1 %}onscroll="ppSyncTabs(this)"{% endif %}>
+   {% for p in shown %}
+   <div class="pp-slot {% if not loop.first %}pp-slot-compare{% endif %}"
+        data-player-id="{{ p.player_id }}" data-side="{{ sides.get(p.player_id, '') }}"
+        data-name="{{ p.first_name }} {{ p.last_name }}">
+     {% if n > 1 %}
+     <div class="pp-slot-top">
+       {% if sides.get(p.player_id) == 'get' %}<span class="pp-side get">You get</span>
+       {% elif sides.get(p.player_id) == 'give' %}<span class="pp-side give">You give</span>
+       {% else %}<span></span>{% endif %}
+       <button class="pp-slot-remove" onclick="removeFromCompare('{{ p.player_id }}')" title="Remove from comparison">✕</button>
+     </div>
+     {% endif %}
+     {% with player = p %}
        {% include "dashboard/partials/_player_detail_slot.html" with context %}
      {% endwith %}
    </div>
-   {% endif %}
-
+   {% endfor %}
  </div>
 
 </div>
