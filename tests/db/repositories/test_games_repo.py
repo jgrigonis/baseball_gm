@@ -159,6 +159,25 @@ class TestGameRepositorySaveResult:
         ).fetchone()
         assert row["innings_played"] == 12
 
+    def test_save_result_keeps_runs_by_inning(self, game_repo, sample_game):
+        result = GameResult(
+            home_team="Home",
+            away_team="Away",
+            home_score=3,
+            away_score=2,
+            innings_played=9,
+            winner="Home",
+            winning_margin=1,
+            away_innings=(0, 2),
+            home_innings=(1, 0, 0, 2),
+        )
+        game_repo.save_game_result(sample_game.gid, result, sample_game.home.id)
+
+        row = sample_game.conn.execute(
+            "SELECT line_score FROM games WHERE id = %s", (sample_game.gid,)
+        ).fetchone()
+        assert row["line_score"] == {"away": [0, 2], "home": [1, 0, 0, 2]}
+
     def test_save_result_marks_completed(self, game_repo, sample_game):
         row = sample_game.conn.execute(
             "SELECT completed FROM games WHERE id = %s", (sample_game.gid,)

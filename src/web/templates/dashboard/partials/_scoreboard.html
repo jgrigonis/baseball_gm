@@ -1,0 +1,39 @@
+{# The game panel's scoreboard: a headline, runs by inning in number tiles,
+   R/H/E, and the pitching decisions. scoreboard comes from
+   src/api/view_models/line_score.py. #}
+<div class="scoreboard">
+  <div class="scoreboard-head">
+    <span class="scoreboard-final">Final{% if game.innings_played and game.innings_played != 9 %} · {{ game.innings_played }} innings{% endif %}</span>
+    <span class="scoreboard-date">{{ game.game_date }}</span>
+  </div>
+  <div class="scoreboard-headline">{{ scoreboard.headline }}</div>
+  <div class="scoreboard-scroll">
+    <table class="line-score">
+      <thead>
+        <tr>
+          <th></th>
+          {% for i in scoreboard.innings %}<th>{{ i }}</th>{% endfor %}
+          <th class="rhe-head">R</th><th>H</th><th>E</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in scoreboard.rows %}
+        <tr class="{% if row.won %}won{% endif %}{% if row.team_id == my_team_id %} mine{% endif %}">
+          <td class="line-score-team">{{ team_badge(row.city, row.mascot) }}<span>{{ row.mascot }}</span></td>
+          {% for c in row.cells %}<td class="tile">{{ c }}</td>{% endfor %}
+          <td class="tile rhe rhe-start">{{ row.R }}</td>
+          <td class="tile rhe">{{ row.H }}</td>
+          <td class="tile rhe">{{ row.E }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if scoreboard.decisions %}
+  <div class="scoreboard-notes">
+    {% for label, name in scoreboard.decisions %}
+    <div><b>{{ label }}</b>{{ name }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

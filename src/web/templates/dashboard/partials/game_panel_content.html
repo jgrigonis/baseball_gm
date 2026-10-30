@@ -29,6 +29,8 @@
 
 <div id="game-panel-body-inner">
 
+{% if scoreboard %}{% include "dashboard/partials/_scoreboard.html" %}{% endif %}
+
 {% for team_label, team_id, bat_rows, pit_rows in [
     (game.away_city ~ ' ' ~ game.away_mascot, game.away_team_id, away_bat, away_pit),
     (game.home_city ~ ' ' ~ game.home_mascot, game.home_team_id, home_bat, home_pit),

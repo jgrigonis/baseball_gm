@@ -14,6 +14,8 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING
 
+from psycopg.types.json import Jsonb
+
 from src.game.game import GameResult
 
 if TYPE_CHECKING:
@@ -59,7 +61,8 @@ class GameRepository:
         self.conn.execute(
             """
             UPDATE games 
-            SET home_score = %s, away_score = %s, winner_id = %s, innings_played = %s, completed = 1, updated_at = %s
+            SET home_score = %s, away_score = %s, winner_id = %s, innings_played = %s,
+                line_score = %s, completed = 1, updated_at = %s
             WHERE id = %s
             """,
             (
@@ -67,6 +70,12 @@ class GameRepository:
                 result.away_score,
                 winner_id,
                 result.innings_played,
+                Jsonb(
+                    {
+                        "away": list(result.away_innings),
+                        "home": list(result.home_innings),
+                    }
+                ),
                 now,
                 game_id,
             ),
@@ -162,7 +171,7 @@ class GameRepository:
             """
             UPDATE games 
             SET home_score = NULL, away_score = NULL, winner_id = NULL, 
-                innings_played = NULL, completed = 0, updated_at = %s
+                innings_played = NULL, line_score = NULL, completed = 0, updated_at = %s
             WHERE id = %s
             """,
             (
