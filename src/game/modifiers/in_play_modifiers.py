@@ -6,6 +6,10 @@ from src.game.intents.pitch import PrePitchSituation
 from src.player.player_in_game import PlayerInGame
 from src.game.modifiers.count_modifiers import IN_PLAY_COUNT_MODIFIERS
 
+# A typical starting outfield's range, (speed + outfield) / 2 averaged over
+# lf, cf and rf, in league play.
+TYPICAL_OF_RANGE = 70
+
 
 class InPlayModifiers:
     """Modifies in-play outcome probabilities based on game state."""
@@ -171,7 +175,9 @@ class InPlayModifiers:
         )
         avg_of_range = (lf_range + cf_range + rf_range) / 3
 
-        range_factor = 50 / max(1, avg_of_range)
+        # Better range turns would-be hits into fly outs. Scaled so a
+        # typical starting outfield plays as it always has.
+        range_factor = (50 / TYPICAL_OF_RANGE) * max(1, avg_of_range) / TYPICAL_OF_RANGE
         resolver.in_play_outcome.multiply("fly_out", range_factor)
         resolver.in_play_outcome.multiply("single", 1 / range_factor)
         resolver.in_play_outcome.multiply("double", 1 / range_factor)
