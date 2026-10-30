@@ -157,6 +157,9 @@ def standings_context(
                 upcoming.append(
                     {
                         "date": g_row["game_date"],
+                        "opp_id": g_row["away_team_id"]
+                        if is_home
+                        else g_row["home_team_id"],
                         "home_away": "vs" if is_home else "@",
                         "opponent": f"{opp_city} {opp_mascot}",
                     }
