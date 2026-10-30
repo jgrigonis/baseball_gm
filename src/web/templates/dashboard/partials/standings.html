@@ -70,7 +70,7 @@
                  title="Roster and stats{% if is_admin %} · team_id: {{ team.team_id }}{% endif %}"
                  style="font-family:var(--font-sans);font-weight:600;text-decoration:none;
                         color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
-                {{ team.city }} {{ team.mascot }}
+                {{ team_badge(team.city, team.mascot) }}{{ team.city }} {{ team.mascot }}
               </a>
               {% if team.is_mine %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--green);margin-left:6px;">YOU</span>{% endif %}
             </td>

@@ -16,6 +16,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.league_modes import injuries_allowed
 from src.league.trade_deadline import trades_enabled_for
+from src.team.colors import team_badge
 
 # Templates are in src/web/templates/ relative to the project root
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -23,6 +24,7 @@ _TEMPLATES_DIR = Path(__file__).parent / "templates"
 # The single Jinja2 environment for the whole app: routers render through
 # templates.TemplateResponse and tab partials render through render().
 templates = Jinja2Templates(directory=_TEMPLATES_DIR)
+templates.env.globals["team_badge"] = team_badge
 
 
 def render(name: str, context: dict) -> HTMLResponse:
