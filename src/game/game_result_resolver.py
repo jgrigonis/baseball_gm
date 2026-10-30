@@ -99,19 +99,31 @@ class GameResultResolver:
             decisions.win = winning_pitcher_at_goahead
 
         # --- SAVE ---
-        # Save conditions (simplified):
-        # 1. A different pitcher than the winner finished the game
-        # 2. The winning margin was 3 runs or fewer OR the tying run was on base/at bat
+        # A pitcher other than the winner who finished the game and got at
+        # least one out, and either came in with a lead of 1-3 runs or held a
+        # lead over 3+ innings. A pitcher who came in tied or behind can't
+        # save it. (The tying-run-on-deck case isn't tracked.)
         finishing_pitcher = next(
             (a for a in winning_appearances if a.finished_game), None
         )
-        margin = winning_score - losing_score
         if (
             finishing_pitcher is not None
             and decisions.win is not None
             and finishing_pitcher.pitcher != decisions.win.pitcher
-            and margin <= 3
+            and GameResultResolver._is_save(
+                finishing_pitcher, winning_score - losing_score
+            )
         ):
             decisions.save = finishing_pitcher
 
         return decisions
+
+    @staticmethod
+    def _is_save(appearance: PitcherAppearance, margin: int) -> bool:
+        lead = appearance.lead_at_entry
+        if lead is None:
+            # Older callers that don't track the score at entry
+            return margin <= 3
+        if lead < 1 or appearance.outs_recorded < 1:
+            return False
+        return lead <= 3 or appearance.outs_recorded >= 9

@@ -334,3 +334,44 @@ class TestEdgeCases:
         assert decisions.win.pitcher == home_closer
         # No save on a walk-off win (closer is the winner)
         assert decisions.save is None
+
+
+class TestSaveRules:
+    """A save needs the finisher to come in with a lead he could lose."""
+
+    def _resolve(self, lead_at_entry, outs, winning_score=5, losing_score=4):
+        starter = make_pitcher("Away Starter")
+        closer = make_pitcher("Away Closer")
+        closer.game_stats.pitching.outs = outs
+        home = make_pitcher("Home Starter")
+        appearances = [
+            make_appearance(starter, AWAY, 1),
+            make_appearance(home, HOME, 1, finished_game=True),
+            PitcherAppearance(
+                pitcher=closer,
+                team_id=AWAY,
+                entered_inning=7,
+                finished_game=True,
+                lead_at_entry=lead_at_entry,
+            ),
+        ]
+        lead_changes = [make_lead_change(1, "top", AWAY, home)]
+        return GameResultResolver.resolve(
+            appearances, lead_changes, AWAY, HOME, winning_score, losing_score
+        )
+
+    def test_save_entering_with_lead_of_three(self):
+        assert self._resolve(lead_at_entry=3, outs=3).save is not None
+
+    def test_no_save_entering_tied(self):
+        assert self._resolve(lead_at_entry=0, outs=3).save is None
+
+    def test_no_save_entering_with_big_lead_that_shrank(self):
+        # Up 6 when he came in, won by 1: not a save over one inning
+        assert self._resolve(lead_at_entry=6, outs=3).save is None
+
+    def test_save_for_three_innings_with_big_lead(self):
+        assert self._resolve(6, 9, winning_score=9, losing_score=3).save is not None
+
+    def test_no_save_without_recording_an_out(self):
+        assert self._resolve(lead_at_entry=2, outs=0).save is None

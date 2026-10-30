@@ -710,6 +710,11 @@ class GameStrategy:
         return prob
 
     @staticmethod
+    def is_save_situation(inning_num: int, score_diff: int) -> bool:
+        """Inning 9 or later with the pitching team ahead by 1-3 runs."""
+        return inning_num >= 9 and 1 <= score_diff <= 3
+
+    @staticmethod
     def find_closer(
         current_pitcher: PlayerInGame,
         team: TeamInGame,
@@ -734,7 +739,7 @@ class GameStrategy:
         rng = _get_rng(rng)
         usage = profile_of(team).closer_usage
 
-        save_situation = inning.number >= 9 and 1 <= score_diff <= 3
+        save_situation = GameStrategy.is_save_situation(inning.number, score_diff)
         late_and_close = inning.number >= 8 and 0 <= score_diff <= 2
         if not (save_situation or (usage == "high-leverage" and late_and_close)):
             return None

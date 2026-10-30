@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, User
+from src.api.view_models.box_score import batting_order, in_order, pitching_order
 from src.api.view_models.line_score import headline, line_score
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -47,10 +48,31 @@ def game_panel(
 
     fmt_ip = formulas.ip_str
 
-    home_bat = [r for r in bat_rows if r["team_id"] == game["home_team_id"]]
-    away_bat = [r for r in bat_rows if r["team_id"] == game["away_team_id"]]
-    home_pit = [r for r in pit_rows if r["team_id"] == game["home_team_id"]]
-    away_pit = [r for r in pit_rows if r["team_id"] == game["away_team_id"]]
+    # Event log: also gives the box score its batting and pitching order
+    events_out = []
+    for ed in game_repo.get_events(game_id):
+        if ed.get("detail"):
+            try:
+                ed["detail_parsed"] = json.loads(ed["detail"])
+            except ValueError:
+                log.warning(
+                    "Unparseable detail on event %s of game %s",
+                    ed.get("id"),
+                    game_id,
+                )
+                ed["detail_parsed"] = None
+        else:
+            ed["detail_parsed"] = None
+        events_out.append(ed)
+
+    def _team_rows(rows: list[dict], team_id: str, order) -> list[dict]:
+        mine = [r for r in rows if r["team_id"] == team_id]
+        return in_order(mine, order(events_out, team_id))
+
+    home_bat = _team_rows(bat_rows, game["home_team_id"], batting_order)
+    away_bat = _team_rows(bat_rows, game["away_team_id"], batting_order)
+    home_pit = _team_rows(pit_rows, game["home_team_id"], pitching_order)
+    away_pit = _team_rows(pit_rows, game["away_team_id"], pitching_order)
     for p in home_pit + away_pit:
         p["IP"] = fmt_ip(p["outs"] or 0)
 
@@ -83,23 +105,6 @@ def game_panel(
             for p in pit_rows
             if p[key]
         ]
-
-    # Event log
-    events_out = []
-    for ed in game_repo.get_events(game_id):
-        if ed.get("detail"):
-            try:
-                ed["detail_parsed"] = json.loads(ed["detail"])
-            except ValueError:
-                log.warning(
-                    "Unparseable detail on event %s of game %s",
-                    ed.get("id"),
-                    game_id,
-                )
-                ed["detail_parsed"] = None
-        else:
-            ed["detail_parsed"] = None
-        events_out.append(ed)
 
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
     ctx.update(

@@ -20,6 +20,15 @@ _log = logging.getLogger("game_event_logger")
 from src.db.repositories.game_event_repo import GameEventRepository
 
 
+def closer_entry_label(score_diff: int, save_situation: bool) -> str:
+    """Why the closer came in: a save chance, or a tie or lead worth protecting."""
+    if save_situation:
+        return f"in for save (up {score_diff})"
+    if score_diff == 0:
+        return "in, tie game (high leverage)"
+    return f"in, high leverage (up {score_diff})"
+
+
 class GameEventLogger:
     """Writes structured game events to the game_events table."""
 
@@ -91,14 +100,16 @@ class GameEventLogger:
         outgoing_id: str,
         outgoing_name: str,
         score_diff: int,
+        save_situation: bool = True,
     ) -> None:
-        """Record closer being called for a save situation."""
+        """Record the closer coming in, for a save or a high-leverage spot."""
         self._insert(
             team_id=team_id,
             event_type="closer_called",
             player_id=player_id,
             player_id_2=outgoing_id,
-            reason=f"{name} in for save (diff={score_diff}) — replaces {outgoing_name}",
+            reason=f"{name} {closer_entry_label(score_diff, save_situation)}"
+            f" — replaces {outgoing_name}",
         )
 
     def injury(

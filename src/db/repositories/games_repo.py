@@ -205,7 +205,8 @@ class GameRepository:
     def get_events(self, game_id: str) -> list[dict]:
         """Return all event log entries for a game in order."""
         rows = self.conn.execute(
-            """SELECT event_type, inning, half, reason, detail, team_id
+            """SELECT event_type, inning, half, reason, detail, team_id,
+                      player_id, player_id_2
                FROM game_events
                WHERE game_id = %s
                ORDER BY id""",

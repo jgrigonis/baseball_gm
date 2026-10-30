@@ -1025,6 +1025,7 @@ class Game:
                 pitcher=pitcher,
                 team_id=self.pitch_team.record.id,
                 entered_inning=self.inning.number,
+                lead_at_entry=self.score_differential,
             )
         )
 
@@ -1068,6 +1069,9 @@ class Game:
                     outgoing_id=outgoing.id if outgoing else "",
                     outgoing_name=outgoing.name if outgoing else "",
                     score_diff=self.score_differential,
+                    save_situation=GameStrategy.is_save_situation(
+                        self.inning.number, self.score_differential
+                    ),
                 )
             return  # Don't also run the fatigue check below
 
