@@ -56,7 +56,7 @@
       <tbody>
         {% for p in bat_rows %}
         <tr>
-          <td style="font-family:var(--font-sans);"><button onclick="openPlayerPanel('{{ p.player_id }}')" class="gp-player-btn">{{ p.first_name[0] }}. {{ p.last_name }}{{ rk(p.player_id) }}</button></td>
+          <td style="font-family:var(--font-sans);"><button onclick="openPlayerPanel('{{ p.player_id }}')" class="gp-player-btn">{{ p.first_name[0] }}. {{ p.last_name }}{{ rk(p.player_id) }}</button>{% if p.position %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:4px;">{{ p.position | upper }}</span>{% endif %}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.AB }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
           <td style="text-align:right;font-family:var(--font-mono);font-weight:{% if p.H > 0 %}600{% else %}400{% endif %};">{{ p.H }}</td>

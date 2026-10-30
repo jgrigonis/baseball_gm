@@ -440,7 +440,9 @@ class PlayerGameRepository:
         return dict(row)
 
     def get_batting_box_score(self, game_id: str) -> list[dict]:
-        """Return batting lines for a game box score (players with at-bats), ordered for display."""
+        """Return batting lines for a game box score: the starting lineup in
+        batting order with each starter's position (game_lineup_slots), then
+        anyone else who batted. A starter shows even without an at-bat."""
         rows = self.conn.execute(
             """SELECT p.first_name, p.last_name, p.id as player_id, pgs.team_id,
                       pgs.bat_ab as "AB", pgs.bat_runs as "R", pgs.bat_hits as "H",
@@ -449,11 +451,17 @@ class PlayerGameRepository:
                       pgs.bat_walks as "BB", pgs.bat_strike_outs as "K",
                       pgs.bat_stolen_bases as "SB", pgs.bat_hbp as "HBP",
                       pgs.bat_sac_flys as "SF",
-                      pgs.bat_game_started as started
+                      pgs.bat_game_started as started,
+                      ls.batting_order, ls.position
                FROM player_game_stats pgs
                JOIN players p ON p.id = pgs.player_id
-               WHERE pgs.game_id = %s AND pgs.bat_ab > 0
-               ORDER BY pgs.team_id, pgs.bat_game_started DESC, p.last_name""",
+               LEFT JOIN game_lineup_slots ls
+                 ON ls.game_id = pgs.game_id AND ls.team_id = pgs.team_id
+                AND ls.player_id = pgs.player_id AND ls.is_pitcher = 0
+               WHERE pgs.game_id = %s
+                 AND (pgs.bat_ab > 0 OR ls.batting_order IS NOT NULL)
+               ORDER BY pgs.team_id, ls.batting_order NULLS LAST,
+                        pgs.bat_game_started DESC, p.last_name""",
             (game_id,),
         ).fetchall()
         return [dict(r) for r in rows]
