@@ -584,6 +584,20 @@ class TestShouldHitAndRun:
         # 2% * 1.5 (contact) * 1.5 (speed) * 1.3 (count) = 5.85% > 5%
         assert result
 
+    def test_slow_runner_rarely_sent(self):
+        # 2% * 1.5 (contact) * 0.2 (slow) * 1.3 (count) = 0.78% < 1%
+        runner = _make_runner(speed=20)
+        bases = _make_bases(first=runner)
+        result = GameStrategy.should_hit_and_run(
+            bases,
+            outs=0,
+            batter_contact=70,
+            count_balls=2,
+            count_strikes=1,
+            rng=_always(0.01),
+        )
+        assert not result
+
 
 # ===========================================================================
 # get_double_steal_candidates
