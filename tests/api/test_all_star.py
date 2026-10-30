@@ -51,10 +51,12 @@ def lg(db_conn, factory):
     ai = factory.gm(team=theirs, league=league, is_ai=True)
     persona = PersonaRepository(db).create(
         f"Homer {league.id}",
-        "",
-        "",
+        "Votes for his own.",
+        "The Homer",
         personas.clean({"loyalty": 100, "analytics": 80}),
-        50,
+        # Never picked for another league: the tab tests commit, so this
+        # persona outlives the test.
+        0,
     )
     db.execute("UPDATE gms SET persona_id = %s WHERE id = %s", (persona, ai.id))
 
@@ -292,3 +294,39 @@ def test_the_all_stars_get_a_star(client, lg):
     assert "badge-all-star" in panel and "All-Star 2025" in panel
     career = client.get(f"/leagues/{lg.league.id}/players/{pid}/career").text
     assert "★ All-Star 2025" in career
+
+
+# ── Multiplayer: the ready-check bar ─────────────────────────────────────────
+
+
+def _multiplayer(lg):
+    """Both teams run by people, so the league moves on by ready-check."""
+    lg.db.execute("UPDATE gms SET is_ai = FALSE WHERE league_id = %s", (lg.league.id,))
+    for row in lg.db.execute(
+        "SELECT id FROM gms WHERE league_id = %s", (lg.league.id,)
+    ).fetchall():
+        lg.db.execute(
+            "INSERT INTO users (id, session_token, display_name) VALUES (%s, %s, 'x')",
+            (row["id"], row["id"]),
+        )
+        lg.db.execute("UPDATE gms SET user_id = id WHERE id = %s", (row["id"],))
+
+
+def test_the_ready_bar_knows_when_voting_opens_and_closes(lg):
+    from src.api.services import ready_check
+
+    _multiplayer(lg)
+    status = ready_check.status(lg.db, lg.league.id, lg.gm.id)
+    assert status["all_star"] == "upcoming" and not status["all_star_vote_due"]
+
+    _play_through(lg.db, lg.season, BEFORE[10])
+    status = ready_check.status(lg.db, lg.league.id, lg.gm.id)
+    assert status["all_star"] == "open" and status["all_star_vote_due"]
+
+    ss = {"ss": [lg.players[("mine", "ss")]]}
+    all_star.submit(lg.db, lg.league.id, lg.season.id, lg.mine.id, ss)
+    assert not ready_check.status(lg.db, lg.league.id, lg.gm.id)["all_star_vote_due"]
+
+    _play_through(lg.db, lg.season, CLOSES)
+    all_star.count_votes(lg.db, lg.league.id, lg.season.id)
+    assert ready_check.status(lg.db, lg.league.id, lg.gm.id)["all_star"] == "done"

@@ -21,6 +21,8 @@
 (function() {
 var URL = '/leagues/{{ league_id }}';
 var PAGE_STATE = '{{ league_state }}';  // the state this page was rendered for
+// All-Star voting as this page was rendered: its tab only shows on a reload.
+var PAGE_ALL_STAR = '{{ all_star_phase or "none" }}';
 var PHASES = {draft: 'Draft', preseason: 'Season', season: 'Season',
               playoffs: 'Playoffs', offseason: 'Offseason'};
 // Where a GM goes when a period moves the league into this state.
@@ -77,6 +79,7 @@ function render() {
     }
     parts.push('ready ' + readyCount + '/' + present.length);
     if (d.trade_inbox) parts.push('📨 ' + d.trade_inbox + ' waiting on you in Trades');
+    if (d.all_star_vote_due) parts.push('★ All-Star voting is open: cast your ballot');
     text.textContent = parts.join(' · ');
     waiting.textContent = d.waiting_on.length ? 'waiting on ' + d.waiting_on.join(', ') : '';
     if (d.you_out) waiting.textContent = "you're out of the playoffs" + (waiting.textContent ? ' · ' + waiting.textContent : '');
@@ -106,6 +109,11 @@ function apply(d) {
       var next = NEXT_PAGE[d.league_state];
       if (next) window.location.href = URL + next;
       else window.location.reload();
+      return;
+    }
+    // All-Star voting opened, or the All-Stars are in: the tab is new.
+    if (d.all_star !== PAGE_ALL_STAR && (d.all_star === 'open' || d.all_star === 'done')) {
+      window.location.href = URL + '/allstar';
       return;
     }
     window.refreshActiveTab();
