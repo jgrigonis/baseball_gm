@@ -113,6 +113,8 @@ PITCHOUT_BALLS_OVER_STRIKES = 0.1
 HNR_PROB = 0.02
 HNR_CONTACT_MOD = 1.5
 HNR_SPEED_MOD = 1.5
+HNR_SLOW_SPEED = 40  # Below this speed, a runner is rarely sent on the hit and run
+HNR_SLOW_MOD = 0.2
 HNR_FAVORABLE_COUNT_MOD = 1.3
 
 # Pitcher Change

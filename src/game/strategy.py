@@ -38,6 +38,8 @@ from src.game.probabilities import (
     HNR_PROB,
     HNR_CONTACT_MOD,
     HNR_SPEED_MOD,
+    HNR_SLOW_SPEED,
+    HNR_SLOW_MOD,
     HNR_FAVORABLE_COUNT_MOD,
     PITCH_COUNT_THRESHOLD,
     CLOSER_ENTRANCE_PROB,
@@ -291,8 +293,9 @@ class GameStrategy:
         else:
             return False
 
-        # Adjust for runner speed
-        speed_factor = (runner_speed + base_running_skill) / 100  # 1.0 at average
+        # Adjust for runner speed. Speed counts double: good reads and jumps
+        # help, but they can't make a slow runner a threat to steal.
+        speed_factor = (2 * runner_speed + base_running_skill) / 150  # 1.0 at average
         prob *= speed_factor * speed_factor
         # Elite speed runners should steal much more often
         if speed_factor > 1.5:
@@ -582,6 +585,10 @@ class GameStrategy:
         # Fast runner
         if runner_speed >= 60:
             prob *= HNR_SPEED_MOD
+        # Slow runner: the runner is going on the pitch, so a slow one
+        # usually just gets thrown out
+        elif runner_speed < HNR_SLOW_SPEED:
+            prob *= HNR_SLOW_MOD
 
         # Favorable count (1-1, 2-1, 2-2)
         if count_balls >= count_strikes:

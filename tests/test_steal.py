@@ -106,7 +106,7 @@ from src.game.bases import FIRST, SECOND, THIRD
 
 class TestAdjustStealProb:
     def test_all_average_returns_base_prob(self):
-        """With all skills at 50 the multiplier is (50+50)/(50+50) == 1.0."""
+        """With all skills at 50 the multiplier is 1.0."""
         resolver = make_resolver()
         result = adjust_steal_prob(resolver, prob=0.70)
         assert pytest.approx(result, rel=1e-6) == 0.70
@@ -122,6 +122,12 @@ class TestAdjustStealProb:
             catching_skill=50,
         )
         assert result > 0.70
+
+    def test_base_running_does_not_make_up_for_speed(self):
+        """A slow runner with great base running is still below average."""
+        resolver = make_resolver()
+        result = adjust_steal_prob(resolver, prob=0.70, run_speed=20, base_running=80)
+        assert result < 0.70
 
     def test_strong_catcher_decreases_prob(self):
         resolver = make_resolver()

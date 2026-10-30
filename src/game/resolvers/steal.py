@@ -124,7 +124,10 @@ def resolve_steal_attempt(
 def adjust_steal_prob(
     resolver, prob, run_speed=50, base_running=50, catcher_arm=50, catching_skill=50
 ) -> float:
-    return (run_speed + base_running) / max(1, (catcher_arm + catching_skill)) * prob
+    # Speed counts double, matching the attempt decision in GameStrategy.
+    runner = (2 * run_speed + base_running) / 150
+    defense = max(1, catcher_arm + catching_skill) / 100
+    return runner / defense * prob
 
 
 def resolve_double_steal(
