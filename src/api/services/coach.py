@@ -23,9 +23,8 @@ STEPS = (
     (
         "start",
         "Start the league",
-        "This is the lobby. The GM list shows you and the AI managers who run "
-        "every team nobody joined. Hover or tap any setting's name to see what "
-        "it does. Speed Blitz is the quick mode: no injuries or trades, and "
+        "This is the lobby. The GM list shows you who is running each team. "
+        "Hover or tap any setting's name to see what it does. Speed Blitz is the quick mode: no injuries or trades, and "
         "each sim period plays 30 days. Press Start League when you're ready.",
         None,
     ),
@@ -33,7 +32,7 @@ STEPS = (
         "prefs",
         "Set your draft strategy",
         "Your team's needs start out filled in from your roster, with the "
-        "reason for each. Click a need to step it through Low, Med and High, "
+        "reason for each. Click a need to cycle through Low, Med and High, "
         "press ☆ on any prospect you really want, and set the age slider. Your first 5 "
         "projected picks on the right update as you go. Press Save Strategy "
         "when they look right.",
@@ -50,9 +49,9 @@ STEPS = (
     (
         "roster",
         "Save your roster",
-        "The Roster tab shows everyone your team owns. Up to 40 of them fit on "
-        "the 40-man roster, which is who plays in a Blitz league. Make any "
-        "changes, then save.",
+        "The Roster tab shows everyone in your organization. Up to 40 of them "
+        "fit on the 40-man roster, all of which are available to play in "
+        "Blitz leagues. Make any changes, then save.",
         "roster",
     ),
     (
@@ -73,7 +72,7 @@ STEPS = (
     (
         "play",
         "Play some games",
-        "Use the play buttons on Standings or Schedule. Play Day plays one "
+        "Use the play buttons on Standings or Schedule tab. Play Day plays one "
         "day and Full Season plays to the end.",
         "standings",
     ),
