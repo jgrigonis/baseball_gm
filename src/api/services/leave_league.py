@@ -52,6 +52,8 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
         deleted = not gm_repo.has_people(league_id)
         if deleted:
             league_repo.delete(league_id)
+        elif league["state"] == "lobby":
+            personas.fill_lobby(conn, league_id)  # an AI GM takes their place
         conn.commit()
 
     if deleted:

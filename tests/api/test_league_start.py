@@ -23,6 +23,7 @@ from unittest.mock import patch
 import pytest
 
 from src.api.services.league_start import start_league
+from src.api.services import personas as persona_service
 from src.league import personas
 
 
@@ -332,3 +333,34 @@ class TestGMAssignment:
             ).fetchone()
             for key, value in personas.profile(r["dials"]).items():
                 assert profile[key] == value
+
+
+class TestLobbyAiGms:
+    def test_ai_gms_picked_in_the_lobby_get_the_open_teams(self, patched):
+        conn, league = patched.conn, patched.league
+        conn.execute("UPDATE leagues SET num_teams = 4 WHERE id = %s", (league.id,))
+        conn.execute("UPDATE gms SET team_id = NULL WHERE league_id = %s", (league.id,))
+        persona_service.fill_lobby(conn, league.id)
+        picked = {g["id"] for g in persona_service.lobby_ai_gms(conn, league.id)}
+
+        start_league(league.id, conn)
+
+        rows = conn.execute(
+            "SELECT id, team_id FROM gms WHERE league_id = %s AND is_ai",
+            (league.id,),
+        ).fetchall()
+        assert {r["id"] for r in rows} == picked
+        assert all(r["team_id"] for r in rows)
+
+    def test_extra_lobby_ai_gms_are_dropped(self, patched):
+        conn, league = patched.conn, patched.league
+        conn.execute("UPDATE leagues SET num_teams = 6 WHERE id = %s", (league.id,))
+        persona_service.fill_lobby(conn, league.id)
+
+        start_league(league.id, conn)
+
+        n = conn.execute(
+            "SELECT COUNT(*) AS n FROM gms WHERE league_id = %s AND is_ai",
+            (league.id,),
+        ).fetchone()["n"]
+        assert n == len(patched.teams) - 1

@@ -3,14 +3,17 @@
    sees GMs join; once the league starts that answers with HX-Redirect, which
    takes everyone waiting in the lobby on to the draft. Leagues in states the
    dashboard has no page for yet also land on the lobby; those don't poll.
-   Teams nobody has joined yet show as AI GMs, which is who runs them if the
-   league starts now; each GM who joins takes one of those slots. #}
+   Teams nobody has joined yet show their AI GMs, picked when the league was
+   made: they run those teams if the league starts now. Each GM who joins
+   takes one's place. The commissioner can reroll an AI GM for another
+   persona. Leagues made before AI GMs were picked in the lobby show open
+   slots instead, filled at the start. #}
 <div class="card" id="lobby-gms"
      {% if league_state == "lobby" %}
      hx-get="/leagues/{{ league_id }}/lobby/gms" hx-trigger="every 3s" hx-swap="outerHTML"
      {% endif %}>
   <div class="card-header">
-    <span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Each GM runs one team. People who join take a team each, and AI managers run the rest. Status shows who's here: a GM who steps away is marked Away.">GMs ({{ gms|length }} human · {{ ai_slots }} AI)</span></span>
+    <span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Each GM runs one team. People who join take a team each, and the AI GMs listed here run the rest. Click an AI GM to see how they lean. Status shows who's here: a GM who steps away is marked Away.">GMs ({{ gms|length }} human · {{ ai_gms|length + ai_slots }} AI)</span></span>
     <span class="spacer"></span>
     {% if join_code %}
     <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
@@ -42,6 +45,29 @@
               <span style="color:var(--text-dim);font-size:11px;">Away</span>
             {% else %}
               <span style="color:var(--green);font-size:11px;">● Ready</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% for ai in ai_gms %}
+        <tr class="ai-gm">
+          <td class="team-name">
+            {% if ai.persona_id %}
+            <a href="/leagues/{{ league_id }}/personas/{{ ai.persona_id }}" style="color:inherit;">{{ ai.display_name }}</a>
+            {% if ai.archetype %}<div style="color:var(--text-dim);font-size:11px;">{{ ai.archetype }}</div>{% endif %}
+            {% else %}{{ ai.display_name }}{% endif %}
+          </td>
+          <td style="color:var(--text-dim);">—</td>
+          <td><span class="badge badge-40man">AI</span></td>
+          <td>
+            {% if is_commissioner %}
+            <button type="button" class="btn btn-secondary reroll-btn"
+                    style="padding:2px 8px;font-size:11px;"
+                    title="Swap this AI GM for another persona"
+                    hx-post="/leagues/{{ league_id }}/lobby/gms/{{ ai.id }}/reroll"
+                    hx-target="#lobby-gms" hx-swap="outerHTML">↻ Reroll</button>
+            {% else %}
+            <span style="color:var(--text-dim);font-size:11px;">Ready</span>
             {% endif %}
           </td>
         </tr>

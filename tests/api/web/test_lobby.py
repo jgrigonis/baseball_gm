@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
+from src.api.services import personas
 
 
 @pytest.fixture
@@ -108,3 +109,73 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
     assert "no injuries or trades" in r.text
     assert "Total teams in the league" in r.text
     assert "<td>Enabled</td>" in r.text
+
+
+def _fill(db_conn, league, num_teams=4):
+    db_conn.execute(
+        "UPDATE leagues SET num_teams = %s WHERE id = %s", (num_teams, league.id)
+    )
+    personas.fill_lobby(db_conn, league.id)
+    return personas.lobby_ai_gms(db_conn, league.id)
+
+
+def test_picked_ai_gms_are_listed_by_name(client, db_conn, lobby):
+    league, _ = lobby
+    ai = _fill(db_conn, league)
+
+    r = _gms(client, league)
+
+    assert r.text.count('class="ai-gm"') == 3
+    assert 'class="ai-slot"' not in r.text
+    assert "1 human · 3 AI" in r.text
+    for g in ai:
+        assert g["display_name"] in r.text
+        assert f"/leagues/{league.id}/personas/{g['persona_id']}" in r.text
+
+
+def test_only_the_commissioner_sees_reroll(client, db_conn, lobby):
+    league, gm = lobby
+    _fill(db_conn, league)
+
+    assert "reroll-btn" not in _gms(client, league).text
+
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    assert _gms(client, league).text.count("reroll-btn") == 3
+
+
+def test_commissioner_rerolls_an_ai_gm(client, db_conn, lobby):
+    league, gm = lobby
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    ai = _fill(db_conn, league)
+
+    r = client.post(f"/leagues/{league.id}/lobby/gms/{ai[0]['id']}/reroll")
+
+    assert r.status_code == 200
+    after = personas.lobby_ai_gms(db_conn, league.id)
+    assert after[0]["persona_id"] != ai[0]["persona_id"]
+    assert after[0]["display_name"] in r.text
+
+
+def test_others_cannot_reroll(client, db_conn, lobby):
+    league, _ = lobby
+    ai = _fill(db_conn, league)
+
+    r = client.post(f"/leagues/{league.id}/lobby/gms/{ai[0]['id']}/reroll")
+
+    assert r.status_code == 403
+    assert personas.lobby_ai_gms(db_conn, league.id) == ai
+
+
+def test_lobby_persona_card_opens(client, db_conn, lobby):
+    league, _ = lobby
+    ai = _fill(db_conn, league)
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+
+    r = client.get(f"/leagues/{league.id}/personas/{ai[0]['persona_id']}")
+
+    assert r.status_code == 200
+    assert ai[0]["display_name"] in r.text

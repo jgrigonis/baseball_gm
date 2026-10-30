@@ -125,13 +125,17 @@ def start_league(
         gm_repo.assign_team_to_gm(team_id, gm["id"])
         assigned_teams.add(team_id)
 
-    # 5b. Prepare Batch Insert for AI GMs
+    # 5b. The AI GMs picked in the lobby take the rest, in the order they
+    # came in. Leagues whose lobby is short of them (e.g. made before the
+    # lobby listed them) get new ones, each a persona from the library with
+    # its own random stream, so the rest of the league comes out the same
+    # for a seed.
     remaining_teams = [tid for tid in team_ids_all if tid not in assigned_teams]
-
-    # Each AI GM is a persona from the library. Its own random stream, so
-    # the rest of the league comes out the same for a seed.
+    waiting = personas.lobby_ai_gms(conn, league_id)
     persona_rng = random.Random(f"{seed}-personas")
-    for team_id in remaining_teams:
+    for team_id, ai_gm in zip(remaining_teams, waiting):
+        gm_repo.assign_team_to_gm(team_id, ai_gm["id"])
+    for team_id in remaining_teams[len(waiting) :]:
         ai_gm_id = gm_repo.create_gm(
             league_id=league_id,
             team_id=team_id,
@@ -139,6 +143,8 @@ def start_league(
             is_ai=True,
         )
         personas.give_persona(conn, league_id, ai_gm_id, persona_rng)
+    for ai_gm in waiting[len(remaining_teams) :]:
+        gm_repo.delete_gm(ai_gm["id"])
     human_gm_team = gm_repo.get_human_gm_city_mascot(league_id)
 
     # ── 6. Generate prospect pool ─────────────────────────────────────────────

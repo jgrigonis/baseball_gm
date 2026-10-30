@@ -195,6 +195,7 @@ def new_league(
     )
     # 3. Update the League (Now the GM exists, so the commish ID is valid)
     gm_repo.set_commissioner(gm_id=gm_id, league_id=league_id)
+    personas.fill_lobby(db, league_id)
 
     db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
@@ -235,6 +236,7 @@ def new_tutorial_league(db: DB, user: User):
         display_name=user["display_name"],
     )
     gm_repo.set_commissioner(gm_id=gm_id, league_id=league_id)
+    personas.fill_lobby(db, league_id)
     db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
@@ -280,6 +282,7 @@ def join_league(
         user_id=user["id"],
         display_name=user["display_name"],
     )
+    personas.fill_lobby(db, league["id"])  # they take an AI GM's place
     db.commit()
 
     return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
@@ -307,6 +310,7 @@ def join_public_league(
         user_id=user["id"],
         display_name=user["display_name"],
     )
+    personas.fill_lobby(db, league_id)  # they take an AI GM's place
     db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
@@ -476,18 +480,49 @@ def persona_page(
 
 
 def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
-    # Every team without a human GM gets an AI one when the league starts, so
-    # the lobby shows those open slots as AI GMs. Each GM who joins takes one.
-    gms = list(gm_repo.get_all_in_league(league["id"]))
+    # The people who have joined, then the AI GMs who will run the open
+    # teams. Leagues made before the lobby picked AI GMs show the open teams
+    # as slots instead, filled when the league starts.
+    humans = [g for g in gm_repo.get_all_in_league(league["id"]) if not g["is_ai"]]
+    ai_gms = personas.lobby_ai_gms(gm_repo.conn, league["id"])
     return {
         "league_id": league["id"],
         "league_state": league["state"],
-        "gms": gms,
-        "ai_slots": max(league["num_teams"] - len(gms), 0),
+        "gms": humans,
+        "ai_gms": ai_gms,
+        "ai_slots": max(league["num_teams"] - len(humans) - len(ai_gms), 0),
+        "is_commissioner": league["commissioner_gm_id"] == str(gm["id"]),
         "num_teams": league["num_teams"],
         "join_code": league.get("join_code"),
         "current_gm_id": str(gm["id"]),
     }
+
+
+@router.post(
+    "/leagues/{league_id}/lobby/gms/{ai_gm_id}/reroll", response_class=HTMLResponse
+)
+def reroll_lobby_gm(
+    request: Request,
+    league_id: str,
+    ai_gm_id: str,
+    db: DB,
+    gm: GM,
+):
+    """The commissioner swaps a lobby AI GM for another persona. Answers
+    with the GM list."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] != "lobby":
+        return HTMLResponse("", headers={"HX-Redirect": f"/leagues/{league_id}/"})
+    if league["commissioner_gm_id"] != gm["id"]:
+        return HTMLResponse("Only the commissioner can do that.", status_code=403)
+    if not personas.reroll(db, league_id, ai_gm_id):
+        return HTMLResponse("No such AI GM in the lobby.", status_code=404)
+    db.commit()
+    return templates.TemplateResponse(
+        request,
+        "dashboard/partials/_lobby_gms.html",
+        _lobby_gms_context(GMRepository(db), league, gm),
+    )
 
 
 @router.get("/leagues/{league_id}/lobby/gms", response_class=HTMLResponse)
