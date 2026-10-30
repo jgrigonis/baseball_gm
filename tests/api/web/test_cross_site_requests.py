@@ -114,6 +114,16 @@ class TestDeveloping:
         assert _register(client, origin="http://testserver").status_code == 302
         assert _register(client, origin="http://localhost:5173").status_code == 403
 
+    def test_local_server_with_the_deployed_settings(self, db_conn, deployed):
+        # e.g. the deployed .env, browsing the local server at 127.0.0.1.
+        app.dependency_overrides[get_db] = lambda: db_conn
+        local = TestClient(
+            app, base_url="http://127.0.0.1:8000", follow_redirects=False
+        )
+
+        assert _register(local, origin="http://127.0.0.1:8000").status_code == 302
+        assert _register(local, origin="http://127.0.0.1:9999").status_code == 403
+
     def test_cors_origins_are_allowed(self, client):
         with patch.object(settings, "cors_origins", ["http://localhost:5173"]):
             resp = _register(client, origin="http://localhost:5173")

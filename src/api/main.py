@@ -128,10 +128,15 @@ def _origin_of(url: str) -> str:
 
 
 def _allowed_origins(request: Request) -> set[str]:
-    # Behind Caddy, PUBLIC_BASE_URL is the address users see. Without it
-    # (developing), the address the request was sent to.
-    site = settings.public_base_url or str(request.base_url)
-    return {_origin_of(site)} | {_origin_of(o) for o in settings.cors_origins}
+    # The address the request was sent to: a browser on another site can't
+    # set the Host header, so a matching Origin means the site's own page.
+    # This is what lets a local server run with the deployed .env (e.g.
+    # browsing http://127.0.0.1:8000 with PUBLIC_BASE_URL set to the real
+    # site). PUBLIC_BASE_URL is allowed too, in case a proxy rewrites Host.
+    sites = [str(request.base_url), *settings.cors_origins]
+    if settings.public_base_url:
+        sites.append(settings.public_base_url)
+    return {_origin_of(s) for s in sites}
 
 
 def is_cross_site(request: Request) -> bool:
