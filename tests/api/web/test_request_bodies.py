@@ -13,7 +13,6 @@ from pydantic import ValidationError
 from src.api import dependencies
 from src.api.routers import draft, lineup, roster, sim
 from src.api.schemas import (
-    DraftPreferencesRequest,
     LineupAutofillRequest,
     LineupSaveRequest,
     RosterSaveRequest,
@@ -31,7 +30,7 @@ from src.api.schemas import (
         lineup.save_rotation,
         lineup.save_bullpen,
         roster.save_roster_put,
-        draft.save_draft_preferences,
+        draft.save_draft_strategy,
         dependencies.get_current_user,
         dependencies.get_optional_user,
         dependencies.get_current_gm,
@@ -100,7 +99,6 @@ class TestRotationSaveRequest:
 
 def test_extra_fields_are_ignored():
     assert RosterSaveRequest(forty_man=["a"], junk=1).forty_man == ["a"]
-    assert DraftPreferencesRequest(player_ids=["a"], junk=1).player_ids == ["a"]
 
 
 def test_playoff_sim_returns_its_result():

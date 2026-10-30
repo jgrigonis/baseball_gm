@@ -1,6 +1,6 @@
 # src/api/routers/draft.py
 #
-# Draft tab: the prospect board, saving draft preferences and strategy,
+# Draft tab: the prospect board, saving a draft strategy,
 # previewing a strategy's picks, running the
 # blitz draft, and the results page.
 
@@ -19,12 +19,12 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
-from src.api.schemas import DraftPreferencesRequest, DraftStrategyRequest
+from src.api.schemas import DraftStrategyRequest
 from src.api.services import coach, sim_jobs
 from src.api.services.draft_needs import needs_for_draft
 from src.api.services.draft_preview import preview_picks
 from src.api.view_models.draft import draft_rounds
-from src.api.view_models.player_cards import draft_roster_card, prospect_card
+from src.api.view_models.player_cards import prospect_card
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -35,44 +35,6 @@ router = APIRouter(tags=["web"])
 
 
 # ── Draft actions ──────────────────────────────────────────────────────────────
-
-
-@router.put("/leagues/{league_id}/draft/preferences")
-def save_draft_preferences(
-    league_id: str,
-    body: DraftPreferencesRequest,
-    db: DB,
-    user: User,
-    gm: GM,
-    _active: ActiveLeague,
-    # gm_session: str | None = Cookie(default=None),
-):
-    """
-    Save the GM's draft preference list. Called from JS using the session
-    cookie — no token exposure needed. Proxies to the existing draft logic.
-    """
-
-    draft_repo = DraftRepository(db)
-
-    draft = draft_repo.get_current_for_league(league_id)
-    if not draft:
-        return JSONResponse({"detail": "No draft found"}, status_code=404)
-    if draft["state"] == "complete":
-        return JSONResponse({"detail": "Draft is already complete"}, status_code=409)
-
-    player_ids = body.player_ids
-    if not player_ids:
-        return JSONResponse({"detail": "player_ids required"}, status_code=422)
-
-    missing = draft_repo.validate_player_ids(player_ids)
-    if missing:
-        return JSONResponse({"detail": f"Unknown player: {missing}"}, status_code=422)
-
-    draft_repo.save_preferences(draft["id"], gm["id"], player_ids)
-    coach.mark(db, league_id, "prefs")
-    db.commit()
-
-    return JSONResponse({"saved": len(player_ids)})
 
 
 def _strategy_or_error(
@@ -104,9 +66,7 @@ def save_draft_strategy(
     gm: GM,
     _active: ActiveLeague,
 ):
-    """Save the GM's draft strategy: need chips, age preference and pins.
-    It replaces any ranked list from the Advanced board, which the draft
-    would otherwise use first."""
+    """Save the GM's draft strategy: need chips, age preference and pins."""
     draft_repo = DraftRepository(db)
 
     draft = draft_repo.get_current_for_league(league_id)
@@ -120,7 +80,6 @@ def save_draft_strategy(
         return strategy
 
     draft_repo.save_strategy(draft["id"], gm["id"], strategy)
-    draft_repo.clear_preferences(draft["id"], gm["id"])
     coach.mark(db, league_id, "prefs")
     db.commit()
 
@@ -183,7 +142,6 @@ def draft_tab(
                 continue
             board.append(prospect_card(row, player_repo.get_player_skills(row["id"])))
 
-        prefs = draft_repo.get_preferences(draft["id"], gm["id"]) if gm else []
         strategy = draft_repo.get_strategy(draft["id"], gm["id"])
 
         pick_position = None
@@ -192,7 +150,6 @@ def draft_tab(
 
         ctx["draft_id"] = draft["id"]
         ctx["board"] = board
-        ctx["preferences"] = prefs
         ctx["strategy"] = vars(strategy) if strategy else None
         needs = (
             needs_for_draft(db, draft["id"]).get(gm["team_id"])
@@ -208,7 +165,6 @@ def draft_tab(
     else:
         ctx["draft_id"] = None
         ctx["board"] = []
-        ctx["preferences"] = []
         ctx["strategy"] = None
         ctx["suggested"] = {"chips": {}, "reasons": {}}
         ctx["pick_position"] = None
@@ -220,15 +176,6 @@ def draft_tab(
         }
         for c in CHIPS.values()
     ]
-
-    # Load GM's current roster for the right-hand column
-    players = []
-    if gm["team_id"]:
-        roster_rows = player_repo.get_team_roster_with_skills(gm["team_id"])
-        for row in roster_rows:
-            skills = player_repo.get_player_skills(row["id"])
-            players.append(draft_roster_card(row, skills))
-    ctx["players"] = players
 
     return tab_response(request, htmx, "dashboard/partials/draft.html", ctx)
 

@@ -44,16 +44,6 @@ class DraftRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_preferences(self, draft_id: str, gm_id: str) -> list[str]:
-        """Return ordered list of player_ids from a GM's draft preferences."""
-        rows = self.conn.execute(
-            """SELECT dp.player_id FROM draft_preferences dp
-               WHERE dp.draft_id = %s AND dp.gm_id = %s
-               ORDER BY dp.rank""",
-            (draft_id, gm_id),
-        ).fetchall()
-        return [r["player_id"] for r in rows]
-
     def get_prospect_records(self, league_id: str) -> list[PlayerRecord]:
         """Every prospect in the league's pool with skills, in one query, in
         the same name order the draft loads them."""
@@ -89,24 +79,6 @@ class DraftRepository:
         for r in rows:
             rosters[r["team_id"]].append((_record(r), r["status"]))
         return rosters
-
-    def get_ids_and_rank_from_preferences(
-        self, draft_id: str, league_id: str
-    ) -> list[dict]:
-        pref_rows = self.conn.execute(
-            """
-            SELECT g.team_id, dp.player_id, dp.rank
-            FROM draft_preferences dp
-            JOIN gms g ON g.id = dp.gm_id
-            WHERE dp.draft_id = %s
-            AND g.league_id = %s
-            AND NOT g.is_ai
-            AND g.team_id IS NOT NULL
-            ORDER BY g.team_id, dp.rank
-            """,
-            (draft_id, league_id),
-        ).fetchall()
-        return pref_rows
 
     def get_strategy(self, draft_id: str, gm_id: str) -> DraftStrategy | None:
         """Return a GM's saved draft strategy, or None."""
@@ -159,18 +131,6 @@ class DraftRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def validate_player_ids(self, player_ids: list[str]) -> str | None:
-        """
-        Check that all player_ids exist. Returns the first missing id, or None
-        if all are valid.
-        """
-        rows = self.conn.execute(
-            "SELECT id FROM players WHERE id = ANY(%s)", (player_ids,)
-        ).fetchall()
-        found = {r["id"] for r in rows}
-        missing = next((pid for pid in player_ids if pid not in found), None)
-        return missing
-
     def get_draft_id(self, league_id: str, season_id: str) -> str | None:
         row = self.conn.execute(
             "SELECT id FROM drafts WHERE league_id = %s AND season_id = %s",
@@ -215,30 +175,6 @@ class DraftRepository:
         return all_team_rows
 
     # ── Write ─────────────────────────────────────────────────────────────────
-
-    def save_preferences(
-        self, draft_id: str, gm_id: str, player_ids: list[str]
-    ) -> None:
-        """Atomically replace a GM's draft preference list."""
-        with self.conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
-                (gm_id, draft_id),
-            )
-            cur.executemany(
-                "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank) VALUES (%s, %s, %s, %s)",
-                [
-                    (gm_id, draft_id, pid, rank + 1)
-                    for rank, pid in enumerate(player_ids)
-                ],
-            )
-
-    def clear_preferences(self, draft_id: str, gm_id: str) -> None:
-        """Drop a GM's hand-ordered preference list."""
-        self.conn.execute(
-            "DELETE FROM draft_preferences WHERE gm_id = %s AND draft_id = %s",
-            (gm_id, draft_id),
-        )
 
     def save_strategy(self, draft_id: str, gm_id: str, strategy: DraftStrategy) -> None:
         """Insert or replace a GM's draft strategy."""

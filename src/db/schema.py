@@ -627,20 +627,6 @@ CREATE TABLE IF NOT EXISTS draft_picks (
     FOREIGN KEY (player_id) REFERENCES players(id)
 );
 
-CREATE TABLE IF NOT EXISTS draft_preferences (
-    gm_id     TEXT    NOT NULL,
-    draft_id  TEXT    NOT NULL,
-    player_id TEXT    NOT NULL,
-    rank      INTEGER NOT NULL,  -- lower = higher preference
-
-    PRIMARY KEY (gm_id, draft_id, player_id),
-    UNIQUE      (gm_id, draft_id, rank),  -- no ties within a list
-
-    FOREIGN KEY (gm_id)     REFERENCES gms(id)     ON DELETE CASCADE,
-    FOREIGN KEY (draft_id)  REFERENCES drafts(id)  ON DELETE CASCADE,
-    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
-);
-
 -- draft_strategies: a GM's need chips, age preference and pinned players for
 --   one draft (src/league/offseason/draft_strategy.py, migration 018).
 CREATE TABLE IF NOT EXISTS draft_strategies (
@@ -1100,8 +1086,6 @@ CREATE INDEX IF NOT EXISTS idx_draft_picks_gm       ON draft_picks(gm_id);
 
 CREATE INDEX IF NOT EXISTS idx_draft_picks_player   ON draft_picks(player_id);
 
-CREATE INDEX IF NOT EXISTS idx_draft_prefs_gm_draft ON draft_preferences(gm_id, draft_id);
-
 CREATE INDEX IF NOT EXISTS idx_gm_evals_season      ON gm_season_evaluations(season_id);
 
 CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm       ON gm_lineup_preferences(gm_id);
@@ -1169,8 +1153,6 @@ CREATE INDEX IF NOT EXISTS idx_drafts_season           ON drafts(season_id);
 CREATE INDEX IF NOT EXISTS idx_draft_order_team        ON draft_order(team_id);
 CREATE INDEX IF NOT EXISTS idx_draft_picks_team        ON draft_picks(team_id);
 CREATE INDEX IF NOT EXISTS idx_pick_rights_original    ON draft_pick_rights(original_team_id);
-CREATE INDEX IF NOT EXISTS idx_draft_prefs_draft       ON draft_preferences(draft_id);
-CREATE INDEX IF NOT EXISTS idx_draft_prefs_player      ON draft_preferences(player_id);
 CREATE INDEX IF NOT EXISTS idx_draft_strategies_draft ON draft_strategies(draft_id);
 CREATE INDEX IF NOT EXISTS idx_lineup_pref_player      ON gm_lineup_preferences(player_id);
 CREATE INDEX IF NOT EXISTS idx_league_seasons_season   ON league_seasons(season_id);

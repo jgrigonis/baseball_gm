@@ -5,13 +5,12 @@ Tests for draft_execute.py.
 Coverage:
 - execute_blitz_draft guard clauses (not found, wrong state, wrong format)
 - State transitions (draft open → complete, league → preseason)
-- Preference list respected: human GM picks their top available player
+- Human GM's strategy respected: they take their top pinned player
 - AI fallback: AI teams pick best available by rating
-- Auto-pick flag correct: 0 for preference picks, 1 for AI/fallback picks
+- Auto-pick flag correct: 0 for human GMs' picks, 1 for AI picks
 - draft_picks table populated correctly
-- BlitzDraft._run_snake directly: preference order, fallback, pool exhaustion
-- Draft strategy: saving and loading, pins picked in order, and a preference
-  list still wins over a strategy
+- BlitzDraft._run_snake directly: best available, pool exhaustion
+- Draft strategy: saving and loading, pins picked in order
 """
 
 import random
@@ -209,11 +208,11 @@ class TestDraftPicksTable:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Preference list behaviour
+# Human GM's picks
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-class TestPreferenceList:
+class TestHumanPicks:
     @pytest.fixture
     def setup(self, db_conn, factory):
         league = factory.league(state="draft")
@@ -228,12 +227,10 @@ class TestPreferenceList:
         prospects = [
             factory.prospect(league_id=league.id) for _ in range(ROUNDS * 2 + 5)
         ]
-        # Human GM prefers the first prospect
-        preferred = prospects[0]
-        db_conn.execute(
-            "INSERT INTO draft_preferences (gm_id, draft_id, player_id, rank)"
-            " VALUES (%s, %s, %s, %s)",
-            (human_gm.id, draft.id, preferred.id, 1),
+        # Human GM pins the last prospect
+        preferred = prospects[-1]
+        DraftRepository(db_conn).save_strategy(
+            draft.id, human_gm.id, DraftStrategy(pins=[preferred.id])
         )
         return db_conn, draft, human_team, preferred
 
@@ -277,7 +274,7 @@ class TestBlitzDraftRunSnake:
         return BlitzDraft(
             db_conn,
             league_id=str(uuid.uuid4()),
-            gm_preferences={},
+            human_team_ids=set(),
             rng=random.Random(42),
         )
 
@@ -294,7 +291,7 @@ class TestBlitzDraftRunSnake:
         blitz = BlitzDraft(
             db_conn,
             league_id=str(uuid.uuid4()),
-            gm_preferences={},
+            human_team_ids=set(),
             rng=random.Random(42),
         )
         order = [{"team_id": team.id, "team_name": "T1"}]
@@ -311,57 +308,6 @@ class TestBlitzDraftRunSnake:
 
         assert picks[0].player_id == hi.id
 
-    def test_human_gm_picks_from_pref_list(self, db_conn, factory):
-        factory.draft()
-        human_team = factory.team()
-        ai_team = factory.team()
-        factory.gm(team=human_team, is_ai=False)
-        factory.gm(team=ai_team, is_ai=True)
-
-        p_pref_row = factory.player_row()
-        p_other_row = factory.player_row()
-
-        blitz = BlitzDraft(
-            db_conn,
-            league_id=str(uuid.uuid4()),
-            gm_preferences={human_team.id: [p_pref_row.id, p_other_row.id]},
-            rng=random.Random(42),
-        )
-        order = [{"team_id": human_team.id, "team_name": "Humans"}]
-
-        p_pref = _make_player(p_pref_row.id)
-        p_other = _make_player(p_other_row.id)
-        rated = [(p_pref, 50), (p_other, 50)]
-
-        with patch("src.api.services.draft_execute.PlayerEvaluator") as MockEval:
-            MockEval.prospect_rating.return_value = 50
-            picks = blitz._run_snake(order, rated)
-
-        assert picks[0].player_id == p_pref_row.id
-
-    def test_falls_back_when_pref_unavailable(self, db_conn, factory):
-        factory.draft()
-        human_team = factory.team()
-        factory.gm(team=human_team, is_ai=False)
-
-        available_row = factory.player_row()
-        league_id = str(uuid.uuid4())
-        blitz = BlitzDraft(
-            db_conn,
-            league_id=league_id,
-            gm_preferences={human_team.id: ["p-gone-does-not-exist"]},
-            rng=random.Random(42),
-        )
-        order = [{"team_id": human_team.id, "team_name": "Humans"}]
-
-        rated = [(_make_player(available_row.id), 50)]
-
-        with patch("src.api.services.draft_execute.PlayerEvaluator") as MockEval:
-            MockEval.prospect_rating.return_value = 50
-            picks = blitz._run_snake(order, rated)
-
-        assert picks[0].player_id == available_row.id
-
     def test_pool_exhaustion_stops_early(self, db_conn, factory):
         factory.draft()
         team1 = factory.team()
@@ -373,7 +319,7 @@ class TestBlitzDraftRunSnake:
 
         league_id = str(uuid.uuid4())
         blitz = BlitzDraft(
-            db_conn, league_id=league_id, gm_preferences={}, rng=random.Random(42)
+            db_conn, league_id=league_id, human_team_ids=set(), rng=random.Random(42)
         )
         order = [
             {"team_id": team1.id, "team_name": "T1"},
@@ -443,19 +389,6 @@ class TestDraftStrategy:
         assert (first["team_id"], first["pick_number"]) == (human_team.id, 1)
         # Snake: the human's second pick is overall pick 4 in a 2-team draft
         assert (second["team_id"], second["pick_number"]) == (human_team.id, 4)
-
-    def test_preference_list_beats_strategy(self, setup):
-        db_conn, draft, _, human_gm, human_team, prospects = setup
-        repo = DraftRepository(db_conn)
-        repo.save_preferences(draft.id, human_gm.id, [prospects[0].id])
-        repo.save_strategy(
-            draft.id, human_gm.id, DraftStrategy(pins=[prospects[-1].id])
-        )
-
-        execute_blitz_draft(draft.id, db_conn)
-
-        assert self._pick_number(db_conn, draft, prospects[0].id)["pick_number"] == 1
-        assert self._pick_number(db_conn, draft, prospects[-1].id)["pick_number"] == 4
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -133,7 +133,7 @@ def coach_steps(db, league: dict) -> list[dict]:
     past_first = seasons >= 2 or state == "complete"
     draft_done = past_first or (state != "lobby" and repo.draft_complete(league["id"]))
     season_over = past_first or state in ("playoffs", "offseason")
-    # Steps the league's state shows are done. Ranking preferences and
+    # Steps the league's state shows are done. Setting a draft strategy and
     # playing games also count as done once the GM is past them.
     reached = {
         "start": state != "lobby",
