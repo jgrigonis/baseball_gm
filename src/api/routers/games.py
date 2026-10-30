@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, User
+from src.api.view_models.line_score import headline, line_score
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
@@ -68,6 +69,21 @@ def game_panel(
                 }
             )
 
+    # Scoreboard: runs by inning, R/H/E, a headline and the decisions
+    scoreboard = None
+    if game["completed"] and game["home_score"] is not None:
+        hits: dict[str, int] = {}
+        for r in bat_rows:
+            hits[r["team_id"]] = hits.get(r["team_id"], 0) + (r["H"] or 0)
+        scoreboard = line_score(game, hits, pgs_repo.get_team_errors(game_id))
+        scoreboard["headline"] = headline(game, bat_rows, pit_rows, no_hitters)
+        scoreboard["decisions"] = [
+            (label, f"{p['first_name'][0]}. {p['last_name']}")
+            for label, key in (("Win", "W"), ("Loss", "L"), ("Save", "SV"))
+            for p in pit_rows
+            if p[key]
+        ]
+
     # Event log
     events_out = []
     for ed in game_repo.get_events(game_id):
@@ -94,6 +110,7 @@ def game_panel(
             "home_pit": home_pit,
             "away_pit": away_pit,
             "no_hitters": no_hitters,
+            "scoreboard": scoreboard,
             "events": events_out,
             "my_team_id": my_team_id,
             "fmt_ip": fmt_ip,

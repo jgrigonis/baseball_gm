@@ -96,6 +96,10 @@ class GameResult:
     innings_played: int
     winner: str
     winning_margin: int
+    # Runs by inning; an inning past the last one either side scored in may
+    # be missing (Score only fills innings up to the last run).
+    away_innings: tuple[int, ...] = ()
+    home_innings: tuple[int, ...] = ()
 
     def __str__(self) -> str:
         return (
@@ -468,6 +472,8 @@ class Game:
             innings_played=self.inning.number,
             winner=winner,
             winning_margin=margin,
+            away_innings=tuple(self.score.away_innings),
+            home_innings=tuple(self.score.home_innings),
         )
 
     def get_context(self) -> GameContext:

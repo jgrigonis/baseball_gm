@@ -61,7 +61,7 @@
           <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;">{{ g.date }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-weight:600;
                      color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};">{{ g.result }}</td>
-          <td style="text-align:center;font-family:var(--font-mono);font-weight:600;">{{ g.my_score }}–{{ g.opp_score }}{{ g.extra }}</td>
+          <td style="text-align:center;font-size:17px;white-space:nowrap;"><span class="num-tile {% if g.result == 'W' %}lit{% endif %}">{{ g.my_score }}</span><span class="num-tile">{{ g.opp_score }}</span>{% if g.extra %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:4px;">{{ g.extra }}</span>{% endif %}</td>
           <td>{{ team_badge(g.opp_city, g.opp_mascot) }}{{ g.opp_city }} {{ g.opp_mascot }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                      color:{% if g.home_away == 'vs' %}var(--green){% else %}var(--text-dim){% endif %};">

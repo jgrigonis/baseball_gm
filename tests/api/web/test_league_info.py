@@ -49,7 +49,10 @@ def test_season_pill_shows_progress_and_opens_settings(client, league):
     html = client.get(f"/leagues/{lg.id}/standings").text
 
     pill = html.split('id="league-info"')[1].split("</details>")[0]
-    assert "season 2/10" in pill
+    assert (
+        '<span class="num-tile lit">2</span><span class="plate-of">of</span><span class="num-tile">10</span>'
+        in pill
+    )
     assert "Decision window" in pill
     assert "90s" in pill
     assert "1 human · 1 AI" in pill

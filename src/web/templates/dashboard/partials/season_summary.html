@@ -36,10 +36,8 @@
       <div class="ss-top-name" style="color:{% if best_record.is_mine %}var(--amber){% else %}var(--text){% endif %};">
         {{ best_record.name }}{% if best_record.is_mine %}&nbsp;⭐{% endif %}
       </div>
-      <div style="font-family:var(--font-mono);font-size:14px;margin-top:4px;">
-        <span style="color:var(--green);">{{ best_record.wins }}</span>
-        <span style="color:var(--text-dim);">–</span>
-        <span style="color:var(--red);">{{ best_record.losses }}</span>
+      <div style="font-size:20px;margin-top:8px;">
+        <span class="num-tile good">{{ best_record.wins }}</span><span class="num-tile bad">{{ best_record.losses }}</span>
       </div>
     </div>
     {% endif %}
@@ -54,14 +52,12 @@
     </div>
     <div style="display:flex;gap:32px;align-items:baseline;">
       <div>
-        <div style="font-size:36px;font-weight:800;font-family:var(--font-mono);
-                    color:var(--green);">{{ my_record.w }}</div>
-        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">WINS</div>
+        <div style="font-size:36px;"><span class="num-tile good">{{ my_record.w }}</span></div>
+        <span class="tile-label">Wins</span>
       </div>
       <div>
-        <div style="font-size:36px;font-weight:800;font-family:var(--font-mono);
-                    color:var(--red);">{{ my_record.l }}</div>
-        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">LOSSES</div>
+        <div style="font-size:36px;"><span class="num-tile bad">{{ my_record.l }}</span></div>
+        <span class="tile-label">Losses</span>
       </div>
       {% if my_playoff_result %}
       <div style="margin-left:auto;text-align:right;">

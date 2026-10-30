@@ -76,7 +76,7 @@
       {% set li = league_info %}
       <details class="league-info" id="league-info">
         <summary class="topbar-state state-{{ league_state }}" title="League settings">
-          {{ league_state }}{% if li.season_number and league_state != "complete" %} {{ li.season_number }}/{{ li.num_seasons }}{% endif %} ▾
+          {{ league_state }}{% if li.season_number and league_state != "complete" %} <span class="num-tile lit">{{ li.season_number }}</span><span class="plate-of">of</span><span class="num-tile">{{ li.num_seasons }}</span>{% endif %} ▾
         </summary>
         <div class="league-info-panel">
           <table class="data-table">
@@ -105,7 +105,7 @@
       <span class="topbar-state" style="margin-left:8px;" title="You're viewing this public league. Only its GMs can make moves.">Viewing</span>
     {% endif %}
     {% if current_date %}
-      <span class="topbar-date" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-left:8px;">{{ current_date }}</span>
+      <span class="topbar-date">{{ current_date }}</span>
     {% endif %}
     <div class="topbar-spacer"></div>
     {% if team_name %}

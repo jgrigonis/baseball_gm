@@ -597,6 +597,7 @@ CREATE TABLE IF NOT EXISTS games (
     away_score INTEGER,
     completed INTEGER DEFAULT 0,
     innings_played INTEGER,
+    line_score JSONB,                 -- runs by inning, away and home
     winner_id TEXT,
     created_at TEXT DEFAULT (NOW()),
     updated_at TEXT,

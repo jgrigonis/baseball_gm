@@ -297,3 +297,24 @@ def test_game_panel_shows_both_team_badges(client, db_conn, factory):
 
     assert ">CHI</span>Chicago Wind" in html
     assert ">BOS</span>Boston Beans" in html
+
+
+def test_game_panel_shows_the_line_score_and_a_headline(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game_id = db_conn.execute(
+        "SELECT id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()["id"]
+    db_conn.execute(
+        """UPDATE games SET innings_played = 9,
+               line_score = '{"away": [0, 0, 3], "home": [2, 0, 0, 0, 0, 0, 0, 3]}'
+           WHERE id = %s""",
+        (game_id,),
+    )
+
+    html = client.get(f"/leagues/{league.id}/games/{game_id}/panel").text
+
+    board = html.split('class="scoreboard"')[1].split('class="scoreboard-notes"')[0]
+    assert "Beans beat the Wind, 5-3" in board
+    # Boston led after the top of the ninth, so it didn't bat: an X
+    assert '<td class="tile">3</td><td class="tile">X</td>' in board
+    assert '<td class="tile rhe rhe-start">5</td>' in board

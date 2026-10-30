@@ -458,6 +458,19 @@ class PlayerGameRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_team_errors(self, game_id: str) -> dict[str, int]:
+        """Return {team_id: errors} for a game, from its fielding lines."""
+        rows = self.conn.execute(
+            """SELECT pgs.team_id, SUM(pgf.errors) AS e
+               FROM player_game_fielding pgf
+               JOIN player_game_stats pgs
+                 ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
+               WHERE pgf.game_id = %s
+               GROUP BY pgs.team_id""",
+            (game_id,),
+        ).fetchall()
+        return {r["team_id"]: int(r["e"] or 0) for r in rows}
+
     def get_no_hitters(self, season_id: str) -> list[dict]:
         """Return the season's no-hitters, regular season and playoffs, in date order."""
         rows = self.conn.execute(
