@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
+from src.api.view_models.standings import standings_context
 
 
 @pytest.fixture
@@ -297,6 +298,41 @@ def test_game_panel_shows_both_team_badges(client, db_conn, factory):
 
     assert ">CHI</span>Chicago Wind" in html
     assert ">BOS</span>Boston Beans" in html
+
+
+def test_game_panel_links_each_team_to_its_season_stats(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game = db_conn.execute(
+        "SELECT id, season_id, away_team_id FROM games WHERE home_team_id = %s",
+        (home.id,),
+    ).fetchone()
+
+    html = client.get(f"/leagues/{league.id}/games/{game['id']}/panel").text
+
+    header = html.split('id="game-panel-body-inner"')[0]
+    for team_id in (home.id, game["away_team_id"]):
+        assert (
+            f"/leagues/{league.id}/stats?team_id={team_id}"
+            f"&season_id={game['season_id']}"
+        ) in header
+
+
+def test_up_next_links_each_opponent_to_its_stats(db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game = db_conn.execute(
+        "SELECT season_id, away_team_id FROM games WHERE home_team_id = %s",
+        (home.id,),
+    ).fetchone()
+    db_conn.execute(
+        """INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id,
+               completed)
+           VALUES (%s, '2025-04-02', %s, %s, %s, 0)""",
+        (str(uuid.uuid4()), game["season_id"], game["away_team_id"], home.id),
+    )
+
+    ctx = standings_context(db_conn, league.id, game["season_id"], home.id)
+
+    assert [g["opp_id"] for g in ctx["upcoming"]] == [game["away_team_id"]]
 
 
 def test_game_panel_shows_the_line_score_and_a_headline(client, db_conn, factory):
