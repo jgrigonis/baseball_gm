@@ -279,8 +279,10 @@ def _pick_starter(
         (pitcher_id, True)  — advance pointer after game
 
     Spot start (scheduled pitcher is injured):
-        (bullpen_pid, False) — use non-rotation pitcher, keep pointer on injured slot
-                               so the injured pitcher resumes their spot when healthy
+        (bullpen_pid, True)  — a non-rotation pitcher takes the injured pitcher's
+                               turn and the rotation moves on, so the others keep
+                               theirs; the injured pitcher's slot comes round
+                               again and is his once he's healthy
 
     No rotation or all pitchers unavailable:
         (None, False) — caller falls back to stamina-based selection
@@ -342,13 +344,11 @@ def _pick_starter(
             best = max(
                 pool, key=lambda p: p.get_effective_stat(p.skills.get("stamina", 0))
             )
-            return (
-                best.id,
-                False,
-            )  # do NOT advance pointer — injured pitcher reclaims slot when healthy
+            # Advance: holding the pointer on the injured slot would make
+            # every game a spot start until he's back.
+            return best.id, True
 
         # No bullpen available — walk healthy rotation pitchers as last resort
-        # (still don't advance so the injured slot isn't lost)
         healthy_rotation = sorted(
             [r for r in rotation if r["player_id"] not in injured_ids],
             key=lambda r: r["rotation_order"],
