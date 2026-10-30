@@ -198,10 +198,12 @@ class TestPickStarterInjuredScheduled:
             team_players=[p3],
         )
         assert pid == "p3"
-        assert advance is False  # pointer stays on injured slot
+        assert advance is True
 
-    def test_advance_false_on_spot_start(self):
-        """Pointer must NOT advance when a spot starter is used."""
+    def test_a_spot_start_moves_the_rotation_on(self):
+        """The spot starter takes the injured pitcher's turn and the pointer
+        advances, so the healthy starters keep their turns instead of sitting
+        until he's back."""
         rot = _make_rot_repo(
             scheduled="p1",
             rotation=[_rotation_row("p1", 1)],
@@ -217,7 +219,7 @@ class TestPickStarterInjuredScheduled:
             injured_ids={"p1"},
             team_players=[p2],
         )
-        assert advance is False
+        assert advance is True
 
     def test_spot_start_prefers_rested_bullpen(self):
         """When multiple bullpen options, prefer the one with higher effective stamina."""
@@ -317,6 +319,37 @@ class TestPickStarterInjuredScheduled:
             eligible_ids={"p-eligible"},
         )
         assert pid == "p-eligible"
+
+    def test_the_healthy_starters_keep_their_turns(self, db_conn, factory):
+        """Ten games with the 5th starter hurt: the other four start two
+        each and a spot starter takes his two turns."""
+        from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+
+        league = factory.league(state="season")
+        season = factory.season()
+        team = factory.team()
+        starters = [
+            factory.rated_player(team, league, 60, pitcher=True).id for _ in range(5)
+        ]
+        rot = TeamRotationsRepository(db_conn, league.id)
+        rot.set_rotation(team.id, season.id, starters, "2025-04-01")
+        pit = _make_pitcher_repo({})
+        spot = _fake_player("spot")
+        starts = []
+        for _ in range(10):
+            pid, advance = _pick_starter(
+                rot,
+                pit,
+                team.id,
+                season.id,
+                GAME_DATE,
+                injured_ids={starters[4]},
+                team_players=[spot],
+            )
+            starts.append(pid)
+            if advance:
+                rot.advance_rotation_pointer(team.id, season.id, after_player_id=pid)
+        assert starts == starters[:4] + ["spot"] + starters[:4] + ["spot"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
