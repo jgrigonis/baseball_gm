@@ -8,6 +8,16 @@
 {% macro plist(players) -%}
 {% for p in players %}{% if p.is_pick %}<span class="tr-pick">{{ p.last_name }}</span>{% else %}<a href="#" onclick="openPlayerPanel('{{ p.player_id }}');return false;">{{ p.first_name }} {{ p.last_name }}</a>{{ rk(p.player_id) }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
 {%- endmacro %}
+{# Compares the players in an offer side by side (not picks), when there are
+   two or more. With sides, each is tagged "You get" / "You give". #}
+{% macro compare_btn(get, give, sides=true) -%}
+{% set get_ids = get | rejectattr("is_pick") | map(attribute="player_id") | list %}
+{% set give_ids = give | rejectattr("is_pick") | map(attribute="player_id") | list %}
+{% if get_ids | length + give_ids | length > 1 %}
+{% if sides %}<button class="btn btn-secondary" title="Compare the players side by side" onclick='compareTrade({{ get_ids | tojson }}, {{ give_ids | tojson }})'>Compare all ↔</button>
+{% else %}<button class="btn btn-secondary" title="Compare the players side by side" onclick='openCompare({{ (get_ids + give_ids) | tojson }}.map(id => ({id})))'>Compare all ↔</button>{% endif %}
+{% endif %}
+{%- endmacro %}
 {# An AI team's GM, linked to their persona card. #}
 {% macro ai_gm(team_id) -%}
 {% set g = ai_gms.get(team_id) if ai_gms else none %}{% if g %} <a class="tr-gm" href="/leagues/{{ league_id }}/personas/{{ g.id }}" hx-get="/leagues/{{ league_id }}/personas/{{ g.id }}" hx-target="#tab-content" hx-push-url="true" title="{{ g.archetype }}">({{ g.name }})</a>{% endif %}
@@ -57,6 +67,7 @@
           {% if o.expires_on %}<div class="tr-reason">Expires after the games on {{ o.expires_on }}</div>{% endif %}
         </div>
         <div class="tr-offer-btns">
+          {{ compare_btn(o.sent, o.received) }}
           <button class="btn btn-primary" onclick="trAnswer('{{ o.id }}', 'accept')">Accept</button>
           <button class="btn btn-secondary" onclick='trCounter({{ {"id": o.id, "team": o.from_team_id, "theirs": o.sent | map(attribute="player_id") | list, "mine": o.received | map(attribute="player_id") | list} | tojson }})'>Counter</button>
           <button class="btn btn-secondary" onclick="trAnswer('{{ o.id }}', 'reject')">Reject</button>
@@ -80,6 +91,7 @@
           <div class="tr-reason">{{ o.tally.yes }} yes · {{ o.tally.no }} no · {{ o.tally.voters }} {{ 'voter' if o.tally.voters == 1 else 'voters' }}{% if o.my_vote is not none %} · you voted {{ 'yes' if o.my_vote else 'no' }}{% endif %}</div>
         </div>
         <div class="tr-offer-btns">
+          {{ compare_btn(o.received, o.sent, sides=false) }}
           <button class="btn {{ 'btn-primary' if o.my_vote else 'btn-secondary' }}" onclick="trVote('{{ o.id }}', true)">Yes</button>
           <button class="btn {{ 'btn-primary' if o.my_vote == false else 'btn-secondary' }}" onclick="trVote('{{ o.id }}', false)">No</button>
         </div>
