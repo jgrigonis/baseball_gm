@@ -939,7 +939,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .pd-section-title {
   font-family: var(--font-mono); font-size: 9px;
   letter-spacing: .12em; text-transform: uppercase;
-  color: var(--muted); margin-bottom: 8px;
+  color: var(--text-dim); margin-bottom: 8px;
 }
 
 .pd-subsection-title {
