@@ -317,6 +317,39 @@ def test_game_panel_links_each_team_to_its_season_stats(client, db_conn, factory
         ) in header
 
 
+def test_game_panel_calls_out_standout_performances(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game = db_conn.execute(
+        "SELECT id, away_team_id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()
+    cycler = factory.rated_player(home, league, name="Cycler")
+    ace = factory.rated_player(home, league, name="Ace", pitcher=True)
+    db_conn.execute(
+        """INSERT INTO player_game_stats (player_id, game_id, team_id,
+               opponent_team_id, bat_ab, bat_hits, bat_doubles, bat_triples,
+               bat_home_runs, bat_rbi, bat_runs, bat_walks, bat_strike_outs)
+           VALUES (%s, %s, %s, %s, 5, 4, 1, 1, 1, 3, 2, 0, 0)""",
+        (cycler.id, game["id"], home.id, game["away_team_id"]),
+    )
+    db_conn.execute(
+        """INSERT INTO player_game_stats (player_id, game_id, team_id,
+               opponent_team_id, pitch_game_played, pitch_game_started,
+               pitch_outs, pitch_hits, pitch_runs, pitch_earned_runs,
+               pitch_walks, pitch_strike_outs, pitch_home_runs)
+           VALUES (%s, %s, %s, %s, 1, 1, 21, 5, 3, 3, 1, 11, 0)""",
+        (ace.id, game["id"], home.id, game["away_team_id"]),
+    )
+
+    html = client.get(f"/leagues/{league.id}/games/{game['id']}/panel").text
+
+    assert "Cycler hits for the cycle as the Beans beat the Wind, 5-3" in html
+    strip = html[html.index('class="standouts"') :]
+    assert strip.index(">Cycle<") < strip.index(">11 K<")
+    assert "4-for-5, 2B, 3B, HR, 3 RBI" in strip
+    assert html.count('class="standout-row"') == 2
+    assert 'title="Cycle · 4 hits"' in html
+
+
 def test_up_next_links_each_opponent_to_its_stats(db_conn, factory):
     league, home = _league(db_conn, factory)
     game = db_conn.execute(

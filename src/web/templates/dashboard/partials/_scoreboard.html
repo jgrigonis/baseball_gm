@@ -1,5 +1,5 @@
 {# The game panel's scoreboard: a headline, runs by inning in number tiles,
-   R/H/E, and the pitching decisions. scoreboard comes from
+   R/H/E, the game's standout performances and the pitching decisions. scoreboard comes from
    src/api/view_models/line_score.py. #}
 <div class="scoreboard">
   <div class="scoreboard-head">
@@ -29,6 +29,21 @@
       </tbody>
     </table>
   </div>
+  {% if scoreboard.standouts %}
+  <div class="standouts">
+    {% for st in scoreboard.standouts %}
+    {% set team = scoreboard.rows | selectattr("team_id", "equalto", st.team_id) | first %}
+    <div class="standout{% if st.team_id == my_team_id %} mine{% endif %}">
+      <span class="standout-feat">{{ st.label }}</span>
+      <span class="standout-who">
+        <button onclick="openPlayerPanel('{{ st.player_id }}')" class="gp-player-btn">{{ st.first_name[0] }}. {{ st.last_name }}</button>
+        <span class="standout-team">{{ team.code }}</span>
+      </span>
+      <span class="standout-line">{{ st.line }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% if scoreboard.decisions %}
   <div class="scoreboard-notes">
     {% for label, name in scoreboard.decisions %}

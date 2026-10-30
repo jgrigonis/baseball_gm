@@ -504,6 +504,7 @@ class PlayerGameRepository:
                       pgs.pitch_outs as outs, pgs.pitch_hits as "H",
                       pgs.pitch_runs as "R", pgs.pitch_earned_runs as "ER",
                       pgs.pitch_walks as "BB", pgs.pitch_strike_outs as "K",
+                      pgs.pitch_hit_batters as "HBP",
                       pgs.pitch_home_runs as "HR", pgs.pitch_win as "W",
                       pgs.pitch_loss as "L", pgs.pitch_save as "SV",
                       pgs.pitch_complete_game as "CG", pgs.pitch_shutout as "SHO",
