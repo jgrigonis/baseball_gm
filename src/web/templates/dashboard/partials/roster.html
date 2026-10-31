@@ -643,7 +643,12 @@ function render() {
 
   document.getElementById('empty-40man').style.display = fortyMan.size === 0 ? 'block' : 'none';
   document.getElementById('empty-org').style.display   = orgIds.length === 0  ? 'block' : 'none';
-  document.getElementById('forty-count').textContent   = `${fortyMan.size} / 40`;
+  const fortyCount = document.getElementById('forty-count');
+  fortyCount.textContent = `${fortyMan.size} / 40`;
+  // An unfilled 40-man shows in bold red so open spots are hard to miss.
+  const notFull = fortyMan.size < 40;
+  fortyCount.style.color = notFull ? 'var(--red)' : '';
+  fortyCount.style.fontWeight = notFull ? '700' : '';
 }
 
 /* ── Commit helper (save + render + banner) ─────────────────────────────────── */
