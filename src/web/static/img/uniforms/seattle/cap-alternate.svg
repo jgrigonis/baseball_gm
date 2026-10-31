@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Seattle cap alternate">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#2AA198"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#1E7A73" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#1E7A73" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#E8EEF0"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#0B3D4C" stroke="#062A35" stroke-width="1.5"/>
+      <path transform="translate(66 96) scale(0.86)" d="M0 -10 H6 V-18 H9 L11 -40 H5 L8 -44 H11.5 V-55 H12.5 V-44 H16 L19 -40 H13 L15 -18 H20 V-28 H26 V-36 H32 V-24 H36 V-42 L39 -47 L42 -42 V-22 H48 V-32 H54 V-20 H60 V-26 H66 V-14 L74 -15 Q84 -20 91 -30 L97 -36 L103 -33 Q112 -22 124 -15 L132 -13" fill="none" stroke="#0B3D4C" stroke-width="3.02" stroke-linejoin="miter" stroke-linecap="square"/>
+</svg>

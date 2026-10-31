@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Seattle helmet">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3C6E7D"/><stop offset=".45" stop-color="#0B3D4C"/><stop offset="1" stop-color="#062A35"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#2AA198"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#062A35"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#062A35"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <path d="M59.61 89.25Q64.81 89.53 66.66 89.53Q67.09 89.53 67.35 89.27Q67.61 89.02 67.61 88.58V86.87H63.24Q61.24 86.87 60.34 85.97Q59.44 85.06 59.44 83.07V82.5Q59.44 80.5 60.34 79.6Q61.24 78.7 63.24 78.7H69.91V81.36H64Q62.86 81.36 62.86 82.5V82.88Q62.86 84.02 64 84.02H67.42Q69.28 84.02 70.15 84.89Q71.03 85.77 71.03 87.63V88.58Q71.03 90.44 70.15 91.32Q69.28 92.19 67.42 92.19Q66.45 92.19 65.37 92.15L63.62 92.08Q61.68 91.98 59.61 91.81Z M84.28 92H73.74V78.7H84.28V81.36H77.16V83.92H82.76V86.58H77.16V89.34H84.28Z M89.18 92H85.47L90.51 78.7H94.31L99.34 92H95.64L94.78 89.62H90.03ZM90.89 87.16H93.93L92.41 82.69Z M106.42 92H103V81.36H99.01V78.7H110.41V81.36H106.42Z M119.2 92H115.78V81.36H111.79V78.7H123.19V81.36H119.2Z M128.94 89.34H135.88V92H125.52V78.7H128.94Z M148.75 92H138.21V78.7H148.75V81.36H141.63V83.92H147.23V86.58H141.63V89.34H148.75Z" fill="#E8EEF0" stroke="#2AA198" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"/>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#2AA198" stroke-width="2.5"/>
+</svg>

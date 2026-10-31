@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Berlin cap alternate">
+  <defs>
+    <path id="bear" d="M4 23 Q11 11 24 8 Q27 1 34 1 Q41 1 41 8 Q52 6 60 10 Q71 17 71 32 Q71 44 70 54 Q74 66 70 78 Q69 82 66 85 L68 94 Q68 97 64 97 L54 97 L54 90 Q50 86 46 85 L44 92 Q44 97 40 97 L32 97 L34 88 Q34 78 36 70 Q32 66 30 62 L20 64 L17 67 L16 64 L13 66 L13 62 L11 62 Q11 56 17 54 L29 50 Q31 47 31 45 L20 46 L17 49 L15 46 L12 48 L12 44 L9 44 Q9 38 15 36 L30 34 Q33 33 31 31 L22 32 Q12 32 7 29 L3 29 Q0 26 4 23 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#D62828"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#A51F1F" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#A51F1F" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#F2C14E"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1C1C1C" stroke="#0E0E0E" stroke-width="1.5"/>
+      <g transform="translate(96 40) scale(0.6)"><use href="#bear" fill="#1C1C1C" stroke="#F2C14E" stroke-width="4" stroke-linejoin="round" paint-order="stroke"/><circle cx="22" cy="15" r="2" fill="#D62828"/></g>
+</svg>

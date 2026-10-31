@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 8 74 214" width="74" height="214" role="img" aria-label="Portland stirrups">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#1B3D26"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="42" width="56" height="9" fill="#D7192F"/><rect x="50" y="52" width="56" height="5" fill="#C6D93B"/><rect x="50" y="61" width="56" height="3" fill="#D7192F"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#10281A"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#D7192F"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="42" width="56" height="9" fill="#1B3D26"/><rect x="144" y="52" width="56" height="5" fill="#C6D93B"/><rect x="144" y="61" width="56" height="3" fill="#1B3D26"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#10281A"/>
+      </g>
+</svg>

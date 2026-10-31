@@ -8,8 +8,8 @@
 # team of that name.
 #
 # A league plays with num_teams of them: all 30 World League teams, those
-# plus EXTRA_TEAMS for 32, or a random pick of them for fewer, the same pick
-# for the league every time (it's seeded by the league's id).
+# plus a pick of EXTRA_TEAMS for 32, or a random pick of them for fewer. Each
+# pick is the same for the league every time (it's seeded by the league's id).
 
 from __future__ import annotations
 
@@ -27,10 +27,12 @@ def manifest_path() -> Path:
     return Path(MANIFEST_FILES_DIR) / MANIFEST_FILENAME
 
 
-# Teams past the World League's 30, for bigger leagues.
+# Teams past the World League's 30, for bigger leagues. There are more of them
+# than a 32-team league needs, so each such league draws its own.
 EXTRA_TEAMS = (
-    {"csv": "berlin.csv", "city": "Berlin", "mascot": "Bears"},
-    {"csv": "seattle.csv", "city": "Seattle", "mascot": "Orcas"},
+    {"csv": "berlin.csv", "city": "Berlin", "mascot": "Bear"},
+    {"csv": "seattle.csv", "city": "Seattle", "mascot": "Rain"},
+    {"csv": "portland.csv", "city": "Portland", "mascot": "Weird"},
 )
 
 
@@ -52,7 +54,10 @@ def team_entries(league_id: str, num_teams: int) -> list[dict]:
     plays with."""
     world = list(_world_entries())
     if num_teams >= len(world):
-        return world + list(EXTRA_TEAMS[: num_teams - len(world)])
+        extra = random.Random(f"extra-teams-{league_id}").sample(
+            EXTRA_TEAMS, min(num_teams - len(world), len(EXTRA_TEAMS))
+        )
+        return world + sorted(extra, key=lambda t: t["city"])
     picked = random.Random(f"teams-{league_id}").sample(world, num_teams)
     return sorted(picked, key=lambda t: t["city"])
 
