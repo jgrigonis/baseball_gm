@@ -1,7 +1,7 @@
 {# templates/dashboard/partials/all_star.html
    The All-Star tab (src/api/services/all_star.py): the ballot while voting
    is open, the All-Stars and the captains' draft once the votes are counted,
-   then the All-Star Game.
+   then the All-Star Game, the Home Run Derby and the Rookie Game.
 #}
 {% from "dashboard/partials/_rookie.html" import rk with context %}
 <div class="content-inner tab-fade">
@@ -96,8 +96,18 @@
   {% if as_error %}
   <div class="card as-intro"><div class="card-body as-note"><span class="as-error">✗ {{ as_error }}</span></div></div>
   {% endif %}
-  {% if game %}{% include "dashboard/partials/_all_star_game.html" %}{% endif %}
+  {% if asg %}{% with x = asg %}{% include "dashboard/partials/_all_star_game.html" %}{% endwith %}{% endif %}
   {% if derby_rounds or derby_field %}{% include "dashboard/partials/_hr_derby.html" %}{% endif %}
+  {% if rookie %}
+  <h2 class="as-heading">The Rookie Game</h2>
+  {% if team_id %}
+  <div class="card as-intro"><div class="card-body as-note">
+    {% if rookie.my_rookies %}<span class="as-ok">🌱 {{ rookie.my_rookies }} of your rookies {{ 'is' if rookie.my_rookies == 1 else 'are' }} in it.</span>
+    {% else %}None of your rookies made it this year.{% endif %}
+  </div></div>
+  {% endif %}
+  {% with x = rookie %}{% include "dashboard/partials/_all_star_game.html" %}{% endwith %}
+  {% endif %}
   <h2 class="as-heading">The All-Stars</h2>
   {% if team_id %}
   <div class="card as-intro"><div class="card-body as-note">

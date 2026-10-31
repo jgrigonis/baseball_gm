@@ -19,6 +19,7 @@ from src.api.services import (
     all_star,
     front_office,
     hr_derby,
+    rookie_game,
     team_states,
     trades,
 )
@@ -114,13 +115,21 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     game_date = next_date_row["game_date"]
 
-    # The Home Run Derby and the All-Star Game come before the first games
-    # after the break.
+    # The Rookie Game, the Home Run Derby and the All-Star Game come before
+    # the first games after the break.
     if all_star.game_due(conn, season_id, game_date):
         played = None
         try:
+            played = rookie_game.play(conn, league_id, season_id)
+            conn.commit()
+        except Exception:
+            # The All-Star Game goes on without it.
+            rollback_quietly(conn)
+            log.exception("Rookie Game failed for league %s", league_id)
+        try:
             derby = hr_derby.play(conn, league_id, season_id)
-            played = all_star.play_game(conn, league_id, season_id) or derby
+            game = all_star.play_game(conn, league_id, season_id)
+            played = game or derby or played
             conn.commit()
         except Exception:
             # The season goes on without it rather than stopping here.

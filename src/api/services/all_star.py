@@ -33,6 +33,10 @@
 #
 # Every sim stops the day the ballot opens, after the votes are counted and
 # after the game, so a GM doesn't play straight past any of them.
+#
+# The Rookie Game (src/api/services/rookie_game.py) is run the same way: its
+# draft and game are these functions with event="rookie", which keeps them
+# in its own tables (AllStarRepository) with its own draft needs.
 
 from __future__ import annotations
 
@@ -50,7 +54,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.game.game import Game
-from src.league import all_star
+from src.league import all_star, rookie_game
 from src.team.manager_profile import ManagerProfile
 from src.team.team_in_game import TeamInGame
 from src.team.team_record import TeamRecord
@@ -138,6 +142,10 @@ def count_votes(
         w = window(conn, season_id)
         repo.create_game(season_id, *captains, all_star.game_date(w), tied)
         draft(conn, league_id, season_id)
+    # The rookies are picked once the All-Stars are known.
+    from src.api.services import rookie_game as rookies
+
+    rookies.select(conn, league_id, season_id)
     return pool
 
 
@@ -159,10 +167,12 @@ def _hurt(conn, league_id: str, player_ids) -> set[str]:
     return InjuryRepository(conn, league_id).get_injured_ids(list(player_ids), None)
 
 
-def stars_with_injuries(conn, league_id: str, season_id: str) -> list[dict]:
+def stars_with_injuries(
+    conn, league_id: str, season_id: str, event: str = "all_star"
+) -> list[dict]:
     """The season's All-Stars (AllStarRepository.all_stars), each with
     "hurt": whether he's out of the draft and the game."""
-    stars = AllStarRepository(conn).all_stars(season_id)
+    stars = AllStarRepository(conn, event).all_stars(season_id)
     hurt = _hurt(conn, league_id, [r["player_id"] for r in stars])
     for r in stars:
         r["hurt"] = r["player_id"] in hurt
@@ -217,14 +227,26 @@ def turn(g: dict | None, stars: list[dict]) -> str | None:
 
 
 def my_turn(conn, league_id: str, season_id: str | None, team_id) -> bool:
-    """Whether this team's GM, a person, has an All-Star pick to make."""
+    """Whether this team's GM, a person, has a pick to make in the All-Star
+    or the Rookie Game draft."""
     if not season_id or not team_id:
         return False
-    repo = AllStarRepository(conn)
-    g = repo.game(season_id)
-    if not g or g["state"] == "played":
-        return False
-    return turn(g, _board(stars_with_injuries(conn, league_id, season_id))) == team_id
+    for event in EVENTS:
+        g = AllStarRepository(conn, event).game(season_id)
+        if not g or g["state"] == "played":
+            continue
+        stars = _board(stars_with_injuries(conn, league_id, season_id, event))
+        if turn(g, stars) == team_id:
+            return True
+    return False
+
+
+EVENTS = ("all_star", "rookie")
+
+
+def _needs(event: str) -> dict[str, int]:
+    """What an AI captain fills first in this event's draft."""
+    return rookie_game.SIDE_NEEDS if event == "rookie" else all_star.SIDE_NEEDS
 
 
 def _add_tied(conn, league_id: str, season_id: str, player_id: str) -> None:
@@ -267,17 +289,23 @@ def break_tie(conn, league_id: str, season_id: str, team_id: str, player_id: str
     draft(conn, league_id, season_id)
 
 
-def draft(conn, league_id: str, season_id: str, everyone: bool = False) -> int:
+def draft(
+    conn,
+    league_id: str,
+    season_id: str,
+    everyone: bool = False,
+    event: str = "all_star",
+) -> int:
     """Make the picks of the captains who don't pick for themselves: AI
     captains, people who left it to the scouts (auto_draft), or everyone.
     Stops at a person's turn. Returns how many picks it made."""
-    repo = AllStarRepository(conn)
+    repo = AllStarRepository(conn, event)
     g = repo.game(season_id)
     if not g or g["state"] != "draft":
         return 0
     people = _people(conn, league_id)
     auto = {g[f"captain{s}_team_id"] for s in (1, 2) if g[f"auto{s}"]}
-    stars = _board(stars_with_injuries(conn, league_id, season_id))
+    stars = _board(stars_with_injuries(conn, league_id, season_id, event))
     made = sum(1 for r in stars if r["side"])
     n = 0
     while made < len(stars):
@@ -286,7 +314,8 @@ def draft(conn, league_id: str, season_id: str, everyone: bool = False) -> int:
         if team in people and team not in auto and not everyone:
             break
         available = [r for r in stars if not r["side"]]
-        r = all_star.ai_pick(available, [r for r in stars if r["side"] == side])
+        mine = [r for r in stars if r["side"] == side]
+        r = all_star.ai_pick(available, mine, _needs(event))
         made += 1
         n += 1
         repo.add_pick(season_id, r["player_id"], side, made)
@@ -294,26 +323,40 @@ def draft(conn, league_id: str, season_id: str, everyone: bool = False) -> int:
     return n
 
 
-def auto_draft(conn, league_id: str, season_id: str, team_id: str, _player_id=None):
+def auto_draft(
+    conn,
+    league_id: str,
+    season_id: str,
+    team_id: str,
+    _player_id=None,
+    event: str = "all_star",
+):
     """A captain leaves the rest of his picks to the scouts. Raises
     ValueError if he isn't a captain."""
-    repo = AllStarRepository(conn)
+    repo = AllStarRepository(conn, event)
     g = repo.game(season_id)
     side = next((s for s in (1, 2) if g and g[f"captain{s}_team_id"] == team_id), None)
     if not side or g["state"] == "played":
-        raise ValueError("You aren't an All-Star captain.")
+        raise ValueError(f"You aren't {A_TITLE[event]} captain.")
     repo.set_auto(season_id, side)
-    draft(conn, league_id, season_id)
+    draft(conn, league_id, season_id, event=event)
 
 
-def pick(conn, league_id: str, season_id: str, team_id: str, player_id: str):
+def pick(
+    conn,
+    league_id: str,
+    season_id: str,
+    team_id: str,
+    player_id: str,
+    event: str = "all_star",
+):
     """A person's pick in the draft; the AI captain's picks that follow are
     made straight away. Raises ValueError if it isn't his pick to make."""
-    repo = AllStarRepository(conn)
+    repo = AllStarRepository(conn, event)
     g = repo.game(season_id)
     if not g or g["state"] != "draft":
-        raise ValueError("The All-Star draft isn't on.")
-    stars = _board(stars_with_injuries(conn, league_id, season_id))
+        raise ValueError(f"The {TITLES[event]} draft isn't on.")
+    stars = _board(stars_with_injuries(conn, league_id, season_id, event))
     if turn(g, stars) != team_id:
         raise ValueError("It isn't your pick.")
     r = next((r for r in stars if r["player_id"] == player_id), None)
@@ -321,7 +364,12 @@ def pick(conn, league_id: str, season_id: str, team_id: str, player_id: str):
         raise ValueError("That player isn't available.")
     made = sum(1 for r in stars if r["side"])
     repo.add_pick(season_id, player_id, all_star.side_to_pick(made + 1), made + 1)
-    draft(conn, league_id, season_id)
+    draft(conn, league_id, season_id, event=event)
+
+
+TITLES = {"all_star": "All-Star", "rookie": "Rookie Game"}
+A_TITLE = {"all_star": "an All-Star", "rookie": "a Rookie Game"}
+MASCOTS = {"all_star": "All-Stars", "rookie": "Rookies"}
 
 
 # ── The game ─────────────────────────────────────────────────────────────────
@@ -353,13 +401,19 @@ def game_day(conn, season_id: str, next_date: str) -> str | None:
 
 
 def play_game(
-    conn, league_id: str, season_id: str, rng: random.Random | None = None
+    conn,
+    league_id: str,
+    season_id: str,
+    rng: random.Random | None = None,
+    event: str = "all_star",
 ) -> dict | None:
-    """Finish the draft and play the All-Star Game, saving the score, every
-    player's line and the MVP. Returns the result, or None if there's no
-    game to play."""
-    repo = AllStarRepository(conn)
+    """Finish the draft and play the All-Star Game (or with event="rookie",
+    the Rookie Game), saving the score, every player's line and the MVP.
+    Returns the result, or None if there's no game to play."""
+    repo = AllStarRepository(conn, event)
     g = repo.game(season_id)
+    if not g and event != "all_star":
+        return None
     if not g:
         # The votes were counted before there was a game to pick for.
         captains = _captains(conn, season_id)
@@ -374,11 +428,12 @@ def play_game(
         # Captain 2 never picked: the stats decide, as for an AI captain.
         _add_tied(conn, league_id, season_id, g["tied_ids"][0])
         repo.set_state(season_id, "draft")
-    name_reserves(conn, league_id, season_id)
-    draft(conn, league_id, season_id, everyone=True)
+    if event == "all_star":
+        name_reserves(conn, league_id, season_id)
+    draft(conn, league_id, season_id, everyone=True, event=event)
 
     rng = rng or random.Random()
-    stars = stars_with_injuries(conn, league_id, season_id)
+    stars = stars_with_injuries(conn, league_id, season_id, event)
     injured = {r["player_id"] for r in stars if r["hurt"]}
     players = PlayerRepository(conn)
     gms = GMRepository(conn)
@@ -392,7 +447,7 @@ def play_game(
             TeamRecord(
                 id=team_id,
                 city=g[f"city{side}"],
-                mascot="All-Stars",
+                mascot=MASCOTS[event],
                 players=tuple(p for p in records if p),
             )
         )
@@ -570,20 +625,25 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
         ctx["my_count"] = sum(1 for r in stars if r["team_id"] == team_id)
         ctx["total"] = len(voted)
         g = repo.game(season_id)
-        ctx["game"] = g
         if g:
-            ctx.update(_game_context(conn, league_id, season_id, team_id, g, stars))
+            ctx["asg"] = game_context(conn, league_id, season_id, team_id, g, stars)
     return ctx
 
 
-def _game_context(conn, league_id, season_id, team_id, g, stars) -> dict:
-    """The All-Star Game part of the tab: the tie and the draft before it's
-    played, the line score and box score after."""
+def game_context(
+    conn, league_id, season_id, team_id, g, stars, event: str = "all_star"
+) -> dict:
+    """The All-Star Game part of the tab (or with event="rookie", the Rookie
+    Game's): the tie and the draft before it's played, the line score and
+    box score after. The game's partial reads it as `x`."""
     captains = {1: g["captain1_team_id"], 2: g["captain2_team_id"]}
     out = [r for r in stars if r["hurt"] and not r["side"]]
     stars = _board(stars)
     up = turn(g, stars)
     ctx = {
+        "game": g,
+        "event": event,
+        "path": "" if event == "all_star" else "/rookie",
         "captains": captains,
         "my_side": next((s for s, t in captains.items() if t == team_id), None),
         "up_side": next((s for s, t in captains.items() if t == up), None),
@@ -624,7 +684,7 @@ def _game_context(conn, league_id, season_id, team_id, g, stars) -> dict:
             s: [r for r in left if r["slot"] == s] for s in all_star.SLOTS
         }
     else:
-        lines = AllStarRepository(conn).lines(season_id)
+        lines = AllStarRepository(conn, event).lines(season_id)
         ctx["batting"] = {
             s: [r for r in lines if r["side"] == s and r["batting_order"]]
             for s in (1, 2)

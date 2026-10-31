@@ -234,12 +234,13 @@
         <span class="cs-empty">No stats on record</span>
       {% endif %}
 
-      {# All-Star Games, kept apart from the season stats #}
-      {% if p.all_star_games %}
-      <div class="cs-section-title">All-Star Games</div>
+      {# All-Star and Rookie Games, kept apart from the season stats #}
+      {% for title, games in (('All-Star Games', p.all_star_games), ('Rookie Game', p.rookie_games)) %}
+      {% if games %}
+      <div class="cs-section-title">{{ title }}</div>
       <table class="cs-asg-table">
         <tbody>
-          {% for g in p.all_star_games %}
+          {% for g in games %}
           <tr>
             <td>{{ g.year }}</td>
             <td>Team {{ g.captain_city }}</td>
@@ -251,6 +252,7 @@
         </tbody>
       </table>
       {% endif %}
+      {% endfor %}
 
       {% if p.hr_derbies %}
       <div class="cs-section-title">Home Run Derby</div>

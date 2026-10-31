@@ -23,7 +23,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.api.services import hr_derby
+from src.api.services import hr_derby, rookie_game
 from src.league import all_star
 from src.stats import formulas
 from src.web.utils import _current_league_date
@@ -487,4 +487,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             for r in AllStarRepository(db).career_lines(pid)
         ],
         "hr_derbies": hr_derby.career(db, pid),
+        "rookie_games": [
+            {**r, "summary": all_star.line_text(r)} for r in rookie_game.career(db, pid)
+        ],
     }
