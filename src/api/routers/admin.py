@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from src.api.dependencies import DB, Admin
 from src.api.routers.leagues import state_label
 from src.api.services import admin as admin_service
+from src.api.services import badges
 from src.api.services.passwords import clean_email, password_error, username_error
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.persona_repo import PersonaRepository
@@ -41,6 +42,8 @@ NOTES = {
     "password": "Password set. They've been signed out everywhere.",
     "admin_on": "They're an admin now.",
     "admin_off": "They're no longer an admin.",
+    "contributor_on": "They're a paid contributor now, with the badge on their profile.",
+    "contributor_off": "They're no longer a paid contributor.",
     "user_deleted": "User deleted.",
     "persona_created": "Persona created.",
     "chance": "Chance saved.",
@@ -275,6 +278,7 @@ def set_email(
             request, db, user, user_id, 400, email_error=error, email=email
         )
     UserRepository(db).set_email(user_id, clean)
+    badges.award(db, user_id)  # Email on File
     db.commit()
     return _done(f"/admin/users/{user_id}", "email")
 
@@ -330,6 +334,25 @@ def set_admin(
     UserRepository(db).set_admin(user_id, is_admin)
     db.commit()
     return _done(f"/admin/users/{user_id}", "admin_on" if is_admin else "admin_off")
+
+
+@router.post("/users/{user_id}/contributor")
+def set_contributor(
+    user_id: str,
+    db: DB,
+    user: Admin,
+    is_contributor: bool = Form(False),
+):
+    """Paid contributor, set by hand until there are payments."""
+    _user_or_404(db, user_id)
+    UserRepository(db).set_contributor(user_id, is_contributor)
+    if is_contributor:
+        badges.award(db, user_id)
+    else:
+        badges.take_back(db, user_id, "contributor")
+    db.commit()
+    code = "contributor_on" if is_contributor else "contributor_off"
+    return _done(f"/admin/users/{user_id}", code)
 
 
 @router.post("/users/{user_id}/delete")

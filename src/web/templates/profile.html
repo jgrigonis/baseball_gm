@@ -52,6 +52,21 @@
   </p>
   {% endif %}
 
+  <div class="card gp-full">
+    <div class="card-header"><span class="card-title">Badges · {{ badges.earned }} of {{ badges.total }}</span></div>
+    <div class="card-body"><div class="gp-badges">
+      {% for b in badges.all %}
+      <div class="gp-badge{% if not b.earned %} locked{% endif %}" title="{{ b.description }}{% if b.detail %} — {{ b.detail }}{% endif %}">
+        <div class="gp-badge-icon" aria-hidden="true">{{ b.icon }}</div>
+        <div class="gp-badge-name">{{ b.name }}</div>
+        <div class="gp-badge-desc">{{ b.description }}</div>
+        {% if b.detail %}<div class="gp-badge-where">{{ b.detail }}</div>
+        {% elif b.progress and b.progress[0] %}<div class="gp-badge-prog">{{ b.progress[0] }} of {{ b.progress[1] }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div></div>
+  </div>
+
   {% if trophies %}
   <div class="card gp-full">
     <div class="card-header"><span class="card-title">Trophy case</span></div>

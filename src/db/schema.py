@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS users (
     is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
     totp_secret   TEXT,
     is_admin      BOOLEAN NOT NULL DEFAULT FALSE, -- can open /admin/
+    is_contributor BOOLEAN NOT NULL DEFAULT FALSE, -- paid for the game (Paid contributor badge)
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     dismissed_tips TEXT[] NOT NULL DEFAULT '{{}}', -- first-visit tab tips closed
     created_at    TEXT NOT NULL DEFAULT (NOW())
@@ -844,11 +845,26 @@ CREATE TABLE IF NOT EXISTS gm_career_seasons (
     wins           INTEGER NOT NULL DEFAULT 0,
     losses         INTEGER NOT NULL DEFAULT 0,      -- regular season
     division_title BOOLEAN NOT NULL DEFAULT FALSE,
+    finish         INTEGER,                         -- place in the division (or league
+    finish_of      INTEGER,                         --   without divisions), of how many
     playoff_result TEXT CHECK (playoff_result IN
                        ('Round 1', 'Semifinals', 'Finals', 'Champion')),  -- how far they got
+    sweeps         INTEGER NOT NULL DEFAULT 0,      -- playoff series won without a loss
+    trades         INTEGER NOT NULL DEFAULT 0,      -- accepted trades
     final          BOOLEAN NOT NULL DEFAULT FALSE,  -- season over, or they left
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, league_id, season_id)
+);
+
+-- gm_badges: achievements on the profile page (src/api/services/badges.py).
+--   Kept once earned, even if what earned it is later deleted. detail says
+--   where, e.g. "Weekend League · 2031".
+CREATE TABLE IF NOT EXISTS gm_badges (
+    user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    badge     TEXT NOT NULL,
+    detail    TEXT,
+    earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, badge)
 );
 
 -- Written at season end by the evaluation job.

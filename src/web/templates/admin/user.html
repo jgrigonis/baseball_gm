@@ -67,6 +67,21 @@
     {% if admin_error %}<div style="{{ err_style }}margin-top:8px;">{{ admin_error }}</div>{% endif %}
   </div></div>
 
+  <div class="card admin-section"><div class="card-header"><span class="card-title">Paid contributor</span></div><div class="card-body">
+    <form method="POST" action="/admin/users/{{ account.id }}/contributor" style="display:flex;align-items:center;gap:12px;">
+      {% if account.is_contributor %}
+      <span class="admin-dim" style="font-size:12px;">They have the Paid Contributor badge on their profile.</span>
+      <div class="spacer"></div>
+      <button type="submit" class="btn btn-secondary">Remove</button>
+      {% else %}
+      <input type="hidden" name="is_contributor" value="true">
+      <span class="admin-dim" style="font-size:12px;">Not a paid contributor.</span>
+      <div class="spacer"></div>
+      <button type="submit" class="btn btn-secondary">Make Paid Contributor</button>
+      {% endif %}
+    </form>
+  </div></div>
+
   <div class="admin-section">
     <div class="page-header"><h1 class="page-title" style="font-size:20px;">Leagues</h1></div>
     <div class="card">

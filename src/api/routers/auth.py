@@ -38,7 +38,7 @@ from fastapi import APIRouter, BackgroundTasks, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, OptionalUser, User
-from src.api.services import login_limits, mailer, password_reset
+from src.api.services import badges, login_limits, mailer, password_reset
 from src.api.services.passwords import (
     clean_email,
     hash_password,
@@ -437,6 +437,7 @@ def set_account_email(
 
     try:
         user_repo.set_email(user["id"], clean)
+        badges.award(db, user["id"])  # Email on File
         db.commit()
     except psycopg.errors.UniqueViolation:
         db.rollback()
