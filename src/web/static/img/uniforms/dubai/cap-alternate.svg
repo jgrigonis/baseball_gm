@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Dubai cap alternate">
+  <defs>
+    <path id="falcon" d="M-16 22 C-20 6 -16 -10 -4 -15 C4 -18 12 -16 17 -11 C21 -7 23 -2 20 3 C19 0 18 -1 16 -1 L12 0 C11 4 8 8 7 12 C6 16 7 19 9 22 Z"/>
+    <path id="eye" d="M-4 -15 C4 -18 12 -16 17 -11 L11 -8 C7 -10 2 -10 1 -5 C0 1 -1 6 -5 11 C-9 4 -10 -8 -4 -15 Z"/>
+    <path id="eyedot" d="M9.4 -5 a2.4 2.4 0 1 0 -4.8 0 a2.4 2.4 0 1 0 4.8 0 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#00843D"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#00602C" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#00602C" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#B8935A"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#2F3B45" stroke="#1E272F" stroke-width="1.5"/>
+      <g transform="translate(110 78) scale(1.45)"><use href="#falcon" fill="#B8935A" stroke="#2F3B45" stroke-width="1.2" paint-order="stroke"/><use href="#eye" fill="#2F3B45"/><use href="#eyedot" fill="#2F3B45"/></g>
+</svg>
