@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="New York cap">
+  <defs>
+    <path id="spire" d="M-12 0 V-28 Q-12 -40 0 -44 Q12 -40 12 -28 V0 Z M-9 -34 Q-9 -48 0 -52 Q9 -48 9 -34 Z M-6 -44 Q-6 -56 0 -59 Q6 -56 6 -44 Z M-1.4 -57 L0 -78 L1.4 -57 Z"/>
+    <path id="win" d="M-3 -30 L0 -37 L3 -30 Z M-2 -41 L0 -47 L2 -41 Z M-1.4 -50 L0 -54 L1.4 -50 Z M-8 -24 h2.4 v20 h-2.4 Z M-1.2 -24 h2.4 v20 h-2.4 Z M5.6 -24 h2.4 v20 h-2.4 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#0C2340"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#06142A" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#06142A" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#8E9194"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#0C2340" stroke="#06142A" stroke-width="1.5"/>
+      <g transform="translate(110 104) scale(.85)"><use href="#spire" fill="#E8E2D0" stroke="#8E9194" stroke-width="2" paint-order="stroke"/><use href="#win" fill="#0C2340"/></g>
+</svg>
