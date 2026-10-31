@@ -8,5 +8,7 @@
       <path d="M80 42 Q72 80 76 120" fill="none" stroke="#122C69" stroke-width="1.5"/>
       <circle cx="122" cy="31" r="5" fill="#D2453A"/>
       <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1B8A9C" stroke="#136572" stroke-width="1.5"/>
+      <g transform="translate(120.2 70.5) scale(0.85) translate(-120.2 -70.5)">
       <g transform="translate(122 106) scale(.9)"><use href="#tulip" fill="#F6F2E8" stroke="#D2453A" stroke-width="1.2" paint-order="stroke"/><use href="#petal" fill="#D2453A"/></g>
+      </g>
 </svg>

@@ -8,5 +8,7 @@
       <path d="M80 42 Q72 80 76 120" fill="none" stroke="#071A2E" stroke-width="1.5"/>
       <circle cx="122" cy="31" r="5" fill="#B22234"/>
       <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#B22234" stroke="#861A27" stroke-width="1.5"/>
+      <g transform="translate(120.0 76.0) scale(0.85) translate(-120.0 -76.0)">
       <g transform="translate(120 76) scale(1.15)"><use href="#rose" fill="#E9DDC1"/><use href="#roseshade" fill="#B22234"/></g>
+      </g>
 </svg>
