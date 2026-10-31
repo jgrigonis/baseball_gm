@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Jakarta Garudas Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold:#D89B1A; --brown:#4A2C17; --red:#CE1126;
+  --bg:#FBF8F1; --card:#FFFFFF; --text:#1B2A2E; --dim:#5F6B6A; --line:#E6E0D2; --accent:#B5121F;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#F2B84A; }
+}
+:root[data-theme="dark"] { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#F2B84A; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:var(--brown); color:#FFFFFF; border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(var(--gold) 0 5px, var(--red) 5px 10px); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#F2CF7A; }
+header h1 { font-family:"Lilita One", sans-serif; font-weight:400; font-size:46px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; }
+header p { margin:0; max-width:640px; color:#EADCC8; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:inline-block; }
+h2 { font-family:"Lilita One", sans-serif; font-weight:400; font-size:23px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#EEE9E0, #DED6C8); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#1A2D30, #132326); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#1A2D30, #132326); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:34px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · 24 of 30</div>
+  <h1>Jakarta Garudas</h1>
+  <p>Temple gold, the dark brown of soga batik dye and a merah red. The lettering is a fat, friendly display face. The cap says JKT, the alternate carries a parang batik band across the chest, and the patch is the garuda, wings spread, with its flame crest.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#D89B1A"></i>Gold #D89B1A</span>
+    <span class="sw"><i style="background:#4A2C17"></i>Soga brown #4A2C17</span>
+    <span class="sw"><i style="background:#CE1126"></i>Red #CE1126</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <path id="garG" d="M-50.8 -1.8 A22.0 5.5 185.0 1 0 -7.0 2.0 A22.0 5.5 185.0 1 0 -50.8 -1.8 Z M-45.2 -12.0 A20.4 5.5 200.0 1 0 -7.0 2.0 A20.4 5.5 200.0 1 0 -45.2 -12.0 Z M-37.6 -19.4 A18.7 5.5 215.0 1 0 -7.0 2.0 A18.7 5.5 215.0 1 0 -37.6 -19.4 Z M-29.0 -24.2 A17.1 5.5 230.0 1 0 -7.0 2.0 A17.1 5.5 230.0 1 0 -29.0 -24.2 Z M-20.0 -26.0 A15.4 5.5 245.0 1 0 -7.0 2.0 A15.4 5.5 245.0 1 0 -20.0 -26.0 Z M50.8 -1.8 A22.0 5.5 -5.0 1 0 7.0 2.0 A22.0 5.5 -5.0 1 0 50.8 -1.8 Z M45.2 -12.0 A20.4 5.5 -20.0 1 0 7.0 2.0 A20.4 5.5 -20.0 1 0 45.2 -12.0 Z M37.6 -19.4 A18.7 5.5 -35.0 1 0 7.0 2.0 A18.7 5.5 -35.0 1 0 37.6 -19.4 Z M29.0 -24.2 A17.1 5.5 -50.0 1 0 7.0 2.0 A17.1 5.5 -50.0 1 0 29.0 -24.2 Z M20.0 -26.0 A15.4 5.5 -65.0 1 0 7.0 2.0 A15.4 5.5 -65.0 1 0 20.0 -26.0 Z M0 -12 C12 -12 13 8 8 20 L0 26 L-8 20 C-13 8 -12 -12 0 -12 Z M7.7 44.9 A12.0 4.5 72 1 0 0.3 22.1 A12.0 4.5 72 1 0 7.7 44.9 Z M0.0 46.0 A12.0 4.5 90 1 0 -0.0 22.0 A12.0 4.5 90 1 0 0.0 46.0 Z M-7.7 44.9 A12.0 4.5 108 1 0 -0.3 22.1 A12.0 4.5 108 1 0 -7.7 44.9 Z M-8 -20 A8.5 8.5 0 1 1 8 -20 L5 -10 H-5 Z M-4 -27 L-10 -42 L-1 -33 L1 -48 L4 -33 L12 -41 L6 -25 Z"/>
+    <path id="garD" d="M-4.5 -22 A2 2 0 1 0 -0.5 -22 A2 2 0 1 0 -4.5 -22 Z M3 -20 L12 -17 L4 -13 Z M0 -2 L4 3 L0 8 L-4 3 Z M0 10 L3 14 L0 18 L-3 14 Z"/>
+        <pattern id="parang" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="12" height="12" fill="#4A2C17"/><path d="M0 3 Q3 0 6 3 T12 3 M0 9 Q3 6 6 9 T12 9" fill="none" stroke="#D89B1A" stroke-width="1.6"/></pattern>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. White at home, merah red on the road, and a soga brown batik alternate.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: white with brown GARUDAS edged in gold">
+      <use href="#jersey" fill="#FFFFFF" stroke="#4A2C17" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#4A2C17" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#D89B1A" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#4A2C17" stroke-width="3"/>
+      <g fill="#4A2C17"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#4A2C17" stroke-width="9"/><path d="M203 100 L222 54" stroke="#4A2C17" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#D89B1A" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#D89B1A" stroke-width="2.4"/>
+      <path id="arcH" d="M70 140 Q120 114 170 140" fill="none"/>
+      <text font-family="Lilita One" font-size="15" letter-spacing="0.5" fill="#4A2C17" stroke="#D89B1A" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcH" startOffset="50%" text-anchor="middle">GARUDAS</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Lilita One" font-size="26" fill="#4A2C17" stroke="#D89B1A" stroke-width="2" stroke-linejoin="round" paint-order="stroke">24</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#4A2C17" stroke="#D89B1A" stroke-width="2"/><g transform="translate(0 -1) scale(.24)"><use href="#garG" fill="#D89B1A"/><use href="#garD" fill="#4A2C17"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>White, brown GARUDAS</h3>
+    <p>"GARUDAS" arched in soga brown with a gold edge. Brown sleeves with a gold line, brown numbers, and the garuda badge on the sleeve.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: red with white JAKARTA edged in brown">
+      <use href="#jersey" fill="#CE1126" stroke="#9A0D1C" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#4A2C17" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#D89B1A" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#4A2C17" stroke-width="2.5"/>
+      <g fill="#FFFFFF"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#4A2C17" stroke-width="9"/><path d="M203 100 L222 54" stroke="#4A2C17" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#D89B1A" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#D89B1A" stroke-width="2.4"/>
+      <path id="arcA" d="M70 140 Q120 114 170 140" fill="none"/>
+      <text font-family="Lilita One" font-size="15" letter-spacing="0.5" fill="#FFFFFF" stroke="#4A2C17" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcA" startOffset="50%" text-anchor="middle">JAKARTA</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Lilita One" font-size="26" fill="#D89B1A" stroke="#4A2C17" stroke-width="2" stroke-linejoin="round" paint-order="stroke">24</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#4A2C17" stroke="#FFFFFF" stroke-width="2"/><g transform="translate(0 -1) scale(.24)"><use href="#garG" fill="#D89B1A"/><use href="#garD" fill="#4A2C17"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Red, white JAKARTA</h3>
+    <p>"JAKARTA" arched in white with a brown edge on merah red. Brown sleeves with a gold line, and gold numbers.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: soga brown with white GARUDAS and a parang batik band across the hem">
+      <use href="#jersey" fill="#4A2C17" stroke="#33200F" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#D89B1A" stroke-width="5"/>
+      <rect x="61" y="204" width="118" height="22" fill="url(#parang)"/><path d="M61 203 H179 M61 227 H179" stroke="#D89B1A" stroke-width="2"/>
+      <path d="M120 27 V250" stroke="#D89B1A" stroke-width="2.5"/>
+      <g fill="#FFFFFF"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="238" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#CE1126" stroke-width="9"/><path d="M203 100 L222 54" stroke="#CE1126" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#D89B1A" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#D89B1A" stroke-width="2.4"/>
+      <path id="arcR" d="M70 140 Q120 114 170 140" fill="none"/>
+      <text font-family="Lilita One" font-size="15" letter-spacing="0.5" fill="#FFFFFF" stroke="#D89B1A" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcR" startOffset="50%" text-anchor="middle">GARUDAS</textPath></text>
+      <text x="88" y="196" text-anchor="middle" font-family="Lilita One" font-size="26" fill="#FFFFFF" stroke="#D89B1A" stroke-width="2" stroke-linejoin="round" paint-order="stroke">24</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#CE1126" stroke="#D89B1A" stroke-width="2"/><g transform="translate(0 -1) scale(.24)"><use href="#garG" fill="#D89B1A"/><use href="#garD" fill="#4A2C17"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Batik</div>
+    <h3>Soga brown, parang band</h3>
+    <p>Soga brown with white GARUDAS edged in gold, red sleeves, and a band of gold parang batik across the hem. Worn on Fridays, batik day.</p>
+  </div>
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">JKT in gold.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Brown cap with red brim and gold JKT">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#4A2C17"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#33200F" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#33200F" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#D89B1A"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#CE1126" stroke="#9A0D1C" stroke-width="1.5"/>
+      <text x="120" y="96" text-anchor="middle" font-family="Lilita One" font-size="44" letter-spacing="1" fill="#D89B1A" stroke="#CE1126" stroke-width="3" stroke-linejoin="round" paint-order="stroke">JKT</text>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Brown crown, red brim</h3>
+    <p>Gold JKT edged in red on a soga brown crown, with a red brim and a gold button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Red cap with gold brim and gold JKT">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#CE1126"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#9A0D1C" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#9A0D1C" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#4A2C17"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#D89B1A" stroke="#A87612" stroke-width="1.5"/>
+      <text x="120" y="96" text-anchor="middle" font-family="Lilita One" font-size="44" letter-spacing="1" fill="#D89B1A" stroke="#4A2C17" stroke-width="3" stroke-linejoin="round" paint-order="stroke">JKT</text>
+    </svg>
+    </div>
+    <div class="tag">Cap · Merah</div>
+    <h3>Red crown, gold brim</h3>
+    <p>Gold JKT edged in brown on a red crown, with a gold brim. Worn with the red road jersey.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss brown batting helmet with gold JKT">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7A5536"/><stop offset=".45" stop-color="#4A2C17"/><stop offset="1" stop-color="#2A190B"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#D89B1A"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#2A190B"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#2A190B"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <text x="106" y="96" text-anchor="middle" font-family="Lilita One" font-size="38" letter-spacing="1" fill="#D89B1A" stroke="#CE1126" stroke-width="3" stroke-linejoin="round" paint-order="stroke">JKT</text>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#D89B1A" stroke-width="2.5"/>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss soga brown</h3>
+    <p>A brown shell with a gold ear flap and stripe, and the gold JKT decal.</p>
+  </div>
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">Batik on the stirrups.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="White home pants and gray away pants with brown and gold side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#FFFFFF" stroke="#D4D8DD" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#4A2C17"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#D89B1A" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#4A2C17" stroke-width="4"/><path d="M38 34 L40 208" stroke="#D89B1A" stroke-width="1.8"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A8ADB3" stroke="#868B91" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#4A2C17"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#D89B1A" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#4A2C17" stroke-width="4"/><path d="M138 34 L140 208" stroke="#D89B1A" stroke-width="1.8"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>White at home, gray away</h3>
+    <p>A brown and gold side stripe on both pairs, with a brown belt and a gold buckle. The batik alternate wears the white.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Brown stirrups with a parang batik band and a gold line, and red stirrups with the same">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#4A2C17"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="42" width="56" height="18" fill="url(#parang)"/>
+        <rect x="50" y="64" width="56" height="3" fill="#D89B1A"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#2A190B"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#CE1126"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="42" width="56" height="18" fill="url(#parang)"/>
+        <rect x="144" y="64" width="56" height="3" fill="#D89B1A"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#2A190B"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>Parang band</h3>
+    <p>Soga brown stirrups with a band of gold parang batik over a gold line. The road set is red with the same band.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Round patch with a gold garuda, wings spread, over a red sun">
+      <defs><clipPath id="ring"><circle cx="120" cy="112" r="64"/></clipPath></defs>
+      <circle cx="120" cy="112" r="94" fill="#4A2C17" stroke="#D89B1A" stroke-width="5"/>
+      <circle cx="120" cy="112" r="64" fill="#4A2C17"/>
+      <g clip-path="url(#ring)">
+        <circle cx="120" cy="112" r="64" fill="url(#parang)" opacity=".2"/>
+        <circle cx="120" cy="108" r="36" fill="#CE1126"/>
+      </g>
+      <g transform="translate(120 118) scale(1.28)"><use href="#garG" fill="#D89B1A" stroke="#2A190B" stroke-width="1.6" stroke-linejoin="round" paint-order="stroke"/><use href="#garD" fill="#4A2C17"/></g>
+      <circle cx="120" cy="112" r="64" fill="none" stroke="#D89B1A" stroke-width="2.5"/>
+      <path id="ringTop" d="M46 112 A74 74 0 0 1 194 112" fill="none"/>
+      <text font-family="Lilita One" font-size="17" letter-spacing="2.5" fill="#FFFFFF"><textPath href="#ringTop" startOffset="50%" text-anchor="middle">GARUDAS</textPath></text>
+      <path id="ringBot" d="M40 112 A80 80 0 0 0 200 112" fill="none"/>
+      <text font-family="Lilita One" font-size="15" letter-spacing="3" fill="#D89B1A"><textPath href="#ringBot" startOffset="50%" text-anchor="middle">JAKARTA</textPath></text>
+      <g fill="#D89B1A"><circle cx="31" cy="112" r="3.5"/><circle cx="209" cy="112" r="3.5"/></g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>The garuda</h3>
+    <p>A brown roundel with a gold rim. The garuda spreads its wings over a red sun on a field of faint parang batik, with GARUDAS across the top and JAKARTA curved along the bottom. Worn on the player's left sleeve.</p>
+  </div>
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Gold, soga brown and red are the same values the game uses for the Jakarta badge. I added white for the home body.</li>
+  <li><b>Display type.</b> Lilita One is a fat, friendly poster face that reads well at a distance.</li>
+  <li><b>Short words, wide margins.</b> GARUDAS at home and on the alternate, and JAKARTA on the road, all well inside the body.</li>
+  <li><b>Garuda and batik.</b> The garuda is drawn as its own bird, not the national emblem. Parang, the diagonal batik motif, runs across the alternate hem and the stirrups.</li>
+  <li><b>In the game.</b> These are design drawings only for now. Nothing in the app has changed.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece. Once Jakarta is settled, I'll commit it and roll the next team.
+</div>
+
+</div>
+</body>
+</html>
