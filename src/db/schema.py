@@ -1151,10 +1151,28 @@ CREATE TABLE IF NOT EXISTS all_star_game_stats (
     PRIMARY KEY (season_id, player_id)
 );
 
+-- The Home Run Derby: each hitter's line in each matchup. Round 1 is the
+-- field (seeded by home runs); the last round's winner is the champion.
+CREATE TABLE IF NOT EXISTS hr_derby_results (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    round      INTEGER NOT NULL,
+    match      INTEGER NOT NULL,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id    TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    seed       INTEGER NOT NULL,
+    homers     INTEGER NOT NULL DEFAULT 0,
+    swingoff   INTEGER,                   -- home runs in swing-offs, if tied
+    longest    INTEGER NOT NULL DEFAULT 0,  -- feet
+    won        BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (season_id, round, player_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_team   ON all_star_votes(team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_player ON all_star_votes(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_stars_player      ON all_stars(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_stars_team        ON all_stars(team_id);
+CREATE INDEX IF NOT EXISTS idx_hr_derby_results_player ON hr_derby_results(player_id);
+CREATE INDEX IF NOT EXISTS idx_hr_derby_results_team   ON hr_derby_results(team_id);
 -- idx_all_stars_replaces is made by migration 036, which adds the column to
 -- databases from before it: this runs first, before the column is there.
 CREATE INDEX IF NOT EXISTS idx_all_star_games_c1     ON all_star_games(captain1_team_id);

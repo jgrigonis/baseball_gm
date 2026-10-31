@@ -1093,6 +1093,18 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .as-mvp-row td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
 .as-box { margin-bottom: 8px; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); }
 .as-pitching { margin-top: 10px; }
+.hr-bracket { display: flex; gap: 16px; padding: 4px 16px 16px; overflow-x: auto; }
+.hr-round { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; min-width: 230px; }
+.hr-round-name { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+.hr-match { border: 1px solid var(--border); border-radius: 4px; }
+.hr-line { display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: 12px; color: var(--text-dim); }
+.hr-line + .hr-line { border-top: 1px solid var(--border); }
+.hr-line.won { color: var(--text-hi, var(--text)); }
+.hr-line.won .hr-score { color: var(--amber); }
+.hr-line.mine .as-player { color: var(--green); }
+.hr-seed { font-family: var(--font-mono); font-size: 10px; width: 12px; color: var(--text-dim); }
+.hr-line .as-player { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hr-score { font-family: var(--font-mono); font-size: 13px; min-width: 40px; text-align: right; }
 .as-hurt { font-family: var(--font-mono); font-size: 9px; color: var(--red); border: 1px solid var(--red); border-radius: 3px; padding: 0 4px; margin-left: 4px; }
 @media (max-width: 600px) {
   .as-grid { grid-template-columns: 1fr; }

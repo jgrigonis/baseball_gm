@@ -116,6 +116,8 @@ class AllStarRepository:
                 mascot=r["mascot"],
                 age=r["age"],
                 speed=skills["speed"],
+                power=skills["power"],
+                contact=skills["contact"],
                 start_position=r["start_position"],
                 starts=int(r["starts"]),
                 offense=ratings["overall_offense"],

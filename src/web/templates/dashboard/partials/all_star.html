@@ -97,6 +97,7 @@
   <div class="card as-intro"><div class="card-body as-note"><span class="as-error">✗ {{ as_error }}</span></div></div>
   {% endif %}
   {% if game %}{% include "dashboard/partials/_all_star_game.html" %}{% endif %}
+  {% if derby_rounds or derby_field %}{% include "dashboard/partials/_hr_derby.html" %}{% endif %}
   <h2 class="as-heading">The All-Stars</h2>
   {% if team_id %}
   <div class="card as-intro"><div class="card-body as-note">
