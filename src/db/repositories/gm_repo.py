@@ -221,3 +221,16 @@ class GMRepository:
             (league_id,),
         ).fetchone()
         return dict(row)
+
+    def needs_welcome(self, gm_id: str) -> bool:
+        """True until the GM has seen their team's welcome screen."""
+        row = self.conn.execute(
+            "SELECT welcomed_at FROM gms WHERE id = %s AND NOT is_ai", (gm_id,)
+        ).fetchone()
+        return bool(row) and row["welcomed_at"] is None
+
+    def mark_welcomed(self, gm_id: str) -> None:
+        self.conn.execute(
+            "UPDATE gms SET welcomed_at = NOW() WHERE id = %s AND welcomed_at IS NULL",
+            (gm_id,),
+        )

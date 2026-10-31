@@ -306,6 +306,22 @@ class GameRepository:
         if row:
             return dict(row)
 
+    def opening_game(self, season_id: str, team_id: str) -> dict | None:
+        """The team's first regular season game, with both teams' names."""
+        row = self.conn.execute(
+            """SELECT g.game_date, g.home_team_id, g.away_team_id,
+                      h.city AS home_city, h.mascot AS home_mascot,
+                      a.city AS away_city, a.mascot AS away_mascot
+               FROM games g
+               JOIN teams h ON h.id = g.home_team_id
+               JOIN teams a ON a.id = g.away_team_id
+               WHERE g.season_id = %s AND g.series_id IS NULL
+                 AND %s IN (g.home_team_id, g.away_team_id)
+               ORDER BY g.game_date LIMIT 1""",
+            (season_id, team_id),
+        ).fetchone()
+        return dict(row) if row else None
+
     def last_game_date(self, season_id: str) -> dict | None:
         last_game = self.conn.execute(
             """SELECT MAX(game_date) as d FROM games

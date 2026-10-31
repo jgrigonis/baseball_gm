@@ -44,7 +44,7 @@ def league_info(db, league: dict) -> dict:
 def league_gms(db, league_id: str) -> list[dict]:
     """The league's active GMs with their teams, human GMs first."""
     rows = db.execute(
-        """SELECT g.id, g.display_name, g.is_ai, g.persona_id, p.archetype,
+        """SELECT g.id, g.team_id, g.display_name, g.is_ai, g.persona_id, p.archetype,
                   t.city, t.mascot
            FROM gms g LEFT JOIN teams t ON t.id = g.team_id
            LEFT JOIN gm_personas p ON p.id = g.persona_id

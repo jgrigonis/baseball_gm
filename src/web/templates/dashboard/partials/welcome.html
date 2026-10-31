@@ -1,0 +1,265 @@
+{# templates/dashboard/partials/welcome.html
+   The GM's new team, shown once when the league starts, before the draft
+   (plans/welcome-screen.md). Takes `welcome` (src/api/view_models/welcome.py). #}
+{% set w = welcome %}
+{% set c = w.colors %}
+{% macro grade(g) -%}
+  {%- set cls = g[:-1] ~ '-plus' if g.endswith('+') else (g[:-1] ~ '-minus' if g.endswith('-') else g) -%}
+  <span class="grade grade-{{ cls }}">{{ g }}</span>
+{%- endmacro %}
+{% macro jersey(body, ink, label, number) -%}
+<svg viewBox="0 0 200 200" class="wl-jersey" role="img" aria-label="{{ label }} jersey">
+  <path d="M62,18 L82,10 Q100,30 118,10 L138,18 L182,48 L164,82 L146,70 L146,188 L54,188 L54,70 L36,82 L18,48 Z"
+        fill="{{ body }}" stroke="rgba(0,0,0,.35)" stroke-width="2" stroke-linejoin="round"/>
+  {# collar and sleeve trim #}
+  <path d="M82,10 Q100,30 118,10" fill="none" stroke="{{ c.accent }}" stroke-width="5"/>
+  <path d="M18,48 L36,82" stroke="{{ c.accent }}" stroke-width="7"/>
+  <path d="M182,48 L164,82" stroke="{{ c.accent }}" stroke-width="7"/>
+  <path d="M100,30 L100,188" stroke="{{ ink }}" stroke-width="1.5" stroke-dasharray="1 9" opacity=".7"/>
+  <text x="100" y="86" text-anchor="middle" class="wl-jersey-name"{% if label|length > 8 %} style="font-size:17px"{% endif %}
+        fill="{{ ink }}" stroke="{{ c.accent }}" stroke-width="1.2"
+        textLength="{{ 96 if label|length > 7 else 13 * label|length }}" lengthAdjust="spacingAndGlyphs">{{ label }}</text>
+  <text x="68" y="132" text-anchor="middle" class="wl-jersey-number"
+        fill="{{ ink }}" stroke="{{ c.accent }}" stroke-width="1">{{ number }}</text>
+</svg>
+{%- endmacro %}
+
+<style>
+  .wl-hero { position:relative; overflow:hidden; padding:28px 24px 26px;
+             background:{{ c.primary }}; color:{{ c.ink }}; border-bottom:6px solid {{ c.secondary }}; }
+  .wl-hero::after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px; background:{{ c.accent }}; }
+  .wl-hero-row { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+  .wl-hero .team-badge { width:72px; height:72px; font-size:24px; border:3px solid {{ c.accent }}; }
+  .wl-kicker { font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
+  .wl-title { font-family:var(--font-display); font-size:44px; line-height:1; text-transform:uppercase; margin:4px 0; }
+  .wl-tagline { font-family:var(--font-sans); font-size:14px; opacity:.9; }
+  .wl-body { padding:20px 24px 32px; display:grid; gap:16px;
+             grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); align-items:start; }
+  .wl-wide { grid-column:1 / -1; }
+  .wl-swatches { display:flex; gap:12px; }
+  .wl-swatch { flex:1; text-align:center; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .wl-swatch div { height:56px; border-radius:6px; border:1px solid var(--border-hi); margin-bottom:6px; }
+  .wl-uniforms { display:flex; gap:8px; justify-content:space-around; align-items:flex-end; }
+  .wl-uniforms figure { text-align:center; flex:1; max-width:160px; }
+  .wl-uniforms figcaption { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .wl-jersey, .wl-cap { width:100%; height:auto; }
+  .wl-jersey-name { font-family:var(--font-display); font-size:22px; font-weight:900; text-transform:uppercase; }
+  .wl-jersey-number { font-family:var(--font-display); font-size:30px; font-weight:900; }
+  .wl-area { display:grid; grid-template-columns:76px 1fr 34px 78px; gap:10px; align-items:center;
+             padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .wl-area:last-of-type { border-bottom:none; }
+  .wl-bar { height:8px; background:var(--tile); border-radius:4px; overflow:hidden; }
+  .wl-bar span { display:block; height:100%; background:var(--amber); }
+  .wl-rank { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); text-align:right; }
+  .wl-verdict { margin-top:12px; font-size:13px; color:var(--text); }
+  .wl-star { display:flex; gap:12px; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+  .wl-star:last-child { border-bottom:none; }
+  .wl-star:hover .wl-star-name { color:var(--amber); }
+  .wl-star-grade { font-family:var(--font-display); font-size:28px; min-width:42px; text-align:center; }
+  .wl-star-name { font-weight:600; font-size:14px; }
+  .wl-meta { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .wl-weak { padding:8px 0; border-bottom:1px solid var(--border); }
+  .wl-weak:last-child { border-bottom:none; }
+  .wl-level { font-family:var(--font-mono); font-size:10px; padding:1px 6px; border-radius:3px; margin-left:6px; }
+  .wl-level-High { background:var(--red-dim); color:var(--red); }
+  .wl-level-Med { background:var(--amber-lo); color:var(--amber); }
+  .wl-level-Low { background:var(--bg-3); color:var(--text-dim); }
+  .wl-ages { display:flex; height:12px; border-radius:6px; overflow:hidden; margin:10px 0 6px; }
+  .wl-ages span:nth-child(1) { background:var(--green); }
+  .wl-ages span:nth-child(2) { background:var(--amber); }
+  .wl-ages span:nth-child(3) { background:var(--sky); }
+  .wl-age-key { display:flex; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .wl-age-key b { color:var(--text); font-weight:600; }
+  .wl-big { font-family:var(--font-display); font-size:40px; line-height:1; color:var(--amber); }
+  .wl-link { color:var(--text); cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
+  .wl-sub { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); margin:10px 0 2px; }
+  .wl-rival { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; }
+  .wl-go { position:sticky; bottom:0; z-index:5; display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+           padding:14px 24px; background:var(--bg-2); border-top:1px solid var(--border-hi); }
+  .wl-go .btn-primary { font-size:15px; padding:10px 22px; }
+  .wl-go-hint { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  @media (max-width: 600px) {
+    .wl-hero { padding:20px 16px; }
+    .wl-title { font-size:32px; }
+    .wl-body { padding:16px; grid-template-columns:1fr; }
+    .wl-go { padding:12px 16px; }
+    .wl-go .btn-primary { width:100%; text-align:center; }
+  }
+</style>
+
+<section class="wl-hero">
+  <div class="wl-hero-row">
+    {{ team_badge(w.city, w.mascot) }}
+    <div>
+      <div class="wl-kicker">{{ league_name }} · GM {{ gm_display_name }}</div>
+      <h1 class="wl-title">Welcome to the {{ w.city }} {{ w.mascot }}</h1>
+      <div class="wl-tagline">{{ c.tagline }}</div>
+    </div>
+  </div>
+</section>
+
+<div class="wl-body">
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Your colors</span></div>
+    <div class="card-body">
+      <div class="wl-swatches">
+        {% for label, hex in [("Main", c.primary), ("Second", c.secondary), ("Trim", c.accent)] %}
+        <div class="wl-swatch"><div style="background:{{ hex }};"></div>{{ label }}<br>{{ hex }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Your uniforms</span></div>
+    <div class="card-body">
+      <div class="wl-uniforms">
+        <figure>{{ jersey(c.home_body, c.home_ink, w.mascot, 1) }}<figcaption>Home</figcaption></figure>
+        <figure>{{ jersey(c.primary, c.ink, w.city, 27) }}<figcaption>Away</figcaption></figure>
+        <figure>
+          <svg viewBox="0 0 200 160" class="wl-cap" role="img" aria-label="Cap">
+            <path d="M42,112 Q40,40 100,38 Q160,40 158,112 Z" fill="{{ c.primary }}" stroke="rgba(0,0,0,.35)" stroke-width="2"/>
+            <path d="M100,38 L100,112" stroke="rgba(0,0,0,.2)" stroke-width="2"/>
+            <circle cx="100" cy="38" r="6" fill="{{ c.accent }}"/>
+            <path d="M34,110 Q100,128 190,104 L192,116 Q100,146 32,124 Z" fill="{{ c.secondary }}" stroke="rgba(0,0,0,.35)" stroke-width="2"/>
+            <text x="100" y="94" text-anchor="middle" class="wl-jersey-name" style="font-size:{{ 34 if c.code|length < 3 else 28 }}px"
+                  fill="{{ c.ink }}" stroke="{{ c.accent }}" stroke-width="1">{{ c.code }}</text>
+          </svg>
+          <figcaption>Cap</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+
+  {% if w.report %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">Scouting report</span></div>
+    <div class="card-body">
+      {% for a in w.report.areas %}
+      <div class="wl-area" title="Ranked on the {{ a.basis }}">
+        <span>{{ a.label }}</span>
+        <div class="wl-bar"><span style="width:{{ a.bar }}%;"></span></div>
+        {{ grade(a.grade) }}
+        <span class="wl-rank">{{ a.rank_text }}</span>
+      </div>
+      {% endfor %}
+      <p class="wl-verdict">{{ w.report.verdict }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Your stars</span></div>
+    <div class="card-body">
+      {% for s in w.stars %}
+      <div class="wl-star" onclick="openPlayerPanel('{{ s.player_id }}')">
+        <span class="wl-star-grade">{{ grade(s.grade) }}</span>
+        <div>
+          <div class="wl-star-name">{{ s.name }}</div>
+          <div class="wl-meta">{{ s.position }} · Age {{ s.age }}{% for label, g in s.skills %} · {{ label }} {{ grade(g) }}{% endfor %}</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="wl-meta">No players on the roster yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Weak spots</span></div>
+    <div class="card-body">
+      {% for n in w.weak %}
+      <div class="wl-weak">
+        <div><b>{{ n.label }}</b><span class="wl-level wl-level-{{ n.level }}">{{ n.level }} need</span></div>
+        <div class="wl-meta">{{ n.reason }}</div>
+      </div>
+      {% else %}
+      <div class="wl-meta">No glaring holes. Draft the best players you can find.</div>
+      {% endfor %}
+      {% if w.weak %}
+      <div class="wl-meta" style="margin-top:10px;">Your draft strategy starts with these filled in.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if w.ages %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">Roster at a glance</span></div>
+    <div class="card-body">
+      <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;">
+        <div><div class="wl-big">{{ w.ages.average }}</div><div class="wl-meta">Average age</div></div>
+        <div class="wl-meta" style="line-height:1.7;">
+          Youngest: <span class="wl-link" onclick="openPlayerPanel('{{ w.ages.youngest.player_id }}')">{{ w.ages.youngest.name }}</span> ({{ w.ages.youngest.age }})<br>
+          Oldest: <span class="wl-link" onclick="openPlayerPanel('{{ w.ages.oldest.player_id }}')">{{ w.ages.oldest.name }}</span> ({{ w.ages.oldest.age }})
+        </div>
+      </div>
+      <div class="wl-ages">
+        {% for g in w.ages.groups %}<span style="width:{{ g.share }}%;" title="{{ g.label }}: {{ g.count }}"></span>{% endfor %}
+      </div>
+      <div class="wl-age-key">
+        {% for g in w.ages.groups %}<span>{{ g.label }} ({{ g.range }}): <b>{{ g.count }}</b></span>{% endfor %}
+      </div>
+      <p class="wl-verdict">{{ w.ages.outlook }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Your draft slot</span></div>
+    <div class="card-body">
+      {% if w.pick %}
+      <div class="wl-big">{{ w.pick }}<span style="font-size:20px;color:var(--text-dim);"> of {{ w.num_teams }}</span></div>
+      {% endif %}
+      <p class="wl-verdict">
+        {% if w.blitz %}
+          Rank the prospects you want and set your needs, then the whole draft runs at once.
+        {% else %}
+          The draft runs pick by pick. Be ready when you're on the clock.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Opening day and rivals</span></div>
+    <div class="card-body">
+      {% if w.opener %}
+      <div class="wl-rival" style="margin-bottom:8px;">
+        {{ team_badge(w.opener.city, w.opener.mascot) }}
+        <span>{{ "vs" if w.opener.home else "at" }} the <b>{{ w.opener.city }} {{ w.opener.mascot }}</b></span>
+        <span class="wl-meta" style="margin-left:auto;">{{ w.opener.date }}</span>
+      </div>
+      {% endif %}
+      {% macro gm_row(g) -%}
+      <div class="wl-rival">
+        {% if g.city %}{{ team_badge(g.city, g.mascot) }}{% endif %}
+        <span>{{ g.city }} {{ g.mascot }}</span>
+        <span class="wl-meta" style="margin-left:auto;text-align:right;">
+          {% if g.persona_id %}
+          <a href="/leagues/{{ league_id }}/personas/{{ g.persona_id }}" class="wl-link" title="Persona card">{{ g.display_name }}</a>
+          {% else %}{{ g.display_name }}{% endif %}
+        </span>
+      </div>
+      {%- endmacro %}
+      {% if w.humans %}
+      <div class="wl-sub">Other human GMs</div>
+      {% for g in w.humans %}{{ gm_row(g) }}{% endfor %}
+      {% endif %}
+      {% if w.favorites %}
+      <div class="wl-sub">Teams to beat, on paper</div>
+      {% for g in w.favorites %}{{ gm_row(g) }}{% endfor %}
+      {% endif %}
+      <a href="/leagues/{{ league_id }}/league" class="wl-meta wl-link" style="display:inline-block;margin-top:8px;">Every team and GM →</a>
+    </div>
+  </div>
+
+</div>
+
+<div class="wl-go">
+  <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to the draft →</a>
+  <a href="/leagues/{{ league_id }}/roster" class="btn btn-secondary">Roster</a>
+  <a href="/leagues/{{ league_id }}/lineup" class="btn btn-secondary">Lineup</a>
+  <a href="/leagues/{{ league_id }}/strategy" class="btn btn-secondary">Strategy</a>
+  <span class="wl-go-hint">Drafted players join your roster, so you can set the lineup before or after.</span>
+</div>
