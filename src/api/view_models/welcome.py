@@ -11,9 +11,12 @@ import hashlib
 
 from src.api.schemas import skill_to_grade
 from src.api.services.draft_needs import needs_for_draft
+from src.api.view_models.draft import last_season
 from src.api.view_models.league_info import league_gms
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_strategy import CHIPS, ratings
 from src.player.player_record import PlayerRecord
@@ -204,6 +207,44 @@ def team_colors(city: str, mascot: str) -> dict:
     }
 
 
+def history(db, league_id: str, team_id: str, draft_season_id: str) -> dict | None:
+    """The league's past as the GM takes over (plans/league-backstory.md):
+    the team's last season, the defending champion, and the team's titles
+    and playoff trips over the seasons before. None in a league with no
+    past seasons."""
+    last = last_season(db, league_id, team_id, draft_season_id)
+    if not last:
+        return None
+    series = SeriesRepository(db)
+    past = [
+        s
+        for s in SeasonRepository(db).get_seasons_for_league(league_id)
+        if s["id"] != draft_season_id and series.get_finals_id(s["id"])
+    ]
+    champ = series.get_champion(past[0]["id"]) if past else None
+    titles = playoffs = 0
+    for s in past:
+        result = series.get_team_playoff_result(team_id, s["id"])
+        playoffs += result is not None
+        titles += bool(result and result.startswith("Won Finals"))
+    return {
+        "last": last,
+        "champion": (
+            {
+                "team_id": champ["team_id"],
+                "city": champ["city"],
+                "mascot": champ["mascot"],
+                "is_mine": champ["team_id"] == team_id,
+            }
+            if champ
+            else None
+        ),
+        "seasons": len(past),
+        "titles": titles,
+        "playoffs": playoffs,
+    }
+
+
 def welcome(db, league: dict, gm: dict) -> dict | None:
     """Everything the welcome screen shows, or None when the GM has no team
     or the league has no draft yet."""
@@ -261,4 +302,5 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "opener": opener,
         "humans": [g for g in others if not g["is_ai"]],
         "favorites": favorites(team_id, scores, others),
+        "history": history(db, league["id"], team_id, draft["season_id"]),
     }

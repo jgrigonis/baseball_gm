@@ -14,6 +14,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
+from src.league.backstory.service import create_backstory
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.league_constants import (
     ALL_STAR_BREAK_AFTER_GAMES,
@@ -28,7 +29,7 @@ from src.league.manifest_helper import (
     validate_manifest_uniqueness,
 )
 from src.league.offseason.draft_generator import DraftGenerator
-from src.league.offseason.snake_draft import write_draft_order
+from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
 from src.util.locations import MANIFEST_FILES_DIR
 
@@ -91,6 +92,17 @@ def start_league(
     per.clear_season()
     ps = PitcherStateRepository(conn, league_id)
     ps.clear_all_pitcher_state()
+
+    # ── 3c. Backstory: past seasons generated from the rosters ────────────────
+    # Its own random stream, so the rest of the league comes out the same
+    # for a seed whatever the backstory length.
+    backstory = create_backstory(
+        conn,
+        league_id,
+        season_id,
+        league.get("backstory_years") or 0,
+        random.Random(f"{seed}-backstory"),
+    )
 
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     gr = GameRepository(conn)
@@ -161,9 +173,16 @@ def start_league(
         draft_format = "interactive"
     draft_id = dr.create_draft(league_id, season_id, draft_format)
 
-    # Write draft order using a separate shuffle from GM assignment
+    # The first draft goes worst to best by last season's backstory record,
+    # as every later draft does. With no backstory it's a shuffle, separate
+    # from the GM assignment's.
     draft_order_ids = team_ids_all[:]
     rng.shuffle(draft_order_ids)
+    if backstory.last_season_id:
+        order = SnakeDraft(conn, league_id, rng)._build_draft_order(
+            backstory.last_season_id
+        )
+        draft_order_ids = [e["team_id"] for e in order]
     write_draft_order(conn, draft_id, league_id, year, draft_order_ids)
 
     # ── 8. Advance league state → draft ──────────────────────────────────────

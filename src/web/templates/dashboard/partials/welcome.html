@@ -77,6 +77,35 @@
 
 <div class="wl-body">
 
+  {% if w.history %}
+  {% set h = w.history %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">Last season</span></div>
+    <div class="card-body">
+      <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;">
+        <div><div class="wl-big">{{ h.last.w }}-{{ h.last.l }}</div><div class="wl-meta">{{ h.last.year }} record</div></div>
+        <div class="wl-meta" style="line-height:1.7;">
+          Finished {{ h.last.place }} of {{ h.last.teams }}{% if h.last.playoffs %}<br>and {{ h.last.playoffs }}{% endif %}
+        </div>
+      </div>
+      {% if h.champion %}
+      <div class="wl-sub">Defending champions</div>
+      <div class="wl-rival">
+        {{ team_badge(h.champion.city, h.champion.mascot) }}
+        <span>{{ h.champion.city }} {{ h.champion.mascot }}{% if h.champion.is_mine %} <span class="wl-meta">(that's you)</span>{% endif %}</span>
+      </div>
+      {% endif %}
+      {% if h.seasons > 1 %}
+      <div class="wl-sub">Your last {{ h.seasons }} seasons</div>
+      <div style="font-size:13px;">
+        {{ h.playoffs }} playoff trip{{ '' if h.playoffs == 1 else 's' }} and {{ h.titles }} title{{ '' if h.titles == 1 else 's' }}.
+        <a href="/leagues/{{ league_id }}/history" class="wl-link" style="margin-left:4px;">League history</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   <div class="card">
     <div class="card-header"><span class="card-title">Your colors</span></div>
     <div class="card-body">

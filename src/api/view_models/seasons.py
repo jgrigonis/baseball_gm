@@ -291,6 +291,7 @@ def history_context(db, league_id: str, my_team_id: str | None) -> dict:
                 "season_id": s["id"],
                 "year": s["year"],
                 "name": s["name"],
+                "is_backstory": s["is_backstory"],
                 "champion": champion_name,
                 "my_w": my_w,
                 "my_l": my_l,

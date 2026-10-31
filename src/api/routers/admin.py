@@ -131,11 +131,14 @@ def league_settings(
     lineup_window_sec: int = Form(...),
     sim_period_days: int = Form(...),
     num_seasons: int = Form(...),
+    backstory_years: int | None = Form(None),
     reentry_enabled: bool = Form(False),
     is_public: bool = Form(False),
     commissioner_gm_id: str = Form(""),
 ):
-    _league_or_404(db, league_id)
+    league = _league_or_404(db, league_id)
+    if backstory_years is None:
+        backstory_years = league["backstory_years"]
     error = admin_service.update_league_settings(
         db,
         league_id,
@@ -148,6 +151,7 @@ def league_settings(
             "lineup_window_sec": lineup_window_sec,
             "sim_period_days": sim_period_days,
             "num_seasons": num_seasons,
+            "backstory_years": backstory_years,
             "reentry_enabled": reentry_enabled,
             "is_public": is_public,
             "commissioner_gm_id": commissioner_gm_id or None,
