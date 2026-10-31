@@ -99,3 +99,17 @@ def test_every_foreign_key_is_indexed(db_conn):
         if (r["tbl"], r["col"]) != ("leagues", "commissioner_gm_id")
     ]
     assert missing == []
+
+
+def test_init_db_upgrades_a_database_from_before_migration_36(db_conn):
+    """On an existing database schema.py runs before the migrations, so it
+    mustn't use a column a migration adds (e.g. index it): undo 036's
+    column and init again, as on a database from before it."""
+    db_conn.execute("ALTER TABLE all_stars DROP COLUMN replaces CASCADE")
+    db_conn.execute("DELETE FROM schema_migrations WHERE version = 36")
+    init_db(db_conn)
+    row = db_conn.execute(
+        """SELECT 1 FROM pg_indexes
+           WHERE tablename = 'all_stars' AND indexname = 'idx_all_stars_replaces'"""
+    ).fetchone()
+    assert row
