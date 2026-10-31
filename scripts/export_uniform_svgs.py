@@ -167,6 +167,8 @@ class Outliner:
             y0 = float(attrs.get("y", 0)) + float(attrs.get("dy", 0))
             if attrs.get("text-anchor") == "middle":
                 x0 -= width / 2
+            elif attrs.get("text-anchor") == "end":
+                x0 -= width
             for g, x, _, dy in run:
                 parts.append(self.glyph(f, g, size, 1, 0, 0, 1, x0 + x, y0 - dy))
         paint = " ".join(f'{k}="{attrs[k]}"' for k in PAINT if k in attrs)
