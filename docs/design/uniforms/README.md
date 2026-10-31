@@ -9,7 +9,7 @@ Each team gets a full uniform set, designed one team at a time. Every set uses t
 - `scripts/export_uniform_svgs.py` does the export. Each `<svg data-export="...">` in a sheet names the file or files it becomes.
 
 ```
-uv run --with fonttools --with svgpathtools \
+uv run --with fonttools --with svgpathtools --with uharfbuzz \
     python scripts/export_uniform_svgs.py docs/design/uniforms/vienna-maestros.html vienna
 ```
 
@@ -33,5 +33,6 @@ uv run --with fonttools --with svgpathtools \
 | --- | --- | --- |
 | Vienna Maestros | Done (2026-10-31) | Concert-hall theme. The home and Opera Night script climbs at 26°. The bat-and-baton patch sits on the player's right sleeve. |
 | Chicago Blizzards | Done (2026-10-31) | Lake-effect winter theme. Navy slab lettering has icicles hanging from it at home and on the Lake Effect alternate. The cap has a plain C, the stirrups have a jagged wind band, and the patch is a hexagonal snowflake. |
+| Mumbai Mariners | Done (2026-10-31) | Harbor theme with sign-painter lettering (Yatra One). The home and Festival script climbs at 10° over a wave. The home and away cap is teal with a cream brim and a saffron anchor. The patch shows the Gateway of India with मुंबई. |
 
-The other 28 teams are still to do. They aren't shown in the game yet.
+The other 27 teams are still to do. They aren't shown in the game yet.

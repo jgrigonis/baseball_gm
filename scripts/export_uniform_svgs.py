@@ -6,7 +6,7 @@ data-export="name:viewBox,name:viewBox". Each piece is written to
 src/web/static/img/uniforms/<team>/<name>.svg with its lettering turned into
 outlines, so the files need no web fonts and look the same in an <img> tag.
 
-    uv run --with fonttools --with svgpathtools \\
+    uv run --with fonttools --with svgpathtools --with uharfbuzz \\
         python scripts/export_uniform_svgs.py docs/design/uniforms/vienna-maestros.html vienna
 
 The fonts are the ones the sheet links from Google Fonts. They're downloaded
@@ -24,6 +24,7 @@ from pathlib import Path
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
+import uharfbuzz as hb
 from svgpathtools import parse_path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -82,15 +83,29 @@ class Outliner:
 
     @staticmethod
     def layout(f, text, size, spacing):
-        """[(glyph, x, advance)] and the run's width, in user units."""
-        cmap, hmtx = f.getBestCmap(), f["hmtx"]
+        """[(glyph, x, advance, y offset)] and the run's width, in user
+        units. HarfBuzz shapes the run, so kerning, ligatures and the marks
+        in scripts like Devanagari land where the browser puts them."""
+        blob = hb.Blob.from_file_path(f.reader.file.name)
+        hb_font = hb.Font(hb.Face(blob))
+        buf = hb.Buffer()
+        buf.add_str(text)
+        buf.guess_segment_properties()
+        hb.shape(hb_font, buf)
         scale = size / f["head"].unitsPerEm
+        order = f.getGlyphOrder()
         out, x = [], 0.0
-        for ch in text:
-            g = cmap[ord(ch)]
-            adv = hmtx[g][0] * scale
-            out.append((g, x, adv))
-            x += adv + spacing
+        for info, pos in zip(buf.glyph_infos, buf.glyph_positions):
+            adv = pos.x_advance * scale
+            out.append(
+                (
+                    order[info.codepoint],
+                    x + pos.x_offset * scale,
+                    adv,
+                    pos.y_offset * scale,
+                )
+            )
+            x += adv + (spacing if adv else 0)
         return out, x - spacing
 
     @staticmethod
@@ -115,7 +130,7 @@ class Outliner:
             guide = parse_path(guides[tp["href"][1:]])
             run, width = self.layout(f, html.unescape(on_path.group(2)), size, spacing)
             start = guide.length() / 2 - width / 2
-            for g, x, adv in run:
+            for g, x, adv, _ in run:
                 t = guide.ilength(start + x + adv / 2)
                 p, tan = guide.point(t), guide.unit_tangent(t)
                 ca, sa = tan.real, tan.imag
@@ -138,8 +153,8 @@ class Outliner:
             y0 = float(attrs.get("y", 0)) + float(attrs.get("dy", 0))
             if attrs.get("text-anchor") == "middle":
                 x0 -= width / 2
-            for g, x, _ in run:
-                parts.append(self.glyph(f, g, size, 1, 0, 0, 1, x0 + x, y0))
+            for g, x, _, dy in run:
+                parts.append(self.glyph(f, g, size, 1, 0, 0, 1, x0 + x, y0 - dy))
         paint = " ".join(f'{k}="{attrs[k]}"' for k in PAINT if k in attrs)
         return f'<path d="{" ".join(parts)}" {paint}/>'
 

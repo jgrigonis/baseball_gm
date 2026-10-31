@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Mumbai cap alternate">
+  <defs>
+    <path id="anchor" d="M0 -16 m-3 0 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0 M0 -13 V14 M-7 -8 H7 M-12 4 Q-10 14 0 14 Q10 14 12 4 M-12 4 L-14 8 M-12 4 L-8 6 M12 4 L14 8 M12 4 L8 6"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#F4A300"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#D48C00" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#D48C00" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#0B5563"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#0B5563" stroke="#073F4A" stroke-width="1.5"/>
+      <g transform="translate(112 78) scale(1.75)"><use href="#anchor" fill="none" stroke="#0B5563" stroke-width="2.4" stroke-linecap="round"/></g>
+</svg>
