@@ -226,7 +226,7 @@ SMTP_HOST=smtp.resend.com
 SMTP_PORT=587
 SMTP_USERNAME=resend
 SMTP_PASSWORD=re_...your key...
-MAIL_FROM=GM Sim <noreply@gbros.us>
+MAIL_FROM=Baseball GM <noreply@gbros.us>
 PUBLIC_BASE_URL=https://baseball.gbros.us
 ```
 

@@ -135,7 +135,7 @@ SMTP_HOST=smtp.resend.com
 SMTP_PORT=587
 SMTP_USERNAME=resend
 SMTP_PASSWORD=<API key>
-MAIL_FROM=GM Sim <noreply@your-domain.com>
+MAIL_FROM=Baseball GM <noreply@your-domain.com>
 PUBLIC_BASE_URL=https://your-domain.com
 ```
 

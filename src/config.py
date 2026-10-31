@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_starttls: bool = True
-    mail_from: str = "GM Sim <noreply@localhost>"
+    mail_from: str = "Baseball GM <noreply@localhost>"
 
     # The site's address as users reach it, e.g. "https://baseball.gbros.us",
     # used to build links in emails. Required once SMTP_HOST is set: without
