@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Los Angeles cap">
+  <defs>
+    <path id="star" d="M0.0 -29.0 L7.9 -7.9 L30.4 -6.9 L12.8 7.2 L18.8 28.9 L0.0 16.5 L-18.8 28.9 L-12.8 7.2 L-30.4 -6.9 L-7.9 -7.9 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#2A0E5C"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#1A0838" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#1A0838" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#FFC93C"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#FF6F91" stroke="#D94B6E" stroke-width="1.5"/>
+      <g transform="translate(120 76) scale(.95)"><use href="#star" fill="#FFC93C" stroke="#FF6F91" stroke-width="2" stroke-linejoin="round" paint-order="stroke"/></g>
+</svg>
