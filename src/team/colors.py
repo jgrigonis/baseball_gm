@@ -24,6 +24,12 @@ class TeamColors:
     primary: str
     secondary: str
     accent: str
+    # What the round badge shows, when it isn't the code (Beijing's 北京).
+    mark: str = ""
+
+    @property
+    def badge_text(self) -> str:
+        return self.mark or self.code
 
     @property
     def ink(self) -> str:
@@ -36,7 +42,7 @@ class TeamColors:
 TEAM_COLORS: dict[tuple[str, str], TeamColors] = {
     ("London", "Lions"): TeamColors("LON", "#A6192E", "#D4A73A", "#13294B"),
     ("New York", "Titans"): TeamColors("NY", "#0C2340", "#8E9194", "#E8E2D0"),
-    ("Beijing", "Dragons"): TeamColors("BEI", "#C8261E", "#3E7DAA", "#F2B705"),
+    ("Beijing", "Dragons"): TeamColors("BEI", "#C8261E", "#3E7DAA", "#F2B705", "北京"),
     ("Dubai", "Falcons"): TeamColors("DXB", "#B8935A", "#2F3B45", "#00843D"),
     ("Hong Kong", "Harbor Kings"): TeamColors("HK", "#E0218A", "#0B3C5D", "#F2C14E"),
     ("Paris", "Musketeers"): TeamColors("PAR", "#2B4C9B", "#C9CED6", "#B31B34"),
@@ -118,8 +124,10 @@ def colors_for(city: str, mascot: str) -> TeamColors:
 def team_badge(city: str, mascot: str) -> Markup:
     """A round badge with the team's code in its colors, for next to its name."""
     c = colors_for(city, mascot)
-    size = " team-badge--long" if len(c.code) > 2 else ""
+    text = c.badge_text
+    # Three letters, or two full-width characters, need the smaller size.
+    size = " team-badge--long" if len(text) > 2 or not text.isascii() else ""
     return Markup(
         '<span class="team-badge{size}" aria-hidden="true" '
         'style="--team-primary:{p};--team-ink:{i};--team-accent:{a};">{code}</span>'
-    ).format(size=size, p=c.primary, i=c.ink, a=c.accent, code=escape(c.code))
+    ).format(size=size, p=c.primary, i=c.ink, a=c.accent, code=escape(text))
