@@ -68,11 +68,11 @@ CAPS = (("cap", "Cap"), ("cap-alternate", "Alternate cap"))
 TAGLINES = (
     "{city} has waited all winter for this.",
     "A new era of {mascot} baseball starts now.",
-    "The {mascot} are yours. Make {city} proud.",
+    "The {mascot} {are} yours. Make {city} proud.",
     "Every dynasty starts with a first season.",
-    "{city} is ready. Are the {mascot}?",
+    "{city} is ready. {Are} the {mascot}?",
     "The box score is blank. Time to write history, {city}.",
-    "Tradition doesn’t rest. Neither do the {mascot}.",
+    "Tradition doesn’t rest. Neither {do} the {mascot}.",
     "Built on history. Bound for October.",
     "Legends are made in October, but they start right here.",
     "The pieces are in place. The chase begins now.",
@@ -215,6 +215,14 @@ def _named(p: PlayerRecord) -> dict:
     return {"player_id": p.id, "name": f"{p.first_name} {p.last_name}", "age": p.age}
 
 
+def verbs(mascot: str) -> dict:
+    """The verbs a tagline needs to agree with the team's name: the Titans
+    are, but the Rain, the Weird and the Berlin Bear is."""
+    if mascot.endswith("s"):
+        return {"are": "are", "Are": "Are", "do": "do"}
+    return {"are": "is", "Are": "Is", "do": "does"}
+
+
 def team_colors(city: str, mascot: str) -> dict:
     c = colors_for(city, mascot)
     return {
@@ -225,7 +233,7 @@ def team_colors(city: str, mascot: str) -> dict:
         "ink": c.ink,
         "tagline": TAGLINES[
             hashlib.sha1(f"{city} {mascot}".encode()).digest()[0] % len(TAGLINES)
-        ].format(city=city, mascot=mascot),
+        ].format(city=city, mascot=mascot, **verbs(mascot)),
     }
 
 

@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Berlin cap alternate">
   <defs>
-    <path id="bear" d="M12 21 Q22 14 30 12 Q33 6 37 6 Q41 6 41 11 Q48 12 53 18 Q60 24 64 32 Q72 44 72 58 Q74 62 80 60 Q82 66 76 68 Q76 78 70 84 L72 94 Q72 97 68 97 L58 97 L58 90 Q54 86 50 82 Q46 86 44 90 L44 94 Q44 97 40 97 L32 97 L33 88 Q35 76 38 68 Q34 64 32 60 L22 63 L19 66 L18 63 L15 65 L15 62 L12 62 Q12 56 18 54 L29 49 Q31 46 31 44 L21 45 L18 48 L16 45 L13 47 L13 43 L10 43 Q10 37 16 35 L30 32 Q31 29 28 27 L20 27 Q16 27 14 25 L10 25 Q8 22 12 21 Z"/>
+    <path id="bear" d="M8 22 Q14 13 26 10 Q29 4 35 4 Q41 4 41 10 Q50 11 56 19 Q66 29 70 45 Q74 60 72 72 Q71 80 66 85 L68 94 Q68 97 64 97 L54 97 L54 90 Q50 86 46 85 L44 92 Q44 97 40 97 L32 97 L34 88 Q34 78 36 70 Q32 66 30 62 L20 64 L17 67 L16 64 L13 66 L13 62 L11 62 Q11 56 17 54 L29 50 Q31 47 31 45 L20 46 L17 49 L15 46 L12 48 L12 44 L9 44 Q9 38 15 36 L30 33 Q32 31 30 29 L22 30 Q14 30 10 27 L7 27 Q4 24 8 22 Z"/>
   </defs>
       <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#D62828"/>
       <path d="M122 30 Q118 70 120 120" fill="none" stroke="#A51F1F" stroke-width="1.5"/>
       <path d="M80 42 Q72 80 76 120" fill="none" stroke="#A51F1F" stroke-width="1.5"/>
       <circle cx="122" cy="31" r="5" fill="#F2C14E"/>
       <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1C1C1C" stroke="#0E0E0E" stroke-width="1.5"/>
-      <g transform="translate(96 40) scale(0.6)"><use href="#bear" fill="#1C1C1C" stroke="#F2C14E" stroke-width="4" stroke-linejoin="round" paint-order="stroke"/><circle cx="27" cy="17" r="1.6" fill="#D62828"/><path d="M11 25 Q8 27 10 29 Q13 29 14 26 Z" fill="#F2C14E"/></g>
+      <g transform="translate(96 40) scale(0.6)"><use href="#bear" fill="#1C1C1C" stroke="#F2C14E" stroke-width="4" stroke-linejoin="round" paint-order="stroke"/><circle cx="25" cy="17" r="1.8" fill="#D62828"/><path d="M7 27 Q4 29 6 31 Q9 31 10 28 Z" fill="#F2C14E"/></g>
 </svg>

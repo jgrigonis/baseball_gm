@@ -30,7 +30,7 @@ def manifest_path() -> Path:
 # Teams past the World League's 30, for bigger leagues. There are more of them
 # than a 32-team league needs, so each such league draws its own.
 EXTRA_TEAMS = (
-    {"csv": "berlin.csv", "city": "Berlin", "mascot": "Bears"},
+    {"csv": "berlin.csv", "city": "Berlin", "mascot": "Bear"},
     {"csv": "seattle.csv", "city": "Seattle", "mascot": "Rain"},
     {"csv": "portland.csv", "city": "Portland", "mascot": "Weird"},
 )

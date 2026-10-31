@@ -22,6 +22,6 @@ def test_page_renders_without_signing_in():
     assert r.status_code == 200
     assert "Team Uniforms" in r.text
     assert "img/uniforms/tokyo/helmet.svg" in r.text
-    for team in ("Berlin Bears", "Seattle Rain", "Portland Weird"):
+    for team in ("Berlin Bear", "Seattle Rain", "Portland Weird"):
         assert team in r.text
     assert "No uniform set yet." not in r.text

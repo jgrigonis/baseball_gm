@@ -212,3 +212,22 @@ def test_welcome_page_shows_the_uniforms(client, league, monkeypatch):
         "patch",
     ):
         assert f"/static/img/uniforms/tokyo/{name}.svg" in html
+
+
+@pytest.mark.parametrize(
+    "mascot, verb",
+    [
+        ("Titans", "are"),
+        ("Bear", "is"),
+        ("Rain", "is"),
+        ("Weird", "is"),
+        ("Phoenix", "is"),
+    ],
+)
+def test_taglines_agree_with_a_singular_or_plural_name(mascot, verb):
+    assert wv.verbs(mascot)["are"] == verb
+    for tagline in wv.TAGLINES:
+        line = tagline.format(city="City", mascot=mascot, **wv.verbs(mascot))
+        if verb == "is":
+            assert "are yours" not in line and "Are the" not in line
+            assert "Neither do " not in line
