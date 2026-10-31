@@ -48,5 +48,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Amsterdam Captains | Done (2026-10-31) | Golden Age harbor in orange, navy and cream, lettered in Alegreya SC Black. Captains at home, AMSTERDAM on the navy road jersey, and an Oranje alternate. The caps carry a ship's wheel, the stirrups carry the city's XXX crosses, and the patch is a row of canal-house gables. |
 | Lisbon Navigators | Done (2026-10-31) | Age of Discovery in sand, navy and red, lettered in Fraunces Black. Navigators on sand at home, LISBOA on the navy road jersey, and a red Caravela alternate. The caps carry a compass rose, the stirrups a sand band with the flared sail cross, and the patch is a caravel under sail. |
 | Paris Musketeers | Done (2026-10-31) | The musketeers' cassock blue and silver with red trim, lettered in Abril Fatface. Musketeers on white at home, PARIS on the silver road jersey, and a blue Cassock alternate. The caps carry a fleur-de-lis, and the patch crosses three rapiers over TOUS POUR UN. |
+| Hong Kong Harbor Kings | Done (2026-10-31) | Neon magenta, harbor navy and gold, lettered in the rounded sign face Righteous. KINGS under a gold crown on white at home, a big neon HK on the navy road jersey, and a magenta Neon alternate. The caps carry a gold HK, and the patch sails a junk with magenta sails past the skyline, with 香港. |
 
-The other 13 teams are still to do. They aren't shown in the game yet.
+The other 12 teams are still to do. They aren't shown in the game yet.
