@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Madrid helmet">
+  <defs>
+    <path id="morion" d="M-29 -15 Q-22 3 0 3 Q22 3 29 -15 Q22 -7 13 -7 Q0 -4 -13 -7 Q-22 -7 -29 -15 Z M-13 -6 Q-14 -24 -6 -33 Q-2 -42 0 -42 Q2 -42 6 -33 Q14 -24 13 -6 Z"/>
+    <path id="band" d="M-12 -18 Q0 -23 12 -18"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6A7380"/><stop offset=".45" stop-color="#3F4650"/><stop offset="1" stop-color="#2A3038"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#2A3038"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#15191E"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#2A3038"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(100 96) scale(1.1)"><use href="#morion" fill="#F1BF00" stroke="#F5EFE2" stroke-width="1" paint-order="stroke"/><use href="#band" fill="none" stroke="#3F4650" stroke-width="1.4"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#AA151B" stroke-width="2.5"/>
+</svg>

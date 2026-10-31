@@ -37,5 +37,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Singapore Merlions | Done (2026-10-31) | Lion City theme. Fish-scale sleeves on the home and National Day jerseys, and arched lettering. The caps carry the Marina Bay skyline with no letters, and the patch shows the skyline against a red sun. |
 | New York Titans | Done (2026-10-31) | Art Deco Manhattan with industrial lettering (Oswald, chosen from a font study). TITANS stands on a riveted girder. The Ironworkers alternate is steel gray. The cap has a skyscraper spire, and the octagon patch has a sunburst and a NEW YORK banner. |
 | Dubai Falcons | Done (2026-10-31) | Desert and falcon theme with Kufic lettering (Reem Kufi). An ivory home body was added, since none of the team colors is light enough. Falcons climbs at 12° over a gold wing, and the alternate is Oasis green. The cap has a hooded falcon head, and the patch shows the falcon over dunes with دبي. |
+| Madrid Conquistadors | Done (2026-10-31) | Iron, gold and red, with a cream home body. "Conquistadors" is arched in Pirata One blackletter, and MADRID is set in Cinzel Roman capitals. The alternate is Rojigualda red and gold. The caps carry a gold morion, the stirrups a red-gold-red flag band, and the patch is a shield with crossed Toledo swords. |
 
-The other 24 teams are still to do. They aren't shown in the game yet.
+The other 23 teams are still to do. They aren't shown in the game yet.
