@@ -27,6 +27,7 @@ from src.api.services import personas, sim_jobs
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
+from src.api.view_models.welcome import welcome
 from src.config import settings
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -417,6 +418,11 @@ def dashboard(
         # board is only for a draft still to run.
         if league_repo.draft_complete(league_id):
             return RedirectResponse(f"/leagues/{league_id}/draft/results")
+        # A GM's first look at a new league meets their team first.
+        if league_repo.count_seasons(league_id) == 1 and gm_repo.needs_welcome(
+            gm["id"]
+        ):
+            return RedirectResponse(f"/leagues/{league_id}/welcome")
         return RedirectResponse(f"/leagues/{league_id}/draft")
     if state in ("season", "playoffs"):
         return RedirectResponse(f"/leagues/{league_id}/standings")
@@ -457,6 +463,29 @@ def league_page(
         return RedirectResponse(f"/leagues/{league_id}/")
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
     return tab_response(request, htmx, "dashboard/partials/league_info.html", ctx)
+
+
+@router.get("/leagues/{league_id}/welcome", response_class=HTMLResponse)
+def welcome_page(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+):
+    """The GM's new team: shown once when the league starts, before the
+    draft, and open from the Roster tab after."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] == "lobby":
+        return RedirectResponse(f"/leagues/{league_id}/")
+    team = welcome(db, league, gm)
+    if not team:
+        return RedirectResponse(f"/leagues/{league_id}/roster")
+    GMRepository(db).mark_welcomed(gm["id"])
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    ctx["welcome"] = team
+    return tab_response(request, htmx, "dashboard/partials/welcome.html", ctx)
 
 
 @router.get("/leagues/{league_id}/personas/{persona_id}", response_class=HTMLResponse)

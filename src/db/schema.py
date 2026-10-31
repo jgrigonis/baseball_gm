@@ -263,6 +263,7 @@ CREATE TABLE IF NOT EXISTS gms (
     fired_at       TEXT,                  -- ISO datetime of firing; NULL = active
     ready_period   INTEGER,               -- ready when = leagues.sim_period
     persona_id     TEXT,                  -- AI GMs: who they are (gm_personas)
+    welcomed_at    TIMESTAMPTZ,           -- saw the welcome screen (once per league)
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,

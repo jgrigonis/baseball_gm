@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
+from src.db.repositories.gm_repo import GMRepository
 
 
 @pytest.fixture
@@ -44,9 +45,10 @@ def test_reentry_after_draft_goes_to_results(
     assert r.headers["location"] == f"/leagues/{league.id}/draft/results"
 
 
-def test_reentry_before_draft_goes_to_board(client, factory, league_gm):
-    league, _, _ = league_gm
+def test_reentry_before_draft_goes_to_board(client, db_conn, factory, league_gm):
+    league, gm, _ = league_gm
     factory.draft(league=league, state="pending")
+    GMRepository(db_conn).mark_welcomed(gm.id)  # met their team already
 
     r = client.get(f"/leagues/{league.id}/")
 
