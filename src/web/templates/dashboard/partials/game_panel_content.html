@@ -53,6 +53,7 @@
         <th style="text-align:right;">H</th><th style="text-align:right;">2B</th>
         <th style="text-align:right;">3B</th><th style="text-align:right;">HR</th>
         <th style="text-align:right;">RBI</th><th style="text-align:right;">BB</th>
+        <th style="text-align:right;" title="Hit by pitch">HBP</th>
         <th style="text-align:right;">K</th><th style="text-align:right;">SB</th>
       </tr></thead>
       <tbody>
@@ -68,6 +69,7 @@
           <td style="text-align:right;font-family:var(--font-mono);color:{% if p.HR > 0 %}var(--amber){% else %}inherit{% endif %};">{{ p.HR or '' }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.RBI or '' }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.BB or '' }}</td>
+          <td style="text-align:right;font-family:var(--font-mono);">{{ p.HBP or '' }}</td>
           <td style="text-align:right;font-family:var(--font-mono);color:{% if p.K >= 3 %}var(--red){% else %}inherit{% endif %};">{{ p.K or '' }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.SB or '' }}</td>
         </tr>
