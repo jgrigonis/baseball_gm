@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="Lisbon stirrups alternate">
+  <defs>
+    <path id="rose" d="M0.0 -34.0 L2.3 -5.5 L14.1 -14.1 L5.5 -2.3 L34.0 0.0 L5.5 2.3 L14.1 14.1 L2.3 5.5 L0.0 34.0 L-2.3 5.5 L-14.1 14.1 L-5.5 2.3 L-34.0 0.0 L-5.5 -2.3 L-14.1 -14.1 L-2.3 -5.5 Z M-24 0 A24 24 0 1 1 24 0 A24 24 0 1 1 -24 0 Z M-21 0 A21 21 0 1 0 21 0 A21 21 0 1 0 -21 0 Z"/>
+    <path id="sailcross" d="M-1.6 -1.6 L-4.2 -8 H4.2 L1.6 -1.6 L8 -4.2 V4.2 L1.6 1.6 L4.2 8 H-4.2 L-1.6 1.6 L-8 4.2 V-4.2 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#E9DDC1" stroke="#CDBF9E"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#0E2A47"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#E9DDC1"/>
+        <rect x="50" y="42" width="56" height="20" fill="#E9DDC1"/>
+        <use href="#sailcross" transform="translate(78 52) scale(1.15)" fill="#B22234"/>
+        <g transform="translate(78 108) scale(.5)"><use href="#rose" fill="#E9DDC1"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#071A2E"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#E9DDC1" stroke="#CDBF9E"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#B22234"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#E9DDC1"/>
+        <rect x="144" y="42" width="56" height="20" fill="#E9DDC1"/>
+        <use href="#sailcross" transform="translate(172 52) scale(1.15)" fill="#0E2A47"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#071A2E"/>
+      </g>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Lisbon cap">
+  <defs>
+    <path id="rose" d="M0.0 -34.0 L2.3 -5.5 L14.1 -14.1 L5.5 -2.3 L34.0 0.0 L5.5 2.3 L14.1 14.1 L2.3 5.5 L0.0 34.0 L-2.3 5.5 L-14.1 14.1 L-5.5 2.3 L-34.0 0.0 L-5.5 -2.3 L-14.1 -14.1 L-2.3 -5.5 Z M-24 0 A24 24 0 1 1 24 0 A24 24 0 1 1 -24 0 Z M-21 0 A21 21 0 1 0 21 0 A21 21 0 1 0 -21 0 Z"/>
+    <path id="roseshade" d="M0 0 L0.0 -34.0 L2.3 -5.5 Z M0 0 L14.1 -14.1 L5.5 -2.3 Z M0 0 L34.0 0.0 L5.5 2.3 Z M0 0 L14.1 14.1 L2.3 5.5 Z M0 0 L0.0 34.0 L-2.3 5.5 Z M0 0 L-14.1 14.1 L-5.5 2.3 Z M0 0 L-34.0 0.0 L-5.5 -2.3 Z M0 0 L-14.1 -14.1 L-2.3 -5.5 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#0E2A47"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#071A2E" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#071A2E" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#B22234"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#B22234" stroke="#861A27" stroke-width="1.5"/>
+      <g transform="translate(120 76) scale(1.15)"><use href="#rose" fill="#E9DDC1"/><use href="#roseshade" fill="#B22234"/></g>
+</svg>
