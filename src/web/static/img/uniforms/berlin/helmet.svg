@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Berlin helmet">
+  <defs>
+    <path id="bear" d="M12 21 Q22 14 30 12 Q33 6 37 6 Q41 6 41 11 Q48 12 53 18 Q60 24 64 32 Q72 44 72 58 Q74 62 80 60 Q82 66 76 68 Q76 78 70 84 L72 94 Q72 97 68 97 L58 97 L58 90 Q54 86 50 82 Q46 86 44 90 L44 94 Q44 97 40 97 L32 97 L33 88 Q35 76 38 68 Q34 64 32 60 L22 63 L19 66 L18 63 L15 65 L15 62 L12 62 Q12 56 18 54 L29 49 Q31 46 31 44 L21 45 L18 48 L16 45 L13 47 L13 43 L10 43 Q10 37 16 35 L30 32 Q31 29 28 27 L20 27 Q16 27 14 25 L10 25 Q8 22 12 21 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5A5A5A"/><stop offset=".45" stop-color="#1C1C1C"/><stop offset="1" stop-color="#0E0E0E"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#D62828"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#0E0E0E"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#0E0E0E"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <g transform="translate(80 38) scale(0.6)"><use href="#bear" fill="#F2C14E" stroke="#D62828" stroke-width="4" stroke-linejoin="round" paint-order="stroke"/><circle cx="27" cy="17" r="1.6" fill="#1C1C1C"/><path d="M11 25 Q8 27 10 29 Q13 29 14 26 Z" fill="#D62828"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#D62828" stroke-width="2.5"/>
+</svg>

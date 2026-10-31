@@ -75,7 +75,8 @@ TEAM_COLORS: dict[tuple[str, str], TeamColors] = {
     ("Buenos Aires", "Matadors"): TeamColors("BA", "#6CACE4", "#F6B40E", "#B3001B"),
     # Past the World League's 30, for 32-team leagues (lobby_teams.EXTRA_TEAMS).
     ("Berlin", "Bears"): TeamColors("BER", "#1C1C1C", "#D62828", "#F2C14E"),
-    ("Seattle", "Orcas"): TeamColors("SEA", "#0B3D4C", "#E8EEF0", "#2AA198"),
+    ("Seattle", "Rain"): TeamColors("SEA", "#0B3D4C", "#E8EEF0", "#2AA198"),
+    ("Portland", "Weird"): TeamColors("POR", "#2E5E3A", "#E0457B", "#C6D93B"),
 }
 
 # (primary, secondary, accent) for teams outside TEAM_COLORS
