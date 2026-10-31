@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Seoul cap alternate">
+  <defs>
+    <path id="tigerW" d="M0 -36 C20 -36 34 -26 37 -8 L44 2 L37 6 L42 14 L33 18 C28 28 16 36 0 40 C-16 36 -28 28 -33 18 L-42 14 L-37 6 L-44 2 L-37 -8 C-34 -26 -20 -36 0 -36 Z M-30 -22 L-32 -44 L-12 -34 Z M30 -22 L32 -44 L12 -34 Z"/>
+    <path id="tigerK" d="M-27 -27 L-29 -39 L-18 -33 Z M27 -27 L29 -39 L18 -33 Z M-6 -35 L0 -22 L6 -35 Z M-17 -33 L-9 -22 L-19 -27 Z M17 -33 L9 -22 L19 -27 Z M-27 -22 L-12 -16 L-29 -16 Z M27 -22 L12 -16 L29 -16 Z M-41 0 L-23 4 L-38 7 Z M41 0 L23 4 L38 7 Z M-39 13 L-21 14 L-33 19 Z M39 13 L21 14 L33 19 Z M-27 27 L-13 25 L-22 31 Z M27 27 L13 25 L22 31 Z M-8 6 Q0 3 8 6 L1 14 H-1 Z M-1 14 H1 V19 Q7 25 13 21 L13 23 Q7 27.5 0 21.8 Q-7 27.5 -13 23 L-13 21 Q-7 25 -1 19 Z M-13 -10.5 Q-10.6 -7 -13 -3.5 Q-15.4 -7 -13 -10.5 Z M13 -10.5 Q10.6 -7 13 -3.5 Q15.4 -7 13 -10.5 Z"/>
+    <path id="tigerB" d="M-22 -7 Q-13 -15 -4 -6 Q-13 -1 -22 -7 Z M22 -7 Q13 -15 4 -6 Q13 -1 22 -7 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#0047A0"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#00316E" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#00316E" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#1A1A1A"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1A1A1A" stroke="#000000" stroke-width="1.5"/>
+      <g transform="translate(120 76) scale(.75)"><use href="#tigerW" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/><use href="#tigerK" fill="#1A1A1A"/><use href="#tigerB" fill="#0047A0"/></g>
+</svg>

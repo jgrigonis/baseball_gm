@@ -49,5 +49,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Lisbon Navigators | Done (2026-10-31) | Age of Discovery in sand, navy and red, lettered in Fraunces Black. Navigators on sand at home, LISBOA on the navy road jersey, and a red Caravela alternate. The caps carry a compass rose, the stirrups a sand band with the flared sail cross, and the patch is a caravel under sail. |
 | Paris Musketeers | Done (2026-10-31) | The musketeers' cassock blue and silver with red trim, lettered in Abril Fatface. Musketeers on white at home, PARIS on the silver road jersey, and a blue Cassock alternate. The caps carry a fleur-de-lis, and the patch crosses three rapiers over TOUS POUR UN. |
 | Hong Kong Harbor Kings | Done (2026-10-31) | Neon magenta, harbor navy and gold, lettered in the rounded sign face Righteous. KINGS under a gold crown on white at home, a big neon HK on the navy road jersey, and a magenta Neon alternate. The caps carry a gold HK, and the patch sails a junk with magenta sails past the skyline, with 香港. |
+| Seoul White Tigers | Done (2026-10-31) | Hanji cream, ink black and taegeuk blue, lettered in Black Han Sans. TIGERS on cream at home, SEOUL on the blue road jersey, and a black Baekho alternate with 서울 in Hangul and tiger-striped sleeves. The caps carry the white tiger's face, the stirrups wear its stripes, and the patch sets the tiger in front of Bukhansan. |
 
-The other 12 teams are still to do. They aren't shown in the game yet.
+The other 11 teams are still to do. They aren't shown in the game yet.

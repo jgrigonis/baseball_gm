@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 8 74 214" width="74" height="214" role="img" aria-label="Seoul stirrups">
+  <defs>
+    <path id="stripes" d="M0 0 L22 6 L0 10 Z M56 14 L32 18 L56 24 Z M0 28 L26 33 L0 38 Z M56 44 L28 48 L56 54 Z M0 62 L20 66 L0 70 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#F2F0EA" stroke="#CFCCC2" stroke-width="1"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <g transform="translate(50 30)"><use href="#stripes" fill="#1A1A1A"/></g>
+        <rect x="50" y="106" width="56" height="5" fill="#0047A0"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1A1A1A"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#0047A0"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <g transform="translate(144 30)"><use href="#stripes" fill="#1A1A1A"/></g>
+        <rect x="144" y="106" width="56" height="5" fill="#F2F0EA"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#1A1A1A"/>
+      </g>
+</svg>
