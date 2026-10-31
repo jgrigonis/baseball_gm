@@ -31,3 +31,10 @@ def test_badge_markup_escapes_and_carries_colors():
     html = str(team_badge("London", "Lions"))
     assert "LON" in html and "#A6192E" in html
     assert "<script>" not in str(team_badge("<script>", "x"))
+
+
+def test_beijing_badge_shows_its_name_in_chinese():
+    html = str(team_badge("Beijing", "Dragons"))
+    assert ">北京<" in html and "team-badge--long" in html
+    # Line scores and the like still use the code
+    assert colors_for("Beijing", "Dragons").code == "BEI"
