@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="Istanbul stirrups alternate">
+  <defs>
+    <path id="tulip" d="M0 -44 Q-12 -48 -12 -70 Q-6 -63 -3 -63 Q-2 -73 0 -79 Q2 -73 3 -63 Q6 -63 12 -70 Q12 -48 0 -44 Z M-1.3 -45 Q-3 -20 -0.6 0 L1.4 0 Q-1 -20 1.3 -45 Z M-0.6 -5 Q-18 -15 -21 -41 Q-8 -27 0.8 -10 Z M0.6 -14 Q15 -22 17 -45 Q6 -32 -0.6 -19 Z"/>
+    <path id="petal" d="M0 -47 Q-5 -56 0 -72 Q5 -56 0 -47 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#F6F2E8" stroke="#D8D0BE"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#1A3D8F"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#F6F2E8"/>
+        <rect x="50" y="44" width="56" height="16" fill="#1B8A9C"/><path d="M50 52 H106" stroke="#D2453A" stroke-width="4" stroke-dasharray="0 8" stroke-linecap="round" transform="translate(4 0)"/><rect x="50" y="42" width="56" height="2" fill="#F6F2E8"/><rect x="50" y="60" width="56" height="2" fill="#F6F2E8"/>
+        <g transform="translate(78.5 116) scale(.5)"><use href="#tulip" fill="#F6F2E8"/><use href="#petal" fill="#D2453A"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#0C1E47"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#F6F2E8" stroke="#D8D0BE"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#1B8A9C"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#F6F2E8"/>
+        <rect x="144" y="44" width="56" height="16" fill="#1A3D8F"/><path d="M144 52 H200" stroke="#D2453A" stroke-width="4" stroke-dasharray="0 8" stroke-linecap="round" transform="translate(4 0)"/><rect x="144" y="42" width="56" height="2" fill="#F6F2E8"/><rect x="144" y="60" width="56" height="2" fill="#F6F2E8"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#0C1E47"/>
+      </g>
+</svg>
