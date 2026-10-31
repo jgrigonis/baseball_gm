@@ -236,6 +236,14 @@ body {
   margin-right: 8px;
 }
 .topbar-nav > a + a { padding-left: 0; }
+.topbar-nav a, .topbar-signout { white-space: nowrap; }
+@media (max-width: 600px) {
+  /* No room for every link: Account is a button on your own profile. */
+  .topbar-nav .topbar-account { display: none; }
+  .topbar { padding: 0 16px; gap: 12px; }
+  .topbar-nav a, .topbar-signout { padding-left: 4px; padding-right: 4px; }
+  .topbar-nav > * + *::before { margin-right: 4px; }
+}
 
 /* ── Sim Bar ────────────────────────────────────────────────────────────────── */
 /* Persistent strip below topbar showing current game date + sim controls */
@@ -1128,4 +1136,62 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .as-hurt { font-family: var(--font-mono); font-size: 9px; color: var(--red); border: 1px solid var(--red); border-radius: 3px; padding: 0 4px; margin-left: 4px; }
 @media (max-width: 600px) {
   .as-grid { grid-template-columns: 1fr; }
+}
+
+/* ── GM profile (templates/profile.html) ──────────────────────────────────── */
+.gp-head { display: flex; gap: 20px; align-items: center; margin-bottom: 20px; }
+.gp-head .gp-patch { flex-shrink: 0; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4)); }
+.gp-head-main { flex: 1; min-width: 0; }
+.gp-head .page-title { font-size: 44px; overflow-wrap: anywhere; }
+.gp-sub { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.7; }
+.gp-sub b { color: var(--text); font-weight: 500; }
+.gp-head-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.gp-pill { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  padding: 3px 8px; border: 1px solid var(--amber); color: var(--amber); background: var(--amber-lo); white-space: nowrap; }
+.gp-patch-badge { display: inline-grid; place-items: center; }
+.gp-patch-badge .team-badge { width: 70%; height: 70%; margin: 0; font-size: 22px; }
+.gp-trophy .gp-patch-badge .team-badge { font-size: 18px; }
+.gp-scoreboard { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.gp-stat { text-align: center; padding: 14px 6px; border-right: 1px solid var(--border); }
+.gp-stat:last-child { border-right: none; }
+.gp-stat-n { font-size: 22px; white-space: nowrap; }
+.gp-stat-n .num-tile { margin-right: .06em; }
+.gp-stat-l { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); margin-top: 8px; }
+.gp-full { margin-top: 16px; }
+.gp-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 16px; }
+.gp-trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.gp-trophy { text-align: center; padding: 12px 6px; background: var(--bg-3); border: 1px solid var(--border); }
+.gp-trophy .gp-patch { display: block; margin: 0 auto 8px; }
+.gp-trophy .gp-patch-badge { display: grid; }
+.gp-trophy-what { font-family: var(--font-display); text-transform: uppercase; font-size: 18px; letter-spacing: .04em; color: var(--text-hi); }
+.gp-trophy-what.lit { color: var(--amber); }
+.gp-trophy-year { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+.gp-trophy-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+.gp-team { display: inline-flex; align-items: center; white-space: nowrap; }
+.gp-team .team-badge { width: 20px; height: 20px; font-size: 9px; }
+.gp-team .team-badge--long { font-size: 7.5px; }
+.gp-amber { color: var(--amber) !important; }
+.gp-status { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 2px 6px; border: 1px solid var(--border-hi); color: var(--text-dim); }
+.gp-status-active { border-color: var(--sky); color: var(--sky); background: var(--sky-dim); }
+.gp-table-wrap { overflow-x: auto; }
+.gp-table-wrap td.num { white-space: nowrap; }
+.gp-league-link { color: inherit; text-decoration: none; }
+.gp-league-link:hover { color: var(--sky); }
+/* A GM's name linking to their profile (League page, standings) */
+.gm-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
+.gm-link:hover { color: var(--sky); }
+@media (max-width: 600px) {
+  .gp.content-inner { padding: 20px 16px; }
+  .gp-head { flex-wrap: wrap; gap: 14px; }
+  .gp-head .gp-patch { width: 72px; height: 72px; }
+  .gp-head .page-title { font-size: 34px; }
+  .gp-head-actions { flex-direction: row; width: 100%; }
+  .gp-scoreboard { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .gp-stat { border-bottom: 1px solid var(--border); }
+  .gp-stat:nth-child(3n) { border-right: none; }
+  .gp-stat:last-child { grid-column: span 3; border-bottom: none; }
+  .gp-stat-n { font-size: 16px; }
+  .gp-trophies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gp-hide-sm { display: none; }
 }

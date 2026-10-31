@@ -28,6 +28,7 @@ from src.api.routers import (
     lineup,
     players,
     playoffs,
+    profiles,
     ready,
     roster,
     seasons,
@@ -190,6 +191,7 @@ for _module in (
     trades,
     all_star,
     uniforms,
+    profiles,
 ):
     app.include_router(_module.router)
 
