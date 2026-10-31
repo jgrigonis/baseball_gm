@@ -7,5 +7,5 @@
       <path d="M80 42 Q72 80 76 120" fill="none" stroke="#C9520F" stroke-width="1.5"/>
       <circle cx="122" cy="31" r="5" fill="#0D2240"/>
       <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#0D2240" stroke="#06142A" stroke-width="1.5"/>
-      <g transform="translate(120 78) scale(1.1)"><use href="#wheel" fill="#0D2240" stroke="#F3E9D2" stroke-width="1.2" paint-order="stroke"/></g>
+      <g transform="translate(121 76) scale(.85)"><use href="#wheel" fill="#0D2240" stroke="#F3E9D2" stroke-width="1.4" paint-order="stroke"/></g>
 </svg>
