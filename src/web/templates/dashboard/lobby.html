@@ -88,9 +88,13 @@ document.body.addEventListener('htmx:beforeSwap', function(evt) {
   var elt = evt.detail.elt;
   if (elt.id !== 'lobby-gms') return;
   var xhr = evt.detail.xhr;
-  var url = elt.getAttribute('hx-get');
-  var redirected = xhr.responseURL && new URL(xhr.responseURL).pathname !== url;
-  if (!redirected && [401, 403, 404].indexOf(xhr.status) === -1) return;
+  // Compare against the path this request asked for, not the poll's hx-get:
+  // the commissioner's Reroll button swaps this card too, from its own URL.
+  var asked = evt.detail.pathInfo && evt.detail.pathInfo.finalRequestPath;
+  var path = new URL(asked || elt.getAttribute('hx-get'), location.href).pathname;
+  var redirected = xhr.responseURL && new URL(xhr.responseURL).pathname !== path;
+  var poll = evt.detail.requestConfig && evt.detail.requestConfig.verb === 'get';
+  if (!redirected && !(poll && [401, 403, 404].indexOf(xhr.status) !== -1)) return;
   evt.detail.shouldSwap = false;
   evt.detail.isError = false;
   var copy = elt.cloneNode(true);
