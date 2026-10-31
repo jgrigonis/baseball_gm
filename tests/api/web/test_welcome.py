@@ -70,6 +70,7 @@ def test_welcome_page_shows_the_team(client, league):
     html = client.get(f"/leagues/{lg.id}/welcome").text
 
     assert "Your colors" in html
+    assert html.count('class="wl-star-name"') == 5
     assert "1st of 2" in html  # Boston's 70s beat Chicago's 50s everywhere
     assert "at the <b>Chicago Wind</b>" in html
     assert "2025-04-01" in html

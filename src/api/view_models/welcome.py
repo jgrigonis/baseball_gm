@@ -21,6 +21,7 @@ from src.player.player_value import role_rating
 from src.team.colors import colors_for
 
 MAJORS = ("26man", "40man")
+STARS = 5  # best players shown under Your stars
 
 # area key, label, what it's ranked on
 AREAS = (
@@ -210,7 +211,7 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
     }
     scores = {tid: area_scores(players) for tid, players in rated.items()}
     mine = rated.get(team_id, [])
-    stars = sorted(mine, key=lambda x: role_rating(x[0]), reverse=True)[:3]
+    stars = sorted(mine, key=lambda x: role_rating(x[0]), reverse=True)[:STARS]
 
     needs = needs_for_draft(db, draft["id"]).get(team_id)
     weak = [
