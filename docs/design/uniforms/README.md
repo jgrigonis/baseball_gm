@@ -39,5 +39,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Dubai Falcons | Done (2026-10-31) | Desert and falcon theme with Kufic lettering (Reem Kufi). An ivory home body was added, since none of the team colors is light enough. Falcons climbs at 12° over a gold wing, and the alternate is Oasis green. The cap has a hooded falcon head, and the patch shows the falcon over dunes with دبي. |
 | Madrid Conquistadors | Done (2026-10-31) | Iron, gold and red, with a cream home body. "Conquistadors" is arched in Pirata One blackletter, and MADRID is set in Cinzel Roman capitals. The alternate is Rojigualda red and gold. The caps carry a gold morion, the stirrups a red-gold-red flag band, and the patch is a shield with crossed Toledo swords. |
 | Toronto Sentinels | Done (2026-10-31) | Pine green, charcoal and gold, with a cream home body. "Sentinels" is a rising Yellowtail script, and TORONTO and the numbers are in Alfa Slab One. The alternate is the charcoal Night Watch. The CN Tower is on the caps, helmet and stirrups, and the patch shows the tower over Lake Ontario. |
+| Warsaw Hussars | Done (2026-10-31) | The Polish flag's white and red with black trim, and all the lettering in Playfair Display Black. Home says HUSSARS, the red road jersey says WARSAW, and the black alternate says WARSZAWA. The caps carry the winged hussar's feathered wing, and the patch is a red shield with the wing over crossed lances. |
 
-The other 22 teams are still to do. They aren't shown in the game yet.
+The other 21 teams are still to do. They aren't shown in the game yet.

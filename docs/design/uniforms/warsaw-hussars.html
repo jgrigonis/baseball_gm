@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Warsaw Hussars Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:#C4122F; --white:#ECEAE4; --black:#1E1E1E;
+  --bg:#FBF8F1; --card:#FFFFFF; --text:#1B2A2E; --dim:#5F6B6A; --line:#E6E0D2; --accent:#C4122F;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#E8495F; }
+}
+:root[data-theme="dark"] { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#E8495F; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:var(--black); color:#ECEAE4; border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(var(--white) 0 5px, var(--red) 5px 10px); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#E8495F; }
+header h1 { font-family:"Playfair Display", serif; font-weight:900; font-size:46px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; }
+header p { margin:0; max-width:640px; color:#DADDE2; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:inline-block; }
+h2 { font-family:"Playfair Display", serif; font-weight:900; font-size:22px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#EEE9E0, #DED6C8); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#1A2D30, #132326); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#1A2D30, #132326); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:34px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · 9 of 30</div>
+  <h1>Warsaw Hussars</h1>
+  <p>The Winged Hussars, Poland's armored cavalry, rode with tall feathered wings on their backs. This set uses the white and red of the Polish flag with black trim. The lettering is a heavy Didone serif, the wing goes on the cap, and the patch is a red shield with the wing over two crossed lances.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#C4122F"></i>Red #C4122F</span>
+    <span class="sw"><i style="background:#ECEAE4"></i>White #ECEAE4</span>
+    <span class="sw"><i style="background:#1E1E1E"></i>Black #1E1E1E</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <path id="wing" d="M10.9 11.3 Q1.8 0.2 -12.5 -1.7 Q-3.3 9.3 10.9 11.3 Z M5.2 5.4 Q-5.0 -6.6 -20.4 -9.5 Q-10.2 2.4 5.2 5.4 Z M0.5 -0.6 Q-10.2 -13.4 -26.4 -17.4 Q-15.7 -4.6 0.5 -0.6 Z M-3.0 -6.7 Q-13.8 -20.4 -30.5 -25.4 Q-19.7 -11.8 -3.0 -6.7 Z M-5.5 -12.8 Q-15.8 -27.3 -32.5 -33.4 Q-22.1 -19.0 -5.5 -12.8 Z M-6.8 -19.1 Q-16.2 -34.0 -32.5 -41.1 Q-23.0 -26.2 -6.8 -19.1 Z M-7.0 -25.4 Q-15.1 -40.6 -30.5 -48.4 Q-22.4 -33.2 -7.0 -25.4 Z M-6.1 -31.8 Q-12.7 -46.9 -27.0 -55.0 Q-20.4 -39.9 -6.1 -31.8 Z M-4.1 -38.3 Q-9.0 -52.8 -22.1 -60.8 Q-17.1 -46.3 -4.1 -38.3 Z M-1.0 -44.9 Q-4.3 -58.5 -16.1 -65.9 Q-12.7 -52.4 -1.0 -44.9 Z M3.3 -51.6 Q1.5 -63.9 -9.0 -70.4 Q-7.2 -58.2 3.3 -51.6 Z M8.6 -58.4 Q8.2 -69.2 -1.1 -74.6 Q-0.7 -63.8 8.6 -58.4 Z M11.8 16.6 L8.5 13.6 L5.5 10.6 L2.8 7.5 L0.3 4.4 L-1.9 1.3 L-3.8 -1.8 L-5.5 -5.0 L-6.9 -8.3 L-8.0 -11.5 L-8.8 -14.8 L-9.3 -18.1 L-9.6 -21.4 L-9.6 -24.7 L-9.3 -28.0 L-8.7 -31.3 L-7.8 -34.6 L-6.7 -37.9 L-5.3 -41.3 L-3.6 -44.6 L-1.7 -47.9 L0.5 -51.2 L3.0 -54.5 L5.7 -57.9 L8.7 -61.2 L11.3 -58.8 L8.6 -55.5 L6.1 -52.2 L3.8 -49.0 L1.9 -45.8 L0.2 -42.6 L-1.2 -39.5 L-2.4 -36.4 L-3.3 -33.4 L-4.0 -30.4 L-4.4 -27.4 L-4.5 -24.5 L-4.4 -21.6 L-4.1 -18.8 L-3.5 -16.0 L-2.6 -13.2 L-1.6 -10.4 L-0.2 -7.7 L1.3 -4.9 L3.2 -2.2 L5.2 0.6 L7.6 3.3 L10.2 6.0 L13.1 8.7 L16.2 11.4 Z"/>
+    <path id="lance" d="M-1.3 -74 L0 -84 L1.3 -74 V56 H-1.3 Z"/>
+    <path id="pennant" d="M1.3 -72 L14 -69 L9 -66 L14 -63 L1.3 -60 Z"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. White at home, red on the road, and a black alternate that says it in Polish.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: white with arched red HUSSARS">
+      <use href="#jersey" fill="#F4F3EF" stroke="#1E1E1E" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#C4122F" stroke-width="6"/>
+      <path d="M120 27 V250" stroke="#C4122F" stroke-width="3"/>
+      <g fill="#1E1E1E"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#C4122F" stroke-width="8"/><path d="M203 100 L222 54" stroke="#C4122F" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#1E1E1E" stroke-width="2"/><path d="M200 99 L219 53" stroke="#1E1E1E" stroke-width="2"/>
+      <path id="arcH" d="M62 134 Q120 98 178 134" fill="none"/>
+      <text font-family="Playfair Display" font-weight="900" font-size="20.9" letter-spacing="1" fill="#C4122F" stroke="#1E1E1E" stroke-width="0.9"><textPath href="#arcH" startOffset="50%" text-anchor="middle">HUSSARS</textPath></text>
+      <text x="88" y="198" text-anchor="middle" font-family="Playfair Display" font-weight="900" font-size="30.4" fill="#C4122F" stroke="#1E1E1E" stroke-width="0.8">9</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#C4122F" stroke="#1E1E1E" stroke-width="2"/><g transform="translate(2.5 9) scale(.22)"><use href="#wing" fill="#F4F3EF"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>White, arched red HUSSARS</h3>
+    <p>"HUSSARS" arched in red Didone capitals with a black edge. Red sleeves with a black line, and a red collar and placket.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: red with arched white WARSAW">
+      <use href="#jersey" fill="#C4122F" stroke="#8E0C21" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#ECEAE4" stroke-width="6"/>
+      <path d="M120 27 V250" stroke="#ECEAE4" stroke-width="3"/>
+      <g fill="#1E1E1E"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#ECEAE4" stroke-width="8"/><path d="M203 100 L222 54" stroke="#ECEAE4" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#1E1E1E" stroke-width="2"/><path d="M200 99 L219 53" stroke="#1E1E1E" stroke-width="2"/>
+      <path id="arcA" d="M62 134 Q120 98 178 134" fill="none"/>
+      <text font-family="Playfair Display" font-weight="900" font-size="21.85" letter-spacing="1" fill="#ECEAE4" stroke="#1E1E1E" stroke-width="0.9"><textPath href="#arcA" startOffset="50%" text-anchor="middle">WARSAW</textPath></text>
+      <text x="88" y="198" text-anchor="middle" font-family="Playfair Display" font-weight="900" font-size="30.4" fill="#ECEAE4" stroke="#1E1E1E" stroke-width="0.8">9</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#1E1E1E" stroke="#ECEAE4" stroke-width="2"/><g transform="translate(2.5 9) scale(.22)"><use href="#wing" fill="#ECEAE4"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Red, arched white WARSAW</h3>
+    <p>"WARSAW" arched in white with a black edge. White sleeves, collar and placket, so the road jersey reads as the flag turned over.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: black with arched red WARSZAWA">
+      <use href="#jersey" fill="#1E1E1E" stroke="#000" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#C4122F" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#ECEAE4" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#C4122F" stroke-width="3"/>
+      <g fill="#ECEAE4"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#C4122F" stroke-width="8"/><path d="M203 100 L222 54" stroke="#C4122F" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#ECEAE4" stroke-width="2"/><path d="M200 99 L219 53" stroke="#ECEAE4" stroke-width="2"/>
+      <path id="arcR" d="M62 134 Q120 98 178 134" fill="none"/>
+      <text font-family="Playfair Display" font-weight="900" font-size="18" fill="#C4122F" stroke="#ECEAE4" stroke-width="0.8"><textPath href="#arcR" startOffset="50%" text-anchor="middle">WARSZAWA</textPath></text>
+      <text x="88" y="198" text-anchor="middle" font-family="Playfair Display" font-weight="900" font-size="30.4" fill="#C4122F" stroke="#ECEAE4" stroke-width="0.8">9</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#C4122F" stroke="#ECEAE4" stroke-width="2"/><g transform="translate(2.5 9) scale(.22)"><use href="#wing" fill="#ECEAE4"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Warszawa</div>
+    <h3>Black, red and white</h3>
+    <p>The city's own name, WARSZAWA, in red edged in white on a black body, with red sleeves. Worn on Independence Day weekend in November.</p>
+  </div>
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">No letters: the hussar's wing, a row of feathers on a curved frame.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Red cap with black brim and white hussar wing">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#C4122F"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#8E0C21" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#8E0C21" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#1E1E1E"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1E1E1E" stroke="#000" stroke-width="1.5"/>
+      <g transform="translate(123 95) scale(.8)"><use href="#wing" fill="#F4F3EF" stroke="#1E1E1E" stroke-width="1.1"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Red crown, black brim</h3>
+    <p>The white wing, with each feather outlined in black, on a red crown with a black brim and button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Black cap with red brim and white hussar wing">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#1E1E1E"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#000" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#000" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#C4122F"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#C4122F" stroke="#8E0C21" stroke-width="1.5"/>
+      <g transform="translate(123 95) scale(.8)"><use href="#wing" fill="#F4F3EF" stroke="#C4122F" stroke-width="1.1"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · Warszawa</div>
+    <h3>Black crown, red brim</h3>
+    <p>The white wing edged in red on a black crown, with a red brim and button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss red batting helmet with white hussar wing">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E04257"/><stop offset=".45" stop-color="#C4122F"/><stop offset="1" stop-color="#8E0C21"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#1E1E1E"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#000"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#1E1E1E"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(108 100) scale(.66)"><use href="#wing" fill="#F4F3EF" stroke="#1E1E1E" stroke-width="1.1"/></g>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss red</h3>
+    <p>A red shell with a black ear flap and brim, and the white wing decal.</p>
+  </div>
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">White over red, the flag, wraps the stirrups.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="White home pants and gray away pants with red and black side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F4F3EF" stroke="#D2D0CA" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#1E1E1E"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#ECEAE4" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#C4122F" stroke-width="4"/><path d="M38 34 L40 208" stroke="#1E1E1E" stroke-width="1.6"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A9ABAE" stroke="#86888B" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#1E1E1E"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#ECEAE4" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#C4122F" stroke-width="4"/><path d="M138 34 L140 208" stroke="#1E1E1E" stroke-width="1.6"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>White at home, gray away</h3>
+    <p>A red and black side stripe on both pairs, with a black belt and a silver buckle. Warszawa wears the gray.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Red stirrups and black stirrups, each with a white and red flag band">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#F4F3EF" stroke="#D2D0CA"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#C4122F"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#F4F3EF"/>
+        <rect x="50" y="44" width="56" height="3" fill="#1E1E1E"/><rect x="50" y="47" width="56" height="7" fill="#F4F3EF"/><rect x="50" y="54" width="56" height="7" fill="#C4122F"/><rect x="50" y="61" width="56" height="3" fill="#1E1E1E"/>
+        <g transform="translate(83 112) scale(.45)"><use href="#wing" fill="#F4F3EF"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1E1E1E"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#F4F3EF" stroke="#D2D0CA"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#1E1E1E"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#F4F3EF"/>
+        <rect x="144" y="47" width="56" height="7" fill="#F4F3EF"/><rect x="144" y="54" width="56" height="7" fill="#C4122F"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#000"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>The flag band</h3>
+    <p>Red stirrups with a white and red band edged in black, and a white wing on the outside. Warszawa swaps to black stirrups with the same white and red band.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Red shield patch with a white wing over crossed lances">
+      <g transform="translate(120 112)">
+        <path d="M-74 -86 H74 V-10 Q74 52 0 92 Q-74 52 -74 -10 Z" fill="#C4122F" stroke="#1E1E1E" stroke-width="7" stroke-linejoin="round"/>
+        <path d="M-62 -74 H62 V-12 Q62 40 0 76 Q-62 40 -62 -12 Z" fill="none" stroke="#ECEAE4" stroke-width="2"/>
+        <text x="0" y="-52" text-anchor="middle" font-family="Playfair Display" font-weight="900" font-size="19" letter-spacing="2" fill="#ECEAE4">WARSAW</text>
+        <g transform="translate(0 18) rotate(-32)"><use href="#lance" fill="#1E1E1E"/><use href="#pennant" fill="#ECEAE4" stroke="#1E1E1E" stroke-width="1"/></g>
+        <g transform="translate(0 18) rotate(32) scale(-1 1)"><use href="#lance" fill="#1E1E1E"/><use href="#pennant" fill="#ECEAE4" stroke="#1E1E1E" stroke-width="1"/></g>
+        <g transform="translate(7 24) scale(.95)"><use href="#wing" fill="#F4F3EF" stroke="#1E1E1E" stroke-width="1.2"/></g>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>Wing and lances</h3>
+    <p>A red shield with a black rim and a white inner line. The white wing stands over two crossed cavalry lances with white pennants, under WARSAW. Worn on the player's left sleeve.</p>
+  </div>
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Red, white and black are the same values the game uses for the Warsaw badge.</li>
+  <li><b>The flag, both ways.</b> White over red at home, red with white trim on the road, and white over red again on every stirrup.</li>
+  <li><b>Didone capitals.</b> A heavy, high-contrast serif, the look of old Polish posters and banners. All three jerseys arch the lettering, and the alternate uses the Polish name.</li>
+  <li><b>One symbol on the cap.</b> The wing, following the anchor, spire, falcon, morion and tower.</li>
+  <li><b>In the game.</b> These are design drawings only for now. Nothing in the app has changed.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece. Once Warsaw is settled, I'll commit it and roll the next team.
+</div>
+
+</div>
+</body>
+</html>
