@@ -87,9 +87,10 @@ async function schedSim(count) {
       // ...and, if the GM asked for it, the day a trade offer arrives
       var newOffer = !!d.trade_offer;
       if (newOffer) window._simStop = true;
-      // ...and when All-Star voting opens, or the All-Stars are announced:
+      // ...and when All-Star voting opens, the All-Stars are announced or
+      // the All-Star Game is played:
       // off to the All-Stars tab.
-      if (d.all_star_voting || d.all_stars) {
+      if (d.all_star_voting || d.all_stars || d.all_star_game) {
         window.location.href = '/leagues/{{ league_id }}/allstar';
         return;
       }

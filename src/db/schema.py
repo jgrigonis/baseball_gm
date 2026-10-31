@@ -1084,6 +1084,69 @@ CREATE TABLE IF NOT EXISTS all_stars (
     slot       TEXT NOT NULL,
     points     INTEGER NOT NULL DEFAULT 0,
     wildcard   BOOLEAN NOT NULL DEFAULT FALSE,
+    score      REAL NOT NULL DEFAULT 0,   -- stat score at the vote (draft order)
+    PRIMARY KEY (season_id, player_id)
+);
+
+-- The All-Star Game. Captain 1 (best record at the break) picks first and is
+-- the home side. state: 'tie' while captain 2 picks the last wildcard from
+-- tied_ids, 'draft' while the captains pick, 'played' once it's over.
+-- Scores are by side; line_score is {{"1": [...], "2": [...]}} runs by inning.
+CREATE TABLE IF NOT EXISTS all_star_games (
+    season_id    TEXT PRIMARY KEY REFERENCES seasons(id) ON DELETE CASCADE,
+    captain1_team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    captain2_team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    state        TEXT NOT NULL DEFAULT 'draft'
+                     CHECK (state IN ('tie', 'draft', 'played')),
+    tied_ids     TEXT[] NOT NULL DEFAULT '{{}}',
+    auto1        BOOLEAN NOT NULL DEFAULT FALSE,
+    auto2        BOOLEAN NOT NULL DEFAULT FALSE,
+    game_date    TEXT,
+    score1       INTEGER,
+    score2       INTEGER,
+    innings      INTEGER,
+    line_score   JSONB,
+    mvp_player_id TEXT REFERENCES players(id) ON DELETE SET NULL
+);
+
+-- The captains' draft: which side took each All-Star, in pick order.
+CREATE TABLE IF NOT EXISTS all_star_picks (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    side       INTEGER NOT NULL CHECK (side IN (1, 2)),
+    pick       INTEGER NOT NULL,
+    PRIMARY KEY (season_id, player_id),
+    UNIQUE (season_id, pick)
+);
+
+-- Each player's line in the All-Star Game, apart from the season's stats.
+CREATE TABLE IF NOT EXISTS all_star_game_stats (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    side       INTEGER NOT NULL CHECK (side IN (1, 2)),
+    position   TEXT,
+    batting_order INTEGER,
+    bat_ab     INTEGER NOT NULL DEFAULT 0,
+    bat_runs   INTEGER NOT NULL DEFAULT 0,
+    bat_hits   INTEGER NOT NULL DEFAULT 0,
+    bat_doubles INTEGER NOT NULL DEFAULT 0,
+    bat_triples INTEGER NOT NULL DEFAULT 0,
+    bat_home_runs INTEGER NOT NULL DEFAULT 0,
+    bat_rbi    INTEGER NOT NULL DEFAULT 0,
+    bat_walks  INTEGER NOT NULL DEFAULT 0,
+    bat_strike_outs INTEGER NOT NULL DEFAULT 0,
+    bat_stolen_bases INTEGER NOT NULL DEFAULT 0,
+    pitch_order INTEGER,
+    pitch_outs INTEGER NOT NULL DEFAULT 0,
+    pitch_hits INTEGER NOT NULL DEFAULT 0,
+    pitch_runs INTEGER NOT NULL DEFAULT 0,
+    pitch_earned_runs INTEGER NOT NULL DEFAULT 0,
+    pitch_walks INTEGER NOT NULL DEFAULT 0,
+    pitch_strike_outs INTEGER NOT NULL DEFAULT 0,
+    pitch_home_runs INTEGER NOT NULL DEFAULT 0,
+    pitch_win  BOOLEAN NOT NULL DEFAULT FALSE,
+    pitch_loss BOOLEAN NOT NULL DEFAULT FALSE,
+    pitch_save BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (season_id, player_id)
 );
 
@@ -1091,6 +1154,11 @@ CREATE INDEX IF NOT EXISTS idx_all_star_votes_team   ON all_star_votes(team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_player ON all_star_votes(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_stars_player      ON all_stars(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_stars_team        ON all_stars(team_id);
+CREATE INDEX IF NOT EXISTS idx_all_star_games_c1     ON all_star_games(captain1_team_id);
+CREATE INDEX IF NOT EXISTS idx_all_star_games_c2     ON all_star_games(captain2_team_id);
+CREATE INDEX IF NOT EXISTS idx_all_star_games_mvp    ON all_star_games(mvp_player_id);
+CREATE INDEX IF NOT EXISTS idx_all_star_picks_player ON all_star_picks(player_id);
+CREATE INDEX IF NOT EXISTS idx_all_star_game_stats_player ON all_star_game_stats(player_id);
 
 CREATE INDEX IF NOT EXISTS idx_player_retirements_league_season
     ON player_retirements(league_id, season_id);

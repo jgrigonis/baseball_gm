@@ -1078,6 +1078,21 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .as-error { color: var(--red); }
 .as-player { cursor: pointer; }
 .as-player:hover { color: var(--amber); }
+.as-heading { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); margin: 24px 0 12px; }
+.as-game { margin-bottom: 16px; }
+.as-game .card-header { justify-content: space-between; }
+.as-inline { display: inline-block; margin-top: 10px; }
+.as-btn-sm { padding: 3px 10px; font-size: 11px; }
+.as-draft { margin-bottom: 8px; }
+.as-mine { border-color: var(--green); }
+.as-board { grid-column: 1 / -1; }
+.as-board-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 0 16px; align-items: start; }
+.as-board-grid td form { margin: 0; }
+.as-mvp { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; }
+.as-mvp-tag { font-family: var(--font-mono); font-size: 11px; color: var(--tile-dark, #111); background: var(--amber); padding: 2px 8px; border-radius: 3px; }
+.as-mvp-row td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+.as-box { margin-bottom: 8px; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); }
+.as-pitching { margin-top: 10px; }
 @media (max-width: 600px) {
   .as-grid { grid-template-columns: 1fr; }
 }

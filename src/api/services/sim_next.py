@@ -107,6 +107,29 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     game_date = next_date_row["game_date"]
 
+    # The All-Star Game comes before the first games after the break.
+    if all_star.game_due(conn, season_id, game_date):
+        played = None
+        try:
+            played = all_star.play_game(conn, league_id, season_id)
+            conn.commit()
+        except Exception:
+            # The season goes on without it rather than stopping here.
+            rollback_quietly(conn)
+            log.exception("All-Star Game failed for league %s", league_id)
+        if played:
+            return {
+                "game_date": game_date,
+                "season_id": season_id,
+                "games_played": 0,
+                "errors": [],
+                "results": [],
+                "league_state": league["state"],
+                "all_star_voting": False,
+                "all_stars": False,
+                "all_star_game": True,
+            }
+
     # Load all games on this date
     games = gr.get_days_games(season_id, game_date)
 
@@ -233,7 +256,7 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     when count is "season". When the season ends, sets up the playoffs.
     Stops early after the games of trade deadline day, in leagues that
     trade, so every GM gets a last look, the day All-Star voting opens and
-    the day the All-Stars are picked, and, in a single-player league that
+    the day the All-Stars are picked, after the All-Star Game, and, in a single-player league that
     asks for it (stop_for_trade_offers), when a trade offer arrives for the
     GM. Between days, AI teams make offers and trades (ai_trades). Playing past the deadline expires every open offer first. Returns a
     summary of what was played.
@@ -263,7 +286,7 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     )
     offers_before = trades.offers_to_humans(conn, league_id) if watch_offers else set()
     new_offer = False
-    all_star_voting = all_stars = False
+    all_star_voting = all_stars = all_star_game = False
 
     for _ in range(limit):
         day_result = sim_next_day(league_id, conn)
@@ -272,6 +295,10 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
             results.append(day_result)
         # Stop if season ended (no game_date) or if state changed out of season
         if not day_result.get("game_date"):
+            break
+        # The All-Star Game was played instead of the day's games.
+        if day_result.get("all_star_game"):
+            all_star_game = True
             break
         # Stop if no games played and it wasn't a transient error
         if gp == 0 and not day_result.get("errors"):
@@ -318,4 +345,5 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         "trade_offer": new_offer,
         "all_star_voting": all_star_voting,
         "all_stars": all_stars,
+        "all_star_game": all_star_game,
     }

@@ -80,6 +80,7 @@ function render() {
     parts.push('ready ' + readyCount + '/' + present.length);
     if (d.trade_inbox) parts.push('📨 ' + d.trade_inbox + ' waiting on you in Trades');
     if (d.all_star_vote_due) parts.push('★ All-Star voting is open: cast your ballot');
+    if (d.all_star_turn) parts.push('★ Your pick in the All-Star draft');
     text.textContent = parts.join(' · ');
     waiting.textContent = d.waiting_on.length ? 'waiting on ' + d.waiting_on.join(', ') : '';
     if (d.you_out) waiting.textContent = "you're out of the playoffs" + (waiting.textContent ? ' · ' + waiting.textContent : '');
@@ -115,8 +116,8 @@ function apply(d) {
       else window.location.reload();
       return;
     }
-    // All-Star voting opened, or the All-Stars are in: the tab is new.
-    if (d.all_star !== PAGE_ALL_STAR && (d.all_star === 'open' || d.all_star === 'done')) {
+    // All-Star voting opened, the All-Stars are in or the game was played.
+    if (d.all_star !== PAGE_ALL_STAR && ['open', 'done', 'played'].indexOf(d.all_star) >= 0) {
       window.location.href = URL + '/allstar';
       return;
     }
@@ -125,6 +126,11 @@ function apply(d) {
   } else if (d.has_news && prev) {
     // (The shell fetches the news on page load, before the first poll.)
     fetchNews();
+  }
+  // The other captain picked: this GM's turn in the All-Star draft.
+  if (prev && d.all_star_turn && !prev.all_star_turn
+      && window.location.pathname.endsWith('/allstar')) {
+    window.refreshActiveTab();
   }
   if (window.setTradeBadge && d.trade_inbox !== undefined) window.setTradeBadge(d.trade_inbox);
   render();

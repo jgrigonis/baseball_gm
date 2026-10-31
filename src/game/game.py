@@ -161,6 +161,7 @@ class Game:
         home_eligible: set[str] | None = None,
         away_eligible: set[str] | None = None,
         injuries_enabled: bool = True,
+        max_pitcher_outs: int | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -181,6 +182,8 @@ class Game:
             home_eligible: A set of player_ids eligible to play on the home team (default: None)
             away_eligible: A set of player_ids eligible to play on the away team (default: None)
             injuries_enabled: Whether players can get hurt in this game (default: True)
+            max_pitcher_outs: Every pitcher comes out once he has this many outs,
+                if there's anyone left to bring in (default: None, no cap)
 
         Raises:
             ValueError: If teams are invalid/missing
@@ -243,6 +246,7 @@ class Game:
         # Injury info
         self.injured_ids = set(injured_ids or {})
         self.injuries_enabled = injuries_enabled
+        self.max_pitcher_outs = max_pitcher_outs
         self.new_injuries: list[tuple[str, str, str]] = []  # (player_id, severity)
 
         # Logging
@@ -1040,6 +1044,11 @@ class Game:
         """
         if not self.current_pitcher:
             return
+        if (
+            self.max_pitcher_outs
+            and self.current_pitcher.game_stats.pitching.outs >= self.max_pitcher_outs
+        ):
+            force = True
 
         # ── Closer situation: override fatigue logic entirely ──────────────
         # find_closer uses the same player pool for both the availability check

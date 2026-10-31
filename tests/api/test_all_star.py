@@ -3,6 +3,7 @@
 is open, saving a GM's ballot, counting every team's votes at the break, the
 sim stopping for it and the All-Star tab."""
 
+import random
 from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -330,3 +331,227 @@ def test_the_ready_bar_knows_when_voting_opens_and_closes(lg):
     _play_through(lg.db, lg.season, CLOSES)
     all_star.count_votes(lg.db, lg.league.id, lg.season.id)
     assert ready_check.status(lg.db, lg.league.id, lg.gm.id)["all_star"] == "done"
+
+
+# ── The All-Star Game ────────────────────────────────────────────────────────
+
+
+def _standings(lg, leader):
+    """Every game before the break won by `leader`, so its GM is captain 1."""
+    other = lg.theirs if leader is lg.mine else lg.mine
+    for row in lg.db.execute(
+        "SELECT id FROM games WHERE season_id = %s AND game_date <= %s",
+        (lg.season.id, CLOSES),
+    ).fetchall():
+        for team, won in ((leader, 1), (other, 0)):
+            lg.db.execute(
+                """INSERT INTO team_game_stats (game_id, team_id, runs, hits,
+                                                errors, win, loss)
+                   VALUES (%s, %s, %s, 8, 0, %s, %s)""",
+                (row["id"], team.id, 3 + won, won, 1 - won),
+            )
+
+
+def _count(lg, leader):
+    _standings(lg, leader)
+    _play_through(lg.db, lg.season, CLOSES)
+    all_star.count_votes(lg.db, lg.league.id, lg.season.id)
+    repo = AllStarRepository(lg.db)
+    return repo, repo.game(lg.season.id)
+
+
+def _picks(repo, lg):
+    stars = repo.all_stars(lg.season.id)
+    return {r["player_id"]: r["side"] for r in stars if r["side"]}
+
+
+def test_the_two_best_teams_gms_are_the_captains(lg):
+    repo, g = _count(lg, lg.mine)
+    assert g["captain1_team_id"] == lg.mine.id
+    assert g["captain2_team_id"] == lg.theirs.id
+    assert g["state"] == "draft" and g["game_date"] == "2025-04-23"
+    # I pick first, so the AI captain waits for me.
+    assert _picks(repo, lg) == {}
+    assert all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+
+
+def test_an_ai_captain_picks_straight_away(lg):
+    repo, g = _count(lg, lg.theirs)
+    assert g["captain1_team_id"] == lg.theirs.id
+    assert len(_picks(repo, lg)) == 1
+    assert all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+
+
+def test_a_pick_and_the_ai_answers(lg):
+    repo, _ = _count(lg, lg.mine)
+    ss = lg.players[("theirs", "ss")]
+    all_star.pick(lg.db, lg.league.id, lg.season.id, lg.mine.id, ss)
+    picks = _picks(repo, lg)
+    # Pick 1 is mine, 2 and 3 the AI's, and it's my turn again.
+    assert picks[ss] == 1 and len(picks) == 3
+    assert sorted(picks.values()) == [1, 2, 2]
+    with pytest.raises(ValueError, match="isn't available"):
+        all_star.pick(lg.db, lg.league.id, lg.season.id, lg.mine.id, ss)
+    with pytest.raises(ValueError, match="isn't your pick"):
+        all_star.pick(lg.db, lg.league.id, lg.season.id, lg.theirs.id, ss)
+
+
+def test_the_scouts_can_make_my_picks(lg):
+    repo, _ = _count(lg, lg.mine)
+    all_star.auto_draft(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    picks = _picks(repo, lg)
+    assert len(picks) == 24
+    assert sorted(set(picks.values())) == [1, 2]
+    assert not all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    with pytest.raises(ValueError, match="aren't an All-Star captain"):
+        all_star.auto_draft(lg.db, lg.league.id, lg.season.id, "nobody")
+
+
+def _tie(lg):
+    """A tie for the last spot: one pitcher left out, tied with the last one
+    in."""
+    out = lg.players[("theirs", "p2")]
+    real = rules.select_pool
+
+    def pool(cands, pts):
+        rows = [r for r in real(cands, pts) if r["player_id"] != out]
+        rows[-1]["wildcard"] = True
+        rows[-1]["points"] = max(rows[-1]["points"], 1)
+        return rows
+
+    def tie(cands, pts, pool):
+        return [pool[-1]["player_id"], out]
+
+    return patch.multiple(rules, select_pool=pool, last_spot_tie=tie), out
+
+
+def test_a_person_as_captain_2_breaks_the_tie(lg):
+    tied, out = _tie(lg)
+    with tied:
+        repo, g = _count(lg, lg.theirs)
+    assert g["state"] == "tie" and g["tied_ids"][1] == out
+    assert len(repo.all_stars(lg.season.id)) == 22
+    # Nobody drafts until it's settled.
+    assert _picks(repo, lg) == {}
+    assert all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    with pytest.raises(ValueError, match="isn't in the tie"):
+        all_star.break_tie(lg.db, lg.league.id, lg.season.id, lg.mine.id, "x")
+    all_star.break_tie(lg.db, lg.league.id, lg.season.id, lg.mine.id, out)
+    assert out in repo.ids(lg.season.id) and len(repo.ids(lg.season.id)) == 23
+    assert repo.game(lg.season.id)["state"] == "draft"
+    assert len(_picks(repo, lg)) == 1  # the AI's first pick
+
+
+def test_an_ai_captain_2_leaves_the_tie_to_the_stats(lg):
+    tied, out = _tie(lg)
+    with tied:
+        repo, g = _count(lg, lg.mine)
+    assert g["state"] == "draft" and g["tied_ids"] == []
+    assert out not in repo.ids(lg.season.id) and len(repo.ids(lg.season.id)) == 23
+
+
+def test_the_game_is_played_after_the_break(lg):
+    repo, g = _count(lg, lg.mine)
+    assert not all_star.game_due(lg.db, lg.season.id, CLOSES)
+    assert all_star.game_due(lg.db, lg.season.id, AFTER[0])
+    result = all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(7))
+    g = repo.game(lg.season.id)
+    assert g["state"] == "played" and all_star.phase(lg.db, lg.season.id) == "played"
+    assert (g["score1"], g["score2"]) == (result["score1"], result["score2"])
+    assert g["score1"] != g["score2"] and g["innings"] >= 9
+    assert not all_star.game_due(lg.db, lg.season.id, AFTER[0])
+    # The draft was finished for me, and everyone drafted played.
+    lines = repo.lines(lg.season.id)
+    assert len(_picks(repo, lg)) == 24
+    assert {r["side"] for r in lines} == {1, 2}
+    assert sum(1 for r in lines if r["batting_order"]) == 18
+    # Every pitcher who pitched is on the box score, starters first. (This
+    # little league is short of hitters, so some pitchers play the field:
+    # tests/game/test_pitcher_outs_cap.py covers the cap.)
+    for side in (1, 2):
+        arms = [r for r in lines if r["side"] == side and r["pitch_order"]]
+        assert sorted(r["pitch_order"] for r in arms) == list(range(1, len(arms) + 1))
+    winner = 1 if g["score1"] > g["score2"] else 2
+    assert (
+        next(r for r in lines if r["player_id"] == g["mvp_player_id"])["side"] == winner
+    )
+    # It is played once.
+    assert all_star.play_game(lg.db, lg.league.id, lg.season.id) is None
+
+
+def test_an_unbroken_tie_goes_to_the_stats_at_game_time(lg):
+    tied, out = _tie(lg)
+    with tied:
+        repo, g = _count(lg, lg.theirs)
+    last = g["tied_ids"][0]
+    all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(3))
+    assert last in repo.ids(lg.season.id) and out not in repo.ids(lg.season.id)
+
+
+def test_the_sim_stops_after_the_all_star_game(lg):
+    days = iter(AFTER)
+
+    def one_day(league_id, conn):
+        d = next(days)
+        return {"game_date": d, "games_played": 0, "all_star_game": True}
+
+    with patch.object(sim_next, "sim_next_day", side_effect=one_day) as day:
+        summary = sim_next.sim_days(lg.league.id, lg.db, "season")
+    assert day.call_count == 1 and summary["all_star_game"] is True
+
+
+def test_the_sim_plays_the_all_star_game_instead_of_the_day(lg):
+    _count(lg, lg.mine)
+    out = sim_next.sim_next_day(lg.league.id, lg.db)
+    assert out["all_star_game"] is True and out["games_played"] == 0
+    assert all_star.phase(lg.db, lg.season.id) == "played"
+
+
+def test_drafting_on_the_tab(client, lg):
+    _count(lg, lg.mine)
+    url = f"/leagues/{lg.league.id}/allstar"
+    html = client.get(url).text
+    assert "Pick 1 of 24" in html and "re up." in html
+    assert ">Pick<" in html  # the tab badge
+    ss = lg.players[("theirs", "ss")]
+    origin = {"Origin": "http://testserver"}
+    r = client.post(
+        f"{url}/pick", data={"player_id": ss}, headers=origin, follow_redirects=False
+    )
+    assert r.status_code == 303 and r.headers["location"] == url
+    assert "Pick 4 of 24" in client.get(url).text
+    r = client.post(
+        f"{url}/pick", data={"player_id": ss}, headers=origin, follow_redirects=False
+    )
+    assert "error=" in r.headers["location"]
+    assert "isn&#39;t available" in client.get(r.headers["location"]).text
+    client.post(f"{url}/auto", headers=origin)
+    assert "The draft is done" in client.get(url).text
+
+
+def test_the_game_on_the_tab_and_the_career_page(client, lg):
+    _count(lg, lg.mine)
+    all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(11))
+    g = AllStarRepository(lg.db).game(lg.season.id)
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "Final" in html and "★ MVP" in html and "Team My" in html
+    assert "line-score" in html and "Pitching" in html
+    career = client.get(
+        f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
+    ).text
+    assert "All-Star Games" in career and "★ MVP" in career
+
+
+def test_the_ready_bar_knows_its_my_pick(lg):
+    from src.api.services import ready_check
+
+    _multiplayer(lg)
+    _count(lg, lg.theirs)
+    status = ready_check.status(lg.db, lg.league.id, lg.gm.id)
+    assert status["all_star"] == "done"
+    # Both captains are people now: captain 1 (theirs) picks first.
+    assert not status["all_star_turn"]
+    other = lg.db.execute(
+        "SELECT id FROM gms WHERE team_id = %s", (lg.theirs.id,)
+    ).fetchone()["id"]
+    assert ready_check.status(lg.db, lg.league.id, other)["all_star_turn"]

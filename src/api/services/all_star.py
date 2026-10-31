@@ -10,20 +10,45 @@
 # each AI team, cast by its GM's persona. The 64 players voted in are the
 # All-Stars and get a star by their name.
 #
-# Every sim stops the day the ballot opens and after the votes are counted,
-# so a GM doesn't play straight past either.
+# The All-Star Game. The GMs of the two best teams when the votes are
+# counted are its captains: captain 1, the better record, is the home side
+# and picks first in a snake draft of the 64. An AI captain picks as soon as
+# it's his turn; a person picks on the All-Star tab, or lets the scouts
+# finish for him. If the last wildcard spot was a tie on points and captain
+# 2 is a person, he picks who gets it before the draft starts; an AI captain
+# leaves it to the stats (all_star.select_pool).
+#
+# The game is played on the break (all_star.game_date), when the sim reaches
+# the first game day after it. Any picks still to make, and an unbroken tie,
+# are made for the captains then. It's an exhibition: nobody gets tired or
+# hurt, every pitcher comes out after all_star.PITCHER_OUTS_CAP outs, and
+# the lines are kept in all_star_game_stats, apart from the season's.
+#
+# Every sim stops the day the ballot opens, after the votes are counted and
+# after the game, so a GM doesn't play straight past any of them.
 
 from __future__ import annotations
 
+from datetime import date
+import logging
 import random
 
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.persona_repo import PersonaRepository
+from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
+from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.game.game import Game
 from src.league import all_star
+from src.team.manager_profile import ManagerProfile
+from src.team.team_in_game import TeamInGame
+from src.team.team_record import TeamRecord
+
+log = logging.getLogger(__name__)
 
 
 def window(conn, season_id: str | None) -> all_star.Window | None:
@@ -33,13 +58,16 @@ def window(conn, season_id: str | None) -> all_star.Window | None:
 
 
 def phase(conn, season_id: str | None) -> str:
-    """Where this season's vote is: "none" (no break, or the break went by
-    without one), "upcoming", "open" or "done"."""
+    """Where this season's All-Stars are: "none" (no break, or the break
+    went by without a vote), "upcoming", "open" (the ballot), "done" (voted
+    in, the game still to come) or "played"."""
     w = window(conn, season_id)
     if not w:
         return "none"
-    if AllStarRepository(conn).has_all_stars(season_id):
-        return "done"
+    repo = AllStarRepository(conn)
+    if repo.has_all_stars(season_id):
+        g = repo.game(season_id)
+        return "played" if g and g["state"] == "played" else "done"
     row = GameRepository(conn).get_next_unplayed_date(season_id)
     today = row["game_date"] if row else None
     if today is None or today > w.closes:
@@ -89,9 +117,311 @@ def count_votes(
             b = all_star.ballot(cands, dials.get(tid), tid, rng)
         repo.save_ballot(season_id, tid, b)
         ballots.append(b)
-    pool = all_star.select_pool(cands, all_star.tally(ballots))
+    pts = all_star.tally(ballots)
+    pool = all_star.select_pool(cands, pts)
+    tied = all_star.last_spot_tie(cands, pts, pool)
+    captains = _captains(conn, season_id)
+    if tied and captains and captains[1] in people:
+        pool = pool[:-1]  # captain 2 picks who gets it
+    else:
+        tied = []  # the stats settled it
     repo.save_all_stars(season_id, pool)
+    if captains:
+        w = window(conn, season_id)
+        repo.create_game(season_id, *captains, all_star.game_date(w), tied)
+        draft(conn, league_id, season_id)
     return pool
+
+
+def _captains(conn, season_id: str) -> list[str] | None:
+    """The two best teams' ids, the better first, or None before there's a
+    standings to go by."""
+    try:
+        top = StandingsRepository(conn).get_top_n(season_id, 2)
+    except ValueError:
+        return None
+    return [r["team_id"] for r in top]
+
+
+# ── The captains ─────────────────────────────────────────────────────────────
+
+
+def _people(conn, league_id: str) -> set[str]:
+    return GMRepository(conn).get_human_team_ids(league_id)
+
+
+def turn(g: dict | None, stars: list[dict]) -> str | None:
+    """The team id of the captain who's up: captain 2 while there's a tie to
+    break, then whoever has the next pick. None once the draft is done."""
+    if not g or g["state"] == "played":
+        return None
+    if g["state"] == "tie":
+        return g["captain2_team_id"]
+    made = sum(1 for r in stars if r["side"])
+    if made >= len(stars):
+        return None
+    side = all_star.side_to_pick(made + 1)
+    return g[f"captain{side}_team_id"]
+
+
+def my_turn(conn, league_id: str, season_id: str | None, team_id) -> bool:
+    """Whether this team's GM, a person, has an All-Star pick to make."""
+    if not season_id or not team_id:
+        return False
+    repo = AllStarRepository(conn)
+    g = repo.game(season_id)
+    if not g or g["state"] == "played":
+        return False
+    return turn(g, repo.all_stars(season_id)) == team_id
+
+
+def _add_tied(conn, league_id: str, season_id: str, player_id: str) -> None:
+    """Put one of the players tied for the last spot in the pool."""
+    cands = {c["player_id"]: c for c in candidates(conn, league_id, season_id)}
+    repo = AllStarRepository(conn)
+    c = cands.get(player_id)
+    if not c:
+        return
+    pts = all_star.tally(repo.ballots(season_id).values())
+    repo.save_all_stars(
+        season_id,
+        [
+            {
+                "player_id": player_id,
+                "team_id": c["team_id"],
+                "slot": c["slot"],
+                "points": pts.get(player_id, 0),
+                "wildcard": True,
+                "score": all_star.score(c),
+            }
+        ],
+    )
+
+
+def break_tie(conn, league_id: str, season_id: str, team_id: str, player_id: str):
+    """Captain 2 picks who gets the last spot. Raises ValueError if it isn't
+    his to pick."""
+    repo = AllStarRepository(conn)
+    g = repo.game(season_id)
+    if not g or g["state"] != "tie":
+        raise ValueError("There's no tie to break.")
+    if team_id != g["captain2_team_id"]:
+        raise ValueError("Only the second captain breaks the tie.")
+    if player_id not in g["tied_ids"]:
+        raise ValueError("That player isn't in the tie.")
+    _add_tied(conn, league_id, season_id, player_id)
+    repo.set_state(season_id, "draft")
+    draft(conn, league_id, season_id)
+
+
+def draft(conn, league_id: str, season_id: str, everyone: bool = False) -> int:
+    """Make the picks of the captains who don't pick for themselves: AI
+    captains, people who left it to the scouts (auto_draft), or everyone.
+    Stops at a person's turn. Returns how many picks it made."""
+    repo = AllStarRepository(conn)
+    g = repo.game(season_id)
+    if not g or g["state"] != "draft":
+        return 0
+    people = _people(conn, league_id)
+    auto = {g[f"captain{s}_team_id"] for s in (1, 2) if g[f"auto{s}"]}
+    stars = repo.all_stars(season_id)
+    made = sum(1 for r in stars if r["side"])
+    n = 0
+    while made < len(stars):
+        side = all_star.side_to_pick(made + 1)
+        team = g[f"captain{side}_team_id"]
+        if team in people and team not in auto and not everyone:
+            break
+        available = [r for r in stars if not r["side"]]
+        r = all_star.ai_pick(available, [r for r in stars if r["side"] == side])
+        made += 1
+        n += 1
+        repo.add_pick(season_id, r["player_id"], side, made)
+        r["side"], r["pick"] = side, made
+    return n
+
+
+def auto_draft(conn, league_id: str, season_id: str, team_id: str, _player_id=None):
+    """A captain leaves the rest of his picks to the scouts. Raises
+    ValueError if he isn't a captain."""
+    repo = AllStarRepository(conn)
+    g = repo.game(season_id)
+    side = next((s for s in (1, 2) if g and g[f"captain{s}_team_id"] == team_id), None)
+    if not side or g["state"] == "played":
+        raise ValueError("You aren't an All-Star captain.")
+    repo.set_auto(season_id, side)
+    draft(conn, league_id, season_id)
+
+
+def pick(conn, league_id: str, season_id: str, team_id: str, player_id: str):
+    """A person's pick in the draft; the AI captain's picks that follow are
+    made straight away. Raises ValueError if it isn't his pick to make."""
+    repo = AllStarRepository(conn)
+    g = repo.game(season_id)
+    if not g or g["state"] != "draft":
+        raise ValueError("The All-Star draft isn't on.")
+    stars = repo.all_stars(season_id)
+    if turn(g, stars) != team_id:
+        raise ValueError("It isn't your pick.")
+    r = next((r for r in stars if r["player_id"] == player_id), None)
+    if not r or r["side"]:
+        raise ValueError("That player isn't available.")
+    made = sum(1 for r in stars if r["side"])
+    repo.add_pick(season_id, player_id, all_star.side_to_pick(made + 1), made + 1)
+    draft(conn, league_id, season_id)
+
+
+# ── The game ─────────────────────────────────────────────────────────────────
+
+
+def game_due(conn, season_id: str, game_date: str) -> bool:
+    """Whether the All-Star Game is to be played before this day's games:
+    it's the first day after the break and the game hasn't been played."""
+    w = window(conn, season_id)
+    if not w or game_date != w.resumes:
+        return False
+    repo = AllStarRepository(conn)
+    if not repo.has_all_stars(season_id):
+        return False
+    g = repo.game(season_id)
+    return not g or g["state"] != "played"
+
+
+def play_game(
+    conn, league_id: str, season_id: str, rng: random.Random | None = None
+) -> dict | None:
+    """Finish the draft and play the All-Star Game, saving the score, every
+    player's line and the MVP. Returns the result, or None if there's no
+    game to play."""
+    repo = AllStarRepository(conn)
+    g = repo.game(season_id)
+    if not g:
+        # The votes were counted before there was a game to pick for.
+        captains = _captains(conn, season_id)
+        if not captains:
+            return None
+        w = window(conn, season_id)
+        repo.create_game(season_id, *captains, all_star.game_date(w), [])
+        g = repo.game(season_id)
+    if g["state"] == "played":
+        return None
+    if g["state"] == "tie":
+        # Captain 2 never picked: the stats decide, as for an AI captain.
+        _add_tied(conn, league_id, season_id, g["tied_ids"][0])
+        repo.set_state(season_id, "draft")
+    draft(conn, league_id, season_id, everyone=True)
+
+    rng = rng or random.Random()
+    stars = repo.all_stars(season_id)
+    injured = InjuryRepository(conn, league_id).get_injured_ids(
+        [r["player_id"] for r in stars], g["game_date"]
+    )
+    players = PlayerRepository(conn)
+    gms = GMRepository(conn)
+    sides: dict[int, TeamInGame] = {}
+    starting: dict[int, dict[str, tuple[int, str]]] = {}
+    for side in (1, 2):
+        team_id = g[f"captain{side}_team_id"]
+        mine = [r for r in stars if r["side"] == side]
+        records = [players.look_up(r["player_id"]) for r in mine]
+        team = TeamInGame(
+            TeamRecord(
+                id=team_id,
+                city=g[f"city{side}"],
+                mascot="All-Stars",
+                players=tuple(p for p in records if p),
+            )
+        )
+        team.profile = ManagerProfile.from_row(gms.get_team_profile(team_id, league_id))
+        sides[side] = team
+    game = Game(
+        sides[1],
+        sides[2],
+        rng=rng,
+        game_date=date.fromisoformat(g["game_date"]),
+        injured_ids=injured,
+        injuries_enabled=False,
+        max_pitcher_outs=all_star.PITCHER_OUTS_CAP,
+    )
+    for side, team in sides.items():
+        team.set_lineup(
+            starting_pitcher_id=_starter(stars, side, injured),
+            dh=True,
+            injured_ids=injured,
+            style=team.profile.lineup_style,
+        )
+        starting[side] = {
+            s.player.id: (i, s.position) for i, s in enumerate(team.lineup, 1)
+        }
+    result = game.play()
+
+    lines = []
+    for side, team in sides.items():
+        order: dict[str, int] = {}
+        for a in game.pitcher_appearances:
+            if a.team_id == team.record.id and a.pitcher.id not in order:
+                order[a.pitcher.id] = len(order) + 1
+        for p in team.players:
+            played = p.game_stats.batting.plate_appearances
+            if p.id in starting[side] or p.id in order or played:
+                lines.append(_game_line(p, side, starting[side].get(p.id), order))
+    score1, score2 = result.home_score, result.away_score
+    winner = 1 if score1 > score2 else 2
+    mvp = all_star.mvp(lines, winner)
+    line_score = {"1": list(result.home_innings), "2": list(result.away_innings)}
+    repo.save_lines(season_id, lines)
+    repo.save_result(season_id, score1, score2, result.innings_played, line_score, mvp)
+    return {
+        "score1": score1,
+        "score2": score2,
+        "innings": result.innings_played,
+        "mvp_player_id": mvp,
+    }
+
+
+def _starter(stars: list[dict], side: int, injured: set) -> str | None:
+    """The side's starting pitcher: its pitcher with the most votes."""
+    arms = [
+        r
+        for r in stars
+        if r["side"] == side and r["slot"] == "p" and r["player_id"] not in injured
+    ]
+    if not arms:
+        return None
+    return max(arms, key=lambda r: (r["points"], r["score"]))["player_id"]
+
+
+def _game_line(p, side: int, start: tuple | None, pitch_order: dict) -> dict:
+    """A player's line in the game, as all_star_game_stats keeps it."""
+    b = p.game_stats.batting
+    k = p.game_stats.pitching
+    return {
+        "player_id": p.id,
+        "side": side,
+        "position": start[1] if start else ("p" if p.id in pitch_order else None),
+        "batting_order": start[0] if start else None,
+        "bat_ab": b.at_bats,
+        "bat_runs": b.runs,
+        "bat_hits": b.hits,
+        "bat_doubles": b.doubles,
+        "bat_triples": b.triples,
+        "bat_home_runs": b.home_runs,
+        "bat_rbi": b.rbi,
+        "bat_walks": b.walks,
+        "bat_strike_outs": b.strike_outs,
+        "bat_stolen_bases": b.sb,
+        "pitch_order": pitch_order.get(p.id),
+        "pitch_outs": k.outs,
+        "pitch_hits": k.hits,
+        "pitch_runs": k.runs,
+        "pitch_earned_runs": k.earned_runs,
+        "pitch_walks": k.walks,
+        "pitch_strike_outs": k.strike_outs,
+        "pitch_home_runs": k.home_runs,
+        "pitch_win": bool(k.win),
+        "pitch_loss": bool(k.loss),
+        "pitch_save": bool(k.save),
+    }
 
 
 def after_day(conn, league_id: str, season_id: str, game_date: str) -> dict:
@@ -158,8 +488,9 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
                 TeamRepository(conn).get_teams_in_league_season(league_id, season_id)
             ),
         )
-    elif p == "done":
-        stars = AllStarRepository(conn).all_stars(season_id)
+    elif p in ("done", "played"):
+        repo = AllStarRepository(conn)
+        stars = repo.all_stars(season_id)
         ctx["by_slot"] = {
             s: [r for r in stars if r["slot"] == s and not r["wildcard"]]
             for s in all_star.SLOTS
@@ -167,7 +498,92 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
         ctx["wildcards"] = [r for r in stars if r["wildcard"]]
         ctx["my_count"] = sum(1 for r in stars if r["team_id"] == team_id)
         ctx["total"] = len(stars)
+        g = repo.game(season_id)
+        ctx["game"] = g
+        if g:
+            ctx.update(_game_context(conn, league_id, season_id, team_id, g, stars))
     return ctx
+
+
+def _game_context(conn, league_id, season_id, team_id, g, stars) -> dict:
+    """The All-Star Game part of the tab: the tie and the draft before it's
+    played, the line score and box score after."""
+    captains = {1: g["captain1_team_id"], 2: g["captain2_team_id"]}
+    up = turn(g, stars)
+    ctx = {
+        "captains": captains,
+        "my_side": next((s for s, t in captains.items() if t == team_id), None),
+        "up_side": next((s for s, t in captains.items() if t == up), None),
+        "my_turn": bool(team_id) and up == team_id,
+        "people": _people(conn, league_id),
+        "sides": {
+            s: sorted((r for r in stars if r["side"] == s), key=lambda r: r["pick"])
+            for s in (1, 2)
+        },
+        "picks_made": sum(1 for r in stars if r["side"]),
+        "pitcher_outs_cap": all_star.PITCHER_OUTS_CAP,
+    }
+    if g["state"] == "tie":
+        cands = {c["player_id"]: c for c in candidates(conn, league_id, season_id)}
+        pts = all_star.tally(AllStarRepository(conn).ballots(season_id).values())
+        ctx["tied"] = [
+            {
+                "player_id": pid,
+                "name": cands[pid]["name"],
+                "slot": cands[pid]["slot"],
+                "line": _line(cands[pid]),
+                "points": pts.get(pid, 0),
+                **_team(cands[pid]),
+            }
+            for pid in g["tied_ids"]
+            if pid in cands
+        ]
+    elif g["state"] == "draft":
+        left = sorted(
+            (r for r in stars if not r["side"]),
+            key=lambda r: (-r["points"], -r["score"]),
+        )
+        ctx["available"] = {
+            s: [r for r in left if r["slot"] == s] for s in all_star.SLOTS
+        }
+    else:
+        lines = AllStarRepository(conn).lines(season_id)
+        ctx["batting"] = {
+            s: [r for r in lines if r["side"] == s and r["batting_order"]]
+            for s in (1, 2)
+        }
+        ctx["pitching"] = {
+            s: sorted(
+                (r for r in lines if r["side"] == s and r["pitch_order"]),
+                key=lambda r: r["pitch_order"],
+            )
+            for s in (1, 2)
+        }
+        innings = max(9, g["innings"] or 9)
+        ls = g["line_score"] or {}
+        ctx["innings"] = list(range(1, innings + 1))
+        ctx["line_score"] = {
+            s: _inning_runs(
+                ls.get(str(s), []), innings, s == 1 and g["score1"] > g["score2"]
+            )
+            for s in (1, 2)
+        }
+        ctx["hits"] = {
+            s: sum(r["bat_hits"] for r in lines if r["side"] == s) for s in (1, 2)
+        }
+        mvp = next((r for r in lines if r["player_id"] == g["mvp_player_id"]), None)
+        ctx["mvp"] = mvp
+        ctx["mvp_line"] = all_star.line_text(mvp) if mvp else ""
+    return ctx
+
+
+def _inning_runs(runs: list, innings: int, home_won: bool) -> list:
+    """A side's runs by inning for the line score, 0 for an inning it batted
+    and didn't score, and an X for the home side's unplayed last half."""
+    out = [runs[i] if i < len(runs) else 0 for i in range(innings)]
+    if home_won and not out[-1]:  # no walk-off: ahead after the top half
+        out[-1] = "X"
+    return out
 
 
 def _line(c: dict) -> str:

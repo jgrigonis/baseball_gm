@@ -161,8 +161,8 @@ async function simGames(count) {
       body: JSON.stringify({count}),
     });
     if (!d.failed) {
-      // The sim stopped because All-Star voting opened or closed.
-      if (d.all_star_voting || d.all_stars) {
+      // The sim stopped for All-Star voting, the All-Stars or the game.
+      if (d.all_star_voting || d.all_stars || d.all_star_game) {
         window.location.href = `/leagues/${LEAGUE_ID}/allstar`;
         return;
       }
@@ -281,6 +281,8 @@ window.closeGamePanel = function() {
       {% if not trade_inbox %}style="display:none;"{% endif %}>{{ trade_inbox or 0 }}</span>{% endif %}
     {% if tab == 'allstar' and all_star_ballot_due %}<span class="tab-badge"
       title="Your All-Star ballot isn't saved yet">Vote</span>{% endif %}
+    {% if tab == 'allstar' and all_star_pick_due %}<span class="tab-badge"
+      title="Your pick in the All-Star draft">Pick</span>{% endif %}
   </a>
   {% endif %}
   {% endfor %}
