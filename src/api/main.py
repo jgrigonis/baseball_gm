@@ -37,6 +37,7 @@ from src.api.routers import (
     strategy,
     trades,
     tutorial,
+    uniforms,
 )
 from src.api.dependencies import NotLeagueGM, PasswordChangeRequired
 from src.config import settings
@@ -188,6 +189,7 @@ for _module in (
     tutorial,
     trades,
     all_star,
+    uniforms,
 ):
     app.include_router(_module.router)
 

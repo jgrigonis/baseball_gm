@@ -1,0 +1,43 @@
+{# templates/team_uniforms.html — every team's uniform set on one page (routers/uniforms.py) #}
+{% extends "base.html" %}
+{% block title %}Team Uniforms — GM Sim{% endblock %}
+{% block head %}
+<style>
+  .tu-team { border-left:4px solid var(--tu-color); }
+  .tu-kit { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:12px; align-items:end; }
+  .tu-kit figure { margin:0; text-align:center; }
+  .tu-kit img { width:100%; height:auto; display:block; }
+  .tu-kit figcaption { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:6px; }
+  .tu-none { font-family:var(--font-mono); font-size:12px; color:var(--text-dim); margin:0; }
+  @media (max-width: 900px) { .tu-kit { grid-template-columns:repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .tu-kit { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+</style>
+{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner">
+  <div class="page-header">
+    <h1 class="page-title">Team Uniforms</h1>
+  </div>
+  {% for t in teams %}
+  <div class="card tu-team" id="{{ t.city|lower|replace(' ', '-') }}" style="--tu-color:{{ t.primary }};margin-bottom:16px;">
+    <div class="card-header"><span class="card-title">{{ team_badge(t.city, t.mascot) }} {{ t.city }} {{ t.mascot }}</span></div>
+    <div class="card-body">
+      {% set u = t.uniforms %}
+      {% if u %}
+      <div class="tu-kit">
+        {% for p in u.jerseys + u.caps %}
+        <figure><img src="{{ static_url(p.path) }}" alt="{{ t.city }} {{ t.mascot }} {{ p.label|lower }}{% if 'cap' not in p.label|lower %} jersey{% endif %}" loading="lazy"><figcaption>{{ p.label }}</figcaption></figure>
+        {% endfor %}
+        <figure><img src="{{ static_url(u.patch) }}" alt="{{ t.city }} {{ t.mascot }} sleeve patch" loading="lazy"><figcaption>Patch</figcaption></figure>
+        {% if u.helmet %}
+        <figure><img src="{{ static_url(u.helmet) }}" alt="{{ t.city }} {{ t.mascot }} batting helmet" loading="lazy"><figcaption>Helmet</figcaption></figure>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="tu-none">No uniform set yet.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div></div>
+{% endblock %}
