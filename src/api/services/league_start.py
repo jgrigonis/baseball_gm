@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import datetime
 import random
-from pathlib import Path
 
-from src.api.services import personas
+from src.api.services import lobby_teams, personas
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -32,9 +31,6 @@ from src.league.manifest_helper import (
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
-from src.util.locations import MANIFEST_FILES_DIR
-
-_MANIFEST_FILENAME = "world_league-2025.json"
 
 
 def start_league(
@@ -58,7 +54,7 @@ def start_league(
     rng = random.Random(seed)
 
     # ── 1. Load manifest ──────────────────────────────────────────────────────
-    manifest_path = Path(MANIFEST_FILES_DIR) / _MANIFEST_FILENAME
+    manifest_path = lobby_teams.manifest_path()
     if not manifest_path.exists():
         raise ValueError(f"Manifest not found at {manifest_path.resolve()}")
     manifest = load_manifest(manifest_path)
@@ -134,24 +130,37 @@ def start_league(
     team_ids_all = [t.id for t in teams]
     rng.shuffle(team_ids_all)
 
-    # 5a. Prepare Batch Update for Human GMs
-    assigned_teams = set()
+    # Each GM dealt a team in the lobby gets it; anyone without one gets an
+    # open team, in the shuffled order.
+    lobby_picks = lobby_teams.claims(conn, league_id, team_ids_all)
+    picked = set(lobby_picks.values())
+    open_teams = [tid for tid in team_ids_all if tid not in picked]
 
-    for gm, team_id in zip(human_gms, team_ids_all):
-        gm_repo.assign_team_to_gm(team_id, gm["id"])
-        assigned_teams.add(team_id)
+    def team_for(gm_id: str) -> str | None:
+        if gm_id in lobby_picks:
+            return lobby_picks[gm_id]
+        return open_teams.pop(0) if open_teams else None
+
+    # 5a. The people who joined
+    for gm in human_gms:
+        team_id = team_for(gm["id"])
+        if team_id:
+            gm_repo.assign_team_to_gm(team_id, gm["id"])
 
     # 5b. The AI GMs picked in the lobby take the rest, in the order they
     # came in. Leagues whose lobby is short of them (e.g. made before the
     # lobby listed them) get new ones, each a persona from the library with
     # its own random stream, so the rest of the league comes out the same
     # for a seed.
-    remaining_teams = [tid for tid in team_ids_all if tid not in assigned_teams]
     waiting = personas.lobby_ai_gms(conn, league_id)
     persona_rng = random.Random(f"{seed}-personas")
-    for team_id, ai_gm in zip(remaining_teams, waiting):
-        gm_repo.assign_team_to_gm(team_id, ai_gm["id"])
-    for team_id in remaining_teams[len(waiting) :]:
+    for ai_gm in waiting:
+        team_id = team_for(ai_gm["id"])
+        if team_id:
+            gm_repo.assign_team_to_gm(team_id, ai_gm["id"])
+        else:
+            gm_repo.delete_gm(ai_gm["id"])
+    for team_id in open_teams:
         ai_gm_id = gm_repo.create_gm(
             league_id=league_id,
             team_id=team_id,
@@ -159,8 +168,6 @@ def start_league(
             is_ai=True,
         )
         personas.give_persona(conn, league_id, ai_gm_id, persona_rng)
-    for ai_gm in waiting[len(remaining_teams) :]:
-        gm_repo.delete_gm(ai_gm["id"])
     human_gm_team = gm_repo.get_human_gm_city_mascot(league_id)
 
     # ── 6. Generate prospect pool ─────────────────────────────────────────────

@@ -5,7 +5,8 @@
 # leans toward for trades and team state.
 #
 # The lobby already lists the AI GMs who will run the open teams: one per
-# team nobody has joined for. They have no team until the league starts.
+# team nobody has joined for. Their team rows are made when the league
+# starts; until then each GM holds a team by name (lobby_teams).
 #
 # A pick is random, weighted by chance, with no repeats in a league unless
 # every pickable persona is already in it. The persona's name becomes the
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import random
 
+from src.api.services import lobby_teams
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.persona_repo import PersonaRepository
 from src.league import personas
@@ -56,7 +58,8 @@ def lobby_ai_gms(conn, league_id: str) -> list[dict]:
     """The AI GMs waiting in the lobby for a team, oldest first, with their
     persona's archetype."""
     rows = conn.execute(
-        """SELECT g.id, g.display_name, g.persona_id, p.archetype
+        """SELECT g.id, g.display_name, g.persona_id, p.archetype,
+                  g.lobby_city, g.lobby_mascot
            FROM gms g LEFT JOIN gm_personas p ON p.id = g.persona_id
            WHERE g.league_id = %s AND g.is_ai AND g.team_id IS NULL
            ORDER BY g.created_at, g.id""",
@@ -66,9 +69,10 @@ def lobby_ai_gms(conn, league_id: str) -> list[dict]:
 
 
 def fill_lobby(conn, league_id: str, rng: random.Random | None = None) -> None:
-    """One lobby AI GM for each team no person has joined for. A person
-    joining takes the newest AI GM's place; a person leaving brings a new
-    one in."""
+    """One lobby AI GM for each team no person has joined for, and a team
+    for every GM in the lobby. A person joining takes the newest AI GM's
+    place, and so its team; a person leaving brings a new one in, who takes
+    theirs."""
     rng = rng or random.Random()
     league = conn.execute(
         "SELECT num_teams FROM leagues WHERE id = %s", (league_id,)
@@ -85,6 +89,7 @@ def fill_lobby(conn, league_id: str, rng: random.Random | None = None) -> None:
             league_id=league_id, display_name=FALLBACK_NAME, is_ai=True
         )
         give_persona(conn, league_id, gm_id, rng)
+    lobby_teams.deal(conn, league_id, rng)
 
 
 def reroll(conn, league_id: str, gm_id: str, rng: random.Random | None = None) -> bool:

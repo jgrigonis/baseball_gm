@@ -23,7 +23,7 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
-from src.api.services import personas, sim_jobs
+from src.api.services import lobby_teams, personas, sim_jobs
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
@@ -547,6 +547,7 @@ def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
         "num_teams": league["num_teams"],
         "join_code": league.get("join_code"),
         "current_gm_id": str(gm["id"]),
+        "team_choices": lobby_teams.choices(gm_repo.conn, league["id"]),
     }
 
 
@@ -570,6 +571,33 @@ def reroll_lobby_gm(
     if not personas.reroll(db, league_id, ai_gm_id):
         return HTMLResponse("No such AI GM in the lobby.", status_code=404)
     db.commit()
+    return templates.TemplateResponse(
+        request,
+        "dashboard/partials/_lobby_gms.html",
+        _lobby_gms_context(GMRepository(db), league, gm),
+    )
+
+
+@router.post("/leagues/{league_id}/lobby/team", response_class=HTMLResponse)
+def pick_lobby_team(
+    request: Request,
+    league_id: str,
+    db: DB,
+    gm: GM,
+    team: str = Form(...),
+):
+    """A person in the lobby picks the team they'll run, given as
+    "City|Mascot". An AI GM holding it gets theirs instead. Answers with the
+    GM list, which shows the team they still have if the pick wasn't open
+    (say someone took it a moment before)."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] != "lobby":
+        return HTMLResponse("", headers={"HX-Redirect": f"/leagues/{league_id}/"})
+    city, _, mascot = team.partition("|")
+    if lobby_teams.pick(db, league_id, str(gm["id"]), city, mascot):
+        db.commit()
+    else:
+        db.rollback()
     return templates.TemplateResponse(
         request,
         "dashboard/partials/_lobby_gms.html",
