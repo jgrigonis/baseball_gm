@@ -40,11 +40,11 @@ def _roster(depth=DEPTH, status="26man", **skills):
     ]
 
 
-def _league(**teams):
+def _league(staff=None, **teams):
     """Six average teams, with any named in `teams` replacing one of them."""
     rosters = {f"avg{i}": _roster() for i in range(6)}
     rosters.update(teams)
-    return league_needs(rosters)
+    return league_needs(rosters, staff)
 
 
 def test_specs_are_usable_at_their_spot():
@@ -84,6 +84,21 @@ def test_old_players_dont_count():
     old = _roster({"rp": 5}, age=MAX_AGE + 1)
     needs = _league(old=_roster({**DEPTH, "rp": 0}) + old)
     assert needs["old"].chips.get("rp") == HIGH
+
+
+def test_starters_beyond_the_rotation_count_as_relievers():
+    # Ten starters and no relievers: five fill the rotation, five relieve
+    needs = _league(deep=_roster({**DEPTH, "sp": 10, "rp": 0}))
+    assert "rp" not in needs["deep"].chips
+    assert "sp" not in needs["deep"].chips
+
+
+def test_pitchers_count_where_the_staff_uses_them():
+    roster = _roster({**DEPTH, "sp": 7, "rp": 0})
+    staff = {p.id: "rp" for p, _ in roster if p.is_pitcher()}
+    needs = _league(staff=staff, pen=roster)
+    assert "rp" not in needs["pen"].chips
+    assert needs["pen"].chips["sp"] == HIGH
 
 
 def test_weak_lineup_gets_one_hitting_chip():

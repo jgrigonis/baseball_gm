@@ -30,7 +30,10 @@ def needs_for_draft(db, draft_id: str, cached: bool = True) -> dict[str, TeamNee
         return hit[1]
     draft_repo = DraftRepository(db)
     team_ids = [r["team_id"] for r in draft_repo.get_team_id_draft_order(draft_id)]
-    needs = league_needs(draft_repo.get_roster_records(team_ids))
+    needs = league_needs(
+        draft_repo.get_roster_records(team_ids),
+        draft_repo.get_staff_groups(team_ids),
+    )
     _cache[draft_id] = (time.monotonic(), needs)
     return needs
 

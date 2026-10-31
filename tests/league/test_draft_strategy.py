@@ -18,11 +18,13 @@ from src.league.offseason.draft_strategy import (
     LOW,
     MAX_PINS,
     MED,
+    ROTATION,
     DraftStrategy,
     StrategyScorer,
     group,
     project_picks,
     ratings,
+    staff_groups,
 )
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
@@ -102,11 +104,56 @@ class TestGroup:
         )
         assert group(p, ratings(p)) == "if"
 
-    def test_pitchers_use_their_listed_role(self):
-        sp = make_player_record(position="sp")
-        rp = make_player_record(position="rp")
-        assert group(sp, ratings(sp)) == "sp"
-        assert group(rp, ratings(rp)) == "rp"
+    def test_pitchers_go_by_ratings_not_their_listed_role(self):
+        # Listed RP, built to start; listed SP, built to relieve
+        starter = make_player_record(
+            position="rp",
+            skills=PlayerSkills(dict(strikes=85, stamina=85, recovery=70, accuracy=70)),
+        )
+        reliever = make_player_record(
+            position="sp",
+            skills=PlayerSkills(dict(strikes=85, stamina=40, recovery=85, accuracy=70)),
+        )
+        assert group(starter, ratings(starter)) == "sp"
+        assert group(reliever, ratings(reliever)) == "rp"
+
+    def test_staff_job_beats_ratings(self):
+        p = make_player_record(
+            position="sp",
+            skills=PlayerSkills(dict(strikes=85, stamina=85, recovery=70, accuracy=70)),
+        )
+        assert group(p, ratings(p), "rp") == "rp"
+
+
+class TestStaffGroups:
+    STARTER = dict(strikes=85, stamina=85, recovery=70, accuracy=70)
+
+    def _starters(self, n):
+        return [
+            make_player_record(
+                position="sp",
+                skills=PlayerSkills(dict(self.STARTER, stamina=65 + 5 * i)),
+            )
+            for i in range(n)
+        ]
+
+    def test_starters_beyond_the_rotation_are_relievers(self):
+        pitchers = [(p, ratings(p)) for p in self._starters(ROTATION + 2)]
+        groups = staff_groups(pitchers, {})
+        assert sum(g == "sp" for g in groups.values()) == ROTATION
+        # The two weakest starters go to the bullpen
+        weakest = sorted(pitchers, key=lambda x: x[1]["sp"])[:2]
+        assert all(groups[p.id] == "rp" for p, _ in weakest)
+
+    def test_named_starters_take_rotation_spots_first(self):
+        pitchers = [(p, ratings(p)) for p in self._starters(ROTATION + 1)]
+        # The team named its two weakest as starters and one more as a reliever
+        by_sp = sorted(pitchers, key=lambda x: x[1]["sp"])
+        staff = {by_sp[0][0].id: "sp", by_sp[1][0].id: "sp", by_sp[-1][0].id: "rp"}
+        groups = staff_groups(pitchers, staff)
+        assert sum(g == "sp" for g in groups.values()) == ROTATION
+        assert groups[by_sp[0][0].id] == "sp"
+        assert groups[by_sp[-1][0].id] == "rp"
 
 
 class TestChipsApply:

@@ -80,6 +80,25 @@ class DraftRepository:
             rosters[r["team_id"]].append((_record(r), r["status"]))
         return rosters
 
+    def get_staff_groups(self, team_ids: list[str]) -> dict[str, str]:
+        """{player_id: "sp" | "rp"} for every pitcher these teams have in a
+        rotation or a bullpen role right now. A pitcher in both (an old
+        assignment never ended) goes by the newer one."""
+        rows = self.conn.execute(
+            """SELECT DISTINCT ON (player_id) player_id, grp FROM (
+                   SELECT player_id, 'sp' AS grp, effective_date
+                   FROM team_rotations
+                   WHERE team_id = ANY(%s) AND end_date IS NULL
+                   UNION ALL
+                   SELECT player_id, 'rp' AS grp, effective_date
+                   FROM bullpen_roles
+                   WHERE team_id = ANY(%s) AND end_date IS NULL
+               ) staff
+               ORDER BY player_id, effective_date DESC""",
+            (team_ids, team_ids),
+        ).fetchall()
+        return {r["player_id"]: r["grp"] for r in rows}
+
     def get_strategy(self, draft_id: str, gm_id: str) -> DraftStrategy | None:
         """Return a GM's saved draft strategy, or None."""
         row = self.conn.execute(

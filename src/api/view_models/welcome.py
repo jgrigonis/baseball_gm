@@ -18,7 +18,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.league.offseason.draft_strategy import CHIPS, ratings
+from src.league.offseason.draft_strategy import CHIPS, ratings, staff_groups
 from src.player.player_record import PlayerRecord
 from src.player.player_value import role_rating
 from src.team.colors import colors_for
@@ -81,15 +81,22 @@ def _avg_top(values: list[int], n: int) -> float:
     return sum(top) / len(top) if top else 0.0
 
 
-def area_scores(players: list[tuple[PlayerRecord, dict]]) -> dict[str, float]:
-    """The team's average rating in each area, from its major league roster."""
+def area_scores(
+    players: list[tuple[PlayerRecord, dict]], staff: dict[str, str] | None = None
+) -> dict[str, float]:
+    """The team's average rating in each area, from its major league roster.
+    Pitchers count toward the rotation or bullpen by `staff` ({player_id:
+    sp|rp}, their job on the team), else by draft_strategy.staff_groups."""
+    staff = staff or {}
     hitters = [(p, r) for p, r in players if not p.is_pitcher()]
     best_hitters = sorted(hitters, key=lambda x: x[1]["overall_player"], reverse=True)
     pitchers = [(p, r) for p, r in players if p.is_pitcher()]
+    groups = staff_groups(pitchers, staff)
+    pitchers = [(r, groups[p.id]) for p, r in pitchers]
     return {
         "lineup": _avg_top([r["overall_offense"] for _, r in hitters], 9),
-        "rotation": _avg_top([r["sp"] for p, r in pitchers if p.position == "sp"], 5),
-        "bullpen": _avg_top([r["rp"] for p, r in pitchers if p.position != "sp"], 7),
+        "rotation": _avg_top([r["sp"] for r, g in pitchers if g == "sp"], 5),
+        "bullpen": _avg_top([r["rp"] for r, g in pitchers if g == "rp"], 7),
         "defense": _avg_top([r["defensive_value"] for _, r in best_hitters[:9]], 9),
     }
 
@@ -256,12 +263,13 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
     team = TeamRepository(db).get_city_and_mascot(team_id)
     order = [r["team_id"] for r in draft_repo.get_team_id_draft_order(draft["id"])]
     rosters = draft_repo.get_roster_records(order)
+    staff = draft_repo.get_staff_groups(order)
 
     rated = {
         tid: [(p, ratings(p)) for p, status in players if status in MAJORS]
         for tid, players in rosters.items()
     }
-    scores = {tid: area_scores(players) for tid, players in rated.items()}
+    scores = {tid: area_scores(players, staff) for tid, players in rated.items()}
     mine = rated.get(team_id, [])
     stars = sorted(mine, key=lambda x: role_rating(x[0]), reverse=True)[:STARS]
 

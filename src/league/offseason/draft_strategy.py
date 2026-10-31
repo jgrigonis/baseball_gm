@@ -44,6 +44,7 @@ POSITION_WINDOW = (0.50, 0.80)
 ARCHETYPE_WINDOW = (0.75, 0.97)
 
 HITTER_GROUPS = ("c", "if", "of")
+ROTATION = 5  # starters a team has room for
 HITTERS = "hitters"
 
 
@@ -87,14 +88,39 @@ def ratings(player: PlayerRecord) -> dict[str, int]:
     return r
 
 
-def group(player: PlayerRecord, r: dict[str, int]) -> str:
-    """Where a player will most likely play: sp or rp for pitchers (their
-    listed role), else whichever of C, IF or OF they rate best at. First
-    base counts as infield: there's no 1B chip, and the IF chip's own fit
-    (the best of 2B, 3B and SS) still tells a real infielder from a pure 1B."""
+def group(player: PlayerRecord, r: dict[str, int], staff: str | None = None) -> str:
+    """Where a player will most likely play. For pitchers that's `staff`, the
+    team's own use of him (sp in the rotation, rp in the bullpen), when he has
+    one; otherwise SP if he rates better there than at RP. A pitcher's listed
+    SP or RP is only a leaning from when he was generated, and any pitcher can
+    do either job.
+    Hitters go to whichever of C, IF or OF they rate best at. First base
+    counts as infield: there's no 1B chip, and the IF chip's own fit (the
+    best of 2B, 3B and SS) still tells a real infielder from a pure 1B."""
     if player.is_pitcher():
-        return "sp" if player.position == "sp" else "rp"
+        if staff in ("sp", "rp"):
+            return staff
+        return "sp" if r["sp"] > r["rp"] else "rp"
     return max(HITTER_GROUPS, key=lambda g: max(r[g], r["1b"]) if g == "if" else r[g])
+
+
+def staff_groups(
+    pitchers: list[tuple[PlayerRecord, dict[str, int]]], staff: dict[str, str]
+) -> dict[str, str]:
+    """{player_id: sp | rp} for one team's major league pitchers. Each goes
+    by group(), except that a team only has room for a ROTATION-man rotation:
+    once the starters it has named fill it, the best of the rest who lean SP
+    take the open spots and any beyond that are really relievers."""
+    groups = {p.id: group(p, r, staff.get(p.id)) for p, r in pitchers}
+    named = sum(1 for p, _ in pitchers if staff.get(p.id) == "sp")
+    leaning_sp = sorted(
+        ((p, r) for p, r in pitchers if p.id not in staff and groups[p.id] == "sp"),
+        key=lambda x: x[1]["sp"],
+        reverse=True,
+    )
+    for p, _ in leaning_sp[max(0, ROTATION - named) :]:
+        groups[p.id] = "rp"
+    return groups
 
 
 @dataclass
