@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="Paris stirrups alternate">
+  <defs>
+    <path id="fleur" d="M0 -42 Q-10 -27 -6.5 -12 Q-3 -4 0 0 Q3 -4 6.5 -12 Q10 -27 0 -42 Z M3 -6 Q9 -21 22 -25 Q33 -27 35 -17 Q35 -10 28 -8 Q31 -16 24 -17 Q14 -16 8 -2 Z M-3 -6 Q-9 -21 -22 -25 Q-33 -27 -35 -17 Q-35 -10 -28 -8 Q-31 -16 -24 -17 Q-14 -16 -8 -2 Z M-13 -4 H13 V2.5 H-13 Z M-4 2.5 Q-6 12 -17 14 Q-8 19 0 10 Q8 19 17 14 Q6 12 4 2.5 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D3D7DE"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#2B4C9B"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="46" width="56" height="7" fill="#FFFFFF"/><rect x="50" y="53" width="56" height="7" fill="#B31B34"/>
+        <g transform="translate(78 112) scale(.42)"><use href="#fleur" fill="#C9CED6"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#152A5A"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D3D7DE"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#B31B34"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="46" width="56" height="7" fill="#2B4C9B"/><rect x="144" y="53" width="56" height="7" fill="#FFFFFF"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#152A5A"/>
+      </g>
+</svg>

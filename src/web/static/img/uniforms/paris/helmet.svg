@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Paris helmet">
+  <defs>
+    <path id="fleur" d="M0 -42 Q-10 -27 -6.5 -12 Q-3 -4 0 0 Q3 -4 6.5 -12 Q10 -27 0 -42 Z M3 -6 Q9 -21 22 -25 Q33 -27 35 -17 Q35 -10 28 -8 Q31 -16 24 -17 Q14 -16 8 -2 Z M-3 -6 Q-9 -21 -22 -25 Q-33 -27 -35 -17 Q-35 -10 -28 -8 Q-31 -16 -24 -17 Q-14 -16 -8 -2 Z M-13 -4 H13 V2.5 H-13 Z M-4 2.5 Q-6 12 -17 14 Q-8 19 0 10 Q8 19 17 14 Q6 12 4 2.5 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5677C4"/><stop offset=".45" stop-color="#2B4C9B"/><stop offset="1" stop-color="#1F3A7A"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#B31B34"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#152A5A"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#1F3A7A"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(106 96) scale(1)"><use href="#fleur" fill="#C9CED6"/></g>
+</svg>
