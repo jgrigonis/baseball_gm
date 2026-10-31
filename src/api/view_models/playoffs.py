@@ -8,6 +8,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.league import divisions
 
 
 def playoffs_context(
@@ -17,6 +18,7 @@ def playoffs_context(
     bracket = (
         load_bracket(db, season_id, my_team_id, human_team_ids) if season_id else []
     )
+    _label_by_league(db, league_id, bracket)
     champion = None
     if bracket and bracket[-1]["decided"]:
         finals = bracket[-1]["series"][0]
@@ -24,6 +26,31 @@ def playoffs_context(
             (t for t in finals["teams"] if t["team_id"] == finals["winner_id"]), None
         )
     return {"bracket": bracket, "champion": champion, "my_team_id": my_team_id}
+
+
+# With leagues and divisions each league seeds its own four (divisions.
+# playoff_order), so a first-round series is that league's 1 v 4 or 2 v 3.
+_IN_LEAGUE = {"1v8": "1 v 4", "4v5": "2 v 3", "2v7": "1 v 4", "3v6": "2 v 3"}
+
+
+def _label_by_league(db, league_id: str, bracket: list) -> None:
+    """Give each series a header naming its league, for leagues with
+    divisions: "Atlantic League · 1 v 4", "Pacific League final"."""
+    conf_of = {
+        t: conf.name for conf in divisions.load(db, league_id) for t in conf.team_ids
+    }
+    if not conf_of:
+        return
+    for rd in bracket:
+        for s in rd["series"]:
+            confs = {conf_of.get(t["team_id"]) for t in s["teams"]}
+            if len(confs) != 1 or None in confs:
+                continue
+            conf = confs.pop()
+            if s["name"] in _IN_LEAGUE:
+                s["label"] = f"{conf} · {_IN_LEAGUE[s['name']]}"
+            elif s["name"] != "Finals":
+                s["label"] = f"{conf} final"
 
 
 def load_bracket(

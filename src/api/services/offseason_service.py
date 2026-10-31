@@ -31,6 +31,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.league import divisions
 from src.league.league_modes import is_blitz_style
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.rotation_seeder import seed_ai_rotations
@@ -152,6 +153,7 @@ def run_offseason(league_id: str, conn) -> dict:
             target_games=SEASON_LENGTH,
             all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
             all_star_break_days=ALL_STAR_BREAK_DAYS,
+            leagues=divisions.schedule_leagues(conn, league_id),
         )
         save_schedule_to_db(conn, schedule)
         game_count = len(schedule)

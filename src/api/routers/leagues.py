@@ -31,6 +31,7 @@ from src.api.view_models.welcome import welcome
 from src.config import settings
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.league import divisions
 from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
 from src.web.utils import _shell_ctx, tab_response, templates
 
@@ -130,7 +131,12 @@ def new_league_page(request: Request):
     return templates.TemplateResponse(
         request,
         "leagues/new.html",
-        {"default_mode": DEFAULT_MODE, "modes": [BLITZ, SPEED_BLITZ]},
+        {
+            "default_mode": DEFAULT_MODE,
+            "modes": [BLITZ, SPEED_BLITZ],
+            "team_counts": divisions.TEAM_COUNTS,
+            "default_team_count": divisions.DEFAULT_TEAM_COUNT,
+        },
     )
 
 
@@ -152,8 +158,12 @@ def new_league(
     trade_vote: bool = Form(False),
     pick_trades: bool = Form(False),
     injuries_enabled: bool | None = Form(None),
+    num_teams: int = Form(divisions.DEFAULT_TEAM_COUNT),
+    weighted_schedule: bool = Form(False),
 ):
     get_mode(mode)  # rejects an unknown mode
+    if num_teams not in divisions.TEAM_COUNTS:
+        raise ValueError(f"A league can't have {num_teams} teams.")
     if pace_control not in ("timer", "confirmed"):
         raise ValueError(f"Unknown pace '{pace_control}'.")
     if not 1 <= sim_period_days <= 30:
@@ -186,6 +196,8 @@ def new_league(
             "is_public": is_public,
             "trade_vote": trade_vote,
             "pick_trades": pick_trades,
+            "num_teams": num_teams,
+            "weighted_schedule": weighted_schedule,
             # Left out (an old form or a script), the mode's default.
             "injuries_enabled": (
                 get_mode(mode).injuries_default

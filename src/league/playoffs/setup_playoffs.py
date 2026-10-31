@@ -29,6 +29,7 @@ from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.league import divisions
 from src.league.schedule import ScheduledGame
 from src.util.logger import setup_logger
 
@@ -76,6 +77,20 @@ def get_args():
 def get_top_N(conn, season_id: str, num_teams: int = 8) -> list[dict]:
     """Return top N teams sorted by win%, with H2H and RS tiebreakers."""
     return StandingsRepository(conn).get_top_n(season_id, num_teams)
+
+
+def playoff_seeds(conn, season_id: str, league_id: str) -> list[dict]:
+    """The eight playoff teams in bracket order (seed 1 first). With
+    leagues and divisions, each league's division winners and wild cards,
+    placed so the final is league against league (divisions.playoff_order);
+    without, the top eight records."""
+    confs = divisions.load(conn, league_id)
+    if confs:
+        ranked = StandingsRepository(conn).ranked(season_id)
+        order = divisions.playoff_order(confs, ranked)
+        if order:
+            return order
+    return get_top_N(conn, season_id)
 
 
 # ---------------------------------------------------------------------------
@@ -270,7 +285,7 @@ def setup_playoff_bracket(
     bracket behind.
     """
     with conn.transaction():
-        seeds = get_top_N(conn, season_id)
+        seeds = playoff_seeds(conn, season_id, league_id)
         demote_extra_starters(
             conn,
             season_id,
