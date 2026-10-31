@@ -351,6 +351,16 @@ def test_game_panel_calls_out_standout_performances(client, db_conn, factory):
     assert 'title="Cycle · 4 hits"' in html
 
 
+def _batting_line(html: str, name: str) -> dict[str, str]:
+    """The box score line for one batter, keyed by column header."""
+    row_at = html.index(name)
+    table = html[html.rindex("<table", 0, row_at) : row_at]
+    headers = re.findall(r"<th[^>]*>([^<]*)</th>", table)
+    row = html[row_at : html.index("</tr>", row_at)]
+    cells = re.findall(r'font-family:var\(--font-mono\);[^"]*">([^<]*)</td>', row)
+    return dict(zip(headers[1:], cells))
+
+
 def test_game_panel_box_score_shows_hit_by_pitch(client, db_conn, factory):
     """A batter who scores after a hit by pitch has a visible way on base."""
     league, home = _league(db_conn, factory)
@@ -369,12 +379,49 @@ def test_game_panel_box_score_shows_hit_by_pitch(client, db_conn, factory):
     html = client.get(f"/leagues/{league.id}/games/{game['id']}/panel").text
 
     assert 'title="Hit by pitch">HBP</th>' in html
-    row = html[html.index("Plunked") :]
-    row = row[: row.index("</tr>")]
-    cells = re.findall(r'font-family:var\(--font-mono\);[^"]*">([^<]*)</td>', row)
-    # AB R H 2B 3B HR RBI BB HBP K SB
-    assert cells[:3] == ["3", "1", "0"]
-    assert cells[8] == "1"
+    line = _batting_line(html, "Plunked")
+    assert (line["AB"], line["R"], line["H"], line["HBP"]) == ("3", "1", "0", "1")
+
+
+def test_game_panel_box_score_drops_columns_nobody_used(client, db_conn, factory):
+    """AB, R and H always show; a column like 3B shows only when someone has one."""
+    league, home = _league(db_conn, factory)
+    game = db_conn.execute(
+        "SELECT id, away_team_id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()
+    for name, ab, hits, hr, k in (("Slugger", 4, 1, 1, 0), ("Whiffer", 4, 0, 0, 3)):
+        player = factory.rated_player(home, league, name=name)
+        db_conn.execute(
+            """INSERT INTO player_game_stats (player_id, game_id, team_id,
+                   opponent_team_id, bat_ab, bat_hits, bat_home_runs, bat_rbi,
+                   bat_runs, bat_walks, bat_strike_outs)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s)""",
+            (
+                player.id,
+                game["id"],
+                home.id,
+                game["away_team_id"],
+                ab,
+                hits,
+                hr,
+                hr,
+                hr,
+                k,
+            ),
+        )
+
+    html = client.get(f"/leagues/{league.id}/games/{game['id']}/panel").text
+
+    assert list(_batting_line(html, "Slugger")) == ["AB", "R", "H", "HR", "RBI", "K"]
+    assert _batting_line(html, "Slugger")["HR"] == "1"
+    assert _batting_line(html, "Whiffer") == {
+        "AB": "4",
+        "R": "0",
+        "H": "0",
+        "HR": "",
+        "RBI": "",
+        "K": "3",
+    }
 
 
 def test_up_next_links_each_opponent_to_its_stats(db_conn, factory):

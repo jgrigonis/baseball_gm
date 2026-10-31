@@ -50,11 +50,10 @@
       <thead><tr>
         <th>Batter</th>
         <th style="text-align:right;">AB</th><th style="text-align:right;">R</th>
-        <th style="text-align:right;">H</th><th style="text-align:right;">2B</th>
-        <th style="text-align:right;">3B</th><th style="text-align:right;">HR</th>
-        <th style="text-align:right;">RBI</th><th style="text-align:right;">BB</th>
-        <th style="text-align:right;" title="Hit by pitch">HBP</th>
-        <th style="text-align:right;">K</th><th style="text-align:right;">SB</th>
+        <th style="text-align:right;">H</th>
+        {% for key, label, title in bat_cols %}
+        <th style="text-align:right;"{% if title %} title="{{ title }}"{% endif %}>{{ label }}</th>
+        {% endfor %}
       </tr></thead>
       <tbody>
         {% for p in bat_rows %}
@@ -64,14 +63,10 @@
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.AB }}</td>
           <td style="text-align:right;font-family:var(--font-mono);">{{ p.R }}</td>
           <td style="text-align:right;font-family:var(--font-mono);font-weight:{% if p.H > 0 %}600{% else %}400{% endif %};">{{ p.H }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p.doubles or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p.triples or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);color:{% if p.HR > 0 %}var(--amber){% else %}inherit{% endif %};">{{ p.HR or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p.RBI or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p.BB or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p.HBP or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);color:{% if p.K >= 3 %}var(--red){% else %}inherit{% endif %};">{{ p.K or '' }}</td>
-          <td style="text-align:right;font-family:var(--font-mono);">{{ p.SB or '' }}</td>
+          {% for key, label, title in bat_cols %}
+          {% set v = p[key] %}
+          <td style="text-align:right;font-family:var(--font-mono);{% if key == 'HR' and v %}color:var(--amber);{% elif key == 'K' and v and v >= 3 %}color:var(--red);{% endif %}">{{ v or '' }}</td>
+          {% endfor %}
         </tr>
         {% endfor %}
       </tbody>
