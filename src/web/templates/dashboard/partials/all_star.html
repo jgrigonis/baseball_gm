@@ -1,6 +1,7 @@
 {# templates/dashboard/partials/all_star.html
    The All-Star tab (src/api/services/all_star.py): the ballot while voting
-   is open, the All-Stars once the votes are counted.
+   is open, the All-Stars and the captains' draft once the votes are counted,
+   then the All-Star Game.
 #}
 {% from "dashboard/partials/_rookie.html" import rk with context %}
 <div class="content-inner tab-fade">
@@ -9,7 +10,7 @@
     <h1 class="page-title">★ All-Stars</h1>
     {% if as_phase == 'open' %}
     <span class="page-subtitle">Voting is open through the games of {{ as_window.closes }}. The All-Star break starts the next day.</span>
-    {% elif as_phase == 'done' %}
+    {% elif as_phase in ('done', 'played') %}
     <span class="page-subtitle">{{ total }} players, voted in by every GM in the league</span>
     {% endif %}
   </div>
@@ -91,7 +92,12 @@
   </script>
   {% endif %}
 
-{% elif as_phase == 'done' %}
+{% elif as_phase in ('done', 'played') %}
+  {% if as_error %}
+  <div class="card as-intro"><div class="card-body as-note"><span class="as-error">✗ {{ as_error }}</span></div></div>
+  {% endif %}
+  {% if game %}{% include "dashboard/partials/_all_star_game.html" %}{% endif %}
+  <h2 class="as-heading">The All-Stars</h2>
   {% if team_id %}
   <div class="card as-intro"><div class="card-body as-note">
     {% if my_count %}<span class="as-ok">★ {{ my_count }} of your players {{ 'is an All-Star' if my_count == 1 else 'are All-Stars' }}.</span>

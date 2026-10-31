@@ -1,0 +1,198 @@
+{# templates/dashboard/partials/_all_star_game.html
+   The All-Star Game on the All-Star tab (src/api/services/all_star.py
+   _game_context): the tie for the last spot and the captains' draft before
+   it's played, the line score, MVP and box score after.
+#}
+{% set names = {1: 'Team ' ~ game.city1, 2: 'Team ' ~ game.city2} %}
+{% macro side_name(s) %}{{ team_badge(game['city' ~ s], game['mascot' ~ s]) }} {{ names[s] }}{% endmacro %}
+
+{% if game.state == 'played' %}
+<div class="card as-game">
+  <div class="card-header">
+    <span class="card-title">★ All-Star Game · {{ game.game_date }}</span>
+    <span class="as-dim">Final{% if game.innings != 9 %} · {{ game.innings }} innings{% endif %}</span>
+  </div>
+  <div class="card-body">
+    <div class="scoreboard-scroll">
+      <table class="line-score">
+        <thead><tr>
+          <th></th>
+          {% for i in innings %}<th>{{ i }}</th>{% endfor %}
+          <th class="rhe-head">R</th><th>H</th>
+        </tr></thead>
+        <tbody>
+          {% for s in (2, 1) %}
+          {% set runs = game.score1 if s == 1 else game.score2 %}
+          {% set won = (game.score1 > game.score2) == (s == 1) %}
+          <tr class="{% if won %}won{% endif %}{% if s == my_side %} mine{% endif %}">
+            <td class="line-score-team">{{ team_badge(game['city' ~ s], game['mascot' ~ s]) }}<span>{{ names[s] }}</span></td>
+            {% for c in line_score[s] %}<td class="tile">{{ c }}</td>{% endfor %}
+            <td class="tile rhe rhe-start">{{ runs }}</td>
+            <td class="tile rhe">{{ hits[s] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if mvp %}
+    <div class="as-mvp">
+      <span class="as-mvp-tag">★ MVP</span>
+      <span class="as-player" onclick="openPlayerPanel('{{ mvp.player_id }}')">{{ mvp.name }}</span>
+      <span class="as-dim">{{ names[mvp.side] }} · {{ mvp_line }}</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="as-grid as-box">
+  {% for s in (2, 1) %}
+  <div class="card as-slot">
+    <div class="card-header"><span class="card-title">{{ side_name(s) }}</span>
+      <span class="as-dim">{{ game['city' ~ s] }} {{ game['mascot' ~ s] }} GM, captain</span></div>
+    <table class="data-table">
+      <thead><tr><th>Batting</th><th>Pos</th><th class="num">AB</th><th class="num">R</th><th class="num">H</th>
+        <th class="num">HR</th><th class="num">RBI</th><th class="num">BB</th><th class="num">K</th></tr></thead>
+      <tbody>
+        {% for r in batting[s] %}
+        <tr class="{% if r.player_id == game.mvp_player_id %}as-mvp-row{% endif %}">
+          <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span></td>
+          <td>{{ r.position | upper }}</td>
+          <td class="num">{{ r.bat_ab }}</td><td class="num">{{ r.bat_runs }}</td><td class="num">{{ r.bat_hits }}</td>
+          <td class="num">{{ r.bat_home_runs }}</td><td class="num">{{ r.bat_rbi }}</td>
+          <td class="num">{{ r.bat_walks }}</td><td class="num">{{ r.bat_strike_outs }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <table class="data-table as-pitching">
+      <thead><tr><th>Pitching</th><th></th><th class="num">IP</th><th class="num">H</th><th class="num">R</th>
+        <th class="num">ER</th><th class="num">BB</th><th class="num">K</th><th class="num">HR</th></tr></thead>
+      <tbody>
+        {% for r in pitching[s] %}
+        <tr class="{% if r.player_id == game.mvp_player_id %}as-mvp-row{% endif %}">
+          <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span></td>
+          <td class="as-dim">{% if r.pitch_win %}W{% elif r.pitch_loss %}L{% elif r.pitch_save %}S{% endif %}</td>
+          <td class="num">{{ r.pitch_outs // 3 }}.{{ r.pitch_outs % 3 }}</td>
+          <td class="num">{{ r.pitch_hits }}</td><td class="num">{{ r.pitch_runs }}</td>
+          <td class="num">{{ r.pitch_earned_runs }}</td><td class="num">{{ r.pitch_walks }}</td>
+          <td class="num">{{ r.pitch_strike_outs }}</td><td class="num">{{ r.pitch_home_runs }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="card as-game">
+  <div class="card-header">
+    <span class="card-title">★ All-Star Game · {{ game.game_date }}</span>
+    <span class="as-dim">{{ names[2] }} at {{ names[1] }}</span>
+  </div>
+  <div class="card-body as-note">
+    The GMs of the two best teams are the captains: the {{ game.city1 }} {{ game.mascot1 }} GM
+    ({{ names[1] }}, the home side, picks first) and the {{ game.city2 }} {{ game.mascot2 }} GM
+    ({{ names[2] }}). They draft their sides from the {{ total }} All-Stars, taking turns 1, 2, 2, 1, 1, …
+    Every pitcher comes out after {{ pitcher_outs_cap }} outs. Nothing's at stake but the MVP and bragging rights.
+    <br>
+    {% if game.state == 'tie' %}
+      {% if my_turn %}
+      <span class="as-warn">You break the tie.</span> These players tied on votes for the last spot. Pick who gets it.
+      If you don't by game day, the stats decide.
+      {% else %}
+      <span class="as-warn">Waiting on the {{ game.city2 }} {{ game.mascot2 }} GM</span> to pick who gets the last
+      spot: {{ tied | length }} players tied on votes for it. The draft starts after that.
+      {% endif %}
+    {% elif picks_made < total %}
+      Pick {{ picks_made + 1 }} of {{ total }}:
+      {% if my_turn %}<span class="as-warn">you're up.</span>
+      {% else %}{{ names[up_side] }} is up.{% endif %}
+      Any picks still to make on {{ game.game_date }} are made by the scouts.
+    {% else %}
+      <span class="as-ok">The draft is done.</span> The game is played on {{ game.game_date }}.
+    {% endif %}
+    {% if my_side and game.state == 'draft' and picks_made < total %}
+      {% if game['auto' ~ my_side] %}
+      <br><span class="as-dim">Your scouts are making your picks.</span>
+      {% else %}
+      <form method="post" action="/leagues/{{ league_id }}/allstar/auto" class="as-inline">
+        <button type="submit" class="btn btn-secondary as-btn-sm">Let the scouts make the rest of my picks</button>
+      </form>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{% if game.state == 'tie' %}
+<div class="card as-slot">
+  <div class="card-header"><span class="card-title">Tied for the last spot</span></div>
+  <table class="data-table">
+    <thead><tr>{% if my_turn %}<th></th>{% endif %}<th>Player</th><th>Pos</th><th>Team</th><th>This season</th><th class="num">Pts</th></tr></thead>
+    <tbody>
+      {% for r in tied %}
+      <tr>
+        {% if my_turn %}<td><form method="post" action="/leagues/{{ league_id }}/allstar/tie">
+          <input type="hidden" name="player_id" value="{{ r.player_id }}">
+          <button type="submit" class="btn btn-primary as-btn-sm">Pick</button></form></td>{% endif %}
+        <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span></td>
+        <td>{{ r.slot | upper }}</td>
+        <td>{{ team_badge(r.city, r.mascot) }} {{ r.mascot }}</td>
+        <td class="as-dim">{{ r.line }}</td>
+        <td class="num">{{ r.points }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="as-grid as-draft">
+  {% for s in (1, 2) %}
+  <div class="card as-slot{% if s == my_side %} as-mine{% endif %}">
+    <div class="card-header"><span class="card-title">{{ side_name(s) }}</span>
+      <span class="as-dim">{{ sides[s] | length }} picked</span></div>
+    <table class="data-table">
+      <thead><tr><th class="num">#</th><th>Player</th><th>Pos</th><th>Team</th></tr></thead>
+      <tbody>
+        {% for r in sides[s] %}
+        <tr class="{% if r.team_id == team_id %}my-team{% endif %}">
+          <td class="num as-dim">{{ r.pick }}</td>
+          <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ rk(r.player_id) }}</td>
+          <td>{{ r.slot | upper }}</td>
+          <td>{{ team_badge(r.city, r.mascot) }} {{ r.mascot }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="as-dim">No picks yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+  {% if picks_made < total %}
+  <div class="card as-slot as-board">
+    <div class="card-header"><span class="card-title">Still on the board</span>
+      <span class="as-dim">most votes first</span></div>
+    <div class="as-board-grid">
+      {% for slot in slots %}{% if available[slot] %}
+      <table class="data-table">
+        <thead><tr>{% if my_turn %}<th></th>{% endif %}<th>{{ slot_labels[slot] }}</th><th>Team</th><th class="num">Pts</th></tr></thead>
+        <tbody>
+          {% for r in available[slot] %}
+          <tr class="{% if r.team_id == team_id %}my-team{% endif %}">
+            {% if my_turn %}<td><form method="post" action="/leagues/{{ league_id }}/allstar/pick">
+              <input type="hidden" name="player_id" value="{{ r.player_id }}">
+              <button type="submit" class="btn btn-primary as-btn-sm">Pick</button></form></td>{% endif %}
+            <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ rk(r.player_id) }}</td>
+            <td>{{ team_badge(r.city, r.mascot) }} {{ r.mascot }}</td>
+            <td class="num">{{ r.points }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endif %}

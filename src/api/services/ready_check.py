@@ -224,6 +224,13 @@ def status(conn, league_id: str, gm_id: str) -> dict:
             and me["team_id"]
             and AllStarRepository(conn).ballot(season_id, me["team_id"]) is None
         ),
+        # A pick in the All-Star draft (or the tie for the last spot) waiting
+        # on this GM, a captain.
+        "all_star_turn": bool(
+            star_phase == "done"
+            and me
+            and all_star.my_turn(conn, league_id, season_id, me["team_id"])
+        ),
         "you_ready": bool(me and me["ready"]),
         "you_away": bool(me and me["is_away"] and not me["out"]),
         "you_out": bool(me and me["out"]),

@@ -65,6 +65,9 @@
 .cs-inj-table td:last-child { text-align:right; color:var(--text-dim); }
 .cs-inj-year { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); padding:6px 6px 2px; }
 .cs-empty { color:var(--text-dim); font-style:italic; font-size:11px; }
+.cs-asg-table { border-collapse:collapse; font-size:11px; margin-bottom:8px; }
+.cs-asg-table td { padding:3px 14px 3px 6px; color:var(--text-dim); border-bottom:1px solid var(--border-subtle, #1e2733); }
+.cs-asg-table td:first-child { color:var(--text); }
 .postseason-row td { color:var(--amber, #d4a82a); background:rgba(212,168,42,.05); }
 .postseason-row td:first-child, .postseason-row td:nth-child(2) { color:var(--amber, #d4a82a); }
 .plff-tag { font-size:9px; font-weight:700; letter-spacing:.06em; color:var(--amber, #d4a82a); }
@@ -229,6 +232,24 @@
 
       {% if not p.pitching_seasons and not p.batting_seasons %}
         <span class="cs-empty">No stats on record</span>
+      {% endif %}
+
+      {# All-Star Games, kept apart from the season stats #}
+      {% if p.all_star_games %}
+      <div class="cs-section-title">All-Star Games</div>
+      <table class="cs-asg-table">
+        <tbody>
+          {% for g in p.all_star_games %}
+          <tr>
+            <td>{{ g.year }}</td>
+            <td>Team {{ g.captain_city }}</td>
+            <td class="cs-asg-score">{{ 'W' if g.runs > g.runs_against else 'L' }} {{ g.runs }}-{{ g.runs_against }}</td>
+            <td>{{ g.summary or 'Did not bat' }}</td>
+            <td>{% if g.mvp %}<span class="all-star-tag">★ MVP</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
       {% endif %}
 
       {# Injury History #}

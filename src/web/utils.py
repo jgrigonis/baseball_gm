@@ -299,11 +299,16 @@ def _shell_ctx(
     )
     ctx["all_star_phase"] = as_phase
     tabs = ctx.get("visible_tabs")
-    if as_phase in ("open", "done") and tabs and "standings" in tabs:
+    if as_phase in ("open", "done", "played") and tabs and "standings" in tabs:
         tabs.insert(tabs.index("standings"), "allstar")
         if as_phase == "open" and not ctx["is_viewer"] and ctx["team_id"]:
             ctx["all_star_ballot_due"] = (
                 AllStarRepository(db).ballot(ctx["season_id"], ctx["team_id"]) is None
+            )
+        # A captain with a pick to make in the All-Star draft.
+        if as_phase == "done" and not ctx["is_viewer"]:
+            ctx["all_star_pick_due"] = all_star.my_turn(
+                db, league_id, ctx["season_id"], ctx["team_id"]
             )
     ctx["all_star_ids"] = (
         AllStarRepository(db).ids(ctx["season_id"]) if ctx["season_id"] else set()

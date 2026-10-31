@@ -1,9 +1,9 @@
 # src/league/all_star.py
 """
-All-Star voting (plans/all-star-game.md). The pure part: when the ballot is
-open, how a GM scores the candidates, what a ballot looks like and how the
-votes become the 64-player pool. src/api/services/all_star.py runs it
-against the database.
+All-Star voting and the All-Star Game (plans/all-star-game.md). The pure
+part: when the ballot is open, how a GM scores the candidates, what a ballot
+looks like, how the votes become the 64-player pool, the captains' draft and
+the game's MVP. src/api/services/all_star.py runs it against the database.
 
 The ballot. Every GM, person or AI, picks a 1st and a 2nd choice at each
 fielding position, one DH and nine pitchers: 26 votes. A 1st choice is worth
@@ -373,6 +373,137 @@ def select_pool(cands: list[dict], pts: dict[str, int]) -> list[dict]:
             "slot": c["slot"],
             "points": pts.get(c["player_id"], 0),
             "wildcard": wildcard,
+            "score": neutral[c["player_id"]],
         }
 
     return [row(c, False) for c in chosen] + [row(c, True) for c in wild]
+
+
+def last_spot_tie(cands: list[dict], pts: dict[str, int], pool: list[dict]) -> list:
+    """The players tied on points for the pool's last spot, the one in it
+    first, when it's a wildcard won on points and someone left out has as
+    many. Empty when there's no tie to settle."""
+    if not pool or not pool[-1]["wildcard"] or pool[-1]["points"] <= 0:
+        return []
+    last = pool[-1]
+    taken = {r["player_id"] for r in pool}
+    tied = [
+        c["player_id"]
+        for c in cands
+        if c["player_id"] not in taken and pts.get(c["player_id"], 0) == last["points"]
+    ]
+    return [last["player_id"], *tied] if tied else []
+
+
+# ── The captains' draft ──────────────────────────────────────────────────────
+#
+# The GMs of the two best teams at the break pick their sides from the pool,
+# a snake draft with captain 1 (the better record) first: 1, 2, 2, 1, 1, ...
+# An AI captain fills his needs first, SIDE_NEEDS a side, the best player
+# left at a position he still needs, then takes the best left anywhere.
+
+SIDE_NEEDS = {**dict.fromkeys(FIELD_SLOTS, 2), "dh": 1, "p": 9}
+
+
+def side_to_pick(pick: int) -> int:
+    """Which captain makes pick number `pick` (from 1) of the snake draft."""
+    rnd, first = divmod(pick - 1, 2)
+    return 1 if (first == 0) == (rnd % 2 == 0) else 2
+
+
+def ai_pick(available: list[dict], mine: list[dict]) -> dict | None:
+    """An AI captain's pick from the players left ({player_id, slot, points,
+    score}), given his side so far: the best at a position he still needs,
+    by votes then stat score, or the best left once his needs are filled."""
+    if not available:
+        return None
+    have: dict[str, int] = {}
+    for r in mine:
+        have[r["slot"]] = have.get(r["slot"], 0) + 1
+    needed = [r for r in available if have.get(r["slot"], 0) < SIDE_NEEDS[r["slot"]]]
+    return max(needed or available, key=lambda r: (r["points"], r["score"]))
+
+
+# ── The game ─────────────────────────────────────────────────────────────────
+
+# Every pitcher comes out once he has this many outs.
+PITCHER_OUTS_CAP = 4
+# The game is played on this day of the break (the first is 1).
+GAME_DAY_OF_BREAK = 3
+
+
+def game_date(w: Window) -> str:
+    """The date of the All-Star Game: the third day of the break, or the last
+    day before play resumes if the break is shorter."""
+    closes = date.fromisoformat(w.closes)
+    resumes = date.fromisoformat(w.resumes)
+    day = min(closes + timedelta(days=GAME_DAY_OF_BREAK), resumes - timedelta(days=1))
+    return day.isoformat()
+
+
+def mvp_value(line: dict) -> float:
+    """How much a player did in the game, for the MVP: total bases, runs,
+    RBI, walks and steals at the plate; outs and strikeouts on the mound,
+    less hits, walks and earned runs allowed."""
+    singles = (
+        line["bat_hits"]
+        - line["bat_doubles"]
+        - line["bat_triples"]
+        - line["bat_home_runs"]
+    )
+    tb = (
+        singles
+        + 2 * line["bat_doubles"]
+        + 3 * line["bat_triples"]
+        + 4 * line["bat_home_runs"]
+    )
+    bat = (
+        tb
+        + line["bat_runs"]
+        + line["bat_rbi"]
+        + 0.5 * (line["bat_walks"] + line["bat_stolen_bases"])
+    )
+    pitch = (
+        0.5 * line["pitch_outs"]
+        + line["pitch_strike_outs"]
+        - 0.5 * (line["pitch_hits"] + line["pitch_walks"])
+        - 2 * line["pitch_earned_runs"]
+    )
+    return bat + pitch
+
+
+def mvp(lines: list[dict], winning_side: int) -> str | None:
+    """The MVP: whoever on the winning side did the most (mvp_value)."""
+    winners = [r for r in lines if r["side"] == winning_side]
+    if not winners:
+        return None
+    return max(winners, key=mvp_value)["player_id"]
+
+
+def line_text(r: dict) -> str:
+    """A player's All-Star Game in a few words: 2-4, HR, 3 RBI or 1.1 IP,
+    3 K."""
+    parts = []
+    if r["batting_order"]:
+        parts.append(f"{r['bat_hits']}-{r['bat_ab']}")
+        for n, label in (
+            (r["bat_doubles"], "2B"),
+            (r["bat_triples"], "3B"),
+            (r["bat_home_runs"], "HR"),
+            (r["bat_rbi"], "RBI"),
+            (r["bat_runs"], "R"),
+            (r["bat_walks"], "BB"),
+            (r["bat_stolen_bases"], "SB"),
+        ):
+            if n:
+                parts.append(label if n == 1 and label != "RBI" else f"{n} {label}")
+    if r["pitch_order"]:
+        parts.append(f"{r['pitch_outs'] // 3}.{r['pitch_outs'] % 3} IP")
+        for n, label in (
+            (r["pitch_strike_outs"], "K"),
+            (r["pitch_hits"], "H"),
+            (r["pitch_earned_runs"], "ER"),
+        ):
+            if n:
+                parts.append(f"{n} {label}")
+    return ", ".join(parts)

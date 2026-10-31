@@ -23,6 +23,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.league import all_star
 from src.stats import formulas
 from src.web.utils import _current_league_date
 
@@ -480,4 +481,8 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         "injuries_by_year": injuries_by_year,
         "skills_history": skills_history,
         "all_star_years": _all_star_years(db, pid),
+        "all_star_games": [
+            {**r, "summary": all_star.line_text(r)}
+            for r in AllStarRepository(db).career_lines(pid)
+        ],
     }

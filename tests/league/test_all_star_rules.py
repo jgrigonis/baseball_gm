@@ -219,3 +219,113 @@ def test_a_small_league_uses_whoever_it_has():
     cands = [_cand(f"{s}0", s) for s in FIELD_SLOTS]
     pool = all_star.select_pool(cands, {})
     assert len(pool) == len(FIELD_SLOTS)
+
+
+def test_a_tie_for_the_last_wildcard_spot_is_found():
+    cands = _league(per_slot=20)
+    # The catchers' 4 spots, 11 clear wildcards, then two tied for the last.
+    pts = {f"c{i}": 20 for i in range(4)}
+    pts.update({f"c{i}": 9 for i in range(4, 15)})
+    pts.update(c15=2, c16=2)
+    pool = all_star.select_pool(cands, pts)
+    assert pool[-1]["player_id"] == "c15"  # the better stats
+    assert all_star.last_spot_tie(cands, pts, pool) == ["c15", "c16"]
+
+
+def test_no_tie_for_the_last_spot_without_points():
+    cands = _league(per_slot=20)
+    pool = all_star.select_pool(cands, {})
+    assert all_star.last_spot_tie(cands, {}, pool) == []
+    pts = {f"c{i}": 20 for i in range(4)}
+    pts.update({f"c{i}": 9 for i in range(4, 16)})
+    pool = all_star.select_pool(cands, pts)
+    assert all_star.last_spot_tie(cands, pts, pool) == []
+
+
+# ── The captains' draft ──────────────────────────────────────────────────────
+
+
+def test_the_draft_snakes():
+    order = [all_star.side_to_pick(n) for n in range(1, 9)]
+    assert order == [1, 2, 2, 1, 1, 2, 2, 1]
+
+
+def _row(pid, slot, points=0, score=0.0):
+    return {"player_id": pid, "slot": slot, "points": points, "score": score}
+
+
+def test_an_ai_captain_takes_the_most_votes():
+    left = [_row("a", "ss", 3), _row("b", "c", 5), _row("c", "c", 5, 1.0)]
+    assert all_star.ai_pick(left, [])["player_id"] == "c"
+
+
+def test_an_ai_captain_fills_his_needs_first():
+    mine = [_row("x", "c"), _row("y", "c")]
+    left = [_row("a", "ss", 3), _row("b", "c", 9)]
+    assert all_star.ai_pick(left, mine)["player_id"] == "a"
+    # Needs met, or nobody left at them: the best left anywhere.
+    assert all_star.ai_pick([_row("b", "c", 9)], mine)["player_id"] == "b"
+    assert all_star.ai_pick([], mine) is None
+
+
+# ── The game ─────────────────────────────────────────────────────────────────
+
+
+def test_the_game_is_on_the_third_day_of_the_break():
+    w = all_star.Window("2025-06-01", "2025-06-14", "2025-06-19")
+    assert all_star.game_date(w) == "2025-06-17"
+    short = all_star.Window("2025-06-01", "2025-06-14", "2025-06-17")
+    assert all_star.game_date(short) == "2025-06-16"
+
+
+def _line(pid, side, **kw):
+    line = {
+        k: 0
+        for k in (
+            "bat_ab bat_runs bat_hits bat_doubles bat_triples bat_home_runs "
+            "bat_rbi bat_walks bat_strike_outs bat_stolen_bases pitch_outs "
+            "pitch_hits pitch_runs pitch_earned_runs pitch_walks "
+            "pitch_strike_outs pitch_home_runs"
+        ).split()
+    }
+    line.update(player_id=pid, side=side, batting_order=None, pitch_order=None)
+    line.update(kw)
+    return line
+
+
+def test_the_mvp_is_the_winners_best():
+    lines = [
+        _line(
+            "slugger",
+            1,
+            batting_order=3,
+            bat_ab=4,
+            bat_hits=2,
+            bat_home_runs=2,
+            bat_rbi=4,
+            bat_runs=2,
+        ),
+        _line("ace", 1, pitch_order=1, pitch_outs=4, pitch_strike_outs=4),
+        _line(
+            "loser",
+            2,
+            batting_order=1,
+            bat_ab=4,
+            bat_hits=4,
+            bat_home_runs=4,
+            bat_rbi=4,
+            bat_runs=4,
+        ),
+    ]
+    assert all_star.mvp(lines, 1) == "slugger"
+    assert all_star.mvp(lines, 2) == "loser"
+    assert all_star.mvp([], 1) is None
+
+
+def test_a_line_in_a_few_words():
+    bat = _line(
+        "a", 1, batting_order=1, bat_ab=4, bat_hits=2, bat_home_runs=1, bat_rbi=3
+    )
+    assert all_star.line_text(bat) == "2-4, HR, 3 RBI"
+    arm = _line("b", 1, pitch_order=2, pitch_outs=4, pitch_strike_outs=3)
+    assert all_star.line_text(arm) == "1.1 IP, 3 K"
