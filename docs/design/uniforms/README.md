@@ -44,5 +44,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Frankfurt Eagles | Done (2026-10-31) | Neues Frankfurt modernism in black, red and gold with a white home body. The lettering is Jost, set straight across over a tricolor bar: EAGLES at home, FRANKFURT on the black road jersey, and a red Römer alternate. The caps carry a geometric eagle, and the patch is a Bauhaus square with the eagle on a red disc. |
 | Dublin Shamrocks | Done (2026-10-31) | The tricolour in Uncial Antiqua lettering. Home is white with green Shamrocks, the road jersey is green with white Dublin, and the orange alternate is Samhain. The caps carry a shamrock, and the roundel patch reads Dublin over Baile Átha Cliath. |
 | Los Angeles Stars | Done (2026-10-31) | Hollywood after dark in purple, gold and pink. The jerseys use a rising Pacifico script with Bungee numbers: Stars on white at home, Los Angeles in gold on purple on the road, and a pink Sunset alternate. The caps carry a gold star, the stirrups have a band that fades gold to pink, and the patch is a striped retro sunset with palms. |
+| Beijing Dragons | Done (2026-10-31) | Imperial red and gold with Temple of Heaven blue and a cream home body. DRAGONS is arched in Archivo Black on the home and red Imperial jerseys, and the blue road jersey carries 北京 in Ma Shan Zheng brush calligraphy. The caps carry a gold dragon, and the patch is the Temple of Heaven. |
 
-The other 17 teams are still to do. They aren't shown in the game yet.
+The other 16 teams are still to do. They aren't shown in the game yet.
