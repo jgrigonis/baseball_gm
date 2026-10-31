@@ -45,6 +45,7 @@
                 <a href="/leagues/{{ league_id }}/personas/{{ team.gm.persona_id }}"
                    hx-get="/leagues/{{ league_id }}/personas/{{ team.gm.persona_id }}" hx-target="#tab-content" hx-push-url="true"
                    class="standings-gm" title="Persona card">{{ team.gm.name }}</a>
+              {% elif team.gm and team.gm.username %}<a href="/gms/{{ team.gm.username|urlencode }}" class="standings-gm gm-link" title="GM profile">{{ team.gm.name }}</a>
               {% elif team.gm %}{{ team.gm.name }}{% else %}<span style="color:var(--muted);">—</span>{% endif %}
             </td>
             <td class="tc mono">{{ team.wins }}</td>

@@ -828,6 +828,29 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     FOREIGN KEY (gm_id) REFERENCES gms(id) ON DELETE CASCADE
 );
 
+-- gm_career_seasons: one row per person per league season, for the profile
+--   page (/gms/USERNAME, src/api/services/career.py). Kept up to date
+--   after every sim job, and final once the season is over or the person
+--   leaves. No foreign keys to the league, team or season, so it outlives a
+--   league that's deleted; names are copied in for the same reason.
+CREATE TABLE IF NOT EXISTS gm_career_seasons (
+    user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    league_id      TEXT NOT NULL,
+    season_id      TEXT NOT NULL,
+    league_name    TEXT NOT NULL,
+    season_year    INTEGER NOT NULL,
+    team_city      TEXT NOT NULL,
+    team_mascot    TEXT NOT NULL,
+    wins           INTEGER NOT NULL DEFAULT 0,
+    losses         INTEGER NOT NULL DEFAULT 0,      -- regular season
+    division_title BOOLEAN NOT NULL DEFAULT FALSE,
+    playoff_result TEXT CHECK (playoff_result IN
+                       ('Round 1', 'Semifinals', 'Finals', 'Champion')),  -- how far they got
+    final          BOOLEAN NOT NULL DEFAULT FALSE,  -- season over, or they left
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, league_id, season_id)
+);
+
 -- Written at season end by the evaluation job.
 CREATE TABLE IF NOT EXISTS gm_season_evaluations (
     gm_id                 TEXT NOT NULL,

@@ -1,0 +1,99 @@
+{# templates/profile.html — a person's GM profile, their career across every
+   league (routers/profiles.py, view_models/profile.py). #}
+{% extends "base.html" %}
+{% block title %}{{ person.display_name }} — Baseball GM{% endblock %}
+
+{% macro tiles(value, cls="") -%}
+  {%- for ch in value|string %}<span class="num-tile {{ cls }}">{{ ch }}</span>{% endfor -%}
+{%- endmacro %}
+
+{% macro patch(t, size) -%}
+  {% if t.patch %}<img class="gp-patch" src="{{ static_url(t.patch) }}" width="{{ size }}" height="{{ size }}" alt="">
+  {%- else %}<span class="gp-patch gp-patch-badge" style="width:{{ size }}px;height:{{ size }}px;">{{ team_badge(t.city, t.mascot) }}</span>{% endif %}
+{%- endmacro %}
+
+{% block main %}
+<div class="page-content"><div class="content-inner gp" style="max-width:1120px;">
+
+  <div class="gp-head">
+    {% if team %}{{ patch(team, 96) }}{% endif %}
+    <div class="gp-head-main">
+      <h1 class="page-title">{{ person.display_name }}</h1>
+      <div class="gp-sub">
+        @{{ person.username }}{% if since %} · GM since {{ since }}{% endif %}
+        {% if team %} · {{ "Runs" if team.active else "Last ran" }} the <b>{{ team.city }} {{ team.mascot }}</b>{% endif %}
+      </div>
+    </div>
+    {% if career.titles or (is_me and user.has_password) %}
+    <div class="gp-head-actions">
+      {% if career.titles %}<span class="gp-pill">{% if career.titles > 1 %}{{ career.titles }}× {% endif %}Champion</span>{% endif %}
+      {% if is_me and user.has_password %}<a href="/account" class="btn btn-secondary">Account</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Career{% if career.leagues %} · {{ career.leagues }} league{{ "s" if career.leagues != 1 }}{% endif %}</span></div>
+    <div class="gp-scoreboard">
+      <div class="gp-stat"><div class="gp-stat-n">{{ tiles(career.seasons) }}</div><div class="gp-stat-l">Seasons</div></div>
+      <div class="gp-stat"><div class="gp-stat-n">{{ tiles(career.wins) }}</div><div class="gp-stat-l">Wins</div></div>
+      <div class="gp-stat"><div class="gp-stat-n">{{ tiles(career.losses) }}</div><div class="gp-stat-l">Losses</div></div>
+      <div class="gp-stat"><div class="gp-stat-n">{{ tiles(career.pct, "good" if career.wins > career.losses else "") }}</div><div class="gp-stat-l">Win %</div></div>
+      <div class="gp-stat"><div class="gp-stat-n">{{ tiles(career.playoffs) }}</div><div class="gp-stat-l">Playoffs</div></div>
+      <div class="gp-stat"><div class="gp-stat-n">{{ tiles(career.finals) }}</div><div class="gp-stat-l">Finals</div></div>
+      <div class="gp-stat"><div class="gp-stat-n">{{ tiles(career.titles, "lit" if career.titles else "") }}</div><div class="gp-stat-l">Titles</div></div>
+    </div>
+  </div>
+
+  {% if not career.seasons %}
+  <p class="gp-empty">
+    {% if is_me %}Your record starts with your first game in a league. Tutorial leagues don't count.
+    {% else %}{{ person.display_name }} hasn't played a game in a league yet.{% endif %}
+  </p>
+  {% endif %}
+
+  {% if trophies %}
+  <div class="card gp-full">
+    <div class="card-header"><span class="card-title">Trophy case</span></div>
+    <div class="card-body"><div class="gp-trophies">
+      {% for t in trophies %}
+      <div class="gp-trophy">
+        {{ patch(t, 84) }}
+        <div class="gp-trophy-what {% if t.what == 'Champions' %}lit{% endif %}">{{ t.what }}</div>
+        <div class="gp-trophy-year">{{ t.year }}</div>
+        <div class="gp-trophy-sub">{{ t.city }} {{ t.mascot }}<br>{{ t.league_name }}</div>
+      </div>
+      {% endfor %}
+    </div></div>
+  </div>
+  {% endif %}
+
+  {% if leagues %}
+  <div class="card gp-full">
+    <div class="card-header"><span class="card-title">Leagues</span></div>
+    <div class="card-body gp-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th>League</th><th>Team</th><th class="num gp-hide-sm">Seasons</th><th class="num">W-L</th>
+          <th class="num gp-hide-sm">Pct</th><th class="gp-hide-sm">Best finish</th><th class="gp-hide-sm"></th>
+        </tr></thead>
+        <tbody>
+          {% for lg in leagues %}
+          <tr>
+            <td class="team-name">{% if lg.link %}<a href="/leagues/{{ lg.league_id }}/" class="gp-league-link">{{ lg.name }}</a>{% else %}{{ lg.name }}{% endif %}</td>
+            <td><span class="gp-team">{{ team_badge(lg.city, lg.mascot) }}{{ lg.city }} {{ lg.mascot }}</span></td>
+            <td class="num gp-hide-sm">{{ lg.seasons }}{% if lg.num_seasons %} of {{ lg.num_seasons }}{% endif %}</td>
+            <td class="num hi">{{ lg.wins }}-{{ lg.losses }}</td>
+            <td class="num gp-hide-sm">{{ lg.pct }}</td>
+            <td class="gp-hide-sm {% if lg.titles %}gp-amber{% endif %}">{{ lg.best }}</td>
+            <td class="gp-hide-sm"><span class="gp-status {% if lg.status == 'Active' %}gp-status-active{% endif %}">{{ lg.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div></div>
+{% endblock %}

@@ -29,6 +29,7 @@ from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
 from src.api.view_models.welcome import welcome
 from src.config import settings
+from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.league import divisions
@@ -393,6 +394,7 @@ def rename_league(
     if not league or league["commissioner_gm_id"] != gm["id"]:
         return JSONResponse({"detail": "Forbidden"}, status_code=403)
     league_repo.rename(league_id, name)
+    CareerRepository(db).rename_league(league_id, name)  # profile pages
     db.commit()
     return JSONResponse({"name": name})
 

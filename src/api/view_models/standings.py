@@ -145,12 +145,13 @@ def division_groups(db, league_id: str, teams: list[dict]) -> list[dict]:
 
 
 def _team_gms(db, league_id: str) -> dict[str, dict]:
-    """Who runs each team now ({name, persona_id}), the person if there is
-    one."""
+    """Who runs each team now ({name, persona_id, username}), the person if
+    there is one."""
     rows = db.execute(
-        """SELECT team_id, display_name AS name, persona_id FROM gms
-           WHERE league_id = %s AND team_id IS NOT NULL AND fired_at IS NULL
-           ORDER BY is_ai DESC""",
+        """SELECT g.team_id, g.display_name AS name, g.persona_id, u.username
+           FROM gms g LEFT JOIN users u ON u.id = g.user_id
+           WHERE g.league_id = %s AND g.team_id IS NOT NULL AND g.fired_at IS NULL
+           ORDER BY g.is_ai DESC""",
         (league_id,),
     ).fetchall()
     # People come last, so theirs wins.

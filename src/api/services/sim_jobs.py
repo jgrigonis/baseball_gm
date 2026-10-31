@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.api.services import coach
+from src.api.services import career, coach
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
@@ -124,6 +124,17 @@ def league_has_job(conn, league_id: str) -> bool:
 # ── Running ───────────────────────────────────────────────────────────────────
 
 
+def _record_careers(conn, league_id: str) -> None:
+    """Bring each person's career record up to date with what the job
+    played (services/career.py). In a savepoint, so a problem there is
+    logged and never undoes the sim itself."""
+    try:
+        with conn.transaction():
+            career.record_league(conn, league_id)
+    except Exception:
+        log.exception("League %s: couldn't update career records", league_id)
+
+
 def run(conn, job: dict, jobs: SimJobRepository) -> str:
     """
     Run a claimed job on ``conn`` and record how it went with ``jobs``, which
@@ -138,6 +149,7 @@ def run(conn, job: dict, jobs: SimJobRepository) -> str:
             raise ValueError(f"Unknown job '{job['kind']}'.")
         with league_lock(conn, league_id):
             result = runner(conn, league_id, job["params"] or {})
+            _record_careers(conn, league_id)
             conn.commit()
     except LeagueBusy as e:
         rollback_quietly(conn)
