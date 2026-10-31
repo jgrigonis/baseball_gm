@@ -56,5 +56,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Sydney Sharks | Done (2026-10-31) | Harbour blue, shark slate and sunset orange, lettered in the surf-poster face Bowlby One. SHARKS on white at home, SYDNEY on the slate road jersey, and a blue Harbour alternate with a white wave across the hem. The caps carry a fin cutting a wave, and the patch puts the fin under the Harbour Bridge at sunset. |
 | Jakarta Garudas | Done (2026-10-31) | Temple gold, soga batik brown and merah red, lettered in Lilita One. GARUDAS on white at home, JAKARTA on the red road jersey, and a brown Batik alternate with a gold parang band across the hem. The caps carry JKT, and the patch spreads a gold garuda's wings over a red sun. |
 | Milan Serpents | Done (2026-10-31) | Olive, silver and red, lettered in Bodoni Moda. SERPENTS on white at home, MILANO on the silver road jersey, and an olive Biscione alternate with silver serpent scales across the hem. The caps carry a Bodoni S with fangs, and the patch rears a black crowned cobra in front of the Duomo's spires. |
+| London Lions | Done (2026-10-31) | Pillar-box red, gold and City navy, lettered in the Victorian slab Ultra. LIONS on white at home, LONDON on the red road jersey, and a navy chalk-stripe alternate like a Savile Row suit. The caps carry a gold slab L, and the patch puts Tower Bridge under a gold crown. |
 
-The other 5 teams are still to do. They aren't shown in the game yet.
+The other 4 teams are still to do. They aren't shown in the game yet.

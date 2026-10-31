@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="London cap alternate">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#A6192E"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#7E1222" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#7E1222" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#13294B"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#D4A73A" stroke="#A88224" stroke-width="1.5"/>
+      <path d="M125.68 71.71Q123.11 71.71 122.01 72.4Q120.91 73.09 120.91 75.03V93.13H126.77Q127.97 93.13 128.79 92.9Q129.61 92.66 130.08 91.92Q130.55 91.17 130.74 89.82Q130.93 88.47 130.93 86.25H141.18V104H98.82V93.13Q101.4 93.13 102.51 92.44Q103.62 91.75 103.62 89.85V75.03Q103.62 73.09 102.51 72.4Q101.4 71.71 98.82 71.71V60.85H125.68Z" fill="#D4A73A" stroke="#13294B" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>
+</svg>

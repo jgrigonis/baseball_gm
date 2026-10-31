@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="London helmet">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F4A7A"/><stop offset=".45" stop-color="#13294B"/><stop offset="1" stop-color="#08132A"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#D4A73A"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#08132A"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#08132A"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <path d="M110.74 73.1Q108.59 73.1 107.67 73.67Q106.76 74.24 106.76 75.85V90.94H111.64Q112.64 90.94 113.32 90.75Q114.01 90.55 114.4 89.93Q114.79 89.31 114.95 88.18Q115.11 87.06 115.11 85.21H123.65V100H88.35V90.94Q90.5 90.94 91.42 90.37Q92.35 89.79 92.35 88.21V75.85Q92.35 74.24 91.42 73.67Q90.5 73.1 88.35 73.1V64.04H110.74Z" fill="#D4A73A" stroke="#A6192E" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#D4A73A" stroke-width="2.5"/>
+</svg>

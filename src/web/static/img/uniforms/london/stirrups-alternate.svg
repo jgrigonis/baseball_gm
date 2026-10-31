@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="London stirrups alternate">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#13294B"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="42" width="56" height="10" fill="#A6192E"/><rect x="50" y="54" width="56" height="3" fill="#D4A73A"/>
+        <rect x="50" y="64" width="56" height="3" fill="#D4A73A"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#08132A"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#A6192E"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="42" width="56" height="10" fill="#13294B"/><rect x="144" y="54" width="56" height="3" fill="#D4A73A"/>
+        <rect x="144" y="64" width="56" height="3" fill="#D4A73A"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#08132A"/>
+      </g>
+</svg>
