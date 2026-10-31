@@ -1,7 +1,7 @@
 # tests/league/test_league_modes.py
 """
-Speed blitz leagues preset the create form and play without injuries or
-trades. Plain blitz keeps both.
+Speed blitz leagues preset the create form and play without trades, with
+injuries off unless the GM turns them on. Plain blitz keeps both.
 """
 
 import html
@@ -34,14 +34,24 @@ def test_speed_blitz_presets():
     }
 
 
-def test_speed_blitz_has_no_injuries_or_trades():
-    assert not injuries_allowed("speed_blitz")
+def test_speed_blitz_has_no_trades_and_injuries_start_off():
+    assert not SPEED_BLITZ.injuries_default
     assert not trades_allowed("speed_blitz")
 
 
-def test_blitz_keeps_injuries_and_trades():
-    assert injuries_allowed("blitz")
+def test_blitz_keeps_trades_and_injuries_start_on():
+    assert BLITZ.injuries_default
     assert trades_allowed("blitz")
+
+
+def test_a_leagues_own_injuries_setting_wins_over_its_mode():
+    assert injuries_allowed({"mode": "speed_blitz", "injuries_enabled": True})
+    assert not injuries_allowed({"mode": "blitz", "injuries_enabled": False})
+
+
+def test_a_league_without_the_setting_follows_its_mode():
+    assert not injuries_allowed({"mode": "speed_blitz"})
+    assert injuries_allowed({"mode": "blitz"})
 
 
 def test_both_blitz_modes_play_blitz_style():
@@ -51,7 +61,7 @@ def test_both_blitz_modes_play_blitz_style():
 
 
 def test_longform_keeps_injuries_and_trades():
-    assert injuries_allowed("longform")
+    assert get_mode("longform").injuries_default
     assert trades_allowed("longform")
 
 
@@ -101,3 +111,12 @@ def test_db_accepts_a_speed_blitz_league(db_conn, factory):
         "SELECT mode FROM leagues WHERE id = %s", (league.id,)
     ).fetchone()
     assert row["mode"] == "speed_blitz"
+
+
+def test_new_league_form_starts_injuries_from_each_modes_default():
+    r = TestClient(app).get("/leagues/new")
+    found = dict(
+        re.findall(r'<option value="(\w+)"[^>]*data-injuries="(on|off)"', r.text)
+    )
+    assert found == {"blitz": "on", "speed_blitz": "off"}
+    assert 'name="injuries_enabled"' in r.text

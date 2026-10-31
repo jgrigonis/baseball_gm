@@ -1,5 +1,5 @@
 # tests/api/web/test_until_injury_button.py
-"""The Until Injury play button only shows in modes that have injuries."""
+"""The Until Injury play button only shows in leagues that have injuries."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,8 +11,10 @@ from src.api.main import app
 from src.api.schemas import SimRequest
 
 
-def _schedule_html(db_conn, factory, mode):
-    league = factory.league(state="season", mode=mode)
+def _schedule_html(db_conn, factory, mode, injuries_enabled=None):
+    league = factory.league(
+        state="season", mode=mode, injuries_enabled=injuries_enabled
+    )
     season = factory.season(year=2025)
     factory.league_season(league, season)
     mine = factory.team(city="My", mascot="Team")
@@ -41,6 +43,16 @@ def test_speed_blitz_has_no_until_injury(db_conn, factory):
     html = _schedule_html(db_conn, factory, "speed_blitz")
     assert "Play Day" in html
     assert "Full Season" in html
+    assert "Until Injury" not in html
+
+
+def test_speed_blitz_with_injuries_turned_on_has_until_injury(db_conn, factory):
+    html = _schedule_html(db_conn, factory, "speed_blitz", injuries_enabled=True)
+    assert "Until Injury" in html
+
+
+def test_blitz_with_injuries_turned_off_has_no_until_injury(db_conn, factory):
+    html = _schedule_html(db_conn, factory, "blitz", injuries_enabled=False)
     assert "Until Injury" not in html
 
 

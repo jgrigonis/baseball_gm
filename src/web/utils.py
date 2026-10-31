@@ -223,8 +223,8 @@ def _shell_ctx(
                     # Several human GMs: the league advances by ready-check,
                     # so the Sim buttons give way to the ready bar.
                     "multiplayer": is_multiplayer(db, league_id),
-                    # Speed Blitz has no injuries, so no Until Injury button.
-                    "injuries_enabled": injuries_allowed(league["mode"]),
+                    # A league without injuries has no Until Injury button.
+                    "injuries_enabled": injuries_allowed(league),
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)

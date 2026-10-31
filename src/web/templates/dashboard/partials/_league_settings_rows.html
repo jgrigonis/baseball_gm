@@ -35,6 +35,11 @@
    "Which season the league is in, out of how many it runs before it ends." if started and info.season_number
    else "How many seasons the league runs before it ends."),
 ] %}
+{% set settings = settings + [
+  ("Injuries", "On" if info.injuries_enabled else "Off",
+   "On: players can get hurt in games and miss time." if info.injuries_enabled
+   else "Off: nobody gets hurt, so every player is always available."),
+] %}
 {% if info.trades_enabled %}
   {% set settings = settings + [
     ("Trade vote", "On" if info.trade_vote else "Off",

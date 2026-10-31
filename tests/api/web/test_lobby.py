@@ -96,17 +96,19 @@ def test_a_gm_who_joins_takes_an_ai_slot(client, db_conn, lobby):
 def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
     league, _ = lobby
     db_conn.execute(
-        "UPDATE leagues SET mode = 'speed_blitz', reentry_enabled = true WHERE id = %s",
+        "UPDATE leagues SET mode = 'speed_blitz', injuries_enabled = false,"
+        " reentry_enabled = true WHERE id = %s",
         (league.id,),
     )
     app.dependency_overrides[get_current_user] = lambda: {"id": None}
 
     r = client.get(f"/leagues/{league.id}/")
 
-    # Ten settings, plus the GM list's and the settings card's own headers.
-    assert r.text.count('class="setting-tip"') == 12
+    # Eleven settings, plus the GM list's and the settings card's own headers.
+    assert r.text.count('class="setting-tip"') == 13
     assert "Speed Blitz" in r.text
-    assert "no injuries or trades" in r.text
+    assert "no trades. Injuries start off" in r.text
+    assert "Off: nobody gets hurt" in r.text
     assert "Total teams in the league" in r.text
     assert "<td>Enabled</td>" in r.text
 

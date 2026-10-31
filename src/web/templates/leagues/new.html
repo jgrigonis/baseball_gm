@@ -14,11 +14,12 @@
       <select name="mode" id="league-mode">
         {% for m in modes %}
         <option value="{{ m.key }}" data-presets='{{ m.form_presets | tojson }}'
+                data-injuries="{{ 'on' if m.injuries_default else 'off' }}"
                 {% if default_mode == m.key %}selected{% endif %}>{{ m.label }}</option>
         {% endfor %}
         <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
       </select>
-      <span class="mode-note" id="speed-blitz-note">No injuries or trades. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
+      <span class="mode-note" id="speed-blitz-note">No trades, and injuries start off. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
     </div>
     <div class="field">
       <label>Days per Sim Period</label>
@@ -61,6 +62,15 @@
       </label>
       <span class="mode-note">Off: only people with the join code can find it.</span>
     </div>
+    <div class="field">
+      <label for="injuries-enabled">Injuries</label>
+      <input type="hidden" name="injuries_enabled" value="false">
+      <label class="toggle-row">
+        <input type="checkbox" name="injuries_enabled" id="injuries-enabled" value="true" checked>
+        <span>Players can get hurt and miss games</span>
+      </label>
+      <span class="mode-note">On by default, except in Speed Blitz. Changing the mode resets it unless you've set it yourself.</span>
+    </div>
     <div class="field" id="trade-vote-field">
       <label for="trade-vote">Trade Vote</label>
       <label class="toggle-row">
@@ -99,6 +109,10 @@
 (function () {
   const mode = document.getElementById('league-mode');
   const speedBlitzNote = document.getElementById('speed-blitz-note');
+  const injuries = document.getElementById('injuries-enabled');
+  // Once the GM flips Injuries, a mode change leaves their choice alone.
+  let injuriesTouched = false;
+  injuries.addEventListener('change', function () { injuriesTouched = true; });
   function applyModePresets() {
     const opt = mode.options[mode.selectedIndex];
     const presets = JSON.parse(opt.dataset.presets || '{}');
@@ -106,6 +120,7 @@
       const input = mode.form.querySelector('[name="' + name + '"]');
       if (input) input.value = presets[name];
     });
+    if (!injuriesTouched) injuries.checked = opt.dataset.injuries === 'on';
     speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
     // Speed Blitz has no trades, so no vote and no picks to trade.
     document.getElementById('trade-vote-field').style.display = mode.value === 'speed_blitz' ? 'none' : '';
