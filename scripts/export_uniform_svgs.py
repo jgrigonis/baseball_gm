@@ -30,7 +30,9 @@ from svgpathtools import parse_path
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path.home() / ".cache" / "baseball_gm" / "fonts"
 SYSTEM_SERIF = "/usr/share/fonts/truetype/freefont/FreeSerif.ttf"  # for the 𝄞 clef
-PAINT = ("fill", "stroke", "stroke-width", "transform", "opacity")
+PAINT = (
+    "fill", "stroke", "stroke-width", "stroke-linejoin", "paint-order", "transform", "opacity",
+)
 
 
 def _num(n: float) -> str:
