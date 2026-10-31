@@ -8,7 +8,7 @@
    takes one's place. The commissioner can reroll an AI GM for another
    persona. Every GM is dealt the team they'll run as they join or are
    picked, and keeps it at the start. Each person can pick another team
-   from their own row: one an AI GM holds swaps with theirs. The poll waits
+   from the drop down in their row: one an AI GM holds swaps with theirs. The poll waits
    while that picker has focus, so it isn't swapped out from under them. Leagues made before AI GMs were picked
    in the lobby show open slots instead, filled at the start. #}
 {% macro lobby_team(city, mascot) -%}
@@ -19,7 +19,7 @@
      hx-get="/leagues/{{ league_id }}/lobby/gms" hx-trigger="every 3s [!document.activeElement || !document.activeElement.closest('.lobby-team-pick')]" hx-swap="outerHTML"
      {% endif %}>
   <div class="card-header">
-    <span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Each GM runs one team, shown next to their name: it's theirs when the league starts. Pick another from your own row; taking an AI GM's team gives them yours. People who join take an AI GM's place and team, and the AI GMs listed here run the rest. Click an AI GM to see how they lean. Status shows who's here: a GM who steps away is marked Away.">GMs ({{ gms|length }} human · {{ ai_gms|length + ai_slots }} AI)</span></span>
+    <span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Each GM runs one team, shown next to their name: it's theirs when the league starts. Pick another team from the drop down; taking an AI GM's team gives them yours. People who join take an AI GM's place and team, and the AI GMs listed here run the rest. Click an AI GM to see how they lean.">GMs ({{ gms|length }} human · {{ ai_gms|length + ai_slots }} AI)</span></span>
     <span class="spacer"></span>
     {% if join_code %}
     <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
@@ -30,7 +30,7 @@
   <div class="card-body">
     <table class="data-table">
       <thead>
-        <tr><th>GM</th><th>Team</th><th>Type</th><th>Status</th></tr>
+        <tr><th>GM</th><th>Team</th><th>Type</th></tr>
       </thead>
       <tbody>
         {% for gm in gms %}
@@ -64,13 +64,6 @@
               <span class="badge badge-human">Human</span>
             {% endif %}
           </td>
-          <td>
-            {% if gm.is_away %}
-              <span style="color:var(--text-dim);font-size:11px;">Away</span>
-            {% else %}
-              <span style="color:var(--green);font-size:11px;">● Ready</span>
-            {% endif %}
-          </td>
         </tr>
         {% endfor %}
         {% for ai in ai_gms %}
@@ -82,16 +75,14 @@
             {% else %}{{ ai.display_name }}{% endif %}
           </td>
           <td>{{ lobby_team(ai.lobby_city, ai.lobby_mascot) }}</td>
-          <td><span class="badge badge-40man">AI</span></td>
-          <td>
+          <td style="white-space:nowrap;">
+            <span class="badge badge-40man">AI</span>
             {% if is_commissioner %}
             <button type="button" class="btn btn-secondary reroll-btn"
                     style="padding:2px 8px;font-size:11px;"
                     title="Swap this AI GM for another persona"
                     hx-post="/leagues/{{ league_id }}/lobby/gms/{{ ai.id }}/reroll"
                     hx-target="#lobby-gms" hx-swap="outerHTML">↻ Reroll</button>
-            {% else %}
-            <span style="color:var(--text-dim);font-size:11px;">Ready</span>
             {% endif %}
           </td>
         </tr>
@@ -101,7 +92,6 @@
           <td class="team-name" style="color:var(--text-dim);" title="Each open team gets an AI GM persona when the league starts">AI GM (picked at start)</td>
           <td style="color:var(--text-dim);">—</td>
           <td><span class="badge badge-40man">AI</span></td>
-          <td><span style="color:var(--text-dim);font-size:11px;">Open slot</span></td>
         </tr>
         {% endfor %}
       </tbody>
