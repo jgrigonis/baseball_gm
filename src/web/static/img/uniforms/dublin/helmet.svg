@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Dublin helmet">
+  <defs>
+    <path id="shamrock" d="M0.0 0.0 C-4.0 -6.0 -17.0 -10.0 -15.0 -23.0 C-13.0 -32.0 -2.0 -32.0 0.0 -23.0 C2.0 -32.0 13.0 -32.0 15.0 -23.0 C17.0 -10.0 4.0 -6.0 0.0 0.0 Z M0.0 -0.0 C-3.4 6.3 -0.8 19.7 -13.3 24.0 C-22.2 26.5 -27.3 16.8 -20.3 10.8 C-29.2 13.3 -34.4 3.5 -27.3 -2.4 C-16.8 -10.3 -7.2 -0.7 0.0 -0.0 Z M-0.0 0.0 C7.2 -0.7 16.8 -10.3 27.3 -2.4 C34.4 3.5 29.2 13.3 20.3 10.8 C27.3 16.8 22.2 26.5 13.3 24.0 C0.8 19.7 3.4 6.3 -0.0 0.0 Z M-2 2 Q1 20 11 30 L14 27.5 Q5 18 2 2 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3FC08A"/><stop offset=".45" stop-color="#169B62"/><stop offset="1" stop-color="#0D6B43"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#0D4F33"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#062B1B"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#0D4F33"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(106 82) scale(.72)"><use href="#shamrock" fill="#FFFFFF" stroke="#FF883E" stroke-width="1.6" paint-order="stroke"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#FF883E" stroke-width="2.5"/>
+</svg>

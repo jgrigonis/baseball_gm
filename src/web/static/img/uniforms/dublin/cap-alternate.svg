@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Dublin cap alternate">
+  <defs>
+    <path id="shamrock" d="M0.0 0.0 C-4.0 -6.0 -17.0 -10.0 -15.0 -23.0 C-13.0 -32.0 -2.0 -32.0 0.0 -23.0 C2.0 -32.0 13.0 -32.0 15.0 -23.0 C17.0 -10.0 4.0 -6.0 0.0 0.0 Z M0.0 -0.0 C-3.4 6.3 -0.8 19.7 -13.3 24.0 C-22.2 26.5 -27.3 16.8 -20.3 10.8 C-29.2 13.3 -34.4 3.5 -27.3 -2.4 C-16.8 -10.3 -7.2 -0.7 0.0 -0.0 Z M-0.0 0.0 C7.2 -0.7 16.8 -10.3 27.3 -2.4 C34.4 3.5 29.2 13.3 20.3 10.8 C27.3 16.8 22.2 26.5 13.3 24.0 C0.8 19.7 3.4 6.3 -0.0 0.0 Z M-2 2 Q1 20 11 30 L14 27.5 Q5 18 2 2 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#FF883E"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#D96A22" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#D96A22" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#169B62"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#169B62" stroke="#0F7A4C" stroke-width="1.5"/>
+      <g transform="translate(120 80) scale(.82)"><use href="#shamrock" fill="#169B62" stroke="#FFFFFF" stroke-width="1.6" paint-order="stroke"/></g>
+</svg>
