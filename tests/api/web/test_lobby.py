@@ -157,6 +157,24 @@ def test_gm_table_has_no_status_column(client, db_conn, lobby):
     assert "Pick another team from the drop down" in r.text
 
 
+def test_team_picker_leaves_out_ai_gm_names(client, db_conn, lobby):
+    """AI GM names made the team drop down too wide, so an AI-held team is
+    just marked (AI)."""
+    league, gm = lobby
+    db_conn.execute("UPDATE leagues SET num_teams = 3 WHERE id = %s", (league.id,))
+    db_conn.execute("UPDATE gms SET team_id = NULL WHERE id = %s", (gm.id,))
+    personas.fill_lobby(db_conn, league.id)
+    ai = personas.lobby_ai_gms(db_conn, league.id)
+
+    picker = ( 
+        _gms(client, league).text.split('class="lobby-team-pick"')[1].split("</select>")[0]
+    )
+
+    assert "(AI)" in picker
+    for g in ai:
+        assert g["display_name"] not in picker
+
+
 def test_only_the_commissioner_sees_reroll(client, db_conn, lobby):
     league, gm = lobby
     _fill(db_conn, league)
