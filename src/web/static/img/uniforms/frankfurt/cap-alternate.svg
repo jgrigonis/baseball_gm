@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Frankfurt cap alternate">
+  <defs>
+    <path id="eagle" d="M-4 -30 Q0 -40 7 -34 L15 -31 L7 -28 Q4 -22 0 -22 Q-5 -24 -4 -30 Z M-6 -22 H6 L9 4 L0 14 L-9 4 Z M-7 10 L-11 28 L-4 23 L0 31 L4 23 L11 28 L7 10 Z M6 -21 L42 -31 L40 -22 L8 -13 Z M8 -11 L39 -18 L36 -9 L9 -3 Z M9 -1 L34 -5 L30 3 L8 7 Z M-6 -21 L-42 -31 L-40 -22 L-8 -13 Z M-8 -11 L-39 -18 L-36 -9 L-9 -3 Z M-9 -1 L-34 -5 L-30 3 L-8 7 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#C8102E"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#8F0B21" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#8F0B21" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#1A1A1A"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1A1A1A" stroke="#000" stroke-width="1.5"/>
+      <g transform="translate(120 80) scale(.85)"><use href="#eagle" fill="#E2B33C" stroke="#1A1A1A" stroke-width="1.2" paint-order="stroke"/></g>
+</svg>

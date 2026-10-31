@@ -58,7 +58,9 @@ def load_fonts(sheet: str) -> dict[tuple[str, str, str], TTFont]:
         if not path.exists():
             continue
         f = TTFont(path)
-        family = f["name"].getDebugName(1)
+        # The typographic family (name 16) when there is one, so that
+        # "Jost ExtraBold" is looked up as Jost at weight 800.
+        family = f["name"].getDebugName(16) or f["name"].getDebugName(1)
         family = "serif" if path.name == Path(SYSTEM_SERIF).name else family
         family = family.replace(" Black", "")
         weight = str(f["OS/2"].usWeightClass)

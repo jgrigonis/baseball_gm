@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="Frankfurt stirrups alternate">
+  <defs>
+    <path id="eagle" d="M-4 -30 Q0 -40 7 -34 L15 -31 L7 -28 Q4 -22 0 -22 Q-5 -24 -4 -30 Z M-6 -22 H6 L9 4 L0 14 L-9 4 Z M-7 10 L-11 28 L-4 23 L0 31 L4 23 L11 28 L7 10 Z M6 -21 L42 -31 L40 -22 L8 -13 Z M8 -11 L39 -18 L36 -9 L9 -3 Z M9 -1 L34 -5 L30 3 L8 7 Z M-6 -21 L-42 -31 L-40 -22 L-8 -13 Z M-8 -11 L-39 -18 L-36 -9 L-9 -3 Z M-9 -1 L-34 -5 L-30 3 L-8 7 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#F5F4F0" stroke="#D4D2CC"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#1A1A1A"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#F5F4F0"/>
+        <rect x="50" y="46" width="56" height="7" fill="#C8102E"/><rect x="50" y="53" width="56" height="7" fill="#E2B33C"/>
+        <g transform="translate(78 104) scale(.42)"><use href="#eagle" fill="#E2B33C"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#000"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#F5F4F0" stroke="#D4D2CC"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#C8102E"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#F5F4F0"/>
+        <rect x="144" y="46" width="56" height="7" fill="#1A1A1A"/><rect x="144" y="53" width="56" height="7" fill="#E2B33C"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#000"/>
+      </g>
+</svg>
