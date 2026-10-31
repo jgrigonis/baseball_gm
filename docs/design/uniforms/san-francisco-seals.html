@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>San Francisco Seals Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bevan&family=Rammetto+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --fog:#B9C2C8; --charcoal:#1F2A33; --red:#C0362C;
+  --bg:#FBF8F1; --card:#FFFFFF; --text:#1B2A2E; --dim:#5F6B6A; --line:#E6E0D2; --accent:#962A22;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#E8826F; }
+}
+:root[data-theme="dark"] { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#E8826F; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:var(--charcoal); color:#FFFFFF; border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(var(--fog) 0 5px, var(--red) 5px 10px); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#DDE2E5; }
+header h1 { font-family:"Bevan", sans-serif; font-weight:400; font-size:46px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; }
+header p { margin:0; max-width:640px; color:#DDE2E5; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:inline-block; }
+h2 { font-family:"Bevan", sans-serif; font-weight:400; font-size:23px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#EEE9E0, #DED6C8); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#1A2D30, #132326); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#1A2D30, #132326); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:34px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · 30 of 30</div>
+  <h1>San Francisco Seals</h1>
+  <p>Fog gray, Golden Gate red and charcoal, for the bay's barking residents. The lettering is Bevan, a heavy old-style slab. SEALS at home, a big SF on the road grays, and a bridge-red alternate. The caps say SF, and the patch shows a Golden Gate tower standing out of the fog.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#B9C2C8"></i>Fog #7D8A93</span>
+    <span class="sw"><i style="background:#1F2A33"></i>Charcoal #1F2A33</span>
+    <span class="sw"><i style="background:#C0362C"></i>Red #C0362C</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. White at home, road gray away, and a Golden Gate red alternate.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: white with red SEALS edged in charcoal">
+      <use href="#jersey" fill="#FFFFFF" stroke="#1F2A33" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#1F2A33" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#B9C2C8" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#1F2A33" stroke-width="3"/>
+      <g fill="#1F2A33"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#1F2A33" stroke-width="9"/><path d="M203 100 L222 54" stroke="#1F2A33" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#B9C2C8" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#B9C2C8" stroke-width="2.4"/>
+      <path id="arcH" d="M70 138 Q120 120 170 138" fill="none"/>
+      <text font-family="Bevan" font-size="19" letter-spacing="1" fill="#C0362C" stroke="#1F2A33" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcH" startOffset="50%" text-anchor="middle">SEALS</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Rammetto One" font-size="22" fill="#C0362C" stroke="#1F2A33" stroke-width="2" stroke-linejoin="round" paint-order="stroke">30</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#C0362C" stroke="#1F2A33" stroke-width="2"/><text x="0" y="4.5" text-anchor="middle" font-family="Bevan" font-size="12" fill="#FFFFFF">SF</text></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>White, red SEALS</h3>
+    <p>"SEALS" arched in Golden Gate red with a charcoal edge. Charcoal sleeves with a fog line, red numbers, and the SF badge on the sleeve.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: road gray with a big red SF edged in charcoal">
+      <use href="#jersey" fill="#8E9AA2" stroke="#6A757D" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#1F2A33" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#C0362C" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#1F2A33" stroke-width="2.5"/>
+      <g fill="#1F2A33"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#1F2A33" stroke-width="9"/><path d="M203 100 L222 54" stroke="#1F2A33" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#C0362C" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#C0362C" stroke-width="2.4"/>
+      <text x="115" y="142" text-anchor="end" font-family="Bevan" font-size="46" fill="#C0362C" stroke="#1F2A33" stroke-width="3" stroke-linejoin="round" paint-order="stroke">S</text><text x="125" y="142" text-anchor="start" font-family="Bevan" font-size="46" fill="#C0362C" stroke="#1F2A33" stroke-width="3" stroke-linejoin="round" paint-order="stroke">F</text>
+      <text x="88" y="200" text-anchor="middle" font-family="Rammetto One" font-size="22" fill="#1F2A33" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" paint-order="stroke">30</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#C0362C" stroke="#1F2A33" stroke-width="2"/><text x="0" y="4.5" text-anchor="middle" font-family="Bevan" font-size="12" fill="#FFFFFF">SF</text></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Road gray, big SF</h3>
+    <p>Classic road gray with a big red S and F edged in charcoal, one either side of the placket. Charcoal sleeves with a red line, and charcoal numbers.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: Golden Gate red with white SEALS and a white Golden Gate Bridge across the lower body">
+      <use href="#jersey" fill="#C0362C" stroke="#962A22" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#1F2A33" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#1F2A33" stroke-width="2.5"/>
+      <g fill="#FFFFFF"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#1F2A33" stroke-width="9"/><path d="M203 100 L222 54" stroke="#1F2A33" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#FFFFFF" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#FFFFFF" stroke-width="2.4"/>
+      <path id="arcK" d="M70 138 Q120 120 170 138" fill="none"/>
+      <text font-family="Bevan" font-size="19" letter-spacing="1" fill="#FFFFFF" stroke="#1F2A33" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcK" startOffset="50%" text-anchor="middle">SEALS</textPath></text>
+      <g fill="none" stroke="#FFFFFF" stroke-linecap="round"><path d="M61 236 Q80 232 94 208 Q120 236 146 208 Q160 232 179 236" stroke-width="2"/><path d="M68 234.5 V236" stroke-width="0.9"/><path d="M76 232.5 V236" stroke-width="0.9"/><path d="M84 228 V236" stroke-width="0.9"/><path d="M104 220.5 V236" stroke-width="0.9"/><path d="M112 226 V236" stroke-width="0.9"/><path d="M120 227.5 V236" stroke-width="0.9"/><path d="M128 226 V236" stroke-width="0.9"/><path d="M136 220.5 V236" stroke-width="0.9"/><path d="M156 228 V236" stroke-width="0.9"/><path d="M164 232.5 V236" stroke-width="0.9"/><path d="M172 234.5 V236" stroke-width="0.9"/></g><g fill="#FFFFFF"><rect x="91" y="204" width="6" height="42"/><rect x="143" y="204" width="6" height="42"/><rect x="90" y="203" width="8" height="2.5"/><rect x="142" y="203" width="8" height="2.5"/><rect x="91" y="214" width="6" height="2" fill="#C0362C"/><rect x="143" y="214" width="6" height="2" fill="#C0362C"/><rect x="91" y="225" width="6" height="2" fill="#C0362C"/><rect x="143" y="225" width="6" height="2" fill="#C0362C"/><rect x="61" y="236" width="118" height="3.5"/></g>
+      <text x="88" y="190" text-anchor="middle" font-family="Rammetto One" font-size="22" fill="#FFFFFF" stroke="#1F2A33" stroke-width="2" stroke-linejoin="round" paint-order="stroke">30</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#1F2A33" stroke="#FFFFFF" stroke-width="2"/><text x="0" y="4.5" text-anchor="middle" font-family="Bevan" font-size="12" fill="#FFFFFF">SF</text></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Golden Gate</div>
+    <h3>Bridge red, white SEALS</h3>
+    <p>The red of the bridge, with white SEALS edged in charcoal and the Golden Gate Bridge drawn in white across the lower body. Charcoal sleeves with a white line, and white numbers.</p>
+  </div>
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">SF in white.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Charcoal cap with red brim and white SF">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#1F2A33"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#18212A" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#18212A" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#B9C2C8"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#C0362C" stroke="#962A22" stroke-width="1.5"/>
+      <text x="122.5" y="100" text-anchor="middle" font-family="Bevan" font-size="40" letter-spacing="5" fill="#FFFFFF" stroke="#C0362C" stroke-width="3" stroke-linejoin="round" paint-order="stroke">SF</text>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Charcoal crown, red brim</h3>
+    <p>White SF edged in red on a charcoal crown, with a red brim and a fog button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Red cap with charcoal brim and white SF">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#C0362C"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#962A22" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#962A22" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#FFFFFF"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1F2A33" stroke="#11181F" stroke-width="1.5"/>
+      <text x="122.5" y="100" text-anchor="middle" font-family="Bevan" font-size="40" letter-spacing="5" fill="#FFFFFF" stroke="#1F2A33" stroke-width="3" stroke-linejoin="round" paint-order="stroke">SF</text>
+    </svg>
+    </div>
+    <div class="tag">Cap · Golden Gate</div>
+    <h3>Red crown, charcoal brim</h3>
+    <p>White SF edged in charcoal on a bridge red crown, with a charcoal brim. Worn with the red alternate.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss charcoal batting helmet with white SF">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A5862"/><stop offset=".45" stop-color="#1F2A33"/><stop offset="1" stop-color="#11181F"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#C0362C"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#11181F"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#11181F"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <text x="108.5" y="98" text-anchor="middle" font-family="Bevan" font-size="36" letter-spacing="5" fill="#FFFFFF" stroke="#C0362C" stroke-width="3" stroke-linejoin="round" paint-order="stroke">SF</text>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#C0362C" stroke-width="2.5"/>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss charcoal</h3>
+    <p>A charcoal shell with a red ear flap and stripe, and the white SF decal.</p>
+  </div>
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">Bands on the stirrups.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="White home pants and gray away pants with charcoal and fog side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#FFFFFF" stroke="#D4D8DD" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#1F2A33"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#B9C2C8" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#1F2A33" stroke-width="4"/><path d="M38 34 L40 208" stroke="#B9C2C8" stroke-width="1.8"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A8ADB3" stroke="#868B91" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#1F2A33"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#B9C2C8" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#1F2A33" stroke-width="4"/><path d="M138 34 L140 208" stroke="#B9C2C8" stroke-width="1.8"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>White at home, gray away</h3>
+    <p>A charcoal and fog side stripe on both pairs, with a charcoal belt and a fog buckle. The red alternate wears the white.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Charcoal stirrups with fog and red bands, and red stirrups with fog and charcoal bands">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#1F2A33"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="42" width="56" height="9" fill="#B9C2C8"/><rect x="50" y="52" width="56" height="5" fill="#C0362C"/>
+        <rect x="50" y="64" width="56" height="3" fill="#B9C2C8"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#11181F"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#C0362C"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="42" width="56" height="9" fill="#B9C2C8"/><rect x="144" y="52" width="56" height="5" fill="#1F2A33"/>
+        <rect x="144" y="64" width="56" height="3" fill="#B9C2C8"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#11181F"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>Fog bands</h3>
+    <p>Charcoal stirrups with fog and red bands. The alternate set is red with fog and charcoal bands.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Round patch with a Golden Gate Bridge tower rising out of the fog">
+      <defs><clipPath id="ring"><circle cx="120" cy="112" r="64"/></clipPath></defs>
+      <circle cx="120" cy="112" r="94" fill="#1F2A33" stroke="#B9C2C8" stroke-width="5"/>
+      <circle cx="120" cy="112" r="64" fill="#4A5862"/>
+      <g clip-path="url(#ring)">
+        <rect x="40" y="40" width="160" height="150" fill="#DDE2E5"/><circle cx="160" cy="72" r="14" fill="#FFFFFF" opacity=".8"/><path d="M40 150 H200 V190 H40 Z" fill="#4A5862"/><g fill="none" stroke="#C0362C" stroke-width="1.2"><path d="M52 105.3 V134"/><path d="M60 93.0 V134"/><path d="M68 82.7 V134"/><path d="M76 74.5 V134"/><path d="M84 68.4 V134"/><path d="M92 64.3 V134"/><path d="M100 62.3 V134"/><path d="M144 63.0 V134"/><path d="M152 66.1 V134"/><path d="M160 71.2 V134"/><path d="M168 78.4 V134"/><path d="M176 87.6 V134"/><path d="M184 98.9 V134"/><path d="M192 112.2 V134"/><path d="M112 70 Q120 92 128 70"/><path d="M116 78 V134"/><path d="M124 78 V134"/></g><g fill="none" stroke="#C0362C" stroke-width="2.4"><path d="M104 62 Q74 116 40 126"/><path d="M136 62 Q166 116 200 126"/><path d="M110 64 Q120 96 130 64"/></g><g fill="#C0362C"><rect x="102" y="56" width="7" height="104"/><rect x="131" y="56" width="7" height="104"/><rect x="100" y="54" width="40" height="4"/><rect x="102" y="74" width="36" height="5"/><rect x="102" y="96" width="36" height="5"/><rect x="102" y="116" width="36" height="4"/><rect x="40" y="132" width="160" height="5"/></g><g fill="#FFFFFF"><circle cx="58" cy="150" r="14"/><circle cx="80" cy="146" r="16"/><circle cx="104" cy="150" r="14"/><circle cx="128" cy="147" r="15"/><circle cx="152" cy="150" r="14"/><circle cx="176" cy="146" r="16"/><circle cx="196" cy="151" r="12"/><rect x="40" y="150" width="160" height="10"/></g><g stroke="#B9C2C8" stroke-width="1.6" stroke-linecap="round"><path d="M70 170 H96"/><path d="M110 176 H140"/><path d="M150 168 H174"/></g>
+      </g>
+      <circle cx="120" cy="112" r="64" fill="none" stroke="#FFFFFF" stroke-width="2.5"/>
+      <path id="ringTop" d="M46 112 A74 74 0 0 1 194 112" fill="none"/>
+      <text font-family="Bevan" font-size="17" letter-spacing="4" fill="#FFFFFF"><textPath href="#ringTop" startOffset="50%" text-anchor="middle">SEALS</textPath></text>
+      <path id="ringBot" d="M40 112 A80 80 0 0 0 200 112" fill="none"/>
+      <text font-family="Bevan" font-size="12" letter-spacing="1.5" fill="#FFFFFF"><textPath href="#ringBot" startOffset="50%" text-anchor="middle">SAN FRANCISCO</textPath></text>
+      <g fill="#B9C2C8"><circle cx="31" cy="112" r="3.5"/><circle cx="209" cy="112" r="3.5"/></g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>Out of the fog</h3>
+    <p>A charcoal roundel with a fog rim. A red Golden Gate tower and its cables rise out of a fog bank over the bay, with SEALS across the top and SAN FRANCISCO curved along the bottom. Worn on the player's left sleeve.</p>
+  </div>
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Fog gray, red and charcoal are the same values the game uses for the San Francisco badge. I added white for the home body.</li>
+  <li><b>Display type.</b> Bevan is a heavy old-style slab with a ballpark feel. The numbers use Rammetto One, because Bevan's numerals are short.</li>
+  <li><b>Short words, wide margins.</b> SEALS at home and on the alternate, and a big S and F on the road, either side of the placket, all well inside the body.</li>
+  <li><b>Letters on the caps, the drawing on the patch.</b> SF carries the caps, helmet and sleeve badge. The bridge only appears on the patch, where it has room.</li>
+  <li><b>In the game.</b> These are design drawings only for now. Nothing in the app has changed.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece. Once San Francisco is settled, I'll commit it, and all 30 teams will be done.
+</div>
+
+</div>
+</body>
+</html>
