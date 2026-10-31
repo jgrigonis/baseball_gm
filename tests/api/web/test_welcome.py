@@ -146,7 +146,7 @@ def test_setup_bar_stays_until_the_roster_is_saved(client, db_conn, league):
     assert 'id="setup-bar"' not in client.get(f"/leagues/{lg.id}/league").text
 
 
-def test_setup_bar_points_at_the_roster_after_the_draft(client, db_conn, league):
+def test_running_the_draft_ends_the_setup_bar(client, db_conn, league):
     lg, _, _ = league
     db_conn.execute(
         "UPDATE drafts SET state = 'complete' WHERE league_id = %s", (lg.id,)
@@ -154,7 +154,7 @@ def test_setup_bar_points_at_the_roster_after_the_draft(client, db_conn, league)
 
     html = client.get(f"/leagues/{lg.id}/league").text
 
-    assert "Save your roster →" in html
+    assert 'id="setup-bar"' not in html
 
 
 def test_persona_cards_link_back_to_where_they_came_from(client, db_conn, league):

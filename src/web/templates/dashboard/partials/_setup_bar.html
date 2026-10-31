@@ -1,22 +1,15 @@
 {# templates/dashboard/partials/_setup_bar.html
    A new league's getting-started bar along the bottom of every page: the
-   draft, then the roster, lineup and strategy to set up, and the welcome
-   screen. It stays until the GM first saves their roster
+   draft, the roster, lineup and strategy to set up, and the welcome screen.
+   It stays until the draft runs or the GM first saves their roster
    (gms.roster_saved_at); the roster page removes it on that save. #}
 <div id="setup-bar" class="setup-bar">
-  {% if not draft_complete %}
-    <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to the draft →</a>
-  {% else %}
-    <a href="/leagues/{{ league_id }}/roster" class="btn btn-primary">Save your roster →</a>
-  {% endif %}
+  <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to the draft →</a>
   {% for path, label in [("welcome", "Meet your team"), ("roster", "Roster"), ("lineup", "Lineup"), ("strategy", "Strategy")] %}
     <a href="/leagues/{{ league_id }}/{{ path }}" data-path="{{ path }}"
        class="btn btn-secondary{% if active_tab == path or request.url.path.endswith('/' ~ path) %} setup-bar-here{% endif %}">{{ label }}</a>
   {% endfor %}
-  <span class="setup-bar-hint">
-    {% if not draft_complete %}Drafted players join your roster, so you can set the lineup before or after.
-    {% else %}Save your roster once to finish setting up. This bar goes away then.{% endif %}
-  </span>
+  <span class="setup-bar-hint">Drafted players join your roster, so you can set the lineup before or after.</span>
 </div>
 
 <style>

@@ -256,9 +256,11 @@ def _shell_ctx(
             if not ctx["is_viewer"]:
                 mark_visit(db, league, active_tab)
                 ctx["coach"] = coach_ctx(db, league)
-                # A new league's getting-started bar, until the first roster save.
+                # A new league's getting-started bar, until the draft runs or
+                # the GM first saves their roster.
                 ctx["setup_bar"] = (
                     league["state"] != "lobby"
+                    and not draft_complete
                     and gm.get("id") is not None
                     and GMRepository(db).needs_setup_bar(gm["id"])
                     and lr.count_seasons(league_id) == 1
