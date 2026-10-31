@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 8 74 214" width="74" height="214" role="img" aria-label="Amsterdam stirrups">
+  <defs>
+    <path id="xcross" d="M-7 -9.2 L0 -2.2 L7 -9.2 L9.2 -7 L2.2 0 L9.2 7 L7 9.2 L0 2.2 L-7 9.2 L-9.2 7 L-2.2 0 L-9.2 -7 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#F3E9D2" stroke="#D6CAB0"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#0D2240"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#F3E9D2"/>
+        <rect x="50" y="34" width="56" height="4" fill="#F36C21"/>
+        <g fill="#F36C21"><use href="#xcross" transform="translate(78 58) scale(.85)"/><use href="#xcross" transform="translate(78 80) scale(.85)"/><use href="#xcross" transform="translate(78 102) scale(.85)"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#06142A"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#F3E9D2" stroke="#D6CAB0"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#F36C21"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#F3E9D2"/>
+        <rect x="144" y="34" width="56" height="4" fill="#0D2240"/>
+        <g fill="#0D2240"><use href="#xcross" transform="translate(172 58) scale(.85)"/><use href="#xcross" transform="translate(172 80) scale(.85)"/><use href="#xcross" transform="translate(172 102) scale(.85)"/></g>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#06142A"/>
+      </g>
+</svg>

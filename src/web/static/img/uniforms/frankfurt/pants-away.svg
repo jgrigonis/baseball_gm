@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="124 14 92 202" width="92" height="202" role="img" aria-label="Frankfurt pants away">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F5F4F0" stroke="#D4D2CC" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#1A1A1A"/>
+        <rect x="64" y="21" width="12" height="10" rx="1" fill="none" stroke="#E2B33C" stroke-width="2"/>
+        <path d="M32.5 34 L35.5 208" stroke="#1A1A1A" stroke-width="2.4"/><path d="M35 34 L38 208" stroke="#C8102E" stroke-width="2.4"/><path d="M37.5 34 L40.5 208" stroke="#E2B33C" stroke-width="2.4"/>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A6A8AB" stroke="#85878A" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#1A1A1A"/>
+        <rect x="164" y="21" width="12" height="10" rx="1" fill="none" stroke="#E2B33C" stroke-width="2"/>
+        <path d="M132.5 34 L135.5 208" stroke="#1A1A1A" stroke-width="2.4"/><path d="M135 34 L138 208" stroke="#C8102E" stroke-width="2.4"/><path d="M137.5 34 L140.5 208" stroke="#E2B33C" stroke-width="2.4"/>
+      </g>
+</svg>

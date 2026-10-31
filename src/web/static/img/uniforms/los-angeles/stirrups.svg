@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 8 74 214" width="74" height="214" role="img" aria-label="Los Angeles stirrups">
+  <defs>
+    <path id="star" d="M0.0 -29.0 L7.9 -7.9 L30.4 -6.9 L12.8 7.2 L18.8 28.9 L0.0 16.5 L-18.8 28.9 L-12.8 7.2 L-30.4 -6.9 L-7.9 -7.9 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D6D2DC"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#2A0E5C"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="44" width="56" height="5" fill="#FFC93C"/><rect x="50" y="49" width="56" height="5" fill="#FF9A5C"/><rect x="50" y="54" width="56" height="5" fill="#FF6F91"/>
+        <g transform="translate(78 100) scale(.42)"><use href="#star" fill="#FFC93C"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1A0838"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D6D2DC"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#FF6F91"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="44" width="56" height="6" fill="#2A0E5C"/><rect x="144" y="50" width="56" height="5" fill="#FFC93C"/><rect x="144" y="55" width="56" height="4" fill="#2A0E5C"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#1A0838"/>
+      </g>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Istanbul cap">
+  <defs>
+    <path id="tulip" d="M0 -44 Q-12 -48 -12 -70 Q-6 -63 -3 -63 Q-2 -73 0 -79 Q2 -73 3 -63 Q6 -63 12 -70 Q12 -48 0 -44 Z M-1.3 -45 Q-3 -20 -0.6 0 L1.4 0 Q-1 -20 1.3 -45 Z M-0.6 -5 Q-18 -15 -21 -41 Q-8 -27 0.8 -10 Z M0.6 -14 Q15 -22 17 -45 Q6 -32 -0.6 -19 Z"/>
+    <path id="petal" d="M0 -47 Q-5 -56 0 -72 Q5 -56 0 -47 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#1A3D8F"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#122C69" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#122C69" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#D2453A"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1B8A9C" stroke="#136572" stroke-width="1.5"/>
+      <g transform="translate(122 106) scale(.9)"><use href="#tulip" fill="#F6F2E8" stroke="#D2453A" stroke-width="1.2" paint-order="stroke"/><use href="#petal" fill="#D2453A"/></g>
+</svg>

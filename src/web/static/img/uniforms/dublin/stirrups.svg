@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 8 74 214" width="74" height="214" role="img" aria-label="Dublin stirrups">
+  <defs>
+    <path id="shamrock" d="M0.0 0.0 C-4.0 -6.0 -17.0 -10.0 -15.0 -23.0 C-13.0 -32.0 -2.0 -32.0 0.0 -23.0 C2.0 -32.0 13.0 -32.0 15.0 -23.0 C17.0 -10.0 4.0 -6.0 0.0 0.0 Z M0.0 -0.0 C-3.4 6.3 -0.8 19.7 -13.3 24.0 C-22.2 26.5 -27.3 16.8 -20.3 10.8 C-29.2 13.3 -34.4 3.5 -27.3 -2.4 C-16.8 -10.3 -7.2 -0.7 0.0 -0.0 Z M-0.0 0.0 C7.2 -0.7 16.8 -10.3 27.3 -2.4 C34.4 3.5 29.2 13.3 20.3 10.8 C27.3 16.8 22.2 26.5 13.3 24.0 C0.8 19.7 3.4 6.3 -0.0 0.0 Z M-2 2 Q1 20 11 30 L14 27.5 Q5 18 2 2 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D0D5D2"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#169B62"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="46" width="56" height="7" fill="#FFFFFF"/><rect x="50" y="53" width="56" height="7" fill="#FF883E"/>
+        <g transform="translate(78 104) scale(.45)"><use href="#shamrock" fill="#FFFFFF"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#0D4F33"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D0D5D2"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#FF883E"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="46" width="56" height="7" fill="#169B62"/><rect x="144" y="53" width="56" height="7" fill="#FFFFFF"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#0D4F33"/>
+      </g>
+</svg>

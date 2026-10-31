@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Madrid cap">
+  <defs>
+    <path id="morion" d="M-29 -15 Q-22 3 0 3 Q22 3 29 -15 Q22 -7 13 -7 Q0 -4 -13 -7 Q-22 -7 -29 -15 Z M-13 -6 Q-14 -24 -6 -33 Q-2 -42 0 -42 Q2 -42 6 -33 Q14 -24 13 -6 Z"/>
+    <path id="band" d="M-12 -18 Q0 -23 12 -18"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#3F4650"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#2A3038" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#2A3038" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#F1BF00"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#AA151B" stroke="#7E0F14" stroke-width="1.5"/>
+      <g transform="translate(112 94) scale(1.25)"><use href="#morion" fill="#F1BF00" stroke="#F5EFE2" stroke-width="1" paint-order="stroke"/><use href="#band" fill="none" stroke="#3F4650" stroke-width="1.4"/></g>
+</svg>

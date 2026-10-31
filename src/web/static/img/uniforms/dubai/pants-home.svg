@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="24 14 92 202" width="92" height="202" role="img" aria-label="Dubai pants home">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F4EEE2" stroke="#D8CCB4" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#2F3B45"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#B8935A" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#2F3B45" stroke-width="4"/><path d="M38 34 L40 208" stroke="#B8935A" stroke-width="2"/>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#B5B0A6" stroke="#938E84" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#2F3B45"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#B8935A" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#2F3B45" stroke-width="4"/><path d="M138 34 L140 208" stroke="#B8935A" stroke-width="2"/>
+      </g>
+</svg>

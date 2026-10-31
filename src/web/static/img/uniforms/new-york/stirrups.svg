@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 8 74 214" width="74" height="214" role="img" aria-label="New York stirrups">
+  <defs>
+    <path id="spire" d="M-12 0 V-28 Q-12 -40 0 -44 Q12 -40 12 -28 V0 Z M-9 -34 Q-9 -48 0 -52 Q9 -48 9 -34 Z M-6 -44 Q-6 -56 0 -59 Q6 -56 6 -44 Z M-1.4 -57 L0 -78 L1.4 -57 Z"/>
+    <path id="win" d="M-3 -30 L0 -37 L3 -30 Z M-2 -41 L0 -47 L2 -41 Z M-1.4 -50 L0 -54 L1.4 -50 Z M-8 -24 h2.4 v20 h-2.4 Z M-1.2 -24 h2.4 v20 h-2.4 Z M5.6 -24 h2.4 v20 h-2.4 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#E8E2D0" stroke="#C9C1AA"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#0C2340"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#E8E2D0"/>
+        <rect x="50" y="54" width="56" height="8" fill="#8E9194"/>
+        <path d="M50 54 V49 H54.0 V54 H58 V49 H62.0 V54 H66 V49 H70.0 V54 H74 V49 H78.0 V54 H82 V49 H86.0 V54 H90 V49 H94.0 V54 H98 V49 H102.0 V54 H106" fill="none" stroke="#8E9194" stroke-width="2.5"/>
+        <g transform="translate(78 120) scale(.42)"><use href="#spire" fill="#E8E2D0"/><use href="#win" fill="#0C2340"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1A1F26"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#E8E2D0" stroke="#C9C1AA"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#8E9194"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#E8E2D0"/>
+        <rect x="144" y="54" width="56" height="8" fill="#0C2340"/>
+        <path d="M144 54 V49 H148.0 V54 H152 V49 H156.0 V54 H160 V49 H164.0 V54 H168 V49 H172.0 V54 H176 V49 H180.0 V54 H184 V49 H188.0 V54 H192 V49 H196.0 V54 H200" fill="none" stroke="#0C2340" stroke-width="2.5"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#1A1F26"/>
+      </g>
+</svg>

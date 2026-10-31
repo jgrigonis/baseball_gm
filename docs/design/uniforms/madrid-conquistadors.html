@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Madrid Conquistadors Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@900&family=Pirata+One&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --iron:#3F4650; --gold:#F1BF00; --red:#AA151B; --cream:#F5EFE2;
+  --bg:#FBF8F1; --card:#FFFFFF; --text:#1B2A2E; --dim:#5F6B6A; --line:#E6E0D2; --accent:#AA151B;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#F1BF00; }
+}
+:root[data-theme="dark"] { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#F1BF00; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:var(--iron); color:var(--cream); border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(var(--red) 0 3px, var(--gold) 3px 7px, var(--red) 7px 10px); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#F1BF00; }
+header h1 { font-family:Cinzel, serif; font-weight:400; font-size:48px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; }
+header p { margin:0; max-width:640px; color:#DADDE2; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:inline-block; }
+h2 { font-family:Cinzel, serif; font-weight:400; font-size:22px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#EEE9E0, #DED6C8); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#1A2D30, #132326); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#1A2D30, #132326); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:34px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · 7 of 30</div>
+  <h1>Madrid Conquistadors</h1>
+  <p>Old Castile, iron and gold. Iron gray like a morion helmet, gold and red like the Spanish flag, and cream like the stone of the Plaza Mayor. The nickname is in Castilian blackletter, the city in carved Roman capitals, the cap carries the crested helmet, and the patch is a shield with crossed Toledo swords.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#3F4650"></i>Iron #3F4650</span>
+    <span class="sw"><i style="background:#F1BF00"></i>Gold #F1BF00</span>
+    <span class="sw"><i style="background:#AA151B"></i>Red #AA151B</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <path id="morion" d="M-29 -15 Q-22 3 0 3 Q22 3 29 -15 Q22 -7 13 -7 Q0 -4 -13 -7 Q-22 -7 -29 -15 Z M-13 -6 Q-14 -24 -6 -33 Q-2 -42 0 -42 Q2 -42 6 -33 Q14 -24 13 -6 Z"/>
+    <path id="band" d="M-12 -18 Q0 -23 12 -18"/>
+    <path id="sword" d="M-1.6 -40 L0 -46 L1.6 -40 V12 H-1.6 Z M-9 12 H9 V15 H-9 Z M-1.4 15 H1.4 V24 H-1.4 Z M0 24 m-2.6 2.4 a2.6 2.6 0 1 0 5.2 0 a2.6 2.6 0 1 0 -5.2 0 Z"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. Cream at home, iron gray on the road, and a red alternate in the flag's colors.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: cream with arched iron CONQUISTADORS">
+      <use href="#jersey" fill="#F5EFE2" stroke="#3F4650" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#AA151B" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F1BF00" stroke-width="2"/>
+      <path d="M120 27 V250" stroke="#3F4650" stroke-width="3"/>
+      <g fill="#3F4650"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#AA151B" stroke-width="8"/><path d="M203 100 L222 54" stroke="#AA151B" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#F1BF00" stroke-width="2.5"/><path d="M200 99 L219 53" stroke="#F1BF00" stroke-width="2.5"/>
+      <path id="arcH" d="M60 138 Q120 98 180 138" fill="none"/>
+      <text font-family="Pirata One" font-size="20.5" fill="#3F4650" stroke="#F1BF00" stroke-width="0.4"><textPath href="#arcH" startOffset="50%" text-anchor="middle">Conquistadors</textPath></text>
+      <text x="88" y="196" text-anchor="middle" font-family="Cinzel" font-weight="900" font-size="30" fill="#AA151B" stroke="#F1BF00" stroke-width="0.8">7</text>
+      <g transform="translate(44 74)"><circle r="13" fill="#3F4650" stroke="#F1BF00" stroke-width="2"/><g transform="translate(0 6) scale(.36)"><use href="#morion" fill="#F1BF00"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>Cream, Castilian blackletter</h3>
+    <p>"Conquistadors" arched in iron blackletter with a fine gold edge, like the lettering on an old Castilian charter. Red and gold numbers. Red sleeves with a gold band, and a red and gold collar.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: iron gray with arched gold MADRID">
+      <use href="#jersey" fill="#3F4650" stroke="#2A3038" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F1BF00" stroke-width="5"/>
+      <path d="M120 27 V250" stroke="#F1BF00" stroke-width="2.5"/>
+      <g fill="#F5EFE2"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#AA151B" stroke-width="8"/><path d="M203 100 L222 54" stroke="#AA151B" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#F1BF00" stroke-width="2.5"/><path d="M200 99 L219 53" stroke="#F1BF00" stroke-width="2.5"/>
+      <path id="arcA" d="M64 134 Q120 98 176 134" fill="none"/>
+      <text font-family="Cinzel" font-weight="900" font-size="21" letter-spacing="1" fill="#F1BF00" stroke="#AA151B" stroke-width="0.9"><textPath href="#arcA" startOffset="50%" text-anchor="middle">MADRID</textPath></text>
+      <text x="88" y="196" text-anchor="middle" font-family="Cinzel" font-weight="900" font-size="30" fill="#F1BF00" stroke="#AA151B" stroke-width="0.8">7</text>
+      <g transform="translate(44 74)"><circle r="13" fill="#AA151B" stroke="#F1BF00" stroke-width="2"/><g transform="translate(0 6) scale(.36)"><use href="#morion" fill="#F1BF00"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Iron gray, arched gold MADRID</h3>
+    <p>"MADRID" arched in gold Roman capitals with a red edge. Gold collar and placket, and red sleeves with a gold band, the same as at home.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: red with gold CONQUISTADORS">
+      <use href="#jersey" fill="#AA151B" stroke="#7E0F14" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F1BF00" stroke-width="6"/>
+      <path d="M120 27 V250" stroke="#F1BF00" stroke-width="3"/>
+      <g fill="#F5EFE2"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#F1BF00" stroke-width="8"/><path d="M203 100 L222 54" stroke="#F1BF00" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#AA151B" stroke-width="2.5"/><path d="M200 99 L219 53" stroke="#AA151B" stroke-width="2.5"/>
+      <path id="arcR" d="M60 138 Q120 98 180 138" fill="none"/>
+      <text font-family="Pirata One" font-size="20.5" fill="#F1BF00" stroke="#3F4650" stroke-width="0.4"><textPath href="#arcR" startOffset="50%" text-anchor="middle">Conquistadors</textPath></text>
+      <text x="88" y="196" text-anchor="middle" font-family="Cinzel" font-weight="900" font-size="30" fill="#F1BF00" stroke="#3F4650" stroke-width="0.8">7</text>
+      <g transform="translate(44 74)"><circle r="13" fill="#3F4650" stroke="#F1BF00" stroke-width="2"/><g transform="translate(0 6) scale(.36)"><use href="#morion" fill="#F1BF00"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Rojigualda</div>
+    <h3>Red and gold</h3>
+    <p>The flag's colors: a red body with gold blackletter edged in iron, and gold sleeves. Worn for the home series on the Fiesta Nacional in October.</p>
+  </div>
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">No letters: the morion, the crested helmet with the upturned brim.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Iron gray cap with red brim and gold morion">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#3F4650"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#2A3038" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#2A3038" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#F1BF00"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#AA151B" stroke="#7E0F14" stroke-width="1.5"/>
+      <g transform="translate(112 94) scale(1.25)"><use href="#morion" fill="#F1BF00" stroke="#F5EFE2" stroke-width="1" paint-order="stroke"/><use href="#band" fill="none" stroke="#3F4650" stroke-width="1.4"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Iron crown, red brim</h3>
+    <p>The gold morion with a cream edge on an iron-gray crown, with a red brim and a gold button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Red cap with gold brim and gold morion">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#AA151B"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#7E0F14" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#7E0F14" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#F1BF00"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#F1BF00" stroke="#C99E00" stroke-width="1.5"/>
+      <g transform="translate(112 94) scale(1.25)"><use href="#morion" fill="#F1BF00" stroke="#3F4650" stroke-width="1" paint-order="stroke"/><use href="#band" fill="none" stroke="#AA151B" stroke-width="1.4"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · Rojigualda</div>
+    <h3>Red crown, gold brim</h3>
+    <p>The gold morion with an iron edge on a red crown, with a gold brim and button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss iron batting helmet with gold morion">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6A7380"/><stop offset=".45" stop-color="#3F4650"/><stop offset="1" stop-color="#2A3038"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#2A3038"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#15191E"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#2A3038"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(100 96) scale(1.1)"><use href="#morion" fill="#F1BF00" stroke="#F5EFE2" stroke-width="1" paint-order="stroke"/><use href="#band" fill="none" stroke="#3F4650" stroke-width="1.4"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#AA151B" stroke-width="2.5"/>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss iron</h3>
+    <p>A polished iron-gray shell, as close to a real morion as a batting helmet gets, with the gold morion decal and a red stripe along the bottom edge.</p>
+  </div>
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">Red, gold, red: the flag's stripes wrap the stirrups.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="Cream home pants and gray away pants with red and gold side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F5EFE2" stroke="#D6CCBA" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#3F4650"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#F1BF00" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#AA151B" stroke-width="4"/><path d="M38 34 L40 208" stroke="#F1BF00" stroke-width="2"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A4A8AE" stroke="#83878D" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#3F4650"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#F1BF00" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#AA151B" stroke-width="4"/><path d="M138 34 L140 208" stroke="#F1BF00" stroke-width="2"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>Cream at home, gray away</h3>
+    <p>A red and gold side stripe on both pairs, with an iron belt and a gold buckle. Rojigualda wears the home cream.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Iron stirrups with a red-gold-red band, and red stirrups with an iron-gold-iron band">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#F5EFE2" stroke="#D6CCBA"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#3F4650"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#F5EFE2"/>
+        <rect x="50" y="46" width="56" height="4" fill="#AA151B"/><rect x="50" y="50" width="56" height="8" fill="#F1BF00"/><rect x="50" y="58" width="56" height="4" fill="#AA151B"/>
+        <g transform="translate(78 104) scale(.62)"><use href="#morion" fill="#F1BF00"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1E2228"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#F5EFE2" stroke="#D6CCBA"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#AA151B"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#F5EFE2"/>
+        <rect x="144" y="46" width="56" height="4" fill="#3F4650"/><rect x="144" y="50" width="56" height="8" fill="#F1BF00"/><rect x="144" y="58" width="56" height="4" fill="#3F4650"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#1E2228"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>The flag band</h3>
+    <p>Iron stirrups with a red, gold and red band, and a gold morion on the outside. Rojigualda swaps to red stirrups with an iron, gold and iron band.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Shield patch with crossed swords under a morion">
+      <g transform="translate(120 112)">
+        <path d="M-74 -86 H74 V-10 Q74 52 0 92 Q-74 52 -74 -10 Z" fill="#3F4650" stroke="#F1BF00" stroke-width="7" stroke-linejoin="round"/>
+        <path d="M-60 -73 H60 V-12 Q60 40 0 74 Q-60 40 -60 -12 Z" fill="none" stroke="#AA151B" stroke-width="2"/>
+        <text x="0" y="-50" text-anchor="middle" font-family="Cinzel" font-weight="900" font-size="19" letter-spacing="2" fill="#F1BF00">MADRID</text>
+        <g transform="translate(0 18) rotate(-35)"><use href="#sword" fill="#F5EFE2"/></g>
+        <g transform="translate(0 18) rotate(35)"><use href="#sword" fill="#F5EFE2"/></g>
+        <g transform="translate(0 -6) scale(1.05)"><use href="#morion" fill="#F1BF00" stroke="#3F4650" stroke-width="1.5" paint-order="stroke"/><use href="#band" fill="none" stroke="#3F4650" stroke-width="1.4"/></g>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>Shield and swords</h3>
+    <p>An iron shield with a gold rim and a red inner line. A gold morion sits over two crossed Toledo swords, with MADRID across the top. Worn on the player's right sleeve.</p>
+  </div>
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Iron, gold and red are the same values the game uses for the Madrid badge. I added a cream for the home body, since none of the three is light enough.</li>
+  <li><b>A long name, arched.</b> Conquistadors is 13 letters, so the nickname is in a narrower blackletter, and MADRID and the patch keep the Roman capitals.</li>
+  <li><b>Red sleeves on both main jerseys.</b> They tie the cream home and the iron road jerseys to the flag colors.</li>
+  <li><b>One symbol on the cap.</b> The morion, following the anchor, spire and falcon.</li>
+  <li><b>In the game.</b> These are design drawings only for now. Nothing in the app has changed.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece. Once Madrid is settled, I'll commit it and roll the next team.
+</div>
+
+</div>
+</body>
+</html>

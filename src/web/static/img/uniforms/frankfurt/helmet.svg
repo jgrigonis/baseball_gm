@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Frankfurt helmet">
+  <defs>
+    <path id="eagle" d="M-4 -30 Q0 -40 7 -34 L15 -31 L7 -28 Q4 -22 0 -22 Q-5 -24 -4 -30 Z M-6 -22 H6 L9 4 L0 14 L-9 4 Z M-7 10 L-11 28 L-4 23 L0 31 L4 23 L11 28 L7 10 Z M6 -21 L42 -31 L40 -22 L8 -13 Z M8 -11 L39 -18 L36 -9 L9 -3 Z M9 -1 L34 -5 L30 3 L8 7 Z M-6 -21 L-42 -31 L-40 -22 L-8 -13 Z M-8 -11 L-39 -18 L-36 -9 L-9 -3 Z M-9 -1 L-34 -5 L-30 3 L-8 7 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A4A4A"/><stop offset=".45" stop-color="#1A1A1A"/><stop offset="1" stop-color="#0A0A0A"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#C8102E"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#000"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#0A0A0A"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(108 84) scale(.72)"><use href="#eagle" fill="#E2B33C"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#C8102E" stroke-width="2.5"/>
+</svg>

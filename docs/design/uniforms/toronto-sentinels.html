@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Toronto Sentinels Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Graduate&family=Yellowtail&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pine:#4F7F72; --char:#2B2F36; --gold:#C9A44C; --cream:#F3EFE4;
+  --bg:#FBF8F1; --card:#FFFFFF; --text:#1B2A2E; --dim:#5F6B6A; --line:#E6E0D2; --accent:#3E6A5E;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#C9A44C; }
+}
+:root[data-theme="dark"] { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#C9A44C; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:var(--char); color:var(--cream); border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(var(--gold) 0 3px, var(--pine) 3px 10px); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#C9A44C; }
+header h1 { font-family:Graduate, serif; font-weight:400; font-size:44px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; }
+header p { margin:0; max-width:640px; color:#DADDE2; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:inline-block; }
+h2 { font-family:Graduate, serif; font-weight:400; font-size:21px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#EEE9E0, #DED6C8); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#1A2D30, #132326); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#1A2D30, #132326); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:34px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · 8 of 30</div>
+  <h1>Toronto Sentinels</h1>
+  <p>The Needle stands watch over the city. Pine green and charcoal from the Canadian Shield, with a gold trim. "Sentinels" is in a classic ballpark script, and TORONTO is in a heavy slab serif. The cap carries the CN Tower, and the patch puts it over Lake Ontario.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#4F7F72"></i>Pine #4F7F72</span>
+    <span class="sw"><i style="background:#2B2F36"></i>Charcoal #2B2F36</span>
+    <span class="sw"><i style="background:#C9A44C"></i>Gold #C9A44C</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <path id="pine" d="M-4 0 Q-6 -18 -1 -32 Q2 -42 1 -52 L3.5 -52 Q5 -42 2.5 -31 Q-1 -18 2 0 Z M-1 -54 Q4 -60 16 -57 Q24 -55 28 -52 Q18 -49 8 -50 Q2 -49 -1 -54 Z M-4 -42 Q4 -49 20 -46 Q30 -44 35 -40 Q22 -36 10 -38 Q0 -36 -4 -42 Z M-1 -30 Q-10 -35 -18 -31 Q-12 -26 -2 -27 Z M0 -28 Q8 -34 22 -31 Q30 -29 32 -25 Q20 -22 8 -24 Q2 -23 0 -28 Z M-22 3 Q-16 -5 -4 -4 Q10 -6 20 3 Z"/>
+    <path id="tower" d="M-12 0 L-4 -46 L-3 -58 L3 -58 L4 -46 L12 0 Z M-13 -56 H13 Q14 -64 7 -69 H-7 Q-14 -64 -13 -56 Z M-2 -69 H2 V-84 H-2 Z M-4.5 -88 H4.5 V-83 H-4.5 Z M-1.3 -88 H1.3 L0.5 -108 H-0.5 Z"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. Cream at home, pine green on the road, and a charcoal alternate.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: cream with pine green Sentinels script">
+      <use href="#jersey" fill="#F3EFE4" stroke="#2B2F36" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#4F7F72" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#C9A44C" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#4F7F72" stroke-width="3"/>
+      <g fill="#2B2F36"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#4F7F72" stroke-width="8"/><path d="M203 100 L222 54" stroke="#4F7F72" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#C9A44C" stroke-width="2"/><path d="M200 99 L219 53" stroke="#C9A44C" stroke-width="2"/>
+      <text x="121" y="134" text-anchor="middle" font-family="Yellowtail" font-size="31" fill="#2B2F36" transform="rotate(-12 120 126)" dx="1.6" dy="1.6">Sentinels</text>
+      <text x="121" y="134" text-anchor="middle" font-family="Yellowtail" font-size="31" fill="#4F7F72" stroke="#C9A44C" stroke-width="0.5" transform="rotate(-12 120 126)">Sentinels</text>
+      <text x="90" y="200" text-anchor="middle" font-family="Alfa Slab One" font-size="30" fill="#4F7F72" stroke="#2B2F36" stroke-width="0.8">8</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#2B2F36" stroke="#C9A44C" stroke-width="2"/><g transform="translate(0 11) scale(.2)"><use href="#tower" fill="#C9A44C"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>Cream, pine script</h3>
+    <p>"Sentinels" in a pine green script with a fine gold edge and a charcoal shadow, rising left to right. Pine sleeves with a gold line, and a pine collar and placket.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: pine green with arched gold TORONTO">
+      <use href="#jersey" fill="#4F7F72" stroke="#3A5F55" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#2B2F36" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#C9A44C" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#2B2F36" stroke-width="3"/>
+      <g fill="#F3EFE4"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#2B2F36" stroke-width="8"/><path d="M203 100 L222 54" stroke="#2B2F36" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#C9A44C" stroke-width="2"/><path d="M200 99 L219 53" stroke="#C9A44C" stroke-width="2"/>
+      <path id="arcA" d="M64 134 Q120 100 176 134" fill="none"/>
+      <text font-family="Alfa Slab One" font-size="19" fill="#C9A44C" stroke="#2B2F36" stroke-width="0.9"><textPath href="#arcA" startOffset="50%" text-anchor="middle">TORONTO</textPath></text>
+      <text x="90" y="200" text-anchor="middle" font-family="Alfa Slab One" font-size="30" fill="#C9A44C" stroke="#2B2F36" stroke-width="0.8">8</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#2B2F36" stroke="#C9A44C" stroke-width="2"/><g transform="translate(0 11) scale(.2)"><use href="#tower" fill="#C9A44C"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Pine green, arched TORONTO</h3>
+    <p>"TORONTO" arched in gold block letters with a charcoal edge. Charcoal sleeves, collar and placket, each with a gold line.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: charcoal with gold Sentinels script">
+      <use href="#jersey" fill="#2B2F36" stroke="#1B1E23" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#4F7F72" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#C9A44C" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#4F7F72" stroke-width="3"/>
+      <g fill="#C9A44C"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#4F7F72" stroke-width="8"/><path d="M203 100 L222 54" stroke="#4F7F72" stroke-width="8"/>
+      <path d="M40 99 L21 53" stroke="#C9A44C" stroke-width="2"/><path d="M200 99 L219 53" stroke="#C9A44C" stroke-width="2"/>
+      <text x="121" y="134" text-anchor="middle" font-family="Yellowtail" font-size="31" fill="#4F7F72" transform="rotate(-12 120 126)" dx="1.6" dy="1.6">Sentinels</text>
+      <text x="121" y="134" text-anchor="middle" font-family="Yellowtail" font-size="31" fill="#C9A44C" transform="rotate(-12 120 126)">Sentinels</text>
+      <text x="90" y="200" text-anchor="middle" font-family="Alfa Slab One" font-size="30" fill="#C9A44C" stroke="#4F7F72" stroke-width="0.8">8</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#4F7F72" stroke="#C9A44C" stroke-width="2"/><g transform="translate(0 11) scale(.2)"><use href="#tower" fill="#C9A44C"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Night Watch</div>
+    <h3>Charcoal and gold</h3>
+    <p>The sentinel after dark: a charcoal body with the script in gold over a pine shadow, and pine sleeves. Worn for Friday night home games.</p>
+  </div>
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">No letters: the CN Tower, the sentinel over the city.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Pine green cap with charcoal brim and gold CN Tower">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#4F7F72"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#3A5F55" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#3A5F55" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#2B2F36"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#2B2F36" stroke="#1B1E23" stroke-width="1.5"/>
+      <g transform="translate(120 108) scale(.66)"><use href="#tower" fill="#C9A44C" stroke="#2B2F36" stroke-width="1.2" paint-order="stroke"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Pine crown, charcoal brim</h3>
+    <p>The gold CN Tower with a charcoal edge on a pine green crown, with a charcoal brim and button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Charcoal cap with pine brim and gold CN Tower">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#2B2F36"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#1B1E23" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#1B1E23" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#C9A44C"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#4F7F72" stroke="#3A5F55" stroke-width="1.5"/>
+      <g transform="translate(120 108) scale(.66)"><use href="#tower" fill="#C9A44C" stroke="#4F7F72" stroke-width="1.2" paint-order="stroke"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · Night Watch</div>
+    <h3>Charcoal crown, pine brim</h3>
+    <p>The gold tower edged in green on a charcoal crown, with a pine brim and a gold button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss pine green batting helmet with gold CN Tower">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#77A396"/><stop offset=".45" stop-color="#4F7F72"/><stop offset="1" stop-color="#3A5F55"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#2B2F36"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#15191E"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#2B2F36"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(106 108) scale(.6)"><use href="#tower" fill="#C9A44C" stroke="#2B2F36" stroke-width="1.2" paint-order="stroke"/></g>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss pine</h3>
+    <p>A pine green shell with a charcoal ear flap and brim, and the gold tower decal.</p>
+  </div>
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">Pine stirrups with a gold and charcoal band.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="Cream home pants and gray away pants with pine side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F3EFE4" stroke="#D6CCBA" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#2B2F36"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#C9A44C" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#4F7F72" stroke-width="4"/><path d="M38 34 L40 208" stroke="#C9A44C" stroke-width="1.6"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A9ADB1" stroke="#878B90" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#2B2F36"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#C9A44C" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#4F7F72" stroke-width="4"/><path d="M138 34 L140 208" stroke="#2B2F36" stroke-width="1.6"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>Cream at home, gray away</h3>
+    <p>A pine side stripe on both pairs, with a gold line at home and charcoal on the road. Charcoal belt with a gold buckle. Night Watch wears the gray.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Pine stirrups with a gold and charcoal band, and charcoal stirrups with a pine and gold band">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#F3EFE4" stroke="#D6CCBA"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#4F7F72"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#F3EFE4"/>
+        <rect x="50" y="46" width="56" height="3" fill="#C9A44C"/><rect x="50" y="49" width="56" height="9" fill="#2B2F36"/><rect x="50" y="58" width="56" height="3" fill="#C9A44C"/>
+        <g transform="translate(78 128) scale(.55)"><use href="#tower" fill="#C9A44C"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1B1E23"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#F3EFE4" stroke="#D6CCBA"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#2B2F36"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#F3EFE4"/>
+        <rect x="144" y="46" width="56" height="3" fill="#C9A44C"/><rect x="144" y="49" width="56" height="9" fill="#4F7F72"/><rect x="144" y="58" width="56" height="3" fill="#C9A44C"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#1B1E23"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>The watch band</h3>
+    <p>Pine stirrups with a charcoal band between two gold lines, and a gold tower on the outside. Night Watch swaps to charcoal stirrups with a pine band.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Round patch with the CN Tower over the lake">
+      <defs><clipPath id="disc"><circle cx="120" cy="112" r="66"/></clipPath></defs>
+      <circle cx="120" cy="112" r="94" fill="#2B2F36" stroke="#C9A44C" stroke-width="5"/>
+      <circle cx="120" cy="112" r="66" fill="#4F7F72"/>
+      <g clip-path="url(#disc)">
+        <g transform="translate(120 152) scale(.9)"><use href="#tower" fill="#C9A44C"/></g>
+        <path d="M40 150 Q80 144 120 150 T200 150 V200 H40 Z" fill="#2B2F36"/>
+        <path d="M54 160 Q70 156 86 160 M110 166 Q128 162 146 166 M150 156 Q166 152 182 156" fill="none" stroke="#C9A44C" stroke-width="1.6" stroke-linecap="round"/>
+      </g>
+      <circle cx="120" cy="112" r="66" fill="none" stroke="#C9A44C" stroke-width="2.5"/>
+      <path id="ringTop" d="M50 112 A70 70 0 0 1 190 112" fill="none"/>
+      <path id="ringBot" d="M42 112 A78 78 0 0 0 198 112" fill="none"/>
+      <text font-family="Graduate" font-size="21" letter-spacing="3" fill="#C9A44C"><textPath href="#ringTop" startOffset="50%" text-anchor="middle">TORONTO</textPath></text>
+      <text font-family="Graduate" font-size="16" letter-spacing="2" fill="#F3EFE4"><textPath href="#ringBot" startOffset="50%" text-anchor="middle">SENTINELS</textPath></text>
+      <g fill="#C9A44C"><circle cx="34" cy="112" r="3"/><circle cx="206" cy="112" r="3"/></g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>The Needle</h3>
+    <p>A round charcoal patch with a gold rim. Inside, the gold CN Tower rises over Lake Ontario. TORONTO runs across the top and SENTINELS along the bottom. Worn on the player's left sleeve.</p>
+  </div>
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Pine, charcoal and gold are the same values the game uses for the Toronto badge. I added a cream for the home body.</li>
+  <li><b>Why the Needle.</b> A sentinel stands alone and keeps watch, and nothing in Toronto stands taller or watches over more than the CN Tower.</li>
+  <li><b>Script at home, block on the road.</b> The script rises at 12°. TORONTO and the numbers use a heavy slab serif.</li>
+  <li><b>One symbol on the cap.</b> The tower, following the anchor, spire, falcon and morion.</li>
+  <li><b>In the game.</b> These are design drawings only for now. Nothing in the app has changed.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece. Once Toronto is settled, I'll commit it and roll the next team.
+</div>
+
+</div>
+</body>
+</html>

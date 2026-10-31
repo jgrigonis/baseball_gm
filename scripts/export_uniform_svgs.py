@@ -58,12 +58,18 @@ def load_fonts(sheet: str) -> dict[tuple[str, str, str], TTFont]:
         if not path.exists():
             continue
         f = TTFont(path)
-        family = f["name"].getDebugName(1)
-        family = "serif" if path.name == Path(SYSTEM_SERIF).name else family
-        family = family.replace(" Black", "")
         weight = str(f["OS/2"].usWeightClass)
         style = "italic" if f["head"].macStyle & 2 else "normal"
-        fonts[(family, weight, style)] = f
+        if path.name == Path(SYSTEM_SERIF).name:
+            fonts[("serif", weight, style)] = f
+            continue
+        # Register the font under its legacy family (name 1) and its
+        # typographic family (name 16), so that both "Archivo Black" and
+        # Jost at weight 800 ("Jost ExtraBold") are found.
+        names = {f["name"].getDebugName(1), f["name"].getDebugName(16)}
+        for family in filter(None, names):
+            fonts.setdefault((family, weight, style), f)
+            fonts.setdefault((family.replace(" Black", ""), weight, style), f)
     return fonts
 
 
