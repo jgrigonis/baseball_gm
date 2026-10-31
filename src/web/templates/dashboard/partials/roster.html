@@ -667,6 +667,7 @@ async function saveRoster() {
       lastSavedIds = new Set([...fortyMan]);
       rosterSaved = true;
       showFeedback('✓ Saved', 'var(--green)');
+      document.getElementById('setup-bar')?.remove();  // set up: the bar's done
       document.getElementById('unsaved-banner').style.display = 'none';
       document.getElementById('lineup-btn').style.display = 'inline-flex';
       saveToStorage();

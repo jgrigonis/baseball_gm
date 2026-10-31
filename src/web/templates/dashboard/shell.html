@@ -310,6 +310,7 @@ window.closeGamePanel = function() {
 <div id="tab-content" class="tab-fade">
   {% if tab_template %}{% include tab_template %}{% endif %}
 </div>
+{% if setup_bar %}{% include "dashboard/partials/_setup_bar.html" %}{% endif %}
 
 <div id="player-panel-mount"></div>
 {% if not is_viewer and 'trades' in (visible_tabs or []) %}{% include "dashboard/partials/_trade_popup.html" %}{% endif %}

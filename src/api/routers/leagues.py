@@ -494,6 +494,13 @@ def welcome_page(
     return tab_response(request, htmx, "dashboard/partials/welcome.html", ctx)
 
 
+# Pages that link to a persona card: the path it links back to, and its name.
+PERSONA_BACK = {
+    "league": ("league", "the League page"),
+    "welcome": ("welcome", "your team"),
+}
+
+
 @router.get("/leagues/{league_id}/personas/{persona_id}", response_class=HTMLResponse)
 def persona_page(
     request: Request,
@@ -503,9 +510,11 @@ def persona_page(
     db: DB,
     user: User,
     gm: GMOrViewer,
+    back: str = "league",
 ):
     """An AI GM's persona card. Personas are a site-wide library, so any
-    persona can be shown; the team is the one it runs in this league."""
+    persona can be shown; the team is the one it runs in this league. `back`
+    is the page that linked here, which the card links back to."""
     persona = personas.card(db, persona_id)
     if not persona:
         return HTMLResponse("No such GM", status_code=404)
@@ -518,6 +527,7 @@ def persona_page(
         (league_id, persona_id),
     ).fetchone()
     ctx["is_admin"] = bool(user.get("is_admin"))
+    ctx["back"] = PERSONA_BACK.get(back, PERSONA_BACK["league"])
     return tab_response(request, htmx, "dashboard/partials/persona.html", ctx)
 
 

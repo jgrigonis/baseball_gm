@@ -13,6 +13,7 @@ from src.api.services.ready_check import is_multiplayer
 from src.api.view_models.league_info import league_info
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -255,6 +256,13 @@ def _shell_ctx(
             if not ctx["is_viewer"]:
                 mark_visit(db, league, active_tab)
                 ctx["coach"] = coach_ctx(db, league)
+                # A new league's getting-started bar, until the first roster save.
+                ctx["setup_bar"] = (
+                    league["state"] != "lobby"
+                    and gm.get("id") is not None
+                    and GMRepository(db).needs_setup_bar(gm["id"])
+                    and lr.count_seasons(league_id) == 1
+                )
 
     # 3. Fetch Team Data if team_id exists
     if ctx["team_id"]:
