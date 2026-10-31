@@ -6,9 +6,14 @@
   <div style="display:flex;align-items:center;gap:16px;">
     <h1 class="page-title">Retirements</h1>
     <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
-      {{ retired_players | length }} player{{ 's' if retired_players | length != 1 else '' }} retired this offseason · career regular-season stats
+      {{ retired_players | length }} player{{ 's' if retired_players | length != 1 else '' }} retired
+      {% if history_season %}after the {{ history_season.year }} season{% else %}this offseason{% endif %} · career regular-season stats
     </span>
-    {% if not is_viewer %}
+    {% if history_season %}
+    <div style="margin-left:auto;">
+      <a href="/leagues/{{ league_id }}/history" class="history-back">← History</a>
+    </div>
+    {% elif not is_viewer %}
     <div style="margin-left:auto;">
       <a href="/leagues/{{ league_id }}/draft"
          class="btn btn-primary" style="padding:6px 18px;">
@@ -21,8 +26,8 @@
 
 {% if not retired_players %}
 <div style="padding:48px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
-  No players retired this offseason.
-  {% if not is_viewer %}
+  No players retired {% if history_season %}after the {{ history_season.year }} season{% else %}this offseason{% endif %}.
+  {% if not is_viewer and not history_season %}
   <div style="margin-top:24px;">
     <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to Draft →</a>
   </div>
@@ -126,12 +131,21 @@
     </tbody>
   </table>
 
+  {% if not history_season and not is_viewer %}
   <div style="margin-top:32px;text-align:center;">
     <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
       Continue to Draft →
     </a>
   </div>
+  {% endif %}
 </div>
+
+<style>
+.history-back {
+  font-family:var(--font-mono);font-size:12px;color:var(--text-dim);text-decoration:none;
+}
+.history-back:hover { color:var(--amber); }
+</style>
 
 <script>
 // Click a header to sort by it; click it again to reverse. Players without

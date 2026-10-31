@@ -41,8 +41,9 @@ def retirement(
     db: DB,
     user: User,
     gm: GMOrViewer,
+    season_id: str | None = None,
 ):
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
     my_team_id = gm["team_id"] if gm else None
-    ctx.update(retirement_context(db, league_id, my_team_id))
+    ctx.update(retirement_context(db, league_id, my_team_id, season_id))
     return tab_response(request, htmx, "dashboard/partials/retirement.html", ctx)

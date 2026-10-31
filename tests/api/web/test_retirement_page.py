@@ -59,3 +59,58 @@ def test_retirees_carry_their_all_star_years(db_conn, factory):
 
 def test_no_retirees_no_query(db_conn):
     assert AllStarRepository(db_conn).years_by_player([]) == {}
+
+
+def test_history_links_each_seasons_retirements(db_conn, factory):
+    """History counts each season's retirees and links to them; the link
+    shows that season, not this offseason, and has no draft button."""
+    from src.api.view_models.seasons import history_context
+
+    db = db_conn
+    league = factory.league(state="offseason")
+    seasons = [factory.season(year=y) for y in (2025, 2026, 2027)]
+    for s in seasons:
+        factory.league_season(league, s)
+    team = factory.team()
+    old, recent = factory.prospect(league.id), factory.prospect(league.id)
+    _retire(db, league, seasons[0], old, team)
+    _retire(db, league, seasons[1], recent, team)
+
+    rows = {r["year"]: r for r in history_context(db, league.id, None)["history_rows"]}
+    assert (rows[2025]["retired"], rows[2026]["retired"], rows[2027]["retired"]) == (
+        1,
+        1,
+        0,
+    )
+    html = templates.get_template("dashboard/partials/history.html").render(
+        league_id=league.id, is_viewer=True, history_rows=list(rows.values())
+    )
+    assert f"/retirement?season_id={seasons[0].id}" in html
+    assert f"/retirement?season_id={seasons[2].id}" not in html
+
+    ctx = retirement_context(db, league.id, team.id, seasons[0].id)
+    assert [r["player_id"] for r in ctx["retired_players"]] == [old.id]
+    html = templates.get_template("dashboard/partials/retirement.html").render(
+        league_id=league.id, is_viewer=False, **ctx
+    )
+    assert "after the 2025 season" in html
+    assert "Continue to Draft" not in html
+
+    # No season, or the season that just ended, is this offseason's page.
+    for sid in (None, seasons[1].id):
+        ctx = retirement_context(db, league.id, team.id, sid)
+        assert [r["player_id"] for r in ctx["retired_players"]] == [recent.id]
+        assert ctx["history_season"] is None
+
+
+def test_retirement_ignores_another_leagues_season(db_conn, factory):
+    db = db_conn
+    league, other = factory.league(state="offseason"), factory.league()
+    seasons = [factory.season(year=y) for y in (2025, 2026)]
+    for s in seasons:
+        factory.league_season(league, s)
+    foreign = factory.season(year=2020)
+    factory.league_season(other, foreign)
+
+    ctx = retirement_context(db, league.id, None, foreign.id)
+    assert ctx["history_season"] is None

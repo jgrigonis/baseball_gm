@@ -27,3 +27,13 @@ class RetirementRepository:
                 team_id,
             ),
         )
+
+    def counts_by_season(self, league_id: str) -> dict[str, int]:
+        """How many players retired after each of the league's seasons, by
+        season_id. Seasons with no retirements are left out."""
+        rows = self.conn.execute(
+            """SELECT season_id, COUNT(*) AS n FROM player_retirements
+                WHERE league_id = %s GROUP BY season_id""",
+            (league_id,),
+        ).fetchall()
+        return {r["season_id"]: r["n"] for r in rows}
