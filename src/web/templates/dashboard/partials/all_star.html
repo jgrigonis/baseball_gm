@@ -42,7 +42,8 @@
       {% for slot in slots %}
       <div class="card as-slot as-slot-{{ slot }}">
         <div class="card-header"><span class="card-title">{{ slot_labels[slot] }}</span>
-          <span class="as-dim">{{ options[slot] | length }} on the ballot</span></div>
+          <button type="button" class="as-count" onclick="asOpen('{{ slot }}')"
+                  title="See everyone at {{ slot_labels[slot] | lower }} with their stats">{{ options[slot] | length }} on the ballot <span class="as-caret">▾</span></button></div>
         <div class="card-body as-picks">
           {% for pick in range(1, ballot_size[slot] + 1) %}
           {% set chosen = ballot[slot][pick - 1] if ballot[slot] | length >= pick else none %}
@@ -61,6 +62,44 @@
             </span>
           </label>
           {% endfor %}
+        </div>
+        {% set heads = stat_heads['pitch'] if slot == 'p' else stat_heads['bat'] %}
+        {% set nb = ballot_size[slot] %}
+        <div class="as-full" data-slot="{{ slot }}" data-picks="{{ nb }}">
+          <div class="as-full-note as-dim">
+            {% if nb == 2 %}Pick a 1st and a 2nd and the list folds back up.
+            {% elif nb == 1 %}Pick one and the list folds back up.
+            {% else %}Pick up to {{ nb }}. Click a pick again to take him off.{% endif %}
+            Click a column to sort.
+            <button type="button" class="btn btn-secondary as-done" onclick="asClose('{{ slot }}')">Done</button>
+          </div>
+          <div class="as-full-scroll">
+            <table class="data-table as-full-table">
+              <thead><tr>
+                <th></th>
+                <th data-sort="text">Player</th>
+                <th data-sort="text">Team</th>
+                {% for h in heads %}<th class="num" data-sort="num">{{ h }}</th>{% endfor %}
+              </tr></thead>
+              <tbody>
+                {% for o in options[slot] %}
+                <tr data-id="{{ o.id }}">
+                  <td class="as-full-picks">
+                    {% if nb == 2 %}
+                    <button type="button" class="as-rank" data-pick="1" onclick="asChoose(this)">1st</button><button type="button" class="as-rank" data-pick="2" onclick="asChoose(this)">2nd</button>
+                    {% else %}
+                    <button type="button" class="as-rank" data-pick="" onclick="asChoose(this)">{{ 'Pick' if nb == 1 else '+' }}</button>
+                    {% endif %}
+                  </td>
+                  <td><span class="as-player" onclick="openPlayerPanel('{{ o.id }}')">{{ o.name }}</span></td>
+                  <td>{{ o.mascot }}</td>
+                  {% for v, sv in o.stats %}<td class="num" data-sort-value="{{ sv }}">{{ v }}</td>{% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="as-full-msg as-warn"></div>
         </div>
       </div>
       {% endfor %}
@@ -86,9 +125,93 @@
     }
     sel.dataset.prev = sel.value;
     asLine(sel);
+    asMark(sel.dataset.slot);
     var fb = document.getElementById('as-feedback');
     if (fb) fb.textContent = 'Not saved yet';
   };
+
+  // The full list at a position, opened from "N on the ballot": every
+  // candidate with his stats. Picking from it fills the dropdowns above, and
+  // once every pick at the position has been made the list folds back up.
+  var asTouched = {};
+  function asSelects(slot) {
+    return Array.from(document.querySelectorAll('#as-ballot select[data-slot="' + slot + '"]'));
+  }
+  function asCard(slot) { return document.querySelector('#as-ballot .as-slot-' + slot); }
+  function asMark(slot) {
+    var card = asCard(slot);
+    if (!card) return;
+    var sels = asSelects(slot);
+    card.querySelectorAll('.as-full-table tbody tr').forEach(function(tr) {
+      var on = false;
+      tr.querySelectorAll('.as-rank').forEach(function(b) {
+        var mine = b.dataset.pick
+          ? sels[b.dataset.pick - 1].value === tr.dataset.id
+          : sels.some(function(s) { return s.value === tr.dataset.id; });
+        b.classList.toggle('on', mine);
+        if (mine) on = true;
+      });
+      tr.classList.toggle('as-chosen', on);
+    });
+  }
+  window.asOpen = function(slot) {
+    var card = asCard(slot);
+    if (card.classList.contains('as-open')) { asClose(slot); return; }
+    asTouched[slot] = {};
+    card.querySelector('.as-full-msg').textContent = '';
+    asMark(slot);
+    card.classList.add('as-open');
+  };
+  window.asClose = function(slot) {
+    var card = asCard(slot);
+    card.classList.remove('as-open');
+    card.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  };
+  window.asChoose = function(btn) {
+    var full = btn.closest('.as-full'), slot = full.dataset.slot;
+    var picks = +full.dataset.picks, id = btn.closest('tr').dataset.id;
+    var sels = asSelects(slot), msg = full.querySelector('.as-full-msg');
+    msg.textContent = '';
+    var sel;
+    if (btn.dataset.pick) {
+      sel = sels[btn.dataset.pick - 1];
+    } else if (picks === 1) {
+      sel = sels[0];
+    } else {
+      // Pitchers: a toggle that takes the first open spot.
+      var at = sels.find(function(s) { return s.value === id; });
+      if (at) { at.value = ''; asSwap(at); return; }
+      sel = sels.find(function(s) { return !s.value; });
+      if (!sel) { msg.textContent = 'All ' + picks + ' picks are made. Take one off first.'; return; }
+    }
+    sel.value = id;
+    asSwap(sel);
+    asTouched[slot][sel.name] = true;
+    if (picks <= 2 && Object.keys(asTouched[slot]).length >= picks) asClose(slot);
+  };
+  // Click a column to sort; again to flip it.
+  document.querySelectorAll('#as-ballot .as-full-table').forEach(function(table) {
+    var heads = table.querySelectorAll('th[data-sort]');
+    heads.forEach(function(th) {
+      th.addEventListener('click', function() {
+        var col = th.cellIndex, num = th.dataset.sort === 'num';
+        // Numbers start high-first, names A to Z.
+        var desc = th.dataset.dir ? th.dataset.dir === 'asc' : num;
+        heads.forEach(function(h) { delete h.dataset.dir; });
+        th.dataset.dir = desc ? 'desc' : 'asc';
+        var body = table.tBodies[0];
+        var key = function(r) {
+          var c = r.cells[col];
+          var v = c.dataset.sortValue != null ? c.dataset.sortValue : c.textContent.trim();
+          return num ? (parseFloat(v) || 0) : v.toLowerCase();
+        };
+        Array.from(body.rows).sort(function(a, b) {
+          var x = key(a), y = key(b), c = num ? x - y : x.localeCompare(y);
+          return desc ? -c : c;
+        }).forEach(function(r) { body.appendChild(r); });
+      });
+    });
+  });
   </script>
   {% endif %}
 

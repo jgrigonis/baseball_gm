@@ -594,6 +594,7 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
                     "id": c["player_id"],
                     "name": c["name"],
                     "line": _line(c),
+                    "stats": _full_stats(c),
                     **_team(c),
                 }
                 for c in at
@@ -601,6 +602,7 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
         ctx.update(
             ballot={s: list(ballot.get(s) or []) for s in all_star.SLOTS},
             options=options,
+            stat_heads={"bat": BAT_HEADS, "pitch": PITCH_HEADS},
             saved=saved is not None,
             voted=repo.voted_count(season_id),
             teams=len(
@@ -738,3 +740,85 @@ def _line(c: dict) -> str:
         f"{avg:.3f}".lstrip("0")
         + f", {c['bat_home_runs']} HR, {c['bat_rbi']} RBI, {c['bat_stolen_bases']} SB"
     )
+
+
+# The ballot's full list at a position: every column the GM might weigh.
+BAT_HEADS = (
+    "G",
+    "AB",
+    "R",
+    "H",
+    "2B",
+    "3B",
+    "HR",
+    "RBI",
+    "BB",
+    "SO",
+    "SB",
+    "AVG",
+    "OBP",
+    "SLG",
+    "OPS",
+)
+PITCH_HEADS = ("G", "GS", "W", "L", "SV", "IP", "H", "HR", "BB", "SO", "ERA", "WHIP")
+
+
+def _rate(x: float) -> str:
+    return f"{x:.3f}".lstrip("0") if x < 1 else f"{x:.3f}"
+
+
+def _full_stats(c: dict) -> list[tuple[str, float]]:
+    """The ballot list's stat columns for a candidate, in the order of
+    BAT_HEADS or PITCH_HEADS: (what it shows, what it sorts by)."""
+    g = c.get
+    if c["slot"] == "p":
+        outs = g("pitch_outs", 0)
+        ip = f"{outs // 3}.{outs % 3}"
+        era = 27 * g("pitch_earned_runs", 0) / outs if outs else 0.0
+        whip = 3 * (g("pitch_walks", 0) + g("pitch_hits", 0)) / outs if outs else 0.0
+        cols = [
+            g(k, 0)
+            for k in (
+                "pitch_games_played",
+                "pitch_games_started",
+                "pitch_wins",
+                "pitch_losses",
+                "pitch_saves",
+            )
+        ]
+        out = [(str(v), v) for v in cols]
+        out.append((ip, outs / 3))
+        out += [
+            (str(g(k, 0)), g(k, 0))
+            for k in (
+                "pitch_hits",
+                "pitch_home_runs",
+                "pitch_walks",
+                "pitch_strike_outs",
+            )
+        ]
+        out += [(f"{era:.2f}", era), (f"{whip:.2f}", whip)]
+        return out
+    ab, h = g("bat_ab", 0), g("bat_hits", 0)
+    bb, hbp, sf = g("bat_walks", 0), g("bat_hbp", 0), g("bat_sac_flys", 0)
+    d, t, hr = g("bat_doubles", 0), g("bat_triples", 0), g("bat_home_runs", 0)
+    avg = h / ab if ab else 0.0
+    obp_den = ab + bb + hbp + sf
+    obp = (h + bb + hbp) / obp_den if obp_den else 0.0
+    slg = (h + d + 2 * t + 3 * hr) / ab if ab else 0.0
+    counts = [
+        g("bat_games_played", 0),
+        ab,
+        g("bat_runs", 0),
+        h,
+        d,
+        t,
+        hr,
+        g("bat_rbi", 0),
+        bb,
+        g("bat_strike_outs", 0),
+        g("bat_stolen_bases", 0),
+    ]
+    out = [(str(v), v) for v in counts]
+    out += [(_rate(v), v) for v in (avg, obp, slg, obp + slg)]
+    return out

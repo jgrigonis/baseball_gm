@@ -259,6 +259,50 @@ def test_the_ballot_starts_with_the_stat_picks(client, lg):
     assert 'name="ss_1"' in html and 'name="p_9"' in html
 
 
+def test_each_position_opens_a_full_list_with_stats(client, lg):
+    _play_through(lg.db, lg.season, BEFORE[10])
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "asOpen('ss')" in html and 'class="as-full" data-slot="ss"' in html
+    # Every shortstop is a row, with the hitters' columns and 1st/2nd buttons.
+    my_ss = lg.players[("mine", "ss")]
+    assert f'<tr data-id="{my_ss}">' in html
+    assert ">OPS</th>" in html and ">WHIP</th>" in html
+    assert 'data-pick="1"' in html and 'data-pick="2"' in html
+
+
+def test_the_full_list_stat_columns():
+    bat = all_star._full_stats(
+        {
+            "slot": "ss",
+            "bat_games_played": 10,
+            "bat_ab": 40,
+            "bat_hits": 12,
+            "bat_doubles": 2,
+            "bat_triples": 1,
+            "bat_home_runs": 3,
+            "bat_walks": 5,
+            "bat_hbp": 0,
+            "bat_sac_flys": 0,
+        }
+    )
+    assert len(bat) == len(all_star.BAT_HEADS)
+    heads = dict(zip(all_star.BAT_HEADS, (v for v, _ in bat)))
+    assert heads["AVG"] == ".300" and heads["SLG"] == ".625" and heads["G"] == "10"
+    assert heads["OBP"] == ".378" and heads["OPS"] == "1.003"
+    pitch = all_star._full_stats(
+        {
+            "slot": "p",
+            "pitch_outs": 29,
+            "pitch_earned_runs": 4,
+            "pitch_hits": 8,
+            "pitch_walks": 3,
+        }
+    )
+    assert len(pitch) == len(all_star.PITCH_HEADS)
+    heads = dict(zip(all_star.PITCH_HEADS, (v for v, _ in pitch)))
+    assert heads["IP"] == "9.2" and heads["ERA"] == "3.72" and heads["WHIP"] == "1.14"
+
+
 def test_saving_a_ballot(client, lg):
     _play_through(lg.db, lg.season, BEFORE[10])
     my_ss = lg.players[("mine", "ss")]
