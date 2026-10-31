@@ -3,7 +3,9 @@
 Suggested draft needs: which strategy chips a team's roster calls for.
 
 Position chips (C, IF, OF, SP, RP) come from depth. A player is "usable" at
-his best spot (see draft_strategy.group) if he rates at least USABLE there and
+his best spot (see draft_strategy.group: for a pitcher, his job on the staff,
+rotation or bullpen, else the one he rates better at, though a major league
+team's starters beyond a 5-man rotation count as relievers) if he rates at least USABLE there and
 is no older than MAX_AGE; minor leaguers count half, since many won't make
 it. Depth is measured against the league average rather than a fixed target,
 since rosters run from 26 players in a new league to 160 later on: below
@@ -30,6 +32,7 @@ from src.league.offseason.draft_strategy import (
     DraftStrategy,
     group,
     ratings,
+    staff_groups,
 )
 from src.player.player_record import PlayerRecord
 
@@ -51,7 +54,7 @@ MAX_CHIPS = 3
 
 MAJORS = ("26man", "40man")
 
-type Rated = list[tuple[PlayerRecord, str, dict[str, int]]]
+type Rated = list[tuple[PlayerRecord, str, dict[str, int], str]]  # …, group
 
 
 @dataclass
@@ -73,8 +76,7 @@ class _Gap:
 
 def _depth(roster: Rated) -> dict[str, float]:
     depth = dict.fromkeys(POSITIONS, 0.0)
-    for p, status, r in roster:
-        g = group(p, r)
+    for p, status, r, g in roster:
         if g in depth and r[g] >= USABLE and p.age <= MAX_AGE:
             depth[g] += 1.0 if status in MAJORS else MINORS_WEIGHT
     return depth
@@ -96,9 +98,9 @@ def _position_gaps(depth: dict[str, float], average: dict[str, float]) -> list[_
 def _type_scores(roster: Rated) -> dict[str, float]:
     """The team's average on each player-type chip's rating, from its major
     league roster."""
-    majors = [(p, r) for p, status, r in roster if status in MAJORS]
+    majors = [(p, r, g) for p, status, r, g in roster if status in MAJORS]
     hitters = sorted(
-        ((p, r) for p, r in majors if not p.is_pitcher()),
+        ((p, r) for p, r, _ in majors if not p.is_pitcher()),
         key=lambda x: x[1]["overall_offense"],
         reverse=True,
     )[:TOP_HITTERS]
@@ -108,7 +110,7 @@ def _type_scores(roster: Rated) -> dict[str, float]:
         scores[chip] = sum(vals) / len(vals) if vals else 0.0
     for chip, role in (("ace_sp", "sp"), ("relief_ace", "rp")):
         vals = sorted(
-            (r[role] for p, r in majors if p.is_pitcher() and p.position == role),
+            (r[role] for p, r, g in majors if p.is_pitcher() and g == role),
             reverse=True,
         )[:TOP_PITCHERS]
         scores[chip] = sum(vals) / len(vals) if vals else 0.0
@@ -117,13 +119,23 @@ def _type_scores(roster: Rated) -> dict[str, float]:
 
 def league_needs(
     rosters: dict[str, list[tuple[PlayerRecord, str]]],
+    staff: dict[str, str] | None = None,
 ) -> dict[str, TeamNeeds]:
     """{team_id: TeamNeeds} for every team, given each team's players and
-    their statuses (26man, 40man, minors…)."""
-    rated: dict[str, Rated] = {
-        tid: [(p, status, ratings(p)) for p, status in players]
-        for tid, players in rosters.items()
-    }
+    their statuses (26man, 40man, minors…), and `staff`: {player_id: sp|rp}
+    for the pitchers in a rotation or bullpen."""
+    staff = staff or {}
+    rated: dict[str, Rated] = {}
+    for tid, players in rosters.items():
+        rs = [(p, status, ratings(p)) for p, status in players]
+        majors = staff_groups(
+            [(p, r) for p, status, r in rs if status in MAJORS and p.is_pitcher()],
+            staff,
+        )
+        rated[tid] = [
+            (p, status, r, majors.get(p.id) or group(p, r, staff.get(p.id)))
+            for p, status, r in rs
+        ]
     depths = {tid: _depth(roster) for tid, roster in rated.items()}
     type_scores = {tid: _type_scores(roster) for tid, roster in rated.items()}
     n_teams = len(rated)
