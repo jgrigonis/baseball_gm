@@ -10,7 +10,7 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
-from src.league import team_state
+from src.league import divisions, team_state
 
 
 def calc_streak(results: list) -> str:
@@ -115,6 +115,35 @@ def standings_rows(
     return teams
 
 
+def _games_behind(leader: dict, team: dict) -> str:
+    gb = ((leader["wins"] - team["wins"]) + (team["losses"] - leader["losses"])) / 2
+    if team is leader:
+        return "—"
+    return f"{gb:.1f}" if gb != int(gb) else str(int(gb))
+
+
+def division_groups(db, league_id: str, teams: list[dict]) -> list[dict]:
+    """The standings split by league and division: [{name, divisions:
+    [{name, teams}]}], each division best first with games behind its
+    leader. Empty for a league without divisions."""
+    by_id = {t["team_id"]: t for t in teams}
+    out = []
+    for conf in divisions.load(db, league_id):
+        divs = []
+        for div in conf.divisions:
+            rows = sorted(
+                (by_id[t] for t in div.team_ids if t in by_id),
+                key=lambda t: t["rank"],
+            )
+            rows = [
+                {**t, "rank": i, "gb": _games_behind(rows[0], t)}
+                for i, t in enumerate(rows, 1)
+            ]
+            divs.append({"name": div.name, "teams": rows})
+        out.append({"name": conf.name, "divisions": divs})
+    return out
+
+
 def _team_gms(db, league_id: str) -> dict[str, dict]:
     """Who runs each team now ({name, persona_id}), the person if there is
     one."""
@@ -195,6 +224,7 @@ def standings_context(
     mine = next((t for t in teams if t["team_id"] == my_team_id), None)
     return {
         "teams": teams,
+        "groups": division_groups(db, league_id, teams) if teams else [],
         # "The front office sees a team that's ramping up."
         "my_state": team_state.describe(mine["state"])
         if mine and mine["state"]

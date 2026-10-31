@@ -10,6 +10,9 @@
    info.mode.description),
   ("Teams", info.num_teams,
    "Total teams in the league. Each human GM runs one; AI GMs run the rest."),
+  ("Schedule", "Weighted" if info.weighted_schedule else "Balanced",
+   "Weighted: division rivals meet most often, the other league least, 162 games in all." if info.weighted_schedule
+   else "Balanced: every team plays every other team about the same number of times, 162 games in all."),
 ] %}
 {% if started %}
   {% set settings = settings + [

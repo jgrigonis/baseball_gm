@@ -1073,6 +1073,26 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 /* Nine pitchers: the whole row, picks side by side. */
 .as-slot-p { grid-column: 1 / -1; }
 .as-slot-p .as-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px 16px; }
+/* "N on the ballot" opens the full list at the position, across the row. */
+.as-count { background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-decoration: underline dotted; text-underline-offset: 3px; }
+.as-count:hover { color: var(--amber); }
+.as-open .as-caret { display: inline-block; transform: rotate(180deg); }
+.as-slot { min-width: 0; }
+.as-slot.as-open { grid-column: 1 / -1; }
+.as-full { display: none; border-top: 1px solid var(--border); }
+.as-open .as-full { display: block; }
+.as-full-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px; }
+.as-done { margin-left: auto; }
+.as-full-scroll { overflow-x: auto; max-height: 460px; overflow-y: auto; }
+.as-full-table thead th { position: sticky; top: 0; background: var(--bg-2); z-index: 1; }
+.as-full-table td { white-space: nowrap; }
+.as-full-picks { display: flex; gap: 4px; }
+.as-rank { font-family: var(--font-mono); font-size: 10px; padding: 2px 7px; min-width: 34px; background: transparent; color: var(--text-dim); border: 1px solid var(--border); cursor: pointer; }
+.as-rank:hover { color: var(--amber); border-color: var(--amber); }
+.as-rank.on { background: var(--amber); border-color: var(--amber); color: var(--bg); }
+.as-full-table tr.as-chosen td { background: rgba(255, 191, 0, 0.06); }
+.as-full-msg:empty { display: none; }
+.as-full-msg { padding: 8px 16px; font-family: var(--font-mono); font-size: 11px; }
 .as-save { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
 .as-saved { color: var(--green); }
 .as-error { color: var(--red); }

@@ -6,6 +6,10 @@
 # join or are picked, and the lobby shows it. A person who joins takes the
 # team of the AI GM whose place they take. At the start, each GM gets the
 # team of that name.
+#
+# A league plays with num_teams of them: all 30 World League teams, those
+# plus EXTRA_TEAMS for 32, or a random pick of them for fewer, the same pick
+# for the league every time (it's seeded by the league's id).
 
 from __future__ import annotations
 
@@ -23,13 +27,46 @@ def manifest_path() -> Path:
     return Path(MANIFEST_FILES_DIR) / MANIFEST_FILENAME
 
 
+# Teams past the World League's 30, for bigger leagues.
+EXTRA_TEAMS = (
+    {"csv": "berlin.csv", "city": "Berlin", "mascot": "Bears"},
+    {"csv": "seattle.csv", "city": "Seattle", "mascot": "Orcas"},
+)
+
+
 @lru_cache(maxsize=1)
-def manifest_teams() -> tuple[tuple[str, str], ...]:
-    """Every team a league can have, as (city, mascot)."""
+def _world_entries() -> tuple[dict, ...]:
     path = manifest_path()
     if not path.exists():
         return ()
-    return tuple((t["city"], t["mascot"]) for t in load_manifest(path)["teams"])
+    return tuple(load_manifest(path)["teams"])
+
+
+def manifest_teams() -> tuple[tuple[str, str], ...]:
+    """Every World League team, as (city, mascot)."""
+    return tuple((t["city"], t["mascot"]) for t in _world_entries())
+
+
+def team_entries(league_id: str, num_teams: int) -> list[dict]:
+    """The manifest entries ({csv, city, mascot}) of the teams this league
+    plays with."""
+    world = list(_world_entries())
+    if num_teams >= len(world):
+        return world + list(EXTRA_TEAMS[: num_teams - len(world)])
+    picked = random.Random(f"teams-{league_id}").sample(world, num_teams)
+    return sorted(picked, key=lambda t: t["city"])
+
+
+def league_teams(conn, league_id: str) -> tuple[tuple[str, str], ...]:
+    """The teams this league plays with, as (city, mascot)."""
+    row = conn.execute(
+        "SELECT num_teams FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
+    if not row:
+        return ()
+    return tuple(
+        (t["city"], t["mascot"]) for t in team_entries(league_id, row["num_teams"])
+    )
 
 
 def deal(conn, league_id: str, rng: random.Random | None = None) -> None:
@@ -48,7 +85,7 @@ def deal(conn, league_id: str, rng: random.Random | None = None) -> None:
         (league_id,),
     ).fetchall()
     taken = {(r["lobby_city"], r["lobby_mascot"]) for r in rows if r["lobby_city"]}
-    free = [t for t in manifest_teams() if t not in taken]
+    free = [t for t in league_teams(conn, league_id) if t not in taken]
     rng.shuffle(free)
     for r in rows:
         if r["lobby_city"]:
@@ -90,7 +127,7 @@ def choices(conn, league_id: str) -> list[dict]:
     ).fetchall()
     held = {(r["lobby_city"], r["lobby_mascot"]): r for r in rows}
     out = []
-    for city, mascot in sorted(manifest_teams()):
+    for city, mascot in sorted(league_teams(conn, league_id)):
         gm = held.get((city, mascot))
         out.append(
             {
@@ -108,7 +145,7 @@ def pick(conn, league_id: str, gm_id: str, city: str, mascot: str) -> bool:
     """A person in the lobby takes this team. If an AI GM holds it, the two
     swap; a team another person holds can't be taken. False if the pick
     isn't allowed."""
-    if (city, mascot) not in manifest_teams():
+    if (city, mascot) not in league_teams(conn, league_id):
         return False
     league = conn.execute(
         "SELECT state FROM leagues WHERE id = %s", (league_id,)

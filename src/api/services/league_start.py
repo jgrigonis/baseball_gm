@@ -13,6 +13,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
+from src.league import divisions
 from src.league.backstory.service import create_backstory
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.league_constants import (
@@ -63,8 +64,13 @@ def start_league(
 
     # The manifest is only the team list: every new league starts in
     # LEAGUE_START_YEAR, whatever year the file was written for.
+    # The league plays with num_teams of its teams (lobby_teams.team_entries).
     year = LEAGUE_START_YEAR
-    manifest = {**manifest, "season_year": year}
+    manifest = {
+        **manifest,
+        "season_year": year,
+        "teams": lobby_teams.team_entries(league_id, league["num_teams"]),
+    }
 
     # ── 2. Generate fresh CSVs for every team ─────────────────────────────────
     create_team_files(manifest["teams"], year, rng=rng, league_id=league_id)
@@ -93,6 +99,16 @@ def start_league(
     ps = PitcherStateRepository(conn, league_id)
     ps.clear_all_pitcher_state()
 
+    # ── 3b'. Leagues and divisions ──────────────────────────────────────────
+    # Their own random stream, like the backstory's.
+    divisions.save(
+        conn,
+        league_id,
+        divisions.draw(
+            [(t.id, t.city) for t in teams], random.Random(f"{seed}-divisions")
+        ),
+    )
+
     # ── 3c. Backstory: past seasons generated from the rosters ────────────────
     # Its own random stream, so the rest of the league comes out the same
     # for a seed whatever the backstory length.
@@ -117,6 +133,7 @@ def start_league(
             target_games=SEASON_LENGTH,
             all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
             all_star_break_days=ALL_STAR_BREAK_DAYS,
+            leagues=divisions.schedule_leagues(conn, league_id),
         )
         save_schedule_to_db(conn, schedule)
         game_count = len(schedule)

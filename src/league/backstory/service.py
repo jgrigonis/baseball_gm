@@ -24,7 +24,8 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.retirement_repo import RetirementRepository
-from src.db.repositories.standings_repo import StandingsRepository
+from src.league import divisions
+from src.league.playoffs.setup_playoffs import playoff_seeds
 from src.league import all_star
 from src.league.backstory import careers as careers_mod
 from src.league.backstory import season as season_mod
@@ -184,6 +185,7 @@ def _play_year(conn, league_id, year, team_ids, careers, base_year, rng, np_rng)
         target_games=SEASON_LENGTH,
         all_star_break_after=ALL_STAR_BREAK_AFTER_GAMES,
         all_star_break_days=ALL_STAR_BREAK_DAYS,
+        leagues=divisions.schedule_leagues(conn, league_id),
     )
     games = season_mod.play_schedule(np_rng, schedule, strength)
     team_hits = {
@@ -196,10 +198,7 @@ def _play_year(conn, league_id, year, team_ids, careers, base_year, rng, np_rng)
     _save_games(conn, sid, games)
 
     if len(team_ids) >= PLAYOFF_TEAMS:
-        seeds = [
-            r["team_id"]
-            for r in StandingsRepository(conn).get_top_n(sid, PLAYOFF_TEAMS)
-        ]
+        seeds = [r["team_id"] for r in playoff_seeds(conn, sid, league_id)]
         last_day = max(datetime.date.fromisoformat(g.game_date) for g in games)
         start = last_day + datetime.timedelta(days=PLAYOFF_GAP_DAYS)
         series, playoff_games = season_mod.play_playoffs(

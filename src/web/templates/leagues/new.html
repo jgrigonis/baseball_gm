@@ -22,6 +22,24 @@
       <span class="mode-note" id="speed-blitz-note">No trades, and injuries start off. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
     </div>
     <div class="field">
+      <label for="num-teams">Teams</label>
+      <select name="num_teams" id="num-teams">
+        {% for n in team_counts %}
+        <option value="{{ n }}" {% if n == default_team_count %}selected{% endif %}>{{ n }} teams{% if n == 30 %}: the World League{% endif %}</option>
+        {% endfor %}
+      </select>
+      <span class="mode-note" id="num-teams-note">Two leagues, each split into divisions. With 30 teams it's the Atlantic and Pacific Leagues, three divisions each, by geography. Any other size draws the teams into two leagues of two divisions at random.</span>
+    </div>
+    <div class="field">
+      <label for="weighted-schedule">Weighted Schedule</label>
+      <input type="hidden" name="weighted_schedule" value="false">
+      <label class="toggle-row">
+        <input type="checkbox" name="weighted_schedule" id="weighted-schedule" value="true">
+        <span>Play division rivals more often, the other league less</span>
+      </label>
+      <span class="mode-note">Off: every team plays every other team about the same number of times. Still 162 games either way.</span>
+    </div>
+    <div class="field">
       <label>Days per Sim Period</label>
       <input name="sim_period_days" type="number" value="3" min="1" max="30">
     </div>

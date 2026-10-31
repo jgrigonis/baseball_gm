@@ -135,13 +135,34 @@ def test_picking_an_ai_gms_team_swaps_with_it(db_conn, factory):
 
 def test_picking_an_open_team_frees_yours(db_conn, factory):
     league, me = _lobby(db_conn, factory)
+    # An AI GM leaves, so one of the league's teams is open.
+    db_conn.execute(
+        """DELETE FROM gms WHERE id = (
+               SELECT id FROM gms WHERE league_id = %s AND is_ai LIMIT 1)""",
+        (league.id,),
+    )
     held = set(_teams(db_conn, league.id).values())
-    open_team = next(t for t in lobby_teams.manifest_teams() if t not in held)
+    open_team = next(
+        t for t in lobby_teams.league_teams(db_conn, league.id) if t not in held
+    )
+    mine = _team_of(db_conn, me.id)
 
     assert lobby_teams.pick(db_conn, league.id, me.id, *open_team)
 
     assert _team_of(db_conn, me.id) == open_team
-    assert len(set(_teams(db_conn, league.id).values())) == 4
+    assert mine not in set(_teams(db_conn, league.id).values())
+    assert len(set(_teams(db_conn, league.id).values())) == 3
+
+
+def test_a_team_outside_the_league_cant_be_picked(db_conn, factory):
+    league, me = _lobby(db_conn, factory)
+    outside = next(
+        t
+        for t in lobby_teams.manifest_teams()
+        if t not in lobby_teams.league_teams(db_conn, league.id)
+    )
+
+    assert not lobby_teams.pick(db_conn, league.id, me.id, *outside)
 
 
 def test_another_persons_team_cant_be_picked(db_conn, factory):

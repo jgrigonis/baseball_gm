@@ -1,67 +1,33 @@
 {# templates/dashboard/partials/standings.html #}
 {% from "dashboard/partials/_rookie.html" import rk with context %}
 
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
-  <div class="page-header" style="margin-bottom:0;">
-    <h1 class="page-title">{% if past_season %}{{ past_season.year }} {% endif %}Standings</h1>
-    {% if past_season %}
-    <span class="page-subtitle">Final</span>
-    <a href="/leagues/{{ league_id }}/standings"
-       hx-get="/leagues/{{ league_id }}/standings"
-       hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
-       style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-      Current season →
-    </a>
-    {% else %}
-    {% if games_played %}
-    <span class="page-subtitle">{{ games_played }} league games played</span>
-    {% endif %}
-    {% if not is_viewer %}
-    <div style="margin-left:auto;">
-      {% include "dashboard/partials/_play_button.html" %}
-    </div>
-    {% endif %}
-    {% endif %}
-  </div>
-</div>
-
-<div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:16px;">
-
-  {% if not teams %}
-  <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);
-              font-size:13px;color:var(--text-dim);">
-    Season hasn't started yet — no games played.
-  </div>
-
-  {% else %}
-
-  {# ── My team sidebar + main table ───────────────────────────────────── #}
-  <div class="standings-grid">
-
-    {# ── Standings table ──────────────────────────────────────────────── #}
-    <div class="card">
-      <table class="data-table" style="width:100%;">
-        <thead>
-          <tr>
-            <th style="width:28px;">#</th>
-            <th>Team</th>
-            <th>GM</th>
-            <th style="text-align:center;">W</th>
-            <th style="text-align:center;">L</th>
-            <th style="text-align:center;">PCT</th>
-            <th style="text-align:center;">GB</th>
-            <th style="text-align:center;">Home</th>
-            <th style="text-align:center;">Away</th>
-            <th style="text-align:center;">L10</th>
-            <th style="text-align:center;">RS</th>
-            <th style="text-align:center;">RA</th>
-            <th style="text-align:center;">Streak</th>
-            <th title="Where each front office sees its team">Direction</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for team in teams %}
+{% macro standings_table(rows, title=None) %}
+<div class="card">
+  {% if title %}
+  <div class="card-header" style="padding:8px 14px;"><span class="card-title">{{ title }}</span></div>
+  {% endif %}
+  <div style="overflow-x:auto;">
+  <table class="data-table" style="width:100%;">
+    <thead>
+      <tr>
+        <th style="width:28px;">#</th>
+        <th>Team</th>
+        <th>GM</th>
+        <th style="text-align:center;">W</th>
+        <th style="text-align:center;">L</th>
+        <th style="text-align:center;">PCT</th>
+        <th style="text-align:center;">GB</th>
+        <th style="text-align:center;">Home</th>
+        <th style="text-align:center;">Away</th>
+        <th style="text-align:center;">L10</th>
+        <th style="text-align:center;">RS</th>
+        <th style="text-align:center;">RA</th>
+        <th style="text-align:center;">Streak</th>
+        <th title="Where each front office sees its team">Direction</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for team in rows %}
           <tr class="{% if team.is_mine %}my-team{% elif team.is_human %}human-team{% endif %}">
             <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">{{ team.rank }}</td>
             <td>
@@ -107,9 +73,78 @@
               {% if team.state_label %}<span class="team-state team-state-{{ team.state }}">{{ team.state_label }}</span>{% else %}<span style="color:var(--muted);">—</span>{% endif %}
             </td>
           </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endmacro %}
+
+
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:16px 24px 12px;border-bottom:1px solid var(--border);">
+  <div class="page-header" style="margin-bottom:0;">
+    <h1 class="page-title">{% if past_season %}{{ past_season.year }} {% endif %}Standings</h1>
+    {% if past_season %}
+    <span class="page-subtitle">Final</span>
+    <a href="/leagues/{{ league_id }}/standings"
+       hx-get="/leagues/{{ league_id }}/standings"
+       hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+       style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+      Current season →
+    </a>
+    {% else %}
+    {% if games_played %}
+    <span class="page-subtitle">{{ games_played }} league games played</span>
+    {% endif %}
+    {% if not is_viewer %}
+    <div style="margin-left:auto;">
+      {% include "dashboard/partials/_play_button.html" %}
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:16px;">
+
+  {% if not teams %}
+  <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);
+              font-size:13px;color:var(--text-dim);">
+    Season hasn't started yet — no games played.
+  </div>
+
+  {% else %}
+
+  {# ── My team sidebar + main table ───────────────────────────────────── #}
+  <div class="standings-grid">
+
+    {# ── Standings: by division, or one table of every team ──────────── #}
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
+      {% if groups %}
+      {% set base = "/leagues/" ~ league_id ~ "/standings" %}
+      {% set q = ("season_id=" ~ past_season.id) if past_season else "" %}
+      <div class="standings-views">
+        {% for key, label in [("divisions", "Divisions"), ("overall", "Overall")] %}
+        {% set href = base ~ "?" ~ q ~ ("&" if q else "") ~ ("view=overall" if key == "overall" else "") %}
+        <a href="{{ href }}" hx-get="{{ href }}" hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           class="standings-view{% if standings_view == key %} on{% endif %}">{{ label }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if standings_view == "divisions" %}
+        {% for conf in groups %}
+        <div class="standings-conf">
+          <h2 class="standings-conf-name">{{ conf.name }}</h2>
+          {% for div in conf.divisions %}
+          {{ standings_table(div.teams, div.name) }}
           {% endfor %}
-        </tbody>
-      </table>
+        </div>
+        {% endfor %}
+      {% else %}
+        {{ standings_table(teams) }}
+      {% endif %}
     </div>
 
     {# ── Right sidebar ────────────────────────────────────────────────── #}
@@ -212,6 +247,13 @@
 .standings-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
 /* Team states: buyers green, sellers amber, the rest plain */
 .standings-gm { color: var(--text-dim); text-decoration: none; }
+.standings-views { display: flex; gap: 6px; }
+.standings-view { font-family: var(--font-mono); font-size: 11px; padding: 4px 10px; border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text-dim); text-decoration: none; }
+.standings-view.on { color: var(--text); border-color: var(--amber); }
+.standings-conf { display: flex; flex-direction: column; gap: 10px; }
+.standings-conf-name { font-family: var(--font-sans); font-size: 14px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--amber); margin: 4px 0 0; }
 .standings-gm:hover { color: var(--sky); }
 .team-state-all-in, .team-state-contending { color: var(--green); }
 .team-state-rebuilding, .team-state-aging-out { color: var(--amber); }

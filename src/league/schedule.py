@@ -7,6 +7,7 @@ import random
 import uuid
 
 from src.db.repositories.games_repo import GameRepository
+from src.league.weighted_schedule import WeightedSchedule
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +125,7 @@ class ScheduleGenerator:
         target_games: int | None = None,
         all_star_break_after: int | None = None,
         all_star_break_days: int = 0,
+        leagues: list[list[list[str]]] | None = None,
     ) -> list[ScheduledGame]:
         """
         Create a full season schedule built around series with no gaps.
@@ -138,8 +140,15 @@ class ScheduleGenerator:
         ``_season_rounds``. ``all_star_break_after`` and
         ``all_star_break_days`` then leave that many off days after the round
         that ends nearest that game number.
+
+        ``leagues`` (two leagues, each a list of divisions of team ids) with
+        ``target_games`` makes it a weighted season instead: more games
+        against division rivals, fewer against the other league. See
+        src/league/weighted_schedule.py.
         """
-        if target_games is None:
+        if leagues is not None and target_games is not None:
+            rounds = WeightedSchedule(leagues, self.rng).rounds(target_games)
+        elif target_games is None:
             matchups = self.generate_series_matchups(team_ids, home_and_away)
             games_per_round = len(team_ids) // 2
             rounds = [

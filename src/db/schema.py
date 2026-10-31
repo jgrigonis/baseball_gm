@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     pick_trades          BOOLEAN NOT NULL DEFAULT FALSE, -- teams can trade draft picks
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
     backstory_years      INTEGER NOT NULL DEFAULT 5,     -- past seasons generated at the start (src/league/backstory/)
+    weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -592,6 +593,20 @@ CREATE TABLE IF NOT EXISTS league_season_teams (
     FOREIGN KEY (league_id, season_id) REFERENCES league_seasons(league_id, season_id) ON DELETE CASCADE,
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
+
+-- Which league ("conference", since leagues holds whole leagues) and
+-- division each team plays in (src/league/divisions.py). Set when a league
+-- starts; leagues started before divisions existed have no rows.
+CREATE TABLE IF NOT EXISTS team_divisions (
+    league_id        TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id          TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    conference       TEXT NOT NULL,
+    division         TEXT NOT NULL,
+    conference_order INTEGER NOT NULL,
+    division_order   INTEGER NOT NULL,
+    PRIMARY KEY (league_id, team_id)
+);
+CREATE INDEX IF NOT EXISTS idx_team_divisions_team ON team_divisions(team_id);
 
 CREATE TABLE IF NOT EXISTS games (
     id TEXT PRIMARY KEY,

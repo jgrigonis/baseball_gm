@@ -87,7 +87,7 @@
 
 {% macro series_card(s, my_team_id) %}
 <div class="series-card{% if s.decided %} decided{% endif %}{% if s.teams | selectattr('is_mine') | list %} mine{% endif %}">
-  <div class="sc-header">{{ s.name }} · BO{{ s.best_of }}</div>
+  <div class="sc-header">{{ s.label or s.name }} · BO{{ s.best_of }}</div>
   {% if s.teams %}
     {% for t in s.teams %}
     {% set win_game_ids = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | map(attribute='id') | list %}
