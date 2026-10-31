@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Tokyo helmet">
+  <defs>
+    <path id="kabG" d="M-5 -24 Q-22 -34 -34 -54 Q-30 -34 -14 -20 Z M5 -24 Q22 -34 34 -54 Q30 -34 14 -20 Z M-7 -33 A7 7 0 1 0 7 -33 A7 7 0 1 0 -7 -33 Z M-24 -6 Q-24 -32 0 -32 Q24 -32 24 -6 Z M-31 -8 H31 L26 0 H-26 Z M-27 2 H27 L33 12 H-33 Z M-33 14 H33 L39 24 H-39 Z M-24 -6 L-42 -18 L-40 4 Z M24 -6 L42 -18 L40 4 Z"/>
+    <path id="kabD" d="M-1 -30 H1 V-8 H-1 Z M-13 -27.5 L-11 -28 L-9 -8 H-11 Z M13 -27.5 L11 -28 L9 -8 H11 Z M-3 -33 A3 3 0 1 0 3 -33 A3 3 0 1 0 -3 -33 Z M-24 6 H24 V7.5 H-24 Z M-30 18 H30 V19.5 H-30 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#43509A"/><stop offset=".45" stop-color="#1F2A60"/><stop offset="1" stop-color="#121938"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#D9381E"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#121938"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#121938"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(104 88) scale(.62)"><use href="#kabG" fill="#C9B37E" stroke="#D9381E" stroke-width="4.84" stroke-linejoin="round" paint-order="stroke"/><use href="#kabD" fill="#1F2A60"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#D9381E" stroke-width="2.5"/>
+</svg>

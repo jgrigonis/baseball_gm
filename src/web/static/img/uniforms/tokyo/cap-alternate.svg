@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Tokyo cap alternate">
+  <defs>
+    <path id="kabG" d="M-5 -24 Q-22 -34 -34 -54 Q-30 -34 -14 -20 Z M5 -24 Q22 -34 34 -54 Q30 -34 14 -20 Z M-7 -33 A7 7 0 1 0 7 -33 A7 7 0 1 0 -7 -33 Z M-24 -6 Q-24 -32 0 -32 Q24 -32 24 -6 Z M-31 -8 H31 L26 0 H-26 Z M-27 2 H27 L33 12 H-33 Z M-33 14 H33 L39 24 H-39 Z M-24 -6 L-42 -18 L-40 4 Z M24 -6 L42 -18 L40 4 Z"/>
+    <path id="kabD" d="M-1 -30 H1 V-8 H-1 Z M-13 -27.5 L-11 -28 L-9 -8 H-11 Z M13 -27.5 L11 -28 L9 -8 H11 Z M-3 -33 A3 3 0 1 0 3 -33 A3 3 0 1 0 -3 -33 Z M-24 6 H24 V7.5 H-24 Z M-30 18 H30 V19.5 H-30 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#D9381E"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#A82812" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#A82812" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#1F2A60"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1F2A60" stroke="#141B40" stroke-width="1.5"/>
+      <g transform="translate(120 84) scale(.72)"><use href="#kabG" fill="#C9B37E" stroke="#1F2A60" stroke-width="4.17" stroke-linejoin="round" paint-order="stroke"/><use href="#kabD" fill="#1F2A60"/></g>
+</svg>
