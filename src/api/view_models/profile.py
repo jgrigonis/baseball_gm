@@ -10,6 +10,7 @@ from datetime import date
 
 from src.api.services import badges
 from src.api.services.career import ROUND_DEPTH
+from src.api.view_models.profile_sections import sections
 from src.api.view_models.welcome import uniforms
 from src.db.repositories.career_repo import CareerRepository
 
@@ -80,6 +81,7 @@ def profile_context(db, person: dict, viewer: dict) -> dict:
         "trophies": _trophies(seasons),
         "leagues": leagues,
         "badges": _badges(db, person["id"]),
+        **sections(db, person["id"], seasons),
     }
 
 
