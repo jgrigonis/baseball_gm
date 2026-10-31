@@ -135,6 +135,19 @@ def test_picked_ai_gms_are_listed_by_name(client, db_conn, lobby):
         assert f"/leagues/{league.id}/personas/{g['persona_id']}" in r.text
 
 
+def test_gm_table_has_no_status_column(client, db_conn, lobby):
+    """Nobody can mark themselves away in the lobby, so there's no Status
+    column and the hover text doesn't promise one."""
+    league, _ = lobby
+    _fill(db_conn, league)
+
+    r = _gms(client, league)
+
+    assert "<th>Status</th>" not in r.text
+    assert "Away" not in r.text
+    assert "Pick another team from the drop down" in r.text
+
+
 def test_only_the_commissioner_sees_reroll(client, db_conn, lobby):
     league, gm = lobby
     _fill(db_conn, league)
