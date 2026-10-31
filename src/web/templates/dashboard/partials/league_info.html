@@ -4,15 +4,29 @@
    league. Takes `league_info` (src/api/view_models/league_info.py). #}
 {% set info = league_info %}
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:12px 24px;border-bottom:1px solid var(--border);">
-  <h1 class="page-title">League</h1>
-  <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px;">
-    {% if info.state == "complete" %}
-      Complete after {{ info.num_seasons }} season{{ "s" if info.num_seasons != 1 }}.
-    {% elif info.season_number %}
-      Season {{ info.season_number }} of {{ info.num_seasons }} · {{ info.state | title }}
-    {% endif %}
+            padding:12px 24px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+  <div>
+    <h1 class="page-title">League</h1>
+    <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px;">
+      {% if info.state == "complete" %}
+        Complete after {{ info.num_seasons }} season{{ "s" if info.num_seasons != 1 }}.
+      {% elif info.season_number %}
+        Season {{ info.season_number }} of {{ info.num_seasons }} · {{ info.state | title }}
+      {% endif %}
+    </div>
   </div>
+  {% if not is_viewer %}
+  {% if leaving_deletes_league %}
+    {% set leave_note = "You're the last GM in it, so the league will be deleted for good." %}
+  {% else %}
+    {% set leave_note = "An AI manager will take over your team, and you can't come back." %}
+    {% if is_commissioner %}{% set leave_note = leave_note ~ " Another GM becomes commissioner." %}{% endif %}
+  {% endif %}
+  <button class="btn btn-danger" style="font-size:11px;padding:6px 12px;"
+          data-confirm="Leave {{ league_name }}? {{ leave_note }}"
+          onclick="leaveThisLeague(this)">Leave League</button>
+  {% endif %}
 </div>
 
 <div style="padding:16px 24px 32px;">
@@ -68,3 +82,24 @@
 
   </div>
 </div>
+
+{% if not is_viewer %}
+<script>
+function leaveThisLeague(btn) {
+  if (!confirm(btn.dataset.confirm)) return;
+  // Deleting a league can take a moment; a second click would find the
+  // first still holding the league and fail.
+  btn.disabled = true;
+  btn.textContent = 'Leaving…';
+  const failed = detail => {
+    btn.disabled = false;
+    btn.textContent = 'Leave League';
+    alert(detail || 'Could not leave the league.');
+  };
+  fetch('/leagues/{{ league_id }}/leave', {method: 'POST'}).then(r => {
+    if (r.ok) { location.href = '/leagues/'; return; }
+    r.json().then(d => failed(d.detail), () => failed());
+  }, () => failed());
+}
+</script>
+{% endif %}

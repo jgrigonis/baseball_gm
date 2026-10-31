@@ -462,6 +462,12 @@ def league_page(
     if not league or league["state"] == "lobby":
         return RedirectResponse(f"/leagues/{league_id}/")
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    if not ctx["is_viewer"]:
+        # The Leave League button warns the last person out that the league
+        # goes with them.
+        ctx["leaving_deletes_league"] = not GMRepository(db).has_people(
+            league_id, besides_gm_id=gm["id"]
+        )
     return tab_response(request, htmx, "dashboard/partials/league_info.html", ctx)
 
 

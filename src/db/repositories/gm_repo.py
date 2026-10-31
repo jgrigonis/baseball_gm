@@ -106,12 +106,16 @@ class GMRepository:
         )
         self.conn.execute("DELETE FROM gm_notifications WHERE gm_id = %s", (gm_id,))
 
-    def has_people(self, league_id: str) -> bool:
-        """Whether any person can still open the league, fired GMs included."""
+    def has_people(self, league_id: str, besides_gm_id: str | None = None) -> bool:
+        """Whether any person can still open the league, fired GMs included,
+        not counting `besides_gm_id`."""
         return bool(
             self.conn.execute(
-                "SELECT 1 FROM gms WHERE league_id = %s AND user_id IS NOT NULL LIMIT 1",
-                (league_id,),
+                """SELECT 1 FROM gms
+                   WHERE league_id = %s AND user_id IS NOT NULL
+                     AND id IS DISTINCT FROM %s
+                   LIMIT 1""",
+                (league_id, besides_gm_id),
             ).fetchone()
         )
 
