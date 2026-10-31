@@ -20,7 +20,9 @@ class LeagueMode:
     # Settings the create form switches to when this mode is picked. Settings
     # left out keep whatever the form already has.
     form_presets: dict[str, int] = field(default_factory=dict)
-    injuries_enabled: bool = True
+    # Whether the create form's Injuries toggle starts on. The GM can flip it,
+    # and the league's own injuries_enabled setting is what the sim follows.
+    injuries_default: bool = True
     # Trades don't exist yet. Check trades_allowed() before offering or
     # accepting one once they do.
     trades_enabled: bool = True
@@ -34,7 +36,7 @@ BLITZ = LeagueMode(
     label="Blitz",
     description=(
         "The draft runs ahead of time from each GM's strategy or ranked list, and "
-        "teams play off the full 40-man roster. Injuries are on."
+        "teams play off the full 40-man roster. Injuries start on."
     ),
     # The form's own defaults, so switching back from speed blitz restores them.
     form_presets={
@@ -50,14 +52,14 @@ SPEED_BLITZ = LeagueMode(
     label="Speed Blitz",
     description=(
         "A faster Blitz: preference-list draft and 40-man rosters, with no "
-        "injuries or trades."
+        "trades. Injuries start off."
     ),
     form_presets={
         "sim_period_days": 30,
         "decision_window_sec": 30,
         "num_seasons": 5,
     },
-    injuries_enabled=False,
+    injuries_default=False,
     trades_enabled=False,
     blitz_style=True,
 )
@@ -82,8 +84,12 @@ def get_mode(mode: str | None) -> LeagueMode:
     return LEAGUE_MODES[mode]
 
 
-def injuries_allowed(mode: str | None) -> bool:
-    return get_mode(mode).injuries_enabled
+def injuries_allowed(league: dict) -> bool:
+    """Whether players get hurt in this league: the setting it was created
+    with, or its mode's default if it has none."""
+    if league.get("injuries_enabled") is not None:
+        return bool(league["injuries_enabled"])
+    return get_mode(league.get("mode")).injuries_default
 
 
 def trades_allowed(mode: str | None) -> bool:

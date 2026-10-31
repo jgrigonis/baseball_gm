@@ -1,6 +1,8 @@
 # src/db/repositories/league_repo.py
 import uuid
 
+from src.league.league_modes import get_mode, injuries_allowed
+
 
 class LeagueRepository:
     """
@@ -30,9 +32,9 @@ class LeagueRepository:
                 (id, name, join_code, mode, num_teams, decision_window_sec,
                 draft_window_sec, lineup_window_sec, reentry_enabled, pace_control,
                 sim_period_days, num_seasons, is_public, is_practice, trade_vote,
-                pick_trades, state, commissioner_gm_id)
+                pick_trades, injuries_enabled, state, commissioner_gm_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, 'lobby', NULL)""",
+                    %s, %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -50,6 +52,7 @@ class LeagueRepository:
                 settings.get("is_practice", False),
                 settings.get("trade_vote", True),
                 settings.get("pick_trades", False),
+                settings.get("injuries_enabled", get_mode(mode).injuries_default),
             ),
         )
 
@@ -285,6 +288,18 @@ class LeagueRepository:
 
     def _column(self, sql: str, params: tuple) -> list[str]:
         return [r["id"] for r in self.conn.execute(sql, params).fetchall()]
+
+    def injuries_enabled(self, league_id: str | None) -> bool:
+        """Whether players get hurt in the league. A game outside any league
+        follows the default mode."""
+        if league_id is None:
+            return get_mode(None).injuries_default
+        row = self.conn.execute(
+            "SELECT mode, injuries_enabled FROM leagues WHERE id = %s", (league_id,)
+        ).fetchone()
+        if not row:
+            return get_mode(None).injuries_default
+        return injuries_allowed(dict(row))
 
     def get_league_mode(self, league_id: str) -> str:
         """Get the mode of the league."""

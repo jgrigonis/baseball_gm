@@ -35,7 +35,7 @@ from src.db.repositories.team_state_repo import TeamStateRepository
 from src.game.game import Game
 from src.game.game_event_logger import GameEventLogger
 from src.league import front_office, performance
-from src.league.league_modes import injuries_allowed, is_blitz_style
+from src.league.league_modes import is_blitz_style
 from src.league.personas import Leanings
 from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
@@ -621,7 +621,7 @@ def _play_game(
         event_logger=event_logger,
         home_eligible=home_eligible,
         away_eligible=away_eligible,
-        injuries_enabled=injuries_allowed(league_mode),
+        injuries_enabled=LeagueRepository(conn).injuries_enabled(league_id),
     )
 
     home_team.set_lineup(

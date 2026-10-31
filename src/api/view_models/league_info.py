@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from src.db.repositories.league_repo import LeagueRepository
-from src.league.league_modes import get_mode
+from src.league.league_modes import get_mode, injuries_allowed
 from src.league.trade_deadline import trades_enabled_for
 
 
@@ -31,6 +31,7 @@ def league_info(db, league: dict) -> dict:
         "trades_enabled": trades_enabled_for(league["mode"]),
         "trade_vote": bool(league["trade_vote"]),
         "pick_trades": bool(league["pick_trades"]),
+        "injuries_enabled": injuries_allowed(league),
         # Seasons started so far, the current one included. 0 in the lobby.
         "season_number": LeagueRepository(db).count_seasons(league["id"]),
         "gms": gms,

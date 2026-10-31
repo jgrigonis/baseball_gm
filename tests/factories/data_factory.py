@@ -3,6 +3,8 @@
 import uuid
 from types import SimpleNamespace
 
+from src.league.league_modes import get_mode
+
 
 class TestDataFactory:
     def __init__(self, db):
@@ -12,11 +14,14 @@ class TestDataFactory:
     def _id(self):
         return str(uuid.uuid4())
 
-    def league(self, state="draft", mode="blitz"):
+    def league(self, state="draft", mode="blitz", injuries_enabled=None):
         league_id = self._id()
+        if injuries_enabled is None:
+            injuries_enabled = get_mode(mode).injuries_default
         self.db.execute(
-            "INSERT INTO leagues (id, name, state, mode) VALUES (%s, %s, %s, %s)",
-            (league_id, "Test League", state, mode),
+            "INSERT INTO leagues (id, name, state, mode, injuries_enabled)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (league_id, "Test League", state, mode, injuries_enabled),
         )
         obj = SimpleNamespace(id=league_id)
         self._league = obj

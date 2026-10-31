@@ -150,6 +150,7 @@ def new_league(
     is_public: bool = Form(False),
     trade_vote: bool = Form(False),
     pick_trades: bool = Form(False),
+    injuries_enabled: bool | None = Form(None),
 ):
     get_mode(mode)  # rejects an unknown mode
     if pace_control not in ("timer", "confirmed"):
@@ -184,6 +185,12 @@ def new_league(
             "is_public": is_public,
             "trade_vote": trade_vote,
             "pick_trades": pick_trades,
+            # Left out (an old form or a script), the mode's default.
+            "injuries_enabled": (
+                get_mode(mode).injuries_default
+                if injuries_enabled is None
+                else injuries_enabled
+            ),
         },
     )
     # 2. GM setup
