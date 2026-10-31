@@ -32,5 +32,6 @@ uv run --with fonttools --with svgpathtools \
 | Team | Status | Notes |
 | --- | --- | --- |
 | Vienna Maestros | Done (2026-10-31) | Concert-hall theme. The home and Opera Night script climbs at 26°. The bat-and-baton patch sits on the player's right sleeve. |
+| Chicago Blizzards | Done (2026-10-31) | Lake-effect winter theme. Navy slab lettering has icicles hanging from it at home and on the Lake Effect alternate. The cap has a plain C, the stirrups have a jagged wind band, and the patch is a hexagonal snowflake. |
 
-The other 29 teams are still to do. They aren't shown in the game yet.
+The other 28 teams are still to do. They aren't shown in the game yet.

@@ -9,8 +9,8 @@ outlines, so the files need no web fonts and look the same in an <img> tag.
     uv run --with fonttools --with svgpathtools \\
         python scripts/export_uniform_svgs.py docs/design/uniforms/vienna-maestros.html vienna
 
-The fonts are downloaded from Google Fonts into ~/.cache/baseball_gm/fonts the
-first time.
+The fonts are the ones the sheet links from Google Fonts. They're downloaded
+into ~/.cache/baseball_gm/fonts the first time.
 """
 
 from __future__ import annotations
@@ -28,10 +28,6 @@ from svgpathtools import parse_path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path.home() / ".cache" / "baseball_gm" / "fonts"
-GOOGLE_CSS = (
-    "https://fonts.googleapis.com/css2?family=Pinyon+Script"
-    "&family=Playfair+Display:ital,wght@0,700;0,900;1,700"
-)
 SYSTEM_SERIF = "/usr/share/fonts/truetype/freefont/FreeSerif.ttf"  # for the 𝄞 clef
 PAINT = ("fill", "stroke", "stroke-width", "transform", "opacity")
 
@@ -40,17 +36,24 @@ def _num(n: float) -> str:
     return f"{n:.2f}".rstrip("0").rstrip(".")
 
 
-def load_fonts() -> dict[tuple[str, str, str], TTFont]:
-    """(family, weight, style) -> font, downloading the Google ones once."""
+def load_fonts(sheet: str) -> dict[tuple[str, str, str], TTFont]:
+    """(family, weight, style) -> font for the Google Fonts the sheet links,
+    downloading each file once."""
     CACHE.mkdir(parents=True, exist_ok=True)
-    if not list(CACHE.glob("*.ttf")):
+    link = re.search(r'href="(https://fonts\.googleapis\.com/css2\?[^"]+)"', sheet)
+    files = []
+    if link:
         # An old user agent makes Google Fonts serve plain TTF files.
-        req = urllib.request.Request(GOOGLE_CSS, headers={"User-Agent": "Mozilla/4.0"})
+        css_url = html.unescape(link.group(1))
+        req = urllib.request.Request(css_url, headers={"User-Agent": "Mozilla/4.0"})
         css = urllib.request.urlopen(req).read().decode()
-        for i, url in enumerate(re.findall(r"url\((https://[^)]+\.ttf)\)", css)):
-            (CACHE / f"font{i}.ttf").write_bytes(urllib.request.urlopen(url).read())
+        for url in re.findall(r"url\((https://[^)]+\.ttf)\)", css):
+            path = CACHE / url.split("/s/", 1)[1].replace("/", "_")
+            if not path.exists():
+                path.write_bytes(urllib.request.urlopen(url).read())
+            files.append(path)
     fonts = {}
-    for path in [*CACHE.glob("*.ttf"), Path(SYSTEM_SERIF)]:
+    for path in [*files, Path(SYSTEM_SERIF)]:
         if not path.exists():
             continue
         f = TTFont(path)
@@ -187,7 +190,7 @@ def main(sheet_path: str, team: str) -> None:
     sheet = Path(sheet_path).read_text()
     out_dir = ROOT / "src" / "web" / "static" / "img" / "uniforms" / team
     out_dir.mkdir(parents=True, exist_ok=True)
-    defs, outliner = shared_defs(sheet), Outliner(load_fonts())
+    defs, outliner = shared_defs(sheet), Outliner(load_fonts(sheet))
     for m in re.finditer(r'<svg data-export="([^"]+)".*?</svg>', sheet, re.S):
         svg = m.group(0).replace(f'data-export="{m.group(1)}" ', "")
         for item in m.group(1).split(","):
