@@ -7,6 +7,7 @@ every action. Private leagues stay GM-only throughout, except to admins,
 who can view any league once it has started.
 """
 
+import re
 import uuid
 
 import pytest
@@ -348,6 +349,32 @@ def test_game_panel_calls_out_standout_performances(client, db_conn, factory):
     assert "4-for-5, 2B, 3B, HR, 3 RBI" in strip
     assert html.count('class="standout-row"') == 2
     assert 'title="Cycle · 4 hits"' in html
+
+
+def test_game_panel_box_score_shows_hit_by_pitch(client, db_conn, factory):
+    """A batter who scores after a hit by pitch has a visible way on base."""
+    league, home = _league(db_conn, factory)
+    game = db_conn.execute(
+        "SELECT id, away_team_id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()
+    plunked = factory.rated_player(home, league, name="Plunked")
+    db_conn.execute(
+        """INSERT INTO player_game_stats (player_id, game_id, team_id,
+               opponent_team_id, bat_ab, bat_hits, bat_home_runs, bat_runs,
+               bat_walks, bat_strike_outs, bat_hbp)
+           VALUES (%s, %s, %s, %s, 3, 0, 0, 1, 0, 0, 1)""",
+        (plunked.id, game["id"], home.id, game["away_team_id"]),
+    )
+
+    html = client.get(f"/leagues/{league.id}/games/{game['id']}/panel").text
+
+    assert 'title="Hit by pitch">HBP</th>' in html
+    row = html[html.index("Plunked") :]
+    row = row[: row.index("</tr>")]
+    cells = re.findall(r'font-family:var\(--font-mono\);[^"]*">([^<]*)</td>', row)
+    # AB R H 2B 3B HR RBI BB HBP K SB
+    assert cells[:3] == ["3", "1", "0"]
+    assert cells[8] == "1"
 
 
 def test_up_next_links_each_opponent_to_its_stats(db_conn, factory):
