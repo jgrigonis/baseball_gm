@@ -68,6 +68,15 @@ def test_lobby_page_polls_the_gm_list(client, lobby):
     assert f'hx-get="/leagues/{league.id}/lobby/gms"' in r.text
 
 
+def test_lobby_links_to_the_team_uniforms_in_a_new_tab(client, lobby):
+    league, _ = lobby
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+
+    r = client.get(f"/leagues/{league.id}/")
+
+    assert '<a href="/team_uniforms/" target="_blank" rel="noopener"' in r.text
+
+
 def test_open_slots_show_as_ai_gms(client, db_conn, lobby):
     league, _ = lobby
     db_conn.execute("UPDATE leagues SET num_teams = 4 WHERE id = %s", (league.id,))
