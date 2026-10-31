@@ -1178,6 +1178,29 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .gp-badge.locked { border-color: var(--border); background: var(--bg-2); }
 .gp-badge.locked .gp-badge-icon { box-shadow: inset 0 0 0 2px var(--border-hi); filter: grayscale(1); opacity: .45; }
 .gp-badge.locked .gp-badge-name { color: var(--text-dim); }
+.gp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; align-items: start; }
+.gp-dim { color: var(--text-dim) !important; }
+.gp-nowrap { white-space: nowrap; }
+.gp-mini-stats { display: flex; gap: 28px; font-size: 22px; margin-bottom: 14px; }
+.gp-mini-stats > div { text-align: center; }
+.gp-trade { border-top: 1px solid var(--border); padding: 10px 0; }
+.gp-trade:last-child { padding-bottom: 0; }
+.gp-trade-head { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; }
+.gp-trade-head .team-badge { width: 18px; height: 18px; font-size: 8px; margin: 0 2px 0 4px; }
+.gp-trade-head .team-badge--long { font-size: 6.5px; }
+.gp-trade-body { font-size: 13px; margin-top: 6px; color: var(--text); line-height: 1.55; }
+.gp-trade-body b { color: var(--text-hi); font-weight: 600; }
+.gp-label { font-family: var(--font-mono); font-size: 11px !important; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim) !important; width: 28%; }
+.gp-word { color: var(--amber) !important; white-space: nowrap; }
+.gp-why { font-size: 11.5px; }
+.gp-timeline { list-style: none; }
+.gp-timeline li { display: flex; gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.gp-timeline li:first-child { padding-top: 0; }
+.gp-timeline li:last-child { border-bottom: none; padding-bottom: 0; }
+.gp-tl-year { font-family: var(--font-display); font-size: 18px; color: var(--amber); width: 44px; flex-shrink: 0; }
+.gp-tl-icon { width: 20px; flex-shrink: 0; }
+.gp-tl-text { font-size: 13px; color: var(--text); min-width: 0; }
+.gp-tl-lg { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); margin-top: 2px; }
 .gp-team { display: inline-flex; align-items: center; white-space: nowrap; }
 .gp-team .team-badge { width: 20px; height: 20px; font-size: 9px; }
 .gp-team .team-badge--long { font-size: 7.5px; }
@@ -1189,6 +1212,9 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .gp-table-wrap td.num { white-space: nowrap; }
 .gp-league-link { color: inherit; text-decoration: none; }
 .gp-league-link:hover { color: var(--sky); }
+@media (max-width: 900px) {
+  .gp-grid { grid-template-columns: minmax(0, 1fr); }
+}
 /* A GM's name linking to their profile (League page, standings) */
 .gm-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
 .gm-link:hover { color: var(--sky); }
@@ -1205,5 +1231,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   .gp-stat-n { font-size: 16px; }
   .gp-trophies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gp-badges { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .gp-mini-stats { font-size: 18px; gap: 18px; }
+  .gp-why { display: none; }
   .gp-hide-sm { display: none; }
 }

@@ -851,6 +851,7 @@ CREATE TABLE IF NOT EXISTS gm_career_seasons (
                        ('Round 1', 'Semifinals', 'Finals', 'Champion')),  -- how far they got
     sweeps         INTEGER NOT NULL DEFAULT 0,      -- playoff series won without a loss
     trades         INTEGER NOT NULL DEFAULT 0,      -- accepted trades
+    front_office   TEXT,                            -- the team's last team_states state that season
     final          BOOLEAN NOT NULL DEFAULT FALSE,  -- season over, or they left
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, league_id, season_id)

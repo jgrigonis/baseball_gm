@@ -110,5 +110,76 @@
   </div>
   {% endif %}
 
+  {% if draft or trades %}
+  <div class="gp-grid">
+    {% if draft %}
+    <div class="card">
+      <div class="card-header"><span class="card-title">Draft record · {{ draft.picks }} pick{{ "s" if draft.picks != 1 }}</span></div>
+      <div class="card-body gp-table-wrap">
+        <div class="gp-mini-stats">
+          <div>{{ tiles(draft.all_stars, "lit" if draft.all_stars else "") }}<div class="gp-stat-l">All-Stars drafted</div></div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>{{ "Best picks" if draft.any_stars else "Top picks" }}</th><th class="gp-hide-sm">Pos</th><th class="gp-hide-sm">Pick</th><th>Became</th></tr></thead>
+          <tbody>
+            {% for p in draft.best %}
+            <tr>
+              <td><span class="gp-team">{{ team_badge(p.city, p.mascot) }}<span class="team-name">{{ p.name }}</span></span></td>
+              <td class="gp-dim gp-hide-sm">{{ p.position }}</td>
+              <td class="gp-dim gp-nowrap gp-hide-sm">{{ p.when }}</td>
+              <td class="{{ 'gp-amber' if draft.any_stars else 'gp-dim' }}">{{ p.became }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+    {% if trades %}
+    <div class="card">
+      <div class="card-header"><span class="card-title">Trades</span></div>
+      <div class="card-body">
+        <div class="gp-mini-stats">
+          <div>{{ tiles(trades.accepted) }}<div class="gp-stat-l">Made</div></div>
+          <div>{{ tiles(trades.offered) }}<div class="gp-stat-l">Offered</div></div>
+        </div>
+        {% for t in trades.recent %}
+        <div class="gp-trade">
+          <div class="gp-trade-head">{{ t.year }} · with {{ team_badge(t.city, t.mascot) }}{{ t.city }} {{ t.mascot }}</div>
+          <div class="gp-trade-body">Sent <b>{{ t.sent }}</b> for <b>{{ t.got }}</b></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if style or timeline %}
+  <div class="gp-grid">
+    {% if style %}
+    <div class="card">
+      <div class="card-header"><span class="card-title">GM style</span></div>
+      <div class="card-body"><table class="data-table"><tbody>
+        {% for r in style %}
+        <tr><td class="gp-label">{{ r.label }}</td><td class="gp-word">{{ r.word }}</td><td class="gp-dim gp-why">{{ r.why }}</td></tr>
+        {% endfor %}
+      </tbody></table></div>
+    </div>
+    {% endif %}
+    {% if timeline %}
+    <div class="card">
+      <div class="card-header"><span class="card-title">Timeline</span></div>
+      <div class="card-body"><ul class="gp-timeline">
+        {% for e in timeline %}
+        <li><span class="gp-tl-year">{{ e.year }}</span><span class="gp-tl-icon" aria-hidden="true">{{ e.icon }}</span>
+          <span class="gp-tl-text">{{ e.text }}<span class="gp-tl-lg">{{ e.league_name }}</span></span></li>
+        {% endfor %}
+      </ul></div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
 </div></div>
 {% endblock %}

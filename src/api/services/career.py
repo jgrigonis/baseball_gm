@@ -23,6 +23,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
+from src.db.repositories.team_state_repo import TeamStateRepository
 from src.league import divisions
 
 # How far a team got, from its deepest playoff series (series.name).
@@ -91,6 +92,7 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
                     "playoff_result": facts.playoff_result(gm["team_id"]),
                     "sweeps": facts.sweeps.get(gm["team_id"], 0),
                     "trades": _trades(conn, season["id"], gm["team_id"]),
+                    "front_office": facts.front_office.get(gm["team_id"]),
                     "final": over or leaving_gm_id is not None,
                 }
             )
@@ -137,6 +139,12 @@ class _SeasonFacts:
             t for t, (place, _) in self.finish.items() if place == 1 and has_divisions
         }
         self.sweeps = _sweeps(conn, season_id)
+        # Where each front office saw its team, as of the season's last
+        # checkpoint (src/league/team_state.py).
+        self.front_office = {
+            t: r["state"]
+            for t, r in TeamStateRepository(conn).latest(league_id, season_id).items()
+        }
         rows = conn.execute(
             """SELECT DISTINCT s.name, t.team_id
                FROM series s JOIN games g ON g.series_id = s.id
