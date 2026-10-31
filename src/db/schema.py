@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     stop_for_trade_offers BOOLEAN NOT NULL DEFAULT TRUE, -- single player: sims stop for an offer
     pick_trades          BOOLEAN NOT NULL DEFAULT FALSE, -- teams can trade draft picks
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
+    backstory_years      INTEGER NOT NULL DEFAULT 5,     -- past seasons generated at the start (src/league/backstory/)
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -56,6 +57,7 @@ CREATE TABLE IF NOT EXISTS seasons (
     id TEXT PRIMARY KEY,
     year INTEGER,
     name TEXT,      -- e.g. "Season1"
+    is_backstory BOOLEAN NOT NULL DEFAULT FALSE,  -- generated before the league started (src/league/backstory/)
     created_at TEXT DEFAULT (NOW())
 );
 

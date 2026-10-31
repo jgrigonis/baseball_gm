@@ -322,6 +322,7 @@ class TestSettings:
             ("pace_control", "scheduled", "Unknown pace"),
             ("mode", "speed_blitz", "only change before the league starts"),
             ("name", "  ", "needs a name"),
+            ("backstory_years", "3", "only change before the league starts"),
         ],
     )
     def test_rejects(self, client, db_conn, factory, admin, field, value, error):
@@ -340,6 +341,35 @@ class TestSettings:
             ).fetchone()["name"]
             == league.name
         )
+
+    def test_sets_the_years_of_history_before_the_start(
+        self, client, db_conn, factory, admin
+    ):
+        league = _league(db_conn, factory, state="lobby")
+
+        r = client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(backstory_years="8"),
+        )
+
+        assert r.status_code == 303
+        assert (
+            db_conn.execute(
+                "SELECT backstory_years FROM leagues WHERE id = %s", (league.id,)
+            ).fetchone()["backstory_years"]
+            == 8
+        )
+
+    def test_years_of_history_stay_in_range(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory, state="lobby")
+
+        r = client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(backstory_years="11"),
+        )
+
+        assert r.status_code == 400
+        assert "between 0 and 10" in r.text
 
     def test_changes_commissioner(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory)

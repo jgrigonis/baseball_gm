@@ -128,7 +128,8 @@ class GMRepository:
             """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
                       l.last_played_at, l.is_practice,
                       MAX(s.year) as current_year,
-                      COUNT(DISTINCT ls.season_id) as season_number,
+                      COUNT(DISTINCT ls.season_id) FILTER (WHERE NOT s.is_backstory)
+                          as season_number,
                       (l.commissioner_gm_id = g.id) as is_commissioner,
                       (SELECT COUNT(*) FROM gms o
                        WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
@@ -154,7 +155,8 @@ class GMRepository:
             """SELECT l.id, l.name, l.state, l.mode, l.created_at,
                       l.last_played_at,
                       MAX(s.year) as current_year,
-                      COUNT(DISTINCT ls.season_id) as season_number,
+                      COUNT(DISTINCT ls.season_id) FILTER (WHERE NOT s.is_backstory)
+                          as season_number,
                       (SELECT COUNT(*) FROM gms o
                        WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
             FROM leagues l

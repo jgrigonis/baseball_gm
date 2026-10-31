@@ -31,7 +31,9 @@
       <tbody>
         {% for row in history_rows %}
         <tr>
-          <td style="font-family:var(--font-mono);font-size:12px;">{{ row.name }}</td>
+          <td style="font-family:var(--font-mono);font-size:12px;">
+            {% if row.is_backstory %}<span style="color:var(--text-dim);" title="Played before the league started: standings, playoffs, stat lines and All-Stars, but no box scores.">Before your time</span>{% else %}{{ row.name }}{% endif %}
+          </td>
           <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">{{ row.year }}</td>
           <td style="font-weight:600;">{{ row.champion or '—' }}</td>
           {% if not is_viewer %}
@@ -50,8 +52,10 @@
             {% endif %}
             <a href="/leagues/{{ league_id }}/standings?season_id={{ row.season_id }}"
                class="history-link">Standings</a>
+            {% if not row.is_backstory %}
             <a href="/leagues/{{ league_id }}/season-summary?season_id={{ row.season_id }}#injuries"
                class="history-link">Injuries</a>
+            {% endif %}
             {% if row.retired %}
             <a href="/leagues/{{ league_id }}/retirement?season_id={{ row.season_id }}"
                class="history-link">Retirements ({{ row.retired }})</a>

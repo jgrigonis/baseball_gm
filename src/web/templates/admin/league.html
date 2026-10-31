@@ -69,6 +69,17 @@
       </div>
       {% endfor %}
       <div class="field">
+        <label>Years of History</label>
+        {% if started %}
+        <input type="hidden" name="backstory_years" value="{{ league.backstory_years }}">
+        <input value="{{ league.backstory_years }}" disabled>
+        <span class="hint">Made when the league starts.</span>
+        {% else %}
+        <input name="backstory_years" type="number" value="{{ league.backstory_years }}" min="{{ ranges.backstory_years[0] }}" max="{{ ranges.backstory_years[1] }}" required>
+        <span class="hint">Past seasons the league starts with. 0 for none.</span>
+        {% endif %}
+      </div>
+      <div class="field">
         <label>Commissioner</label>
         <select name="commissioner_gm_id">
           {% if not league.commissioner_gm_id %}<option value="">— none —</option>{% endif %}

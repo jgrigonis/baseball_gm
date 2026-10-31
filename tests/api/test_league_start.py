@@ -23,6 +23,8 @@ from unittest.mock import patch
 import pytest
 
 from src.api.services.league_start import start_league
+from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.team_game_repo import TeamGameRepository
 from src.api.services import personas as persona_service
 from src.league import personas
 
@@ -364,3 +366,53 @@ class TestLobbyAiGms:
             (league.id,),
         ).fetchone()["n"]
         assert n == len(patched.teams) - 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Backstory (src/league/backstory/)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestBackstory:
+    def _order(self, patched):
+        from src.api.services import league_start
+
+        return league_start.write_draft_order.call_args.args[4]
+
+    def test_no_backstory_by_default_in_tests(self, patched):
+        start_league(patched.league.id, patched.conn)
+        rows = patched.conn.execute(
+            "SELECT COUNT(*) AS n FROM league_seasons WHERE league_id = %s",
+            (patched.league.id,),
+        ).fetchone()
+        assert rows["n"] == 1
+
+    def test_the_first_draft_goes_worst_first_by_last_seasons_record(self, patched):
+        conn = patched.conn
+        conn.execute(
+            "UPDATE leagues SET backstory_years = 2 WHERE id = %s", (patched.league.id,)
+        )
+        start_league(patched.league.id, conn)
+
+        last = conn.execute(
+            """SELECT s.id FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s AND s.is_backstory
+               ORDER BY s.year DESC LIMIT 1""",
+            (patched.league.id,),
+        ).fetchone()["id"]
+        pct = {
+            r["team_id"]: r["wins"] / (r["wins"] + r["losses"])
+            for r in TeamGameRepository(conn).get_wl_for_league(patched.league.id, last)
+        }
+        order = self._order(patched)
+        assert sorted(order) == sorted(t.id for t in patched.teams)
+        assert [pct[t] for t in order] == sorted(pct[t] for t in order)
+
+    def test_backstory_seasons_dont_count_toward_the_league_length(self, patched):
+        conn = patched.conn
+        conn.execute(
+            "UPDATE leagues SET backstory_years = 2 WHERE id = %s", (patched.league.id,)
+        )
+        start_league(patched.league.id, conn)
+        assert LeagueRepository(conn).count_seasons(patched.league.id) == 1
