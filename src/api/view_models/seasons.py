@@ -9,6 +9,7 @@ from src.api.view_models.draft import draft_rounds
 from src.api.view_models.leaders import leaders_context
 from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.standings import standings_rows
+from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.injury_repo import INJURY_TIERS, InjuryRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -236,6 +237,13 @@ def retirement_context(db, league_id: str, my_team_id: str | None) -> dict:
             r["ip"] = formulas.ip_str(outs)
             r["whip"] = f"{formulas.whip(ph, pbb, outs):.2f}" if outs else "—"
             retired_players.append(r)
+
+        # A star by the name of every career All-Star.
+        years = AllStarRepository(db).years_by_player(
+            [r["player_id"] for r in retired_players]
+        )
+        for r in retired_players:
+            r["all_star_years"] = years.get(r["player_id"], [])
 
     return {"retired_players": retired_players, "my_team_id": my_team_id}
 
