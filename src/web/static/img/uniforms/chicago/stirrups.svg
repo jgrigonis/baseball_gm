@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="44 8 74 214" width="74" height="214" role="img" aria-label="Chicago stirrups">
+  <defs>
+    <path id="flake" d="M0 0 L0.00 -10.00 M0.00 -5.60 L-2.19 -8.20 M0.00 -5.60 L2.19 -8.20 M0 0 L-8.66 -5.00 M-4.85 -2.80 L-8.20 -2.21 M-4.85 -2.80 L-6.01 -5.99 M0 0 L-8.66 5.00 M-4.85 2.80 L-6.01 5.99 M-4.85 2.80 L-8.20 2.21 M0 0 L-0.00 10.00 M-0.00 5.60 L2.19 8.20 M-0.00 5.60 L-2.19 8.20 M0 0 L8.66 5.00 M4.85 2.80 L8.20 2.21 M4.85 2.80 L6.01 5.99 M0 0 L8.66 -5.00 M4.85 -2.80 L6.01 -5.99 M4.85 -2.80 L8.20 -2.21"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#C5D2DE"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#0B2545"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="48" width="56" height="10" fill="#FFFFFF"/>
+        <path d="M50 48 L53.0 41 L56 48 L59.0 41 L62 48 L65.0 41 L68 48 L71.0 41 L74 48 L77.0 41 L80 48 L83.0 41 L86 48 L89.0 41 L92 48 L95.0 41 L98 48 L101.0 41 L104 48 L107.0 41 L110 48" fill="none" stroke="#A9D6F5" stroke-width="2.5" stroke-linejoin="round"/>
+        <g transform="translate(78 92) scale(1.1)"><use href="#flake" stroke="#A9D6F5" stroke-width="1.8" stroke-linecap="round" fill="none"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#0F1E33"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#C5D2DE"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#A9D6F5"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="48" width="56" height="10" fill="#0B2545"/>
+        <path d="M144 48 L147.0 41 L150 48 L153.0 41 L156 48 L159.0 41 L162 48 L165.0 41 L168 48 L171.0 41 L174 48 L177.0 41 L180 48 L183.0 41 L186 48 L189.0 41 L192 48 L195.0 41 L198 48 L201.0 41 L204 48" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#0F1E33"/>
+      </g>
+</svg>

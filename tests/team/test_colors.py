@@ -38,3 +38,8 @@ def test_beijing_badge_shows_its_name_in_chinese():
     assert ">北京<" in html and "team-badge--long" in html
     # Line scores and the like still use the code
     assert colors_for("Beijing", "Dragons").code == "BEI"
+
+
+def test_mexico_city_badge_reads_cdmx():
+    assert ">CDMX<" in str(team_badge("Mexico City", "Aztecs"))
+    assert colors_for("Mexico City", "Aztecs").code == "MEX"

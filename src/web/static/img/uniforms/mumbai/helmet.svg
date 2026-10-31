@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Mumbai helmet">
+  <defs>
+    <path id="anchor" d="M0 -16 m-3 0 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0 M0 -13 V14 M-7 -8 H7 M-12 4 Q-10 14 0 14 Q10 14 12 4 M-12 4 L-14 8 M-12 4 L-8 6 M12 4 L14 8 M12 4 L8 6"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A8190"/><stop offset=".45" stop-color="#0B5563"/><stop offset="1" stop-color="#073F4A"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#073F4A"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#04262D"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#073F4A"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(100 82) scale(1.55)"><use href="#anchor" fill="none" stroke="#F4A300" stroke-width="2.4" stroke-linecap="round"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#F4A300" stroke-width="2.5"/>
+</svg>
