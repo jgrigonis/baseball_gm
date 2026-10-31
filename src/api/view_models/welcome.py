@@ -53,6 +53,17 @@ TAGLINES = (
     "The {mascot} are yours. Make {city} proud.",
     "Every dynasty starts with a first season.",
     "{city} is ready. Are the {mascot}?",
+    "The box score is blank. Time to write history, {city}.",
+    "Tradition doesn’t rest. Neither do the {mascot}.",
+    "Built on history. Bound for October.",
+    "Legends are made in October, but they start right here.",
+    "The pieces are in place. The chase begins now.",
+    "Hungrier. Faster. Stronger. This is {mascot} baseball.",
+    "The future belongs to {city}. Witness the rise.",
+    "Our town. Our turf. Our {mascot}.",
+    "9 innings. 1 city. 1 heartbeat.",
+    "The lights are on, the grass is green, and {city} is roaring.",
+    "Every pitch matters. Every game counts. {city} is ready.",
 )
 
 
