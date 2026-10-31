@@ -69,7 +69,7 @@ def test_welcome_page_shows_the_team(client, league):
 
     html = client.get(f"/leagues/{lg.id}/welcome").text
 
-    assert "Your uniforms" in html
+    assert "Your colors" in html
     assert "1st of 2" in html  # Boston's 70s beat Chicago's 50s everywhere
     assert "at the <b>Chicago Wind</b>" in html
     assert "2025-04-01" in html
@@ -113,12 +113,6 @@ def test_scouting_report_ranks_and_verdict():
     )
 
 
-def test_home_lettering_stays_readable():
-    assert wv.home_ink("#0C2340", "#8E9194") == "#0C2340"
-    # A near-white main color falls back to the second color
-    assert wv.home_ink("#F2F0EA", "#1A1A1A") == "#1A1A1A"
-
-
 def test_ordinals():
     assert [wv.ordinal(n) for n in (1, 2, 3, 4, 11, 12, 13, 21, 22)] == [
         "1st",
@@ -131,3 +125,45 @@ def test_ordinals():
         "21st",
         "22nd",
     ]
+
+
+# ── The getting-started bar ───────────────────────────────────────────────────
+
+
+def test_setup_bar_stays_until_the_roster_is_saved(client, db_conn, league):
+    lg, _, team = league
+    assert 'id="setup-bar"' in client.get(f"/leagues/{lg.id}/league").text
+
+    ids = [
+        r["player_id"]
+        for r in db_conn.execute(
+            "SELECT player_id FROM team_players WHERE team_id = %s", (team.id,)
+        ).fetchall()
+    ]
+    r = client.put(f"/leagues/{lg.id}/roster/save", json={"forty_man": ids})
+    assert r.status_code == 200
+
+    assert 'id="setup-bar"' not in client.get(f"/leagues/{lg.id}/league").text
+
+
+def test_setup_bar_points_at_the_roster_after_the_draft(client, db_conn, league):
+    lg, _, _ = league
+    db_conn.execute(
+        "UPDATE drafts SET state = 'complete' WHERE league_id = %s", (lg.id,)
+    )
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+
+    assert "Save your roster →" in html
+
+
+def test_persona_cards_link_back_to_where_they_came_from(client, db_conn, league):
+    lg, _, _ = league
+    persona = db_conn.execute("SELECT id FROM gm_personas LIMIT 1").fetchone()
+    if not persona:
+        pytest.skip("no personas in the library")
+    url = f"/leagues/{lg.id}/personas/{persona['id']}"
+
+    assert f'href="/leagues/{lg.id}/welcome"' in client.get(url + "?back=welcome").text
+    assert "Back to the League page" in client.get(url).text
+    assert "Back to the League page" in client.get(url + "?back=evil").text

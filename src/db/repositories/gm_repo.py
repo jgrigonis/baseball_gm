@@ -238,3 +238,17 @@ class GMRepository:
             "UPDATE gms SET welcomed_at = NOW() WHERE id = %s AND welcomed_at IS NULL",
             (gm_id,),
         )
+
+    def needs_setup_bar(self, gm_id: str) -> bool:
+        """True until the GM first saves their roster."""
+        row = self.conn.execute(
+            "SELECT roster_saved_at FROM gms WHERE id = %s AND NOT is_ai", (gm_id,)
+        ).fetchone()
+        return bool(row) and row["roster_saved_at"] is None
+
+    def mark_roster_saved(self, gm_id: str) -> None:
+        self.conn.execute(
+            "UPDATE gms SET roster_saved_at = NOW()"
+            " WHERE id = %s AND roster_saved_at IS NULL",
+            (gm_id,),
+        )

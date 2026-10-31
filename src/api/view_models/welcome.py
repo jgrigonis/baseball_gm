@@ -1,7 +1,7 @@
 # src/api/view_models/welcome.py
 #
 # The welcome screen a GM sees once when their league starts, before the
-# draft (plans/welcome-screen.md): their team's colors and uniforms, how the
+# draft (plans/welcome-screen.md): their team's colors, how the
 # roster stacks up against the league, its stars and weak spots, its ages,
 # the GM's draft slot, opening day and the other GMs.
 
@@ -18,10 +18,9 @@ from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_strategy import CHIPS, ratings
 from src.player.player_record import PlayerRecord
 from src.player.player_value import role_rating
-from src.team.colors import colors_for, readable_ink
+from src.team.colors import colors_for
 
 MAJORS = ("26man", "40man")
-HOME_JERSEY = "#F4F1E8"
 
 # area key, label, what it's ranked on
 AREAS = (
@@ -179,16 +178,7 @@ def _named(p: PlayerRecord) -> dict:
     return {"player_id": p.id, "name": f"{p.first_name} {p.last_name}", "age": p.age}
 
 
-def home_ink(primary: str, secondary: str) -> str:
-    """The home jersey's lettering: the main color, unless it washes out on
-    the cream body, then the second color, or else near-black."""
-    for color in (primary, secondary):
-        if readable_ink(HOME_JERSEY, color) == color:
-            return color
-    return readable_ink(HOME_JERSEY, primary)
-
-
-def uniforms(city: str, mascot: str) -> dict:
+def team_colors(city: str, mascot: str) -> dict:
     c = colors_for(city, mascot)
     return {
         "code": c.code,
@@ -196,8 +186,6 @@ def uniforms(city: str, mascot: str) -> dict:
         "secondary": c.secondary,
         "accent": c.accent,
         "ink": c.ink,
-        "home_body": HOME_JERSEY,
-        "home_ink": home_ink(c.primary, c.secondary),
         "tagline": TAGLINES[
             hashlib.sha1(f"{city} {mascot}".encode()).digest()[0] % len(TAGLINES)
         ].format(city=city, mascot=mascot),
@@ -250,7 +238,7 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
     return {
         "city": team["city"],
         "mascot": team["mascot"],
-        "colors": uniforms(team["city"], team["mascot"]),
+        "colors": team_colors(team["city"], team["mascot"]),
         "report": scouting_report(team_id, scores) if team_id in scores else None,
         "stars": [star_card(p, r) for p, r in stars],
         "weak": weak,

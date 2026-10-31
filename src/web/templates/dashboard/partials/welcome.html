@@ -7,22 +7,6 @@
   {%- set cls = g[:-1] ~ '-plus' if g.endswith('+') else (g[:-1] ~ '-minus' if g.endswith('-') else g) -%}
   <span class="grade grade-{{ cls }}">{{ g }}</span>
 {%- endmacro %}
-{% macro jersey(body, ink, label, number) -%}
-<svg viewBox="0 0 200 200" class="wl-jersey" role="img" aria-label="{{ label }} jersey">
-  <path d="M62,18 L82,10 Q100,30 118,10 L138,18 L182,48 L164,82 L146,70 L146,188 L54,188 L54,70 L36,82 L18,48 Z"
-        fill="{{ body }}" stroke="rgba(0,0,0,.35)" stroke-width="2" stroke-linejoin="round"/>
-  {# collar and sleeve trim #}
-  <path d="M82,10 Q100,30 118,10" fill="none" stroke="{{ c.accent }}" stroke-width="5"/>
-  <path d="M18,48 L36,82" stroke="{{ c.accent }}" stroke-width="7"/>
-  <path d="M182,48 L164,82" stroke="{{ c.accent }}" stroke-width="7"/>
-  <path d="M100,30 L100,188" stroke="{{ ink }}" stroke-width="1.5" stroke-dasharray="1 9" opacity=".7"/>
-  <text x="100" y="86" text-anchor="middle" class="wl-jersey-name"{% if label|length > 8 %} style="font-size:17px"{% endif %}
-        fill="{{ ink }}" stroke="{{ c.accent }}" stroke-width="1.2"
-        textLength="{{ 96 if label|length > 7 else 13 * label|length }}" lengthAdjust="spacingAndGlyphs">{{ label }}</text>
-  <text x="68" y="132" text-anchor="middle" class="wl-jersey-number"
-        fill="{{ ink }}" stroke="{{ c.accent }}" stroke-width="1">{{ number }}</text>
-</svg>
-{%- endmacro %}
 
 <style>
   .wl-hero { position:relative; overflow:hidden; padding:28px 24px 26px;
@@ -39,12 +23,6 @@
   .wl-swatches { display:flex; gap:12px; }
   .wl-swatch { flex:1; text-align:center; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
   .wl-swatch div { height:56px; border-radius:6px; border:1px solid var(--border-hi); margin-bottom:6px; }
-  .wl-uniforms { display:flex; gap:8px; justify-content:space-around; align-items:flex-end; }
-  .wl-uniforms figure { text-align:center; flex:1; max-width:160px; }
-  .wl-uniforms figcaption { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:4px; }
-  .wl-jersey, .wl-cap { width:100%; height:auto; }
-  .wl-jersey-name { font-family:var(--font-display); font-size:22px; font-weight:900; text-transform:uppercase; }
-  .wl-jersey-number { font-family:var(--font-display); font-size:30px; font-weight:900; }
   .wl-area { display:grid; grid-template-columns:76px 1fr 34px 78px; gap:10px; align-items:center;
              padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
   .wl-area:last-of-type { border-bottom:none; }
@@ -68,22 +46,21 @@
   .wl-ages span:nth-child(1) { background:var(--green); }
   .wl-ages span:nth-child(2) { background:var(--amber); }
   .wl-ages span:nth-child(3) { background:var(--sky); }
-  .wl-age-key { display:flex; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .wl-age-key { display:flex; flex-direction:column; gap:4px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .wl-age-key i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:7px; vertical-align:-1px; }
+  .wl-age-key div:nth-child(1) i { background:var(--green); }
+  .wl-age-key div:nth-child(2) i { background:var(--amber); }
+  .wl-age-key div:nth-child(3) i { background:var(--sky); }
   .wl-age-key b { color:var(--text); font-weight:600; }
   .wl-big { font-family:var(--font-display); font-size:40px; line-height:1; color:var(--amber); }
   .wl-link { color:var(--text); cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
   .wl-sub { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); margin:10px 0 2px; }
   .wl-rival { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; }
-  .wl-go { position:sticky; bottom:0; z-index:5; display:flex; gap:10px; align-items:center; flex-wrap:wrap;
            padding:14px 24px; background:var(--bg-2); border-top:1px solid var(--border-hi); }
-  .wl-go .btn-primary { font-size:15px; padding:10px 22px; }
-  .wl-go-hint { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
   @media (max-width: 600px) {
     .wl-hero { padding:20px 16px; }
     .wl-title { font-size:32px; }
     .wl-body { padding:16px; grid-template-columns:1fr; }
-    .wl-go { padding:12px 16px; }
-    .wl-go .btn-primary { width:100%; text-align:center; }
   }
 </style>
 
@@ -107,27 +84,6 @@
         {% for label, hex in [("Main", c.primary), ("Second", c.secondary), ("Trim", c.accent)] %}
         <div class="wl-swatch"><div style="background:{{ hex }};"></div>{{ label }}<br>{{ hex }}</div>
         {% endfor %}
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><span class="card-title">Your uniforms</span></div>
-    <div class="card-body">
-      <div class="wl-uniforms">
-        <figure>{{ jersey(c.home_body, c.home_ink, w.mascot, 1) }}<figcaption>Home</figcaption></figure>
-        <figure>{{ jersey(c.primary, c.ink, w.city, 27) }}<figcaption>Away</figcaption></figure>
-        <figure>
-          <svg viewBox="0 0 200 160" class="wl-cap" role="img" aria-label="Cap">
-            <path d="M42,112 Q40,40 100,38 Q160,40 158,112 Z" fill="{{ c.primary }}" stroke="rgba(0,0,0,.35)" stroke-width="2"/>
-            <path d="M100,38 L100,112" stroke="rgba(0,0,0,.2)" stroke-width="2"/>
-            <circle cx="100" cy="38" r="6" fill="{{ c.accent }}"/>
-            <path d="M34,110 Q100,128 190,104 L192,116 Q100,146 32,124 Z" fill="{{ c.secondary }}" stroke="rgba(0,0,0,.35)" stroke-width="2"/>
-            <text x="100" y="94" text-anchor="middle" class="wl-jersey-name" style="font-size:{{ 34 if c.code|length < 3 else 28 }}px"
-                  fill="{{ c.ink }}" stroke="{{ c.accent }}" stroke-width="1">{{ c.code }}</text>
-          </svg>
-          <figcaption>Cap</figcaption>
-        </figure>
       </div>
     </div>
   </div>
@@ -198,7 +154,7 @@
         {% for g in w.ages.groups %}<span style="width:{{ g.share }}%;" title="{{ g.label }}: {{ g.count }}"></span>{% endfor %}
       </div>
       <div class="wl-age-key">
-        {% for g in w.ages.groups %}<span>{{ g.label }} ({{ g.range }}): <b>{{ g.count }}</b></span>{% endfor %}
+        {% for g in w.ages.groups %}<div><i></i>{{ g.label }} ({{ g.range }}): <b>{{ g.count }}</b></div>{% endfor %}
       </div>
       <p class="wl-verdict">{{ w.ages.outlook }}</p>
     </div>
@@ -237,7 +193,7 @@
         <span>{{ g.city }} {{ g.mascot }}</span>
         <span class="wl-meta" style="margin-left:auto;text-align:right;">
           {% if g.persona_id %}
-          <a href="/leagues/{{ league_id }}/personas/{{ g.persona_id }}" class="wl-link" title="Persona card">{{ g.display_name }}</a>
+          <a href="/leagues/{{ league_id }}/personas/{{ g.persona_id }}?back=welcome" class="wl-link" title="Persona card">{{ g.display_name }}</a>
           {% else %}{{ g.display_name }}{% endif %}
         </span>
       </div>
@@ -254,12 +210,4 @@
     </div>
   </div>
 
-</div>
-
-<div class="wl-go">
-  <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to the draft →</a>
-  <a href="/leagues/{{ league_id }}/roster" class="btn btn-secondary">Roster</a>
-  <a href="/leagues/{{ league_id }}/lineup" class="btn btn-secondary">Lineup</a>
-  <a href="/leagues/{{ league_id }}/strategy" class="btn btn-secondary">Strategy</a>
-  <span class="wl-go-hint">Drafted players join your roster, so you can set the lineup before or after.</span>
 </div>

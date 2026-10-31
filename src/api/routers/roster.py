@@ -16,6 +16,7 @@ from src.api.view_models.player_cards import (
     roster_card,
 )
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -113,6 +114,7 @@ def save_roster_put(
             )
 
     status_repo.set_40man_roster(team_player_ids, forty_man_ids)
+    GMRepository(db).mark_roster_saved(gm["id"])
     coach.mark(db, league_id, "roster")
     db.commit()
     return JSONResponse({"saved": len(forty_man_ids)})

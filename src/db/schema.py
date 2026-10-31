@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS gms (
     ready_period   INTEGER,               -- ready when = leagues.sim_period
     persona_id     TEXT,                  -- AI GMs: who they are (gm_personas)
     welcomed_at    TIMESTAMPTZ,           -- saw the welcome screen (once per league)
+    roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
