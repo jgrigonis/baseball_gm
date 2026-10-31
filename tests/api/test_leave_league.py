@@ -272,6 +272,45 @@ class TestPage:
         # Alice is the only person in it, so leaving would delete it.
         assert 'data-last="yes"' in r.text
 
+    def test_league_page_has_leave_button(self, client, db_conn, factory):
+        league = factory.league(state="season")
+        gm, user_id = _human(db_conn, factory, league, "Alice")
+        _human(db_conn, factory, league, "Bob")
+        app.dependency_overrides[get_current_user] = lambda: {"id": user_id}
+
+        html = client.get(f"/leagues/{league.id}/league").text
+
+        assert "Leave League</button>" in html
+        assert "An AI manager will take over your team" in html
+        assert f"fetch('/leagues/{league.id}/leave'" in html
+
+    def test_league_page_warns_the_last_gm(self, client, db_conn, factory):
+        league = factory.league(state="season")
+        gm, user_id = _human(db_conn, factory, league, "Alice")
+        factory.gm(league=league)  # an AI GM doesn't count
+        app.dependency_overrides[get_current_user] = lambda: {"id": user_id}
+
+        html = client.get(f"/leagues/{league.id}/league").text
+
+        assert "the league will be deleted for good" in html
+
+    def test_viewers_get_no_leave_button(self, client, db_conn, factory):
+        league = factory.league(state="season")
+        db_conn.execute(
+            "UPDATE leagues SET is_public = TRUE WHERE id = %s", (league.id,)
+        )
+        _human(db_conn, factory, league, "Alice")
+        _, outsider = _human(db_conn, factory, factory.league(), "Carol")
+        app.dependency_overrides[get_current_user] = lambda: {
+            "id": outsider,
+            "display_name": "Carol",
+        }
+
+        r = client.get(f"/leagues/{league.id}/league")
+
+        assert r.status_code == 200
+        assert "Leave League</button>" not in r.text
+
     def test_leave_route(self, client, db_conn, factory):
         league = factory.league(state="season")
         gm, user_id = _human(db_conn, factory, league, "Alice")
