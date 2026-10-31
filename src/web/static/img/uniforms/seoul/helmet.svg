@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Seoul helmet">
+  <defs>
+    <path id="tigerW" d="M0 -36 C20 -36 34 -26 37 -8 L44 2 L37 6 L42 14 L33 18 C28 28 16 36 0 40 C-16 36 -28 28 -33 18 L-42 14 L-37 6 L-44 2 L-37 -8 C-34 -26 -20 -36 0 -36 Z M-30 -22 L-32 -44 L-12 -34 Z M30 -22 L32 -44 L12 -34 Z"/>
+    <path id="tigerK" d="M-27 -27 L-29 -39 L-18 -33 Z M27 -27 L29 -39 L18 -33 Z M-6 -35 L0 -22 L6 -35 Z M-17 -33 L-9 -22 L-19 -27 Z M17 -33 L9 -22 L19 -27 Z M-27 -22 L-12 -16 L-29 -16 Z M27 -22 L12 -16 L29 -16 Z M-41 0 L-23 4 L-38 7 Z M41 0 L23 4 L38 7 Z M-39 13 L-21 14 L-33 19 Z M39 13 L21 14 L33 19 Z M-27 27 L-13 25 L-22 31 Z M27 27 L13 25 L22 31 Z M-8 6 Q0 3 8 6 L1 14 H-1 Z M-1 14 H1 V19 Q7 25 13 21 L13 23 Q7 27.5 0 21.8 Q-7 27.5 -13 23 L-13 21 Q-7 25 -1 19 Z M-13 -10.5 Q-10.6 -7 -13 -3.5 Q-15.4 -7 -13 -10.5 Z M13 -10.5 Q10.6 -7 13 -3.5 Q15.4 -7 13 -10.5 Z"/>
+    <path id="tigerB" d="M-22 -7 Q-13 -15 -4 -6 Q-13 -1 -22 -7 Z M22 -7 Q13 -15 4 -6 Q13 -1 22 -7 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A4A4A"/><stop offset=".45" stop-color="#1A1A1A"/><stop offset="1" stop-color="#050505"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#0047A0"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#050505"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#050505"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(104 80) scale(.66)"><use href="#tigerW" fill="#FFFFFF" stroke="#0047A0" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/><use href="#tigerK" fill="#1A1A1A"/><use href="#tigerB" fill="#0047A0"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#0047A0" stroke-width="2.5"/>
+</svg>

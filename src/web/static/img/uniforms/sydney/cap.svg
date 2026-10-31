@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Sydney cap">
+  <defs>
+    <path id="fin" d="M-28 5 C-24 -12 -8 -36 20 -42 C10 -30 9 -12 26 5 Z"/>
+    <path id="wave" d="M-40 6 Q-30 -3 -20 6 Q-10 15 0 6 Q10 -3 20 6 Q30 15 40 6 L40 15 Q30 24 20 15 Q10 6 0 15 Q-10 24 -20 15 Q-30 6 -40 15 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#0083B5"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#006A93" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#006A93" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#F6A21E"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#5B6770" stroke="#434C53" stroke-width="1.5"/>
+      <g transform="translate(120 88) scale(.9)"><use href="#fin" fill="#5B6770" stroke="#FFFFFF" stroke-width="2.89" stroke-linejoin="round" paint-order="stroke"/><use href="#wave" fill="#FFFFFF"/></g>
+</svg>

@@ -20,6 +20,11 @@
   .wl-body { padding:20px 24px 32px; display:grid; gap:16px;
              grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); align-items:start; }
   .wl-wide { grid-column:1 / -1; }
+  .wl-kit { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:12px; align-items:end; }
+  .wl-kit figure { margin:0; text-align:center; }
+  .wl-kit img { width:100%; height:auto; display:block; }
+  .wl-kit figcaption { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:6px; }
+  @media (max-width: 900px) { .wl-kit { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
   .wl-area { display:grid; grid-template-columns:76px 1fr 34px 78px; gap:10px; align-items:center;
              padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
   .wl-area:last-of-type { border-bottom:none; }
@@ -73,6 +78,21 @@
 </section>
 
 <div class="wl-body">
+
+  {% if w.uniforms %}
+  {% set u = w.uniforms %}
+  <div class="card wl-wide">
+    <div class="card-header"><span class="card-title">Your uniforms</span></div>
+    <div class="card-body">
+      <div class="wl-kit">
+        {% for p in u.jerseys + u.caps %}
+        <figure><img src="{{ static_url(p.path) }}" alt="{{ w.city }} {{ w.mascot }} {{ p.label|lower }}{% if 'cap' not in p.label|lower %} jersey{% endif %}" loading="lazy"><figcaption>{{ p.label }}</figcaption></figure>
+        {% endfor %}
+        <figure><img src="{{ static_url(u.patch) }}" alt="{{ w.city }} {{ w.mascot }} sleeve patch" loading="lazy"><figcaption>Patch</figcaption></figure>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {% if w.history %}
   {% set h = w.history %}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Hong Kong helmet">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E6A92"/><stop offset=".45" stop-color="#0B3C5D"/><stop offset="1" stop-color="#062538"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#E0218A"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#062538"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#062538"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <path d="M86.59 94H80.43V63.19H86.59V75.52H98.91V63.19H105.07V94H98.91V81.69H86.59Z M115.95 94H109.79V63.19H115.95V78.6L127.42 63.19H134.43L124.7 76.19L134.43 94H127.42L120.66 81.54L115.95 87.83Z" fill="#F2C14E" stroke="#E0218A" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#E0218A" stroke-width="2.5"/>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="Hong Kong stirrups alternate">
+  <defs>
+    <path id="crown" d="M-26 0 H26 V-7 H-26 Z M-26 -9 L-31 -34 L-14 -19 L0 -41 L14 -19 L31 -34 L26 -9 Z M-34.6 -36 A3.6 3.6 0 1 1 -27.4 -36 A3.6 3.6 0 1 1 -34.6 -36 Z M-3.8 -44 A3.8 3.8 0 1 1 3.8 -44 A3.8 3.8 0 1 1 -3.8 -44 Z M27.4 -36 A3.6 3.6 0 1 1 34.6 -36 A3.6 3.6 0 1 1 27.4 -36 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#0B3C5D"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="44" width="56" height="9" fill="#E0218A"/><rect x="50" y="55" width="56" height="3" fill="#F2C14E"/>
+        <g transform="translate(78 116) scale(.4)"><use href="#crown" fill="#F2C14E"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#062538"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#E0218A"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="44" width="56" height="9" fill="#0B3C5D"/><rect x="144" y="55" width="56" height="3" fill="#F2C14E"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#062538"/>
+      </g>
+</svg>

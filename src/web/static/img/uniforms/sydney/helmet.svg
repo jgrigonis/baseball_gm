@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Sydney helmet">
+  <defs>
+    <path id="fin" d="M-28 5 C-24 -12 -8 -36 20 -42 C10 -30 9 -12 26 5 Z"/>
+    <path id="wave" d="M-40 6 Q-30 -3 -20 6 Q-10 15 0 6 Q10 -3 20 6 Q30 15 40 6 L40 15 Q30 24 20 15 Q10 6 0 15 Q-10 24 -20 15 Q-30 6 -40 15 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3FB0DC"/><stop offset=".45" stop-color="#0083B5"/><stop offset="1" stop-color="#005A7D"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#F6A21E"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#005A7D"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#005A7D"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <g transform="translate(104 92) scale(.74)"><use href="#fin" fill="#5B6770" stroke="#FFFFFF" stroke-width="3.51" stroke-linejoin="round" paint-order="stroke"/><use href="#wave" fill="#FFFFFF"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#F6A21E" stroke-width="2.5"/>
+</svg>

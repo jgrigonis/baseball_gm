@@ -1,13 +1,16 @@
 # src/api/view_models/welcome.py
 #
 # The welcome screen a GM sees once when their league starts, before the
-# draft (plans/welcome-screen.md): their team's colors, how the
+# draft (plans/welcome-screen.md): their team's colors and uniforms, how the
 # roster stacks up against the league, its stars and weak spots, its ages,
 # the GM's draft slot, opening day and the other GMs.
 
 from __future__ import annotations
 
 import hashlib
+import re
+import unicodedata
+from pathlib import Path
 
 from src.api.schemas import skill_to_grade
 from src.api.services.draft_needs import needs_for_draft
@@ -49,6 +52,18 @@ PITCHER_SKILLS = (
 )
 
 LEVELS = {0: "Low", 1: "Med", 2: "High"}
+
+# The team's uniform pieces shown on the welcome screen: (file, label).
+# The SVGs come from scripts/export_uniform_svgs.py (docs/design/uniforms/).
+UNIFORMS_DIR = (
+    Path(__file__).resolve().parents[2] / "web" / "static" / "img" / "uniforms"
+)
+JERSEYS = (
+    ("jersey-home", "Home"),
+    ("jersey-away", "Away"),
+    ("jersey-alternate", "Alternate"),
+)
+CAPS = (("cap", "Cap"), ("cap-alternate", "Alternate cap"))
 
 TAGLINES = (
     "{city} has waited all winter for this.",
@@ -214,6 +229,34 @@ def team_colors(city: str, mascot: str) -> dict:
     }
 
 
+def uniform_slug(city: str) -> str:
+    """The folder a city's uniform SVGs live in: "São Paulo" -> "sao-paulo"."""
+    ascii_city = unicodedata.normalize("NFKD", city).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", ascii_city.lower()).strip("-")
+
+
+def uniforms(city: str) -> dict | None:
+    """Paths under static/ for the team's jerseys, caps and patch, or None
+    for a team without a uniform set yet."""
+    slug = uniform_slug(city)
+    folder = UNIFORMS_DIR / slug
+    names = [n for n, _ in JERSEYS + CAPS] + ["patch"]
+    if not all((folder / f"{n}.svg").exists() for n in names):
+        return None
+
+    def pieces(items):
+        return [
+            {"path": f"img/uniforms/{slug}/{n}.svg", "label": label}
+            for n, label in items
+        ]
+
+    return {
+        "jerseys": pieces(JERSEYS),
+        "caps": pieces(CAPS),
+        "patch": f"img/uniforms/{slug}/patch.svg",
+    }
+
+
 def history(db, league_id: str, team_id: str, draft_season_id: str) -> dict | None:
     """The league's past as the GM takes over (plans/league-backstory.md):
     the team's last season, the defending champion, and the team's titles
@@ -300,6 +343,7 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "city": team["city"],
         "mascot": team["mascot"],
         "colors": team_colors(team["city"], team["mascot"]),
+        "uniforms": uniforms(team["city"]),
         "report": scouting_report(team_id, scores) if team_id in scores else None,
         "stars": [star_card(p, r) for p, r in stars],
         "weak": weak,

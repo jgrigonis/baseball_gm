@@ -168,3 +168,47 @@ def test_persona_cards_link_back_to_where_they_came_from(client, db_conn, league
     assert f'href="/leagues/{lg.id}/welcome"' in client.get(url + "?back=welcome").text
     assert "Back to the League page" in client.get(url).text
     assert "Back to the League page" in client.get(url + "?back=evil").text
+
+
+def test_uniform_slugs():
+    assert wv.uniform_slug("São Paulo") == "sao-paulo"
+    assert wv.uniform_slug("Hong Kong") == "hong-kong"
+    assert wv.uniform_slug("Tokyo") == "tokyo"
+
+
+def test_every_world_league_team_has_its_uniforms():
+    from src.api.services.lobby_teams import manifest_teams
+
+    teams = manifest_teams()
+    assert len(teams) == 30
+    for city, _ in teams:
+        u = wv.uniforms(city)
+        assert u, city
+        assert [p["label"] for p in u["jerseys"]] == ["Home", "Away", "Alternate"]
+        assert [p["label"] for p in u["caps"]] == ["Cap", "Alternate cap"]
+        for path in [p["path"] for p in u["jerseys"] + u["caps"]] + [u["patch"]]:
+            assert (wv.UNIFORMS_DIR.parent.parent / path).exists(), path
+
+
+def test_a_team_without_a_set_has_no_uniforms():
+    assert wv.uniforms("Boston") is None
+
+
+def test_welcome_page_shows_the_uniforms(client, league, monkeypatch):
+    lg, _, _ = league
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+    assert "Your uniforms" not in html  # Boston has no set
+
+    tokyo = wv.uniforms("Tokyo")
+    monkeypatch.setattr(wv, "uniforms", lambda city: tokyo)
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+    assert "Your uniforms" in html
+    for name in (
+        "jersey-home",
+        "jersey-away",
+        "jersey-alternate",
+        "cap",
+        "cap-alternate",
+        "patch",
+    ):
+        assert f"/static/img/uniforms/tokyo/{name}.svg" in html

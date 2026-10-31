@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Paris Musketeers Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue:#2B4C9B; --silver:#C9CED6; --red:#B31B34;
+  --bg:#FBF8F1; --card:#FFFFFF; --text:#1B2A2E; --dim:#5F6B6A; --line:#E6E0D2; --accent:#2B4C9B;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#8FA8E0; }
+}
+:root[data-theme="dark"] { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#8FA8E0; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:var(--blue); color:#FFFFFF; border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(90deg, #1F3A7A 0 33.3%, #FFFFFF 33.3% 66.6%, var(--red) 66.6%); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#E4E8EE; }
+header h1 { font-family:"Abril Fatface", serif; font-weight:400; font-size:48px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; }
+header p { margin:0; max-width:640px; color:#D9DEE8; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:inline-block; }
+h2 { font-family:"Abril Fatface", serif; font-weight:400; font-size:24px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#EEE9E0, #DED6C8); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#1A2D30, #132326); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#1A2D30, #132326); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:34px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · 17 of 30</div>
+  <h1>Paris Musketeers</h1>
+  <p>The King's Musketeers wore a blue cassock with a silver cross and fleurs-de-lis. This set takes that blue and silver, adds a red trim, and letters it in a heavy Didone, the French poster face. The cap carries a silver fleur-de-lis, and the patch crosses three rapiers under the motto: tous pour un.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#2B4C9B"></i>Blue #2B4C9B</span>
+    <span class="sw"><i style="background:#C9CED6"></i>Silver #C9CED6</span>
+    <span class="sw"><i style="background:#B31B34"></i>Red #B31B34</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <path id="fleur" d="M0 -42 Q-10 -27 -6.5 -12 Q-3 -4 0 0 Q3 -4 6.5 -12 Q10 -27 0 -42 Z M3 -6 Q9 -21 22 -25 Q33 -27 35 -17 Q35 -10 28 -8 Q31 -16 24 -17 Q14 -16 8 -2 Z M-3 -6 Q-9 -21 -22 -25 Q-33 -27 -35 -17 Q-35 -10 -28 -8 Q-31 -16 -24 -17 Q-14 -16 -8 -2 Z M-13 -4 H13 V2.5 H-13 Z M-4 2.5 Q-6 12 -17 14 Q-8 19 0 10 Q8 19 17 14 Q6 12 4 2.5 Z"/>
+    <path id="rapier" d="M-2.4 18 L0 -62 L2.4 18 Z M-13 18 Q-13 14 -9 15 H9 Q13 14 13 18 V20 H-13 Z M-7 18 Q0 28 7 18 Z M-2 20 H2 V32 H-2 Z M0 35 m-3.2 0 a3.2 3.2 0 1 0 6.4 0 a3.2 3.2 0 1 0 -6.4 0 Z"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. White at home, silver on the road, and a blue cassock alternate.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: white with arched blue Musketeers">
+      <use href="#jersey" fill="#FFFFFF" stroke="#2B4C9B" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#2B4C9B" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#B31B34" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#2B4C9B" stroke-width="3"/>
+      <g fill="#2B4C9B"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#2B4C9B" stroke-width="9"/><path d="M203 100 L222 54" stroke="#2B4C9B" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#B31B34" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#B31B34" stroke-width="2.4"/>
+      <path id="arcH" d="M60 140 Q120 100 180 140" fill="none"/>
+      <text font-family="Abril Fatface" font-size="16" fill="#2B4C9B" stroke="#B31B34" stroke-width="0.6"><textPath href="#arcH" startOffset="50%" text-anchor="middle">Musketeers</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Abril Fatface" font-size="30" fill="#B31B34" stroke="#2B4C9B" stroke-width="0.6">17</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#2B4C9B" stroke="#C9CED6" stroke-width="2"/><g transform="translate(0 3.5) scale(.26)"><use href="#fleur" fill="#C9CED6"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>White, arched blue Musketeers</h3>
+    <p>"Musketeers" arched in blue Didone with a fine red edge. Blue sleeves with a red line, and red numbers.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: silver with arched blue PARIS">
+      <use href="#jersey" fill="#C9CED6" stroke="#9AA1AD" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#2B4C9B" stroke-width="6"/>
+      <path d="M120 27 V250" stroke="#2B4C9B" stroke-width="3"/>
+      <g fill="#2B4C9B"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#2B4C9B" stroke-width="9"/><path d="M203 100 L222 54" stroke="#2B4C9B" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#B31B34" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#B31B34" stroke-width="2.4"/>
+      <path id="arcA" d="M70 136 Q120 104 170 136" fill="none"/>
+      <text font-family="Abril Fatface" font-size="22" letter-spacing="3" fill="#2B4C9B" stroke="#B31B34" stroke-width="0.8"><textPath href="#arcA" startOffset="50%" text-anchor="middle">PARIS</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Abril Fatface" font-size="30" fill="#2B4C9B" stroke="#B31B34" stroke-width="0.6">17</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#2B4C9B" stroke="#FFFFFF" stroke-width="2"/><g transform="translate(0 3.5) scale(.26)"><use href="#fleur" fill="#FFFFFF"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Silver, arched PARIS</h3>
+    <p>"PARIS" arched in blue Didone capitals with a red edge, on a silver-gray body. Blue sleeves, collar and placket.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: blue with arched white Musketeers">
+      <use href="#jersey" fill="#2B4C9B" stroke="#1F3A7A" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#C9CED6" stroke-width="6"/>
+      <path d="M120 27 V250" stroke="#C9CED6" stroke-width="3"/>
+      <g fill="#FFFFFF"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#B31B34" stroke-width="9"/><path d="M203 100 L222 54" stroke="#B31B34" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#C9CED6" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#C9CED6" stroke-width="2.4"/>
+      <path id="arcR" d="M60 140 Q120 100 180 140" fill="none"/>
+      <text font-family="Abril Fatface" font-size="16" fill="#FFFFFF" stroke="#B31B34" stroke-width="0.6"><textPath href="#arcR" startOffset="50%" text-anchor="middle">Musketeers</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Abril Fatface" font-size="30" fill="#C9CED6" stroke="#B31B34" stroke-width="0.6">17</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#B31B34" stroke="#C9CED6" stroke-width="2"/><g transform="translate(0 3.5) scale(.26)"><use href="#fleur" fill="#C9CED6"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Cassock</div>
+    <h3>Blue, white Musketeers</h3>
+    <p>The musketeers' blue cassock, with white lettering edged in red, silver trim, and red sleeves. Worn for the home series around Bastille Day.</p>
+  </div>
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">No letters: the fleur-de-lis from the musketeers' cassock.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Blue cap with red brim and silver fleur-de-lis">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#2B4C9B"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#1F3A7A" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#1F3A7A" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#C9CED6"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#B31B34" stroke="#87131F" stroke-width="1.5"/>
+      <g transform="translate(120 92) scale(1.15)"><use href="#fleur" fill="#C9CED6"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Blue crown, red brim</h3>
+    <p>The silver fleur-de-lis on a blue crown, with a red brim and a silver button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Silver cap with blue brim and blue fleur-de-lis">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#C9CED6"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#9AA1AD" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#9AA1AD" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#B31B34"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#2B4C9B" stroke="#1F3A7A" stroke-width="1.5"/>
+      <g transform="translate(120 92) scale(1.15)"><use href="#fleur" fill="#2B4C9B"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · Cassock</div>
+    <h3>Silver crown, blue brim</h3>
+    <p>A blue fleur-de-lis on a silver crown, with a blue brim and a red button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss blue batting helmet with silver fleur-de-lis">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5677C4"/><stop offset=".45" stop-color="#2B4C9B"/><stop offset="1" stop-color="#1F3A7A"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#B31B34"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#152A5A"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#1F3A7A"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+      <g transform="translate(106 96) scale(1)"><use href="#fleur" fill="#C9CED6"/></g>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss blue</h3>
+    <p>A blue shell with a red ear flap and the silver fleur-de-lis decal.</p>
+  </div>
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">Blue, white and red on the stirrups.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="White home pants and silver away pants with blue and red side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#FFFFFF" stroke="#D3D7DE" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#2B4C9B"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#C9CED6" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#2B4C9B" stroke-width="4"/><path d="M38 34 L40 208" stroke="#B31B34" stroke-width="1.8"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#C9CED6" stroke="#9AA1AD" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#2B4C9B"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#2B4C9B" stroke-width="4"/><path d="M138 34 L140 208" stroke="#B31B34" stroke-width="1.8"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>White at home, silver away</h3>
+    <p>A blue and red side stripe on both pairs, with a blue belt and a silver buckle. Cassock wears the white.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Blue stirrups with a white and red band, and red stirrups with a white and blue band">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D3D7DE"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#2B4C9B"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="46" width="56" height="7" fill="#FFFFFF"/><rect x="50" y="53" width="56" height="7" fill="#B31B34"/>
+        <g transform="translate(78 112) scale(.42)"><use href="#fleur" fill="#C9CED6"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#152A5A"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D3D7DE"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#B31B34"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="46" width="56" height="7" fill="#2B4C9B"/><rect x="144" y="53" width="56" height="7" fill="#FFFFFF"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#152A5A"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>Bleu, blanc, rouge</h3>
+    <p>Blue stirrups with a white and red band, so the sock reads blue, white, red from the top down, with a silver fleur-de-lis. Cassock swaps to red stirrups with a blue and white band.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Round patch with three crossed rapiers and the motto Tous pour un">
+      <circle cx="120" cy="112" r="94" fill="#2B4C9B" stroke="#C9CED6" stroke-width="5"/>
+      <circle cx="120" cy="112" r="64" fill="#1F3A7A" stroke="#B31B34" stroke-width="2.5"/>
+      <g transform="translate(120 112)">
+        <g transform="rotate(-34) translate(0 16) scale(.85)"><use href="#rapier" fill="#C9CED6"/></g>
+        <g transform="rotate(34) translate(0 16) scale(.85)"><use href="#rapier" fill="#C9CED6"/></g>
+        <g transform="translate(0 16) scale(.85)"><use href="#rapier" fill="#FFFFFF"/></g>
+      </g>
+      <g transform="translate(120 70) scale(.36)"><use href="#fleur" fill="#B31B34"/></g>
+      <path id="ringTop" d="M46 112 A74 74 0 0 1 194 112" fill="none"/>
+      <path id="ringBot" d="M37 112 A83 83 0 0 0 203 112" fill="none"/>
+      <text font-family="Abril Fatface" font-size="22" letter-spacing="4" fill="#FFFFFF"><textPath href="#ringTop" startOffset="50%" text-anchor="middle">PARIS</textPath></text>
+      <text font-family="Abril Fatface" font-size="15" letter-spacing="2" fill="#C9CED6"><textPath href="#ringBot" startOffset="50%" text-anchor="middle">TOUS POUR UN</textPath></text>
+      <g fill="#B31B34"><circle cx="31" cy="112" r="3.5"/><circle cx="209" cy="112" r="3.5"/></g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>Three rapiers</h3>
+    <p>A blue roundel with a silver rim. Three rapiers cross under a small red fleur-de-lis, with PARIS across the top and the musketeers' motto, TOUS POUR UN, along the bottom. Worn on the player's left sleeve.</p>
+  </div>
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Blue, silver and red are the same values the game uses for the Paris badge. I added white for the home body.</li>
+  <li><b>Abril Fatface.</b> A Didone, the high-contrast style the Didot family of Paris made famous. The wordmarks sit well inside the body, with room on both sides.</li>
+  <li><b>Silver on the road.</b> The road jersey is silver-gray instead of blue, so the set has white, silver and blue jerseys.</li>
+  <li><b>One symbol on the cap.</b> The fleur-de-lis, following the anchor, spire, falcon, morion, tower, wing, tulip, eagle, shamrock, star, dragon, wheel and compass rose.</li>
+  <li><b>In the game.</b> These are design drawings only for now. Nothing in the app has changed.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece. Once Paris is settled, I'll commit it and roll the next team.
+</div>
+
+</div>
+</body>
+</html>

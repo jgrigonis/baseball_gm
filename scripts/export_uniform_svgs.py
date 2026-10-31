@@ -30,7 +30,15 @@ from svgpathtools import parse_path
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path.home() / ".cache" / "baseball_gm" / "fonts"
 SYSTEM_SERIF = "/usr/share/fonts/truetype/freefont/FreeSerif.ttf"  # for the 𝄞 clef
-PAINT = ("fill", "stroke", "stroke-width", "transform", "opacity")
+PAINT = (
+    "fill",
+    "stroke",
+    "stroke-width",
+    "stroke-linejoin",
+    "paint-order",
+    "transform",
+    "opacity",
+)
 
 
 def _num(n: float) -> str:
@@ -159,6 +167,8 @@ class Outliner:
             y0 = float(attrs.get("y", 0)) + float(attrs.get("dy", 0))
             if attrs.get("text-anchor") == "middle":
                 x0 -= width / 2
+            elif attrs.get("text-anchor") == "end":
+                x0 -= width
             for g, x, _, dy in run:
                 parts.append(self.glyph(f, g, size, 1, 0, 0, 1, x0 + x, y0 - dy))
         paint = " ".join(f'{k}="{attrs[k]}"' for k in PAINT if k in attrs)

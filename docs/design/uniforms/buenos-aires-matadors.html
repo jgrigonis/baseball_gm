@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Buenos Aires Matadors Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky:#6CACE4; --gold:#F6B40E; --red:#B3001B;
+  --bg:#FBF8F1; --card:#FFFFFF; --text:#1B2A2E; --dim:#5F6B6A; --line:#E6E0D2; --accent:#B3001B;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#FF6B7A; }
+}
+:root[data-theme="dark"] { --bg:#0A1517; --card:#112226; --text:#EEF2EF; --dim:#9AAAA8; --line:#22393D; --accent:#FF6B7A; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:var(--red); color:#FFFFFF; border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(var(--gold) 0 5px, var(--sky) 5px 10px); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#FFD86B; }
+header h1 { font-family:Rye, serif; font-weight:400; font-size:46px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; }
+header p { margin:0; max-width:640px; color:#F6DCDC; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.35); display:inline-block; }
+h2 { font-family:Rye, serif; font-weight:400; font-size:23px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#EEE9E0, #DED6C8); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#1A2D30, #132326); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#1A2D30, #132326); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:34px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · 20 of 30</div>
+  <h1>Buenos Aires Matadors</h1>
+  <p>The sky over the Río de la Plata and the suit of lights. Celeste, sun gold and the red of the muleta, lettered in an ornate wood type like an old bullring poster. The cap carries a gold BA, the alternate is a red traje de luces with gold embroidery, and the patch is the cape and sword under the sun.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#6CACE4"></i>Celeste #6CACE4</span>
+    <span class="sw"><i style="background:#F6B40E"></i>Sun gold #F6B40E</span>
+    <span class="sw"><i style="background:#B3001B"></i>Red #B3001B</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <path id="scroll" d="M0 0 C6 -8 16 -6 16 2 C16 8 8 9 6 4 C5 1 9 -1 10 2 M0 0 C-6 8 -16 6 -16 -2 C-16 -8 -8 -9 -6 -4 C-5 -1 -9 1 -10 -2"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. White at home, celeste on the road, and a red suit of lights for the alternate.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: white with red MATADORS edged in gold, and celeste pinstripes">
+      <use href="#jersey" fill="#FFFFFF" stroke="#6CACE4" stroke-width="2"/>
+      <g stroke="#6CACE4" stroke-width="1" opacity=".55"><path d="M72 30 V250 M84 26 V250 M96 22 V250 M108 20 V250 M132 20 V250 M144 22 V250 M156 26 V250 M168 30 V250"/></g>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#B3001B" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F6B40E" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#B3001B" stroke-width="3"/>
+      <g fill="#B3001B"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#B3001B" stroke-width="9"/><path d="M203 100 L222 54" stroke="#B3001B" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#F6B40E" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#F6B40E" stroke-width="2.4"/>
+      <path id="arcH" d="M70 140 Q120 114 170 140" fill="none"/>
+      <text font-family="Rye" font-size="14" letter-spacing="0.5" fill="#B3001B" stroke="#F6B40E" stroke-width="0.6"><textPath href="#arcH" startOffset="50%" text-anchor="middle">MATADORS</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Rye" font-size="28" fill="#B3001B" stroke="#F6B40E" stroke-width="0.6">20</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#6CACE4" stroke="#B3001B" stroke-width="2"/><text x="0" y="5" text-anchor="middle" font-family="Rye" font-size="13" fill="#F6B40E" stroke="#B3001B" stroke-width="0.5">BA</text></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>White, red MATADORS</h3>
+    <p>"MATADORS" arched in red wood type with a gold edge, over thin celeste pinstripes. Red sleeves with a gold line, red numbers, and a BA badge on the sleeve.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: celeste with a big gold BA edged in red">
+      <use href="#jersey" fill="#6CACE4" stroke="#4A8CC4" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#B3001B" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F6B40E" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#B3001B" stroke-width="3"/>
+      <g fill="#FFFFFF"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#B3001B" stroke-width="9"/><path d="M203 100 L222 54" stroke="#B3001B" stroke-width="9"/>
+      <path d="M42 98 L23 52" stroke="#F6B40E" stroke-width="2.4"/><path d="M198 98 L217 52" stroke="#F6B40E" stroke-width="2.4"/>
+      <text x="120" y="152" text-anchor="middle" font-family="Rye" font-size="52" letter-spacing="1" fill="#F6B40E" stroke="#B3001B" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke">BA</text>
+      <text x="88" y="200" text-anchor="middle" font-family="Rye" font-size="28" fill="#FFFFFF" stroke="#B3001B" stroke-width="0.8">20</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#B3001B" stroke="#F6B40E" stroke-width="2"/><text x="0" y="5" text-anchor="middle" font-family="Rye" font-size="13" fill="#F6B40E">BA</text></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Celeste, big gold BA</h3>
+    <p>A big "BA" across the chest in sun gold with a heavy red edge, on Buenos Aires sky blue. Red sleeves with a gold line, and white numbers.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: red suit of lights with gold embroidery and gold MATADORS">
+      <use href="#jersey" fill="#B3001B" stroke="#7E0013" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F6B40E" stroke-width="5"/>
+      <path d="M120 27 V250" stroke="#F6B40E" stroke-width="2.5"/>
+      <g fill="none" stroke="#F6B40E" stroke-width="1.6" stroke-linecap="round">
+        <path d="M72 22 L18 54 M168 22 L222 54"/>
+        <g transform="translate(46 42) rotate(-30)"><use href="#scroll"/></g>
+        <g transform="translate(194 42) rotate(30) scale(-1 1)"><use href="#scroll"/></g>
+        <g transform="translate(30 76) rotate(-68) scale(.8)"><use href="#scroll"/></g>
+        <g transform="translate(210 76) rotate(68) scale(-.8 .8)"><use href="#scroll"/></g>
+        <path d="M60 236 Q90 226 120 236 Q150 226 180 236"/>
+        <path d="M60 244 Q90 234 120 244 Q150 234 180 244"/>
+      </g>
+      <g fill="#F6B40E"><circle cx="126" cy="60" r="2.2"/><circle cx="126" cy="180" r="2.2"/><circle cx="126" cy="216" r="2.2"/></g>
+      <path d="M37 100 L18 54" stroke="#F6B40E" stroke-width="5"/><path d="M203 100 L222 54" stroke="#F6B40E" stroke-width="5"/>
+      <path id="arcR" d="M70 140 Q120 114 170 140" fill="none"/>
+      <text font-family="Rye" font-size="14" letter-spacing="0.5" fill="#F6B40E" stroke="#7E0013" stroke-width="0.6"><textPath href="#arcR" startOffset="50%" text-anchor="middle">MATADORS</textPath></text>
+      <text x="88" y="200" text-anchor="middle" font-family="Rye" font-size="28" fill="#F6B40E" stroke="#7E0013" stroke-width="0.6">20</text>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Traje de luces</div>
+    <h3>Red, gold MATADORS</h3>
+    <p>The suit of lights: a red body with gold embroidery curling over the shoulders and a gold scalloped hem, gold lettering and gold buttons. Worn on Sunday afternoons.</p>
+  </div>
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">The gold BA, edged in red.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Celeste cap with red brim and a gold BA">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#6CACE4"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#4A8CC4" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#4A8CC4" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#B3001B"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#B3001B" stroke="#7E0013" stroke-width="1.5"/>
+      <text x="120" y="97" text-anchor="middle" font-family="Rye" font-size="44" fill="#F6B40E" stroke="#B3001B" stroke-width="3" stroke-linejoin="round" paint-order="stroke">BA</text>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Celeste crown, red brim</h3>
+    <p>A gold BA edged in red on a celeste crown, with a red brim and button.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Red cap with gold brim edge and a gold BA">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#B3001B"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#7E0013" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#7E0013" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#F6B40E"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#B3001B" stroke="#F6B40E" stroke-width="2.5"/>
+      <text x="120" y="97" text-anchor="middle" font-family="Rye" font-size="44" fill="#F6B40E" stroke="#7E0013" stroke-width="3" stroke-linejoin="round" paint-order="stroke">BA</text>
+    </svg>
+    </div>
+    <div class="tag">Cap · Traje de luces</div>
+    <h3>All red, gold trim</h3>
+    <p>A red cap with a gold BA, a gold button and gold piping around the brim, to go with the suit of lights.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss celeste batting helmet with a gold BA">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A8D2F4"/><stop offset=".45" stop-color="#6CACE4"/><stop offset="1" stop-color="#3F7FB6"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#B3001B"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#2E5F8A"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#2E5F8A"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".35"/>
+      <text x="104" y="96" text-anchor="middle" font-family="Rye" font-size="38" fill="#F6B40E" stroke="#B3001B" stroke-width="3" stroke-linejoin="round" paint-order="stroke">BA</text>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#B3001B" stroke-width="2.5"/>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss celeste</h3>
+    <p>A sky blue shell with a red ear flap and stripe, and the gold BA decal.</p>
+  </div>
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">Gold embroidery on red stirrups.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="White home pants and gray away pants with red and gold side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#FFFFFF" stroke="#D4D8DD" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#B3001B"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#F6B40E" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#B3001B" stroke-width="4"/><path d="M38 34 L40 208" stroke="#F6B40E" stroke-width="1.8"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A8ADB3" stroke="#868B91" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#B3001B"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#F6B40E" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#B3001B" stroke-width="4"/><path d="M138 34 L140 208" stroke="#F6B40E" stroke-width="1.8"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5F6B6A">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>White at home, gray away</h3>
+    <p>A red and gold side stripe on both pairs, with a red belt and a gold buckle. The suit of lights wears the white.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Red stirrups with gold embroidery, and celeste stirrups with a red and gold band">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#B3001B"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="40" width="56" height="3" fill="#F6B40E"/><rect x="50" y="76" width="56" height="3" fill="#F6B40E"/>
+        <g fill="none" stroke="#F6B40E" stroke-width="1.6" stroke-linecap="round"><g transform="translate(78 60) scale(.9)"><use href="#scroll"/></g><path d="M58 98 Q68 92 78 98 Q88 92 98 98"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#7E0013"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#6CACE4"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="44" width="56" height="9" fill="#B3001B"/><rect x="144" y="55" width="56" height="3" fill="#F6B40E"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#7E0013"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>Embroidered red</h3>
+    <p>Red stirrups between two gold lines, with a gold scroll like the embroidery on a matador's stockings. The celeste set has a red band over a gold line.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Round patch with a red cape and sword under a gold sun">
+      <defs><clipPath id="ring"><circle cx="120" cy="112" r="64"/></clipPath></defs>
+      <circle cx="120" cy="112" r="94" fill="#B3001B" stroke="#F6B40E" stroke-width="5"/>
+      <circle cx="120" cy="112" r="64" fill="#6CACE4"/>
+      <g clip-path="url(#ring)">
+        <g stroke="#F6B40E" stroke-width="5" opacity=".55"><path d="M120 76 L120 40 M120 76 L146 50 M120 76 L94 50 M120 76 L156 76 M120 76 L84 76 M120 76 L150 94 M120 76 L90 94 M120 76 L136 44 M120 76 L104 44"/></g>
+        <circle cx="120" cy="76" r="15" fill="#F6B40E"/>
+        <rect x="50" y="146" width="140" height="40" fill="#E8C68A"/>
+      </g>
+      <g transform="translate(120 118) scale(.95)">
+        <path d="M-40 -26 L36 -34" stroke="#5A3A1A" stroke-width="3" stroke-linecap="round"/>
+        <path d="M-38 -26 Q-2 -34 32 -33 Q40 0 26 36 Q8 26 -10 40 Q-24 30 -30 38 Q-40 8 -38 -26 Z" fill="#B3001B" stroke="#7E0013" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M-20 -26 Q-24 4 -18 34 M2 -30 Q0 2 6 28 M20 -32 Q24 0 18 30" fill="none" stroke="#7E0013" stroke-width="1.6"/>
+        <path d="M-34 44 L42 -46" stroke="#D8DDE2" stroke-width="3" stroke-linecap="round"/>
+        <path d="M-31 30 L-19 40" stroke="#F6B40E" stroke-width="4" stroke-linecap="round"/>
+        <path d="M-34 44 L-27 36" stroke="#F6B40E" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <circle cx="120" cy="112" r="64" fill="none" stroke="#F6B40E" stroke-width="2.5"/>
+      <path id="ringTop" d="M46 112 A74 74 0 0 1 194 112" fill="none"/>
+      <text font-family="Rye" font-size="15" letter-spacing="1.5" fill="#F6B40E"><textPath href="#ringTop" startOffset="50%" text-anchor="middle">MATADORS</textPath></text>
+      <path id="ringBot" d="M42 112 A78 78 0 0 0 198 112" fill="none"/>
+      <text font-family="Rye" font-size="12" letter-spacing="1.5" fill="#FFFFFF"><textPath href="#ringBot" startOffset="50%" text-anchor="middle">BUENOS AIRES</textPath></text>
+      <g fill="#F6B40E"><circle cx="31" cy="112" r="3.5"/><circle cx="209" cy="112" r="3.5"/></g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>Cape and sword</h3>
+    <p>A red roundel with a gold rim. The muleta and the sword cross in front of a gold sun on the sandy ring of the plaza, with MATADORS across the top and BUENOS AIRES at the bottom. Worn on the player's left sleeve.</p>
+  </div>
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Celeste, sun gold and red are the same values the game uses for the Buenos Aires badge. I added white for the home body.</li>
+  <li><b>Bullring poster type.</b> Rye is an ornate wood type, like the letters on an old corrida poster.</li>
+  <li><b>Short words, wide margins.</b> MATADORS at home and on the alternate, and a big BA on the road, all well inside the body.</li>
+  <li><b>Letters on the cap.</b> A gold BA, like the HK in Hong Kong. The cape and sword live on the patch.</li>
+  <li><b>In the game.</b> These are design drawings only for now. Nothing in the app has changed.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece. Once Buenos Aires is settled, I'll commit it and roll the next team.
+</div>
+
+</div>
+</body>
+</html>
