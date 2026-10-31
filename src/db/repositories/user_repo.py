@@ -138,7 +138,7 @@ class UserRepository:
 
     def get_by_id(self, user_id: str) -> dict | None:
         row = self.db.execute(
-            """SELECT id, display_name, username, email, is_admin,
+            """SELECT id, display_name, username, email, is_admin, is_contributor,
                       must_change_password, created_at,
                       password_hash IS NOT NULL AS has_password
                FROM users WHERE id = %s""",
@@ -174,6 +174,12 @@ class UserRepository:
 
     def set_email(self, user_id: str, email: str | None) -> None:
         self.db.execute("UPDATE users SET email = %s WHERE id = %s", (email, user_id))
+
+    def set_contributor(self, user_id: str, is_contributor: bool) -> None:
+        self.db.execute(
+            "UPDATE users SET is_contributor = %s WHERE id = %s",
+            (is_contributor, user_id),
+        )
 
     def set_admin(self, user_id: str, is_admin: bool) -> None:
         self.db.execute(

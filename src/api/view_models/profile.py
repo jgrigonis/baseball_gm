@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from src.api.services import badges
 from src.api.services.career import ROUND_DEPTH
 from src.api.view_models.welcome import uniforms
 from src.db.repositories.career_repo import CareerRepository
@@ -78,7 +79,31 @@ def profile_context(db, person: dict, viewer: dict) -> dict:
         "team": team,
         "trophies": _trophies(seasons),
         "leagues": leagues,
+        "badges": _badges(db, person["id"]),
     }
+
+
+def _badges(db, user_id: str) -> dict:
+    """Every badge, earned ones first: lit with where it was earned, the
+    rest dimmed, with progress for a badge that has a count to reach."""
+    have = badges.earned(db, user_id)
+    checks = badges.check_all(db, user_id)
+    rows = []
+    for badge, _ in badges.BADGES:
+        got = have.get(badge.key)
+        check = checks[badge.key]
+        rows.append(
+            {
+                "icon": badge.icon,
+                "name": badge.name,
+                "description": badge.description,
+                "earned": got is not None,
+                "detail": got["detail"] if got else None,
+                "progress": None if got else check.progress,
+            }
+        )
+    rows.sort(key=lambda b: not b["earned"])  # stable: keeps the list order
+    return {"all": rows, "earned": len(have), "total": len(rows)}
 
 
 def _team(city: str, mascot: str) -> dict:

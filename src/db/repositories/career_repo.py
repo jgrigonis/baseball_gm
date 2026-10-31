@@ -15,10 +15,11 @@ class CareerRepository:
             """INSERT INTO gm_career_seasons
                    (user_id, league_id, season_id, league_name, season_year,
                     team_city, team_mascot, wins, losses, division_title,
-                    playoff_result, final)
+                    finish, finish_of, playoff_result, sweeps, trades, final)
                VALUES (%(user_id)s, %(league_id)s, %(season_id)s, %(league_name)s,
                        %(season_year)s, %(team_city)s, %(team_mascot)s, %(wins)s,
-                       %(losses)s, %(division_title)s, %(playoff_result)s, %(final)s)
+                       %(losses)s, %(division_title)s, %(finish)s, %(finish_of)s,
+                       %(playoff_result)s, %(sweeps)s, %(trades)s, %(final)s)
                ON CONFLICT (user_id, league_id, season_id) DO UPDATE SET
                    league_name    = EXCLUDED.league_name,
                    team_city      = EXCLUDED.team_city,
@@ -26,6 +27,10 @@ class CareerRepository:
                    wins           = EXCLUDED.wins,
                    losses         = EXCLUDED.losses,
                    division_title = EXCLUDED.division_title,
+                   finish         = EXCLUDED.finish,
+                   finish_of      = EXCLUDED.finish_of,
+                   sweeps         = EXCLUDED.sweeps,
+                   trades         = EXCLUDED.trades,
                    playoff_result = EXCLUDED.playoff_result,
                    final          = EXCLUDED.final,
                    updated_at     = NOW()

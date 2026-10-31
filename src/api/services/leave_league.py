@@ -17,7 +17,7 @@ import random
 import shutil
 from pathlib import Path
 
-from src.api.services import career, personas, trades
+from src.api.services import badges, career, personas, trades
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -47,6 +47,8 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
             # before the league is deleted, if they're the last one out).
             career.record_league(conn, league_id, leaving_gm_id=gm_id)
             gm = gm_repo.get_by_id(gm_id)
+            if gm and gm["user_id"]:
+                badges.award(conn, gm["user_id"])
             if gm and gm["team_id"]:
                 trades.team_leaving(conn, league_id, gm["team_id"], gm_id)
             gm_repo.hand_team_to_ai(gm_id)

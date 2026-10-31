@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.api.services import career, coach
+from src.api.services import badges, career, coach
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
@@ -126,11 +126,13 @@ def league_has_job(conn, league_id: str) -> bool:
 
 def _record_careers(conn, league_id: str) -> None:
     """Bring each person's career record up to date with what the job
-    played (services/career.py). In a savepoint, so a problem there is
-    logged and never undoes the sim itself."""
+    played (services/career.py), and award any badges it earned them
+    (services/badges.py). In a savepoint, so a problem there is logged and
+    never undoes the sim itself."""
     try:
         with conn.transaction():
             career.record_league(conn, league_id)
+            badges.award_league(conn, league_id)
     except Exception:
         log.exception("League %s: couldn't update career records", league_id)
 

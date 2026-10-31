@@ -86,7 +86,11 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
                     "wins": wl["w"],
                     "losses": wl["l"],
                     "division_title": gm["team_id"] in facts.division_winners,
+                    "finish": facts.finish.get(gm["team_id"], (None, None))[0],
+                    "finish_of": facts.finish.get(gm["team_id"], (None, None))[1],
                     "playoff_result": facts.playoff_result(gm["team_id"]),
+                    "sweeps": facts.sweeps.get(gm["team_id"], 0),
+                    "trades": _trades(conn, season["id"], gm["team_id"]),
                     "final": over or leaving_gm_id is not None,
                 }
             )
@@ -114,17 +118,25 @@ def _people(conn, league_id: str, gm_id: str | None) -> list[dict]:
 
 
 class _SeasonFacts:
-    """What one season says about every team: the champion, division
-    winners (once the regular season is over) and playoff series."""
+    """What one season says about every team: the champion, where each team
+    finished in its division (once the regular season is over) and its
+    playoff series."""
 
     def __init__(self, conn, league_id: str, season_id: str):
         champ = SeriesRepository(conn).get_champion(season_id)
         self.champion_id = champ["team_id"] if champ else None
-        self.division_winners = (
-            _division_winners(conn, league_id, season_id)
+        # team_id -> (place, teams), in its division, or the whole league
+        # when it has no divisions.
+        self.finish: dict[str, tuple[int, int]] = (
+            _finishes(conn, league_id, season_id)
             if _regular_season_over(conn, season_id)
-            else set()
+            else {}
         )
+        has_divisions = bool(divisions.load(conn, league_id))
+        self.division_winners = {
+            t for t, (place, _) in self.finish.items() if place == 1 and has_divisions
+        }
+        self.sweeps = _sweeps(conn, season_id)
         rows = conn.execute(
             """SELECT DISTINCT s.name, t.team_id
                FROM series s JOIN games g ON g.series_id = s.id
@@ -157,20 +169,52 @@ def _regular_season_over(conn, season_id: str) -> bool:
     return row["games"] > 0 and row["left_to_play"] == 0
 
 
-def _division_winners(conn, league_id: str, season_id: str) -> set[str]:
-    """The best team in each division, by the standings' own order. Empty
-    for a league without divisions."""
-    conferences = divisions.load(conn, league_id)
-    if not conferences:
-        return set()
-    place = {
-        r["team_id"]: i
-        for i, r in enumerate(StandingsRepository(conn).ranked(season_id))
-    }
-    winners = set()
-    for conf in conferences:
-        for div in conf.divisions:
-            teams = [t for t in div.team_ids if t in place]
-            if teams:
-                winners.add(min(teams, key=place.get))
-    return winners
+def _finishes(conn, league_id: str, season_id: str) -> dict[str, tuple[int, int]]:
+    """Each team's place in its division, by the standings' own order, and
+    how many teams the division has. The whole league counts as one
+    division in a league without divisions."""
+    ranked = [r["team_id"] for r in StandingsRepository(conn).ranked(season_id)]
+    place = {t: i for i, t in enumerate(ranked)}
+    groups = [
+        [t for t in div.team_ids if t in place]
+        for conf in divisions.load(conn, league_id)
+        for div in conf.divisions
+    ] or [ranked]
+    out = {}
+    for teams in groups:
+        teams.sort(key=place.get)
+        for i, t in enumerate(teams, 1):
+            out[t] = (i, len(teams))
+    return out
+
+
+def _sweeps(conn, season_id: str) -> dict[str, int]:
+    """Playoff series each team won without losing a game."""
+    rows = conn.execute(
+        """SELECT s.id, s.name, g.winner_id, COUNT(*) AS wins
+           FROM series s JOIN games g ON g.series_id = s.id AND g.completed = 1
+           WHERE s.season_id = %s AND g.winner_id IS NOT NULL
+           GROUP BY s.id, s.name, g.winner_id""",
+        (season_id,),
+    ).fetchall()
+    by_series: dict[str, list[dict]] = {}
+    for r in rows:
+        by_series.setdefault(r["id"], []).append(r)
+    out: dict[str, int] = {}
+    for winners in by_series.values():
+        name = winners[0]["name"]
+        needed = 3 if ROUND_OF_SERIES.get(name) == "Round 1" else 4
+        if len(winners) == 1 and winners[0]["wins"] >= needed:
+            t = winners[0]["winner_id"]
+            out[t] = out.get(t, 0) + 1
+    return out
+
+
+def _trades(conn, season_id: str, team_id: str) -> int:
+    """Trades the team made in the season."""
+    return conn.execute(
+        """SELECT COUNT(*) AS n FROM trade_offers
+           WHERE season_id = %s AND status = 'accepted'
+             AND (from_team_id = %s OR to_team_id = %s)""",
+        (season_id, team_id, team_id),
+    ).fetchone()["n"]
