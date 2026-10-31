@@ -207,9 +207,10 @@ class SeasonRepository:
         return row["n"] or 0
 
     def get_seasons_for_league(self, league_id: str) -> list[dict]:
-        """Return all seasons for a league, newest first (id, year, name)."""
+        """Return all seasons for a league, newest first (id, year, name,
+        is_backstory)."""
         rows = self.conn.execute(
-            """SELECT s.id, s.year, s.name FROM seasons s
+            """SELECT s.id, s.year, s.name, s.is_backstory FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
                WHERE ls.league_id = %s
                ORDER BY s.year DESC""",

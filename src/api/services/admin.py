@@ -21,6 +21,7 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.user_repo import UserRepository
+from src.league.league_constants import MAX_BACKSTORY_YEARS
 from src.league.league_modes import BLITZ, SPEED_BLITZ
 
 # The modes and paces a league can be set to (the others aren't built yet).
@@ -34,6 +35,7 @@ NUMBER_RANGES = {
     "decision_window_sec": (30, 600),
     "draft_window_sec": (60, 1800),
     "lineup_window_sec": (60, 3600),
+    "backstory_years": (0, MAX_BACKSTORY_YEARS),
 }
 
 NUMBER_LABELS = {
@@ -42,6 +44,7 @@ NUMBER_LABELS = {
     "decision_window_sec": "Decision window",
     "draft_window_sec": "Draft window",
     "lineup_window_sec": "Lineup window",
+    "backstory_years": "Years of history",
 }
 
 # Settings that time the ready-check window. Changing one starts the current
@@ -70,6 +73,11 @@ def settings_error(league: dict, settings: dict, season_count: int) -> str | Non
     for key, (low, high) in NUMBER_RANGES.items():
         if not low <= settings[key] <= high:
             return f"{NUMBER_LABELS[key]} must be between {low} and {high}."
+    if (
+        settings["backstory_years"] != league["backstory_years"]
+        and league["state"] != "lobby"
+    ):
+        return "The years of history can only change before the league starts."
     if settings["num_seasons"] < season_count:
         return f"The league has already started season {season_count}."
     return None

@@ -1,6 +1,7 @@
 # src/db/repositories/league_repo.py
 import uuid
 
+from src.league.league_constants import DEFAULT_BACKSTORY_YEARS
 from src.league.league_modes import get_mode, injuries_allowed
 
 
@@ -32,9 +33,10 @@ class LeagueRepository:
                 (id, name, join_code, mode, num_teams, decision_window_sec,
                 draft_window_sec, lineup_window_sec, reentry_enabled, pace_control,
                 sim_period_days, num_seasons, is_public, is_practice, trade_vote,
-                pick_trades, injuries_enabled, state, commissioner_gm_id)
+                pick_trades, injuries_enabled, backstory_years, state,
+                commissioner_gm_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, 'lobby', NULL)""",
+                    %s, %s, %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -53,6 +55,7 @@ class LeagueRepository:
                 settings.get("trade_vote", True),
                 settings.get("pick_trades", False),
                 settings.get("injuries_enabled", get_mode(mode).injuries_default),
+                settings.get("backstory_years", DEFAULT_BACKSTORY_YEARS),
             ),
         )
 
@@ -185,9 +188,12 @@ class LeagueRepository:
         return row is not None
 
     def count_seasons(self, league_id: str) -> int:
-        """How many seasons the league has started, the current one included."""
+        """How many seasons the league has started, the current one included.
+        The backstory's past seasons don't count."""
         row = self.conn.execute(
-            "SELECT COUNT(*) AS n FROM league_seasons WHERE league_id = %s",
+            """SELECT COUNT(*) AS n FROM league_seasons ls
+               JOIN seasons s ON s.id = ls.season_id
+               WHERE ls.league_id = %s AND NOT s.is_backstory""",
             (league_id,),
         ).fetchone()
         return row["n"]
@@ -323,6 +329,7 @@ class LeagueRepository:
     # Settings an admin can change (see src/api/services/admin.py).
     EDITABLE_SETTINGS = (
         "name",
+        "backstory_years",
         "mode",
         "pace_control",
         "decision_window_sec",
@@ -359,7 +366,9 @@ class LeagueRepository:
         rows = self.conn.execute(
             """SELECT l.*,
                       (SELECT COUNT(*) FROM league_seasons ls
-                       WHERE ls.league_id = l.id) AS season_number,
+                       JOIN seasons bs ON bs.id = ls.season_id
+                       WHERE ls.league_id = l.id AND NOT bs.is_backstory)
+                          AS season_number,
                       (SELECT s.id FROM seasons s
                        JOIN league_seasons ls ON ls.season_id = s.id
                        WHERE ls.league_id = l.id
