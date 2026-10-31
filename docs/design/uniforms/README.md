@@ -50,5 +50,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Paris Musketeers | Done (2026-10-31) | The musketeers' cassock blue and silver with red trim, lettered in Abril Fatface. Musketeers on white at home, PARIS on the silver road jersey, and a blue Cassock alternate. The caps carry a fleur-de-lis, and the patch crosses three rapiers over TOUS POUR UN. |
 | Hong Kong Harbor Kings | Done (2026-10-31) | Neon magenta, harbor navy and gold, lettered in the rounded sign face Righteous. KINGS under a gold crown on white at home, a big neon HK on the navy road jersey, and a magenta Neon alternate. The caps carry a gold HK, and the patch sails a junk with magenta sails past the skyline, with 香港. |
 | Seoul White Tigers | Done (2026-10-31) | Hanji cream, ink black and taegeuk blue, lettered in Black Han Sans. TIGERS on cream at home, SEOUL on the blue road jersey, and a black Baekho alternate with 서울 in Hangul and tiger-striped sleeves. The caps carry the white tiger's face, the stirrups wear its stripes, and the patch sets the tiger in front of Bukhansan. |
+| Buenos Aires Matadors | Done (2026-10-31) | Celeste, sun gold and red, lettered in the bullring-poster wood type Rye. MATADORS on white pinstripes at home, a big gold BA on the celeste road jersey, and a red suit-of-lights alternate with gold embroidery. The caps carry a gold BA, and the patch crosses the cape and sword under a gold sun. |
 
-The other 11 teams are still to do. They aren't shown in the game yet.
+The other 10 teams are still to do. They aren't shown in the game yet.
