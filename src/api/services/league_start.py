@@ -19,6 +19,7 @@ from src.league.bootstrap import LeagueBootstrapper
 from src.league.league_constants import (
     ALL_STAR_BREAK_AFTER_GAMES,
     ALL_STAR_BREAK_DAYS,
+    LEAGUE_START_YEAR,
     SEASON_LENGTH,
 )
 from src.league.league_modes import is_blitz_style
@@ -64,14 +65,17 @@ def start_league(
     validate_manifest_structure(manifest)
     validate_manifest_uniqueness(manifest)
 
-    year = manifest.get("season_year", 2025)
+    # The manifest is only the team list: every new league starts in
+    # LEAGUE_START_YEAR, whatever year the file was written for.
+    year = LEAGUE_START_YEAR
+    manifest = {**manifest, "season_year": year}
 
     # ── 2. Generate fresh CSVs for every team ─────────────────────────────────
     create_team_files(manifest["teams"], year, rng=rng, league_id=league_id)
 
     # ── 3. Bootstrap teams + season ───────────────────────────────────────────
     start_date_str = manifest.get("season_start_date", f"{year}-04-01")
-    start_date = datetime.date.fromisoformat(start_date_str)
+    start_date = datetime.date.fromisoformat(start_date_str).replace(year=year)
 
     bootstrapper = bootstrapper or LeagueBootstrapper(conn, rng=rng)
 

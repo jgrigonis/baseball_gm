@@ -28,6 +28,7 @@ from src.league.offseason.snake_draft import SnakeDraft, DraftPick, ROUNDS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.team.roster_assigner import RosterAssigner
+from src.league.league_constants import LEAGUE_START_YEAR
 
 log = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
 
     sr = SeasonRepository(conn)
     row = sr.get_year(season_id)
-    year = row["year"] if row else 2025
+    year = row["year"] if row else LEAGUE_START_YEAR
 
     # Read the pre-stored draft order from draft_order table (written by
     # league_start or offseason_pipeline — never recompute from standings here)

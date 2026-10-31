@@ -24,8 +24,12 @@ from src.league.backstory import careers, season
 from src.league.backstory.calibration import PARAMS
 from src.league.backstory.rewind import rewind
 from src.league.backstory.service import create_backstory
+from src.league.league_constants import LEAGUE_START_YEAR
 from src.league.schedule import ScheduleGenerator
 from src.team.team_factory import TeamFactory
+
+# A new league's first season; its backstory is the years just before.
+START = LEAGUE_START_YEAR
 
 
 def _league_players(n_teams: int, seed: int = 7) -> tuple[list[str], list[dict]]:
@@ -88,8 +92,8 @@ def test_rewinding_is_repeatable_for_a_seed():
 def league():
     team_ids, players = _league_players(30)
     rng = random.Random(3)
-    cs = careers.current_careers(players, 2025, 5, team_ids, rng)
-    retirees = careers.add_retirees(cs, 2025, 5, team_ids, rng)
+    cs = careers.current_careers(players, START, 5, team_ids, rng)
+    retirees = careers.add_retirees(cs, START, 5, team_ids, rng)
     return team_ids, players, cs, retirees
 
 
@@ -97,7 +101,7 @@ def test_nobody_played_before_21(league):
     _, _, cs, _ = league
     for c in cs:
         for year in c.team_by_year:
-            assert c.age_in(year, 2025) >= careers.FIRST_MAJORS_AGE
+            assert c.age_in(year, START) >= careers.FIRST_MAJORS_AGE
 
 
 def test_careers_have_no_gaps_going_back(league):
@@ -110,7 +114,7 @@ def test_careers_have_no_gaps_going_back(league):
 
 def test_every_past_team_has_a_full_roster(league):
     team_ids, _, cs, _ = league
-    for year in range(2020, 2025):
+    for year in range(START - 5, START):
         for tid in team_ids:
             roster = [c for c in cs if c.team_by_year.get(year) == tid]
             hitters = [c for c in roster if c.position not in ("sp", "rp")]
@@ -125,7 +129,7 @@ def test_retirees_retire_after_a_past_season_at_a_veterans_age(league):
     _, _, _, retirees = league
     assert retirees
     for r in retirees:
-        assert 2020 <= r.retired_after <= 2024
+        assert START - 5 <= r.retired_after <= START - 1
         assert careers.RETIRE_AGES[0] <= r.age_now <= careers.RETIRE_AGES[1]
         assert max(r.team_by_year) == r.retired_after
 
@@ -133,8 +137,10 @@ def test_retirees_retire_after_a_past_season_at_a_veterans_age(league):
 def test_most_players_stayed_with_their_team(league):
     _, players, cs, _ = league
     team_now = {p["id"]: p["team_id"] for p in players}
-    last_year = [c for c in cs if 2024 in c.team_by_year and c.player_id in team_now]
-    same = sum(c.team_by_year[2024] == team_now[c.player_id] for c in last_year)
+    last_year = [
+        c for c in cs if START - 1 in c.team_by_year and c.player_id in team_now
+    ]
+    same = sum(c.team_by_year[START - 1] == team_now[c.player_id] for c in last_year)
     assert 0.8 < same / len(last_year) < 0.95
 
 
@@ -163,7 +169,9 @@ def test_the_playoffs_crown_a_champion_with_four_finals_wins():
     s = {t: (1.0, 1.0) for t in seeds}
     import datetime
 
-    series, games = season.play_playoffs(rng, s, "S", seeds, datetime.date(2024, 10, 1))
+    series, games = season.play_playoffs(
+        rng, s, "S", seeds, datetime.date(START - 1, 10, 1)
+    )
     assert [n for _, n in series][-1] == "Finals"
     finals = [g for g in games if g.series_id == "S_Finals"]
     wins = {}
@@ -179,7 +187,7 @@ def test_the_playoffs_crown_a_champion_with_four_finals_wins():
 def played(league):
     team_ids, _, cs, _ = league
     rng = np.random.default_rng(11)
-    year = 2024
+    year = START - 1
     teams = []
     for tid in team_ids:
         members = [
@@ -187,7 +195,7 @@ def played(league):
                 player_id=c.player_id,
                 position=c.position,
                 throws=c.throws,
-                age=c.age_in(year, 2025),
+                age=c.age_in(year, START),
                 skills=c.skills_by_year[year],
             )
             for c in cs
@@ -258,7 +266,7 @@ def test_each_team_starts_162_games(played):
 
 def _seed_league(db_conn, factory, n_teams=10, seed=7):
     league = factory.league(state="lobby", backstory_years=3)
-    s = factory.season(year=2025)
+    s = factory.season(year=START)
     factory.league_season(league, s)
     team_ids, players = _league_players(n_teams, seed)
     real_ids = {}
@@ -294,7 +302,7 @@ def test_past_seasons_are_saved_with_standings_and_a_champion(db_conn, factory):
     bs = create_backstory(db_conn, league.id, s.id, 3, random.Random(1))
 
     seasons = SeasonRepository(db_conn).get_seasons_for_league(league.id)
-    assert [x["year"] for x in seasons] == [2025, 2024, 2023, 2022]
+    assert [x["year"] for x in seasons] == [START, START - 1, START - 2, START - 3]
     assert [x["is_backstory"] for x in seasons] == [False, True, True, True]
     assert SeasonRepository(db_conn).get_current_id_for_league(league.id) == s.id
     assert LeagueRepository(db_conn).count_seasons(league.id) == 1
@@ -364,7 +372,7 @@ def test_history_and_the_welcome_screen_show_the_past(db_conn, factory):
     assert all(r["my_w"] + r["my_l"] == 162 for r in rows[1:])
 
     h = history(db_conn, league.id, mine, s.id)
-    assert h["last"]["year"] == 2024
+    assert h["last"]["year"] == START - 1
     assert h["last"]["w"] + h["last"]["l"] == 162
     champ = SeriesRepository(db_conn).get_champion(bs.last_season_id)
     assert h["champion"]["team_id"] == champ["team_id"]
