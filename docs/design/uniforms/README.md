@@ -34,5 +34,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Vienna Maestros | Done (2026-10-31) | Concert-hall theme. The home and Opera Night script climbs at 26°. The bat-and-baton patch sits on the player's right sleeve. |
 | Chicago Blizzards | Done (2026-10-31) | Lake-effect winter theme. Navy slab lettering has icicles hanging from it at home and on the Lake Effect alternate. The cap has a plain C, the stirrups have a jagged wind band, and the patch is a hexagonal snowflake. |
 | Mumbai Mariners | Done (2026-10-31) | Harbor theme with sign-painter lettering (Yatra One). The home and Festival script climbs at 10° over a wave. The home and away cap is teal with a cream brim and a saffron anchor. The patch shows the Gateway of India with मुंबई. |
+| Singapore Merlions | Done (2026-10-31) | Lion City theme. Fish-scale sleeves on the home and National Day jerseys, and arched lettering. The caps carry the Marina Bay skyline with no letters, and the patch shows the skyline against a red sun. |
 
-The other 27 teams are still to do. They aren't shown in the game yet.
+The other 26 teams are still to do. They aren't shown in the game yet.

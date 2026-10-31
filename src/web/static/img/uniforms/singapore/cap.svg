@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Singapore cap">
+  <defs>
+    <path id="mbs" d="M-45 0 L-40 -60 H-28 L-23 0 H-29 Q-34 -30 -39 0 Z M-11 0 L-6 -60 H6 L11 0 H5 Q0 -30 -5 0 Z M23 0 L28 -60 H40 L45 0 H39 Q34 -30 29 0 Z M-50 -66 H62 Q72 -66 74 -62 H-48 Q-52 -62 -50 -66 Z M-46 -62 V-60 H52 V-62 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#00A3AD"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#008A93" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#008A93" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#EF3340"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#EF3340" stroke="#B51C29" stroke-width="1.5"/>
+      <g transform="translate(112 100) scale(.68)"><use href="#mbs" fill="#F4EFE6" stroke="#EF3340" stroke-width="2.4" paint-order="stroke"/></g>
+</svg>
