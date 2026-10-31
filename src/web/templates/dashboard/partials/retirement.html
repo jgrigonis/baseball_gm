@@ -71,6 +71,7 @@
                          text-align:left;">
             {{ p.first_name }} {{ p.last_name }}
           </button>
+          {%- if p.all_star_years %}<span class="all-star-tag" title="All-Star {{ p.all_star_years | join(', ') }}">★{% if p.all_star_years | length > 1 %}{{ p.all_star_years | length }}×{% endif %}</span>{% endif %}
         </td>
 
         <td data-sort="{{ p.age }}" style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.age }}</td>

@@ -379,6 +379,24 @@ class AllStarRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def years_by_player(self, player_ids: list[str]) -> dict[str, list[int]]:
+        """The years each of these players was an All-Star, oldest first.
+        Players never voted in are left out."""
+        if not player_ids:
+            return {}
+        rows = self.conn.execute(
+            f"""SELECT a.player_id, s.year
+               FROM {self.players} a
+               JOIN seasons s ON s.id = a.season_id
+               WHERE a.player_id = ANY(%s)
+               ORDER BY s.year""",
+            (list(player_ids),),
+        ).fetchall()
+        out: dict[str, list[int]] = {}
+        for r in rows:
+            out.setdefault(r["player_id"], []).append(r["year"])
+        return out
+
 
 def _group(rows) -> dict[str, dict[str, list]]:
     """Vote rows, in pick order, as {team id: {slot: [player id or None]}}.
