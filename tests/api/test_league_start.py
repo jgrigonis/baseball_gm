@@ -34,6 +34,7 @@ from src.league.league_constants import LEAGUE_START_YEAR
 @dataclass
 class TeamRef:
     id: str
+    city: str = ""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -489,3 +490,35 @@ class TestStartYear:
             league_start.ScheduleGenerator.return_value.create_schedule.call_args.kwargs
         )
         assert kwargs["start_date"].year == LEAGUE_START_YEAR
+
+
+class TestDivisions:
+    def test_the_teams_are_drawn_into_leagues_and_divisions(self, patched):
+        start_league(patched.league.id, patched.conn)
+        rows = patched.conn.execute(
+            "SELECT team_id, conference, division FROM team_divisions WHERE league_id = %s",
+            (patched.league.id,),
+        ).fetchall()
+        assert {r["team_id"] for r in rows} == {t.id for t in patched.teams}
+        assert len({r["conference"] for r in rows}) == 2
+        assert len({(r["conference"], r["division"]) for r in rows}) == 4
+
+    def test_a_weighted_league_hands_the_divisions_to_the_schedule(self, patched):
+        patched.conn.execute(
+            "UPDATE leagues SET weighted_schedule = TRUE WHERE id = %s",
+            (patched.league.id,),
+        )
+        with patch("src.api.services.league_start.ScheduleGenerator") as gen:
+            gen.return_value.create_schedule.return_value = []
+            start_league(patched.league.id, patched.conn)
+        leagues = gen.return_value.create_schedule.call_args.kwargs["leagues"]
+        assert sorted(t for lg in leagues for d in lg for t in d) == sorted(
+            t.id for t in patched.teams
+        )
+
+    def test_a_balanced_league_doesnt(self, patched):
+        start_league(patched.league.id, patched.conn)
+        from src.api.services import league_start as ls
+
+        kwargs = ls.ScheduleGenerator.return_value.create_schedule.call_args.kwargs
+        assert kwargs["leagues"] is None

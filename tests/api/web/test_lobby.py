@@ -104,8 +104,8 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
 
     r = client.get(f"/leagues/{league.id}/")
 
-    # Eleven settings, plus the GM list's and the settings card's own headers.
-    assert r.text.count('class="setting-tip"') == 13
+    # Twelve settings, plus the GM list's and the settings card's own headers.
+    assert r.text.count('class="setting-tip"') == 14
     assert "Speed Blitz" in r.text
     assert "no trades. Injuries start off" in r.text
     assert "Off: nobody gets hurt" in r.text

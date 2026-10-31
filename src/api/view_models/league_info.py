@@ -32,6 +32,7 @@ def league_info(db, league: dict) -> dict:
         "trade_vote": bool(league["trade_vote"]),
         "pick_trades": bool(league["pick_trades"]),
         "injuries_enabled": injuries_allowed(league),
+        "weighted_schedule": bool(league.get("weighted_schedule")),
         # Seasons started so far, the current one included. 0 in the lobby.
         "season_number": LeagueRepository(db).count_seasons(league["id"]),
         "gms": gms,

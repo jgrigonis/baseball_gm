@@ -25,8 +25,10 @@ def standings(
     user: User,
     gm: GMOrViewer,
     season_id: str | None = None,
+    view: str | None = None,
 ):
-    """`season_id` (from the History tab) shows that season's final standings."""
+    """`season_id` (from the History tab) shows that season's final standings.
+    `view` "overall" shows one table of every team instead of the divisions."""
     ctx = _shell_ctx(request, db, gm, league_id, "standings", user)
     my_team_id = gm["team_id"] if gm else None
     past = past_season(db, league_id, season_id, ctx["season_id"])
@@ -40,6 +42,9 @@ def standings(
         )
     )
     ctx["past_season"] = past
+    ctx["standings_view"] = (
+        "overall" if view == "overall" or not ctx["groups"] else "divisions"
+    )
     return tab_response(request, htmx, "dashboard/partials/standings.html", ctx)
 
 
