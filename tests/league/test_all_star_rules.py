@@ -329,3 +329,21 @@ def test_a_line_in_a_few_words():
     assert all_star.line_text(bat) == "2-4, HR, 3 RBI"
     arm = _line("b", 1, pitch_order=2, pitch_outs=4, pitch_strike_outs=3)
     assert all_star.line_text(arm) == "1.1 IP, 3 K"
+
+
+def test_a_hurt_all_star_gets_a_reserve():
+    cands = [_cand(f"ss{i}", "ss", quality=-i) for i in range(4)]
+    stars = all_star.select_pool(cands[:1], {"ss0": 9})
+    pts = {"ss0": 9, "ss2": 1, "ss3": 1}
+    # ss2 has a vote but is hurt too; ss3 beats ss1 on votes.
+    rows = all_star.reserves(cands, pts, stars, {"ss0", "ss2"})
+    assert [(r["player_id"], r["replaces"]) for r in rows] == [("ss3", "ss0")]
+    assert not rows[0]["wildcard"] and rows[0]["points"] == 1
+    # Only once.
+    assert all_star.reserves(cands, pts, stars + rows, {"ss0", "ss2"}) == []
+
+
+def test_no_reserve_when_nobody_is_left_at_the_position():
+    cands = [_cand("c0", "c"), _cand("ss0", "ss")]
+    stars = all_star.select_pool(cands, {})
+    assert all_star.reserves(cands, {}, stars, {"c0"}) == []

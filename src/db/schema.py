@@ -1085,6 +1085,7 @@ CREATE TABLE IF NOT EXISTS all_stars (
     points     INTEGER NOT NULL DEFAULT 0,
     wildcard   BOOLEAN NOT NULL DEFAULT FALSE,
     score      REAL NOT NULL DEFAULT 0,   -- stat score at the vote (draft order)
+    replaces   TEXT REFERENCES players(id) ON DELETE SET NULL,  -- a reserve: the injured All-Star
     PRIMARY KEY (season_id, player_id)
 );
 
@@ -1154,6 +1155,7 @@ CREATE INDEX IF NOT EXISTS idx_all_star_votes_team   ON all_star_votes(team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_player ON all_star_votes(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_stars_player      ON all_stars(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_stars_team        ON all_stars(team_id);
+CREATE INDEX IF NOT EXISTS idx_all_stars_replaces    ON all_stars(replaces);
 CREATE INDEX IF NOT EXISTS idx_all_star_games_c1     ON all_star_games(captain1_team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_games_c2     ON all_star_games(captain2_team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_games_mvp    ON all_star_games(mvp_player_id);

@@ -395,6 +395,46 @@ def last_spot_tie(cands: list[dict], pts: dict[str, int], pool: list[dict]) -> l
     return [last["player_id"], *tied] if tied else []
 
 
+def reserves(
+    cands: list[dict], pts: dict[str, int], stars: list[dict], hurt: set
+) -> list[dict]:
+    """Reserves for the All-Stars who are hurt (in `hurt`) and don't have
+    one yet: for each, the healthy player at his position with the most
+    votes (then the best stats) who isn't an All-Star already. Rows as
+    select_pool's, with the injured All-Star in "replaces". An All-Star
+    with nobody healthy left at his position goes without."""
+    taken = {r["player_id"] for r in stars}
+    covered = {r.get("replaces") for r in stars}
+    out = []
+    for r in stars:
+        pid = r["player_id"]
+        if pid not in hurt or pid in covered or r.get("replaces"):
+            continue
+        at = [
+            c
+            for c in cands
+            if c["slot"] == r["slot"]
+            and c["player_id"] not in taken
+            and c["player_id"] not in hurt
+        ]
+        if not at:
+            continue
+        best = max(at, key=lambda c: (pts.get(c["player_id"], 0), score(c)))
+        taken.add(best["player_id"])
+        out.append(
+            {
+                "player_id": best["player_id"],
+                "team_id": best["team_id"],
+                "slot": best["slot"],
+                "points": pts.get(best["player_id"], 0),
+                "wildcard": False,
+                "score": score(best),
+                "replaces": pid,
+            }
+        )
+    return out
+
+
 # ── The captains' draft ──────────────────────────────────────────────────────
 #
 # The GMs of the two best teams at the break pick their sides from the pool,

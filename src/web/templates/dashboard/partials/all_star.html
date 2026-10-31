@@ -11,7 +11,7 @@
     {% if as_phase == 'open' %}
     <span class="page-subtitle">Voting is open through the games of {{ as_window.closes }}. The All-Star break starts the next day.</span>
     {% elif as_phase in ('done', 'played') %}
-    <span class="page-subtitle">{{ total }} players, voted in by every GM in the league</span>
+    <span class="page-subtitle">{{ total }} players, voted in by every GM in the league{% if reserves %}, and {{ reserves | length }} reserve{{ 's' if reserves | length != 1 }}{% endif %}</span>
     {% endif %}
   </div>
 
@@ -106,7 +106,7 @@
   {% endif %}
   {% macro star_row(r, show_slot=false) %}
   <tr class="{% if r.team_id == team_id %}my-team{% endif %}">
-    <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ rk(r.player_id) }}</td>
+    <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ rk(r.player_id) }}{% if r.hurt %} <span class="as-hurt" title="Hurt: sits out the All-Star Game">IL</span>{% endif %}{% if r.for_name %} <span class="as-dim">for {{ r.for_name }}</span>{% endif %}</td>
     {% if show_slot %}<td>{{ r.slot | upper }}</td>{% endif %}
     <td>{{ team_badge(r.city, r.mascot) }} {{ r.mascot }}</td>
     <td class="num">{{ r.points }}</td>
@@ -128,6 +128,16 @@
       <table class="data-table">
         <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th class="num">Pts</th></tr></thead>
         <tbody>{% for r in wildcards %}{{ star_row(r, true) }}{% endfor %}</tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% if reserves %}
+    <div class="card as-slot">
+      <div class="card-header"><span class="card-title">Reserves</span>
+        <span class="as-dim">in place of hurt All-Stars</span></div>
+      <table class="data-table">
+        <thead><tr><th>Player</th><th>Pos</th><th>Team</th><th class="num">Pts</th></tr></thead>
+        <tbody>{% for r in reserves %}{{ star_row(r, true) }}{% endfor %}</tbody>
       </table>
     </div>
     {% endif %}

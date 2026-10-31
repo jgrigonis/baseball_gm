@@ -1093,6 +1093,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .as-mvp-row td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
 .as-box { margin-bottom: 8px; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); }
 .as-pitching { margin-top: 10px; }
+.as-hurt { font-family: var(--font-mono); font-size: 9px; color: var(--red); border: 1px solid var(--red); border-radius: 3px; padding: 0 4px; margin-left: 4px; }
 @media (max-width: 600px) {
   .as-grid { grid-template-columns: 1fr; }
 }
