@@ -23,7 +23,7 @@ from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
-from src.league.league_constants import SEASON_LENGTH
+from src.league.league_constants import LEAGUE_START_YEAR, SEASON_LENGTH
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.retirement import (
     MIN_RETIREMENT_AGE,
@@ -82,7 +82,7 @@ class OffseasonPipeline:
             self.year = row["year"] + 1
         else:
             log.warning("No year found with season.")
-            self.year = 2025
+            self.year = LEAGUE_START_YEAR
 
         if not self.os_repo.is_done(season_id, "archive"):
             if not self._playoffs_complete(season_id):

@@ -2,6 +2,10 @@
 
 SEASON_LENGTH = 162
 
+# The year a new league's first season is played. Existing leagues keep the
+# years stored with their seasons; this only applies at the start.
+LEAGUE_START_YEAR = 2027
+
 # A mid-season break with no games, placed at the end of the round nearest
 # game ALL_STAR_BREAK_AFTER_GAMES (MLB's falls about 59% of the way in).
 ALL_STAR_BREAK_AFTER_GAMES = 96

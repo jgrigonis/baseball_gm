@@ -17,6 +17,7 @@ The tests verify the DB-side effects of steps 5-8:
   - Guard clauses (wrong state, missing league)
 """
 
+import datetime
 from dataclasses import dataclass
 from unittest.mock import patch
 
@@ -27,6 +28,7 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.api.services import personas as persona_service
 from src.league import personas
+from src.league.league_constants import LEAGUE_START_YEAR
 
 
 @dataclass
@@ -416,3 +418,42 @@ class TestBackstory:
         )
         start_league(patched.league.id, conn)
         assert LeagueRepository(conn).count_seasons(patched.league.id) == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Start year
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestStartYear:
+    """New leagues start in LEAGUE_START_YEAR, whatever year the manifest says."""
+
+    def _boot_call(self, patched):
+        from src.api.services import league_start
+
+        return league_start.LeagueBootstrapper.return_value.bootstrap_from_manifest
+
+    def test_start_year_is_2027(self):
+        assert LEAGUE_START_YEAR == 2027
+
+    def test_first_season_gets_the_start_year(self, patched):
+        start_league(patched.league.id, patched.conn)
+        manifest, start_date = self._boot_call(patched).call_args.args[:2]
+        assert FAKE_MANIFEST["season_year"] != LEAGUE_START_YEAR
+        assert manifest["season_year"] == LEAGUE_START_YEAR
+        assert start_date == datetime.date(LEAGUE_START_YEAR, 4, 1)
+
+    def test_team_files_are_made_for_the_start_year(self, patched):
+        from src.api.services import league_start
+
+        start_league(patched.league.id, patched.conn)
+        assert league_start.create_team_files.call_args.args[1] == LEAGUE_START_YEAR
+
+    def test_schedule_starts_in_the_start_year(self, patched):
+        from src.api.services import league_start
+
+        start_league(patched.league.id, patched.conn)
+        kwargs = (
+            league_start.ScheduleGenerator.return_value.create_schedule.call_args.kwargs
+        )
+        assert kwargs["start_date"].year == LEAGUE_START_YEAR

@@ -5,6 +5,7 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.io.team_importer import TeamImporter
+from src.league.league_constants import LEAGUE_START_YEAR
 
 
 class LeagueBootstrapper:
@@ -48,10 +49,10 @@ class LeagueBootstrapper:
             # Old CLI path — create or look up by name as before
             league_id = self.league_repo.create_league(manifest["league_name"])
 
-        # Defaults to name=Season1 year=2026 if not found in manifest
+        # Defaults to name=Season1 year=LEAGUE_START_YEAR if not in the manifest
         season_id = self.season_repo.create_season(
             name=manifest.get("season_name", "Season1"),
-            year=manifest.get("season_year", 2026),
+            year=manifest.get("season_year", LEAGUE_START_YEAR),
         )
 
         # Check if this league-season combo already exists
@@ -69,7 +70,7 @@ class LeagueBootstrapper:
             team = self.team_importer.import_csv(
                 league_id=league_id,
                 season_id=season_id,
-                year=str(manifest.get("season_year", 2026)),
+                year=str(manifest.get("season_year", LEAGUE_START_YEAR)),
                 csv_file=team_def["csv"],
                 city=team_def["city"],
                 mascot=team_def["mascot"],
