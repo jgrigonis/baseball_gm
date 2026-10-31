@@ -102,23 +102,23 @@ def window(game_dates: list[str]) -> Window | None:
 # ── Who's on the ballot ──────────────────────────────────────────────────────
 
 
-def on_ballot(players: list[dict], games: int) -> list[dict]:
+def on_ballot(players: list[dict], games: int, share: float = 1.0) -> list[dict]:
     """The players on the ballot, each with his slot and glove (his defense
     rating there, 0 at DH), from AllStarRepository.candidates(). games is
     how many games a team has played. A player who has started more games
     in the lineup than he has pitched in is a hitter at the position he has
     started at most; anyone else who has pitched is a pitcher. Either way he
     needs enough playing time: MIN_STARTS_PER_GAME starts or
-    MIN_OUTS_PER_GAME outs per game."""
+    MIN_OUTS_PER_GAME outs per game, or `share` of that."""
     out = []
     for c in players:
         pos = c["start_position"]
         if pos in FIELD_SLOTS + ("dh",) and c["starts"] > c["pitch_games_played"]:
-            if c["starts"] < MIN_STARTS_PER_GAME * games:
+            if c["starts"] < share * MIN_STARTS_PER_GAME * games:
                 continue
             slot, glove = pos, c["ratings"].get(pos, 0) if pos != "dh" else 0
         elif c["pitch_outs"] > 0:
-            if c["pitch_outs"] < MIN_OUTS_PER_GAME * games:
+            if c["pitch_outs"] < share * MIN_OUTS_PER_GAME * games:
                 continue
             slot, glove = "p", 0
         else:
@@ -337,9 +337,14 @@ def _take(ranked: list[dict], pts: dict[str, int], n: int) -> list[dict]:
     return taken
 
 
-def select_pool(cands: list[dict], pts: dict[str, int]) -> list[dict]:
+def select_pool(
+    cands: list[dict],
+    pts: dict[str, int],
+    quota: dict[str, int] = QUOTA,
+    size: int = POOL_SIZE,
+) -> list[dict]:
     """The All-Stars: [{player_id, team_id, slot, points, wildcard}], by
-    slot quota then wildcards, POOL_SIZE in all when there are enough
+    slot quota then wildcards, `size` in all when there are enough
     candidates. Order within points is the neutral stat score, which also
     settles a tie for the last wildcard spot. Ties at the cut lines that
     would overflow the pool lose their lowest-scoring extras."""
@@ -355,10 +360,10 @@ def select_pool(cands: list[dict], pts: dict[str, int]) -> list[dict]:
     extras: list[dict] = []
     for slot in SLOTS:
         ranked = rank([c for c in cands if c["slot"] == slot])
-        taken = _take(ranked, pts, QUOTA[slot])
-        chosen += taken[: QUOTA[slot]]
-        extras += taken[QUOTA[slot] :]
-    room = POOL_SIZE - len(chosen)
+        taken = _take(ranked, pts, quota[slot])
+        chosen += taken[: quota[slot]]
+        extras += taken[quota[slot] :]
+    room = size - len(chosen)
     extras = rank(extras)
     wild = extras[:room]
     room -= len(wild)
@@ -451,7 +456,9 @@ def side_to_pick(pick: int) -> int:
     return 1 if (first == 0) == (rnd % 2 == 0) else 2
 
 
-def ai_pick(available: list[dict], mine: list[dict]) -> dict | None:
+def ai_pick(
+    available: list[dict], mine: list[dict], needs: dict[str, int] = SIDE_NEEDS
+) -> dict | None:
     """An AI captain's pick from the players left ({player_id, slot, points,
     score}), given his side so far: the best at a position he still needs,
     by votes then stat score, or the best left once his needs are filled."""
@@ -460,7 +467,7 @@ def ai_pick(available: list[dict], mine: list[dict]) -> dict | None:
     have: dict[str, int] = {}
     for r in mine:
         have[r["slot"]] = have.get(r["slot"], 0) + 1
-    needed = [r for r in available if have.get(r["slot"], 0) < SIDE_NEEDS[r["slot"]]]
+    needed = [r for r in available if have.get(r["slot"], 0) < needs[r["slot"]]]
     return max(needed or available, key=lambda r: (r["points"], r["score"]))
 
 

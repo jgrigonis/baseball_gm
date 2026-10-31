@@ -1,7 +1,9 @@
 # src/db/repositories/all_star_repo.py
 #
 # All-Star voting (src/league/all_star.py): who's on the ballot, the ballots
-# GMs cast, and the players voted in.
+# GMs cast, and the players voted in. The All-Star Game and the Rookie Game
+# are run alike, so the game's methods work on either: event="rookie" keeps
+# them in the Rookie Game's tables.
 
 from __future__ import annotations
 
@@ -35,9 +37,27 @@ _STAT_COLUMNS = (
 )
 
 
+# Each event's tables: its players, the game, the draft and the lines.
+TABLES = {
+    "all_star": (
+        "all_stars",
+        "all_star_games",
+        "all_star_picks",
+        "all_star_game_stats",
+    ),
+    "rookie": (
+        "rookie_game_players",
+        "rookie_games",
+        "rookie_game_picks",
+        "rookie_game_stats",
+    ),
+}
+
+
 class AllStarRepository:
-    def __init__(self, conn):
+    def __init__(self, conn, event: str = "all_star"):
         self.conn = conn
+        self.players, self.games, self.picks, self.stats = TABLES[event]
 
     def game_dates(self, season_id: str) -> list[str]:
         """Every regular season game date in a season."""
@@ -177,7 +197,7 @@ class AllStarRepository:
     def save_all_stars(self, season_id: str, rows: list[dict]) -> None:
         for r in rows:
             self.conn.execute(
-                """INSERT INTO all_stars
+                f"""INSERT INTO {self.players}
                        (season_id, player_id, team_id, slot, points, wildcard,
                         score, replaces)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -196,7 +216,7 @@ class AllStarRepository:
 
     def has_all_stars(self, season_id: str) -> bool:
         row = self.conn.execute(
-            "SELECT 1 FROM all_stars WHERE season_id = %s LIMIT 1", (season_id,)
+            f"SELECT 1 FROM {self.players} WHERE season_id = %s LIMIT 1", (season_id,)
         ).fetchone()
         return row is not None
 
@@ -205,13 +225,13 @@ class AllStarRepository:
         within each slot, and the side (1 or 2) and pick that took each one
         in the captains' draft (None until then)."""
         rows = self.conn.execute(
-            """SELECT a.player_id, a.team_id, a.slot, a.points, a.wildcard,
+            f"""SELECT a.player_id, a.team_id, a.slot, a.points, a.wildcard,
                       a.score, a.replaces, p.first_name || ' ' || p.last_name AS name,
                       t.city, t.mascot, k.side, k.pick
-               FROM all_stars a
+               FROM {self.players} a
                JOIN players p ON p.id = a.player_id
                JOIN teams t ON t.id = a.team_id
-               LEFT JOIN all_star_picks k
+               LEFT JOIN {self.picks} k
                  ON k.season_id = a.season_id AND k.player_id = a.player_id
                WHERE a.season_id = %s
                ORDER BY a.wildcard, a.slot, a.points DESC, a.score DESC, name""",
@@ -221,7 +241,7 @@ class AllStarRepository:
 
     def remove_all_star(self, season_id: str, player_id: str) -> None:
         self.conn.execute(
-            "DELETE FROM all_stars WHERE season_id = %s AND player_id = %s",
+            f"DELETE FROM {self.players} WHERE season_id = %s AND player_id = %s",
             (season_id, player_id),
         )
 
@@ -231,7 +251,7 @@ class AllStarRepository:
         self, season_id: str, captain1: str, captain2: str, game_date: str, tied: list
     ) -> None:
         self.conn.execute(
-            """INSERT INTO all_star_games
+            f"""INSERT INTO {self.games}
                    (season_id, captain1_team_id, captain2_team_id, game_date,
                     state, tied_ids)
                VALUES (%s, %s, %s, %s, %s, %s)
@@ -251,9 +271,9 @@ class AllStarRepository:
         if not season_id:
             return None
         row = self.conn.execute(
-            """SELECT g.*, t1.city AS city1, t1.mascot AS mascot1,
+            f"""SELECT g.*, t1.city AS city1, t1.mascot AS mascot1,
                       t2.city AS city2, t2.mascot AS mascot2
-               FROM all_star_games g
+               FROM {self.games} g
                JOIN teams t1 ON t1.id = g.captain1_team_id
                JOIN teams t2 ON t2.id = g.captain2_team_id
                WHERE g.season_id = %s""",
@@ -263,7 +283,7 @@ class AllStarRepository:
 
     def set_state(self, season_id: str, state: str) -> None:
         self.conn.execute(
-            "UPDATE all_star_games SET state = %s WHERE season_id = %s",
+            f"UPDATE {self.games} SET state = %s WHERE season_id = %s",
             (state, season_id),
         )
 
@@ -271,13 +291,13 @@ class AllStarRepository:
         """The scouts make this side's picks from now on."""
         col = "auto1" if side == 1 else "auto2"
         self.conn.execute(
-            f"UPDATE all_star_games SET {col} = TRUE WHERE season_id = %s",
+            f"UPDATE {self.games} SET {col} = TRUE WHERE season_id = %s",
             (season_id,),
         )
 
     def add_pick(self, season_id: str, player_id: str, side: int, pick: int) -> None:
         self.conn.execute(
-            """INSERT INTO all_star_picks (season_id, player_id, side, pick)
+            f"""INSERT INTO {self.picks} (season_id, player_id, side, pick)
                VALUES (%s, %s, %s, %s)""",
             (season_id, player_id, side, pick),
         )
@@ -292,7 +312,7 @@ class AllStarRepository:
         mvp_player_id: str | None,
     ) -> None:
         self.conn.execute(
-            """UPDATE all_star_games
+            f"""UPDATE {self.games}
                SET state = 'played', score1 = %s, score2 = %s, innings = %s,
                    line_score = %s, mvp_player_id = %s
                WHERE season_id = %s""",
@@ -303,7 +323,7 @@ class AllStarRepository:
         for line in lines:
             cols = ["season_id", *line]
             self.conn.execute(
-                f"""INSERT INTO all_star_game_stats ({", ".join(cols)})
+                f"""INSERT INTO {self.stats} ({", ".join(cols)})
                     VALUES ({", ".join(["%s"] * len(cols))})""",
                 (season_id, *line.values()),
             )
@@ -311,8 +331,8 @@ class AllStarRepository:
     def lines(self, season_id: str) -> list[dict]:
         """Every player's line in the season's All-Star Game, with names."""
         rows = self.conn.execute(
-            """SELECT s.*, p.first_name || ' ' || p.last_name AS name
-               FROM all_star_game_stats s
+            f"""SELECT s.*, p.first_name || ' ' || p.last_name AS name
+               FROM {self.stats} s
                JOIN players p ON p.id = s.player_id
                WHERE s.season_id = %s
                ORDER BY s.side, s.batting_order NULLS LAST, s.pitch_order""",
@@ -324,14 +344,14 @@ class AllStarRepository:
         """A player's All-Star Game lines, by year, oldest first: his side's
         captain's city, the score from his side and whether he was MVP."""
         rows = self.conn.execute(
-            """SELECT s.*, y.year, g.mvp_player_id = s.player_id AS mvp,
+            f"""SELECT s.*, y.year, g.mvp_player_id = s.player_id AS mvp,
                       t.city AS captain_city,
                       CASE WHEN s.side = 1 THEN g.score1 ELSE g.score2 END AS runs,
                       CASE WHEN s.side = 1 THEN g.score2 ELSE g.score1 END
                           AS runs_against
-               FROM all_star_game_stats s
+               FROM {self.stats} s
                JOIN seasons y ON y.id = s.season_id
-               JOIN all_star_games g ON g.season_id = s.season_id
+               JOIN {self.games} g ON g.season_id = s.season_id
                JOIN teams t ON t.id = CASE WHEN s.side = 1
                    THEN g.captain1_team_id ELSE g.captain2_team_id END
                WHERE s.player_id = %s
@@ -342,15 +362,15 @@ class AllStarRepository:
 
     def ids(self, season_id: str) -> set[str]:
         rows = self.conn.execute(
-            "SELECT player_id FROM all_stars WHERE season_id = %s", (season_id,)
+            f"SELECT player_id FROM {self.players} WHERE season_id = %s", (season_id,)
         ).fetchall()
         return {r["player_id"] for r in rows}
 
     def seasons_for(self, player_id: str) -> list[dict]:
         """The seasons a player was an All-Star: year and team, oldest first."""
         rows = self.conn.execute(
-            """SELECT s.year, t.city, t.mascot
-               FROM all_stars a
+            f"""SELECT s.year, t.city, t.mascot
+               FROM {self.players} a
                JOIN seasons s ON s.id = a.season_id
                JOIN teams t ON t.id = a.team_id
                WHERE a.player_id = %s

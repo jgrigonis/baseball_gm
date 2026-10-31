@@ -413,7 +413,9 @@ def _tie(lg):
     out = lg.players[("theirs", "p2")]
     real = rules.select_pool
 
-    def pool(cands, pts):
+    def pool(cands, pts, *rookie_game):
+        if rookie_game:
+            return real(cands, pts, *rookie_game)
         rows = [r for r in real(cands, pts) if r["player_id"] != out]
         rows[-1]["wildcard"] = True
         rows[-1]["points"] = max(rows[-1]["points"], 1)
@@ -644,3 +646,108 @@ def test_the_home_run_derby_on_the_break(client, lg):
         f"/leagues/{lg.league.id}/players/{first_out['player_id']}/career"
     ).text
     assert "Out in the quarterfinals" in career
+
+
+# ── The Rookie Game ──────────────────────────────────────────────────────────
+
+
+def _rookies(lg, stars=None):
+    """The All-Stars are `stars` (my players by default) and everyone else
+    is a rookie. (The league is too small for both otherwise: everyone would
+    be an All-Star.)"""
+    from src.db.repositories.player_season_stats_repo import (
+        PlayerSeasonStatsRepository,
+    )
+    from src.league import rookie_game
+
+    real = rules.select_pool
+    if stars is None:
+        stars = {pid for (tag, _), pid in lg.players.items() if tag == "mine"}
+    rookies = set(lg.players.values()) - stars
+
+    def pool(cands, pts, *rookie_game):
+        if rookie_game:
+            return real(cands, pts, *rookie_game)
+        return real([c for c in cands if c["player_id"] in stars], pts)
+
+    return (
+        patch.multiple(rules, select_pool=pool),
+        patch.object(
+            PlayerSeasonStatsRepository, "get_rookie_ids", return_value=rookies
+        ),
+        patch.multiple(rookie_game, MIN_HITTERS=5, MIN_PITCHERS=2),
+    ), rookies
+
+
+def _count_rookies(lg, stars=None):
+    (a, b, c), rookies = _rookies(lg, stars)
+    with a, b, c:
+        _count(lg, lg.mine)
+    # I leave my All-Star picks to the scouts.
+    all_star.auto_draft(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    return AllStarRepository(lg.db, "rookie"), rookies
+
+
+def test_the_rookies_are_picked_with_the_all_stars(lg):
+    repo, theirs = _count_rookies(lg)
+    assert repo.ids(lg.season.id) == theirs
+    assert not repo.ids(lg.season.id) & AllStarRepository(lg.db).ids(lg.season.id)
+    g = repo.game(lg.season.id)
+    # Only two teams, so the All-Star captains run it too: theirs has every
+    # rookie, so they're captain 1, and the AI picks first.
+    assert g["captain1_team_id"] == lg.theirs.id
+    assert g["game_date"] == "2025-04-21"
+    assert len(_picks(repo, lg)) == 1
+    assert all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+
+
+def test_drafting_rookies_on_the_tab(client, lg):
+    repo, theirs = _count_rookies(lg)
+    url = f"/leagues/{lg.league.id}/allstar"
+    html = client.get(url).text
+    assert "Rookie Game" in html and "Pick 2 of 12" in html
+    left = next(r for r in repo.all_stars(lg.season.id) if not r["side"])
+    origin = {"Origin": "http://testserver"}
+    r = client.post(
+        f"{url}/rookie/pick",
+        data={"player_id": left["player_id"]},
+        headers=origin,
+        follow_redirects=False,
+    )
+    assert r.status_code == 303 and r.headers["location"] == url
+    assert _picks(repo, lg)[left["player_id"]] == 2
+    assert "Pick 3 of 12" in client.get(url).text
+    client.post(f"{url}/rookie/auto", headers=origin)
+    assert len(_picks(repo, lg)) == 12
+    assert not all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+
+
+def test_the_rookie_game_is_played_on_the_break(client, lg):
+    from src.api.services import rookie_game
+
+    # Three All-Stars, so there are rookies enough for two sides.
+    stars = {lg.players[("mine", f"p{i}")] for i in range(3)}
+    repo, rookies = _count_rookies(lg, stars)
+    # The sim plays it with the derby and the All-Star Game.
+    with (
+        patch.object(rookie_game, "play", return_value=None) as play,
+        patch.object(all_star, "play_game", return_value={}),
+        patch("src.api.services.hr_derby.play", return_value=[]),
+    ):
+        sim_next.sim_next_day(lg.league.id, lg.db)
+    play.assert_called_once_with(lg.db, lg.league.id, lg.season.id)
+    rookie_game.play(lg.db, lg.league.id, lg.season.id, random.Random(5))
+    g = repo.game(lg.season.id)
+    assert g["state"] == "played" and g["score1"] != g["score2"]
+    lines = repo.lines(lg.season.id)
+    assert {r["player_id"] for r in lines} <= rookies
+    assert {r["side"] for r in lines} == {1, 2}
+    assert rookie_game.play(lg.db, lg.league.id, lg.season.id) is None
+    # Its lines are its own.
+    assert AllStarRepository(lg.db).lines(lg.season.id) == []
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "🌱 Rookie Game" in html and "★ MVP" in html
+    career = client.get(
+        f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
+    ).text
+    assert "Rookie Game" in career and "All-Star Games" not in career

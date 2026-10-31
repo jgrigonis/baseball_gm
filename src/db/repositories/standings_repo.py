@@ -124,6 +124,16 @@ class StandingsRepository:
 
     def get_top_n(self, season_id: str, n: int = 8) -> list[dict]:
         """Return top N teams by win% (with H2H tiebreakers) for playoff seeding."""
+        rows = self.ranked(season_id)
+        if len(rows) < n:
+            raise ValueError(
+                f"Need at least {n} teams with completed games; found {len(rows)}"
+            )
+        return rows[:n]
+
+    def ranked(self, season_id: str) -> list[dict]:
+        """Every team with a completed regular season game, best first, as
+        get_top_n orders them."""
         rows = self.conn.execute(
             """SELECT
                  t.id AS team_id,
@@ -140,10 +150,4 @@ class StandingsRepository:
             (season_id,),
         ).fetchall()
 
-        if len(rows) < n:
-            raise ValueError(
-                f"Need at least {n} teams with completed games; found {len(rows)}"
-            )
-
-        sorted_rows = self.sort(season_id, [dict(r) for r in rows])
-        return sorted_rows[:n]
+        return self.sort(season_id, [dict(r) for r in rows])

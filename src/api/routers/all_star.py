@@ -1,18 +1,19 @@
 # src/api/routers/all_star.py
 #
 # The All-Star tab: the ballot while voting is open, the All-Stars and the
-# captains' draft after, then the Home Run Derby and the All-Star Game
-# (src/api/services/all_star.py, hr_derby.py).
+# captains' draft after, then the Home Run Derby, the All-Star Game and the
+# Rookie Game (src/api/services/all_star.py, hr_derby.py, rookie_game.py).
 
 from __future__ import annotations
 
+from functools import partial
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
-from src.api.services import all_star, hr_derby
+from src.api.services import all_star, hr_derby, rookie_game
 from src.db.repositories.season_repo import SeasonRepository
 from src.league.all_star import BALLOT, SLOTS
 from src.web.utils import _shell_ctx, tab_response
@@ -33,6 +34,9 @@ def all_star_tab(
     ctx.update(all_star.tab_context(db, league_id, ctx["season_id"], ctx["team_id"]))
     if ctx["as_phase"] in ("done", "played"):
         ctx.update(hr_derby.tab_context(db, league_id, ctx["season_id"]))
+        ctx.update(
+            rookie_game.tab_context(db, league_id, ctx["season_id"], ctx["team_id"])
+        )
     ctx["as_error"] = request.query_params.get("error")
     return tab_response(request, htmx, "dashboard/partials/all_star.html", ctx)
 
@@ -101,3 +105,21 @@ async def auto_draft(
 ):
     """The scouts make the rest of this captain's picks."""
     return await _captain_action(request, league_id, db, gm, all_star.auto_draft)
+
+
+@router.post("/leagues/{league_id}/allstar/rookie/pick")
+async def rookie_pick(
+    request: Request, league_id: str, db: DB, gm: GM, _a: ActiveLeague
+):
+    """A captain's pick in the Rookie Game draft."""
+    act = partial(all_star.pick, event=rookie_game.EVENT)
+    return await _captain_action(request, league_id, db, gm, act)
+
+
+@router.post("/leagues/{league_id}/allstar/rookie/auto")
+async def rookie_auto_draft(
+    request: Request, league_id: str, db: DB, gm: GM, _a: ActiveLeague
+):
+    """The scouts make the rest of this captain's Rookie Game picks."""
+    act = partial(all_star.auto_draft, event=rookie_game.EVENT)
+    return await _captain_action(request, league_id, db, gm, act)

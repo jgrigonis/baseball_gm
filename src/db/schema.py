@@ -1151,6 +1151,78 @@ CREATE TABLE IF NOT EXISTS all_star_game_stats (
     PRIMARY KEY (season_id, player_id)
 );
 
+-- The Rookie Game: the season's best rookies who aren't All-Stars, picked by
+-- the stats when the All-Star votes are counted, and the game, its draft and
+-- its lines. Laid out like the All-Star Game's tables, so the same code runs
+-- both (AllStarRepository with event="rookie").
+CREATE TABLE IF NOT EXISTS rookie_game_players (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    slot       TEXT NOT NULL,
+    points     INTEGER NOT NULL DEFAULT 0,
+    wildcard   BOOLEAN NOT NULL DEFAULT FALSE,
+    score      REAL NOT NULL DEFAULT 0,
+    replaces   TEXT REFERENCES players(id) ON DELETE SET NULL,
+    PRIMARY KEY (season_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS rookie_games (
+    season_id    TEXT PRIMARY KEY REFERENCES seasons(id) ON DELETE CASCADE,
+    captain1_team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    captain2_team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    state        TEXT NOT NULL DEFAULT 'draft'
+                     CHECK (state IN ('tie', 'draft', 'played')),
+    tied_ids     TEXT[] NOT NULL DEFAULT '{{}}',
+    auto1        BOOLEAN NOT NULL DEFAULT FALSE,
+    auto2        BOOLEAN NOT NULL DEFAULT FALSE,
+    game_date    TEXT,
+    score1       INTEGER,
+    score2       INTEGER,
+    innings      INTEGER,
+    line_score   JSONB,
+    mvp_player_id TEXT REFERENCES players(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS rookie_game_picks (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    side       INTEGER NOT NULL CHECK (side IN (1, 2)),
+    pick       INTEGER NOT NULL,
+    PRIMARY KEY (season_id, player_id),
+    UNIQUE (season_id, pick)
+);
+
+CREATE TABLE IF NOT EXISTS rookie_game_stats (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    side       INTEGER NOT NULL CHECK (side IN (1, 2)),
+    position   TEXT,
+    batting_order INTEGER,
+    bat_ab     INTEGER NOT NULL DEFAULT 0,
+    bat_runs   INTEGER NOT NULL DEFAULT 0,
+    bat_hits   INTEGER NOT NULL DEFAULT 0,
+    bat_doubles INTEGER NOT NULL DEFAULT 0,
+    bat_triples INTEGER NOT NULL DEFAULT 0,
+    bat_home_runs INTEGER NOT NULL DEFAULT 0,
+    bat_rbi    INTEGER NOT NULL DEFAULT 0,
+    bat_walks  INTEGER NOT NULL DEFAULT 0,
+    bat_strike_outs INTEGER NOT NULL DEFAULT 0,
+    bat_stolen_bases INTEGER NOT NULL DEFAULT 0,
+    pitch_order INTEGER,
+    pitch_outs INTEGER NOT NULL DEFAULT 0,
+    pitch_hits INTEGER NOT NULL DEFAULT 0,
+    pitch_runs INTEGER NOT NULL DEFAULT 0,
+    pitch_earned_runs INTEGER NOT NULL DEFAULT 0,
+    pitch_walks INTEGER NOT NULL DEFAULT 0,
+    pitch_strike_outs INTEGER NOT NULL DEFAULT 0,
+    pitch_home_runs INTEGER NOT NULL DEFAULT 0,
+    pitch_win  BOOLEAN NOT NULL DEFAULT FALSE,
+    pitch_loss BOOLEAN NOT NULL DEFAULT FALSE,
+    pitch_save BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (season_id, player_id)
+);
+
 -- The Home Run Derby: each hitter's line in each matchup. Round 1 is the
 -- field (seeded by home runs); the last round's winner is the champion.
 CREATE TABLE IF NOT EXISTS hr_derby_results (
@@ -1180,6 +1252,14 @@ CREATE INDEX IF NOT EXISTS idx_all_star_games_c2     ON all_star_games(captain2_
 CREATE INDEX IF NOT EXISTS idx_all_star_games_mvp    ON all_star_games(mvp_player_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_picks_player ON all_star_picks(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_game_stats_player ON all_star_game_stats(player_id);
+CREATE INDEX IF NOT EXISTS idx_rookie_game_players_player ON rookie_game_players(player_id);
+CREATE INDEX IF NOT EXISTS idx_rookie_game_players_team ON rookie_game_players(team_id);
+CREATE INDEX IF NOT EXISTS idx_rookie_game_players_replaces ON rookie_game_players(replaces);
+CREATE INDEX IF NOT EXISTS idx_rookie_games_c1 ON rookie_games(captain1_team_id);
+CREATE INDEX IF NOT EXISTS idx_rookie_games_c2 ON rookie_games(captain2_team_id);
+CREATE INDEX IF NOT EXISTS idx_rookie_games_mvp ON rookie_games(mvp_player_id);
+CREATE INDEX IF NOT EXISTS idx_rookie_game_picks_player ON rookie_game_picks(player_id);
+CREATE INDEX IF NOT EXISTS idx_rookie_game_stats_player ON rookie_game_stats(player_id);
 
 CREATE INDEX IF NOT EXISTS idx_player_retirements_league_season
     ON player_retirements(league_id, season_id);
