@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="Toronto stirrups alternate">
+  <defs>
+    <path id="tower" d="M-12 0 L-4 -46 L-3 -58 L3 -58 L4 -46 L12 0 Z M-13 -56 H13 Q14 -64 7 -69 H-7 Q-14 -64 -13 -56 Z M-2 -69 H2 V-84 H-2 Z M-4.5 -88 H4.5 V-83 H-4.5 Z M-1.3 -88 H1.3 L0.5 -108 H-0.5 Z"/>
+  </defs>
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#F3EFE4" stroke="#D6CCBA"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#4F7F72"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#F3EFE4"/>
+        <rect x="50" y="46" width="56" height="3" fill="#C9A44C"/><rect x="50" y="49" width="56" height="9" fill="#2B2F36"/><rect x="50" y="58" width="56" height="3" fill="#C9A44C"/>
+        <g transform="translate(78 128) scale(.55)"><use href="#tower" fill="#C9A44C"/></g>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1B1E23"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#F3EFE4" stroke="#D6CCBA"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#2B2F36"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#F3EFE4"/>
+        <rect x="144" y="46" width="56" height="3" fill="#C9A44C"/><rect x="144" y="49" width="56" height="9" fill="#4F7F72"/><rect x="144" y="58" width="56" height="3" fill="#C9A44C"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#1B1E23"/>
+      </g>
+</svg>

@@ -38,5 +38,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | New York Titans | Done (2026-10-31) | Art Deco Manhattan with industrial lettering (Oswald, chosen from a font study). TITANS stands on a riveted girder. The Ironworkers alternate is steel gray. The cap has a skyscraper spire, and the octagon patch has a sunburst and a NEW YORK banner. |
 | Dubai Falcons | Done (2026-10-31) | Desert and falcon theme with Kufic lettering (Reem Kufi). An ivory home body was added, since none of the team colors is light enough. Falcons climbs at 12° over a gold wing, and the alternate is Oasis green. The cap has a hooded falcon head, and the patch shows the falcon over dunes with دبي. |
 | Madrid Conquistadors | Done (2026-10-31) | Iron, gold and red, with a cream home body. "Conquistadors" is arched in Pirata One blackletter, and MADRID is set in Cinzel Roman capitals. The alternate is Rojigualda red and gold. The caps carry a gold morion, the stirrups a red-gold-red flag band, and the patch is a shield with crossed Toledo swords. |
+| Toronto Sentinels | Done (2026-10-31) | Pine green, charcoal and gold, with a cream home body. "Sentinels" is a rising Yellowtail script, and TORONTO and the numbers are in Alfa Slab One. The alternate is the charcoal Night Watch. The CN Tower is on the caps, helmet and stirrups, and the patch shows the tower over Lake Ontario. |
 
-The other 23 teams are still to do. They aren't shown in the game yet.
+The other 22 teams are still to do. They aren't shown in the game yet.
