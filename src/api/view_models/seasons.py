@@ -14,6 +14,7 @@ from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.injury_repo import INJURY_TIERS, InjuryRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.retirement_repo import RetirementRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
@@ -191,7 +192,11 @@ def season_summary_context(
     return ctx
 
 
-def retirement_context(db, league_id: str, my_team_id: str | None) -> dict:
+def retirement_context(
+    db, league_id: str, my_team_id: str | None, season_id: str | None = None
+) -> dict:
+    """`season_id` comes from a history link and names the season the players
+    retired after; without one, show this offseason's retirements."""
     season_repo = SeasonRepository(db)
     current_season_id = season_repo.get_current_id_for_league(league_id)
 
@@ -203,6 +208,13 @@ def retirement_context(db, league_id: str, my_team_id: str | None) -> dict:
             prev_season = season_repo.get_by_league_and_year(
                 league_id, current_year - 1
             )
+
+    # A history link to an earlier offseason shows that one instead.
+    history_season = None
+    if season_id and season_id != (prev_season or {}).get("id"):
+        history_season = season_repo.get_for_league(league_id, season_id)
+        if history_season:
+            prev_season = history_season
 
     prev_season_id = prev_season["id"] if prev_season else None
     player_repo = PlayerRepository(db)
@@ -245,16 +257,21 @@ def retirement_context(db, league_id: str, my_team_id: str | None) -> dict:
         for r in retired_players:
             r["all_star_years"] = years.get(r["player_id"], [])
 
-    return {"retired_players": retired_players, "my_team_id": my_team_id}
+    return {
+        "retired_players": retired_players,
+        "my_team_id": my_team_id,
+        "history_season": history_season,
+    }
 
 
 def history_context(db, league_id: str, my_team_id: str | None) -> dict:
-    """One row per season: champion, the GM's record, and whether the season
-    has a draft to link to."""
+    """One row per season: champion, the GM's record, whether the season
+    has a draft to link to, and how many players retired after it."""
     season_repo = SeasonRepository(db)
     series_repo = SeriesRepository(db)
     tg_repo = TeamGameRepository(db)
     draft_repo = DraftRepository(db)
+    retired_counts = RetirementRepository(db).counts_by_season(league_id)
 
     seasons = season_repo.get_seasons_for_league(league_id)
 
@@ -278,6 +295,7 @@ def history_context(db, league_id: str, my_team_id: str | None) -> dict:
                 "my_w": my_w,
                 "my_l": my_l,
                 "has_draft": draft_repo.get_for_season(league_id, s["id"]) is not None,
+                "retired": retired_counts.get(s["id"], 0),
             }
         )
 

@@ -52,6 +52,10 @@
                class="history-link">Standings</a>
             <a href="/leagues/{{ league_id }}/season-summary?season_id={{ row.season_id }}#injuries"
                class="history-link">Injuries</a>
+            {% if row.retired %}
+            <a href="/leagues/{{ league_id }}/retirement?season_id={{ row.season_id }}"
+               class="history-link">Retirements ({{ row.retired }})</a>
+            {% endif %}
             <a href="/leagues/{{ league_id }}/season-summary?season_id={{ row.season_id }}"
                class="history-link">Summary →</a>
           </td>
