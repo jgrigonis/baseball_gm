@@ -1,4 +1,4 @@
-# Baseball GM Sim — Product Design Document
+# Baseball GM — Product Design Document
 
 ## Vision
 

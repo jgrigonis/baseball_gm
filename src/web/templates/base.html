@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}GM Sim{% endblock %}</title>
+  <title>{% block title %}Baseball GM{% endblock %}</title>
+  <meta name="description" content="Manage a franchise. Build a roster. Win a championship.">
+  <meta property="og:site_name" content="Baseball GM">
+  <meta property="og:title" content="Baseball GM">
+  <meta property="og:description" content="Manage a franchise. Build a roster. Win a championship.">
   <link rel="stylesheet" href="{{ static_url('css/main.css') }}">
   <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
   <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
@@ -18,7 +22,7 @@
 
   <header class="topbar">
     <span class="topbar-logo">
-      <a href="/leagues/" style="color:inherit;text-decoration:none;">⚾ GM Sim</a>
+      <a href="/leagues/" style="color:inherit;text-decoration:none;">⚾ Baseball GM</a>
       {% if league_name %}
         <span style="color:var(--text-dim);margin:0 4px;">/</span>
         {% if is_commissioner %}

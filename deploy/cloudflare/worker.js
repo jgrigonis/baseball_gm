@@ -55,7 +55,7 @@ const PAGE = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Down for maintenance · GM Sim</title>
+<title>Down for maintenance · Baseball GM</title>
 <style>
   body {
     margin: 0;
@@ -109,7 +109,7 @@ const PAGE = `<!DOCTYPE html>
 </head>
 <body>
   <div class="card">
-    <div class="logo">⚾ GM SIM</div>
+    <div class="logo">⚾ BASEBALL GM</div>
     <h1>Down for maintenance</h1>
     <p>We're making some changes and will be back shortly. Your leagues are safe; nothing is lost.</p>
     <button onclick="location.reload()">Try again</button>

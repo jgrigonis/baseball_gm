@@ -84,9 +84,9 @@ def request_reset(
     link = f"{site}/auth/reset?{urlencode({'token': token})}"
     return ResetEmail(
         to=account["email"],
-        subject="Reset your GM Sim password",
+        subject="Reset your Baseball GM password",
         text=(
-            f"Someone, hopefully you, asked to reset the password for the GM Sim "
+            f"Someone, hopefully you, asked to reset the password for the Baseball GM "
             f"account {account['username']}.\n\n"
             f"Choose a new password here:\n{link}\n\n"
             f"The link works once, for the next {RESET_TTL_MINUTES} minutes.\n\n"
