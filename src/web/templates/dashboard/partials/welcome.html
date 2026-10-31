@@ -20,9 +20,6 @@
   .wl-body { padding:20px 24px 32px; display:grid; gap:16px;
              grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); align-items:start; }
   .wl-wide { grid-column:1 / -1; }
-  .wl-swatches { display:flex; gap:12px; }
-  .wl-swatch { flex:1; text-align:center; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
-  .wl-swatch div { height:56px; border-radius:6px; border:1px solid var(--border-hi); margin-bottom:6px; }
   .wl-area { display:grid; grid-template-columns:76px 1fr 34px 78px; gap:10px; align-items:center;
              padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
   .wl-area:last-of-type { border-bottom:none; }
@@ -105,17 +102,6 @@
     </div>
   </div>
   {% endif %}
-
-  <div class="card">
-    <div class="card-header"><span class="card-title">Your colors</span></div>
-    <div class="card-body">
-      <div class="wl-swatches">
-        {% for label, hex in [("Main", c.primary), ("Second", c.secondary), ("Trim", c.accent)] %}
-        <div class="wl-swatch"><div style="background:{{ hex }};"></div>{{ label }}<br>{{ hex }}</div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
 
   {% if w.report %}
   <div class="card">
