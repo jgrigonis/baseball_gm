@@ -370,6 +370,38 @@ class TestLobbyAiGms:
         assert n == len(patched.teams) - 1
 
 
+class TestLobbyTeams:
+    def test_gms_get_the_teams_they_were_dealt_in_the_lobby(self, patched):
+        conn, league, teams = patched.conn, patched.league, patched.teams
+        conn.execute("UPDATE leagues SET num_teams = 4 WHERE id = %s", (league.id,))
+        conn.execute("UPDATE gms SET team_id = NULL WHERE league_id = %s", (league.id,))
+        for i, t in enumerate(teams):
+            conn.execute(
+                "UPDATE teams SET city = 'Dealt', mascot = %s WHERE id = %s",
+                (f"M{i}", t.id),
+            )
+        persona_service.fill_lobby(conn, league.id)
+        ai = persona_service.lobby_ai_gms(conn, league.id)
+        dealt = {patched.gm.id: teams[2].id, ai[0]["id"]: teams[0].id}
+        conn.execute(
+            "UPDATE gms SET lobby_city = 'Dealt', lobby_mascot = 'M2' WHERE id = %s",
+            (patched.gm.id,),
+        )
+        conn.execute(
+            "UPDATE gms SET lobby_city = 'Dealt', lobby_mascot = 'M0' WHERE id = %s",
+            (ai[0]["id"],),
+        )
+
+        start_league(league.id, conn)
+
+        rows = conn.execute(
+            "SELECT id, team_id FROM gms WHERE league_id = %s", (league.id,)
+        ).fetchall()
+        got = {r["id"]: r["team_id"] for r in rows}
+        assert {g: got[g] for g in dealt} == dealt
+        assert sorted(got.values()) == sorted(t.id for t in teams)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Backstory (src/league/backstory/)
 # ─────────────────────────────────────────────────────────────────────────────

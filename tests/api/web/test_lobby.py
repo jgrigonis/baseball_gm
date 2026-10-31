@@ -46,7 +46,7 @@ def test_lists_a_gm_who_just_joined(client, db_conn, factory, lobby):
 
     assert r.status_code == 200
     assert "Newcomer" in r.text
-    assert 'hx-trigger="every 3s"' in r.text
+    assert 'hx-trigger="every 3s' in r.text
 
 
 def test_started_league_redirects_the_page(client, db_conn, lobby):
@@ -181,3 +181,54 @@ def test_lobby_persona_card_opens(client, db_conn, lobby):
 
     assert r.status_code == 200
     assert ai[0]["display_name"] in r.text
+
+
+def test_each_gm_shows_the_team_they_were_dealt(client, db_conn, lobby):
+    league, gm = lobby
+    db_conn.execute("UPDATE leagues SET num_teams = 3 WHERE id = %s", (league.id,))
+    db_conn.execute("UPDATE gms SET team_id = NULL WHERE id = %s", (gm.id,))
+    personas.fill_lobby(db_conn, league.id)
+    rows = db_conn.execute(
+        "SELECT lobby_city, lobby_mascot FROM gms WHERE league_id = %s",
+        (league.id,),
+    ).fetchall()
+
+    r = _gms(client, league)
+
+    assert len(rows) == 3
+    for row in rows:
+        assert f"{row['lobby_city']} {row['lobby_mascot']}" in r.text
+    assert r.text.count('class="team-badge') >= 3
+
+
+def test_a_person_picks_their_team_from_their_row(client, db_conn, lobby):
+    league, gm = lobby
+    db_conn.execute("UPDATE leagues SET num_teams = 3 WHERE id = %s", (league.id,))
+    db_conn.execute("UPDATE gms SET team_id = NULL WHERE id = %s", (gm.id,))
+    personas.fill_lobby(db_conn, league.id)
+    ai = personas.lobby_ai_gms(db_conn, league.id)[0]
+    before = db_conn.execute(
+        "SELECT lobby_city, lobby_mascot FROM gms WHERE id = %s", (gm.id,)
+    ).fetchone()
+
+    page = _gms(client, league)
+    assert 'class="lobby-team-pick"' in page.text
+    assert page.text.count('class="lobby-team-pick"') == 1
+
+    r = client.post(
+        f"/leagues/{league.id}/lobby/team",
+        data={"team": f"{ai['lobby_city']}|{ai['lobby_mascot']}"},
+    )
+
+    assert r.status_code == 200
+    me = db_conn.execute(
+        "SELECT lobby_city, lobby_mascot FROM gms WHERE id = %s", (gm.id,)
+    ).fetchone()
+    them = db_conn.execute(
+        "SELECT lobby_city, lobby_mascot FROM gms WHERE id = %s", (ai["id"],)
+    ).fetchone()
+    assert (me["lobby_city"], me["lobby_mascot"]) == (
+        ai["lobby_city"],
+        ai["lobby_mascot"],
+    )
+    assert dict(them) == dict(before)

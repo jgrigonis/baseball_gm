@@ -267,6 +267,8 @@ CREATE TABLE IF NOT EXISTS gms (
     persona_id     TEXT,                  -- AI GMs: who they are (gm_personas)
     welcomed_at    TIMESTAMPTZ,           -- saw the welcome screen (once per league)
     roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
+    lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
+    lobby_mascot   TEXT,
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,

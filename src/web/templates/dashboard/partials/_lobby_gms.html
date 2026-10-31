@@ -6,14 +6,20 @@
    Teams nobody has joined yet show their AI GMs, picked when the league was
    made: they run those teams if the league starts now. Each GM who joins
    takes one's place. The commissioner can reroll an AI GM for another
-   persona. Leagues made before AI GMs were picked in the lobby show open
-   slots instead, filled at the start. #}
+   persona. Every GM is dealt the team they'll run as they join or are
+   picked, and keeps it at the start. Each person can pick another team
+   from their own row: one an AI GM holds swaps with theirs. The poll waits
+   while that picker has focus, so it isn't swapped out from under them. Leagues made before AI GMs were picked
+   in the lobby show open slots instead, filled at the start. #}
+{% macro lobby_team(city, mascot) -%}
+  {% if city %}<span style="white-space:nowrap;">{{ team_badge(city, mascot) }} {{ city }} {{ mascot }}</span>{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
+{%- endmacro %}
 <div class="card" id="lobby-gms"
      {% if league_state == "lobby" %}
-     hx-get="/leagues/{{ league_id }}/lobby/gms" hx-trigger="every 3s" hx-swap="outerHTML"
+     hx-get="/leagues/{{ league_id }}/lobby/gms" hx-trigger="every 3s [!document.activeElement || !document.activeElement.closest('.lobby-team-pick')]" hx-swap="outerHTML"
      {% endif %}>
   <div class="card-header">
-    <span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Each GM runs one team. People who join take a team each, and the AI GMs listed here run the rest. Click an AI GM to see how they lean. Status shows who's here: a GM who steps away is marked Away.">GMs ({{ gms|length }} human · {{ ai_gms|length + ai_slots }} AI)</span></span>
+    <span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Each GM runs one team, shown next to their name: it's theirs when the league starts. Pick another from your own row; taking an AI GM's team gives them yours. People who join take an AI GM's place and team, and the AI GMs listed here run the rest. Click an AI GM to see how they lean. Status shows who's here: a GM who steps away is marked Away.">GMs ({{ gms|length }} human · {{ ai_gms|length + ai_slots }} AI)</span></span>
     <span class="spacer"></span>
     {% if join_code %}
     <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
@@ -30,8 +36,26 @@
         {% for gm in gms %}
         <tr {% if gm.id == current_gm_id %}class="my-team"{% endif %}>
           <td class="team-name">{{ gm.display_name }}</td>
-          <td style="color:var(--text-dim);">
-            {% if gm.city %}{{ gm.city }} {{ gm.mascot }}{% else %}—{% endif %}
+          <td>
+            {% if gm.id == current_gm_id and league_state == "lobby" and gm.lobby_city %}
+            <span style="white-space:nowrap;">{{ team_badge(gm.lobby_city, gm.lobby_mascot) }}
+            <select name="team" class="lobby-team-pick" aria-label="Your team"
+                    title="Pick the team you'll run. Taking an AI GM's team gives them yours."
+                    hx-post="/leagues/{{ league_id }}/lobby/team" hx-trigger="change"
+                    hx-target="#lobby-gms" hx-swap="outerHTML"
+                    style="width:auto;max-width:100%;font-size:12px;padding:3px 6px;">
+              {% for t in team_choices %}
+              {% set mine = t.holder_id == gm.id %}
+              <option value="{{ t.city }}|{{ t.mascot }}"
+                      {% if mine %}selected{% endif %}
+                      {% if t.holder_id and not t.is_ai and not mine %}disabled{% endif %}>
+                {{ t.city }} {{ t.mascot }}{% if t.holder_id and not mine %} ({{ t.holder }}{% if t.is_ai %}, AI{% endif %}){% endif %}
+              </option>
+              {% endfor %}
+            </select></span>
+            {% else %}
+            {{ lobby_team(gm.lobby_city, gm.lobby_mascot) }}
+            {% endif %}
           </td>
           <td>
             {% if gm.is_ai %}
@@ -57,7 +81,7 @@
             {% if ai.archetype %}<div style="color:var(--text-dim);font-size:11px;">{{ ai.archetype }}</div>{% endif %}
             {% else %}{{ ai.display_name }}{% endif %}
           </td>
-          <td style="color:var(--text-dim);">—</td>
+          <td>{{ lobby_team(ai.lobby_city, ai.lobby_mascot) }}</td>
           <td><span class="badge badge-40man">AI</span></td>
           <td>
             {% if is_commissioner %}
