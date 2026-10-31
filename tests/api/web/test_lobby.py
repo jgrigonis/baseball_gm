@@ -166,8 +166,10 @@ def test_team_picker_leaves_out_ai_gm_names(client, db_conn, lobby):
     personas.fill_lobby(db_conn, league.id)
     ai = personas.lobby_ai_gms(db_conn, league.id)
 
-    picker = ( 
-        _gms(client, league).text.split('class="lobby-team-pick"')[1].split("</select>")[0]
+    picker = (
+        _gms(client, league)
+        .text.split('class="lobby-team-pick"')[1]
+        .split("</select>")[0]
     )
 
     assert "(AI)" in picker
