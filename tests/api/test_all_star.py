@@ -609,3 +609,38 @@ def test_the_date_shows_the_all_star_game_until_it_is_played(lg):
     )
     all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(2))
     assert _current_league_date(lg.db, lg.season.id, "season") == AFTER[0]
+
+
+# ── The Home Run Derby ───────────────────────────────────────────────────────
+
+
+def test_the_home_run_derby_on_the_break(client, lg):
+    from src.api.services import hr_derby
+    from src.db.repositories.hr_derby_repo import HRDerbyRepository
+
+    _count(lg, lg.mine)
+    field = hr_derby.field(lg.db, lg.league.id, lg.season.id)
+    # 18 hitters with home runs: the top 8, the DHs first (the most HR).
+    assert len(field) == 8 and field[0]["seed"] == 1
+    assert field[0]["bat_home_runs"] >= field[-1]["bat_home_runs"]
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "Home Run Derby" in html and "8 hitters" in html
+
+    out = sim_next.sim_next_day(lg.league.id, lg.db)
+    assert out["all_star_game"] is True
+    lines = HRDerbyRepository(lg.db).results(lg.season.id)
+    assert len(lines) == 8 + 4 + 2
+    assert hr_derby.play(lg.db, lg.league.id, lg.season.id) == []
+
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "Champion:" in html and "Quarterfinals" in html and "Final" in html
+    champ = next(r for r in lines if r["round"] == 3 and r["won"])
+    career = client.get(
+        f"/leagues/{lg.league.id}/players/{champ['player_id']}/career"
+    ).text
+    assert "Home Run Derby" in career and "Champion" in career
+    first_out = next(r for r in lines if r["round"] == 1 and not r["won"])
+    career = client.get(
+        f"/leagues/{lg.league.id}/players/{first_out['player_id']}/career"
+    ).text
+    assert "Out in the quarterfinals" in career

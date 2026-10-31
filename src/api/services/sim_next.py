@@ -14,7 +14,14 @@ import random
 
 import psycopg
 
-from src.api.services import ai_trades, all_star, front_office, team_states, trades
+from src.api.services import (
+    ai_trades,
+    all_star,
+    front_office,
+    hr_derby,
+    team_states,
+    trades,
+)
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.db.repositories.games_repo import GameRepository
@@ -107,11 +114,13 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     game_date = next_date_row["game_date"]
 
-    # The All-Star Game comes before the first games after the break.
+    # The Home Run Derby and the All-Star Game come before the first games
+    # after the break.
     if all_star.game_due(conn, season_id, game_date):
         played = None
         try:
-            played = all_star.play_game(conn, league_id, season_id)
+            derby = hr_derby.play(conn, league_id, season_id)
+            played = all_star.play_game(conn, league_id, season_id) or derby
             conn.commit()
         except Exception:
             # The season goes on without it rather than stopping here.

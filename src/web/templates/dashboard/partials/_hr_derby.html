@@ -1,0 +1,59 @@
+{# templates/dashboard/partials/_hr_derby.html
+   The Home Run Derby on the All-Star tab (src/api/services/hr_derby.py):
+   the field before it's played, the bracket round by round after.
+#}
+<div class="card as-game hr-derby">
+  <div class="card-header">
+    <span class="card-title">💥 Home Run Derby · {{ derby_date }}</span>
+    {% if derby_rounds %}
+    <span class="as-dim">Champion: {{ derby_champion.name }}</span>
+    {% else %}
+    <span class="as-dim">{{ derby_field | length }} hitters</span>
+    {% endif %}
+  </div>
+  <div class="card-body as-note">
+    {% if derby_rounds %}
+    <span class="as-ok">🏆 {{ derby_champion.name }}</span> ({{ derby_champion.mascot }}) won the derby.
+    Longest home run: {{ derby_longest.name }}, {{ derby_longest.longest }} ft.
+    {% else %}
+    The league's top home run hitters, seeded by home runs, go one on one: each hitter swings until he
+    makes {{ derby_outs }} outs, and any swing that isn't a home run is an out. A tie goes to a swing-off.
+    It's played on the break, before the All-Star Game.
+    {% endif %}
+  </div>
+  {% if derby_rounds %}
+  <div class="hr-bracket">
+    {% for rnd in derby_rounds %}
+    <div class="hr-round">
+      <div class="hr-round-name">{{ rnd.name }}</div>
+      {% for pair in rnd.matches %}
+      <div class="hr-match">
+        {% for r in pair %}
+        <div class="hr-line{% if r.won %} won{% endif %}{% if r.team_id == team_id %} mine{% endif %}">
+          <span class="hr-seed">{{ r.seed }}</span>
+          <span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>
+          <span class="hr-team">{{ team_badge(r.city, r.mascot) }}</span>
+          <span class="hr-score">{{ r.homers }}{% if r.swingoff is not none %} <span class="as-dim">({{ r.swingoff }})</span>{% endif %}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <table class="data-table">
+    <thead><tr><th class="num">Seed</th><th>Player</th><th>Team</th><th class="num">HR</th></tr></thead>
+    <tbody>
+      {% for h in derby_field %}
+      <tr class="{% if h.team_id == team_id %}my-team{% endif %}">
+        <td class="num as-dim">{{ h.seed }}</td>
+        <td><span class="as-player" onclick="openPlayerPanel('{{ h.player_id }}')">{{ h.name }}</span>{{ rk(h.player_id) }}</td>
+        <td>{{ team_badge(h.city, h.mascot) }} {{ h.mascot }}</td>
+        <td class="num">{{ h.bat_home_runs }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>

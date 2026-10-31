@@ -252,6 +252,22 @@
       </table>
       {% endif %}
 
+      {% if p.hr_derbies %}
+      <div class="cs-section-title">Home Run Derby</div>
+      <table class="cs-asg-table">
+        <tbody>
+          {% for d in p.hr_derbies %}
+          <tr>
+            <td>{{ d.year }}</td>
+            <td>{% if d.champion %}<span class="all-star-tag">🏆 Champion</span>{% else %}Out in the {{ d.reached | lower }}{% endif %}</td>
+            <td>{{ d.homers }} HR</td>
+            <td>longest {{ d.longest }} ft</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
       {# Injury History #}
       <div class="cs-section-title">Injury History</div>
       {% if p.injuries_by_year %}
