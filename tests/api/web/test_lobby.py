@@ -96,7 +96,8 @@ def test_a_gm_who_joins_takes_an_ai_slot(client, db_conn, lobby):
 def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
     league, _ = lobby
     db_conn.execute(
-        "UPDATE leagues SET mode = 'speed_blitz', reentry_enabled = true WHERE id = %s",
+        "UPDATE leagues SET mode = 'speed_blitz', injuries_enabled = false,"
+        " reentry_enabled = true WHERE id = %s",
         (league.id,),
     )
     app.dependency_overrides[get_current_user] = lambda: {"id": None}
