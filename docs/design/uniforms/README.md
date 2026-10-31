@@ -45,5 +45,6 @@ uv run --with fonttools --with svgpathtools --with uharfbuzz \
 | Dublin Shamrocks | Done (2026-10-31) | The tricolour in Uncial Antiqua lettering. Home is white with green Shamrocks, the road jersey is green with white Dublin, and the orange alternate is Samhain. The caps carry a shamrock, and the roundel patch reads Dublin over Baile Átha Cliath. |
 | Los Angeles Stars | Done (2026-10-31) | Hollywood after dark in purple, gold and pink. The jerseys use a rising Pacifico script with Bungee numbers: Stars on white at home, Los Angeles in gold on purple on the road, and a pink Sunset alternate. The caps carry a gold star, the stirrups have a band that fades gold to pink, and the patch is a striped retro sunset with palms. |
 | Beijing Dragons | Done (2026-10-31) | Imperial red and gold with Temple of Heaven blue and a cream home body. DRAGONS is arched in Archivo Black on the home and red Imperial jerseys, and the blue road jersey carries 北京 in Ma Shan Zheng brush calligraphy. The caps carry a gold dragon, and the patch is the Temple of Heaven. |
+| Amsterdam Captains | Done (2026-10-31) | Golden Age harbor in orange, navy and cream, lettered in Alegreya SC Black. Captains at home, AMSTERDAM on the navy road jersey, and an Oranje alternate. The caps carry a ship's wheel, the stirrups carry the city's XXX crosses, and the patch is a row of canal-house gables. |
 
-The other 16 teams are still to do. They aren't shown in the game yet.
+The other 15 teams are still to do. They aren't shown in the game yet.
