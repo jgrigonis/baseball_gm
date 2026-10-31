@@ -8,6 +8,9 @@ Both orders come from the game's event log (lineup_set, substitution,
 pitcher_start, pitching_change, closer_called). A row the log doesn't
 mention, such as a game played before the log existed, keeps its place
 after the ordered rows.
+
+AB, R and H always show; the other batting columns show only when someone in
+the game has one.
 """
 
 from __future__ import annotations
@@ -53,3 +56,21 @@ def in_order(rows: list[dict], order: list[str]) -> list[dict]:
     """Rows sorted by their player's place in order; unknown players go last."""
     rank = {pid: i for i, pid in enumerate(order)}
     return sorted(rows, key=lambda r: rank.get(r["player_id"], len(rank)))
+
+
+# Batting columns that show only when used, as (row key, header, title)
+OPTIONAL_BATTING_COLUMNS = (
+    ("doubles", "2B", ""),
+    ("triples", "3B", ""),
+    ("HR", "HR", ""),
+    ("RBI", "RBI", ""),
+    ("BB", "BB", ""),
+    ("HBP", "HBP", "Hit by pitch"),
+    ("K", "K", ""),
+    ("SB", "SB", ""),
+)
+
+
+def used_batting_columns(rows: list[dict]) -> list[tuple[str, str, str]]:
+    """The optional batting columns at least one of these rows has."""
+    return [c for c in OPTIONAL_BATTING_COLUMNS if any(r.get(c[0]) for r in rows)]

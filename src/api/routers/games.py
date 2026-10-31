@@ -11,7 +11,12 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, User
-from src.api.view_models.box_score import batting_order, in_order, pitching_order
+from src.api.view_models.box_score import (
+    batting_order,
+    in_order,
+    pitching_order,
+    used_batting_columns,
+)
 from src.api.view_models.line_score import headline, line_score
 from src.api.view_models.standouts import standouts
 from src.db.repositories.games_repo import GameRepository
@@ -118,6 +123,8 @@ def game_panel(
             "game": game,
             "home_bat": home_bat,
             "away_bat": away_bat,
+            # Shared by both teams so their tables line up
+            "bat_cols": used_batting_columns(home_bat + away_bat),
             "home_pit": home_pit,
             "away_pit": away_pit,
             "no_hitters": no_hitters,
