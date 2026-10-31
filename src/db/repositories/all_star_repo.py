@@ -177,8 +177,8 @@ class AllStarRepository:
             self.conn.execute(
                 """INSERT INTO all_stars
                        (season_id, player_id, team_id, slot, points, wildcard,
-                        score)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        score, replaces)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT DO NOTHING""",
                 (
                     season_id,
@@ -188,6 +188,7 @@ class AllStarRepository:
                     r["points"],
                     r["wildcard"],
                     r.get("score", 0),
+                    r.get("replaces"),
                 ),
             )
 
@@ -203,7 +204,7 @@ class AllStarRepository:
         in the captains' draft (None until then)."""
         rows = self.conn.execute(
             """SELECT a.player_id, a.team_id, a.slot, a.points, a.wildcard,
-                      a.score, p.first_name || ' ' || p.last_name AS name,
+                      a.score, a.replaces, p.first_name || ' ' || p.last_name AS name,
                       t.city, t.mascot, k.side, k.pick
                FROM all_stars a
                JOIN players p ON p.id = a.player_id

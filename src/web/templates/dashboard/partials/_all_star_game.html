@@ -93,7 +93,7 @@
   <div class="card-body as-note">
     The GMs of the two best teams are the captains: the {{ game.city1 }} {{ game.mascot1 }} GM
     ({{ names[1] }}, the home side, picks first) and the {{ game.city2 }} {{ game.mascot2 }} GM
-    ({{ names[2] }}). They draft their sides from the {{ total }} All-Stars, taking turns 1, 2, 2, 1, 1, …
+    ({{ names[2] }}). They draft their sides from the {{ draft_total }} healthy All-Stars, taking turns 1, 2, 2, 1, 1, …
     Every pitcher comes out after {{ pitcher_outs_cap }} outs. Nothing's at stake but the MVP and bragging rights.
     <br>
     {% if game.state == 'tie' %}
@@ -104,15 +104,20 @@
       <span class="as-warn">Waiting on the {{ game.city2 }} {{ game.mascot2 }} GM</span> to pick who gets the last
       spot: {{ tied | length }} players tied on votes for it. The draft starts after that.
       {% endif %}
-    {% elif picks_made < total %}
-      Pick {{ picks_made + 1 }} of {{ total }}:
+    {% elif picks_made < draft_total %}
+      Pick {{ picks_made + 1 }} of {{ draft_total }}:
       {% if my_turn %}<span class="as-warn">you're up.</span>
       {% else %}{{ names[up_side] }} is up.{% endif %}
       Any picks still to make on {{ game.game_date }} are made by the scouts.
     {% else %}
       <span class="as-ok">The draft is done.</span> The game is played on {{ game.game_date }}.
     {% endif %}
-    {% if my_side and game.state == 'draft' and picks_made < total %}
+    {% if out_hurt %}
+    <br><span class="as-warn">Out hurt:</span>
+    {% for r in out_hurt %}<span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ ', ' if not loop.last }}{% endfor %}.
+    {{ 'He stays an All-Star but sits out the game' if out_hurt | length == 1 else 'They stay All-Stars but sit out the game' }}, and a reserve takes each spot.
+    {% endif %}
+    {% if my_side and game.state == 'draft' and picks_made < draft_total %}
       {% if game['auto' ~ my_side] %}
       <br><span class="as-dim">Your scouts are making your picks.</span>
       {% else %}
@@ -135,7 +140,7 @@
         {% if my_turn %}<td><form method="post" action="/leagues/{{ league_id }}/allstar/tie">
           <input type="hidden" name="player_id" value="{{ r.player_id }}">
           <button type="submit" class="btn btn-primary as-btn-sm">Pick</button></form></td>{% endif %}
-        <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span></td>
+        <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{% if r.hurt %} <span class="as-hurt" title="Hurt: he'd sit out the game">IL</span>{% endif %}</td>
         <td>{{ r.slot | upper }}</td>
         <td>{{ team_badge(r.city, r.mascot) }} {{ r.mascot }}</td>
         <td class="as-dim">{{ r.line }}</td>
@@ -168,7 +173,7 @@
     </table>
   </div>
   {% endfor %}
-  {% if picks_made < total %}
+  {% if picks_made < draft_total %}
   <div class="card as-slot as-board">
     <div class="card-header"><span class="card-title">Still on the board</span>
       <span class="as-dim">most votes first</span></div>

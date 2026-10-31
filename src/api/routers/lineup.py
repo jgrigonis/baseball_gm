@@ -128,7 +128,10 @@ def save_rotation(
 
     league = LeagueRepository(db).get_by_id(league_id)
     league_state = league["state"] if league else "lobby"
-    effective_date = _current_league_date(db, season_id, league_state)
+    # The next real game's date, not the All-Star Game's.
+    effective_date = _current_league_date(
+        db, season_id, league_state, all_star_game=False
+    )
 
     # Find where this player sits in the new rotation (1-based index)
     try:
@@ -169,7 +172,10 @@ def save_bullpen(
 
     league = LeagueRepository(db).get_by_id(league_id)
     league_state = league["state"] if league else "preseason"
-    effective_date = _current_league_date(db, season_id, league_state)
+    # The next real game's date, not the All-Star Game's.
+    effective_date = _current_league_date(
+        db, season_id, league_state, all_star_game=False
+    )
 
     # Format assignments for the Repo
     assignments = [

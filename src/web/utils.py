@@ -108,8 +108,12 @@ def tab_response(request: Request, htmx: bool, template_name: str, ctx: dict):
     return render("dashboard/shell.html", ctx)
 
 
-def _current_league_date(db, season_id: str | None, state: str) -> str | None:
-    """Return the next unplayed game date, or last played date if season is over."""
+def _current_league_date(
+    db, season_id: str | None, state: str, all_star_game: bool = True
+) -> str | None:
+    """Return the next unplayed game date, or last played date if season is
+    over. With all_star_game, the All-Star Game's date while it's the next
+    thing to play."""
     if not season_id:
         return None
     if state not in (
@@ -136,7 +140,9 @@ def _current_league_date(db, season_id: str | None, state: str) -> str | None:
     game_repo = GameRepository(db)
     row = game_repo.get_next_unplayed_date(season_id)
     if row:
-        return row["game_date"]
+        # The All-Star Game is played before the first games after the break.
+        asg = all_star_game and all_star.game_day(db, season_id, row["game_date"])
+        return asg or row["game_date"]
     row = game_repo.last_game_date(season_id)
     return row["d"] if row else None
 

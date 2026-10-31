@@ -18,6 +18,13 @@
 # 2 is a person, he picks who gets it before the draft starts; an AI captain
 # leaves it to the stats (all_star.select_pool).
 #
+# An All-Star who's hurt keeps the honor but sits out: he isn't on the
+# draft board and doesn't play. The healthy player at his position with the
+# most votes is named a reserve in his place (all_star.reserves). Hurt goes
+# by the league's injury date (InjuryRepository.current_date), which stays
+# the first day of the break until play resumes, so the tab, the draft and
+# the game all agree on who's out.
+#
 # The game is played on the break (all_star.game_date), when the sim reaches
 # the first game day after it. Any picks still to make, and an unbroken tie,
 # are made for the captains then. It's an exhibition: nobody gets tired or
@@ -126,6 +133,7 @@ def count_votes(
     else:
         tied = []  # the stats settled it
     repo.save_all_stars(season_id, pool)
+    name_reserves(conn, league_id, season_id, cands, pts)
     if captains:
         w = window(conn, season_id)
         repo.create_game(season_id, *captains, all_star.game_date(w), tied)
@@ -144,6 +152,50 @@ def _captains(conn, season_id: str) -> list[str] | None:
 
 
 # ── The captains ─────────────────────────────────────────────────────────────
+
+
+def _hurt(conn, league_id: str, player_ids) -> set[str]:
+    """Which of these players are hurt, as of the league's injury date."""
+    return InjuryRepository(conn, league_id).get_injured_ids(list(player_ids), None)
+
+
+def stars_with_injuries(conn, league_id: str, season_id: str) -> list[dict]:
+    """The season's All-Stars (AllStarRepository.all_stars), each with
+    "hurt": whether he's out of the draft and the game."""
+    stars = AllStarRepository(conn).all_stars(season_id)
+    hurt = _hurt(conn, league_id, [r["player_id"] for r in stars])
+    for r in stars:
+        r["hurt"] = r["player_id"] in hurt
+    return stars
+
+
+def _board(stars: list[dict]) -> list[dict]:
+    """The All-Stars in the draft: the healthy ones, and anyone already
+    picked."""
+    return [r for r in stars if not r["hurt"] or r["side"]]
+
+
+def name_reserves(
+    conn,
+    league_id: str,
+    season_id: str,
+    cands: list[dict] | None = None,
+    pts: dict | None = None,
+) -> list[dict]:
+    """Name a reserve for every hurt All-Star who doesn't have one yet."""
+    repo = AllStarRepository(conn)
+    stars = stars_with_injuries(conn, league_id, season_id)
+    hurt = {r["player_id"] for r in stars if r["hurt"]}
+    if not hurt:
+        return []
+    if cands is None:
+        cands = candidates(conn, league_id, season_id)
+    if pts is None:
+        pts = all_star.tally(repo.ballots(season_id).values())
+    hurt |= _hurt(conn, league_id, [c["player_id"] for c in cands])
+    rows = all_star.reserves(cands, pts, stars, hurt)
+    repo.save_all_stars(season_id, rows)
+    return rows
 
 
 def _people(conn, league_id: str) -> set[str]:
@@ -172,7 +224,7 @@ def my_turn(conn, league_id: str, season_id: str | None, team_id) -> bool:
     g = repo.game(season_id)
     if not g or g["state"] == "played":
         return False
-    return turn(g, repo.all_stars(season_id)) == team_id
+    return turn(g, _board(stars_with_injuries(conn, league_id, season_id))) == team_id
 
 
 def _add_tied(conn, league_id: str, season_id: str, player_id: str) -> None:
@@ -211,6 +263,7 @@ def break_tie(conn, league_id: str, season_id: str, team_id: str, player_id: str
         raise ValueError("That player isn't in the tie.")
     _add_tied(conn, league_id, season_id, player_id)
     repo.set_state(season_id, "draft")
+    name_reserves(conn, league_id, season_id)
     draft(conn, league_id, season_id)
 
 
@@ -224,7 +277,7 @@ def draft(conn, league_id: str, season_id: str, everyone: bool = False) -> int:
         return 0
     people = _people(conn, league_id)
     auto = {g[f"captain{s}_team_id"] for s in (1, 2) if g[f"auto{s}"]}
-    stars = repo.all_stars(season_id)
+    stars = _board(stars_with_injuries(conn, league_id, season_id))
     made = sum(1 for r in stars if r["side"])
     n = 0
     while made < len(stars):
@@ -260,7 +313,7 @@ def pick(conn, league_id: str, season_id: str, team_id: str, player_id: str):
     g = repo.game(season_id)
     if not g or g["state"] != "draft":
         raise ValueError("The All-Star draft isn't on.")
-    stars = repo.all_stars(season_id)
+    stars = _board(stars_with_injuries(conn, league_id, season_id))
     if turn(g, stars) != team_id:
         raise ValueError("It isn't your pick.")
     r = next((r for r in stars if r["player_id"] == player_id), None)
@@ -287,6 +340,18 @@ def game_due(conn, season_id: str, game_date: str) -> bool:
     return not g or g["state"] != "played"
 
 
+def game_day(conn, season_id: str, next_date: str) -> str | None:
+    """The All-Star Game's date when it's the next thing to play (the next
+    games are the first after the break and it hasn't been played), so the
+    league's date shows the game day, not the day play resumes."""
+    if not game_due(conn, season_id, next_date):
+        return None
+    g = AllStarRepository(conn).game(season_id)
+    if g:
+        return g["game_date"]
+    return all_star.game_date(window(conn, season_id))
+
+
 def play_game(
     conn, league_id: str, season_id: str, rng: random.Random | None = None
 ) -> dict | None:
@@ -309,20 +374,19 @@ def play_game(
         # Captain 2 never picked: the stats decide, as for an AI captain.
         _add_tied(conn, league_id, season_id, g["tied_ids"][0])
         repo.set_state(season_id, "draft")
+    name_reserves(conn, league_id, season_id)
     draft(conn, league_id, season_id, everyone=True)
 
     rng = rng or random.Random()
-    stars = repo.all_stars(season_id)
-    injured = InjuryRepository(conn, league_id).get_injured_ids(
-        [r["player_id"] for r in stars], g["game_date"]
-    )
+    stars = stars_with_injuries(conn, league_id, season_id)
+    injured = {r["player_id"] for r in stars if r["hurt"]}
     players = PlayerRepository(conn)
     gms = GMRepository(conn)
     sides: dict[int, TeamInGame] = {}
     starting: dict[int, dict[str, tuple[int, str]]] = {}
     for side in (1, 2):
         team_id = g[f"captain{side}_team_id"]
-        mine = [r for r in stars if r["side"] == side]
+        mine = [r for r in stars if r["side"] == side and not r["hurt"]]
         records = [players.look_up(r["player_id"]) for r in mine]
         team = TeamInGame(
             TeamRecord(
@@ -490,14 +554,21 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
         )
     elif p in ("done", "played"):
         repo = AllStarRepository(conn)
-        stars = repo.all_stars(season_id)
+        stars = stars_with_injuries(conn, league_id, season_id)
+        voted = [r for r in stars if not r["replaces"]]
+        names = {r["player_id"]: r["name"] for r in stars}
         ctx["by_slot"] = {
-            s: [r for r in stars if r["slot"] == s and not r["wildcard"]]
+            s: [r for r in voted if r["slot"] == s and not r["wildcard"]]
             for s in all_star.SLOTS
         }
-        ctx["wildcards"] = [r for r in stars if r["wildcard"]]
+        ctx["wildcards"] = [r for r in voted if r["wildcard"]]
+        ctx["reserves"] = [
+            {**r, "for_name": names.get(r["replaces"], "")}
+            for r in stars
+            if r["replaces"]
+        ]
         ctx["my_count"] = sum(1 for r in stars if r["team_id"] == team_id)
-        ctx["total"] = len(stars)
+        ctx["total"] = len(voted)
         g = repo.game(season_id)
         ctx["game"] = g
         if g:
@@ -509,6 +580,8 @@ def _game_context(conn, league_id, season_id, team_id, g, stars) -> dict:
     """The All-Star Game part of the tab: the tie and the draft before it's
     played, the line score and box score after."""
     captains = {1: g["captain1_team_id"], 2: g["captain2_team_id"]}
+    out = [r for r in stars if r["hurt"] and not r["side"]]
+    stars = _board(stars)
     up = turn(g, stars)
     ctx = {
         "captains": captains,
@@ -521,14 +594,18 @@ def _game_context(conn, league_id, season_id, team_id, g, stars) -> dict:
             for s in (1, 2)
         },
         "picks_made": sum(1 for r in stars if r["side"]),
+        "draft_total": len(stars),
+        "out_hurt": out,
         "pitcher_outs_cap": all_star.PITCHER_OUTS_CAP,
     }
     if g["state"] == "tie":
         cands = {c["player_id"]: c for c in candidates(conn, league_id, season_id)}
         pts = all_star.tally(AllStarRepository(conn).ballots(season_id).values())
+        hurt = _hurt(conn, league_id, g["tied_ids"])
         ctx["tied"] = [
             {
                 "player_id": pid,
+                "hurt": pid in hurt,
                 "name": cands[pid]["name"],
                 "slot": cands[pid]["slot"],
                 "line": _line(cands[pid]),

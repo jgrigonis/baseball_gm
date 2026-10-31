@@ -555,3 +555,57 @@ def test_the_ready_bar_knows_its_my_pick(lg):
         "SELECT id FROM gms WHERE team_id = %s", (lg.theirs.id,)
     ).fetchone()["id"]
     assert ready_check.status(lg.db, lg.league.id, other)["all_star_turn"]
+
+
+def _hurt(lg, player_id):
+    lg.db.execute(
+        """INSERT INTO player_injuries (player_id, league_id, games_remaining,
+                                        return_date)
+           VALUES (%s, %s, 30, '2025-12-31')""",
+        (player_id, lg.league.id),
+    )
+
+
+def test_a_hurt_all_star_sits_out_and_a_reserve_takes_his_place(lg):
+    # theirs-p2 misses the pool on the tiebreak; mine-p0 is hurt.
+    tied, out = _tie(lg)
+    hurt = lg.players[("mine", "p0")]
+    _hurt(lg, hurt)
+    with tied:
+        repo, g = _count(lg, lg.mine)
+    stars = {r["player_id"]: r for r in repo.all_stars(lg.season.id)}
+    # Still an All-Star, with a reserve in his place.
+    assert hurt in stars and stars[out]["replaces"] == hurt
+    assert all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    with pytest.raises(ValueError, match="isn't available"):
+        all_star.pick(lg.db, lg.league.id, lg.season.id, lg.mine.id, hurt)
+    all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(5))
+    picks = _picks(repo, lg)
+    assert hurt not in picks and out in picks and len(picks) == 23
+    played = {r["player_id"] for r in repo.lines(lg.season.id)}
+    assert hurt not in played
+
+
+def test_hurt_all_stars_and_reserves_on_the_tab(client, lg):
+    tied, out = _tie(lg)
+    hurt = lg.players[("mine", "p0")]
+    _hurt(lg, hurt)
+    with tied:
+        _count(lg, lg.mine)
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "Out hurt:" in html and 'class="as-hurt"' in html
+    assert "Reserves" in html and "and 1 reserve" in html
+    assert "Pick 1 of 23" in html
+
+
+def test_the_date_shows_the_all_star_game_until_it_is_played(lg):
+    from src.web.utils import _current_league_date
+
+    _count(lg, lg.mine)
+    assert _current_league_date(lg.db, lg.season.id, "season") == "2025-04-23"
+    assert (
+        _current_league_date(lg.db, lg.season.id, "season", all_star_game=False)
+        == AFTER[0]
+    )
+    all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(2))
+    assert _current_league_date(lg.db, lg.season.id, "season") == AFTER[0]
