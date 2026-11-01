@@ -96,6 +96,8 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
     Build the section-based grade_map for the player detail panel.
     Pitchers:  Pitching / General / Defense / Hitting
     Hitters:   Hitting  / General / Defense / Pitching
+    Sections a player is rarely used for carry off_role=True (General, Defense
+    and Hitting for pitchers; Pitching for hitters).
     Pitching and Hitting also carry "roles": the composite ratings (SP/RP/CP,
     leadoff/contact/power hitter), shown under their own subheading.
     Ratings-based entries use skill_to_grade(rating_value).
@@ -226,10 +228,19 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
             value = (source or {}).get(skill["key"])
             skill["value"] = round(value) if value is not None else None
 
+    # Off-role sections are what the player is rarely used for: the panel
+    # tucks them behind a toggle.
     if grades.player_type == "pitcher":
-        return [pitching_section, general_section, defense_section, hitting_section]
+        on_role = [pitching_section]
+        off_role = [general_section, defense_section, hitting_section]
     else:
-        return [hitting_section, general_section, defense_section, pitching_section]
+        on_role = [hitting_section, general_section, defense_section]
+        off_role = [pitching_section]
+    for section in on_role:
+        section["off_role"] = False
+    for section in off_role:
+        section["off_role"] = True
+    return on_role + off_role
 
 
 # ── Card dicts ────────────────────────────────────────────────────────────────

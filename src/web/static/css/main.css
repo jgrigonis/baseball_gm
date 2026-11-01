@@ -962,6 +962,21 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   color: var(--muted); margin: 10px 0 2px;
 }
 
+/* Off-role ratings (hitting for a pitcher, pitching for a hitter): collapsed. */
+.pd-offrole { margin-bottom: 16px; }
+.pd-offrole > summary {
+  list-style: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 8px 0; border-top: 1px dashed var(--border);
+}
+.pd-offrole > summary::-webkit-details-marker { display: none; }
+.pd-offrole > summary::before { content: "▸ Show "; }
+.pd-offrole[open] > summary::before { content: "▾ Hide "; }
+.pd-offrole > summary:hover { color: var(--text); }
+.pd-offrole[open] > summary { margin-bottom: 8px; }
+
 .pd-skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
 .pd-skill-row {
   display: flex; justify-content: space-between;

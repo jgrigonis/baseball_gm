@@ -84,3 +84,36 @@ def test_players_from_a_trade_are_tagged(setup):
     assert html.count('<span class="pp-side get">You get</span>') == 2
     assert html.count('<span class="pp-side give">You give</span>') == 1
     assert f'data-player-id="{c.id}" data-side="give"' in html
+
+
+def _off_role(html):
+    """The section titles inside each player's collapsed off-role toggle."""
+    import re
+
+    return [
+        re.findall(r'pd-section-title">(\w+)<', block)
+        for block in re.findall(r'<details class="pd-offrole".*?</details>', html, re.S)
+    ]
+
+
+def test_hitter_tucks_pitching_behind_a_toggle(setup):
+    client, league, (a, *_) = setup
+    html = _panel(client, league, a)
+    assert _off_role(html) == [["Pitching"]]
+    assert '<details class="pd-offrole" ontoggle' in html
+    assert " open" not in html.split('class="pd-offrole"')[1].split(">")[0]
+
+
+def test_pitcher_tucks_hitting_general_and_defense_behind_a_toggle(
+    setup, factory, db_conn
+):
+    client, league, (a, *_) = setup
+    team = factory.team(city="Arm", mascot="Barn")
+    p = factory.rated_player(team, league, 20, pitcher=True, name="Hurler")
+    db_conn.execute(
+        """UPDATE player_skills SET strikes = 80, accuracy = 80, stamina = 80,
+                  recovery = 80, ground_balls = 80 WHERE player_id = %s""",
+        (p.id,),
+    )
+    html = _panel(client, league, p, a)
+    assert _off_role(html) == [["General", "Defense", "Hitting"], ["Pitching"]]
