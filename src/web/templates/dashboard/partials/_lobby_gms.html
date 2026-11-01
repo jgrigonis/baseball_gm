@@ -35,7 +35,7 @@
       <tbody>
         {% for gm in gms %}
         <tr {% if gm.id == current_gm_id %}class="my-team"{% endif %}>
-          <td class="team-name">{{ gm.display_name }}</td>
+          <td class="team-name">{% if gm.username %}<a href="/gms/{{ gm.username|urlencode }}" class="gm-link" title="GM profile">{{ gm.display_name }}</a>{% else %}{{ gm.display_name }}{% endif %}</td>
           <td>
             {% if gm.id == current_gm_id and league_state == "lobby" and gm.lobby_city %}
             <span style="white-space:nowrap;">{{ team_badge(gm.lobby_city, gm.lobby_mascot) }}

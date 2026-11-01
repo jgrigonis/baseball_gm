@@ -4,6 +4,8 @@ The lobby's GM list polls /lobby/gms, so the commissioner sees GMs join and
 everyone waiting finds out when the league starts.
 """
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -47,6 +49,29 @@ def test_lists_a_gm_who_just_joined(client, db_conn, factory, lobby):
     assert r.status_code == 200
     assert "Newcomer" in r.text
     assert 'hx-trigger="every 3s' in r.text
+
+
+def test_people_link_to_their_gm_profiles(client, db_conn, lobby):
+    league, _ = lobby
+    username = "joiner_" + uuid.uuid4().hex[:8]
+    user_id = str(uuid.uuid4())
+    db_conn.execute(
+        "INSERT INTO users (id, session_token, username, display_name)"
+        " VALUES (%s, %s, %s, 'Joiner')",
+        (user_id, str(uuid.uuid4()), username),
+    )
+    db_conn.execute(
+        "INSERT INTO gms (id, league_id, user_id, display_name, is_ai)"
+        " VALUES (gen_random_uuid(), %s, %s, 'Joiner', false)",
+        (league.id, user_id),
+    )
+
+    r = _gms(client, league)
+
+    assert (
+        f'<a href="/gms/{username}" class="gm-link" title="GM profile">Joiner</a>'
+        in r.text
+    )
 
 
 def test_started_league_redirects_the_page(client, db_conn, lobby):

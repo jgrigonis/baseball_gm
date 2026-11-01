@@ -550,6 +550,17 @@ def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
     # teams. Leagues made before the lobby picked AI GMs show the open teams
     # as slots instead, filled when the league starts.
     humans = [g for g in gm_repo.get_all_in_league(league["id"]) if not g["is_ai"]]
+    # Their usernames, so each name links to the person's GM profile.
+    usernames = {
+        r["id"]: r["username"]
+        for r in gm_repo.conn.execute(
+            """SELECT g.id, u.username FROM gms g JOIN users u ON u.id = g.user_id
+               WHERE g.league_id = %s""",
+            (league["id"],),
+        ).fetchall()
+    }
+    for g in humans:
+        g["username"] = usernames.get(g["id"])
     ai_gms = personas.lobby_ai_gms(gm_repo.conn, league["id"])
     return {
         "league_id": league["id"],
