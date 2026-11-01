@@ -203,6 +203,8 @@ body {
   text-align: right;
 }
 .topbar-team strong { color: var(--amber); display: block; font-size: 13px; }
+a.topbar-team { text-decoration: none; }
+a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 3px; }
 
 .topbar-nav, .topbar-nav form { display: flex; align-items: center; }
 .topbar-nav a {
