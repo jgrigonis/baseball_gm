@@ -33,7 +33,7 @@
       {% endfor %}
     </div>
     {% endif %}
-    <button type="button" class="btn btn-secondary coach-go" data-tab="{{ coach.current.tab }}" onclick="coachGo('{{ coach.current.tab }}')">Go to {{ coach.current.tab | title }} →</button>
+    <button type="button" class="btn btn-secondary coach-go" data-tab="{{ coach.current.tab }}" onclick="coachGo('{{ coach.current.tab }}')">Go to {{ coach.current.go }} →</button>
     {% endif %}
   </div>
   {% else %}

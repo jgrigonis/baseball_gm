@@ -13,7 +13,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
-from src.api.services import all_star, hr_derby, rookie_game
+from src.api.services import all_star, coach, hr_derby, rookie_game
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.league.all_star import BALLOT, SLOTS
 from src.web.utils import _shell_ctx, tab_response
@@ -38,6 +39,13 @@ def all_star_tab(
             rookie_game.tab_context(db, league_id, ctx["season_id"], ctx["team_id"])
         )
     ctx["as_error"] = request.query_params.get("error")
+    # In a tutorial league, seeing the All-Stars or the break's results
+    # finishes a coach step.
+    if ctx.get("coach"):
+        league = LeagueRepository(db).get_by_id(league_id)
+        pick_due = bool(ctx.get("all_star_pick_due"))
+        if coach.mark_all_star_visit(db, league, ctx["as_phase"], pick_due):
+            ctx["coach"] = coach.coach_ctx(db, league)
     return tab_response(request, htmx, "dashboard/partials/all_star.html", ctx)
 
 
@@ -64,6 +72,7 @@ async def save_ballot(
         all_star.submit(db, league_id, season_id, gm["team_id"], raw)
     except ValueError as e:
         return HTMLResponse(f'<span class="as-error">✗ {e}</span>')
+    coach.mark(db, league_id, "allstar_vote")
     db.commit()
     return HTMLResponse('<span class="as-saved">✓ Ballot saved</span>')
 

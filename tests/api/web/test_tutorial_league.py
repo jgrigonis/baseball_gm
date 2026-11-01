@@ -296,6 +296,104 @@ def test_a_second_season_finishes_the_tour(db_conn, factory):
     assert ctx["done_count"] == len(coach.STEPS)
 
 
+def test_meet_your_team_stays_up_until_the_gm_moves_on(db_conn):
+    league_id = _league(db_conn, "P", "preseason", is_practice=True)
+    league = LeagueRepository(db_conn).get_by_id(league_id)
+
+    coach.mark_visit(db_conn, league, None)  # the Meet your team page
+    ctx = coach.coach_ctx(db_conn, LeagueRepository(db_conn).get_by_id(league_id))
+    assert ctx["current"]["key"] == "welcome"
+    assert ctx["current"]["go"] == "Meet your team"
+
+    coach.mark_visit(db_conn, league, "draft")
+    assert _steps(db_conn, league_id)["welcome"]
+
+
+def _week(monkeypatch, phase, captain=False):
+    monkeypatch.setattr(
+        coach, "_all_star_week", lambda db, league: {"phase": phase, "captain": captain}
+    )
+
+
+def _step(db, league_id, key):
+    league = LeagueRepository(db).get_by_id(league_id)
+    return next(s for s in coach.coach_steps(db, league) if s["key"] == key)
+
+
+def test_the_ballot_step_waits_for_the_ballot(db_conn, monkeypatch):
+    league_id = _league(db_conn, "P", "season", is_practice=True)
+
+    _week(monkeypatch, "upcoming")
+    vote = _step(db_conn, league_id, "allstar_vote")
+    assert not vote["done"] and vote["tab"] is None
+
+    _week(monkeypatch, "open")
+    assert _step(db_conn, league_id, "allstar_vote")["tab"] == "allstar"
+    coach.mark(db_conn, league_id, "allstar_vote")
+    assert _step(db_conn, league_id, "allstar_vote")["done"]
+    # Saved, but the votes aren't counted yet: keep playing.
+    draft = _step(db_conn, league_id, "allstar_draft")
+    assert draft["tab"] == "standings" and draft["text"] == coach.WAIT_TEXT
+
+
+def test_counted_votes_finish_the_ballot_step(db_conn, monkeypatch):
+    league_id = _league(db_conn, "P", "season", is_practice=True)
+    _week(monkeypatch, "done")
+
+    steps = _steps(db_conn, league_id)
+
+    assert steps["allstar_vote"]
+    assert not steps["allstar_draft"] and not steps["allstar_break"]
+
+
+def test_a_captain_is_told_to_draft(db_conn, monkeypatch):
+    league_id = _league(db_conn, "P", "season", is_practice=True)
+
+    _week(monkeypatch, "done")
+    assert coach.CAPTAIN_TEXT not in _step(db_conn, league_id, "allstar_draft")["text"]
+    _week(monkeypatch, "done", captain=True)
+    assert _step(db_conn, league_id, "allstar_draft")["text"].endswith(
+        coach.CAPTAIN_TEXT
+    )
+
+
+def test_the_all_star_tab_finishes_the_draft_then_the_break(db_conn, monkeypatch):
+    league_id = _league(db_conn, "P", "season", is_practice=True)
+    repo = LeagueRepository(db_conn)
+    _week(monkeypatch, "done")
+
+    # A captain with a pick to make isn't done yet.
+    assert not coach.mark_all_star_visit(
+        db_conn, repo.get_by_id(league_id), "done", True
+    )
+    assert coach.mark_all_star_visit(db_conn, repo.get_by_id(league_id), "done", False)
+    assert _steps(db_conn, league_id)["allstar_draft"]
+
+    _week(monkeypatch, "played")
+    assert _step(db_conn, league_id, "allstar_break")["tab"] == "allstar"
+    assert not _steps(db_conn, league_id)["allstar_break"]
+    assert coach.mark_all_star_visit(
+        db_conn, repo.get_by_id(league_id), "played", False
+    )
+    assert _steps(db_conn, league_id)["allstar_break"]
+
+
+def test_all_star_week_is_done_once_the_break_is_past(db_conn, monkeypatch):
+    league_id = _league(db_conn, "P", "season", is_practice=True)
+    _week(monkeypatch, "none")
+
+    steps = _steps(db_conn, league_id)
+
+    assert all(steps[k] for k in coach.ALL_STAR_STEPS)
+
+
+def test_other_leagues_skip_the_all_star_coach(db_conn):
+    league_id = _league(db_conn, "R", "season")
+    league = LeagueRepository(db_conn).get_by_id(league_id)
+
+    assert not coach.mark_all_star_visit(db_conn, league, "played", False)
+
+
 # ── Tab tips ──────────────────────────────────────────────────────────────────
 
 
