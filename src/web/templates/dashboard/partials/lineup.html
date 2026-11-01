@@ -182,6 +182,9 @@
               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
                      margin-left:8px;"></span>
         <div class="spacer"></div>
+        <button class="btn btn-secondary" onclick="autoFillRotation()"
+                title="Keep the starters in the rotation and fill the empty and injured spots"
+                style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
         <button class="btn btn-secondary" onclick="rebuildRotation()"
                 title="Start over: your best healthy starters, as many as your Strategy tab's rotation size. The next starter stays the same if he's still in the rotation."
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Rebuild</button>
@@ -451,6 +454,7 @@ window.addToRotation      = addToRotation;
 window.removeFromRotation  = removeFromRotation;
 window.setPointer          = setPointer;
 window.clearRotation       = clearRotation;
+window.autoFillRotation    = autoFillRotation;
 window.rebuildRotation     = rebuildRotation;
 window.autoAssignBullpen   = autoAssignBullpen;
 window.setRosterFilter     = setRosterFilter;
@@ -1368,6 +1372,41 @@ function clearRotation() {
   renderRotation();
   renderBullpen();
   updatePitchingBanners();
+}
+
+// Keep who's there (minus the injured) and fill up to ROTATION_SIZE.
+function autoFillRotation() {
+  const before = rotation.filter(Boolean).join(',');
+  const bullpenBefore = JSON.stringify(Object.entries(bullpen).sort());
+
+  // Remove injured pitchers from rotation
+  rotation = rotation.filter(pid => {
+    const p = ALL_PITCHERS.find(x => x.player_id === pid);
+    return p && !p.injured;
+  });
+
+  const inRot = new Set(rotation);
+  const candidates = ALL_PITCHERS
+    .filter(p => !p.injured && !inRot.has(p.player_id))
+    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall));
+  const needed = Math.max(0, ROTATION_SIZE - rotation.length);
+  candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
+  ensureValidPointer();
+
+  // Remove newly-promoted rotation players from the bullpen dict
+  const newInRot = new Set(rotation.filter(Boolean));
+  Object.keys(bullpen).forEach(pid => { if (newInRot.has(pid)) delete bullpen[pid]; });
+
+  if (rotation.filter(Boolean).join(',') !== before) {
+    pitchingSaved = false;
+    updatePitchingBanners();
+  }
+  if (JSON.stringify(Object.entries(bullpen).sort()) !== bullpenBefore) {
+    bullpenSaved = false;
+    updatePitchingBanners();
+  }
+  renderRotation();
+  renderBullpen();
 }
 
 // Start over: the best healthy starters, ROTATION_SIZE of them (Strategy tab).

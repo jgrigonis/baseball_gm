@@ -168,7 +168,7 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 mp.ROTATION_SIZE,
                 ("4-man", "5-man", "6-man"),
                 ("4", "6"),
-                "How many starters Rebuild puts in your rotation on the Lineup "
+                "How many starters Auto-fill and Rebuild put in your rotation on the Lineup "
                 "tab. Whoever is in your saved rotation is who pitches.",
             ),
             Setting(
