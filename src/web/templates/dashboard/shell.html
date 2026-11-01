@@ -359,6 +359,26 @@ function setActiveTab(el) {
   const wrap = document.querySelector('.play-btn-wrap');
   if (wrap) wrap.style.display = hideOn.some(t => tab.endsWith(t)) ? 'none' : 'flex';
 }
+// A link inside a tab (a team in a news story, say) can open another tab's
+// page: highlight that tab. Pages no tab owns (a GM's profile) keep the
+// highlight where it was.
+function syncActiveTab(path) {
+  path = (path || '').split('?')[0].replace(/\/$/, '');
+  var links = document.querySelectorAll('.tab-link');
+  for (var i = 0; i < links.length; i++) {
+    var href = (links[i].getAttribute('href') || '').split('?')[0];
+    if (href && href === path) {
+      if (!links[i].classList.contains('active')) setActiveTab(links[i]);
+      return;
+    }
+  }
+}
+document.body.addEventListener('htmx:pushedIntoHistory', function(e) {
+  syncActiveTab(e.detail.path);
+});
+document.body.addEventListener('htmx:historyRestore', function(e) {
+  syncActiveTab(e.detail.path || location.pathname);
+});
 // Set initial visibility based on active tab on page load
 (function() {
   const active = document.querySelector('.tab-link.active');
