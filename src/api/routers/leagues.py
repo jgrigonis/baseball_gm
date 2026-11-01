@@ -508,10 +508,15 @@ def welcome_page(
     return tab_response(request, htmx, "dashboard/partials/welcome.html", ctx)
 
 
-# Pages that link to a persona card: the path it links back to, and its name.
+# Pages that link to a GM's page (an AI GM's persona card or a person's
+# in-league profile): the path it links back to, and its name.
 PERSONA_BACK = {
     "league": ("league", "the League page"),
     "welcome": ("welcome", "your team"),
+    "headlines": ("headlines", "News"),
+    "standings": ("standings", "Standings"),
+    "schedule": ("schedule", "Schedule"),
+    "trades": ("trades", "Trades"),
 }
 
 

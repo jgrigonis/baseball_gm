@@ -350,4 +350,6 @@ class TestProfilePage:
         }  # fmt: skip
         r = client.get(f"/leagues/{league['league'].id}/league")
         name = self._username(db_conn, league["user_id"])
-        assert f'href="/gms/{name}"' in r.text
+        # Inside the league, so its tabs stay on screen.
+        lid = league["league"].id
+        assert f'href="/leagues/{lid}/gms/{name}"' in r.text

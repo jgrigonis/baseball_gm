@@ -9,7 +9,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from src.api.dependencies import DB, User
+from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
+from src.api.routers.leagues import PERSONA_BACK
 from src.api.view_models.profile import (
     BIO_MAX,
     favorite_team,
@@ -18,7 +19,7 @@ from src.api.view_models.profile import (
     team_choices,
 )
 from src.db.repositories.user_repo import UserRepository
-from src.web.utils import templates
+from src.web.utils import _shell_ctx, tab_response, templates
 
 router = APIRouter(tags=["web"])
 
@@ -42,6 +43,30 @@ def gm_profile(request: Request, username: str, db: DB, user: User):
         return RedirectResponse(f"/gms/{person['username']}", status_code=301)
     ctx = profile_context(db, person, user)
     return templates.TemplateResponse(request, "profile.html", {"user": user, **ctx})
+
+
+@router.get("/leagues/{league_id}/gms/{username}", response_class=HTMLResponse)
+def gm_profile_in_league(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    username: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+    back: str = "league",
+):
+    """The same profile inside a league, so the league's tabs stay on screen
+    (links from News, Standings, the Schedule and the League page). `back` is
+    the page that linked here."""
+    person = find_user(db, username)
+    if not person:
+        return HTMLResponse("There's no GM by that name.", status_code=404)
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    ctx.update(profile_context(db, person, user))
+    ctx["user"] = user
+    ctx["back"] = PERSONA_BACK.get(back, PERSONA_BACK["league"])
+    return tab_response(request, htmx, "dashboard/partials/gm_profile.html", ctx)
 
 
 def _edit_page(request, user, bio: str, favorite: str, error=None, status_code=200):

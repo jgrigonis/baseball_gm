@@ -102,7 +102,9 @@ def test_schedule_shows_each_opponents_gm(db_conn, factory):
 
     upcoming, recent = html.split("Upcoming")[1].split("Recent Results")
     assert "<th>GM</th>" in upcoming and "<th>GM</th>" in recent
-    assert f'href="/leagues/{league.id}/personas/{persona_id}"' in upcoming
+    assert (
+        f'href="/leagues/{league.id}/personas/{persona_id}?back=schedule"' in upcoming
+    )
     assert ">Bot GM</a>" in upcoming
-    assert f'href="/gms/{username}"' in recent
+    assert f'href="/leagues/{league.id}/gms/{username}?back=schedule"' in recent
     assert ">Rival</a>" in recent
