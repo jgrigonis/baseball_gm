@@ -1,10 +1,10 @@
 from src.team.colors import TEAM_COLORS, colors_for, contrast, team_badge
-from src.league.world_league import EXTRA_TEAMS, WORLD_TEAMS
+from src.league.team_pool import TEAM_POOL
 
 
-def test_every_world_league_team_has_colors():
-    for team in WORLD_TEAMS + EXTRA_TEAMS:
-        assert (team["city"], team["mascot"]) in TEAM_COLORS, team
+def test_every_pool_team_has_colors():
+    for team in TEAM_POOL:
+        assert team.key in TEAM_COLORS, team
 
 
 def test_codes_are_unique():

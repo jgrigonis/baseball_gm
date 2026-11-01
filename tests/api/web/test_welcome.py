@@ -176,12 +176,10 @@ def test_uniform_slugs():
     assert wv.uniform_slug("Tokyo") == "tokyo"
 
 
-def test_every_world_league_team_has_its_uniforms():
-    from src.api.services.lobby_teams import world_teams
+def test_every_pool_team_has_its_uniforms():
+    from src.league.team_pool import TEAM_POOL
 
-    teams = world_teams()
-    assert len(teams) == 30
-    for city, _ in teams:
+    for city in [t.city for t in TEAM_POOL]:
         u = wv.uniforms(city)
         assert u, city
         assert [p["label"] for p in u["jerseys"]] == ["Home", "Away", "Alternate"]

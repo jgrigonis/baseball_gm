@@ -40,17 +40,24 @@
             {% if gm.id == current_gm_id and league_state == "lobby" and gm.lobby_city %}
             <span style="white-space:nowrap;">{{ team_badge(gm.lobby_city, gm.lobby_mascot) }}
             <select name="team" class="lobby-team-pick" aria-label="Your team"
-                    title="Pick the team you'll run. Taking an AI GM's team gives them yours."
+                    title="Pick the team you'll run. Taking an AI GM's team gives them yours; a team not yet in the league comes in for a nearby one."
                     hx-post="/leagues/{{ league_id }}/lobby/team" hx-trigger="change"
                     hx-target="#lobby-gms" hx-swap="outerHTML"
                     style="width:auto;max-width:100%;font-size:12px;padding:3px 6px;">
-              {% for t in team_choices %}
+              {% for group, in_league in [("In this league", true), ("Bring in a new team", false)] %}
+              {% set teams = team_choices | selectattr("in_league", "equalto", in_league) | list %}
+              {% if teams %}
+              <optgroup label="{{ group }}">
+              {% for t in teams %}
               {% set mine = t.holder_id == gm.id %}
               <option value="{{ t.city }}|{{ t.mascot }}"
                       {% if mine %}selected{% endif %}
                       {% if t.holder_id and not t.is_ai and not mine %}disabled{% endif %}>
-                {{ t.city }} {{ t.mascot }}{% if t.holder_id and not mine %} ({% if t.is_ai %}AI{% else %}{{ t.holder }}{% endif %}){% endif %}
+                {{ t.city }} {{ t.mascot }}{% if t.holder_id and not mine %} ({% if t.is_ai %}AI{% else %}{{ t.holder }}{% endif %}){% endif %}{% if not in_league and t.region %} · {{ t.region }}{% endif %}
               </option>
+              {% endfor %}
+              </optgroup>
+              {% endif %}
               {% endfor %}
             </select></span>
             {% else %}

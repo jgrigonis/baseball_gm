@@ -625,6 +625,16 @@ CREATE TABLE IF NOT EXISTS league_season_teams (
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
+-- The teams a league in the lobby will play with, by name: a draw from the
+-- team pool, changed when a person picks one outside it
+-- (src/api/services/lobby_teams.py).
+CREATE TABLE IF NOT EXISTS league_lobby_teams (
+    league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    city      TEXT NOT NULL,
+    mascot    TEXT NOT NULL,
+    PRIMARY KEY (league_id, city, mascot)
+);
+
 -- Which league ("conference", since leagues holds whole leagues) and
 -- division each team plays in (src/league/divisions.py). Set when a league
 -- starts; leagues started before divisions existed have no rows.
