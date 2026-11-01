@@ -34,7 +34,7 @@ def fielder_arm(fielder) -> int:
     skills = getattr(fielder, "skills", None)
     try:
         value = skills["arm"]
-    except (KeyError, TypeError):
+    except KeyError, TypeError:
         return 50
     return value if isinstance(value, (int, float)) else 50
 
