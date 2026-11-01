@@ -1,8 +1,0 @@
-
-Simming whole season kind of locks everything up.
-Maybe update the screen every few games or even every one
-So the standings change real time, and the schedule populates
-
-Add a button to stop simming.
-
-

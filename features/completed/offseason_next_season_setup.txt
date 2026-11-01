@@ -1,3 +1,0 @@
-Reset — clear pitcher_state, create new season record
-
-Reassign starting rotations and bullpen roles

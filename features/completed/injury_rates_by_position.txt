@@ -1,5 +1,0 @@
-Need to set injury weights by position
-
-Also, by activity, like baserunning, stealing, batting, fielding, pitching
-
-Currently, only batter and baserunners can become injured.

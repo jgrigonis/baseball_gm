@@ -1,7 +1,0 @@
-The offseason pipeline steps in order would be:
-
-Archive — snapshot skills to player_skills_history, aggregate season stats
-Where do we aggregate season stats? There's no DB location
-
-Age — run age_to() on every active player, write back to player_skills
-Also write out new csv files in a year subdir

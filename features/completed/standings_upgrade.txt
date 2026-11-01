@@ -1,6 +1,0 @@
-Low priority
-
-Standings update.
-
-Allow sorting by  Home, Away, L10, RS, RA, Streak
-And make it reversible

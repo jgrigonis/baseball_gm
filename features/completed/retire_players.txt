@@ -1,8 +1,0 @@
-Retire — evaluate players for retirement based on age/skill decline
-Can just add 'retired' to the CHECK constraint for player_status.status
-Not needed for now.
-
-We now retire players in the offseason.
-
-Free agency — released/retired players leave rosters
-We need this added to the pipeline

@@ -1,5 +1,0 @@
-SELECT *
-FROM player_game_stats pgs
-JOIN games g ON g.id = pgs.game_id
-WHERE pgs.player_id = ?
-  AND g.season_id = ?
