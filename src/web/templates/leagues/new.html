@@ -25,7 +25,7 @@
       <label for="num-teams">Teams</label>
       <select name="num_teams" id="num-teams">
         {% for n in team_counts %}
-        <option value="{{ n }}" {% if n == default_team_count %}selected{% endif %}>{{ n }} teams{% if n == 30 %}: the World League{% endif %}</option>
+        <option value="{{ n }}" {% if n == default_team_count %}selected{% endif %}>{{ n }} teams</option>
         {% endfor %}
       </select>
       <span class="mode-note" id="num-teams-note">Two leagues, each split into divisions. With 30 teams it's the Atlantic and Pacific Leagues, three divisions each, by geography. Any other size draws the teams into two leagues of two divisions at random.</span>
