@@ -377,7 +377,9 @@ class LeagueRepository:
                       (SELECT COUNT(*) FROM gms g
                        WHERE g.league_id = l.id AND g.user_id IS NOT NULL) AS people,
                       (SELECT g.display_name FROM gms g
-                       WHERE g.id = l.commissioner_gm_id) AS commissioner_name
+                       WHERE g.id = l.commissioner_gm_id) AS commissioner_name,
+                      (SELECT u.username FROM gms g JOIN users u ON u.id = g.user_id
+                       WHERE g.id = l.commissioner_gm_id) AS commissioner_username
                FROM leagues l
                ORDER BY l.created_at DESC"""
         ).fetchall()

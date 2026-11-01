@@ -34,7 +34,7 @@
           <td class="num">{{ l.season_number }} of {{ l.num_seasons }}</td>
           <td class="num">{{ l.num_teams }}</td>
           <td class="num">{{ l.people }}</td>
-          <td class="admin-dim" data-sort-value="{{ l.commissioner_name or '' }}">{{ l.commissioner_name or '—' }}</td>
+          <td class="admin-dim" data-sort-value="{{ l.commissioner_name or '' }}">{% if l.commissioner_username %}<a href="/gms/{{ l.commissioner_username|urlencode }}" class="gm-link" title="GM profile">{{ l.commissioner_name or l.commissioner_username }}</a>{% else %}{{ l.commissioner_name or '—' }}{% endif %}</td>
           <td class="admin-dim">{{ 'Yes' if l.is_public else 'No' }}</td>
           <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>
           <td class="admin-dim" data-sort-value="{{ l.created_at or '' }}">{{ (l.created_at or '')[:10] }}</td>

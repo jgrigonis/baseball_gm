@@ -1,21 +1,25 @@
 # src/api/view_models/schedule.py
 #
 # Context for the schedule tab: the GM's upcoming games (with opponent
-# records) and completed results.
+# records) and completed results, with who runs each opponent.
 
 from __future__ import annotations
 
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
+from src.api.view_models.standings import team_gms
 
 
-def schedule_context(db, season_id: str | None, my_team_id: str | None) -> dict:
+def schedule_context(
+    db, league_id: str, season_id: str | None, my_team_id: str | None
+) -> dict:
     upcoming = []
     recent = []
 
     if season_id and my_team_id:
         game_repo = GameRepository(db)
         tg_repo = TeamGameRepository(db)
+        gms = team_gms(db, league_id)
 
         up_rows = game_repo.get_team_upcoming(season_id, my_team_id)
         opp_team_ids = {
@@ -35,6 +39,7 @@ def schedule_context(db, season_id: str | None, my_team_id: str | None) -> dict:
                     "opp_city": r["away_city"] if is_home else r["home_city"],
                     "opp_mascot": r["away_mascot"] if is_home else r["home_mascot"],
                     "opp_record": opp_records.get(opp_id, "0-0"),
+                    "opp_gm": gms.get(opp_id),
                     "is_home": is_home,
                 }
             )
@@ -49,9 +54,11 @@ def schedule_context(db, season_id: str | None, my_team_id: str | None) -> dict:
                 if r["innings_played"] and r["innings_played"] != 9
                 else ""
             )
+            opp_id = r["away_team_id"] if is_home else r["home_team_id"]
             recent.append(
                 {
                     "game_id": r["game_id"],
+                    "opp_gm": gms.get(opp_id),
                     "date": r["game_date"],
                     "home_away": "vs" if is_home else "@",
                     "opp_city": r["away_city"] if is_home else r["home_city"],
