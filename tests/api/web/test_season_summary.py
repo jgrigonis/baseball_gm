@@ -365,3 +365,58 @@ def test_the_draft_page_shows_last_season(db_conn, factory, league, client):
     assert "Last season: 1–3, 3rd of 3" in r.text
     assert "missed the playoffs" in r.text
     assert "The front office sees" in r.text
+
+
+def _award(db, season, award, player_id, team, scope="", position="", line="x"):
+    db.execute(
+        """INSERT INTO season_awards (season_id, award, scope, position,
+               player_id, team_id, line)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+        (season.id, award, scope, position, player_id, team.id, line),
+    )
+
+
+def test_my_team_card_has_my_teams_leaders(db_conn, league):
+    """Only my team's players: Wilson is my one pitcher, and I have no
+    qualified hitter, so the card leaves the hitting stats out."""
+    ctx = _summary(db_conn, league)
+    era = league["players"]["era"]
+    assert [(lead["label"], lead["player_id"]) for lead in ctx["my_leaders"]] == [
+        ("W", era),
+        ("ERA", era),
+        ("K", era),
+    ]
+    assert ctx["my_leaders"][1]["val"] == "1.50"
+
+
+def test_my_team_card_lists_my_award_winners(db_conn, league):
+    past, players = league["past"], league["players"]
+    _award(db_conn, past, "cy_young", players["era"], league["mine"], line="1.50 ERA")
+    _award(db_conn, past, "mvp", players["hr"], league["best"])
+    _award(
+        db_conn, past, "gold_glove", players["era"], league["mine"],
+        position="p", line="P, 0 errors",
+    )  # fmt: skip
+    ctx = _summary(db_conn, league)
+    assert [(h["what"], h["player_id"]) for h in ctx["my_highlights"]] == [
+        ("Cy Young", players["era"]),
+        ("Gold Glove P", players["era"]),
+    ]
+
+
+def test_summary_page_shows_my_team_card(client, db_conn, league):
+    _award(
+        db_conn, league["past"], "cy_young", league["players"]["era"],
+        league["mine"], line="1.50 ERA",
+    )  # fmt: skip
+    lid, sid = league["league"].id, league["past"].id
+    r = client.get(f"/leagues/{lid}/season-summary?season_id={sid}")
+    assert "Team leader in ERA: Will Wilson" in r.text
+    assert "ss-chip" in r.text and "Cy Young" in r.text
+
+
+def test_no_team_no_team_card(db_conn, league):
+    ctx = season_summary_context(
+        db_conn, league["league"].id, league["past"].id, None, None
+    )
+    assert ctx["my_leaders"] == [] and ctx["my_highlights"] == []

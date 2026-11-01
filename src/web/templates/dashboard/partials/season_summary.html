@@ -44,32 +44,51 @@
   </div>
   {% endif %}
 
-  {# My team record #}
+  {# My team record: W-L, playoff result, team leaders and highlights #}
   {% if my_record %}
-  <div class="card" style="margin-bottom:16px;padding:20px 24px;">
-    <div class="ss-kicker" style="margin-bottom:12px;">
-      {{ my_team_name or 'Your Team' }}
-    </div>
-    <div style="display:flex;gap:32px;align-items:baseline;">
-      <div>
-        <div style="font-size:36px;"><span class="num-tile good">{{ my_record.w }}</span></div>
-        <span class="tile-label">Wins</span>
-      </div>
-      <div>
-        <div style="font-size:36px;"><span class="num-tile bad">{{ my_record.l }}</span></div>
-        <span class="tile-label">Losses</span>
-      </div>
+  <div class="card ss-mine-card">
+    <div class="ss-mine-head">
+      <div class="ss-kicker">{{ my_team_name or 'Your Team' }}</div>
       {% if my_playoff_result %}
-      <div style="margin-left:auto;text-align:right;">
-        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                    margin-bottom:4px;">Playoffs</div>
-        <div style="font-family:var(--font-mono);font-size:13px;font-weight:600;
-                    color:{% if 'Won' in my_playoff_result or 'Champion' in my_playoff_result %}var(--amber){% else %}var(--text-dim){% endif %};">
-          {{ my_playoff_result }}
-        </div>
+      <div class="ss-mine-playoffs">
+        <span style="color:var(--text-dim);font-weight:400;">Playoffs ·</span>
+        <span style="color:{% if 'Won' in my_playoff_result or 'Champion' in my_playoff_result %}var(--amber){% else %}var(--text){% endif %};">{{ my_playoff_result }}</span>
       </div>
       {% endif %}
     </div>
+    <div class="ss-mine-body">
+      <div class="ss-mine-wl">
+        <div>
+          <div style="font-size:36px;"><span class="num-tile good">{{ my_record.w }}</span></div>
+          <span class="tile-label">Wins</span>
+        </div>
+        <div>
+          <div style="font-size:36px;"><span class="num-tile bad">{{ my_record.l }}</span></div>
+          <span class="tile-label">Losses</span>
+        </div>
+      </div>
+      {% if my_leaders %}
+      <div class="ss-mine-leaders">
+        {% for leader in my_leaders %}
+        <div class="ss-mine-leader ss-clickable" onclick="openPlayerPanel('{{ leader.player_id }}')"
+             title="Team leader in {{ leader.label }}: {{ leader.name }}">
+          <span class="ss-mine-stat">{{ leader.label }}</span>
+          <span class="ss-mine-val">{{ leader.val }}</span>
+          <span class="ss-mine-name ss-ellipsis">{{ leader.name }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% if my_highlights %}
+    <div class="ss-mine-highlights">
+      {% for h in my_highlights %}
+      <span class="ss-chip{% if h.player_id %} ss-clickable{% endif %}"
+            {% if h.player_id %}onclick="openPlayerPanel('{{ h.player_id }}')"{% endif %}
+            title="{{ h.title }}">{{ h.icon }} <span class="ss-chip-what">{{ h.what }}</span> {{ h.name }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 
@@ -375,6 +394,22 @@
 .ss-top { margin-bottom:16px;padding:24px;display:flex;flex-wrap:wrap;gap:24px; }
 .ss-top-cell { flex:1 1 220px;text-align:center; }
 .ss-top-name { font-size:22px;font-weight:700; }
+.ss-mine-card { margin-bottom:16px;padding:20px 24px; }
+.ss-mine-head { display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 16px;margin-bottom:12px; }
+.ss-mine-playoffs { font-family:var(--font-mono);font-size:12px;font-weight:600; }
+.ss-mine-body { display:flex;flex-wrap:wrap;align-items:center;gap:20px 40px; }
+.ss-mine-wl { display:flex;gap:32px;align-items:baseline; }
+.ss-mine-leaders { flex:1 1 260px;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 20px; }
+.ss-mine-leader { display:flex;align-items:baseline;gap:8px;min-width:0;padding:3px 6px;margin:0 -6px;border-radius:3px; }
+.ss-mine-stat { font-family:var(--font-mono);font-size:10px;color:var(--muted);width:28px;flex:none; }
+.ss-mine-val { font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--amber);flex:none; }
+.ss-mine-name { font-size:12px;font-weight:600;color:var(--text);min-width:0; }
+.ss-mine-highlights { display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border); }
+.ss-chip { font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--bg-3);white-space:nowrap; }
+.ss-chip-what { font-family:var(--font-mono);font-size:10px;font-weight:400;color:var(--amber); }
+@media (max-width:600px) {
+  .ss-mine-leaders { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
 .ss-leader-row { display:grid;grid-template-columns:repeat(4,1fr);gap:16px; }
 .ss-clickable { cursor:pointer;transition:background .08s; }
 .ss-awards { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 20px; }
