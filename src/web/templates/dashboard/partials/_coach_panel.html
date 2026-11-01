@@ -82,7 +82,13 @@
     if (e.detail.target.id === 'coach-panel') apply();
     else if (e.detail.target.id === 'tab-content') { apply(); refresh(); }
   });
-  // Saves and sims go through fetch, not htmx. Once one to this league
+  // A save through htmx, like the All-Star ballot.
+  document.body.addEventListener('htmx:afterRequest', function(e) {
+    var c = e.detail.requestConfig || {};
+    if (e.detail.successful && c.verb && c.verb !== 'get'
+        && String(c.path).indexOf('/leagues/{{ league_id }}/') === 0) refresh();
+  });
+  // Most saves and sims go through fetch, not htmx. Once one to this league
   // succeeds, the coach checks whether it finished a step.
   var origFetch = window.fetch;
   window.fetch = function(url, opts) {
