@@ -1165,6 +1165,8 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .gp-stat-l { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); margin-top: 8px; }
 .gp-full { margin-top: 16px; }
 .gp-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 16px; }
+.gp-back { font-family: var(--font-mono); font-size: 12px; margin: 0 0 16px; }
+.gp-back a { color: var(--sky); }
 .gp-trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .gp-trophy { text-align: center; padding: 12px 6px; background: var(--bg-3); border: 1px solid var(--border); }
 .gp-trophy .gp-patch { display: block; margin: 0 auto 8px; }

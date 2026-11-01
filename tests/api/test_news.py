@@ -359,6 +359,28 @@ class TestNewsTab:
         assert "Captains do a thing" in r.text
         assert "Shamrocks do a thing" not in r.text
 
+    def test_a_gms_profile_opens_inside_the_league(self, client, db_conn, lg):
+        name = f"josh-{_id()[:8]}"
+        db_conn.execute(
+            """UPDATE users SET username = %s
+               WHERE id = (SELECT user_id FROM gms WHERE id = %s)""",
+            (name, lg["gm"].id),
+        )
+        url = f"/leagues/{lg['league'].id}/gms/{name}?back=headlines"
+
+        # From a tab: just the profile, with the way back to News.
+        r = client.get(url, headers={"HX-Request": "true"})
+        assert r.status_code == 200
+        assert "Back to News" in r.text
+        assert f"@{name}" in r.text
+        # Opened directly: inside the league's page, tabs and all.
+        r = client.get(url)
+        assert r.status_code == 200
+        assert 'id="tab-content"' in r.text
+        assert "Back to News" in r.text
+
+        assert client.get(f"/leagues/{lg['league'].id}/gms/nobody").status_code == 404
+
     def test_standings_shows_the_headlines(self, client, db_conn, lg):
         NewsRepository(db_conn).add(
             lg["league"].id, lg["season"].id, "2025-04-02", "trade", "t2",
@@ -387,6 +409,15 @@ class TestLinks:
         assert f"stats?team_id={lg['theirs'].id}" in item["body_html"]
         # No profile or persona to go to: the name alone, after "GM".
         assert "was drafted by GM Josh in 2025" in item["body_html"]
+
+    def test_gm_links_stay_in_the_league(self):
+        from src.api.view_models.news import _link
+
+        ai = _link("g", "g1", "Bertie", "L", {"g1": {"persona_id": "p1"}})
+        assert 'hx-get="/leagues/L/personas/p1?back=headlines"' in ai
+        person = _link("g", "g2", "Josh", "L", {"g2": {"username": "josh"}})
+        assert 'hx-get="/leagues/L/gms/josh?back=headlines"' in person
+        assert person.startswith("GM <a")
 
     def test_names_are_escaped(self, db_conn, lg):
         NewsRepository(db_conn).add(

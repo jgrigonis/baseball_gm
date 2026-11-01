@@ -164,15 +164,16 @@ def _link(kind: str, ref: str, text: str, league_id: str, gms: dict) -> Markup:
         ).format(url, url, text)
     gm = gms.get(ref) or {}
     if gm.get("persona_id"):
-        url = f"/leagues/{league_id}/personas/{gm['persona_id']}"
+        url = f"/leagues/{league_id}/personas/{gm['persona_id']}?back=headlines"
+    elif gm.get("username"):
+        url = f"/leagues/{league_id}/gms/{quote(gm['username'])}?back=headlines"
+    else:
+        url = None
+    if url:
         return Markup(
             'GM <a class="news-link" href="{}" hx-get="{}" hx-target="#tab-content"'
             ' hx-push-url="true">{}</a>'
         ).format(url, url, text)
-    if gm.get("username"):
-        return Markup('GM <a class="news-link" href="/gms/{}">{}</a>').format(
-            quote(gm["username"]), text
-        )
     return Markup("GM {}").format(text)
 
 
