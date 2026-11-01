@@ -65,6 +65,33 @@ STEAL_HOME_SUCCESS_PROB = 0.25  # 25% success rate
 
 # Error and throwout rates
 BASE_ERROR_RATE = 0.062
+
+# Error chances on specific plays, as multiples of the fielder's base
+# fielding / throwing error chance (see src/game/resolvers/errors.py).
+# Double plays and fielder's choices: the ball is usually hit right at
+# someone, the feed to second is short, the relay to first is hurried.
+DP_FIELD_FACTOR = 0.4  # fielder boots the grounder, everyone safe
+DP_FEED_FACTOR = 0.25  # bad feed to the man covering second, everyone safe
+DP_PIVOT_DROP_FACTOR = 0.2  # pivot man drops the feed, everyone safe
+# A wild relay is only an error if it lets a runner take an extra base
+# (Rule 9.12(d)(3)), so this is the chance of a throw that bad.
+DP_RELAY_FACTOR = 0.25
+DP_RELAY_DROP_FACTOR = 0.15  # first baseman drops the relay
+FC_FIELD_FACTOR = 0.4
+FC_THROW_FACTOR = 0.4
+FC_DROP_FACTOR = 0.15
+# Sac bunts: charging fielder throwing on the run.
+BUNT_FIELD_FACTOR = 0.4
+BUNT_THROW_FACTOR = 0.6
+BUNT_DROP_FACTOR = 0.15
+# Outfield: a muffed fly ball, a bobbled base hit, a bad throw home.
+FLY_DROP_FACTOR = 0.1
+FLY_DROP_BATTER_TO_SECOND_PROB = 0.4
+HIT_BOBBLE_FACTOR = 0.2
+SAC_FLY_THROW_FACTOR = 0.3
+# Steals: catcher's throw into center field, or the cover man drops it.
+STEAL_THROW_FACTOR = 1.0
+STEAL_DROP_FACTOR = 0.1
 BASE_THROWOUT_PROB = 0.24
 
 # Favor ss over 2b for covering second.

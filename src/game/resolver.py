@@ -11,6 +11,7 @@ from src.game.events.error import (
     FieldingErrorEvent,
     ThrowingErrorEvent,
     OutfielderThrowingErrorEvent,
+    RunnerAdvancedOnErrorEvent,
 )
 from src.game.events.balk import BalkEvent
 from src.game.events.wild_pitch import WildPitchEvent
@@ -331,6 +332,7 @@ class Resolver:
             FieldingErrorEvent,
             ThrowingErrorEvent,
             OutfielderThrowingErrorEvent,
+            RunnerAdvancedOnErrorEvent,
         )
         return any(isinstance(event, error_event_types) for event in events)
 
