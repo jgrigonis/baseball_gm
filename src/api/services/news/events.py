@@ -49,9 +49,7 @@ def trades(conn, names: Names, league_id: str, season_ids: list[str]) -> None:
             f" the {names.full_team(b)} get {and_list(got_b) or 'nothing'}."
         )
         if gm_a and gm_b and not gm_b["is_ai"] and not gm_a["is_ai"]:
-            body += (
-                f" A deal between {gm_a['display_name']} and {gm_b['display_name']}."
-            )
+            body += f" A deal between {names.gm_name(gm_a)} and {names.gm_name(gm_b)}."
         human = names.is_human(a) or names.is_human(b)
         news.add(
             league_id, o["season_id"], o["created_on"], "trade", f"trade:{o['id']}",
@@ -71,7 +69,7 @@ def _lead(names: Names, a: str, gm_a: dict | None, got_a: list[str], b: str) -> 
     if got_a and len(got_a) == 1 and "pick" not in got_a[0]:
         what = got_a[0]
     who = (
-        f"{possessive(gm_a['display_name'])} {names.team(a)}" if gm_a else names.team(a)
+        f"{possessive(names.gm_name(gm_a))} {names.team(a)}" if gm_a else names.team(a)
     )
     return f"{who} land {what} from the {names.team(b)}"
 
@@ -145,7 +143,7 @@ def drafts(conn, names: Names, league_id: str, season_ids: list[str]) -> None:
             league_id, d["season_id"], on, "draft", f"draft:{d['id']}",
             f"{names.team(first['team_id'])} take {who} first overall",
             f"{who}{pos} goes No. 1 in the {d['year']} draft"
-            + (f", the pick of {gm['display_name']}." if gm else "."),
+            + (f", the pick of {names.gm_name(gm)}." if gm else "."),
             weight=3, team_ids=[first["team_id"]], player_ids=[first["player_id"]],
             gm_ids=[gm["id"]] if gm else [],
         )  # fmt: skip
@@ -162,7 +160,7 @@ def drafts(conn, names: Names, league_id: str, season_ids: list[str]) -> None:
             news.add(
                 league_id, d["season_id"], on, "draft",
                 f"draft:{d['id']}:{p['team_id']}",
-                f"{gm['display_name']} picks {who} for the {names.team(p['team_id'])}",
+                f"{names.gm_name(gm)} picks {who} for the {names.team(p['team_id'])}",
                 f"{who}{pos} is {possessive('the ' + names.team(p['team_id']))} first pick in the"
                 f" {d['year']} draft, No. {p['pick_number']} overall.",
                 weight=2, team_ids=[p["team_id"]], player_ids=[p["player_id"]],
@@ -203,7 +201,7 @@ def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
         best_scout = max(drafted_by, key=lambda g: len(drafted_by[g]), default=None)
         if best_scout and len(drafted_by[best_scout]) >= 2 and names.gm(best_scout):
             body += (
-                f" {names.gm(best_scout)['display_name']} drafted"
+                f" {names.gm_name(names.gm(best_scout))} drafted"
                 f" {len(drafted_by[best_scout])} of them."
             )
         news.add(
@@ -228,7 +226,7 @@ def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
             news.add(
                 league_id, season_id, on, "all_star",
                 f"allstar:team:{season_id}:{team}",
-                f"{possessive(gm['display_name'])} {names.team(team)} send"
+                f"{possessive(names.gm_name(gm))} {names.team(team)} send"
                 f" {n} to the All-Star Game",
                 body, weight=2, team_ids=[team], player_ids=pids, gm_ids=[gm["id"]],
             )  # fmt: skip
@@ -475,7 +473,7 @@ def _trade_verdicts(conn, news, names, league_id, season_id, on) -> None:
             gm = gm_by_team[to]
             who = names.player(pid)
             headline = (
-                f"{possessive(gm['display_name'])} {deal} for {names.last(pid)} pays off"
+                f"{possessive(names.gm_name(gm))} {deal} for {names.last(pid)} pays off"
                 if gm
                 else f"{possessive('The ' + names.team(to))} {deal} for {names.last(pid)} pays off"
             )
@@ -486,7 +484,7 @@ def _trade_verdicts(conn, news, names, league_id, season_id, on) -> None:
             body += "."
             other_gm = gm_by_team[other]
             if not any(j[1] == other for j in hits) and other_gm:
-                body += f" {other_gm['display_name']} may want that one back."
+                body += f" {names.gm_name(other_gm)} may want that one back."
             team_ids = [to, other]
         else:
             pid, to, line = min(flops, key=lambda j: j[2]["score"])
@@ -494,7 +492,7 @@ def _trade_verdicts(conn, news, names, league_id, season_id, on) -> None:
             gm = gm_by_team[to]
             who = names.player(pid)
             headline = (
-                f"{possessive(gm['display_name'])} {deal} for {names.last(pid)} falls flat"
+                f"{possessive(names.gm_name(gm))} {deal} for {names.last(pid)} falls flat"
                 if gm
                 else f"{possessive('The ' + names.team(to))} {deal} for {names.last(pid)} falls flat"
             )
@@ -661,7 +659,7 @@ def firings(conn, names: Names, league_id: str, season_id: str, on: str) -> None
         team = r["team_id"]
         news.add(
             league_id, season_id, on, "front_office", f"fired:{r['gm_id']}:{season_id}",
-            f"{names.team(team)} fire GM {r['display_name']}",
+            f"{names.team(team)} fire {names.gm_name(names.gm(r['gm_id'])) or 'GM ' + r['display_name']}",
             f"After a {r['wins']}-{r['losses']} season, the {names.full_team(team)}"
             f" are looking for a new GM.",
             weight=3, team_ids=[team] if team else [], gm_ids=[r["gm_id"]],

@@ -34,7 +34,11 @@ async function runLeagueJob(url, init, onWaiting) {
       const job = await res.json();
       errors = 0;
       if (!res.ok) return {failed: true, detail: job.detail || 'Server error'};
-      if (job.state === 'done') return job;
+      if (job.state === 'done') {
+        // The job may have made the news: update the News tab's badge.
+        if (window.refreshNewsBadge) window.refreshNewsBadge();
+        return job;
+      }
       if (job.state === 'failed') return {failed: true, detail: job.detail};
       if (onWaiting) onWaiting(job);
     } catch (e) {

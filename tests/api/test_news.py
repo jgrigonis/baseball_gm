@@ -9,9 +9,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.database import get_db
-from src.api.dependencies import get_current_user, get_gm_or_viewer
+from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
 from src.api.services import news
+from src.api.services.news.names import plain
+from src.api.view_models.news import news_context
 from src.db.repositories.news_repo import NewsRepository
 
 
@@ -111,6 +113,9 @@ def _draft(db, lg, pid, team, gm, rnd=3, year=2025):
 
 def _stories(db, lg, kind=None):
     rows = NewsRepository(db).feed(lg["league"].id, limit=200)
+    # The text as it reads; the links are checked in TestLinks.
+    for r in rows:
+        r["headline"], r["body"] = plain(r["headline"]), plain(r["body"])
     return [r for r in rows if kind is None or r["kind"] == kind]
 
 
@@ -122,7 +127,9 @@ class TestStreaks:
         news.update_league(db_conn, lg["league"].id)
 
         wins = [s for s in _stories(db_conn, lg, "streak") if "win" in s["headline"]]
-        assert [s["headline"] for s in wins] == ["Captains win 7 straight under Josh"]
+        assert [s["headline"] for s in wins] == [
+            "Captains win 7 straight under GM Josh"
+        ]
         assert wins[0]["news_date"] == "2025-04-07"
         assert lg["mine"].id in wins[0]["team_ids"]
         assert lg["gm"].id in wins[0]["gm_ids"]
@@ -135,7 +142,7 @@ class TestStreaks:
 
         heads = sorted(s["headline"] for s in _stories(db_conn, lg, "streak"))
         assert heads == [
-            "Captains win 7 straight under Josh",
+            "Captains win 7 straight under GM Josh",
             "Samurai drop 8 in a row",
         ]
 
@@ -178,7 +185,7 @@ class TestPlayers:
 
         (s,) = _stories(db_conn, lg, "big_game")
         assert s["headline"] == "Ruben Ruiz hits three home runs"
-        assert "Ruiz was drafted by Josh in 2025 (round 3)." in s["body"]
+        assert "Ruiz was drafted by GM Josh in 2025 (round 3)." in s["body"]
         assert pid in s["player_ids"]
 
     def test_a_season_milestone_is_news_once(self, db_conn, lg):
@@ -245,7 +252,7 @@ class TestTrades:
         news.record_trades(db_conn, lg["league"].id)
 
         (s,) = _stories(db_conn, lg, "trade")
-        assert s["headline"] == "Josh's Captains land Kai Kim from the Samurai"
+        assert s["headline"] == "GM Josh's Captains land Kai Kim from the Samurai"
         assert "the Tokyo Samurai get Sam Spare" in s["body"]
 
     def test_the_trade_verdict_at_season_end(self, db_conn, lg):
@@ -265,9 +272,9 @@ class TestTrades:
         news.update_league(db_conn, lg["league"].id)
 
         (s,) = _stories(db_conn, lg, "verdict")
-        assert s["headline"] == "Josh's trade for Kim pays off"
+        assert s["headline"] == "GM Josh's trade for Kim pays off"
         assert s["body"].startswith("Kai Kim hit .500 with 25 HR and 50 RBI")
-        assert "Bertie may want that one back." in s["body"]
+        assert "GM Bertie may want that one back." in s["body"]
         assert s["weight"] == 3
 
 
@@ -287,7 +294,7 @@ class TestPlayoffs:
         news.update_league(db_conn, lg["league"].id)
 
         (s,) = _stories(db_conn, lg, "champion")
-        assert s["headline"] == "Josh's Captains win the 2025 championship"
+        assert s["headline"] == "GM Josh's Captains win the 2025 championship"
         assert "beat the Samurai 4-1 in the Finals" in s["body"]
         assert s["news_date"] == "2025-10-05"
         assert s["weight"] == 3
@@ -308,9 +315,9 @@ class TestNewsTab:
         app.dependency_overrides[get_current_user] = lambda: {
             "id": user_id, "username": None, "has_password": False,
         }  # fmt: skip
-        app.dependency_overrides[get_gm_or_viewer] = lambda: {
-            "id": lg["gm"].id, "team_id": lg["mine"].id,
-        }  # fmt: skip
+        me = {"id": lg["gm"].id, "team_id": lg["mine"].id}
+        app.dependency_overrides[get_gm_or_viewer] = lambda: me
+        app.dependency_overrides[get_current_gm] = lambda: me
         yield TestClient(app, follow_redirects=False)
         app.dependency_overrides.clear()
 
@@ -325,8 +332,18 @@ class TestNewsTab:
 
         assert r.status_code == 200
         assert "League News" in r.text
-        assert "Captains win 7 straight under Josh" in r.text
+        assert "win 7 straight under GM" in r.text
         assert repo.count_unseen(lg["league"].id, lg["gm"].id) == 0
+
+    def test_the_badge_count(self, client, db_conn, lg):
+        url = f"/leagues/{lg['league'].id}/headlines/unseen"
+        assert client.get(url).json() == {"count": 0}
+        for day in range(1, 8):
+            _game(db_conn, lg, f"2025-04-0{day}", lg["mine"], lg["theirs"])
+        news.update_league(db_conn, lg["league"].id)
+        assert client.get(url).json() == {"count": 1}
+        client.get(f"/leagues/{lg['league'].id}/headlines")
+        assert client.get(url).json() == {"count": 0}
 
     def test_my_team_only(self, client, db_conn, lg):
         other = lg["factory"].team(city="Dublin", mascot="Shamrocks")
@@ -350,3 +367,34 @@ class TestNewsTab:
         r = client.get(f"/leagues/{lg['league'].id}/standings")
         assert r.status_code == 200
         assert "Captains do a big thing" in r.text
+
+
+class TestLinks:
+    def test_players_teams_and_gms_are_links(self, db_conn, lg):
+        pid = _player(db_conn, lg, lg["mine"])
+        _draft(db_conn, lg, pid, lg["mine"], lg["gm"])
+        gid = _game(db_conn, lg, "2025-04-02", lg["mine"], lg["theirs"])
+        _line(db_conn, gid, pid, lg["mine"], lg["theirs"], bat_hits=3,
+              bat_home_runs=3, bat_rbi=5)  # fmt: skip
+        news.update_league(db_conn, lg["league"].id)
+
+        (item,) = [
+            s for s in news_context(db_conn, lg["league"].id, lg["mine"].id)[
+                "news_days"][0]["stories"] if s["kind"] == "big_game"
+        ]  # fmt: skip
+
+        assert f"openPlayerPanel('{pid}')" in item["headline_html"]
+        assert f"stats?team_id={lg['theirs'].id}" in item["body_html"]
+        # No profile or persona to go to: the name alone, after "GM".
+        assert "was drafted by GM Josh in 2025" in item["body_html"]
+
+    def test_names_are_escaped(self, db_conn, lg):
+        NewsRepository(db_conn).add(
+            lg["league"].id, lg["season"].id, "2025-04-01", "trade", "x",
+            "<b>bold</b> \u27e6t:" + lg["mine"].id + "|Captains\u27e7",
+            weight=2,
+        )  # fmt: skip
+        (day,) = news_context(db_conn, lg["league"].id, None)["news_days"]
+        html = day["stories"][0]["headline_html"]
+        assert "&lt;b&gt;bold&lt;/b&gt;" in html
+        assert ">Captains</a>" in html

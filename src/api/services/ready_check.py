@@ -44,6 +44,7 @@ from src.api.services.sim_playoff import sim_playoff
 from src.db.locks import LeagueBusy, league_busy
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
@@ -217,6 +218,8 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         # to fetch (e.g. an offer another GM just made them).
         "trade_inbox": trades.inbox_count(conn, league_id, me or {}) if me else 0,
         "has_news": NotificationRepository(conn).has_unseen(gm_id),
+        # Stories since the GM last opened the News tab (its badge).
+        "news_unseen": NewsRepository(conn).count_unseen(league_id, gm_id),
         "all_star": star_phase,
         "all_star_vote_due": bool(
             star_phase == "open"

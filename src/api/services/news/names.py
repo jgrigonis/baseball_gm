@@ -8,6 +8,8 @@ GM behind the move.
 
 from __future__ import annotations
 
+import re
+
 from src.league import trade_deadline
 
 # A trade made this many days before the deadline (or on it) is a deadline deal.
@@ -34,8 +36,24 @@ def pretty(name: str) -> str:
     return out
 
 
+# Stories name players, teams and GMs as links. The text keeps them as
+# tokens, ⟦p:<player id>|Ruben Ruiz⟧, ⟦t:<team id>|Captains⟧ and
+# ⟦g:<gm id>|Josh⟧, which the News tab turns into links
+# (view_models/news.py); a GM's shows as "GM Josh".
+TOKEN = re.compile(r"\u27e6([ptg]):([^|\u27e7]*)\|([^\u27e7]*)\u27e7")
+
+
+def token(kind: str, ref: str, text: str) -> str:
+    return f"\u27e6{kind}:{ref}|{text}\u27e7"
+
+
+def plain(text: str) -> str:
+    """The text as it reads, without links."""
+    return TOKEN.sub(lambda m: ("GM " if m[1] == "g" else "") + m[3], text or "")
+
+
 def possessive(name: str) -> str:
-    return f"{name}'" if name.endswith("s") else f"{name}'s"
+    return f"{name}'" if plain(name).endswith("s") else f"{name}'s"
 
 
 def is_deadline_deal(conn, season_id: str, on: str) -> bool:
@@ -81,11 +99,11 @@ class Names:
         t = self._teams.get(team_id or "")
         if not t:
             t = self._load_team(team_id)
-        return t["mascot"] if t else "?"
+        return token("t", team_id, t["mascot"]) if t else "?"
 
     def full_team(self, team_id: str | None) -> str:
         t = self._teams.get(team_id or "") or self._load_team(team_id)
-        return f"{t['city']} {t['mascot']}" if t else "?"
+        return token("t", team_id, f"{t['city']} {t['mascot']}") if t else "?"
 
     def city(self, team_id: str | None) -> str:
         t = self._teams.get(team_id or "") or self._load_team(team_id)
@@ -108,7 +126,8 @@ class Names:
         return self._gms.get(gm_id or "")
 
     def gm_name(self, gm: dict | None) -> str | None:
-        return gm["display_name"] if gm else None
+        """The GM, linked; reads "GM Josh"."""
+        return token("g", gm["id"], gm["display_name"]) if gm else None
 
     def gm_team(self, team_id: str) -> str:
         """ "Josh's Captains", or just "Captains" with no GM."""
@@ -129,10 +148,14 @@ class Names:
     def player(self, player_id: str) -> str:
         if player_id not in self._players:
             self.load_players([player_id])
-        return self._players.get(player_id, "?")
+        name = self._players.get(player_id)
+        return token("p", player_id, name) if name else "?"
 
     def last(self, player_id: str) -> str:
-        return self.player(player_id).split(" ")[-1]
+        if player_id not in self._players:
+            self.load_players([player_id])
+        name = self._players.get(player_id)
+        return token("p", player_id, name.split(" ")[-1]) if name else "?"
 
     def load_players(self, player_ids) -> None:
         todo = [p for p in set(player_ids) if p and p not in self._players]
@@ -183,7 +206,7 @@ class Names:
                 if is_deadline_deal(self.conn, trade["season_id"], trade["created_on"])
                 else f"in a {trade['year']} trade"
             )
-            return f"acquired by {gm['display_name']} {when}", [gm["id"]]
+            return f"acquired by {self.gm_name(gm)} {when}", [gm["id"]]
         pick = self.drafted(player_id)
         if not pick:
             return "", []
@@ -192,12 +215,12 @@ class Names:
             return "", []
         if pick["team_id"] == team_id:
             return (
-                f"drafted by {gm['display_name']} in {pick['year']}"
+                f"drafted by {self.gm_name(gm)} in {pick['year']}"
                 f" (round {pick['round']})",
                 [gm["id"]],
             )
         return (
-            f"drafted by {gm['display_name']} of the {self.team(pick['team_id'])}"
+            f"drafted by {self.gm_name(gm)} of the {self.team(pick['team_id'])}"
             f" in {pick['year']}",
             [gm["id"]],
         )

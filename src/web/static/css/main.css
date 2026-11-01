@@ -1275,10 +1275,17 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em;
   text-transform: uppercase; color: var(--text-dim);
 }
-.news-team .team-badge { width: 18px; height: 18px; margin: 0; font-size: 8px; }
+.news-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 2px; }
+.news-teams { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.news-team { text-decoration: none; }
+.news-team .team-badge { width: 32px; height: 32px; margin: 0; font-size: 13px; }
+.news-team .team-badge--long { font-size: 11px; }
+.news-w1 .news-team .team-badge { width: 26px; height: 26px; font-size: 11px; }
+.news-link { color: inherit; text-decoration: underline; text-decoration-color: var(--border-hi); text-underline-offset: 3px; }
+.news-link:hover { color: var(--amber); text-decoration-color: var(--amber); }
 .news-headline {
   font-family: var(--font-display); font-weight: 700; font-size: 20px;
-  line-height: 1.15; color: var(--text-hi); margin: 4px 0 2px; letter-spacing: .01em;
+  line-height: 1.15; color: var(--text-hi); margin: 0; letter-spacing: .01em;
 }
 .news-w3 .news-headline { font-size: 26px; color: var(--amber); }
 .news-w1 .news-headline { font-size: 16px; color: var(--text); }
