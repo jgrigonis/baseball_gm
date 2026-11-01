@@ -99,7 +99,7 @@
   {% endif %}
 
   {# Season awards: each award's winner in each league #}
-  {% if awards %}
+  {% if awards or position_awards %}
   <div class="card" id="awards" style="margin-bottom:24px;padding:20px 24px;">
     <div class="ss-kicker" style="margin-bottom:12px;">Awards</div>
     <div class="ss-awards">
@@ -117,6 +117,26 @@
       </div>
       {% endfor %}
     </div>
+    {% for pa in position_awards %}
+    <div class="ss-award-name" style="margin-top:20px;">{{ pa.icon }} {{ pa.name }}</div>
+    <table class="data-table ss-pos-awards">
+      {% if pa.scopes | select | list %}
+      <thead><tr><th style="width:40px;">Pos</th>{% for s in pa.scopes %}<th>{{ s }}</th>{% endfor %}</tr></thead>
+      {% endif %}
+      <tbody>
+        {% for row in pa.rows %}
+        <tr>
+          <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ row.position }}</td>
+          {% for w in row.cells %}
+          <td>{% if w %}<span class="ss-clickable" onclick="openPlayerPanel('{{ w.player_id }}')" title="{{ w.team }} · {{ w.line }}"
+                style="font-weight:600;color:{% if w.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ w.name }}</span>
+              <span class="ss-award-detail">{{ w.team }}</span>{% else %}—{% endif %}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endfor %}
   </div>
   {% endif %}
 
@@ -362,6 +382,8 @@
 .ss-award-winner { padding:3px 4px;margin:0 -4px;border-radius:3px; }
 .ss-award-scope { font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-right:4px; }
 .ss-award-who { font-size:13px;font-weight:600; }
+.ss-pos-awards { width:100%;margin-top:4px; }
+.ss-pos-awards td { font-size:12px; }
 .ss-award-detail { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
 .ss-clickable:hover { background:var(--bg-3); }
 .ss-two-col {

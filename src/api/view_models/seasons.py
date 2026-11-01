@@ -88,6 +88,7 @@ def season_summary_context(
         "season_year": None,
         "no_hitters": [],
         "awards": [],
+        "position_awards": [],
     }
     if not season_id:
         return ctx
@@ -142,6 +143,7 @@ def season_summary_context(
             )
 
     ctx["awards"] = season_awards(db, season_id, my_team_id)
+    ctx["position_awards"] = position_awards(db, season_id, my_team_id)
 
     # No-hitters thrown this season
     for nh in PlayerGameRepository(db).get_no_hitters(season_id):
@@ -197,12 +199,59 @@ def season_summary_context(
     return ctx
 
 
+# Given at each position: shown as their own tables, not in the Awards card.
+POSITION_AWARDS = ("gold_glove", "silver_slugger")
+
+
+def position_awards(db, season_id: str, my_team_id: str | None) -> list[dict]:
+    """Gold Gloves and Silver Sluggers as tables: for each award, its
+    leagues and a row per position with each league's winner."""
+    out = []
+    rows = awards_service.for_season(db, season_id)
+    for key in POSITION_AWARDS:
+        mine = [r for r in rows if r["award"] == key]
+        if not mine:
+            continue
+        scopes = list(dict.fromkeys(r["scope"] for r in mine))
+        by_pos: dict[str, dict] = {}
+        for r in mine:
+            by_pos.setdefault(r["position"], {})[r["scope"]] = {
+                "player_id": r["player_id"],
+                "name": f"{r['first_name']} {r['last_name']}",
+                "team": f"{r['city']} {r['mascot']}",
+                "line": r["line"].split(", ", 1)[-1],
+                "is_mine": bool(my_team_id and r["team_id"] == my_team_id),
+            }
+        award = awards_mod.BY_KEY[key]
+        out.append(
+            {
+                "key": key,
+                "name": award.name + "s",
+                "icon": award.icon,
+                "scopes": [
+                    s.removesuffix(" League") if s.endswith("League") else ""
+                    for s in scopes
+                ],
+                "rows": [
+                    {
+                        "position": awards_mod.POSITION_NAMES.get(pos, pos),
+                        "cells": [cells.get(s) for s in scopes],
+                    }
+                    for pos, cells in by_pos.items()
+                ],
+            }
+        )
+    return out
+
+
 def season_awards(db, season_id: str, my_team_id: str | None) -> list[dict]:
     """The season's awards, one entry per award with its winners: the
     league it was given in (Atlantic, Pacific, or blank), who and the team,
     and the season (or series) in a few words."""
     out: list[dict] = []
     for r in awards_service.for_season(db, season_id):
+        if r["award"] in POSITION_AWARDS:
+            continue
         award = awards_mod.BY_KEY[r["award"]]
         if not out or out[-1]["key"] != award.key:
             out.append(

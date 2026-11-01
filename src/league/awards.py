@@ -30,8 +30,17 @@ Edgar         the best DH: the most batting runs among players who started
   Martinez    at least half their games at DH
 Batting       the best average with 3.1 plate appearances per team game
   Champion
-Pitching      the best ERA with an inning per team game
-  Champion
+ERA Champion  the best ERA with an inning per team game
+Wins Champion the most wins, ties to the better ERA
+Gold Glove    at each position (pitchers included), the best fielder among
+              players with a third of their team's starts there: mostly his
+              defense rating there, then his range (a catcher's
+              caught-stealing rate) and how rarely he makes errors
+Platinum      the Gold Glove winner who stood out most at his position
+  Glove
+Silver        at each position and DH, voted by the league's GMs: each
+  Slugger     ranks three hitters by what that GM values at the plate (the
+              persona dials, src/league/personas.py), for 5, 3 and 1 points
 GM of the     the GM whose team won the most, and improved the most on last
   Year        season, with a bonus for a division title
 Semifinals    whoever on the winning side did the most in the series
@@ -59,7 +68,11 @@ AWARDS: list[Award] = [
     Award("hank_aaron", "Hank Aaron Award", "💪", True),
     Award("edgar_martinez", "Edgar Martinez Award", "🏏", False),
     Award("batting_champ", "Batting Champion", "🎯", True),
-    Award("pitching_champ", "Pitching Champion", "🧊", True),
+    Award("era_champ", "ERA Champion", "🧊", True),
+    Award("wins_champ", "Wins Champion", "✌️", True),
+    Award("gold_glove", "Gold Glove", "🧤", True),
+    Award("platinum_glove", "Platinum Glove", "💠", True),
+    Award("silver_slugger", "Silver Slugger", "🪵", True),
     Award("gm_of_year", "GM of the Year", "💼", True),
     Award("semis_mvp", "Semifinals MVP", "🥈", True),
     Award("finals_mvp", "Finals MVP", "🥇", False),
@@ -258,10 +271,13 @@ def line(c: dict) -> str:
 # ── Deciding ──────────────────────────────────────────────────────────────────
 
 
-def _win(award: str, scope: str, c: dict, value: float, text: str) -> dict:
+def _win(
+    award: str, scope: str, c: dict, value: float, text: str, position: str = ""
+) -> dict:
     return {
         "award": award,
         "scope": scope,
+        "position": position,
         "player_id": c["player_id"],
         "team_id": c["team_id"],
         "value": round(value, 3),
@@ -346,7 +362,14 @@ def regular_awards(
             c for c in pitchers if _n(c, "pitch_outs") >= ERA_TITLE_OUTS * lg.games
         ]
         if c := _best(qualified, lambda c: (-era(c), _n(c, "pitch_outs"))):
-            out.append(_win("pitching_champ", scope, c, era(c), f"{era(c):.2f} ERA"))
+            out.append(_win("era_champ", scope, c, era(c), f"{era(c):.2f} ERA"))
+
+        if c := _best(pitchers, lambda c: (_n(c, "pitch_wins"), -era(c))):
+            if _n(c, "pitch_wins"):
+                text = (
+                    f"{_n(c, 'pitch_wins')}-{_n(c, 'pitch_losses')}, {era(c):.2f} ERA"
+                )
+                out.append(_win("wins_champ", scope, c, _n(c, "pitch_wins"), text))
 
     dhs = [
         c
@@ -483,3 +506,181 @@ def series_mvp(lines: list[dict]) -> dict | None:
         "value": round(series_value(c), 3),
         "line": series_line(c),
     }
+
+
+# ── Gold Gloves ───────────────────────────────────────────────────────────────
+
+FIELD_POSITIONS = ("c", "1b", "2b", "3b", "ss", "lf", "cf", "rf")
+POSITION_NAMES = {
+    "p": "P", "c": "C", "1b": "1B", "2b": "2B", "3b": "3B", "ss": "SS",
+    "lf": "LF", "cf": "CF", "rf": "RF", "dh": "DH",
+}  # fmt: skip
+# Enough of the team's games started at the position (pitchers: the ERA
+# title's inning a game).
+GLOVE_STARTS_SHARE = 1 / 3
+GLOVE_RATING_WEIGHT = 0.6
+GLOVE_RANGE_WEIGHT = 0.25
+GLOVE_SURE_WEIGHT = 0.15
+
+
+def _zs(values: list[float]) -> list[float]:
+    if not values:
+        return []
+    m = sum(values) / len(values)
+    sd = (sum((v - m) ** 2 for v in values) / len(values)) ** 0.5
+    return [(v - m) / sd if sd else 0.0 for v in values]
+
+
+def _glove_scores(group: list[dict], pos: str) -> list[float]:
+    """Each fielder's Gold Glove score among those at his position: z-scores
+    of his defense rating there, his range (chances a start; a catcher's
+    caught-stealing rate; a pitcher's chances a nine innings) and his sure
+    hands (fewer errors a chance). Pitchers have no defense rating, so for
+    them it's the stats alone."""
+    rating = _zs([float((c.get("ratings") or {}).get(pos, 0)) for c in group])
+    rng, sure = [], []
+    for c in group:
+        po, a = _n(c, "field_putouts"), _n(c, "field_assists")
+        e = _n(c, "field_errors")
+        if pos == "c":
+            cs, sb = _n(c, "field_catcher_cs"), _n(c, "field_catcher_sb")
+            rng.append(cs / (cs + sb) if cs + sb else 0.0)
+        elif pos == "p":
+            rng.append((po + a) * 27 / max(1, _n(c, "pitch_outs")))
+        else:
+            chances = po + a + _n(c, "field_double_plays")
+            rng.append(chances / max(1, _n(c, "pos_starts")))
+        sure.append(-e / (po + a + e) if po + a + e else 0.0)
+    if not any(rating):
+        return [0.6 * g + 0.4 * s for g, s in zip(_zs(rng), _zs(sure))]
+    return [
+        GLOVE_RATING_WEIGHT * r + GLOVE_RANGE_WEIGHT * g + GLOVE_SURE_WEIGHT * s
+        for r, g, s in zip(rating, _zs(rng), _zs(sure))
+    ]
+
+
+def gold_gloves(cands: list[dict], games: int) -> list[dict]:
+    """A Gold Glove at each position in each league, and a Platinum Glove
+    for the winner who stood out most. Candidates as for regular_awards(),
+    each also with ratings (PlayerEvaluator) and fielding totals."""
+    games = max(1, games)
+    out = []
+    for scope in sorted({c["scope"] for c in cands}):
+        winners = []
+        for pos in FIELD_POSITIONS + ("p",):
+            if pos == "p":
+                group = [
+                    c for c in cands
+                    if c["scope"] == scope and not is_hitter(c)
+                    and _n(c, "pitch_outs") >= ERA_TITLE_OUTS * games
+                ]  # fmt: skip
+            else:
+                group = [
+                    c for c in cands
+                    if c["scope"] == scope and is_hitter(c)
+                    and (c.get("position") or "").lower() == pos
+                    and _n(c, "pos_starts") >= GLOVE_STARTS_SHARE * games
+                ]  # fmt: skip
+            if len(group) < 2:
+                continue
+            scores = dict(
+                zip((c["player_id"] for c in group), _glove_scores(group, pos))
+            )
+            c = _best(group, lambda c: scores[c["player_id"]])
+            e = _n(c, "field_errors")
+            text = f"{POSITION_NAMES[pos]}, {e} error{'' if e == 1 else 's'}"
+            winners.append((scores[c["player_id"]], pos, c))
+            out.append(_win("gold_glove", scope, c, scores[c["player_id"]], text, pos))
+        if winners:
+            score, pos, c = max(winners, key=lambda w: (w[0], w[2]["player_id"]))
+            out.append(
+                _win(
+                    "platinum_glove",
+                    scope,
+                    c,
+                    score,
+                    f"Gold Glove at {POSITION_NAMES[pos]}",
+                    pos,
+                )
+            )
+    return out
+
+
+# ── Silver Sluggers ───────────────────────────────────────────────────────────
+
+SLUGGER_POSITIONS = FIELD_POSITIONS + ("dh",)
+SLUGGER_POINTS = (5, 3, 1)
+SLUGGER_NOISE = 0.25
+SLUGGER_LOYALTY = 0.5  # z-score boost for a GM's own player, at loyalty 100
+
+
+def slugger_ballot(
+    group: list[dict], lg: League, dials: dict | None, team_id: str | None, rng
+) -> list[str]:
+    """One GM's top three hitters at a position, best first. An analytics
+    GM goes by batting runs (wOBA), an old-school one by average (scaled by
+    playing time), home runs and RBI; a loyal GM nudges his own players
+    up. With rng, a little wobble, so GMs don't all vote alike."""
+    d = {"analytics": 50, "loyalty": 50, **(dials or {})}
+    modern = d["analytics"] / 100
+    full = BATTING_TITLE_PA * lg.games
+    bat = _zs([batting_runs(c, lg) for c in group])
+    avgs = _zs([avg(c) * min(1.0, pa(c) / full) for c in group])
+    hrs = _zs([float(_n(c, "bat_home_runs")) for c in group])
+    rbis = _zs([float(_n(c, "bat_rbi")) for c in group])
+    ranked = []
+    for i, c in enumerate(group):
+        s = modern * bat[i] + (1 - modern) * (avgs[i] + hrs[i] + rbis[i]) / 3
+        if team_id and c["team_id"] == team_id:
+            s += SLUGGER_LOYALTY * d["loyalty"] / 100
+        if rng:
+            s += rng.gauss(0, SLUGGER_NOISE)
+        ranked.append((s, c["player_id"]))
+    ranked.sort(key=lambda x: (-x[0], x[1]))
+    return [pid for _, pid in ranked[: len(SLUGGER_POINTS)]]
+
+
+def silver_sluggers(
+    cands: list[dict], games: int, voters: list[dict], rng=None
+) -> list[dict]:
+    """A Silver Slugger at each position and DH in each league, voted by
+    the GMs whose teams are in that league. voters: team_id, scope and
+    dials (None votes with neutral dials). A player needs a third of his
+    team's games started at the position. The line gives the winner's
+    season and his first-place votes."""
+    lg = League.of(cands, games)
+    out = []
+    for scope in sorted({c["scope"] for c in cands}):
+        mine = [v for v in voters if v["scope"] == scope] or [
+            {"team_id": None, "scope": scope, "dials": None}
+        ]
+        for pos in SLUGGER_POSITIONS:
+            group = sorted(
+                (
+                    c for c in cands
+                    if c["scope"] == scope and is_hitter(c)
+                    and (c.get("position") or "").lower() == pos
+                    and _n(c, "pos_starts") >= GLOVE_STARTS_SHARE * lg.games
+                ),
+                key=lambda c: c["player_id"],
+            )  # fmt: skip
+            if not group:
+                continue
+            points: dict[str, int] = {}
+            firsts: dict[str, int] = {}
+            for v in mine:
+                ballot = slugger_ballot(
+                    group, lg, v.get("dials"), v.get("team_id"), rng
+                )
+                for pts, pid in zip(SLUGGER_POINTS, ballot):
+                    points[pid] = points.get(pid, 0) + pts
+                firsts[ballot[0]] = firsts.get(ballot[0], 0) + 1
+            pid = max(sorted(points), key=lambda p: (points[p], firsts.get(p, 0)))
+            c = next(c for c in group if c["player_id"] == pid)
+            n = firsts.get(pid, 0)
+            text = (
+                f"{POSITION_NAMES[pos]}, {hitter_line(c)}"
+                f" · {n} of {len(mine)} first-place votes"
+            )
+            out.append(_win("silver_slugger", scope, c, points[pid], text, pos))
+    return out

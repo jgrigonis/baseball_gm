@@ -308,10 +308,9 @@ def season_end(conn, names: Names, league_id: str, season_id: str, on: str) -> N
 
 # (key, headline noun, SQL value, order, qualifying, format)
 _CROWNS = (
-    # The batting and ERA titles are season awards (Batting and Pitching
-    # Champion, src/league/awards.py), with stories of their own below.
+    # The batting, ERA and wins titles are season awards (Batting, ERA and
+    # Wins Champion, src/league/awards.py), with stories of their own below.
     ("hr", "home run crown", "SUM(bat_home_runs)", "DESC", "TRUE", "{:.0f} HR"),
-    ("wins", "wins crown", "SUM(pitch_wins)", "DESC", "TRUE", "{:.0f} wins"),
 )  # fmt: skip
 
 
@@ -645,6 +644,10 @@ def playoffs(conn, names: Names, league_id: str, season_id: str, year: int) -> N
 # Awards with a story of their own; the rest share a roundup.
 _FEATURED = ("mvp", "cy_young", "roy", "gm_of_year")
 _FEATURED_WEIGHT = {"mvp": 3, "cy_young": 3, "roy": 2, "gm_of_year": 2}
+# Awards in stories of their own: the position awards and the series MVPs.
+_OWN_STORIES = (
+    "gold_glove", "platinum_glove", "silver_slugger", "semis_mvp", "finals_mvp",
+)  # fmt: skip
 
 
 def season_awards(
@@ -713,7 +716,7 @@ def season_awards(
     rest = [
         r
         for r in rows
-        if r["award"] not in _FEATURED and r["award"] not in ("semis_mvp", "finals_mvp")
+        if r["award"] not in _FEATURED and r["award"] not in _OWN_STORIES
     ]
     if rest and not news.has(league_id, story):
         lines = [
@@ -730,6 +733,16 @@ def season_awards(
             player_ids=[r["player_id"] for r in rest],
             gm_ids=names.gm_ids(*dict.fromkeys(r["team_id"] for r in rest)),
         )  # fmt: skip
+
+    _position_story(
+        conn, news, names, league_id, season_id, year, "gloves",
+        by_award.get("platinum_glove", []) + by_award.get("gold_glove", []),
+        "Gold Gloves",
+    )  # fmt: skip
+    _position_story(
+        conn, news, names, league_id, season_id, year, "sluggers",
+        by_award.get("silver_slugger", []), "Silver Sluggers",
+    )  # fmt: skip
 
     for r in by_award.get("semis_mvp", []) + by_award.get("finals_mvp", []):
         story = f"award:{r['award']}:{r['scope']}:{season_id}"
@@ -748,6 +761,40 @@ def season_awards(
             weight=(2 if finals else 1) + (1 if names.is_human(team) else 0),
             team_ids=[team], player_ids=[r["player_id"]], gm_ids=names.gm_ids(team),
         )  # fmt: skip
+
+
+def _position_story(
+    conn, news, names, league_id, season_id, year, key, rows, title
+) -> None:
+    """One story for a position award (Gold Gloves with the Platinum Glove
+    first, or Silver Sluggers): each winner and his position, a league at
+    a time."""
+    story = f"award:{key}:{season_id}"
+    if not rows or news.has(league_id, story):
+        return
+    parts = []
+    for r in rows:
+        pos = awards_mod.POSITION_NAMES.get(r["position"], "")
+        who = f"{names.player(r['player_id'])} ({names.team(r['team_id'])})"
+        if r["award"] == "platinum_glove":
+            parts.append(f"{_scope_phrase(r['scope'])}Platinum Glove: {who}, {pos}.")
+        else:
+            parts.append(f"{_scope_phrase(r['scope'])}{pos}: {who}.")
+    human = [r for r in rows if names.is_human(r["team_id"])]
+    headline = f"The {year} {title}"
+    if human:
+        gm = names.gm_name(names.gm_of(human[0]["team_id"]))
+        n = len({r["player_id"] for r in human if r["award"] != "platinum_glove"})
+        if gm and n:
+            headline += f": {n} for {possessive(gm)} {names.team(human[0]['team_id'])}"
+    teams = list(dict.fromkeys(r["team_id"] for r in rows))
+    news.add(
+        league_id, season_id, rows[0]["decided_on"] or _now(conn, season_id),
+        "season_award", story, headline, " ".join(parts),
+        weight=2 if human else 1, team_ids=teams,
+        player_ids=list(dict.fromkeys(r["player_id"] for r in rows)),
+        gm_ids=names.gm_ids(*teams),
+    )  # fmt: skip
 
 
 def _scope_phrase(scope: str) -> str:

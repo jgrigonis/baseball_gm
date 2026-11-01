@@ -107,13 +107,13 @@ class TestPitching:
             "41 SV"
         )
 
-    def test_pitching_champion_needs_an_inning_a_game(self):
+    def test_era_champion_needs_an_inning_a_game(self):
         cands = field() + [
             pitcher("short", outs=300, er=10),  # 100 IP, 0.90 ERA
             pitcher("ace", outs=600, er=40),
         ]
         rows = awards.regular_awards(cands, GAMES, {})
-        assert won(rows, "pitching_champ") == "ace"
+        assert won(rows, "era_champ") == "ace"
 
 
 class TestHitting:
@@ -221,3 +221,98 @@ class TestSeriesMVP:
             }  # fmt: skip
         )
         assert line == "2-0, 1.29 ERA, 14.0 IP, 14 K"
+
+
+class TestWinsChampion:
+    def test_most_wins_ties_to_the_better_era(self):
+        cands = field() + [
+            pitcher("a", w=21, l=8, er=80),
+            pitcher("b", w=21, l=6, er=60),
+        ]
+        rows = awards.regular_awards(cands, GAMES, {})
+        assert won(rows, "wins_champ") == "b"
+        line = next(r for r in rows if r["award"] == "wins_champ")["line"]
+        assert line == "21-6, 2.70 ERA"
+
+
+def glover(pid, pos, rating, po=300, a=100, e=8, scope="Atlantic League", **extra):
+    return hitter(
+        pid, scope=scope, pos=pos, ratings={pos: rating},
+        field_putouts=po, field_assists=a, field_errors=e, **extra,
+    )  # fmt: skip
+
+
+class TestGoldGloves:
+    def test_the_best_glove_at_each_position(self):
+        cands = [
+            glover("ss1", "ss", 60), glover("ss2", "ss", 85), glover("ss3", "ss", 70),
+            glover("cf1", "cf", 80), glover("cf2", "cf", 50),
+        ]  # fmt: skip
+        rows = awards.gold_gloves(cands, GAMES)
+        gg = {r["position"]: r["player_id"] for r in rows if r["award"] == "gold_glove"}
+        assert gg == {"ss": "ss2", "cf": "cf1"}
+
+    def test_needs_a_third_of_the_starts(self):
+        cands = [
+            glover("part", "ss", 99, pos_starts=40),
+            glover("a", "ss", 60), glover("b", "ss", 65),
+        ]  # fmt: skip
+        rows = awards.gold_gloves(cands, GAMES)
+        assert won(rows, "gold_glove") == "b"
+
+    def test_errors_count_against(self):
+        cands = [glover("hands", "1b", 70, e=2), glover("stone", "1b", 70, e=20)]
+        assert won(awards.gold_gloves(cands, GAMES), "gold_glove") == "hands"
+
+    def test_platinum_glove_is_the_standout_winner(self):
+        cands = [
+            # A close race at short, a runaway in center.
+            glover("ss1", "ss", 80), glover("ss2", "ss", 79),
+            glover("cf1", "cf", 95), glover("cf2", "cf", 50), glover("cf3", "cf", 52),
+        ]  # fmt: skip
+        rows = awards.gold_gloves(cands, GAMES)
+        plat = [r for r in rows if r["award"] == "platinum_glove"]
+        assert [(r["player_id"], r["line"]) for r in plat] == [
+            ("cf1", "Gold Glove at CF")
+        ]
+
+
+class TestSilverSluggers:
+    def voters(self, n, scope="Atlantic League", **dials):
+        return [
+            {"team_id": f"t{i}", "scope": scope, "dials": dials or None}
+            for i in range(n)
+        ]
+
+    def test_the_best_bat_at_each_position(self):
+        cands = [
+            hitter("c1", pos="c", hits=120, hr=10), hitter("c2", pos="c", hits=170, hr=30),
+            hitter("dh1", pos="dh", hits=180, hr=40), hitter("dh2", pos="dh", hits=130),
+        ]  # fmt: skip
+        rows = awards.silver_sluggers(cands, GAMES, self.voters(6))
+        ss = {r["position"]: r for r in rows}
+        assert ss["c"]["player_id"] == "c2"
+        assert ss["dh"]["player_id"] == "dh1"
+        assert ss["c"]["line"] == "C, .309, 30 HR, 80 RBI · 6 of 6 first-place votes"
+        assert ss["c"]["value"] == 30  # 6 votes at 5 points
+
+    def test_old_school_and_analytics_gms_can_disagree(self):
+        # Lots of RBI and average, versus walks and power.
+        trad = hitter("trad", pos="rf", hits=185, hr=22, rbi=125, bb=20)
+        modern = hitter("modern", pos="rf", hits=150, hr=30, rbi=80, bb=110)
+        cands = [trad, modern, hitter("x", pos="rf", hits=120, hr=8)]
+        old = awards.silver_sluggers(cands, GAMES, self.voters(5, analytics=0))
+        new = awards.silver_sluggers(cands, GAMES, self.voters(5, analytics=100))
+        assert old[0]["player_id"] == "trad"
+        assert new[0]["player_id"] == "modern"
+
+    def test_voters_vote_in_their_own_league(self):
+        cands = [
+            hitter("a", pos="1b"),
+            hitter("p", scope="Pacific League", pos="1b"),
+        ]
+        voters = self.voters(3) + self.voters(2, scope="Pacific League")
+        rows = awards.silver_sluggers(cands, GAMES, voters)
+        lines = {r["scope"]: r["line"] for r in rows}
+        assert lines["Atlantic League"].endswith("3 of 3 first-place votes")
+        assert lines["Pacific League"].endswith("2 of 2 first-place votes")

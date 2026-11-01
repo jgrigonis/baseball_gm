@@ -14,7 +14,12 @@ for the season being played, since who ran each team back then isn't kept.
 
 from __future__ import annotations
 
+import random
+
+from src.db.repositories.persona_repo import PersonaRepository
 from src.league import awards, divisions
+from src.player.player_evaluator import PlayerEvaluator
+from src.player.player_skills import PlayerSkills
 
 _COLUMNS = (
     "bat_games_played",
@@ -44,6 +49,16 @@ _COLUMNS = (
     "pitch_walks",
     "pitch_hit_batters",
     "pitch_strike_outs",
+)
+
+# Fielding totals, for the Gold Gloves (player_season_stats only).
+_FIELD_COLUMNS = (
+    "field_putouts",
+    "field_assists",
+    "field_errors",
+    "field_double_plays",
+    "field_catcher_cs",
+    "field_catcher_sb",
 )
 
 # Series names by round (src/api/services/career.py ROUND_OF_SERIES).
@@ -119,13 +134,14 @@ def _dates(conn, season_id: str) -> dict:
 
 def _save(conn, season_id: str, row: dict, on: str | None) -> None:
     conn.execute(
-        """INSERT INTO season_awards (season_id, award, scope, player_id, team_id,
-               gm_id, line, value, decided_on)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-           ON CONFLICT (season_id, award, scope) DO NOTHING""",
+        """INSERT INTO season_awards (season_id, award, scope, position,
+               player_id, team_id, gm_id, line, value, decided_on)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+           ON CONFLICT (season_id, award, scope, position) DO NOTHING""",
         (
-            season_id, row["award"], row["scope"], row.get("player_id"),
-            row.get("team_id"), row.get("gm_id"), row["line"], row.get("value"), on,
+            season_id, row["award"], row["scope"], row.get("position") or "",
+            row.get("player_id"), row.get("team_id"), row.get("gm_id"),
+            row["line"], row.get("value"), on,
         ),
     )  # fmt: skip
 
@@ -149,7 +165,7 @@ def _records(conn, season_id: str) -> dict[str, tuple[int, int]]:
 def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> list[dict]:
     """Everyone who played in the regular season, with his totals and what
     src/league/awards.regular_awards() needs to know about him."""
-    sums = ", ".join(f"SUM(pss.{c}) AS {c}" for c in _COLUMNS)
+    sums = ", ".join(f"SUM(pss.{c}) AS {c}" for c in _COLUMNS + _FIELD_COLUMNS)
     rows = conn.execute(
         f"""WITH tot AS (
                 SELECT pss.player_id, {sums},
@@ -182,12 +198,16 @@ def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> lis
                 WHERE s.year < %(year)s AND NOT pss.is_postseason
                 GROUP BY pss.player_id
             )
-            SELECT tot.*, p.position AS affinity,
+            SELECT tot.*, p.position AS affinity, p.throws,
+                   to_jsonb(psh) AS skills_then, to_jsonb(ps) AS skills_now,
                    top_slot.position AS slot, top_slot.n AS slot_starts,
                    all_slots.n AS all_starts,
                    COALESCE(prior.ab, 0) AS prior_ab, COALESCE(prior.outs, 0) AS prior_outs
             FROM tot
             JOIN players p ON p.id = tot.player_id
+            LEFT JOIN player_skills ps ON ps.player_id = tot.player_id
+            LEFT JOIN player_skills_history psh
+              ON psh.player_id = tot.player_id AND psh.season_id = %(season)s
             LEFT JOIN top_slot ON top_slot.player_id = tot.player_id
             LEFT JOIN all_slots ON all_slots.player_id = tot.player_id
             LEFT JOIN prior ON prior.player_id = tot.player_id""",
@@ -195,7 +215,17 @@ def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> lis
     ).fetchall()
     out = []
     for r in rows:
-        c = {k: int(r[k] or 0) for k in _COLUMNS}
+        c = {k: int(r[k] or 0) for k in _COLUMNS + _FIELD_COLUMNS}
+        # His ratings that season, or today's when the season kept none.
+        skills = r["skills_then"] or r["skills_now"]
+        ratings = (
+            PlayerEvaluator.rate_player(
+                PlayerSkills.from_db_row(skills),
+                r["throws"] if r["throws"] in ("L", "R") else "R",
+            )
+            if skills
+            else {}
+        )
         # Without box scores (a backstory season), the position he was made at.
         if r["slot"]:
             position, pos_starts = r["slot"], int(r["slot_starts"])
@@ -212,6 +242,7 @@ def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> lis
             starts=starts,
             prior_ab=int(r["prior_ab"]),
             prior_outs=int(r["prior_outs"]),
+            ratings=ratings,
         )
         out.append(c)
     return out
@@ -226,10 +257,33 @@ def _decide_regular(
     pct = {t: w / (w + l) for t, (w, l) in records.items() if w + l}
     cands = candidates(conn, sid, season["year"], scope_of)
     rows = awards.regular_awards(cands, games, pct, first_season=first_season)
+    rows += awards.gold_gloves(cands, games)
+    voters = _voters(conn, league_id, sid, scope_of)
+    # Seeded by the season, so deciding again gives the same votes.
+    rows += awards.silver_sluggers(cands, games, voters, random.Random(sid))
     if with_gm:
         rows += awards.gm_of_year(_gm_teams(conn, league_id, season, records, scope_of))
     for row in rows:
         _save(conn, sid, row, on)
+
+
+def _voters(conn, league_id: str, season_id: str, scope_of) -> list[dict]:
+    """The Silver Slugger voters: a GM for each team in the season, voting
+    by its persona's dials; a team a person runs votes with neutral ones."""
+    dials = PersonaRepository(conn).ai_dials(league_id)
+    teams = conn.execute(
+        """SELECT team_id FROM league_season_teams
+           WHERE league_id = %s AND season_id = %s ORDER BY team_id""",
+        (league_id, season_id),
+    ).fetchall()
+    return [
+        {
+            "team_id": t["team_id"],
+            "scope": scope_of.get(t["team_id"], ""),
+            "dials": dials.get(t["team_id"]),
+        }
+        for t in teams
+    ]
 
 
 def _gm_teams(conn, league_id, season, records, scope_of) -> list[dict]:
@@ -365,14 +419,15 @@ def for_season(conn, season_id: str) -> list[dict]:
     ).fetchall()
     order = {a.key: i for i, a in enumerate(awards.AWARDS)}
     out = [dict(r) for r in rows if r["award"] in order]
-    out.sort(key=lambda r: (order[r["award"]], r["scope"]))
+    spot = {p: i for i, p in enumerate(awards.POSITION_NAMES)}
+    out.sort(key=lambda r: (order[r["award"]], r["scope"], spot.get(r["position"], -1)))
     return out
 
 
 def for_player(conn, player_id: str) -> list[dict]:
     """A player's awards, oldest first: year, award key, name, icon, scope."""
     rows = conn.execute(
-        """SELECT a.award, a.scope, a.line, s.year
+        """SELECT a.award, a.scope, a.position, a.line, s.year
            FROM season_awards a JOIN seasons s ON s.id = a.season_id
            WHERE a.player_id = %s
            ORDER BY s.year""",
