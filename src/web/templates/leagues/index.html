@@ -152,16 +152,30 @@ function leaveLeague(btn) {
   // first still holding the league and fail.
   btn.disabled = true;
   btn.textContent = 'Leaving…';
+  // Several leaves can be in flight at once. Reloading when the first one
+  // finishes would redraw the list while the others are still going, and
+  // they'd show up again, so wait until every leave has finished.
+  _pendingLeaves++;
+  const settle = () => {
+    if (--_pendingLeaves === 0 && _leftAny) location.reload();
+  };
   const failed = detail => {
     btn.disabled = false;
     btn.textContent = 'Leave';
     alert(detail || 'Could not leave the league.');
+    settle();
   };
   fetch('/leagues/' + id + '/leave', {method: 'POST'}).then(r => {
-    if (r.ok) { location.reload(); return; }
+    if (r.ok) {
+      _leftAny = true;
+      btn.closest('tr').remove();
+      settle();
+      return;
+    }
     r.json().then(d => failed(d.detail), () => failed());
   }, () => failed());
 }
+var _pendingLeaves = 0, _leftAny = false;
 function resetTips(btn) {
   btn.disabled = true;
   fetch('/tips/reset', {method: 'POST'}).then(r => {
