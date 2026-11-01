@@ -1381,7 +1381,8 @@ CREATE TABLE IF NOT EXISTS season_awards (
     line       TEXT NOT NULL DEFAULT '',   -- the season (or series) in a few words
     value      REAL,
     decided_on TEXT,
-    PRIMARY KEY (season_id, award, scope)
+    position   TEXT NOT NULL DEFAULT '', -- Gold Gloves and Silver Sluggers: the position
+    PRIMARY KEY (season_id, award, scope, position)
 );
 CREATE INDEX IF NOT EXISTS idx_season_awards_player ON season_awards(player_id);
 CREATE INDEX IF NOT EXISTS idx_season_awards_gm ON season_awards(gm_id);

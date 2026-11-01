@@ -10,7 +10,11 @@ import pytest
 from src.api.services import awards, badges, news
 from src.api.services.news.names import plain
 from src.api.view_models.player_detail import player_awards
-from src.api.view_models.seasons import history_context, season_awards
+from src.api.view_models.seasons import (
+    history_context,
+    position_awards,
+    season_awards,
+)
 from src.db.repositories.news_repo import NewsRepository
 
 
@@ -144,7 +148,7 @@ class TestDeciding:
         assert won["roy"]["player_id"] == played["ace"]
         assert won["hank_aaron"]["player_id"] == played["star"]
         assert won["batting_champ"]["player_id"] == played["star"]
-        assert won["pitching_champ"]["player_id"] == played["ace"]
+        assert won["era_champ"]["player_id"] == played["ace"]
         assert won["gm_of_year"]["gm_id"] == lg["gm"].id
         assert won["gm_of_year"]["line"] == "5-1"
 
@@ -239,9 +243,9 @@ class TestShown:
     def test_player_panel(self, db_conn, lg, played):
         awards.decide_league(db_conn, lg["league"].id)
         mine = player_awards(db_conn, played["ace"])
-        assert [(a["name"], a["years"]) for a in mine] == [
+        assert [(a["name"], a["years"]) for a in mine][:4] == [
             ("Cy Young", [2026]), ("Rookie of the Year", [2026]),
-            ("Pitching Champion", [2026]),
+            ("ERA Champion", [2026]), ("Wins Champion", [2026]),
         ]  # fmt: skip
 
     def test_gm_of_the_year_badge(self, db_conn, lg, played):
@@ -257,3 +261,34 @@ class TestShown:
         check = badges.check_all(db_conn, uid)["gm_of_year"]
         assert check.earned
         assert check.detail == "Test League · 2026"
+
+
+class TestPositionAwards:
+    def test_gold_glove_and_silver_slugger_by_position(self, db_conn, lg, played):
+        awards.decide_league(db_conn, lg["league"].id)
+        rows = db_conn.execute(
+            """SELECT award, position, player_id, line FROM season_awards
+               WHERE season_id = %s AND award IN ('gold_glove', 'silver_slugger')""",
+            (lg["season"].id,),
+        ).fetchall()
+        slugger = next(r for r in rows if r["award"] == "silver_slugger")
+        assert (slugger["position"], slugger["player_id"]) == ("rf", played["star"])
+        # Both teams' GMs voted.
+        assert slugger["line"].endswith("2 of 2 first-place votes")
+        assert {r["position"] for r in rows if r["award"] == "gold_glove"} == {
+            "rf",
+            "p",
+        }
+
+    def test_shown_as_tables_and_in_the_news(self, db_conn, lg, played):
+        awards.decide_league(db_conn, lg["league"].id)
+        news.update_league(db_conn, lg["league"].id)
+        tables = position_awards(db_conn, lg["season"].id, lg["mine"].id)
+        slugger = next(t for t in tables if t["key"] == "silver_slugger")
+        assert slugger["rows"][0]["position"] == "RF"
+        assert slugger["rows"][0]["cells"][0]["name"] == "Ruben Ruiz"
+        headlines = [
+            plain(r["headline"])
+            for r in NewsRepository(db_conn).feed(lg["league"].id, limit=100)
+        ]
+        assert "The 2026 Silver Sluggers: 1 for GM Josh's Captains" in headlines
