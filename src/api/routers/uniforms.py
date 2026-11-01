@@ -18,8 +18,8 @@ router = APIRouter(tags=["web"])
 
 
 def all_team_uniforms() -> list[dict]:
-    """Every World League team and the extra 32-team-league teams, by city,
-    each with its uniform pieces (None for a team without a set)."""
+    """Every team in the pool, by city, each with its uniform pieces (None
+    for a team without a set)."""
     teams = [t.key for t in TEAM_POOL]
     rows = []
     for city, mascot in sorted(set(teams)):
