@@ -3,13 +3,12 @@
 Unit tests for DraftGenerator.
 """
 
-import csv
 import random
 import uuid
-from unittest.mock import patch
 
 import pytest
 
+from src.db.repositories.draft_repo import DraftRepository
 from src.league.offseason.draft_generator import (
     DraftGenerator,
     DRAFT_POOL_SIZE,
@@ -292,55 +291,27 @@ class TestDraftGeneratorRun:
         return DraftGenerator(db_conn, random.Random(42)), lid
 
     @pytest.mark.slow
-    def test_returns_total_count_matches_csv(self, db_conn, gen, tmp_path):
+    def test_returns_total_count_matches_the_pool(self, db_conn, gen):
         generator, lid = gen
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run(2026, league_id=lid)
-        with open(tmp_path / lid / "2026" / "draft.csv", newline="") as f:
-            rows = list(csv.DictReader(f))
+        total = generator.run(league_id=lid)
+        rows = DraftRepository(db_conn).get_prospects(lid)
         assert total == len(rows)
 
     @pytest.mark.slow
-    def test_new_players_equal_draft_pool_size(self, db_conn, gen, tmp_path):
+    def test_new_players_equal_draft_pool_size(self, db_conn, gen):
         generator, lid = gen
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run(2026, league_id=lid)
+        total = generator.run(league_id=lid)
         assert total == DRAFT_POOL_SIZE
 
     @pytest.mark.slow
-    def test_no_duplicate_ids_in_csv(self, db_conn, gen, tmp_path):
+    def test_no_duplicate_ids_in_the_pool(self, db_conn, gen):
         generator, lid = gen
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            generator.run(2026, league_id=lid)
-        with open(tmp_path / lid / "2026" / "draft.csv", newline="") as f:
-            ids = [row["ID"] for row in csv.DictReader(f)]
-        assert len(ids) == len(set(ids)), "Duplicate IDs in CSV"
-
-    # These tests pass alone, but something interfering
-    # def test_new_players_inserted_into_db(self, db_conn, gen, tmp_path):
-    #     generator, lid = gen
-    #     with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-    #         generator.run(2026, league_id=lid)
-    #     count = db_conn.execute(
-    #         "SELECT COUNT(*) AS n FROM players WHERE league_id = %s", (lid,)
-    #     ).fetchone()["n"]
-    #     assert count == DRAFT_POOL_SIZE
-
-    # def test_new_players_have_prospect_status(self, db_conn, gen, tmp_path):
-    #     generator, lid = gen
-    #     with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-    #         generator.run(2026, league_id=lid)
-    #     rows = db_conn.execute(
-    #         """SELECT ps.status FROM player_status ps
-    #            JOIN players p ON p.id = ps.player_id
-    #            WHERE p.league_id = %s""",
-    #         (lid,),
-    #     ).fetchall()
-    #     assert len(rows) == DRAFT_POOL_SIZE
-    #     assert all(r["status"] == "prospect" for r in rows)
+        generator.run(league_id=lid)
+        ids = [p["id"] for p in DraftRepository(db_conn).get_prospects(lid)]
+        assert len(ids) == len(set(ids)), "Duplicate IDs in the pool"
 
     @pytest.mark.slow
-    def test_existing_prospects_included_in_csv(self, db_conn, gen, tmp_path):
+    def test_existing_prospects_included_in_the_pool(self, db_conn, gen):
         generator, lid = gen
         pid = _uid()
         # Insert a prospect tagged to this league
@@ -362,15 +333,13 @@ class TestDraftGeneratorRun:
             " VALUES (%s, 'prospect', '2025-01-01') ON CONFLICT DO NOTHING",
             (pid,),
         )
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run(2026, league_id=lid)
+        total = generator.run(league_id=lid)
         assert total == DRAFT_POOL_SIZE + 1
-        with open(tmp_path / lid / "2026" / "draft.csv", newline="") as f:
-            ids = {row["ID"] for row in csv.DictReader(f)}
+        ids = {p["id"] for p in DraftRepository(db_conn).get_prospects(lid)}
         assert pid in ids
 
     @pytest.mark.slow
-    def test_existing_rostered_excluded_from_csv(self, db_conn, gen, tmp_path):
+    def test_existing_rostered_excluded_from_the_pool(self, db_conn, gen):
         generator, lid = gen
         pid = _uid()
         team = f"tst-team-{uuid.uuid4().hex[:8]}"
@@ -400,32 +369,13 @@ class TestDraftGeneratorRun:
             "INSERT INTO team_players (team_id, player_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
             (team, pid),
         )
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            total = generator.run(2026, league_id=lid)
+        total = generator.run(league_id=lid)
         assert total == DRAFT_POOL_SIZE
-        with open(tmp_path / lid / "2026" / "draft.csv", newline="") as f:
-            ids = {row["ID"] for row in csv.DictReader(f)}
+        ids = {p["id"] for p in DraftRepository(db_conn).get_prospects(lid)}
         assert pid not in ids
 
     @pytest.mark.slow
-    def test_csv_created_at_correct_path(self, db_conn, gen, tmp_path):
-        generator, lid = gen
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            generator.run(2026, league_id=lid)
-        assert (tmp_path / lid / "2026" / "draft.csv").exists()
-
-    @pytest.mark.slow
-    def test_csv_has_required_columns(self, db_conn, gen, tmp_path):
-        generator, lid = gen
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            generator.run(2026, league_id=lid)
-        with open(tmp_path / lid / "2026" / "draft.csv", newline="") as f:
-            headers = csv.DictReader(f).fieldnames
-        for col in ["Name", "Age", "ID", "PS", "B", "T"]:
-            assert col in headers, f"Missing column: {col}"
-
-    @pytest.mark.slow
-    def test_deterministic_with_same_seed(self, db_conn, tmp_path):
+    def test_deterministic_with_same_seed(self, db_conn):
         """Same seed → same player IDs regardless of run order."""
         lid1 = f"tst-lg-{uuid.uuid4().hex[:8]}"
         lid2 = f"tst-lg-{uuid.uuid4().hex[:8]}"
@@ -437,11 +387,8 @@ class TestDraftGeneratorRun:
             )
         gen1 = DraftGenerator(db_conn, random.Random(99))
         gen2 = DraftGenerator(db_conn, random.Random(99))
-        with patch("src.league.offseason.draft_generator.TEAM_FILES_DIR", tmp_path):
-            gen1.run(8001, league_id=lid1)
-            gen2.run(8002, league_id=lid2)
-        with open(tmp_path / lid1 / "8001" / "draft.csv", newline="") as f:
-            ids1 = [row["ID"] for row in csv.DictReader(f)]
-        with open(tmp_path / lid2 / "8002" / "draft.csv", newline="") as f:
-            ids2 = [row["ID"] for row in csv.DictReader(f)]
-        assert ids1 == ids2
+        gen1.run(league_id=lid1)
+        gen2.run(league_id=lid2)
+        ids1 = [p["id"] for p in DraftRepository(db_conn).get_prospects(lid1)]
+        ids2 = [p["id"] for p in DraftRepository(db_conn).get_prospects(lid2)]
+        assert sorted(ids1) == sorted(ids2)

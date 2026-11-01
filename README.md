@@ -93,10 +93,9 @@ this from the repo root:
 
 It lists the leagues it will delete and asks first; add `--yes` to skip the
 question. Each league goes with everything it owns (GMs, drafts, seasons,
-games, stats, teams and players) and its `team_files/<league_id>` folder, the
-same cleanup as when the last GM leaves a league. It reads `DATABASE_URL` and
-runs any pending migrations first. Then start the
-server again with `./start_webserver.sh`.
+games, stats, teams and players), the same cleanup as when the last GM leaves
+a league. It reads `DATABASE_URL` and runs any pending migrations first. Then
+start the server again with `./start_webserver.sh`.
 
 ### Admin pages
 
@@ -208,8 +207,7 @@ first. The server ones need `DATABASE_URL` set, e.g.
 - `./reset_leagues.sh`: deletes every league but keeps user accounts (see
   above), then starts the server. Stop a running server first.
 - `./delete_db_start_webserver.sh`: drops and recreates the whole database
-  (creating it if it doesn't exist yet), deletes `team_files/`, then starts the
-  server on the empty database. It asks first; `--yes` skips that.
+  (creating it if it doesn't exist yet), then starts the server on the empty database. It asks first; `--yes` skips that.
 - `./run_tests_with_coverage.sh`: runs the tests under coverage and prints the
   report. Needs `DATABASE_TEST_URL`, a database the tests may wipe (e.g.
   `createdb baseball_manager_test`). Extra arguments go to pytest, e.g.

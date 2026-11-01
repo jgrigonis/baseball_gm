@@ -17,7 +17,6 @@ Roster (list of PlayerRecord.ids or full PlayerRecords)
 """
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from src.player.player_constants import VALID_ROLES
 from src.player.player_record import PlayerRecord
@@ -35,8 +34,6 @@ class TeamRecord:
     city: str
     mascot: str
     players: tuple[PlayerRecord, ...]
-    source_csv: Path | None = None
-    source_hash: str | None = None
 
     @property
     def name(self) -> str:

@@ -16,5 +16,5 @@ Season is known before games start
 Every game row gets a season_id
 Aggregation becomes trivial
 
-CSV → Player objects → player_repo.insert() → team_repo.add_player()
+TeamFactory → TeamRecord → TeamImporter.import_team() → player_repo.insert() → team_repo.add_player()
 

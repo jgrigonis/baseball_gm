@@ -7,7 +7,6 @@ TeamFactory.generate_team() → creates N players, ages each one to a
                               realistic roster age, checks distribution
 """
 
-import csv
 import random
 from scipy.stats import skewnorm
 import uuid
@@ -30,25 +29,6 @@ class TeamFactory:
         self.player_factory = PlayerFactory(rng=rng, log_level=log_level)
         self.id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self.rng = rng or random.Random()
-
-    def from_csv(self, path: str, *, city: str, mascot: str) -> TeamRecord:
-        players: list[PlayerRecord] = []
-
-        with open(path, newline="", encoding="utf-8") as csvfile:
-            reader = csv.DictReader(csvfile)
-            for i, row in enumerate(reader, start=1):
-                try:
-                    players.append(PlayerRecord.from_csv_row(row))
-                except Exception as e:
-                    raise ValueError(f"Invalid player row {i} in {path}: {row}") from e
-        if len(players) < 9:
-            raise ValueError("Team must have at least 9 players")
-        return TeamRecord(
-            id=uuid.uuid4().hex,
-            city=city,
-            mascot=mascot,
-            players=tuple(players),
-        )
 
     def generate_team(self, *, city: str, mascot: str, size: int = 160) -> TeamRecord:
         """

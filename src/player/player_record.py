@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from src.player.player_constants import VALID_BATS, VALID_THROWS
 from src.player.player_skills import PlayerSkills
 from src.player.positions import ALL_POSITIONS, is_pitcher
-from src.types.rows import CsvRow, DbRow
+from src.types.rows import DbRow
 
 type PlayerId = str
 type BattingSide = str  # "L" | "R" | "S"
@@ -82,40 +82,6 @@ class PlayerRecord:
         )
 
     @classmethod
-    def from_csv_row(cls, row: CsvRow) -> PlayerRecord:
-        """Create PlayerRecord from CSV row with abbreviated codes."""
-        try:
-            # Parse name
-            full_name = row["Name"]
-            parts = full_name.split(maxsplit=1)
-            first_name = parts[0]
-            last_name = parts[1] if len(parts) > 1 else ""
-
-            # Convert single-letter codes to upper case
-            bats_map = {"l": "L", "r": "R", "s": "S", "L": "L", "R": "R", "S": "S"}
-            throws_map = {"l": "L", "r": "R", "L": "L", "R": "R"}
-
-            bats = bats_map.get(row["B"].upper())
-            throws = throws_map.get(row["T"].upper())
-
-            if not bats:
-                raise ValueError(f"Invalid bats code: {row['B']}")
-            if not throws:
-                raise ValueError(f"Invalid throws code: {row['T']}")
-
-            return cls(
-                id=row["ID"],
-                first_name=first_name,
-                last_name=last_name,
-                bats=bats,
-                throws=throws,
-                position=row["PS"].lower(),
-                skills=PlayerSkills.from_csv_row(row),
-            )
-        except KeyError as e:
-            raise ValueError(f"Missing required CSV column: {e}") from e
-
-    @classmethod
     def from_db_row(cls, row: DbRow) -> PlayerRecord:
         return cls(
             id=row["id"],
@@ -162,18 +128,6 @@ class PlayerRecord:
             "throws": self.throws,
             "position": self.position,
             **skills_dict,  # Flatten skills into the dict
-        }
-
-    def to_csv_dict(self) -> dict[str, any]:
-        """Convert to dictionary for CSV export."""
-        return {
-            "Name": self.name,
-            "Age": self.age,
-            "PS": self.position,
-            "T": self.throws,
-            "B": self.bats,
-            **self.skills.to_csv_dict(),
-            "ID": self.id,
         }
 
     def __lt__(self, other: PlayerRecord) -> bool:

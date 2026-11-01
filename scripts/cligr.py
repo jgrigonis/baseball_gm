@@ -9,9 +9,6 @@ Usage examples:
   python cligr.py clear --logs
   python cligr.py clear --temp
   python cligr.py clear --db               # drops and recreates the Postgres DB
-  python cligr.py clear --teams            # interactive league picker
-  python cligr.py clear --teams --league-id LEAGUE_ID
-  python cligr.py clear --all-teams        # ⚠ destroys all team files
   python cligr.py clear --logs --temp      # combine as needed
 
   # Delete every league but keep user accounts (asks first; --yes skips that)
@@ -59,7 +56,6 @@ import psycopg
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
-from scripts.create_more_seasons import create_manifests
 from src.db.connection import get_connection
 from src.db.migrate import migrate
 from src.db.locks import LeagueBusy, league_lock
@@ -79,13 +75,6 @@ from src.league.league_constants import (
     ALL_STAR_BREAK_AFTER_GAMES,
     ALL_STAR_BREAK_DAYS,
     SEASON_LENGTH,
-)
-from src.league.manifest_helper import (
-    load_manifest,
-    validate_manifest_structure,
-    validate_manifest_uniqueness,
-    find_missing_team_files,
-    create_team_files,
 )
 from src.league.offseason.build_season_stats import build_season
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
@@ -118,13 +107,14 @@ from src.league.statistics.view_leaderboards import (
     show_all_leaderboards,
     calculate_min_pa,
 )
+from src.league.world_league import LEAGUE_NAME, WORLD_TEAMS
 from src.stats.loader import StatsLoader
-from src.util.locations import MANIFEST_FILES_DIR, TEAM_FILES_DIR, TEMP_FILES, LOG_FILES
+from src.team.team_factory import TeamFactory
+from src.util.locations import TEMP_FILES, LOG_FILES
 from src.util.logger import setup_logger
 
 # Database is configured via DATABASE_URL environment variable
 DEFAULT_YEAR = 2025
-NUM_YEARS = 50  # The maximum number of years to expect manifest files for
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -140,7 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
     # ── clear ──────────────────────────────────────────────────────────────────
     clear = sub.add_parser(
         "clear",
-        help="Clear logs, temp files, DB, or team files",
+        help="Clear logs, temp files, or the DB",
         description="Clear one or more resources. Multiple flags can be combined.",
     )
     clear.add_argument(
@@ -160,25 +150,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Drop and recreate the Postgres database (uses DATABASE_URL)",
     )
     clear.add_argument(
-        "--teams",
-        action="store_true",
-        help="Delete team files for a league (use --league-id or pick interactively)",
-    )
-    clear.add_argument(
-        "--league-id",
-        "-l",
-        help="League ID for --teams (omit for interactive picker)",
-    )
-    clear.add_argument(
-        "--all-teams",
-        action="store_true",
-        help="⚠ Delete ALL team files for ALL leagues (destructive)",
-    )
-    clear.add_argument(
         "--yes",
         "-y",
         action="store_true",
-        help="Skip the confirmation prompts for --db and --all-teams",
+        help="Skip the confirmation prompt for --db",
     )
 
     # ── reset-leagues ──────────────────────────────────────────────────────────
@@ -186,9 +161,9 @@ def build_parser() -> argparse.ArgumentParser:
         "reset-leagues",
         help="Delete every league but keep user accounts",
         description=(
-            "Delete every league with everything it owns, plus its team_files "
-            "folder, the same way the last GM leaving a league does. User "
-            "accounts stay, so nobody has to sign up again."
+            "Delete every league with everything it owns, the same way the "
+            "last GM leaving a league does. User accounts stay, so nobody has "
+            "to sign up again."
         ),
     )
     reset.add_argument(
@@ -227,12 +202,6 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_YEAR,
         help=f"Starting season year (default: {DEFAULT_YEAR})",
-    )
-    new.add_argument(
-        "--manifest",
-        "-m",
-        default="world_league",
-        help="Manifest file prefix (default: world_league)",
     )
     new.add_argument(
         "--seed",
@@ -375,10 +344,6 @@ def _temp_dir() -> Path:
     return TEMP_FILES
 
 
-def _team_files_dir() -> Path:
-    return TEAM_FILES_DIR
-
-
 # ── Clear helpers ───────────────────────────────────────────────────────────────
 
 
@@ -436,34 +401,12 @@ def clear_db() -> None:
     print(f"  Dropped and recreated database: {db_name}")
 
 
-def clear_all_teams() -> None:
-    d = _team_files_dir()
-    if not d.exists():
-        print(f"  {TEAM_FILES_DIR}/: nothing to clear")
-        return
-    shutil.rmtree(d)
-    d.mkdir(parents=True, exist_ok=True)
-    print(f"  {TEAM_FILES_DIR}/: cleared all team files")
-
-
-def clear_teams_for_league(league_id: str) -> None:
-    """Delete the league's team files directory."""
-    league_dir = _team_files_dir() / league_id
-    if not league_dir.exists():
-        print(f"  No team files found for league {league_id}")
-        return
-    shutil.rmtree(league_dir)
-    print(f"  Deleted {league_dir}")
-
-
 def delete_league(conn, league_id: str) -> None:
-    """Delete a league with everything it owns, then its team files."""
+    """Delete a league with everything it owns."""
     # Not while a sim is running for it.
     with league_lock(conn, league_id):
         LeagueRepository(conn).delete(league_id)
         conn.commit()
-    # The team and draft-class CSVs the league was built from.
-    shutil.rmtree(_team_files_dir() / league_id, ignore_errors=True)
 
 
 def pick_league_interactively() -> str | None:
@@ -500,64 +443,34 @@ def pick_league_interactively() -> str | None:
 # ── Season helpers ──────────────────────────────────────────────────────────────
 
 
-def _bootstrap_first_season(
-    year: int | None, manifest_filename: str | None, seed: int | None
-):
+def _bootstrap_first_season(year: int | None, seed: int | None):
     """
-    Create a fresh league, and return
+    Create a fresh World League with newly generated teams, and return
     (conn, league_id, season_id, team_ids).
-
-    Order matters:
-      1. Create the league record first to get league_id
-      2. Create team CSV files scoped to {year}/{league_id}/
-      3. Bootstrap from manifest with the known league_id
-         so bootstrap_from_manifest finds files in the right place
     """
     conn = get_connection()
     migrate(conn)
 
     if year is None:
-        year = "2025"
-
-    if manifest_filename is None:
-        manifest_filename = "world_league"
-
-    margs = argparse.Namespace(
-        file=manifest_filename, year=year, number=NUM_YEARS, overwrite=False
-    )
-    create_manifests(margs)
+        year = DEFAULT_YEAR
 
     rng = random.Random(seed)
-    manifest_path = Path(MANIFEST_FILES_DIR) / f"{manifest_filename}-{year}.json"
-    if not manifest_path.exists():
-        raise FileNotFoundError(f"Manifest not found: {manifest_path}")
 
-    manifest = load_manifest(str(manifest_path))
-    validate_manifest_structure(manifest)
-    validate_manifest_uniqueness(manifest)
-
-    # 1. Create the league record first so we have league_id for file paths
     league_id = str(uuid.UUID(int=rng.getrandbits(128)).hex)
     league_repo = LeagueRepository(conn)
-    league_id = league_repo.get_or_create_by_name(manifest["league_name"], league_id)
-    conn.commit()  # moved from league_repo might need to move down...
+    league_id = league_repo.get_or_create_by_name(LEAGUE_NAME, league_id)
+    conn.commit()
 
-    # 2. Create team CSV files in the right location: {year}/{league_id}/
-    missing = find_missing_team_files(manifest, league_id=league_id)
-    if missing:
-        print(f"  Generating {len(missing)} missing team CSV files...")
-        create_team_files(missing, year, rng=rng, league_id=league_id)
+    factory = TeamFactory(rng=rng)
+    generated = [
+        factory.generate_team(city=t["city"], mascot=t["mascot"], size=26)
+        for t in WORLD_TEAMS
+    ]
+    start_date = datetime.date(year, 4, 1)
 
-    start_date_str = manifest.get("season_start_date", f"{year}-04-01")
-    start_date = datetime.date.fromisoformat(start_date_str)
-
-    # 3. Bootstrap with known league_id — finds files in {year}/{league_id}/
     boot = LeagueBootstrapper(conn, rng=rng)
-    league_id, teams, season_id = boot.bootstrap_from_manifest(
-        manifest,
-        start_date,
-        league_id=league_id,
-        force_new_teams=True,
+    league_id, teams, season_id = boot.bootstrap(
+        generated, league_id=league_id, year=year
     )
     game_repo = GameRepository(conn)
     existing_games = game_repo.games_remaining(season_id)
@@ -962,9 +875,7 @@ def cmd_new_league(args) -> None:
         clear_temp()
 
     print(f"\n🏟️  Creating new league — Year {args.year}")
-    conn, league_id, season_id, _ = _bootstrap_first_season(
-        args.year, args.manifest, args.seed
-    )
+    conn, league_id, season_id, _ = _bootstrap_first_season(args.year, args.seed)
     print("\n✅ League created.")
 
     if args.run_season:
@@ -1037,25 +948,9 @@ def cmd_run_season(args) -> None:
 
 
 def cmd_clear(args) -> None:
-    if not any([args.logs, args.temp, args.clear_db, args.teams, args.all_teams]):
-        print(
-            "Nothing to clear — specify at least one of: "
-            "--logs, --temp, --db, --teams, --all-teams"
-        )
+    if not any([args.logs, args.temp, args.clear_db]):
+        print("Nothing to clear — specify at least one of: --logs, --temp, --db")
         return
-
-    if args.all_teams:
-        if not args.yes:
-            confirm = input("⚠️  Delete ALL team files for ALL leagues? [y/N] ")
-            if confirm.strip().lower() not in ("y", "yes"):
-                print("  Aborted")
-                return
-        clear_all_teams()
-
-    if args.teams and not args.all_teams:
-        league_id = args.league_id or pick_league_interactively()
-        if league_id:
-            clear_teams_for_league(league_id)
 
     if args.clear_db:
         confirm = "y" if args.yes else input("⚠️  Reset the Postgres database? [y/N] ")
@@ -1083,7 +978,7 @@ def cmd_reset_leagues(args) -> None:
         print("No leagues to delete.")
         return
 
-    print(f"This deletes all {len(leagues)} league(s) and their team files:")
+    print(f"This deletes all {len(leagues)} league(s):")
     for league in leagues:
         print(f"  {league['name']} ({league['state']})  [{league['id']}]")
     print("User accounts are kept.")

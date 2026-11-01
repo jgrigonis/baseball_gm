@@ -26,9 +26,9 @@ from collections.abc import ItemsView, KeysView, ValuesView, Iterator
 
 from src.player.player_skill_aging import SkillAging
 from src.player.positions import SKILLS, SKILL_TEMPLATE
-from src.player.skill_map import SKILL_MAP, SKILL_MIN, SKILL_MAX
+from src.player.skill_map import SKILL_MIN, SKILL_MAX
 from src.player.player_constants import START_AGE
-from src.types.rows import CsvRow, DbRow
+from src.types.rows import DbRow
 from src.util.clamp import clamp
 
 # Constants for skill generation
@@ -334,40 +334,6 @@ class PlayerSkills:
         return cls(skills, age=age)
 
     @classmethod
-    def from_csv_row(cls, row: CsvRow) -> PlayerSkills:
-        """
-        Create PlayerSkills from a CSV row.
-
-        Args:
-            row: CSV row with abbreviated skill columns (e.g., "PO", "SP")
-
-        Returns:
-            PlayerSkills instance
-
-        Raises:
-            ValueError: If required columns are missing or invalid
-
-        Example:
-            >>> row = {"PO": "85", "SP": "60", ...}
-            >>> skills = PlayerSkills.from_csv_row(row)
-        """
-        skills = {}
-
-        for csv_key, domain_key in SKILL_MAP.items():
-            if csv_key not in row:
-                raise ValueError(f"Missing required CSV column: '{csv_key}'")
-
-            try:
-                skills[domain_key] = int(row[csv_key])
-            except (ValueError, TypeError) as e:
-                raise ValueError(
-                    f"Invalid value for '{csv_key}': {row[csv_key]}"
-                ) from e
-
-        age = int(row.get("Age", START_AGE))
-        return cls(skills, age=age)
-
-    @classmethod
     def generate(
         cls,
         rng: random.Random,
@@ -500,26 +466,6 @@ class PlayerSkills:
         d = self.as_dict()
         d["age"] = self.age
         return d
-
-    def to_csv_dict(self) -> dict[str, int]:
-        """
-        Convert to dictionary suitable for CSV export.
-
-        Returns:
-            Dictionary with abbreviated skill names (e.g., "PO", "SP")
-        """
-        from src.player.skill_map import get_skill_abbr
-
-        csv_dict = {}
-        for skill_name, value in self._skills.items():
-            try:
-                abbr = get_skill_abbr(skill_name)
-                csv_dict[abbr] = value
-            except ValueError:
-                # Skip skills not in SKILL_MAP
-                continue
-
-        return csv_dict
 
     def age_to(
         self,

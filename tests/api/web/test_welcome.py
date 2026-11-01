@@ -177,9 +177,9 @@ def test_uniform_slugs():
 
 
 def test_every_world_league_team_has_its_uniforms():
-    from src.api.services.lobby_teams import manifest_teams
+    from src.api.services.lobby_teams import world_teams
 
-    teams = manifest_teams()
+    teams = world_teams()
     assert len(teams) == 30
     for city, _ in teams:
         u = wv.uniforms(city)

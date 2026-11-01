@@ -20,10 +20,8 @@ Post-draft:
 """
 
 import logging
-import csv
 import random
 from dataclasses import dataclass
-from pathlib import Path
 
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.pick_rights_repo import PickRightsRepository
@@ -34,7 +32,6 @@ from src.db.repositories.team_repo import TeamRepository
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.team.roster_assigner import RosterAssigner
-from src.util.locations import TEAM_FILES_DIR
 
 log = logging.getLogger(__name__)
 
@@ -100,7 +97,7 @@ class SnakeDraft:
 
         Args:
             draft_order: Ordered list of team dicts from _build_draft_order or draft_order table
-            year:        Draft year (for output path)
+            year:        Draft year (whose pick rights are used)
             league_id:   League scoping
         """
         log.info("Draft order: %s teams", len(draft_order))
@@ -127,9 +124,6 @@ class SnakeDraft:
         # 4. Re-run RosterAssigner for each team
         self._reassign_rosters(draft_order)
         self.conn.commit()
-
-        # 5. Write draft results CSV
-        self._write_results(picks, year, league_id)
 
         return picks
 
@@ -279,48 +273,3 @@ class SnakeDraft:
             self.status_repo.bulk_set(assignments)
 
         log.info("Reassigned rosters for %s teams", len(draft_order))
-
-    # -----------------------------------------------------------------------
-    # Output
-    # -----------------------------------------------------------------------
-
-    def _write_results(
-        self, picks: list[DraftPick], year: int, league_id: str | None = None
-    ) -> None:
-        """Write draft_results.csv."""
-        if league_id:
-            out_dir = Path(TEAM_FILES_DIR) / league_id / str(year)
-        else:
-            raise RuntimeError("Missing league_id")
-
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / "draft_results.csv"
-
-        with open(out_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(
-                f,
-                fieldnames=[
-                    "Round",
-                    "Pick",
-                    "Team",
-                    "Player",
-                    "Age",
-                    "Position",
-                    "Prospect Rating",
-                ],
-            )
-            writer.writeheader()
-            for p in picks:
-                writer.writerow(
-                    {
-                        "Round": p.round,
-                        "Pick": p.pick,
-                        "Team": p.team_name,
-                        "Player": p.player_name,
-                        "Age": p.age,
-                        "Position": p.position,
-                        "Prospect Rating": p.prospect_rating,
-                    }
-                )
-
-        log.info("Wrote %s", out_path)

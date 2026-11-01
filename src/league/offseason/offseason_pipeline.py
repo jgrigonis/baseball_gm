@@ -1,9 +1,7 @@
 # src/league/offseason/offseason_pipeline.py
 import argparse
-import csv
 import datetime
 import logging
-from pathlib import Path
 import random
 import statistics
 
@@ -39,7 +37,6 @@ from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
 from src.league.offseason.build_season_stats import build_season
 from src.league.rotation_seeder import seed_ai_rotations
 from src.player.player_skills import PlayerSkills
-from src.util.locations import TEAM_FILES_DIR
 from src.util.logger import configure_app_logging, setup_logger
 
 log = logging.getLogger(__name__)
@@ -157,12 +154,6 @@ class OffseasonPipeline:
             self._mark_done(season_id, "build_season_stats")
         else:
             log.info("Skipping season stat rollup (already done)")
-
-        if not self.os_repo.is_done(season_id, "write_csvs"):
-            self._write_csvs(season_id)
-            self._mark_done(season_id, "write_csvs")
-        else:
-            log.info("Skipping CSV export (already done)")
 
     def run_final(self, season_id: str, league_id: str) -> None:
         """The league's last season is over: archive it for the history pages.
@@ -344,57 +335,7 @@ class OffseasonPipeline:
                     retired.append(player)
 
         self.conn.commit()
-
-        if retired:
-            if self.league_id:
-                out_dir = Path(TEAM_FILES_DIR) / self.league_id / str(self.year)
-            else:
-                out_dir = Path(TEAM_FILES_DIR) / str(self.year)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            path = out_dir / "retired.csv"
-            rows = [p.to_csv_dict() for p in retired]
-            with open(path, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-                writer.writeheader()
-                writer.writerows(rows)
-            log.info("Retired %s players → %s", len(retired), path)
-        else:
-            log.info("Retired 0 players")
-
-    def _write_csvs(self, season_id: str) -> None:
-        """Write post-aging CSVs for teams in this league only."""
-        # Scope to this league via league_season_teams
-        if self.league_id:
-            teams = self.team_repo.get_team_id_and_csv(season_id, self.league_id)
-            out_dir = Path(TEAM_FILES_DIR) / self.league_id / str(self.year)
-        else:
-            raise RuntimeError("No league id to write CSVs for")
-            # This is now a runtime error
-
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        for team in teams:
-            players = self.player_repo.get_players_by_team(team["id"])
-            if not players:
-                continue
-
-            filename = (
-                Path(team["source_csv"]).name
-                if team["source_csv"]
-                else f"{team['id']}.csv"
-            )
-            path = out_dir / filename
-            if path.exists():
-                log.info("Skipping %s (already exists)", path)
-                continue
-
-            rows = [p.to_csv_dict() for p in players]
-            with open(path, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-                writer.writeheader()
-                writer.writerows(rows)
-
-            log.info("Wrote %s", path)
+        log.info("Retired %s players", len(retired))
 
     def _mark_done(self, season_id: str, step: str) -> None:
         now = datetime.datetime.now(datetime.UTC).isoformat()
@@ -456,7 +397,7 @@ class OffseasonPipeline:
 
     def _generate_draft(self, season_id: str) -> None:
         generator = DraftGenerator(self.conn, self.rng)
-        total = generator.run(self.year, league_id=self.league_id)
+        total = generator.run(league_id=self.league_id)
         log.info("Draft pool ready: %s draftable players", total)
 
     def _write_draft_order(self, league_id: str, draft_order: list[dict]) -> None:

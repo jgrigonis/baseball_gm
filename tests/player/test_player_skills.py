@@ -345,64 +345,6 @@ class TestFromDbRow:
             assert skills[skill] == DEFAULT_SKILL_MEAN
 
 
-class TestFromCsvRow:
-    """Test creating PlayerSkills from CSV rows."""
-
-    def test_from_csv_row_complete(self):
-        row = {
-            "PO": "85",  # power
-            "SP": "60",  # speed
-            "CL": "70",  # clutch
-            "EY": "50",  # eye
-            "CT": "55",  # contact
-            "BR": "45",  # base_running
-            "BU": "40",  # bunting
-            "CA": "30",  # catching
-            "IF": "75",  # infield
-            "OF": "65",  # outfield
-            "AR": "70",  # arm
-            "AC": "60",  # accuracy
-            "ST": "80",  # stamina
-            "RE": "70",  # recovery
-            "GB": "55",  # ground_balls
-            "KK": "65",  # strikes
-            "DU": "50",  # durability
-        }
-
-        skills = PlayerSkills.from_csv_row(row)
-        assert skills["power"] == 85
-        assert skills["speed"] == 60
-        assert skills["clutch"] == 70
-
-    def test_from_csv_row_missing_column_raises(self):
-        row = {"PO": "85"}  # Missing most columns
-        with pytest.raises(ValueError, match="Missing required CSV column"):
-            PlayerSkills.from_csv_row(row)
-
-    def test_from_csv_row_invalid_value_raises(self):
-        row = {
-            "PO": "not_a_number",
-            "SP": "60",
-            "CL": "70",
-            "EY": "50",
-            "CT": "55",
-            "BR": "45",
-            "BU": "40",
-            "CA": "30",
-            "IF": "75",
-            "OF": "65",
-            "AR": "70",
-            "AC": "60",
-            "ST": "80",
-            "RE": "70",
-            "GB": "55",
-            "KK": "65",
-        }
-
-        with pytest.raises(ValueError, match="Invalid value"):
-            PlayerSkills.from_csv_row(row)
-
-
 class TestGenerate:
     """Test random skill generation."""
 
@@ -546,24 +488,6 @@ class TestSerialization:
         db_dict["power"] = 999
         assert skills["power"] == 85
 
-    def test_to_csv_dict(self):
-        skills = PlayerSkills({"power": 85, "speed": 60, "clutch": 70})
-        csv_dict = skills.to_csv_dict()
-
-        assert csv_dict["PO"] == 85  # power
-        assert csv_dict["SP"] == 60  # speed
-        assert csv_dict["CL"] == 70  # clutch
-
-    def test_to_csv_dict_all_skills(self):
-        skills_dict = {skill: 50 for skill in SKILLS}
-        skills = PlayerSkills(skills_dict)
-        csv_dict = skills.to_csv_dict()
-
-        # Should have same number of entries as SKILL_MAP
-        from src.player.skill_map import SKILL_MAP
-
-        assert len(csv_dict) == len(SKILL_MAP)
-
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
@@ -634,23 +558,6 @@ class TestRoundTrip:
 
         assert original == restored
 
-    def test_roundtrip_via_csv_dict(self):
-        original = PlayerSkills({"power": 85, "speed": 60, "clutch": 70})
-        csv_dict = original.to_csv_dict()
-
-        # Build reverse mapping for restoration
-        from src.player.skill_map import SKILL_MAP
-
-        full_dict = {}
-        for abbr, value in csv_dict.items():
-            skill_name = SKILL_MAP[abbr]
-            full_dict[skill_name] = value
-
-        restored = PlayerSkills(full_dict)
-        assert restored["power"] == 85
-        assert restored["speed"] == 60
-        assert restored["clutch"] == 70
-
 
 class TestIntegration:
     """Integration tests combining multiple features."""
@@ -659,12 +566,9 @@ class TestIntegration:
         rng = random.Random(42)
         skills = PlayerSkills.generate(rng, "ss")
 
-        # Should be able to serialize to both formats
         db_dict = skills.to_db_dict()
-        csv_dict = skills.to_csv_dict()
 
         assert len(db_dict) == len(SKILLS) + 1  # +1 for age
-        assert len(csv_dict) > 0
 
     def test_create_modify_copy_original_unchanged(self):
         original = PlayerSkills({"power": 85})

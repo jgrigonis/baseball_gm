@@ -35,7 +35,7 @@ def _lobby(db, factory, num_teams=4):
     return league, me
 
 
-def test_every_lobby_gm_is_dealt_a_different_manifest_team(db_conn, factory):
+def test_every_lobby_gm_is_dealt_a_different_world_team(db_conn, factory):
     league, me = _lobby(db_conn, factory)
 
     teams = _teams(db_conn, league.id)
@@ -44,11 +44,11 @@ def test_every_lobby_gm_is_dealt_a_different_manifest_team(db_conn, factory):
     assert me.id in teams
     assert all(t[0] for t in teams.values())
     assert len(set(teams.values())) == 4
-    assert set(teams.values()) <= set(lobby_teams.manifest_teams())
+    assert set(teams.values()) <= set(lobby_teams.world_teams())
 
 
 def test_a_person_joining_takes_the_replaced_ai_gms_team(db_conn, factory):
-    league, _ = _lobby(db_conn, factory, num_teams=len(lobby_teams.manifest_teams()))
+    league, _ = _lobby(db_conn, factory, num_teams=len(lobby_teams.world_teams()))
     before = _teams(db_conn, league.id)
 
     friend = GMRepository(db_conn).create_gm(
@@ -63,7 +63,7 @@ def test_a_person_joining_takes_the_replaced_ai_gms_team(db_conn, factory):
 
 
 def test_an_ai_gm_filling_in_for_a_leaver_gets_their_team(db_conn, factory):
-    league, me = _lobby(db_conn, factory, num_teams=len(lobby_teams.manifest_teams()))
+    league, me = _lobby(db_conn, factory, num_teams=len(lobby_teams.world_teams()))
     friend = GMRepository(db_conn).create_gm(
         league_id=league.id, user_id=None, display_name="Friend"
     )
@@ -158,7 +158,7 @@ def test_a_team_outside_the_league_cant_be_picked(db_conn, factory):
     league, me = _lobby(db_conn, factory)
     outside = next(
         t
-        for t in lobby_teams.manifest_teams()
+        for t in lobby_teams.world_teams()
         if t not in lobby_teams.league_teams(db_conn, league.id)
     )
 
@@ -181,7 +181,7 @@ def test_another_persons_team_cant_be_picked(db_conn, factory):
 def test_only_people_in_the_lobby_pick_real_teams(db_conn, factory):
     league, me = _lobby(db_conn, factory)
     ai = persona_service.lobby_ai_gms(db_conn, league.id)[0]
-    team = lobby_teams.manifest_teams()[0]
+    team = lobby_teams.world_teams()[0]
 
     assert not lobby_teams.pick(db_conn, league.id, me.id, "Nowhere", "Nobodies")
     assert not lobby_teams.pick(db_conn, league.id, ai["id"], *team)

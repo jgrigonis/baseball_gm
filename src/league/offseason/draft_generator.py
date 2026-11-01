@@ -7,15 +7,12 @@ Steps:
    - 55% pitchers: 27.5% sp, 27.5% rp
    - 45% position players: evenly split across 11 positions (~4.1% each)
 2. Insert new players into DB with status 'prospect' and league_id set
-3. Collect existing unattached prospects for this league
-4. Write draft.csv with all draftable players
+3. Count them along with the league's existing unattached prospects
 """
 
-import csv
 import dataclasses
 import logging
 import random
-from pathlib import Path
 import uuid
 
 from src.db.repositories.draft_repo import DraftRepository
@@ -26,7 +23,6 @@ from src.player.player_factory import PlayerFactory
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import START_AGE
 from src.player.talent_caps import generate_talent_caps
-from src.util.locations import TEAM_FILES_DIR
 
 log = logging.getLogger(__name__)
 
@@ -108,18 +104,17 @@ class DraftGenerator:
         self.cap_repo = TalentCapRepository(conn)
         self.factory = PlayerFactory(rng=self.rng)
 
-    def run(self, year: int, league_id: str | None = None) -> int:
+    def run(self, league_id: str | None = None) -> int:
         """
-        Generate draft pool, insert into DB, write draft.csv.
+        Generate the draft pool and insert it into the DB.
 
         Args:
-            season_id:  unused TODO delete
-            year:       The year of the draft (used for output directory)
             league_id:  The league this pool belongs to. Players are tagged
                         with this so draft boards don't leak across leagues.
 
         Returns:
-            Total number of draftable players written to CSV
+            Total number of draftable players: the new prospects plus the
+            league's existing undrafted ones.
         """
         existing = self._get_existing_draftable(league_id)
         log.info("Found %s existing undrafted prospects", len(existing))
@@ -144,11 +139,7 @@ class DraftGenerator:
         self.conn.commit()
         seen = {p.id for p in new_players}
         unique_existing = [p for p in existing if p.id not in seen]
-        all_draftable = new_players + unique_existing
-        out_path = self._write_draft_csv(all_draftable, year, league_id)
-        log.info("Wrote %s (%s players)", out_path, len(all_draftable))
-
-        return len(all_draftable)
+        return len(new_players) + len(unique_existing)
 
     def _with_unused_id(self, player: PlayerRecord) -> PlayerRecord:
         """
@@ -204,25 +195,3 @@ class DraftGenerator:
             if player:
                 players.append(player)
         return players
-
-    def _write_draft_csv(
-        self, players, year: int, league_id: str | None = None
-    ) -> Path:
-        # Scope by league_id so multiple leagues don't overwrite each other
-        if league_id:
-            out_dir = Path(TEAM_FILES_DIR) / league_id / str(year)
-        else:
-            out_dir = Path(TEAM_FILES_DIR) / str(year)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / "draft.csv"
-
-        if not players:
-            return out_path
-
-        rows = [p.to_csv_dict() for p in players]
-        with open(out_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-            writer.writeheader()
-            writer.writerows(rows)
-
-        return out_path

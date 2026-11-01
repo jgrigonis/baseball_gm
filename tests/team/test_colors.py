@@ -1,12 +1,9 @@
-import json
-
 from src.team.colors import TEAM_COLORS, colors_for, contrast, team_badge
-from src.util.locations import MANIFEST_FILES_DIR
+from src.league.world_league import EXTRA_TEAMS, WORLD_TEAMS
 
 
 def test_every_world_league_team_has_colors():
-    manifest = json.loads((MANIFEST_FILES_DIR / "world_league-2025.json").read_text())
-    for team in manifest["teams"]:
+    for team in WORLD_TEAMS + EXTRA_TEAMS:
         assert (team["city"], team["mascot"]) in TEAM_COLORS, team
 
 

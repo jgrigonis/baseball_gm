@@ -19,10 +19,10 @@ RUN uv sync --locked --no-install-project
 
 COPY . .
 
-# Run as an unprivileged user. Starting a league writes team CSVs.
+# Run as an unprivileged user.
 RUN useradd --system --uid 1000 --home-dir /app app \
-    && mkdir -p team_files logs temp_files \
-    && chown app team_files logs temp_files
+    && mkdir -p logs temp_files \
+    && chown app logs temp_files
 USER app
 
 EXPOSE 8000
