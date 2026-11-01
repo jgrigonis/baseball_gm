@@ -175,6 +175,15 @@ class UserRepository:
     def set_email(self, user_id: str, email: str | None) -> None:
         self.db.execute("UPDATE users SET email = %s WHERE id = %s", (email, user_id))
 
+    def set_profile(
+        self, user_id: str, bio: str | None, favorite_team: str | None
+    ) -> None:
+        """The bio and favorite team on their GM profile."""
+        self.db.execute(
+            "UPDATE users SET bio = %s, favorite_team = %s WHERE id = %s",
+            (bio, favorite_team, user_id),
+        )
+
     def set_contributor(self, user_id: str, is_contributor: bool) -> None:
         self.db.execute(
             "UPDATE users SET is_contributor = %s WHERE id = %s",

@@ -1147,6 +1147,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .gp-head .page-title { font-size: 44px; overflow-wrap: anywhere; }
 .gp-sub { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.7; }
 .gp-sub b { color: var(--text); font-weight: 500; }
+.gp-bio { font-size: 14px; color: var(--text); margin-top: 8px; max-width: 640px; overflow-wrap: anywhere; }
 .gp-head-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
 .gp-pill { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
   padding: 3px 8px; border: 1px solid var(--amber); color: var(--amber); background: var(--amber-lo); white-space: nowrap; }

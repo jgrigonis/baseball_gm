@@ -13,6 +13,9 @@ from src.api.services.career import ROUND_DEPTH
 from src.api.view_models.profile_sections import sections
 from src.api.view_models.welcome import uniforms
 from src.db.repositories.career_repo import CareerRepository
+from src.team.colors import TEAM_COLORS
+
+BIO_MAX = 160
 
 # The trophy case, best first: (what, from a season row).
 TROPHIES = (
@@ -31,11 +34,22 @@ FINISH_LABEL = {
 
 def find_user(db, username: str) -> dict | None:
     row = db.execute(
-        """SELECT id, username, display_name, created_at FROM users
+        """SELECT id, username, display_name, created_at, bio, favorite_team
+           FROM users
            WHERE lower(username) = lower(%s)""",
         (username,),
     ).fetchone()
     return dict(row) if row else None
+
+
+def team_choices() -> list[tuple[str, str]]:
+    """The teams someone can pick as their favorite: (city, mascot), by city."""
+    return sorted(TEAM_COLORS)
+
+
+def favorite_team(city: str | None) -> tuple[str, str] | None:
+    """(city, mascot) for a favorite team, or None if unset or unknown."""
+    return next(((c, m) for c, m in TEAM_COLORS if c == city), None) if city else None
 
 
 def pct(wins: int, losses: int) -> str:
@@ -72,8 +86,10 @@ def profile_context(db, person: dict, viewer: dict) -> dict:
             lg["league_id"] == latest["league_id"] and lg["status"] == "Active"
             for lg in leagues
         )
+    favorite = favorite_team(person.get("favorite_team"))
     return {
         "person": person,
+        "favorite": _team(*favorite) if favorite else None,
         "is_me": person["id"] == viewer.get("id"),
         "since": _month_year(person["created_at"]),
         "career": career,
