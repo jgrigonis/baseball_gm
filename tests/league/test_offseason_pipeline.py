@@ -282,7 +282,6 @@ class TestRunIdempotency:
             "rebuild_rotations",
             "reset_player_energy",
             "build_season_stats",
-            "write_csvs",
         ]
         for step in steps:
             pipeline._mark_done(season_id, step)

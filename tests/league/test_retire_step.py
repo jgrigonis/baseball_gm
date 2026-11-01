@@ -104,11 +104,8 @@ class TestRetireStep:
         assert status_of(db_conn, player) == "retired"
 
     def test_regular_stays_and_unused_veteran_retires(
-        self, db_conn, factory, league_setup, tmp_path, monkeypatch
+        self, db_conn, factory, league_setup
     ):
-        monkeypatch.setattr(
-            "src.league.offseason.offseason_pipeline.TEAM_FILES_DIR", tmp_path
-        )
         league, season, team = league_setup
         regular = add_player(db_conn, factory, league, team, age=38, status="26man")
         unused = add_player(db_conn, factory, league, team, age=38, status="40man")

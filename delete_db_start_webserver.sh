@@ -1,7 +1,7 @@
 #!/bin/bash
 # Wipe everything and start fresh: drop and recreate the database DATABASE_URL
-# names (every league and every user account goes), delete every league's
-# team_files, then start the web server and sim worker on the empty database.
+# names (every league and every user account goes), then start the web server
+# and sim worker on the empty database.
 #
 #   ./delete_db_start_webserver.sh         # asks first
 #   ./delete_db_start_webserver.sh --yes   # doesn't ask
@@ -27,7 +27,7 @@ if [[ "${1:-}" != "--yes" && "${1:-}" != "-y" ]]; then
 fi
 
 # Disconnects anything still using the database, e.g. a server left running.
-uv run --locked python scripts/cligr.py clear --db --all-teams --yes
+uv run --locked python scripts/cligr.py clear --db --yes
 
 # Creates the tables and the admin login, then starts the server and worker.
 exec ./start_webserver.sh

@@ -65,8 +65,7 @@ A GM leaves from the Leave button on `/leagues/` (`POST /leagues/{id}/leave`,
 - When the **last person** leaves (fired GMs count, since they can still
   open the league), the league is deleted with everything it owns:
   `LeagueRepository.delete()` removes its GMs, drafts, seasons with their
-  games and stats, teams, players and per-league player state, and the
-  service removes its CSVs under `team_files/{league_id}/`. Seasons and teams
+  games and stats, teams, players and per-league player state. Seasons and teams
   shared with another league are left alone. The Leave dialog warns the
   last GM first.
 - Leaving takes the league lock, so it can't land in the middle of a sim

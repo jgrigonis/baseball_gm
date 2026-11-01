@@ -3,118 +3,15 @@
 Tests for TeamFactory.
 
 Tests cover:
-- from_csv: CSV parsing, error handling, minimum players
 - generate_team: Positional distribution, roster sizes, validation
 """
 
-import io
 import pytest
-from unittest.mock import MagicMock, patch
 from collections import Counter
 
 from src.team.team_factory import TeamFactory
 from src.team.team_record import TeamRecord
 from src.player.player_record import PlayerRecord
-
-
-@pytest.fixture
-def valid_csv():
-    """Generate a valid CSV with 9 players."""
-    header = "id,first_name,last_name,bats,throws\n"
-    rows = [f"{i},First{i},Last{i},R,R\n" for i in range(1, 10)]
-    return header + "".join(rows)
-
-
-class TestTeamFactoryFromCSV:
-    """Test from_csv() method."""
-
-    @patch("src.team.team_factory.open", create=True)
-    @patch("src.team.team_factory.PlayerRecord.from_csv_row")
-    def test_from_csv_creates_team_record(
-        self,
-        mock_from_csv_row,
-        mock_open,
-        valid_csv,
-    ):
-        """Happy path: builds a TeamRecord from CSV."""
-        mock_open.return_value.__enter__.return_value = io.StringIO(valid_csv)
-
-        fake_player = MagicMock(spec=PlayerRecord)
-        mock_from_csv_row.return_value = fake_player
-
-        factory = TeamFactory()
-
-        team = factory.from_csv(
-            path="team.csv",
-            city="Chicago",
-            mascot="Bears",
-        )
-
-        assert isinstance(team, TeamRecord)
-        assert team.city == "Chicago"
-        assert team.mascot == "Bears"
-        assert len(team.players) == 9
-        assert all(p is fake_player for p in team.players)
-
-    @patch("src.team.team_factory.open", create=True)
-    @patch("src.team.team_factory.PlayerRecord.from_csv_row")
-    def test_from_csv_invalid_row_reports_row_number(
-        self,
-        mock_from_csv_row,
-        mock_open,
-        valid_csv,
-    ):
-        """Invalid row includes row number in error message."""
-        mock_open.return_value.__enter__.return_value = io.StringIO(valid_csv)
-
-        mock_from_csv_row.side_effect = ValueError("bad data")
-
-        factory = TeamFactory()
-
-        with pytest.raises(ValueError, match="Invalid player row 1"):
-            factory.from_csv(
-                path="team.csv",
-                city="NY",
-                mascot="Mets",
-            )
-
-    @patch("src.team.team_factory.open", create=True)
-    @patch("src.team.team_factory.PlayerRecord.from_csv_row")
-    def test_from_csv_requires_minimum_players(
-        self,
-        mock_from_csv_row,
-        mock_open,
-    ):
-        """Fewer than 9 players is rejected."""
-        csv_data = "ID,Name,B,T\n1,A,R,R\n2,C,R,R\n"
-        mock_open.return_value.__enter__.return_value = io.StringIO(csv_data)
-        mock_from_csv_row.return_value = MagicMock(spec=PlayerRecord)
-
-        factory = TeamFactory()
-
-        with pytest.raises(ValueError, match="at least 9 players"):
-            factory.from_csv(
-                path="small.csv",
-                city="LA",
-                mascot="Dodgers",
-            )
-
-    @patch("src.team.team_factory.open", create=True)
-    @patch("src.team.team_factory.PlayerRecord.from_csv_row")
-    def test_from_csv_players_are_tuple(
-        self,
-        mock_from_csv_row,
-        mock_open,
-        valid_csv,
-    ):
-        """Players are stored as an immutable tuple."""
-        mock_open.return_value.__enter__.return_value = io.StringIO(valid_csv)
-        mock_from_csv_row.return_value = MagicMock(spec=PlayerRecord)
-
-        factory = TeamFactory()
-        team = factory.from_csv(path="team.csv", city="SF", mascot="Giants")
-
-        assert isinstance(team.players, tuple)
 
 
 class TestTeamFactoryGenerateTeam:

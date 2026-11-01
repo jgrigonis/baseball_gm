@@ -1,6 +1,5 @@
 # tests/scripts/test_reset_leagues.py
-"""`cligr.py reset-leagues` deletes every league and its team files, and keeps
-user accounts."""
+"""`cligr.py reset-leagues` deletes every league and keeps user accounts."""
 
 import argparse
 import uuid
@@ -17,23 +16,20 @@ def _reset(monkeypatch, yes=True, answer="n"):
 
 
 @pytest.fixture(autouse=True)
-def setup(db_conn, tmp_path, monkeypatch):
+def setup(db_conn, monkeypatch):
     monkeypatch.setattr(cligr, "get_connection", lambda: db_conn)
-    monkeypatch.setattr(cligr, "TEAM_FILES_DIR", tmp_path)
     # Leagues other tests committed would be deleted too.
     _reset(monkeypatch)
-    return tmp_path
 
 
 def _leagues(db):
     return db.execute("SELECT COUNT(*) AS n FROM leagues").fetchone()["n"]
 
 
-def test_deletes_every_league_and_keeps_users(db_conn, factory, setup, monkeypatch):
+def test_deletes_every_league_and_keeps_users(db_conn, factory, monkeypatch):
     before = _row_counts(db_conn)
-    leagues = [_league_with_history(db_conn, factory)[0] for _ in range(2)]
-    for league in leagues:
-        (setup / league.id / "2025").mkdir(parents=True)
+    for _ in range(2):
+        _league_with_history(db_conn, factory)
 
     _reset(monkeypatch)
 
@@ -41,7 +37,6 @@ def test_deletes_every_league_and_keeps_users(db_conn, factory, setup, monkeypat
     # Both leagues' Alices keep their accounts; nothing else is left.
     before["users"] += 2
     assert {t: n for t, n in after.items() if n != before[t]} == {}
-    assert not any(setup.iterdir())
 
 
 def test_asks_first(db_conn, factory, monkeypatch, capsys):

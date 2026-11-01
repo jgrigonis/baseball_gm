@@ -29,14 +29,7 @@ class TeamRepository:
     # TEAM CREATION
     # ------------------------------------------------------------
 
-    def create(
-        self,
-        city: str,
-        mascot: str,
-        *,
-        source_csv: str | None = None,
-        source_hash: str | None = None,
-    ) -> str:
+    def create(self, city: str, mascot: str) -> str:
         """
         Create a new team record.
         Caller must ensure this is safe.
@@ -45,12 +38,10 @@ class TeamRepository:
 
         self.conn.execute(
             """
-            INSERT INTO teams (
-                id, city, mascot, source_csv, source_hash
-            )
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO teams (id, city, mascot)
+            VALUES (%s, %s, %s)
             """,
-            (team_id, city, mascot, source_csv, source_hash),
+            (team_id, city, mascot),
         )
 
         return team_id
@@ -109,7 +100,7 @@ class TeamRepository:
         """Fetch a team by ID."""
         row = self.conn.execute(
             """
-            SELECT id, city, mascot, source_csv, source_hash
+            SELECT id, city, mascot
             FROM teams
             WHERE id = %s
             """,
@@ -126,8 +117,6 @@ class TeamRepository:
             id=row["id"],
             city=row["city"],
             mascot=row["mascot"],
-            source_csv=row["source_csv"],
-            source_hash=row["source_hash"],
             players=tuple(players),
         )
 
@@ -281,16 +270,6 @@ class TeamRepository:
             "SELECT city || ' ' || mascot AS name FROM teams WHERE id = %s", (team_id,)
         ).fetchone()["name"]
         return name
-
-    def get_team_id_and_csv(self, season_id: str, league_id: str) -> list[dict]:
-        teams = self.conn.execute(
-            """SELECT t.id, t.source_csv
-                FROM teams t
-                JOIN league_season_teams lst ON lst.team_id = t.id
-                WHERE lst.season_id = %s AND lst.league_id = %s""",
-            (season_id, league_id),
-        ).fetchall()
-        return teams
 
     def get_teams_in_season(self, season_id: str) -> list[dict]:
         team_rows = self.conn.execute(

@@ -13,7 +13,6 @@ from psycopg.rows import dict_row
 from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
-from src.api.services import leave_league as leave_league_module
 from src.api.services import personas, ready_check
 from src.api.services.injury_news import InjuryNews
 from src.api.services.leave_league import leave_league
@@ -433,17 +432,10 @@ def _row_counts(db):
 
 
 class TestLastOneOut:
-    @pytest.fixture(autouse=True)
-    def team_files(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(leave_league_module, "TEAM_FILES_DIR", tmp_path)
-        return tmp_path
-
-    def test_deletes_everything_the_league_owns(self, db_conn, factory, team_files):
+    def test_deletes_everything_the_league_owns(self, db_conn, factory):
         other, _ = _league_with_history(db_conn, factory)
         before = _row_counts(db_conn)
         league, gm = _league_with_history(db_conn, factory)
-        (team_files / league.id / "2025").mkdir(parents=True)
-        (team_files / other.id).mkdir()
 
         leave_league(db_conn, league.id, gm.id)
 
@@ -452,8 +444,6 @@ class TestLastOneOut:
         # other league is untouched.
         before["users"] += 1
         assert {t: n for t, n in after.items() if n != before[t]} == {}
-        assert not (team_files / league.id).exists()
-        assert (team_files / other.id).exists()
 
     def test_started_single_player_league(self, db_conn, factory):
         league = factory.league(state="season")

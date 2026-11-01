@@ -1,7 +1,7 @@
 # src/api/services/lobby_teams.py
 #
 # Teams in the lobby. Team rows are only made when a league starts, but the
-# teams themselves are the manifest's, known from the start. So each GM
+# teams themselves (src/league/world_league.py) are known from the start. So each GM
 # waiting in the lobby, person or AI, is dealt one of them by name when they
 # join or are picked, and the lobby shows it. A person who joins takes the
 # team of the AI GM whose place they take. At the start, each GM gets the
@@ -14,45 +14,18 @@
 from __future__ import annotations
 
 import random
-from functools import lru_cache
-from pathlib import Path
 
-from src.league.manifest_helper import load_manifest
-from src.util.locations import MANIFEST_FILES_DIR
-
-MANIFEST_FILENAME = "world_league-2025.json"
+from src.league.world_league import EXTRA_TEAMS, WORLD_TEAMS
 
 
-def manifest_path() -> Path:
-    return Path(MANIFEST_FILES_DIR) / MANIFEST_FILENAME
-
-
-# Teams past the World League's 30, for bigger leagues. There are more of them
-# than a 32-team league needs, so each such league draws its own.
-EXTRA_TEAMS = (
-    {"csv": "berlin.csv", "city": "Berlin", "mascot": "Bear"},
-    {"csv": "seattle.csv", "city": "Seattle", "mascot": "Rain"},
-    {"csv": "portland.csv", "city": "Portland", "mascot": "Weird"},
-)
-
-
-@lru_cache(maxsize=1)
-def _world_entries() -> tuple[dict, ...]:
-    path = manifest_path()
-    if not path.exists():
-        return ()
-    return tuple(load_manifest(path)["teams"])
-
-
-def manifest_teams() -> tuple[tuple[str, str], ...]:
+def world_teams() -> tuple[tuple[str, str], ...]:
     """Every World League team, as (city, mascot)."""
-    return tuple((t["city"], t["mascot"]) for t in _world_entries())
+    return tuple((t["city"], t["mascot"]) for t in WORLD_TEAMS)
 
 
 def team_entries(league_id: str, num_teams: int) -> list[dict]:
-    """The manifest entries ({csv, city, mascot}) of the teams this league
-    plays with."""
-    world = list(_world_entries())
+    """The teams ({city, mascot}) this league plays with."""
+    world = list(WORLD_TEAMS)
     if num_teams >= len(world):
         extra = random.Random(f"extra-teams-{league_id}").sample(
             EXTRA_TEAMS, min(num_teams - len(world), len(EXTRA_TEAMS))

@@ -2,12 +2,9 @@
 """
 Tests for start_league().
 
-start_league() has three external dependencies that touch the filesystem:
-  - load_manifest / validate_manifest_* — reads a JSON file
-  - create_team_files — writes CSVs
-  - bootstrapper.bootstrap_from_manifest — loads CSVs and creates DB rows
-
-These are mocked so tests run without any files on disk.
+start_league()'s team generation (TeamFactory) and team saving
+(bootstrapper.bootstrap) are mocked, along with the schedule and draft
+generators, so the tests stay fast.
 The tests verify the DB-side effects of steps 5-8:
   - GM assignment and AI GM creation
   - Draft record creation
@@ -17,7 +14,6 @@ The tests verify the DB-side effects of steps 5-8:
   - Guard clauses (wrong state, missing league)
 """
 
-import datetime
 from dataclasses import dataclass
 from unittest.mock import patch
 
@@ -40,13 +36,6 @@ class TeamRef:
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures & helpers
 # ─────────────────────────────────────────────────────────────────────────────
-
-FAKE_MANIFEST = {
-    "league_name": "Test League",
-    "season_year": 2025,
-    "season_start_date": "2025-04-01",
-    "teams": [],
-}
 
 
 @pytest.fixture
@@ -81,19 +70,14 @@ def ctx(db_conn, factory):
 @pytest.fixture
 def patched(ctx):
     """
-    Patch all filesystem-touching code.
+    Patch team generation and the slow generators.
     Yields ctx so tests can access ctx.conn, ctx.league, etc.
     """
 
     fake_teams = [TeamRef(id=t.id) for t in ctx.teams]
 
     with (
-        patch(
-            "src.api.services.league_start.load_manifest", return_value=FAKE_MANIFEST
-        ),
-        patch("src.api.services.league_start.validate_manifest_structure"),
-        patch("src.api.services.league_start.validate_manifest_uniqueness"),
-        patch("src.api.services.league_start.create_team_files"),
+        patch("src.api.services.league_start.TeamFactory"),
         patch("src.api.services.league_start.LeagueBootstrapper") as MockBootstrapper,
         patch("src.api.services.league_start.DraftGenerator") as MockDraftGen,
         patch("src.api.services.league_start.ScheduleGenerator") as MockScheduler,
@@ -101,7 +85,7 @@ def patched(ctx):
         patch("src.api.services.league_start.write_draft_order"),
     ):
         # --- Bootstrapper ---
-        MockBootstrapper.return_value.bootstrap_from_manifest.return_value = (
+        MockBootstrapper.return_value.bootstrap.return_value = (
             ctx.league.id,
             fake_teams,
             ctx.season.id,
@@ -114,32 +98,6 @@ def patched(ctx):
         MockScheduler.return_value.create_schedule.return_value = ["g1", "g2", "g3"]
 
         yield ctx
-
-    # with patch("src.api.services.league_start.load_manifest", return_value=FAKE_MANIFEST), \
-    #      patch("src.api.services.league_start.validate_manifest_structure"), \
-    #      patch("src.api.services.league_start.validate_manifest_uniqueness"), \
-    #      patch("src.api.services.league_start.create_team_files"), \
-    #      patch("src.api.services.league_start.LeagueBootstrapper") as MockBootstrapper, \
-    #      patch("src.api.services.league_start.DraftGenerator") as MockDraftGen, \
-    #      patch("src.api.services.league_start.ScheduleGenerator") as MockScheduler, \
-    #      patch("src.api.services.league_start.save_schedule_to_db"), \
-    #      patch("src.api.services.league_start.write_draft_order"):
-
-    #     mock_boot = MagicMock()
-    #     mock_boot.bootstrap_from_manifest.return_value = (
-    #         ctx.league.id, fake_teams, ctx.season.id
-    #     )
-    #     MockBootstrapper.return_value = mock_boot
-
-    #     mock_gen = MagicMock()
-    #     mock_gen.run.return_value = 150
-    #     MockDraftGen.return_value = mock_gen
-
-    #     mock_sched = MagicMock()
-    #     mock_sched.create_schedule.return_value = ["g1", "g2", "g3"]
-    #     MockScheduler.return_value = mock_sched
-
-    #     yield ctx
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -459,28 +417,25 @@ class TestBackstory:
 
 
 class TestStartYear:
-    """New leagues start in LEAGUE_START_YEAR, whatever year the manifest says."""
+    """New leagues start in LEAGUE_START_YEAR."""
 
     def _boot_call(self, patched):
         from src.api.services import league_start
 
-        return league_start.LeagueBootstrapper.return_value.bootstrap_from_manifest
+        return league_start.LeagueBootstrapper.return_value.bootstrap
 
     def test_start_year_is_2027(self):
         assert LEAGUE_START_YEAR == 2027
 
     def test_first_season_gets_the_start_year(self, patched):
         start_league(patched.league.id, patched.conn)
-        manifest, start_date = self._boot_call(patched).call_args.args[:2]
-        assert FAKE_MANIFEST["season_year"] != LEAGUE_START_YEAR
-        assert manifest["season_year"] == LEAGUE_START_YEAR
-        assert start_date == datetime.date(LEAGUE_START_YEAR, 4, 1)
+        assert self._boot_call(patched).call_args.kwargs["year"] == LEAGUE_START_YEAR
 
-    def test_team_files_are_made_for_the_start_year(self, patched):
-        from src.api.services import league_start
+    def test_one_generated_team_per_league_team(self, patched):
 
         start_league(patched.league.id, patched.conn)
-        assert league_start.create_team_files.call_args.args[1] == LEAGUE_START_YEAR
+        generated = self._boot_call(patched).call_args.args[0]
+        assert len(generated) == 30  # the default num_teams
 
     def test_schedule_starts_in_the_start_year(self, patched):
         from src.api.services import league_start

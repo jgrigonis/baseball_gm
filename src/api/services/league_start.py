@@ -23,15 +23,10 @@ from src.league.league_constants import (
     SEASON_LENGTH,
 )
 from src.league.league_modes import is_blitz_style
-from src.league.manifest_helper import (
-    create_team_files,
-    load_manifest,
-    validate_manifest_structure,
-    validate_manifest_uniqueness,
-)
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.snake_draft import SnakeDraft, write_draft_order
 from src.league.schedule import ScheduleGenerator, save_schedule_to_db
+from src.team.team_factory import TeamFactory
 
 
 def start_league(
@@ -54,43 +49,25 @@ def start_league(
     seed = random.randint(0, 999_999)
     rng = random.Random(seed)
 
-    # ── 1. Load manifest ──────────────────────────────────────────────────────
-    manifest_path = lobby_teams.manifest_path()
-    if not manifest_path.exists():
-        raise ValueError(f"Manifest not found at {manifest_path.resolve()}")
-    manifest = load_manifest(manifest_path)
-    validate_manifest_structure(manifest)
-    validate_manifest_uniqueness(manifest)
-
-    # The manifest is only the team list: every new league starts in
-    # LEAGUE_START_YEAR, whatever year the file was written for.
-    # The league plays with num_teams of its teams (lobby_teams.team_entries).
+    # ── 1. Generate fresh rosters for the teams this league plays with ──────
+    # Every new league starts in LEAGUE_START_YEAR.
     year = LEAGUE_START_YEAR
-    manifest = {
-        **manifest,
-        "season_year": year,
-        "teams": lobby_teams.team_entries(league_id, league["num_teams"]),
-    }
+    factory = TeamFactory(rng=rng)
+    generated = [
+        factory.generate_team(city=t["city"], mascot=t["mascot"], size=26)
+        for t in lobby_teams.team_entries(league_id, league["num_teams"])
+    ]
 
-    # ── 2. Generate fresh CSVs for every team ─────────────────────────────────
-    create_team_files(manifest["teams"], year, rng=rng, league_id=league_id)
-
-    # ── 3. Bootstrap teams + season ───────────────────────────────────────────
-    start_date_str = manifest.get("season_start_date", f"{year}-04-01")
-    start_date = datetime.date.fromisoformat(start_date_str).replace(year=year)
+    # ── 2. Save the teams + first season ──────────────────────────────────────
+    start_date = datetime.date(year, 4, 1)
 
     bootstrapper = bootstrapper or LeagueBootstrapper(conn, rng=rng)
 
-    _, teams, season_id = bootstrapper.bootstrap_from_manifest(
-        manifest,
-        start_date,
-        allow_roster_update=True,
-        league_id=league_id,
-        force_new_teams=True,
+    _, teams, season_id = bootstrapper.bootstrap(
+        generated, league_id=league_id, year=year
     )
 
-    # ── 3b. Clear stale injury/energy state for this league ─────────────────
-    # Player IDs are deterministic (CSV hashes) and reused across leagues.
+    # ── 3. Clear stale injury/energy state for this league ─────────────────
     # Delete only rows scoped to THIS league_id so other leagues are unaffected.
     ir = InjuryRepository(conn, league_id)
     ir.clear_all_injuries()
@@ -99,7 +76,7 @@ def start_league(
     ps = PitcherStateRepository(conn, league_id)
     ps.clear_all_pitcher_state()
 
-    # ── 3b'. Leagues and divisions ──────────────────────────────────────────
+    # ── 3b. Leagues and divisions ──────────────────────────────────────────
     # Their own random stream, like the backstory's.
     divisions.save(
         conn,
@@ -190,9 +167,7 @@ def start_league(
     # ── 6. Generate prospect pool ─────────────────────────────────────────────
     # Only delete prospects that belong to THIS league — don't touch other leagues.
     dr = DraftRepository(conn)
-    prospect_count = draft_gen or DraftGenerator(conn, rng=rng).run(
-        year=year, league_id=league_id
-    )
+    prospect_count = draft_gen or DraftGenerator(conn, rng=rng).run(league_id=league_id)
 
     # ── 7. Create draft ───────────────────────────────────────────────────────
     if is_blitz_style(league["mode"]):

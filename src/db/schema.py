@@ -66,8 +66,6 @@ CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
     city TEXT NOT NULL,
     mascot TEXT NOT NULL,
-    source_csv TEXT,
-    source_hash TEXT,
     created_at TEXT DEFAULT (NOW()),
     updated_at TEXT
 );

@@ -14,14 +14,11 @@
 from __future__ import annotations
 
 import random
-import shutil
-from pathlib import Path
 
 from src.api.services import badges, career, personas, trades
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
-from src.util.locations import TEAM_FILES_DIR
 
 
 def leave_league(conn, league_id: str, gm_id: str) -> None:
@@ -54,13 +51,8 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
             gm_repo.hand_team_to_ai(gm_id)
             personas.give_persona(conn, league_id, gm_id, random.Random())
 
-        deleted = not gm_repo.has_people(league_id)
-        if deleted:
+        if not gm_repo.has_people(league_id):
             league_repo.delete(league_id)
         elif league["state"] == "lobby":
             personas.fill_lobby(conn, league_id)  # an AI GM takes their place
         conn.commit()
-
-    if deleted:
-        # The team and draft-class CSVs the league was built from.
-        shutil.rmtree(Path(TEAM_FILES_DIR) / league_id, ignore_errors=True)

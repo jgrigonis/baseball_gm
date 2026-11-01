@@ -1,5 +1,5 @@
 #!/bin/bash
-# Delete every league (and its team_files) but keep user accounts, then start
+# Delete every league but keep user accounts, then start
 # the web server and sim worker. Stop any running server first.
 #
 #   ./reset_leagues.sh         # lists the leagues and asks first
