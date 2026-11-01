@@ -1,0 +1,36 @@
+{# templates/dashboard/partials/news.html #}
+{# The News tab: the league's news feed (src/api/services/news/). #}
+<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+            padding:12px 24px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+  <h1 class="page-title" style="margin-right:auto;">League News</h1>
+  {% if team_id and not is_viewer %}
+  <div class="news-switch" role="group" aria-label="Which stories">
+    {% for value, text in [(0, 'All'), (1, 'My team')] %}
+    <a href="/leagues/{{ league_id }}/headlines?mine={{ value }}{% if news_season_id %}&season_id={{ news_season_id }}{% endif %}"
+       hx-get="/leagues/{{ league_id }}/headlines?mine={{ value }}{% if news_season_id %}&season_id={{ news_season_id }}{% endif %}"
+       hx-target="#tab-content" hx-push-url="true"
+       class="news-switch-btn {% if (value == 1) == news_mine %}active{% endif %}">{{ text }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if news_seasons|length > 1 %}
+  <select class="news-season" aria-label="Season"
+          onchange="htmx.ajax('GET', '/leagues/{{ league_id }}/headlines?mine={{ 1 if news_mine else 0 }}&season_id=' + this.value, {target: '#tab-content', swap: 'innerHTML'})">
+    {% for s in news_seasons %}
+    <option value="{{ s.id }}" {% if s.id == news_season_id %}selected{% endif %}>{{ s.year }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+</div>
+
+<div class="news-feed">
+  {% if not news_days %}
+  <div style="padding:48px 0;text-align:center;font-family:var(--font-mono);
+              font-size:13px;color:var(--text-dim);">
+    {% if news_mine %}No stories about your team yet.{% else %}No news yet. Stories show up here as the league plays: trades, streaks, milestones, injuries, the All-Star break and the playoffs.{% endif %}
+  </div>
+  {% else %}
+  {% include "dashboard/partials/_news_page.html" %}
+  {% endif %}
+</div>

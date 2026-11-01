@@ -12,6 +12,7 @@ from src.api.services import trades
 from src.api.services import ready_check
 from src.api.services.injury_news import take_injury_news
 from src.api.services.trades import TradeError
+from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.trade_repo import TradeRepository
 
@@ -91,6 +92,21 @@ def test_a_good_offer_is_accepted_and_moves_the_players(lg):
     assert len(history) == 1
     assert [p["player_id"] for p in history[0]["sent"]] == [star.id]
     assert [p["player_id"] for p in history[0]["received"]] == [spare.id]
+
+
+def test_a_trade_makes_the_league_news(lg):
+    star = lg.factory.rated_player(lg.mine, lg.league, 72, name="Star")
+    spare = lg.factory.rated_player(lg.theirs, lg.league, 52, status="minors")
+
+    _offer(lg, [star], [spare])
+
+    (story,) = NewsRepository(lg.db).feed(lg.league.id)
+    assert story["kind"] == "trade"
+    # The fixture's schedule puts the deadline days away.
+    assert (
+        story["headline"] == "Deadline deal: GM's Team land Test Player from the Club"
+    )
+    assert set(story["team_ids"]) == {lg.mine.id, lg.theirs.id}
 
 
 def test_the_ai_team_puts_a_good_arrival_on_its_40_man(lg):

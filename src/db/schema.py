@@ -174,6 +174,8 @@ CREATE TABLE IF NOT EXISTS drafts (
 CREATE TABLE IF NOT EXISTS league_seasons (
     league_id TEXT NOT NULL,
     season_id TEXT NOT NULL,
+    news_through TEXT,                          -- last league date the news feed covered
+    news_closed  BOOLEAN NOT NULL DEFAULT FALSE, -- season over, its wrap-up stories written
     
     PRIMARY KEY (league_id, season_id),
     
@@ -273,6 +275,7 @@ CREATE TABLE IF NOT EXISTS gms (
     roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,
+    news_seen_id   BIGINT,                -- newest league_news story they've seen (the News tab's badge)
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,
@@ -297,6 +300,33 @@ CREATE TABLE IF NOT EXISTS gm_notifications (
 
 CREATE INDEX IF NOT EXISTS idx_gm_notifications_unseen
     ON gm_notifications(gm_id) WHERE seen_at IS NULL;
+
+-- The league news feed (src/api/services/news/, plans/news-feed.md): one row
+-- per story about the league, for everyone in it. key names the event, so a
+-- story is written once however often the feed catches up. The text is
+-- written when the story is, with the names of the GMs at the time.
+-- weight: 1 a note, 2 a story, 3 front-page news.
+CREATE TABLE IF NOT EXISTS league_news (
+    id          BIGSERIAL PRIMARY KEY,
+    league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    season_id   TEXT REFERENCES seasons(id) ON DELETE CASCADE,
+    news_date   TEXT NOT NULL,              -- league date (ISO)
+    kind        TEXT NOT NULL,
+    key         TEXT NOT NULL,
+    headline    TEXT NOT NULL,
+    body        TEXT NOT NULL DEFAULT '',
+    weight      INTEGER NOT NULL DEFAULT 1 CHECK (weight BETWEEN 1 AND 3),
+    team_ids    TEXT[] NOT NULL DEFAULT '{{}}',
+    player_ids  TEXT[] NOT NULL DEFAULT '{{}}',
+    gm_ids      TEXT[] NOT NULL DEFAULT '{{}}',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (league_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_league_news_feed
+    ON league_news(league_id, news_date DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_league_news_teams ON league_news USING GIN (team_ids);
+CREATE INDEX IF NOT EXISTS idx_league_news_season ON league_news(season_id);
 
 CREATE TABLE IF NOT EXISTS bullpen_roles (
     team_id TEXT NOT NULL,

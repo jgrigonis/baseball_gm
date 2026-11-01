@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.api.services import badges, career, coach
+from src.api.services import badges, career, coach, news
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
@@ -135,6 +135,17 @@ def _record_careers(conn, league_id: str) -> None:
             badges.award_league(conn, league_id)
     except Exception:
         log.exception("League %s: couldn't update career records", league_id)
+    _write_news(conn, league_id)
+
+
+def _write_news(conn, league_id: str) -> None:
+    """Bring the league's news feed up to date with what the job played
+    (services/news). In a savepoint, like the career records."""
+    try:
+        with conn.transaction():
+            news.update_league(conn, league_id)
+    except Exception:
+        log.exception("League %s: couldn't write the news", league_id)
 
 
 def run(conn, job: dict, jobs: SimJobRepository) -> str:

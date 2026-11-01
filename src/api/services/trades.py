@@ -975,6 +975,11 @@ def execute(
             "a player or pick in it was traded.",
         )
 
+    # The league's news feed (services/news): the trade makes the news.
+    from src.api.services import news
+
+    news.record_trades(conn, league_id)
+
 
 def _clear_roles(conn, team_id, season_id, player_ids, effective_date) -> None:
     """Take traded players out of the old team's rotation, bullpen and saved

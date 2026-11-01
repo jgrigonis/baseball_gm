@@ -109,6 +109,8 @@
 
 <div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:16px;">
 
+  {% if not past_season %}{% include "dashboard/partials/_headlines.html" %}{% endif %}
+
   {% if not teams %}
   <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);
               font-size:13px;color:var(--text-dim);">
