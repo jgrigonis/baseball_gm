@@ -113,12 +113,12 @@
     {% endif %}
     <div class="topbar-spacer"></div>
     {% if team_name %}
-      <div class="topbar-team">
+      {% if league_id %}<a class="topbar-team" href="/leagues/{{ league_id }}/welcome" title="Meet your team">{% else %}<div class="topbar-team">{% endif %}
         {% if team_city %}{{ team_badge(team_city, team_mascot) }}{% endif %}
         <span>
         <strong {% if is_admin and team_id %}title="team_id: {{ team_id }}"{% endif %}>{{ team_name }}</strong>{{ gm_display_name }}
         </span>
-      </div>
+      {% if league_id %}</a>{% else %}</div>{% endif %}
     {% endif %}
     {% set nav_user = user or (request.state.user if request is defined else none) %}
     <nav class="topbar-nav">

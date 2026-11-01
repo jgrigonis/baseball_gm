@@ -15,6 +15,11 @@
 # A season's row is final once the season is over, or once the person has
 # left; a final row never changes again. Tutorial leagues and backstory
 # seasons don't count.
+#
+# Head-to-head records against the other people in the league (the profile's
+# Rivals section) are kept the same way, in gm_head_to_head: one row per
+# person, opponent and season, written from both sides, and final once the
+# season is over or either of them leaves.
 
 from __future__ import annotations
 
@@ -60,6 +65,7 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
         key=lambda s: s["year"],
     )  # fmt: skip
     done = {g["id"]: repo.final_season_ids(g["user_id"], league_id) for g in gms}
+    everyone = gms if leaving_gm_id is None else _people(conn, league_id, None)
     for i, season in enumerate(seasons):
         todo = [g for g in gms if season["id"] not in done[g["id"]]]
         if not todo:
@@ -96,6 +102,9 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
                     "final": over or leaving_gm_id is not None,
                 }
             )
+        _record_head_to_head(
+            conn, league, season, todo, everyone, over or leaving_gm_id is not None
+        )
 
 
 def backfill(conn) -> None:
@@ -105,6 +114,81 @@ def backfill(conn) -> None:
     ).fetchall()
     for r in rows:
         record_league(conn, r["id"])
+
+
+def _record_head_to_head(conn, league, season, gms, everyone, final) -> None:
+    """Each of ``gms`` against every other person in the league, written
+    from both sides so that someone leaving closes their opponents' rows too."""
+    if len(everyone) < 2:
+        return
+    team_of = {g["team_id"]: g for g in everyone}
+    games = head_to_head(conn, season["id"], list(team_of))
+    repo = CareerRepository(conn)
+    pairs = {
+        (g["team_id"], o["team_id"])
+        for g in gms
+        for o in everyone
+        if o["team_id"] != g["team_id"]
+    }
+    pairs |= {(b, a) for a, b in pairs}
+    for a, b in pairs:
+        rec = games.get((a, b))
+        if not rec:
+            continue
+        me, them = team_of[a], team_of[b]
+        repo.save_head_to_head(
+            {
+                "user_id": me["user_id"],
+                "opponent_id": them["user_id"],
+                "league_id": league["id"],
+                "season_id": season["id"],
+                "league_name": league["name"],
+                "season_year": season["year"],
+                "team_city": me["city"],
+                "team_mascot": me["mascot"],
+                "opponent_city": them["city"],
+                "opponent_mascot": them["mascot"],
+                "final": final,
+                **rec,
+            }
+        )
+
+
+def head_to_head(conn, season_id: str, team_ids: list[str]) -> dict:
+    """Games between the given teams in a season, as
+    {(team, opponent): {wins, losses, series_round, series_won}}, where
+    series_round is the playoff round they met in (decided series only)."""
+    rows = conn.execute(
+        """SELECT g.home_team_id, g.away_team_id, g.winner_id, g.series_id, s.name
+           FROM games g LEFT JOIN series s ON s.id = g.series_id
+           WHERE g.season_id = %s AND g.completed = 1 AND g.winner_id IS NOT NULL
+             AND g.home_team_id = ANY(%s) AND g.away_team_id = ANY(%s)""",
+        (season_id, team_ids, team_ids),
+    ).fetchall()
+    out: dict[tuple[str, str], dict] = {}
+    series: dict[str, dict] = {}
+    for r in rows:
+        winner = r["winner_id"]
+        loser = r["away_team_id"] if winner == r["home_team_id"] else r["home_team_id"]
+        for a, b, won in ((winner, loser, True), (loser, winner, False)):
+            rec = out.setdefault(
+                (a, b),
+                {"wins": 0, "losses": 0, "series_round": None, "series_won": None},
+            )
+            rec["wins" if won else "losses"] += 1
+        if r["series_id"] and r["name"] in ROUND_OF_SERIES:
+            sr = series.setdefault(r["series_id"], {"name": r["name"], "wins": {}})
+            sr["wins"][winner] = sr["wins"].get(winner, 0) + 1
+            sr["wins"].setdefault(loser, 0)
+    for sr in series.values():
+        round_ = ROUND_OF_SERIES[sr["name"]]
+        needed = 3 if round_ == "Round 1" else 4
+        (a, wa), (b, wb) = sorted(sr["wins"].items(), key=lambda kv: -kv[1])
+        if wa < needed:
+            continue  # not decided yet
+        out[(a, b)].update(series_round=round_, series_won=True)
+        out[(b, a)].update(series_round=round_, series_won=False)
+    return out
 
 
 def _people(conn, league_id: str, gm_id: str | None) -> list[dict]:

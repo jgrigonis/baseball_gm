@@ -857,6 +857,31 @@ CREATE TABLE IF NOT EXISTS gm_career_seasons (
     PRIMARY KEY (user_id, league_id, season_id)
 );
 
+-- gm_head_to_head: each person's record against another person, per league
+--   season, for the profile's Rivals section. Written from both sides, kept
+--   like gm_career_seasons (no foreign keys to the league), and final once
+--   the season is over or either of them leaves. Regular season and playoff
+--   games both count; series_round is the playoff round they met in.
+CREATE TABLE IF NOT EXISTS gm_head_to_head (
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    opponent_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    league_id       TEXT NOT NULL,
+    season_id       TEXT NOT NULL,
+    league_name     TEXT NOT NULL,
+    season_year     INTEGER NOT NULL,
+    team_city       TEXT NOT NULL,
+    team_mascot     TEXT NOT NULL,
+    opponent_city   TEXT NOT NULL,
+    opponent_mascot TEXT NOT NULL,
+    wins            INTEGER NOT NULL DEFAULT 0,
+    losses          INTEGER NOT NULL DEFAULT 0,
+    series_round    TEXT,
+    series_won      BOOLEAN,
+    final           BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, opponent_id, league_id, season_id)
+);
+
 -- gm_badges: achievements on the profile page (src/api/services/badges.py).
 --   Kept once earned, even if what earned it is later deleted. detail says
 --   where, e.g. "Weekend League · 2031".
@@ -1347,6 +1372,7 @@ CREATE INDEX IF NOT EXISTS idx_draft_picks_gm       ON draft_picks(gm_id);
 CREATE INDEX IF NOT EXISTS idx_draft_picks_player   ON draft_picks(player_id);
 
 CREATE INDEX IF NOT EXISTS idx_gm_evals_season      ON gm_season_evaluations(season_id);
+CREATE INDEX IF NOT EXISTS idx_gm_h2h_opponent       ON gm_head_to_head(opponent_id);
 
 CREATE INDEX IF NOT EXISTS idx_lineup_pref_gm       ON gm_lineup_preferences(gm_id);
 
