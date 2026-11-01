@@ -15,6 +15,7 @@ from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -74,7 +75,16 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
         ]
 
     # Standard season tabs
-    post = ["roster", "lineup", "schedule", "standings", "leaders", "stats", "strategy"]
+    post = [
+        "roster",
+        "lineup",
+        "schedule",
+        "standings",
+        "headlines",
+        "leaders",
+        "stats",
+        "strategy",
+    ]
 
     if state not in ("season", "playoffs", "preseason", "offseason", "complete"):
         if "schedule" in post:
@@ -89,7 +99,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
 
 # The tabs a viewer of a public league sees: the ones that read the same
 # whoever is looking. Schedule, roster, lineup and strategy are one GM's own.
-_VIEWER_TABS = ("standings", "leaders", "stats", "playoffs", "allstar")
+_VIEWER_TABS = ("standings", "headlines", "leaders", "stats", "playoffs", "allstar")
 
 
 def _viewer_tabs(tabs: list[str], draft_complete: bool) -> list[str]:
@@ -248,6 +258,11 @@ def _shell_ctx(
                     ctx["trade_inbox"] = trades.inbox_count(db, league_id, gm)
             if ctx["is_viewer"]:
                 tabs = _viewer_tabs(tabs, draft_complete)
+            elif "headlines" in tabs and gm.get("id"):
+                # Stories since the GM last opened the News tab: its badge.
+                ctx["news_unseen"] = NewsRepository(db).count_unseen(
+                    league_id, gm["id"]
+                )
             # Now we have the state, so calculate visibility automatically
             ctx["visible_tabs"] = tabs
             # The top bar's season pill opens the league's settings.

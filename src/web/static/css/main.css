@@ -1238,3 +1238,66 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   .gp-why { display: none; }
   .gp-hide-sm { display: none; }
 }
+
+/* ── League news (the News tab and the Standings tab's headlines) ───────────── */
+.news-feed { padding: 16px 24px 32px; max-width: 760px; }
+.news-switch { display: inline-flex; border: 1px solid var(--border); }
+.news-switch-btn {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; padding: 5px 12px; color: var(--text-dim);
+  text-decoration: none; background: var(--bg-2);
+}
+.news-switch-btn + .news-switch-btn { border-left: 1px solid var(--border); }
+.news-switch-btn.active { background: var(--amber-dim); color: var(--amber); }
+.news-season {
+  width: auto;
+  font-family: var(--font-mono); font-size: 12px; background: var(--bg-2);
+  color: var(--text); border: 1px solid var(--border); padding: 4px 8px;
+}
+.news-day { margin-bottom: 22px; }
+.news-date {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-dim); font-weight: 500;
+  margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+}
+.news-story {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-left: 3px solid var(--border-hi); padding: 10px 14px; margin-bottom: 8px;
+}
+.news-story.news-w1 { background: transparent; border-color: transparent; border-left-color: var(--border); padding: 6px 14px; }
+.news-story.news-w3 { border-left-color: var(--amber); }
+.news-story.news-mine { border-left-color: var(--green); }
+.news-kicker {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+.news-team .team-badge { width: 18px; height: 18px; margin: 0; font-size: 8px; }
+.news-headline {
+  font-family: var(--font-display); font-weight: 700; font-size: 20px;
+  line-height: 1.15; color: var(--text-hi); margin: 4px 0 2px; letter-spacing: .01em;
+}
+.news-w3 .news-headline { font-size: 26px; color: var(--amber); }
+.news-w1 .news-headline { font-size: 16px; color: var(--text); }
+.news-body { font-family: var(--font-sans); font-size: 13px; color: var(--text-dim); margin: 2px 0 0; line-height: 1.45; }
+.news-more { text-align: center; padding: 8px 0; }
+
+.news-strip-list { list-style: none; margin: 0; padding: 0; }
+.news-strip-list li {
+  display: flex; gap: 10px; align-items: baseline; padding: 8px 14px;
+  border-top: 1px solid var(--border); font-family: var(--font-sans); font-size: 13px;
+}
+.news-strip-list li:first-child { border-top: 0; }
+.news-strip-list li.news-mine strong { color: var(--green); }
+.news-strip-day { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-left: 8px; white-space: nowrap; }
+.news-strip-link {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-decoration: none;
+}
+.news-strip-link:hover { color: var(--amber); }
+
+@media (max-width: 600px) {
+  .news-feed { padding: 12px 16px 24px; }
+  .news-headline { font-size: 18px; }
+  .news-w3 .news-headline { font-size: 22px; }
+  .news-strip-day { display: block; margin-left: 0; }
+}

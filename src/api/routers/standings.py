@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GM, GMOrViewer, IsHTMX, User
+from src.api.view_models.news import headlines
 from src.api.view_models.schedule import schedule_context
 from src.api.view_models.seasons import past_season
 from src.api.view_models.standings import standings_context
@@ -42,6 +43,10 @@ def standings(
         )
     )
     ctx["past_season"] = past
+    if not past:
+        ctx["headlines"] = headlines(
+            db, league_id, None if ctx["is_viewer"] else my_team_id
+        )
     ctx["standings_view"] = (
         "overall" if view == "overall" or not ctx["groups"] else "divisions"
     )

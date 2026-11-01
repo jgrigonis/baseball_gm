@@ -1,0 +1,24 @@
+{# One page of the news feed: stories grouped by league date, then a
+   "Show older" button that loads the next page in its place. #}
+{% for day in news_days %}
+<section class="news-day">
+  <h2 class="news-date">{{ day.label }}</h2>
+  {% for s in day.stories %}
+  <article class="news-story news-w{{ s.weight }}{% if s.mine %} news-mine{% endif %}">
+    <div class="news-kicker">
+      <span aria-hidden="true">{{ s.icon }}</span> {{ s.label }}
+      {% for t in s.teams %}<span class="news-team" title="{{ t.city }} {{ t.mascot }}">{{ team_badge(t.city, t.mascot) }}</span>{% endfor %}
+    </div>
+    <h3 class="news-headline">{{ s.headline }}</h3>
+    {% if s.body %}<p class="news-body">{{ s.body }}</p>{% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endfor %}
+{% if news_more_before %}
+<div class="news-more" id="news-more">
+  <button class="btn btn-secondary"
+          hx-get="/leagues/{{ league_id }}/headlines?before={{ news_more_before }}&mine={{ 1 if news_mine else 0 }}{% if news_season_id %}&season_id={{ news_season_id }}{% endif %}"
+          hx-target="#news-more" hx-swap="outerHTML">Show older stories</button>
+</div>
+{% endif %}

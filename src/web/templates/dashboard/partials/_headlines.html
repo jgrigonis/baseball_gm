@@ -1,0 +1,21 @@
+{# The newest big stories from the news feed, at the top of the Standings
+   tab. Expects `headlines` (view_models/news.headlines). #}
+{% if headlines %}
+<div class="card news-strip">
+  <div class="card-header" style="padding:8px 14px;display:flex;align-items:center;">
+    <span class="card-title" style="margin-right:auto;">📰 Headlines</span>
+    <a href="/leagues/{{ league_id }}/headlines" hx-get="/leagues/{{ league_id }}/headlines"
+       hx-target="#tab-content" hx-push-url="true" class="news-strip-link"
+       onclick="var t=document.querySelector('.tab-link[href$=&quot;/headlines&quot;]'); if (t) setActiveTab(t);">All news</a>
+  </div>
+  <ul class="news-strip-list">
+    {% for s in headlines %}
+    <li class="{% if s.mine %}news-mine{% endif %}">
+      <span class="news-strip-icon" aria-hidden="true">{{ s.icon }}</span>
+      <span class="news-strip-text"><strong>{{ s.headline }}</strong>
+        <span class="news-strip-day">{{ s.day }}</span></span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
