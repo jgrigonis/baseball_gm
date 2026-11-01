@@ -174,6 +174,8 @@ CREATE TABLE IF NOT EXISTS league_seasons (
     season_id TEXT NOT NULL,
     news_through TEXT,                          -- last league date the news feed covered
     news_closed  BOOLEAN NOT NULL DEFAULT FALSE, -- season over, its wrap-up stories written
+    awards_regular BOOLEAN NOT NULL DEFAULT FALSE, -- regular season awards decided (season_awards)
+    awards_done    BOOLEAN NOT NULL DEFAULT FALSE, -- every award the season will have is decided
     
     PRIMARY KEY (league_id, season_id),
     
@@ -1364,6 +1366,26 @@ CREATE TABLE IF NOT EXISTS hr_derby_results (
     won        BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (season_id, round, player_id)
 );
+
+-- Season awards (src/league/awards.py, src/api/services/awards.py): one row
+--   per award a season handed out. scope is the league (Atlantic or Pacific)
+--   for an award given in each league, '' for one given once. gm_id is set
+--   for GM of the Year; decided_on is the league date it was announced.
+CREATE TABLE IF NOT EXISTS season_awards (
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    award      TEXT NOT NULL,
+    scope      TEXT NOT NULL DEFAULT '',
+    player_id  TEXT REFERENCES players(id) ON DELETE CASCADE,
+    team_id    TEXT REFERENCES teams(id) ON DELETE CASCADE,
+    gm_id      TEXT REFERENCES gms(id) ON DELETE SET NULL,
+    line       TEXT NOT NULL DEFAULT '',   -- the season (or series) in a few words
+    value      REAL,
+    decided_on TEXT,
+    PRIMARY KEY (season_id, award, scope)
+);
+CREATE INDEX IF NOT EXISTS idx_season_awards_player ON season_awards(player_id);
+CREATE INDEX IF NOT EXISTS idx_season_awards_gm ON season_awards(gm_id);
+CREATE INDEX IF NOT EXISTS idx_season_awards_team ON season_awards(team_id);
 
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_team   ON all_star_votes(team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_player ON all_star_votes(player_id);

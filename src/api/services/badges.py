@@ -234,11 +234,26 @@ def _derby_boss(p: _Person) -> Check:
     )
 
 
+def _gm_of_year(p: _Person) -> Check:
+    """Named GM of the Year (src/league/awards.py)."""
+    row = p.conn.execute(
+        """SELECT l.name, s.year FROM season_awards a
+           JOIN gms g ON g.id = a.gm_id
+           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice
+           JOIN seasons s ON s.id = a.season_id
+           WHERE g.user_id = %s AND a.award = 'gm_of_year'
+           ORDER BY s.year LIMIT 1""",
+        (p.id,),
+    ).fetchone()
+    return Check(row is not None, f"{row['name']} · {row['year']}" if row else None)
+
+
 # In the order the profile shows them.
 BADGES: list[tuple[Badge, Callable[[_Person], Check]]] = [
     (Badge("champion", "🏆", "Champion", "Won a title"), _champion),
     (Badge("dynasty", "👑", "Dynasty", "3 titles in one league"), _dynasty),
     (Badge("back_to_back", "🔁", "Back-to-Back", "Titles in back-to-back seasons"), _back_to_back),
+    (Badge("gm_of_year", "💼", "GM of the Year", "Named GM of the Year in your league"), _gm_of_year),
     (Badge("hundred_wins", "💯", "100 Wins", "A 100-win season"), _hundred_wins),
     (Badge("worst_to_first", "📈", "Worst to First", "Last in the division, then first the next season"), _worst_to_first),
     (Badge("sweep", "🧹", "Sweep", "Swept a playoff series"), _sweep),

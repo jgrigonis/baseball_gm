@@ -12,9 +12,11 @@ they can all run after every sim job.
 from __future__ import annotations
 
 from src.api.services import all_star as all_star_service
+from src.api.services import awards as awards_service
 from src.api.services.career import ROUND_OF_SERIES, _finishes
 from src.api.services.news.names import Names, and_list, is_deadline_deal, possessive
 from src.db.repositories.news_repo import NewsRepository
+from src.league import awards as awards_mod
 from src.league import divisions
 
 # ── Trades ────────────────────────────────────────────────────────────────────
@@ -306,14 +308,9 @@ def season_end(conn, names: Names, league_id: str, season_id: str, on: str) -> N
 
 # (key, headline noun, SQL value, order, qualifying, format)
 _CROWNS = (
+    # The batting and ERA titles are season awards (Batting and Pitching
+    # Champion, src/league/awards.py), with stories of their own below.
     ("hr", "home run crown", "SUM(bat_home_runs)", "DESC", "TRUE", "{:.0f} HR"),
-    ("avg", "batting title",
-     "SUM(bat_hits)::float / NULLIF(SUM(bat_ab), 0)", "DESC",
-     "SUM(bat_ab + bat_walks + bat_hbp + bat_sac_flys) >= 3.1 * %(games)s",
-     "a {:.3f} average"),
-    ("era", "ERA title",
-     "SUM(pitch_earned_runs) * 27.0 / NULLIF(SUM(pitch_outs), 0)", "ASC",
-     "SUM(pitch_outs) >= 3 * %(games)s", "a {:.2f} ERA"),
     ("wins", "wins crown", "SUM(pitch_wins)", "DESC", "TRUE", "{:.0f} wins"),
 )  # fmt: skip
 
@@ -349,8 +346,6 @@ def _crowns(conn, news, names, league_id, season_id, on) -> None:
         )
         who = names.player(pid)
         stat = fmt.format(row["value"])
-        if key == "avg":
-            stat = stat.replace("0.", ".")
         body = f"{who} of the {names.full_team(team)} finished with {stat}."
         how, credit = names.origin(pid, team)
         if how:
@@ -643,6 +638,121 @@ def playoffs(conn, names: Names, league_id: str, season_id: str, year: int) -> N
             league_id, season_id, on, kind, f"series:{sid}", headline, body,
             weight=weight, team_ids=[w_id, loser], gm_ids=names.gm_ids(w_id, loser),
         )  # fmt: skip
+
+
+# ── Season awards ─────────────────────────────────────────────────────────────
+
+# Awards with a story of their own; the rest share a roundup.
+_FEATURED = ("mvp", "cy_young", "roy", "gm_of_year")
+_FEATURED_WEIGHT = {"mvp": 3, "cy_young": 3, "roy": 2, "gm_of_year": 2}
+
+
+def season_awards(
+    conn, names: Names, league_id: str, season_id: str, year: int
+) -> None:
+    """A story for each of the big awards (both leagues' winners together),
+    a roundup of the rest, and one for each series MVP."""
+    news = NewsRepository(conn)
+    rows = awards_service.for_season(conn, season_id)
+    if not rows:
+        return
+    names.load_players(r["player_id"] for r in rows if r["player_id"])
+    by_award: dict[str, list[dict]] = {}
+    for r in rows:
+        by_award.setdefault(r["award"], []).append(r)
+
+    for key in _FEATURED:
+        wins = by_award.get(key)
+        story = f"award:{key}:{season_id}"
+        if not wins or news.has(league_id, story):
+            continue
+        award = awards_mod.BY_KEY[key]
+        if key == "gm_of_year":
+            who = [
+                names.gm_name(names.gm(r["gm_id"])) or names.team(r["team_id"])
+                for r in wins
+            ]
+            gm_ids = [r["gm_id"] for r in wins if r["gm_id"]]
+            players: list[str] = []
+            body = " ".join(
+                f"{w} of the {names.full_team(r['team_id'])} is the"
+                f" {_scope_phrase(r['scope'])}GM of the Year ({r['line']})."
+                for w, r in zip(who, wins)
+            )
+            human = any((g := names.gm(r["gm_id"])) and not g["is_ai"] for r in wins)
+        else:
+            who = [names.player(r["player_id"]) for r in wins]
+            players = [r["player_id"] for r in wins]
+            parts, gm_ids = [], []
+            for w, r in zip(who, wins):
+                text = (
+                    f"{w} of the {names.full_team(r['team_id'])} wins the"
+                    f" {_scope_phrase(r['scope'])}{award.name} ({r['line']})."
+                )
+                how, credit = names.origin(r["player_id"], r["team_id"])
+                if how:
+                    text += f" {names.last(r['player_id'])} was {how}."
+                gm_ids += names.gm_ids(r["team_id"]) + credit
+                parts.append(text)
+            body = " ".join(parts)
+            human = any(names.is_human(r["team_id"]) for r in wins)
+        if len(wins) == 1:
+            headline = f"{who[0]} is the {year} {award.name}"
+        else:
+            headline = f"{and_list(who)} win the {year} {award.name} awards"
+        if key == "gm_of_year" and len(wins) > 1:
+            headline = f"{and_list(who)} are the {year} GMs of the Year"
+        news.add(
+            league_id, season_id, wins[0]["decided_on"] or _now(conn, season_id),
+            "season_award", story, headline, body,
+            weight=_FEATURED_WEIGHT[key] + (1 if human else 0),
+            team_ids=[r["team_id"] for r in wins], player_ids=players, gm_ids=gm_ids,
+        )  # fmt: skip
+
+    story = f"award:roundup:{season_id}"
+    rest = [
+        r
+        for r in rows
+        if r["award"] not in _FEATURED and r["award"] not in ("semis_mvp", "finals_mvp")
+    ]
+    if rest and not news.has(league_id, story):
+        lines = [
+            f"{_scope_phrase(r['scope'])}{awards_mod.BY_KEY[r['award']].name}:"
+            f" {names.player(r['player_id'])}, {names.team(r['team_id'])} ({r['line']})."
+            for r in rest
+        ]
+        news.add(
+            league_id, season_id, rest[0]["decided_on"] or _now(conn, season_id),
+            "season_award", story, f"The rest of the {year} awards",
+            " ".join(lines),
+            weight=2 if any(names.is_human(r["team_id"]) for r in rest) else 1,
+            team_ids=list(dict.fromkeys(r["team_id"] for r in rest)),
+            player_ids=[r["player_id"] for r in rest],
+            gm_ids=names.gm_ids(*dict.fromkeys(r["team_id"] for r in rest)),
+        )  # fmt: skip
+
+    for r in by_award.get("semis_mvp", []) + by_award.get("finals_mvp", []):
+        story = f"award:{r['award']}:{r['scope']}:{season_id}"
+        if news.has(league_id, story):
+            continue
+        finals = r["award"] == "finals_mvp"
+        who = names.player(r["player_id"])
+        team = r["team_id"]
+        round_name = "Finals" if finals else "semifinals"
+        news.add(
+            league_id, season_id, r["decided_on"] or _now(conn, season_id),
+            "season_award", story,
+            f"{who} named {_scope_phrase(r['scope'])}{awards_mod.BY_KEY[r['award']].name}",
+            f"{who} went {r['line']} as the {names.full_team(team)} won the"
+            f" {round_name}.",
+            weight=(2 if finals else 1) + (1 if names.is_human(team) else 0),
+            team_ids=[team], player_ids=[r["player_id"]], gm_ids=names.gm_ids(team),
+        )  # fmt: skip
+
+
+def _scope_phrase(scope: str) -> str:
+    """ "Atlantic League " for an award given in each league, else ""."""
+    return f"{scope} " if scope.endswith("League") else ""
 
 
 # ── Front offices and retirements ─────────────────────────────────────────────

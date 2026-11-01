@@ -60,6 +60,7 @@ def update_league(conn, league_id: str) -> None:
         if dates["regular_over"]:
             events.season_end(conn, names, league_id, sid, dates["last_regular"])
         events.playoffs(conn, names, league_id, sid, season["year"])
+        events.season_awards(conn, names, league_id, sid, season["year"])
         later = i < len(seasons) - 1
         if later or league["state"] == "complete":
             # Over: the offseason that fired GMs and retired players has run.
