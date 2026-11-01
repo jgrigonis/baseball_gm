@@ -795,3 +795,72 @@ def test_the_rookie_game_is_played_on_the_break(client, lg):
         f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
     ).text
     assert "Rookie Game" in career and "All-Star Games" not in career
+
+
+# ── Time to draft: a person captain gets the Lineup Window ───────────────────
+
+
+def test_a_person_captain_with_picks_to_make_is_drafting(lg):
+    _count(lg, lg.mine)
+    assert all_star.person_drafting(lg.db, lg.league.id, lg.season.id)
+    all_star.auto_draft(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    assert not all_star.person_drafting(lg.db, lg.league.id, lg.season.id)
+
+
+def test_no_draft_nobody_drafting(lg):
+    assert not all_star.person_drafting(lg.db, lg.league.id, lg.season.id)
+    assert not all_star.person_drafting(lg.db, lg.league.id, None)
+
+
+def _ready_check_period(lg, ready_check):
+    """Run one ready-check period under timer pace (the sim itself stubbed
+    out) and return the seconds left in the next one's window."""
+    from unittest.mock import patch
+
+    lg.db.execute(
+        """UPDATE leagues SET state = 'season', pace_control = 'timer',
+               decision_window_sec = 60, lineup_window_sec = 1800 WHERE id = %s""",
+        (lg.league.id,),
+    )
+    lg.db.execute(
+        """UPDATE gms SET ready_period = (SELECT sim_period FROM leagues
+               WHERE id = gms.league_id) WHERE league_id = %s""",
+        (lg.league.id,),
+    )
+    period = lg.db.execute(
+        "SELECT sim_period FROM leagues WHERE id = %s", (lg.league.id,)
+    ).fetchone()["sim_period"]
+    with patch.object(ready_check, "_run_period", return_value=False):
+        assert ready_check.run_period(lg.db, lg.league.id, period)
+    return ready_check.status(lg.db, lg.league.id, lg.gm.id)["seconds_left"]
+
+
+def test_a_captain_drafting_gets_the_lineup_window(lg):
+    from src.api.services import ready_check
+
+    _multiplayer(lg)
+    _count(lg, lg.mine)
+    assert 1795 <= _ready_check_period(lg, ready_check) <= 1800
+
+
+def test_the_lineup_window_never_shortens_the_decision_window(lg):
+    from src.db.repositories.ready_check_repo import ReadyCheckRepository
+
+    lg.db.execute(
+        """UPDATE leagues SET state = 'season', pace_control = 'timer',
+               decision_window_sec = 60, lineup_window_sec = 30 WHERE id = %s""",
+        (lg.league.id,),
+    )
+    repo = ReadyCheckRepository(lg.db)
+    repo.next_period(lg.league.id, lineup_window=True)
+    assert 55 <= repo.period(lg.league.id)["seconds_left"] <= 60
+
+
+def test_once_the_draft_is_done_its_the_decision_window(lg):
+    from src.api.services import ready_check
+
+    _multiplayer(lg)
+    _count(lg, lg.mine)
+    for team in (lg.mine, lg.theirs):
+        all_star.auto_draft(lg.db, lg.league.id, lg.season.id, team.id)
+    assert 55 <= _ready_check_period(lg, ready_check) <= 60

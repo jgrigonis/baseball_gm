@@ -112,7 +112,10 @@ is created:
   The draft gets the Draft Window (`draft_window_sec`), the preseason period
   right after it, where GMs set their first lineup, gets the Lineup Window
   (`lineup_window_sec`), and every other period gets the Decision Window
-  (`decision_window_sec`).
+  (`decision_window_sec`). A period that starts while a person, as an
+  All-Star or Rookie Game captain, still has picks to make (or the tie for
+  the last spot to break) also gets the Lineup Window, or the Decision
+  Window if that's longer.
 
 ### How it is built
 

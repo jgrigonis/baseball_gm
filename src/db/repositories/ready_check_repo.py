@@ -73,14 +73,23 @@ class ReadyCheckRepository:
             (league_id,),
         )
 
-    def next_period(self, league_id: str, window_multiplier: int = 1) -> None:
+    def next_period(
+        self, league_id: str, window_multiplier: int = 1, lineup_window: bool = False
+    ) -> None:
         """Move to the next period: everyone becomes un-ready, and under timer
         pace its window starts now, window_multiplier times as long as usual
-        (the trade deadline gets a longer one)."""
+        (the trade deadline gets a longer one). lineup_window gives it the
+        Lineup Window, or the usual one if that's longer (a person has an
+        All-Star draft to make)."""
+        window = (
+            f"GREATEST(lineup_window_sec, {self._WINDOW})"
+            if lineup_window
+            else self._WINDOW
+        )
         self.conn.execute(
             f"""UPDATE leagues SET sim_period = sim_period + 1,
                    period_deadline = CASE WHEN pace_control = 'timer'
-                       THEN NOW() + ({self._WINDOW}) * %s * INTERVAL '1 second'
+                       THEN NOW() + ({window}) * %s * INTERVAL '1 second'
                    END
                WHERE id = %s""",
             (window_multiplier, league_id),
