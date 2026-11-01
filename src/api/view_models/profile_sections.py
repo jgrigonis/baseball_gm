@@ -1,16 +1,19 @@
 # src/api/view_models/profile_sections.py
 #
 # The GM profile's lower sections (plans/gm-profile-page.md, phase 3): draft
-# record, trades, GM style and timeline.
+# record, trades, GM style and timeline; and phase 4, rivals.
 #
 # The career rows (gm_career_seasons) outlive their leagues; draft picks,
 # trade details and settings are read from the leagues the person still
 # runs a team in, so a league they left or that was deleted drops out of
-# those lists. Tutorial leagues never count.
+# those lists. Rivals come from gm_head_to_head, which outlives them too.
+# Tutorial leagues never count.
 
 from __future__ import annotations
 
 from collections import Counter
+
+from src.db.repositories.career_repo import CareerRepository
 
 PITCHER_POSITIONS = ("p", "sp", "rp")
 # About 39% of a draft class are pitchers (draft_generator.PITCHER_SHARE).
@@ -50,6 +53,7 @@ CLOSER_USAGE = {
 BEST_PICKS_SHOWN = 5
 TRADES_SHOWN = 5
 TIMELINE_SHOWN = 12
+RIVALS_SHOWN = 8
 
 
 def sections(db, user_id: str, seasons: list[dict]) -> dict:
@@ -60,6 +64,7 @@ def sections(db, user_id: str, seasons: list[dict]) -> dict:
         "trades": _trade_summary(db, user_id, seasons, trades),
         "style": _style(db, user_id, seasons, picks),
         "timeline": _timeline(seasons, trades),
+        "rivals": _rivals(db, user_id),
     }
 
 
@@ -318,6 +323,44 @@ def _style(db, user_id: str, seasons: list[dict], picks: list[dict]) -> list[dic
 
 
 # ── Timeline ──────────────────────────────────────────────────────────────────
+
+
+# ── Rivals ────────────────────────────────────────────────────────────────────
+
+
+def _rivals(db, user_id: str) -> list[dict]:
+    """Their record against each other person they've played, most games
+    first, from gm_head_to_head (so it outlives the leagues). The team is the
+    one the rival ran most recently, and the note is their latest playoff
+    meeting."""
+    from src.api.view_models.profile import pct  # profile imports this module
+
+    by_rival: dict[str, dict] = {}
+    for r in CareerRepository(db).head_to_head_for(user_id):  # newest first
+        rival = by_rival.get(r["opponent_id"])
+        if rival is None:
+            rival = by_rival[r["opponent_id"]] = {
+                "username": r["opponent_username"],
+                "name": r["opponent_name"] or r["opponent_username"] or "A GM",
+                "city": r["opponent_city"],
+                "mascot": r["opponent_mascot"],
+                "wins": 0,
+                "losses": 0,
+                "note": None,
+            }
+        rival["wins"] += r["wins"]
+        rival["losses"] += r["losses"]
+        if rival["note"] is None and r["series_round"]:
+            where = f"the {r['season_year']} {r['series_round']}"
+            rival["note"] = (
+                f"Beat them in {where}"
+                if r["series_won"]
+                else f"Lost to them in {where}"
+            )
+    rows = sorted(by_rival.values(), key=lambda v: -(v["wins"] + v["losses"]))
+    for v in rows:
+        v["pct"] = pct(v["wins"], v["losses"])
+    return rows[:RIVALS_SHOWN]
 
 
 def _timeline(seasons: list[dict], trades: list[dict]) -> list[dict]:

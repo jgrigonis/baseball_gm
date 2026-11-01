@@ -155,8 +155,27 @@
   </div>
   {% endif %}
 
-  {% if style or timeline %}
+  {% if style or rivals %}
   <div class="gp-grid">
+    {% if rivals %}
+    <div class="card">
+      <div class="card-header"><span class="card-title">Rivals · human GMs</span></div>
+      <div class="card-body gp-table-wrap"><table class="data-table">
+        <thead><tr><th>GM</th><th class="gp-hide-sm">Team</th><th class="num">W-L</th><th class="num">Pct</th><th class="gp-hide-sm"></th></tr></thead>
+        <tbody>
+          {% for r in rivals %}
+          <tr>
+            <td>{% if r.username %}<a class="gm-link" href="/gms/{{ r.username }}">{{ r.name }}</a>{% else %}{{ r.name }}{% endif %}</td>
+            <td class="gp-hide-sm"><span class="gp-team">{{ team_badge(r.city, r.mascot) }}<span class="team-name">{{ r.city }}</span></span></td>
+            <td class="num hi">{{ r.wins }}-{{ r.losses }}</td>
+            <td class="num">{{ r.pct }}</td>
+            <td class="gp-dim gp-hide-sm">{{ r.note or "" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+    {% endif %}
     {% if style %}
     <div class="card">
       <div class="card-header"><span class="card-title">GM style</span></div>
@@ -167,17 +186,18 @@
       </tbody></table></div>
     </div>
     {% endif %}
-    {% if timeline %}
-    <div class="card">
-      <div class="card-header"><span class="card-title">Timeline</span></div>
-      <div class="card-body"><ul class="gp-timeline">
-        {% for e in timeline %}
-        <li><span class="gp-tl-year">{{ e.year }}</span><span class="gp-tl-icon" aria-hidden="true">{{ e.icon }}</span>
-          <span class="gp-tl-text">{{ e.text }}<span class="gp-tl-lg">{{ e.league_name }}</span></span></li>
-        {% endfor %}
-      </ul></div>
-    </div>
-    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if timeline %}
+  <div class="card gp-full">
+    <div class="card-header"><span class="card-title">Timeline</span></div>
+    <div class="card-body"><ul class="gp-timeline">
+      {% for e in timeline %}
+      <li><span class="gp-tl-year">{{ e.year }}</span><span class="gp-tl-icon" aria-hidden="true">{{ e.icon }}</span>
+        <span class="gp-tl-text">{{ e.text }}<span class="gp-tl-lg">{{ e.league_name }}</span></span></li>
+      {% endfor %}
+    </ul></div>
   </div>
   {% endif %}
 
