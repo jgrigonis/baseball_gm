@@ -59,5 +59,5 @@ def schedule(
 ):
     ctx = _shell_ctx(request, db, gm, league_id, "schedule", user)
     my_team_id = gm["team_id"] if gm else None
-    ctx.update(schedule_context(db, ctx["season_id"], my_team_id))
+    ctx.update(schedule_context(db, league_id, ctx["season_id"], my_team_id))
     return tab_response(request, htmx, "dashboard/partials/schedule.html", ctx)

@@ -39,7 +39,7 @@ def standings_rows(
     recent_rows = st_repo.get_recent_results(season_id)
     # Each front office's latest read on its team (src/league/team_state.py).
     states = TeamStateRepository(db).latest(league_id, season_id)
-    gms = _team_gms(db, league_id)
+    gms = team_gms(db, league_id)
 
     # Build per-team recent results
     team_recent: dict[str, list] = {}
@@ -144,7 +144,7 @@ def division_groups(db, league_id: str, teams: list[dict]) -> list[dict]:
     return out
 
 
-def _team_gms(db, league_id: str) -> dict[str, dict]:
+def team_gms(db, league_id: str) -> dict[str, dict]:
     """Who runs each team now ({name, persona_id, username}), the person if
     there is one."""
     rows = db.execute(
