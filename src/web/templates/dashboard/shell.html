@@ -75,6 +75,11 @@ window.ppSyncTabs = function(body) {
   document.querySelectorAll('#player-panel .pp-tabs button')
     .forEach((b, j) => b.classList.toggle('on', i === j));
 };
+// Off-role ratings toggle together across compared players so rows line up.
+window.ppToggleOffRole = function(el) {
+  document.querySelectorAll('#player-panel details.pd-offrole')
+    .forEach(d => { if (d.open !== el.open) d.open = el.open; });
+};
 window.closePlayerPanel = function() {
   document.getElementById('player-panel-mount').innerHTML = '';
   removeBackdrop();

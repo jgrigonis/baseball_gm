@@ -2,6 +2,7 @@
   One player's detail in the slide-in panel.
   grades is a list of {section, skills:[{key,label,grade}]}
   Sections are ordered by player_type: pitching first for pitchers, hitting first for hitters.
+  Off-role sections (off_role=True) sit in a collapsed <details> toggle.
 #}
 {% from "dashboard/partials/_rookie.html" import rk with context %}
 
@@ -100,8 +101,7 @@
    {% endfor %}
  </div>
 {% endmacro %}
-{% if player.grades %}
- {% for section in player.grades %}
+{% macro grade_section(section) %}
  <div class="pd-section">
    <div class="pd-section-title">{{ section.section }}</div>
    {{ skill_grid(section.skills) }}
@@ -110,7 +110,22 @@
    {{ skill_grid(section.roles) }}
    {% endif %}
  </div>
+{% endmacro %}
+{% if player.grades %}
+ {% set off_role = player.grades | selectattr('off_role') | list %}
+ {% for section in player.grades if not section.off_role %}
+   {{ grade_section(section) }}
  {% endfor %}
+ {# Ratings for what the player rarely does (hitting for a pitcher, pitching
+    for a hitter) start collapsed. Opening one opens them across a comparison. #}
+ {% if off_role %}
+ <details class="pd-offrole" ontoggle="ppToggleOffRole(this)">
+   <summary>{{ off_role | map(attribute='section') | join(' · ') }}</summary>
+   {% for section in off_role %}
+     {{ grade_section(section) }}
+   {% endfor %}
+ </details>
+ {% endif %}
 {% endif %}
 
 {# ── Season Stats ──────────────────────────────────────────────────────────── #}
