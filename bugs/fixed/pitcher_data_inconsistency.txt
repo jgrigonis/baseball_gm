@@ -1,5 +1,0 @@
-Data inconsistency for pitcher f28df771fbdc63c027fbe21193633c17: 
-game_date 2025-04-08 is before last_game_date 2025-09-19. Returning fresh state.
-
-I think this was caused by not having league_id on pitcher_state, which is 
-fixed now.

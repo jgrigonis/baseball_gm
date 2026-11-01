@@ -1,3 +1,0 @@
-Lineup setup is ignored in the UI game
-
-We should use it

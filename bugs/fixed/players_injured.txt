@@ -1,3 +1,0 @@
-reseearch why players are injured to start season
-
-This was solved by tying league_id to injuries

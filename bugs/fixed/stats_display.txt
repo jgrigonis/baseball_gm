@@ -1,1 +1,0 @@
-Player details aren't populating stats

@@ -1,8 +1,0 @@
-The injury message is wrong.
-
-[INFO] game: 🚑 GARY CLARK injured and removed from game
-[INFO] game: ↔️ JASON KIRK enters for JASON KIRK
-
-[INFO] game: 🚑 HOWARD BROWN injured and removed from game
-[INFO] game: ↔️ BRANDEN DELUNA enters for BRANDEN DELUNA
-
