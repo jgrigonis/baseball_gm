@@ -19,7 +19,11 @@ from src.game.probabilities import (
     STEAL_THIRD_SUCCESS_PROB,
     STEAL_HOME_SUCCESS_PROB,
     SS_OVER_2B_PROB,
+    STEAL_THROW_FACTOR,
+    STEAL_DROP_FACTOR,
 )
+from src.game.events.error import RunnerAdvancedOnErrorEvent
+from src.game.resolvers.errors import fielding_error_chance, throwing_error_chance
 from src.util.weighted_choice import WeightedChoice
 
 
@@ -77,6 +81,14 @@ def resolve_steal_attempt(
                 catcher=game.pos("c"),
             )
         )
+        error = _steal_throw_error(resolver, game, to_base)
+        if error:
+            events.extend(
+                _advance_on_steal_error(
+                    game, intent, runner, from_base, to_base, *error
+                )
+            )
+            return events
         events.append(
             RunnerAdvancedEvent(
                 runner=runner,
@@ -118,6 +130,63 @@ def resolve_steal_attempt(
             )
         )
 
+    return events
+
+
+def _steal_throw_error(resolver, game, to_base):
+    """
+    On a successful steal the catcher's throw can still sail into the
+    outfield, or the man covering can drop it, and the runner takes an
+    extra base. No throw is made on a steal of home.
+
+    Returns (fielder, kind) or None.
+    """
+    if to_base >= HOME:
+        return None
+    catcher = game.pos("c")
+    p_throw = throwing_error_chance(catcher, STEAL_THROW_FACTOR)
+    r = resolver.rng.random()
+    if r < p_throw:
+        return catcher, "throwing"
+    if to_base == SECOND:
+        cover = (
+            game.pos("ss")
+            if resolver.rng.random() < SS_OVER_2B_PROB
+            else game.pos("2b")
+        )
+    else:
+        cover = game.pos("3b")
+    if r < p_throw + fielding_error_chance(cover, STEAL_DROP_FACTOR):
+        return cover, "fielding"
+    return None
+
+
+def _advance_on_steal_error(game, intent, runner, from_base, to_base, fielder, kind):
+    """The thief takes one more base; anyone ahead of him moves up too."""
+    events: list[GameEvent] = [
+        RunnerAdvancedOnErrorEvent(fielder=fielder, runner=runner, kind=kind)
+    ]
+    for base in (THIRD, SECOND):
+        ahead = game.bases.runner_on(base)
+        if ahead is not None and base > from_base:
+            events.append(
+                RunnerAdvancedEvent(
+                    runner=ahead,
+                    from_base=base,
+                    to_base=min(base + 1, HOME),
+                    reason="steal_error",
+                    pitcher=intent.pitcher,
+                )
+            )
+    events.append(
+        RunnerAdvancedEvent(
+            runner=runner,
+            from_base=from_base,
+            to_base=to_base + 1,
+            reason="steal_error",
+            pitcher=intent.pitcher,
+        )
+    )
     return events
 
 

@@ -1,5 +1,7 @@
 # src/game/resolvers/hits.py
 
+from dataclasses import replace
+
 from src.game.bases import FIRST, SECOND, THIRD, HOME
 from src.game.event import GameEvent
 from src.game.events.hits import SingleEvent, DoubleEvent, TripleEvent, HomeRunEvent
@@ -7,6 +9,8 @@ from src.game.events.out import OutRecordedEvent, PutOutEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
+from src.game.events.error import RunnerAdvancedOnErrorEvent
+from src.game.resolvers.errors import fielding_error_chance
 from src.game.resolvers.fielder_selector import FielderSelector
 from src.team.manager_profile import profile_of
 from src.game.probabilities import (
@@ -15,6 +19,7 @@ from src.game.probabilities import (
     FIRST_TO_HOME_ON_SINGLE,
     SCORE_FROM_FIRST_ON_DOUBLE,
     BASE_THROWOUT_PROB,
+    HIT_BOBBLE_FACTOR,
 )
 
 
@@ -168,6 +173,7 @@ def resolve_single(resolver, intent, game) -> list[GameEvent]:
     events.extend(
         advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "single")
     )
+    events = _maybe_bobble(resolver, intent, fielder, events)
 
     events.append(PlateAppearanceEndEvent(reason="single", batter=intent.batter))
 
@@ -273,10 +279,40 @@ def resolve_double(resolver, intent, game) -> list[GameEvent]:
     events.extend(
         advance_batter_to_base(intent.batter, intent.pitcher, SECOND, "double")
     )
+    events = _maybe_bobble(resolver, intent, fielder, events)
 
     events.append(PlateAppearanceEndEvent(reason="double", batter=intent.batter))
 
     return events
+
+
+def _maybe_bobble(resolver, intent, fielder, events) -> list[GameEvent]:
+    """
+    The outfielder bobbles the base hit: the batter (still credited with
+    the hit) and every runner take one more base on the error. Skipped
+    when a runner was thrown out on the play.
+    """
+    if any(isinstance(e, PutOutEvent) for e in events):
+        return events
+    if resolver.rng.random() >= fielding_error_chance(fielder, HIT_BOBBLE_FACTOR):
+        return events
+    bobbled: list[GameEvent] = []
+    for e in events:
+        if isinstance(e, RunnerAdvancedEvent) and e.to_base < HOME:
+            if e.from_base is None:
+                bobbled.append(
+                    RunnerAdvancedOnErrorEvent(
+                        fielder=fielder, runner=e.runner, kind="fielding"
+                    )
+                )
+            e = replace(
+                e,
+                to_base=e.to_base + 1,
+                reason="hit_error",
+                rbi_batter=None if e.to_base + 1 >= HOME else e.rbi_batter,
+            )
+        bobbled.append(e)
+    return bobbled
 
 
 SAFE, OUT, HELD = "safe", "out", "held"

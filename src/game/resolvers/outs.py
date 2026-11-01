@@ -20,7 +20,14 @@ from src.game.resolvers.fielder_selector import FielderSelector
 from src.game.probabilities import (
     PROB_TAGUP_FROM_SECOND_FLYOUT,
     PROB_TAGUP_FROM_FIRST_FLYOUT,
-    BASE_ERROR_RATE,
+    FLY_DROP_FACTOR,
+    FLY_DROP_BATTER_TO_SECOND_PROB,
+)
+from src.game.resolvers.errors import (
+    fielding_error_prob,
+    throwing_error_prob,
+    fielding_error_chance,
+    handle_fielding_error_advancement,
 )
 
 
@@ -31,6 +38,10 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
     outfielder = fs.select_outfielder(game)
     arm = outfielder.skills["arm"]
     of_skill = outfielder.skills["outfield"]
+
+    # A muffed fly ball: the batter reaches, sometimes all the way to second.
+    if resolver.rng.random() < fielding_error_chance(outfielder, FLY_DROP_FACTOR):
+        return _dropped_fly_ball(resolver, intent, game, outfielder)
 
     tag_from_second, tag_from_first = adjust_tagup_probs(
         resolver, game.inning.outs, game.bases, arm
@@ -135,6 +146,30 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
     events.append(OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher))
     events.append(PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter))
 
+    return events
+
+
+def _dropped_fly_ball(resolver, intent, game, outfielder) -> list[GameEvent]:
+    bases = 2 if resolver.rng.random() < FLY_DROP_BATTER_TO_SECOND_PROB else 1
+    events: list[GameEvent] = [
+        FieldingErrorEvent(fielder=outfielder, batter=intent.batter)
+    ]
+    events.extend(
+        advance_all_runners(
+            game,
+            (THIRD, SECOND, FIRST),
+            advancement=bases,
+            reason="dropped_fly_ball",
+        )
+    )
+    events.extend(
+        advance_batter_to_base(
+            intent.batter, intent.pitcher, FIRST + bases - 1, "dropped_fly_ball"
+        )
+    )
+    events.append(
+        PlateAppearanceEndEvent(reason="fly_ball_error", batter=intent.batter)
+    )
     return events
 
 
@@ -243,40 +278,13 @@ def resolve_ground_out(resolver, intent, game) -> list[GameEvent]:
     return events
 
 
-def handle_fielding_error_advancement(resolver, intent, game) -> list[GameEvent]:
-    # Advance all runners one base
-    events: list[GameEvent] = []
-
-    events.extend(
-        advance_all_runners(
-            game,
-            (THIRD, SECOND, FIRST),
-            advancement=1,
-            reason="fielding_error",
-            rbi_batter=intent.batter,
-        )
-    )
-
-    # Batter to first
-    events.extend(
-        advance_batter_to_base(intent.batter, intent.pitcher, FIRST, "fielding_error")
-    )
-
-    return events
-
-
 def _calculate_error_probability(resolver, fielding_skill: int) -> float:
     """Calculate probability of fielding error based on skill"""
-    # Base error rate around 2-3% for average fielder (skill=50)
-    base_error_rate = BASE_ERROR_RATE
-    # Scale based on skill (lower skill = higher error rate)
-    return base_error_rate * (100 - fielding_skill) / 50
+    return fielding_error_prob(fielding_skill)
 
 
 def _calculate_throwing_error_probability(
     resolver, fielding_skill: int, arm_skill: int
 ) -> float:
     """Calculate probability of throwing error based on arm skill."""
-    # Slightly lower base rate than fielding errors
-    base_error_rate = BASE_ERROR_RATE * 0.6
-    return base_error_rate * (200 - fielding_skill - arm_skill) / 100
+    return throwing_error_prob(fielding_skill, arm_skill)

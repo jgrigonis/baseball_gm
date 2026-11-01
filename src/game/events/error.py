@@ -49,3 +49,22 @@ class OutfielderThrowingErrorEvent(GameEvent):
         return (
             f"{self.runner.name} advanced on a throwing error by {self.fielder.name}."
         )
+
+
+@dataclass
+class RunnerAdvancedOnErrorEvent(GameEvent):
+    """A runner takes an extra base because a fielder threw or dropped the ball."""
+
+    fielder: PlayerInGame
+    runner: PlayerInGame
+    kind: str = "throwing"  # "throwing" or "fielding"
+
+    def apply(self, game):
+        self.fielder.game_stats.fielding.error()
+        game._inning_had_error = True
+
+    def describe(self, game) -> str:
+        return (
+            f"{self.runner.name} took an extra base on a {self.kind} error by "
+            f"{self.fielder.name} ({self.fielder.current_position})."
+        )

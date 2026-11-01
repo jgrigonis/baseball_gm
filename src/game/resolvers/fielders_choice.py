@@ -10,7 +10,9 @@ from src.game.events.out import (
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
+from src.game.resolvers.errors import everyone_safe_on_error, force_play_error
 from src.game.resolvers.fielder_selector import FielderSelector
+from src.game.probabilities import FC_FIELD_FACTOR, FC_THROW_FACTOR, FC_DROP_FACTOR
 
 
 def resolve_fielders_choice(resolver, intent, game) -> list[GameEvent]:
@@ -125,6 +127,17 @@ def resolve_fielders_choice(resolver, intent, game) -> list[GameEvent]:
                 from_base=SECOND,
                 reason="fielders_choice",
             )
+        )
+
+    # The force/tag play itself can be botched: then nobody is out, the
+    # batter reaches on the error and every runner moves up a base.
+    putout = next(e for e in events if isinstance(e, PutOutEvent))
+    error = force_play_error(
+        resolver, putout, FC_FIELD_FACTOR, FC_THROW_FACTOR, FC_DROP_FACTOR
+    )
+    if error:
+        return everyone_safe_on_error(
+            resolver, intent, game, error, reason="fielders_choice_error"
         )
 
     # Batter to first
