@@ -98,6 +98,28 @@
   </div>
   {% endif %}
 
+  {# Season awards: each award's winner in each league #}
+  {% if awards %}
+  <div class="card" id="awards" style="margin-bottom:24px;padding:20px 24px;">
+    <div class="ss-kicker" style="margin-bottom:12px;">Awards</div>
+    <div class="ss-awards">
+      {% for a in awards %}
+      <div class="ss-award">
+        <div class="ss-award-name">{{ a.icon }} {{ a.name }}</div>
+        {% for w in a.winners %}
+        <div class="ss-award-winner{% if w.player_id %} ss-clickable{% endif %}"
+             {% if w.player_id %}onclick="openPlayerPanel('{{ w.player_id }}')" title="View {{ w.name }}"{% endif %}>
+          {% if w.scope %}<span class="ss-award-scope">{{ w.scope }}</span>{% endif %}
+          <span class="ss-award-who" style="color:{% if w.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ w.name }}</span>
+          <div class="ss-award-detail">{{ w.team }}{% if w.line %} · {{ w.line }}{% endif %}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   {# Begin Offseason / continue to draft #}
   {% if league_state == 'offseason' and not multiplayer and not is_viewer %}
   <div style="text-align:center;margin-bottom:32px;">
@@ -335,6 +357,12 @@
 .ss-top-name { font-size:22px;font-weight:700; }
 .ss-leader-row { display:grid;grid-template-columns:repeat(4,1fr);gap:16px; }
 .ss-clickable { cursor:pointer;transition:background .08s; }
+.ss-awards { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 20px; }
+.ss-award-name { font-family:var(--font-mono);font-size:11px;color:var(--amber);margin-bottom:4px; }
+.ss-award-winner { padding:3px 4px;margin:0 -4px;border-radius:3px; }
+.ss-award-scope { font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-right:4px; }
+.ss-award-who { font-size:13px;font-weight:600; }
+.ss-award-detail { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
 .ss-clickable:hover { background:var(--bg-3); }
 .ss-two-col {
   display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;

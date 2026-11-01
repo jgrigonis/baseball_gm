@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.api.services import badges, career, coach, news
+from src.api.services import awards, badges, career, coach, news
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
@@ -124,11 +124,22 @@ def league_has_job(conn, league_id: str) -> bool:
 # ── Running ───────────────────────────────────────────────────────────────────
 
 
+def _decide_awards(conn, league_id: str) -> None:
+    """Decide any season awards the job made due (services/awards.py). In a
+    savepoint, so a problem there is logged and never undoes the sim."""
+    try:
+        with conn.transaction():
+            awards.decide_league(conn, league_id)
+    except Exception:
+        log.exception("League %s: couldn't decide season awards", league_id)
+
+
 def _record_careers(conn, league_id: str) -> None:
     """Bring each person's career record up to date with what the job
     played (services/career.py), and award any badges it earned them
     (services/badges.py). In a savepoint, so a problem there is logged and
     never undoes the sim itself."""
+    _decide_awards(conn, league_id)
     try:
         with conn.transaction():
             career.record_league(conn, league_id)

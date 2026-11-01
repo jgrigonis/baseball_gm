@@ -37,6 +37,11 @@
      ★ {% if player.all_star_years | length > 1 %}{{ player.all_star_years | length }}× {% endif %}All-Star
    </span>
  {% endif %}
+ {% for a in player.awards %}
+   <span class="badge badge-all-star" title="{{ a.name }} {{ a.years | join(', ') }}">
+     {{ a.icon }} {% if a.years | length > 1 %}{{ a.years | length }}× {% endif %}{{ a.name }}
+   </span>
+ {% endfor %}
  {% if player.injured %}
    <span class="badge badge-injured">IL · {{ player.injury_days }}d</span>
  {% endif %}

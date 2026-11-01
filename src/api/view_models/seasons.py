@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from src.api.services import awards as awards_service
 from src.api.view_models.draft import draft_rounds
 from src.api.view_models.leaders import leaders_context
 from src.api.view_models.playoffs import playoffs_context
@@ -18,6 +19,7 @@ from src.db.repositories.retirement_repo import RetirementRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
+from src.league import awards as awards_mod
 from src.stats import formulas
 
 
@@ -85,6 +87,7 @@ def season_summary_context(
         "severity_rank": {tier: hi for tier, (_, hi) in INJURY_TIERS.items()},
         "season_year": None,
         "no_hitters": [],
+        "awards": [],
     }
     if not season_id:
         return ctx
@@ -138,6 +141,8 @@ def season_summary_context(
                 {"label": label, "rows": cat["rows"][:SUMMARY_LEADERS_SHOWN]}
             )
 
+    ctx["awards"] = season_awards(db, season_id, my_team_id)
+
     # No-hitters thrown this season
     for nh in PlayerGameRepository(db).get_no_hitters(season_id):
         ctx["no_hitters"].append(
@@ -190,6 +195,42 @@ def season_summary_context(
     ctx["injury_days_total"] = sum(inj["days_missed"] for inj in injuries)
 
     return ctx
+
+
+def season_awards(db, season_id: str, my_team_id: str | None) -> list[dict]:
+    """The season's awards, one entry per award with its winners: the
+    league it was given in (Atlantic, Pacific, or blank), who and the team,
+    and the season (or series) in a few words."""
+    out: list[dict] = []
+    for r in awards_service.for_season(db, season_id):
+        award = awards_mod.BY_KEY[r["award"]]
+        if not out or out[-1]["key"] != award.key:
+            out.append(
+                {
+                    "key": award.key,
+                    "name": award.name,
+                    "icon": award.icon,
+                    "winners": [],
+                }
+            )
+        if r["player_id"]:
+            who = f"{r['first_name']} {r['last_name']}"
+        else:
+            who = f"GM {r['gm_name']}" if r["gm_name"] else "—"
+        scope = r["scope"]
+        out[-1]["winners"].append(
+            {
+                "scope": scope.removesuffix(" League")
+                if scope.endswith("League")
+                else "",
+                "player_id": r["player_id"],
+                "name": who,
+                "team": f"{r['city']} {r['mascot']}" if r["city"] else "",
+                "line": r["line"],
+                "is_mine": bool(my_team_id and r["team_id"] == my_team_id),
+            }
+        )
+    return out
 
 
 def retirement_context(
@@ -278,6 +319,7 @@ def history_context(db, league_id: str, my_team_id: str | None) -> dict:
     history_rows = []
     for s in seasons:
         champ = series_repo.get_champion(s["id"])
+        season_awards_rows = awards_service.for_season(db, s["id"])
         champion_name = f"{champ['city']} {champ['mascot']}" if champ else None
 
         my_w = my_l = None
@@ -297,6 +339,19 @@ def history_context(db, league_id: str, my_team_id: str | None) -> dict:
                 "my_l": my_l,
                 "has_draft": draft_repo.get_for_season(league_id, s["id"]) is not None,
                 "retired": retired_counts.get(s["id"], 0),
+                "has_awards": bool(season_awards_rows),
+                "mvps": [
+                    {
+                        "player_id": r["player_id"],
+                        "name": f"{r['first_name']} {r['last_name']}",
+                        "scope": r["scope"].removesuffix(" League")
+                        if r["scope"].endswith("League")
+                        else "",
+                        "line": r["line"],
+                    }
+                    for r in season_awards_rows
+                    if r["award"] == "mvp"
+                ],
             }
         )
 

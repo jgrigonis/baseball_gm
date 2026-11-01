@@ -100,6 +100,7 @@
           <div class="cs-name">{{ p.first_name }} {{ p.last_name }}{{ rk(p.player_id) }}</div>
           <div class="cs-meta">{{ p.position or '?' }} · {{ p.bats }}/{{ p.throws }} · Age {{ p.age }}</div>
           {% if p.all_star_years %}<div class="cs-meta cs-all-star">★ All-Star {{ p.all_star_years | join(', ') }}</div>{% endif %}
+          {% for a in p.awards %}<div class="cs-meta cs-all-star">{{ a.icon }} {{ a.name }} {{ a.years | join(', ') }}</div>{% endfor %}
         </div>
         <div class="cs-overall-block">
           <div class="cs-overall-label">Overall</div>
@@ -150,7 +151,7 @@
           <tbody>
             {% for s in p.pitching_seasons %}
             <tr{% if s.postseason %} class="postseason-row"{% endif %}>
-              <td>{% if s.postseason %}<span class="plff-tag">PLFF</span>{% else %}{{ s.year }}{% if s.year in p.all_star_years %}<span class="all-star-tag" title="All-Star">★</span>{% endif %}{% endif %}</td><td>{{ s.team }}</td>
+              <td>{% if s.postseason %}<span class="plff-tag">PLFF</span>{% else %}{{ s.year }}{% if s.year in p.all_star_years %}<span class="all-star-tag" title="All-Star">★</span>{% endif %}{% if not s.postseason and p.award_icons and p.award_icons.get(s.year) %}<span class="all-star-tag" title="Awards">{{ p.award_icons[s.year] }}</span>{% endif %}{% endif %}</td><td>{{ s.team }}</td>
               <td>{{ s.G }}</td><td>{{ s.GS }}</td><td>{{ s.CG }}</td><td>{{ s.SHO }}</td><td>{{ s.NH }}</td><td>{{ s.W }}</td><td>{{ s.L }}</td><td>{{ s.SV }}</td>
               <td>{{ s.IP }}</td><td>{{ s.H }}</td><td>{{ s.ER }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.HR }}</td>
               <td class="stat-hi">{{ "%.2f"|format(s.ERA) }}</td>
@@ -194,7 +195,7 @@
           <tbody>
             {% for s in p.batting_seasons %}
             <tr{% if s.postseason %} class="postseason-row"{% endif %}>
-              <td>{% if s.postseason %}<span class="plff-tag">PLFF</span>{% else %}{{ s.year }}{% if s.year in p.all_star_years %}<span class="all-star-tag" title="All-Star">★</span>{% endif %}{% endif %}</td><td>{{ s.team }}</td>
+              <td>{% if s.postseason %}<span class="plff-tag">PLFF</span>{% else %}{{ s.year }}{% if s.year in p.all_star_years %}<span class="all-star-tag" title="All-Star">★</span>{% endif %}{% if not s.postseason and p.award_icons and p.award_icons.get(s.year) %}<span class="all-star-tag" title="Awards">{{ p.award_icons[s.year] }}</span>{% endif %}{% endif %}</td><td>{{ s.team }}</td>
               <td>{{ s.G }}</td><td>{{ s.AB }}</td><td>{{ s.H }}</td><td>{{ s['2B'] }}</td><td>{{ s['3B'] }}</td><td>{{ s.HR }}</td>
               <td>{{ s.RBI }}</td><td>{{ s.R }}</td><td>{{ s.BB }}</td><td>{{ s.K }}</td><td>{{ s.SB }}</td>
               <td class="stat-hi">{{ "%.3f"|format(s.AVG) }}</td>

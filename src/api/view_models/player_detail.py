@@ -24,7 +24,9 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.api.services import hr_derby, rookie_game
+from src.api.services import awards as awards_service
 from src.league import all_star
+from src.league import awards as awards_mod
 from src.stats import formulas
 from src.web.utils import _current_league_date
 
@@ -204,7 +206,30 @@ def player_panel_data(
         "injury_days": raw_injury,
         "returning": False,
         "all_star_years": _all_star_years(db, pid),
+        "awards": player_awards(db, pid),
     }
+
+
+def player_awards(db, pid: str) -> list[dict]:
+    """A player's awards grouped by award, in awards.AWARDS order: icon,
+    name, years, and each year's line ("2027 Atlantic"), for badges."""
+    grouped: dict[str, dict] = {}
+    order = {a.key: i for i, a in enumerate(awards_mod.AWARDS)}
+    for r in awards_service.for_player(db, pid):
+        g = grouped.setdefault(
+            r["award"],
+            {"key": r["award"], "icon": r["icon"], "name": r["name"], "years": []},
+        )
+        g["years"].append(r["year"])
+    return sorted(grouped.values(), key=lambda g: order[g["key"]])
+
+
+def _award_icons_by_year(awards: list[dict]) -> dict[int, str]:
+    out: dict[int, str] = {}
+    for a in awards:
+        for y in a["years"]:
+            out[y] = out.get(y, "") + a["icon"]
+    return out
 
 
 def _all_star_years(db, pid: str) -> list[int]:
@@ -467,6 +492,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
     ]
 
     overall_grade = player_overall_grade(status, grades, ratings)
+    award_list = player_awards(db, pid)
 
     return {
         **grades.model_dump(),
@@ -482,6 +508,8 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         "injuries_by_year": injuries_by_year,
         "skills_history": skills_history,
         "all_star_years": _all_star_years(db, pid),
+        "awards": award_list,
+        "award_icons": _award_icons_by_year(award_list),
         "all_star_games": [
             {**r, "summary": all_star.line_text(r)}
             for r in AllStarRepository(db).career_lines(pid)
