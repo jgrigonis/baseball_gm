@@ -159,7 +159,7 @@ def _big_games(conn, news, names, league_id, season_id, since, through) -> None:
             headline = f"{who} gets {r['h']} hits"
             body = f"A big day at the plate against the {names.team(opp)}."
         how, credit = names.origin(pid, team)
-        body = f"{body} {_credit_line(who, team, names, how)}".strip()
+        body = f"{body} {_credit_line(pid, names, how)}".strip()
         if r["playoff"]:
             headline += " in the playoffs"
             weight = min(3, weight + 1)
@@ -172,9 +172,9 @@ def _big_games(conn, news, names, league_id, season_id, since, through) -> None:
         )  # fmt: skip
 
 
-def _credit_line(who: str, team: str, names: Names, how: str) -> str:
-    """ "Ruiz was drafted by Josh in 2027 (round 3)." """
-    return f"{who.split(' ')[-1]} was {how}." if how else ""
+def _credit_line(pid: str, names: Names, how: str) -> str:
+    """ "Ruiz was drafted by GM Josh in 2027 (round 3)." """
+    return f"{names.last(pid)} was {how}." if how else ""
 
 
 # ── Milestones ────────────────────────────────────────────────────────────────
@@ -281,7 +281,7 @@ def _milestone(
     news, names, league_id, season_id, on, team, pid, scope, col, mark, label
 ):
     who = names.player(pid)
-    last = who.split(" ")[-1]
+    last = names.last(pid)
     headline = f"{who} reaches {mark:,} {label}"
     if scope == "season":
         body = f"A big year for {possessive('the ' + names.full_team(team))} {last}."

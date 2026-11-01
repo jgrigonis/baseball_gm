@@ -12,7 +12,7 @@
     {% for s in headlines %}
     <li class="{% if s.mine %}news-mine{% endif %}">
       <span class="news-strip-icon" aria-hidden="true">{{ s.icon }}</span>
-      <span class="news-strip-text"><strong>{{ s.headline }}</strong>
+      <span class="news-strip-text"><strong>{{ s.headline_html }}</strong>
         <span class="news-strip-day">{{ s.day }}</span></span>
     </li>
     {% endfor %}

@@ -4,6 +4,9 @@
             padding:12px 24px;border-bottom:1px solid var(--border);
             display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
   <h1 class="page-title" style="margin-right:auto;">League News</h1>
+  {% if not is_viewer and not news_past_season %}
+  {% include "dashboard/partials/_play_button.html" %}
+  {% endif %}
   {% if team_id and not is_viewer %}
   <div class="news-switch" role="group" aria-label="Which stories">
     {% for value, text in [(0, 'All'), (1, 'My team')] %}
@@ -34,3 +37,9 @@
   {% include "dashboard/partials/_news_page.html" %}
   {% endif %}
 </div>
+
+{% if not is_viewer %}
+{% include "dashboard/partials/_play_script.html" %}
+{# Opening the tab marks the stories seen. #}
+<script>if (window.setNewsBadge) window.setNewsBadge(0);</script>
+{% endif %}

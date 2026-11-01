@@ -5,12 +5,14 @@
   <h2 class="news-date">{{ day.label }}</h2>
   {% for s in day.stories %}
   <article class="news-story news-w{{ s.weight }}{% if s.mine %} news-mine{% endif %}">
-    <div class="news-kicker">
-      <span aria-hidden="true">{{ s.icon }}</span> {{ s.label }}
-      {% for t in s.teams %}<span class="news-team" title="{{ t.city }} {{ t.mascot }}">{{ team_badge(t.city, t.mascot) }}</span>{% endfor %}
+    <div class="news-kicker"><span aria-hidden="true">{{ s.icon }}</span> {{ s.label }}</div>
+    <div class="news-head">
+      {% if s.teams %}<span class="news-teams">{% for t in s.teams %}<a class="news-team" title="{{ t.city }} {{ t.mascot }}"
+         href="/leagues/{{ league_id }}/stats?team_id={{ t.id }}" hx-get="/leagues/{{ league_id }}/stats?team_id={{ t.id }}"
+         hx-target="#tab-content" hx-push-url="true">{{ team_badge(t.city, t.mascot) }}</a>{% endfor %}</span>{% endif %}
+      <h3 class="news-headline">{{ s.headline_html }}</h3>
     </div>
-    <h3 class="news-headline">{{ s.headline }}</h3>
-    {% if s.body %}<p class="news-body">{{ s.body }}</p>{% endif %}
+    {% if s.body %}<p class="news-body">{{ s.body_html }}</p>{% endif %}
   </article>
   {% endfor %}
 </section>

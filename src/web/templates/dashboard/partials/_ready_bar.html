@@ -133,6 +133,10 @@ function apply(d) {
     window.refreshActiveTab();
   }
   if (window.setTradeBadge && d.trade_inbox !== undefined) window.setTradeBadge(d.trade_inbox);
+  if (window.setNewsBadge && d.news_unseen !== undefined) {
+    // On the News tab itself the stories are in front of the GM.
+    window.setNewsBadge(location.pathname.endsWith('/headlines') ? 0 : d.news_unseen);
+  }
   render();
 }
 

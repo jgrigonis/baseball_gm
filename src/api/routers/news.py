@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
-from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
+from src.api.dependencies import DB, GM, GMOrViewer, IsHTMX, User
 from src.api.view_models.news import news_context
 from src.db.repositories.news_repo import NewsRepository
 from src.web.utils import _shell_ctx, render, tab_response
@@ -47,4 +47,16 @@ def news_tab(
     ctx = _shell_ctx(request, db, gm, league_id, "headlines", user)
     ctx.update(ctx_news)
     ctx["news_unseen"] = 0
+    # An earlier season's stories: no Play buttons.
+    seasons = ctx_news["news_seasons"]
+    ctx["news_past_season"] = bool(
+        seasons and ctx_news["news_season_id"] != seasons[0]["id"]
+    )
     return tab_response(request, htmx, "dashboard/partials/news.html", ctx)
+
+
+@router.get("/leagues/{league_id}/headlines/unseen")
+def news_unseen(league_id: str, db: DB, gm: GM):
+    """How many stories the GM hasn't seen: the News tab's badge, refreshed
+    after each sim."""
+    return JSONResponse({"count": NewsRepository(db).count_unseen(league_id, gm["id"])})

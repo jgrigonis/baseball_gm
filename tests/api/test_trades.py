@@ -12,6 +12,7 @@ from src.api.services import trades
 from src.api.services import ready_check
 from src.api.services.injury_news import take_injury_news
 from src.api.services.trades import TradeError
+from src.api.services.news.names import plain
 from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.trade_repo import TradeRepository
@@ -101,10 +102,12 @@ def test_a_trade_makes_the_league_news(lg):
     _offer(lg, [star], [spare])
 
     (story,) = NewsRepository(lg.db).feed(lg.league.id)
+    story["headline"] = plain(story["headline"])
     assert story["kind"] == "trade"
     # The fixture's schedule puts the deadline days away.
     assert (
-        story["headline"] == "Deadline deal: GM's Team land Test Player from the Club"
+        story["headline"]
+        == "Deadline deal: GM GM's Team land Test Player from the Club"
     )
     assert set(story["team_ids"]) == {lg.mine.id, lg.theirs.id}
 
