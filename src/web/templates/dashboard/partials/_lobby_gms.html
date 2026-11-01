@@ -66,9 +66,9 @@
           </td>
           <td>
             {% if gm.is_ai %}
-              <span class="badge badge-40man">AI</span>
+              <span class="badge badge-pill badge-40man">AI</span>
             {% else %}
-              <span class="badge badge-human">Human</span>
+              <span class="badge badge-pill badge-human">Human</span>
             {% endif %}
           </td>
         </tr>
@@ -83,10 +83,10 @@
           </td>
           <td>{{ lobby_team(ai.lobby_city, ai.lobby_mascot) }}</td>
           <td style="white-space:nowrap;">
-            <span class="badge badge-40man">AI</span>
+            <span class="badge badge-pill badge-40man">AI</span>
             {% if is_commissioner %}
-            <button type="button" class="btn btn-secondary reroll-btn"
-                    style="padding:2px 8px;font-size:11px;"
+            <button type="button" class="btn btn-primary reroll-btn"
+                    style="padding:3px 10px;font-size:11px;margin-left:10px;"
                     title="Swap this AI GM for another persona"
                     hx-post="/leagues/{{ league_id }}/lobby/gms/{{ ai.id }}/reroll"
                     hx-target="#lobby-gms" hx-swap="outerHTML">↻ Reroll</button>
@@ -98,7 +98,7 @@
         <tr class="ai-slot">
           <td class="team-name" style="color:var(--text-dim);" title="Each open team gets an AI GM persona when the league starts">AI GM (picked at start)</td>
           <td style="color:var(--text-dim);">—</td>
-          <td><span class="badge badge-40man">AI</span></td>
+          <td><span class="badge badge-pill badge-40man">AI</span></td>
         </tr>
         {% endfor %}
       </tbody>
