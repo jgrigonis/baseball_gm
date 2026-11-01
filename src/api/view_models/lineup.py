@@ -85,7 +85,7 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
         "saved_bullpen": saved_bullpen,
         "saved_rotation_pointer": saved_rotation_pointer,
         "is_playoffs": league_row and league_row["state"] == "playoffs",
-        # How many starters Auto-fill puts in the rotation (Strategy tab)
+        # How many starters Auto-fill and Rebuild put in the rotation (Strategy tab)
         "rotation_size": ManagerProfile.from_row(
             GMRepository(db).get_profile(gm["id"])
         ).rotation_size,

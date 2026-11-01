@@ -56,11 +56,12 @@
                 title="Keep the players in the lineup and fill the empty and injured spots"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
         <button class="btn btn-secondary" onclick="rebuildLineup()"
-                title="Start over: the best lineup from your whole roster, by your Strategy tab's lineup style"
+                title="Start over, vs RHP and vs LHP: the best lineups from your whole roster, by your Strategy tab's lineup style"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Rebuild</button>
         <button class="btn btn-secondary" onclick="clearLineup()"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;border-color:var(--red);color:var(--red);">Clear All</button>
-        <button class="btn btn-primary" id="save-batting-btn" onclick="saveBatting()">
+        <button class="btn btn-primary" id="save-batting-btn" onclick="saveBatting()"
+                title="Save your vs RHP and vs LHP lineups">
           Save Batting
         </button>
       </div>
@@ -182,7 +183,11 @@
                      margin-left:8px;"></span>
         <div class="spacer"></div>
         <button class="btn btn-secondary" onclick="autoFillRotation()"
+                title="Keep the starters in the rotation and fill the empty and injured spots"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
+        <button class="btn btn-secondary" onclick="rebuildRotation()"
+                title="Start over: your best healthy starters, as many as your Strategy tab's rotation size. The next starter stays the same if he's still in the rotation."
+                style="font-size:11px;padding:4px 10px;margin-right:6px;">Rebuild</button>
         <button class="btn btn-secondary" onclick="clearRotation()"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;border-color:var(--red);color:var(--red);">Clear</button>
         <button class="btn btn-primary" id="save-rotation-btn" onclick="saveRotation()">
@@ -450,6 +455,7 @@ window.removeFromRotation  = removeFromRotation;
 window.setPointer          = setPointer;
 window.clearRotation       = clearRotation;
 window.autoFillRotation    = autoFillRotation;
+window.rebuildRotation     = rebuildRotation;
 window.autoAssignBullpen   = autoAssignBullpen;
 window.setRosterFilter     = setRosterFilter;
 window.handleBullpenRoleChange = handleBullpenRoleChange;
@@ -574,11 +580,30 @@ function dupePositions() {
   const pos = lineup.filter(Boolean).map(s => s.position).filter(p => p && p !== '');
   return new Set(pos.filter((p, i) => pos.indexOf(p) !== i));
 }
-function lineupValid() {
-  const filled = lineup.filter(Boolean).length;
+function lineupValid(l = lineup) {
+  const filled = l.filter(Boolean).length;
   if (filled < 9) return false;
-  const pos = lineup.filter(Boolean).map(s => s.position).filter(p => p && p !== '');
+  const pos = l.filter(Boolean).map(s => s.position).filter(p => p && p !== '');
   return pos.length === 9 && new Set(pos).size === 9;
+}
+function lineupEmpty(l) { return !l.some(Boolean); }
+
+// Save Batting saves both hands. An empty lineup is skipped (games against
+// that hand use the other lineup); a half-built one blocks the save.
+function battingSaveStatus() {
+  const hands = [], broken = [];
+  ['R', 'L'].forEach(h => {
+    if (lineupValid(lineups[h])) hands.push(h);
+    else if (!lineupEmpty(lineups[h])) broken.push(h);
+  });
+  if (broken.length) {
+    return { hands: [], reason: `Finish the vs ${broken.map(h => HAND_LABEL[h]).join(' and vs ')} `
+      + 'lineup first: all 9 batting slots and all 9 fielding positions' };
+  }
+  if (!hands.length) {
+    return { hands: [], reason: 'Fill all 9 batting slots and assign all 9 fielding positions first' };
+  }
+  return { hands, reason: '' };
 }
 
 /* ── Batting: render ─────────────────────────────────────────────────────────── */
@@ -772,9 +797,9 @@ function addToLineup(pid) {
 function updateSaveBattingBtn() {
   const btn = document.getElementById('save-batting-btn');
   if (!btn) return;
-  const valid = lineupValid();
-  btn.disabled = !valid;
-  btn.title = valid ? '' : 'Fill all 9 batting slots and assign all 9 fielding positions first';
+  const { hands, reason } = battingSaveStatus();
+  btn.disabled = !hands.length;
+  btn.title = reason || 'Save your vs RHP and vs LHP lineups';
 }
 
 function clearLineup() {
@@ -872,27 +897,43 @@ function renderRoster() {
 // The server picks the players, positions and batting order, the same way the
 // AI does (src/team/lineup_optimizer.py). Auto-fill keeps the healthy players
 // already in the lineup and fills the gaps; Rebuild starts over.
-async function autoFill(rebuild = false) {
+// Fills lineups[hand] in place from the server; false (with feedback shown)
+// when the server says no.
+async function _fetchLineup(hand, rebuild) {
   try {
     const res = await fetch(`/leagues/${LEAGUE_ID}/lineup/autofill`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         rebuild,
-        vs_hand: vsHand,
-        lineup: lineup.slice(0, 9).map(s => s ? { player_id: s.player_id, position: s.position } : null),
+        vs_hand: hand,
+        lineup: lineups[hand].slice(0, 9).map(s => s ? { player_id: s.player_id, position: s.position } : null),
       }),
     });
     const d = await res.json().catch(() => ({}));
-    if (!res.ok) { showFeedback('✗ ' + (d.detail || 'Error'), 'var(--red)'); return; }
-    for (let i = 0; i < 9; i++) lineup[i] = d.lineup[i] || null;
-  } catch (e) { showFeedback('✗ Network error', 'var(--red)'); return; }
+    if (!res.ok) { showFeedback('✗ ' + (d.detail || 'Error'), 'var(--red)'); return false; }
+    for (let i = 0; i < 9; i++) lineups[hand][i] = d.lineup[i] || null;
+    return true;
+  } catch (e) { showFeedback('✗ Network error', 'var(--red)'); return false; }
+}
+
+function _afterLineupFetch() {
   renderBattingOrder();
   renderRoster();
   updateSaveBattingBtn();
+  saveToStorage();
 }
 
-function rebuildLineup() { return autoFill(true); }
+// Auto-fill works on the lineup on screen.
+async function autoFill() {
+  if (await _fetchLineup(vsHand, false)) _afterLineupFetch();
+}
+
+// Rebuild starts both lineups over: vs RHP and vs LHP.
+async function rebuildLineup() {
+  const ok = await Promise.all(['R', 'L'].map(h => _fetchLineup(h, true)));
+  if (ok.some(Boolean)) _afterLineupFetch();
+}
 
 /* ── Batting: vs RHP / vs LHP ────────────────────────────────────────────────── */
 function switchHand(hand) {
@@ -920,39 +961,52 @@ function updateHandNote() {
 }
 
 /* ── Batting: save ───────────────────────────────────────────────────────────── */
+// Saves the vs RHP and vs LHP lineups together.
+async function _saveHand(hand) {
+  const res = await fetch(`/leagues/${LEAGUE_ID}/lineup/save`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      vs_hand: hand,
+      lineup: lineups[hand]
+        .map((s, i) => s ? { player_id: s.player_id, batting_order: i+1, position: s.position } : null)
+        .filter(Boolean),
+    }),
+  });
+  if (res.ok) return null;
+  const d = await res.json().catch(()=>({}));
+  return `vs ${HAND_LABEL[hand]}: ${d.detail || 'Error'}`;
+}
+
 async function saveBatting() {
-  if (!lineupValid()) return;
+  const { hands, reason } = battingSaveStatus();
+  if (!hands.length) { if (reason) showFeedback('✗ ' + reason, 'var(--red)'); return; }
   const btn = document.getElementById('save-batting-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const res = await fetch(`/leagues/${LEAGUE_ID}/lineup/save`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        vs_hand: vsHand,
-        lineup: lineup
-          .map((s, i) => s ? { player_id: s.player_id, batting_order: i+1, position: s.position } : null)
-          .filter(Boolean),
-      }),
-    });
-    if (res.ok) {
-      battingSaved = true;
-      savedHands[vsHand] = true;
-      updateHandNote();
-      showFeedback('✓ Batting saved', 'var(--green)');
-      updateScheduleBtn();
-      // Clear stored lineup so the next page load reads fresh from the server
+    const errors = [];
+    for (const h of hands) {
+      const err = await _saveHand(h);
+      if (err) { errors.push(err); continue; }
+      savedHands[h] = true;
+      // Clear the stored copy so the next page load reads fresh from the server
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY);
         if (stored) {
           const data = JSON.parse(stored);
-          if (data.lineups) delete data.lineups[vsHand];
+          if (data.lineups) delete data.lineups[h];
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
       } catch(e) {}
+    }
+    updateHandNote();
+    if (errors.length) {
+      showFeedback('✗ ' + errors.join('; '), 'var(--red)');
     } else {
-      const d = await res.json().catch(()=>({}));
-      showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
+      battingSaved = true;
+      const which = hands.length === 2 ? 'vs RHP and vs LHP' : `vs ${HAND_LABEL[hands[0]]}`;
+      showFeedback(`✓ Batting saved (${which})`, 'var(--green)');
+      updateScheduleBtn();
     }
   } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
   finally { btn.disabled = false; btn.textContent = 'Save Batting'; updateSaveBattingBtn(); }
@@ -1320,6 +1374,7 @@ function clearRotation() {
   updatePitchingBanners();
 }
 
+// Keep who's there (minus the injured) and fill up to ROTATION_SIZE.
 function autoFillRotation() {
   const before = rotation.filter(Boolean).join(',');
   const bullpenBefore = JSON.stringify(Object.entries(bullpen).sort());
@@ -1352,6 +1407,33 @@ function autoFillRotation() {
   }
   renderRotation();
   renderBullpen();
+}
+
+// Start over: the best healthy starters, ROTATION_SIZE of them (Strategy tab).
+// The next-starter dot stays on the same pitcher if he's still in.
+function rebuildRotation() {
+  const before = rotation.filter(Boolean).join(',');
+  const bullpenBefore = JSON.stringify(Object.entries(bullpen).sort());
+  const prevPointer = pointerPid;
+
+  rotation = ALL_PITCHERS
+    .filter(p => !p.injured)
+    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall))
+    .slice(0, ROTATION_SIZE)
+    .map(p => p.player_id);
+  pointerPid = rotation.includes(prevPointer) ? prevPointer : null;
+  ensureValidPointer();
+
+  // Remove newly-promoted rotation players from the bullpen dict
+  const newInRot = new Set(rotation);
+  Object.keys(bullpen).forEach(pid => { if (newInRot.has(pid)) delete bullpen[pid]; });
+
+  if (rotation.join(',') !== before || pointerPid !== prevPointer) pitchingSaved = false;
+  if (JSON.stringify(Object.entries(bullpen).sort()) !== bullpenBefore) bullpenSaved = false;
+  updatePitchingBanners();
+  renderRotation();
+  renderBullpen();
+  saveToStorage();
 }
 
 function autoAssignBullpen() {
