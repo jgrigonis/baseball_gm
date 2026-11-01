@@ -1,0 +1,35 @@
+{# templates/profile_edit.html — your GM profile's bio and favorite team
+   (routers/profiles.py). #}
+{% extends "base.html" %}
+{% block title %}Edit profile — Baseball GM{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner" style="max-width:760px;">
+  <div class="page-header">
+    <h1 class="page-title">Edit profile</h1>
+  </div>
+  <div class="card"><div class="card-body">
+    <form method="POST" action="/profile/edit" class="admin-form">
+      <div class="field wide">
+        <label for="bio">Bio</label>
+        <input id="bio" name="bio" type="text" maxlength="{{ bio_max }}" value="{{ bio }}" placeholder="Build from the mound out.">
+        <span class="hint">One line, up to {{ bio_max }} characters, shown under your name.</span>
+      </div>
+      <div class="field wide">
+        <label for="favorite_team_city">Favorite team</label>
+        <select id="favorite_team_city" name="favorite_team_city">
+          <option value="">None</option>
+          {% for city, mascot in teams %}
+          <option value="{{ city }}" {% if city == favorite %}selected{% endif %}>{{ city }} {{ mascot }}</option>
+          {% endfor %}
+        </select>
+        <span class="hint">Its patch shows at the top of your profile.</span>
+      </div>
+      {% if error %}<div class="wide" style="font-family:var(--font-mono);font-size:12px;color:var(--red);">{{ error }}</div>{% endif %}
+      <div class="wide" style="display:flex;gap:8px;">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="/gms/{{ user.username }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

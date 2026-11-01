@@ -87,6 +87,8 @@ CREATE TABLE IF NOT EXISTS users (
     totp_secret   TEXT,
     is_admin      BOOLEAN NOT NULL DEFAULT FALSE, -- can open /admin/
     is_contributor BOOLEAN NOT NULL DEFAULT FALSE, -- paid for the game (Paid contributor badge)
+    bio            TEXT,                           -- one line on their GM profile
+    favorite_team  TEXT,                           -- a World League city (src/team/colors.TEAM_COLORS)
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     dismissed_tips TEXT[] NOT NULL DEFAULT '{{}}', -- first-visit tab tips closed
     created_at    TEXT NOT NULL DEFAULT (NOW())

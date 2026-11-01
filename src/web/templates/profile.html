@@ -16,17 +16,20 @@
 <div class="page-content"><div class="content-inner gp" style="max-width:1120px;">
 
   <div class="gp-head">
-    {% if team %}{{ patch(team, 96) }}{% endif %}
+    {% if favorite or team %}{{ patch(favorite or team, 96) }}{% endif %}
     <div class="gp-head-main">
       <h1 class="page-title">{{ person.display_name }}</h1>
       <div class="gp-sub">
         @{{ person.username }}{% if since %} · GM since {{ since }}{% endif %}
         {% if team %} · {{ "Runs" if team.active else "Last ran" }} the <b>{{ team.city }} {{ team.mascot }}</b>{% endif %}
+        {% if favorite %} · Favorite team <b>{{ favorite.city }} {{ favorite.mascot }}</b>{% endif %}
       </div>
+      {% if person.bio %}<div class="gp-bio">“{{ person.bio }}”</div>{% endif %}
     </div>
-    {% if career.titles or (is_me and user.has_password) %}
+    {% if career.titles or is_me %}
     <div class="gp-head-actions">
       {% if career.titles %}<span class="gp-pill">{% if career.titles > 1 %}{{ career.titles }}× {% endif %}Champion</span>{% endif %}
+      {% if is_me %}<a href="/profile/edit" class="btn btn-secondary">Edit profile</a>{% endif %}
       {% if is_me and user.has_password %}<a href="/account" class="btn btn-secondary">Account</a>{% endif %}
     </div>
     {% endif %}
