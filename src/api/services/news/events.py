@@ -677,7 +677,7 @@ def season_awards(
             ]
             gm_ids = [r["gm_id"] for r in wins if r["gm_id"]]
             players: list[str] = []
-            body = " ".join(
+            body = "\n".join(
                 f"{w} of the {names.full_team(r['team_id'])} is the"
                 f" {_scope_phrase(r['scope'])}GM of the Year ({r['line']})."
                 for w, r in zip(who, wins)
@@ -697,7 +697,7 @@ def season_awards(
                     text += f" {names.last(r['player_id'])} was {how}."
                 gm_ids += names.gm_ids(r["team_id"]) + credit
                 parts.append(text)
-            body = " ".join(parts)
+            body = "\n".join(parts)
             human = any(names.is_human(r["team_id"]) for r in wins)
         if len(wins) == 1:
             headline = f"{who[0]} is the {year} {award.name}"
@@ -727,7 +727,7 @@ def season_awards(
         news.add(
             league_id, season_id, rest[0]["decided_on"] or _now(conn, season_id),
             "season_award", story, f"The rest of the {year} awards",
-            " ".join(lines),
+            "\n".join(lines),
             weight=2 if any(names.is_human(r["team_id"]) for r in rest) else 1,
             team_ids=list(dict.fromkeys(r["team_id"] for r in rest)),
             player_ids=[r["player_id"] for r in rest],
@@ -790,7 +790,7 @@ def _position_story(
     teams = list(dict.fromkeys(r["team_id"] for r in rows))
     news.add(
         league_id, season_id, rows[0]["decided_on"] or _now(conn, season_id),
-        "season_award", story, headline, " ".join(parts),
+        "season_award", story, headline, "\n".join(parts),
         weight=2 if human else 1, team_ids=teams,
         player_ids=list(dict.fromkeys(r["player_id"] for r in rows)),
         gm_ids=names.gm_ids(*teams),
