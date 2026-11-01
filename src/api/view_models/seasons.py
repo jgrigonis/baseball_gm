@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from src.api.services import awards as awards_service
 from src.api.view_models.draft import draft_rounds
-from src.api.view_models.leaders import leaders_context
+from src.api.view_models.leaders import leaders_context, team_leaders
 from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.standings import standings_rows
 from src.db.repositories.all_star_repo import AllStarRepository
@@ -46,6 +46,15 @@ SUMMARY_LEADER_CATS = [
 ]
 # The top leader card, left to right.
 TOP_LEADER_CATS = [("bat", "AVG"), ("bat", "HR"), ("pit", "ERA"), ("pit", "K")]
+# The GM's team card: their own leaders, hitters then pitchers.
+MY_LEADER_CATS = [
+    ("bat", "AVG"),
+    ("bat", "HR"),
+    ("bat", "RBI"),
+    ("pit", "W"),
+    ("pit", "ERA"),
+    ("pit", "K"),
+]
 SUMMARY_LEADERS_SHOWN = 5
 
 
@@ -89,6 +98,8 @@ def season_summary_context(
         "no_hitters": [],
         "awards": [],
         "position_awards": [],
+        "my_leaders": [],
+        "my_highlights": [],
     }
     if not season_id:
         return ctx
@@ -144,6 +155,10 @@ def season_summary_context(
 
     ctx["awards"] = season_awards(db, season_id, my_team_id)
     ctx["position_awards"] = position_awards(db, season_id, my_team_id)
+    if my_team_id:
+        ctx["my_leaders"] = team_leaders(
+            db, league_id, season_id, my_team_id, MY_LEADER_CATS
+        )
 
     # No-hitters thrown this season
     for nh in PlayerGameRepository(db).get_no_hitters(season_id):
@@ -160,6 +175,9 @@ def season_summary_context(
                 "is_mine": nh["team_id"] == my_team_id,
             }
         )
+
+    if my_team_id:
+        ctx["my_highlights"] = my_highlights(ctx)
 
     # Playoff results, one line per decided or started series
     bracket = playoffs_context(db, league_id, season_id, my_team_id)["bracket"]
@@ -197,6 +215,49 @@ def season_summary_context(
     ctx["injury_days_total"] = sum(inj["days_missed"] for inj in injuries)
 
     return ctx
+
+
+def my_highlights(ctx: dict) -> list[dict]:
+    """The GM's team's standout season in short chips: each award its
+    players (or its GM) won, then each no-hitter its pitchers threw."""
+    out = []
+    for a in ctx["awards"]:
+        for w in a["winners"]:
+            if w["is_mine"]:
+                out.append(
+                    {
+                        "icon": a["icon"],
+                        "what": a["name"],
+                        "name": w["name"],
+                        "player_id": w["player_id"],
+                        "title": w["line"],
+                    }
+                )
+    for pa in ctx["position_awards"]:
+        for row in pa["rows"]:
+            for w in row["cells"]:
+                if w and w["is_mine"]:
+                    out.append(
+                        {
+                            "icon": pa["icon"],
+                            "what": f"{awards_mod.BY_KEY[pa['key']].name} {row['position']}",
+                            "name": w["name"],
+                            "player_id": w["player_id"],
+                            "title": w["line"],
+                        }
+                    )
+    for nh in ctx["no_hitters"]:
+        if nh["is_mine"]:
+            out.append(
+                {
+                    "icon": "⚾",
+                    "what": "No-hitter",
+                    "name": nh["name"],
+                    "player_id": nh["player_id"],
+                    "title": f"vs {nh['opponent']}, {nh['game_date']}",
+                }
+            )
+    return out
 
 
 # Given at each position: shown as their own tables, not in the Awards card.

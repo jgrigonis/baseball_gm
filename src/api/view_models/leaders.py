@@ -36,9 +36,7 @@ def leaders_context(
     if season_id:
         pss_repo = PlayerSeasonStatsRepository(db)
 
-        team_games = pss_repo.get_max_games_played(season_id)
-        min_ab = int(3.1 * team_games)  # qualify for rate stats
-        min_outs = int(3 * team_games)  # 1 IP per team game
+        team_games, min_ab, min_outs = qualifiers(pss_repo, season_id)
 
         bat_cats = batting_leaders(
             pss_repo.get_batting_for_league(league_id, season_id), my_team_id, min_ab
@@ -62,6 +60,47 @@ def leaders_context(
         "pit_cats": pit_cats,
         "def_cats": def_cats,
     }
+
+
+def qualifiers(pss_repo, season_id: str) -> tuple[int, int, int]:
+    """Games played by the busiest team, and the at bats and outs a player
+    needs to qualify for the rate stats (AVG, ERA and the like)."""
+    team_games = pss_repo.get_max_games_played(season_id)
+    min_ab = int(3.1 * team_games)  # 3.1 PA per team game
+    min_outs = int(3 * team_games)  # 1 IP per team game
+    return team_games, min_ab, min_outs
+
+
+def team_leaders(
+    db, league_id: str, season_id: str, team_id: str, cats: list[tuple[str, str]]
+) -> list[dict]:
+    """One team's leader in each of `cats`, a (pane, label) list with pane
+    "bat" or "pit": the label plus the top row of the league-wide card,
+    counting only this team's players. Rate stats still need the league's
+    qualifying at bats or innings; a category no one on the team qualifies
+    for is left out."""
+    pss_repo = PlayerSeasonStatsRepository(db)
+    _, min_ab, min_outs = qualifiers(pss_repo, season_id)
+    bat = [
+        r
+        for r in pss_repo.get_batting_for_league(league_id, season_id)
+        if r["team_id"] == team_id
+    ]
+    pit = [
+        r
+        for r in pss_repo.get_pitching_for_league(league_id, season_id)
+        if r["team_id"] == team_id
+    ]
+    by_label = {
+        "bat": {c["label"]: c for c in batting_leaders(bat, team_id, min_ab)},
+        "pit": {c["label"]: c for c in pitching_leaders(pit, team_id, min_outs)},
+    }
+    out = []
+    for pane, label in cats:
+        cat = by_label[pane].get(label)
+        if cat and cat["rows"]:
+            out.append({"label": label, **cat["rows"][0]})
+    return out
 
 
 def batting_leaders(bat_rows: list, my_team_id: str | None, min_ab: int) -> list:
