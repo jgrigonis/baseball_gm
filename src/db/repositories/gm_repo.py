@@ -123,10 +123,12 @@ class GMRepository:
         self.conn.execute("DELETE FROM gms WHERE id = %s", (gm_id,))
 
     def get_users_leagues(self, user_id: str) -> list[dict]:
-        """Fetch the user's leagues"""
+        """Fetch the user's leagues, with the team they run in each (team_city
+        and team_mascot, None until they have one)."""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
                       l.last_played_at, l.is_practice,
+                      t.city as team_city, t.mascot as team_mascot,
                       MAX(s.year) as current_year,
                       COUNT(DISTINCT ls.season_id) FILTER (WHERE NOT s.is_backstory)
                           as season_number,
@@ -135,11 +137,12 @@ class GMRepository:
                        WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
             FROM leagues l
             JOIN gms g ON g.league_id = l.id
+            LEFT JOIN teams t ON t.id = g.team_id
             LEFT JOIN league_seasons ls ON ls.league_id = l.id
             LEFT JOIN seasons s ON s.id = ls.season_id
             WHERE g.user_id = %s AND NOT g.is_ai
             GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.join_code,
-                     l.last_played_at, l.is_practice, g.id
+                     l.last_played_at, l.is_practice, g.id, t.city, t.mascot
             ORDER BY l.created_at DESC""",
             (user_id,),
         ).fetchall()

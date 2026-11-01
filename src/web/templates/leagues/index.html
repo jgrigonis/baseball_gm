@@ -56,7 +56,8 @@
       <tbody>
         {% for l in leagues %}
         <tr>
-          <td class="team-name">{{ l.name }}</td>
+          {# The team the GM runs there, once the lobby is over and they have one. #}
+          <td class="team-name">{% if mine and l.team_city and l.state != 'lobby' %}<span class="league-team" title="{{ l.team_city }} {{ l.team_mascot }}">{{ team_badge(l.team_city, l.team_mascot) }}</span>{% endif %}{{ l.name }}</td>
           <td style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
           {% if active_tab != 'tutorial' %}<td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
           <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
@@ -106,6 +107,7 @@
 
 <style>
 .leagues-tabs { position: static; margin: 0 0 16px; padding: 0; background: none; }
+.league-team { display: inline-flex; vertical-align: middle; }
 .tab-count { color: var(--muted); margin-left: 4px; }
 .tab-link.active .tab-count { color: var(--amber-dim); }
 .tutorial-intro, .join-code-card { margin-bottom: 16px; }

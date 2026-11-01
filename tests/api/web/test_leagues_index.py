@@ -112,3 +112,32 @@ def test_changing_state_marks_the_league_played(db_conn, league):
         "SELECT last_played_at FROM leagues WHERE id = %s", (league.id,)
     ).fetchone()
     assert row["last_played_at"] is not None
+
+
+def _give_team(db, user_id, team):
+    db.execute("UPDATE gms SET team_id = %s WHERE user_id = %s", (team.id, user_id))
+
+
+def test_shows_the_badge_of_the_team_the_gm_runs(client, db_conn, factory, user_id):
+    _give_team(db_conn, user_id, factory.team(city="Portland", mascot="Pines"))
+
+    r = client.get("/leagues/")
+
+    assert 'class="league-team" title="Portland Pines"' in r.text
+
+
+def test_no_badge_while_still_in_the_lobby(client, db_conn, factory, league, user_id):
+    _give_team(db_conn, user_id, factory.team(city="Portland", mascot="Pines"))
+    db_conn.execute("UPDATE leagues SET state = 'lobby' WHERE id = %s", (league.id,))
+
+    r = client.get("/leagues/")
+
+    assert "league-team" not in r.text.split("<style>")[0]
+
+
+def test_no_badge_without_a_team(client, db_conn, user_id):
+    db_conn.execute("UPDATE gms SET team_id = NULL WHERE user_id = %s", (user_id,))
+
+    r = client.get("/leagues/")
+
+    assert "league-team" not in r.text.split("<style>")[0]
