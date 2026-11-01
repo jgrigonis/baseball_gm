@@ -240,6 +240,21 @@ class TestLeagues:
         assert r.status_code == 200
         assert gm_user["username"] in r.text
 
+    def test_commissioner_links_to_their_gm_profile(
+        self, client, db_conn, factory, admin
+    ):
+        league = _league(db_conn, factory)
+        gm_user = _user(db_conn)
+        gm_id = _human_gm(db_conn, league, gm_user)
+        db_conn.execute(
+            "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s",
+            (gm_id, league.id),
+        )
+
+        r = client.get("/admin/leagues")
+
+        assert f'href="/gms/{gm_user["username"]}"' in r.text
+
     def test_unknown_league_404(self, client, admin):
         assert client.get("/admin/leagues/nope").status_code == 404
 
@@ -447,6 +462,13 @@ class TestUsers:
 
         assert user["username"] in r.text
         assert email in r.text
+
+    def test_usernames_link_to_gm_profiles(self, client, db_conn, admin):
+        user = _user(db_conn)
+
+        r = client.get("/admin/users")
+
+        assert f'href="/gms/{user["username"]}"' in r.text
 
     def test_add_user(self, client, db_conn, admin):
         username = _name()

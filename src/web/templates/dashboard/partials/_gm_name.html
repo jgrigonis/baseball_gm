@@ -1,0 +1,7 @@
+{# Who runs a team, linked: a person's GM profile, or an AI GM's persona card.
+   Expects `gm` ({name, persona_id, username} or none) and `league_id`. #}
+{% if gm and gm.persona_id %}<a href="/leagues/{{ league_id }}/personas/{{ gm.persona_id }}"
+   hx-get="/leagues/{{ league_id }}/personas/{{ gm.persona_id }}" hx-target="#tab-content" hx-push-url="true"
+   class="gm-link" title="Persona card" onclick="event.stopPropagation();">{{ gm.name }}</a>
+{%- elif gm and gm.username %}<a href="/gms/{{ gm.username|urlencode }}" class="gm-link" title="GM profile" onclick="event.stopPropagation();">{{ gm.name }}</a>
+{%- elif gm %}{{ gm.name }}{% else %}<span style="color:var(--muted);">—</span>{% endif %}

@@ -17,7 +17,7 @@
       <tbody>
         {% for u in users %}
         <tr>
-          <td class="team-name" data-sort-value="{{ u.username or '' }}">{{ u.username or '—' }}</td>
+          <td class="team-name" data-sort-value="{{ u.username or '' }}">{% if u.username %}<a href="/gms/{{ u.username|urlencode }}" class="gm-link" title="GM profile">{{ u.username }}</a>{% else %}—{% endif %}</td>
           <td class="admin-dim">{{ u.display_name }}</td>
           <td class="admin-dim" data-sort-value="{{ u.email or '' }}">{{ u.email or '—' }}</td>
           <td class="num">{{ u.leagues }}</td>

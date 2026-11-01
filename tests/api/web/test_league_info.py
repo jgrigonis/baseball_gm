@@ -117,7 +117,7 @@ def test_ai_gms_link_to_their_persona_card(client, db_conn, league):
 
     # The standings' GM column: the persona for an AI team, the person's name
     # for theirs.
-    gms = standings._team_gms(db_conn, lg.id)
+    gms = standings.team_gms(db_conn, lg.id)
     assert {g["name"] for g in gms.values()} == {"GM", persona["name"]}
     assert persona["id"] in {g["persona_id"] for g in gms.values()}
 

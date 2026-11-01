@@ -19,7 +19,7 @@
     </div>
     {% if upcoming %}
     <table class="data-table" style="width:100%;">
-      <thead><tr><th>Date</th><th>Opponent</th><th style="text-align:center;">Record</th><th style="text-align:center;">H/A</th></tr></thead>
+      <thead><tr><th>Date</th><th>Opponent</th><th>GM</th><th style="text-align:center;">Record</th><th style="text-align:center;">H/A</th></tr></thead>
       <tbody>
         {% for g in upcoming %}
         <tr>
@@ -31,6 +31,7 @@
               {{ team_badge(g.opp_city, g.opp_mascot) }}{{ g.opp_city }} {{ g.opp_mascot }}
             </a>
           </td>
+          <td style="font-size:12px;white-space:nowrap;color:var(--text-dim);">{% with gm = g.opp_gm %}{% include "dashboard/partials/_gm_name.html" %}{% endwith %}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ g.opp_record }}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                      color:{% if g.is_home %}var(--green){% else %}var(--text-dim){% endif %};">
@@ -51,7 +52,7 @@
     </div>
     {% if recent %}
     <table class="data-table" style="width:100%;">
-      <thead><tr><th>Date</th><th style="text-align:center;">W/L</th><th style="text-align:center;">Score</th><th>Opponent</th><th style="text-align:center;">H/A</th></tr></thead>
+      <thead><tr><th>Date</th><th style="text-align:center;">W/L</th><th style="text-align:center;">Score</th><th>Opponent</th><th>GM</th><th style="text-align:center;">H/A</th></tr></thead>
       <tbody>
         {% for g in recent %}
         <tr onclick="openGamePanel('{{ g.game_id }}')"
@@ -63,6 +64,7 @@
                      color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};">{{ g.result }}</td>
           <td style="text-align:center;font-size:17px;white-space:nowrap;"><span class="num-tile {% if g.result == 'W' %}lit{% endif %}">{{ g.my_score }}</span><span class="num-tile">{{ g.opp_score }}</span>{% if g.extra %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:4px;">{{ g.extra }}</span>{% endif %}</td>
           <td>{{ team_badge(g.opp_city, g.opp_mascot) }}{{ g.opp_city }} {{ g.opp_mascot }}</td>
+          <td style="font-size:12px;white-space:nowrap;color:var(--text-dim);">{% with gm = g.opp_gm %}{% include "dashboard/partials/_gm_name.html" %}{% endwith %}</td>
           <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                      color:{% if g.home_away == 'vs' %}var(--green){% else %}var(--text-dim){% endif %};">
             {{ "HOME" if g.home_away == 'vs' else "AWAY" }}
