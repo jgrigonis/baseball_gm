@@ -1,7 +1,7 @@
 # src/team/colors.py
 """
 Team colors: a main, second and trim color plus a short code for every World
-League team (src/league/world_league.py), chosen from each team's name and
+League team (src/league/team_pool.py), chosen from each team's name and
 city. Pages show them as a small round badge next to the team's name
 (team_badge, a template global).
 
@@ -72,7 +72,6 @@ TEAM_COLORS: dict[tuple[str, str], TeamColors] = {
     ("San Francisco", "Seals"): TeamColors("SF", "#7D8A93", "#C0362C", "#1F2A33"),
     ("Vienna", "Maestros"): TeamColors("VIE", "#4B1D3F", "#CBA135", "#F4EDE1"),
     ("Buenos Aires", "Matadors"): TeamColors("BA", "#6CACE4", "#F6B40E", "#B3001B"),
-    # Past the World League's 30, for 32-team leagues (world_league.EXTRA_TEAMS).
     ("Berlin", "Bear"): TeamColors("BER", "#1C1C1C", "#D62828", "#F2C14E"),
     ("Seattle", "Rain"): TeamColors("SEA", "#0B3D4C", "#E8EEF0", "#2AA198"),
     ("Portland", "Weird"): TeamColors("POR", "#1B3D26", "#D7192F", "#C6D93B"),

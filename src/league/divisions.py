@@ -1,12 +1,16 @@
 # src/league/divisions.py
 """
 Leagues and divisions. Every league is split into two leagues, each split
-into divisions of the same size:
+into divisions of the same size: three divisions of five for 30 teams, two
+for the other sizes (16, 20, 24, 28 or 32).
 
-- The 30-team World League has a fixed lineup, by geography (WORLD_LINEUP):
-  the Atlantic and Pacific Leagues, three divisions of five each.
-- Every other size (16, 20, 24, 28 or 32 teams) draws its teams into two
-  leagues of two divisions at random when the league starts.
+The split is by geography (src/league/team_pool.py): the teams go in order
+around the globe by longitude, and the ring is cut into equal slices, the
+first half one league and the second half the other, starting from
+whichever point splits the fewest regions. Each division is named for the
+region most of its teams are in, each league Atlantic or Pacific by which
+side of the world it leans to. Teams outside the pool (a test team) are
+drawn into divisions at random instead.
 
 Standings group teams by division, the playoffs take each league's division
 winners plus wild cards, and the weighted schedule setting plays division
@@ -20,37 +24,33 @@ table of all the teams.
 from __future__ import annotations
 
 import random
+from collections import Counter
 from dataclasses import dataclass, field
+
+from src.league import team_pool
 
 # The team counts a league can be made with.
 TEAM_COUNTS = (16, 20, 24, 28, 30, 32)
 DEFAULT_TEAM_COUNT = 30
 
-# conference -> division -> cities, in order.
-WORLD_LINEUP: dict[str, dict[str, list[str]]] = {
-    "Atlantic League": {
-        "Americas": ["New York", "Chicago", "Toronto", "São Paulo", "Buenos Aires"],
-        "South": ["Lisbon", "Madrid", "Paris", "Milan", "Vienna"],
-        "North": ["London", "Dublin", "Amsterdam", "Frankfurt", "Warsaw"],
-    },
-    "Pacific League": {
-        "Pacific Rim": [
-            "Los Angeles",
-            "San Francisco",
-            "Mexico City",
-            "Sydney",
-            "Tokyo",
-        ],
-        "East Asia": ["Beijing", "Shanghai", "Hong Kong", "Seoul", "Singapore"],
-        "Silk Road": ["Istanbul", "Dubai", "Mumbai", "Bangkok", "Jakarta"],
-    },
-}
-
-# Names for a random draw: (league, its divisions).
+# Names for a random draw of teams outside the pool: (league, its divisions).
 DRAW_NAMES = [
-    ("Founders League", ["Red", "Gold"]),
-    ("Frontier League", ["Blue", "Green"]),
+    ("Founders League", ["Red", "Gold", "Silver"]),
+    ("Frontier League", ["Blue", "Green", "White"]),
 ]
+
+ATLANTIC = "Atlantic League"
+PACIFIC = "Pacific League"
+# Which way a region leans, for naming the two leagues.
+_LEAN = {
+    team_pool.EUROPE: 1,
+    team_pool.SOUTH_AMERICA: 1,
+    team_pool.SOUTHEAST_ASIA: -1,
+    team_pool.EAST_ASIA: -1,
+    team_pool.OCEANIA: -1,
+}
+# Suffixes for divisions that would share a name, in ring order.
+_SPLIT_NAMES = {2: ["West", "East"], 3: ["West", "Central", "East"]}
 
 # Teams in the playoffs from each league.
 PLAYOFF_TEAMS_PER_LEAGUE = 4
@@ -72,39 +72,99 @@ class Conference:
         return [t for d in self.divisions for t in d.team_ids]
 
 
-def world_cities() -> set[str]:
-    return {c for divs in WORLD_LINEUP.values() for cs in divs.values() for c in cs}
+def divisions_per_league(num_teams: int) -> int:
+    """How many divisions each of the two leagues has; 0 when the teams
+    don't split evenly (a test league)."""
+    if num_teams == 30:
+        return 3
+    if num_teams and num_teams % 4 == 0:
+        return 2
+    return 0
 
 
 def draw(teams: list[tuple[str, str]], rng: random.Random) -> list[Conference]:
-    """Split the teams, as (team id, city), into leagues and divisions: the
-    World League lineup when the teams are exactly its cities, otherwise a
-    random draw into two leagues of two divisions. Empty, so no divisions,
-    when the teams don't split into four even divisions (a test league)."""
-    by_city = {city: tid for tid, city in teams}
-    if len(by_city) == len(teams) and set(by_city) == world_cities():
+    """Split the teams, as (team id, city), into two leagues of equal
+    divisions: by geography when every city is in the team pool, otherwise
+    at random. Empty, so no divisions, when they don't split evenly."""
+    per_league = divisions_per_league(len(teams))
+    if not per_league or len({tid for tid, _ in teams}) != len(teams):
+        return []
+    size = len(teams) // (2 * per_league)
+    pool = [team_pool.by_city(city) for _, city in teams]
+    if any(p is None for p in pool) or len({c for _, c in teams}) != len(teams):
+        ids = [tid for tid, _ in teams]
+        rng.shuffle(ids)
         return [
             Conference(
                 name,
                 [
-                    Division(d, [by_city[c] for c in cities])
-                    for d, cities in divs.items()
+                    Division(div_names[d], ids[(c * per_league + d) * size :][:size])
+                    for d in range(per_league)
                 ],
             )
-            for name, divs in WORLD_LINEUP.items()
+            for c, (name, div_names) in enumerate(DRAW_NAMES)
         ]
-    if not teams or len(teams) % 4:
-        return []
-    ids = [tid for tid, _ in teams]
-    rng.shuffle(ids)
-    size = len(ids) // 4
-    out = []
-    for c, (name, div_names) in enumerate(DRAW_NAMES):
-        divisions = []
-        for d, div_name in enumerate(div_names):
-            start = (c * 2 + d) * size
-            divisions.append(Division(div_name, ids[start : start + size]))
-        out.append(Conference(name, divisions))
+    ring = sorted(zip(pool, (tid for tid, _ in teams)), key=lambda x: x[0].longitude)
+    ring = _best_rotation(ring, size)
+    slices = [ring[i : i + size] for i in range(0, len(ring), size)]
+    names = _division_names([[p for p, _ in s] for s in slices])
+    halves = []
+    for c in range(2):
+        mine = range(c * per_league, (c + 1) * per_league)
+        lean = sum(_LEAN.get(p.region, 0) for d in mine for p, _ in slices[d])
+        divs = [Division(names[d], [tid for _, tid in slices[d]]) for d in mine]
+        halves.append((lean, divs))
+    # The half leaning further toward the Atlantic is the Atlantic League.
+    first, second = halves
+    if second[0] > first[0]:
+        first, second = second, first
+    return [Conference(ATLANTIC, first[1]), Conference(PACIFIC, second[1])]
+
+
+def _best_rotation(ring: list, size: int) -> list:
+    """The ring, turned to start where cutting it into slices of ``size``
+    puts the fewest different regions together: the fewest regions split
+    between divisions and the fewest divisions mixing regions."""
+
+    def cost(start):
+        turned = ring[start:] + ring[:start]
+        return sum(
+            len({p.region for p, _ in turned[i : i + size]})
+            for i in range(0, len(turned), size)
+        )
+
+    start = min(range(len(ring)), key=cost)
+    return ring[start:] + ring[:start]
+
+
+def _division_names(slices: list[list]) -> list[str]:
+    """A name for each slice of the ring: the region most of its teams are
+    in, or the two it's shared between. Names that come up more than once
+    get West, Central or East, by where that region's teams in each lie."""
+    names = []
+    for teams in slices:
+        top = Counter(p.region for p in teams).most_common()
+        if len(top) == 1 or top[0][1] > top[1][1]:
+            names.append(top[0][0])
+        else:
+            # A tie: the two regions, in ring order.
+            pair = {top[0][0], top[1][0]}
+            order = [p.region for p in teams if p.region in pair]
+            names.append(" & ".join(dict.fromkeys(order)))
+    out = list(names)
+    for name, n in Counter(names).items():
+        if n == 1:
+            continue
+        suffixes = _SPLIT_NAMES.get(n) or [str(i + 1) for i in range(n)]
+        region = name.split(" & ")[0]
+
+        def west_to_east(i):
+            lons = sorted(p.longitude for p in slices[i] if p.region == region)
+            return lons[len(lons) // 2]
+
+        at = sorted((i for i, x in enumerate(names) if x == name), key=west_to_east)
+        for i, suffix in zip(at, suffixes):
+            out[i] = f"{name} {suffix}"
     return out
 
 

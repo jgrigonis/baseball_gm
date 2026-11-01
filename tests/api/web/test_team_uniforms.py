@@ -5,13 +5,13 @@ from fastapi.testclient import TestClient
 
 from src.api.main import app
 from src.api.routers.uniforms import all_team_uniforms
-from src.api.services.lobby_teams import EXTRA_TEAMS, world_teams
+from src.league.team_pool import TEAM_POOL
 
 
 def test_every_team_is_listed_with_its_set():
     rows = {r["city"]: r for r in all_team_uniforms()}
-    cities = [c for c, _ in world_teams()] + [t["city"] for t in EXTRA_TEAMS]
-    assert len(rows) == len(cities) == 33
+    cities = [t.city for t in TEAM_POOL]
+    assert len(rows) == len(cities)
     for city in cities:
         u = rows[city]["uniforms"]
         assert u and u["helmet"].endswith("/helmet.svg"), city

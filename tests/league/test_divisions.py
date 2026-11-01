@@ -3,43 +3,79 @@ import random
 
 import pytest
 
-from src.league import divisions
+from src.league import divisions, team_pool
 from src.league.divisions import Conference, Division
+from src.league.team_pool import TEAM_POOL
 
 
-def test_world_lineup_has_every_city_once():
-    cities = [
-        c
-        for divs in divisions.WORLD_LINEUP.values()
-        for cs in divs.values()
-        for c in cs
-    ]
-    assert len(cities) == len(set(cities)) == 30
-    for divs in divisions.WORLD_LINEUP.values():
-        assert [len(cs) for cs in divs.values()] == [5, 5, 5]
+def _pool_teams(n, seed=1):
+    return [(f"id-{t.city}", t.city) for t in team_pool.draw(n, random.Random(seed))]
 
 
-def test_world_league_teams_get_the_fixed_lineup():
-    teams = [(f"id-{c}", c) for c in sorted(divisions.world_cities())]
+@pytest.mark.parametrize(
+    "n,per_league", [(16, 2), (20, 2), (24, 2), (28, 2), (30, 3), (32, 2)]
+)
+def test_pool_teams_split_into_two_leagues_of_even_divisions(n, per_league):
+    for seed in range(5):
+        teams = _pool_teams(n, seed)
+        confs = divisions.draw(teams, random.Random(seed))
+        assert [c.name for c in confs] == ["Atlantic League", "Pacific League"]
+        sizes = [len(d.team_ids) for c in confs for d in c.divisions]
+        assert sizes == [n // (2 * per_league)] * (2 * per_league)
+        assert sorted(t for c in confs for t in c.team_ids) == sorted(
+            t for t, _ in teams
+        )
+        names = [d.name for c in confs for d in c.divisions]
+        assert len(set(names)) == len(names)
+
+
+def test_divisions_follow_the_globe():
+    teams = [(f"id-{t.city}", t.city) for t in TEAM_POOL if t.city != "Seattle"]
+    teams = [t for t in teams if t[1] not in ("Berlin", "Portland")]
     confs = divisions.draw(teams, random.Random(1))
-    assert [c.name for c in confs] == ["Atlantic League", "Pacific League"]
-    assert confs[1].divisions[0].name == "Pacific Rim"
-    assert confs[1].divisions[0].team_ids == [
-        "id-Los Angeles",
-        "id-San Francisco",
-        "id-Mexico City",
-        "id-Sydney",
-        "id-Tokyo",
+    by_team = {t: d.name for c in confs for d in c.divisions for t in d.team_ids}
+    # Neighbors play together.
+    assert by_team["id-Seoul"] == by_team["id-Tokyo"]
+    assert by_team["id-Paris"] == by_team["id-Amsterdam"]
+    assert by_team["id-Madrid"] == by_team["id-Lisbon"]
+    assert by_team["id-Chicago"] == by_team["id-Toronto"]
+    assert "Europe West" in by_team.values() and "Europe East" in by_team.values()
+    atlantic = set(confs[0].team_ids)
+    assert "id-London" in atlantic and "id-Tokyo" not in atlantic
+
+
+def test_the_split_doesnt_depend_on_the_rng_for_pool_teams():
+    teams = _pool_teams(24)
+    assert divisions.draw(teams, random.Random(1)) == divisions.draw(
+        teams, random.Random(2)
+    )
+
+
+def test_crowded_regions_still_split_evenly():
+    europe = [t for t in TEAM_POOL if t.region == team_pool.EUROPE]
+    teams = [(f"id-{t.city}", t.city) for t in europe]
+    teams += [
+        ("id-Tokyo", "Tokyo"),
+        ("id-Sydney", "Sydney"),
+        ("id-Dubai", "Dubai"),
+        ("id-Seoul", "Seoul"),
+        ("id-Mumbai", "Mumbai"),
     ]
+    assert len(teams) == 16
+    confs = divisions.draw(teams, random.Random(1))
+    names = [d.name for c in confs for d in c.divisions]
+    assert [len(d.team_ids) for c in confs for d in c.divisions] == [4] * 4
+    assert len(set(names)) == 4
 
 
-@pytest.mark.parametrize("n", [16, 20, 24, 28, 32])
-def test_other_sizes_draw_four_even_divisions(n):
+@pytest.mark.parametrize("n", [16, 20, 24, 28, 30, 32])
+def test_teams_outside_the_pool_are_drawn_at_random(n):
     teams = [(f"t{i}", f"City {i}") for i in range(n)]
     confs = divisions.draw(teams, random.Random(n))
     assert len(confs) == 2
+    per = divisions.divisions_per_league(n)
     sizes = [len(d.team_ids) for c in confs for d in c.divisions]
-    assert sizes == [n // 4] * 4
+    assert sizes == [n // (2 * per)] * (2 * per)
     assert sorted(t for c in confs for t in c.team_ids) == sorted(t for t, _ in teams)
 
 

@@ -107,7 +107,7 @@ from src.league.statistics.view_leaderboards import (
     show_all_leaderboards,
     calculate_min_pa,
 )
-from src.league.world_league import LEAGUE_NAME, WORLD_TEAMS
+from src.league import team_pool
 from src.stats.loader import StatsLoader
 from src.team.team_factory import TeamFactory
 from src.util.locations import TEMP_FILES, LOG_FILES
@@ -445,7 +445,8 @@ def pick_league_interactively() -> str | None:
 
 def _bootstrap_first_season(year: int | None, seed: int | None):
     """
-    Create a fresh World League with newly generated teams, and return
+    Create a fresh 30-team league, drawn from the team pool with newly
+    generated teams, and return
     (conn, league_id, season_id, team_ids).
     """
     conn = get_connection()
@@ -458,13 +459,13 @@ def _bootstrap_first_season(year: int | None, seed: int | None):
 
     league_id = str(uuid.UUID(int=rng.getrandbits(128)).hex)
     league_repo = LeagueRepository(conn)
-    league_id = league_repo.get_or_create_by_name(LEAGUE_NAME, league_id)
+    league_id = league_repo.get_or_create_by_name(team_pool.LEAGUE_NAME, league_id)
     conn.commit()
 
     factory = TeamFactory(rng=rng)
     generated = [
-        factory.generate_team(city=t["city"], mascot=t["mascot"], size=26)
-        for t in WORLD_TEAMS
+        factory.generate_team(city=t.city, mascot=t.mascot, size=26)
+        for t in team_pool.draw(30, rng)
     ]
     start_date = datetime.date(year, 4, 1)
 

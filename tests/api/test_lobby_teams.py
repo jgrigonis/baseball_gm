@@ -35,7 +35,7 @@ def _lobby(db, factory, num_teams=4):
     return league, me
 
 
-def test_every_lobby_gm_is_dealt_a_different_world_team(db_conn, factory):
+def test_every_lobby_gm_is_dealt_a_different_pool_team(db_conn, factory):
     league, me = _lobby(db_conn, factory)
 
     teams = _teams(db_conn, league.id)
@@ -44,11 +44,11 @@ def test_every_lobby_gm_is_dealt_a_different_world_team(db_conn, factory):
     assert me.id in teams
     assert all(t[0] for t in teams.values())
     assert len(set(teams.values())) == 4
-    assert set(teams.values()) <= set(lobby_teams.world_teams())
+    assert set(teams.values()) <= set(lobby_teams.pool_teams())
 
 
 def test_a_person_joining_takes_the_replaced_ai_gms_team(db_conn, factory):
-    league, _ = _lobby(db_conn, factory, num_teams=len(lobby_teams.world_teams()))
+    league, _ = _lobby(db_conn, factory, num_teams=len(lobby_teams.pool_teams()))
     before = _teams(db_conn, league.id)
 
     friend = GMRepository(db_conn).create_gm(
@@ -63,7 +63,7 @@ def test_a_person_joining_takes_the_replaced_ai_gms_team(db_conn, factory):
 
 
 def test_an_ai_gm_filling_in_for_a_leaver_gets_their_team(db_conn, factory):
-    league, me = _lobby(db_conn, factory, num_teams=len(lobby_teams.world_teams()))
+    league, me = _lobby(db_conn, factory, num_teams=len(lobby_teams.pool_teams()))
     friend = GMRepository(db_conn).create_gm(
         league_id=league.id, user_id=None, display_name="Friend"
     )
@@ -154,15 +154,113 @@ def test_picking_an_open_team_frees_yours(db_conn, factory):
     assert len(set(_teams(db_conn, league.id).values())) == 3
 
 
-def test_a_team_outside_the_league_cant_be_picked(db_conn, factory):
+def _set_league(db, league_id, me_id, mine, others):
+    """The league plays with ``mine`` and ``others``; I hold mine, the lobby's
+    AI GMs the others, in order."""
+    db.execute("DELETE FROM league_lobby_teams WHERE league_id = %s", (league_id,))
+    for city, mascot in [mine, *others]:
+        db.execute(
+            "INSERT INTO league_lobby_teams (league_id, city, mascot) VALUES (%s, %s, %s)",
+            (league_id, city, mascot),
+        )
+    db.execute(
+        "UPDATE gms SET lobby_city = %s, lobby_mascot = %s WHERE id = %s",
+        (*mine, me_id),
+    )
+    ais = persona_service.lobby_ai_gms(db, league_id)
+    for ai, (city, mascot) in zip(ais, others):
+        db.execute(
+            "UPDATE gms SET lobby_city = %s, lobby_mascot = %s WHERE id = %s",
+            (city, mascot, ai["id"]),
+        )
+    return ais
+
+
+def test_the_league_keeps_its_teams_once_drawn(db_conn, factory):
+    league, _ = _lobby(db_conn, factory)
+    first = lobby_teams.league_teams(db_conn, league.id)
+
+    assert len(first) == 4
+    assert set(_teams(db_conn, league.id).values()) == set(first)
+    assert lobby_teams.league_teams(db_conn, league.id) == first
+
+
+def test_picking_a_team_outside_the_league_brings_it_in(db_conn, factory):
     league, me = _lobby(db_conn, factory)
+    ais = _set_league(
+        db_conn,
+        league.id,
+        me.id,
+        ("New York", "Titans"),
+        [("London", "Lions"), ("Tokyo", "Samurai"), ("Sydney", "Sharks")],
+    )
+
+    assert lobby_teams.pick(db_conn, league.id, me.id, "Paris", "Musketeers")
+
+    # London, the closest team no person holds, makes way; its AI GM gets
+    # New York, the team I gave up.
+    assert set(lobby_teams.league_teams(db_conn, league.id)) == {
+        ("New York", "Titans"),
+        ("Paris", "Musketeers"),
+        ("Tokyo", "Samurai"),
+        ("Sydney", "Sharks"),
+    }
+    assert _team_of(db_conn, me.id) == ("Paris", "Musketeers")
+    assert _team_of(db_conn, ais[0]["id"]) == ("New York", "Titans")
+    assert _team_of(db_conn, ais[1]["id"]) == ("Tokyo", "Samurai")
+
+
+def test_bringing_in_a_team_near_your_own_trades_yours_out(db_conn, factory):
+    league, me = _lobby(db_conn, factory)
+    ais = _set_league(
+        db_conn,
+        league.id,
+        me.id,
+        ("London", "Lions"),
+        [("New York", "Titans"), ("Tokyo", "Samurai"), ("Sydney", "Sharks")],
+    )
+
+    assert lobby_teams.pick(db_conn, league.id, me.id, "Paris", "Musketeers")
+
+    assert ("London", "Lions") not in lobby_teams.league_teams(db_conn, league.id)
+    assert _team_of(db_conn, me.id) == ("Paris", "Musketeers")
+    assert [_team_of(db_conn, a["id"]) for a in ais] == [
+        ("New York", "Titans"),
+        ("Tokyo", "Samurai"),
+        ("Sydney", "Sharks"),
+    ]
+
+
+def test_a_person_held_team_never_makes_way(db_conn, factory):
+    league, me = _lobby(db_conn, factory, num_teams=2)
+    friend = GMRepository(db_conn).create_gm(
+        league_id=league.id, user_id=None, display_name="Friend"
+    )
+    persona_service.fill_lobby(db_conn, league.id)
+    friends = _team_of(db_conn, friend)
     outside = next(
         t
-        for t in lobby_teams.world_teams()
+        for t in lobby_teams.pool_teams()
         if t not in lobby_teams.league_teams(db_conn, league.id)
     )
 
-    assert not lobby_teams.pick(db_conn, league.id, me.id, *outside)
+    # With people holding every team, only my own can make way.
+    assert lobby_teams.pick(db_conn, league.id, me.id, *outside)
+
+    assert _team_of(db_conn, me.id) == outside
+    assert _team_of(db_conn, friend) == friends
+    assert set(lobby_teams.league_teams(db_conn, league.id)) == {outside, friends}
+
+
+def test_the_choices_are_the_whole_pool(db_conn, factory):
+    league, me = _lobby(db_conn, factory)
+
+    choices = lobby_teams.choices(db_conn, league.id)
+
+    assert {(c["city"], c["mascot"]) for c in choices} == set(lobby_teams.pool_teams())
+    assert sum(c["in_league"] for c in choices) == 4
+    mine = next(c for c in choices if c["holder_id"] == me.id)
+    assert mine["in_league"] and not mine["is_ai"]
 
 
 def test_another_persons_team_cant_be_picked(db_conn, factory):
@@ -181,7 +279,7 @@ def test_another_persons_team_cant_be_picked(db_conn, factory):
 def test_only_people_in_the_lobby_pick_real_teams(db_conn, factory):
     league, me = _lobby(db_conn, factory)
     ai = persona_service.lobby_ai_gms(db_conn, league.id)[0]
-    team = lobby_teams.world_teams()[0]
+    team = lobby_teams.pool_teams()[0]
 
     assert not lobby_teams.pick(db_conn, league.id, me.id, "Nowhere", "Nobodies")
     assert not lobby_teams.pick(db_conn, league.id, ai["id"], *team)

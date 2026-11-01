@@ -50,12 +50,13 @@ def start_league(
     rng = random.Random(seed)
 
     # ── 1. Generate fresh rosters for the teams this league plays with ──────
+    # (the lobby's, src/api/services/lobby_teams.py).
     # Every new league starts in LEAGUE_START_YEAR.
     year = LEAGUE_START_YEAR
     factory = TeamFactory(rng=rng)
     generated = [
-        factory.generate_team(city=t["city"], mascot=t["mascot"], size=26)
-        for t in lobby_teams.team_entries(league_id, league["num_teams"])
+        factory.generate_team(city=city, mascot=mascot, size=26)
+        for city, mascot in lobby_teams.league_teams(conn, league_id)
     ]
 
     # ── 2. Save the teams + first season ──────────────────────────────────────

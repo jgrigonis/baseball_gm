@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse
 
 from src.api.view_models.welcome import UNIFORMS_DIR, uniform_slug, uniforms
 from src.team.colors import colors_for
-from src.league.world_league import EXTRA_TEAMS, WORLD_TEAMS
+from src.league.team_pool import TEAM_POOL
 from src.web.utils import templates
 
 router = APIRouter(tags=["web"])
@@ -20,7 +20,7 @@ router = APIRouter(tags=["web"])
 def all_team_uniforms() -> list[dict]:
     """Every World League team and the extra 32-team-league teams, by city,
     each with its uniform pieces (None for a team without a set)."""
-    teams = [(t["city"], t["mascot"]) for t in WORLD_TEAMS + EXTRA_TEAMS]
+    teams = [t.key for t in TEAM_POOL]
     rows = []
     for city, mascot in sorted(set(teams)):
         u = uniforms(city)
