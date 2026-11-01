@@ -1379,18 +1379,27 @@ function autoFillRotation() {
   const before = rotation.filter(Boolean).join(',');
   const bullpenBefore = JSON.stringify(Object.entries(bullpen).sort());
 
-  // Remove injured pitchers from rotation
-  rotation = rotation.filter(pid => {
-    const p = ALL_PITCHERS.find(x => x.player_id === pid);
-    return p && !p.injured;
-  });
-
-  const inRot = new Set(rotation);
+  // A replacement takes the injured pitcher's slot (and the next-starter dot,
+  // if it was his); everyone else keeps his place. Open slots fill at the end.
+  const healthy = pid => { const p = findPitcher(pid); return p && !p.injured; };
+  const current = rotation.filter(Boolean);
+  const inRot = new Set(current.filter(healthy));
   const candidates = ALL_PITCHERS
     .filter(p => !p.injured && !inRot.has(p.player_id))
-    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall));
-  const needed = Math.max(0, ROTATION_SIZE - rotation.length);
-  candidates.slice(0, needed).forEach(p => rotation.push(p.player_id));
+    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall))
+    .map(p => p.player_id);
+  // Never grow the rotation past ROTATION_SIZE (Strategy tab).
+  let spare = Math.max(0, ROTATION_SIZE - inRot.size);
+  const next = []; let ci = 0;
+  for (const pid of current) {
+    if (healthy(pid)) { next.push(pid); continue; }
+    if (!spare || ci >= candidates.length) continue;
+    const sub = candidates[ci++]; spare--;
+    next.push(sub);
+    if (pointerPid === pid) pointerPid = sub;
+  }
+  while (next.length < ROTATION_SIZE && ci < candidates.length) next.push(candidates[ci++]);
+  rotation = next;
   ensureValidPointer();
 
   // Remove newly-promoted rotation players from the bullpen dict
