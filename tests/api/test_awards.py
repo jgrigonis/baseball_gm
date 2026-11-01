@@ -220,6 +220,9 @@ class TestShown:
         assert "Kenji Kato is the 2026 Cy Young" in stories
         assert "GM Josh is the 2026 GM of the Year" in stories
         assert "Batting Champion: Ruben Ruiz" in stories["The rest of the 2026 awards"]
+        # One award a line.
+        roundup = stories["The rest of the 2026 awards"].split("\n")
+        assert "Batting Champion: Ruben Ruiz, Captains (.500)." in roundup
 
     def test_season_summary_and_history(self, db_conn, lg, played):
         awards.decide_league(db_conn, lg["league"].id)

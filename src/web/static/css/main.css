@@ -1306,7 +1306,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 }
 .news-w3 .news-headline { font-size: 26px; color: var(--amber); }
 .news-w1 .news-headline { font-size: 16px; color: var(--text); }
-.news-body { font-family: var(--font-sans); font-size: 13px; color: var(--text-dim); margin: 2px 0 0; line-height: 1.45; }
+.news-body { font-family: var(--font-sans); font-size: 13px; color: var(--text-dim); margin: 2px 0 0; line-height: 1.45; white-space: pre-line; }
 .news-more { text-align: center; padding: 8px 0; }
 
 .news-strip-list { list-style: none; margin: 0; padding: 0; }
