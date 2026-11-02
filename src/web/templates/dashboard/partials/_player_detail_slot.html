@@ -24,7 +24,7 @@
    </div>
    {% if is_admin %}<div class="admin-id" title="player_id">{{ player.player_id }}</div>{% endif %}
  </div>
- <div class="pd-overall grade-{{ player.overall_grade | replace('+','-plus') | replace('-','-minus') }}"
+ <div class="pd-overall grade-{{ grade_class(player.overall_grade) }}"
       {% if is_admin and player.overall_value is not none %}title="{{ player.overall_value }}"{% endif %}>
    {{ player.overall_grade }}
  </div>

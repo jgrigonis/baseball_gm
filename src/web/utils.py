@@ -31,6 +31,20 @@ _TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 templates.env.globals["team_badge"] = team_badge
 
+
+def grade_class(grade: str | None) -> str:
+    """CSS class suffix for a letter grade, matching gradeClass() in
+    static/js/grades.js: "A+" -> "A-plus", "B-" -> "B-minus"."""
+    g = grade or "?"
+    if g.endswith("+"):
+        return g[:-1] + "-plus"
+    if g.endswith("-"):
+        return g[:-1] + "-minus"
+    return g
+
+
+templates.env.globals["grade_class"] = grade_class
+
 _STATIC_DIR = Path(__file__).parent / "static"
 
 

@@ -4,8 +4,7 @@
 {% set w = welcome %}
 {% set c = w.colors %}
 {% macro grade(g) -%}
-  {%- set cls = g[:-1] ~ '-plus' if g.endswith('+') else (g[:-1] ~ '-minus' if g.endswith('-') else g) -%}
-  <span class="grade grade-{{ cls }}">{{ g }}</span>
+  <span class="grade grade-{{ grade_class(g) }}">{{ g }}</span>
 {%- endmacro %}
 
 <style>

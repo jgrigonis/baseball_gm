@@ -615,15 +615,21 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
   font-size: 13px;
   font-weight: 600;
 }
-.grade-A-plus { color: #a3e635; }   /* lime — elite */
-.grade-A      { color: var(--green); }
-.grade-A-minus { color: #4ade80; }
-.grade-B-plus  { color: var(--amber); }
-.grade-B       { color: #fbbf24; }
-.grade-B-minus { color: #d97706; }
-.grade-C-plus  { color: var(--text-dim); }
-.grade-C       { color: var(--muted); }
-.grade-poor    { color: var(--red); }
+/* One step per grade: green (elite) through yellow (average) to red (poor).
+   Every color reads at 4.5:1 or better on --bg-2 card backgrounds. */
+.grade-A-plus  { color: #47f5ca; }
+.grade-A       { color: #50e28d; }
+.grade-A-minus { color: #5ed468; }
+.grade-B-plus  { color: #7ed454; }
+.grade-B       { color: #a7d846; }
+.grade-B-minus { color: #e0e042; }
+.grade-C-plus  { color: #f0cd42; }
+.grade-C       { color: #f2b336; }
+.grade-C-minus { color: #f29a36; }
+.grade-D-plus  { color: #f38d49; }
+.grade-D       { color: #f47e57; }
+.grade-D-minus { color: #f76e5f; }
+.grade-F       { color: #fb606d; }
 
 /* ── Player Cards ───────────────────────────────────────────────────────────── */
 .player-card {
