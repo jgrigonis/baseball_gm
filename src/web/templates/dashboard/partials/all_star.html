@@ -37,7 +37,14 @@
   </div>
 
   <form hx-post="/leagues/{{ league_id }}/allstar/ballot"
-        hx-target="#as-feedback" hx-swap="innerHTML" id="as-ballot">
+        hx-target="#as-feedback" hx-swap="innerHTML" id="as-ballot"
+        data-draft-key="allstar_ballot_{{ league_id }}_{{ season_id }}_{{ team_id }}">
+    <div id="as-unsaved-banner" class="as-unsaved">
+      <span>⚠ Ballot changes not saved</span>
+      <button type="submit" class="btn btn-secondary as-unsaved-save">Save now</button>
+      <button type="button" class="btn btn-secondary as-unsaved-revert" onclick="asRevert()"
+              title="Undo your changes: back to {{ 'your saved ballot' if saved else 'the starting picks' }}">Revert</button>
+    </div>
     <div class="as-grid">
       {% for slot in slots %}
       <div class="card as-slot as-slot-{{ slot }}">
@@ -127,8 +134,58 @@
     asLine(sel);
     asMark(sel.dataset.slot);
     var fb = document.getElementById('as-feedback');
-    if (fb) fb.textContent = 'Not saved yet';
+    if (fb) fb.textContent = '';
+    asDirty();
   };
+
+  // Unsaved picks live in localStorage until they're saved, so they come
+  // back after a look at another tab (or a live refresh of this one).
+  // The draft is per league, season and team, and cleared on a save.
+  var asForm = document.getElementById('as-ballot');
+  var asKey = asForm.dataset.draftKey;
+  function asPicks() {
+    var out = {};
+    asForm.querySelectorAll('select').forEach(function(s) { out[s.name] = s.value; });
+    return out;
+  }
+  var asSaved = asPicks();
+  function asSet(picks) {
+    asForm.querySelectorAll('select').forEach(function(s) {
+      var v = picks[s.name];
+      if (v == null) return;
+      // Skip a player who's no longer on the ballot.
+      if (v && !s.querySelector('option[value="' + CSS.escape(v) + '"]')) return;
+      s.value = v; s.dataset.prev = v; asLine(s);
+    });
+    asForm.querySelectorAll('.as-full').forEach(function(f) { asMark(f.dataset.slot); });
+  }
+  function asDirty() {
+    var now = asPicks();
+    var dirty = Object.keys(now).some(function(k) { return now[k] !== asSaved[k]; });
+    try {
+      if (dirty) localStorage.setItem(asKey, JSON.stringify(now));
+      else localStorage.removeItem(asKey);
+    } catch (e) {}
+    document.getElementById('as-unsaved-banner').classList.toggle('on', dirty);
+    return dirty;
+  }
+  window.asRevert = function() {
+    asSet(asSaved);
+    var fb = document.getElementById('as-feedback');
+    if (fb) fb.textContent = '';
+    asDirty();
+  };
+  try {
+    var draft = JSON.parse(localStorage.getItem(asKey) || 'null');
+    if (draft) asSet(draft);
+  } catch (e) {}
+  asDirty();
+  asForm.addEventListener('htmx:afterRequest', function(e) {
+    if (e.detail.elt !== asForm || !e.detail.successful) return;
+    if (!document.querySelector('#as-feedback .as-saved')) return;
+    asSaved = asPicks();
+    asDirty();
+  });
 
   // The full list at a position, opened from "N on the ballot": every
   // candidate with his stats. Picking from it fills the dropdowns above, and

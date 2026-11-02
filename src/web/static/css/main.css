@@ -1129,6 +1129,10 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .as-full-msg { padding: 8px 16px; font-family: var(--font-mono); font-size: 11px; }
 .as-save { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
 .as-saved { color: var(--green); }
+.as-unsaved { display: none; align-items: center; gap: 10px; margin: 0 0 12px; padding: 6px 12px; background: var(--amber-lo); border: 1px solid var(--amber); font-family: var(--font-mono); font-size: 11px; color: var(--amber); }
+.as-unsaved.on { display: flex; }
+.as-unsaved .btn { font-size: 10px; padding: 3px 8px; }
+.as-unsaved .as-unsaved-save { border-color: var(--amber); color: var(--amber); }
 .as-error { color: var(--red); }
 .as-player { cursor: pointer; }
 .as-player:hover { color: var(--amber); }
