@@ -224,7 +224,19 @@ class Trait:
 
 
 MOUTHS = ("flat", "smile", "grin", "smirk")
-FACIAL_HAIR = ("none", "stubble", "mustache", "goatee", "beard", "chinstrap")
+FACIAL_HAIR = (
+    "none",
+    "stubble",
+    "mustache",
+    "goatee",
+    "beard",
+    "chinstrap",
+    "square",
+)
+NOSES = ("classic", "button", "roman", "broad")
+
+# Sideburns past this length flare forward along the jaw into lambchops.
+LAMBCHOP_FROM = 12.0
 
 # In drawing order for random faces: adding a trait at the end leaves every
 # existing random face as it was.
@@ -237,7 +249,7 @@ TRAITS: tuple[Trait, ...] = (
     Trait("face_length", "Face length", "range", 76.5, 84.5, default=80.5),
     Trait("eye_spacing", "Eye spacing", "range", 7.6, 9.6, default=8.6),
     Trait("eye_height", "Eye height", "range", 55.5, 57.5, default=56.5),
-    Trait("eye_open", "Eye openness", "range", 1.4, 2.2, default=1.8),
+    Trait("eye_open", "Eye openness", "range", 0.5, 2.2, default=1.6),
     Trait("eye_width", "Eye width", "range", 2.7, 3.8, default=3.25),
     Trait("brow_thickness", "Brow thickness", "range", 1.1, 2.5, default=1.8),
     Trait("brow_tilt", "Brow tilt", "range", -1.4, 1.6, default=0.1),
@@ -248,7 +260,7 @@ TRAITS: tuple[Trait, ...] = (
     Trait("mouth", "Mouth", "choice", options=MOUTHS, default="flat"),
     Trait("lips", "Lip thickness", "range", 0.8, 1.8, default=1.3),
     Trait("facial_hair", "Facial hair", "choice", options=FACIAL_HAIR, default="none"),
-    Trait("sideburns", "Sideburn length", "range", 2, 9, default=5.5),
+    Trait("sideburns", "Sideburn length", "range", 0, 22, default=5),
     Trait("long_hair", "Long hair", "bool", default=False),
     Trait("eye_black", "Eye black", "bool", default=False),
     Trait("gray_rate", "Grays how fast", "range", 0.4, 1.4, default=0.9),
@@ -257,6 +269,9 @@ TRAITS: tuple[Trait, ...] = (
     Trait("mole", "Mole", "bool", default=False),
     Trait("mole_x", "Mole across", "range", -12, 12, default=6.0),
     Trait("mole_y", "Mole down", "range", 60, 72, default=64.0),
+    Trait("nose", "Nose", "choice", options=NOSES, default="classic"),
+    Trait("cap_height", "Cap height", "range", 0, 7, default=2.5),
+    Trait("brim_curve", "Brim curve", "range", 0, 1, default=0.55),
 )
 TRAITS_BY_KEY = {t.key: t for t in TRAITS}
 
@@ -265,8 +280,11 @@ FaceTraits = dict  # trait key -> value, as in TRAITS
 # How often random faces get each option, as relative weights
 _HAIR_WEIGHTS = (2, 1, 1, 1, 1, 1, 1, 1)  # black is twice as common
 _MOUTH_WEIGHTS = (2, 2, 1, 1)
-_FACIAL_HAIR_WEIGHTS = (3, 2, 1, 1, 2, 1)
+_FACIAL_HAIR_WEIGHTS = (3, 2, 1, 1, 2, 1, 1)
+_NOSE_WEIGHTS = (3, 2, 1, 2)
 _ODDS = {"long_hair": 0.12, "eye_black": 0.22, "mole": 0.12}
+# Random faces mostly stay in the everyday part of a range
+_RANDOM_RANGE = {"eye_open": (1.0, 2.1), "cap_height": (1, 4)}
 
 
 def _seed(player_id: str) -> int:
@@ -279,24 +297,32 @@ def random_traits(player_id: str) -> FaceTraits:
     r = random.Random(_seed(player_id))
     t: FaceTraits = {}
     for trait in TRAITS:
-        if trait.key == "skin":
+        key = trait.key
+        if key == "skin":
             t["skin"] = r.choice(SKIN)
-        elif trait.key == "hair":
+        elif key == "hair":
             # Darker skin goes with darker hair and eyes
             dark = SKIN.index(t["skin"]) >= 5
             pool = HAIR[:3] if dark else HAIR
             t["hair"] = r.choices(pool, _HAIR_WEIGHTS[: len(pool)])[0]
-        elif trait.key == "eyes":
+        elif key == "eyes":
             dark = SKIN.index(t["skin"]) >= 5
             t["eyes"] = r.choice(IRIS[:3] if dark else IRIS)
-        elif trait.key == "mouth":
+        elif key == "mouth":
             t["mouth"] = r.choices(MOUTHS, _MOUTH_WEIGHTS)[0]
-        elif trait.key == "facial_hair":
+        elif key == "facial_hair":
             t["facial_hair"] = r.choices(FACIAL_HAIR, _FACIAL_HAIR_WEIGHTS)[0]
+        elif key == "nose":
+            t["nose"] = r.choices(NOSES, _NOSE_WEIGHTS)[0]
+        elif key == "sideburns":
+            # One in twenty goes full 70s
+            roll, length = r.random(), r.uniform(1, 9)
+            t["sideburns"] = round(r.uniform(14, 22) if roll < 0.05 else length, 2)
         elif trait.kind == "bool":
-            t[trait.key] = r.random() < _ODDS[trait.key]
+            t[key] = r.random() < _ODDS[key]
         else:
-            t[trait.key] = round(r.uniform(trait.lo, trait.hi), 2)
+            lo, hi = _RANDOM_RANGE.get(key, (trait.lo, trait.hi))
+            t[key] = round(r.uniform(lo, hi), 2)
     return t
 
 
@@ -330,6 +356,67 @@ def clean_traits(raw: dict) -> FaceTraits:
 
 # ── The face ─────────────────────────────────────────────────────────────────
 
+# The face is drawn at a standard length and stretched up and down from the
+# middle by face_length, so the eyes, nose, mouth and chin all spread apart.
+JAW = 80.5
+STRETCH_FROM_Y = 50.0
+
+
+def _bezier(p0, p1, p2, p3, s):
+    u = 1 - s
+    return tuple(
+        u**3 * a + 3 * u * u * s * b + 3 * u * s * s * c + s**3 * d
+        for a, b, c, d in zip(p0, p1, p2, p3)
+    )
+
+
+def _jaw_edge(w: float, chin: float, side: int):
+    """Points down one side of the face, from the cheekbone to the chin:
+    the same curve as the head's outline."""
+    cx = 50
+    p0 = (cx + side * w, 56)
+    p1 = (cx + side * w, 70)
+    p2 = (cx + side * chin, JAW)
+    p3 = (cx, JAW + 0.5)
+    return [_bezier(p0, p1, p2, p3, i / 24) for i in range(25)]
+
+
+def _edge_x(w: float, chin: float, side: int, y: float) -> float:
+    """Where the face's outline is at height y."""
+    if y <= 56:
+        return 50 + side * w
+    pts = _jaw_edge(w, chin, side)
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        if y0 <= y <= y1:
+            return x0 + (x1 - x0) * ((y - y0) / (y1 - y0 or 1))
+    return pts[-1][0]
+
+
+def _sideburn(w, chin, side, top, length):
+    """One sideburn: a strip down the face's edge from under the cap. Past
+    LAMBCHOP_FROM it widens toward the jaw and flares onto the cheek."""
+    bottom = top + length
+    chop = max(0.0, length - LAMBCHOP_FROM) / (22 - LAMBCHOP_FROM)  # 0..1
+    steps = 10
+    outer, inner = [], []
+    for i in range(steps + 1):
+        y = top + length * i / steps
+        x = _edge_x(w, chin, side, y)
+        f = i / steps
+        # A tuft at the temple, a strip down, then the lambchop's flare
+        width = 2.5 + max(0.0, 0.8 - f * 5) + chop * 9 * f**1.6
+        outer.append((x - side * 0.3, y))
+        # The inner edge starts a little lower, so the top is slanted, not
+        # a block
+        inner.append((x - side * width, y + 1.4 * (1 - f) ** 4))
+    # The lambchop's bottom sweeps forward toward the mouth corner
+    if chop:
+        bx, by = inner[-1]
+        inner[-1] = (bx, by - chop * 2)
+    pts = outer + inner[::-1]
+    d = "M" + " L".join(f"{_n(x)} {_n(y)}" for x, y in pts) + " Z"
+    return d, bottom
+
 
 def face_svg(
     player_id: str,
@@ -345,16 +432,16 @@ def face_svg(
     skin, hair, iris = t["skin"], t["hair"], t["eyes"]
     w = t["face_width"]  # half the face's width
     chin = t["chin"]  # half the chin's width
-    jaw = t["face_length"]  # how far down the chin comes
+    stretch = 1 + (t["face_length"] - JAW) / 30
+    jaw = JAW
     eye_dx = t["eye_spacing"]  # from the middle
     eye_y = t["eye_height"]
     eye_ry = t["eye_open"]
     eye_rx = t["eye_width"]
     brow_t, brow_tilt, brow_gap = t["brow_thickness"], t["brow_tilt"], t["brow_gap"]
-    nose_w, nose_len = t["nose_width"], t["nose_length"]
+    nose_w, nose_len, nose = t["nose_width"], t["nose_length"], t["nose"]
     mouth_w, mouth, lip_t = t["mouth_width"], t["mouth"], t["lips"]
     facial_hair = t["facial_hair"]
-    sideburn = t["sideburns"]
     long_hair, eye_black = t["long_hair"], t["eye_black"]
     gray_rate = t["gray_rate"]
     ear = t["ears"]
@@ -380,6 +467,9 @@ def face_svg(
     o: list[str] = []
     add = o.append
 
+    # Where the cap sits: its band across the forehead (before stretching)
+    band = 46.5 - t["cap_height"]
+
     add(
         f'<rect x="13" y="13" width="74" height="74" fill="{mix(BACKGROUND, cap.crown, 0.18)}"/>'
     )
@@ -403,6 +493,12 @@ def face_svg(
         f'stroke-width="2.6" stroke-linejoin="round"/>'
     )
 
+    # Everything from here to the cap is stretched by face_length.
+    add(
+        f'<g transform="translate(0 {_n(STRETCH_FROM_Y)}) scale(1 {stretch:.4f}) '
+        f'translate(0 {_n(-STRETCH_FROM_Y)})">'
+    )
+
     # Ears
     for x in (L + 0.5, R - 0.5):
         add(
@@ -413,23 +509,28 @@ def face_svg(
             f'<ellipse cx="{_n(x)}" cy="{_n(ear_y)}" rx="{_n(ear * 0.45)}" ry="{_n(ear * 0.8)}" fill="{skin_sh}"/>'
         )
 
-    # Head, and shading down the right cheek
+    # Head (rounded on top, for when the cap sits high), and shading down
+    # the right cheek
     add(
-        f'<path d="M{_n(L)} 38 L{_n(L)} 56 C{_n(L)} 70 {_n(cx - chin)} {_n(jaw)} {cx} {_n(jaw + 0.5)} '
-        f'C{_n(cx + chin)} {_n(jaw)} {_n(R)} 70 {_n(R)} 56 L{_n(R)} 38 Z" fill="{skin}"/>'
+        f'<path d="M{_n(L)} 56 L{_n(L)} 40 C{_n(L)} 26 {_n(R)} 26 {_n(R)} 40 L{_n(R)} 56 '
+        f"C{_n(R)} 70 {_n(cx + chin)} {_n(jaw)} {cx} {_n(jaw + 0.5)} "
+        f'C{_n(cx - chin)} {_n(jaw)} {_n(L)} 70 {_n(L)} 56 Z" fill="{skin}"/>'
     )
     add(
         f'<path d="M{_n(R)} 50 L{_n(R)} 56 C{_n(R)} 70 {_n(cx + chin)} {_n(jaw)} {cx} {_n(jaw + 0.5)} '
         f'C{_n(cx + chin + 2)} {_n(jaw - 4)} {_n(R - 3)} 70 {_n(R - 2.5)} 54 Z" fill="{skin_sh}" opacity=".45"/>'
     )
 
-    # Sideburns
-    add(
-        f'<path d="M{_n(L)} 46 L{_n(L + 2.6)} 46 L{_n(L + 2.2)} {_n(46 + sideburn)} L{_n(L)} {_n(47 + sideburn)} Z" fill="{hair}"/>'
-    )
-    add(
-        f'<path d="M{_n(R)} 46 L{_n(R - 2.6)} 46 L{_n(R - 2.2)} {_n(46 + sideburn)} L{_n(R)} {_n(47 + sideburn)} Z" fill="{hair}"/>'
-    )
+    # Sideburns, from just under the ends of the bill, so all of the length
+    # shows
+    if t["sideburns"] > 0:
+        ends = brim_ends(
+            STRETCH_FROM_Y + (band - STRETCH_FROM_Y) * stretch, t["brim_curve"]
+        )
+        start = STRETCH_FROM_Y + (ends - STRETCH_FROM_Y) / stretch - 0.5
+        for side in (-1, 1):
+            d, _ = _sideburn(w, chin, side, start, t["sideburns"])
+            add(f'<path d="{d}" fill="{hair}"/>')
 
     # Facial hair. Young players' beards come in thinner.
     if facial_hair in ("beard", "stubble"):
@@ -439,6 +540,18 @@ def face_svg(
             f"C{_n(cx + chin + 1)} {_n(jaw + 3.5)} {_n(R)} 72 {_n(R + 0.3)} 56 "
             f'C{_n(R - 2.5)} 64 {cx + 9} 67 {cx} 66.5 C{cx - 9} 67 {_n(L + 2.5)} 64 {_n(L - 0.3)} 56 Z" '
             f'fill="{beard_col}" opacity="{_n(alpha)}"/>'
+        )
+    if facial_hair == "square":
+        # A sharp, lined-up beard: straight cheek lines with a corner, and a
+        # squared-off jaw and chin
+        alpha = 0.7 if age < 22 else 0.97
+        sq = max(chin + 3, 10.5)
+        add(
+            f'<path d="M{_n(L - 0.3)} 54 L{_n(L + 3)} 62.5 L{_n(cx - mouth_w - 2)} 66.2 '
+            f"L{_n(cx + mouth_w + 2)} 66.2 L{_n(R - 3)} 62.5 L{_n(R + 0.3)} 54 "
+            f"L{_n(R + 0.3)} 68 L{_n(cx + sq)} {_n(jaw + 2.5)} Q{_n(cx + sq)} {_n(jaw + 4)} {_n(cx + sq - 1.5)} {_n(jaw + 4)} "
+            f"L{_n(cx - sq + 1.5)} {_n(jaw + 4)} Q{_n(cx - sq)} {_n(jaw + 4)} {_n(cx - sq)} {_n(jaw + 2.5)} "
+            f'L{_n(L - 0.3)} 68 Z" fill="{beard_col}" opacity="{_n(alpha)}"/>'
         )
     if facial_hair == "chinstrap":
         add(
@@ -452,7 +565,9 @@ def face_svg(
             f'<path d="M{cx - 6} 73.5 C{cx - 6} {_n(jaw + 3)} {cx + 6} {_n(jaw + 3)} {cx + 6} 73.5 '
             f'C{cx + 3} 75 {cx - 3} 75 {cx - 6} 73.5 Z" fill="{beard_col}"/>'
         )
-    if facial_hair in ("mustache", "goatee") or (facial_hair == "beard" and age >= 22):
+    if facial_hair in ("mustache", "goatee", "square") or (
+        facial_hair == "beard" and age >= 22
+    ):
         add(
             f'<path d="M{_n(cx - mouth_w - 1.5)} 70.5 C{_n(cx - mouth_w)} 67 {cx - 2} 66.5 {cx} 67.4 '
             f"C{cx + 2} 66.5 {_n(cx + mouth_w)} 67 {_n(cx + mouth_w + 1.5)} 70.5 "
@@ -465,21 +580,22 @@ def face_svg(
                 f'<path d="M{_n(ex - 3.5)} {_n(eye_y + 3.6)} h7 l-0.6 2.6 h-5.8 Z" fill="#141414" opacity=".88"/>'
             )
 
-    # Eyes, lids, brows, and lines with age
+    # Eyes (iris clipped to the eye, so narrow eyes stay narrow), lids,
+    # brows, and lines with age
     brow_col = mix(hair, "#000000", 0.15)
     for sgn in (-1, 1):
         ex = cx + sgn * eye_dx
+        eye = f'cx="{_n(ex)}" cy="{_n(eye_y)}" rx="{_n(eye_rx)}" ry="{_n(eye_ry)}"'
+        clip = "eye" + hashlib.md5(f"{eye}".encode()).hexdigest()[:8]
+        add(f'<clipPath id="{clip}"><ellipse {eye}/></clipPath>')
+        add(f'<ellipse {eye} fill="{EYE_WHITE}"/>')
         add(
-            f'<ellipse cx="{_n(ex)}" cy="{_n(eye_y)}" rx="{_n(eye_rx)}" ry="{_n(eye_ry)}" fill="{EYE_WHITE}"/>'
+            f'<g clip-path="url(#{clip})"><circle cx="{_n(ex + 0.2)}" cy="{_n(eye_y + 0.1)}" '
+            f'r="{_n(min(1.7, eye_rx * 0.55))}" fill="{iris}"/>'
+            f'<circle cx="{_n(ex + 0.2)}" cy="{_n(eye_y + 0.1)}" r="0.7" fill="#0d0907"/></g>'
         )
         add(
-            f'<circle cx="{_n(ex + 0.2)}" cy="{_n(eye_y + 0.1)}" r="{_n(min(1.7, eye_ry, eye_rx * 0.55))}" fill="{iris}"/>'
-        )
-        add(
-            f'<circle cx="{_n(ex + 0.2)}" cy="{_n(eye_y + 0.1)}" r="0.7" fill="#0d0907"/>'
-        )
-        add(
-            f'<path d="M{_n(ex - eye_rx - 0.3)} {_n(eye_y - 0.2)} Q{_n(ex)} {_n(eye_y - eye_ry - 1.6)} '
+            f'<path d="M{_n(ex - eye_rx - 0.3)} {_n(eye_y - 0.2)} Q{_n(ex)} {_n(eye_y - eye_ry * 1.6 - 0.4)} '
             f'{_n(ex + eye_rx + 0.3)} {_n(eye_y - 0.2)}" fill="none" stroke="{skin_sh2}" stroke-width=".9"/>'
         )
         bx = ex - sgn * (brow_gap - 4.5)
@@ -504,15 +620,7 @@ def face_svg(
 
     # Nose
     ny = eye_y + 1 + nose_len
-    add(
-        f'<path d="M{cx - 0.6} {_n(eye_y + 1)} Q{cx - 1.4} {_n(ny - 2)} {_n(cx - nose_w)} {_n(ny)} '
-        f'Q{cx} {_n(ny + 1.8)} {_n(cx + nose_w)} {_n(ny)}" fill="none" stroke="{skin_sh2}" '
-        f'stroke-width="1" stroke-linecap="round"/>'
-    )
-    add(
-        f'<path d="M{cx + 0.8} {_n(eye_y + 2)} Q{cx + 1.6} {_n(ny - 2)} {_n(cx + nose_w - 0.4)} {_n(ny - 0.6)}" '
-        f'fill="none" stroke="{skin_hi}" stroke-width=".8" opacity=".6"/>'
-    )
+    add(_nose(nose, cx, eye_y, ny, nose_w, skin, skin_sh, skin_sh2, skin_hi))
     if lines > 0.35:
         a = _n(min(0.7, lines))
         for sgn in (-1, 1):
@@ -551,34 +659,12 @@ def face_svg(
             f'<circle cx="{_n(cx + mole[0])}" cy="{_n(mole[1])}" r=".7" fill="{skin_sh2}"/>'
         )
 
-    # The cap: brim shadow on the forehead, crown, seams, button, logo, brim
-    add(
-        f'<path d="M{_n(L)} 44 Q{cx} 41 {_n(R)} 44 L{_n(R)} 50 Q{cx} 47.5 {_n(L)} 50 Z" fill="#000" opacity=".22"/>'
-    )
-    cw = w + 4
-    add(
-        f'<path d="M{_n(cx - cw)} 46 C{_n(cx - cw)} 25 {_n(cx - cw * 0.55)} 15.5 {cx} 15.5 '
-        f'C{_n(cx + cw * 0.55)} 15.5 {_n(cx + cw)} 25 {_n(cx + cw)} 46 Z" fill="{cap.crown}"/>'
-    )
-    add(
-        f'<path d="M{cx} 16 L{cx} 45 M{_n(cx - cw * 0.55)} 19.5 Q{_n(cx - cw * 0.7)} 32 {_n(cx - cw * 0.62)} 45 '
-        f'M{_n(cx + cw * 0.55)} 19.5 Q{_n(cx + cw * 0.7)} 32 {_n(cx + cw * 0.62)} 45" fill="none" '
-        f'stroke="{cap.seam}" stroke-width=".7" opacity=".9"/>'
-    )
-    add(
-        f'<path d="M{_n(cx + cw * 0.3)} 19 C{_n(cx + cw * 0.75)} 22 {_n(cx + cw)} 32 {_n(cx + cw)} 46 '
-        f'L{_n(cx + cw * 0.62)} 46 Q{_n(cx + cw * 0.7)} 30 {_n(cx + cw * 0.3)} 19 Z" fill="#000" opacity=".12"/>'
-    )
-    add(f'<ellipse cx="{cx}" cy="16" rx="2.6" ry="1.4" fill="{cap.button}"/>')
-    add(_cap_logo(cap, cx))
-    add(
-        f'<path d="M{_n(cx - cw - 2)} 45.5 Q{cx} 39.5 {_n(cx + cw + 2)} 45.5 Q{_n(cx + cw + 1)} 51 {_n(cx + cw - 5)} 51.5 '
-        f'Q{cx} 47.5 {_n(cx - cw + 5)} 51.5 Q{_n(cx - cw - 1)} 51 {_n(cx - cw - 2)} 45.5 Z" fill="{cap.brim}"/>'
-    )
-    add(
-        f'<path d="M{_n(cx - cw + 5)} 51.5 Q{cx} 47.5 {_n(cx + cw - 5)} 51.5" fill="none" '
-        f'stroke="{cap.brim_edge}" stroke-width=".9" opacity=".8"/>'
-    )
+    add("</g>")
+
+    # The cap isn't stretched, so its logo keeps its shape; its band goes
+    # where the stretched forehead puts it.
+    band_on_screen = STRETCH_FROM_Y + (band - STRETCH_FROM_Y) * stretch
+    add(_cap(cap, cx, w, L, R, band_on_screen, t["brim_curve"]))
 
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="13 13 74 74" '
@@ -586,27 +672,148 @@ def face_svg(
     )
 
 
-# The front of the crown where the logo goes, in face coordinates.
-LOGO_W, LOGO_H, LOGO_CY = 26.0, 20.0, 32.0
+def _nose(style, cx, eye_y, ny, nw, skin, skin_sh, skin_sh2, skin_hi) -> str:
+    """The nose: its bridge, tip and nostrils, in one of NOSES."""
+    top = eye_y + 1
+    stroke = f'fill="none" stroke="{skin_sh2}" stroke-width="1" stroke-linecap="round"'
+    if style == "button":
+        # Short and round: a small tip and two nostril dots, no bridge line
+        return (
+            f'<ellipse cx="{cx}" cy="{_n(ny - 1)}" rx="{_n(nw * 0.6)}" ry="{_n(1.6)}" fill="{skin_sh}" opacity=".55"/>'
+            f'<circle cx="{_n(cx - nw * 0.42)}" cy="{_n(ny - 0.2)}" r=".55" fill="{skin_sh2}"/>'
+            f'<circle cx="{_n(cx + nw * 0.42)}" cy="{_n(ny - 0.2)}" r=".55" fill="{skin_sh2}"/>'
+            f'<ellipse cx="{_n(cx + 0.5)}" cy="{_n(ny - 1.8)}" rx=".9" ry=".55" fill="{skin_hi}" opacity=".7"/>'
+        )
+    if style == "roman":
+        # A bump on the bridge and a tip that hooks down
+        mid = (top + ny) / 2
+        return (
+            f'<path d="M{cx - 0.4} {_n(top)} Q{cx - 2.6} {_n(mid - 0.5)} {cx - 1.6} {_n(mid + 1)} '
+            f'Q{cx - 1} {_n(ny - 1)} {cx - 0.6} {_n(ny + 0.9)}" {stroke}/>'
+            f'<path d="M{_n(cx - nw)} {_n(ny - 0.2)} Q{cx - 1.5} {_n(ny + 1)} {cx - 0.6} {_n(ny + 0.9)} '
+            f'Q{cx + 1} {_n(ny + 1.2)} {_n(cx + nw)} {_n(ny - 0.2)}" {stroke}/>'
+        )
+    if style == "broad":
+        # Wide, flared nostrils
+        fw = nw * 1.15
+        return (
+            f'<path d="M{cx - 0.6} {_n(top)} Q{cx - 1.2} {_n(ny - 3)} {cx - 1.4} {_n(ny - 1.5)}" {stroke} opacity=".8"/>'
+            f'<path d="M{_n(cx - fw + 1.2)} {_n(ny - 2.6)} Q{_n(cx - fw - 0.8)} {_n(ny - 0.6)} {_n(cx - fw + 1)} {_n(ny + 0.4)}" {stroke}/>'
+            f'<path d="M{_n(cx + fw - 1.2)} {_n(ny - 2.6)} Q{_n(cx + fw + 0.8)} {_n(ny - 0.6)} {_n(cx + fw - 1)} {_n(ny + 0.4)}" {stroke}/>'
+            f'<path d="M{_n(cx - fw + 1)} {_n(ny + 0.4)} Q{cx} {_n(ny + 1.8)} {_n(cx + fw - 1)} {_n(ny + 0.4)}" {stroke}/>'
+            f'<ellipse cx="{cx}" cy="{_n(ny - 1.6)}" rx="1.3" ry=".8" fill="{skin_hi}" opacity=".55"/>'
+        )
+    # classic
+    return (
+        f'<path d="M{cx - 0.6} {_n(top)} Q{cx - 1.4} {_n(ny - 2)} {_n(cx - nw)} {_n(ny)} '
+        f'Q{cx} {_n(ny + 1.8)} {_n(cx + nw)} {_n(ny)}" {stroke}/>'
+        f'<path d="M{cx + 0.8} {_n(top + 1)} Q{cx + 1.6} {_n(ny - 2)} {_n(cx + nw - 0.4)} {_n(ny - 0.6)}" '
+        f'fill="none" stroke="{skin_hi}" stroke-width=".8" opacity=".6"/>'
+    )
+
+
+def brim_ends(band: float, curve: float) -> float:
+    """How far down the bill's two ends come: a curved bill's sides bend down."""
+    return band + 1.2 + curve * 8
+
+
 LOGO_MAX_SCALE = 0.6  # So a small logo doesn't blow up past its cap size
 
 
-def _cap_logo(cap: Cap, cx: float) -> str:
+def _cap(cap: Cap, cx, w, L, R, band, curve) -> str:
+    """A baseball cap from the front: a low six-panel crown snug on the head,
+    and a bill that comes toward you, its sides curving down by `curve`
+    (0 is a flat bill)."""
+    o = []
+    cw = w + 3.2  # half the crown's width at the band
+    height = cw * 0.86
+    top = band - height
+    # The bill: its ends, and the middles of its back (at the crown) and
+    # front (nearest you) edges
+    bw = cw + 3.4
+    ends = brim_ends(band, curve)
+    back_mid = band - 0.8
+    depth = 8.6 - curve * 1.6
+    front_mid = band + depth
+    # The crown's sides come down to the bill's ends, so no forehead shows
+    # between them when the bill curves down
+    side_bottom = max(band + 3, ends + 0.6)
+    back_c = 2 * back_mid - ends  # quadratic control points from midpoints
+    front_c = 2 * front_mid - ends
+
+    # The bill's shadow on the forehead
+    o.append(
+        f'<path d="M{_n(L)} {_n(ends)} Q{cx} {_n(front_c)} {_n(R)} {_n(ends)} '
+        f'L{_n(R)} {_n(ends + 3.5)} Q{cx} {_n(front_c + 4.5)} {_n(L)} {_n(ends + 3.5)} Z" '
+        f'fill="#000" opacity=".2"/>'
+    )
+    # Crown: nearly straight sides down to the temples, a low round top
+    o.append(
+        f'<path d="M{_n(cx - cw)} {_n(side_bottom)} C{_n(cx - cw - 0.4)} {_n(band - height * 0.62)} '
+        f"{_n(cx - cw * 0.62)} {_n(top)} {cx} {_n(top)} "
+        f"C{_n(cx + cw * 0.62)} {_n(top)} {_n(cx + cw + 0.4)} {_n(band - height * 0.62)} "
+        f'{_n(cx + cw)} {_n(side_bottom)} Z" fill="{cap.crown}"/>'
+    )
+    # Panel seams: the center one and the two between front and side panels
+    o.append(
+        f'<path d="M{cx} {_n(top + 0.6)} L{cx} {_n(band)} '
+        f"M{_n(cx - cw * 0.12)} {_n(top + 0.8)} Q{_n(cx - cw * 0.66)} {_n(top + height * 0.3)} {_n(cx - cw * 0.74)} {_n(band + 1)} "
+        f'M{_n(cx + cw * 0.12)} {_n(top + 0.8)} Q{_n(cx + cw * 0.66)} {_n(top + height * 0.3)} {_n(cx + cw * 0.74)} {_n(band + 1)}" '
+        f'fill="none" stroke="{cap.seam}" stroke-width=".7" opacity=".85"/>'
+    )
+    # Light from the left: the right side panel in shadow
+    o.append(
+        f'<path d="M{_n(cx + cw * 0.12)} {_n(top + 0.8)} Q{_n(cx + cw * 0.66)} {_n(top + height * 0.3)} {_n(cx + cw * 0.74)} {_n(band + 1)} '
+        f"L{_n(cx + cw)} {_n(side_bottom)} C{_n(cx + cw + 0.4)} {_n(band - height * 0.62)} "
+        f'{_n(cx + cw * 0.62)} {_n(top)} {cx} {_n(top)} Z" fill="#000" opacity=".14"/>'
+    )
+    o.append(
+        f'<ellipse cx="{cx}" cy="{_n(top + 0.3)}" rx="2.4" ry="1.2" fill="{cap.button}"/>'
+    )
+    o.append(_cap_logo(cap, cx, top, band, cw))
+    # The bill: top surface, a stitched band, and the darker front lip
+    o.append(
+        f'<path d="M{_n(cx - bw)} {_n(ends)} Q{cx} {_n(back_c)} {_n(cx + bw)} {_n(ends)} '
+        f'Q{cx} {_n(front_c)} {_n(cx - bw)} {_n(ends)} Z" fill="{cap.brim}"/>'
+    )
+    for share in (0.35, 0.55):
+        s_mid = back_mid + (front_mid - back_mid) * share
+        o.append(
+            f'<path d="M{_n(cx - bw * 0.86)} {_n(ends - 0.2)} Q{cx} {_n(2 * s_mid - ends)} {_n(cx + bw * 0.86)} {_n(ends - 0.2)}" '
+            f'fill="none" stroke="{shade(cap.brim, 0.28)}" stroke-width=".35" stroke-dasharray=".9 .7" opacity=".9"/>'
+        )
+    o.append(
+        f'<path d="M{_n(cx - bw)} {_n(ends)} Q{cx} {_n(front_c)} {_n(cx + bw)} {_n(ends)}" '
+        f'fill="none" stroke="{cap.brim_edge}" stroke-width="1.1" opacity=".85"/>'
+    )
+    # A glint along the bill's top
+    o.append(
+        f'<path d="M{_n(cx - bw * 0.55)} {_n(back_mid + 1.6)} Q{_n(cx - bw * 0.2)} {_n(back_mid + 0.9)} {_n(cx + bw * 0.1)} {_n(back_mid + 1.1)}" '
+        f'fill="none" stroke="#fff" stroke-width=".7" stroke-linecap="round" opacity=".18"/>'
+    )
+    return "".join(o)
+
+
+def _cap_logo(cap: Cap, cx, top, band, cw) -> str:
+    # The logo sits on the two front panels, above the bill
+    area_w = cw * 1.05
+    area_h = (band - top) * 0.66
+    cy = top + (band - top) * 0.5
     if cap.logo and cap.logo_box:
         bx, by, bw, bh = cap.logo_box
-        s = min(LOGO_W / max(bw, 1), LOGO_H / max(bh, 1), LOGO_MAX_SCALE)
+        s = min(area_w / max(bw, 1), area_h / max(bh, 1), LOGO_MAX_SCALE)
         tx = cx - (bx + bw / 2) * s
-        ty = LOGO_CY - (by + bh / 2) * s
+        ty = cy - (by + bh / 2) * s
         return (
             f'<g transform="translate({_n(tx)} {_n(ty)}) scale({s:.4f})">{cap.logo}</g>'
         )
     if cap.code:
-        size = 9.5 if len(cap.code) >= 3 else 12
+        size = min(area_h * 0.95, 9 if len(cap.code) >= 3 else 11)
         ink = readable_ink(cap.crown, cap.brim_edge)
         return (
-            f'<text x="{cx}" y="38.5" text-anchor="middle" '
+            f'<text x="{cx}" y="{_n(cy + size * 0.36)}" text-anchor="middle" '
             f"font-family=\"'Big Shoulders Display','Arial Narrow',sans-serif\" "
-            f'font-weight="900" font-size="{size}" fill="{ink}">{escape(cap.code)}</text>'
+            f'font-weight="900" font-size="{_n(size)}" fill="{ink}">{escape(cap.code)}</text>'
         )
     return ""
 

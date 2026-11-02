@@ -26,6 +26,7 @@ router = APIRouter(tags=["web"])
 
 # The controls, grouped as on the page
 GROUPS = (
+    ("Cap", ("cap_height", "brim_curve")),
     ("Skin & hair", ("skin", "hair", "long_hair", "sideburns", "gray_rate")),
     ("Head", ("face_width", "face_length", "chin", "ears", "neck")),
     (
@@ -33,7 +34,8 @@ GROUPS = (
         ("eyes", "eye_spacing", "eye_height", "eye_width", "eye_open", "eye_black"),
     ),
     ("Brows", ("brow_thickness", "brow_tilt", "brow_gap")),
-    ("Nose & mouth", ("nose_width", "nose_length", "mouth", "mouth_width", "lips")),
+    ("Nose", ("nose", "nose_width", "nose_length")),
+    ("Mouth", ("mouth", "mouth_width", "lips")),
     ("Facial hair", ("facial_hair",)),
     ("Mole", ("mole", "mole_x", "mole_y")),
 )
