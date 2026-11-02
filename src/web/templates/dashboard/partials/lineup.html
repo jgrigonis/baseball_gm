@@ -65,6 +65,17 @@
           Save Batting
         </button>
       </div>
+      <div id="bat-unsaved-banner"
+           style="display:none;margin:6px 0 0;padding:6px 12px;
+                  background:var(--amber-lo);border:1px solid var(--amber);
+                  font-family:var(--font-mono);font-size:11px;color:var(--amber);
+                  align-items:center;gap:10px;">
+        <span id="bat-unsaved-text">⚠ Batting order not saved</span>
+        <button class="btn btn-secondary" onclick="saveBatting()"
+                style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
+          Save now
+        </button>
+      </div>
       <div class="lu-col-body">
         <div id="vs-hand-note" style="display:none;padding:8px 14px 0;font-family:var(--font-mono);
              font-size:11px;color:var(--text-dim);"></div>
@@ -496,6 +507,15 @@ let lineup = lineups.R;
 // Which hands have a lineup saved on the server. With only one, games against
 // either hand use it.
 const savedHands = { R: false, L: false };
+// Each hand's lineup as last saved (or loaded from the server), to tell when
+// the one on screen has unsaved changes.
+const savedLineupKey = { R: '', L: '' };
+function lineupKey(l) {
+  return l.map(s => s ? `${s.player_id}:${s.position || ''}` : '').join(',');
+}
+function unsavedHands() {
+  return ['R', 'L'].filter(h => lineupKey(lineups[h]) !== savedLineupKey[h]);
+}
 
 /* ── Pitching state ─────────────────────────────────────────────────────────── */
 let rotation   = [];    // (player_id | null)[]  — nulls are drag zones
@@ -806,6 +826,24 @@ function updateSaveBattingBtn() {
   const { hands, reason } = battingSaveStatus();
   btn.disabled = !hands.length;
   btn.title = reason || 'Save your vs RHP and vs LHP lineups';
+  updateBattingBanner();
+}
+
+// Every batting change ends in updateSaveBattingBtn, so the banner follows
+// the lineups themselves rather than a flag each action has to set.
+function updateBattingBanner() {
+  const banner = document.getElementById('bat-unsaved-banner');
+  if (!banner) return;
+  const dirty = unsavedHands();
+  if (dirty.length) battingSaved = false;
+  banner.style.display = dirty.length ? 'flex' : 'none';
+  const text = document.getElementById('bat-unsaved-text');
+  if (text) {
+    text.textContent = dirty.length === 2
+      ? '⚠ vs RHP and vs LHP lineups not saved'
+      : dirty.length ? `⚠ vs ${HAND_LABEL[dirty[0]]} lineup not saved` : '';
+  }
+  updateScheduleBtn();
 }
 
 function clearLineup() {
@@ -993,6 +1031,7 @@ async function saveBatting() {
       const err = await _saveHand(h);
       if (err) { errors.push(err); continue; }
       savedHands[h] = true;
+      savedLineupKey[h] = lineupKey(lineups[h]);
       // Clear the stored copy so the next page load reads fresh from the server
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -1645,6 +1684,7 @@ const knownAll = new Set([...knownHitterIds, ...knownPitcherIds]);
     lineups[other].forEach((s, i) => { lineups[hand][i] = s ? { ...s } : null; });
   }
 });
+['R', 'L'].forEach(hand => { savedLineupKey[hand] = lineupKey(lineups[hand]); });
 
 // Pitching: load saved rotation only — no auto-fill on first visit
 SAVED_ROT.filter(pid => knownPitcherIds.has(pid)).forEach(pid => rotation.push(pid));
