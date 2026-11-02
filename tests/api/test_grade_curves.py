@@ -21,7 +21,7 @@ def test_cutoffs_cover_a_plus_to_d_minus_in_order(kind):
 def test_each_cutoff_starts_its_grade(kind):
     for cut, grade, below in zip(OVERALL_CUTOFFS[kind], GRADES, GRADES[1:]):
         assert overall_to_grade(cut, kind) == grade
-        assert overall_to_grade(cut - 1, kind) == below
+        assert overall_to_grade(cut - 0.05, kind) == below
 
 
 def test_bottom_and_missing():

@@ -27,6 +27,8 @@
   .wl-area { display:grid; grid-template-columns:76px 1fr 34px 78px; gap:10px; align-items:center;
              padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
   .wl-area:last-of-type { border-bottom:none; }
+  .wl-area-sub { font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+                 color:var(--text-dim); padding:12px 0 2px; }
   .wl-bar { height:8px; background:var(--tile); border-radius:4px; overflow:hidden; }
   .wl-bar span { display:block; height:100%; background:var(--amber); }
   .wl-rank { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); text-align:right; }
@@ -127,6 +129,9 @@
     <div class="card-header"><span class="card-title">Scouting report</span></div>
     <div class="card-body">
       {% for a in w.report.areas %}
+      {% if a.style and not loop.previtem.style %}
+      <div class="wl-area-sub">Starting 9</div>
+      {% endif %}
       <div class="wl-area" title="Ranked on the {{ a.basis }}">
         <span>{{ a.label }}</span>
         <div class="wl-bar"><span style="width:{{ a.bar }}%;"></span></div>

@@ -37,6 +37,12 @@ AREAS = (
     ("bullpen", "Bullpen", "top 7 relievers"),
     ("defense", "Defense", "top 9 hitters' best position"),
 )
+# Shown with the areas, but they say how a lineup plays, not how good it is,
+# so the verdict and the favorites leave them out.
+STYLE_AREAS = (
+    ("power", "Power", "starting 9's average power"),
+    ("speed", "Speed", "starting 9's average speed"),
+)
 
 HITTER_SKILLS = (
     ("contact", "Contact"),
@@ -109,11 +115,14 @@ def area_scores(
     pitchers = [(p, r) for p, r in players if p.is_pitcher()]
     groups = staff_groups(pitchers, staff)
     pitchers = [(r, groups[p.id]) for p, r in pitchers]
+    starters = best_hitters[:9]
     return {
         "lineup": _avg_top([r["overall_offense"] for _, r in hitters], 9),
         "rotation": _avg_top([r["sp"] for r, g in pitchers if g == "sp"], 5),
         "bullpen": _avg_top([r["rp"] for r, g in pitchers if g == "rp"], 7),
-        "defense": _avg_top([r["defensive_value"] for _, r in best_hitters[:9]], 9),
+        "defense": _avg_top([r["defensive_value"] for _, r in starters], 9),
+        "power": _avg_top([p.skills["power"] for p, _ in starters], 9),
+        "speed": _avg_top([p.skills["speed"] for p, _ in starters], 9),
     }
 
 
@@ -122,7 +131,7 @@ def scouting_report(team_id: str, scores: dict[str, dict[str, float]]) -> dict:
     n = len(scores)
     mine = scores[team_id]
     areas = []
-    for key, label, basis in AREAS:
+    for key, label, basis in AREAS + STYLE_AREAS:
         value = mine[key]
         rank = 1 + sum(1 for s in scores.values() if s[key] > value)
         areas.append(
@@ -132,12 +141,14 @@ def scouting_report(team_id: str, scores: dict[str, dict[str, float]]) -> dict:
                 "basis": basis,
                 "rank": rank,
                 "rank_text": f"{ordinal(rank)} of {n}",
-                "grade": skill_to_grade(round(value)),
+                "grade": overall_to_grade(value, f"team_{key}"),
+                "style": (key, label, basis) in STYLE_AREAS,
                 # Bars run from the league's worst (short) to its best (full).
                 "bar": 100 if n == 1 else round(100 - 85 * (rank - 1) / (n - 1)),
             }
         )
-    return {"areas": areas, "verdict": verdict(areas, n)}
+    core = [a for a in areas if not a["style"]]
+    return {"areas": areas, "verdict": verdict(core, n)}
 
 
 def verdict(areas: list[dict], n: int) -> str:
@@ -160,7 +171,9 @@ def favorites(team_id: str, scores: dict, gms: list[dict], n: int = 3) -> list[d
     """The other teams with the best rosters on paper, with their GMs."""
     by_team = {g["team_id"]: g for g in gms}
     strength = {
-        tid: sum(s.values()) / len(s) for tid, s in scores.items() if tid != team_id
+        tid: sum(s[key] for key, _, _ in AREAS) / len(AREAS)
+        for tid, s in scores.items()
+        if tid != team_id
     }
     best = sorted(strength, key=strength.get, reverse=True)
     return [by_team[tid] for tid in best if tid in by_team][:n]
