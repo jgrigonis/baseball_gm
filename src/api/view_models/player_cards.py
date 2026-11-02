@@ -53,12 +53,17 @@ def compute_ratings(skills: dict, throws: str) -> dict:
     return ratings
 
 
+# Statuses graded on the prospect rating and curve. Free agents are pros, so
+# they are graded on the pro scale like rostered players.
+PROSPECT_STATUSES = ("prospect", "unassigned")
+
+
 def overall_value(status: str, grades, ratings: dict) -> float | None:
     """The number behind overall_grade, or None when it falls back to
     grades.overall."""
     if not ratings:
         return None
-    if status in ("prospect", "unassigned", "free_agent"):
+    if status in PROSPECT_STATUSES:
         return ratings.get("prospect")
     if grades.player_type == "pitcher":
         # Pitchers: best of SP/RP rating — overall_player is offense-based and useless
@@ -68,7 +73,7 @@ def overall_value(status: str, grades, ratings: dict) -> float | None:
 
 def overall_kind(status: str, grades) -> str:
     """Which curve overall_value is graded on (src/api/grade_curves.py)."""
-    if status in ("prospect", "unassigned", "free_agent"):
+    if status in PROSPECT_STATUSES:
         return "prospect"
     return "pitcher" if grades.player_type == "pitcher" else "hitter"
 

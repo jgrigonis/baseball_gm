@@ -37,3 +37,16 @@ def test_a_draft_class_spreads_across_the_grades():
     assert share["A-"] + share["A"] + share["A+"] > 0.005
     assert share["D+"] + share["D"] + share["D-"] + share["F"] > 0.10
     assert max(share.values()) < 0.25
+
+
+def test_free_agents_are_graded_on_the_pro_scale():
+    from types import SimpleNamespace
+
+    from src.api.view_models.player_cards import overall_kind, overall_value
+
+    hitter = SimpleNamespace(player_type="hitter")
+    ratings = {"prospect": 70, "overall_player": 55}
+    assert overall_kind("free_agent", hitter) == "hitter"
+    assert overall_value("free_agent", hitter, ratings) == 55
+    assert overall_kind("prospect", hitter) == "prospect"
+    assert overall_value("prospect", hitter, ratings) == 70
