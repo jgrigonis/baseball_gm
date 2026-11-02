@@ -380,11 +380,11 @@ class TestSettings:
 
         r = client.post(
             f"/admin/leagues/{league.id}/settings",
-            data=_settings_form(backstory_years="11"),
+            data=_settings_form(backstory_years="16"),
         )
 
         assert r.status_code == 400
-        assert "between 0 and 10" in r.text
+        assert "between 0 and 15" in r.text
 
     def test_changes_commissioner(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory)

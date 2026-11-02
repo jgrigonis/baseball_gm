@@ -33,6 +33,7 @@ from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.league import divisions
+from src.league.league_constants import DEFAULT_BACKSTORY_YEARS, MAX_BACKSTORY_YEARS
 from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
 from src.web.utils import _shell_ctx, tab_response, templates
 
@@ -137,6 +138,8 @@ def new_league_page(request: Request):
             "modes": [BLITZ, SPEED_BLITZ],
             "team_counts": divisions.TEAM_COUNTS,
             "default_team_count": divisions.DEFAULT_TEAM_COUNT,
+            "default_backstory_years": DEFAULT_BACKSTORY_YEARS,
+            "max_backstory_years": MAX_BACKSTORY_YEARS,
         },
     )
 
@@ -161,6 +164,7 @@ def new_league(
     injuries_enabled: bool | None = Form(None),
     num_teams: int = Form(divisions.DEFAULT_TEAM_COUNT),
     weighted_schedule: bool = Form(True),
+    backstory_years: int = Form(DEFAULT_BACKSTORY_YEARS),
 ):
     get_mode(mode)  # rejects an unknown mode
     if num_teams not in divisions.TEAM_COUNTS:
@@ -171,6 +175,10 @@ def new_league(
         raise ValueError("Days per sim period must be between 1 and 30.")
     if not 1 <= num_seasons <= 420:
         raise ValueError("Number of seasons must be between 1 and 420.")
+    if not 0 <= backstory_years <= MAX_BACKSTORY_YEARS:
+        raise ValueError(
+            f"Years of history must be between 0 and {MAX_BACKSTORY_YEARS}."
+        )
 
     league_id = str(uuid.uuid4())
     # gm_id = str(uuid.uuid4())
@@ -199,6 +207,7 @@ def new_league(
             "pick_trades": pick_trades,
             "num_teams": num_teams,
             "weighted_schedule": weighted_schedule,
+            "backstory_years": backstory_years,
             # Left out (an old form or a script), the mode's default.
             "injuries_enabled": (
                 get_mode(mode).injuries_default

@@ -31,46 +31,9 @@
       <span class="mode-note" id="num-teams-note">Two leagues, each split into divisions. With 30 teams it's the Atlantic and Pacific Leagues, three divisions each, by geography. Any other size draws the teams into two leagues of two divisions at random.</span>
     </div>
     <div class="field">
-      <label for="weighted-schedule">Weighted Schedule</label>
-      <input type="hidden" name="weighted_schedule" value="false">
-      <label class="toggle-row">
-        <input type="checkbox" name="weighted_schedule" id="weighted-schedule" value="true" checked>
-        <span>Play division rivals more often, the other league less</span>
-      </label>
-      <span class="mode-note">Off: every team plays every other team about the same number of times. Still 162 games either way.</span>
-    </div>
-    <div class="field">
-      <label>Days per Sim Period</label>
-      <input name="sim_period_days" type="number" value="3" min="1" max="30">
-    </div>
-    <div class="field">
       <label>Number of Seasons</label>
       <input name="num_seasons" type="number" value="10" min="1" max="420"
              title="How many seasons the league runs">
-    </div>
-    <div class="field">
-      <label>Pace (multiplayer)</label>
-      <select name="pace_control" id="pace-control">
-        <option value="timer">Timer: when everyone is ready or the window runs out</option>
-        <option value="confirmed">Confirmed: only when everyone is ready</option>
-        <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
-      </select>
-    </div>
-    <div class="field timer-only">
-      <label>Decision Window (sec)</label>
-      <input name="decision_window_sec" type="number" value="120" min="30" max="600">
-      <span class="timer-only-note">Only used with Timer pace</span>
-    </div>
-    <div class="field timer-only">
-      <label>Draft Window (sec)</label>
-      <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
-      <span class="timer-only-note">Only used with Timer pace</span>
-    </div>
-    <div class="field timer-only">
-      <label>Lineup Window (sec)</label>
-      <input name="lineup_window_sec" type="number" value="600" min="60" max="3600"
-             title="Time to set up your first lineup after the draft, and for an All-Star or Rookie Game captain to make their picks">
-      <span class="timer-only-note">Only used with Timer pace</span>
     </div>
     <div class="field">
       <label for="is-public">Public League</label>
@@ -80,31 +43,79 @@
       </label>
       <span class="mode-note">Off: only people with the join code can find it.</span>
     </div>
-    <div class="field">
-      <label for="injuries-enabled">Injuries</label>
-      <input type="hidden" name="injuries_enabled" value="false">
-      <label class="toggle-row">
-        <input type="checkbox" name="injuries_enabled" id="injuries-enabled" value="true" checked>
-        <span>Players can get hurt and miss games</span>
-      </label>
-      <span class="mode-note">On by default, except in Speed Blitz. Changing the mode resets it unless you've set it yourself.</span>
-    </div>
-    <div class="field" id="trade-vote-field">
-      <label for="trade-vote">Trade Vote</label>
-      <label class="toggle-row">
-        <input type="checkbox" name="trade_vote" id="trade-vote" value="true" checked>
-        <span>Other GMs vote on every trade between two GMs</span>
-      </label>
-      <span class="mode-note">A trade needs yes votes from more than half of them, and a GM who doesn't vote counts as a no. With only two GMs, trades go straight through.</span>
-    </div>
-    <div class="field" id="pick-trades-field">
-      <label for="pick-trades">Draft Pick Trades</label>
-      <label class="toggle-row">
-        <input type="checkbox" name="pick_trades" id="pick-trades" value="true">
-        <span>Teams can trade draft picks as well as players</span>
-      </label>
-      <span class="mode-note">Picks in the first five rounds of the next draft. MLB doesn't allow it, so it's off unless you turn it on.</span>
-    </div>
+    <details class="advanced-settings">
+      <summary>Advanced settings</summary>
+      <div class="advanced-body">
+        <div class="field">
+          <label for="backstory-years">Years of History</label>
+          <input name="backstory_years" id="backstory-years" type="number"
+                 value="{{ default_backstory_years }}" min="0" max="{{ max_backstory_years }}">
+          <span class="mode-note">Past seasons simulated when the league starts, so it opens with standings, champions and player stats already on the books. 0 starts fresh, with a random first draft order. Each year adds a little to the start time.</span>
+        </div>
+        <div class="field">
+          <label for="weighted-schedule">Weighted Schedule</label>
+          <input type="hidden" name="weighted_schedule" value="false">
+          <label class="toggle-row">
+            <input type="checkbox" name="weighted_schedule" id="weighted-schedule" value="true">
+            <span>Play division rivals more often, the other league less</span>
+          </label>
+          <span class="mode-note">Off: every team plays every other team about the same number of times. Still 162 games either way.</span>
+        </div>
+        <div class="field">
+          <label>Days per Sim Period</label>
+          <input name="sim_period_days" type="number" value="3" min="1" max="30">
+        </div>
+        <div class="field">
+          <label>Pace (multiplayer)</label>
+          <select name="pace_control" id="pace-control">
+            <option value="timer">Timer: when everyone is ready or the window runs out</option>
+            <option value="confirmed">Confirmed: only when everyone is ready</option>
+            <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
+          </select>
+        </div>
+        <div class="field timer-only">
+          <label>Decision Window (sec)</label>
+          <input name="decision_window_sec" type="number" value="120" min="30" max="600">
+          <span class="timer-only-note">Only used with Timer pace</span>
+        </div>
+        <div class="field timer-only">
+          <label>Draft Window (sec)</label>
+          <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
+          <span class="timer-only-note">Only used with Timer pace</span>
+        </div>
+        <div class="field timer-only">
+          <label>Lineup Window (sec)</label>
+          <input name="lineup_window_sec" type="number" value="600" min="60" max="3600"
+                 title="Time to set up your first lineup after the draft, and for an All-Star or Rookie Game captain to make their picks">
+          <span class="timer-only-note">Only used with Timer pace</span>
+        </div>
+        <div class="field">
+          <label for="injuries-enabled">Injuries</label>
+          <input type="hidden" name="injuries_enabled" value="false">
+          <label class="toggle-row">
+            <input type="checkbox" name="injuries_enabled" id="injuries-enabled" value="true" checked>
+            <span>Players can get hurt and miss games</span>
+          </label>
+          <span class="mode-note">On by default, except in Speed Blitz. Changing the mode resets it unless you've set it yourself.</span>
+        </div>
+        <div class="field" id="trade-vote-field">
+          <label for="trade-vote">Trade Vote</label>
+          <label class="toggle-row">
+            <input type="checkbox" name="trade_vote" id="trade-vote" value="true" checked>
+            <span>Other GMs vote on every trade between two GMs</span>
+          </label>
+          <span class="mode-note">A trade needs yes votes from more than half of them, and a GM who doesn't vote counts as a no. With only two GMs, trades go straight through.</span>
+        </div>
+        <div class="field" id="pick-trades-field">
+          <label for="pick-trades">Draft Pick Trades</label>
+          <label class="toggle-row">
+            <input type="checkbox" name="pick_trades" id="pick-trades" value="true">
+            <span>Teams can trade draft picks as well as players</span>
+          </label>
+          <span class="mode-note">Picks in the first five rounds of the next draft. MLB doesn't allow it, so it's off unless you turn it on.</span>
+        </div>
+      </div>
+    </details>
     <div style="display:flex;gap:8px;">
       <button type="submit" class="btn btn-primary">Create League →</button>
       <a href="/leagues/" class="btn btn-secondary">Cancel</a>
@@ -116,6 +127,11 @@
   text-transform: none !important; letter-spacing: 0 !important; font-size: 12px !important; color: var(--text) !important; }
 .toggle-row input { width: auto; accent-color: var(--amber); }
 .mode-note { font-size: 11px; color: var(--text-dim); font-style: italic; }
+.advanced-settings > summary { cursor: pointer; user-select: none; font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+.advanced-settings > summary:hover { color: var(--text); }
+.advanced-body { display: flex; flex-direction: column; gap: 16px; margin-top: 16px;
+  padding-left: 12px; border-left: 2px solid var(--border); }
 .timer-only-note { display: none; font-size: 11px; color: var(--text-dim); font-style: italic; }
 .field-disabled .timer-only-note { display: block; }
 .field-disabled label { opacity: 0.45; }
