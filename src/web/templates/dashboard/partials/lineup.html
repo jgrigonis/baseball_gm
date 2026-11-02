@@ -372,8 +372,6 @@
 .lu-name   { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
 .lu-skills { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
 .lu-skills .gl { color: var(--muted); margin-right: 1px; }
-/* With the flex gap on both sides, an empty span spaces SPD and ARM a bit wider. */
-.lu-skills .lu-gap { width: 0; }
 /* Stats, B/T and age after the name, on the same line */
 .lu-trail { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-dim); }
 .lu-trail .lu-dot { margin: 0 1px; }
@@ -528,11 +526,11 @@ function skillVal(p, key) { return gradeVal(p[key] || null); }
 
 function _battingSlotGrades(isHitter, p, assignedPos) {
   if (!isHitter) return '<div class="lu-skills">' + pitcherGradesHtml(p) + '</div>';
-  return '<div class="lu-skills">' + hitterGradesHtml(p, assignedPos) + '</div>';
+  return hitterGradesHtml(p, assignedPos);
 }
 
 function hitterGradesHtml(p, assignedPos) {
-  // One line: hitting grades, a small gap, then arm and fielding grades
+  // Two lines: hitting grades, then arm and fielding grades
   const hitPairs = [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
   const defPairs = [
     ['ARM',p.arm],
@@ -550,8 +548,8 @@ function hitterGradesHtml(p, assignedPos) {
         ? `<span><span class="gl">${k}</span><span class="${gradeClass(v)}" style="color:var(--sky);font-weight:700;">${v}</span></span>`
         : `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`;
     }).join('');
-  const sep = hitHtml && defHtml ? '<span class="lu-gap"></span>' : '';
-  return hitHtml + sep + defHtml;
+  return [hitHtml, defHtml].filter(Boolean)
+    .map(h => `<div class="lu-skills">${h}</div>`).join('');
 }
 
 function pitcherGradesHtml(p) {
@@ -871,7 +869,7 @@ function renderRoster() {
         <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`])}
           ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}
         </div>
-        <div class="lu-skills">${hitterGradesHtml(p, null)}</div>
+        ${hitterGradesHtml(p, null)}
       </div>
       <button class="lu-add-btn" title="Add to lineup"
               onclick="event.stopPropagation();addToLineup('${p.player_id}')"
