@@ -34,8 +34,10 @@
    else "Confirmed: the league only moves on when every GM clicks Ready. There's no clock."),
   ("Days per sim period", info.sim_period_days,
    "How many days of the regular season each sim period plays before GMs get their next decision window."),
-  ("Seasons", (info.season_number ~ " of " ~ info.num_seasons) if started and info.season_number else info.num_seasons,
-   "Which season the league is in, out of how many it runs before it ends." if started and info.season_number
+  ("Seasons", (info.season_number ~ " of " ~ (info.num_seasons or "∞")) if started and info.season_number
+   else (info.num_seasons or "Unlimited"),
+   "Unlimited: the league keeps going, season after season, with no last one." if not info.num_seasons
+   else "Which season the league is in, out of how many it runs before it ends." if started and info.season_number
    else "How many seasons the league runs before it ends."),
 ] %}
 {% set settings = settings + [

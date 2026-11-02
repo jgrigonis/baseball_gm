@@ -25,6 +25,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.league.league_constants import is_last_season
 from src.league.offseason.build_season_stats import build_season
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
 from src.league.playoffs.play_playoffs import (
@@ -191,7 +192,7 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
     """The Finals are decided. On to the offseason, unless that was the
     league's last season: then the league is complete, and read-only."""
     lr = LeagueRepository(conn)
-    if lr.count_seasons(league["id"]) >= league["num_seasons"]:
+    if is_last_season(league["num_seasons"], lr.count_seasons(league["id"])):
         OffseasonPipeline(conn).run_final(season_id, league["id"])
         lr.set_state(league["id"], "complete")
     else:

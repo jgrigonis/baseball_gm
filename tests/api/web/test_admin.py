@@ -12,6 +12,8 @@ import argparse
 import uuid
 
 import pytest
+
+from src.db.repositories.league_repo import LeagueRepository
 from fastapi.testclient import TestClient
 
 from scripts import cligr
@@ -374,6 +376,40 @@ class TestSettings:
             ).fetchone()["backstory_years"]
             == 8
         )
+
+    def test_seasons_can_be_unlimited_but_not_over_60(
+        self, client, db_conn, factory, admin
+    ):
+        league = _league(db_conn, factory, state="lobby")
+
+        r = client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(num_seasons="61"),
+        )
+        assert r.status_code == 400
+
+        client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(num_seasons="0"),
+        )
+        assert LeagueRepository(db_conn).get_by_id(league.id)["num_seasons"] == 0
+
+    def test_a_league_from_before_the_cap_keeps_its_seasons(
+        self, client, db_conn, factory, admin
+    ):
+        league = _league(db_conn, factory, state="lobby")
+        db_conn.execute(
+            "UPDATE leagues SET num_seasons = 100 WHERE id = %s", (league.id,)
+        )
+
+        r = client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(num_seasons="100", name="Still 100"),
+        )
+
+        assert r.status_code != 400
+        row = LeagueRepository(db_conn).get_by_id(league.id)
+        assert (row["name"], row["num_seasons"]) == ("Still 100", 100)
 
     def test_years_of_history_stay_in_range(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory, state="lobby")

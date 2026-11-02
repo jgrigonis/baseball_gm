@@ -80,7 +80,7 @@
       {% set li = league_info %}
       <details class="league-info" id="league-info">
         <summary class="topbar-state state-{{ league_state }}" title="League settings">
-          {{ league_state }}{% if li.season_number and league_state != "complete" %} <span class="num-tile lit">{{ li.season_number }}</span><span class="plate-of">of</span><span class="num-tile">{{ li.num_seasons }}</span>{% endif %} ▾
+          {{ league_state }}{% if li.season_number and league_state != "complete" %} <span class="num-tile lit">{{ li.season_number }}</span><span class="plate-of">of</span><span class="num-tile">{{ li.num_seasons or "∞" }}</span>{% endif %} ▾
         </summary>
         <div class="league-info-panel">
           <table class="data-table">

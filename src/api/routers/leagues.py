@@ -33,7 +33,12 @@ from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.league import divisions
-from src.league.league_constants import DEFAULT_BACKSTORY_YEARS, MAX_BACKSTORY_YEARS
+from src.league.league_constants import (
+    DEFAULT_BACKSTORY_YEARS,
+    MAX_BACKSTORY_YEARS,
+    MAX_SEASONS,
+    UNLIMITED_SEASONS,
+)
 from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
 from src.web.utils import _shell_ctx, tab_response, templates
 
@@ -140,6 +145,8 @@ def new_league_page(request: Request):
             "default_team_count": divisions.DEFAULT_TEAM_COUNT,
             "default_backstory_years": DEFAULT_BACKSTORY_YEARS,
             "max_backstory_years": MAX_BACKSTORY_YEARS,
+            # The seasons slider runs 1..MAX_SEASONS, then unlimited (0).
+            "season_choices": [*range(1, MAX_SEASONS + 1), UNLIMITED_SEASONS],
         },
     )
 
@@ -174,8 +181,10 @@ def new_league(
         raise ValueError(f"Unknown pace '{pace_control}'.")
     if not 1 <= sim_period_days <= 30:
         raise ValueError("Days per sim period must be between 1 and 30.")
-    if not 1 <= num_seasons <= 420:
-        raise ValueError("Number of seasons must be between 1 and 420.")
+    if not UNLIMITED_SEASONS <= num_seasons <= MAX_SEASONS:
+        raise ValueError(
+            f"Number of seasons must be between 1 and {MAX_SEASONS}, or unlimited."
+        )
     if not 0 <= backstory_years <= MAX_BACKSTORY_YEARS:
         raise ValueError(
             f"Years of history must be between 0 and {MAX_BACKSTORY_YEARS}."

@@ -21,7 +21,11 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.user_repo import UserRepository
-from src.league.league_constants import MAX_BACKSTORY_YEARS
+from src.league.league_constants import (
+    MAX_BACKSTORY_YEARS,
+    MAX_SEASONS,
+    UNLIMITED_SEASONS,
+)
 from src.league.league_modes import BLITZ, SPEED_BLITZ
 
 # The modes and paces a league can be set to (the others aren't built yet).
@@ -31,7 +35,7 @@ PACES = ("timer", "confirmed")
 # (min, max) for each number setting, matching the create-league form.
 NUMBER_RANGES = {
     "sim_period_days": (1, 30),
-    "num_seasons": (1, 420),
+    "num_seasons": (UNLIMITED_SEASONS, MAX_SEASONS),  # 0: unlimited
     "decision_window_sec": (30, 600),
     "draft_window_sec": (60, 1800),
     "lineup_window_sec": (60, 3600),
@@ -71,6 +75,9 @@ def settings_error(league: dict, settings: dict, season_count: int) -> str | Non
     if settings["pace_control"] not in PACES:
         return f"Unknown pace '{settings['pace_control']}'."
     for key, (low, high) in NUMBER_RANGES.items():
+        # A value from before the range narrowed (e.g. 100 seasons) can stay.
+        if settings[key] == league.get(key):
+            continue
         if not low <= settings[key] <= high:
             return f"{NUMBER_LABELS[key]} must be between {low} and {high}."
     if (
@@ -78,7 +85,7 @@ def settings_error(league: dict, settings: dict, season_count: int) -> str | Non
         and league["state"] != "lobby"
     ):
         return "The years of history can only change before the league starts."
-    if settings["num_seasons"] < season_count:
+    if UNLIMITED_SEASONS < settings["num_seasons"] < season_count:
         return f"The league has already started season {season_count}."
     return None
 
