@@ -56,7 +56,9 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
     }
     assert b == {
         "new_injuries": [],
-        "returned": [{"name": "Bob ", "is_pitcher": False, "on_40man": False}],
+        "returned": [
+            {"name": "Bob ", "length": 3, "is_pitcher": False, "on_40man": False}
+        ],
         "roster_moves": [],
         "trades": [],
     }

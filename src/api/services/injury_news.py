@@ -52,6 +52,8 @@ class InjuryNews:
                         "returned",
                         {
                             "name": v["name"],
+                            # How long the injury was, in days
+                            "length": v["length"],
                             "is_pitcher": self._is_pitcher(pid, v),
                             "on_40man": status_repo.get_status(pid)
                             in ("26man", "40man"),

@@ -152,8 +152,9 @@ class InjuryRepository:
         return [dict(r) for r in rows]
 
     def get_active_for_team(self, team_id: str, as_of=None) -> dict[str, dict]:
-        """Return {player_id: {"name", "days", "injury_type", "position", "outs", "ab"}} for all
-        active injuries on a team. outs and ab are the player's regular-season
+        """Return {player_id: {"name", "days", "injury_type", "length", "position",
+        "outs", "ab"}} for all active injuries on a team. length is the whole
+        injury in days (days is what's left of it). outs and ab are the player's regular-season
         pitching outs and at-bats in the league's current season (0 if none)."""
         if not team_id:
             return {}
@@ -162,6 +163,7 @@ class InjuryRepository:
             """SELECT pi.player_id,
                       (pi.return_date::date - %s::date) AS days_remaining,
                       pi.injury_type,
+                      pi.games_remaining AS length,
                       p.first_name || ' ' || p.last_name as name,
                       p.position,
                       COALESCE(st.outs, 0) AS outs,
@@ -189,6 +191,7 @@ class InjuryRepository:
                 "name": r["name"],
                 "days": r["days_remaining"],
                 "injury_type": r["injury_type"],
+                "length": r["length"],
                 "position": r["position"],
                 "outs": int(r["outs"]),
                 "ab": int(r["ab"]),

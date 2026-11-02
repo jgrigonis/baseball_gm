@@ -429,10 +429,18 @@ function setInjuryNews(items) {
 }
 window.setInjuryNews = setInjuryNews;
 
+// A 1-day knock isn't worth stopping a sim that runs until an injury, and
+// neither is that player coming back the next day.
+var DAY_TO_DAY = 1;
+
 // Show the new_injuries / returned lists from a sim response or /news.
-// Returns true if there was any injury or roster news.
+// Returns true if there was news that stops a sim run until an injury:
+// any injury or return longer than a day, or a roster move.
 function showInjuryNews(d) {
   var items = [];
+  var stops = (d.new_injuries || []).some(i => i.days > DAY_TO_DAY)
+           || (d.returned || []).some(i => i.length !== DAY_TO_DAY)
+           || (d.roster_moves || []).length > 0;
   (d.new_injuries || []).forEach(function (i) {
     items.push({
       text: `🚑 ${i.name}${i.injury ? ' — ' + i.injury : ''} (${i.days}d)`,
@@ -453,8 +461,6 @@ function showInjuryNews(d) {
       dest: 'roster',
     });
   });
-  // Only injury and roster news stop a sim that runs until an injury.
-  var hadInjuryNews = items.length > 0;
   // Trade news: offers and votes pop up, answers go in the news bar. A
   // completed trade leads to the Roster tab, where the players who arrived
   // wait in the organization; other trade news to the Trades tab.
@@ -475,7 +481,7 @@ function showInjuryNews(d) {
     if (window.refreshTradeBadge) window.refreshTradeBadge();
   }
   setInjuryNews(items);  // clears if empty, shows if not
-  return hadInjuryNews;
+  return stops;
 }
 window.showInjuryNews = showInjuryNews;
 
