@@ -26,7 +26,7 @@
 
   <div class="admin-dim" style="font-size:11px;margin-bottom:20px;line-height:1.8;">
     ID {{ league.id }} · join code <span style="color:var(--amber);letter-spacing:.1em;">{{ league.join_code or '—' }}</span>
-    · {{ league.num_teams }} teams · season {{ season_number }} of {{ league.num_seasons or "∞" }}
+    · {{ league.num_teams }} teams · season {{ season_number }} of {% if league.num_seasons %}{{ league.num_seasons }}{% else %}<span class="inf">∞</span>{% endif %}
     · period {{ league.sim_period }} · created {{ (league.created_at or '')[:16] }}
     {% if league.last_played_at %}· last played {{ league.last_played_at.strftime('%b %-d, %Y %H:%M') }}{% endif %}
     {% if league.period_deadline %}· window ends {{ league.period_deadline.strftime('%b %-d %H:%M:%S') }}{% endif %}

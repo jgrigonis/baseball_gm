@@ -14,13 +14,14 @@
    their positions; the hidden input carries the choice itself. A choice of 0
    shows as ∞ (unlimited seasons). #}
 {% macro step_slider(name, id, label, choices, value, unit="", tip="") %}
+{% set INF = '<span class="inf">∞</span>' | safe %}
 {% set shown = [] %}{% for c in choices %}{% set _ = shown.append("∞" if c == 0 else c ~ unit) %}{% endfor %}
 <div class="field slider-field" data-choices='{{ choices | tojson }}' data-shown='{{ shown | tojson }}'>
   <label for="{{ id }}"{% if tip %} title="{{ tip }}"{% endif %}>{{ label }}
-    <output class="slider-value" for="{{ id }}">{{ shown[choices.index(value)] }}</output></label>
+    <output class="slider-value" for="{{ id }}">{{ shown[choices.index(value)] | replace("∞", INF) }}</output></label>
   <input type="hidden" name="{{ name }}" value="{{ value }}">
   <input type="range" id="{{ id }}" value="{{ choices.index(value) }}" min="0" max="{{ choices | length - 1 }}" step="1">
-  <span class="slider-ends"><span>{{ shown[0] }}</span><span>{{ shown[-1] }}</span></span>
+  <span class="slider-ends"><span>{{ shown[0] | replace("∞", INF) }}</span><span>{{ shown[-1] | replace("∞", INF) }}</span></span>
   {{ caller() if caller else "" }}
 </div>
 {% endmacro %}
@@ -210,7 +211,10 @@ function showSlider(field, fromRange) {
     const i = p.choices.indexOf(Number(p.hidden.value));
     if (i >= 0) p.range.value = i;
   }
-  p.out.textContent = p.shown[p.range.value];
+  const shown = p.shown[p.range.value];
+  // ∞ is drawn bigger (.inf), like everywhere else it shows.
+  if (shown === '∞') p.out.innerHTML = '<span class="inf">∞</span>';
+  else p.out.textContent = shown;
 }
 function syncSliders() {
   document.querySelectorAll('.slider-field').forEach(function (f) { showSlider(f, false); });

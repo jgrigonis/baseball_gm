@@ -1328,3 +1328,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   .news-w3 .news-headline { font-size: 22px; }
   .news-strip-day { display: block; margin-left: 0; }
 }
+
+/* Unlimited seasons' ∞, which reads too small at text size. line-height 0
+   keeps it from making its line taller. */
+.inf { font-size: 1.7em; line-height: 0; vertical-align: -0.12em; }

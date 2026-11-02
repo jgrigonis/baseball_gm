@@ -70,6 +70,7 @@
   <td style="color:var(--text-dim);">
     <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
   </td>
-  <td{% if loop.first %} class="team-name"{% endif %}>{{ value }}</td>
+  {# An unlimited league's ∞ is drawn bigger (.inf). #}
+  <td{% if loop.first %} class="team-name"{% endif %}>{{ value | replace("∞", '<span class="inf">∞</span>' | safe) }}</td>
 </tr>
 {% endfor %}

@@ -31,7 +31,7 @@
           <td class="admin-dim">{{ l.pace_control | title }}</td>
           <td class="num">{{ l.sim_period_days }}</td>
           <td class="num">{{ l.decision_window_sec }} / {{ l.draft_window_sec }} / {{ l.lineup_window_sec }}</td>
-          <td class="num">{{ l.season_number }} of {{ l.num_seasons or "∞" }}</td>
+          <td class="num">{{ l.season_number }} of {% if l.num_seasons %}{{ l.num_seasons }}{% else %}<span class="inf">∞</span>{% endif %}</td>
           <td class="num">{{ l.num_teams }}</td>
           <td class="num">{{ l.people }}</td>
           <td class="admin-dim" data-sort-value="{{ l.commissioner_name or '' }}">{% if l.commissioner_username %}<a href="/gms/{{ l.commissioner_username|urlencode }}" class="gm-link" title="GM profile">{{ l.commissioner_name or l.commissioner_username }}</a>{% else %}{{ l.commissioner_name or '—' }}{% endif %}</td>
