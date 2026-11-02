@@ -275,7 +275,18 @@ def _reason(giving, getting, state, d_now, d_future, score, days_left) -> str:
     if state in BUYERS and d_now < 0:
         return "We're in the race. This makes us worse this season."
     if state in SELLERS and d_future < 0:
-        return "We're building for later. We'd want younger talent back."
+        # Worse for the future: either nothing coming back is young, or the
+        # young players are, but not good enough to make up for what goes.
+        young = [a for a in getting if age_shift(a.age) > 0]
+        if not young:
+            return "We're building for later. We'd want younger talent back."
+        prospect = max(young, key=lambda a: a.rating)
+        if best:
+            return (
+                f"We like young players, but {prospect.name} isn't enough "
+                f"of a prospect to give up {best.name}."
+            )
+        return f"We like young players, but {prospect.name} isn't enough of a prospect."
     if len(getting) > len(giving) and d_now <= 0:
         return "That's a lot of players for not much. We'd rather have one good one."
     if score > 0 and best:
