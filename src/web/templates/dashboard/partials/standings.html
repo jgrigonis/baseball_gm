@@ -129,7 +129,7 @@
       {% set q = ("season_id=" ~ past_season.id) if past_season else "" %}
       <div class="standings-views">
         {% for key, label in [("divisions", "Divisions"), ("overall", "Overall")] %}
-        {% set href = base ~ "?" ~ q ~ ("&" if q else "") ~ ("view=overall" if key == "overall" else "") %}
+        {% set href = base ~ "?" ~ q ~ ("&" if q else "") ~ "view=" ~ key %}
         <a href="{{ href }}" hx-get="{{ href }}" hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
            class="standings-view{% if standings_view == key %} on{% endif %}">{{ label }}</a>
         {% endfor %}
