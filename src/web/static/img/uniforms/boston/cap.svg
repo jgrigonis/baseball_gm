@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Boston cap">
+  <defs>
+    <path id="light" fill-rule="evenodd" d="M24 9 Q30 0 36 9 Z M24 9 H36 V19 H24 Z M26.5 11 V17 H33.5 V11 Z M20 19 H40 V23 H20 Z M23 23 H37 L43 82 H17 Z M27.5 79 V73 Q30 70 32.5 73 V79 Z M14 82 H46 V88 H14 Z M23 12 L2 4 V21 Z M37 12 L58 4 V21 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#1C2733"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#10181F" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#10181F" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#C8302C"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#C8302C" stroke="#8F201D" stroke-width="1.5"/>
+      <g transform="translate(91 41) scale(0.82)"><use href="#light" fill="#F4B01F" stroke="#FBFAF6" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke"/></g>
+</svg>

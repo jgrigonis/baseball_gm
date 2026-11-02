@@ -49,6 +49,7 @@ class PoolTeam:
 
 
 TEAM_POOL: tuple[PoolTeam, ...] = (
+    PoolTeam("Boston", "Beacons", NORTH_AMERICA, -71.1),
     PoolTeam("New York", "Titans", NORTH_AMERICA, -74.0),
     PoolTeam("Chicago", "Blizzards", NORTH_AMERICA, -87.6),
     PoolTeam("Toronto", "Sentinels", NORTH_AMERICA, -79.4),
