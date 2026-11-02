@@ -81,10 +81,10 @@ function hitterStatsHtml(p) {
     : '';
 }
 
-// A pitcher's stat line for the name trail: "3.45 ERA 8-4 3SV".
+// A pitcher's stat line for the name trail: "12GS 74.1IP 3.45 ERA 8-4 3SV".
 function pitcherTrailStatsHtml(p) {
   return p.stat_era != null
-    ? `<span style="color:var(--amber);">${p.stat_era} ERA</span> <span>${p.stat_w}-${p.stat_l}${p.stat_sv ? ' ' + p.stat_sv + 'SV' : ''}</span>`
+    ? `<span>${p.stat_gs}GS</span> <span>${p.stat_ip}IP</span> <span style="color:var(--amber);">${p.stat_era} ERA</span> <span>${p.stat_w}-${p.stat_l}${p.stat_sv ? ' ' + p.stat_sv + 'SV' : ''}</span>`
     : '';
 }
 

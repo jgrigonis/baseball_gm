@@ -488,7 +488,8 @@ function makeCard(p, isIn40) {
 
   // Same row as the Lineup tab: name with a dim trail, then the ratings
   const isPitcher = p.player_type === 'pitcher';
-  const stats = isPitcher ? pitcherTrailStatsHtml(p) : hitterStatsHtml(p);
+  const stats = isPitcher ? pitcherTrailStatsHtml(p)
+    : p.stat_avg != null ? `<span>${p.stat_g}G</span> ${hitterStatsHtml(p)}` : '';
   el.innerHTML = `
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     <div style="min-width:0;">
