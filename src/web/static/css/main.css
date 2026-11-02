@@ -807,6 +807,8 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .tab-fade {
   animation: tabFadeIn 0.15s ease;
 }
+/* A quiet in-place reload of the tab (shell.html, data-quiet-swap). */
+#tab-content.tab-quiet, #tab-content.tab-quiet .tab-fade { animation: none; }
 @keyframes tabFadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
