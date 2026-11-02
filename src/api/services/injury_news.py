@@ -12,6 +12,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.player.injury_types import injury_label
 from src.player.positions import is_pitcher
 
 
@@ -36,15 +37,14 @@ class InjuryNews:
             after = self.inj_repo.get_active_for_team(team_id)
             for pid, v in after.items():
                 if pid not in before:
-                    notes.add(
-                        gm_id,
-                        "injury",
-                        {
-                            "name": v["name"],
-                            "days": v["days"],
-                            "is_pitcher": self._is_pitcher(pid, v),
-                        },
-                    )
+                    note = {
+                        "name": v["name"],
+                        "days": v["days"],
+                        "is_pitcher": self._is_pitcher(pid, v),
+                    }
+                    if v.get("injury_type"):
+                        note["injury"] = injury_label(v["injury_type"])
+                    notes.add(gm_id, "injury", note)
             for pid, v in before.items():
                 if pid not in after:
                     notes.add(

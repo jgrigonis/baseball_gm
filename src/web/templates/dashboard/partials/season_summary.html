@@ -319,7 +319,7 @@
               {{ inj.position|upper }}{% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</div>
           </td>
           <td data-sort="{{ severity_rank.get(inj.severity, 0) }}" style="font-size:12px;">
-            <span class="ss-sev-{{ inj.severity }}">{{ inj.severity|capitalize }}</span>
+            <span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span>
             {% if inj.activity %}<span class="ss-inj-activity"> · {{ inj.activity }}</span>{% endif %}
           </td>
           <td data-sort="{{ inj.days_missed }}"
@@ -447,17 +447,14 @@
 .ss-inj-table { width:100%;table-layout:fixed; }
 .ss-inj-table th { cursor:pointer;user-select:none;white-space:nowrap; }
 .ss-inj-table th:nth-child(1) { width:96px; }
-.ss-inj-table th:nth-child(3) { width:190px; }
+.ss-inj-table th:nth-child(3) { width:250px; }
 .ss-inj-table th:nth-child(4) { width:64px; }
 .ss-inj-activity { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
-.ss-sev-minor    { color:var(--text-dim); }
-.ss-sev-moderate { color:var(--amber); }
-.ss-sev-severe, .ss-sev-surgery { color:var(--red); }
 @media (max-width: 720px) {
   .ss-leader-row { grid-template-columns:repeat(2,1fr); }
   .ss-two-col { grid-template-columns:1fr; }
   .ss-inj-table th:nth-child(1) { width:84px; }
-  .ss-inj-table th:nth-child(3) { width:84px; }
+  .ss-inj-table th:nth-child(3) { width:120px; }
   .ss-inj-table th:nth-child(4) { width:52px; }
   .ss-inj-activity { display:none; }
 }

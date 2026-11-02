@@ -319,7 +319,7 @@ function renderTable() {
       if (col.key === 'name') val += rookieTag(row.player_id);
       if (isName && row.injured) {
         var ilLabel = row.injury_days
-          ? ' <span style="font-size:10px;color:var(--red);">IL (' + row.injury_days + 'd)</span>'
+          ? ' <span style="font-size:10px;color:var(--red);"' + (row.injury_name ? ' title="' + row.injury_name + '"' : '') + '>IL (' + row.injury_days + 'd)</span>'
           : ' <span style="font-size:10px;color:var(--red);">IL</span>';
         val = '<span style="color:var(--red);">' + val + '</span>' + ilLabel;
       }

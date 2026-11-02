@@ -57,6 +57,7 @@ from src.game.score import Score
 from src.game.strategy import GameStrategy
 from src.team.manager_profile import profile_of
 from src.player.fatigue import FatigueLevel
+from src.player.injury_types import choose_injury_type, injury_label
 from src.player.player_formatters import PlayerTableFormatter
 from src.util.weighted_choice import WeightedChoice
 
@@ -247,7 +248,8 @@ class Game:
         self.injured_ids = set(injured_ids or {})
         self.injuries_enabled = injuries_enabled
         self.max_pitcher_outs = max_pitcher_outs
-        self.new_injuries: list[tuple[str, str, str]] = []  # (player_id, severity)
+        # (player_id, severity, activity, injury_type)
+        self.new_injuries: list[tuple[str, str, str, str | None]] = []
 
         # Logging
         self.logger = logger
@@ -859,8 +861,8 @@ class Game:
 
             if self.rng.random() < prob:
                 player.is_injured = True
-                injury_types = WeightedChoice(rng=self.rng)
-                injury_types.set_weights(
+                severity_roll = WeightedChoice(rng=self.rng)
+                severity_roll.set_weights(
                     {
                         "minor": MINOR_INJURY_PROB,
                         "moderate": MODERATE_INJURY_PROB,
@@ -870,12 +872,19 @@ class Game:
                 )
                 energy = self._live_energy(player)
                 if energy is not None and energy < LOW_ENERGY:
-                    injury_types.multiply("moderate", FATIGUE_MULTIPLIER)
-                    injury_types.multiply("severe", FATIGUE_MULTIPLIER)
-                    injury_types.multiply("surgery", FATIGUE_MULTIPLIER)
+                    severity_roll.multiply("moderate", FATIGUE_MULTIPLIER)
+                    severity_roll.multiply("severe", FATIGUE_MULTIPLIER)
+                    severity_roll.multiply("surgery", FATIGUE_MULTIPLIER)
 
-                severity = injury_types.choose()
-                self.new_injuries.append((player.id, severity, activity))
+                severity = severity_roll.choose()
+                kind = choose_injury_type(
+                    severity,
+                    activity,
+                    getattr(player, "current_position", None),
+                    rng=self.rng,
+                )
+                injury_type = kind.key if kind else None
+                self.new_injuries.append((player.id, severity, activity, injury_type))
                 if self.event_logger:
                     team_id = (
                         self.bat_team.record.id
@@ -899,6 +908,7 @@ class Game:
                         name=player.name,
                         severity=severity,
                         activity=activity,
+                        injury_type=injury_type,
                     )
 
                 state = self.player_energy_states.get(player.id)
@@ -907,7 +917,8 @@ class Game:
                     state.current_energy = min(0.75, state.current_energy)
 
                 self.logger.info(
-                    f"🚑 {player.name} injured ({activity}). Severity: {severity}"
+                    f"🚑 {player.name} injured ({activity}): "
+                    f"{injury_label(injury_type, severity)}. Severity: {severity}"
                 )
 
                 if player.pitcher_fatigue:

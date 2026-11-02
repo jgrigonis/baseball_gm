@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from src.player.injury_types import injury_label
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.api.view_models.player_cards import (
     compute_ratings,
@@ -204,6 +205,11 @@ def player_panel_data(
         "bat_stats": bat_stats,
         "injured": raw_injury is not None,
         "injury_days": raw_injury,
+        "injury_name": (
+            injury_label(injury.injury_type)
+            if raw_injury is not None and injury.injury_type
+            else None
+        ),
         "returning": False,
         "all_star_years": _all_star_years(db, pid),
         "awards": player_awards(db, pid),

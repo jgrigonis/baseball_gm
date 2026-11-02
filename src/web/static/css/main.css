@@ -1338,3 +1338,8 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 /* Unlimited seasons' ∞, which reads too small at text size. line-height 0
    keeps it from making its line taller. */
 .inf { font-size: 1.7em; line-height: 0; vertical-align: -0.12em; }
+
+/* Injury names colored by severity (season summary, player panel, career) */
+.ss-sev-minor    { color:var(--text-dim); }
+.ss-sev-moderate { color:var(--amber); }
+.ss-sev-severe, .ss-sev-surgery { color:var(--red); }

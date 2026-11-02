@@ -7,6 +7,7 @@ long injuries.
 
 from __future__ import annotations
 
+from src.player.injury_types import injury_phrase
 from src.api.services.news.names import Names, possessive
 from src.db.repositories.news_repo import NewsRepository
 
@@ -307,7 +308,7 @@ def _milestone(
 def _injuries(conn, news, names, league_id, season_id, since, through) -> None:
     rows = conn.execute(
         """SELECT l.id, l.player_id, l.team_id, l.injury_date, l.games_missed,
-                  l.activity, p.position,
+                  l.activity, l.injury_type, p.position,
                   EXISTS (SELECT 1 FROM all_stars a
                           WHERE a.player_id = l.player_id) AS all_star
            FROM player_injury_log l JOIN players p ON p.id = l.player_id
@@ -322,12 +323,20 @@ def _injuries(conn, news, names, league_id, season_id, since, through) -> None:
         pid, team, days = r["player_id"], r["team_id"], r["games_missed"]
         who = names.player(pid)
         span = _span(days)
-        headline = f"{names.team(team)} lose {who} for {span}"
+        phrase = injury_phrase(r["injury_type"])
+        if phrase:
+            headline = f"{names.team(team)} lose {who} to {phrase}"
+        else:
+            headline = f"{names.team(team)} lose {who} for {span}"
         body = f"{who}"
         if r["position"]:
             body += f" ({r['position'].upper()})"
-        body += " is out"
-        if r["activity"]:
+        body += f" is out for {span}" if phrase else " is out"
+        if phrase:
+            body += f" with {phrase}"
+            if r["activity"]:
+                body += f", suffered {_activity(r['activity'])}"
+        elif r["activity"]:
             body += f" after getting hurt {_activity(r['activity'])}"
         body += "."
         gm = names.gm_name(names.gm_of(team))

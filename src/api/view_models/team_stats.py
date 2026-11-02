@@ -76,12 +76,13 @@ def team_stats_context(
 
     # Attach injury status only for current season
     is_current_season = selected_season_id == current_season_id
-    injured_map = (
-        InjuryRepository(db, league_id).get_team_injuries(selected_team_id)
-        if selected_team_id and is_current_season
-        else {}
+    show_injuries = selected_team_id and is_current_season
+    inj = InjuryRepository(db, league_id)
+    attach_injuries(
+        batters + pitchers + fielders,
+        inj.get_team_injuries(selected_team_id) if show_injuries else {},
+        inj.get_team_injury_types(selected_team_id) if show_injuries else {},
     )
-    attach_injuries(batters + pitchers + fielders, injured_map)
 
     # Year label for selected season
     selected_year = next(

@@ -731,13 +731,14 @@ def _play_game(
         for team in (home_team, away_team)
         for player in team.players
     }
-    for player_id, severity, activity in game.new_injuries:
+    for player_id, severity, activity, injury_type in game.new_injuries:
         injury_repo.injure(
             player_id,
             season_id,
             game_date,
             severity=severity,
             activity=activity,
+            injury_type=injury_type,
             rng=rng,
             team_id=team_of.get(player_id),
         )

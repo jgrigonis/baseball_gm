@@ -223,7 +223,7 @@
                onmouseout="this.style.background=''">
             <span style="color:var(--text);">{{ inj.first_name }} {{ inj.last_name }}{{ rk(inj.player_id) }}</span>
             {% if inj.days_remaining %}
-            <span style="color:var(--red);font-size:11px;">IL · {{ inj.days_remaining }}d</span>
+            <span style="color:var(--red);font-size:11px;white-space:nowrap;">{% if inj.injury_type %}{{ injury_label(inj.injury_type) }} · {% endif %}{{ inj.days_remaining }}d</span>
             {% endif %}
           </div>
           {% endfor %}

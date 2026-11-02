@@ -217,6 +217,23 @@ class TestPlayers:
         assert s["headline"] == "Captains lose Ruben Ruiz for 6 weeks"
         assert "while fielding" in s["body"]
 
+    def test_a_named_injury(self, db_conn, lg):
+        pid = _player(db_conn, lg, lg["mine"])
+        _game(db_conn, lg, "2025-05-01", lg["mine"], lg["theirs"])
+        db_conn.execute(
+            """INSERT INTO player_injury_log (player_id, season_id, team_id,
+                   injury_date, severity, activity, games_missed, injury_type)
+               VALUES (%s, %s, %s, '2025-05-01', 'surgery', 'running', 300,
+                       'torn_acl')""",
+            (pid, lg["season"].id, lg["mine"].id),
+        )
+        news.update_league(db_conn, lg["league"].id)
+        (s,) = _stories(db_conn, lg, "injury")
+        assert s["headline"] == "Captains lose Ruben Ruiz to a torn ACL"
+        assert (
+            "is out for the season with a torn ACL, suffered while running" in s["body"]
+        )
+
 
 class TestTrades:
     def _trade(self, db, lg, sent, got, on="2025-05-10"):

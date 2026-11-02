@@ -55,7 +55,10 @@ def roster(
         )
         attach_roster_stats(players, stats_map)
 
-    attach_injuries(players, InjuryRepository(db, league_id).get_team_injuries(team_id))
+    inj = InjuryRepository(db, league_id)
+    attach_injuries(
+        players, inj.get_team_injuries(team_id), inj.get_team_injury_types(team_id)
+    )
     ctx["players"] = players
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 
