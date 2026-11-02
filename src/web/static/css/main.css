@@ -938,8 +938,21 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
   margin-bottom: 10px;
 }
+/* The player's face (src/player/face.py) beside his name */
+.pd-who { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.pd-who-text { min-width: 0; }
+.player-face {
+  flex-shrink: 0; display: block; overflow: hidden;
+  border: 1px solid var(--border-hi); background: var(--bg-3);
+}
+.player-face svg { display: block; width: 100%; height: 100%; }
+.player-face--lg { width: 72px; height: 72px; }
+/* Side by side, the columns are narrower */
+.player-panel.split .player-face--lg { width: 56px; height: 56px; }
+.player-panel.split3 .player-face--lg { width: 48px; height: 48px; }
 .pd-name {
   font-family: var(--font-sans); font-weight: 600;
   font-size: 15px; color: var(--text-hi);
