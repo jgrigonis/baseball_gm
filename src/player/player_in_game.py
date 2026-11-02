@@ -35,7 +35,7 @@ from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.position_fatigue import PositionPlayerFatigue
-from src.player.skill_map import SKILL_CATEGORIES, SKILL_MAP
+from src.player.skill_map import SKILL_CATEGORIES, SKILL_MAP, SKILL_MIN
 
 PITCHING_SKILLS = {SKILL_MAP[abbr] for abbr in SKILL_CATEGORIES["pitching"]}
 
@@ -70,6 +70,7 @@ class PlayerInGame:
         self.responsible_pitcher: PlayerInGame | None = None
         self.in_lineup = False
         self.is_injured = False
+        self.rust: dict[str, float] = {}  # ratings down after an injury
         self.pitcher_fatigue = (
             PitcherFatigue(stamina=self.skills["stamina"])
             if self.record.is_pitcher()
@@ -110,7 +111,22 @@ class PlayerInGame:
         return hasattr(self, "ratings")
 
     def rate_player(self):
-        self.ratings = PlayerEvaluator.rate_player(self.record.skills, self.throws)
+        self.ratings = PlayerEvaluator.rate_player(self.skills, self.throws)
+
+    def apply_rust(self, rust: dict[str, float]) -> None:
+        """Play this game with some ratings down: rust left over from an
+        injury, {skill: points}. The player's record keeps his real skills."""
+        if not rust:
+            return
+        values = {
+            k: max(SKILL_MIN, self.skills.exact(k) - rust.get(k, 0.0))
+            for k in self.skills
+        }
+        self.skills = PlayerSkills(values, age=self.skills.age)
+        self.rust = dict(rust)
+        if self.pitcher_fatigue:
+            self.pitcher_fatigue.stamina = self.skills["stamina"]
+        self.rate_player()
 
     def init_game_stats(self):
         """

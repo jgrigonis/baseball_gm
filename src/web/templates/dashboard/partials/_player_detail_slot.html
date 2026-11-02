@@ -45,6 +45,10 @@
  {% if player.injured %}
    <span class="badge badge-injured">IL{% if player.injury_name %} · {{ player.injury_name }}{% endif %} · {{ player.injury_days }}d</span>
  {% endif %}
+ {% if player.rust %}
+   <span class="badge badge-rust"
+         title="Rusty after his injury. Gone in about {{ player.rust.days }} days if he plays every day, about half that if he rests.">Rusty · {{ player.rust.text }} · {{ player.rust.days }}d</span>
+ {% endif %}
  {% if player.energy %}
    {% if player.energy.current < 40 %}
      <span class="badge badge-tired">Tired ({{ player.energy.current }}%)</span>

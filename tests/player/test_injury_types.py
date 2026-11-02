@@ -11,6 +11,9 @@ from src.player.injury_types import (
     injury_label,
     injury_phrase,
     roll_days_missed,
+    roll_rust,
+    rust_days_to_clear,
+    rust_left,
 )
 
 SEVERITIES = ("minor", "moderate", "severe", "surgery")
@@ -77,3 +80,60 @@ def test_labels_fall_back_to_severity():
     assert injury_label("no_such_injury", "minor") == "Minor"
     assert injury_phrase("tommy_john") == "Tommy John surgery"
     assert injury_phrase(None) is None
+
+
+# ── Rust ──────────────────────────────────────────────────────────────────────
+
+
+def test_every_injury_has_rust_on_real_skills():
+    from src.player.injury_types import RUST
+    from src.player.skill_map import SKILL_MAP
+
+    assert set(RUST) == set(INJURY_TYPES)
+    for days, amounts in RUST.values():
+        assert days > 0
+        assert set(amounts) <= set(SKILL_MAP.values())
+
+
+def test_rust_is_rolled_within_its_bounds():
+    rng = random.Random(2)
+    for _ in range(300):
+        skills, length = roll_rust("hamstring_strain", 20, rng=rng)
+        assert 2.5 <= skills["speed"] <= 5
+        assert 1.5 <= skills["base_running"] <= 3
+        # 21 days × 50-150% × 0.8-1.2 for how long the injury ran
+        assert 21 * 0.5 * 0.8 - 0.1 <= length <= 21 * 1.5 * 1.2 + 0.1
+    assert roll_rust(None, 5) is None
+
+
+def _mean_length(**kw):
+    rng = random.Random(9)
+    return sum(roll_rust("torn_acl", rng=rng, **kw)[1] for _ in range(500)) / 500
+
+
+def test_rust_lasts_longer_after_a_long_layoff_and_for_older_players():
+    assert _mean_length(days_missed=400) > _mean_length(days_missed=270)
+    assert _mean_length(days_missed=300, age=36) > _mean_length(days_missed=300, age=24)
+
+
+def test_durable_hitters_shake_rust_faster():
+    assert _mean_length(days_missed=300, durability=90) < _mean_length(
+        days_missed=300, durability=20
+    )
+
+
+def test_rust_fades_twice_as_fast_on_days_off():
+    skills = {"speed": 4.0}
+    # Ten days back playing every day: half of a 20-day rust is gone
+    assert rust_left(skills, 20, 10, 10) == {"speed": 2.0}
+    # Ten days back resting every day: all of it is gone
+    assert rust_left(skills, 20, 10, 0) == {}
+    # Five days rested count as much as ten played
+    assert rust_left(skills, 20, 5, 0) == rust_left(skills, 20, 10, 10)
+
+
+def test_days_to_clear_counts_to_the_last_whole_point():
+    # 4 points over 20 days: under half a point after 17.5 days of play
+    assert rust_days_to_clear({"speed": 4.0}, 20, 0, 0) == 18
+    assert rust_days_to_clear({"speed": 4.0}, 20, 10, 10) == 8
+    assert rust_days_to_clear({"speed": 4.0}, 20, 30, 30) == 0

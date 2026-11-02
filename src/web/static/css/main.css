@@ -770,6 +770,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 }
 .badge-injured { background: var(--red-dim);   border-color: var(--red);       color: var(--red); }
 .badge-tired   { background: #2a1a05;           border-color: #78460a;          color: #f97316; }
+.badge-rust    { background: #2a2205;           border-color: #7a6410;          color: var(--amber); }
 .badge-active  { background: var(--green-dim);  border-color: var(--green);     color: var(--green); }
 .badge-40man   { background: var(--bg-3);       border-color: var(--border-hi); color: var(--text-dim); }
 .badge-minors  { background: var(--bg-3);       border-color: var(--muted);     color: var(--muted); }
@@ -1371,3 +1372,6 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 /* Sim news bar: each item links to its own tab */
 .inj-news-item:hover { text-decoration:underline; }
 .inj-news-item + .inj-news-item { margin-left:18px; }
+
+/* A player still rusty after an injury (lineup rows) */
+.lu-rust { font-size:10px;color:var(--amber);letter-spacing:.04em;margin-left:6px; }

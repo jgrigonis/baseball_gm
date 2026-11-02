@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 
+from src.player.skill_map import SKILL_ABBREVIATIONS
 from src.player.injury_types import injury_label
 from src.api.grade_curves import overall_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
@@ -374,13 +375,37 @@ def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
             p["stat_sv"] = s["pitch_saves"] or 0
 
 
+def rust_view(rust: dict | None) -> dict | None:
+    """A player's rust for display: {"text": "SP −4 · BR −2", "days": days
+    until it's gone if he plays every day}, or None when there's none."""
+    if not rust:
+        return None
+    parts = [
+        (SKILL_ABBREVIATIONS.get(k, k.upper()), round(v))
+        for k, v in sorted(rust["skills"].items(), key=lambda kv: -kv[1])
+        if round(v) >= 1
+    ]
+    if not parts:
+        return None
+    return {
+        "text": " · ".join(f"{abbr} −{n}" for abbr, n in parts),
+        "days": rust["days_left"],
+    }
+
+
 def attach_injuries(
-    players: list[dict], injured_map: dict, injury_types: dict | None = None
+    players: list[dict],
+    injured_map: dict,
+    injury_types: dict | None = None,
+    rust: dict | None = None,
 ) -> None:
     """Mark each card with its IL status from a {player_id: days_remaining} map,
-    and the injury's name from a {player_id: injury_type} map when given."""
+    the injury's name from a {player_id: injury_type} map, and any rust left
+    from a {player_id: rust} map (InjuryRepository.get_rust)."""
     injury_types = injury_types or {}
+    rust = rust or {}
     for p in players:
+        p["rust"] = rust_view(rust.get(p["player_id"]))
         raw_days = injured_map.get(p["player_id"])
         p["injured"] = raw_days is not None
         p["injury_days"] = raw_days if raw_days else None

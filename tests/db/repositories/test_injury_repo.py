@@ -1,5 +1,6 @@
 # tests/db/repositories/test_injury_repo.py
 from datetime import date
+import json
 import random
 from types import SimpleNamespace
 
@@ -185,3 +186,78 @@ def test_injury_type_is_stored_and_listed(setup):
     }
     assert s.repo.get_injury_log(s.player.id)[0]["injury_type"] == "torn_acl"
     assert s.repo.get_season_injuries(s.season.id)[0]["injury_type"] == "torn_acl"
+
+
+# ── Rust ──────────────────────────────────────────────────────────────────────
+
+
+def _rusty(s, rust=None, rust_days=20):
+    """Hamstring strain on Apr 1, back Apr 12, with known rust."""
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="moderate",
+        injury_type="hamstring_strain", days=10, team_id=s.team.id,
+        rng=random.Random(1),
+    )  # fmt: skip
+    s.conn.execute(
+        "UPDATE player_injuries SET rust = %s::jsonb, rust_days = %s WHERE player_id = %s",
+        (json.dumps(rust or {"speed": 4.0}), rust_days, s.player.id),
+    )
+
+
+def _played(s, *days):
+    for day in days:
+        gid = s.factory._id()
+        s.conn.execute(
+            """INSERT INTO games (id, game_date, season_id, home_team_id,
+                   away_team_id, completed) VALUES (%s, %s, %s, %s, %s, 1)""",
+            (gid, day, s.season.id, s.team.id, s.other.id),
+        )
+        s.conn.execute(
+            """INSERT INTO player_game_stats (game_id, player_id, team_id,
+                   opponent_team_id) VALUES (%s, %s, %s, %s)""",
+            (gid, s.player.id, s.team.id, s.other.id),
+        )
+
+
+def test_an_injury_with_a_type_rolls_rust(setup):
+    s = setup
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="moderate",
+        injury_type="hamstring_strain", days=10, rng=random.Random(1),
+    )  # fmt: skip
+    row = s.conn.execute(
+        "SELECT rust, rust_days FROM player_injuries WHERE player_id = %s",
+        (s.player.id,),
+    ).fetchone()
+    assert set(row["rust"]) == {"speed", "base_running"}
+    assert row["rust_days"] > 0
+
+
+def test_no_rust_until_the_player_is_back(setup):
+    s = setup
+    _rusty(s)
+    assert s.repo.get_rust([s.player.id], as_of="2025-04-11") == {}
+    back = s.repo.get_rust([s.player.id], as_of="2025-04-12")[s.player.id]
+    assert back["skills"] == {"speed": 4.0}
+    assert back["days_left"] == 18
+    assert back["injury_type"] == "hamstring_strain"
+
+
+def test_rust_fades_with_play_and_twice_as_fast_with_rest(setup):
+    s = setup
+    _rusty(s)
+    days = [f"2025-04-{d}" for d in range(12, 22)]  # Apr 12-21: ten days back
+    # Resting all ten days clears a 20-day rust
+    assert s.repo.get_rust([s.player.id], as_of="2025-04-22") == {}
+    # Playing all ten days clears half of it
+    _played(s, *days)
+    left = s.repo.get_rust([s.player.id], as_of="2025-04-22")[s.player.id]
+    assert left["skills"] == {"speed": 2.0}
+    assert left["days_left"] == 8
+
+
+def test_a_new_injury_replaces_the_old_rust(setup):
+    s = setup
+    _rusty(s)
+    s.repo.injure(s.player.id, s.season.id, "2025-04-14", days=3)
+    assert s.repo.get_rust([s.player.id], as_of="2025-04-18") == {}

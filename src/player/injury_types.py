@@ -8,12 +8,15 @@ that fits what the player was doing (batting, running, fielding, pitching)
 and, for fielders, where they were playing. The injury's own day range, which
 sits inside its tier's range, sets the days missed.
 
-Phase 1 is names only: no injury changes a rating yet.
+After an injury the player comes back rusty (RUST below): a few ratings sit
+lower for a while and fade back day by day, twice as fast on days he
+doesn't play. Lasting effects are a later phase.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 import random
 
 # Days missed for each severity tier. Every injury's range sits inside its
@@ -120,6 +123,104 @@ INJURY_TYPES: dict[str, InjuryType] = {
            {"batting": 2, "fielding": 0.5, "pitching": 0.5}),
     ]
 }  # fmt: skip
+
+
+# ── Rust ──────────────────────────────────────────────────────────────────────
+# What each injury leaves behind when the player comes back: the most each
+# rating can drop, and how many days the rust lasts if he plays every day.
+# Both are rolled per injury (roll_rust), so no two comebacks are the same.
+RUST: dict[str, tuple[int, dict[str, int]]] = {
+    "hand_contusion": (7, {"contact": 2}),
+    "jammed_finger": (5, {"contact": 2}),
+    "ankle_sprain": (7, {"speed": 3}),
+    "back_spasms": (5, {"power": 2}),
+    "blister": (7, {"accuracy": 3}),
+    "arm_fatigue": (7, {"stamina": 3}),
+    "hamstring_strain": (21, {"speed": 5, "base_running": 3}),
+    "groin_strain": (14, {"speed": 4, "infield": 3, "outfield": 3}),
+    "oblique_strain": (21, {"power": 5, "strikes": 4}),
+    "wrist_sprain": (30, {"power": 4, "contact": 3}),
+    "broken_finger": (21, {"contact": 4}),
+    "concussion": (21, {"eye": 4, "contact": 3}),
+    "shoulder_inflammation": (21, {"strikes": 3, "stamina": 5}),
+    "elbow_inflammation": (21, {"accuracy": 4}),
+    "broken_hamate": (45, {"power": 6}),
+    "high_ankle_sprain": (30, {"speed": 6}),
+    "torn_meniscus": (30, {"speed": 4, "infield": 3, "outfield": 3}),
+    "separated_shoulder": (30, {"arm": 5}),
+    "lat_strain": (30, {"stamina": 6, "strikes": 4}),
+    "flexor_strain": (30, {"strikes": 5, "accuracy": 3}),
+    "tommy_john": (60, {"accuracy": 6}),  # command comes back last
+    "torn_rotator_cuff": (60, {"strikes": 5, "stamina": 5, "arm": 4}),
+    "torn_acl": (60, {"speed": 5}),
+    "torn_achilles": (60, {"speed": 5, "base_running": 3}),
+    "hip_labrum": (45, {"power": 4, "speed": 3}),
+    "back_surgery": (45, {"power": 5}),
+}
+
+# A day on the bench (or a team off day) heals this much more rust than a
+# day spent playing.
+REST_FADE = 2.0
+
+
+def roll_rust(
+    injury_type: str | None,
+    days_missed: int,
+    age: int | None = None,
+    durability: int | None = None,
+    rng: random.Random | None = None,
+) -> tuple[dict[str, float], float] | None:
+    """Roll the rust an injury leaves: ({skill: points}, days it lasts if the
+    player plays every day). None for an injury with no rust.
+
+    - Each rating drops by half to all of its catalog amount.
+    - The length is 50-150% of the catalog's, longer when the injury itself
+      ran long for its kind, longer for players past 30 and shorter for
+      young ones, and shorter for durable hitters. Pass durability only for
+      hitters: it never applies to pitchers.
+    """
+    rust = RUST.get(injury_type or "")
+    if not rust:
+        return None
+    rng = rng or random
+    base_days, amounts = rust
+    lo, hi = INJURY_TYPES[injury_type].days
+    ran_long = (days_missed - lo) / (hi - lo) if hi > lo else 0.5
+    ran_long = min(1.0, max(0.0, ran_long))
+    length = base_days * rng.uniform(0.5, 1.5) * (0.8 + 0.4 * ran_long)
+    if age is not None:
+        length *= min(1.3, max(0.85, 1 + 0.03 * (age - 30)))
+    if durability is not None:
+        length *= 1 - (durability - 50) / 50 * 0.15
+    skills = {k: round(v * rng.uniform(0.5, 1.0), 1) for k, v in amounts.items()}
+    return skills, round(max(2.0, length), 1)
+
+
+def rust_progress(days_back: int, days_played: int) -> float:
+    """Rust healed after `days_back` days since returning, `days_played` of
+    them in games: a day played counts 1, a day off counts REST_FADE."""
+    days_played = min(days_played, days_back)
+    return days_played + (days_back - days_played) * REST_FADE
+
+
+def rust_left(
+    skills: dict[str, float], length: float, days_back: int, days_played: int
+) -> dict[str, float]:
+    """The rust still there: each rating's drop shrinks evenly to zero."""
+    left = max(0.0, 1 - rust_progress(days_back, days_played) / length)
+    return {k: v * left for k, v in skills.items() if v * left >= 0.5}
+
+
+def rust_days_to_clear(
+    skills: dict[str, float], length: float, days_back: int, days_played: int
+) -> int:
+    """Days until no rating is down a whole point, if he plays every day."""
+    biggest = max(skills.values(), default=0)
+    if biggest <= 0:
+        return 0
+    # The last point is gone once the biggest drop is under half a point.
+    needed = length * (1 - 0.5 / biggest)
+    return max(0, math.ceil(needed - rust_progress(days_back, days_played)))
 
 
 def choose_injury_type(

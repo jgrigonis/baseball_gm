@@ -509,6 +509,12 @@ def _play_game(
     # whether or not their team plays in the meantime.
     injury_repo = InjuryRepository(conn, league_id=league_id)
     injured_ids = injury_repo.get_injured_ids(all_player_ids, as_of=game_date)
+    # Players back from an injury play with some ratings down until the rust
+    # fades (src/player/injury_types.py).
+    rust = injury_repo.get_rust(all_player_ids, as_of=game_date)
+    for player in home_team.players + away_team.players:
+        if player.id in rust:
+            player.apply_rust(rust[player.id]["skills"])
 
     pitcher_states = {pid: stored_pitcher_states.get(pid) for pid in all_player_ids}
     playoffs = _is_playoff_game(conn, game_info["game_id"])
