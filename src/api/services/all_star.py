@@ -244,6 +244,25 @@ def my_turn(conn, league_id: str, season_id: str | None, team_id) -> bool:
 EVENTS = ("all_star", "rookie")
 
 
+def person_drafting(conn, league_id: str, season_id: str | None) -> bool:
+    """Whether a person has picks to make in the All-Star or the Rookie Game
+    draft (or the tie to break). AI picks are made as soon as it's their
+    turn, so whenever a draft isn't finished it's waiting on a person. The
+    ready-check gives that period the Lineup Window, not the Decision
+    Window: 30-odd picks take longer than one decision."""
+    if not season_id:
+        return False
+    people = _people(conn, league_id)
+    for event in EVENTS:
+        g = AllStarRepository(conn, event).game(season_id)
+        if not g or g["state"] == "played":
+            continue
+        stars = _board(stars_with_injuries(conn, league_id, season_id, event))
+        if turn(g, stars) in people:
+            return True
+    return False
+
+
 def _needs(event: str) -> dict[str, int]:
     """What an AI captain fills first in this event's draft."""
     return rookie_game.SIDE_NEEDS if event == "rookie" else all_star.SIDE_NEEDS

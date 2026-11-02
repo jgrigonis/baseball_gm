@@ -14,6 +14,10 @@
 # What a period does depends on the league's state: sim_period_days of the
 # regular season, one playoff day, the offseason, or the draft.
 #
+# A period that starts with a person as an All-Star or Rookie Game captain,
+# with picks still to make, gets the Lineup Window instead (or the Decision
+# Window, if that's longer): a whole draft takes longer than one decision.
+#
 # In leagues that trade, the period that reaches the trade deadline stops
 # after deadline day's games, and the next window is
 # TRADE_DEADLINE_WINDOW_MULTIPLIER times as long, for last-minute deals.
@@ -115,6 +119,13 @@ def _run_period(conn, league_id: str, state: str, days: int) -> bool:
     return False
 
 
+def _captain_drafting(conn, league_id: str) -> bool:
+    """A person is an All-Star or Rookie Game captain with picks still to
+    make, so the period gets the Lineup Window."""
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+    return all_star.person_drafting(conn, league_id, season_id)
+
+
 def advance_if_due(conn, league_id: str) -> bool:
     """Queue the league's next period for the sim worker if it is due.
     Returns True if this call queued it. Opens the Decision Window for a period that has none yet (the
@@ -174,6 +185,7 @@ def run_period(conn, league_id: str, sim_period: int) -> bool:
         repo.next_period(
             league_id,
             window_multiplier=TRADE_DEADLINE_WINDOW_MULTIPLIER if at_deadline else 1,
+            lineup_window=_captain_drafting(conn, league_id),
         )
         conn.commit()
         now = repo.period(league_id)
