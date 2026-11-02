@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     stop_for_trade_offers BOOLEAN NOT NULL DEFAULT TRUE, -- single player: sims stop for an offer
     pick_trades          BOOLEAN NOT NULL DEFAULT FALSE, -- teams can trade draft picks
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
-    backstory_years      INTEGER NOT NULL DEFAULT 5,     -- past seasons generated at the start (src/league/backstory/)
+    backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     created_at TEXT DEFAULT (NOW())
 );
@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS sim_jobs (
                         CHECK (state IN ('queued', 'running', 'done', 'failed')),
     result          JSONB,
     error           TEXT,             -- shown to the GM when state is 'failed'
+    stage           TEXT,             -- what a running job is doing now, for the page polling it
     attempts        INTEGER NOT NULL DEFAULT 0, -- times the worker found the league locked
     run_after       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

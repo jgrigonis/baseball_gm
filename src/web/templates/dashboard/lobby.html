@@ -33,7 +33,7 @@
         <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
           <p style="font-size:12px;color:var(--text-dim);line-height:1.6;">
             Starting generates teams, assigns GMs, creates the draft, and generates
-            the player pool. The AI GMs listed run the teams nobody joined for. This takes ~10 seconds.
+            the player pool. The AI GMs listed run the teams nobody joined for. This takes ~15 seconds.
           </p>
           <form method="POST" action="/leagues/{{ league_id }}/start" id="start-form"
                 onsubmit="return onStartLeague(this)">
@@ -68,7 +68,7 @@ function onStartLeague(form) {
   spinner.style.display = 'flex';
   // Starting runs on the server as a job; open the league once it's done.
   runLeagueJob(form.action, {method: 'POST'}, job => {
-    label.textContent = ' ' + (leagueJobWaitingText(job) || generating.trim());
+    label.textContent = ' ' + (leagueJobWaitingText(job) || job.stage || generating.trim());
   }).then(d => {
     if (d.failed) {
       btn.disabled = false;

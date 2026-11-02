@@ -21,5 +21,5 @@ TRADE_DEADLINE_WINDOW_MULTIPLIER = 3
 # Past seasons a new league starts with (src/league/backstory/), generated
 # from its rosters rather than played. An admin can change it per league
 # before the start; 0 starts with no history and a random first draft order.
-DEFAULT_BACKSTORY_YEARS = 5
+DEFAULT_BACKSTORY_YEARS = 10
 MAX_BACKSTORY_YEARS = 10

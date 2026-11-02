@@ -83,6 +83,13 @@ class SimJobRepository:
             "UPDATE sim_jobs SET heartbeat_at = NOW() WHERE id = %s", (job_id,)
         )
 
+    def set_stage(self, job_id: str, stage: str | None) -> None:
+        """Say what a running job is doing now (shown by the page polling
+        it)."""
+        self.conn.execute(
+            "UPDATE sim_jobs SET stage = %s WHERE id = %s", (stage, job_id)
+        )
+
     def finish(self, job_id: str, result: dict) -> None:
         self.conn.execute(
             """UPDATE sim_jobs

@@ -35,7 +35,12 @@ def start_league(
     bootstrapper=None,
     draft_gen=None,
     scheduler=None,
+    on_stage=None,
 ) -> dict:
+    """Start a league in the lobby. ``on_stage(text)``, if given, is told as
+    the start moves on to a step that takes a while, for the lobby to show
+    (sim_jobs.Report)."""
+    on_stage = on_stage or (lambda _text: None)
     lr = LeagueRepository(conn)
     league = lr.get_by_id(league_id)
 
@@ -90,13 +95,19 @@ def start_league(
     # ── 3c. Backstory: past seasons generated from the rosters ────────────────
     # Its own random stream, so the rest of the league comes out the same
     # for a seed whatever the backstory length.
+    backstory_years = league.get("backstory_years") or 0
+    if backstory_years:
+        on_stage("Simulating league history…")
     backstory = create_backstory(
         conn,
         league_id,
         season_id,
-        league.get("backstory_years") or 0,
+        backstory_years,
         random.Random(f"{seed}-backstory"),
     )
+
+    if backstory_years:
+        on_stage("Setting up the schedule & draft…")
 
     # ── 4. Generate schedule ──────────────────────────────────────────────────
     gr = GameRepository(conn)

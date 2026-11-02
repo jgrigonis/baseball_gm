@@ -27,7 +27,7 @@ def empty_queue(db_conn):
 @pytest.fixture
 def runner():
     """Stands in for what a job does; these tests are about the queue."""
-    with patch.dict(sim_jobs.KINDS, {"sim": lambda conn, lid, p: {"ran": p}}):
+    with patch.dict(sim_jobs.KINDS, {"sim": lambda conn, lid, p, report: {"ran": p}}):
         yield
 
 
@@ -68,7 +68,7 @@ class TestSubmit:
 
 class TestFailures:
     def test_rule_error_is_shown(self, db_conn, league):
-        def broken(conn, league_id, params):
+        def broken(conn, league_id, params, report):
             raise ValueError("League is in state 'draft' — cannot sim.")
 
         with patch.dict(sim_jobs.KINDS, {"sim": broken}):
@@ -81,7 +81,7 @@ class TestFailures:
     def test_unexpected_error_is_hidden_and_logged(self, db_conn, league, caplog):
         secret = "/home/someone/src/secret_module.py"
 
-        def broken(conn, league_id, params):
+        def broken(conn, league_id, params, report):
             raise RuntimeError(secret)
 
         with patch.dict(sim_jobs.KINDS, {"sim": broken}):
@@ -95,7 +95,7 @@ class TestFailures:
         assert secret in str(record.exc_info[1])
 
     def test_failed_work_is_rolled_back(self, db_conn, league):
-        def broken(conn, league_id, params):
+        def broken(conn, league_id, params, report):
             conn.execute(
                 "UPDATE leagues SET name = 'Half done' WHERE id = %s", (league_id,)
             )
@@ -108,6 +108,24 @@ class TestFailures:
             "SELECT name FROM leagues WHERE id = %s", (league.id,)
         ).fetchone()["name"]
         assert name == "Test League"
+
+
+class TestReport:
+    def test_a_job_can_say_what_its_doing(self, db_conn, league):
+        seen = []
+
+        def work(conn, league_id, params, report):
+            report("Halfway")
+            seen.append(_job(conn, job_id)["stage"])
+            return {}
+
+        repo = SimJobRepository(db_conn)
+        job_id = repo.add(league.id, "sim", {}, None)
+        repo.mark_running(job_id)
+        with patch.dict(sim_jobs.KINDS, {"sim": work}):
+            sim_jobs.run(db_conn, repo.get(job_id), repo)
+
+        assert seen == ["Halfway"]
 
 
 class TestLockedLeague:
@@ -217,8 +235,19 @@ class TestPolling:
 
         assert self._poll(client, league, job_id) == {
             "state": "queued",
+            "stage": None,
             "waiting_for_worker": False,
         }
+
+    def test_running_says_what_its_doing(self, client, db_conn, league):
+        repo = SimJobRepository(db_conn)
+        job_id = repo.add(league.id, "start", {}, None)
+        repo.mark_running(job_id)
+        repo.set_stage(job_id, "Simulating league history…")
+
+        body = self._poll(client, league, job_id)
+        assert body["state"] == "running"
+        assert body["stage"] == "Simulating league history…"
 
     def test_queued_a_while_says_the_worker_is_missing(self, client, db_conn, league):
         job_id = SimJobRepository(db_conn).add(league.id, "sim", {}, None)

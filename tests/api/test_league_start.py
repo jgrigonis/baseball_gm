@@ -402,6 +402,22 @@ class TestBackstory:
         assert sorted(order) == sorted(t.id for t in patched.teams)
         assert [pct[t] for t in order] == sorted(pct[t] for t in order)
 
+    def test_says_when_it_starts_and_finishes_the_history(self, patched):
+        patched.conn.execute(
+            "UPDATE leagues SET backstory_years = 2 WHERE id = %s", (patched.league.id,)
+        )
+        stages = []
+        start_league(patched.league.id, patched.conn, on_stage=stages.append)
+        assert stages == [
+            "Simulating league history…",
+            "Setting up the schedule & draft…",
+        ]
+
+    def test_no_history_nothing_to_say(self, patched):
+        stages = []
+        start_league(patched.league.id, patched.conn, on_stage=stages.append)
+        assert stages == []
+
     def test_backstory_seasons_dont_count_toward_the_league_length(self, patched):
         conn = patched.conn
         conn.execute(
