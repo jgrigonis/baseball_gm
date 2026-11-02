@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Cairo Pharaohs Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@700&family=Limelight&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F7F4EC; --card:#FFFFFF; --text:#132A4A; --dim:#5D6670; --line:#E5DFD0; --accent:#B8401C;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0C1626; --card:#152238; --text:#EEF0F2; --dim:#A3ACB5; --line:#26364F; --accent:#F2C94C; }
+}
+:root[data-theme="dark"] { --bg:#0C1626; --card:#152238; --text:#EEF0F2; --dim:#A3ACB5; --line:#26364F; --accent:#F2C94C; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:#1F5FA8; color:#FFFFFF; border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:repeating-linear-gradient(90deg, #F2C94C 0 14px, #B8401C 14px 20px, #F2C94C 20px 34px, #143F73 34px 40px); }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#D6E2F2; }
+header h1 { font-family:"Limelight", serif; font-size:42px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; color:#F2C94C; }
+header p { margin:0; max-width:640px; color:#E4ECF6; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.45); display:inline-block; }
+h2 { font-family:"Limelight", serif; font-size:22px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#E9ECEF, #D6DBE0); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#24303C, #1A232D); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#24303C, #1A232D); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:30px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · extra team</div>
+  <h1>Cairo Pharaohs</h1>
+  <p>Lapis, gold and carnelian, the stones of a pharaoh's treasure. The logo is a pharaoh in the striped nemes headcloth, and the stripes run down the road jersey's sleeves too. The lettering is Limelight, an Art Deco face from the Egyptian revival that followed the opening of Tutankhamun's tomb: PHARAOHS on papyrus at home, CAIRO on the gold road jersey, and a lapis alternate with a broad bead collar and القاهرة in El Messiri.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#1F5FA8"></i>Lapis #1F5FA8</span>
+    <span class="sw"><i style="background:#F2C94C"></i>Pharaoh gold #F2C94C</span>
+    <span class="sw"><i style="background:#B8401C"></i>Carnelian #B8401C</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <pattern id="nemesL" width="12" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(60)"><rect width="12" height="9" fill="#F2C94C"/><rect y="5" width="12" height="4" fill="#1F5FA8"/></pattern>
+    <pattern id="nemesR" width="12" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-60)"><rect width="12" height="9" fill="#F2C94C"/><rect y="5" width="12" height="4" fill="#1F5FA8"/></pattern>
+    <path id="ph-nemes" d="M30 2 C18 2 14 10 13 22 L4 52 Q9 56 15.5 56 L16.5 78 H43.5 L44.5 56 Q51 56 56 52 L47 22 C46 10 42 2 30 2 Z"/>
+    <path id="ph-stripes" d="M16.5 12 Q30 6 43.5 12 L44.5 14.6 Q30 8.8 15.5 14.6 Z M12.4 24 L19.5 24 V27 L11.5 27 Z M47.6 24 L40.5 24 V27 L48.5 27 Z M10.4 30.5 L19.5 30.5 V33.5 L9.6 33.5 Z M49.5 30.5 L40.5 30.5 V33.5 L50.5 33.5 Z M8.5 37 L19.5 37 V40 L7.6 40 Z M51.5 37 L40.5 37 V40 L52.4 40 Z M6.5 43.5 L19.5 43.5 V46.5 L5.7 46.5 Z M53.5 43.5 L40.5 43.5 V46.5 L54.4 46.5 Z M16.2 60 H23 V63 H16.3 Z M37 60 H43.8 L43.7 63 H37 Z M16.2 66 H23 V69 H16.3 Z M37 66 H43.8 L43.7 69 H37 Z M16.2 72 H23 V75 H16.3 Z M37 72 H43.8 L43.7 75 H37 Z"/>
+    <path id="ph-frame" d="M18.4 18.6 Q30 13.4 41.6 18.6 L41.6 38.4 Q40.6 51 30 53.4 Q19.4 51 18.4 38.4 Z"/>
+    <path id="ph-face" d="M20 20 Q30 15.6 40 20 L40 38 Q39 49 30 51.4 Q21 49 20 38 Z"/>
+    <path id="ph-eyes" d="M22.6 30 Q25.6 27.6 28.4 30 Q25.6 31.8 22.6 30 Z M31.6 30 Q34.4 27.6 37.4 30 Q34.4 31.8 31.6 30 Z M22.4 26.6 Q25.4 24.6 28.6 26.2 L28.4 27 Q25.4 25.6 22.6 27.4 Z M37.6 26.6 Q34.6 24.6 31.4 26.2 L31.6 27 Q34.6 25.6 37.4 27.4 Z M28.4 30 L27.6 31.4 L28.8 31 Z M37.4 30 L38.6 31.6 L37.2 31.2 Z M26.8 43.4 Q30 44.8 33.2 43.4 Q30 46 26.8 43.4 Z"/>
+    <path id="ph-beard" d="M27.4 52.6 H32.6 L32.2 66 Q30 68.4 27.8 66 Z"/>
+    <path id="ph-uraeus" d="M30 11 Q27.4 13.6 28.6 17.2 L29.2 19.6 H30.8 L31.4 17.2 Q32.6 13.6 30 11 Z"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. Papyrus at home, pharaoh gold on the road, and a lapis alternate.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: papyrus with lapis PHARAOHS edged in gold and lapis sleeves">
+      <use href="#jersey" fill="#F7F1E1" stroke="#143F73" stroke-width="2"/>
+      <path d="M72 22 L18 54 L37 100 L60 88 Z" fill="#1F5FA8"/><path d="M168 22 L222 54 L203 100 L180 88 Z" fill="#1F5FA8"/>
+      <use href="#jersey" fill="none" stroke="#143F73" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#1F5FA8" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F2C94C" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#143F73" stroke-width="2.5"/>
+      <g fill="#1F5FA8"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#F2C94C" stroke-width="5"/><path d="M203 100 L222 54" stroke="#F2C94C" stroke-width="5"/>
+      <path d="M41 98 L22 52" stroke="#B8401C" stroke-width="2"/><path d="M199 98 L218 52" stroke="#B8401C" stroke-width="2"/>
+      <path id="arcH" d="M62 142 Q120 116 178 142" fill="none"/>
+      <text font-family="Limelight" font-size="18" fill="#1F5FA8" stroke="#F2C94C" stroke-width="2" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcH" startOffset="50%" text-anchor="middle">PHARAOHS</textPath></text>
+      <text x="88" y="202" text-anchor="middle" font-family="Limelight" font-size="32" fill="#B8401C" stroke="#1F5FA8" stroke-width="2" stroke-linejoin="round" paint-order="stroke">12</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#1F5FA8" stroke="#F2C94C" stroke-width="2"/><g transform="translate(-7.8 -10.4) scale(0.26)"><use href="#ph-nemes" fill="#F2C94C"/><use href="#ph-stripes" fill="#1F5FA8"/><use href="#ph-frame" fill="#1F5FA8"/><use href="#ph-face" fill="#F2C94C"/><use href="#ph-eyes" fill="#1F5FA8"/><use href="#ph-beard" fill="#1F5FA8"/><use href="#ph-uraeus" fill="#B8401C"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>Papyrus, lapis PHARAOHS</h3>
+    <p>PHARAOHS arched in lapis with a gold edge on a papyrus body. Lapis sleeves with a gold and carnelian cuff, carnelian numbers edged in lapis, and the pharaoh badge on the sleeve.</p>
+  </div>
+
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: gold with lapis CAIRO edged in papyrus and nemes-striped sleeves">
+      <use href="#jersey" fill="#F2C94C" stroke="#B8902A" stroke-width="2"/>
+      <path d="M72 22 L18 54 L37 100 L60 88 Z" fill="url(#nemesL)"/><path d="M168 22 L222 54 L203 100 L180 88 Z" fill="url(#nemesR)"/>
+      <use href="#jersey" fill="none" stroke="#B8902A" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#1F5FA8" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#B8401C" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#B8902A" stroke-width="2.5"/>
+      <g fill="#1F5FA8"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#1F5FA8" stroke-width="5"/><path d="M203 100 L222 54" stroke="#1F5FA8" stroke-width="5"/>
+      <path id="arcA" d="M64 142 Q120 120 176 142" fill="none"/>
+      <text font-family="Limelight" font-size="24" letter-spacing="1" fill="#1F5FA8" stroke="#F7F1E1" stroke-width="2" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcA" startOffset="50%" text-anchor="middle">CAIRO</textPath></text>
+      <text x="88" y="202" text-anchor="middle" font-family="Limelight" font-size="32" fill="#1F5FA8" stroke="#F7F1E1" stroke-width="2" stroke-linejoin="round" paint-order="stroke">12</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#1F5FA8" stroke="#F7F1E1" stroke-width="2"/><g transform="translate(-7.8 -10.4) scale(0.26)"><use href="#ph-nemes" fill="#F2C94C"/><use href="#ph-stripes" fill="#1F5FA8"/><use href="#ph-frame" fill="#1F5FA8"/><use href="#ph-face" fill="#F2C94C"/><use href="#ph-eyes" fill="#1F5FA8"/><use href="#ph-beard" fill="#1F5FA8"/><use href="#ph-uraeus" fill="#B8401C"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Pharaoh gold, lapis CAIRO</h3>
+    <p>CAIRO arched in lapis with a papyrus edge on a gold body. The sleeves wear the nemes headcloth's gold and lapis stripes, with lapis cuffs and lapis numbers.</p>
+  </div>
+
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: lapis with a gold and carnelian broad collar and القاهرة in gold">
+      <use href="#jersey" fill="#1F5FA8" stroke="#143F73" stroke-width="2"/>
+      <clipPath id="neck"><use href="#jersey"/></clipPath>
+      <g clip-path="url(#neck)">
+      <path d="M94 12 A26 26 0 0 0 146 12" fill="none" stroke="#F2C94C" stroke-width="6"/>
+      <path d="M88 12 A32 32 0 0 0 152 12" fill="none" stroke="#B8401C" stroke-width="4"/>
+      <path d="M83 12 A37 37 0 0 0 157 12" fill="none" stroke="#F2C94C" stroke-width="5"/>
+      <ellipse cx="77.3" cy="17.2" rx="2.4" ry="3.4" transform="rotate(-83.1 77.3 17.2)" fill="#B8401C"/>
+      <ellipse cx="79.8" cy="27.2" rx="2.4" ry="3.4" transform="rotate(-69.2 79.8 27.2)" fill="#B8401C"/>
+      <ellipse cx="84.6" cy="36.4" rx="2.4" ry="3.4" transform="rotate(-55.4 84.6 36.4)" fill="#B8401C"/>
+      <ellipse cx="91.5" cy="44.2" rx="2.4" ry="3.4" transform="rotate(-41.5 91.5 44.2)" fill="#B8401C"/>
+      <ellipse cx="100" cy="50.1" rx="2.4" ry="3.4" transform="rotate(-27.7 100 50.1)" fill="#B8401C"/>
+      <ellipse cx="109.7" cy="53.8" rx="2.4" ry="3.4" transform="rotate(-13.8 109.7 53.8)" fill="#B8401C"/>
+      <ellipse cx="120" cy="55" rx="2.4" ry="3.4" transform="rotate(0 120 55)" fill="#B8401C"/>
+      <ellipse cx="130.3" cy="53.8" rx="2.4" ry="3.4" transform="rotate(13.8 130.3 53.8)" fill="#B8401C"/>
+      <ellipse cx="140" cy="50.1" rx="2.4" ry="3.4" transform="rotate(27.7 140 50.1)" fill="#B8401C"/>
+      <ellipse cx="148.5" cy="44.2" rx="2.4" ry="3.4" transform="rotate(41.5 148.5 44.2)" fill="#B8401C"/>
+      <ellipse cx="155.4" cy="36.4" rx="2.4" ry="3.4" transform="rotate(55.4 155.4 36.4)" fill="#B8401C"/>
+      <ellipse cx="160.2" cy="27.2" rx="2.4" ry="3.4" transform="rotate(69.2 160.2 27.2)" fill="#B8401C"/>
+      <ellipse cx="162.7" cy="17.2" rx="2.4" ry="3.4" transform="rotate(83.1 162.7 17.2)" fill="#B8401C"/>
+      </g>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F2C94C" stroke-width="6"/>
+      <path d="M120 56 V250" stroke="#143F73" stroke-width="2.5"/>
+      <g fill="#F2C94C"><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#F2C94C" stroke-width="5"/><path d="M203 100 L222 54" stroke="#F2C94C" stroke-width="5"/>
+      <path d="M41 98 L22 52" stroke="#B8401C" stroke-width="2"/><path d="M199 98 L218 52" stroke="#B8401C" stroke-width="2"/>
+      <text x="120" y="150" text-anchor="middle" font-family="El Messiri" font-weight="700" font-size="30" fill="#F2C94C" stroke="#143F73" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke">القاهرة</text>
+      <text x="88" y="208" text-anchor="middle" font-family="Limelight" font-size="32" fill="#F7F1E1" stroke="#B8401C" stroke-width="2" stroke-linejoin="round" paint-order="stroke">12</text>
+      <rect x="61" y="228" width="118" height="5" fill="#F2C94C"/>
+      <rect x="61" y="235" width="118" height="3" fill="#B8401C"/>
+      <g transform="translate(196 74)"><circle r="13" fill="#F2C94C" stroke="#B8401C" stroke-width="2"/><g transform="translate(-7.8 -10.4) scale(0.26)"><use href="#ph-nemes" fill="#1F5FA8"/><use href="#ph-stripes" fill="#F2C94C"/><use href="#ph-frame" fill="#F2C94C"/><use href="#ph-face" fill="#1F5FA8"/><use href="#ph-eyes" fill="#F2C94C"/><use href="#ph-beard" fill="#F2C94C"/><use href="#ph-uraeus" fill="#B8401C"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Usekh</div>
+    <h3>Lapis, gold القاهرة</h3>
+    <p>The Usekh alternate. A broad collar of gold and carnelian beads round the neck, like the one on Tutankhamun's mask, القاهرة (al-Qāhira, Cairo) in gold El Messiri across the chest, and a gold and carnelian hem band.</p>
+  </div>
+
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">The pharaoh in his striped nemes, kept small on every piece.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Lapis cap with a gold brim and a gold pharaoh edged in papyrus">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#1F5FA8"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#143F73" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#143F73" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#F2C94C"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#F2C94C" stroke="#B8902A" stroke-width="1.5"/>
+      <g transform="translate(107.4 61) scale(0.42)"><use href="#ph-nemes" fill="#F7F1E1" stroke="#F7F1E1" stroke-width="6" stroke-linejoin="round"/><use href="#ph-nemes" fill="#F2C94C"/><use href="#ph-stripes" fill="#1F5FA8"/><use href="#ph-frame" fill="#1F5FA8"/><use href="#ph-face" fill="#F2C94C"/><use href="#ph-eyes" fill="#1F5FA8"/><use href="#ph-beard" fill="#1F5FA8"/><use href="#ph-uraeus" fill="#B8401C"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Lapis crown, gold brim</h3>
+    <p>A gold pharaoh striped in lapis, with a papyrus edge and a carnelian cobra on his brow, on a lapis crown with a gold brim and button.</p>
+  </div>
+
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Gold cap with a lapis brim and a lapis pharaoh striped in gold">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#F2C94C"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#B8902A" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#B8902A" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#1F5FA8"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#1F5FA8" stroke="#143F73" stroke-width="1.5"/>
+      <g transform="translate(107.4 61) scale(0.42)"><use href="#ph-nemes" fill="#143F73" stroke="#143F73" stroke-width="6" stroke-linejoin="round"/><use href="#ph-nemes" fill="#1F5FA8"/><use href="#ph-stripes" fill="#F2C94C"/><use href="#ph-frame" fill="#F2C94C"/><use href="#ph-face" fill="#1F5FA8"/><use href="#ph-eyes" fill="#F2C94C"/><use href="#ph-beard" fill="#F2C94C"/><use href="#ph-uraeus" fill="#B8401C"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · Usekh</div>
+    <h3>Gold crown, lapis brim</h3>
+    <p>The pharaoh in lapis striped with gold on a gold crown. Worn with the Usekh alternate.</p>
+  </div>
+
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss lapis batting helmet with a gold pharaoh decal">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C82C6"/><stop offset=".45" stop-color="#1F5FA8"/><stop offset="1" stop-color="#143F73"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#F2C94C"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#143F73"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#143F73"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <g transform="translate(93.6 62) scale(0.34)"><use href="#ph-nemes" fill="#F7F1E1" stroke="#F7F1E1" stroke-width="7" stroke-linejoin="round"/><use href="#ph-nemes" fill="#F2C94C"/><use href="#ph-stripes" fill="#1F5FA8"/><use href="#ph-frame" fill="#1F5FA8"/><use href="#ph-face" fill="#F2C94C"/><use href="#ph-eyes" fill="#1F5FA8"/><use href="#ph-beard" fill="#1F5FA8"/><use href="#ph-uraeus" fill="#B8401C"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#F2C94C" stroke-width="2.5"/>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss lapis</h3>
+    <p>A lapis shell with a gold ear flap and stripe, and a small gold pharaoh decal.</p>
+  </div>
+
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">Nemes stripes on the stirrups.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="Papyrus home pants and gray away pants with lapis and gold side stripes">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F7F1E1" stroke="#DCD3BC" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#1F5FA8"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#F2C94C" stroke-width="2"/>
+        <path d="M33 34 L36 208" stroke="#1F5FA8" stroke-width="4"/><path d="M38 34 L40 208" stroke="#B8902A" stroke-width="1.8"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5D6670">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A8ADB3" stroke="#868B91" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#1F5FA8"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#F2C94C" stroke-width="2"/>
+        <path d="M133 34 L136 208" stroke="#1F5FA8" stroke-width="4"/><path d="M138 34 L140 208" stroke="#B8902A" stroke-width="1.8"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5D6670">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>Papyrus at home, gray away</h3>
+    <p>A lapis and gold side stripe on both pairs, with a lapis belt and a gold buckle. The Usekh alternate wears the papyrus pair.</p>
+  </div>
+
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Lapis stirrups with a gold and lapis nemes band, and gold stirrups with a lapis and carnelian band">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#1F5FA8"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="30" width="56" height="6" fill="#F2C94C"/><rect x="50" y="36" width="56" height="6" fill="#1F5FA8"/><rect x="50" y="42" width="56" height="6" fill="#F2C94C"/><rect x="50" y="48" width="56" height="6" fill="#1F5FA8"/><rect x="50" y="54" width="56" height="6" fill="#F2C94C"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#0F2340"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#F2C94C"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="30" width="56" height="6" fill="#1F5FA8"/><rect x="144" y="36" width="56" height="6" fill="#F2C94C"/><rect x="144" y="42" width="56" height="6" fill="#B8401C"/><rect x="144" y="48" width="56" height="6" fill="#F2C94C"/><rect x="144" y="54" width="56" height="6" fill="#1F5FA8"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#0F2340"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>Lapis and gold</h3>
+    <p>Lapis stirrups with a gold and lapis nemes band. The Usekh set is gold with a lapis, gold and carnelian band.</p>
+  </div>
+
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Round lapis patch with the pyramids of Giza under a setting sun over the Nile">
+      <defs>
+        <clipPath id="ring"><circle cx="120" cy="112" r="64"/></clipPath>
+        <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B5C9C"/><stop offset=".55" stop-color="#E08A3C"/><stop offset="1" stop-color="#F2C94C"/></linearGradient>
+      </defs>
+      <circle cx="120" cy="112" r="94" fill="#1F5FA8" stroke="#F2C94C" stroke-width="5"/>
+      <circle cx="120" cy="112" r="64" fill="url(#dusk)"/>
+      <g clip-path="url(#ring)">
+        <circle cx="146" cy="104" r="15" fill="#FBE7A1"/>
+        <path d="M40 150 Q80 140 120 146 T200 146 V190 H40 Z" fill="#D9A84E"/>
+        <path d="M58 150 L92 92 L126 150 Z" fill="#F2C94C"/><path d="M92 92 L126 150 H104 Z" fill="#B8902A"/>
+        <path d="M112 150 L138 106 L164 150 Z" fill="#F2C94C"/><path d="M138 106 L164 150 H148 Z" fill="#B8902A"/>
+        <path d="M158 152 L172 128 L186 152 Z" fill="#F2C94C"/><path d="M172 128 L186 152 H178 Z" fill="#B8902A"/>
+        <path d="M40 158 Q60 152 80 158 T120 158 T160 158 T200 158 V190 H40 Z" fill="#143F73"/>
+        <path d="M40 158 Q60 152 80 158 T120 158 T160 158 T200 158" fill="none" stroke="#F7F1E1" stroke-width="2"/>
+        <path d="M138 166 H154 M141 172 H151 M143 178 H149" stroke="#FBE7A1" stroke-width="2" opacity=".7"/>
+      </g>
+      <circle cx="120" cy="112" r="64" fill="none" stroke="#F7F1E1" stroke-width="2.5"/>
+      <path id="ringTop" d="M46 112 A74 74 0 0 1 194 112" fill="none"/>
+      <text font-family="Limelight" font-size="16" letter-spacing="2" fill="#F2C94C"><textPath href="#ringTop" startOffset="50%" text-anchor="middle">PHARAOHS</textPath></text>
+      <path id="ringBot" d="M36 112 A84 84 0 0 0 204 112" fill="none"/>
+      <text font-family="Limelight" font-size="15" letter-spacing="5" fill="#F7F1E1"><textPath href="#ringBot" startOffset="50%" text-anchor="middle">CAIRO</textPath></text>
+      <g fill="#B8401C"><circle cx="31" cy="112" r="3.5"/><circle cx="209" cy="112" r="3.5"/></g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>The pyramids at sunset</h3>
+    <p>A lapis roundel with a gold rim. The three pyramids of Giza stand against a sky going from lapis to gold, with the sun setting behind them and the Nile in front, PHARAOHS across the top and CAIRO along the bottom. Worn on the player's left sleeve.</p>
+  </div>
+
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Lapis, pharaoh gold and carnelian are the same values the game uses for the Cairo badge: a lapis badge with CAI in gold and a carnelian ring.</li>
+  <li><b>Not Istanbul.</b> Istanbul, the nearest team, wears cobalt on the road with turquoise, so Cairo's road jersey is gold and its lapis is a lighter, warmer blue. No other West Asia team has a blue badge with gold letters; the nearest badges in the pool are Los Angeles and Vienna.</li>
+  <li><b>Display type.</b> Limelight is an Art Deco face in the spirit of the 1920s Egyptomania after Tutankhamun's tomb was found. El Messiri, used for القاهرة, was drawn by an Egyptian type designer.</li>
+  <li><b>The pharaoh is the logo.</b> The caps, helmet and sleeve badge carry a pharaoh's head in the striped nemes, with the cobra on his brow and the false beard. He is kept small on the caps and helmet.</li>
+  <li><b>In the game.</b> Cairo is one of the extra teams, placed in West Asia next to Istanbul by longitude.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece.
+</div>
+
+</div>
+</body>
+</html>
