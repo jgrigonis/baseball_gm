@@ -4,29 +4,33 @@
 Baseball event probability constants.
 
 These values tune the likelihood of various outcomes throughout the game.
+
+League-wide scoring is calibrated to MLB 2023-2025 (about 4.5 runs per team
+game, .245/.316/.406). After changing anything here or in the pitch /
+in-play modifiers, check it with scripts/league_stat_check.py.
 """
 
 # Pitch outcome weights
-BALL_PROB = 15000
-FOUL_PROB = 5100
-HOME_RUN_PROB = 280
-HBP_PROB = 118
+BALL_PROB = 15700
+FOUL_PROB = 6400
+HOME_RUN_PROB = 322
+HBP_PROB = 130
 BALK_PROB = 0
 ILLEGAL_PITCH_PROB = 0
 CATCHER_INTERFERENCE_PROB = 3
-WILD_PITCH_PROB = 275
+WILD_PITCH_PROB = 300
 PASSED_BALL_PROB = 69
 IN_PLAY_PROB = 5875
 # Called and swinging strikes split the old single STRIKE_PROB (11500).
 CALLED_STRIKE_PROB = 5750
-SWINGING_STRIKE_PROB = 5750
+SWINGING_STRIKE_PROB = 5950
 
 # In play outcome weights
 FLY_OUT_PROB = 4440
 GROUND_OUT_PROB = 1740
-SINGLE_PROB = 1320
-DOUBLE_PROB = 372
-TRIPLE_PROB = 51
+SINGLE_PROB = 1490
+DOUBLE_PROB = 445
+TRIPLE_PROB = 55
 DOUBLE_PLAY_PROB = 0
 FIELDERS_CHOICE_PROB = 0
 SAC_FLY_PROB = 0
@@ -48,9 +52,11 @@ PROB_TAGUP_FROM_SECOND_FLYOUT = 0.7
 PROB_TAGUP_FROM_FIRST_FLYOUT = 0.3
 
 # Base advancement probabilities
-SCORE_FROM_SECOND_ON_SINGLE = 0.60  # 60% chance runner scores from 2nd
+# These are scaled by runner (speed + base_running) / 100 and 50 / the
+# outfielder's arm, which nets about 0.9 for a typical runner and outfield.
+SCORE_FROM_SECOND_ON_SINGLE = 0.63  # about 57% after scaling (MLB ~60%)
 FIRST_TO_THIRD_ON_SINGLE = 0.35  # 35% chance runner goes 1st to 3rd
-SCORE_FROM_FIRST_ON_DOUBLE = 0.21  # 21% chance runner scores from 1st on double
+SCORE_FROM_FIRST_ON_DOUBLE = 0.32  # about 29% after scaling
 FIRST_TO_HOME_ON_SINGLE = 0.03  # 3% chance runner scores from 1st on single
 
 # Pickoff probabilities
@@ -59,12 +65,15 @@ PICKOFF_ERROR_PROB = 0.02  # 2% throwing error
 STEAL_ON_PICKOFF_MODIFIER = 1.5
 
 # Steal success rates
-STEAL_SECOND_SUCCESS_PROB = 0.74  # 74% success rate
-STEAL_THIRD_SUCCESS_PROB = 0.83  # 83% success rate
+# Scaled by runner (2 * speed + base_running) / 150 over catcher
+# (arm + catching) / 100. A typical base stealer (1.26) against a typical
+# catcher (1.43) succeeds about 80% of the time, as in MLB since 2023.
+STEAL_SECOND_SUCCESS_PROB = 0.95
+STEAL_THIRD_SUCCESS_PROB = 0.97
 STEAL_HOME_SUCCESS_PROB = 0.25  # 25% success rate
 
 # Error and throwout rates
-BASE_ERROR_RATE = 0.062
+BASE_ERROR_RATE = 0.047
 
 # Error chances on specific plays, as multiples of the fielder's base
 # fielding / throwing error chance (see src/game/resolvers/errors.py).
@@ -102,8 +111,8 @@ SS_OVER_2B_PROB = 0.55
 BASE_PICKOFF_ATTEMPT_PROB = 0.01  # 1% per pitch
 
 # Steal
-BASE_STEAL_SECOND_PROB = 0.020  # 2.0% from first
-BASE_STEAL_THIRD_PROB = 0.005  # 0.5% from second
+BASE_STEAL_SECOND_PROB = 0.028  # per pitch from first, before speed and count
+BASE_STEAL_THIRD_PROB = 0.006  # per pitch from second
 BASE_STEAL_HOME_PROB = 0.00001  # 0.0001% from third
 STEAL_FULL_COUNT_MOD = 1.6
 STEAL_BEHIND_COUNT_MOD = 0.4
@@ -117,7 +126,7 @@ DOUBLE_STEAL_FIRST_SECOND = 0.001
 DOUBLE_STEAL_TWO_OUT_MOD = 0.2
 
 # Bunt
-BUNT_PROB = 0.04
+BUNT_PROB = 0.018
 BUNT_ON_FIRST_MOD = 2.0
 BUNT_ON_SECOND_MOD = 2.5
 BUNT_CLOSE_GAME_MOD = 1.5
