@@ -25,6 +25,14 @@ function playerGradesHtml(p) {
     .join('');
 }
 
+// A small face for a player row (face_url in src/player/face.py); clicking it
+// opens the player panel, where the face can be seen bigger.
+function faceImgHtml(p) {
+  if (!p.face_url) return '<span></span>';
+  return `<img class="lu-face" src="${p.face_url}" alt="" loading="lazy" width="36" height="36"
+               onclick="openPlayerPanel('${p.player_id}')">`;
+}
+
 /* ── Player rows (Lineup and Roster tabs) ─────────────────────────────────────
    A row is the overall grade, then the name with a dim trail of stats and
    facts, then a line or two of ratings. Styles: .lu-* in main.css. */

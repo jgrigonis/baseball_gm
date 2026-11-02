@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from urllib.parse import quote, urlencode
+
 from markupsafe import Markup, escape
 
 from src.team.colors import colors_for, readable_ink
@@ -865,3 +867,15 @@ def player_face(player: dict, size: str = "lg") -> Markup:
         '<div class="face-zoom-caption">{caption}</div>'
         "</div></dialog>"
     ).format(size=size, name=name or "this player", svg=svg, caption=caption)
+
+
+def face_url(
+    player_id: str, age: int | None, city: str | None, mascot: str | None
+) -> str:
+    """A URL for the face as an image (routers/face_gen.py), for lists that
+    draw many small faces. Age and team are in the URL, so the image can be
+    cached: a birthday or a trade gives a new URL."""
+    q = {"age": age or 27}
+    if city and mascot:
+        q["team"] = f"{city}|{mascot}"
+    return f"/faces/{quote(str(player_id), safe='')}.svg?{urlencode(q)}"
