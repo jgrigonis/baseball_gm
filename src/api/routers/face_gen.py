@@ -10,7 +10,7 @@ import json
 import secrets
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from src.player.face import (
     TRAITS_BY_KEY,
@@ -100,6 +100,22 @@ def face_gen_svg(
             "stored": stored,
             "bytes": len(stored.encode()),
         }
+    )
+
+
+@router.get("/faces/{player_id}.svg")
+def player_face_image(
+    player_id: str,
+    age: int = Query(default=27, ge=16, le=50),
+    team: str = Query(default=""),
+):
+    """One player's face as an image, for lists of small faces (face_url).
+    The face depends only on the URL, so browsers may keep it a day."""
+    city, mascot = _team(team)
+    return Response(
+        face_svg(player_id, age, city, mascot),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
     )
 
 

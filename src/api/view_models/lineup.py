@@ -15,7 +15,9 @@ from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.player.face import face_url
 from src.stats import formulas
 from src.team.manager_profile import ManagerProfile
 
@@ -32,8 +34,12 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
     player_repo = PlayerRepository(db)
     hitters = []
     pitchers = []
+    team = TeamRepository(db).get_city_and_mascot(team_id) or {}
     for row in player_repo.get_active_roster_with_skills(team_id):
         g = lineup_card(row)
+        g["face_url"] = face_url(
+            g["player_id"], g.get("age"), team.get("city"), team.get("mascot")
+        )
         if g.get("player_type") == "pitcher":
             pitchers.append(g)
         else:

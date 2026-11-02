@@ -6,7 +6,7 @@ import json
 from fastapi.testclient import TestClient
 
 from src.api.main import app
-from src.player.face import TRAITS, random_traits
+from src.player.face import TRAITS, face_svg, face_url, random_traits
 
 client = TestClient(app)
 
@@ -50,3 +50,17 @@ def test_random_is_the_players_face_for_an_id():
     assert client.get(
         "/face_gen/random", params={"seed": "p-1"}
     ).json() == random_traits("p-1")
+
+
+def test_player_face_image_matches_the_card_face():
+    url = face_url("p-7", 31, "Tokyo", "Samurai")
+    r = client.get(url)
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/svg+xml")
+    assert "max-age" in r.headers["cache-control"]
+    assert r.text == face_svg("p-7", 31, "Tokyo", "Samurai")
+
+
+def test_player_face_image_without_a_known_team_is_a_plain_cap():
+    r = client.get("/faces/p-7.svg", params={"team": "Nowhere|X"})
+    assert r.text == face_svg("p-7", 27, None, None)

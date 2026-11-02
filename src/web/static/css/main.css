@@ -1413,6 +1413,8 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 
 /* Player rows on the Lineup and Roster tabs */
 .lu-grade  { font-family: var(--font-mono); font-size: 14px; font-weight: 600; min-width: 28px; }
+/* A small face in a player row (faceImgHtml in grades.js) */
+.lu-face   { display: block; width: 36px; height: 36px; border-radius: 4px; background: var(--bg-3); cursor: pointer; }
 .lu-name   { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
 .lu-skills { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
 .lu-skills .gl { color: var(--muted); margin-right: 1px; }

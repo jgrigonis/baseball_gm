@@ -329,7 +329,7 @@
 
 /* ── Batting order slots ────────────────────────────────────────────────────── */
 .lu-slot {
-  display: grid; grid-template-columns: 22px 28px 28px 1fr auto auto 22px;
+  display: grid; grid-template-columns: 22px 28px 28px 36px 1fr auto auto 22px;
   gap: 0 6px; align-items: center;
   padding: 6px 10px 6px 6px; border-bottom: 1px solid var(--border);
   cursor: grab; user-select: none; transition: background .08s;
@@ -398,7 +398,7 @@
 
 /* ── Rotation slots ──────────────────────────────────────────────────────────── */
 .rot-slot {
-  display: grid; grid-template-columns: 20px 22px 28px 1fr auto auto 22px;
+  display: grid; grid-template-columns: 20px 22px 28px 36px 1fr auto auto 22px;
   gap: 0 6px; align-items: center;
   padding: 7px 10px 7px 8px; border-bottom: 1px solid var(--border);
   cursor: grab; user-select: none; transition: background .08s;
@@ -640,6 +640,7 @@ function renderBattingOrder() {
           <button class="lu-arrow" data-idx="${i}" data-dir="down" ${i===8?'disabled':''}>▼</button>
         </div>
         <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
+        ${faceImgHtml(p)}
         <div style="min-width:0;">
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [`${p.bats}/${p.throws}`, `Age ${p.age}`])}
@@ -1172,6 +1173,7 @@ function renderRotation() {
            onclick="setPointer('${pid}')"></div>
       <div class="rot-num">${slotIdx + 1}</div>
       <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+      ${faceImgHtml(p)}
       <div style="min-width:0;">
         <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
              onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}

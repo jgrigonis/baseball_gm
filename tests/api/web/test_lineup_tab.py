@@ -1,6 +1,8 @@
 # tests/api/web/test_lineup_tab.py
 """The Lineup tab saves a lineup for each hand of opposing starter."""
 
+from urllib.parse import urlencode
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -8,6 +10,7 @@ from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user
 from src.api.main import app
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+from src.db.repositories.team_repo import TeamRepository
 
 
 @pytest.fixture
@@ -76,3 +79,14 @@ def test_bad_hand_is_rejected(client, setup):
     league, _, _, hitters = setup
     r = client.put(f"/leagues/{league.id}/lineup/save", json=body(hitters, "X"))
     assert r.status_code == 422
+
+
+def test_each_player_has_a_face_image(client, db_conn, setup):
+    league, team, _, hitters = setup
+    t = TeamRepository(db_conn).get_city_and_mascot(team.id)
+
+    r = client.get(f"/leagues/{league.id}/lineup")
+
+    for h in hitters:
+        assert f"/faces/{h.id}.svg?age=" in r.text
+    assert urlencode({"team": f"{t['city']}|{t['mascot']}"}) in r.text
