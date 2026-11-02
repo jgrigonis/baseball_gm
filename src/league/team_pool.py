@@ -73,6 +73,7 @@ TEAM_POOL: tuple[PoolTeam, ...] = (
     PoolTeam("Vienna", "Maestros", EUROPE, 16.4),
     PoolTeam("Warsaw", "Hussars", EUROPE, 21.0),
     PoolTeam("Istanbul", "Sultans", WEST_ASIA, 29.0),
+    PoolTeam("Cairo", "Pharaohs", WEST_ASIA, 31.2),
     PoolTeam("Dubai", "Falcons", WEST_ASIA, 55.3),
     PoolTeam("Mumbai", "Mariners", WEST_ASIA, 72.9),
     PoolTeam("Bangkok", "Guardians", SOUTHEAST_ASIA, 100.5),

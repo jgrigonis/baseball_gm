@@ -28,6 +28,7 @@ def test_page_renders_without_signing_in():
         "Portland Weird",
         "Rome Gladiators",
         "Boston Beacons",
+        "Cairo Pharaohs",
     ):
         assert team in r.text
     assert "No uniform set yet." not in r.text
