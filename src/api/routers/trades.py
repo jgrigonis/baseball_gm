@@ -56,7 +56,10 @@ def team_cards(db, league_id: str, season_id: str | None, team_id: str) -> list[
             cards,
             PlayerSeasonStatsRepository(db).get_team_stats_map(season_id, team_id),
         )
-    attach_injuries(cards, InjuryRepository(db, league_id).get_team_injuries(team_id))
+    inj = InjuryRepository(db, league_id)
+    attach_injuries(
+        cards, inj.get_team_injuries(team_id), inj.get_team_injury_types(team_id)
+    )
     return [c for c in cards if c["roster_status"] in trades.TRADEABLE]
 
 

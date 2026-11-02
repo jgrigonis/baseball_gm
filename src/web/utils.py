@@ -7,6 +7,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.player.injury_types import injury_label
 from src.api.services import all_star, trades
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
@@ -44,6 +45,8 @@ def grade_class(grade: str | None) -> str:
 
 
 templates.env.globals["grade_class"] = grade_class
+# The injury's name, or its severity for injuries from before injury types
+templates.env.globals["injury_label"] = injury_label
 
 _STATIC_DIR = Path(__file__).parent / "static"
 

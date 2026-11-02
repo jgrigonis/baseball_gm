@@ -18,12 +18,13 @@ def _player_on(db, factory, team, name):
     return p
 
 
-def _injure(db, league, player, days):
+def _injure(db, league, player, days, injury_type=None):
     return_date = (date.today() + timedelta(days=days)).isoformat()
     db.execute(
-        "INSERT INTO player_injuries (player_id, league_id, games_remaining, return_date)"
-        " VALUES (%s, %s, %s, %s)",
-        (player.id, league.id, days, return_date),
+        "INSERT INTO player_injuries"
+        " (player_id, league_id, games_remaining, return_date, injury_type)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        (player.id, league.id, days, return_date, injury_type),
     )
 
 
@@ -59,6 +60,20 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
         "roster_moves": [],
         "trades": [],
     }
+
+
+def test_news_names_the_injury(db_conn, factory):
+    league = factory.league(state="season")
+    team = factory.team()
+    gm = factory.gm(team=team, league=league, is_ai=False)
+    hurt = _player_on(db_conn, factory, team, "Alice")
+
+    news = InjuryNews(db_conn, league.id)
+    _injure(db_conn, league, hurt, 300, injury_type="torn_acl")
+    news.record()
+
+    (note,) = take_injury_news(db_conn, gm.id)["new_injuries"]
+    assert note["injury"] == "Torn ACL"
 
 
 def test_news_is_shown_once(db_conn, factory):

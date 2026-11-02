@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 
+from src.player.injury_types import injury_label
 from src.api.grade_curves import overall_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.player.player_evaluator import PlayerEvaluator
@@ -373,10 +374,16 @@ def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
             p["stat_sv"] = s["pitch_saves"] or 0
 
 
-def attach_injuries(players: list[dict], injured_map: dict) -> None:
-    """Mark each card with its IL status from a {player_id: days_remaining} map."""
+def attach_injuries(
+    players: list[dict], injured_map: dict, injury_types: dict | None = None
+) -> None:
+    """Mark each card with its IL status from a {player_id: days_remaining} map,
+    and the injury's name from a {player_id: injury_type} map when given."""
+    injury_types = injury_types or {}
     for p in players:
         raw_days = injured_map.get(p["player_id"])
         p["injured"] = raw_days is not None
         p["injury_days"] = raw_days if raw_days else None
+        kind = injury_types.get(p["player_id"]) if raw_days is not None else None
+        p["injury_name"] = injury_label(kind) if kind else None
         p["returning"] = False

@@ -1,5 +1,6 @@
 # tests/db/repositories/test_injury_repo.py
 from datetime import date
+import random
 from types import SimpleNamespace
 
 import pytest
@@ -167,3 +168,20 @@ def test_migration_backfills_injury_log_team(setup):
         ).fetchall()
     ]
     assert teams == [s.other.id, s.team.id]
+
+
+def test_injury_type_is_stored_and_listed(setup):
+    s = setup
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="surgery",
+        activity="running", team_id=s.team.id, injury_type="torn_acl",
+        rng=random.Random(1),
+    )  # fmt: skip
+    current = s.repo.get(s.player.id, as_of="2025-04-02")
+    assert current.injury_type == "torn_acl"
+    assert 270 <= current.days_remaining <= 400
+    assert s.repo.get_team_injury_types(s.team.id, as_of="2025-04-02") == {
+        s.player.id: "torn_acl"
+    }
+    assert s.repo.get_injury_log(s.player.id)[0]["injury_type"] == "torn_acl"
+    assert s.repo.get_season_injuries(s.season.id)[0]["injury_type"] == "torn_acl"

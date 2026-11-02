@@ -43,7 +43,7 @@
    </span>
  {% endfor %}
  {% if player.injured %}
-   <span class="badge badge-injured">IL · {{ player.injury_days }}d</span>
+   <span class="badge badge-injured">IL{% if player.injury_name %} · {{ player.injury_name }}{% endif %} · {{ player.injury_days }}d</span>
  {% endif %}
  {% if player.energy %}
    {% if player.energy.current < 40 %}
@@ -170,7 +170,7 @@
  {% for inj in player.injury_log %}
  <div class="pd-injury-row">
    <span class="pd-skill-label">{{ inj.injury_date }}</span>
-   <span style="color:var(--text);">{{ inj.severity }}</span>
+   <span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span>
    <span class="pd-skill-label">{{ inj.games_missed }}d</span>
  </div>
  {% endfor %}

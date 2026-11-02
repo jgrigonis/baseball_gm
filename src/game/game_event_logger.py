@@ -18,6 +18,7 @@ import psycopg
 
 _log = logging.getLogger("game_event_logger")
 from src.db.repositories.game_event_repo import GameEventRepository
+from src.player.injury_types import injury_label
 
 
 def closer_entry_label(score_diff: int, save_situation: bool) -> str:
@@ -119,13 +120,14 @@ class GameEventLogger:
         name: str,
         severity: str,
         activity: str,
+        injury_type: str | None = None,
     ) -> None:
         """Record an in-game injury."""
         self._insert(
             team_id=team_id,
             event_type="injury",
             player_id=player_id,
-            reason=f"{name} — {severity} ({activity})",
+            reason=f"{name} — {injury_label(injury_type, severity)} ({activity})",
         )
 
     def substitution(

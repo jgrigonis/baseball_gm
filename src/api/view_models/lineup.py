@@ -71,8 +71,11 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
             )
         )
 
+    inj = InjuryRepository(db, league_id)
     attach_injuries(
-        hitters + pitchers, InjuryRepository(db, league_id).get_team_injuries(team_id)
+        hitters + pitchers,
+        inj.get_team_injuries(team_id),
+        inj.get_team_injury_types(team_id),
     )
     # Tell template whether we're in playoffs so the nav button points the right way
     league_row = LeagueRepository(db).get_by_id(league_id)

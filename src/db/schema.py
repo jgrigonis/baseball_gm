@@ -376,6 +376,7 @@ CREATE TABLE IF NOT EXISTS player_injuries (
     league_id               TEXT NOT NULL,
     games_remaining         INTEGER NOT NULL DEFAULT 0,  -- legacy: length of injury in days
     return_date             TEXT,                        -- ISO date the player is available again
+    injury_type             TEXT,                        -- src/player/injury_types.py key; NULL before migration 57
     PRIMARY KEY (player_id, league_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
@@ -389,6 +390,7 @@ CREATE TABLE IF NOT EXISTS player_injury_log (
     severity        TEXT NOT NULL,
     activity        TEXT,
     games_missed    INTEGER NOT NULL,       -- days missed (games, before migration 2)
+    injury_type     TEXT,                   -- src/player/injury_types.py key; NULL before migration 57
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
