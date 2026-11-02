@@ -20,7 +20,9 @@ def _parses(svg: str):
 
 
 def test_same_player_always_gets_the_same_face():
-    assert face_svg("p-1", 27, "London", "Lions") == face_svg("p-1", 27, "London", "Lions")
+    assert face_svg("p-1", 27, "London", "Lions") == face_svg(
+        "p-1", 27, "London", "Lions"
+    )
 
 
 def test_different_players_get_different_faces():
@@ -29,7 +31,9 @@ def test_different_players_get_different_faces():
 
 
 def test_face_is_valid_svg_for_every_team():
-    for slug in sorted(p.name for p in UNIFORMS_DIR.iterdir() if (p / "cap.svg").exists()):
+    for slug in sorted(
+        p.name for p in UNIFORMS_DIR.iterdir() if (p / "cap.svg").exists()
+    ):
         cap = cap_parts(slug)
         assert cap is not None, slug
         assert cap.logo, slug
@@ -79,7 +83,9 @@ def test_team_without_uniforms_shows_its_code():
 def test_hair_grays_with_age():
     # Some player among the first few has visible hair: compare his sideburns.
     def sideburn(svg):
-        return re.search(r'<path d="M[\d.]+ 46 L[^"]*" fill="(#[0-9a-f]{6})"', svg).group(1)
+        return re.search(
+            r'<path d="M[\d.]+ 46 L[^"]*" fill="(#[0-9a-f]{6})"', svg
+        ).group(1)
 
     young = [sideburn(face_svg(f"p-{i}", 22, "London", "Lions")) for i in range(10)]
     old = [sideburn(face_svg(f"p-{i}", 40, "London", "Lions")) for i in range(10)]
@@ -87,5 +93,14 @@ def test_hair_grays_with_age():
 
 
 def test_player_face_markup():
-    html = str(player_face({"player_id": "p-9", "age": 26, "team_city": "Rome", "team_mascot": "Gladiators"}))
+    html = str(
+        player_face(
+            {
+                "player_id": "p-9",
+                "age": 26,
+                "team_city": "Rome",
+                "team_mascot": "Gladiators",
+            }
+        )
+    )
     assert html.startswith('<span class="player-face player-face--lg"><svg')
