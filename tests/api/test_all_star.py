@@ -303,6 +303,16 @@ def test_the_full_list_stat_columns():
     assert heads["IP"] == "9.2" and heads["ERA"] == "3.72" and heads["WHIP"] == "1.14"
 
 
+def test_unsaved_picks_are_kept_as_a_draft(client, lg):
+    _play_through(lg.db, lg.season, BEFORE[10])
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    # Per league, season and team, with the unsaved bar and its buttons.
+    key = f"allstar_ballot_{lg.league.id}_{lg.season.id}_{lg.mine.id}"
+    assert f'data-draft-key="{key}"' in html
+    assert 'id="as-unsaved-banner"' in html
+    assert ">Save now<" in html and "asRevert()" in html
+
+
 def test_saving_a_ballot(client, lg):
     _play_through(lg.db, lg.season, BEFORE[10])
     my_ss = lg.players[("mine", "ss")]
