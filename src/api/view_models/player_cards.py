@@ -316,6 +316,9 @@ def roster_card(d: dict) -> dict:
         g["of_grade"] = skill_to_grade(ratings.get("of", 0))
         g["c_grade"] = skill_to_grade(ratings.get("c", 0))
         g["b1_grade"] = skill_to_grade(ratings.get("1b", 0))
+        # Per-position grades for the fielding line, as on the Lineup tab
+        for pos in ("c", "1b", "2b", "3b", "ss", "lf", "cf", "rf"):
+            g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
     g["base_running"] = skill_to_grade(d.get("base_running"))
     g["bunting"] = skill_to_grade(d.get("bunting"))
     g["ground_balls"] = skill_to_grade(d.get("ground_balls"))

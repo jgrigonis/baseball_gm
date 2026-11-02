@@ -1386,5 +1386,15 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .inj-news-item:hover { text-decoration:underline; }
 .inj-news-item + .inj-news-item { margin-left:18px; }
 
+/* Player rows on the Lineup and Roster tabs */
+.lu-grade  { font-family: var(--font-mono); font-size: 14px; font-weight: 600; min-width: 28px; }
+.lu-name   { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
+.lu-skills { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
+.lu-skills .gl { color: var(--muted); margin-right: 1px; }
+/* Stats, B/T and age after the name, on the same line */
+.lu-trail { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-dim); }
+.lu-trail .lu-dot { margin: 0 1px; }
+.lu-trail .lu-piece { white-space: nowrap; }
+
 /* A player still rusty after an injury (lineup rows) */
 .lu-rust { font-size:10px;color:var(--amber);letter-spacing:.04em;margin-left:6px; }
