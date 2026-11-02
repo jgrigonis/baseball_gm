@@ -131,7 +131,7 @@
       {% if x.game['auto' ~ x.my_side] %}
       <br><span class="as-dim">Your scouts are making your picks.</span>
       {% else %}
-      <form method="post" action="/leagues/{{ league_id }}/allstar{{ x.path }}/auto" class="as-inline">
+      <form method="post" action="/leagues/{{ league_id }}/allstar{{ x.path }}/auto" hx-post="/leagues/{{ league_id }}/allstar{{ x.path }}/auto" hx-target="#tab-content" hx-swap="innerHTML" data-quiet-swap class="as-inline">
         <button type="submit" class="btn btn-secondary as-btn-sm">Let the scouts make the rest of my picks</button>
       </form>
       {% endif %}
@@ -147,7 +147,7 @@
     <tbody>
       {% for r in x.tied %}
       <tr>
-        {% if x.my_turn %}<td><form method="post" action="/leagues/{{ league_id }}/allstar/tie">
+        {% if x.my_turn %}<td><form method="post" action="/leagues/{{ league_id }}/allstar/tie" hx-post="/leagues/{{ league_id }}/allstar/tie" hx-target="#tab-content" hx-swap="innerHTML" data-quiet-swap>
           <input type="hidden" name="player_id" value="{{ r.player_id }}">
           <button type="submit" class="btn btn-primary as-btn-sm">Pick</button></form></td>{% endif %}
         <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{% if r.hurt %} <span class="as-hurt" title="Hurt: he'd sit out the game">IL</span>{% endif %}</td>
@@ -194,7 +194,7 @@
         <tbody>
           {% for r in x.available[slot] %}
           <tr class="{% if r.team_id == team_id %}my-team{% endif %}">
-            {% if x.my_turn %}<td><form method="post" action="/leagues/{{ league_id }}/allstar{{ x.path }}/pick">
+            {% if x.my_turn %}<td><form method="post" action="/leagues/{{ league_id }}/allstar{{ x.path }}/pick" hx-post="/leagues/{{ league_id }}/allstar{{ x.path }}/pick" hx-target="#tab-content" hx-swap="innerHTML" data-quiet-swap>
               <input type="hidden" name="player_id" value="{{ r.player_id }}">
               <button type="submit" class="btn btn-primary as-btn-sm">Pick</button></form></td>{% endif %}
             <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ rk(r.player_id) }}</td>

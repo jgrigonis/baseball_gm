@@ -389,7 +389,26 @@ document.body.addEventListener('htmx:historyRestore', function(e) {
   const active = document.querySelector('.tab-link.active');
   if (active) setActiveTab(active);
 })();
+// A quiet swap (a form marked data-quiet-swap, like a pick in the All-Star
+// or Rookie Game draft) reloads the tab in place: no fade, and the tab keeps
+// its scroll position instead of jumping back to the top. If the action
+// failed, the error is brought into view.
+var _quietScroll = null;
+document.body.addEventListener('htmx:beforeSwap', function(e) {
+  if (e.detail.target.id !== 'tab-content') return;
+  var elt = e.detail.requestConfig && e.detail.requestConfig.elt;
+  var quiet = !!(elt && elt.closest && elt.closest('[data-quiet-swap]'));
+  e.detail.target.classList.toggle('tab-quiet', quiet);
+  _quietScroll = quiet ? e.detail.target.scrollTop : null;
+});
 document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'tab-content' && _quietScroll !== null) {
+    e.detail.target.scrollTop = _quietScroll;
+    _quietScroll = null;
+    var err = e.detail.target.querySelector('[data-swap-error]');
+    if (err) err.scrollIntoView({block: 'nearest'});
+    return;
+  }
   if (e.detail.target.id === 'tab-content') {
     e.detail.target.classList.remove('tab-fade');
     void e.detail.target.offsetWidth;

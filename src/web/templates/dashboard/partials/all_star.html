@@ -274,7 +274,7 @@
 
 {% elif as_phase in ('done', 'played') %}
   {% if as_error %}
-  <div class="card as-intro"><div class="card-body as-note"><span class="as-error">✗ {{ as_error }}</span></div></div>
+  <div class="card as-intro" data-swap-error><div class="card-body as-note"><span class="as-error">✗ {{ as_error }}</span></div></div>
   {% endif %}
   {% if asg %}{% with x = asg %}{% include "dashboard/partials/_all_star_game.html" %}{% endwith %}{% endif %}
   {% if derby_rounds or derby_field %}{% include "dashboard/partials/_hr_derby.html" %}{% endif %}

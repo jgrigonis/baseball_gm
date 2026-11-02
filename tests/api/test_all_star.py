@@ -776,6 +776,24 @@ def test_drafting_rookies_on_the_tab(client, lg):
     assert not all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
 
 
+def test_a_pick_reloads_just_the_tab_in_place(client, lg):
+    """A pick swaps the tab in through htmx instead of reloading the page,
+    so the page doesn't jump back to the top after each pick."""
+    repo, _ = _count_rookies(lg)
+    url = f"/leagues/{lg.league.id}/allstar"
+    html = client.get(url, headers={"HX-Request": "true"}).text
+    assert f'hx-post="{url}/rookie/pick" hx-target="#tab-content"' in html
+    assert html.count("data-quiet-swap") == html.count('method="post"')
+    left = next(r for r in repo.all_stars(lg.season.id) if not r["side"])
+    r = client.post(
+        f"{url}/rookie/pick",
+        data={"player_id": left["player_id"]},
+        headers={"Origin": "http://testserver", "HX-Request": "true"},
+    )
+    # Just the tab, not the whole page.
+    assert "Pick 3 of 12" in r.text and "<html" not in r.text
+
+
 def test_the_rookie_game_is_played_on_the_break(client, lg):
     from src.api.services import rookie_game
 
