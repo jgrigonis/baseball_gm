@@ -12,7 +12,7 @@
       {% if info.state == "complete" %}
         Complete after {{ info.num_seasons }} season{{ "s" if info.num_seasons != 1 }}.
       {% elif info.season_number %}
-        Season {{ info.season_number }} of {{ info.num_seasons or "∞" }} · {{ info.state | title }}
+        Season {{ info.season_number }} of {% if info.num_seasons %}{{ info.num_seasons }}{% else %}<span class="inf">∞</span>{% endif %} · {{ info.state | title }}
       {% endif %}
     </div>
   </div>
