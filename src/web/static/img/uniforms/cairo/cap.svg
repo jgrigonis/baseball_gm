@@ -13,5 +13,5 @@
       <path d="M80 42 Q72 80 76 120" fill="none" stroke="#143F73" stroke-width="1.5"/>
       <circle cx="122" cy="31" r="5" fill="#F2C94C"/>
       <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#F2C94C" stroke="#B8902A" stroke-width="1.5"/>
-      <g transform="translate(105 57.8) scale(0.5)"><use href="#ph-nemes" fill="#F7F1E1" stroke="#F7F1E1" stroke-width="5" stroke-linejoin="round"/><use href="#ph-nemes" fill="#F2C94C"/><use href="#ph-stripes" fill="#1F5FA8"/><use href="#ph-frame" fill="#1F5FA8"/><use href="#ph-face" fill="#F2C94C"/><use href="#ph-eyes" fill="#1F5FA8"/><use href="#ph-beard" fill="#1F5FA8"/><use href="#ph-uraeus" fill="#B8401C"/></g>
+      <g transform="translate(103.5 55.8) scale(0.55)"><use href="#ph-nemes" fill="#F7F1E1" stroke="#F7F1E1" stroke-width="4.5" stroke-linejoin="round"/><use href="#ph-nemes" fill="#F2C94C"/><use href="#ph-stripes" fill="#1F5FA8"/><use href="#ph-frame" fill="#1F5FA8"/><use href="#ph-face" fill="#F2C94C"/><use href="#ph-eyes" fill="#1F5FA8"/><use href="#ph-beard" fill="#1F5FA8"/><use href="#ph-uraeus" fill="#B8401C"/></g>
 </svg>
