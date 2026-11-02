@@ -99,6 +99,7 @@ def job_status(league_id: str, job_id: str, db: DB, gm: GM):
         return JSONResponse(
             {
                 "state": job["state"],
+                "stage": job["stage"],
                 "waiting_for_worker": job["state"] == "queued"
                 and job["age_seconds"] > WORKER_MISSING_SECONDS,
             }

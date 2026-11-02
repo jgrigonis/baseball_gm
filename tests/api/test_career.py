@@ -268,7 +268,7 @@ class TestSimJobs:
 
     def test_jobs_update_the_record(self, db_conn, league, monkeypatch):
         _game(db_conn, league["season"], league["mine"], league["a"])
-        monkeypatch.setitem(sim_jobs.KINDS, "sim", lambda conn, lid, params: {})
+        monkeypatch.setitem(sim_jobs.KINDS, "sim", lambda conn, lid, params, report: {})
         job = {"id": _id(), "league_id": league["league"].id, "kind": "sim",
                "params": {}, "attempts": 0}  # fmt: skip
 

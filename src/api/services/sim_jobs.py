@@ -34,6 +34,9 @@ from src.db.repositories.sim_job_repo import SimJobRepository
 
 log = logging.getLogger(__name__)
 
+# What a runner calls to say what it's doing now (sim_jobs.stage).
+Report = Callable[[str], None]
+
 # The Postgres channel the web server notifies when it queues a job, so an
 # idle worker starts on it without waiting for its next look at the queue.
 CHANNEL = "sim_jobs"
@@ -47,25 +50,26 @@ MAX_ATTEMPTS = 30
 # ── What each kind of job does ────────────────────────────────────────────────
 #
 # Each runs with the league lock held and returns the job's result, which the
-# page reads when it polls (src/api/routers/sim.py adds what's per-GM, like
+# page reads when it polls. A long job can call report() with what it's doing
+# now, which the page shows while it waits (src/api/routers/sim.py adds what's per-GM, like
 # injury news, at that point). Rule errors are ValueErrors, shown to the GM.
 
 
-def _sim(conn, league_id: str, params: dict) -> dict:
+def _sim(conn, league_id: str, params: dict, report: Report) -> dict:
     summary = sim_days(league_id, conn, params["count"])
     coach.mark(conn, league_id, "play")
     return summary
 
 
-def _playoffs(conn, league_id: str, params: dict) -> dict:
+def _playoffs(conn, league_id: str, params: dict, report: Report) -> dict:
     return sim_playoff(league_id, conn, mode=params.get("mode", "game"))
 
 
-def _offseason(conn, league_id: str, params: dict) -> dict:
+def _offseason(conn, league_id: str, params: dict, report: Report) -> dict:
     return {"ok": True, **run_offseason(league_id, conn)}
 
 
-def _draft(conn, league_id: str, params: dict) -> dict:
+def _draft(conn, league_id: str, params: dict, report: Report) -> dict:
     draft = DraftRepository(conn).get_current_for_league(league_id)
     if not draft:
         return {"redirect": f"/leagues/{league_id}/draft"}
@@ -74,18 +78,18 @@ def _draft(conn, league_id: str, params: dict) -> dict:
     return {"redirect": f"/leagues/{league_id}/draft/results"}
 
 
-def _start(conn, league_id: str, params: dict) -> dict:
-    start_league(league_id, conn)
+def _start(conn, league_id: str, params: dict, report: Report) -> dict:
+    start_league(league_id, conn, on_stage=report)
     return {"redirect": f"/leagues/{league_id}/"}
 
 
-def _period(conn, league_id: str, params: dict) -> dict:
+def _period(conn, league_id: str, params: dict, report: Report) -> dict:
     from src.api.services import ready_check
 
     return {"ran": ready_check.run_period(conn, league_id, params["sim_period"])}
 
 
-KINDS: dict[str, Callable[[object, str, dict], dict]] = {
+KINDS: dict[str, Callable[[object, str, dict, Report], dict]] = {
     "sim": _sim,
     "playoffs": _playoffs,
     "offseason": _offseason,
@@ -159,6 +163,20 @@ def _write_news(conn, league_id: str) -> None:
         log.exception("League %s: couldn't write the news", league_id)
 
 
+def _reporter(job_id: str, jobs: SimJobRepository) -> Report:
+    """report() for a job: records its stage with ``jobs``, whose connection
+    the worker keeps in autocommit, so the page sees it while the job's own
+    transaction is still open. A problem recording it never stops the job."""
+
+    def report(stage: str) -> None:
+        try:
+            jobs.set_stage(job_id, stage)
+        except Exception:
+            log.warning("Couldn't record job %s's stage", job_id, exc_info=True)
+
+    return report
+
+
 def run(conn, job: dict, jobs: SimJobRepository) -> str:
     """
     Run a claimed job on ``conn`` and record how it went with ``jobs``, which
@@ -172,7 +190,9 @@ def run(conn, job: dict, jobs: SimJobRepository) -> str:
         if runner is None:
             raise ValueError(f"Unknown job '{job['kind']}'.")
         with league_lock(conn, league_id):
-            result = runner(conn, league_id, job["params"] or {})
+            result = runner(
+                conn, league_id, job["params"] or {}, _reporter(job["id"], jobs)
+            )
             _record_careers(conn, league_id)
             conn.commit()
     except LeagueBusy as e:
