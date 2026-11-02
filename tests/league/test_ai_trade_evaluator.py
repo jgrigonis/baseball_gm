@@ -78,6 +78,26 @@ def test_a_seller_takes_youth_for_a_veteran():
     assert not _judge(roster, [vet], [_p(62, age=22)], state="contending").accept
 
 
+def test_a_seller_wants_younger_players_back_for_a_young_star():
+    young_star = _p(66, age=24)
+    roster = _roster() + [young_star]
+    verdict = _judge(roster, [young_star], [_p(62, age=31)], state="rebuilding")
+    assert not verdict.accept
+    assert "younger talent" in verdict.reason
+
+
+def test_a_seller_offered_a_weak_young_player_says_he_isnt_enough():
+    # An 18-year-old who doesn't make up for the player going isn't turned
+    # down for being too old.
+    vet = _p(64, age=26)
+    roster = _roster() + [vet]
+    kid = _p(48, age=18)
+    verdict = _judge(roster, [vet], [kid], state="rebuilding")
+    assert not verdict.accept
+    assert "younger" not in verdict.reason
+    assert kid.name in verdict.reason and vet.name in verdict.reason
+
+
 def test_the_margin_is_the_same_all_day_and_moves_between_days():
     assert margin("a", "b", "2025-07-01") == margin("a", "b", "2025-07-01")
     days = {margin("a", "b", f"2025-07-{d:02d}") for d in range(1, 20)}
