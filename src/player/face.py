@@ -535,12 +535,28 @@ def face_svg(
             add(f'<path d="{d}" fill="{hair}"/>')
 
     # Facial hair. Young players' beards come in thinner.
+    # Beards leave the skin around the mouth bare: the hole is cut out with
+    # the even-odd rule, and the lips draw on top of it
+    hole = (
+        f"M{_n(cx - mouth_w - 1.2)} 72.2 C{_n(cx - mouth_w - 1.2)} 69.9 {_n(cx + mouth_w + 1.2)} 69.9 {_n(cx + mouth_w + 1.2)} 72.2 "
+        f"C{_n(cx + mouth_w + 1.2)} 77.8 {_n(cx - mouth_w - 1.2)} 77.8 {_n(cx - mouth_w - 1.2)} 72.2 Z"
+        # A soul patch rising from the chin into the bare skin
+        f"M{_n(cx - 1.9)} 76.8 Q{cx} 73.4 {_n(cx + 1.9)} 76.8 Z"
+    )
     if facial_hair in ("beard", "stubble"):
         alpha = 0.28 if facial_hair == "stubble" else (0.6 if age < 22 else 0.95)
+        # The cheek line runs down from the sideburns to its lowest point
+        # out past the corners of the mouth, then up and over the lip
+        low_x, low_y = mouth_w + 2.6, 73.6
         add(
-            f'<path d="M{_n(L - 0.3)} 56 C{_n(L)} 72 {_n(cx - chin - 1)} {_n(jaw + 3.5)} {cx} {_n(jaw + 3.5)} '
-            f"C{_n(cx + chin + 1)} {_n(jaw + 3.5)} {_n(R)} 72 {_n(R + 0.3)} 56 "
-            f'C{_n(R - 2.5)} 64 {cx + 9} 67 {cx} 66.5 C{cx - 9} 67 {_n(L + 2.5)} 64 {_n(L - 0.3)} 56 Z" '
+            f'<path fill-rule="evenodd" d="M{_n(L - 0.3)} 56 '
+            f"C{_n(L + 1.5)} 63 {_n(cx - low_x - 2.5)} 70.5 {_n(cx - low_x)} {low_y} "
+            f"C{_n(cx - low_x + 0.3)} 71 {_n(cx - mouth_w - 1)} 67.6 {_n(cx - 2)} 67.1 "
+            f"Q{cx} 66.7 {_n(cx + 2)} 67.1 "
+            f"C{_n(cx + mouth_w + 1)} 67.6 {_n(cx + low_x - 0.3)} 71 {_n(cx + low_x)} {low_y} "
+            f"C{_n(cx + low_x + 2.5)} 70.5 {_n(R - 1.5)} 63 {_n(R + 0.3)} 56 "
+            f"C{_n(R)} 72 {_n(cx + chin + 1)} {_n(jaw + 3.5)} {cx} {_n(jaw + 3.5)} "
+            f'C{_n(cx - chin - 1)} {_n(jaw + 3.5)} {_n(L)} 72 {_n(L - 0.3)} 56 Z {hole}" '
             f'fill="{beard_col}" opacity="{_n(alpha)}"/>'
         )
     if facial_hair == "square":
@@ -549,11 +565,11 @@ def face_svg(
         alpha = 0.7 if age < 22 else 0.97
         sq = max(chin + 3, 10.5)
         add(
-            f'<path d="M{_n(L - 0.3)} 54 L{_n(L + 3)} 62.5 L{_n(cx - mouth_w - 2)} 66.2 '
+            f'<path fill-rule="evenodd" d="M{_n(L - 0.3)} 54 L{_n(L + 3)} 62.5 L{_n(cx - mouth_w - 2)} 66.2 '
             f"L{_n(cx + mouth_w + 2)} 66.2 L{_n(R - 3)} 62.5 L{_n(R + 0.3)} 54 "
             f"L{_n(R + 0.3)} 68 L{_n(cx + sq)} {_n(jaw + 2.5)} Q{_n(cx + sq)} {_n(jaw + 4)} {_n(cx + sq - 1.5)} {_n(jaw + 4)} "
             f"L{_n(cx - sq + 1.5)} {_n(jaw + 4)} Q{_n(cx - sq)} {_n(jaw + 4)} {_n(cx - sq)} {_n(jaw + 2.5)} "
-            f'L{_n(L - 0.3)} 68 Z" fill="{beard_col}" opacity="{_n(alpha)}"/>'
+            f'L{_n(L - 0.3)} 68 Z {hole}" fill="{beard_col}" opacity="{_n(alpha)}"/>'
         )
     if facial_hair == "chinstrap":
         add(
@@ -740,7 +756,7 @@ def _bill(band: float, curve: float, w: float) -> dict:
     band below the crown that arches: a curved bill's sides bend down past
     its middle, and you see a sliver of its underside below the front edge.
     A flat bill (curve 0) is a straight band."""
-    cw = w + 3.2  # half the crown's width at the band
+    cw = w + 1.5  # half the crown's width at the band
     bw = cw + 0.8  # the bill's half-width, just past the crown's sides
     seam_mid = band - 0.4  # where the bill meets the crown
     seam_end = band + 0.6 + curve * 6
@@ -787,7 +803,7 @@ def _cap(cap: Cap, cx, w, L, R, band, curve) -> str:
     o = []
     b = _bill(band, curve, w)
     cw, bw = b["cw"], b["bw"]
-    height = min(cw * 1.12, band - 14.6)  # the button stays in the frame
+    height = min(cw * 0.98, band - 14.6)  # the button stays in the frame
     top = band - height
     seam_mid, seam_end = b["seam_mid"], b["seam_end"]
     front_mid, front_end = b["front_mid"], b["front_end"]
