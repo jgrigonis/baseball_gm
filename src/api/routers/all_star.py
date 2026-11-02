@@ -39,6 +39,7 @@ def all_star_tab(
             rookie_game.tab_context(db, league_id, ctx["season_id"], ctx["team_id"])
         )
     ctx["as_error"] = request.query_params.get("error")
+    ctx.update(_weekend_context(request, db, league_id, ctx))
     # In a tutorial league, seeing the All-Stars or the break's results
     # finishes a coach step.
     if ctx.get("coach"):
@@ -47,6 +48,27 @@ def all_star_tab(
         if coach.mark_all_star_visit(db, league, ctx["as_phase"], pick_due):
             ctx["coach"] = coach.coach_ctx(db, league)
     return tab_response(request, htmx, "dashboard/partials/all_star.html", ctx)
+
+
+def _weekend_context(request: Request, db, league_id: str, ctx: dict) -> dict:
+    """The All-Star weekend card at the top of the tab: before the weekend,
+    a Sim All-Star Weekend button once the captains' picks are in (a GM in a
+    single-player league; a multiplayer league plays it when the league
+    moves on); after it, when the sim has just played it (?weekend=1), what
+    happened, with links down to each event."""
+    if ctx["as_phase"] == "played":
+        return {"weekend_just_played": request.query_params.get("weekend") == "1"}
+    if ctx["as_phase"] != "done" or ctx.get("league_state") != "season":
+        return {}
+    return {
+        "weekend_due": True,
+        "weekend_can_sim": bool(
+            ctx.get("team_id")
+            and not ctx.get("is_viewer")
+            and not ctx.get("multiplayer")
+        ),
+        "weekend_picks_left": all_star.person_drafting(db, league_id, ctx["season_id"]),
+    }
 
 
 @router.post("/leagues/{league_id}/allstar/ballot")

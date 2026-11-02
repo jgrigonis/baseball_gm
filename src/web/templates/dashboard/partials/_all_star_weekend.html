@@ -1,0 +1,88 @@
+{# templates/dashboard/partials/_all_star_weekend.html
+   The All-Star weekend card at the top of the All-Star tab
+   (src/api/routers/all_star.py _weekend_context). Before the weekend: the
+   Sim All-Star Weekend button once the captains' picks are in. Just after
+   the sim played it (?weekend=1): the results, with links down the tab.
+#}
+{% macro final(x) -%}
+  {%- set g = x.game -%}
+  {%- if g.score1 >= g.score2 -%}
+  Team {{ g.city1 }} {{ g.score1 }}, Team {{ g.city2 }} {{ g.score2 }}
+  {%- else -%}
+  Team {{ g.city2 }} {{ g.score2 }}, Team {{ g.city1 }} {{ g.score1 }}
+  {%- endif -%}
+  {%- if g.innings and g.innings != 9 %} ({{ g.innings }}){% endif -%}
+{%- endmacro %}
+
+{% if weekend_due %}
+<div class="card as-weekend" id="as-weekend">
+  <div class="card-body as-weekend-body">
+    <div class="as-weekend-text">
+      <div class="as-weekend-title">★ All-Star Weekend</div>
+      <div class="as-note">
+        {% if weekend_can_sim and not weekend_picks_left %}
+        The teams are set. Play the{% if rookie %} Rookie Game,{% endif %} the Home Run Derby and the All-Star Game now.
+        The season picks up again on {{ as_window.resumes }}.
+        {% elif weekend_can_sim %}
+        <span class="as-warn">Your captain's picks aren't all in yet.</span> Make them below, then sim the weekend from here.
+        If you play on from the Schedule instead, the scouts finish your picks.
+        {% else %}
+        The{% if rookie %} Rookie Game,{% endif %} the Home Run Derby and the All-Star Game are played when the league plays its next day,
+        {{ as_window.resumes }}.
+        {% endif %}
+      </div>
+    </div>
+    {% if weekend_can_sim and not weekend_picks_left %}
+    <div class="as-weekend-action">
+      <button type="button" class="btn btn-primary as-weekend-btn" id="as-weekend-btn" onclick="asSimWeekend()">▶ Sim All-Star Weekend</button>
+      <span class="as-weekend-msg" id="as-weekend-msg"></span>
+    </div>
+    <script>
+    window.asSimWeekend = async function() {
+      var btn = document.getElementById('as-weekend-btn');
+      var msg = document.getElementById('as-weekend-msg');
+      btn.disabled = true;
+      btn.textContent = '⏳ Playing the weekend…';
+      msg.textContent = '';
+      var d = await runLeagueJob('/leagues/{{ league_id }}/sim', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({count: 1}),
+      }, function(job) { msg.textContent = leagueJobWaitingText(job) || ''; });
+      if (d.failed) {
+        btn.disabled = false;
+        btn.textContent = '▶ Sim All-Star Weekend';
+        msg.textContent = '✗ ' + (d.detail || 'Sim failed');
+        return;
+      }
+      // Back to this tab, with the results up top.
+      window.location.href = '/leagues/{{ league_id }}/allstar' + (d.all_star_game ? '?weekend=1' : '');
+    };
+    </script>
+    {% endif %}
+  </div>
+</div>
+
+{% elif weekend_just_played %}
+<div class="card as-weekend as-weekend-done" id="as-weekend">
+  <div class="card-body">
+    <div class="as-weekend-title">✓ All-Star Weekend is in the books</div>
+    <ul class="as-weekend-results">
+      {% if rookie and rookie.game.state == 'played' %}
+      <li><a href="#as-rookie" class="as-weekend-link">🌱 Rookie Game</a>
+        <span>{{ final(rookie) }}</span>{% if rookie.mvp %}<span class="as-dim"> · MVP {{ rookie.mvp.name }}</span>{% endif %}</li>
+      {% endif %}
+      {% if derby_rounds %}
+      <li><a href="#as-derby" class="as-weekend-link">💥 Home Run Derby</a>
+        <span>{{ derby_champion.name }} ({{ derby_champion.mascot }}) won</span><span class="as-dim"> · longest {{ derby_longest.longest }} ft</span></li>
+      {% endif %}
+      {% if asg and asg.game.state == 'played' %}
+      <li><a href="#as-asg" class="as-weekend-link">★ All-Star Game</a>
+        <span>{{ final(asg) }}</span>{% if asg.mvp %}<span class="as-dim"> · MVP {{ asg.mvp.name }}</span>{% endif %}</li>
+      {% endif %}
+    </ul>
+    <div class="as-note">The season picks up again on {{ as_window.resumes }}.
+      <a href="/leagues/{{ league_id }}/schedule" class="as-weekend-link">Back to the Schedule →</a></div>
+  </div>
+</div>
+{% endif %}

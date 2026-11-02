@@ -118,7 +118,8 @@ function apply(d) {
     }
     // All-Star voting opened, the All-Stars are in or the game was played.
     if (d.all_star !== PAGE_ALL_STAR && ['open', 'done', 'played'].indexOf(d.all_star) >= 0) {
-      window.location.href = URL + '/allstar';
+      // After the All-Star weekend, its results are up top.
+      window.location.href = URL + '/allstar' + (d.all_star === 'played' ? '?weekend=1' : '');
       return;
     }
     window.refreshActiveTab();
