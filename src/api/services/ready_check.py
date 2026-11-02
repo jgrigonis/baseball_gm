@@ -202,7 +202,11 @@ def status(conn, league_id: str, gm_id: str) -> dict:
     gms = _gms(conn, league_id, period["state"])
     me = next((g for g in gms if g["id"] == gm_id), None)
     seconds_left = period["seconds_left"]
-    league = {"mode": period["mode"], "state": period["state"]}
+    league = {
+        "mode": period["mode"],
+        "state": period["state"],
+        "trades_enabled": period["trades_enabled"],
+    }
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     window = trade_deadline.window(conn, league, season_id)
     # All-Star voting (the tab shows in the season and the playoffs), and

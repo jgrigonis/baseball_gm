@@ -28,7 +28,7 @@ def league_info(db, league: dict) -> dict:
         "sim_period_days": league["sim_period_days"],
         "num_seasons": league["num_seasons"],
         "is_public": bool(league["is_public"]),
-        "trades_enabled": trades_enabled_for(league["mode"]),
+        "trades_enabled": trades_enabled_for(league),
         "trade_vote": bool(league["trade_vote"]),
         "pick_trades": bool(league["pick_trades"]),
         "injuries_enabled": injuries_allowed(league),

@@ -290,7 +290,7 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     league = LeagueRepository(conn).get_by_id(league_id)
     deadline = (
         trade_deadline.deadline_date(conn, season_id)
-        if league and trade_deadline.trades_enabled_for(league["mode"])
+        if league and trade_deadline.trades_enabled_for(league)
         else None
     )
     at_deadline = False

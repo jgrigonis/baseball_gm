@@ -72,17 +72,23 @@ def last_played_date(conn, season_id: str) -> str | None:
     return row["d"] if row else None
 
 
-def trades_enabled_for(mode: str | None) -> bool:
-    """Leagues whose mode trades yet. Long Form waits until its 26-man is
-    managed by hand (see plans/trades.md)."""
-    return trades_allowed(mode) and is_blitz_style(mode)
+def trades_enabled_for(league: dict) -> bool:
+    """Whether a league trades: its Trades setting (leagues.trades_enabled,
+    picked when it's made), in a mode that trades yet. Long Form waits until
+    its 26-man is managed by hand (see plans/trades.md). A league dict
+    without the setting goes by its mode's default."""
+    mode = league.get("mode")
+    enabled = league.get("trades_enabled")
+    if enabled is None:
+        enabled = trades_allowed(mode)
+    return bool(enabled) and is_blitz_style(mode)
 
 
 def window(conn, league: dict, season_id: str | None) -> dict:
     """Whether trades are open in this league right now, the deadline,
     whether it's the offseason, and whether today is deadline day (the games
     are done and trades close with the next one)."""
-    enabled = trades_enabled_for(league.get("mode"))
+    enabled = trades_enabled_for(league)
     state = league.get("state")
     offseason = enabled and state in OFFSEASON_STATES
     deadline = deadline_date(conn, season_id) if enabled else None

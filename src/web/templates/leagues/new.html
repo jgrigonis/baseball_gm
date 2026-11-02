@@ -1,6 +1,15 @@
 {# templates/leagues/new.html #}
 {% extends "base.html" %}
 {% block title %}New League — Baseball GM{% endblock %}
+{% macro slider(name, id, label, value, min, max, step=1, unit="", cls="", tip="") %}
+<div class="field slider-field {{ cls }}">
+  <label for="{{ id }}"{% if tip %} title="{{ tip }}"{% endif %}>{{ label }}
+    <output class="slider-value" for="{{ id }}" data-unit="{{ unit }}">{{ value }}{{ unit }}</output></label>
+  <input type="range" name="{{ name }}" id="{{ id }}" value="{{ value }}" min="{{ min }}" max="{{ max }}" step="{{ step }}">
+  <span class="slider-ends"><span>{{ min }}{{ unit }}</span><span>{{ max }}{{ unit }}</span></span>
+  {{ caller() if caller else "" }}
+</div>
+{% endmacro %}
 {% block main %}
 <div class="page-content"><div class="content-inner" style="max-width:520px;">
   <div class="page-header"><h1 class="page-title">New League</h1></div>
@@ -15,11 +24,12 @@
         {% for m in modes %}
         <option value="{{ m.key }}" data-presets='{{ m.form_presets | tojson }}'
                 data-injuries="{{ 'on' if m.injuries_default else 'off' }}"
+                data-trades="{{ 'on' if m.trades_enabled else 'off' }}"
                 {% if default_mode == m.key %}selected{% endif %}>{{ m.label }}</option>
         {% endfor %}
         <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
       </select>
-      <span class="mode-note" id="speed-blitz-note">No trades, and injuries start off. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
+      <span class="mode-note" id="speed-blitz-note">Trades and injuries default to off. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
     </div>
     <div class="field">
       <label for="num-teams">Teams</label>
@@ -30,11 +40,7 @@
       </select>
       <span class="mode-note" id="num-teams-note">Two leagues, each split into divisions. With 30 teams it's the Atlantic and Pacific Leagues, three divisions each, by geography. Any other size draws the teams into two leagues of two divisions at random.</span>
     </div>
-    <div class="field">
-      <label>Number of Seasons</label>
-      <input name="num_seasons" type="number" value="10" min="1" max="420"
-             title="How many seasons the league runs">
-    </div>
+    {{ slider("num_seasons", "num-seasons", "Number of Seasons", 10, 1, 420, tip="How many seasons the league runs") }}
     <div class="field">
       <label for="is-public">Public League</label>
       <label class="toggle-row">
@@ -46,12 +52,9 @@
     <details class="advanced-settings">
       <summary>Advanced settings</summary>
       <div class="advanced-body">
-        <div class="field">
-          <label for="backstory-years">Years of History</label>
-          <input name="backstory_years" id="backstory-years" type="number"
-                 value="{{ default_backstory_years }}" min="0" max="{{ max_backstory_years }}">
+        {% call slider("backstory_years", "backstory-years", "Years of History", default_backstory_years, 0, max_backstory_years) %}
           <span class="mode-note">Past seasons simulated when the league starts, so it opens with standings, champions and player stats already on the books. 0 starts fresh, with a random first draft order. Each year adds a little to the start time.</span>
-        </div>
+        {% endcall %}
         <div class="field">
           <label for="weighted-schedule">Weighted Schedule</label>
           <input type="hidden" name="weighted_schedule" value="false">
@@ -61,10 +64,7 @@
           </label>
           <span class="mode-note">Off: every team plays every other team about the same number of times. Still 162 games either way.</span>
         </div>
-        <div class="field">
-          <label>Days per Sim Period</label>
-          <input name="sim_period_days" type="number" value="3" min="1" max="30">
-        </div>
+        {{ slider("sim_period_days", "sim-period-days", "Days per Sim Period", 3, 1, 30) }}
         <div class="field">
           <label>Pace (multiplayer)</label>
           <select name="pace_control" id="pace-control">
@@ -73,22 +73,15 @@
             <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
           </select>
         </div>
-        <div class="field timer-only">
-          <label>Decision Window (sec)</label>
-          <input name="decision_window_sec" type="number" value="120" min="30" max="600">
+        {% call slider("decision_window_sec", "decision-window", "Decision Window", 120, 30, 600, step=10, unit=" sec", cls="timer-only", tip="") %}
           <span class="timer-only-note">Only used with Timer pace</span>
-        </div>
-        <div class="field timer-only">
-          <label>Draft Window (sec)</label>
-          <input name="draft_window_sec" type="number" value="300" min="60" max="1800">
+        {% endcall %}
+        {% call slider("draft_window_sec", "draft-window", "Draft Window", 300, 60, 1800, step=30, unit=" sec", cls="timer-only", tip="") %}
           <span class="timer-only-note">Only used with Timer pace</span>
-        </div>
-        <div class="field timer-only">
-          <label>Lineup Window (sec)</label>
-          <input name="lineup_window_sec" type="number" value="600" min="60" max="3600"
-                 title="Time to set up your first lineup after the draft, and for an All-Star or Rookie Game captain to make their picks">
+        {% endcall %}
+        {% call slider("lineup_window_sec", "lineup-window", "Lineup Window", 600, 60, 3600, step=60, unit=" sec", cls="timer-only", tip="Time to set up your first lineup after the draft, and for an All-Star or Rookie Game captain to make their picks") %}
           <span class="timer-only-note">Only used with Timer pace</span>
-        </div>
+        {% endcall %}
         <div class="field">
           <label for="injuries-enabled">Injuries</label>
           <input type="hidden" name="injuries_enabled" value="false">
@@ -98,7 +91,16 @@
           </label>
           <span class="mode-note">On by default, except in Speed Blitz. Changing the mode resets it unless you've set it yourself.</span>
         </div>
-        <div class="field" id="trade-vote-field">
+        <div class="field">
+          <label for="trades-enabled">Trades</label>
+          <input type="hidden" name="trades_enabled" value="false">
+          <label class="toggle-row">
+            <input type="checkbox" name="trades_enabled" id="trades-enabled" value="true">
+            <span>Teams can trade players with each other</span>
+          </label>
+          <span class="mode-note">On by default, except in Speed Blitz. Changing the mode resets it unless you've set it yourself.</span>
+        </div>
+        <div class="field trades-only" id="trade-vote-field">
           <label for="trade-vote">Trade Vote</label>
           <label class="toggle-row">
             <input type="checkbox" name="trade_vote" id="trade-vote" value="true" checked>
@@ -106,7 +108,7 @@
           </label>
           <span class="mode-note">A trade needs yes votes from more than half of them, and a GM who doesn't vote counts as a no. With only two GMs, trades go straight through.</span>
         </div>
-        <div class="field" id="pick-trades-field">
+        <div class="field trades-only" id="pick-trades-field">
           <label for="pick-trades">Draft Pick Trades</label>
           <label class="toggle-row">
             <input type="checkbox" name="pick_trades" id="pick-trades" value="true">
@@ -132,6 +134,9 @@
 .advanced-settings > summary:hover { color: var(--text); }
 .advanced-body { display: flex; flex-direction: column; gap: 16px; margin-top: 16px;
   padding-left: 12px; border-left: 2px solid var(--border); }
+.slider-field input[type=range] { width: 100%; padding: 0; border: none; background: none; accent-color: var(--amber); }
+.slider-value { float: right; font-family: var(--font-mono); color: var(--amber); text-transform: none; letter-spacing: 0; }
+.slider-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
 .timer-only-note { display: none; font-size: 11px; color: var(--text-dim); font-style: italic; }
 .field-disabled .timer-only-note { display: block; }
 .field-disabled label { opacity: 0.45; }
@@ -147,6 +152,16 @@
   // Once the GM flips Injuries, a mode change leaves their choice alone.
   let injuriesTouched = false;
   injuries.addEventListener('change', function () { injuriesTouched = true; });
+  const trades = document.getElementById('trades-enabled');
+  let tradesTouched = false;
+  trades.addEventListener('change', function () { tradesTouched = true; syncTradeFields(); });
+  // The vote and pick trades only mean something in a league that trades.
+  function syncTradeFields() {
+    document.querySelectorAll('.trades-only').forEach(function (f) {
+      f.classList.toggle('field-disabled', !trades.checked);
+      f.querySelectorAll('input').forEach(function (i) { i.disabled = !trades.checked; });
+    });
+  }
   function applyModePresets() {
     const opt = mode.options[mode.selectedIndex];
     const presets = JSON.parse(opt.dataset.presets || '{}');
@@ -156,13 +171,23 @@
     });
     if (!injuriesTouched) injuries.checked = opt.dataset.injuries === 'on';
     speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
-    // Speed Blitz has no trades, so no vote and no picks to trade.
-    document.getElementById('trade-vote-field').style.display = mode.value === 'speed_blitz' ? 'none' : '';
-    document.getElementById('pick-trades-field').style.display = mode.value === 'speed_blitz' ? 'none' : '';
+    if (!tradesTouched) trades.checked = opt.dataset.trades === 'on';
+    syncTradeFields();
+    syncSliders();
   }
   mode.addEventListener('change', applyModePresets);
   applyModePresets();
 })();
+// Each slider shows its value as it moves (and when a mode preset sets it).
+function syncSliders() {
+  document.querySelectorAll('.slider-field input[type=range]').forEach(function (r) {
+    const out = r.closest('.slider-field').querySelector('.slider-value');
+    out.textContent = r.value + (out.dataset.unit || '');
+  });
+}
+document.querySelectorAll('.slider-field input[type=range]').forEach(function (r) {
+  r.addEventListener('input', syncSliders);
+});
 // The timing windows only apply to Timer pace; grey them out otherwise.
 (function () {
   const pace = document.getElementById('pace-control');

@@ -23,8 +23,8 @@ class LeagueMode:
     # Whether the create form's Injuries toggle starts on. The GM can flip it,
     # and the league's own injuries_enabled setting is what the sim follows.
     injuries_default: bool = True
-    # Trades don't exist yet. Check trades_allowed() before offering or
-    # accepting one once they do.
+    # Whether the create form's Trades toggle starts on. The league's own
+    # trades_enabled setting is what counts (trade_deadline.trades_enabled_for).
     trades_enabled: bool = True
     # Blitz-style leagues run a preference-list draft and play off the 40-man
     # roster; long form drafts interactively and plays off the 26-man.
@@ -51,8 +51,8 @@ SPEED_BLITZ = LeagueMode(
     key="speed_blitz",
     label="Speed Blitz",
     description=(
-        "A faster Blitz: preference-list draft and 40-man rosters, with no "
-        "trades. Injuries start off."
+        "A faster Blitz: preference-list draft and 40-man rosters. Trades "
+        "and injuries start off."
     ),
     form_presets={
         "sim_period_days": 30,

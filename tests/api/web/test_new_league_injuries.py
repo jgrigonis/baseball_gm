@@ -101,3 +101,37 @@ def test_new_league_weighted_schedule(client, db_conn, form, expected):
 def test_new_league_form_ticks_weighted_schedule(client):
     html = client.get("/leagues/new").text
     assert 'id="weighted-schedule" value="true" checked' in html
+
+
+def _trades(client, db_conn, **form):
+    r = client.post("/leagues/new", data={"name": "Fresh League", **form})
+    league_id = r.headers["location"].split("/")[2]
+    return LeagueRepository(db_conn).get_by_id(league_id)["trades_enabled"]
+
+
+@pytest.mark.parametrize(
+    "form, expected",
+    [
+        ({"mode": "blitz"}, True),
+        ({"mode": "speed_blitz"}, False),
+        ({"mode": "blitz", "trades_enabled": "false"}, False),
+        ({"mode": "speed_blitz", "trades_enabled": ["false", "true"]}, True),
+    ],
+)
+def test_new_league_trades(client, db_conn, form, expected):
+    assert _trades(client, db_conn, **form) is expected
+
+
+def test_new_league_form_has_sliders(client):
+    html = client.get("/leagues/new").text
+    for name in (
+        "num_seasons",
+        "backstory_years",
+        "sim_period_days",
+        "decision_window_sec",
+        "draft_window_sec",
+        "lineup_window_sec",
+    ):
+        assert f'type="range" name="{name}"' in html
+    assert 'type="number"' not in html
+    assert "Trades and injuries default to off." in html
