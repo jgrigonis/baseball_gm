@@ -167,8 +167,9 @@ async function simGames(count) {
     });
     if (!d.failed) {
       // The sim stopped for All-Star voting, the All-Stars or the game.
+      // After the All-Star weekend, its results are up top.
       if (d.all_star_voting || d.all_stars || d.all_star_game) {
-        window.location.href = `/leagues/${LEAGUE_ID}/allstar`;
+        window.location.href = `/leagues/${LEAGUE_ID}/allstar` + (d.all_star_game ? '?weekend=1' : '');
         return;
       }
       const msg = `✓ ${d.games_played} game${d.games_played!==1?'s':''} · ${d.games_remaining} remaining`;

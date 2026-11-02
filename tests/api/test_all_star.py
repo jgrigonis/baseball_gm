@@ -874,3 +874,40 @@ def test_once_the_draft_is_done_its_the_decision_window(lg):
     for team in (lg.mine, lg.theirs):
         all_star.auto_draft(lg.db, lg.league.id, lg.season.id, team.id)
     assert 55 <= _ready_check_period(lg, ready_check) <= 60
+
+
+# ── The All-Star weekend card ────────────────────────────────────────────────
+
+
+def test_the_sim_weekend_button_once_my_picks_are_in(client, lg):
+    _count(lg, lg.mine)
+    url = f"/leagues/{lg.league.id}/allstar"
+    html = client.get(url).text
+    assert "★ All-Star Weekend" in html
+    assert "picks aren't all in yet" in html and "as-weekend-btn" not in html
+    all_star.auto_draft(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    html = client.get(url).text
+    assert "The teams are set." in html and "▶ Sim All-Star Weekend" in html
+    assert f"The season picks up again on {AFTER[0]}" in html
+
+
+def test_no_sim_weekend_button_in_a_multiplayer_league(client, lg):
+    _count(lg, lg.mine)
+    all_star.auto_draft(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    _multiplayer(lg)
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "played when the league plays its next day" in html
+    assert "▶ Sim All-Star Weekend" not in html
+
+
+def test_the_weekend_results_up_top_after_the_sim(client, lg):
+    _count(lg, lg.mine)
+    sim_next.sim_next_day(lg.league.id, lg.db)
+    url = f"/leagues/{lg.league.id}/allstar"
+    html = client.get(f"{url}?weekend=1").text
+    assert "All-Star Weekend is in the books" in html
+    assert 'href="#as-asg"' in html and 'id="as-asg"' in html
+    assert "MVP" in html and "Back to the Schedule" in html
+    assert "▶ Sim All-Star Weekend" not in html
+    # Just the tab, later on: no banner.
+    assert "in the books" not in client.get(url).text

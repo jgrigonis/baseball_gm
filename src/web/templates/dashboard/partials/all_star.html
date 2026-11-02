@@ -276,10 +276,11 @@
   {% if as_error %}
   <div class="card as-intro"><div class="card-body as-note"><span class="as-error">✗ {{ as_error }}</span></div></div>
   {% endif %}
-  {% if asg %}{% with x = asg %}{% include "dashboard/partials/_all_star_game.html" %}{% endwith %}{% endif %}
-  {% if derby_rounds or derby_field %}{% include "dashboard/partials/_hr_derby.html" %}{% endif %}
+  {% include "dashboard/partials/_all_star_weekend.html" %}
+  {% if asg %}<div id="as-asg" class="as-anchor">{% with x = asg %}{% include "dashboard/partials/_all_star_game.html" %}{% endwith %}</div>{% endif %}
+  {% if derby_rounds or derby_field %}<div id="as-derby" class="as-anchor">{% include "dashboard/partials/_hr_derby.html" %}</div>{% endif %}
   {% if rookie %}
-  <h2 class="as-heading">The Rookie Game</h2>
+  <h2 class="as-heading as-anchor" id="as-rookie">The Rookie Game</h2>
   {% if team_id %}
   <div class="card as-intro"><div class="card-body as-note">
     {% if rookie.my_rookies %}<span class="as-ok">🌱 {{ rookie.my_rookies }} of your rookies {{ 'is' if rookie.my_rookies == 1 else 'are' }} in it.</span>

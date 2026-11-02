@@ -89,6 +89,13 @@ async function schedSim(count) {
         body: JSON.stringify({count: 1}),
       }, function(job) { setStatus(leagueJobWaitingText(job) || dayMsg); });
       if (d.failed) { setStatus('✗ ' + (d.detail || 'Server error'), 'red'); break; }
+      // The All-Star weekend was played instead of a day's games: off to
+      // its results on the All-Star tab.
+      if (d.all_star_game) {
+        setStatus('★ All-Star weekend played · loading the results…');
+        window.location.href = '/leagues/{{ league_id }}/allstar?weekend=1';
+        return;
+      }
       if (!d.games_played) {
         if (!d.games_remaining || d.games_remaining <= 0) break;
         setStatus('⚠ No games played', 'var(--amber)');
@@ -111,10 +118,9 @@ async function schedSim(count) {
       // ...and, if the GM asked for it, the day a trade offer arrives
       var newOffer = !ignoreTrades && !!d.trade_offer;
       if (newOffer) window._simStop = true;
-      // ...and when All-Star voting opens, the All-Stars are announced or
-      // the All-Star Game is played:
+      // ...and when All-Star voting opens or the All-Stars are announced:
       // off to the All-Stars tab.
-      if (d.all_star_voting || d.all_stars || d.all_star_game) {
+      if (d.all_star_voting || d.all_stars) {
         window.location.href = '/leagues/{{ league_id }}/allstar';
         return;
       }
