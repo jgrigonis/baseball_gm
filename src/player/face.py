@@ -527,7 +527,7 @@ def face_svg(
     # shows
     if t["sideburns"] > 0:
         ends = brim_ends(
-            STRETCH_FROM_Y + (band - STRETCH_FROM_Y) * stretch, t["brim_curve"]
+            STRETCH_FROM_Y + (band - STRETCH_FROM_Y) * stretch, t["brim_curve"], w
         )
         start = STRETCH_FROM_Y + (ends - STRETCH_FROM_Y) / stretch - 0.5
         for side in (-1, 1):
@@ -735,84 +735,138 @@ def _nose(style, cx, eye_y, ny, nw, skin, skin_sh, skin_sh2, skin_hi) -> str:
     )
 
 
-def brim_ends(band: float, curve: float) -> float:
-    """How far down the bill's two ends come: a curved bill's sides bend down."""
-    return band + 1.2 + curve * 8
+def _bill(band: float, curve: float, w: float) -> dict:
+    """Where the bill's edges go. From the front, at eye level, a bill is a
+    band below the crown that arches: a curved bill's sides bend down past
+    its middle, and you see a sliver of its underside below the front edge.
+    A flat bill (curve 0) is a straight band."""
+    cw = w + 3.2  # half the crown's width at the band
+    bw = cw + 0.8  # the bill's half-width, just past the crown's sides
+    seam_mid = band - 0.4  # where the bill meets the crown
+    seam_end = band + 0.6 + curve * 6
+    front_mid = band + 6 + curve * 1.2  # the bill's front edge
+    front_end = band + 5.6 + curve * 10
+    under_mid = front_mid + 0.6 + curve * 3  # the underside's lower edge
+    return {
+        "cw": cw,
+        "bw": bw,
+        "seam_mid": seam_mid,
+        "seam_end": seam_end,
+        "front_mid": front_mid,
+        "front_end": front_end,
+        "under_mid": under_mid,
+    }
+
+
+def _arch_y(x: float, half: float, mid: float, end: float) -> float:
+    """The y at distance x from the middle on the curve _arch draws."""
+    t = min(abs(x) / half, 1)
+    return mid + (end - mid) * t * t
+
+
+def _arch(cx: float, half: float, mid: float, end: float) -> str:
+    """A symmetric curve through (cx-half, end), (cx, mid), (cx+half, end):
+    the quadratic whose control point puts its middle at `mid`."""
+    return f"M{_n(cx - half)} {_n(end)} Q{cx} {_n(2 * mid - end)} {_n(cx + half)} {_n(end)}"
+
+
+def brim_ends(band: float, curve: float, w: float) -> float:
+    """How far down the bill's lower edge comes at the sides of the face
+    (x = ±w from the middle), where sideburns start."""
+    b = _bill(band, curve, w)
+    return _arch_y(w, b["bw"], b["under_mid"], b["front_end"])
 
 
 LOGO_MAX_SCALE = 0.6  # So a small logo doesn't blow up past its cap size
 
 
 def _cap(cap: Cap, cx, w, L, R, band, curve) -> str:
-    """A baseball cap from the front: a low six-panel crown snug on the head,
-    and a bill that comes toward you, its sides curving down by `curve`
-    (0 is a flat bill)."""
+    """A baseball cap from the front at eye level: a round six-panel crown
+    a little wider than the head, and below it the bill, an arched band
+    whose sides bend down by `curve` (0 is a flat bill)."""
     o = []
-    cw = w + 3.2  # half the crown's width at the band
-    height = cw * 0.86
+    b = _bill(band, curve, w)
+    cw, bw = b["cw"], b["bw"]
+    height = min(cw * 1.12, band - 14.6)  # the button stays in the frame
     top = band - height
-    # The bill: its ends, and the middles of its back (at the crown) and
-    # front (nearest you) edges
-    bw = cw + 1.2  # the bill sticks out just past the crown's sides
-    ends = brim_ends(band, curve)
-    back_mid = band - 0.8
-    depth = 8.6 - curve * 1.6
-    front_mid = band + depth
-    # The crown's sides come down to the bill's ends, so no forehead shows
-    # between them when the bill curves down
-    side_bottom = max(band + 3, ends + 0.6)
-    back_c = 2 * back_mid - ends  # quadratic control points from midpoints
-    front_c = 2 * front_mid - ends
+    seam_mid, seam_end = b["seam_mid"], b["seam_end"]
+    front_mid, front_end = b["front_mid"], b["front_end"]
+    under_mid = b["under_mid"]
+    # The crown's sides come down to the bill's ends
+    side_bottom = seam_end + 0.8
+    seam_c = 2 * seam_mid - seam_end
+    front_c = 2 * front_mid - front_end
+    under_c = 2 * under_mid - front_end
 
-    # The bill's shadow on the forehead
+    # The bill's shadow on the forehead and brows
     o.append(
-        f'<path d="M{_n(L)} {_n(ends)} Q{cx} {_n(front_c)} {_n(R)} {_n(ends)} '
-        f'L{_n(R)} {_n(ends + 3.5)} Q{cx} {_n(front_c + 4.5)} {_n(L)} {_n(ends + 3.5)} Z" '
-        f'fill="#000" opacity=".2"/>'
+        f'<path d="M{_n(cx - bw)} {_n(front_end)} Q{cx} {_n(under_c)} {_n(cx + bw)} {_n(front_end)} '
+        f'L{_n(cx + bw - 1)} {_n(front_end + 2.5)} Q{cx} {_n(under_c + 5)} {_n(cx - bw + 1)} {_n(front_end + 2.5)} Z" '
+        f'fill="#000" opacity=".22"/>'
     )
-    # Crown: nearly straight sides down to the temples, a low round top
+    # Crown: sides that rise nearly straight, then a full round top
     o.append(
-        f'<path d="M{_n(cx - cw)} {_n(side_bottom)} C{_n(cx - cw - 0.4)} {_n(band - height * 0.62)} '
-        f"{_n(cx - cw * 0.62)} {_n(top)} {cx} {_n(top)} "
-        f"C{_n(cx + cw * 0.62)} {_n(top)} {_n(cx + cw + 0.4)} {_n(band - height * 0.62)} "
+        f'<path d="M{_n(cx - cw)} {_n(side_bottom)} C{_n(cx - cw - 0.3)} {_n(band - height * 0.7)} '
+        f"{_n(cx - cw * 0.78)} {_n(top)} {cx} {_n(top)} "
+        f"C{_n(cx + cw * 0.78)} {_n(top)} {_n(cx + cw + 0.3)} {_n(band - height * 0.7)} "
         f'{_n(cx + cw)} {_n(side_bottom)} Z" fill="{cap.crown}"/>'
     )
     # Panel seams: the center one and the two between front and side panels
     o.append(
-        f'<path d="M{cx} {_n(top + 0.6)} L{cx} {_n(band)} '
-        f"M{_n(cx - cw * 0.12)} {_n(top + 0.8)} Q{_n(cx - cw * 0.66)} {_n(top + height * 0.3)} {_n(cx - cw * 0.74)} {_n(band + 1)} "
-        f'M{_n(cx + cw * 0.12)} {_n(top + 0.8)} Q{_n(cx + cw * 0.66)} {_n(top + height * 0.3)} {_n(cx + cw * 0.74)} {_n(band + 1)}" '
-        f'fill="none" stroke="{cap.seam}" stroke-width=".7" opacity=".85"/>'
+        f'<path d="M{cx} {_n(top + 0.6)} L{cx} {_n(seam_mid)} '
+        f"M{_n(cx - cw * 0.1)} {_n(top + 0.7)} Q{_n(cx - cw * 0.7)} {_n(top + height * 0.25)} {_n(cx - cw * 0.8)} {_n(_arch_y(cw * 0.8, bw, seam_mid, seam_end))} "
+        f'M{_n(cx + cw * 0.1)} {_n(top + 0.7)} Q{_n(cx + cw * 0.7)} {_n(top + height * 0.25)} {_n(cx + cw * 0.8)} {_n(_arch_y(cw * 0.8, bw, seam_mid, seam_end))}" '
+        f'fill="none" stroke="{cap.seam}" stroke-width=".6" opacity=".7"/>'
     )
     # Light from the left: the right side panel in shadow
     o.append(
-        f'<path d="M{_n(cx + cw * 0.12)} {_n(top + 0.8)} Q{_n(cx + cw * 0.66)} {_n(top + height * 0.3)} {_n(cx + cw * 0.74)} {_n(band + 1)} '
-        f"L{_n(cx + cw)} {_n(side_bottom)} C{_n(cx + cw + 0.4)} {_n(band - height * 0.62)} "
-        f'{_n(cx + cw * 0.62)} {_n(top)} {cx} {_n(top)} Z" fill="#000" opacity=".14"/>'
+        f'<path d="M{_n(cx + cw * 0.1)} {_n(top + 0.7)} Q{_n(cx + cw * 0.7)} {_n(top + height * 0.25)} {_n(cx + cw * 0.8)} {_n(_arch_y(cw * 0.8, bw, seam_mid, seam_end))} '
+        f"L{_n(cx + cw)} {_n(side_bottom)} C{_n(cx + cw + 0.3)} {_n(band - height * 0.7)} "
+        f'{_n(cx + cw * 0.78)} {_n(top)} {cx} {_n(top)} Z" fill="#000" opacity=".14"/>'
     )
     o.append(
-        f'<ellipse cx="{cx}" cy="{_n(top + 0.3)}" rx="2.4" ry="1.2" fill="{cap.button}"/>'
+        f'<ellipse cx="{cx}" cy="{_n(top + 0.2)}" rx="2.2" ry="1.1" fill="{cap.button}"/>'
     )
-    o.append(_cap_logo(cap, cx, top, band, cw))
-    # The bill: top surface, a stitched band, and the darker front lip
+    o.append(_cap_logo(cap, cx, top, seam_mid, cw))
+    # The underside, a dark sliver below the front edge
     o.append(
-        f'<path d="M{_n(cx - bw)} {_n(ends)} Q{cx} {_n(back_c)} {_n(cx + bw)} {_n(ends)} '
-        f'Q{cx} {_n(front_c)} {_n(cx - bw)} {_n(ends)} Z" fill="{cap.brim}"/>'
+        f'<path d="{_arch(cx, bw, front_mid, front_end)} '
+        f'Q{cx} {_n(under_c)} {_n(cx - bw)} {_n(front_end)} Z" fill="{shade(cap.brim, 0.45)}"/>'
     )
-    for share in (0.35, 0.55):
-        s_mid = back_mid + (front_mid - back_mid) * share
+    # The bill: from the seam with the crown down to its front edge, with
+    # rounded corners at the ends
+    r = 1.2
+    o.append(
+        f'<path d="M{_n(cx - bw + 0.4)} {_n(seam_end)} Q{cx} {_n(seam_c)} {_n(cx + bw - 0.4)} {_n(seam_end)} '
+        f"Q{_n(cx + bw + 0.2)} {_n(seam_end + 0.4)} {_n(cx + bw)} {_n(seam_end + r)} "
+        f"L{_n(cx + bw)} {_n(front_end - r)} Q{_n(cx + bw)} {_n(front_end)} {_n(cx + bw - 0.2)} {_n(front_end)} "
+        f"Q{cx} {_n(front_c)} {_n(cx - bw + 0.2)} {_n(front_end)} "
+        f"Q{_n(cx - bw)} {_n(front_end)} {_n(cx - bw)} {_n(front_end - r)} "
+        f'L{_n(cx - bw)} {_n(seam_end + r)} Q{_n(cx - bw - 0.2)} {_n(seam_end + 0.4)} {_n(cx - bw + 0.4)} {_n(seam_end)} Z" '
+        f'fill="{cap.brim}"/>'
+    )
+    # Stitching across the bill, following its arch
+    for share in (0.4, 0.7):
+        mid = seam_mid + (front_mid - seam_mid) * share
+        end = seam_end + (front_end - seam_end) * share
         o.append(
-            f'<path d="M{_n(cx - bw * 0.86)} {_n(ends - 0.2)} Q{cx} {_n(2 * s_mid - ends)} {_n(cx + bw * 0.86)} {_n(ends - 0.2)}" '
-            f'fill="none" stroke="{shade(cap.brim, 0.28)}" stroke-width=".35" stroke-dasharray=".9 .7" opacity=".9"/>'
+            f'<path d="{_arch(cx, bw * 0.9, mid, _arch_y(bw * 0.9, bw, mid, end))}" '
+            f'fill="none" stroke="{shade(cap.brim, 0.28)}" stroke-width=".35" stroke-dasharray=".9 .7" opacity=".85"/>'
         )
+    # The seam with the crown, and the darker front lip
     o.append(
-        f'<path d="M{_n(cx - bw)} {_n(ends)} Q{cx} {_n(front_c)} {_n(cx + bw)} {_n(ends)}" '
-        f'fill="none" stroke="{cap.brim_edge}" stroke-width="1.1" opacity=".85"/>'
+        f'<path d="{_arch(cx, bw - 0.4, seam_mid, seam_end)}" fill="none" '
+        f'stroke="{shade(cap.crown, 0.35)}" stroke-width=".6" opacity=".8"/>'
     )
-    # A glint along the bill's top
     o.append(
-        f'<path d="M{_n(cx - bw * 0.55)} {_n(back_mid + 1.6)} Q{_n(cx - bw * 0.2)} {_n(back_mid + 0.9)} {_n(cx + bw * 0.1)} {_n(back_mid + 1.1)}" '
-        f'fill="none" stroke="#fff" stroke-width=".7" stroke-linecap="round" opacity=".18"/>'
+        f'<path d="M{_n(cx - bw + 0.2)} {_n(front_end)} Q{cx} {_n(front_c)} {_n(cx + bw - 0.2)} {_n(front_end)}" '
+        f'fill="none" stroke="{cap.brim_edge}" stroke-width=".9" opacity=".8"/>'
+    )
+    # Light from the left on the bill
+    o.append(
+        f'<path d="M{_n(cx - bw * 0.6)} {_n(_arch_y(bw * 0.6, bw, seam_mid, seam_end) + 1.3)} '
+        f'Q{_n(cx - bw * 0.3)} {_n(seam_mid + 1.1)} {_n(cx)} {_n(seam_mid + 1.2)}" '
+        f'fill="none" stroke="#fff" stroke-width=".8" stroke-linecap="round" opacity=".16"/>'
     )
     return "".join(o)
 
@@ -820,7 +874,7 @@ def _cap(cap: Cap, cx, w, L, R, band, curve) -> str:
 def _cap_logo(cap: Cap, cx, top, band, cw) -> str:
     # The logo sits on the two front panels, above the bill
     area_w = cw * 1.05
-    area_h = (band - top) * 0.66
+    area_h = (band - top) * 0.56
     cy = top + (band - top) * 0.5
     if cap.logo and cap.logo_box:
         bx, by, bw, bh = cap.logo_box
