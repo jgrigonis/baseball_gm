@@ -263,10 +263,12 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
 
 def _role_grades(g: dict, ratings: dict) -> None:
     """The role and per-position grades the lineup and draft lists sort by:
-    SP and RP for pitchers, hitter roles and positions for everyone else."""
+    SP, RP and CP (closer) for pitchers, hitter roles and positions for
+    everyone else."""
     if g.get("player_type") == "pitcher":
         g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
         g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
+        g["cp_grade"] = skill_to_grade(ratings.get("cp", 0))
     else:
         g["leadoff_grade"] = skill_to_grade(ratings.get("lead_off", 0))
         g["power_h_grade"] = skill_to_grade(ratings.get("power_hitter", 0))
