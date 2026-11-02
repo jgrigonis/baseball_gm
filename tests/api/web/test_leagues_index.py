@@ -141,3 +141,66 @@ def test_no_badge_without_a_team(client, db_conn, user_id):
     r = client.get("/leagues/")
 
     assert "league-team" not in r.text.split("<style>")[0]
+
+
+# ── Row actions: the row opens the league, the name renames it ───────────────
+
+
+def _make_commissioner(db, user_id, league):
+    db.execute(
+        "UPDATE leagues SET commissioner_gm_id ="
+        " (SELECT id FROM gms WHERE user_id = %s) WHERE id = %s",
+        (user_id, league.id),
+    )
+
+
+def _table(html):
+    return html.split("<style>")[0]
+
+
+def test_the_row_opens_the_league(client, league):
+    html = _table(client.get("/leagues/").text)
+
+    assert f'class="league-row" data-href="/leagues/{league.id}/" tabindex="0"' in html
+    assert "Open →" not in html
+
+
+def test_leave_is_red(client):
+    html = _table(client.get("/leagues/").text)
+
+    assert (
+        'class="btn btn-danger" style="font-size:10px;padding:4px 10px;">Leave</button>'
+        in html
+    )
+
+
+def test_commissioner_renames_by_editing_the_name(client, db_conn, league, user_id):
+    _make_commissioner(db_conn, user_id, league)
+
+    html = _table(client.get("/leagues/").text)
+
+    assert 'class="league-name" contenteditable="true"' in html
+    assert "league-name-save" in html
+    assert "Rename</button>" not in html
+
+
+def test_other_gms_cannot_edit_the_name(client, db_conn, league):
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = NULL WHERE id = %s", (league.id,)
+    )
+
+    html = _table(client.get("/leagues/").text)
+
+    assert "contenteditable" not in html
+
+
+def test_league_name_is_escaped(client, db_conn, league, user_id):
+    _make_commissioner(db_conn, user_id, league)
+    db_conn.execute(
+        "UPDATE leagues SET name = %s WHERE id = %s", ("Bob's <League>", league.id)
+    )
+
+    html = _table(client.get("/leagues/").text)
+
+    assert "<League>" not in html
+    assert "Bob&#39;s &lt;League&gt;" in html
