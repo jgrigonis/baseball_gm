@@ -10,6 +10,9 @@ which each grade starts so the population lands on TARGET_SHARES.
     prospect  draft classes, built the way DraftGenerator builds them
     hitter    position players on freshly generated 26-man rosters
     pitcher   SP/RP on the same rosters, rated max(sp, rp)
+    team_*    those rosters' areas on the welcome scouting report
+              (welcome.area_scores: lineup, rotation, bullpen, defense,
+              power, speed)
 
 Usage:
     uv run python -m scripts.calibrate_overall_grades [--classes 80] [--teams 1200]
@@ -22,7 +25,9 @@ import collections
 import random
 
 from src.api.grade_curves import GRADES
+from src.api.view_models.welcome import area_scores
 from src.league.offseason.draft_generator import DraftGenerator
+from src.league.offseason.draft_strategy import ratings
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_factory import PlayerFactory
 from src.team.team_factory import TeamFactory
@@ -34,6 +39,11 @@ TARGET_SHARES = {
     "hitter": [0.3, 1.2, 3, 6, 10, 14, 16, 16, 13, 9, 6, 3.5, 2],
     "pitcher": [0.3, 1.2, 3, 6, 10, 14, 16, 16, 13, 9, 6, 3.5, 2],
 }
+# A league has 20 to 30 teams, so team grades use a flatter curve: most
+# leagues have a team or two at each end.
+TEAM_SHARES = [2, 4, 6, 8, 10, 11, 12, 12, 11, 9, 7, 5, 3]
+TEAM_AREAS = ("lineup", "rotation", "bullpen", "defense", "power", "speed")
+TARGET_SHARES.update({f"team_{area}": TEAM_SHARES for area in TEAM_AREAS})
 
 
 def prospect_scores(n_classes: int, rng: random.Random) -> list[int]:
@@ -47,21 +57,24 @@ def prospect_scores(n_classes: int, rng: random.Random) -> list[int]:
     return scores
 
 
-def roster_scores(n_teams: int, rng: random.Random) -> dict[str, list[int]]:
+def roster_scores(n_teams: int, rng: random.Random) -> dict[str, list[float]]:
     factory = TeamFactory(rng=rng)
     out = {"hitter": [], "pitcher": []}
+    out.update({f"team_{area}": [] for area in TEAM_AREAS})
     for i in range(n_teams):
         team = factory.generate_team(city=f"City{i}", mascot="Sims", size=26)
-        for p in team.players:
-            r = PlayerEvaluator.rate_player(p.skills, p.throws)
+        rated = [(p, ratings(p)) for p in team.players]
+        for p, r in rated:
             if p.position in ("sp", "rp"):
                 out["pitcher"].append(max(r["sp"], r["rp"]))
             else:
                 out["hitter"].append(r["overall_player"])
+        for area, value in area_scores(rated).items():
+            out[f"team_{area}"].append(round(value, 1))
     return out
 
 
-def cutoffs(scores: list[int], shares: list[float]) -> list[int]:
+def cutoffs(scores: list[float], shares: list[float]) -> list[float]:
     """The lowest score for each grade A+ .. D- (F takes the rest)."""
     n = len(scores)
     counts = collections.Counter()
@@ -85,7 +98,7 @@ def cutoffs(scores: list[int], shares: list[float]) -> list[int]:
     return result
 
 
-def distribution(scores: list[int], cuts: list[int]) -> list[float]:
+def distribution(scores: list[float], cuts: list[float]) -> list[float]:
     counts = collections.Counter(sum(1 for c in cuts if s < c) for s in scores)
     return [100 * counts[i] / len(scores) for i in range(len(GRADES))]
 
@@ -104,7 +117,7 @@ def main() -> None:
     for kind, scores in pops.items():
         cuts = cutoffs(scores, TARGET_SHARES[kind])
         dist = distribution(scores, cuts)
-        print(f"# {kind}: {len(scores)} players")
+        print(f"# {kind}: {len(scores)} samples")
         print(f'    "{kind}": {cuts},')
         print("    # " + "  ".join(f"{g} {d:.1f}%" for g, d in zip(GRADES, dist)))
 

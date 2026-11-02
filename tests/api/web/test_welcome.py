@@ -104,11 +104,24 @@ def test_scouting_report_ranks_and_verdict():
         "b": {"lineup": 60, "rotation": 60, "bullpen": 60, "defense": 60},
         "c": {"lineup": 50, "rotation": 70, "bullpen": 50, "defense": 50},
     }
+    # Power and speed are ranked too, but say how the lineup plays, so the
+    # verdict ignores them even when they are the team's best or worst.
+    for tid, (power, speed) in {"me": (40, 75), "b": (60, 50), "c": (50, 60)}.items():
+        scores[tid].update(power=power, speed=speed)
 
     report = wv.scouting_report("me", scores)
 
     ranks = {a["key"]: a["rank"] for a in report["areas"]}
-    assert ranks == {"lineup": 1, "rotation": 3, "bullpen": 2, "defense": 1}
+    assert ranks == {
+        "lineup": 1,
+        "rotation": 3,
+        "bullpen": 2,
+        "defense": 1,
+        "power": 3,
+        "speed": 1,
+    }
+    style = {a["key"] for a in report["areas"] if a["style"]}
+    assert style == {"power", "speed"}
     assert report["verdict"] == (
         "Built around its lineup (1st of 3), but the rotation (3rd of 3) needs help."
     )
@@ -229,3 +242,27 @@ def test_taglines_agree_with_a_singular_or_plural_name(mascot, verb):
         if verb == "is":
             assert "are yours" not in line and "Are the" not in line
             assert "Neither do " not in line
+
+
+def test_area_grades_spread_across_simulated_teams():
+    import random
+
+    from src.league.offseason.draft_strategy import ratings
+    from src.team.team_factory import TeamFactory
+
+    factory = TeamFactory(rng=random.Random(11))
+    scores = {}
+    for i in range(24):
+        team = factory.generate_team(city=f"City{i}", mascot="Sims", size=26)
+        scores[str(i)] = wv.area_scores([(p, ratings(p)) for p in team.players])
+
+    for key in ("lineup", "rotation", "power", "speed"):
+        grades = {
+            next(
+                a["grade"]
+                for a in wv.scouting_report(t, scores)["areas"]
+                if a["key"] == key
+            )
+            for t in scores
+        }
+        assert len(grades) >= 5, (key, grades)
