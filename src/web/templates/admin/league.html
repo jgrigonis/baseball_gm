@@ -26,7 +26,7 @@
 
   <div class="admin-dim" style="font-size:11px;margin-bottom:20px;line-height:1.8;">
     ID {{ league.id }} · join code <span style="color:var(--amber);letter-spacing:.1em;">{{ league.join_code or '—' }}</span>
-    · {{ league.num_teams }} teams · season {{ season_number }} of {{ league.num_seasons }}
+    · {{ league.num_teams }} teams · season {{ season_number }} of {{ league.num_seasons or "∞" }}
     · period {{ league.sim_period }} · created {{ (league.created_at or '')[:16] }}
     {% if league.last_played_at %}· last played {{ league.last_played_at.strftime('%b %-d, %Y %H:%M') }}{% endif %}
     {% if league.period_deadline %}· window ends {{ league.period_deadline.strftime('%b %-d %H:%M:%S') }}{% endif %}
@@ -65,7 +65,8 @@
            ('lineup_window_sec', 'Lineup Window (sec)')] %}
       <div class="field">
         <label>{{ label }}</label>
-        <input name="{{ key }}" type="number" value="{{ league[key] }}" min="{{ ranges[key][0] }}" max="{{ ranges[key][1] }}" required>
+        <input name="{{ key }}" type="number" value="{{ league[key] }}" min="{{ ranges[key][0] }}" max="{{ [ranges[key][1], league[key]] | max }}" required>
+        {% if key == 'num_seasons' %}<span class="mode-note">0 for unlimited</span>{% endif %}
       </div>
       {% endfor %}
       <div class="field">

@@ -23,3 +23,14 @@ TRADE_DEADLINE_WINDOW_MULTIPLIER = 3
 # before the start; 0 starts with no history and a random first draft order.
 DEFAULT_BACKSTORY_YEARS = 10
 MAX_BACKSTORY_YEARS = 15
+
+# How many seasons a league can be set to run. 0 is unlimited: the league
+# never completes on its own (see is_last_season()).
+MAX_SEASONS = 60
+UNLIMITED_SEASONS = 0
+
+
+def is_last_season(num_seasons: int, seasons_played: int) -> bool:
+    """Whether a league that runs num_seasons has finished its last one after
+    seasons_played. An unlimited league never has."""
+    return num_seasons != UNLIMITED_SEASONS and seasons_played >= num_seasons

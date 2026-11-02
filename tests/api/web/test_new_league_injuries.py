@@ -125,7 +125,6 @@ def test_new_league_trades(client, db_conn, form, expected):
 def test_new_league_form_has_sliders(client):
     html = client.get("/leagues/new").text
     for name in (
-        "num_seasons",
         "backstory_years",
         "sim_period_days",
         "decision_window_sec",
@@ -134,4 +133,24 @@ def test_new_league_form_has_sliders(client):
     ):
         assert f'type="range" name="{name}"' in html
     assert 'type="number"' not in html
+    # Teams and seasons only land on their choices: the slider moves through
+    # positions and a hidden input carries the choice.
+    assert '<input type="hidden" name="num_teams" value="30">' in html
+    assert '<input type="hidden" name="num_seasons" value="10">' in html
+    assert '<select name="num_teams"' not in html
+    assert "∞" in html
     assert "Trades and injuries default to off." in html
+
+
+def _seasons(client, db_conn, value):
+    r = client.post("/leagues/new", data={"name": "Fresh League", "num_seasons": value})
+    if r.status_code != 302:
+        return r.status_code
+    league_id = r.headers["location"].split("/")[2]
+    return LeagueRepository(db_conn).get_by_id(league_id)["num_seasons"]
+
+
+def test_seasons_go_up_to_60_or_unlimited(client, db_conn):
+    assert _seasons(client, db_conn, "60") == 60
+    assert _seasons(client, db_conn, "0") == 0  # unlimited
+    assert _seasons(client, db_conn, "61") >= 400

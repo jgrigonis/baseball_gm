@@ -206,8 +206,8 @@ class TestNewLeagueSettings:
             ("mode", "turbo"),
             ("pace_control", "scheduled"),
             ("sim_period_days", "0"),
-            ("num_seasons", "0"),
-            ("num_seasons", "421"),
+            ("num_seasons", "-1"),
+            ("num_seasons", "61"),
         ],
     )
     def test_bad_ready_check_setting_is_rejected(self, user_client, field, value):

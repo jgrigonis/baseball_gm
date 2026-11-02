@@ -47,6 +47,11 @@ class TestEndPlayoffs:
         end_playoffs(db_conn, league, season.id)
         assert LeagueRepository(db_conn).get_state(league["id"]) == "complete"
 
+    def test_an_unlimited_league_never_ends(self, db_conn, factory):
+        league, season = _league(db_conn, factory, num_seasons=0, seasons_played=75)
+        end_playoffs(db_conn, league, season.id)
+        assert LeagueRepository(db_conn).get_state(league["id"]) == "offseason"
+
 
 class TestCompleteLeagueIsReadOnly:
     def test_complete_league_rejects_changes(self, db_conn, factory):
