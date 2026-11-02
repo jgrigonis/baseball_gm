@@ -271,7 +271,7 @@ TRAITS: tuple[Trait, ...] = (
     Trait("mole_y", "Mole down", "range", 60, 72, default=64.0),
     Trait("nose", "Nose", "choice", options=NOSES, default="classic"),
     Trait("cap_height", "Cap height", "range", 0, 7, default=2.5),
-    Trait("brim_curve", "Brim curve", "range", 0, 1, default=0.55),
+    Trait("brim_curve", "Brim curve", "range", 0, 0.8, default=0.5),
 )
 TRAITS_BY_KEY = {t.key: t for t in TRAITS}
 
@@ -642,10 +642,7 @@ def face_svg(
             f'<path d="M{_n(cx - mw)} {my - 0.8} Q{cx} {my + 2.6} {_n(cx + mw)} {my - 0.8}" fill="none" stroke="{lip}" stroke-width="{lw}" stroke-linecap="round"/>'
         )
     elif mouth == "grin":
-        add(
-            f'<path d="M{_n(cx - mw)} {my - 1} Q{cx} {my + 4} {_n(cx + mw)} {my - 1} Q{cx} {my + 0.8} {_n(cx - mw)} {my - 1} Z" '
-            f'fill="{EYE_WHITE}" stroke="{lip}" stroke-width="{_n(lip_t * 0.8)}" stroke-linejoin="round"/>'
-        )
+        add(_grin(cx, my, mw, lip, lip_t))
     else:  # smirk
         add(
             f'<path d="M{_n(cx - mw)} {my + 0.4} Q{cx} {my + 1} {_n(cx + mw)} {my - 1.4}" fill="none" stroke="{lip}" stroke-width="{lw}" stroke-linecap="round"/>'
@@ -669,6 +666,30 @@ def face_svg(
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="13 13 74 74" '
         'role="img" aria-hidden="true">' + "".join(o) + "</svg>"
+    )
+
+
+def _grin(cx, my, mw, lip, lip_t) -> str:
+    """A wide open smile: a row of upper teeth, a hint of the lower ones."""
+    opening = (
+        f"M{_n(cx - mw - 0.4)} {_n(my - 1.6)} Q{cx} {_n(my - 0.6)} {_n(cx + mw + 0.4)} {_n(my - 1.6)} "
+        f"Q{cx} {_n(my + 8.6)} {_n(cx - mw - 0.4)} {_n(my - 1.6)} Z"
+    )
+    clip = "grin" + hashlib.md5(opening.encode()).hexdigest()[:8]
+    teeth = "".join(
+        f'<path d="M{_n(cx + i * mw / 3.3)} {_n(my - 1.5)} L{_n(cx + i * mw / 3.3)} {_n(my + 2.6)}" '
+        f'stroke="#cfc6b8" stroke-width=".35"/>'
+        for i in (-2, -1, 0, 1, 2)
+    )
+    return (
+        f'<clipPath id="{clip}"><path d="{opening}"/></clipPath>'
+        f'<path d="{opening}" fill="#4a1f1a"/>'
+        f'<g clip-path="url(#{clip})">'
+        f'<rect x="{_n(cx - mw - 1)}" y="{_n(my - 2)}" width="{_n(mw * 2 + 2)}" height="4.7" fill="{EYE_WHITE}"/>'
+        f"{teeth}"
+        f'<rect x="{_n(cx - mw)}" y="{_n(my + 4.3)}" width="{_n(mw * 2)}" height="3" fill="#e4dccf"/>'
+        f"</g>"
+        f'<path d="{opening}" fill="none" stroke="{lip}" stroke-width="{_n(lip_t * 0.8)}" stroke-linejoin="round"/>'
     )
 
 
@@ -730,7 +751,7 @@ def _cap(cap: Cap, cx, w, L, R, band, curve) -> str:
     top = band - height
     # The bill: its ends, and the middles of its back (at the crown) and
     # front (nearest you) edges
-    bw = cw + 3.4
+    bw = cw + 1.2  # the bill sticks out just past the crown's sides
     ends = brim_ends(band, curve)
     back_mid = band - 0.8
     depth = 8.6 - curve * 1.6
@@ -819,14 +840,28 @@ def _cap_logo(cap: Cap, cx, top, band, cw) -> str:
 
 
 def player_face(player: dict, size: str = "lg") -> Markup:
-    """A player's face for a template: the SVG in a framed box. size is a
-    CSS modifier (player-face--lg)."""
-    svg = face_svg(
-        player.get("player_id", ""),
-        player.get("age"),
-        player.get("team_city"),
-        player.get("team_mascot"),
+    """A player's face for a template: the SVG in a framed button that opens
+    a bigger copy in a dialog. size is a CSS modifier (player-face--lg)."""
+    svg = Markup(
+        face_svg(
+            player.get("player_id", ""),
+            player.get("age"),
+            player.get("team_city"),
+            player.get("team_mascot"),
+        )
     )
-    return Markup('<span class="player-face player-face--{size}">{svg}</span>').format(
-        size=size, svg=Markup(svg)
-    )
+    name = f"{player.get('first_name', '')} {player.get('last_name', '')}".strip()
+    team = f"{player.get('team_city') or ''} {player.get('team_mascot') or ''}".strip()
+    caption = " · ".join(x for x in (name, team if team != "—" else "") if x)
+    return Markup(
+        '<button type="button" class="player-face player-face--{size}" '
+        'onclick="this.nextElementSibling.showModal()" title="See a bigger face" '
+        'aria-label="See {name}\'s face bigger">{svg}</button>'
+        '<dialog class="face-zoom" onclick="if (event.target === this) this.close()">'
+        '<div class="face-zoom-box">'
+        '<button type="button" class="face-zoom-close" onclick="this.closest(\'dialog\').close()" '
+        'aria-label="Close">✕</button>'
+        '<div class="face-zoom-face">{svg}</div>'
+        '<div class="face-zoom-caption">{caption}</div>'
+        "</div></dialog>"
+    ).format(size=size, name=name or "this player", svg=svg, caption=caption)
