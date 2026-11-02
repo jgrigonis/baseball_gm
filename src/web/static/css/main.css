@@ -1347,3 +1347,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .ss-sev-minor    { color:var(--text-dim); }
 .ss-sev-moderate { color:var(--amber); }
 .ss-sev-severe, .ss-sev-surgery { color:var(--red); }
+
+/* Sim news bar: each item links to its own tab */
+.inj-news-item:hover { text-decoration:underline; }
+.inj-news-item + .inj-news-item { margin-left:18px; }
