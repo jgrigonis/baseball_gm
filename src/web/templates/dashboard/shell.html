@@ -314,7 +314,7 @@ window.closeGamePanel = function() {
             background:var(--bg-2);border-bottom:1px solid var(--border);
             font-family:var(--font-mono);font-size:11px;color:var(--amber);
             cursor:pointer;"
-     onclick="injuryNewsClick()"></div>
+     onclick="injuryNewsClick(event)"></div>
 <div id="tab-content" class="tab-fade">
   {% if tab_template %}{% include tab_template %}{% endif %}
 </div>
@@ -409,54 +409,63 @@ document.body.addEventListener('htmx:afterSettle', function(e) {
 });
 
 // ── Injury news bar (always available, element lives in shell) ─────────────────
-// dest: 'batting' | 'pitching' | 'roster'
-function setInjuryNews(msg, dest) {
+// Each item is {text, dest} and links to its own place, so a hitter's injury
+// opens the batting lineup even when a pitcher came back in the same sim.
+// dest: 'batting' | 'pitching' | 'roster' | 'trades'
+function setInjuryNews(items) {
   var el = document.getElementById('sim-injury-news');
   if (!el) return;
-  el.textContent = msg;
-  el.dataset.dest = dest || 'batting';
-  el.style.display = msg ? 'block' : 'none';
+  el.textContent = '';
+  (items || []).forEach(function (item) {
+    var span = document.createElement('span');
+    span.className = 'inj-news-item';
+    span.textContent = item.text;
+    span.dataset.dest = item.dest || 'batting';
+    el.appendChild(span);
+  });
+  // A click between items goes where the first one does.
+  el.dataset.dest = items && items.length ? items[0].dest : 'batting';
+  el.style.display = items && items.length ? 'block' : 'none';
 }
 window.setInjuryNews = setInjuryNews;
 
 // Show the new_injuries / returned lists from a sim response or /news.
-// Returns true if there was any news.
+// Returns true if there was any injury or roster news.
 function showInjuryNews(d) {
-  var injNews = '';
-  var injDest = 'batting';  // default destination: lineup batting tab
-  if (d.new_injuries && d.new_injuries.length > 0) {
-    injNews += d.new_injuries.map(i => `🚑 ${i.name}${i.injury ? ' — ' + i.injury : ''} (${i.days}d)`).join('  ');
-    // A new pitcher injury → pitching tab; hitter injury keeps batting
-    if (d.new_injuries.some(i => i.is_pitcher)) injDest = 'pitching';
-  }
-  if (d.returned && d.returned.length > 0) {
-    injNews += (injNews ? '  ' : '') + d.returned.map(i => `✅ ${i.name} returned`).join('  ');
-    // Returned player not on 40-man → roster tab (needs to be placed first)
-    if (d.returned.some(i => !i.on_40man)) {
-      injDest = 'roster';
-    } else if (injDest !== 'roster' && d.returned.some(i => i.is_pitcher)) {
-      injDest = 'pitching';
-    }
-  }
-  if (d.roster_moves && d.roster_moves.length > 0) {
-    injNews += (injNews ? '  ' : '') + d.roster_moves.map(m =>
-      m.to === '40man' ? `⇡ ${m.name} called up to fill your 40-man`
-                       : `⇣ ${m.name} sent down, 40-man was full`).join('  ');
-    injDest = 'roster';
-  }
+  var items = [];
+  (d.new_injuries || []).forEach(function (i) {
+    items.push({
+      text: `🚑 ${i.name}${i.injury ? ' — ' + i.injury : ''} (${i.days}d)`,
+      dest: i.is_pitcher ? 'pitching' : 'batting',
+    });
+  });
+  (d.returned || []).forEach(function (i) {
+    items.push({
+      text: `✅ ${i.name} returned`,
+      // Not on the 40-man → roster tab, to be placed first
+      dest: !i.on_40man ? 'roster' : i.is_pitcher ? 'pitching' : 'batting',
+    });
+  });
+  (d.roster_moves || []).forEach(function (m) {
+    items.push({
+      text: m.to === '40man' ? `⇡ ${m.name} called up to fill your 40-man`
+                             : `⇣ ${m.name} sent down, 40-man was full`,
+      dest: 'roster',
+    });
+  });
   // Only injury and roster news stop a sim that runs until an injury.
-  var hadInjuryNews = !!injNews;
+  var hadInjuryNews = items.length > 0;
   // Trade news: offers and votes pop up, answers go in the news bar. A
   // completed trade leads to the Roster tab, where the players who arrived
   // wait in the organization; other trade news to the Trades tab.
   if (d.trades && d.trades.length > 0) {
     var answers = d.trades.filter(t => !t.popup);
-    var tradeNews = answers.map(t => `📨 ${t.text}`).join('  ');
-    if (tradeNews) {
-      if (answers.some(t => t.event === 'accepted')) injDest = 'roster';
-      else if (!injNews) injDest = 'trades';
-      injNews += (injNews ? '  ' : '') + tradeNews;
-    }
+    answers.forEach(function (t) {
+      items.push({
+        text: `📨 ${t.text}`,
+        dest: t.event === 'accepted' ? 'roster' : 'trades',
+      });
+    });
     // An answer means a popup about the same offer has nothing left to do.
     answers.forEach(t => window.dropTradePopup && window.dropTradePopup(t.offer_id));
     // On the Trades tab, show the offers and votes as they stand now.
@@ -465,7 +474,7 @@ function showInjuryNews(d) {
     d.trades.filter(t => t.popup).forEach(t => window.showTradePopup && window.showTradePopup(t));
     if (window.refreshTradeBadge) window.refreshTradeBadge();
   }
-  setInjuryNews(injNews, injDest);  // clears if empty, shows if not
+  setInjuryNews(items);  // clears if empty, shows if not
   return hadInjuryNews;
 }
 window.showInjuryNews = showInjuryNews;
@@ -489,9 +498,10 @@ function goToTab(name) {
 }
 window.goToTab = goToTab;
 
-function injuryNewsClick() {
+function injuryNewsClick(ev) {
   var el = document.getElementById('sim-injury-news');
-  var dest = el ? el.dataset.dest : 'batting';
+  var item = ev && ev.target && ev.target.closest ? ev.target.closest('.inj-news-item') : null;
+  var dest = (item || el || {}).dataset ? (item || el).dataset.dest : 'batting';
   if (dest === 'roster' || dest === 'trades') {
     goToTab(dest);
   } else {
