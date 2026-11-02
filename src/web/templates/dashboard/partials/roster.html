@@ -297,27 +297,15 @@
 
 /* ── Player cards ────────────────────────────────────────────────────────────── */
 .r-card {
-  display: grid; grid-template-columns: auto 1fr auto;
-  gap: 0 10px; align-items: center;
-  padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: 28px 1fr auto;
+  gap: 0 8px; align-items: center;
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
   cursor: grab; user-select: none; transition: background .08s;
 }
 .r-card:last-child { border-bottom: none; }
 .r-card:hover { background: var(--bg-3); }
 .r-card.dragging { opacity: .3; cursor: grabbing; }
 .r-card.drag-swap { background: var(--amber-lo); outline: 1px solid var(--amber); }
-.r-ovr  { font-family: var(--font-mono); font-size: 14px; font-weight: 600; min-width: 28px; }
-.r-name { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
-.r-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 1px; }
-.r-grades {
-  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
-  margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;
-}
-.r-grades .gl { color: var(--muted); margin-right: 1px; }
-.r-stats {
-  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
-  margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;
-}
 .r-action-btn {
   font-family: var(--font-mono); font-size: 13px; font-weight: 700;
   border: 1px solid var(--border); background: var(--bg-3);
@@ -376,23 +364,6 @@ function getSkillVal(p, key) {
   if (key === 'c')   return gradeVal(p.c_grade);
   if (key === '1b')  return gradeVal(p.b1_grade);
   return gradeVal(p[key] || null);
-}
-
-/* ── Grade / stat HTML ──────────────────────────────────────────────────────── */
-
-function statsHtml(p) {
-  if (p.player_type !== 'pitcher' && p.stat_avg != null)
-    return `<div class="r-stats">
-      <span>${p.stat_g}G</span>
-      <span style="color:var(--amber);">${p.stat_avg}</span>
-      <span>${p.stat_hr}HR</span><span>${p.stat_rbi}RBI</span></div>`;
-  if (p.player_type === 'pitcher' && p.stat_era != null)
-    return `<div class="r-stats">
-      <span>${p.stat_gs}GS</span>
-      <span style="color:var(--amber);">${p.stat_era} ERA</span>
-      <span>${p.stat_ip}IP</span>
-      <span>${p.stat_w}W ${p.stat_l}L${p.stat_sv?' '+p.stat_sv+'SV':''}</span></div>`;
-  return '';
 }
 
 /* ── Sort ───────────────────────────────────────────────────────────────────── */
@@ -515,16 +486,15 @@ function makeCard(p, isIn40) {
     : `<button class="r-action-btn add-btn" title="Add to 40-man"
                onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button>`;
 
+  // Same row as the Lineup tab: name with a dim trail, then the ratings
+  const isPitcher = p.player_type === 'pitcher';
+  const stats = isPitcher ? pitcherTrailStatsHtml(p)
+    : p.stat_avg != null ? `<span>${p.stat_g}G</span> ${hitterStatsHtml(p)}` : '';
   el.innerHTML = `
-    <span class="r-ovr ${gradeClass(p.overall)}">${p.overall}</span>
+    <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     <div style="min-width:0;">
-      <div class="r-name" style="color:${p.injured?'var(--red)':''};">
-        ${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
-        ${p.injured?`<span style="font-size:10px;color:var(--red);">IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}
-      </div>
-      <div class="r-meta">${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}</div>
-      <div class="r-grades">${playerGradesHtml(p)}</div>
-      ${statsHtml(p)}
+      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`], stats)}${ilTag(p)}${rustTag(p)}</div>
+      ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     ${btnHtml}`;
 
