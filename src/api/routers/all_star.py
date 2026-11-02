@@ -63,11 +63,11 @@ def _weekend_context(request: Request, db, league_id: str, ctx: dict) -> dict:
     return {
         "weekend_due": True,
         "weekend_can_sim": bool(
-            ctx.get("team_id") and not ctx.get("is_viewer") and not ctx.get("multiplayer")
+            ctx.get("team_id")
+            and not ctx.get("is_viewer")
+            and not ctx.get("multiplayer")
         ),
-        "weekend_picks_left": all_star.person_drafting(
-            db, league_id, ctx["season_id"]
-        ),
+        "weekend_picks_left": all_star.person_drafting(db, league_id, ctx["season_id"]),
     }
 
 
