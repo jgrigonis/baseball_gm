@@ -219,7 +219,12 @@ window.refreshActiveTab = function() {
   htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
 };
 
-document.addEventListener('keydown', e => { if(e.key==='Escape') { closePlayerPanel(); closeGamePanel(); } });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  // An open dialog (the bigger player face) closes first, on its own.
+  if (document.querySelector('dialog[open]')) return;
+  closePlayerPanel(); closeGamePanel();
+});
 
 // ── Game panel ─────────────────────────────────────────────────────────────
 window.openGamePanel = function(gameId) {

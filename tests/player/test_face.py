@@ -127,7 +127,32 @@ def test_player_face_markup():
             }
         )
     )
-    assert html.startswith('<span class="player-face player-face--lg"><svg')
+    assert html.startswith('<button type="button" class="player-face player-face--lg"')
+    # Clicking opens the same face bigger in a dialog
+    assert '<dialog class="face-zoom"' in html
+    assert html.count("<svg") == 2
+
+
+def test_zoom_caption_names_the_player_and_escapes():
+    html = str(
+        player_face(
+            {
+                "player_id": "p",
+                "first_name": "Al",
+                "last_name": "<b>",
+                "team_city": "Rome",
+                "team_mascot": "Gladiators",
+            }
+        )
+    )
+    assert "Al &lt;b&gt; · Rome Gladiators" in html
+
+
+def test_grin_shows_teeth():
+    from src.player.face import default_traits
+
+    svg = face_svg("p", 27, "Rome", "Gladiators", default_traits() | {"mouth": "grin"})
+    assert 'clip-path="url(#grin' in svg
 
 
 def test_stored_traits_draw_the_same_face_as_random_ones():
