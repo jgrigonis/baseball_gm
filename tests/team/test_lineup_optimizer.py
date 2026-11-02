@@ -312,3 +312,37 @@ def test_position_value_scales_the_glove():
     assert LineupOptimizer.position_value(p, "c") == 110
     assert LineupOptimizer.position_value(p, "c", defense=1.5) == 140
     assert LineupOptimizer.position_value(p, "dh", defense=1.5) == 50
+
+
+@pytest.mark.parametrize("style", LINEUP_STYLES)
+def test_best_on_base_hitter_leads_off_every_style(style):
+    # The best contact + eye leads off even over a faster hitter or a
+    # better all-around bat.
+    on_base = hitter("on_base", bat=55, contact=80, eye=80, speed=50, power=30)
+    burner = hitter("burner", bat=55, contact=50, eye=40, speed=99, base_running=99)
+    slugger = hitter("slugger", bat=75, contact=60, eye=60, power=99)
+    lineup = LineupOptimizer.fill(
+        [None] * 9, nine_plus([on_base, burner, slugger]), style=style
+    )
+    assert lineup[0].player.id == "on_base"
+
+
+def test_leadoff_slot_matches_the_card_leadoff_grade():
+    from src.player.player_evaluator import ROLE_WEIGHTS
+    from src.team.lineup_optimizer import BATTING_ROLES
+
+    for roles in BATTING_ROLES.values():
+        assert roles[0] == ROLE_WEIGHTS["lead_off"]
+
+
+def test_form_moves_a_hitter_up_the_order():
+    """Among equal hitters, a hot one bats higher and a cold one lower for a
+    GM who weighs stats."""
+    players = [hitter(f"h{i}", bat=60) for i in range(9)]
+
+    def slot(pid, form):
+        lineup = LineupOptimizer.fill([None] * 9, players, form=form)
+        return [s.player.id for s in lineup].index(pid)
+
+    assert slot("h8", {"h8": 5.0}) == 0
+    assert slot("h0", {"h0": -5.0}) == 8

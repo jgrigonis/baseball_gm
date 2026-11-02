@@ -8,10 +8,10 @@ and player.skills and never mutates a player. It's used for AI teams before
 every game, to fill holes in a person's saved lineup, and by the Lineup tab's
 Auto-fill and Rebuild buttons (plans/ai-gm-strategy.md, section 3).
 
-It works in two steps, each solved exactly as an assignment problem with the
-Hungarian algorithm (scipy's linear_sum_assignment):
+It works in two steps:
 
-1. Who plays where. A matrix of every hitter against every spot on the field
+1. Who plays where, solved exactly as an assignment problem with the
+   Hungarian algorithm (scipy's linear_sum_assignment). A matrix of every hitter against every spot on the field
    (and DH). A cell is what that player is worth there:
 
        value = overall_offense + DEFENSE_IMPORTANCE[pos] × rating at pos
@@ -21,10 +21,13 @@ Hungarian algorithm (scipy's linear_sum_assignment):
    at 1B or DH. A left-handed thrower is only put at C, 2B, SS or 3B when
    nobody else can play there.
 
-2. Batting order. The chosen hitters against the batting slots. A cell is how
-   well the player fits the slot's role in the lineup style (BATTING_ROLES)
-   times the plate appearances that slot gets (SLOT_PA), so better hitters
-   bat higher.
+2. Batting order. The chosen hitters fill the batting slots top-down: slot 1
+   takes whoever best fits its role in the lineup style (BATTING_ROLES), then
+   slot 2 takes the best fit of who's left, and so on. Slot 1 is always
+   LEADOFF, the same formula as the player card's Leadoff grade, so the best
+   Leadoff grade in the lineup leads off. Slots with no special role go by
+   overall bat, so better hitters bat higher. A GM who weighs stats adds each
+   hitter's form here too, so hot hitters move up the order.
 
 Locked players (a person's partly filled lineup) keep their batting slot and
 position; only the gaps are solved.
@@ -42,7 +45,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from src.player.player_evaluator import LEFT_HAND_CAPPED_POSITIONS
+from src.player.player_evaluator import LEFT_HAND_CAPPED_POSITIONS, ROLE_WEIGHTS
 from src.player.player_in_game import PlayerInGame
 from src.team.lineup_slot import LineupSlot
 
@@ -77,20 +80,17 @@ PLATOON_PENALTY = 7.0
 REGULAR_BONUS = 3.0
 PLATOON_SETTINGS = ("none", "vs-handedness", "aggressive")
 
-# Plate appearances per game by batting slot (MLB averages).
-SLOT_PA = [4.65, 4.55, 4.44, 4.33, 4.22, 4.11, 4.00, 3.89, 3.78]
-
 # The role each batting slot plays in a lineup style, as weights on hitting
 # skills. Slots with no special role use OVERALL and are sorted by bat alone.
 OVERALL = {"contact": 3, "power": 3, "eye": 2, "speed": 1}
-OBP = {"eye": 3, "contact": 2, "speed": 1}
 POWER = {"power": 4, "contact": 1, "clutch": 1}
-TABLE_SETTER = {"speed": 3, "contact": 2, "base_running": 1, "eye": 1}
+# Every style leads off with an on-base hitter: the card's Leadoff grade.
+LEADOFF = ROLE_WEIGHTS["lead_off"]
 
 BATTING_ROLES: dict[str, list[dict[str, int]]] = {
-    # Speed at the top, the best hitter third, power fourth and fifth.
+    # On-base at the top, the best hitter third, power fourth and fifth.
     "traditional": [
-        TABLE_SETTER,
+        LEADOFF,
         {"contact": 3, "bunting": 1, "speed": 1},
         {"contact": 3, "power": 3, "eye": 2},
         POWER,
@@ -103,7 +103,7 @@ BATTING_ROLES: dict[str, list[dict[str, int]]] = {
     # The Book: on-base first, the best hitter second, a second leadoff
     # sixth and a wrap-around ninth.
     "analytics": [
-        OBP,
+        LEADOFF,
         OVERALL,
         {"contact": 3, "eye": 2, "power": 1},
         {"power": 4, "contact": 2, "clutch": 1},
@@ -114,7 +114,7 @@ BATTING_ROLES: dict[str, list[dict[str, int]]] = {
         {"speed": 2, "eye": 2, "contact": 1},
     ],
     "speed-first": [
-        {"speed": 3, "contact": 2, "base_running": 2, "eye": 1},
+        LEADOFF,
         {"speed": 2, "contact": 2, "base_running": 1},
         OVERALL,
         POWER,
@@ -125,7 +125,7 @@ BATTING_ROLES: dict[str, list[dict[str, int]]] = {
         {"speed": 2, "eye": 1},
     ],
     "power-first": [
-        OBP,
+        LEADOFF,
         OVERALL,
         {"power": 3, "contact": 1},
         POWER,
@@ -268,7 +268,7 @@ class LineupOptimizer:
         open_slots = [i for i in range(size) if i not in by_slot]
         for i, (p, pos) in zip(
             open_slots,
-            LineupOptimizer.batting_order(newcomers, open_slots, style, hand),
+            LineupOptimizer.batting_order(newcomers, open_slots, style, hand, form),
         ):
             by_slot[i] = LineupSlot(p, pos)
 
@@ -343,25 +343,26 @@ class LineupOptimizer:
         slots: list[int],
         style: str,
         vs_hand: str | None = None,
+        form: dict[str, float] | None = None,
     ) -> list[tuple[PlayerInGame, str]]:
-        """Order players into these batting slots (0-based), best fit first,
-        against today's starter if given. Returns them in slot order."""
-        if not players:
-            return []
+        """Order players into these batting slots (0-based), top-down: each
+        slot in turn takes the best fit for its role among those left,
+        against today's starter if given. form (by player id) adds to a
+        hitter's fit in every slot, so a hot hitter moves up the order and a
+        cold one moves down. Returns them in slot order."""
         roles = BATTING_ROLES[style]
-        fit = np.array(
-            [
-                [
-                    SLOT_PA[s]
-                    * (
-                        LineupOptimizer.slot_fit(p, roles[s])
-                        - LineupOptimizer.matchup(p, vs_hand)
-                    )
-                    for s in slots
-                ]
-                for p, _ in players
-            ]
-        )
-        rows, cols = linear_sum_assignment(fit, maximize=True)
-        by_col = {c: r for r, c in zip(rows, cols)}
-        return [players[by_col[c]] for c in range(len(slots))]
+        form = form or {}
+        left = sorted(players, key=lambda pp: pp[0].record.id)
+        order = []
+        for s in sorted(slots)[: len(left)]:
+            best = max(
+                left,
+                key=lambda pp: (
+                    LineupOptimizer.slot_fit(pp[0], roles[s])
+                    - LineupOptimizer.matchup(pp[0], vs_hand)
+                    + form.get(pp[0].record.id, 0.0)
+                ),
+            )
+            left.remove(best)
+            order.append(best)
+        return order

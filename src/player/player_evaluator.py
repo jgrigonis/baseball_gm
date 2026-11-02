@@ -113,12 +113,14 @@ ROLE_WEIGHTS: dict[str, dict[str, int]] = {
         "accuracy": 2,
         "ground_balls": 1,
     },
+    # Getting on base first (contact for hits, eye for walks), speed and
+    # baserunning as the tiebreak. The lineup optimizer uses these same
+    # weights for the leadoff slot, so this grade is who leads off.
     "lead_off": {
+        "contact": 3,
+        "eye": 3,
         "speed": 1,
-        "eye": 2,
-        "contact": 2,
         "base_running": 1,
-        "clutch": 1,
     },
     "contact_hitter": {
         "eye": 2,
