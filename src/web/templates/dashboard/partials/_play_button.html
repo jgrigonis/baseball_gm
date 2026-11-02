@@ -30,5 +30,21 @@
           style="font-size:11px;padding:5px 10px;">
     ▶▶ Full Season
   </button>
+  {% if trades_enabled %}
+  {# Multi-day sims keep going through trade offers and the deadline. #}
+  <label id="sched-ignore-trades" class="sched-ignore-trades"
+         title="Multi-day sims don&#39;t stop for trade offers or the trade deadline. Offers wait on the Trades tab until they expire."
+         style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);cursor:pointer;white-space:nowrap;">
+    <input type="checkbox" id="sched-ignore-trades-box"
+           onchange="schedSetIgnoreTrades(this.checked)">
+    Ignore trades
+  </label>
+  <script>
+    (function() {
+      var box = document.getElementById('sched-ignore-trades-box');
+      if (box && typeof window.schedIgnoreTrades === 'function') box.checked = window.schedIgnoreTrades();
+    })();
+  </script>
+  {% endif %}
   {% endif %}
 </div>

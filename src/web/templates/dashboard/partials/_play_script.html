@@ -23,10 +23,12 @@ function setSimMode(simming) {
   var btn    = getBtn();
   var btnInj = document.getElementById('sched-injury-btn');
   var btnSzn = document.getElementById('sched-season-btn');
+  var ignTr  = document.getElementById('sched-ignore-trades');
   var stop   = getStop();
   if (btn)    { btn.disabled    = simming; btn.style.display    = simming ? 'none' : ''; }
   if (btnInj) { btnInj.disabled = simming; btnInj.style.display = simming ? 'none' : ''; }
   if (btnSzn) { btnSzn.disabled = simming; btnSzn.style.display = simming ? 'none' : ''; }
+  if (ignTr)  { ignTr.style.display = simming ? 'none' : 'inline-flex'; }
   if (stop)   { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
 
   // Grey out tabs that don't update live during sim
@@ -47,9 +49,30 @@ function setSimMode(simming) {
 // _simStop lives on window so it survives IIFE re-execution on tab refresh
 if (typeof window._simStop === 'undefined') window._simStop = false;
 
+// "Ignore trades": multi-day runs play through trade
+// offers and the deadline. Offers stay pending (they expire at the deadline
+// as usual); nothing is declined for the GM. Remembered per browser.
+var IGNORE_TRADES_KEY = 'sim-ignore-trades-{{ league_id }}';
+function schedIgnoreTrades() {
+  if (typeof window._ignoreTrades === 'boolean') return window._ignoreTrades;
+  try { return localStorage.getItem(IGNORE_TRADES_KEY) === '1'; } catch (e) { return false; }
+}
+function schedSetIgnoreTrades(on) {
+  window._ignoreTrades = !!on;
+  try { localStorage.setItem(IGNORE_TRADES_KEY, on ? '1' : '0'); } catch (e) {}
+}
+window.schedIgnoreTrades = schedIgnoreTrades;
+window.schedSetIgnoreTrades = schedSetIgnoreTrades;
+(function() {
+  var box = document.getElementById('sched-ignore-trades-box');
+  if (box) box.checked = schedIgnoreTrades();
+})();
+
 async function schedSim(count) {
   window._simStop = false;
   setSimMode(count !== 1);
+  // Only multi-day runs ignore trades; a single day stops anyway.
+  var ignoreTrades = count !== 1 && !!document.getElementById('sched-ignore-trades-box') && schedIgnoreTrades();
 
   var totalGames = 0;
   var remaining  = null;
@@ -82,10 +105,11 @@ async function schedSim(count) {
       var hasNews = showInjuryNews(d);
 
       // Every sim stops after the games of trade deadline day
-      var atDeadline = !!d.trade_deadline;
+      // (unless this run ignores trades)
+      var atDeadline = !ignoreTrades && !!d.trade_deadline;
       if (atDeadline) window._simStop = true;
       // ...and, if the GM asked for it, the day a trade offer arrives
-      var newOffer = !!d.trade_offer;
+      var newOffer = !ignoreTrades && !!d.trade_offer;
       if (newOffer) window._simStop = true;
       // ...and when All-Star voting opens, the All-Stars are announced or
       // the All-Star Game is played:

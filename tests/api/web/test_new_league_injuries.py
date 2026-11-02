@@ -78,3 +78,26 @@ def test_sim_follows_the_leagues_setting(db_conn, factory):
     )
     assert repo.injuries_enabled(factory.league(mode="blitz").id)
     assert not repo.injuries_enabled(factory.league(mode="speed_blitz").id)
+
+
+# Weighted is the default schedule: the box starts ticked, and a form that
+# leaves the field out (an old form or a script) gets it too.
+@pytest.mark.parametrize(
+    "form, expected",
+    [
+        ({}, True),
+        ({"weighted_schedule": ["false", "true"]}, True),
+        ({"weighted_schedule": "false"}, False),
+    ],
+)
+def test_new_league_weighted_schedule(client, db_conn, form, expected):
+    r = client.post("/leagues/new", data={"name": "Fresh League", **form})
+    league_id = r.headers["location"].split("/")[2]
+    assert (
+        LeagueRepository(db_conn).get_by_id(league_id)["weighted_schedule"] is expected
+    )
+
+
+def test_new_league_form_ticks_weighted_schedule(client):
+    html = client.get("/leagues/new").text
+    assert 'id="weighted-schedule" value="true" checked' in html
