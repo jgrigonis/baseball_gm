@@ -104,7 +104,7 @@
         </div>
         <div class="cs-overall-block">
           <div class="cs-overall-label">Overall</div>
-          <div class="cs-overall grade-{{ p.overall_grade | replace('+','-plus') | replace('-','-minus') }}">
+          <div class="cs-overall grade-{{ grade_class(p.overall_grade) }}">
             {{ p.overall_grade }}
           </div>
         </div>

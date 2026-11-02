@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 
+from src.api.grade_curves import overall_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
@@ -52,12 +53,17 @@ def compute_ratings(skills: dict, throws: str) -> dict:
     return ratings
 
 
+# Statuses graded on the prospect rating and curve. Free agents are pros, so
+# they are graded on the pro scale like rostered players.
+PROSPECT_STATUSES = ("prospect", "unassigned")
+
+
 def overall_value(status: str, grades, ratings: dict) -> float | None:
     """The number behind overall_grade, or None when it falls back to
     grades.overall."""
     if not ratings:
         return None
-    if status in ("prospect", "unassigned", "free_agent"):
+    if status in PROSPECT_STATUSES:
         return ratings.get("prospect")
     if grades.player_type == "pitcher":
         # Pitchers: best of SP/RP rating — overall_player is offense-based and useless
@@ -65,10 +71,19 @@ def overall_value(status: str, grades, ratings: dict) -> float | None:
     return ratings.get("overall_player")
 
 
+def overall_kind(status: str, grades) -> str:
+    """Which curve overall_value is graded on (src/api/grade_curves.py)."""
+    if status in PROSPECT_STATUSES:
+        return "prospect"
+    return "pitcher" if grades.player_type == "pitcher" else "hitter"
+
+
 def overall_grade(status: str, grades, ratings: dict) -> str:
     """Prospect rating for undrafted players, position-aware rating for rostered."""
     value = overall_value(status, grades, ratings)
-    return skill_to_grade(value) if value is not None else grades.overall
+    if value is None:
+        return grades.overall
+    return overall_to_grade(value, overall_kind(status, grades))
 
 
 # grade_map keys graded from compute_ratings; the rest are raw skills.
@@ -267,7 +282,7 @@ def prospect_card(row: dict, skills: dict) -> dict:
     ratings = compute_ratings(skills, dict(row).get("throws", "R"))
     g = grades.model_dump()
     if ratings:
-        g["overall"] = skill_to_grade(ratings.get("prospect"))
+        g["overall"] = overall_to_grade(ratings.get("prospect"), "prospect")
         g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
         _role_grades(g, ratings)
@@ -284,11 +299,13 @@ def roster_card(d: dict) -> dict:
     if ratings:
         if g.get("player_type") == "pitcher":
             best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
-            g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
+            g["overall"] = (
+                overall_to_grade(best_p, "pitcher") if best_p else g["overall"]
+            )
             g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
             g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
         else:
-            g["overall"] = skill_to_grade(ratings.get("overall_player"))
+            g["overall"] = overall_to_grade(ratings.get("overall_player"), "hitter")
         g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
         g["if_grade"] = skill_to_grade(ratings.get("if", 0))
@@ -310,10 +327,12 @@ def lineup_card(d: dict) -> dict:
     if ratings:
         if g.get("player_type") == "pitcher":
             best_p = max(ratings.get("sp", 0), ratings.get("rp", 0))
-            g["overall"] = skill_to_grade(best_p) if best_p else g["overall"]
-            g["bat_overall"] = skill_to_grade(ratings.get("overall_player"))
+            g["overall"] = (
+                overall_to_grade(best_p, "pitcher") if best_p else g["overall"]
+            )
+            g["bat_overall"] = overall_to_grade(ratings.get("overall_player"), "hitter")
         else:
-            g["overall"] = skill_to_grade(ratings.get("overall_player"))
+            g["overall"] = overall_to_grade(ratings.get("overall_player"), "hitter")
             g["bat_overall"] = g["overall"]
         g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
         g["best_def_label"] = ratings.get("best_def_label", "DEF")

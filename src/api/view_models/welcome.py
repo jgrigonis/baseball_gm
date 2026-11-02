@@ -12,6 +12,7 @@ import re
 import unicodedata
 from pathlib import Path
 
+from src.api.grade_curves import overall_to_grade
 from src.api.schemas import skill_to_grade
 from src.api.services.draft_needs import needs_for_draft
 from src.api.view_models.draft import last_season
@@ -173,7 +174,9 @@ def star_card(p: PlayerRecord, r: dict) -> dict:
         "name": f"{p.first_name} {p.last_name}",
         "position": p.position.upper(),
         "age": p.age,
-        "grade": skill_to_grade(role_rating(p)),
+        "grade": overall_to_grade(
+            role_rating(p), "pitcher" if p.is_pitcher() else "hitter"
+        ),
         "skills": [(label, skill_to_grade(p.skills[k])) for k, label in top],
     }
 

@@ -10,6 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from src.api.grade_curves import overall_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
 
@@ -146,7 +147,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         age=skills.get("age", 0),
         player_type="pitcher" if is_pitcher else "hitter",
         offense=skill_to_grade(offense),
-        overall=skill_to_grade(raw_overall),
+        overall=overall_to_grade(raw_overall, "pitcher" if is_pitcher else "hitter"),
         # Hitter tools
         contact=_skill("contact"),
         power=_skill("power"),
