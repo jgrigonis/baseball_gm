@@ -16,12 +16,12 @@ from src.db.repositories.gm_repo import GMRepository
 
 @pytest.fixture
 def league(db_conn, factory):
-    """A new league waiting on its first draft: a human GM's Boston Beans,
+    """A new league waiting on its first draft: a human GM's Denver Beans,
     an AI GM's Chicago Wind, and opening day in Chicago."""
     league = factory.league(state="draft")
     season = factory.season(year=2025)
     draft = factory.draft(league=league, season=season)
-    boston = factory.team(city="Boston", mascot="Beans")
+    boston = factory.team(city="Denver", mascot="Beans")
     chicago = factory.team(city="Chicago", mascot="Wind")
     factory.draft_order(draft, [chicago, boston])
     human = factory.gm(team=boston, league=league, is_ai=False)
@@ -57,7 +57,7 @@ def test_a_new_league_opens_on_the_welcome_screen_once(client, league):
 
     page = client.get(f"/leagues/{lg.id}/welcome")
     assert page.status_code == 200
-    assert "Welcome to the Boston Beans" in page.text
+    assert "Welcome to the Denver Beans" in page.text
     assert f'href="/leagues/{lg.id}/draft"' in page.text
 
     again = client.get(f"/leagues/{lg.id}/")
@@ -71,7 +71,7 @@ def test_welcome_page_shows_the_team(client, league):
 
     assert "Your stars" in html and "Your colors" not in html
     assert html.count('class="wl-star-name"') == 5
-    assert "1st of 2" in html  # Boston's 70s beat Chicago's 50s everywhere
+    assert "1st of 2" in html  # Denver's 70s beat Chicago's 50s everywhere
     assert "at the <b>Chicago Wind</b>" in html
     assert "2025-04-01" in html
     assert "2<span" in html and "of 2" in html  # picks second
@@ -202,13 +202,13 @@ def test_every_pool_team_has_its_uniforms():
 
 
 def test_a_team_without_a_set_has_no_uniforms():
-    assert wv.uniforms("Boston") is None
+    assert wv.uniforms("Denver") is None
 
 
 def test_welcome_page_shows_the_uniforms(client, league, monkeypatch):
     lg, _, _ = league
     html = client.get(f"/leagues/{lg.id}/welcome").text
-    assert "Your uniforms" not in html  # Boston has no set
+    assert "Your uniforms" not in html  # Denver has no set
 
     tokyo = wv.uniforms("Tokyo")
     monkeypatch.setattr(wv, "uniforms", lambda city: tokyo)

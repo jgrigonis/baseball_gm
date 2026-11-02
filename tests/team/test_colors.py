@@ -18,9 +18,9 @@ def test_badge_text_is_readable_on_every_team():
 
 
 def test_unknown_team_gets_stable_colors():
-    a = colors_for("Boston", "Beans")
-    assert a == colors_for("Boston", "Beans")
-    assert a.code == "BOS"
+    a = colors_for("Denver", "Beans")
+    assert a == colors_for("Denver", "Beans")
+    assert a.code == "DEN"
     assert colors_for("Mexico City", "Llamas").code == "MC"
 
 
