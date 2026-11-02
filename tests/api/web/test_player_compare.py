@@ -117,3 +117,9 @@ def test_pitcher_tucks_hitting_general_and_defense_behind_a_toggle(
     )
     html = _panel(client, league, p, a)
     assert _off_role(html) == [["General", "Defense", "Hitting"], ["Pitching"]]
+
+
+def test_each_player_shows_a_face(setup):
+    client, league, (a, b, c, _) = setup
+    html = _panel(client, league, a, b, c)
+    assert html.count('class="player-face player-face--lg"') == 3

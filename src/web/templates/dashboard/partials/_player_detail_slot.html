@@ -8,7 +8,9 @@
 
 {# ── Identity ──────────────────────────────────────────────────────────────── #}
 <div class="pd-identity">
- <div>
+ <div class="pd-who">
+  {{ player_face(player) }}
+  <div class="pd-who-text">
    <div class="pd-name">
      {{ player.first_name }} {{ player.last_name }}{{ rk(player.player_id) }}
      <button onclick="openCareerPage('{{ player.player_id }}')"
@@ -23,6 +25,7 @@
      <span {% if is_admin and player.team_id %}title="team_id: {{ player.team_id }}"{% endif %}>{{ player.team_city }} {{ player.team_mascot }}</span>
    </div>
    {% if is_admin %}<div class="admin-id" title="player_id">{{ player.player_id }}</div>{% endif %}
+  </div>
  </div>
  <div class="pd-overall grade-{{ grade_class(player.overall_grade) }}"
       {% if is_admin and player.overall_value is not none %}title="{{ player.overall_value }}"{% endif %}>
