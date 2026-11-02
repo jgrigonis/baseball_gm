@@ -3,9 +3,11 @@
 Player faces: a small illustrated head-and-shoulders portrait, drawn as
 inline SVG from simple shapes.
 
-Nothing is stored. A hash of the player's id seeds the random picks, so a
-player always gets the same face: skin tone, face shape, eyes, brows, nose,
-mouth, hair, facial hair and so on. Two things come from outside the id:
+A face is a small set of traits (TRAITS): skin tone, face shape, eyes,
+brows, nose, mouth, hair, facial hair and so on. Nothing is stored yet: a
+hash of the player's id seeds random traits, so a player always gets the
+same face. A face built by hand on /face_gen (routers/face_gen.py) is the
+same traits as a small JSON dict. Two things come from outside the traits:
 
 - The team. He wears its cap (crown, brim, button and logo taken from the
   team's cap.svg) and a jersey in its colors, so a trade re-dresses him. A
@@ -46,9 +48,7 @@ SKIN = (
     "#5c341d",
     "#43251a",
 )
-# Black and dark brown are the most common, so they appear twice.
 HAIR = (
-    "#1b1512",
     "#1b1512",
     "#2e1f16",
     "#3d2817",
@@ -205,64 +205,161 @@ def team_cap(city: str | None, mascot: str | None) -> Cap:
     )
 
 
-# ── The face ─────────────────────────────────────────────────────────────────
+# ── Traits ───────────────────────────────────────────────────────────────────
+#
+# A face is a small dict of traits (FaceTraits). A player without a stored
+# face gets random traits seeded by his id; a face built by hand on /face_gen
+# is the same dict, small enough to store on a row as JSON.
+
+
+@dataclass(frozen=True)
+class Trait:
+    key: str
+    label: str
+    kind: str  # "range", "choice" (options are names) or "color" (options are hex) or "bool"
+    lo: float = 0.0
+    hi: float = 1.0
+    options: tuple[str, ...] = ()
+    default: float | str | bool = 0.0
+
+
+MOUTHS = ("flat", "smile", "grin", "smirk")
+FACIAL_HAIR = ("none", "stubble", "mustache", "goatee", "beard", "chinstrap")
+
+# In drawing order for random faces: adding a trait at the end leaves every
+# existing random face as it was.
+TRAITS: tuple[Trait, ...] = (
+    Trait("skin", "Skin tone", "color", options=SKIN, default=SKIN[3]),
+    Trait("hair", "Hair color", "color", options=HAIR, default=HAIR[0]),
+    Trait("eyes", "Eye color", "color", options=IRIS, default=IRIS[0]),
+    Trait("face_width", "Face width", "range", 19, 23.5, default=21.2),
+    Trait("chin", "Chin width", "range", 5, 12, default=8.5),
+    Trait("face_length", "Face length", "range", 76.5, 84.5, default=80.5),
+    Trait("eye_spacing", "Eye spacing", "range", 7.6, 9.6, default=8.6),
+    Trait("eye_height", "Eye height", "range", 55.5, 57.5, default=56.5),
+    Trait("eye_open", "Eye openness", "range", 1.4, 2.2, default=1.8),
+    Trait("eye_width", "Eye width", "range", 2.7, 3.8, default=3.25),
+    Trait("brow_thickness", "Brow thickness", "range", 1.1, 2.5, default=1.8),
+    Trait("brow_tilt", "Brow tilt", "range", -1.4, 1.6, default=0.1),
+    Trait("brow_gap", "Brow gap", "range", 3.6, 5.2, default=4.4),
+    Trait("nose_width", "Nose width", "range", 2.4, 4.6, default=3.5),
+    Trait("nose_length", "Nose length", "range", 5.5, 8.5, default=7.0),
+    Trait("mouth_width", "Mouth width", "range", 4.5, 7, default=5.75),
+    Trait("mouth", "Mouth", "choice", options=MOUTHS, default="flat"),
+    Trait("lips", "Lip thickness", "range", 0.8, 1.8, default=1.3),
+    Trait("facial_hair", "Facial hair", "choice", options=FACIAL_HAIR, default="none"),
+    Trait("sideburns", "Sideburn length", "range", 2, 9, default=5.5),
+    Trait("long_hair", "Long hair", "bool", default=False),
+    Trait("eye_black", "Eye black", "bool", default=False),
+    Trait("gray_rate", "Grays how fast", "range", 0.4, 1.4, default=0.9),
+    Trait("ears", "Ear size", "range", 3.6, 5, default=4.3),
+    Trait("neck", "Neck width", "range", 7, 11, default=9.0),
+    Trait("mole", "Mole", "bool", default=False),
+    Trait("mole_x", "Mole across", "range", -12, 12, default=6.0),
+    Trait("mole_y", "Mole down", "range", 60, 72, default=64.0),
+)
+TRAITS_BY_KEY = {t.key: t for t in TRAITS}
+
+FaceTraits = dict  # trait key -> value, as in TRAITS
+
+# How often random faces get each option, as relative weights
+_HAIR_WEIGHTS = (2, 1, 1, 1, 1, 1, 1, 1)  # black is twice as common
+_MOUTH_WEIGHTS = (2, 2, 1, 1)
+_FACIAL_HAIR_WEIGHTS = (3, 2, 1, 1, 2, 1)
+_ODDS = {"long_hair": 0.12, "eye_black": 0.22, "mole": 0.12}
 
 
 def _seed(player_id: str) -> int:
     return int.from_bytes(hashlib.sha256(str(player_id).encode()).digest()[:8], "big")
 
 
-def face_svg(
-    player_id: str, age: int | None, city: str | None, mascot: str | None
-) -> str:
-    """The SVG markup of one player's face."""
+def random_traits(player_id: str) -> FaceTraits:
+    """The traits of the face a player gets when none is stored: random, but
+    always the same for the same id."""
     r = random.Random(_seed(player_id))
-    rng = r.uniform
-    age = age or 27
+    t: FaceTraits = {}
+    for trait in TRAITS:
+        if trait.key == "skin":
+            t["skin"] = r.choice(SKIN)
+        elif trait.key == "hair":
+            # Darker skin goes with darker hair and eyes
+            dark = SKIN.index(t["skin"]) >= 5
+            pool = HAIR[:3] if dark else HAIR
+            t["hair"] = r.choices(pool, _HAIR_WEIGHTS[: len(pool)])[0]
+        elif trait.key == "eyes":
+            dark = SKIN.index(t["skin"]) >= 5
+            t["eyes"] = r.choice(IRIS[:3] if dark else IRIS)
+        elif trait.key == "mouth":
+            t["mouth"] = r.choices(MOUTHS, _MOUTH_WEIGHTS)[0]
+        elif trait.key == "facial_hair":
+            t["facial_hair"] = r.choices(FACIAL_HAIR, _FACIAL_HAIR_WEIGHTS)[0]
+        elif trait.kind == "bool":
+            t[trait.key] = r.random() < _ODDS[trait.key]
+        else:
+            t[trait.key] = round(r.uniform(trait.lo, trait.hi), 2)
+    return t
 
-    # Traits fixed by the id. Draw them all in a fixed order, so adding a
-    # trait at the end never changes the faces players already have.
-    skin_i = r.randrange(len(SKIN))
-    skin = SKIN[skin_i]
-    dark_skin = skin_i >= 5
-    hair = r.choice(HAIR[:4] if dark_skin else HAIR)
-    iris = r.choice(IRIS[:3] if dark_skin else IRIS)
-    w = rng(19, 23.5)  # half the face's width
-    chin = rng(5, 12)  # half the chin's width
-    jaw = rng(76.5, 84.5)  # how far down the chin comes
-    eye_dx = rng(7.6, 9.6)  # eye spacing from the middle
-    eye_y = rng(55.5, 57.5)
-    eye_ry = rng(1.4, 2.2)  # how open the eyes are
-    eye_rx = rng(2.7, 3.8)  # eye width
-    brow_t = rng(1.1, 2.5)
-    brow_tilt = rng(-1.4, 1.6)
-    brow_gap = rng(3.6, 5.2)
-    nose_w = rng(2.4, 4.6)
-    nose_len = rng(5.5, 8.5)
-    mouth_w = rng(4.5, 7)
-    mouth = r.choice(("flat", "flat", "smile", "smile", "grin", "smirk"))
-    lip_t = rng(0.8, 1.8)
-    facial_hair = r.choice(
-        (
-            "none",
-            "none",
-            "none",
-            "stubble",
-            "stubble",
-            "mustache",
-            "goatee",
-            "beard",
-            "beard",
-            "chinstrap",
-        )
-    )
-    sideburn = rng(2, 9)
-    long_hair = r.random() < 0.12
-    eye_black = r.random() < 0.22
-    gray_rate = rng(0.4, 1.4)  # how fast he grays
-    ear = rng(3.6, 5)
-    neck = rng(7, 11)  # half the neck's width
-    mole = (rng(-12, 12), rng(60, 72)) if r.random() < 0.12 else None
+
+def default_traits() -> FaceTraits:
+    return {t.key: t.default for t in TRAITS}
+
+
+def clean_traits(raw: dict) -> FaceTraits:
+    """Traits from outside (a form, a stored row) made safe to draw: unknown
+    keys dropped, numbers clamped to their range, unknown options and
+    missing traits replaced by the default."""
+    out = default_traits()
+    for key, value in (raw or {}).items():
+        trait = TRAITS_BY_KEY.get(key)
+        if trait is None:
+            continue
+        if trait.kind == "range":
+            try:
+                v = float(value)
+            except TypeError, ValueError:
+                continue
+            if v == v:  # not NaN
+                out[key] = round(min(trait.hi, max(trait.lo, v)), 2)
+        elif trait.kind in ("choice", "color"):
+            if value in trait.options:
+                out[key] = value
+        else:
+            out[key] = value in (True, "true", "1", "on", 1)
+    return out
+
+
+# ── The face ─────────────────────────────────────────────────────────────────
+
+
+def face_svg(
+    player_id: str,
+    age: int | None,
+    city: str | None,
+    mascot: str | None,
+    traits: FaceTraits | None = None,
+) -> str:
+    """The SVG markup of one player's face: his stored traits if given,
+    otherwise random ones from his id."""
+    t = clean_traits(traits) if traits is not None else random_traits(player_id)
+    age = age or 27
+    skin, hair, iris = t["skin"], t["hair"], t["eyes"]
+    w = t["face_width"]  # half the face's width
+    chin = t["chin"]  # half the chin's width
+    jaw = t["face_length"]  # how far down the chin comes
+    eye_dx = t["eye_spacing"]  # from the middle
+    eye_y = t["eye_height"]
+    eye_ry = t["eye_open"]
+    eye_rx = t["eye_width"]
+    brow_t, brow_tilt, brow_gap = t["brow_thickness"], t["brow_tilt"], t["brow_gap"]
+    nose_w, nose_len = t["nose_width"], t["nose_length"]
+    mouth_w, mouth, lip_t = t["mouth_width"], t["mouth"], t["lips"]
+    facial_hair = t["facial_hair"]
+    sideburn = t["sideburns"]
+    long_hair, eye_black = t["long_hair"], t["eye_black"]
+    gray_rate = t["gray_rate"]
+    ear = t["ears"]
+    neck = t["neck"]  # half the neck's width
+    mole = (t["mole_x"], t["mole_y"]) if t["mole"] else None
 
     # Age
     gray = max(0.0, min(1.0, (age - 30) / 10 * gray_rate))

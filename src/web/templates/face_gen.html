@@ -1,0 +1,196 @@
+{# templates/face_gen.html — build a player face by hand (routers/face_gen.py) #}
+{% extends "base.html" %}
+{% block title %}Face Generator — Baseball GM{% endblock %}
+{% block head %}
+<style>
+  .fg { display:grid; grid-template-columns:300px minmax(0, 1fr); gap:20px; align-items:start; }
+  .fg-side { position:sticky; top:16px; display:flex; flex-direction:column; gap:12px; }
+  .fg-face { width:100%; aspect-ratio:1; border:1px solid var(--border-hi); background:var(--bg-3); }
+  .fg-face svg, .fg-age svg { display:block; width:100%; height:100%; }
+  .fg-ages { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .fg-age figure { margin:0; }
+  .fg-age .fg-face-sm { aspect-ratio:1; border:1px solid var(--border); background:var(--bg-3); }
+  .fg-age figcaption { font-family:var(--font-mono); font-size:10px; color:var(--text-dim); text-align:center; margin-top:3px; }
+  .fg-row { display:flex; gap:8px; align-items:center; }
+  .fg-row > * { flex:1; }
+  .fg-label { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); }
+  .fg select, .fg input[type=text] {
+    background:var(--bg); color:var(--text); border:1px solid var(--border-hi);
+    font-family:var(--font-mono); font-size:12px; padding:6px 8px; width:100%;
+  }
+  .fg-btns { display:flex; gap:8px; flex-wrap:wrap; }
+  .fg-btns .btn { padding:6px 12px; font-size:11px; }
+  .fg-json { font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); background:var(--bg); border:1px solid var(--border);
+             padding:8px; word-break:break-all; max-height:150px; overflow:auto; margin:0; }
+  .fg-groups { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; }
+  .fg-group h3 { font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--amber); margin:0 0 10px; font-weight:600; }
+  .fg-ctl { margin-bottom:10px; }
+  .fg-ctl-head { display:flex; justify-content:space-between; font-size:12px; color:var(--text); margin-bottom:3px; }
+  .fg-ctl-head output { font-family:var(--font-mono); color:var(--text-dim); font-size:11px; }
+  .fg-ctl input[type=range] { width:100%; accent-color:var(--amber); }
+  .fg-swatches { display:flex; flex-wrap:wrap; gap:6px; }
+  .fg-swatches label { position:relative; cursor:pointer; }
+  .fg-swatches input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+  .fg-swatches span { display:block; width:24px; height:24px; border-radius:50%; border:2px solid var(--border); }
+  .fg-swatches input:checked + span { border-color:var(--amber); box-shadow:0 0 0 2px var(--bg-2), 0 0 0 4px var(--amber); }
+  .fg-swatches input:focus-visible + span { outline:2px solid var(--sky); outline-offset:2px; }
+  .fg-pills { display:flex; flex-wrap:wrap; gap:6px; }
+  .fg-pills label { cursor:pointer; position:relative; }
+  .fg-pills input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+  .fg-pills span { display:inline-block; font-family:var(--font-mono); font-size:11px; padding:4px 9px; border:1px solid var(--border-hi); color:var(--text-dim); text-transform:capitalize; }
+  .fg-pills input:checked + span { border-color:var(--amber); color:var(--amber); background:var(--amber-lo); }
+  .fg-pills input:focus-visible + span { outline:2px solid var(--sky); outline-offset:2px; }
+  .fg-check { display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; }
+  .fg-check input { accent-color:var(--amber); width:16px; height:16px; }
+  @media (max-width: 760px) {
+    .fg { grid-template-columns:minmax(0, 1fr); }
+    .fg-side { position:static; }
+    .fg-face { max-width:280px; margin:0 auto; }
+  }
+</style>
+{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner">
+  <div class="page-header">
+    <h1 class="page-title">Face Generator</h1>
+  </div>
+
+  <form id="fg-form" class="fg" onsubmit="return false">
+    <div class="fg-side">
+      <div class="fg-face" id="fg-face" role="img" aria-label="Face preview"></div>
+      <div class="fg-ages" id="fg-ages"></div>
+      <div class="fg-row">
+        <label><div class="fg-label">Team</div>
+          <select id="fg-team">
+            <option value="">Free agent</option>
+            {% for city, mascot in teams %}
+            <option value="{{ city }}|{{ mascot }}" {% if loop.first %}selected{% endif %}>{{ city }} {{ mascot }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="fg-ctl">
+        <div class="fg-ctl-head"><span>Age</span><output id="fg-age-out">27</output></div>
+        <input type="range" id="fg-age" min="18" max="42" step="1" value="27">
+      </div>
+      <div class="fg-btns">
+        <button type="button" class="btn btn-primary" onclick="fgRandom()">Randomize</button>
+        <button type="button" class="btn btn-secondary" onclick="fgSet(FG_DEFAULTS)">Reset</button>
+        <button type="button" class="btn btn-secondary" id="fg-copy" onclick="fgCopy()">Copy traits</button>
+      </div>
+      <div class="fg-row">
+        <input type="text" id="fg-seed" placeholder="Player id" aria-label="Player id">
+        <button type="button" class="btn btn-secondary" style="flex:0 0 auto;padding:6px 12px;font-size:11px;" onclick="fgRandom(document.getElementById('fg-seed').value)">Load</button>
+      </div>
+      <div>
+        <div class="fg-label" style="margin-bottom:4px;">Stored as <span id="fg-bytes"></span></div>
+        <pre class="fg-json" id="fg-json"></pre>
+      </div>
+    </div>
+
+    <div class="fg-groups">
+      {% for g in groups %}
+      <div class="card fg-group"><div class="card-body">
+        <h3>{{ g.title }}</h3>
+        {% for t in g.traits %}
+        <div class="fg-ctl">
+          {% if t.kind == 'range' %}
+            <div class="fg-ctl-head"><span>{{ t.label }}</span><output data-for="{{ t.key }}"></output></div>
+            <input type="range" name="{{ t.key }}" min="{{ t.lo }}" max="{{ t.hi }}" step="0.01" aria-label="{{ t.label }}">
+          {% elif t.kind == 'color' %}
+            <div class="fg-ctl-head"><span>{{ t.label }}</span></div>
+            <div class="fg-swatches" role="radiogroup" aria-label="{{ t.label }}">
+              {% for c in t.options %}
+              <label><input type="radio" name="{{ t.key }}" value="{{ c }}" aria-label="{{ t.label }} {{ loop.index }}"><span style="background:{{ c }}"></span></label>
+              {% endfor %}
+            </div>
+          {% elif t.kind == 'choice' %}
+            <div class="fg-ctl-head"><span>{{ t.label }}</span></div>
+            <div class="fg-pills" role="radiogroup" aria-label="{{ t.label }}">
+              {% for o in t.options %}
+              <label><input type="radio" name="{{ t.key }}" value="{{ o }}"><span>{{ o }}</span></label>
+              {% endfor %}
+            </div>
+          {% else %}
+            <label class="fg-check"><input type="checkbox" name="{{ t.key }}"> {{ t.label }}</label>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div></div>
+      {% endfor %}
+    </div>
+  </form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const FG_DEFAULTS = {{ defaults | tojson }};
+const fgForm = document.getElementById('fg-form');
+let fgStored = '';
+let fgTimer = null;
+let fgSeq = 0;
+
+function fgTraits() {
+  const t = {};
+  for (const el of fgForm.querySelectorAll('[name]')) {
+    if (el.type === 'range') t[el.name] = parseFloat(el.value);
+    else if (el.type === 'checkbox') t[el.name] = el.checked;
+    else if (el.type === 'radio' && el.checked) t[el.name] = el.value;
+  }
+  return t;
+}
+
+function fgSet(t) {
+  for (const el of fgForm.querySelectorAll('[name]')) {
+    if (!(el.name in t)) continue;
+    if (el.type === 'range') el.value = t[el.name];
+    else if (el.type === 'checkbox') el.checked = !!t[el.name];
+    else if (el.type === 'radio') el.checked = el.value === t[el.name];
+  }
+  fgDraw();
+}
+
+function fgOutputs() {
+  for (const out of fgForm.querySelectorAll('output[data-for]')) {
+    out.textContent = (+fgForm.querySelector(`[name="${out.dataset.for}"]`).value).toFixed(2);
+  }
+  document.getElementById('fg-age-out').textContent = document.getElementById('fg-age').value;
+}
+
+async function fgDraw() {
+  fgOutputs();
+  const seq = ++fgSeq;
+  const q = new URLSearchParams({
+    traits: JSON.stringify(fgTraits()),
+    age: document.getElementById('fg-age').value,
+    team: document.getElementById('fg-team').value,
+  });
+  const res = await fetch('/face_gen/svg?' + q);
+  if (!res.ok || seq !== fgSeq) return;  // a newer draw is on its way
+  const d = await res.json();
+  document.getElementById('fg-face').innerHTML = d.svg;
+  document.getElementById('fg-ages').innerHTML = d.ages.map(a =>
+    `<figure class="fg-age"><div class="fg-face-sm">${a.svg}</div><figcaption>Age ${a.age}</figcaption></figure>`).join('');
+  fgStored = d.stored;
+  document.getElementById('fg-json').textContent = d.stored;
+  document.getElementById('fg-bytes').textContent = `· ${d.bytes} bytes`;
+}
+
+function fgSoon() { fgOutputs(); clearTimeout(fgTimer); fgTimer = setTimeout(fgDraw, 60); }
+
+async function fgRandom(seed) {
+  const res = await fetch('/face_gen/random?' + new URLSearchParams({ seed: seed || '' }));
+  if (res.ok) fgSet(await res.json());
+}
+
+async function fgCopy() {
+  const btn = document.getElementById('fg-copy');
+  try { await navigator.clipboard.writeText(fgStored); btn.textContent = 'Copied'; }
+  catch (e) { btn.textContent = 'Copy failed'; }
+  setTimeout(() => { btn.textContent = 'Copy traits'; }, 1400);
+}
+
+fgForm.addEventListener('input', fgSoon);
+fgSet({{ start | tojson }});
+</script>
+{% endblock %}

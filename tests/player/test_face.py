@@ -104,3 +104,31 @@ def test_player_face_markup():
         )
     )
     assert html.startswith('<span class="player-face player-face--lg"><svg')
+
+
+def test_stored_traits_draw_the_same_face_as_random_ones():
+    from src.player.face import random_traits
+
+    t = random_traits("p-1")
+    assert face_svg("other-id", 30, "Rome", "Gladiators", t) == face_svg(
+        "p-1", 30, "Rome", "Gladiators"
+    )
+
+
+def test_clean_traits_fills_missing_and_drops_bad_values():
+    from src.player.face import TRAITS, clean_traits, default_traits
+
+    assert clean_traits({}) == default_traits()
+    t = clean_traits({"face_width": "nan", "eye_black": "on", "hair": "#000000"})
+    assert t["face_width"] == default_traits()["face_width"]
+    assert t["eye_black"] is True
+    assert t["hair"] == default_traits()["hair"]
+    assert set(t) == {tr.key for tr in TRAITS}
+
+
+def test_random_traits_stay_in_range():
+    from src.player.face import clean_traits, random_traits
+
+    for i in range(200):
+        t = random_traits(f"p-{i}")
+        assert clean_traits(t) == t
