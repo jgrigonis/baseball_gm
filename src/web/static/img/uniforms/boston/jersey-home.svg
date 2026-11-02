@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 270" width="240" height="270" role="img" aria-label="Boston jersey home">
   <defs>
     <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <pattern id="pin" width="9" height="10" patternUnits="userSpaceOnUse"><rect width="9" height="10" fill="#FBFAF6"/><path d="M4.5 0 V10" stroke="#3E4B5A" stroke-width=".5"/></pattern>
     <path id="light" fill-rule="evenodd" d="M24 9 Q30 0 36 9 Z M24 9 H36 V19 H24 Z M26.5 11 V17 H33.5 V11 Z M20 19 H40 V23 H20 Z M23 23 H37 L43 82 H17 Z M27.5 79 V73 Q30 70 32.5 73 V79 Z M14 82 H46 V88 H14 Z M23 12 L2 4 V21 Z M37 12 L58 4 V21 Z"/>
   </defs>
-      <use href="#jersey" fill="#FBFAF6" stroke="#1C2733" stroke-width="2"/>
+      <use href="#jersey" fill="url(#pin)" stroke="#1C2733" stroke-width="2"/>
       <path d="M101 12 Q120 30 139 12" fill="none" stroke="#1C2733" stroke-width="6"/>
       <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F4B01F" stroke-width="1.6"/>
       <path d="M120 27 V250" stroke="#1C2733" stroke-width="2.5"/>
