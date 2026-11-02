@@ -93,7 +93,9 @@ def test_sim_follows_the_leagues_setting(db_conn, factory):
 def test_new_league_weighted_schedule(client, db_conn, form, expected):
     r = client.post("/leagues/new", data={"name": "Fresh League", **form})
     league_id = r.headers["location"].split("/")[2]
-    assert LeagueRepository(db_conn).get_by_id(league_id)["weighted_schedule"] is expected
+    assert (
+        LeagueRepository(db_conn).get_by_id(league_id)["weighted_schedule"] is expected
+    )
 
 
 def test_new_league_form_ticks_weighted_schedule(client):
