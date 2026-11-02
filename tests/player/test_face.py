@@ -81,15 +81,39 @@ def test_team_without_uniforms_shows_its_code():
 
 
 def test_hair_grays_with_age():
-    # Some player among the first few has visible hair: compare his sideburns.
-    def sideburn(svg):
-        return re.search(
-            r'<path d="M[\d.]+ 46 L[^"]*" fill="(#[0-9a-f]{6})"', svg
-        ).group(1)
+    from src.player.face import HAIR, default_traits
 
-    young = [sideburn(face_svg(f"p-{i}", 22, "London", "Lions")) for i in range(10)]
-    old = [sideburn(face_svg(f"p-{i}", 40, "London", "Lions")) for i in range(10)]
-    assert young != old
+    t = default_traits() | {"hair": HAIR[0], "sideburns": 8, "gray_rate": 1.4}
+    assert HAIR[0] in face_svg("p", 22, "London", "Lions", t)
+    assert HAIR[0] not in face_svg("p", 40, "London", "Lions", t)
+
+
+def test_every_option_and_slider_end_draws():
+    """Every option and both ends of every slider draw valid SVG."""
+    from src.player.face import TRAITS, default_traits
+
+    for trait in TRAITS:
+        values = (
+            trait.options
+            if trait.kind in ("choice", "color")
+            else (True, False)
+            if trait.kind == "bool"
+            else (trait.lo, trait.hi)
+        )
+        for v in values:
+            _parses(
+                face_svg("p", 30, "Tokyo", "Samurai", default_traits() | {trait.key: v})
+            )
+
+
+def test_sideburns_show_at_any_length():
+    from src.player.face import default_traits
+
+    t = default_traits() | {"hair": "#1b1512"}
+    assert "#1b1512" not in face_svg(
+        "p", 25, "Rome", "Gladiators", t | {"sideburns": 0}
+    )
+    assert "#1b1512" in face_svg("p", 25, "Rome", "Gladiators", t | {"sideburns": 1})
 
 
 def test_player_face_markup():
