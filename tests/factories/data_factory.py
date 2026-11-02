@@ -15,17 +15,32 @@ class TestDataFactory:
         return str(uuid.uuid4())
 
     def league(
-        self, state="draft", mode="blitz", injuries_enabled=None, backstory_years=0
+        self,
+        state="draft",
+        mode="blitz",
+        injuries_enabled=None,
+        backstory_years=0,
+        trades_enabled=None,
     ):
         """A league row. No backstory unless asked for, so starting one in a
         test stays quick."""
         league_id = self._id()
         if injuries_enabled is None:
             injuries_enabled = get_mode(mode).injuries_default
+        if trades_enabled is None:
+            trades_enabled = get_mode(mode).trades_enabled
         self.db.execute(
             "INSERT INTO leagues (id, name, state, mode, injuries_enabled,"
-            " backstory_years) VALUES (%s, %s, %s, %s, %s, %s)",
-            (league_id, "Test League", state, mode, injuries_enabled, backstory_years),
+            " backstory_years, trades_enabled) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (
+                league_id,
+                "Test League",
+                state,
+                mode,
+                injuries_enabled,
+                backstory_years,
+                trades_enabled,
+            ),
         )
         obj = SimpleNamespace(id=league_id)
         self._league = obj

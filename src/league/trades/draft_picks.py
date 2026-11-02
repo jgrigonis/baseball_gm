@@ -70,7 +70,7 @@ def parse(asset_id: str) -> Pick | None:
 
 
 def enabled(league: dict) -> bool:
-    return bool(league.get("pick_trades")) and trades_enabled_for(league.get("mode"))
+    return bool(league.get("pick_trades")) and trades_enabled_for(league)
 
 
 def draft_year(conn, league: dict, season_year: int | None) -> int | None:

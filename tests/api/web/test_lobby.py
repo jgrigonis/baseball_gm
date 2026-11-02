@@ -131,6 +131,7 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
     league, _ = lobby
     db_conn.execute(
         "UPDATE leagues SET mode = 'speed_blitz', injuries_enabled = false,"
+        " trades_enabled = false,"
         " reentry_enabled = true WHERE id = %s",
         (league.id,),
     )
@@ -138,10 +139,11 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
 
     r = client.get(f"/leagues/{league.id}/")
 
-    # Twelve settings, plus the GM list's and the settings card's own headers.
-    assert r.text.count('class="setting-tip"') == 14
+    # Thirteen settings, plus the GM list's and the settings card's own headers.
+    assert r.text.count('class="setting-tip"') == 15
     assert "Speed Blitz" in r.text
-    assert "no trades. Injuries start off" in r.text
+    assert "Trades and injuries start off" in r.text
+    assert "trade with each other." in r.text
     assert "Off: nobody gets hurt" in r.text
     assert "Total teams in the league" in r.text
     assert "<td>Enabled</td>" in r.text

@@ -244,17 +244,13 @@ def _shell_ctx(
                     "injuries_enabled": injuries_allowed(league),
                     # A league that trades gets the Ignore trades box by the
                     # sim buttons.
-                    "trades_enabled": trades_enabled_for(league["mode"]),
+                    "trades_enabled": trades_enabled_for(league),
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)
             # Leagues that trade get a Trades tab once the draft is done, next
             # to the roster. It stays for the trade history once trades close.
-            if (
-                draft_complete
-                and "roster" in tabs
-                and trades_enabled_for(league["mode"])
-            ):
+            if draft_complete and "roster" in tabs and trades_enabled_for(league):
                 tabs.insert(tabs.index("roster") + 1, "trades")
                 if not ctx["is_viewer"]:
                     # Offers and votes waiting on this GM: the tab's badge.

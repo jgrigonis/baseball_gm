@@ -97,6 +97,17 @@ def test_modes_without_trades_never_open(db_conn, factory):
         assert not w["enabled"] and not w["open"]
 
 
+def test_the_leagues_setting_wins_over_its_mode(db_conn, factory):
+    _, season = _season_with_games(db_conn, factory)
+    on = {"mode": "speed_blitz", "state": "season", "trades_enabled": True}
+    off = {"mode": "blitz", "state": "season", "trades_enabled": False}
+    assert trade_deadline.window(db_conn, on, season.id)["open"]
+    assert not trade_deadline.window(db_conn, off, season.id)["enabled"]
+    # Long Form doesn't trade yet whatever the setting.
+    lf = {"mode": "longform", "state": "season", "trades_enabled": True}
+    assert not trade_deadline.window(db_conn, lf, season.id)["enabled"]
+
+
 def test_the_playoffs_are_closed(db_conn, factory):
     _, season = _season_with_games(db_conn, factory)
     w = trade_deadline.window(
@@ -131,7 +142,10 @@ def test_the_offseason_has_no_trades_in_speed_blitz(db_conn, factory):
 class TestSimStopsAtTheDeadline:
     def _sim(self, db, factory, mode, count):
         league, season = _season_with_games(db, factory)
-        db.execute("UPDATE leagues SET mode = %s WHERE id = %s", (mode, league.id))
+        db.execute(
+            "UPDATE leagues SET mode = %s, trades_enabled = %s WHERE id = %s",
+            (mode, mode != "speed_blitz", league.id),
+        )
         dates = iter(["2025-04-01", "2025-04-02", "2025-04-03", "2025-04-04"])
 
         def one_day(league_id, conn):

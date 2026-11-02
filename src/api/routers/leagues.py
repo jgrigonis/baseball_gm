@@ -160,6 +160,7 @@ def new_league(
     num_seasons: int = Form(10),
     is_public: bool = Form(False),
     trade_vote: bool = Form(False),
+    trades_enabled: bool | None = Form(None),
     pick_trades: bool = Form(False),
     injuries_enabled: bool | None = Form(None),
     num_teams: int = Form(divisions.DEFAULT_TEAM_COUNT),
@@ -204,6 +205,12 @@ def new_league(
             "num_seasons": num_seasons,
             "is_public": is_public,
             "trade_vote": trade_vote,
+            # Left out (an old form or a script), the mode's default.
+            "trades_enabled": (
+                get_mode(mode).trades_enabled
+                if trades_enabled is None
+                else trades_enabled
+            ),
             "pick_trades": pick_trades,
             "num_teams": num_teams,
             "weighted_schedule": weighted_schedule,

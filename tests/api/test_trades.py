@@ -172,9 +172,9 @@ def test_no_trades_after_the_deadline(lg):
         _offer(lg, [a], [b])
 
 
-def test_speed_blitz_has_no_trades(lg):
+def test_a_league_with_trades_off_has_no_trades(lg):
     lg.db.execute(
-        "UPDATE leagues SET mode = 'speed_blitz' WHERE id = %s", (lg.league.id,)
+        "UPDATE leagues SET trades_enabled = false WHERE id = %s", (lg.league.id,)
     )
     a = lg.factory.rated_player(lg.mine, lg.league, 60)
     b = lg.factory.rated_player(lg.theirs, lg.league, 50)

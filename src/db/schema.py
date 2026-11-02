@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     coach_done           TEXT[] NOT NULL DEFAULT '{{}}',   -- coach steps done (src/api/services/coach.py)
     trade_vote           BOOLEAN NOT NULL DEFAULT TRUE,  -- other GMs vote on trades between GMs
     stop_for_trade_offers BOOLEAN NOT NULL DEFAULT TRUE, -- single player: sims stop for an offer
+    trades_enabled       BOOLEAN NOT NULL DEFAULT TRUE,  -- teams can trade (off by default in Speed Blitz)
     pick_trades          BOOLEAN NOT NULL DEFAULT FALSE, -- teams can trade draft picks
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
     backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)

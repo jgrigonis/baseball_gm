@@ -31,7 +31,7 @@ class ReadyCheckRepository:
         """The league's state, pace, current period and the seconds left in its
         window (negative once it has run out; None with no window)."""
         row = self.conn.execute(
-            """SELECT state, mode, pace_control, decision_window_sec, sim_period, is_paused,
+            """SELECT state, mode, trades_enabled, pace_control, decision_window_sec, sim_period, is_paused,
                       sim_period_days, period_deadline,
                       EXTRACT(EPOCH FROM period_deadline - NOW()) AS seconds_left
                FROM leagues WHERE id = %s""",

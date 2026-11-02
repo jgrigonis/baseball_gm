@@ -43,6 +43,11 @@
    "On: players can get hurt in games and miss time." if info.injuries_enabled
    else "Off: nobody gets hurt, so every player is always available."),
 ] %}
+{% set settings = settings + [
+  ("Trades", "On" if info.trades_enabled else "Off",
+   "On: teams can trade players with each other until the trade deadline, and again in the offseason." if info.trades_enabled
+   else "Off: teams can't trade with each other."),
+] %}
 {% if info.trades_enabled %}
   {% set settings = settings + [
     ("Trade vote", "On" if info.trade_vote else "Off",
