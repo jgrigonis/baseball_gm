@@ -75,6 +75,11 @@
                 style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
           Save now
         </button>
+        <button id="bat-revert-btn" class="btn btn-secondary" onclick="revertBatting()"
+                title="Undo your changes: back to your saved vs RHP and vs LHP lineups"
+                style="font-size:10px;padding:3px 8px;display:none;">
+          Revert
+        </button>
       </div>
       <div class="lu-col-body">
         <div id="vs-hand-note" style="display:none;padding:8px 14px 0;font-family:var(--font-mono);
@@ -215,6 +220,11 @@
                 style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
           Save now
         </button>
+        <button id="rot-revert-btn" class="btn btn-secondary" onclick="revertRotation()"
+                title="Undo your changes: back to your saved rotation"
+                style="font-size:10px;padding:3px 8px;display:none;">
+          Revert
+        </button>
       </div>
       <div class="lu-col-body" id="rotation-list"></div>
     </div>
@@ -262,6 +272,11 @@
         <button class="btn btn-secondary" onclick="saveBullpen()"
                 style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
           Save now
+        </button>
+        <button id="bp-revert-btn" class="btn btn-secondary" onclick="revertBullpen()"
+                title="Undo your changes: back to your saved bullpen roles"
+                style="font-size:10px;padding:3px 8px;display:none;">
+          Revert
         </button>
       </div>
       <div class="lu-col-body" id="bullpen-list"></div>
@@ -478,6 +493,9 @@ window.handleBullpenRoleChange = handleBullpenRoleChange;
 window.setBullpenRole      = setBullpenRole;
 window.saveLineupToStorage = saveToStorage;
 window.switchHand          = switchHand;
+window.revertBatting       = revertBatting;
+window.revertRotation      = revertRotation;
+window.revertBullpen       = revertBullpen;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 var  LEAGUE_ID        = "{{ league_id }}";
@@ -506,19 +524,25 @@ let lineup = lineups.R;
 // either hand use it.
 const savedHands = { R: false, L: false };
 // Each hand's lineup as last saved (or loaded from the server), to tell when
-// the one on screen has unsaved changes.
-const savedLineupKey = { R: '', L: '' };
+// the one on screen has unsaved changes and to put it back on Revert.
+const savedLineups = { R: Array(9).fill(null), L: Array(9).fill(null) };
+function copyLineup(l) { return l.map(s => s ? { ...s } : null); }
 function lineupKey(l) {
   return l.map(s => s ? `${s.player_id}:${s.position || ''}` : '').join(',');
 }
 function unsavedHands() {
-  return ['R', 'L'].filter(h => lineupKey(lineups[h]) !== savedLineupKey[h]);
+  return ['R', 'L'].filter(h => lineupKey(lineups[h]) !== lineupKey(savedLineups[h]));
 }
 
 /* ── Pitching state ─────────────────────────────────────────────────────────── */
 let rotation   = [];    // (player_id | null)[]  — nulls are drag zones
 let pointerPid = null;  // player_id of "next" starter
 let bullpen    = {};    // {player_id: role}
+
+// The rotation, next starter and bullpen roles as last saved (or loaded from
+// the server), for Revert. null until there's something saved.
+let savedRot = null;      // { rotation: player_id[], pointerPid }
+let savedBullpen = null;  // {player_id: role}
 
 /* ── Roster filter state ────────────────────────────────────────────────────── */
 let rosterFilter = { type: 'hitter', health: 'healthy' };
@@ -835,6 +859,9 @@ function updateBattingBanner() {
   const dirty = unsavedHands();
   if (dirty.length) battingSaved = false;
   banner.style.display = dirty.length ? 'flex' : 'none';
+  // Revert only when there's a saved lineup to go back to
+  const revert = document.getElementById('bat-revert-btn');
+  if (revert) revert.style.display = (savedHands.R || savedHands.L) ? 'inline-flex' : 'none';
   const text = document.getElementById('bat-unsaved-text');
   if (text) {
     text.textContent = dirty.length === 2
@@ -849,6 +876,17 @@ function clearLineup() {
   renderBattingOrder();
   renderRoster();
   updateSaveBattingBtn();
+}
+
+// Back to the saved lineups, both hands.
+function revertBatting() {
+  ['R', 'L'].forEach(h => { lineups[h] = copyLineup(savedLineups[h]); });
+  lineup = lineups[vsHand];
+  renderBattingOrder();
+  renderRoster();
+  updateSaveBattingBtn();
+  saveToStorage();
+  showFeedback('Reverted to saved', 'var(--text-dim)');
 }
 
 /* ── Batting: roster column ──────────────────────────────────────────────────── */
@@ -1029,7 +1067,7 @@ async function saveBatting() {
       const err = await _saveHand(h);
       if (err) { errors.push(err); continue; }
       savedHands[h] = true;
-      savedLineupKey[h] = lineupKey(lineups[h]);
+      savedLineups[h] = copyLineup(lineups[h]);
       // Clear the stored copy so the next page load reads fresh from the server
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -1549,6 +1587,7 @@ async function saveRotation() {
     });
     if (res.ok) {
       pitchingSaved = true;
+      savedRot = { rotation: [...compact], pointerPid };
       showFeedback('✓ Rotation saved', 'var(--green)');
       updatePitchingBanners();
       try {
@@ -1584,6 +1623,7 @@ async function saveBullpen() {
     });
     if (res.ok) {
       bullpenSaved = true;
+      savedBullpen = { ...cleanBullpen };
       showFeedback('✓ Bullpen saved', 'var(--green)');
       updatePitchingBanners();
       saveToStorage();
@@ -1608,12 +1648,41 @@ function updateScheduleBtn() {
   if (btn) btn.style.display = (battingSaved && pitchingSaved && bullpenSaved) ? 'inline-flex' : 'none';
 }
 
+/* ── Pitching: revert ─────────────────────────────────────────────────────────── */
+function revertRotation() {
+  if (!savedRot) return;
+  rotation = [...savedRot.rotation];
+  pointerPid = savedRot.pointerPid;
+  ensureValidPointer();
+  pitchingSaved = true;
+  renderRotation();
+  renderBullpen();
+  updatePitchingBanners();
+  saveToStorage();
+  showFeedback('Reverted to saved', 'var(--text-dim)');
+}
+
+function revertBullpen() {
+  if (!savedBullpen) return;
+  bullpen = { ...savedBullpen };
+  bullpenSaved = true;
+  renderBullpen();
+  updatePitchingBanners();
+  saveToStorage();
+  showFeedback('Reverted to saved', 'var(--text-dim)');
+}
+
 /* ── Pitching unsaved banners ─────────────────────────────────────────────────── */
 function updatePitchingBanners() {
   const rotBanner = document.getElementById('rot-unsaved-banner');
   const bpBanner  = document.getElementById('bp-unsaved-banner');
   if (rotBanner) rotBanner.style.display = pitchingSaved ? 'none' : 'flex';
   if (bpBanner)  bpBanner.style.display  = bullpenSaved  ? 'none' : 'flex';
+  // Revert only when there's a saved rotation / bullpen to go back to
+  const rotRevert = document.getElementById('rot-revert-btn');
+  const bpRevert  = document.getElementById('bp-revert-btn');
+  if (rotRevert) rotRevert.style.display = savedRot     ? 'inline-flex' : 'none';
+  if (bpRevert)  bpRevert.style.display  = savedBullpen ? 'inline-flex' : 'none';
   updateScheduleBtn();
 }
 
@@ -1682,7 +1751,7 @@ const knownAll = new Set([...knownHitterIds, ...knownPitcherIds]);
     lineups[other].forEach((s, i) => { lineups[hand][i] = s ? { ...s } : null; });
   }
 });
-['R', 'L'].forEach(hand => { savedLineupKey[hand] = lineupKey(lineups[hand]); });
+['R', 'L'].forEach(hand => { savedLineups[hand] = copyLineup(lineups[hand]); });
 
 // Pitching: load saved rotation only — no auto-fill on first visit
 SAVED_ROT.filter(pid => knownPitcherIds.has(pid)).forEach(pid => rotation.push(pid));
@@ -1692,6 +1761,8 @@ if (SAVED_POINTER && knownPitcherIds.has(SAVED_POINTER)) pointerPid = SAVED_POIN
 // Treat server-saved data as already saved; user must explicitly save any changes
 pitchingSaved = rotation.length > 0;
 bullpenSaved  = Object.keys(SAVED_BP).length > 0;
+if (pitchingSaved) savedRot = { rotation: [...rotation], pointerPid };
+if (bullpenSaved)  savedBullpen = { ...SAVED_BP };
 ensureValidPointer();
 
 // Restore from sessionStorage (overrides server data if present and valid)

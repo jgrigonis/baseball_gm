@@ -84,6 +84,11 @@
             style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
       Save now
     </button>
+    <button class="btn btn-secondary" onclick="revertStrategy()"
+            title="Undo your changes: back to your saved strategy, or the suggested needs if you haven't saved one"
+            style="font-size:10px;padding:3px 8px;">
+      Revert
+    </button>
   </div>
   {% endif %}
 
@@ -350,6 +355,7 @@ window.saveStrategy     = saveStrategy;
 window.clearStrategy    = clearStrategy;
 window.setAgePref       = setAgePref;
 window.useSuggested     = useSuggested;
+window.revertStrategy   = revertStrategy;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 const DRAFT_ID    = "{{ draft_id }}";
@@ -503,6 +509,12 @@ function clearStrategy() {
 // Put back the suggested needs, keeping pins and the age slider
 function useSuggested() {
   strategy.chips = { ...SUGGESTED.chips };
+  strategyChanged();
+}
+
+// Back to the saved strategy (or the suggested needs, when none is saved).
+function revertStrategy() {
+  strategy = normStrategy(savedStrategy || SUGGESTED_STRATEGY);
   strategyChanged();
 }
 
