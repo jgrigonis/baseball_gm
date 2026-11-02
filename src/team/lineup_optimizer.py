@@ -26,7 +26,8 @@ It works in two steps:
    slot 2 takes the best fit of who's left, and so on. Slot 1 is always
    LEADOFF, the same formula as the player card's Leadoff grade, so the best
    Leadoff grade in the lineup leads off. Slots with no special role go by
-   overall bat, so better hitters bat higher.
+   overall bat, so better hitters bat higher. A GM who weighs stats adds each
+   hitter's form here too, so hot hitters move up the order.
 
 Locked players (a person's partly filled lineup) keep their batting slot and
 position; only the gaps are solved.
@@ -267,7 +268,7 @@ class LineupOptimizer:
         open_slots = [i for i in range(size) if i not in by_slot]
         for i, (p, pos) in zip(
             open_slots,
-            LineupOptimizer.batting_order(newcomers, open_slots, style, hand),
+            LineupOptimizer.batting_order(newcomers, open_slots, style, hand, form),
         ):
             by_slot[i] = LineupSlot(p, pos)
 
@@ -342,11 +343,15 @@ class LineupOptimizer:
         slots: list[int],
         style: str,
         vs_hand: str | None = None,
+        form: dict[str, float] | None = None,
     ) -> list[tuple[PlayerInGame, str]]:
         """Order players into these batting slots (0-based), top-down: each
         slot in turn takes the best fit for its role among those left,
-        against today's starter if given. Returns them in slot order."""
+        against today's starter if given. form (by player id) adds to a
+        hitter's fit in every slot, so a hot hitter moves up the order and a
+        cold one moves down. Returns them in slot order."""
         roles = BATTING_ROLES[style]
+        form = form or {}
         left = sorted(players, key=lambda pp: pp[0].record.id)
         order = []
         for s in sorted(slots)[: len(left)]:
@@ -355,6 +360,7 @@ class LineupOptimizer:
                 key=lambda pp: (
                     LineupOptimizer.slot_fit(pp[0], roles[s])
                     - LineupOptimizer.matchup(pp[0], vs_hand)
+                    + form.get(pp[0].record.id, 0.0)
                 ),
             )
             left.remove(best)

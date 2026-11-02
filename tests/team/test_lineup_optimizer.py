@@ -333,3 +333,16 @@ def test_leadoff_slot_matches_the_card_leadoff_grade():
 
     for roles in BATTING_ROLES.values():
         assert roles[0] == ROLE_WEIGHTS["lead_off"]
+
+
+def test_form_moves_a_hitter_up_the_order():
+    """Among equal hitters, a hot one bats higher and a cold one lower for a
+    GM who weighs stats."""
+    players = [hitter(f"h{i}", bat=60) for i in range(9)]
+
+    def slot(pid, form):
+        lineup = LineupOptimizer.fill([None] * 9, players, form=form)
+        return [s.player.id for s in lineup].index(pid)
+
+    assert slot("h8", {"h8": 5.0}) == 0
+    assert slot("h0", {"h0": -5.0}) == 8
