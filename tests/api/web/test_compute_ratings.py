@@ -76,3 +76,17 @@ def test_compute_ratings_labels(mock_ps, mock_pe, high_skill, expected_label):
 #     # Test that it returns an empty dict on failure (e.g., passing None)
 #     result = compute_ratings(None, "R")
 #     assert result == {}
+
+
+def test_role_grades_include_closer_grade_for_pitchers():
+    from src.api.view_models.player_cards import _role_grades
+    from src.api.schemas import skill_to_grade
+
+    g = {"player_type": "pitcher"}
+    _role_grades(g, {"sp": 40, "rp": 60, "cp": 85})
+    assert g["cp_grade"] == skill_to_grade(85)
+    assert g["rp_grade"] == skill_to_grade(60)
+
+    hitter = {"player_type": "hitter"}
+    _role_grades(hitter, {"cp": 85})
+    assert "cp_grade" not in hitter
