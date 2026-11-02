@@ -160,7 +160,7 @@ def new_league(
     pick_trades: bool = Form(False),
     injuries_enabled: bool | None = Form(None),
     num_teams: int = Form(divisions.DEFAULT_TEAM_COUNT),
-    weighted_schedule: bool = Form(False),
+    weighted_schedule: bool = Form(True),
 ):
     get_mode(mode)  # rejects an unknown mode
     if num_teams not in divisions.TEAM_COUNTS:

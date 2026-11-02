@@ -56,7 +56,7 @@ class LeagueRepository:
                 settings.get("pick_trades", False),
                 settings.get("injuries_enabled", get_mode(mode).injuries_default),
                 settings.get("backstory_years", DEFAULT_BACKSTORY_YEARS),
-                settings.get("weighted_schedule", False),
+                settings.get("weighted_schedule", True),
             ),
         )
 
