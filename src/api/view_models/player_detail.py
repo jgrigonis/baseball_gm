@@ -13,6 +13,7 @@ from src.api.view_models.player_cards import (
     overall_grade as player_overall_grade,
     overall_value as player_overall_value,
     ratings_to_grade_map,
+    rust_view,
 )
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -205,6 +206,7 @@ def player_panel_data(
         "bat_stats": bat_stats,
         "injured": raw_injury is not None,
         "injury_days": raw_injury,
+        "rust": rust_view(inj_repo.get_rust([pid], as_of=current_date).get(pid)),
         "injury_name": (
             injury_label(injury.injury_type)
             if raw_injury is not None and injury.injury_type

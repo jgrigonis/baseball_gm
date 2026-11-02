@@ -18,11 +18,20 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 import logging
 
-logger = logging.getLogger(__name__)
+from psycopg.types.json import Jsonb
 
-# Severity tiers and day rolls live with the injury catalog; re-exported here
-# for the code that already imports them from this module.
-from src.player.injury_types import INJURY_TIERS, roll_days_missed  # noqa: E402,F401
+# Severity tiers and day rolls live with the injury catalog; INJURY_TIERS and
+# roll_days_missed are re-exported here for code that imports them from here.
+from src.player.injury_types import (  # noqa: F401
+    INJURY_TIERS,
+    roll_days_missed,
+    roll_rust,
+    rust_days_to_clear,
+    rust_left,
+)
+from src.player.positions import is_pitcher
+
+logger = logging.getLogger(__name__)
 
 
 def _to_date(value) -> date:
@@ -341,6 +350,8 @@ class InjuryRepository:
             logger.debug("Player %s already has a worse injury, skipping.", player_id)
             return existing
 
+        rust = self._roll_rust(player_id, injury_type, days_missed, rng)
+
         injury = PlayerInjury(
             player_id=player_id,
             return_date=return_date,
@@ -356,12 +367,14 @@ class InjuryRepository:
                 """
                 INSERT INTO player_injuries
                     (player_id, league_id, games_remaining, return_date,
-                     injury_type)
-                VALUES (%s, %s, %s, %s, %s)
+                     injury_type, rust, rust_days)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT(player_id, league_id) DO UPDATE SET
                     games_remaining = excluded.games_remaining,
                     return_date = excluded.return_date,
-                    injury_type = excluded.injury_type
+                    injury_type = excluded.injury_type,
+                    rust = excluded.rust,
+                    rust_days = excluded.rust_days
                 """,
                 (
                     player_id,
@@ -369,6 +382,8 @@ class InjuryRepository:
                     days_missed,
                     return_date.isoformat(),
                     injury_type,
+                    Jsonb(rust[0]) if rust else None,
+                    rust[1] if rust else None,
                 ),
             )
             cursor.execute(
@@ -399,6 +414,66 @@ class InjuryRepository:
             return_date.isoformat(),
         )
         return injury
+
+    def _roll_rust(self, player_id, injury_type, days_missed, rng):
+        """Roll the rust this injury will leave, from the player's age and,
+        for hitters only, durability."""
+        if not injury_type:
+            return None
+        row = self.conn.execute(
+            """SELECT p.position, ps.age, ps.durability
+               FROM players p LEFT JOIN player_skills ps ON ps.player_id = p.id
+               WHERE p.id = %s""",
+            (player_id,),
+        ).fetchone()
+        age = row["age"] if row else None
+        durability = None
+        if row and not is_pitcher(row["position"] or ""):
+            durability = row["durability"]
+        return roll_rust(injury_type, days_missed, age, durability, rng)
+
+    # ------------------------------------------------------------------
+    # Rust
+    # ------------------------------------------------------------------
+
+    def get_rust(self, player_ids, as_of=None) -> dict[str, dict]:
+        """Rust still on these players on `as_of`: {player_id: {"skills":
+        {skill: points down now}, "days_left": days until it's gone if he
+        plays every day, "injury_type"}}. Only players back from their
+        injury with some rust left are listed.
+
+        Rust fades a little every day after the return date, twice as fast
+        on days the player doesn't appear in a game."""
+        if not player_ids:
+            return {}
+        as_of = self._as_of(as_of)
+        rows = self.conn.execute(
+            """SELECT pi.player_id, pi.rust, pi.rust_days, pi.injury_type,
+                      (%s::date - pi.return_date::date) AS days_back,
+                      (SELECT COUNT(DISTINCT g.game_date)
+                       FROM player_game_stats s JOIN games g ON g.id = s.game_id
+                       WHERE s.player_id = pi.player_id
+                         AND g.game_date::date >= pi.return_date::date
+                         AND g.game_date::date < %s::date) AS days_played
+               FROM player_injuries pi
+               WHERE pi.league_id = %s AND pi.player_id = ANY(%s)
+                 AND pi.rust IS NOT NULL
+                 AND pi.return_date::date <= %s::date
+                 AND pi.return_date::date + CEIL(pi.rust_days)::int > %s::date""",
+            (as_of, as_of, self.league_id, list(player_ids), as_of, as_of),
+        ).fetchall()
+        out = {}
+        for r in rows:
+            skills = {k: float(v) for k, v in (r["rust"] or {}).items()}
+            args = (skills, float(r["rust_days"]), r["days_back"], r["days_played"])
+            left = rust_left(*args)
+            if left:
+                out[r["player_id"]] = {
+                    "skills": left,
+                    "days_left": rust_days_to_clear(*args),
+                    "injury_type": r["injury_type"],
+                }
+        return out
 
     def clear_injuries(self, player_id: str) -> bool:
         cursor = self.conn.cursor()

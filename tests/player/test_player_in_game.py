@@ -192,3 +192,15 @@ def test_rested_pitcher_fields_like_an_equally_rested_hitter():
     assert pitcher.ratings["overall_offense"] == hitter.ratings["overall_offense"]
     # Pitching still gets the bigger pitcher freshness bonus
     assert pitcher.ratings["rp"] > hitter.ratings["rp"]
+
+
+def test_rust_lowers_skills_for_the_game_only():
+    from tests.factories.player_record_factory import make_player_record
+
+    record = make_player_record(id="rusty")
+    p = PlayerInGame(record)
+    speed = record.skills["speed"]
+    p.apply_rust({"speed": 4.4})
+    assert p.skills["speed"] == speed - 4
+    assert record.skills["speed"] == speed  # the record keeps his real skills
+    assert p.rust == {"speed": 4.4}

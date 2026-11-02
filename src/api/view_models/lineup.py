@@ -76,6 +76,7 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
         hitters + pitchers,
         inj.get_team_injuries(team_id),
         inj.get_team_injury_types(team_id),
+        inj.get_rust([p["player_id"] for p in hitters + pitchers]),
     )
     # Tell template whether we're in playoffs so the nav button points the right way
     league_row = LeagueRepository(db).get_by_id(league_id)
