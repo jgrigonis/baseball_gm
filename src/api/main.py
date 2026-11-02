@@ -21,6 +21,7 @@ from src.api.routers import (
     all_star,
     auth,
     draft,
+    face_gen,
     games,
     history,
     leaders,
@@ -192,6 +193,7 @@ for _module in (
     trades,
     all_star,
     uniforms,
+    face_gen,
     profiles,
     news,
 ):
