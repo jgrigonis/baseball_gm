@@ -50,33 +50,32 @@
 
   {% if leagues %}
   {% set mine = active_tab in ('tutorial', 'running', 'completed') %}
-  <div class="card">
+  <div class="card leagues-table-card">
     <table class="data-table">
-      <thead><tr><th>League</th><th>Year</th>{% if active_tab != 'tutorial' %}<th>Mode</th>{% endif %}<th>State</th>{% if active_tab != 'tutorial' %}<th>GMs</th>{% endif %}<th>Last Played</th>{% if active_tab in ('running', 'completed') %}<th>Code</th>{% endif %}<th></th></tr></thead>
+      <thead><tr><th>League</th><th class="wide-only">Year</th>{% if active_tab != 'tutorial' %}<th class="wide-only">Mode</th>{% endif %}<th>State</th>{% if active_tab != 'tutorial' %}<th class="wide-only">GMs</th>{% endif %}<th class="wide-only">Last Played</th>{% if active_tab in ('running', 'completed') %}<th>Code</th>{% endif %}<th></th></tr></thead>
       <tbody>
         {% for l in leagues %}
-        <tr>
+        {# Your own leagues open with a click anywhere on the row, or Enter
+           when the row has focus. The commissioner renames one by clicking
+           its name, which edits in place. #}
+        <tr{% if mine %} class="league-row" data-href="/leagues/{{ l.id }}/" tabindex="0" aria-label="Open {{ l.name }}"{% endif %}>
           {# The team the GM runs there, once the lobby is over and they have one. #}
-          <td class="team-name">{% if mine and l.team_city and l.state != 'lobby' %}<span class="league-team" title="{{ l.team_city }} {{ l.team_mascot }}">{{ team_badge(l.team_city, l.team_mascot) }}</span>{% endif %}{{ l.name }}</td>
-          <td style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
-          {% if active_tab != 'tutorial' %}<td style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
+          <td class="team-name">{% if mine and l.team_city and l.state != 'lobby' %}<span class="league-team" title="{{ l.team_city }} {{ l.team_mascot }}">{{ team_badge(l.team_city, l.team_mascot) }}</span>{% endif %}{% if mine and l.is_commissioner %}<span class="league-name-wrap"><span class="league-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="League name, edit to rename" title="Click to rename" data-league-id="{{ l.id }}" data-original="{{ l.name }}">{{ l.name }}</span><button type="button" class="btn btn-primary league-name-save" hidden>Save</button></span>{% else %}{{ l.name }}{% endif %}</td>
+          <td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
+          {% if active_tab != 'tutorial' %}<td class="wide-only" style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
           <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
-          {% if active_tab != 'tutorial' %}<td style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>{% endif %}
-          <td style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
+          {% if active_tab != 'tutorial' %}<td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>{% endif %}
+          <td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
           {% if active_tab in ('running', 'completed') %}<td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>{% endif %}
           <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
             {% if mine %}
-            {% if l.is_commissioner %}
-            <button onclick="openRenameModal('{{ l.id }}','{{ l.name }}')" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Rename</button>
-            {% endif %}
-            <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" data-last="{{ 'yes' if l.people <= 1 else '' }}" onclick="leaveLeague(this)" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Leave</button>
-            <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;">Open →</a>
+            <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" data-last="{{ 'yes' if l.people <= 1 else '' }}" onclick="leaveLeague(this)" class="btn btn-danger" style="font-size:10px;padding:4px 10px;">Leave</button>
             {% elif active_tab == 'join' %}
             <form method="POST" action="/leagues/{{ l.id }}/join" style="display:inline;">
               <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;">Join →</button>
             </form>
             {% else %}
-            <a href="/leagues/{{ l.id }}/" class="btn btn-secondary" style="font-size:10px;padding:4px 10px;" title="Leagues can only take new GMs before they start, but anyone can follow along">Watch →</a>
+            <a href="/leagues/{{ l.id }}/" class="btn btn-primary" style="font-size:10px;padding:4px 10px;" title="Leagues can only take new GMs before they start, but anyone can follow along">Watch →</a>
             {% endif %}
           </td>
         </tr>
@@ -108,6 +107,20 @@
 <style>
 .leagues-tabs { position: static; margin: 0 0 16px; padding: 0; background: none; }
 .league-team { display: inline-flex; vertical-align: middle; }
+.leagues-table-card { overflow-x: auto; }
+/* On a phone, keep the name, state, code and buttons in view. */
+@media (max-width: 640px) {
+  .leagues-table-card .wide-only { display: none; }
+  .leagues-table-card th, .leagues-table-card td { padding-left: 8px; padding-right: 8px; }
+}
+.league-row { cursor: pointer; }
+.league-row:focus-visible { outline: 1px solid var(--amber); outline-offset: -1px; background: var(--bg-3); }
+.league-name-wrap { display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; }
+.league-name { cursor: text; padding: 1px 4px; margin: -2px -5px; border: 1px solid transparent; outline: none; min-width: 2ch; }
+.league-name:hover { border-bottom-color: var(--text-dim); border-bottom-style: dashed; }
+.league-name:focus { border: 1px solid var(--amber); background: var(--bg); }
+.league-name-save { font-size: 10px; padding: 3px 9px; }
+.league-name-save[hidden] { display: none; }
 .tab-count { color: var(--muted); margin-left: 4px; }
 .tab-link.active .tab-count { color: var(--amber-dim); }
 .tutorial-intro, .join-code-card { margin-bottom: 16px; }
@@ -122,18 +135,6 @@
 {% endblock %}
 
 {% block scripts %}
-<div id="rename-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
-  <div style="background:var(--bg-2);border:1px solid var(--border);padding:24px;min-width:320px;font-family:var(--font-mono);">
-    <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Rename League</div>
-    <input id="rename-input" type="text"
-           style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:13px;padding:7px 10px;margin-bottom:12px;"
-           onkeydown="if(event.key==='Enter')submitRename();if(event.key==='Escape')closeRenameModal();">
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button onclick="closeRenameModal()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--font-mono);font-size:11px;padding:5px 12px;cursor:pointer;">Cancel</button>
-      <button onclick="submitRename()" style="background:var(--green-dim);border:1px solid var(--green-mid);color:var(--green);font-family:var(--font-mono);font-size:11px;padding:5px 12px;cursor:pointer;">Save</button>
-    </div>
-  </div>
-</div>
 <script>
 // Show last-played times in the viewer's own time zone.
 document.querySelectorAll('time.local-time').forEach(t => {
@@ -184,28 +185,83 @@ function resetTips(btn) {
     btn.closest('p').textContent = r.ok ? 'Done. Each tab shows its tip again.' : 'Could not reset the tips.';
   });
 }
-var _renameLeagueId = null;
-function openRenameModal(id, name) {
-  _renameLeagueId = id;
-  const inp = document.getElementById('rename-input');
-  inp.value = name;
-  const m = document.getElementById('rename-modal');
-  m.style.display = 'flex';
-  inp.focus(); inp.select();
-}
-function closeRenameModal() {
-  document.getElementById('rename-modal').style.display = 'none';
-  _renameLeagueId = null;
-}
-function submitRename() {
-  const name = document.getElementById('rename-input').value.trim();
-  if (!name || !_renameLeagueId) return;
-  fetch('/leagues/' + _renameLeagueId + '/rename', {
+// Your own leagues: a click anywhere on the row opens the league, except on
+// its buttons or the name being edited. Ctrl/Cmd-click opens a new tab.
+document.querySelectorAll('tr.league-row').forEach(row => {
+  row.addEventListener('click', e => {
+    if (e.target.closest('button, a, form, [contenteditable]')) return;
+    if (window.getSelection().toString()) return;  // they were selecting text
+    if (e.metaKey || e.ctrlKey) window.open(row.dataset.href, '_blank');
+    else location.href = row.dataset.href;
+  });
+  row.addEventListener('keydown', e => {
+    if (e.target !== row || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    location.href = row.dataset.href;
+  });
+});
+// Renaming: the commissioner clicks the name, types, and saves with the
+// button that appears beside it or Enter. Escape or clicking away puts the
+// old name back.
+document.querySelectorAll('.league-name').forEach(el => {
+  const save = el.parentElement.querySelector('.league-name-save');
+  const current = () => el.textContent.replace(/\s+/g, ' ').trim();
+  const revert = () => { el.textContent = el.dataset.original; save.hidden = true; };
+  el.addEventListener('focus', () => {
+    // Select the whole name so typing replaces it.
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+  });
+  el.addEventListener('input', () => {
+    const name = current();
+    save.hidden = !name || name === el.dataset.original;
+  });
+  // Pasting brings in plain text only, on one line.
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\s+/g, ' ');
+    document.execCommand('insertText', false, text);
+  });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (!save.hidden) submitRename(el, save); else el.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); revert(); el.blur(); }
+  });
+  el.addEventListener('blur', e => {
+    if (e.relatedTarget === save || save.disabled) return;
+    revert();
+  });
+  // Keep the name focused while the button is pressed, so blurring the
+  // name (which reverts it) can't beat the click, on touch screens too.
+  save.addEventListener('pointerdown', e => e.preventDefault());
+  save.addEventListener('mousedown', e => e.preventDefault());
+  save.addEventListener('click', () => submitRename(el, save));
+});
+function submitRename(el, save) {
+  const name = el.textContent.replace(/\s+/g, ' ').trim();
+  if (!name || name === el.dataset.original) return;
+  save.disabled = true;
+  save.textContent = 'Saving…';
+  fetch('/leagues/' + el.dataset.leagueId + '/rename', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({name}),
-  }).then(r => r.json()).then(d => {
-    if (d.name) { location.reload(); }
+  }).then(r => r.json().then(d => {
+    save.disabled = false;
+    save.textContent = 'Save';
+    if (!r.ok || !d.name) { alert(d.detail || 'Could not rename the league.'); el.focus(); return; }
+    el.dataset.original = d.name;
+    el.textContent = d.name;
+    save.hidden = true;
+    const row = el.closest('tr');
+    row.setAttribute('aria-label', 'Open ' + d.name);
+    row.querySelector('[data-league-name]')?.setAttribute('data-league-name', d.name);
+    el.blur();
+  })).catch(() => {
+    save.disabled = false;
+    save.textContent = 'Save';
+    alert('Could not rename the league.');
   });
 }
 </script>
