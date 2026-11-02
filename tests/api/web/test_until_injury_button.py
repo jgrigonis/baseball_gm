@@ -61,3 +61,16 @@ def test_sim_rejects_an_until_injury_count():
     # takes a day count or "season".
     with pytest.raises(ValidationError):
         SimRequest(count="injury")
+
+
+def test_blitz_has_ignore_trades_box(db_conn, factory):
+    # Blitz trades, so a Full Season run can be told to play through offers
+    # and the deadline.
+    html = _schedule_html(db_conn, factory, "blitz")
+    assert 'id="sched-ignore-trades-box"' in html
+
+
+def test_speed_blitz_has_no_ignore_trades_box(db_conn, factory):
+    # No trades, nothing to ignore.
+    html = _schedule_html(db_conn, factory, "speed_blitz")
+    assert 'id="sched-ignore-trades-box"' not in html
