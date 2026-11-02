@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 8 74 214" width="74" height="214" role="img" aria-label="Rome stirrups alternate">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#6E1423"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="40" width="56" height="16" fill="#C28E4A"/>
+        <path d="M50 43 H106 M50 53 H106 M51.88 53 V45.2 H60.38 V50.2 H55.88 V47.7 H57.88 M64.38 53 V45.2 H72.88 V50.2 H68.38 V47.7 H70.38 M76.88 53 V45.2 H85.38 V50.2 H80.88 V47.7 H82.88 M89.38 53 V45.2 H97.88 V50.2 H93.38 V47.7 H95.38" fill="none" stroke="#6E1423" stroke-width="1.5" stroke-linejoin="miter"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#4E0E19"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#C28E4A"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="40" width="56" height="16" fill="#6E1423"/>
+        <path d="M144 43 H200 M144 53 H200 M145.88 53 V45.2 H154.38 V50.2 H149.88 V47.7 H151.88 M158.38 53 V45.2 H166.88 V50.2 H162.38 V47.7 H164.38 M170.88 53 V45.2 H179.38 V50.2 H174.88 V47.7 H176.88 M183.38 53 V45.2 H191.88 V50.2 H187.38 V47.7 H189.38" fill="none" stroke="#C28E4A" stroke-width="1.5" stroke-linejoin="miter"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#4E0E19"/>
+      </g>
+</svg>

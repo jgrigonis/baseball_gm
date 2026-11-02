@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Rome helmet">
+  <defs>
+    <path id="helm" fill-rule="evenodd" d="M12 30 Q14 2 50 2 Q86 2 90 28 Q88 31 84 30 Q80 13 50 13 Q22 13 19 31 Q15 33 12 30 Z M46 14 H54 V25.5 H46 Z M10 66 Q20 62 24 52 L24 44 Q26 25 52 25 Q78 25 82 44 L82 47 L66 48 Q63 48 63 52 L64 70 Q64 75 58 75 L52 75 Q49 75 49 71 L48 61 Q40 59 32 61 Q22 68 12 70 Q8 69 10 66 Z M28 41 Q52 35 80 42 L80 44.5 Q52 38 28 44 Z M37 51 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0 Z M23.3 23.9 L17.8 19.5 L17.1 20.5 L22.6 24.6 Z M29.7 19.4 L25.4 12.2 L24.3 13.0 L28.5 20.0 Z M38.6 16.3 L36.1 7.2 L34.7 7.7 L37.2 16.7 Z M48.0 15.1 L47.3 5.1 L45.7 5.3 L46.4 15.2 Z M57.2 15.3 L58.2 5.5 L56.7 5.3 L55.6 15.2 Z M66.3 17.1 L69.1 8.3 L67.7 7.8 L64.8 16.7 Z M74.6 20.6 L79.0 14.0 L78.0 13.2 L73.5 20.0 Z"/>
+  </defs>
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A2384A"/><stop offset=".45" stop-color="#6E1423"/><stop offset="1" stop-color="#4E0E19"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#C28E4A"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#4E0E19"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#4E0E19"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <g transform="translate(70 50) scale(0.6)"><use href="#helm" fill="#C28E4A" stroke="#EFE8DA" stroke-width="4" stroke-linejoin="round" paint-order="stroke"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#C28E4A" stroke-width="2.5"/>
+</svg>

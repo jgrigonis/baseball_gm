@@ -24,7 +24,7 @@ class TeamColors:
     secondary: str
     accent: str
     # What the round badge shows, when it isn't the code (Beijing's 北京,
-    # Mexico City's CDMX).
+    # Mexico City's CDMX, Rome's SPQR).
     mark: str = ""
 
     @property
@@ -75,6 +75,7 @@ TEAM_COLORS: dict[tuple[str, str], TeamColors] = {
     ("Berlin", "Bear"): TeamColors("BER", "#1C1C1C", "#D62828", "#F2C14E"),
     ("Seattle", "Rain"): TeamColors("SEA", "#0B3D4C", "#E8EEF0", "#2AA198"),
     ("Portland", "Weird"): TeamColors("POR", "#1B3D26", "#D7192F", "#C6D93B"),
+    ("Rome", "Gladiators"): TeamColors("ROM", "#6E1423", "#C28E4A", "#EFE8DA", "SPQR"),
 }
 
 # (primary, secondary, accent) for teams outside TEAM_COLORS
