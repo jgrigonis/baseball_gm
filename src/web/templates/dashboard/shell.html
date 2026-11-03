@@ -277,8 +277,9 @@ window.closeGamePanel = function() {
      class="tab-link {% if active_tab == 'draft' %}active{% endif %}"
      hx-get="/leagues/{{ league_id }}/draft/results"
      hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+     title="Draft results"
      onclick="setActiveTab(this)">
-    📋 Draft Results
+    📋 Draft
   </a>
   {% else %}
   <a href="/leagues/{{ league_id }}/{{ tab }}"
@@ -301,7 +302,55 @@ window.closeGamePanel = function() {
   {% endif %}
   {% endfor %}
 
+  {# Tabs that don't fit the bar's width move into this menu (fitTabs below). #}
+  <details class="tab-more" id="tab-more" hidden>
+    <summary class="tab-more-btn" aria-label="More tabs">More <span class="tab-more-dot" aria-hidden="true"></span><span class="tab-more-caret" aria-hidden="true">▾</span></summary>
+    <div class="tab-more-panel" id="tab-more-panel"></div>
+  </details>
 </nav>
+<script>
+// Keep the tab bar on one line: tabs that don't fit go into the More menu,
+// last tab first, and come back out when there's room. The links are moved,
+// not copied, so htmx, badges and setActiveTab work on them as before.
+(function() {
+  var bar = document.getElementById('tab-bar');
+  var more = document.getElementById('tab-more');
+  var panel = document.getElementById('tab-more-panel');
+  if (!bar || !more) return;
+  function limit() {
+    var r = bar.getBoundingClientRect();
+    return r.right - parseFloat(getComputedStyle(bar).paddingRight);
+  }
+  function fitTabs() {
+    // Put every tab back in the bar, in order, then measure.
+    while (panel.firstChild) bar.insertBefore(panel.firstChild, more);
+    more.hidden = true;
+    var links = bar.querySelectorAll(':scope > .tab-link');
+    if (!links.length || links[links.length - 1].getBoundingClientRect().right <= limit() + 0.5) return;
+    more.hidden = false;
+    // Move tabs from the end until the More button fits. One tab always stays.
+    for (var i = links.length - 1; i > 0; i--) {
+      if (more.getBoundingClientRect().right <= limit() + 0.5) break;
+      panel.insertBefore(links[i], panel.firstChild);
+    }
+  }
+  window.fitTabs = fitTabs;
+  var pending = false;
+  window.addEventListener('resize', function() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function() { pending = false; fitTabs(); });
+  });
+  fitTabs();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTabs);
+  // Picking a tab from the menu closes it; so does a click outside, or Escape.
+  panel.addEventListener('click', function(e) { if (e.target.closest('.tab-link')) more.open = false; });
+  document.addEventListener('click', function(e) { if (more.open && !more.contains(e.target)) more.open = false; });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && more.open) { more.open = false; more.querySelector('summary').focus(); }
+  });
+})();
+</script>
 {% endif %}
 
 {% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
