@@ -159,6 +159,7 @@ def fake_game():
 
     game.pos = pos
     game._record_lead_change_if_needed = lambda pitcher: None
+    game._note_run_against_pitcher = lambda: None
 
     # --- methods expected by events ---
     def _mark_plate_appearance_complete(reason):

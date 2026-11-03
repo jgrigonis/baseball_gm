@@ -325,6 +325,8 @@ class Game:
             decisions.loss.pitcher.game_stats.pitching.loss = 1
         if decisions.save:
             decisions.save.pitcher.game_stats.pitching.save = 1
+        for hold in decisions.holds:
+            hold.pitcher.game_stats.pitching.hold = 1
 
         self._credit_complete_games()
         self.decisions = decisions
@@ -1041,8 +1043,23 @@ class Game:
                 team_id=self.pitch_team.record.id,
                 entered_inning=self.inning.number,
                 lead_at_entry=self.score_differential,
+                runners_at_entry=self.bases.number_of_baserunners,
             )
         )
+
+    def _note_run_against_pitcher(self) -> None:
+        """After a run scores: if it tied the game or put the pitching team
+        behind, the pitcher on the mound gave up the lead (whoever put the
+        runner on). That costs him a hold or a save."""
+        if self.score_differential > 0:
+            return
+        team_id = self.pitch_team.record.id
+        current = next(
+            (a for a in reversed(self.pitcher_appearances) if a.team_id == team_id),
+            None,
+        )
+        if current is not None:
+            current.lead_lost = True
 
     def _close_pitcher_appearance(self) -> None:
         """End a pitching appearance, set the most recent pitcher's finished_game to False."""

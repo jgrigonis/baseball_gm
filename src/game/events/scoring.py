@@ -35,6 +35,8 @@ class RunScoredEvent(GameEvent):
 
         # Track lead changes for win/loss attribution
         game._record_lead_change_if_needed(self.responsible_pitcher)
+        # And whether the pitcher on the mound let the lead go (holds, saves)
+        game._note_run_against_pitcher()
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
