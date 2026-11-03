@@ -154,7 +154,18 @@ HNR_SLOW_MOD = 0.2
 HNR_FAVORABLE_COUNT_MOD = 1.3
 
 # Pitcher Change
-PITCH_COUNT_THRESHOLD = 100
+# Bullpen usage, tuned (Nov 2026) so 30-team seasons land near MLB
+# 2023-2025: starters ~5.4 IP and ~87 pitches, ~3.1 relievers a team game
+# at ~1.15 IP each.
+# From this pitch count on, a starter is usually pulled (a "let them work"
+# manager adds to it).
+PITCH_COUNT_THRESHOLD = 85
+# A leading starter with fewer outs than this is pulled less often.
+STARTER_LEAD_OUTS = 15
+STARTER_LEAD_HOOK = 0.6
+# Chance a reliever who has done his inning (two for a long man) sits
+# before the next one starts.
+RELIEVER_INNING_DONE_PROB = 0.9
 CLOSER_ENTRANCE_PROB = 0.92
 
 # Injury/Fatigue

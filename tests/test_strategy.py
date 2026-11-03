@@ -664,7 +664,7 @@ class TestShouldConsiderPitchingChange:
 
     def test_no_hits_no_runs_reduces_prob(self):
         base = _make_pitcher(
-            fatigue_level=FatigueLevel.TIRED, pitch_count=90, runs=0, hits=0
+            fatigue_level=FatigueLevel.TIRED, pitch_count=70, runs=0, hits=0
         )
         inning = _make_inning(number=5)
         prob = GameStrategy.should_consider_pitching_change(base, inning, 0)
@@ -852,3 +852,39 @@ class TestSelectReliefPitcher:
             team, current, _make_inning(6), _make_score(differential=-10)
         )
         assert result == sp
+
+
+class TestRelieverLeash:
+    """Most relievers pitch an inning and sit; long men can go two."""
+
+    def _reliever(self, role, outs):
+        from unittest.mock import MagicMock
+
+        from src.game.strategy import GameStrategy
+
+        p = MagicMock()
+        p.is_starter = False
+        p.bullpen_role = role
+        p.pitcher_fatigue.get_level.return_value.value = "good"
+        p.game_stats.pitching.outs = outs
+        p.game_stats.pitching.runs = 0
+        return lambda start: GameStrategy.should_consider_pitching_change(
+            p, MagicMock(), 1, inning_start=start
+        )
+
+    def test_reliever_usually_sits_after_his_inning(self):
+        from src.game.probabilities import RELIEVER_INNING_DONE_PROB
+
+        assert self._reliever("Setup", 3)(True) == RELIEVER_INNING_DONE_PROB
+
+    def test_reliever_stays_in_mid_inning_check(self):
+        assert self._reliever("Setup", 3)(False) < 0.5
+
+    def test_reliever_not_pulled_before_an_inning(self):
+        assert self._reliever("Middle", 2)(True) == 0.0
+
+    def test_long_man_can_go_a_second_inning(self):
+        assert self._reliever("Long", 3)(True) < 0.5
+        from src.game.probabilities import RELIEVER_INNING_DONE_PROB
+
+        assert self._reliever("Long", 6)(True) == RELIEVER_INNING_DONE_PROB

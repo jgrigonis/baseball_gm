@@ -42,6 +42,9 @@ from src.game.probabilities import (
     HNR_SLOW_MOD,
     HNR_FAVORABLE_COUNT_MOD,
     PITCH_COUNT_THRESHOLD,
+    RELIEVER_INNING_DONE_PROB,
+    STARTER_LEAD_HOOK,
+    STARTER_LEAD_OUTS,
     CLOSER_ENTRANCE_PROB,
     PITCHER_CHANGE_PROB,
     PITCHER_CHANGE_MULTIPLIERS,
@@ -644,6 +647,7 @@ class GameStrategy:
         inning: Inning,
         score_differential: int,
         profile: ManagerProfile = DEFAULT_PROFILE,
+        inning_start: bool = False,
     ) -> float:
         """
         Determine if manager should consider pitching change.
@@ -654,6 +658,8 @@ class GameStrategy:
             inning: The current inning
             profile: The pitching team's manager: starter usage and bullpen
                 settings set how long a starter's leash is.
+            inning_start: True for the check before a half-inning begins,
+                when a reliever who has finished his inning usually sits.
 
         Returns:
             1.0 if should consider a change, 0.0 if not, or some value in between
@@ -681,9 +687,9 @@ class GameStrategy:
                     prob *= PITCHER_CHANGE_MULTIPLIERS.get("no_hits", 0.11)
 
             # Modifier: Protect lead with starter (reduce probability of pulling them)
-            if score_differential > 0 and stats.outs < 18:  # Haven't gone 6 innings yet
-                # Winning and starter hasn't gone 5 innings yet
-                prob *= 0.33  # About 1/3 as likely to pull
+            if score_differential > 0 and stats.outs < STARTER_LEAD_OUTS:
+                # Winning and the starter hasn't gone far yet: less likely to pull
+                prob *= STARTER_LEAD_HOOK
             if stats.pitch_count >= threshold:
                 prob = max(prob, 0.72)
             batters_faced = stats.outs + stats.hits + stats.walks + stats.hb
@@ -701,6 +707,12 @@ class GameStrategy:
 
         else:  # RELIEVER / SETUP / LONG / SHORT
             outs = stats.outs
+            # Most relievers get an inning and sit, as in MLB. Long men can
+            # go two or three.
+            if inning_start:
+                is_long = pitcher.bullpen_role == "Long"
+                if outs >= (6 if is_long else 3):
+                    return RELIEVER_INNING_DONE_PROB
             if outs >= 6 or stats.runs >= 2:
                 return min(1, prob + 0.3)
             elif outs >= 3 or stats.runs >= 1:

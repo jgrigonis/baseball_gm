@@ -791,7 +791,8 @@ class Game:
         self._swap_teams()
         self._sync_players()
         self._open_pitcher_appearance(self.current_pitcher)
-        self._consider_pitching_change()  # manager can change before inning starts
+        # manager can change before inning starts
+        self._consider_pitching_change(inning_start=True)
 
         self.logger.info(f"⚾ {self.inning}")
 
@@ -1066,7 +1067,9 @@ class Game:
         if self.pitcher_appearances:
             self.pitcher_appearances[-1].finished_game = False
 
-    def _consider_pitching_change(self, force: bool = False) -> None:
+    def _consider_pitching_change(
+        self, force: bool = False, inning_start: bool = False
+    ) -> None:
         """Evaluate and possibly make a pitching change. Called mid-inning and between innings.
         If force=True (e.g. pitcher just got injured), skip the probability roll and change immediately.
         """
@@ -1120,6 +1123,7 @@ class Game:
                 self.inning,
                 self.score_differential,
                 profile_of(self.pitch_team),
+                inning_start=inning_start,
             )
             if not force
             else 1.0
