@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS users (
     favorite_team  TEXT,                           -- a World League city (src/team/colors.TEAM_COLORS)
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     dismissed_tips TEXT[] NOT NULL DEFAULT '{{}}', -- first-visit tab tips closed
+    turn_emails   BOOLEAN NOT NULL DEFAULT TRUE, -- email when a league waits on them (migration 062)
     created_at    TEXT NOT NULL DEFAULT (NOW())
 );
 
@@ -279,6 +280,8 @@ CREATE TABLE IF NOT EXISTS gms (
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,
     news_seen_id   BIGINT,                -- newest league_news story they've seen (the News tab's badge)
+    seen_at        TIMESTAMPTZ,           -- last had the league open (ready-check poll; migration 062)
+    alerted_at     TIMESTAMPTZ,           -- last turn email for this league (turn_alerts.py)
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,

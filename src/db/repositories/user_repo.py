@@ -16,7 +16,7 @@ class UserRepository:
         row = self.db.execute(
             """
             SELECT id, display_name, username, email, is_verified, created_at,
-                   is_admin, must_change_password, dismissed_tips,
+                   is_admin, must_change_password, dismissed_tips, turn_emails,
                    password_hash IS NOT NULL AS has_password
             FROM users
             WHERE session_token = %s
@@ -174,6 +174,13 @@ class UserRepository:
 
     def set_email(self, user_id: str, email: str | None) -> None:
         self.db.execute("UPDATE users SET email = %s WHERE id = %s", (email, user_id))
+
+    def set_turn_emails(self, user_id: str, on: bool) -> None:
+        """Whether they get an email when a league is waiting on them
+        (src/api/services/turn_alerts.py)."""
+        self.db.execute(
+            "UPDATE users SET turn_emails = %s WHERE id = %s", (on, user_id)
+        )
 
     def set_profile(
         self, user_id: str, bio: str | None, favorite_team: str | None
