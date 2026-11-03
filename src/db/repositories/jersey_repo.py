@@ -54,15 +54,51 @@ class JerseyRepository:
             (number, team_id, player_id),
         )
 
+    def sync(self, player_ids) -> None:
+        """
+        After roster statuses change: players who left the 40-man give up
+        their numbers, players on it without one get one.
+        """
+        ids = list(player_ids)
+        if not ids:
+            return
+        self.conn.execute(
+            """
+            UPDATE team_players tp SET jersey_number = NULL
+            FROM player_status ps
+            WHERE ps.player_id = tp.player_id
+              AND tp.player_id = ANY(%s)
+              AND tp.jersey_number IS NOT NULL
+              AND ps.status <> ALL(%s)
+            """,
+            (ids, list(jn.NUMBERED_STATUSES)),
+        )
+        rows = self.conn.execute(
+            """
+            SELECT tp.team_id, tp.player_id
+            FROM team_players tp
+            JOIN player_status ps ON ps.player_id = tp.player_id
+            WHERE tp.player_id = ANY(%s)
+              AND tp.jersey_number IS NULL
+              AND ps.status = ANY(%s)
+            """,
+            (ids, list(jn.NUMBERED_STATUSES)),
+        ).fetchall()
+        order = {pid: i for i, pid in enumerate(ids)}
+        for r in sorted(rows, key=lambda r: order[r["player_id"]]):
+            self.assign(r["team_id"], r["player_id"])
+
     def assign(self, team_id: str, player_id: str) -> str | None:
         """
-        Give a player who just joined the team his number, if he doesn't
-        have one there yet. Returns the number (None if he isn't on the team).
+        Give a player on the team's 40-man his number, if he doesn't have one
+        there yet. Returns the number (None if he isn't on the team or its
+        40-man).
         """
         row = self.conn.execute(
             """
-            SELECT jersey_number FROM team_players
-            WHERE team_id = %s AND player_id = %s
+            SELECT tp.jersey_number, ps.status FROM team_players tp
+            LEFT JOIN player_status ps ON ps.player_id = tp.player_id
+            WHERE tp.team_id = %s AND tp.player_id = %s
             """,
             (team_id, player_id),
         ).fetchone()
@@ -70,6 +106,8 @@ class JerseyRepository:
             return None
         if row["jersey_number"] is not None:
             return row["jersey_number"]
+        if row["status"] not in jn.NUMBERED_STATUSES:
+            return None
 
         rng = random.Random(f"jersey:{team_id}:{player_id}")
         prefs = self.prefs(player_id)
@@ -90,13 +128,14 @@ class JerseyRepository:
         return number
 
     def backfill_team(self, team_id: str) -> None:
-        """Numbers for everyone on the team without one, most senior first
-        (most seasons with the team, then oldest). Nobody is bumped."""
+        """Numbers for everyone on the team's 40-man without one, most senior
+        first (most seasons with the team, then oldest). Nobody is bumped."""
         rows = self.conn.execute(
             """
             SELECT tp.player_id, p.jersey_prefs
             FROM team_players tp
             JOIN players p ON p.id = tp.player_id
+            JOIN player_status ps ON ps.player_id = tp.player_id
             LEFT JOIN player_skills sk ON sk.player_id = tp.player_id
             LEFT JOIN LATERAL (
                 SELECT COUNT(DISTINCT pss.season_id) AS seasons
@@ -105,9 +144,10 @@ class JerseyRepository:
                   AND NOT pss.is_postseason
             ) s ON TRUE
             WHERE tp.team_id = %s AND tp.jersey_number IS NULL
+              AND ps.status = ANY(%s)
             ORDER BY COALESCE(s.seasons, 0) DESC, sk.age DESC NULLS LAST, tp.player_id
             """,
-            (team_id,),
+            (team_id, list(jn.NUMBERED_STATUSES)),
         ).fetchall()
         if not rows:
             return
@@ -117,6 +157,8 @@ class JerseyRepository:
             n = jn.open_number(
                 jn.clean_prefs(r["jersey_prefs"], r["player_id"]), taken, rng
             )
+            if n is None:
+                return
             taken.add(n)
             self._set(team_id, r["player_id"], n)
 
