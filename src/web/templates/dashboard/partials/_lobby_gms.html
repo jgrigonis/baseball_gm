@@ -37,7 +37,7 @@
         <tr {% if gm.id == current_gm_id %}class="my-team"{% endif %}>
           <td class="team-name">{% if gm.username %}<a href="/gms/{{ gm.username|urlencode }}" class="gm-link" title="GM profile">{{ gm.display_name }}</a>{% else %}{{ gm.display_name }}{% endif %}</td>
           <td>
-            {% if gm.id == current_gm_id and league_state == "lobby" and gm.lobby_city %}
+            {% if gm.id == current_gm_id and league_state == "lobby" and not starting and gm.lobby_city %}
             <span style="white-space:nowrap;">{{ team_badge(gm.lobby_city, gm.lobby_mascot) }}
             <select name="team" class="lobby-team-pick" aria-label="Your team"
                     title="Pick the team you'll run. Taking an AI GM's team gives them yours; a team not yet in the league comes in for a nearby one."
@@ -84,7 +84,7 @@
           <td>{{ lobby_team(ai.lobby_city, ai.lobby_mascot) }}</td>
           <td style="white-space:nowrap;">
             <span class="badge badge-pill badge-40man">AI</span>
-            {% if is_commissioner %}
+            {% if is_commissioner and not starting %}
             <button type="button" class="btn btn-primary reroll-btn"
                     style="padding:3px 10px;font-size:11px;margin-left:10px;"
                     title="Swap this AI GM for another persona"

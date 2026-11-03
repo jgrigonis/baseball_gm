@@ -54,14 +54,20 @@ def give_persona(conn, league_id: str, gm_id: str, rng: random.Random) -> None:
     assign(conn, gm_id, pick(conn, league_id, rng))
 
 
-def lobby_ai_gms(conn, league_id: str) -> list[dict]:
+def lobby_ai_gms(conn, league_id: str, seated: bool = False) -> list[dict]:
     """The AI GMs waiting in the lobby for a team, oldest first, with their
-    persona's archetype."""
+    persona's archetype. ``seated`` also lists the ones already given their
+    team, as the league's start does partway through (and commits) while
+    the league is still in the lobby; their team stands in for a lobby team
+    they lack (new ones the start brought in)."""
     rows = conn.execute(
-        """SELECT g.id, g.display_name, g.persona_id, p.archetype,
-                  g.lobby_city, g.lobby_mascot
+        f"""SELECT g.id, g.display_name, g.persona_id, p.archetype,
+                  COALESCE(g.lobby_city, t.city) AS lobby_city,
+                  COALESCE(g.lobby_mascot, t.mascot) AS lobby_mascot
            FROM gms g LEFT JOIN gm_personas p ON p.id = g.persona_id
-           WHERE g.league_id = %s AND g.is_ai AND g.team_id IS NULL
+                      LEFT JOIN teams t ON t.id = g.team_id
+           WHERE g.league_id = %s AND g.is_ai
+                 {"" if seated else "AND g.team_id IS NULL"}
            ORDER BY g.created_at, g.id""",
         (league_id,),
     ).fetchall()

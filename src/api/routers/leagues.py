@@ -591,8 +591,13 @@ def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
     }
     for g in humans:
         g["username"] = usernames.get(g["id"])
-    ai_gms = personas.lobby_ai_gms(gm_repo.conn, league["id"])
+    # While the league is starting, the start gives the AI GMs their teams
+    # and commits well before the league leaves the lobby, so the list keeps
+    # them, and nobody can reroll one or pick another team by then.
+    starting = sim_jobs.league_has_job(gm_repo.conn, league["id"])
+    ai_gms = personas.lobby_ai_gms(gm_repo.conn, league["id"], seated=starting)
     return {
+        "starting": starting,
         "league_id": league["id"],
         "league_state": league["state"],
         "gms": humans,
@@ -623,7 +628,9 @@ def reroll_lobby_gm(
         return HTMLResponse("", headers={"HX-Redirect": f"/leagues/{league_id}/"})
     if league["commissioner_gm_id"] != gm["id"]:
         return HTMLResponse("Only the commissioner can do that.", status_code=403)
-    if not personas.reroll(db, league_id, ai_gm_id):
+    if sim_jobs.league_has_job(db, league_id):
+        pass  # the league is starting: the list shows the GMs as they stand
+    elif not personas.reroll(db, league_id, ai_gm_id):
         return HTMLResponse("No such AI GM in the lobby.", status_code=404)
     db.commit()
     return templates.TemplateResponse(
@@ -649,7 +656,9 @@ def pick_lobby_team(
     if not league or league["state"] != "lobby":
         return HTMLResponse("", headers={"HX-Redirect": f"/leagues/{league_id}/"})
     city, _, mascot = team.partition("|")
-    if lobby_teams.pick(db, league_id, str(gm["id"]), city, mascot):
+    if sim_jobs.league_has_job(db, league_id):
+        pass  # the league is starting: teams are being handed out
+    elif lobby_teams.pick(db, league_id, str(gm["id"]), city, mascot):
         db.commit()
     else:
         db.rollback()
