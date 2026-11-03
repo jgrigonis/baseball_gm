@@ -454,6 +454,45 @@
   background: var(--bg-3); border: 1px solid var(--border); color: var(--text);
   font-family: var(--font-mono); font-size: 10px; padding: 2px 4px;
 }
+
+/* ── Phones: the order above the roster, the rotation above the bullpen ─────── */
+/* The page scrolls as one, instead of each column scrolling on its own, and
+   the buttons get big enough for a thumb. Adding, removing and reordering
+   all work by tap (+, ×, ▲▼); a reliever joins the rotation from his role
+   menu. */
+@media (max-width: 700px) {
+  .lu-pane { height: auto; overflow: visible; }
+  .lu-cols { grid-template-columns: minmax(0, 1fr); height: auto; overflow: visible; padding: 10px 12px 72px; }
+  .lu-col-body { overflow: visible; }
+  .lu-col-hdr { flex-wrap: wrap; gap: 6px; }
+  .lu-col-hdr .spacer { flex: 1 0 100%; height: 0; }
+  .lu-col-hdr .btn { margin-right: 0 !important; font-size: 11px !important; padding: 6px 10px !important; }
+  .lu-tab { padding: 8px 12px; }
+  /* Sort menus share one full-width row */
+  .lu-col-hdr > div:has(> select) { flex: 1 1 100%; min-width: 0; }
+  .lu-col-hdr select { flex: 1 1 0; min-width: 0; }
+  .lu-slot { grid-template-columns: 16px 26px 22px 30px minmax(0, 1fr) auto 0 26px; gap: 0 5px; padding: 7px 6px; }
+  /* The position menu says where he plays, so the order skips the fielding line */
+  .lu-slot .lu-skills + .lu-skills { display: none; }
+  .lu-arrows { gap: 6px; }
+  .lu-arrow, .rot-arrow { font-size: 13px; padding: 2px 6px; color: var(--text-dim); }
+  .lu-remove { font-size: 18px; padding: 4px; }
+  .lu-pos-select { width: 50px; font-size: 11px; padding: 5px 2px; }
+  .lu-roster-card { padding: 8px; }
+  .lu-add-btn { font-size: 16px; padding: 6px 11px; }
+  .rot-slot { grid-template-columns: 16px 16px 22px 30px minmax(0, 1fr) auto 0 26px; gap: 0 5px; padding: 8px 6px; }
+  .bp-card { padding: 8px; }
+  .bp-role-select { font-size: 12px; padding: 6px 4px; }
+  /* Unsaved changes: the batting bar pins to the bottom of the screen; the
+     rotation and bullpen bars stick to the bottom of their own section. */
+  #bat-unsaved-banner {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0 !important;
+    padding: 10px 12px !important; border-width: 1px 0 0 !important;
+  }
+  #rot-unsaved-banner, #bp-unsaved-banner { position: sticky; bottom: 0; z-index: 5; order: 9; margin: 0 !important; }
+  #bat-unsaved-banner > span, #rot-unsaved-banner > span, #bp-unsaved-banner > span { flex: 1; }
+  #bat-unsaved-banner .btn, #rot-unsaved-banner .btn, #bp-unsaved-banner .btn { font-size: 11px !important; padding: 7px 12px !important; }
+}
 </style>
 
 <script>
@@ -669,7 +708,7 @@ function renderBattingOrder() {
         <div style="border:1px dashed var(--border);border-radius:3px;height:28px;
                     display:flex;align-items:center;padding-left:10px;
                     font-family:var(--font-mono);font-size:11px;color:var(--muted);">
-          drag player here
+          drag a player here, or tap +
         </div>`;
     }
 
@@ -1067,7 +1106,7 @@ let _rotDragIdx = null;
 function _makeRotDropZone(insertIdx) {
   const zone = document.createElement('div');
   zone.className = 'rot-drag-zone';
-  zone.textContent = 'drag pitcher here';
+  zone.textContent = 'drag a pitcher here, or pick Starter in his role menu';
   zone.addEventListener('dragover', e => {
     const hasPid = e.dataTransfer.types.includes('rot-pid') || e.dataTransfer.types.includes('bp-pid');
     if (!hasPid) return;
@@ -1335,7 +1374,9 @@ function renderBullpen() {
   allPitchers.forEach(p => {
     const isStarter = inRot.has(p.player_id);
     const role = isStarter ? 'Starter' : (bullpen[p.player_id] || '');
-    const roleOpts = (isStarter ? ['Starter'] : ['', ...ROLES])
+    // A reliever's menu ends with Starter, which moves him into the rotation
+    // (handleBullpenRoleChange): the tap way to do what dragging him does.
+    const roleOpts = (isStarter ? ['Starter'] : ['', ...ROLES, 'Starter'])
       .map(r => `<option value="${r}" ${role===r?'selected':''}>${r||'— role —'}</option>`)
       .join('');
 
