@@ -299,7 +299,7 @@
 
 /* ── Player cards ────────────────────────────────────────────────────────────── */
 .r-card {
-  display: grid; grid-template-columns: 28px 1fr auto;
+  display: grid; grid-template-columns: 28px 36px 1fr auto;
   gap: 0 8px; align-items: center;
   padding: 7px 10px; border-bottom: 1px solid var(--border);
   cursor: grab; user-select: none; transition: background .08s;
@@ -500,6 +500,7 @@ function makeCard(p, isIn40) {
     : p.stat_avg != null ? `<span>${p.stat_g}G</span> ${hitterStatsHtml(p)}` : '';
   el.innerHTML = `
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+    ${faceImgHtml(p, false)}
     <div style="min-width:0;">
       <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`, ...salaryPiece(p)], stats)}${ilTag(p)}${rustTag(p)}</div>
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}

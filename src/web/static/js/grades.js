@@ -26,11 +26,12 @@ function playerGradesHtml(p) {
 }
 
 // A small face for a player row (face_url in src/player/face.py); clicking it
-// opens the player panel, where the face can be seen bigger.
-function faceImgHtml(p) {
+// opens the player panel, where the face can be seen bigger. Rows that open
+// the panel on any click themselves pass clickable=false.
+function faceImgHtml(p, clickable = true) {
   if (!p.face_url) return '<span></span>';
-  return `<img class="lu-face" src="${p.face_url}" alt="" loading="lazy" width="36" height="36"
-               onclick="openPlayerPanel('${p.player_id}')">`;
+  const click = clickable ? ` onclick="openPlayerPanel('${p.player_id}')"` : '';
+  return `<img class="lu-face" src="${p.face_url}" alt="" loading="lazy" width="36" height="36"${click}>`;
 }
 
 /* ── Player rows (Lineup and Roster tabs) ─────────────────────────────────────
