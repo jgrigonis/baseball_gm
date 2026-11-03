@@ -599,8 +599,9 @@ CREATE TABLE IF NOT EXISTS team_players (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_team_players_jersey
-    ON team_players (team_id, jersey_number) WHERE jersey_number IS NOT NULL;
+-- idx_team_players_jersey (unique team_id + jersey_number) is created by
+-- migration 59, not here: this file runs before migrations, and on an older
+-- database team_players doesn't have jersey_number yet.
 
 CREATE TABLE IF NOT EXISTS team_rotations (
     team_id TEXT NOT NULL,
