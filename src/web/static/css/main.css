@@ -837,6 +837,10 @@ input, select, textarea {
   transition: border-color 0.12s;
   width: 100%;
 }
+/* Checkboxes and radios keep their own size: the text-box rule above would
+   stretch them to full width (iOS Safari draws that as a wide box with its
+   label pushed far away). */
+input[type=checkbox], input[type=radio] { width: auto; padding: 0; flex: none; margin: 0; }
 input:focus, select:focus, textarea:focus { border-color: var(--amber); }
 select option { background: var(--bg-3); }
 textarea { resize: vertical; min-height: 80px; }
