@@ -7,6 +7,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.config import settings
 from src.player.injury_types import injury_label
 from src.api.services import all_star, trades
 from src.api.services.coach import coach_ctx, mark_visit
@@ -71,6 +72,7 @@ def static_url(path: str) -> str:
 
 
 templates.env.globals["static_url"] = static_url
+templates.env.globals["discord_url"] = settings.discord_url
 
 
 def render(name: str, context: dict) -> HTMLResponse:

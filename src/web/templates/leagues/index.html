@@ -102,6 +102,10 @@
   <div style="{{ empty_style }}">None of your leagues have finished yet.</div>
   {% endif %}
 
+  {% if discord_url %}
+  <p class="discord-note">Questions, bugs or ideas? <a href="{{ discord_url }}" target="_blank" rel="noopener">Join us on Discord ↗</a></p>
+  {% endif %}
+
 </div></div>
 
 <style>
@@ -124,6 +128,8 @@
 .tab-count { color: var(--muted); margin-left: 4px; }
 .tab-link.active .tab-count { color: var(--amber-dim); }
 .tutorial-intro, .join-code-card { margin-bottom: 16px; }
+.discord-note { margin: 24px 0 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+.discord-note a { color: var(--amber); }
 .tutorial-intro p { font-size: 13px; line-height: 1.7; color: var(--text-dim); margin: 0 0 14px; max-width: 640px; }
 .tutorial-intro p.tutorial-reset { margin: 14px 0 0; font-size: 12px; }
 .link-btn { background: none; border: none; padding: 0; color: var(--amber); cursor: pointer; font: inherit; text-decoration: underline; }

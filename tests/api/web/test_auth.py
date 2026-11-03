@@ -73,6 +73,14 @@ class TestPages:
         assert 'action="/auth/register"' not in r.text
         assert 'href="/signup"' in r.text
 
+    def test_discord_is_linked_from_sign_in_and_leagues(self, client):
+        from src.config import settings
+
+        assert settings.discord_url in client.get("/").text
+        _register(client, _name())
+        page = client.get("/leagues/").text
+        assert page.count(settings.discord_url) == 2  # the menu and the page
+
     def test_signup_page_links_back_to_sign_in(self, client):
         r = client.get("/signup")
         assert r.status_code == 200
