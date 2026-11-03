@@ -13,7 +13,7 @@
          value="{{ s.index }}" data-labels="{{ s.labels | tojson | forceescape }}"
          oninput="updateLabel(this)">
   <div class="ss-ends"><span>{{ s.ends[0] }}</span><span>{{ s.ends[1] }}</span></div>
-  <p class="ss-hint">{{ s.hint }}</p>
+  <p class="ss-hint" onclick="this.classList.toggle('open')">{{ s.hint }}</p>
 </div>
 {% endmacro %}
 {% macro card(title, settings) %}
@@ -38,30 +38,30 @@
         hx-swap="innerHTML"
         id="strategy-form">
 
-    <div class="grid-2" style="gap: 24px; align-items: start;">
+    <div class="grid-2 strategy-grid" style="gap: 24px; align-items: start;">
 
       {# ── Batting and platoon ──────────────────────────────────────────────── #}
-      <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="strategy-col" style="display: flex; flex-direction: column; gap: 16px;">
         {% for title, settings in cards if title in ("Batting", "Platoon", "Scouting") %}
           {{ card(title, settings) }}
         {% endfor %}
       </div>
 
       {# ── Pitching and rotation ────────────────────────────────────────────── #}
-      <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="strategy-col" style="display: flex; flex-direction: column; gap: 16px;">
         {% for title, settings in cards if title in ("Pitching", "Rotation") %}
           {{ card(title, settings) }}
         {% endfor %}
 
         {# Save + feedback #}
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="strategy-save" style="display: flex; align-items: center; gap: 12px;">
           <button type="submit" class="btn btn-primary">Save Strategy</button>
           <span id="strategy-feedback"
                 style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
           </span>
         </div>
 
-        <div class="card" style="border-color: var(--amber-dim);">
+        <div class="card strategy-help" style="border-color: var(--amber-dim);">
           <div class="card-body">
             <p style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.8;">
               <span style="color: var(--amber);">How these work:</span> Each setting changes the odds of a
@@ -86,6 +86,29 @@
 .ss-value { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--amber); min-width: 120px; text-align: right; }
 .ss-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: -2px; }
 .ss-hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.7; }
+
+/* ── Phones: one column, short hints, bigger thumbs, Save pinned at the bottom ── */
+@media (max-width: 700px) {
+  /* The two columns dissolve into one grid so Save can sit last and stick. */
+  .strategy-grid { gap: 16px !important; }
+  .strategy-col { display: contents !important; }
+  .strategy-help { order: 98; }
+  .strategy-save {
+    order: 99; position: sticky; bottom: 0; z-index: 10;
+    margin: 0 -16px; padding: 10px 16px; background: var(--bg-2);
+    border-top: 1px solid var(--border-hi);
+  }
+  .strategy-save .btn { padding: 10px 16px; }
+  /* Hints show two lines; a tap opens the rest. */
+  .ss-hint {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; cursor: pointer;
+  }
+  .ss-hint.open { display: block; }
+  #strategy-form input[type=range] { height: 6px; margin: 10px 0 6px; }
+  #strategy-form input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; }
+  #strategy-form input[type=range]::-moz-range-thumb { width: 26px; height: 26px; }
+}
 
 input[type=range] {
   -webkit-appearance: none;
@@ -118,5 +141,7 @@ input[type=range]::-moz-range-thumb {
 function updateLabel(input) {
   const labels = JSON.parse(input.dataset.labels);
   document.getElementById('val-' + input.name).textContent = labels[parseInt(input.value)];
+  const fb = document.getElementById('strategy-feedback');
+  if (fb) fb.innerHTML = '<span style="color:var(--amber);">Not saved yet</span>';
 }
 </script>
