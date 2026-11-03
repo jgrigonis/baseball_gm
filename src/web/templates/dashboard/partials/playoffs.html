@@ -82,11 +82,30 @@
   letter-spacing:.08em;text-transform:uppercase;
   text-align:center;margin-bottom:12px;
 }
+/* Phones: the rounds stack, one full-width list each, with no sideways
+   scroll. The !importants beat the bracket's inline sizes. */
+@media (max-width: 700px) {
+  .po-wrap { padding: 12px 16px 24px !important; overflow: visible !important; }
+  .po-bracket { display: block !important; min-width: 0 !important; }
+  .po-lines, .po-gap { display: none !important; }
+  .po-round { height: auto !important; width: auto !important; gap: 10px; margin-bottom: 22px; }
+  .po-round .round-label {
+    position: static !important; width: auto !important;
+    text-align: left; margin: 0 0 2px; color: var(--amber);
+  }
+  .series-card { width: auto; }
+  .sc-team { padding: 10px 12px; }
+  .sc-name { font-size: 14px; max-width: none; }
+  .dot-win, .dot-loss, .dot-empty { width: 12px; height: 12px; }
+  .sc-dots { gap: 5px; }
+}
 </style>
 
 {% macro series_card(s, my_team_id) %}
 <div class="series-card{% if s.decided %} decided{% endif %}{% if s.teams | selectattr('is_mine') | list %} mine{% endif %}">
-  <div class="sc-header">{{ s.label or s.name }} · BO{{ s.best_of }}</div>
+  {# A semifinal has no label until its teams are known; don't show its raw
+     "[1,8]v[4,5]" name. #}
+  <div class="sc-header">{{ s.label or ('Semifinal' if s.name.startswith('[') else s.name) }} · BO{{ s.best_of }}</div>
   {% if s.teams %}
     {% for t in s.teams %}
     {% set win_game_ids = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | map(attribute='id') | list %}
@@ -113,7 +132,7 @@
     </div>
     {% endfor %}
   {% else %}
-    <div class="sc-tbd">{% if s.name in ['1v8','4v5','2v7','3v6'] %}TBD{% else %}Winner of {{ s.name }}{% endif %}</div>
+    <div class="sc-tbd">{% if s.name in ['1v8','4v5','2v7','3v6'] %}TBD{% elif s.name == 'Finals' %}Winners of the semifinals{% else %}Winners of round 1{% endif %}</div>
   {% endif %}
 </div>
 {% endmacro %}
@@ -130,12 +149,12 @@
 {# Semi centers (space-around, 2 cards): 140, 420                               #}
 {# Finals center: 280                                                            #}
 
-<div style="padding:24px;overflow-x:auto;">
-<div style="position:relative;display:inline-flex;align-items:stretch;gap:0;min-width:760px;">
+<div class="po-wrap" style="padding:24px;overflow-x:auto;">
+<div class="po-bracket" style="position:relative;display:inline-flex;align-items:stretch;gap:0;min-width:760px;">
 
   {# ── SVG bracket connector lines ────────────────────────────────────────── #}
   {# Rendered as absolute overlay, pointer-events:none                         #}
-  <svg style="position:absolute;top:0;left:0;width:100%;height:560px;
+  <svg class="po-lines" style="position:absolute;top:0;left:0;width:100%;height:560px;
               pointer-events:none;overflow:visible;"
        preserveAspectRatio="none">
     {# R1 right edge x=220, connector mid x=236, Semi left edge x=252 #}
@@ -152,7 +171,7 @@
   </svg>
 
   {# ── Round 1 ─────────────────────────────────────────────────────────────── #}
-  <div style="display:flex;flex-direction:column;justify-content:space-around;
+  <div class="po-round" style="display:flex;flex-direction:column;justify-content:space-around;
               height:560px;width:220px;flex-shrink:0;">
     <div class="round-label" style="position:absolute;top:-20px;left:0;width:220px;">Round 1</div>
     {% set r1 = bracket[0] %}
@@ -160,10 +179,10 @@
   </div>
 
   {# ── Connector 1 ─────────────────────────────────────────────────────────── #}
-  <div style="width:32px;flex-shrink:0;"></div>
+  <div class="po-gap" style="width:32px;flex-shrink:0;"></div>
 
   {# ── Semifinals ───────────────────────────────────────────────────────────── #}
-  <div style="display:flex;flex-direction:column;justify-content:space-around;
+  <div class="po-round" style="display:flex;flex-direction:column;justify-content:space-around;
               height:560px;width:220px;flex-shrink:0;">
     <div class="round-label" style="position:absolute;top:-20px;left:252px;width:220px;">Semifinals</div>
     {% set r2 = bracket[1] %}
@@ -171,10 +190,10 @@
   </div>
 
   {# ── Connector 2 ─────────────────────────────────────────────────────────── #}
-  <div style="width:32px;flex-shrink:0;"></div>
+  <div class="po-gap" style="width:32px;flex-shrink:0;"></div>
 
   {# ── Finals ────────────────────────────────────────────────────────────────── #}
-  <div style="display:flex;flex-direction:column;justify-content:center;
+  <div class="po-round" style="display:flex;flex-direction:column;justify-content:center;
               height:560px;width:220px;flex-shrink:0;">
     <div class="round-label" style="position:absolute;top:-20px;left:504px;width:220px;">Finals</div>
     {% set r3 = bracket[2] %}
