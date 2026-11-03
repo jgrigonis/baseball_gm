@@ -1615,6 +1615,10 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   .line-score th { padding: 0 1px; }
   .line-score td.tile { min-width: 20px; height: 28px; padding: 0 1px; font-size: 16px; }
 
+  /* Play Day / Until Injury / Full Season: one short row each, and the
+     Ignore trades box wraps to the next line instead of off the screen. */
+  .play-bar .btn { white-space: nowrap; padding: 7px 10px !important; font-size: 11px !important; }
+
   /* The box score takes the whole screen, like the player panel. */
   #game-panel { width: 100vw !important; height: 100dvh !important; }
 }
