@@ -15,6 +15,7 @@ from src.api.view_models.player_cards import (
     attach_roster_stats,
     roster_card,
 )
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -70,6 +71,18 @@ def roster(
         inj.get_team_injury_types(team_id),
         inj.get_rust([p["player_id"] for p in players]),
     )
+
+    # Contracts: each player's salary this season, and the team's payroll.
+    ctx["payroll_text"] = None
+    contracts = ContractRepository(db)
+    year = contracts.current_year(league_id)
+    if team_id and year is not None:
+        deals = contracts.active_for([p["player_id"] for p in players], year)
+        for p in players:
+            deal = deals.get(p["player_id"])
+            p["salary_text"] = format_salary(deal["salary"]) if deal else None
+            p["rookie_deal"] = bool(deal and deal["kind"] == "rookie")
+        ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
     ctx["players"] = players
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 
