@@ -524,7 +524,7 @@ class PlayerGameRepository:
 
     def get_league_fielding_by_position(self, season_id: str) -> list[dict]:
         """Season fielding totals per player and position across the league
-        (pitchers and DH excluded), for the defensive leaderboards."""
+        (DH excluded), for the defensive leaderboards."""
         return self.conn.execute(
             """SELECT p.first_name || ' ' || p.last_name AS name,
                       pgf.player_id, pgf.position,
@@ -542,7 +542,7 @@ class PlayerGameRepository:
                JOIN player_game_stats pgs
                     ON pgs.game_id = pgf.game_id AND pgs.player_id = pgf.player_id
                JOIN teams t   ON t.id   = pgs.team_id
-               WHERE gm.season_id = %s AND pgf.position NOT IN ('p', 'dh')
+               WHERE gm.season_id = %s AND pgf.position != 'dh'
                GROUP BY pgf.player_id, pgf.position, pgs.team_id,
                         p.first_name, p.last_name, t.city, t.mascot""",
             (season_id,),

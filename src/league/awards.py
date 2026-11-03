@@ -51,6 +51,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.stats import qualifiers
+
 
 @dataclass(frozen=True)
 class Award:
@@ -85,8 +87,8 @@ REGULAR = [a.key for a in AWARDS if a.key not in ("semis_mvp", "finals_mvp")]
 ROOKIE_AB = 130
 ROOKIE_OUTS = 150
 # Batting title: plate appearances per team game. ERA title: outs per game.
-BATTING_TITLE_PA = 3.1
-ERA_TITLE_OUTS = 3.0
+BATTING_TITLE_PA = qualifiers.BAT_PA_PER_GAME
+ERA_TITLE_OUTS = 3 * qualifiers.PITCH_IP_PER_GAME
 # Edgar Martinez: share of a player's starts that were at DH.
 DH_SHARE = 0.5
 
@@ -179,8 +181,9 @@ def is_hitter(c: dict) -> bool:
 
 
 def is_reliever(c: dict) -> bool:
-    g = _n(c, "pitch_games_played")
-    return g > 0 and 2 * _n(c, "pitch_games_started") < g
+    return qualifiers.is_reliever(
+        _n(c, "pitch_games_played"), _n(c, "pitch_games_started")
+    )
 
 
 @dataclass
