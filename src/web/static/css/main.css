@@ -112,6 +112,7 @@ body {
   flex-shrink: 0;
 }
 .topbar-logo span { color: var(--text-dim); font-size: 14px; font-family: var(--font-mono); margin-left: 4px; }
+.topbar-logo .topbar-logo-word { color: inherit; font: inherit; margin: 0; }
 
 .topbar-league {
   font-family: var(--font-mono);
@@ -179,8 +180,10 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 @media (max-width: 600px) {
-  /* Pin the panel to the screen so it doesn't run off the right edge. */
-  .league-info-panel { position: fixed; left: 16px; right: 16px; top: 56px; width: auto; max-width: none; }
+  /* Hang the panel from the whole top bar, which can wrap to two rows
+     here, so it doesn't run off the right edge. */
+  .league-info { position: static; }
+  .league-info-panel { left: 16px; right: 16px; top: calc(100% + 4px); width: auto; max-width: none; }
 }
 .league-info-panel .data-table td { font-size: 12px; padding: 5px 4px; }
 .league-info-more {
@@ -206,45 +209,91 @@ body {
 a.topbar-team { text-decoration: none; }
 a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 3px; }
 
-.topbar-nav, .topbar-nav form { display: flex; align-items: center; }
-.topbar-nav a {
+/* Site links sit in a hamburger menu at the right end of the top bar
+   (base.html), at every screen size. */
+.nav-menu { position: relative; flex-shrink: 0; }
+/* While the menu or the season pill's panel is open, lift the whole bar so
+   its dropdown covers fixed panels such as the tutorial coach. */
+.topbar:has(details[open]) { z-index: 400; }
+.nav-menu > summary { list-style: none; cursor: pointer; user-select: none; }
+.nav-menu > summary::-webkit-details-marker { display: none; }
+.nav-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  transition: color 0.1s, border-color 0.1s;
+}
+.nav-menu-btn:hover, .nav-menu[open] > .nav-menu-btn { color: var(--text); border-color: var(--border-hi); }
+.nav-menu-bars { display: flex; flex-direction: column; gap: 4px; width: 16px; }
+.nav-menu-bars span { display: block; height: 2px; background: currentColor; transition: transform 0.15s, opacity 0.15s; }
+/* The bars turn into an X while the menu is open. */
+.nav-menu[open] .nav-menu-bars span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-menu[open] .nav-menu-bars span:nth-child(2) { opacity: 0; }
+.nav-menu[open] .nav-menu-bars span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+.nav-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 200;
+  min-width: 180px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-hi);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px 0;
+}
+.nav-menu-group { display: flex; flex-direction: column; padding: 4px 0; }
+.nav-menu-group + .nav-menu-group { border-top: 1px solid var(--border); }
+.nav-menu-user {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  padding: 6px 16px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-menu-panel a, .topbar-signout {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
   color: var(--text-dim);
   text-decoration: none;
-  letter-spacing: 0.06em;
-  padding: 4px 8px;
-  transition: color 0.1s;
-}
-.topbar-nav a:hover { color: var(--text); }
-.topbar-signout {
+  white-space: nowrap;
+  padding: 8px 16px;
   background: none;
   border: none;
   cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: 0.06em;
-  padding: 4px 8px 4px 0;
+  transition: color 0.1s, background 0.1s;
 }
-.topbar-signout:hover { color: var(--text); }
-/* A dot between each top-right link. A link's left padding gives way to
-   the dot so the gap is even on both sides. */
-.topbar-nav > * + *::before {
-  content: "\2022";
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-right: 8px;
-}
-.topbar-nav > a + a { padding-left: 0; }
-.topbar-nav a, .topbar-signout { white-space: nowrap; }
+.nav-menu-panel a:hover, .topbar-signout:hover { color: var(--text); background: var(--bg-3, rgba(255,255,255,0.04)); }
+.nav-menu-panel form { margin: 0; }
 @media (max-width: 600px) {
-  /* No room for every link: Account is a button on your own profile. */
-  .topbar-nav .topbar-account { display: none; }
   .topbar { padding: 0 16px; gap: 12px; }
-  .topbar-nav a, .topbar-signout { padding-left: 4px; padding-right: 4px; }
-  .topbar-nav > * + *::before { margin-right: 4px; }
+  /* Keep the menu button on screen. Inside a league the logo is just the
+     ball, and the bar wraps: logo, league name and menu on top, then the
+     season pill, date and team badge on a second row. */
+  .app-shell { grid-template-rows: auto 1fr; }
+  .topbar { flex-wrap: wrap; row-gap: 8px; min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
+  /* The logo takes the whole first row but the menu button's width + gap. */
+  .topbar-logo { flex: 1 1 calc(100% - 46px); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-logo-word.in-league { display: none; }
+  .topbar > * { order: 2; }
+  .topbar > .topbar-logo { order: 0; }
+  .topbar > .nav-menu { order: 1; }
+  .topbar-spacer { display: none; }
+  .topbar-state + .topbar-date, .league-info + .topbar-date { margin-left: 0; }
+  .topbar-team { margin-left: auto; }
+  .topbar-team > span:not(.team-badge) { display: none; }
+  .nav-menu-panel a, .topbar-signout { padding: 11px 16px; font-size: 13px; }
 }
 
 /* ── Sim Bar ────────────────────────────────────────────────────────────────── */
