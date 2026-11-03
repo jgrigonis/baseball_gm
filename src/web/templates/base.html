@@ -22,7 +22,7 @@
 
   <header class="topbar">
     <span class="topbar-logo">
-      <a href="/leagues/" style="color:inherit;text-decoration:none;">⚾ Baseball GM</a>
+      <a href="/leagues/" style="color:inherit;text-decoration:none;">⚾<span class="topbar-logo-word{% if league_name %} in-league{% endif %}"> Baseball GM</span></a>
       {% if league_name %}
         <span style="color:var(--text-dim);margin:0 4px;">/</span>
         {% if is_commissioner %}
@@ -121,17 +121,46 @@
       {% if league_id %}</a>{% else %}</div>{% endif %}
     {% endif %}
     {% set nav_user = user or (request.state.user if request is defined else none) %}
-    <nav class="topbar-nav">
-      <a href="/leagues/">Leagues</a>
-      {% if nav_user and nav_user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
-      {% if league_info %}<a href="/leagues/{{ league_id }}/league">League</a>{% endif %}
-      {% if league_id %}<a href="/leagues/{{ league_id }}/history">History</a>{% endif %}
-      {% if nav_user and nav_user.username %}<a href="/gms/{{ nav_user.username|urlencode }}">Profile</a>{% endif %}
-      {% if nav_user and nav_user.has_password %}<a href="/account" class="topbar-account">Account</a>{% endif %}
-      <form method="POST" action="/auth/logout">
-        <button type="submit" class="topbar-signout">Sign Out</button>
-      </form>
-    </nav>
+    {# Site links live in a hamburger menu at every screen size, grouped:
+       this league's pages, then the whole site, then your own account. #}
+    <details class="nav-menu" id="nav-menu">
+      <summary class="nav-menu-btn" title="Menu" aria-label="Menu">
+        <span class="nav-menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+      </summary>
+      <nav class="nav-menu-panel topbar-nav">
+        {% if league_id %}
+          <div class="nav-menu-group">
+            {% if league_info %}<a href="/leagues/{{ league_id }}/league">League</a>{% endif %}
+            <a href="/leagues/{{ league_id }}/history">History</a>
+          </div>
+        {% endif %}
+        <div class="nav-menu-group">
+          <a href="/leagues/">Leagues</a>
+          {% if nav_user and nav_user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
+        </div>
+        <div class="nav-menu-group">
+          {% if nav_user and nav_user.username %}
+            <div class="nav-menu-user">{{ nav_user.username }}</div>
+            <a href="/gms/{{ nav_user.username|urlencode }}">Profile</a>
+          {% endif %}
+          {% if nav_user and nav_user.has_password %}<a href="/account" class="topbar-account">Account</a>{% endif %}
+          <form method="POST" action="/auth/logout">
+            <button type="submit" class="topbar-signout">Sign Out</button>
+          </form>
+        </div>
+      </nav>
+    </details>
+    <script>
+    // Close the menu on a click outside it, or Escape.
+    document.addEventListener('click', function(e) {
+      var d = document.getElementById('nav-menu');
+      if (d && d.open && !d.contains(e.target)) d.open = false;
+    });
+    document.addEventListener('keydown', function(e) {
+      var d = document.getElementById('nav-menu');
+      if (e.key === 'Escape' && d && d.open) { d.open = false; d.querySelector('summary').focus(); }
+    });
+    </script>
   </header>
 
   <main id="main-content">
