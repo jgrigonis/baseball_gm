@@ -51,11 +51,17 @@
 
 </div>
 
+{# Phones show one column at a time: this toggle picks which. #}
+<div class="roster-seg" role="tablist" aria-label="Which list">
+  <button type="button" class="on" data-col="40" onclick="showRosterCol('40')">40-Man <b id="seg-40-count"></b></button>
+  <button type="button" data-col="org" onclick="showRosterCol('org')">Organization <b id="seg-org-count"></b></button>
+</div>
+
 {# ── Two-column layout ─────────────────────────────────────────────────────── #}
 <div class="roster-cols">
 
   {# ── Left: 40-Man ─────────────────────────────────────────────────────────── #}
-  <div class="roster-col-wrap">
+  <div class="roster-col-wrap" data-col="40">
     <div class="roster-col-hdr">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
         <span class="r-col-label" style="color:var(--amber);">40-Man Roster</span>
@@ -146,7 +152,7 @@
   </div>
 
   {# ── Right: Organization ───────────────────────────────────────────────────── #}
-  <div class="roster-col-wrap">
+  <div class="roster-col-wrap phone-off" data-col="org">
     <div class="roster-col-hdr">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
         <span class="r-col-label" style="color:var(--text-dim);">Organization</span>
@@ -321,6 +327,34 @@
 .r-action-btn.add-btn:hover  { background: var(--green-dim); border-color: var(--green); }
 .r-action-btn.rem-btn  { color: var(--red); }
 .r-action-btn.rem-btn:hover  { background: rgba(255,80,80,.08); border-color: var(--red); }
+
+/* ── Phones: one list at a time, bigger buttons, Save pinned to the bottom ──── */
+.roster-seg { display: none; }
+@media (max-width: 700px) {
+  .roster-seg { display: flex; margin: 10px 12px 0; border: 1px solid var(--border-hi); }
+  .roster-seg button {
+    flex: 1; padding: 9px 6px; border: none; border-right: 1px solid var(--border-hi);
+    background: var(--bg-2); color: var(--text-dim); cursor: pointer;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .roster-seg button:last-child { border-right: none; }
+  .roster-seg button.on { background: var(--amber-lo); color: var(--amber); }
+  .roster-seg b { color: var(--text-hi); margin-left: 6px; font-weight: 600; }
+  .roster-cols { grid-template-columns: minmax(0, 1fr); height: auto; overflow: visible; padding: 10px 12px 72px; }
+  .roster-col-wrap.phone-off { display: none; }
+  .roster-drop-col { overflow: visible; }
+  .roster-col-hdr .r-col-label { display: none; }
+  .drag-zone { display: none; }
+  .r-card { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
+  .r-action-btn { font-size: 16px; padding: 6px 11px; }
+  #roster-header .page-header .btn { padding: 6px 10px; font-size: 11px; }
+  #unsaved-banner {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0 !important;
+    padding: 10px 12px !important; border-width: 1px 0 0 !important;
+  }
+  #unsaved-banner > span { flex: 1; }
+  #unsaved-banner .btn { font-size: 11px !important; padding: 7px 12px !important; }
+}
 </style>
 
 <script>
@@ -627,6 +661,8 @@ function render() {
 
   document.getElementById('empty-40man').style.display = fortyMan.size === 0 ? 'block' : 'none';
   document.getElementById('empty-org').style.display   = orgIds.length === 0  ? 'block' : 'none';
+  document.getElementById('seg-40-count').textContent = fortyMan.size;
+  document.getElementById('seg-org-count').textContent = orgIds.length;
   const fortyCount = document.getElementById('forty-count');
   fortyCount.textContent = `${fortyMan.size} / 40`;
   // An unfilled 40-man shows in bold red so open spots are hard to miss.
@@ -634,6 +670,13 @@ function render() {
   fortyCount.style.color = notFull ? 'var(--red)' : '';
   fortyCount.style.fontWeight = notFull ? '700' : '';
 }
+
+/* ── Phones: which list shows (the other column is hidden) ─────────────────── */
+function showRosterCol(col) {
+  document.querySelectorAll('.roster-seg button').forEach(b => b.classList.toggle('on', b.dataset.col === col));
+  document.querySelectorAll('.roster-col-wrap').forEach(w => w.classList.toggle('phone-off', w.dataset.col !== col));
+}
+window.showRosterCol = showRosterCol;
 
 /* ── Commit helper (save + render + banner) ─────────────────────────────────── */
 function commit() {
