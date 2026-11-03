@@ -162,3 +162,45 @@ def test_migration_backfills_prefs_and_numbers(env):
     assert len(rows) == len(pids)
     assert all(r["jersey_prefs"] and r["jersey_number"] for r in rows)
     assert len({r["jersey_number"] for r in rows}) == len(pids)
+
+
+def test_only_the_40_man_wears_numbers(env):
+    db, factory, league, team = env
+    p = factory.rated_player(team, league, status="minors")
+    assert _join(env, p.id) is None
+    assert JerseyRepository(db).number_of(team.id, p.id) is None
+
+
+def test_call_up_gives_a_number_and_send_down_takes_it(env):
+    from src.db.repositories.player_status_repo import PlayerStatusRepository
+
+    db, factory, league, team = env
+    pid = factory.rated_player(team, league, status="minors").id
+    status = PlayerStatusRepository(db)
+    status.set_status(pid, "40man")
+    assert JerseyRepository(db).number_of(team.id, pid) is not None
+    status.bulk_set({pid: "minors"})
+    assert JerseyRepository(db).number_of(team.id, pid) is None
+
+
+def test_a_huge_organization_never_runs_out(env):
+    db, factory, league, team = env
+    for i in range(110):
+        factory.rated_player(team, league, status="40man" if i < 40 else "minors")
+    JerseyRepository(db).backfill_team(team.id)
+    assert len(JerseyRepository(db).numbers_on_team(team.id)) == 40
+
+
+def test_migration_60_takes_numbers_back_from_minor_leaguers(env):
+    from src.db.migration_files.migration_060_jersey_numbers_40man import upgrade
+
+    db, factory, league, team = env
+    minor = factory.rated_player(team, league, status="minors").id
+    major = factory.rated_player(team, league, status="26man").id
+    db.execute(
+        "UPDATE team_players SET jersey_number = '99' WHERE player_id = %s", (minor,)
+    )
+    upgrade(db)
+    repo = JerseyRepository(db)
+    assert repo.number_of(team.id, minor) is None
+    assert repo.number_of(team.id, major) is not None

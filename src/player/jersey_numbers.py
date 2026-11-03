@@ -8,7 +8,8 @@ becomes 17, 27 or 77). The list is stored on the player (players.jersey_prefs)
 and never changes.
 
 The number he wears belongs to his spot on a team (team_players.jersey_number)
-and no two players on a team share one. When he joins a team he takes the
+and no two players on a team share one. Only the 40-man roster wears numbers.
+When he joins a team's 40-man (signed, traded, drafted and called up) he takes the
 first number on his list nobody is wearing. If a number is held, seniority
 wins and he moves down his list, except that an aging veteran may hand his
 number to a star who just arrived and take one of his own fallbacks.
@@ -53,6 +54,10 @@ NUMBER_WEIGHTS: dict[str, int] = {
 }  # fmt: skip
 
 NUMBERS: tuple[str, ...] = tuple(NUMBER_WEIGHTS)
+
+# Only the major league roster wears numbers: minor leaguers, prospects and
+# free agents don't, so a big organization can't run out of them.
+NUMBERED_STATUSES = ("26man", "40man")
 
 # Favorite plus this many fallbacks.
 FALLBACKS = 5
@@ -132,16 +137,16 @@ def clean_prefs(prefs, player_id: str) -> list[str]:
     return good or prefs_for(player_id)
 
 
-def open_number(prefs: list[str], taken: Collection[str], rng: random.Random) -> str:
+def open_number(
+    prefs: list[str], taken: Collection[str], rng: random.Random
+) -> str | None:
     """The first number on the list nobody is wearing, or, if every one is
-    taken, a free number drawn from the curve."""
+    taken, a free number drawn from the curve. None only if all 101 are
+    taken, which a 40-man roster can't reach."""
     for n in prefs:
         if n not in taken:
             return n
-    pick = _weighted_pick(rng, NUMBER_WEIGHTS, exclude=taken)
-    if pick is None:  # all 101 taken, which a roster never reaches
-        raise ValueError("no jersey numbers left")
-    return pick
+    return _weighted_pick(rng, NUMBER_WEIGHTS, exclude=taken)
 
 
 def choose_number(
@@ -194,6 +199,8 @@ def assign_by_seniority(
     taken: set[str] = set()
     for pid, prefs in players:
         n = open_number(prefs, taken, rng)
+        if n is None:
+            break
         out[pid] = n
         taken.add(n)
     return out

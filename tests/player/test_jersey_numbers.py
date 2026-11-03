@@ -58,6 +58,10 @@ def test_open_number_falls_back_to_any_free_number():
     assert n != "7" and n in jn.NUMBER_WEIGHTS
 
 
+def test_open_number_is_none_when_all_are_taken():
+    assert jn.open_number(["7"], set(jn.NUMBERS), random.Random(1)) is None
+
+
 def test_seniority_keeps_the_number_unless_the_holder_defers():
     rng = random.Random(1)
     holders = {"7": "vet", "17": "other"}

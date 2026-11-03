@@ -2,6 +2,8 @@
 
 from datetime import date
 
+from src.db.repositories.jersey_repo import JerseyRepository
+
 # ------------------------------------------------------------------
 # Repository
 # ------------------------------------------------------------------
@@ -28,7 +30,8 @@ class PlayerStatusRepository:
             """,
             (player_id, status, since_str),
         )
-        # self.conn.commit()
+        # Joining or leaving the 40-man gives or takes a jersey number.
+        JerseyRepository(self.conn).sync([player_id])
 
     def get_status(self, player_id: str) -> str | None:
         """Return the current status for a player, or None if not found."""
@@ -112,4 +115,4 @@ class PlayerStatusRepository:
                 for player_id, status in assignments.items()
             ],
         )
-        # self.conn.commit()
+        JerseyRepository(self.conn).sync(assignments)
