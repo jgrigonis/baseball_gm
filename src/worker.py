@@ -24,8 +24,8 @@ import sys
 import threading
 import time
 
-from src.api.services import sim_jobs
-from src.db.connection import get_connection
+from src.api.services import sim_jobs, turn_alerts
+from src.db.connection import get_connection, rollback_quietly
 from src.db.repositories.sim_job_repo import SimJobRepository
 from src.util.logger import configure_app_logging
 
@@ -41,6 +41,10 @@ HEARTBEAT_SECONDS = 10
 
 # How often to fail jobs whose worker died and delete old finished ones.
 HOUSEKEEPING_SECONDS = 60
+
+# How often to move on multiplayer leagues whose window has run out, with
+# nobody's page open to notice (src/api/services/turn_alerts.py).
+CLOCK_SECONDS = 5
 
 CUT_OFF = "The sim stopped before it finished. Try again."
 
@@ -83,11 +87,13 @@ class Worker:
         self.jobs_conn.execute(f"LISTEN {sim_jobs.CHANNEL}")
         self.sim_conn = get_connection()
         self.last_housekeeping = 0.0
+        self.last_clock = 0.0
 
     def run_forever(self) -> None:
         log.info("Sim worker started.")
         while not self.stopping.is_set():
             self._housekeeping()
+            self._clock()
             job = self.jobs.claim_next()
             if job:
                 self.run_one(job)
@@ -129,6 +135,19 @@ class Worker:
         for job_id in self.jobs.fail_stale():
             log.warning("Job %s: its worker stopped; marked failed", job_id)
         self.jobs.prune()
+
+    def _clock(self) -> None:
+        if time.monotonic() - self.last_clock < CLOCK_SECONDS:
+            return
+        self.last_clock = time.monotonic()
+        try:
+            queued = turn_alerts.advance_due_leagues(self.sim_conn)
+        except Exception:
+            log.exception("The league clock failed")
+            rollback_quietly(self.sim_conn)
+            return
+        if queued:
+            log.info("League clock: queued %d period(s)", queued)
 
     def close(self) -> None:
         self.sim_conn.close()

@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, ActiveLeague
-from src.api.services import ready_check
+from src.api.services import ready_check, turn_alerts
 from src.db.repositories.season_repo import SeasonRepository
 from src.web.utils import _current_league_date
 
@@ -19,6 +19,9 @@ router = APIRouter(tags=["web"])
 
 
 def _status(db, league_id: str, gm) -> JSONResponse:
+    # The page polls this while it's showing: the GM is here, so no turn
+    # email (src/api/services/turn_alerts.py).
+    turn_alerts.mark_seen(db, gm["id"])
     ready_check.advance_if_due(db, league_id)
     body = ready_check.status(db, league_id, gm["id"])
     if body["multiplayer"]:

@@ -31,7 +31,10 @@
 # An admin can pause a league: nothing runs until they resume it, and resuming
 # starts the period's window over.
 #
-# The check runs whenever a GM clicks Ready or asks for the status. A period
+# The check runs whenever a GM clicks Ready or asks for the status, and the
+# sim worker runs it every few seconds for leagues whose window has run out,
+# so a league moves on with nobody watching. When a new period opens, GMs who
+# aren't looking get an email (src/api/services/turn_alerts.py). A period
 # that's due is queued as a job for the sim worker (src/api/services/
 # sim_jobs.py), which runs it; a league has one job at most, so however many
 # requests see it come due at once, it runs once.
@@ -40,7 +43,7 @@ from __future__ import annotations
 
 import logging
 
-from src.api.services import all_star, sim_jobs, trades
+from src.api.services import all_star, sim_jobs, trades, turn_alerts
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
@@ -191,6 +194,8 @@ def run_period(conn, league_id: str, sim_period: int) -> bool:
         now = repo.period(league_id)
         if not _nobody_present(now, _gms(conn, league_id, now["state"])):
             break
+    # Email the GMs who aren't looking that it's their move.
+    turn_alerts.after_period(conn, league_id)
     return True
 
 

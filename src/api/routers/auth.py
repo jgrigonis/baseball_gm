@@ -392,7 +392,7 @@ def reset(
 
 # ── Account ───────────────────────────────────────────────────────────────────
 
-_ACCOUNT_SAVED = {"email": "Email saved."}
+_ACCOUNT_SAVED = {"email": "Email saved.", "turn_emails": "Saved."}
 
 
 def _account_page(request: Request, user, status_code: int = 200, **ctx):
@@ -449,3 +449,11 @@ def set_account_email(
             email_error="Another account has that email.",
         )
     return RedirectResponse("/account?saved=email", status_code=303)
+
+
+@router.post("/account/turn-emails")
+def set_turn_emails(db: DB, user: User, on: str = Form("")):
+    """Turn on or off the email sent when a league is waiting on you."""
+    UserRepository(db).set_turn_emails(user["id"], on == "1")
+    db.commit()
+    return RedirectResponse("/account?saved=turn_emails", status_code=303)

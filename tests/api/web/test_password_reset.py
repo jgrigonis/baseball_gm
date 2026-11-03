@@ -293,6 +293,22 @@ class TestAccount:
         _forgot(client, name)
         assert outbox[0][0] == email
 
+    def test_turn_emails_toggle(self, client, db_conn):
+        name = self._signed_in(client)
+        assert "Email me when it's my move" in client.get("/account").text
+
+        def on():
+            return db_conn.execute(
+                "SELECT turn_emails FROM users WHERE username = %s", (name,)
+            ).fetchone()["turn_emails"]
+
+        assert on()
+        r = client.post("/account/turn-emails", data={})
+        assert r.status_code == 303
+        assert not on()
+        client.post("/account/turn-emails", data={"on": "1"})
+        assert on()
+
     def test_clear_email(self, client, db_conn):
         name = self._signed_in(client, f"{_name()}@example.com")
         r = client.post("/account/email", data={"current": PASSWORD, "email": ""})
