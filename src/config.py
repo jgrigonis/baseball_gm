@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     # it, links would trust the request's Host header, which anyone can fake.
     public_base_url: str = ""
 
+    # The game's Discord invite, linked from the menu, the Leagues page and
+    # the sign-in page. Set DISCORD_URL to empty to hide the links.
+    discord_url: str = "https://discord.gg/G8XfDwnVn"
+
     # Who runs sims (src/api/services/sim_jobs.py). "separate": the sim worker
     # process (`python -m src.worker`), which must be running alongside the
     # web server. "inline": the web request that asks for one, with no worker;
