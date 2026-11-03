@@ -282,6 +282,7 @@
               <th>Injury</th>
               <th>Activity</th>
               <th>Days</th>
+              <th>Effect</th>
             </tr>
           </thead>
           <tbody>
@@ -298,6 +299,8 @@
               <td><span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span></td>
               <td style="color:var(--text-dim);">{{ inj.activity or '—' }}</td>
               <td>{{ inj.games_missed }}d</td>
+              {% set eff = injury_effect(inj) %}
+              <td>{% if eff %}<span class="inj-effect inj-effect-{{ eff.dir }}" title="{{ eff.title }}">{{ eff.label }}{% if eff.text %}: {{ eff.text }}{% endif %}{% if inj.cap_drop %} · potential ▾{% endif %}</span>{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}</td>
             </tr>
             {% endfor %}
           {% endfor %}

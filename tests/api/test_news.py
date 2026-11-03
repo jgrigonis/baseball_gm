@@ -3,6 +3,7 @@
 written after each sim job, crediting the GMs behind the moves, and the
 News tab that shows them."""
 
+import json
 import uuid
 
 import pytest
@@ -232,6 +233,43 @@ class TestPlayers:
         assert s["headline"] == "Captains lose Ruben Ruiz to a torn ACL"
         assert (
             "is out for the season with a torn ACL, suffered while running" in s["body"]
+        )
+
+    def _back(self, db, lg, pid, kind, outcome, effects, cap_drop=False):
+        db.execute(
+            """INSERT INTO player_injury_log (player_id, season_id, team_id,
+                   injury_date, severity, activity, games_missed, injury_type,
+                   outcome, effects, cap_drop, resolved_on, resolved_season_id)
+               VALUES (%s, %s, %s, '2024-06-01', 'surgery', 'pitching', 400, %s,
+                       %s, %s::jsonb, %s, '2025-05-02', %s)""",
+            (pid, None, lg["mine"].id, kind, outcome, json.dumps(effects),
+             cap_drop, lg["season"].id),
+        )  # fmt: skip
+
+    def test_back_from_tommy_john_throwing_harder(self, db_conn, lg):
+        pid = _player(db_conn, lg, lg["mine"])
+        _game(db_conn, lg, "2025-05-01", lg["mine"], lg["theirs"])
+        self._back(db_conn, lg, pid, "tommy_john", "stronger", {"strikes": 4, "arm": 2})
+        news.update_league(db_conn, lg["league"].id)
+        (s,) = _stories(db_conn, lg, "injury")
+        assert s["headline"] == "Ruben Ruiz back from Tommy John, and throwing harder"
+        assert "after 13 months out" in s["body"]
+        assert "His stuff and arm are better than before." in s["body"]
+
+    def test_back_from_a_torn_acl_slower(self, db_conn, lg):
+        pid = _player(db_conn, lg, lg["mine"])
+        _game(db_conn, lg, "2025-05-01", lg["mine"], lg["theirs"])
+        self._back(db_conn, lg, pid, "torn_acl", "bad",
+                   {"speed": -8, "durability": -4}, cap_drop=True)  # fmt: skip
+        news.update_league(db_conn, lg["league"].id)
+        news.update_league(db_conn, lg["league"].id)  # written once
+        (s,) = _stories(db_conn, lg, "injury")
+        assert (
+            s["headline"] == "Ruben Ruiz back from a torn ACL, but hasn't been the same"
+        )
+        assert (
+            "His speed and durability have taken a lasting hit, and his ceiling with it."
+            in s["body"]
         )
 
 

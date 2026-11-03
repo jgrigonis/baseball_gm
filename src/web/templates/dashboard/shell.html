@@ -523,7 +523,7 @@ function showInjuryNews(d) {
   });
   (d.returned || []).forEach(function (i) {
     items.push({
-      text: `✅ ${i.name} returned`,
+      text: `✅ ${i.name} returned${i.effect ? ' — ' + i.effect : ''}`,
       // Not on the 40-man → roster tab, to be placed first
       dest: !i.on_40man ? 'roster' : i.is_pitcher ? 'pitching' : 'batting',
     });

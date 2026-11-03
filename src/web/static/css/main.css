@@ -1174,6 +1174,11 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-mono); font-size: 11px;
 }
 .pd-injury-row:last-child { border-bottom: none; }
+/* What an injury left for good (injury_types.injury_effect) */
+.inj-effect { font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+.inj-effect-down { color: var(--red); }
+.inj-effect-up   { color: var(--green); }
+.inj-effect-even { color: var(--text-dim); }
 
 .pd-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
 

@@ -143,3 +143,23 @@ def test_returning_player_with_stats_goes_by_usage(db_conn, factory):
     assert _returned_is_pitcher(db_conn, factory, "sp", ab=40) is False
     # A pitcher who also bats a little is still a pitcher
     assert _returned_is_pitcher(db_conn, factory, "ss", outs=150, ab=20) is True
+
+
+def test_a_return_says_what_the_injury_left(db_conn, factory):
+    league = factory.league(state="season")
+    team = factory.team()
+    gm = factory.gm(team=team, league=league, is_ai=False)
+    back = _player_on(db_conn, factory, team, "Tommy")
+    _injure(db_conn, league, back, 3, "tommy_john")
+    db_conn.execute(
+        """INSERT INTO player_injury_log (player_id, injury_date, severity,
+               games_missed, injury_type, outcome, effects)
+           VALUES (%s, '2025-04-01', 'surgery', 400, 'tommy_john', 'stronger',
+                   '{"strikes": 3}')""",
+        (back.id,),
+    )
+    news = InjuryNews(db_conn, league.id)
+    db_conn.execute("DELETE FROM player_injuries WHERE player_id = %s", (back.id,))
+    news.record()
+    (note,) = take_injury_news(db_conn, gm.id)["returned"]
+    assert note["effect"] == "came back stronger (KK +3)"

@@ -25,6 +25,7 @@ from psycopg.types.json import Jsonb
 from src.player.injury_types import (  # noqa: F401
     INJURY_TIERS,
     roll_days_missed,
+    roll_lasting,
     roll_rust,
     rust_days_to_clear,
     rust_left,
@@ -261,11 +262,21 @@ class InjuryRepository:
             for row in rows
         ]
 
+    def get_last_injury(self, player_id: str) -> dict | None:
+        """The player's most recent injury log row."""
+        row = self.conn.execute(
+            """SELECT * FROM player_injury_log WHERE player_id = %s
+               ORDER BY injury_date DESC, id DESC LIMIT 1""",
+            (player_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_injuries_by_year(self, player_id: str) -> list[dict]:
         rows = self.conn.execute(
             """
             SELECT pil.injury_date, pil.severity, pil.injury_type,
-                   pil.games_missed, pil.activity, s.year as season_year
+                   pil.games_missed, pil.activity, pil.outcome, pil.effects,
+                   pil.cap_drop, s.year as season_year
             FROM player_injury_log pil
             LEFT JOIN seasons s ON s.id = pil.season_id
             WHERE pil.player_id = %s
@@ -287,7 +298,7 @@ class InjuryRepository:
                    p.last_name || ' ' || p.first_name AS sort_name, p.position,
                    pil.team_id, t.city, t.mascot,
                    pil.injury_date, pil.severity, pil.injury_type, pil.activity,
-                   pil.games_missed AS days_missed
+                   pil.games_missed AS days_missed, pil.outcome, pil.effects
             FROM player_injury_log pil
             JOIN players p ON p.id = pil.player_id
             LEFT JOIN teams t ON t.id = pil.team_id
@@ -359,39 +370,19 @@ class InjuryRepository:
             injury_type=injury_type,
         )
 
+        # An earlier injury he's back from gets its lasting outcome before
+        # this one takes its place.
+        self.resolve_returns(as_of=injury_day, player_ids=[player_id], rng=rng)
+
         cursor = self.conn.cursor()
         with self.conn.transaction():
-            # games_remaining is legacy (pre day-based injuries); it now just
-            # records the length of the current injury in days.
-            cursor.execute(
-                """
-                INSERT INTO player_injuries
-                    (player_id, league_id, games_remaining, return_date,
-                     injury_type, rust, rust_days)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT(player_id, league_id) DO UPDATE SET
-                    games_remaining = excluded.games_remaining,
-                    return_date = excluded.return_date,
-                    injury_type = excluded.injury_type,
-                    rust = excluded.rust,
-                    rust_days = excluded.rust_days
-                """,
-                (
-                    player_id,
-                    self.league_id,
-                    days_missed,
-                    return_date.isoformat(),
-                    injury_type,
-                    Jsonb(rust[0]) if rust else None,
-                    rust[1] if rust else None,
-                ),
-            )
             cursor.execute(
                 """
                 INSERT INTO player_injury_log
                     (player_id, season_id, team_id, games_missed, severity,
                      injury_date, activity, injury_type)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
                 """,
                 (
                     player_id,
@@ -402,6 +393,35 @@ class InjuryRepository:
                     injury_day.isoformat(),
                     activity,
                     injury_type,
+                ),
+            )
+            log_id = cursor.fetchone()["id"]
+            # games_remaining is legacy (pre day-based injuries); it now just
+            # records the length of the current injury in days.
+            cursor.execute(
+                """
+                INSERT INTO player_injuries
+                    (player_id, league_id, games_remaining, return_date,
+                     injury_type, rust, rust_days, log_id, lasting_done)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, FALSE)
+                ON CONFLICT(player_id, league_id) DO UPDATE SET
+                    games_remaining = excluded.games_remaining,
+                    return_date = excluded.return_date,
+                    injury_type = excluded.injury_type,
+                    rust = excluded.rust,
+                    rust_days = excluded.rust_days,
+                    log_id = excluded.log_id,
+                    lasting_done = FALSE
+                """,
+                (
+                    player_id,
+                    self.league_id,
+                    days_missed,
+                    return_date.isoformat(),
+                    injury_type,
+                    Jsonb(rust[0]) if rust else None,
+                    rust[1] if rust else None,
+                    log_id,
                 ),
             )
 
@@ -474,6 +494,141 @@ class InjuryRepository:
                     "injury_type": r["injury_type"],
                 }
         return out
+
+    # ------------------------------------------------------------------
+    # Lasting effects
+    # ------------------------------------------------------------------
+
+    def resolve_returns(self, as_of=None, player_ids=None, rng=None) -> list[dict]:
+        """Roll the lasting outcome of every injury that's over by `as_of`
+        and hasn't had one yet (src/player/injury_types.py LASTING), and
+        write it into the player's skills: a lasting loss, sometimes a
+        lower talent cap too, or for a lucky few a gain (which raises the
+        cap with it). Limit to some players with `player_ids`.
+
+        Returns one dict per injury resolved: player_id, log_id,
+        injury_type, outcome, effects ({skill: points actually moved}),
+        cap_drop."""
+        as_of = self._as_of(as_of)
+        if player_ids is not None and not player_ids:
+            return []
+        rows = self.conn.execute(
+            """SELECT pi.player_id, pi.injury_type, pi.log_id,
+                      p.position, ps.age, ps.durability
+               FROM player_injuries pi
+               JOIN players p ON p.id = pi.player_id
+               LEFT JOIN player_skills ps ON ps.player_id = pi.player_id
+               WHERE pi.league_id = %s AND NOT pi.lasting_done
+                 AND pi.return_date::date <= %s::date
+                 AND (%s::text[] IS NULL OR pi.player_id = ANY(%s::text[]))
+               ORDER BY pi.player_id
+               FOR UPDATE OF pi""",
+            (
+                self.league_id,
+                as_of,
+                list(player_ids) if player_ids is not None else None,
+                list(player_ids) if player_ids is not None else None,
+            ),
+        ).fetchall()
+        if not rows:
+            return []
+        season_id = self._current_season_id()
+        out = []
+        for r in rows:
+            pid = r["player_id"]
+            pitcher = is_pitcher(r["position"] or "")
+            result = None
+            if r["age"] is not None:
+                result = roll_lasting(
+                    r["injury_type"], pitcher, r["age"], r["durability"], rng
+                )
+            effects = {}
+            if result and result.effects:
+                effects = self._apply_lasting(pid, result.effects, result.cap_drop)
+            self.conn.execute(
+                """UPDATE player_injuries SET lasting_done = TRUE
+                   WHERE player_id = %s AND league_id = %s""",
+                (pid, self.league_id),
+            )
+            if r["log_id"] is not None and result:
+                self.conn.execute(
+                    """UPDATE player_injury_log
+                       SET outcome = %s, effects = %s, cap_drop = %s,
+                           resolved_on = %s, resolved_season_id = %s
+                       WHERE id = %s""",
+                    (
+                        result.outcome,
+                        Jsonb(effects),
+                        result.cap_drop and any(v < 0 for v in effects.values()),
+                        as_of,
+                        season_id,
+                        r["log_id"],
+                    ),
+                )
+            if result:
+                logger.info(
+                    "Player %s back from %s: %s %s",
+                    pid, r["injury_type"], result.outcome, effects,
+                )  # fmt: skip
+                out.append(
+                    {
+                        "player_id": pid,
+                        "log_id": r["log_id"],
+                        "injury_type": r["injury_type"],
+                        "outcome": result.outcome,
+                        "effects": effects,
+                        "cap_drop": result.cap_drop,
+                    }
+                )
+        return out
+
+    def _apply_lasting(self, player_id, effects, cap_drop) -> dict[str, int]:
+        """Move the player's skills by `effects` (kept within 1-100) and
+        return how far each actually moved. Gains raise the talent cap by
+        the same amount; losses lower it only when `cap_drop`."""
+        skills = self.conn.execute(
+            "SELECT * FROM player_skills WHERE player_id = %s", (player_id,)
+        ).fetchone()
+        if not skills:
+            return {}
+        caps = self.conn.execute(
+            "SELECT * FROM player_talent_caps WHERE player_id = %s", (player_id,)
+        ).fetchone()
+        moved: dict[str, int] = {}
+        cap_moves: dict[str, int] = {}
+        for skill, delta in effects.items():
+            if skill not in skills:
+                continue
+            old = skills[skill]
+            new = min(100, max(1, old + delta))
+            if new == old:
+                continue
+            moved[skill] = new - old
+            if caps and skill in caps and (new > old or cap_drop):
+                cap_moves[skill] = min(100, max(1, caps[skill] + (new - old)))
+        if moved:
+            sets = ", ".join(f"{k} = %s" for k in moved)
+            self.conn.execute(
+                f"UPDATE player_skills SET {sets} WHERE player_id = %s",
+                [skills[k] + v for k, v in moved.items()] + [player_id],
+            )
+        if cap_moves:
+            sets = ", ".join(f"{k} = %s" for k in cap_moves)
+            self.conn.execute(
+                f"UPDATE player_talent_caps SET {sets} WHERE player_id = %s",
+                list(cap_moves.values()) + [player_id],
+            )
+        return moved
+
+    def _current_season_id(self) -> str | None:
+        """The league's season now (its newest)."""
+        row = self.conn.execute(
+            """SELECT s.id FROM seasons s
+               JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1""",
+            (self.league_id,),
+        ).fetchone()
+        return row["id"] if row else None
 
     def clear_injuries(self, player_id: str) -> bool:
         cursor = self.conn.cursor()

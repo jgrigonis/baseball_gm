@@ -12,7 +12,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
-from src.player.injury_types import injury_label
+from src.player.injury_types import injury_effect, injury_label
 from src.player.positions import is_pitcher
 
 
@@ -47,18 +47,26 @@ class InjuryNews:
                     notes.add(gm_id, "injury", note)
             for pid, v in before.items():
                 if pid not in after:
-                    notes.add(
-                        gm_id,
-                        "returned",
-                        {
-                            "name": v["name"],
-                            # How long the injury was, in days
-                            "length": v["length"],
-                            "is_pitcher": self._is_pitcher(pid, v),
-                            "on_40man": status_repo.get_status(pid)
-                            in ("26man", "40man"),
-                        },
-                    )
+                    note = {
+                        "name": v["name"],
+                        # How long the injury was, in days
+                        "length": v["length"],
+                        "is_pitcher": self._is_pitcher(pid, v),
+                        "on_40man": status_repo.get_status(pid) in ("26man", "40man"),
+                    }
+                    effect = self._effect(pid)
+                    if effect:
+                        note["effect"] = effect
+                    notes.add(gm_id, "returned", note)
+
+    def _effect(self, player_id: str) -> str | None:
+        """What the injury he's back from left for good, in a few words:
+        "came back stronger (KK +3)", "full recovery" after surgery."""
+        eff = injury_effect(self.inj_repo.get_last_injury(player_id))
+        if not eff:
+            return None
+        label = eff["label"][0].lower() + eff["label"][1:]
+        return f"{label} ({eff['text']})" if eff["text"] else label
 
     def _is_pitcher(self, player_id: str, injury: dict) -> bool:
         """Whether the alert should link to the pitching tab for this player.

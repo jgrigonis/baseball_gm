@@ -321,6 +321,8 @@
           <td data-sort="{{ severity_rank.get(inj.severity, 0) }}" style="font-size:12px;">
             <span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span>
             {% if inj.activity %}<span class="ss-inj-activity"> · {{ inj.activity }}</span>{% endif %}
+            {% set eff = injury_effect(inj) %}
+            {% if eff and eff.text %}<div class="inj-effect inj-effect-{{ eff.dir }}" title="{{ eff.title }}">{{ eff.text }}</div>{% endif %}
           </td>
           <td data-sort="{{ inj.days_missed }}"
               style="font-family:var(--font-mono);font-size:12px;text-align:right;">{{ inj.days_missed }}d</td>

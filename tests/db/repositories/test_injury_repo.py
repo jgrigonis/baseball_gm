@@ -261,3 +261,173 @@ def test_a_new_injury_replaces_the_old_rust(setup):
     _rusty(s)
     s.repo.injure(s.player.id, s.season.id, "2025-04-14", days=3)
     assert s.repo.get_rust([s.player.id], as_of="2025-04-18") == {}
+
+
+# ── Lasting effects ──────────────────────────────────────────────────────────
+
+
+def _skills(s, age=28, level=50, position="of"):
+    s.conn.execute(
+        "UPDATE players SET position = %s WHERE id = %s", (position, s.player.id)
+    )
+    s.conn.execute(
+        """INSERT INTO player_skills
+           (player_id, age, durability, strikes, stamina, recovery, accuracy, clutch,
+            speed, power, arm, eye, contact, base_running,
+            bunting, catching, infield, outfield, ground_balls)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                   %s, %s, %s, %s, %s)""",
+        (s.player.id, age, *([level] * 17)),
+    )
+    s.conn.execute(
+        "INSERT INTO player_talent_caps (player_id, speed, strikes, arm, accuracy)"
+        " VALUES (%s, 60, 60, 60, 60)",
+        (s.player.id,),
+    )
+
+
+def _skill(s, col, table="player_skills"):
+    return s.conn.execute(
+        f"SELECT {col} FROM {table} WHERE player_id = %s", (s.player.id,)
+    ).fetchone()[col]
+
+
+class _Rigged(random.Random):
+    """random() returns `picks` in turn (the outcome roll, then the cap
+    roll), the last one over and over; randint is a normal seeded Random."""
+
+    def __init__(self, *picks):
+        super().__init__(1)
+        self.picks = list(picks)
+
+    def random(self):
+        return self.picks.pop(0) if len(self.picks) > 1 else self.picks[0]
+
+
+def test_lasting_outcome_waits_for_the_return(setup):
+    s = setup
+    _skills(s)
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="surgery",
+        injury_type="torn_acl", days=300, team_id=s.team.id,
+    )  # fmt: skip
+    assert s.repo.resolve_returns(as_of="2025-12-01") == []
+    assert _skill(s, "speed") == 50
+
+
+def test_a_torn_acl_costs_speed_for_good(setup):
+    s = setup
+    _skills(s)
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="surgery",
+        injury_type="torn_acl", days=300, team_id=s.team.id,
+    )  # fmt: skip
+    # 0.5 lands in "typical"; cap_drop roll of 0.5 is far above 10%
+    done = s.repo.resolve_returns(as_of="2026-01-27", rng=_Rigged(0.5))
+    assert len(done) == 1
+    effects = done[0]["effects"]
+    assert done[0]["outcome"] == "typical"
+    assert -6 <= effects["speed"] <= -3
+    assert _skill(s, "speed") == 50 + effects["speed"]
+    assert _skill(s, "speed", "player_talent_caps") == 60  # cap untouched
+    log = s.repo.get_injury_log(s.player.id)[0]
+    assert log["outcome"] == "typical"
+    assert log["effects"] == effects
+    assert log["resolved_on"] == "2026-01-27"
+    assert log["resolved_season_id"] == s.season.id
+    # Only once
+    assert s.repo.resolve_returns(as_of="2026-02-10") == []
+    assert _skill(s, "speed") == 50 + effects["speed"]
+
+
+def test_an_unlucky_loss_lowers_the_cap_too(setup):
+    s = setup
+    _skills(s)
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="surgery",
+        injury_type="torn_acl", days=300,
+    )  # fmt: skip
+    # "typical", then a cap roll under 10%
+    done = s.repo.resolve_returns(as_of="2026-01-27", rng=_Rigged(0.5, 0.01))
+    loss = done[0]["effects"]["speed"]
+    assert done[0]["cap_drop"]
+    assert _skill(s, "speed") == 50 + loss
+    assert _skill(s, "speed", "player_talent_caps") == 60 + loss
+    assert s.repo.get_injury_log(s.player.id)[0]["cap_drop"]
+
+
+def test_a_full_recovery_changes_nothing(setup):
+    s = setup
+    _skills(s)
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="surgery",
+        injury_type="torn_acl", days=300,
+    )  # fmt: skip
+    done = s.repo.resolve_returns(as_of="2026-01-27", rng=_Rigged(0.05))
+    assert done[0]["outcome"] == "full"
+    assert done[0]["effects"] == {}
+    assert _skill(s, "speed") == 50
+
+
+def test_tommy_john_can_come_back_stronger_and_raise_the_cap(setup):
+    s = setup
+    _skills(s, position="sp")
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="surgery",
+        injury_type="tommy_john", days=400,
+    )  # fmt: skip
+    done = s.repo.resolve_returns(as_of="2026-06-01", rng=_Rigged(0.01))
+    gain = done[0]["effects"]["strikes"]
+    assert done[0]["outcome"] == "stronger" and gain > 0
+    assert _skill(s, "strikes") == 50 + gain
+    assert _skill(s, "strikes", "player_talent_caps") == 60 + gain
+
+
+def test_a_new_injury_settles_the_old_ones_outcome_first(setup):
+    s = setup
+    _skills(s)
+    s.repo.injure(
+        s.player.id, s.season.id, "2025-04-01", severity="moderate",
+        injury_type="hamstring_strain", days=10,
+    )  # fmt: skip
+    s.repo.injure(s.player.id, s.season.id, "2025-05-01", days=3, rng=_Rigged(0.95))
+    first = s.repo.get_injury_log(s.player.id)[1]
+    assert first["outcome"] == "lingering"
+
+
+def test_injury_without_a_type_has_no_outcome(setup):
+    s = setup
+    _skills(s)
+    s.repo.injure(s.player.id, s.season.id, "2025-04-01", days=3)
+    assert s.repo.resolve_returns(as_of="2025-05-01") == []
+    row = s.conn.execute(
+        "SELECT lasting_done FROM player_injuries WHERE player_id = %s", (s.player.id,)
+    ).fetchone()
+    assert row["lasting_done"]
+
+
+def test_migration_63_only_leaves_running_injuries_open(setup):
+    from src.db.migration_files.migration_063_injury_lasting import upgrade as m63
+
+    s = setup
+    _add_game(s, "2025-05-01", 1)  # league date: May 2
+    back = s.player
+    out = s.factory.player_row()
+    for pid, injured, days in (
+        (back.id, "2025-04-01", 10),
+        (out.id, "2025-04-20", 300),
+    ):
+        s.repo.injure(pid, s.season.id, injured, severity="surgery",
+                      injury_type="torn_acl", days=days)  # fmt: skip
+    # As it was before the migration: no links, nothing done
+    s.conn.execute("UPDATE player_injuries SET log_id = NULL, lasting_done = FALSE")
+    m63(s.conn)
+    rows = {
+        r["player_id"]: r
+        for r in s.conn.execute(
+            "SELECT player_id, log_id, lasting_done FROM player_injuries"
+        ).fetchall()
+    }
+    assert rows[back.id]["lasting_done"]
+    assert not rows[out.id]["lasting_done"]
+    assert rows[out.id]["log_id"] == s.repo.get_injury_log(out.id)[0]["id"]
