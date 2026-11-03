@@ -1488,8 +1488,10 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em;
   text-transform: uppercase; color: var(--text-dim);
 }
-.news-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 2px; }
-.news-teams { display: inline-flex; gap: 4px; flex-shrink: 0; }
+/* An awards story can carry a dozen badges: they wrap, and the headline moves
+   below them when there isn't room beside them. */
+.news-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 4px 0 2px; }
+.news-teams { display: inline-flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
 .news-team { text-decoration: none; }
 .news-team .team-badge { width: 32px; height: 32px; margin: 0; font-size: 13px; }
 .news-team .team-badge--long { font-size: 11px; }
@@ -1497,6 +1499,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .news-link { color: inherit; text-decoration: underline; text-decoration-color: var(--border-hi); text-underline-offset: 3px; }
 .news-link:hover { color: var(--amber); text-decoration-color: var(--amber); }
 .news-headline {
+  flex: 1 1 200px; min-width: 0;
   font-family: var(--font-display); font-weight: 700; font-size: 20px;
   line-height: 1.15; color: var(--text-hi); margin: 0; letter-spacing: .01em;
 }
@@ -1603,4 +1606,15 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   .table-scroll.pin-first .data-table td:first-child {
     position: sticky; left: 0; z-index: 1; background: var(--pin-bg, var(--bg-2));
   }
+
+  /* Line scores: the badge already names the team, so the name goes and the
+     tiles shrink, letting nine innings and the totals fit on the screen. */
+  .line-score { border-spacing: 2px; }
+  .line-score-team { padding-right: 4px; }
+  .line-score-team > span:not(.team-badge) { display: none; }
+  .line-score th { padding: 0 1px; }
+  .line-score td.tile { min-width: 20px; height: 28px; padding: 0 1px; font-size: 16px; }
+
+  /* The box score takes the whole screen, like the player panel. */
+  #game-panel { width: 100vw !important; height: 100dvh !important; }
 }
