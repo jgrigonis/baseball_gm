@@ -81,6 +81,7 @@ def roster(
         deals = contracts.active_for([p["player_id"] for p in players], year)
         for p in players:
             deal = deals.get(p["player_id"])
+            p["salary"] = deal["salary"] if deal else None
             p["salary_text"] = format_salary(deal["salary"]) if deal else None
             p["rookie_deal"] = bool(deal and deal["kind"] == "rookie")
         ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
