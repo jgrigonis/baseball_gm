@@ -286,7 +286,8 @@ def test_standings_show_team_badges(client, db_conn, factory):
     html = client.get(f"/leagues/{league.id}/standings").text
 
     assert html.count('class="team-badge') == 2
-    assert ">BOS</span>Boston Beans" in html
+    # Phones drop the city and show the nickname
+    assert '>BOS</span><span class="phone-hide">Boston </span>Beans' in html
 
 
 def test_game_panel_shows_both_team_badges(client, db_conn, factory):
