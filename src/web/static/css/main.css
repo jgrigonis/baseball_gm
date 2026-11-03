@@ -1575,6 +1575,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .tab-body { padding: 16px 24px 24px; }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .phone-only { display: none; }
+.clip-more { display: none; }
 .table-scroll > .data-table { min-width: 100%; }
 
 @media (max-width: 700px) {
@@ -1622,6 +1623,14 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   /* Play Day / Until Injury / Full Season: one short row each, and the
      Ignore trades box wraps to the next line instead of off the screen. */
   .play-bar .btn { white-space: nowrap; padding: 7px 10px !important; font-size: 11px !important; }
+
+  /* Long lists (data-phone-clip, phone_clip.js) show their first 8 rows and
+     a "Show all" button, so the block below is in reach. */
+  table.clipped > tbody > tr:nth-child(n+9) { display: none; }
+  .clip-more {
+    display: block; width: 100%; margin: 0; padding: 10px;
+    border-width: 1px 0 0; font-size: 11px;
+  }
 
   /* The box score takes the whole screen, like the player panel. */
   #game-panel { width: 100vw !important; height: 100dvh !important; }

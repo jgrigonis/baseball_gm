@@ -18,7 +18,7 @@
     </div>
     {% if upcoming %}
     <div class="table-scroll">
-      <table class="data-table" style="width:100%;">
+      <table class="data-table" style="width:100%;" data-phone-clip>
         <thead><tr><th>Date</th><th>Opponent</th><th class="phone-hide">GM</th><th style="text-align:center;">Record</th><th style="text-align:center;">H/A</th></tr></thead>
         <tbody>
           {% for g in upcoming %}
@@ -54,7 +54,7 @@
     </div>
     {% if recent %}
     <div class="table-scroll">
-      <table class="data-table" style="width:100%;">
+      <table class="data-table" style="width:100%;" data-phone-clip>
         <thead><tr><th>Date</th><th style="text-align:center;">W/L</th><th style="text-align:center;">Score</th><th>Opponent</th><th class="phone-hide">GM</th><th class="phone-hide" style="text-align:center;">H/A</th></tr></thead>
         <tbody>
           {% for g in recent %}
