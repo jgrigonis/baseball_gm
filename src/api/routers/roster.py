@@ -20,6 +20,8 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.team_repo import TeamRepository
+from src.player.face import face_url
 from src.team.roster_limits import MIN_PLAYING_ROSTER
 from src.web.utils import _shell_ctx, tab_response
 
@@ -44,9 +46,13 @@ def roster(
 
     if team_id:
         player_repo = PlayerRepository(db)
+        team = TeamRepository(db).get_city_and_mascot(team_id) or {}
         for row in player_repo.get_team_roster_with_skills(team_id):
             card = roster_card(row)
             card["jersey_number"] = row.get("jersey_number")
+            card["face_url"] = face_url(
+                card["player_id"], card.get("age"), team.get("city"), team.get("mascot")
+            )
             players.append(card)
 
     # Season stats for display on roster cards
